@@ -1,43 +1,89 @@
 # app/customers.py
-# قراءة وعرض بيانات العملاء من Excel
+# Functions للتعامل مع جدول العملاء
 
-from openpyxl import load_workbook
+import sqlite3
+from app.database import DB_PATH
 
-# مسار ملف العملاء
-EXCEL_FILE = "data/customers.xlsx"
 
-# فتح الملف
-wb = load_workbook(EXCEL_FILE)
-ws = wb.active
+def add_customer(code, name, **kwargs):
+    """
+    تضيف عميل جديد لقاعدة البيانات.
+    
+    المطلوب: code, name
+    الاختياري: city, district, address, phone, national_id,
+              elevator_count, email, status, registration_date,
+              notes, revenue
+    
+    ترجع id العميل الجديد.
+    """
+    data = {"code": code, "name": name, **kwargs}
+    
+    columns = ", ".join(data.keys())
+    placeholders = ", ".join(["?"] * len(data))
+    values = tuple(data.values())
+    
+    sql = f"INSERT INTO customers ({columns}) VALUES ({placeholders})"
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(sql, values)
+        conn.commit()
+        return cursor.lastrowid
+    except sqlite3.IntegrityError as e:
+        raise ValueError(f"خطأ: {e}")
+    finally:
+        conn.close()
 
-# عنوان
-print("=" * 70)
-print("📋 قائمة عملاء شركة المصاعد")
-print("=" * 70)
 
-# عداد العملاء
-count = 0
+def get_customer_by_code(code):
+    """ترجع بيانات عميل بالكود، أو None لو مش موجود."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM customers WHERE code = ?", (code,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    return dict(row) if row else None
 
-# قراءة الصفوف
-for row in ws.iter_rows(min_row=2, values_only=True):
-    count += 1
 
-    print(f"\n🏢 عميل #{count}")
-    print(f"📌 كود العميل:      {row[0]}")
-    print(f"👤 اسم العميل:      {row[2]}")
-    print(f"📄 رقم العقد:       {row[3]}")
-    print(f"📍 المدينة:         {row[4]}")
-    print(f"📍 الحي:            {row[5]}")
-    print(f"📱 الجوال:          {row[7]}")
-    print(f"🛗 عدد المصاعد:     {row[9]}")
-    print(f"⚡ الحالة:          {row[11]}")
-    print(f"💰 الإيراد:         {row[14]} ريال")
+def get_all_customers():
+    """ترجع كل العملاء كلستة من dictionaries."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM customers ORDER BY code")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
 
-    # عرض أول 5 فقط
-    if count >= 5:
-        break
 
-# ملخص
-print("\n" + "=" * 70)
-print(f"📊 تم عرض أول {count} عملاء")
-print("=" * 70)
+def count_customers():
+    """ترجع عدد العملاء في القاعدة."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM customers")
+    count = cursor.fetchone()[0]
+    conn.close()
+    
+    return count
+
+
+def delete_customer(code):
+    """تحذف عميل بالكود. ترجع True لو اتحذف، False لو مش موجود."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("DELETE FROM customers WHERE code = ?", (code,))
+    deleted = cursor.rowcount > 0
+    
+    conn.commit()
+    conn.close()
+    
+    return deleted
