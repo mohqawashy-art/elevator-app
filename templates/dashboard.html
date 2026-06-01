@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;
+  --bg2:#111720;
+  --bg3:#161e2b;
+  --bg4:#1c2535;
+  --card:#131b27;
+  --border:rgba(100,160,255,.1);
+  --border2:rgba(100,160,255,.18);
+  --accent:#2a7fff;
+  --accent2:#1a5fcc;
+  --gold:#c8a055;
+  --gold2:#a07830;
+  --text1:#e4eaf5;
+  --text2:#8a9bb8;
+  --text3:#4a5a72;
+  --success:#1fb87a;
+  --warning:#e09030;
+  --danger:#e04848;
+  --info:#2a9fff;
+  --sidebar-w:240px;
+  --header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;
+  --font-en:'DM Sans',sans-serif;
+  --r:10px;
+  --r-sm:7px;
+  --trans:.18s ease;
+}
+html[dir="ltr"]{font-family:var(--font-en)}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+
+.sidebar{
+  width:var(--sidebar-w);min-width:var(--sidebar-w);
+  background:var(--bg2);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+  height:100vh;position:sticky;top:0;
+  z-index:100;transition:width var(--trans);
+  overflow:hidden;
+}
+html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
+
+.sidebar-logo{
+  padding:10px 16px;
+  display:flex;align-items:center;justify-content:center;
+  border-bottom:1px solid var(--border);
+  min-height:var(--header-h);
+}
+.sidebar-logo img{
+  width:150px;height:44px;object-fit:contain;
+}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.sidebar-nav::-webkit-scrollbar{width:3px}
+.sidebar-nav::-webkit-scrollbar-track{background:transparent}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+html[dir="ltr"] .nav-section{text-transform:uppercase}
+
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 16px;margin:1px 8px;
+  border-radius:var(--r-sm);
+  cursor:pointer;transition:var(--trans);
+  font-size:13px;color:var(--text2);
+  position:relative;
+  text-decoration:none;
+}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
+.nav-item.active::before{
+  content:'';position:absolute;
+  right:-8px;top:50%;transform:translateY(-50%);
+  width:3px;height:18px;background:var(--accent);border-radius:3px;
+}
+html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.nav-item.active svg{opacity:1}
+.nav-badge{
+  margin-right:auto;margin-left:0;
+  background:var(--danger);color:#fff;
+  font-size:10px;font-weight:600;
+  padding:1px 6px;border-radius:10px;min-width:18px;text-align:center;
+}
+html[dir="ltr"] .nav-badge{margin-left:auto;margin-right:0}
+
+.sidebar-footer{
+  padding:14px 16px;
+  border-top:1px solid var(--border);
+}
+.sidebar-user{display:flex;align-items:center;gap:10px;cursor:pointer}
+.sidebar-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--gold));
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:600;color:#fff;flex-shrink:0;
+}
+.sidebar-user-info{line-height:1.3}
+.sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
+.sidebar-user-role{font-size:11px;color:var(--text3)}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow-x:hidden}
+
+.header{
+  height:var(--header-h);
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 24px;gap:16px;
+  position:sticky;top:0;z-index:90;
+}
+.header-title{font-size:15px;font-weight:500;color:var(--text1)}
+.header-title span{color:var(--text3);font-weight:400;font-size:13px;margin-right:6px}
+html[dir="ltr"] .header-title span{margin-right:0;margin-left:6px}
+.header-spacer{flex:1}
+.header-actions{display:flex;align-items:center;gap:8px}
+
+.icon-btn{
+  width:34px;height:34px;border-radius:var(--r-sm);
+  background:transparent;border:1px solid var(--border);
+  color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:var(--trans);position:relative;
+}
+.icon-btn:hover{background:var(--bg3);border-color:var(--border2);color:var(--text1)}
+.icon-btn svg{width:16px;height:16px}
+.notif-dot{
+  position:absolute;top:6px;right:6px;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--danger);border:1px solid var(--bg2);
+}
+html[dir="ltr"] .notif-dot{right:auto;left:6px}
+
+.lang-toggle{
+  display:flex;align-items:center;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r-sm);overflow:hidden;
+}
+.lang-opt{
+  padding:5px 10px;font-size:11px;font-weight:500;
+  cursor:pointer;transition:var(--trans);color:var(--text3);
+  border:none;background:none;
+}
+.lang-opt.active{background:var(--accent);color:#fff}
+
+.header-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--gold));
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:600;color:#fff;cursor:pointer;
+  border:2px solid var(--border2);
+}
+
+.content{flex:1;padding:24px;overflow-y:auto}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-track{background:transparent}
+.content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-title{font-size:13px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:3px;display:inline-block}
+.section-link{font-size:12px;color:var(--accent);cursor:pointer;opacity:.8}
+.section-link:hover{opacity:1}
+
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+  margin-bottom:24px;
+}
+.stat-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:18px 20px;
+  cursor:pointer;
+  transition:var(--trans);
+  position:relative;
+  overflow:hidden;
+  animation:fadeUp .4s ease both;
+}
+.stat-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.stat-card::before{
+  content:'';position:absolute;
+  top:0;left:0;right:0;height:2px;
+  background:var(--card-accent,var(--accent));
+  opacity:.6;
+}
+.stat-card.c-blue{--card-accent:var(--accent)}
+.stat-card.c-gold{--card-accent:var(--gold)}
+.stat-card.c-green{--card-accent:var(--success)}
+.stat-card.c-red{--card-accent:var(--danger)}
+.stat-card.c-warn{--card-accent:var(--warning)}
+.stat-card.c-info{--card-accent:var(--info)}
+
+.stat-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.stat-icon{width:36px;height:36px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center}
+.stat-icon svg{width:18px;height:18px}
+.c-blue .stat-icon{background:rgba(42,127,255,.12);color:var(--accent)}
+.c-gold .stat-icon{background:rgba(200,160,85,.12);color:var(--gold)}
+.c-green .stat-icon{background:rgba(31,184,122,.12);color:var(--success)}
+.c-red .stat-icon{background:rgba(224,72,72,.12);color:var(--danger)}
+.c-warn .stat-icon{background:rgba(224,144,48,.12);color:var(--warning)}
+.c-info .stat-icon{background:rgba(42,159,255,.12);color:var(--info)}
+
+.stat-trend{font-size:11px;font-weight:500;padding:2px 7px;border-radius:10px}
+.trend-up{background:rgba(31,184,122,.12);color:var(--success)}
+.trend-down{background:rgba(224,72,72,.12);color:var(--danger)}
+.trend-neu{background:rgba(138,155,184,.1);color:var(--text2)}
+
+.stat-val{font-size:28px;font-weight:600;color:var(--text1);line-height:1;margin-bottom:4px;font-family:var(--font-en)}
+.stat-label{font-size:12px;color:var(--text2)}
+.stat-label-ar{font-size:11px;color:var(--text3);margin-top:2px}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+
+.panel{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  overflow:hidden;
+  animation:fadeUp .5s ease both;
+}
+.panel-head{
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.panel-title{font-size:13px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:7px}
+.panel-title svg{width:14px;height:14px;color:var(--text3)}
+.panel-body{padding:16px 18px}
+
+.alert-list{display:flex;flex-direction:column;gap:8px}
+.alert-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:10px 12px;
+  border-radius:var(--r-sm);
+  border:1px solid transparent;
+  cursor:pointer;transition:var(--trans);
+}
+.alert-item:hover{background:var(--bg3)}
+.alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.alert-item.danger{border-color:rgba(224,72,72,.15);background:rgba(224,72,72,.05)}
+.alert-item.danger .alert-dot{background:var(--danger)}
+.alert-item.warning{border-color:rgba(224,144,48,.15);background:rgba(224,144,48,.05)}
+.alert-item.warning .alert-dot{background:var(--warning)}
+.alert-item.info{border-color:rgba(42,127,255,.15);background:rgba(42,127,255,.05)}
+.alert-item.info .alert-dot{background:var(--accent)}
+.alert-text{font-size:12px;color:var(--text1);line-height:1.5}
+.alert-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.alert-count{
+  margin-right:auto;margin-left:0;
+  font-size:11px;font-weight:600;
+  background:var(--bg4);
+  padding:2px 8px;border-radius:10px;color:var(--text2);
+  white-space:nowrap;flex-shrink:0;
+}
+html[dir="ltr"] .alert-count{margin-left:auto;margin-right:0}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{border-bottom:1px solid var(--border)}
+thead th{padding:10px 12px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap}
+html[dir="ltr"] thead th{text-align:left}
+tbody tr{border-bottom:1px solid rgba(100,160,255,.04);transition:var(--trans);cursor:pointer}
+tbody tr:hover{background:var(--bg3)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
+.td-name{color:var(--text1);font-weight:500}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.badge-done{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-pending{background:rgba(224,144,48,.12);color:var(--warning)}
+.badge-open{background:rgba(224,72,72,.12);color:var(--danger)}
+.badge-progress{background:rgba(42,127,255,.12);color:var(--accent)}
+.badge-high{background:rgba(224,72,72,.12);color:var(--danger)}
+.badge-med{background:rgba(224,144,48,.12);color:var(--warning)}
+.badge-low{background:rgba(31,184,122,.12);color:var(--success)}
+
+.finance-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.finance-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px}
+.finance-label{font-size:11px;color:var(--text3);margin-bottom:6px}
+.finance-val{font-size:20px;font-weight:600;color:var(--text1);font-family:var(--font-en);line-height:1}
+.finance-val.danger{color:var(--danger)}
+.finance-val.success{color:var(--success)}
+.finance-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.finance-bar{height:4px;background:var(--bg4);border-radius:2px;margin-top:10px;overflow:hidden}
+.finance-bar-fill{height:100%;border-radius:2px;background:var(--accent)}
+
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quick-btn{
+  display:flex;align-items:center;gap:9px;
+  padding:10px 12px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r-sm);cursor:pointer;
+  transition:var(--trans);color:var(--text2);font-size:12px;
+  font-family:var(--font-ar);
+}
+html[dir="ltr"] .quick-btn{font-family:var(--font-en)}
+.quick-btn:hover{background:var(--bg4);border-color:var(--border2);color:var(--text1)}
+.quick-btn svg{width:14px;height:14px;flex-shrink:0;color:var(--accent)}
+
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.hamburger svg{width:20px;height:20px}
+
+@media(max-width:1100px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .two-col{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  :root{--sidebar-w:260px}
+  .sidebar{position:fixed;right:-260px;top:0;height:100vh;transition:right .25s ease}
+  html[dir="ltr"] .sidebar{right:auto;left:-260px;transition:left .25s ease}
+  .sidebar.open{right:0;box-shadow:-8px 0 32px rgba(0,0,0,.4)}
+  html[dir="ltr"] .sidebar.open{left:0;right:auto}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .content{padding:16px}
+}
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .stat-val{font-size:22px}
+}
+</style>
+</head>
+<body>
+
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+
+  <!-- اللوجو فقط بدون نص -->
+  <div class="sidebar-logo">
+<img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;">
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section" id="nav-s1">الرئيسية</div>
+    <a class="nav-item active" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+      <span id="nav-dashboard">لوحة التحكم</span>
+    </a>
+
+    <div class="nav-section" id="nav-s2">إدارة البيانات</div>
+    <a class="nav-item" href="/clients">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg>
+      <span id="nav-clients">العملاء</span>
+    </a>
+    <a class="nav-item" href="/elevators">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg>
+      <span id="nav-elevators">المصاعد</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg>
+      <span id="nav-contracts">العقود</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg>
+      <span id="nav-technicians">الفنيين</span>
+    </a>
+
+    <div class="nav-section" id="nav-s3">العمليات</div>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>
+      <span id="nav-visits">زيارات الصيانة</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
+      <span id="nav-faults">الأعطال</span>
+      <span class="nav-badge">5</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="6" y1="8" x2="10" y2="8"/></svg>
+      <span id="nav-invoices">الفواتير</span>
+      <span class="nav-badge">3</span>
+    </a>
+
+    <div class="nav-section" id="nav-s4">التقارير</div>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14V6l4-4h6a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6 2v4H2"/><line x1="5" y1="9" x2="11" y2="9"/><line x1="5" y1="12" x2="9" y2="12"/></svg>
+      <span id="nav-reports">التقارير</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg>
+      <span id="nav-settings">الإعدادات</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">م</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="su-name">محمد القواشي</div>
+        <div class="sidebar-user-role" id="su-role">مدير النظام</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+
+  <header class="header">
+    <button class="hamburger" onclick="openSidebar()" aria-label="القائمة">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
+    </button>
+    <div class="header-title">
+      <span id="h-date">الأحد، 1 يونيو 2025</span>
+      <span id="h-page">لوحة التحكم</span>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <div class="lang-toggle">
+        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
+        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
+      </div>
+      <button class="icon-btn">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg>
+        <span class="notif-dot"></span>
+      </button>
+      <div class="header-avatar">م</div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <div class="stats-grid">
+      <div class="stat-card c-blue" style="animation-delay:.05s">
+        <div class="stat-top">
+          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg></div>
+          <span class="stat-trend trend-up">+3</span>
+        </div>
+        <div class="stat<div class="stat-val">{{ stats.clients_count }}</div>
+        <div class="stat-label">Total Clients</div>
+        <div class="stat-label-ar">إجمالي العملاء</div>
+      </div>
+      <div class="stat-card c-gold" style="animation-delay:.1s">
+        <div class="stat-top">
+          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg></div>
+          <span class="stat-trend trend-up">+8</span>
+        </div>
+        <div class="stat<div class="stat-val">{{ stats.elevators_count }}</div>
+        <div class="stat-label">Total Elevators</div>
+        <div class="stat-label-ar">إجمالي المصاعد</div>
+      </div>
+      <div class="stat-card c-green" style="animation-delay:.15s">
+        <div class="stat-top">
+          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg></div>
+          <span class="stat-trend trend-neu">130</span>
+        </div>
+        <div class="stat-val">130</div>
+        <div class="stat-label">Active Contracts</div>
+        <div class="stat-label-ar">عقود فعّالة</div>
+      </div>
+      <div class="stat-card c-red" style="animation-delay:.2s">
+        <div class="stat-top">
+          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg></div>
+          <span class="stat-trend trend-down">-2</span>
+        </div>
+        <div class="stat-val">12</div>
+        <div class="stat-label">Expired Contracts</div>
+        <div class="stat-label-ar">عقود منتهية</div>
+      </div>
+      <div class="stat-card c-info" style="animation-delay:.25s">
+        <div class="stat-top">
+          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg></div>
+          <span class="stat-trend trend-neu">اليوم</span>
+        </div>
+        <div class="stat-val">9</div>
+        <div class="stat-label">Today's Visits</div>
+        <div class="stat-label-ar">زيارات اليوم</div>
+      </div>
+      <div class="stat-card c-red" style="animation-delay:.3s">
+        <div class="stat-top">
+          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1L1 14h14L8 1z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="12" r=".6" fill="currentColor"/></svg></div>
+          <span class="stat-trend trend-down">عاجل</span>
+        </div>
+        <div class="stat-val">5</div>
+        <div class="stat-label">Open Faults</div>
+        <div class="stat-label-ar">أعطال مفتوحة</div>
+      </div>
+      <div class="stat-card c-warn" style="animation-delay:.35s">
+        <div class="stat-top">
+          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/></svg></div>
+          <span class="stat-trend trend-down">متأخرة</span>
+        </div>
+        <div class="stat-val">18</div>
+        <div class="stat-label">Unpaid Invoices</div>
+        <div class="stat-label-ar">فواتير غير مدفوعة</div>
+      </div>
+      <div class="stat-card c-green" style="animation-delay:.4s">
+        <div class="stat-top">
+          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg></div>
+          <span class="stat-trend trend-up">متاح</span>
+        </div>
+        <div class="stat-val">7</div>
+        <div class="stat-label">Available Technicians</div>
+        <div class="stat-label-ar">فنيون متاحون</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5.5" x2="7" y2="9"/><circle cx="7" cy="11" r=".5" fill="currentColor"/></svg>
+            <span id="p-alerts">تنبيهات مهمة</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="alert-list">
+            <div class="alert-item danger">
+              <div class="alert-dot"></div>
+              <div>
+                <div class="alert-text">عقود تنتهي خلال 30 يوم</div>
+                <div class="alert-sub">برج الياسمين، مجمع النخيل، فندق الأندلس</div>
+              </div>
+              <span class="alert-count">8 عقود</span>
+            </div>
+            <div class="alert-item warning">
+              <div class="alert-dot"></div>
+              <div>
+                <div class="alert-text">زيارات صيانة متأخرة</div>
+                <div class="alert-sub">تجاوزت الموعد المحدد بأكثر من 48 ساعة</div>
+              </div>
+              <span class="alert-count">3 زيارات</span>
+            </div>
+            <div class="alert-item danger">
+              <div class="alert-dot"></div>
+              <div>
+                <div class="alert-text">أعطال بدون استجابة</div>
+                <div class="alert-sub">مستشفى السلام — عطل حرج، أولوية عالية</div>
+              </div>
+              <span class="alert-count">2 عطل</span>
+            </div>
+            <div class="alert-item warning">
+              <div class="alert-dot"></div>
+              <div>
+                <div class="alert-text">فواتير مستحقة السداد</div>
+                <div class="alert-sub">تجاوزت تاريخ الاستحقاق</div>
+              </div>
+              <span class="alert-count">18,500 ر.س</span>
+            </div>
+            <div class="alert-item info">
+              <div class="alert-dot"></div>
+              <div>
+                <div class="alert-text">عملاء يحتاجون متابعة</div>
+                <div class="alert-sub">لم يتم التواصل معهم منذ أكثر من شهر</div>
+              </div>
+              <span class="alert-count">5 عملاء</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+              <span id="p-quick">إجراءات سريعة</span>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="quick-grid">
+              <button class="quick-btn">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 6A2.5 2.5 0 107 1a2.5 2.5 0 000 5z"/><path d="M1.5 13c0-2.485 2.462-4 5.5-4"/><circle cx="11" cy="11" r="2.5"/><line x1="11" y1="9.5" x2="11" y2="12.5"/><line x1="9.5" y1="11" x2="12.5" y2="11"/></svg>
+                <span id="qa1">إضافة عميل</span>
+              </button>
+              <button class="quick-btn">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="1" width="6" height="12" rx="1.5"/><circle cx="7" cy="9.5" r=".8"/></svg>
+                <span id="qa2">إضافة مصعد</span>
+              </button>
+              <button class="quick-btn">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5h10v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-8z"/><path d="M4.5 3.5V2.5a1 1 0 011-1h3a1 1 0 011 1v1"/></svg>
+                <span id="qa3">إنشاء عقد</span>
+              </button>
+              <button class="quick-btn">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="3" width="12" height="9" rx="1.5"/><path d="M4 3V2M10 3V2M1 6.5h12"/></svg>
+                <span id="qa4">جدولة زيارة</span>
+              </button>
+              <button class="quick-btn">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 12h12L7 1z"/><line x1="7" y1="5" x2="7" y2="8.5"/></svg>
+                <span id="qa5">تسجيل عطل</span>
+              </button>
+              <button class="quick-btn">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 2.5h10v2H2zM3 4.5v7a1 1 0 001 1h6a1 1 0 001-1v-7"/><line x1="5.5" y1="7" x2="8.5" y2="7"/></svg>
+                <span id="qa6">إنشاء فاتورة</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><path d="M7 4v.8M7 9.2V10M5.5 8.2c0 .994.672 1.8 1.5 1.8s1.5-.806 1.5-1.8S7.828 6.4 7 6.4s-1.5-.806-1.5-1.8.672-1.8 1.5-1.8 1.5.806 1.5 1.8"/></svg>
+              <span id="p-finance">ملخص مالي</span>
+            </div>
+          </div>
+          <div class="panel-body" style="padding-top:12px">
+            <div class="finance-grid">
+              <div class="finance-card">
+                <div class="finance-label">إجمالي الفواتير</div>
+                <div class="finance-val">142,800</div>
+                <div class="finance-sub">ريال سعودي</div>
+              </div>
+              <div class="finance-card">
+                <div class="finance-label">المبالغ المحصّلة</div>
+                <div class="finance-val success">124,300</div>
+                <div class="finance-sub">87%</div>
+                <div class="finance-bar"><div class="finance-bar-fill" style="width:87%;background:var(--success)"></div></div>
+              </div>
+              <div class="finance-card">
+                <div class="finance-label">المبالغ المتبقية</div>
+                <div class="finance-val">18,500</div>
+                <div class="finance-sub">13%</div>
+                <div class="finance-bar"><div class="finance-bar-fill" style="width:13%;background:var(--warning)"></div></div>
+              </div>
+              <div class="finance-card">
+                <div class="finance-label">فواتير متأخرة</div>
+                <div class="finance-val danger">7,200</div>
+                <div class="finance-sub">5 فواتير</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:24px">
+      <div class="panel-head">
+        <div class="panel-title">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="3" width="12" height="9" rx="1.5"/><path d="M4 3V1M10 3V1M1 6.5h12"/></svg>
+          <span id="p-visits">زيارات الصيانة اليوم</span>
+        </div>
+        <span class="section-link">عرض الكل</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>العميل</th><th>الموقع</th><th>رقم المصعد</th><th>نوع الزيارة</th><th>الفني</th><th>الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="td-name">برج الياسمين</td><td>حي العزيزية، مكة</td><td style="font-family:var(--font-en)">EL-0124</td><td>صيانة دورية</td><td>أحمد الزهراني</td><td><span class="badge badge-done">مكتمل</span></td></tr>
+            <tr><td class="td-name">مجمع النخيل</td><td>طريق مكة المدينة</td><td style="font-family:var(--font-en)">EL-0087</td><td>فحص دوري</td><td>خالد العمري</td><td><span class="badge badge-progress">جارٍ</span></td></tr>
+            <tr><td class="td-name">فندق الأندلس</td><td>العبدية</td><td style="font-family:var(--font-en)">EL-0201</td><td>صيانة طارئة</td><td>سعد القحطاني</td><td><span class="badge badge-pending">معلّق</span></td></tr>
+            <tr><td class="td-name">مستشفى السلام</td><td>النزهة</td><td style="font-family:var(--font-en)">EL-0033</td><td>فحص أمان</td><td>فهد المالكي</td><td><span class="badge badge-progress">جارٍ</span></td></tr>
+            <tr><td class="td-name">برج المملكة</td><td>حي الروضة</td><td style="font-family:var(--font-en)">EL-0156</td><td>صيانة دورية</td><td>عمر الدوسري</td><td><span class="badge badge-pending">لم تبدأ</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 12h12L7 1z"/><line x1="7" y1="5" x2="7" y2="8.5"/></svg>
+          <span id="p-faults">الأعطال المفتوحة</span>
+        </div>
+        <span class="section-link">عرض الكل</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>رقم العطل</th><th>العميل</th><th>الموقع</th><th>الأولوية</th><th>الفني المكلّف</th><th>الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="font-family:var(--font-en);color:var(--accent)">#F-2041</td><td class="td-name">مستشفى السلام</td><td>النزهة</td><td><span class="badge badge-high">عالية</span></td><td>أحمد الزهراني</td><td><span class="badge badge-open">مفتوح</span></td></tr>
+            <tr><td style="font-family:var(--font-en);color:var(--accent)">#F-2038</td><td class="td-name">برج الياسمين</td><td>العزيزية</td><td><span class="badge badge-med">متوسطة</span></td><td>خالد العمري</td><td><span class="badge badge-progress">قيد المعالجة</span></td></tr>
+            <tr><td style="font-family:var(--font-en);color:var(--accent)">#F-2035</td><td class="td-name">مجمع التجارة</td><td>أجياد</td><td><span class="badge badge-high">عالية</span></td><td>غير مكلف</td><td><span class="badge badge-open">مفتوح</span></td></tr>
+            <tr><td style="font-family:var(--font-en);color:var(--accent)">#F-2031</td><td class="td-name">فندق الأندلس</td><td>العبدية</td><td><span class="badge badge-low">منخفضة</span></td><td>سعد القحطاني</td><td><span class="badge badge-progress">قيد المعالجة</span></td></tr>
+            <tr><td style="font-family:var(--font-en);color:var(--accent)">#F-2028</td><td class="td-name">مركز الملك عبدالله</td><td>الشوقية</td><td><span class="badge badge-med">متوسطة</span></td><td>عمر الدوسري</td><td><span class="badge badge-progress">قيد المعالجة</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function setLang(l){
+  const isAr = l==='ar';
+  document.documentElement.setAttribute('lang', l);
+  document.documentElement.setAttribute('dir', isAr?'rtl':'ltr');
+  document.getElementById('btn-ar').classList.toggle('active', isAr);
+  document.getElementById('btn-en').classList.toggle('active', !isAr);
+}
+
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+const now = new Date();
+const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+</script>
+</body>
+</html>

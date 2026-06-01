@@ -1,0 +1,146 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: #0d1117;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  color: #e8edf5;
+}
+
+.page-wrap {
+  width: 90%;
+  max-width: 440px;
+  padding: 20px;
+}
+
+.card {
+  background: #141c26;
+  border: 1px solid rgba(100,160,220,.15);
+  border-radius: 10px;
+  padding: 24px 36px 36px;
+}
+
+.logo-area {
+  text-align: center;
+  margin-bottom: 1px;
+}
+
+.logo-img {
+  width: 320px;
+  height: auto;
+  object-fit: contain;
+}
+
+.brand-en {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2a7fff;
+  letter-spacing: -0.02em;
+}
+
+.brand-sub-en {
+  font-size: 12px;
+  color: #4a5a6e;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.brand-ar {
+  font-size: 14px;
+  color: #7a90aa;
+  margin-top: 6px;
+}
+
+.error-msg {
+  background: rgba(224,80,80,.09);
+  border: 1px solid rgba(224,80,80,.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #e05050;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  color: #7a90aa;
+  margin-bottom: 7px;
+}
+
+.field input {
+  width: 100%;
+  padding: 11px 14px;
+  background: #131920;
+  border: 1px solid rgba(100,160,220,.13);
+  border-radius: 8px;
+  color: #e8edf5;
+  font-size: 14px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  direction: rtl;
+}
+
+.field input:focus {
+  border-color: rgba(100,160,220,.45);
+  box-shadow: 0 0 0 3px rgba(42,127,255,.12);
+}
+
+.field input::placeholder {
+  color: #4a5a6e;
+}
+
+.forgot-row {
+  text-align: right;
+  margin-bottom: 20px;
+}
+
+.forgot-link {
+  font-size: 12px;
+  color: #2a7fff;
+  text-decoration: none;
+  opacity: 0.8;
+}
+
+.forgot-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 12px;
+  background: #2a7fff;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.btn-submit:hover {
+  background: #1e6fe8;
+}
+.logo-img {
+  width: 350px;
+  height: auto;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
