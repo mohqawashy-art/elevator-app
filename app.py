@@ -45,5 +45,13 @@ def clients():
 def elevators():
     return render_template('elevators.html')
 
+@app.route('/contracts')
+def contracts():
+    return render_template('contracts.html')
+
+@app.route('/technicians')
+def technicians():
+    return render_template('technicians.html')
+
 if __name__ == '__main__':
     app.run(debug=True)

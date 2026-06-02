@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — العقود</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;--info:#2a9fff;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+html[dir="ltr"]{font-family:var(--font-en)}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:150px;height:44px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.sidebar-nav::-webkit-scrollbar{width:3px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
+.nav-item.active::before{content:'';position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:3px}
+html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.nav-badge{margin-right:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+html[dir="ltr"] .nav-badge{margin-left:auto;margin-right:0}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
+.sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
+.sidebar-user-role{font-size:11px;color:var(--text3)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:90}
+.header-title{font-size:15px;font-weight:500;color:var(--text1)}
+.header-title span{color:var(--text3);font-weight:400;font-size:13px;margin-right:6px}
+html[dir="ltr"] .header-title span{margin-right:0;margin-left:6px}
+.header-spacer{flex:1}
+.header-actions{display:flex;align-items:center;gap:8px}
+.icon-btn{width:34px;height:34px;border-radius:var(--r-sm);background:transparent;border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans);position:relative}
+.icon-btn:hover{background:var(--bg3);border-color:var(--border2);color:var(--text1)}
+.icon-btn svg{width:16px;height:16px}
+.notif-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--danger);border:1px solid var(--bg2)}
+html[dir="ltr"] .notif-dot{right:auto;left:6px}
+.lang-toggle{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.lang-opt{padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:var(--trans);color:var(--text3);border:none;background:none}
+.lang-opt.active{background:var(--accent);color:#fff}
+.header-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;cursor:pointer;border:2px solid var(--border2)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.hamburger svg{width:20px;height:20px}
+.content{flex:1;padding:24px;overflow-y:auto}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
+html[dir="ltr"] .page-title span{margin-right:0;margin-left:8px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
+html[dir="ltr"] .btn{font-family:var(--font-en)}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
+.btn-danger{background:rgba(224,72,72,.12);color:var(--danger);border:1px solid rgba(224,72,72,.15)}
+.btn-danger:hover{background:rgba(224,72,72,.22)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+.stat-mini{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:var(--trans)}
+.stat-mini:hover{border-color:var(--border2)}
+.stat-mini::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--sm-color,var(--accent));opacity:.6}
+.stat-mini-val{font-size:22px;font-weight:600;color:var(--text1);font-family:var(--font-en);line-height:1;margin-bottom:3px}
+.stat-mini-label{font-size:11px;color:var(--text3)}
+.alert-expiry{background:rgba(224,144,48,.08);border:1px solid rgba(224,144,48,.2);border-radius:var(--r);padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--warning)}
+.alert-expiry svg{width:16px;height:16px;flex-shrink:0}
+.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
+html[dir="ltr"] .search-wrap svg{right:auto;left:11px}
+.search-input{width:100%;padding:8px 36px 8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);direction:rtl}
+html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8px 12px 8px 36px}
+.search-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.search-input::placeholder{color:var(--text3)}
+.filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;cursor:pointer;transition:var(--trans);font-family:var(--font-ar);min-width:120px}
+html[dir="ltr"] .filter-select{font-family:var(--font-en)}
+.filter-select:focus{border-color:var(--border2)}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap;letter-spacing:.04em}
+html[dir="ltr"] thead th{text-align:left}
+tbody tr{border-bottom:1px solid rgba(100,160,255,.05);transition:var(--trans);cursor:pointer}
+tbody tr:hover{background:var(--bg3)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
+.td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500}
+.td-name{color:var(--text1);font-weight:500}
+.td-actions{display:flex;gap:6px;align-items:center}
+.td-amount{font-family:var(--font-en);font-weight:500;color:var(--text1)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.badge-active{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-expired{background:rgba(224,72,72,.12);color:var(--danger)}
+.badge-pending{background:rgba(224,144,48,.12);color:var(--warning)}
+.badge-cancelled{background:rgba(138,155,184,.1);color:var(--text2)}
+.badge-paid{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-partial{background:rgba(42,127,255,.12);color:var(--accent)}
+.badge-unpaid{background:rgba(224,144,48,.12);color:var(--warning)}
+.badge-overdue{background:rgba(224,72,72,.12);color:var(--danger)}
+.badge-expiring{background:rgba(224,144,48,.12);color:var(--warning);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
+.table-info{font-size:12px;color:var(--text3)}
+.pagination{display:flex;gap:4px}
+.page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:860px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:600;color:var(--text1)}
+.modal-close{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.modal-close:hover{background:rgba(224,72,72,.15);color:var(--danger)}
+.modal-close svg{width:14px;height:14px}
+.modal-body{flex:1;overflow-y:auto;padding:22px}
+.modal-body::-webkit-scrollbar{width:4px}
+.modal-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.form-section{margin-bottom:22px}
+.form-section-title{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.form-section-title svg{width:13px;height:13px;color:var(--accent)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;direction:rtl;width:100%}
+html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .field textarea{font-family:var(--font-en);direction:ltr}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field textarea{resize:vertical;min-height:70px}
+.field-hint{font-size:11px;color:var(--text3)}
+.field-calc{font-size:12px;color:var(--accent);margin-top:3px}
+.calc-box{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-top:4px}
+.calc-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0}
+.calc-row.total{border-top:1px solid var(--border);padding-top:10px;margin-top:6px;font-weight:600;color:var(--text1);font-size:14px}
+.calc-label{color:var(--text2)}
+.calc-val{font-family:var(--font-en);color:var(--text1)}
+.elevators-select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;max-height:140px;overflow-y:auto}
+.elevators-select::-webkit-scrollbar{width:4px}
+.elevators-select::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.elev-option{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:12px;color:var(--text2)}
+.elev-option:hover{background:var(--bg4);color:var(--text1)}
+.elev-option input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent)}
+.elev-code{font-family:var(--font-en);color:var(--accent);font-size:11px}
+.upload-area{border:2px dashed var(--border);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:var(--trans)}
+.upload-area:hover{border-color:var(--border2);background:var(--bg3)}
+.upload-area svg{width:28px;height:28px;color:var(--text3);margin-bottom:8px}
+.upload-area p{font-size:12px;color:var(--text3)}
+.upload-area span{color:var(--accent)}
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.view-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
+.view-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+.view-val{font-size:13px;color:var(--text1);font-weight:500}
+.view-full{grid-column:1/-1}
+.view-section{font-size:11px;font-weight:600;color:var(--accent);grid-column:1/-1;padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:.06em}
+.financial-summary{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.fin-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid rgba(100,160,255,.06)}
+.fin-row:last-child{border-bottom:none;padding-top:10px;font-weight:600;font-size:14px;color:var(--text1)}
+.fin-row span:first-child{color:var(--text2)}
+.fin-row span:last-child{font-family:var(--font-en);color:var(--text1)}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:1200px){.stats-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  html[dir="ltr"] .sidebar{right:auto;left:-240px;transition:left .25s ease}
+  .sidebar.open{right:0}
+  html[dir="ltr"] .sidebar.open{left:0;right:auto}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .form-grid,.form-grid-3{grid-template-columns:1fr}
+  .view-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){.stats-row{grid-template-columns:1fr 1fr};.filters-bar{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;">
+    </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">الرئيسية</div>
+    <a class="nav-item" href="/dashboard">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+      <span>لوحة التحكم</span>
+    </a>
+    <div class="nav-section">إدارة البيانات</div>
+    <a class="nav-item" href="/clients">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg>
+      <span>العملاء</span>
+    </a>
+    <a class="nav-item" href="/elevators">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg>
+      <span>المصاعد</span>
+    </a>
+    <a class="nav-item active" href="/contracts">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg>
+      <span>العقود</span>
+    </a>
+    <a class="nav-item" href="/technicians">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg>
+      <span>الفنيين</span>
+    </a>
+    <div class="nav-section">العمليات</div>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>
+      <span>زيارات الصيانة</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
+      <span>الأعطال</span>
+      <span class="nav-badge">5</span>
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/></svg>
+      <span>الفواتير</span>
+    </a>
+    <div class="nav-section">التقارير</div>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14V6l4-4h6a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg><span>التقارير</span></a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">م</div>
+      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="header">
+    <button class="hamburger" onclick="openSidebar()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
+    </button>
+    <div class="header-title"><span id="h-date"></span><span>العقود</span></div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <div class="lang-toggle">
+        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
+        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
+      </div>
+      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
+      <div class="header-avatar">م</div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-mini" style="--sm-color:var(--accent)">
+        <div class="stat-mini-val">130</div>
+        <div class="stat-mini-label">إجمالي العقود</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--success)">
+        <div class="stat-mini-val">112</div>
+        <div class="stat-mini-label">عقود نشطة</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--danger)">
+        <div class="stat-mini-val">12</div>
+        <div class="stat-mini-label">عقود منتهية</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--warning)">
+        <div class="stat-mini-val">8</div>
+        <div class="stat-mini-label">تنتهي قريباً</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--gold)">
+        <div class="stat-mini-val">142,800</div>
+        <div class="stat-mini-label">إجمالي العقود (ر.س)</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--danger)">
+        <div class="stat-mini-val">18,500</div>
+        <div class="stat-mini-label">غير مدفوع (ر.س)</div>
+      </div>
+    </div>
+
+    <!-- EXPIRY ALERT -->
+    <div class="alert-expiry">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1L1 14h14L8 1z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="12" r=".6" fill="currentColor"/></svg>
+      <span>تنبيه: <strong>8 عقود</strong> تنتهي خلال 30 يوماً — يُنصح بالتجديد قبل انتهاء المدة.</span>
+    </div>
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div class="page-title">العقود <span id="contracts-count">130 عقد</span></div>
+      <div class="page-actions">
+        <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+          تصدير Excel
+        </button>
+        <button class="btn btn-secondary btn-sm">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
+          استيراد Excel
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+          إضافة عقد
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+        <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو اسم العميل..." oninput="filterTable()">
+      </div>
+      <select class="filter-select" id="f-client" onchange="filterTable()">
+        <option value="">كل العملاء</option>
+        <option>برج الياسمين</option>
+        <option>مجمع النخيل</option>
+        <option>فندق الأندلس</option>
+        <option>مستشفى السلام</option>
+        <option>برج المملكة</option>
+        <option>أبراج الساعة</option>
+      </select>
+      <select class="filter-select" id="f-type" onchange="filterTable()">
+        <option value="">كل الأنواع</option>
+        <option>عقد صيانة</option>
+        <option>عقد ضمان</option>
+        <option>عقد تركيب</option>
+        <option>عقد طوارئ</option>
+      </select>
+      <select class="filter-select" id="f-status" onchange="filterTable()">
+        <option value="">كل الحالات</option>
+        <option>نشط</option>
+        <option>منتهي</option>
+        <option>معلق</option>
+        <option>ملغي</option>
+      </select>
+      <select class="filter-select" id="f-invoice" onchange="filterTable()">
+        <option value="">حالة الفاتورة</option>
+        <option>مدفوع</option>
+        <option>مدفوع جزئياً</option>
+        <option>غير مدفوع</option>
+        <option>متأخر</option>
+      </select>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>الكود</th>
+              <th>العميل</th>
+              <th>النوع</th>
+              <th>تاريخ البداية</th>
+              <th>تاريخ الانتهاء</th>
+              <th>المصاعد</th>
+              <th>قيمة العقد</th>
+              <th>الإجمالي</th>
+              <th>حالة العقد</th>
+              <th>حالة الفاتورة</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div class="table-info" id="table-info">عرض 10 من 130</div>
+        <div class="pagination">
+          <button class="page-btn">‹</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">›</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">إضافة عقد جديد</div>
+      <button class="modal-close" onclick="closeModal('modal-add')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-section">
+        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6.5 1C4.57 1 3 2.57 3 4.5S6.5 12 6.5 12 10 6.43 10 4.5 8.43 1 6.5 1z"/></svg>البيانات الأساسية</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>كود العقد</label>
+            <input type="text" id="f-code" placeholder="CN-00001" style="direction:ltr;font-family:var(--font-en)">
+          </div>
+          <div class="field">
+            <label>نوع العقد</label>
+            <select id="f-type-sel">
+              <option>عقد صيانة</option>
+              <option>عقد ضمان</option>
+              <option>عقد تركيب</option>
+              <option>عقد طوارئ</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>العميل</label>
+            <select id="f-client-sel" onchange="loadClientElevators()">
+              <option value="">اختر العميل</option>
+              <option value="C-0001">برج الياسمين</option>
+              <option value="C-0002">مجمع النخيل</option>
+              <option value="C-0003">فندق الأندلس</option>
+              <option value="C-0004">مستشفى السلام</option>
+              <option value="C-0005">برج المملكة</option>
+              <option value="C-0006">أبراج الساعة</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>حالة العقد</label>
+            <select id="f-status-sel">
+              <option>نشط</option>
+              <option>معلق</option>
+              <option>منتهي</option>
+              <option>ملغي</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="11" height="9" rx="1.5"/><path d="M4 2V1M9 2V1M1 5h11"/></svg>التواريخ والمدة</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>تاريخ البداية</label>
+            <input type="date" id="f-start" style="direction:ltr" oninput="calcDuration()">
+          </div>
+          <div class="field">
+            <label>تاريخ الانتهاء</label>
+            <input type="date" id="f-end" style="direction:ltr" oninput="calcDuration()">
+          </div>
+          <div class="field">
+            <label>المدة (بالأشهر)</label>
+            <input type="text" id="f-duration" placeholder="تلقائي" style="direction:ltr" readonly>
+          </div>
+          <div class="field">
+            <label>تاريخ تذكير التجديد</label>
+            <input type="date" id="f-reminder" style="direction:ltr">
+            <span class="field-hint">يُحسب تلقائياً قبل 30 يوم من الانتهاء</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="1" width="5" height="11" rx="1"/></svg>المصاعد المرتبطة</div>
+        <div class="field">
+          <label>اختر المصاعد <span class="field-hint" id="elev-count-label">(اختر العميل أولاً)</span></label>
+          <div class="elevators-select" id="elevators-select">
+            <div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">اختر العميل أولاً لعرض مصاعده</div>
+          </div>
+        </div>
+        <div class="field-calc" id="selected-count">لم يتم اختيار مصاعد</div>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field">
+            <label>تكرار الصيانة</label>
+            <select id="f-maint-freq">
+              <option>شهري</option>
+              <option>كل شهرين</option>
+              <option>ربع سنوي</option>
+              <option>نصف سنوي</option>
+              <option>سنوي</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>عدد الزيارات شهرياً</label>
+            <input type="number" id="f-visits-month" placeholder="1" style="direction:ltr" min="1">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="5.5"/><path d="M6.5 4v.7M6.5 8.5V9M5 7.5c0 .83.67 1.5 1.5 1.5S8 8.33 8 7.5s-.67-1.5-1.5-1.5S5 5.17 5 4.5 5.67 3 6.5 3 8 3.67 8 4.5"/></svg>البيانات المالية</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>قيمة العقد (ر.س)</label>
+            <input type="number" id="f-value" placeholder="0.00" style="direction:ltr" oninput="calcTax()">
+          </div>
+          <div class="field">
+            <label>نسبة الضريبة %</label>
+            <input type="number" id="f-tax-pct" value="15" style="direction:ltr" oninput="calcTax()">
+          </div>
+          <div class="field">
+            <label>شروط الدفع</label>
+            <select id="f-payment-terms">
+              <option>دفعة واحدة</option>
+              <option>ربع سنوي</option>
+              <option>نصف سنوي</option>
+              <option>سنوي</option>
+              <option>شهري</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>حالة الفاتورة</label>
+            <select id="f-inv-status">
+              <option>غير مدفوع</option>
+              <option>مدفوع جزئياً</option>
+              <option>مدفوع</option>
+              <option>متأخر</option>
+            </select>
+          </div>
+        </div>
+        <div class="calc-box" style="margin-top:14px">
+          <div class="calc-row"><span class="calc-label">قيمة العقد</span><span class="calc-val" id="calc-value">0.00 ر.س</span></div>
+          <div class="calc-row"><span class="calc-label">الضريبة (15%)</span><span class="calc-val" id="calc-tax">0.00 ر.س</span></div>
+          <div class="calc-row total"><span>الإجمالي</span><span id="calc-total">0.00 ر.س</span></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1H3a1 1 0 00-1 1v9a1 1 0 001 1h7a1 1 0 001-1V5L7 1z"/><path d="M7 1v4h4"/></svg>ملف العقد</div>
+        <div class="upload-area" onclick="document.getElementById('contract-file').click()">
+          <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M14 4v14M8 10l6-6 6 6"/><path d="M4 20v2a2 2 0 002 2h16a2 2 0 002-2v-2"/></svg>
+          <p>اسحب ملف PDF هنا أو <span>اضغط للرفع</span></p>
+          <p style="margin-top:4px;font-size:11px">PDF فقط — حجم أقصى 10MB</p>
+          <input type="file" id="contract-file" accept=".pdf" style="display:none" onchange="showFileName(this)">
+        </div>
+        <div id="file-name" style="font-size:12px;color:var(--accent);margin-top:8px;display:none"></div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">ملاحظات</div>
+        <div class="field"><textarea id="f-notes" placeholder="أي ملاحظات إضافية..."></textarea></div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add')">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveContract()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
+        حفظ العقد
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="modal-overlay" id="modal-view">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="view-title">بيانات العقد</div>
+      <button class="modal-close" onclick="closeModal('modal-view')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body" id="view-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-view');openAddModal()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
+        تعديل
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <div class="modal-title" style="color:var(--danger)">تأكيد الحذف</div>
+      <button class="modal-close" onclick="closeModal('modal-delete')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.7">هل أنت متأكد من حذف هذا العقد؟</p>
+      <p style="font-size:13px;color:var(--danger);margin-top:10px;background:rgba(224,72,72,.08);padding:10px 12px;border-radius:var(--r-sm);border:1px solid rgba(224,72,72,.15)">سيتم حذف جميع بيانات العقد والزيارات المرتبطة به.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">حذف نهائي</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLIENT_ELEVATORS = {
+  'C-0001':[{code:'EL-0001',building:'برج الياسمين'},{code:'EL-0002',building:'برج الياسمين'}],
+  'C-0002':[{code:'EL-0003',building:'مجمع النخيل'},{code:'EL-0010',building:'مجمع النخيل'}],
+  'C-0003':[{code:'EL-0004',building:'فندق الأندلس'}],
+  'C-0004':[{code:'EL-0005',building:'مستشفى السلام'},{code:'EL-0006',building:'مستشفى السلام'}],
+  'C-0005':[{code:'EL-0007',building:'برج المملكة'}],
+  'C-0006':[{code:'EL-0008',building:'أبراج الساعة'},{code:'EL-0009',building:'أبراج الساعة'}],
+};
+
+const CONTRACTS = [
+  {id:1,code:'CN-00001',client:'برج الياسمين',type:'عقد صيانة',start:'2024-01-01',end:'2025-12-31',duration:24,elevators:2,value:12000,taxPct:15,tax:1800,total:13800,payTerms:'نصف سنوي',invStatus:'مدفوع',status:'نشط',notes:''},
+  {id:2,code:'CN-00002',client:'مجمع النخيل',type:'عقد صيانة',start:'2024-03-01',end:'2025-02-28',duration:12,elevators:2,value:18000,taxPct:15,tax:2700,total:20700,payTerms:'ربع سنوي',invStatus:'مدفوع جزئياً',status:'نشط',notes:''},
+  {id:3,code:'CN-00003',client:'فندق الأندلس',type:'عقد ضمان',start:'2023-09-01',end:'2025-08-31',duration:24,elevators:1,value:8500,taxPct:15,tax:1275,total:9775,payTerms:'سنوي',invStatus:'غير مدفوع',status:'نشط',notes:'يجب التجديد قريباً'},
+  {id:4,code:'CN-00004',client:'مستشفى السلام',type:'عقد صيانة',start:'2024-01-15',end:'2026-01-14',duration:24,elevators:2,value:24000,taxPct:15,tax:3600,total:27600,payTerms:'ربع سنوي',invStatus:'مدفوع',status:'نشط',notes:'أولوية عالية'},
+  {id:5,code:'CN-00005',client:'برج المملكة',type:'عقد صيانة',start:'2024-06-01',end:'2025-05-31',duration:12,elevators:1,value:9600,taxPct:15,tax:1440,total:11040,payTerms:'نصف سنوي',invStatus:'مدفوع',status:'نشط',notes:''},
+  {id:6,code:'CN-00006',client:'أبراج الساعة',type:'عقد صيانة',start:'2023-11-01',end:'2024-10-31',duration:12,elevators:2,value:36000,taxPct:15,tax:5400,total:41400,payTerms:'ربع سنوي',invStatus:'متأخر',status:'منتهي',notes:'يحتاج تجديد'},
+  {id:7,code:'CN-00007',client:'برج الياسمين',type:'عقد طوارئ',start:'2025-01-01',end:'2025-12-31',duration:12,elevators:2,value:6000,taxPct:15,tax:900,total:6900,payTerms:'دفعة واحدة',invStatus:'مدفوع',status:'نشط',notes:''},
+  {id:8,code:'CN-00008',client:'مجمع النخيل',type:'عقد تركيب',start:'2024-07-01',end:'2025-06-30',duration:12,elevators:1,value:15000,taxPct:15,tax:2250,total:17250,payTerms:'دفعة واحدة',invStatus:'مدفوع',status:'نشط',notes:''},
+  {id:9,code:'CN-00009',client:'مستشفى السلام',type:'عقد ضمان',start:'2022-01-01',end:'2024-12-31',duration:36,elevators:2,value:28000,taxPct:15,tax:4200,total:32200,payTerms:'سنوي',invStatus:'مدفوع',status:'منتهي',notes:''},
+  {id:10,code:'CN-00010',client:'فندق الأندلس',type:'عقد صيانة',start:'2025-03-01',end:'2026-02-28',duration:12,elevators:1,value:7200,taxPct:15,tax:1080,total:8280,payTerms:'ربع سنوي',invStatus:'غير مدفوع',status:'معلق',notes:'في انتظار توقيع العميل'},
+];
+
+const STATUS_BADGE = {'نشط':'badge-active','منتهي':'badge-expired','معلق':'badge-pending','ملغي':'badge-cancelled'};
+const INV_BADGE = {'مدفوع':'badge-paid','مدفوع جزئياً':'badge-partial','غير مدفوع':'badge-unpaid','متأخر':'badge-overdue'};
+let currentDeleteId = null;
+
+function renderTable(data) {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  data.forEach(c => {
+    const sb = STATUS_BADGE[c.status] || 'badge-active';
+    const ib = INV_BADGE[c.invStatus] || 'badge-unpaid';
+    tbody.innerHTML += `
+      <tr>
+        <td class="td-code">${c.code}</td>
+        <td class="td-name">${c.client}</td>
+        <td>${c.type}</td>
+        <td style="direction:ltr;font-family:var(--font-en)">${c.start}</td>
+        <td style="direction:ltr;font-family:var(--font-en)">${c.end}</td>
+        <td style="text-align:center">${c.elevators}</td>
+        <td class="td-amount">${c.value.toLocaleString()} ر.س</td>
+        <td class="td-amount">${c.total.toLocaleString()} ر.س</td>
+        <td><span class="badge ${sb}">${c.status}</span></td>
+        <td><span class="badge ${ib}">${c.invStatus}</span></td>
+        <td>
+          <div class="td-actions">
+            <button class="btn btn-secondary btn-sm btn-icon" title="عرض" onclick="viewContract(${c.id})">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
+            </button>
+            <button class="btn btn-secondary btn-sm btn-icon" title="تعديل" onclick="editContract(${c.id})">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
+            </button>
+            <button class="btn btn-danger btn-sm btn-icon" title="حذف" onclick="deleteContract(${c.id})">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4l.7 7.5a1 1 0 001 .9h4.6a1 1 0 001-.9L11 4"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+  });
+  document.getElementById('table-info').textContent = `عرض ${data.length} من ${CONTRACTS.length} عقد`;
+}
+
+function filterTable() {
+  const s = document.getElementById('search-input').value.toLowerCase();
+  const cl = document.getElementById('f-client').value;
+  const tp = document.getElementById('f-type').value;
+  const st = document.getElementById('f-status').value;
+  const inv = document.getElementById('f-invoice').value;
+  const filtered = CONTRACTS.filter(c => {
+    return (!s || c.code.toLowerCase().includes(s) || c.client.includes(s))
+      && (!cl || c.client === cl)
+      && (!tp || c.type === tp)
+      && (!st || c.status === st)
+      && (!inv || c.invStatus === inv);
+  });
+  renderTable(filtered);
+}
+
+function loadClientElevators() {
+  const code = document.getElementById('f-client-sel').value;
+  const container = document.getElementById('elevators-select');
+  if (!code || !CLIENT_ELEVATORS[code]) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">اختر العميل أولاً لعرض مصاعده</div>';
+    document.getElementById('elev-count-label').textContent = '(اختر العميل أولاً)';
+    return;
+  }
+  const elevs = CLIENT_ELEVATORS[code];
+  container.innerHTML = elevs.map(e => `
+    <div class="elev-option">
+      <input type="checkbox" value="${e.code}" onchange="updateElevCount()">
+      <span class="elev-code">${e.code}</span>
+      <span>${e.building}</span>
+    </div>`).join('');
+  document.getElementById('elev-count-label').textContent = `(${elevs.length} مصعد متاح)`;
+  updateElevCount();
+}
+
+function updateElevCount() {
+  const checked = document.querySelectorAll('#elevators-select input:checked').length;
+  document.getElementById('selected-count').textContent = checked > 0 ? `تم اختيار ${checked} مصعد` : 'لم يتم اختيار مصاعد';
+}
+
+function calcDuration() {
+  const s = document.getElementById('f-start').value;
+  const e = document.getElementById('f-end').value;
+  if (!s || !e) return;
+  const start = new Date(s), end = new Date(e);
+  if (end <= start) { document.getElementById('f-duration').value = 'تاريخ غير صحيح'; return; }
+  const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  document.getElementById('f-duration').value = months + ' شهر';
+  const reminder = new Date(end);
+  reminder.setDate(reminder.getDate() - 30);
+  document.getElementById('f-reminder').value = reminder.toISOString().split('T')[0];
+}
+
+function calcTax() {
+  const val = parseFloat(document.getElementById('f-value').value) || 0;
+  const pct = parseFloat(document.getElementById('f-tax-pct').value) || 15;
+  const tax = val * pct / 100;
+  const total = val + tax;
+  document.getElementById('calc-value').textContent = val.toLocaleString('ar-SA', {minimumFractionDigits:2}) + ' ر.س';
+  document.getElementById('calc-tax').textContent = tax.toLocaleString('ar-SA', {minimumFractionDigits:2}) + ' ر.س';
+  document.getElementById('calc-total').textContent = total.toLocaleString('ar-SA', {minimumFractionDigits:2}) + ' ر.س';
+}
+
+function showFileName(input) {
+  if (input.files.length > 0) {
+    const fn = document.getElementById('file-name');
+    fn.textContent = '📄 ' + input.files[0].name;
+    fn.style.display = 'block';
+  }
+}
+
+function viewContract(id) {
+  const c = CONTRACTS.find(x => x.id === id);
+  if (!c) return;
+  const sb = STATUS_BADGE[c.status] || 'badge-active';
+  const ib = INV_BADGE[c.invStatus] || 'badge-unpaid';
+  document.getElementById('view-title').textContent = `${c.code} — ${c.client}`;
+  document.getElementById('view-body').innerHTML = `
+    <div class="financial-summary">
+      <div class="fin-row"><span>قيمة العقد</span><span>${c.value.toLocaleString()} ر.س</span></div>
+      <div class="fin-row"><span>الضريبة (${c.taxPct}%)</span><span>${c.tax.toLocaleString()} ر.س</span></div>
+      <div class="fin-row"><span>الإجمالي</span><span>${c.total.toLocaleString()} ر.س</span></div>
+    </div>
+    <div class="view-grid">
+      <div class="view-section">البيانات الأساسية</div>
+      <div class="view-item"><div class="view-label">كود العقد</div><div class="view-val" style="font-family:var(--font-en)">${c.code}</div></div>
+      <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${c.client}</div></div>
+      <div class="view-item"><div class="view-label">نوع العقد</div><div class="view-val">${c.type}</div></div>
+      <div class="view-item"><div class="view-label">عدد المصاعد</div><div class="view-val">${c.elevators} مصاعد</div></div>
+      <div class="view-item"><div class="view-label">حالة العقد</div><div class="view-val"><span class="badge ${sb}">${c.status}</span></div></div>
+      <div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ${ib}">${c.invStatus}</span></div></div>
+      <div class="view-section">التواريخ</div>
+      <div class="view-item"><div class="view-label">تاريخ البداية</div><div class="view-val" style="direction:ltr">${c.start}</div></div>
+      <div class="view-item"><div class="view-label">تاريخ الانتهاء</div><div class="view-val" style="direction:ltr">${c.end}</div></div>
+      <div class="view-item"><div class="view-label">مدة العقد</div><div class="view-val">${c.duration} شهر</div></div>
+      <div class="view-item"><div class="view-label">شروط الدفع</div><div class="view-val">${c.payTerms}</div></div>
+      ${c.notes ? `<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${c.notes}</div></div>` : ''}
+    </div>`;
+  document.getElementById('modal-view').classList.add('open');
+}
+
+function editContract(id) {
+  const c = CONTRACTS.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('modal-title').textContent = 'تعديل العقد';
+  document.getElementById('f-code').value = c.code;
+  document.getElementById('f-start').value = c.start;
+  document.getElementById('f-end').value = c.end;
+  document.getElementById('f-duration').value = c.duration + ' شهر';
+  document.getElementById('f-value').value = c.value;
+  document.getElementById('f-tax-pct').value = c.taxPct;
+  document.getElementById('f-notes').value = c.notes;
+  calcTax();
+  document.getElementById('modal-add').classList.add('open');
+}
+
+function deleteContract(id) { currentDeleteId = id; document.getElementById('modal-delete').classList.add('open'); }
+function confirmDelete() {
+  const idx = CONTRACTS.findIndex(x => x.id === currentDeleteId);
+  if (idx !== -1) CONTRACTS.splice(idx, 1);
+  closeModal('modal-delete');
+  renderTable(CONTRACTS);
+}
+function saveContract() { closeModal('modal-add'); }
+function openAddModal() {
+  document.getElementById('modal-title').textContent = 'إضافة عقد جديد';
+  document.getElementById('modal-add').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function exportExcel() { alert('سيتم تصدير بيانات العقود إلى Excel'); }
+function setLang(l) {
+  document.documentElement.setAttribute('lang', l);
+  document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
+  document.getElementById('btn-ar').classList.toggle('active', l === 'ar');
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+}
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
+document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
+const now = new Date();
+const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+renderTable(CONTRACTS);
+</script>
+</body>
+</html>

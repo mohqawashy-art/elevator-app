@@ -22,8 +22,6 @@
 html[dir="ltr"]{font-family:var(--font-en)}
 html[dir="rtl"]{font-family:var(--font-ar)}
 body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
-
-/* SIDEBAR */
 .sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
 html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
 .sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
@@ -45,8 +43,6 @@ html[dir="ltr"] .nav-badge{margin-left:auto;margin-right:0}
 .sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
 .sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
 .sidebar-user-role{font-size:11px;color:var(--text3)}
-
-/* MAIN */
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
 .header{height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:90}
 .header-title{font-size:15px;font-weight:500;color:var(--text1)}
@@ -65,20 +61,14 @@ html[dir="ltr"] .notif-dot{right:auto;left:6px}
 .header-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;cursor:pointer;border:2px solid var(--border2)}
 .hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
 .hamburger svg{width:20px;height:20px}
-
-/* CONTENT */
 .content{flex:1;padding:24px;overflow-y:auto}
 .content::-webkit-scrollbar{width:4px}
 .content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
-
-/* PAGE HEADER */
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
 .page-title{font-size:18px;font-weight:600;color:var(--text1)}
 .page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
 html[dir="ltr"] .page-title span{margin-right:0;margin-left:8px}
 .page-actions{display:flex;gap:8px;flex-wrap:wrap}
-
-/* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
 html[dir="ltr"] .btn{font-family:var(--font-en)}
 .btn svg{width:14px;height:14px}
@@ -86,21 +76,15 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .btn-primary:hover{background:#1e6fe8}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
-.btn-success{background:rgba(31,184,122,.15);color:var(--success);border:1px solid rgba(31,184,122,.2)}
-.btn-success:hover{background:rgba(31,184,122,.25)}
 .btn-danger{background:rgba(224,72,72,.12);color:var(--danger);border:1px solid rgba(224,72,72,.15)}
 .btn-danger:hover{background:rgba(224,72,72,.22)}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
-
-/* TABS */
 .tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:4px}
 .tab{flex:1;padding:8px;text-align:center;font-size:13px;color:var(--text2);cursor:pointer;border-radius:var(--r-sm);transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px}
 .tab svg{width:14px;height:14px}
 .tab.active{background:var(--bg4);color:var(--text1)}
 .tab:hover:not(.active){background:var(--bg3);color:var(--text1)}
-
-/* FILTERS */
 .filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
 .search-wrap{position:relative;flex:1;min-width:200px}
 .search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
@@ -112,12 +96,8 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 .filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;cursor:pointer;transition:var(--trans);font-family:var(--font-ar);min-width:130px}
 html[dir="ltr"] .filter-select{font-family:var(--font-en)}
 .filter-select:focus{border-color:var(--border2)}
-
-/* TABLE */
 .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .table-scroll{overflow-x:auto}
-.tbl-wrap::-webkit-scrollbar{height:4px}
-.tbl-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
 thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap;letter-spacing:.04em}
@@ -129,8 +109,6 @@ tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
 .td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500}
 .td-name{color:var(--text1);font-weight:500}
 .td-actions{display:flex;gap:6px;align-items:center}
-
-/* BADGES */
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
 .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
 .badge-active{background:rgba(31,184,122,.12);color:var(--success)}
@@ -138,78 +116,54 @@ tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
 .badge-contract-yes{background:rgba(42,127,255,.12);color:var(--accent)}
 .badge-contract-no{background:rgba(224,72,72,.1);color:var(--danger)}
 .badge-contract-exp{background:rgba(224,144,48,.1);color:var(--warning)}
-
-/* TABLE FOOTER */
 .table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
 .table-info{font-size:12px;color:var(--text3)}
 .pagination{display:flex;gap:4px}
 .page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
 .page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-
-/* MAP */
-.map-container{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:20px}
-.map-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.map-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.map-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
 .map-title{font-size:13px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
 .map-title svg{width:15px;height:15px;color:var(--accent)}
-#map{height:420px;background:var(--bg3);position:relative;overflow:hidden}
-.map-placeholder{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3)}
-.map-placeholder svg{width:48px;height:48px;opacity:.3}
-.map-note{font-size:12px;text-align:center;max-width:280px;line-height:1.6}
-.map-clients-list{padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;max-height:200px;overflow-y:auto;border-top:1px solid var(--border)}
-.map-client-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;cursor:pointer;transition:var(--trans)}
-.map-client-card:hover{border-color:var(--border2);background:var(--bg4)}
-.map-client-name{font-size:12px;font-weight:500;color:var(--text1);margin-bottom:4px}
-.map-client-info{font-size:11px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap}
-.map-open-btn{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--accent);margin-top:6px;cursor:pointer;text-decoration:none}
-
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+#map{height:480px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:780px;max-height:90vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:780px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
 .modal-overlay.open .modal{transform:translateY(0)}
 .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-title{font-size:15px;font-weight:600;color:var(--text1)}
 .modal-close{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
-.modal-close:hover{background:rgba(224,72,72,.15);color:var(--danger);border-color:rgba(224,72,72,.2)}
+.modal-close:hover{background:rgba(224,72,72,.15);color:var(--danger)}
 .modal-close svg{width:14px;height:14px}
 .modal-body{flex:1;overflow-y:auto;padding:22px}
 .modal-body::-webkit-scrollbar{width:4px}
 .modal-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 .modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
-
-/* FORM */
 .form-section{margin-bottom:22px}
 .form-section-title{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-html[dir="ltr"] .form-section-title{text-transform:uppercase}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 .form-full{grid-column:1/-1}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:12px;font-weight:500;color:var(--text2)}
-.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;direction:rtl}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;direction:rtl;width:100%}
 html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .field textarea{font-family:var(--font-en);direction:ltr}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
 .field input::placeholder,.field textarea::placeholder{color:var(--text3)}
 .field textarea{resize:vertical;min-height:80px}
+.field-hint{font-size:11px;color:var(--text3)}
 .phone-wrap{display:flex;gap:6px}
 .phone-code{width:80px;flex-shrink:0;padding:9px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;cursor:pointer;direction:ltr}
-.phone-code:focus{border-color:var(--border2)}
 .phone-input{flex:1;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;direction:ltr;font-family:var(--font-en)}
-.phone-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
-.field-hint{font-size:11px;color:var(--text3)}
-.maps-row{display:flex;gap:8px;align-items:flex-end}
+.phone-input:focus,.phone-code:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.maps-row{display:flex;gap:8px;align-items:flex-end;margin-top:14px}
 .maps-row .field{flex:1}
-.maps-row .btn{flex-shrink:0;height:38px;margin-bottom:0;align-self:flex-end}
-.coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-
-/* VIEW MODAL */
-.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .view-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
 .view-label{font-size:11px;color:var(--text3);margin-bottom:4px}
 .view-val{font-size:13px;color:var(--text1);font-weight:500}
 .view-full{grid-column:1/-1}
-
-/* MOBILE */
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:768px){
   .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
@@ -221,155 +175,95 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   .content{padding:16px}
   .form-grid,.form-grid-3{grid-template-columns:1fr}
   .view-grid{grid-template-columns:1fr}
-  .page-header{flex-direction:column;align-items:flex-start}
 }
-@media(max-width:480px){
-  .filters-bar{flex-direction:column}
-  .search-wrap{min-width:100%}
-}
+@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 </head>
 <body>
-
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
-
-<!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo">
-    <img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;">
-  </div>
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
   <nav class="sidebar-nav">
     <div class="nav-section">الرئيسية</div>
-    <a class="nav-item" href="/dashboard">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
-      <span>لوحة التحكم</span>
-    </a>
+    <a class="nav-item" href="/dashboard"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg><span>لوحة التحكم</span></a>
     <div class="nav-section">إدارة البيانات</div>
-    <a class="nav-item active" href="/clients">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg>
-      <span>العملاء</span>
-    </a>
-    <a class="nav-item" href="/elevators">
-
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg>
-      <span>المصاعد</span>
-    </a>
-    <a class="nav-item" href="#">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg>
-      <span>العقود</span>
-    </a>
-    <a class="nav-item" href="#">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134 -5 7-5s7 2.239 7 5"/></svg>
-      <span>الفنيين</span>
-    </a>
+    <a class="nav-item active" href="/clients"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg><span>العملاء</span></a>
+    <a class="nav-item" href="/elevators"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg><span>المصاعد</span></a>
+    <a class="nav-item" href="/contracts"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg><span>العقود</span></a>
+    <a class="nav-item" href="/technicians"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg><span>الفنيين</span></a>
     <div class="nav-section">العمليات</div>
-    <a class="nav-item" href="#">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>
-      <span>زيارات الصيانة</span>
-    </a>
-    <a class="nav-item" href="#">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
-      <span>الأعطال</span>
-      <span class="nav-badge">5</span>
-    </a>
-    <a class="nav-item" href="#">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/></svg>
-      <span>الفواتير</span>
-    </a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg><span>زيارات الصيانة</span></a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg><span>الأعطال</span><span class="nav-badge">5</span></a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/></svg><span>الفواتير</span></a>
     <div class="nav-section">التقارير</div>
-    <a class="nav-item" href="#">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14V6l4-4h6a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>
-      <span>التقارير</span>
-    </a>
-    <a class="nav-item" href="#">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg>
-      <span>الإعدادات</span>
-    </a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14V6l4-4h6a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg><span>التقارير</span></a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-user">
       <div class="sidebar-avatar">م</div>
-      <div>
-        <div class="sidebar-user-name">محمد القواشي</div>
-        <div class="sidebar-user-role">مدير النظام</div>
-      </div>
+      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
     </div>
   </div>
 </aside>
 
-<!-- MAIN -->
 <div class="main">
   <header class="header">
-    <button class="hamburger" onclick="openSidebar()">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
-    </button>
-    <div class="header-title">
-      <span id="h-date"></span>
-      <span>العملاء</span>
-    </div>
+    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
+    <div class="header-title"><span id="h-date"></span><span>العملاء</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <div class="lang-toggle">
         <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
         <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
       </div>
-      <button class="icon-btn">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg>
-        <span class="notif-dot"></span>
-      </button>
+      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
       <div class="header-avatar">م</div>
     </div>
   </header>
 
   <div class="content">
-
-    <!-- PAGE HEADER -->
-    <div class="page-header">
-      <div class="page-title">العملاء <span id="clients-count">127 عميل</span></div>
-      <div class="page-actions">
-        <button class="btn btn-secondary" onclick="exportExcel()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-          <span>تصدير Excel</span>
-        </button>
-        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
-          <span>استيراد Excel</span>
-        </button>
-        <input type="file" id="import-file" accept=".xlsx,.xls" style="display:none">
-        <button class="btn btn-primary" onclick="openAddModal()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
-          <span>إضافة عميل</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- TABS -->
     <div class="tabs">
-      <div class="tab active" onclick="switchTab('table',this)">
+      <div class="tab active" id="tab-btn-table" onclick="switchTab('table')">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="5" y1="5.5" x2="5" y2="12"/></svg>
-        <span>جدول العملاء</span>
+        جدول العملاء
       </div>
-      <div class="tab" onclick="switchTab('map',this)">
+      <div class="tab" id="tab-btn-map" onclick="switchTab('map')">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
-        <span>خريطة العملاء</span>
+        خريطة العملاء
       </div>
     </div>
 
     <!-- TABLE TAB -->
     <div id="tab-table">
+      <div class="page-header">
+        <div class="page-title">العملاء <span id="clients-count">10 عملاء</span></div>
+        <div class="page-actions">
+          <button class="btn btn-secondary btn-sm">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+            تصدير Excel
+          </button>
+          <button class="btn btn-secondary btn-sm">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
+            استيراد Excel
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+            إضافة عميل
+          </button>
+        </div>
+      </div>
+
       <div class="filters-bar">
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
           <input type="text" class="search-input" id="search-input" placeholder="بحث بالاسم أو الكود أو الهاتف..." oninput="filterTable()">
         </div>
-        <select class="filter-select" id="filter-city" onchange="filterTable();updateDistricts()">
+        <select class="filter-select" id="filter-city" onchange="filterTable()">
           <option value="">كل المدن</option>
           <option value="مكة">مكة</option>
           <option value="جدة">جدة</option>
           <option value="الطائف">الطائف</option>
-        </select>
-        <select class="filter-select" id="filter-district" onchange="filterTable()">
-          <option value="">كل الأحياء</option>
         </select>
         <select class="filter-select" id="filter-contract" onchange="filterTable()">
           <option value="">حالة العقد</option>
@@ -386,30 +280,22 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
       <div class="table-wrap">
         <div class="table-scroll">
-          <table id="clients-table">
+          <table>
             <thead>
               <tr>
-                <th>الكود</th>
-                <th>اسم العميل</th>
-                <th>المدينة</th>
-                <th>الحي</th>
-                <th>الهاتف</th>
-                <th>المصاعد</th>
-                <th>حالة العقد</th>
-                <th>الحالة</th>
-                <th>إجراءات</th>
+                <th>الكود</th><th>اسم العميل</th><th>المدينة</th><th>الحي</th>
+                <th>الهاتف</th><th>المصاعد</th><th>حالة العقد</th><th>الحالة</th><th>إجراءات</th>
               </tr>
             </thead>
             <tbody id="table-body"></tbody>
           </table>
         </div>
         <div class="table-footer">
-          <div class="table-info" id="table-info">عرض 1-10 من 127</div>
+          <div class="table-info" id="table-info">عرض 10 عملاء</div>
           <div class="pagination">
             <button class="page-btn">‹</button>
             <button class="page-btn active">1</button>
             <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
             <button class="page-btn">›</button>
           </div>
         </div>
@@ -418,209 +304,88 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
     <!-- MAP TAB -->
     <div id="tab-map" style="display:none">
-      <div class="map-container">
+      <div class="map-panel">
         <div class="map-header">
           <div class="map-title">
             <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7.5 1C5.01 1 3 3.01 3 5.5c0 3.5 4.5 8.5 4.5 8.5S12 9 12 5.5C12 3.01 9.99 1 7.5 1z"/><circle cx="7.5" cy="5.5" r="1.8"/></svg>
-            <span>خريطة مواقع العملاء</span>
+            خريطة مواقع العملاء
           </div>
           <button class="btn btn-primary btn-sm" onclick="openAddModal()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
-            إضافة عميل من الخريطة
+            إضافة عميل
           </button>
         </div>
-        <div id="map">
-          <div class="map-placeholder">
-            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M24 4C16.27 4 10 10.27 10 18c0 10.5 14 26 14 26S38 28.5 38 18c0-7.73-6.27-14-14-14z"/><circle cx="24" cy="18" r="5"/></svg>
-            <div class="map-note">
-              لعرض الخريطة التفاعلية، يحتاج المشروع إلى Google Maps API Key.<br>
-              قم بإضافة مفتاح API في إعدادات المشروع.
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="alert('أضف Google Maps API Key في الإعدادات')">إعداد الخريطة</button>
-          </div>
-        </div>
-        <div class="map-clients-list" id="map-clients-list"></div>
+        <div id="map"></div>
       </div>
     </div>
-
   </div>
 </div>
 
-<!-- ADD/EDIT MODAL -->
+<!-- ADD MODAL -->
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title" id="modal-title">إضافة عميل جديد</div>
-      <button class="modal-close" onclick="closeModal('modal-add')">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg>
-      </button>
+      <button class="modal-close" onclick="closeModal('modal-add')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
-
       <div class="form-section">
         <div class="form-section-title">المعلومات الأساسية</div>
         <div class="form-grid">
-          <div class="field">
-            <label>كود العميل</label>
-            <input type="text" id="f-code" placeholder="C-0001" style="direction:ltr;font-family:var(--font-en)">
-          </div>
-          <div class="field">
-            <label>نوع العميل</label>
-            <select id="f-type">
-              <option>مبنى سكني</option>
-              <option>مجمع تجاري</option>
-              <option>فندق</option>
-              <option>مستشفى</option>
-              <option>مصنع</option>
-              <option>حكومي</option>
-              <option>أخرى</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>اسم العميل (عربي)</label>
-            <input type="text" id="f-name-ar" placeholder="برج الياسمين">
-          </div>
-          <div class="field">
-            <label>Client Name (English)</label>
-            <input type="text" id="f-name-en" placeholder="Al Yasmin Tower" style="direction:ltr">
-          </div>
-          <div class="field">
-            <label>اسم المسؤول</label>
-            <input type="text" id="f-contact" placeholder="اسم المسؤول أو مدير المبنى">
-          </div>
-          <div class="field">
-            <label>عدد المصاعد</label>
-            <input type="number" id="f-elevators" placeholder="1" min="1" style="direction:ltr">
-          </div>
+          <div class="field"><label>كود العميل</label><input type="text" id="f-code" placeholder="C-0001" style="direction:ltr;font-family:var(--font-en)"></div>
+          <div class="field"><label>نوع العميل</label><select id="f-type"><option>مبنى سكني</option><option>مجمع تجاري</option><option>فندق</option><option>مستشفى</option><option>مصنع</option><option>حكومي</option><option>أخرى</option></select></div>
+          <div class="field"><label>اسم العميل (عربي)</label><input type="text" id="f-name-ar" placeholder="برج الياسمين"></div>
+          <div class="field"><label>Client Name (English)</label><input type="text" id="f-name-en" placeholder="Al Yasmin Tower" style="direction:ltr"></div>
+          <div class="field"><label>اسم المسؤول</label><input type="text" id="f-contact" placeholder="اسم المسؤول"></div>
+          <div class="field"><label>عدد المصاعد</label><input type="number" id="f-elevators" placeholder="1" min="1" style="direction:ltr"></div>
         </div>
       </div>
-
       <div class="form-section">
         <div class="form-section-title">بيانات التواصل</div>
         <div class="form-grid">
           <div class="field">
             <label>رقم الهاتف</label>
             <div class="phone-wrap">
-              <select class="phone-code" id="f-code-phone">
-                <option value="+966">+966</option>
-                <option value="+20">+20</option>
-                <option value="+971">+971</option>
-                <option value="+965">+965</option>
-                <option value="+973">+973</option>
-                <option value="+974">+974</option>
-                <option value="+968">+968</option>
-                <option value="+962">+962</option>
-              </select>
+              <select class="phone-code" id="f-code-phone"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
               <input type="tel" class="phone-input" id="f-phone" placeholder="5XXXXXXXX">
             </div>
           </div>
           <div class="field">
             <label>رقم واتساب</label>
             <div class="phone-wrap">
-              <select class="phone-code" id="f-code-whatsapp">
-                <option value="+966">+966</option>
-                <option value="+20">+20</option>
-                <option value="+971">+971</option>
-                <option value="+965">+965</option>
-              </select>
+              <select class="phone-code" id="f-code-wa"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
               <input type="tel" class="phone-input" id="f-whatsapp" placeholder="5XXXXXXXX">
             </div>
-            <span class="field-hint" style="cursor:pointer;color:var(--accent);font-size:11px" onclick="copyPhoneToWhatsapp()">نفس رقم الهاتف</span>
+            <span class="field-hint" style="cursor:pointer;color:var(--accent)" onclick="document.getElementById('f-whatsapp').value=document.getElementById('f-phone').value">نفس رقم الهاتف</span>
           </div>
-          <div class="field form-full">
-            <label>البريد الإلكتروني</label>
-            <input type="email" id="f-email" placeholder="example@domain.com" style="direction:ltr">
-          </div>
+          <div class="field form-full"><label>البريد الإلكتروني</label><input type="email" id="f-email" placeholder="example@domain.com" style="direction:ltr"></div>
         </div>
       </div>
-
       <div class="form-section">
         <div class="form-section-title">الموقع والعنوان</div>
         <div class="form-grid">
-          <div class="field">
-            <label>الدولة</label>
-            <select id="f-country">
-              <option>المملكة العربية السعودية</option>
-              <option>مصر</option>
-              <option>الإمارات</option>
-              <option>الكويت</option>
-              <option>البحرين</option>
-              <option>قطر</option>
-              <option>عُمان</option>
-              <option>الأردن</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>المدينة</label>
-            <select id="f-city" onchange="updateModalDistricts()">
-              <option value="">اختر المدينة</option>
-              <option value="مكة">مكة المكرمة</option>
-              <option value="جدة">جدة</option>
-              <option value="الطائف">الطائف</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>الحي</label>
-            <select id="f-district">
-              <option value="">اختر الحي</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>اسم المبنى</label>
-            <input type="text" id="f-building" placeholder="اسم البرج أو المبنى">
-          </div>
-          <div class="field form-full">
-            <label>العنوان الكامل</label>
-            <input type="text" id="f-address" placeholder="العنوان التفصيلي">
-          </div>
+          <div class="field"><label>المدينة</label><select id="f-city"><option value="">اختر المدينة</option><option value="مكة">مكة المكرمة</option><option value="جدة">جدة</option><option value="الطائف">الطائف</option></select></div>
+          <div class="field"><label>الحي</label><input type="text" id="f-district" placeholder="اسم الحي"></div>
+          <div class="field"><label>اسم المبنى</label><input type="text" id="f-building" placeholder="اسم البرج أو المبنى"></div>
+          <div class="field"><label>حالة العقد</label><select id="f-contract-status"><option>نشط</option><option>منتهي</option><option>بدون عقد</option></select></div>
+          <div class="field form-full"><label>العنوان الكامل</label><input type="text" id="f-address" placeholder="العنوان التفصيلي"></div>
         </div>
-        <div class="maps-row" style="margin-top:14px">
-          <div class="field" style="flex:1">
-            <label>رابط Google Maps</label>
-            <input type="text" id="f-maps-url" placeholder="https://maps.google.com/..." style="direction:ltr;font-size:12px" oninput="extractCoordsFromUrl(this.value)">
-          </div>
-          <a class="btn btn-secondary btn-sm" id="open-maps-btn" href="#" target="_blank" style="height:38px;align-self:flex-end">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
-            فتح
-          </a>
+        <div class="maps-row">
+          <div class="field"><label>رابط Google Maps</label><input type="text" id="f-maps-url" placeholder="https://maps.google.com/..." style="direction:ltr;font-size:12px" oninput="extractCoords(this.value)"></div>
+          <a class="btn btn-secondary btn-sm" id="open-maps-btn" href="#" target="_blank" style="height:38px;align-self:flex-end">فتح</a>
         </div>
-        <div class="coord-row" style="margin-top:10px">
-          <div class="field">
-            <label>خط العرض (Latitude)</label>
-            <input type="text" id="f-lat" placeholder="21.3891" style="direction:ltr;font-family:var(--font-en)">
-          </div>
-          <div class="field">
-            <label>خط الطول (Longitude)</label>
-            <input type="text" id="f-lng" placeholder="39.8579" style="direction:ltr;font-family:var(--font-en)">
-          </div>
+        <div class="coord-row">
+          <div class="field"><label>خط العرض</label><input type="text" id="f-lat" placeholder="21.3891" style="direction:ltr;font-family:var(--font-en)"></div>
+          <div class="field"><label>خط الطول</label><input type="text" id="f-lng" placeholder="39.8579" style="direction:ltr;font-family:var(--font-en)"></div>
         </div>
       </div>
-
       <div class="form-section">
         <div class="form-section-title">بيانات إضافية</div>
         <div class="form-grid">
-          <div class="field">
-            <label>حالة العقد</label>
-            <select id="f-contract-status">
-              <option>نشط</option>
-              <option>منتهي</option>
-              <option>بدون عقد</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>حالة العميل</label>
-            <select id="f-client-status">
-              <option>نشط</option>
-              <option>غير نشط</option>
-            </select>
-          </div>
-          <div class="field form-full">
-            <label>ملاحظات</label>
-            <textarea id="f-notes" placeholder="أي ملاحظات إضافية..."></textarea>
-          </div>
+          <div class="field"><label>حالة العميل</label><select id="f-client-status"><option>نشط</option><option>غير نشط</option></select></div>
+          <div class="field form-full"><label>ملاحظات</label><textarea id="f-notes" placeholder="أي ملاحظات..."></textarea></div>
         </div>
       </div>
-
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-add')">إلغاء</button>
@@ -637,171 +402,139 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title" id="view-title">بيانات العميل</div>
-      <button class="modal-close" onclick="closeModal('modal-view')">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg>
-      </button>
+      <button class="modal-close" onclick="closeModal('modal-view')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-view');openAddModal()">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
-        تعديل
-      </button>
+      <button class="btn btn-primary" onclick="closeModal('modal-view');openAddModal()">تعديل</button>
     </div>
   </div>
 </div>
 
-<!-- DELETE CONFIRM MODAL -->
+<!-- DELETE MODAL -->
 <div class="modal-overlay" id="modal-delete">
   <div class="modal" style="max-width:420px">
     <div class="modal-head">
       <div class="modal-title" style="color:var(--danger)">تأكيد الحذف</div>
-      <button class="modal-close" onclick="closeModal('modal-delete')">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg>
-      </button>
+      <button class="modal-close" onclick="closeModal('modal-delete')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
-      <p style="font-size:14px;color:var(--text2);line-height:1.7">هل أنت متأكد من حذف هذا العميل؟ لا يمكن التراجع عن هذا الإجراء.</p>
-      <p style="font-size:13px;color:var(--danger);margin-top:10px;background:rgba(224,72,72,.08);padding:10px 12px;border-radius:var(--r-sm);border:1px solid rgba(224,72,72,.15)">سيتم حذف جميع البيانات المرتبطة بهذا العميل.</p>
+      <p style="font-size:14px;color:var(--text2);line-height:1.7">هل أنت متأكد من حذف هذا العميل؟</p>
+      <p style="font-size:13px;color:var(--danger);margin-top:10px;background:rgba(224,72,72,.08);padding:10px 12px;border-radius:var(--r-sm);border:1px solid rgba(224,72,72,.15)">لا يمكن التراجع عن هذا الإجراء.</p>
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
-      <button class="btn btn-danger" onclick="confirmDelete()">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M5.5 6.5v4M8.5 6.5v4M3 4l.7 7.5a1 1 0 001 .9h4.6a1 1 0 001-.9L11 4"/></svg>
-        حذف نهائي
-      </button>
+      <button class="btn btn-danger" onclick="confirmDelete()">حذف نهائي</button>
     </div>
   </div>
 </div>
 
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA"></script>
 <script>
-const DISTRICTS = {
-  'مكة': ['العزيزية','أجياد','النزهة','الشوقية','العابدية','الزاهر','المسفلة','الهجلة','الجرول','غرنده','الرصيفة','وادي جليل','بطحاء قريش','العتيبية','الكعكية'],
-  'جدة': ['الروضة','الصفا','الزهراء','الحمراء','البلد','النزهة','الفيصلية','مدائن الفهد','الشاطئ','الواجهة البحرية','أبحر الشمالية','أبحر الجنوبية','الربوة','السلامة','المرجان','طيبة','النعيم','الفضل','الجامعة','الرحاب'],
-  'الطائف': ['الحوية','الشهداء','السليمانية','المطار','الفيصلية','السد','الربوة','النسيم','الشفا','الهدا','العزيزية','القزاز','النخيل','الفردوس','العقيق']
-};
-
 const SAMPLE_CLIENTS = [
-  {id:1,code:'C-0001',nameAr:'برج الياسمين',nameEn:'Al Yasmin Tower',type:'مبنى سكني',contact:'عبدالله العمري',phone:'0551234567',whatsapp:'0551234567',email:'yasmin@gmail.com',city:'مكة',district:'العزيزية',building:'برج الياسمين',address:'حي العزيزية، مكة المكرمة',lat:21.3891,lng:39.8579,elevators:4,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:2,code:'C-0002',nameAr:'مجمع النخيل',nameEn:'Al Nakheel Mall',type:'مجمع تجاري',contact:'محمد الزهراني',phone:'0561234567',whatsapp:'0561234567',email:'nakheel@mall.com',city:'جدة',district:'الروضة',building:'مجمع النخيل',address:'طريق الملك فهد، جدة',lat:21.5433,lng:39.1728,elevators:8,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:3,code:'C-0003',nameAr:'فندق الأندلس',nameEn:'Andalus Hotel',type:'فندق',contact:'خالد القحطاني',phone:'0571234567',whatsapp:'0571234567',email:'hotel@andalus.com',city:'مكة',district:'أجياد',building:'فندق الأندلس',address:'حي أجياد، مكة',lat:21.4225,lng:39.8261,elevators:6,contractStatus:'منتهي',clientStatus:'نشط',notes:'العقد ينتهي قريباً'},
-  {id:4,code:'C-0004',nameAr:'مستشفى السلام',nameEn:'Al Salam Hospital',type:'مستشفى',contact:'د. أحمد السلمي',phone:'0501234567',whatsapp:'0501234567',email:'info@salam-hospital.com',city:'مكة',district:'النزهة',building:'مستشفى السلام',address:'حي النزهة، مكة',lat:21.4100,lng:39.8450,elevators:12,contractStatus:'نشط',clientStatus:'نشط',notes:'أولوية عالية'},
-  {id:5,code:'C-0005',nameAr:'برج المملكة',nameEn:'Al Mamlaka Tower',type:'مبنى سكني',contact:'عمر الدوسري',phone:'0531234567',whatsapp:'0531234567',email:'mamlaka@tower.com',city:'جدة',district:'النزهة',building:'برج المملكة',address:'حي الروضة، جدة',lat:21.5200,lng:39.1900,elevators:3,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:6,code:'C-0006',nameAr:'مجمع التجارة',nameEn:'Al Tijara Complex',type:'مجمع تجاري',contact:'سعد المالكي',phone:'0541234567',whatsapp:'0541234567',email:'info@tijara.com',city:'مكة',district:'الشوقية',building:'مجمع التجارة',address:'حي الشوقية، مكة',lat:21.4300,lng:39.8100,elevators:5,contractStatus:'بدون عقد',clientStatus:'غير نشط',notes:''},
-  {id:7,code:'C-0007',nameAr:'فندق قصر مكة',nameEn:'Makkah Palace Hotel',type:'فندق',contact:'فيصل العتيبي',phone:'0521234567',whatsapp:'0521234567',email:'palace@makkah.com',city:'مكة',district:'العابدية',building:'قصر مكة',address:'حي العابدية، مكة',lat:21.4180,lng:39.8320,elevators:10,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:8,code:'C-0008',nameAr:'مركز الملك عبدالله',nameEn:'King Abdullah Center',type:'حكومي',contact:'ناصر الحربي',phone:'0511234567',whatsapp:'0511234567',email:'center@gov.sa',city:'مكة',district:'الشوقية',building:'مركز الملك عبدالله',address:'الشوقية، مكة',lat:21.4350,lng:39.8200,elevators:7,contractStatus:'نشط',clientStatus:'نشط',notes:'جهة حكومية'},
-  {id:9,code:'C-0009',nameAr:'أبراج الساعة',nameEn:'Clock Tower',type:'مبنى سكني',contact:'تركي الشمري',phone:'0591234567',whatsapp:'0591234567',email:'clocktower@abraj.com',city:'مكة',district:'أجياد',building:'أبراج الساعة',address:'أجياد، مكة المكرمة',lat:21.4228,lng:39.8260,elevators:20,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:10,code:'C-0010',nameAr:'مجمع طيبة',nameEn:'Tayba Complex',type:'مجمع تجاري',contact:'محمد الغامدي',phone:'0581234567',whatsapp:'0581234567',email:'tayba@complex.sa',city:'الطائف',district:'الحوية',building:'مجمع طيبة',address:'الحوية، الطائف',lat:21.2570,lng:40.4170,elevators:2,contractStatus:'منتهي',clientStatus:'نشط',notes:''},
+  {id:1,code:'C-0001',nameAr:'برج الياسمين',nameEn:'Al Yasmin Tower',type:'مبنى سكني',contact:'عبدالله العمري',phone:'0551234567',email:'yasmin@gmail.com',city:'مكة',district:'العزيزية',building:'برج الياسمين',address:'حي العزيزية، مكة',lat:21.3891,lng:39.8579,elevators:4,contractStatus:'نشط',clientStatus:'نشط',notes:''},
+  {id:2,code:'C-0002',nameAr:'مجمع النخيل',nameEn:'Al Nakheel Mall',type:'مجمع تجاري',contact:'محمد الزهراني',phone:'0561234567',email:'nakheel@mall.com',city:'جدة',district:'الروضة',building:'مجمع النخيل',address:'طريق الملك فهد، جدة',lat:21.5433,lng:39.1728,elevators:8,contractStatus:'نشط',clientStatus:'نشط',notes:''},
+  {id:3,code:'C-0003',nameAr:'فندق الأندلس',nameEn:'Andalus Hotel',type:'فندق',contact:'خالد القحطاني',phone:'0571234567',email:'hotel@andalus.com',city:'مكة',district:'أجياد',building:'فندق الأندلس',address:'حي أجياد، مكة',lat:21.4225,lng:39.8261,elevators:6,contractStatus:'منتهي',clientStatus:'نشط',notes:''},
+  {id:4,code:'C-0004',nameAr:'مستشفى السلام',nameEn:'Al Salam Hospital',type:'مستشفى',contact:'د. أحمد السلمي',phone:'0501234567',email:'info@salam.com',city:'مكة',district:'النزهة',building:'مستشفى السلام',address:'حي النزهة، مكة',lat:21.4100,lng:39.8450,elevators:12,contractStatus:'نشط',clientStatus:'نشط',notes:'أولوية عالية'},
+  {id:5,code:'C-0005',nameAr:'برج المملكة',nameEn:'Al Mamlaka Tower',type:'مبنى سكني',contact:'عمر الدوسري',phone:'0531234567',email:'mamlaka@tower.com',city:'جدة',district:'النزهة',building:'برج المملكة',address:'حي الروضة، جدة',lat:21.5200,lng:39.1900,elevators:3,contractStatus:'نشط',clientStatus:'نشط',notes:''},
+  {id:6,code:'C-0006',nameAr:'مجمع التجارة',nameEn:'Al Tijara Complex',type:'مجمع تجاري',contact:'سعد المالكي',phone:'0541234567',email:'info@tijara.com',city:'مكة',district:'الشوقية',building:'مجمع التجارة',address:'حي الشوقية، مكة',lat:21.4300,lng:39.8100,elevators:5,contractStatus:'بدون عقد',clientStatus:'غير نشط',notes:''},
+  {id:7,code:'C-0007',nameAr:'أبراج الساعة',nameEn:'Clock Tower',type:'فندق',contact:'تركي الشمري',phone:'0591234567',email:'clock@abraj.com',city:'مكة',district:'أجياد',building:'أبراج الساعة',address:'أجياد، مكة',lat:21.4228,lng:39.8260,elevators:20,contractStatus:'نشط',clientStatus:'نشط',notes:''},
+  {id:8,code:'C-0008',nameAr:'مركز الملك عبدالله',nameEn:'King Abdullah Center',type:'حكومي',contact:'ناصر الحربي',phone:'0511234567',email:'center@gov.sa',city:'مكة',district:'الشوقية',building:'مركز الملك عبدالله',address:'الشوقية، مكة',lat:21.4350,lng:39.8200,elevators:7,contractStatus:'نشط',clientStatus:'نشط',notes:''},
+  {id:9,code:'C-0009',nameAr:'مجمع طيبة',nameEn:'Tayba Complex',type:'مجمع تجاري',contact:'محمد الغامدي',phone:'0581234567',email:'tayba@complex.sa',city:'الطائف',district:'الحوية',building:'مجمع طيبة',address:'الحوية، الطائف',lat:21.2570,lng:40.4170,elevators:2,contractStatus:'منتهي',clientStatus:'نشط',notes:''},
+  {id:10,code:'C-0010',nameAr:'فندق قصر مكة',nameEn:'Makkah Palace Hotel',type:'فندق',contact:'فيصل العتيبي',phone:'0521234567',email:'palace@makkah.com',city:'مكة',district:'العابدية',building:'قصر مكة',address:'العابدية، مكة',lat:21.4180,lng:39.8320,elevators:10,contractStatus:'نشط',clientStatus:'نشط',notes:''},
 ];
 
 let currentDeleteId = null;
-let filteredClients = [...SAMPLE_CLIENTS];
+let mapInitialized = false;
+let gMap = null;
 
-function renderTable(clients) {
+function renderTable(data) {
   const tbody = document.getElementById('table-body');
   tbody.innerHTML = '';
-  clients.forEach(c => {
-    const contractBadge = c.contractStatus === 'نشط' ? 'badge-contract-yes' : c.contractStatus === 'منتهي' ? 'badge-contract-exp' : 'badge-contract-no';
-    const statusBadge = c.clientStatus === 'نشط' ? 'badge-active' : 'badge-inactive';
-    tbody.innerHTML += `
-      <tr>
-        <td class="td-code">${c.code}</td>
-        <td class="td-name">${c.nameAr}</td>
-        <td>${c.city}</td>
-        <td>${c.district}</td>
-        <td style="direction:ltr;font-family:var(--font-en)">${c.phone}</td>
-        <td style="text-align:center">${c.elevators}</td>
-        <td><span class="badge ${contractBadge}">${c.contractStatus}</span></td>
-        <td><span class="badge ${statusBadge}">${c.clientStatus}</span></td>
-        <td>
-          <div class="td-actions">
-            <button class="btn btn-secondary btn-sm btn-icon" title="عرض" onclick="viewClient(${c.id})">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
-            </button>
-            <button class="btn btn-secondary btn-sm btn-icon" title="تعديل" onclick="editClient(${c.id})">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
-            </button>
-            <button class="btn btn-danger btn-sm btn-icon" title="حذف" onclick="deleteClient(${c.id})">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4l.7 7.5a1 1 0 001 .9h4.6a1 1 0 001-.9L11 4"/></svg>
-            </button>
-          </div>
-        </td>
-      </tr>`;
+  data.forEach(c => {
+    const cb = c.contractStatus==='نشط'?'badge-contract-yes':c.contractStatus==='منتهي'?'badge-contract-exp':'badge-contract-no';
+    const sb = c.clientStatus==='نشط'?'badge-active':'badge-inactive';
+    tbody.innerHTML += `<tr>
+      <td class="td-code">${c.code}</td>
+      <td class="td-name">${c.nameAr}</td>
+      <td>${c.city}</td>
+      <td>${c.district}</td>
+      <td style="direction:ltr;font-family:var(--font-en)">${c.phone}</td>
+      <td style="text-align:center">${c.elevators}</td>
+      <td><span class="badge ${cb}">${c.contractStatus}</span></td>
+      <td><span class="badge ${sb}">${c.clientStatus}</span></td>
+      <td><div class="td-actions">
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="viewClient(${c.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="editClient(${c.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteClient(${c.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4l.7 7.5a1 1 0 001 .9h4.6a1 1 0 001-.9L11 4"/></svg></button>
+      </div></td>
+    </tr>`;
   });
-  document.getElementById('table-info').textContent = `عرض ${clients.length} من ${SAMPLE_CLIENTS.length} عميل`;
-}
-
-function renderMapClients() {
-  const list = document.getElementById('map-clients-list');
-  list.innerHTML = '';
-  SAMPLE_CLIENTS.forEach(c => {
-    const mapsUrl = `https://www.google.com/maps?q=${c.lat},${c.lng}`;
-    list.innerHTML += `
-      <div class="map-client-card" onclick="viewClient(${c.id})">
-        <div class="map-client-name">${c.nameAr}</div>
-        <div class="map-client-info">
-          <span>${c.city}</span>
-          <span>${c.district}</span>
-          <span style="direction:ltr;font-family:var(--font-en)">${c.phone}</span>
-        </div>
-        <a class="map-open-btn" href="${mapsUrl}" target="_blank" onclick="event.stopPropagation()">
-          <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
-          فتح في الخريطة
-        </a>
-      </div>`;
-  });
+  document.getElementById('table-info').textContent = `عرض ${data.length} من ${SAMPLE_CLIENTS.length} عميل`;
+  document.getElementById('clients-count').textContent = `${SAMPLE_CLIENTS.length} عميل`;
 }
 
 function filterTable() {
-  const search = document.getElementById('search-input').value.toLowerCase();
+  const s = document.getElementById('search-input').value.toLowerCase();
   const city = document.getElementById('filter-city').value;
-  const district = document.getElementById('filter-district').value;
   const contract = document.getElementById('filter-contract').value;
   const status = document.getElementById('filter-status').value;
-  filteredClients = SAMPLE_CLIENTS.filter(c => {
-    const matchSearch = !search || c.nameAr.includes(search) || c.code.toLowerCase().includes(search) || c.phone.includes(search) || (c.nameEn && c.nameEn.toLowerCase().includes(search));
-    const matchCity = !city || c.city === city;
-    const matchDistrict = !district || c.district === district;
-    const matchContract = !contract || c.contractStatus === contract;
-    const matchStatus = !status || c.clientStatus === status;
-    return matchSearch && matchCity && matchDistrict && matchContract && matchStatus;
+  const filtered = SAMPLE_CLIENTS.filter(c =>
+    (!s || c.nameAr.includes(s) || c.code.toLowerCase().includes(s) || c.phone.includes(s))
+    && (!city || c.city === city)
+    && (!contract || c.contractStatus === contract)
+    && (!status || c.clientStatus === status)
+  );
+  renderTable(filtered);
+}
+
+function initGoogleMap() {
+  if (mapInitialized) return;
+  mapInitialized = true;
+  gMap = new google.maps.Map(document.getElementById('map'), {
+    center: {lat: 21.4, lng: 39.85},
+    zoom: 11
   });
-  renderTable(filteredClients);
+  SAMPLE_CLIENTS.forEach(c => {
+    const marker = new google.maps.Marker({
+      map: gMap,
+      position: {lat: c.lat, lng: c.lng},
+      title: c.nameAr
+    });
+    const infoWindow = new google.maps.InfoWindow({
+      content: `<div style="direction:rtl;font-family:Arial;padding:4px;min-width:160px">
+        <b style="font-size:13px">${c.nameAr}</b><br>
+        <span style="color:#666;font-size:12px">${c.city} — ${c.district}</span><br>
+        <span style="color:#666;font-size:12px;direction:ltr;display:inline-block">${c.phone}</span><br>
+        <button onclick="viewClientFromMap(${c.id})" style="margin-top:6px;background:#2a7fff;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:12px;cursor:pointer">عرض التفاصيل</button>
+      </div>`
+    });
+    marker.addListener('click', () => infoWindow.open(gMap, marker));
+  });
+  gMap.addListener('click', e => {
+    const lat = e.latLng.lat().toFixed(6);
+    const lng = e.latLng.lng().toFixed(6);
+    document.getElementById('f-lat').value = lat;
+    document.getElementById('f-lng').value = lng;
+    openAddModal();
+  });
 }
 
-function updateDistricts() {
-  const city = document.getElementById('filter-city').value;
-  const sel = document.getElementById('filter-district');
-  sel.innerHTML = '<option value="">كل الأحياء</option>';
-  if (city && DISTRICTS[city]) {
-    DISTRICTS[city].forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
-  }
-  filterTable();
+function viewClientFromMap(id) { viewClient(id); }
+
+function switchTab(tab) {
+  document.getElementById('tab-btn-table').classList.toggle('active', tab === 'table');
+  document.getElementById('tab-btn-map').classList.toggle('active', tab === 'map');
+  document.getElementById('tab-table').style.display = tab === 'table' ? '' : 'none';
+  document.getElementById('tab-map').style.display = tab === 'map' ? '' : 'none';
+  if (tab === 'map') setTimeout(initGoogleMap, 150);
 }
 
-function updateModalDistricts() {
-  const city = document.getElementById('f-city').value;
-  const sel = document.getElementById('f-district');
-  sel.innerHTML = '<option value="">اختر الحي</option>';
-  if (city && DISTRICTS[city]) {
-    DISTRICTS[city].forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
-  }
-}
-
-function copyPhoneToWhatsapp() {
-  document.getElementById('f-whatsapp').value = document.getElementById('f-phone').value;
-  document.getElementById('f-code-whatsapp').value = document.getElementById('f-code-phone').value;
-}
-
-function extractCoordsFromUrl(url) {
+function extractCoords(url) {
   const m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (m) {
-    document.getElementById('f-lat').value = m[1];
-    document.getElementById('f-lng').value = m[2];
-  }
-  const btn = document.getElementById('open-maps-btn');
-  btn.href = url || '#';
+  if (m) { document.getElementById('f-lat').value = m[1]; document.getElementById('f-lng').value = m[2]; }
+  document.getElementById('open-maps-btn').href = url || '#';
 }
 
 function openAddModal() {
@@ -816,21 +549,16 @@ function editClient(id) {
   document.getElementById('f-code').value = c.code;
   document.getElementById('f-name-ar').value = c.nameAr;
   document.getElementById('f-name-en').value = c.nameEn;
-  document.getElementById('f-type').value = c.type;
   document.getElementById('f-contact').value = c.contact;
   document.getElementById('f-phone').value = c.phone;
-  document.getElementById('f-whatsapp').value = c.whatsapp;
   document.getElementById('f-email').value = c.email;
   document.getElementById('f-city').value = c.city;
-  updateModalDistricts();
   document.getElementById('f-district').value = c.district;
   document.getElementById('f-building').value = c.building;
   document.getElementById('f-address').value = c.address;
   document.getElementById('f-lat').value = c.lat;
   document.getElementById('f-lng').value = c.lng;
   document.getElementById('f-elevators').value = c.elevators;
-  document.getElementById('f-contract-status').value = c.contractStatus;
-  document.getElementById('f-client-status').value = c.clientStatus;
   document.getElementById('f-notes').value = c.notes;
   document.getElementById('modal-add').classList.add('open');
 }
@@ -838,8 +566,8 @@ function editClient(id) {
 function viewClient(id) {
   const c = SAMPLE_CLIENTS.find(x => x.id === id);
   if (!c) return;
-  document.getElementById('view-title').textContent = c.nameAr;
   const mapsUrl = `https://www.google.com/maps?q=${c.lat},${c.lng}`;
+  document.getElementById('view-title').textContent = c.nameAr;
   document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
       <div class="view-item"><div class="view-label">كود العميل</div><div class="view-val" style="font-family:var(--font-en)">${c.code}</div></div>
@@ -849,75 +577,38 @@ function viewClient(id) {
       <div class="view-item"><div class="view-label">المسؤول</div><div class="view-val">${c.contact}</div></div>
       <div class="view-item"><div class="view-label">عدد المصاعد</div><div class="view-val">${c.elevators}</div></div>
       <div class="view-item"><div class="view-label">الهاتف</div><div class="view-val" style="direction:ltr;font-family:var(--font-en)">${c.phone}</div></div>
-      <div class="view-item"><div class="view-label">واتساب</div><div class="view-val" style="direction:ltr;font-family:var(--font-en)">${c.whatsapp}</div></div>
-      <div class="view-item view-full"><div class="view-label">البريد الإلكتروني</div><div class="view-val" style="direction:ltr">${c.email}</div></div>
+      <div class="view-item"><div class="view-label">البريد</div><div class="view-val" style="direction:ltr">${c.email}</div></div>
       <div class="view-item"><div class="view-label">المدينة</div><div class="view-val">${c.city}</div></div>
       <div class="view-item"><div class="view-label">الحي</div><div class="view-val">${c.district}</div></div>
       <div class="view-item view-full"><div class="view-label">العنوان</div><div class="view-val">${c.address}</div></div>
-      <div class="view-item"><div class="view-label">حالة العقد</div><div class="view-val">${c.contractStatus}</div></div>
-      <div class="view-item"><div class="view-label">حالة العميل</div><div class="view-val">${c.clientStatus}</div></div>
       <div class="view-item view-full">
-        <div class="view-label">الموقع على الخريطة</div>
-        <div class="view-val" style="direction:ltr;font-size:12px">${c.lat}, ${c.lng}</div>
-        <a href="${mapsUrl}" target="_blank" class="btn btn-secondary btn-sm" style="margin-top:8px;display:inline-flex">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
-          فتح في Google Maps
-        </a>
+        <div class="view-label">الموقع</div>
+        <div class="view-val" style="direction:ltr;font-family:var(--font-en);font-size:12px">${c.lat}, ${c.lng}</div>
+        <a href="${mapsUrl}" target="_blank" class="btn btn-secondary btn-sm" style="margin-top:8px;display:inline-flex">فتح في Google Maps</a>
       </div>
-      ${c.notes ? `<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${c.notes}</div></div>` : ''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
 }
 
-function deleteClient(id) {
-  currentDeleteId = id;
-  document.getElementById('modal-delete').classList.add('open');
-}
-
+function deleteClient(id) { currentDeleteId = id; document.getElementById('modal-delete').classList.add('open'); }
 function confirmDelete() {
   const idx = SAMPLE_CLIENTS.findIndex(x => x.id === currentDeleteId);
   if (idx !== -1) SAMPLE_CLIENTS.splice(idx, 1);
   closeModal('modal-delete');
   filterTable();
 }
-
-function saveClient() {
-  closeModal('modal-add');
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-
-function switchTab(tab, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('tab-table').style.display = tab === 'table' ? '' : 'none';
-  document.getElementById('tab-map').style.display = tab === 'map' ? '' : 'none';
-}
-
-function exportExcel() {
-  alert('سيتم تصدير بيانات العملاء إلى Excel');
-}
-
+function saveClient() { closeModal('modal-add'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function setLang(l) {
   document.documentElement.setAttribute('lang', l);
   document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
   document.getElementById('btn-ar').classList.toggle('active', l === 'ar');
   document.getElementById('btn-en').classList.toggle('active', l === 'en');
 }
-
 function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-
-document.addEventListener('click', e => {
-  if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) {
-    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
-  }
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
-});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
+document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
 
 const now = new Date();
 const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -925,7 +616,6 @@ const months = ['يناير','فبراير','مارس','أبريل','مايو','
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
 renderTable(SAMPLE_CLIENTS);
-renderMapClients();
 </script>
 </body>
 </html>
