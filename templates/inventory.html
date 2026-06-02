@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — الأصناف</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+html[dir="ltr"]{font-family:var(--font-en)}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:900px;height:200px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.sidebar-nav::-webkit-scrollbar{width:3px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
+.nav-item.active::before{content:'';position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:3px}
+html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
+.sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
+.sidebar-user-role{font-size:11px;color:var(--text3)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:90}
+.header-title{font-size:15px;font-weight:500;color:var(--text1)}
+.header-title span{color:var(--text3);font-weight:400;font-size:13px;margin-right:6px}
+.header-spacer{flex:1}
+.header-actions{display:flex;align-items:center;gap:8px}
+.lang-toggle{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.lang-opt{padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:var(--trans);color:var(--text3);border:none;background:none}
+.lang-opt.active{background:var(--accent);color:#fff}
+.header-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;cursor:pointer;border:2px solid var(--border2)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.hamburger svg{width:20px;height:20px}
+.content{flex:1;padding:24px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
+.btn-warning{background:rgba(224,144,48,.15);color:var(--warning);border:1px solid rgba(224,144,48,.3)}
+.btn-warning:hover{background:rgba(224,144,48,.25)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.stat-label{font-size:11px;color:var(--text3);margin-bottom:6px}
+.stat-value{font-size:20px;font-weight:600;color:var(--text1);font-family:var(--font-en)}
+.stat-value.green{color:var(--success)}
+.stat-value.gold{color:var(--gold)}
+.stat-value.red{color:var(--danger)}
+.stat-value.blue{color:var(--accent)}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:3px}
+/* FILTERS */
+.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end}
+.filter-group{display:flex;flex-direction:column;gap:5px}
+.filter-label{font-size:11px;color:var(--text3);font-weight:500}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
+.search-input{width:100%;padding:8px 36px 8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar)}
+.search-input:focus{border-color:var(--border2)}
+.search-input::placeholder{color:var(--text3)}
+.filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;cursor:pointer;transition:var(--trans);font-family:var(--font-ar)}
+.filter-select:focus{border-color:var(--border2)}
+/* TABLE */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap;letter-spacing:.04em}
+tbody tr{border-bottom:1px solid rgba(100,160,255,.05);transition:var(--trans)}
+tbody tr:hover{background:var(--bg3)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
+.td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:600}
+.td-name{color:var(--text1);font-weight:500}
+.td-num{font-family:var(--font-en);font-weight:600}
+.td-actions{display:flex;gap:6px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-green{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-gold{background:rgba(200,160,85,.12);color:var(--gold)}
+.badge-red{background:rgba(224,72,72,.1);color:var(--danger)}
+.badge-blue{background:rgba(42,127,255,.12);color:var(--accent)}
+.badge-gray{background:rgba(138,155,184,.1);color:var(--text2)}
+/* stock level indicator */
+.stock-bar{display:flex;align-items:center;gap:6px}
+.stock-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stock-dot.ok{background:var(--success)}
+.stock-dot.low{background:var(--warning)}
+.stock-dot.out{background:var(--danger)}
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
+.table-info{font-size:12px;color:var(--text3)}
+.pagination{display:flex;gap:4px}
+.page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:620px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:600;color:var(--text1)}
+.modal-close{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.modal-close:hover{background:rgba(224,72,72,.15);color:var(--danger)}
+.modal-close svg{width:14px;height:14px}
+.modal-body{flex:1;overflow-y:auto;padding:22px}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field label span{color:var(--danger)}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;width:100%}
+.field input:focus,.field select:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.field input::placeholder{color:var(--text3)}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  .sidebar.open{right:0}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .form-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore">
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">الرئيسية</div>
+    <a class="nav-item" href="/dashboard">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+      لوحة التحكم
+    </a>
+    <div class="nav-section">إدارة البيانات</div>
+    <a class="nav-item" href="/clients">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg>
+      العملاء
+    </a>
+    <a class="nav-item" href="/elevators">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><line x1="7" y1="7" x2="9" y2="7"/><circle cx="8" cy="11" r="1"/></svg>
+      المصاعد
+    </a>
+    <a class="nav-item" href="/contracts">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg>
+      العقود
+    </a>
+    <a class="nav-item" href="/technicians">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg>
+      الفنيين
+    </a>
+    <div class="nav-section">العمليات</div>
+    <a class="nav-item" href="/maintenance-visits">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>
+      زيارات الصيانة
+    </a>
+    <a class="nav-item" href="/faults">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
+      الأعطال
+    </a>
+    <div class="nav-section">المالية</div>
+    <a class="nav-item" href="/revenues">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1v14M11 3.5H6.5a2.5 2.5 0 000 5h3a2.5 2.5 0 010 5H4.5"/></svg>
+      الإيرادات
+    </a>
+    <a class="nav-item" href="/expenses">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 8V14H3V8"/><path d="M14.5 4.5H1.5v3.5h13V4.5z"/><path d="M8 14.5V4.5M8 4.5H5.5a1.5 1.5 0 010-3C7 1.5 8 4.5 8 4.5zM8 4.5h2.5a1.5 1.5 0 000-3C9 1.5 8 4.5 8 4.5z"/></svg>
+      المصروفات
+    </a>
+    <a class="nav-item" href="/invoices">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>
+      الفواتير
+    </a>
+    <div class="nav-section">المخزن</div>
+    <a class="nav-item active" href="/inventory">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 10.5V5.5a1 1 0 00-.5-.87l-5-2.88a1 1 0 00-1 0L2.5 4.63a1 1 0 00-.5.87v5a1 1 0 00.5.87l5 2.88a1 1 0 001 0l5-2.88a1 1 0 00.5-.87z"/><path d="M2.27 4.37L8 7.5l5.73-3.13M8 14.05V7.5"/></svg>
+      الأصناف
+    </a>
+    <a class="nav-item" href="/stock-movements">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M11 1l3 3-3 3"/><path d="M2 7V6a3 3 0 013-3h9M5 15l-3-3 3-3"/><path d="M14 9v1a3 3 0 01-3 3H2"/></svg>
+      حركة المخزن
+    </a>
+    <a class="nav-item" href="/parts-billing">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14.5S13 12 13 7V3.5L8 1.5 3 3.5V7c0 5 5 7.5 5 7.5z"/></svg>
+      بيان القطع
+    </a>
+    <div class="nav-section">التقارير</div>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg>
+      الإعدادات
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">م</div>
+      <div>
+        <div class="sidebar-user-name">محمد القواشي</div>
+        <div class="sidebar-user-role">مدير النظام</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="header">
+    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
+    <div class="header-title"><span id="h-date"></span> الأصناف</div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <div class="lang-toggle">
+        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
+        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
+      </div>
+      <div class="header-avatar">م</div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <div class="page-header">
+      <div class="page-title">الأصناف <span id="inv-count">0 صنف</span></div>
+      <div class="page-actions">
+        <button class="btn btn-warning btn-sm" onclick="filterLow()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1v8M4 6l3 3 3-3"/><path d="M1 11h12"/></svg>
+          تحتاج طلب (<span id="low-count">0</span>)
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+          تصدير
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+          إضافة صنف
+        </button>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">إجمالي الأصناف</div>
+        <div class="stat-value blue" id="s-total">0</div>
+        <div class="stat-sub">قطع غيار ومستهلكات</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">قيمة المخزون</div>
+        <div class="stat-value green" id="s-value">0</div>
+        <div class="stat-sub">ر.س إجمالي</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">تحتاج طلب ⚠️</div>
+        <div class="stat-value red" id="s-low">0</div>
+        <div class="stat-sub">صنف تحت الحد الأدنى</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">متوفر بكفاية</div>
+        <div class="stat-value gold" id="s-ok">0</div>
+        <div class="stat-sub">صنف كافي</div>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+        <input class="search-input" type="text" id="f-search" placeholder="بحث بالاسم أو الكود..." oninput="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">التصنيف</div>
+        <select class="filter-select" id="f-cat" onchange="applyFilters()">
+          <option value="">الكل</option>
+          <option>مستهلكات</option>
+          <option>قطع غيار</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">حالة المخزون</div>
+        <select class="filter-select" id="f-stock" onchange="applyFilters()">
+          <option value="">الكل</option>
+          <option value="low">تحتاج طلب</option>
+          <option value="ok">كافي</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="clearFilters()" style="align-self:flex-end">مسح</button>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>الكود</th>
+              <th>اسم الصنف</th>
+              <th>التصنيف</th>
+              <th>الرصيد الحالي</th>
+              <th>الحد الأدنى</th>
+              <th>سعر الشراء</th>
+              <th>قيمة المخزون</th>
+              <th>المورد</th>
+              <th>حالة الطلب</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="inv-tbody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span class="table-info" id="page-info"></span>
+        <div class="pagination" id="page-btns"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title" id="modal-title">إضافة صنف جديد</span>
+      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>كود الصنف <span>*</span></label>
+          <input id="m-code" placeholder="#XXX">
+        </div>
+        <div class="field">
+          <label>اسم الصنف <span>*</span></label>
+          <input id="m-name" placeholder="اسم الصنف">
+        </div>
+        <div class="field">
+          <label>التصنيف</label>
+          <select id="m-cat">
+            <option>مستهلكات</option>
+            <option>قطع غيار</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>الوحدة</label>
+          <input id="m-unit" placeholder="قطعة / متر / لتر">
+        </div>
+        <div class="field">
+          <label>الرصيد الحالي</label>
+          <input type="number" id="m-balance" placeholder="0">
+        </div>
+        <div class="field">
+          <label>الحد الأدنى</label>
+          <input type="number" id="m-min" placeholder="1">
+        </div>
+        <div class="field">
+          <label>سعر الشراء (ر.س)</label>
+          <input type="number" id="m-price" placeholder="0.00" step="0.01">
+        </div>
+        <div class="field">
+          <label>موقع التخزين</label>
+          <input id="m-location" placeholder="رف A1">
+        </div>
+        <div class="field form-full">
+          <label>المورد الأساسي</label>
+          <input id="m-supplier" placeholder="اسم المورد">
+        </div>
+        <div class="field form-full">
+          <label>ملاحظات</label>
+          <input id="m-notes" placeholder="ملاحظات إضافية">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveRecord()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let items=[
+  {id:1,code:'#001',name:'زيت',cat:'مستهلكات',unit:'قطعة',balance:10,min:10,price:5.21,location:'رف',supplier:'',notes:''},
+  {id:2,code:'#002',name:'WD-40',cat:'مستهلكات',unit:'قطعة',balance:13,min:5,price:13.96,location:'رف',supplier:'',notes:''},
+  {id:3,code:'#003',name:'جونتي',cat:'مستهلكات',unit:'قطعة',balance:23,min:5,price:1.51,location:'رف',supplier:'',notes:''},
+  {id:4,code:'#004',name:'بخاخ منظف',cat:'مستهلكات',unit:'قطعة',balance:0,min:2,price:3.83,location:'رف',supplier:'',notes:''},
+  {id:5,code:'#012',name:'جركن منظف',cat:'مستهلكات',unit:'قطعة',balance:2,min:1,price:5.75,location:'رف',supplier:'',notes:''},
+  {id:6,code:'#005',name:'كالون',cat:'قطع غيار',unit:'قطعة',balance:5,min:2,price:0,location:'رف',supplier:'',notes:''},
+  {id:7,code:'#006',name:'دفاش (طلمبة)',cat:'قطع غيار',unit:'قطعة',balance:7,min:2,price:0,location:'رف',supplier:'',notes:''},
+  {id:8,code:'#007',name:'حشو كرسي إيطالي 9 ملي',cat:'قطع غيار',unit:'قطعة',balance:7,min:6,price:0,location:'رف',supplier:'',notes:''},
+  {id:9,code:'#008',name:'كرسي تقل إيطالي 5 ملي',cat:'قطع غيار',unit:'قطعة',balance:14,min:6,price:0,location:'رف',supplier:'',notes:''},
+  {id:10,code:'#009',name:'إنتركوم كوري',cat:'قطع غيار',unit:'قطعة',balance:1,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:11,code:'#010',name:'بخاخ CRC',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:12,code:'#011',name:'بطارية 9 أمبير',cat:'قطع غيار',unit:'قطعة',balance:0,min:8,price:0,location:'رف',supplier:'',notes:''},
+  {id:13,code:'#013',name:'راكتي فير',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:14,code:'#014',name:'فازراليه حماية',cat:'قطع غيار',unit:'قطعة',balance:3,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:15,code:'#015',name:'كشاف LED مقاس 7 أبيض',cat:'قطع غيار',unit:'قطعة',balance:41,min:5,price:0,location:'رف',supplier:'',notes:''},
+  {id:16,code:'#016',name:'لمبة قلم LED 60 سم',cat:'قطع غيار',unit:'قطعة',balance:0,min:5,price:0,location:'رف',supplier:'',notes:''},
+  {id:17,code:'#017',name:'مفتاح 8 ملي أتوماتك',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:18,code:'#018',name:'جرس صيني',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:19,code:'#019',name:'شوكة خارجية',cat:'قطع غيار',unit:'قطعة',balance:0,min:2,price:0,location:'رف',supplier:'',notes:''},
+  {id:20,code:'#020',name:'طلب خارجي مع مبين',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:21,code:'#021',name:'طلب داخلي أكتل 5 وقفة',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:22,code:'#022',name:'مزيتة هندي ماس',cat:'قطع غيار',unit:'قطعة',balance:9,min:2,price:0,location:'رف',supplier:'',notes:''},
+  {id:23,code:'#023',name:'باور سبلاي 24 فولت',cat:'قطع غيار',unit:'قطعة',balance:1,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:24,code:'#024',name:'سيليكون شفاف',cat:'قطع غيار',unit:'قطعة',balance:0,min:2,price:0,location:'رف',supplier:'',notes:''},
+  {id:25,code:'#025',name:'قواعد LED أبيض 30 واط صغير',cat:'قطع غيار',unit:'قطعة',balance:0,min:2,price:0,location:'رف',supplier:'',notes:''},
+  {id:26,code:'#026',name:'LED زينة 12 ملي خطين أبيض',cat:'قطع غيار',unit:'قطعة',balance:20,min:2,price:0,location:'رف',supplier:'',notes:''},
+  {id:27,code:'#027',name:'توصيلة LED زينة',cat:'قطع غيار',unit:'قطعة',balance:6,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:28,code:'#028',name:'كنتكتر 6 ملي',cat:'قطع غيار',unit:'قطعة',balance:1,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:29,code:'#029',name:'كنتكتر 16 ملي',cat:'قطع غيار',unit:'قطعة',balance:6,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:30,code:'#030',name:'كنتكتر 40 أمبير',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:31,code:'#031',name:'كنتكتر 9 أمبير',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:32,code:'#032',name:'ريلية',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:33,code:'#033',name:'شوكة باب داخلي فرماتير إسباني',cat:'قطع غيار',unit:'قطعة',balance:1,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:34,code:'#034',name:'حساس باب (فوتوسيل)',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+  {id:35,code:'#035',name:'طلب داخلي أكتل 4 وقفة',cat:'قطع غيار',unit:'قطعة',balance:0,min:1,price:0,location:'رف',supplier:'',notes:''},
+];
+
+let filtered=[...items];
+let page=1;
+const PER=20;
+let editId=null;
+let nextId=36;
+
+function isLow(r){return r.balance<=r.min;}
+function stockStatus(r){
+  if(r.balance===0) return {cls:'out',label:'نفد'};
+  if(isLow(r)) return {cls:'low',label:'اطلب ⚠️'};
+  return {cls:'ok',label:'✅ كافي'};
+}
+function fmt(n){return Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function updateStats(){
+  const all=items;
+  document.getElementById('s-total').textContent=all.length;
+  const val=all.reduce((s,r)=>s+(r.balance*r.price),0);
+  document.getElementById('s-value').textContent=fmt(val)+' ر.س';
+  const low=all.filter(r=>isLow(r)).length;
+  document.getElementById('s-low').textContent=low;
+  document.getElementById('s-ok').textContent=all.length-low;
+  document.getElementById('low-count').textContent=low;
+}
+
+function renderTable(){
+  const total=filtered.length;
+  const pages=Math.max(1,Math.ceil(total/PER));
+  if(page>pages)page=1;
+  const s=(page-1)*PER;
+  const slice=filtered.slice(s,s+PER);
+  document.getElementById('inv-count').textContent=total+' صنف';
+  document.getElementById('page-info').textContent=`عرض ${s+1}–${Math.min(s+PER,total)} من ${total}`;
+  const tbody=document.getElementById('inv-tbody');
+  if(!slice.length){
+    tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">لا توجد بيانات</td></tr>`;
+  } else {
+    tbody.innerHTML=slice.map(r=>{
+      const st=stockStatus(r);
+      const balColor=r.balance===0?'style="color:var(--danger);font-weight:700"':isLow(r)?'style="color:var(--warning);font-weight:700"':'style="color:var(--success);font-weight:600"';
+      return`<tr>
+        <td class="td-code">${r.code}</td>
+        <td class="td-name">${r.name}</td>
+        <td><span class="badge ${r.cat==='مستهلكات'?'badge-blue':'badge-gold'}">${r.cat}</span></td>
+        <td><span class="td-num" ${balColor}>${r.balance}</span></td>
+        <td><span class="td-num" style="color:var(--text3)">${r.min}</span></td>
+        <td class="td-num">${r.price>0?fmt(r.price)+' ر.س':'—'}</td>
+        <td class="td-num">${r.price>0?fmt(r.balance*r.price)+' ر.س':'—'}</td>
+        <td style="color:var(--text3);font-size:12px">${r.supplier||'—'}</td>
+        <td><div class="stock-bar"><div class="stock-dot ${st.cls}"></div><span style="font-size:12px">${st.label}</span></div></td>
+        <td><div class="td-actions">
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="editRecord(${r.id})" title="تعديل"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M10 2l2 2-7 7H3v-2l7-7z"/></svg></button>
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="deleteRecord(${r.id})" title="حذف" style="color:var(--danger)"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><polyline points="2 4 12 4"/><path d="M11 4l-.75 8H3.75L3 4"/><path d="M5.5 4V2.5h3V4"/></svg></button>
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+  const pb=document.getElementById('page-btns');
+  let h=`<button class="page-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>›</button>`;
+  for(let i=1;i<=pages;i++) h+=`<button class="page-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  h+=`<button class="page-btn" onclick="goPage(${page+1})" ${page===pages?'disabled':''}>‹</button>`;
+  pb.innerHTML=h;
+}
+
+function goPage(p){const pages=Math.ceil(filtered.length/PER);if(p<1||p>pages)return;page=p;renderTable();}
+
+function applyFilters(){
+  const s=document.getElementById('f-search').value.toLowerCase();
+  const c=document.getElementById('f-cat').value;
+  const st=document.getElementById('f-stock').value;
+  filtered=items.filter(r=>{
+    if(s&&!r.name.toLowerCase().includes(s)&&!r.code.toLowerCase().includes(s))return false;
+    if(c&&r.cat.trim()!==c.trim())return false;
+    if(st==='low'&&!isLow(r))return false;
+    if(st==='ok'&&isLow(r))return false;
+    return true;
+  });
+  page=1;renderTable();
+}
+
+function filterLow(){
+  document.getElementById('f-stock').value='low';
+  applyFilters();
+}
+
+function clearFilters(){
+  ['f-search','f-cat','f-stock'].forEach(id=>{const e=document.getElementById(id);if(e.tagName==='SELECT')e.selectedIndex=0;else e.value='';});
+  filtered=[...items];page=1;renderTable();
+}
+
+function openModal(id=null){
+  editId=id;
+  document.getElementById('modal-title').textContent=id?'تعديل الصنف':'إضافة صنف جديد';
+  if(id){
+    const r=items.find(x=>x.id===id);
+    document.getElementById('m-code').value=r.code;
+    document.getElementById('m-name').value=r.name;
+    document.getElementById('m-cat').value=r.cat;
+    document.getElementById('m-unit').value=r.unit;
+    document.getElementById('m-balance').value=r.balance;
+    document.getElementById('m-min').value=r.min;
+    document.getElementById('m-price').value=r.price;
+    document.getElementById('m-location').value=r.location;
+    document.getElementById('m-supplier').value=r.supplier;
+    document.getElementById('m-notes').value=r.notes;
+  } else {
+    ['m-code','m-name','m-unit','m-balance','m-min','m-price','m-location','m-supplier','m-notes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('m-cat').selectedIndex=0;
+  }
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+
+function saveRecord(){
+  const code=document.getElementById('m-code').value.trim();
+  const name=document.getElementById('m-name').value.trim();
+  if(!code||!name){alert('يرجى ملء الحقول المطلوبة');return;}
+  const rec={code,name,cat:document.getElementById('m-cat').value,
+    unit:document.getElementById('m-unit').value,
+    balance:parseFloat(document.getElementById('m-balance').value)||0,
+    min:parseFloat(document.getElementById('m-min').value)||1,
+    price:parseFloat(document.getElementById('m-price').value)||0,
+    location:document.getElementById('m-location').value,
+    supplier:document.getElementById('m-supplier').value,
+    notes:document.getElementById('m-notes').value};
+  if(editId){const i=items.findIndex(r=>r.id===editId);items[i]={...items[i],...rec};}
+  else{items.unshift({id:++nextId,...rec});}
+  filtered=[...items];applyFilters();updateStats();closeModal();
+}
+
+function editRecord(id){openModal(id);}
+function deleteRecord(id){
+  if(!confirm('هل أنت متأكد من الحذف؟'))return;
+  items=items.filter(r=>r.id!==id);filtered=filtered.filter(r=>r.id!==id);
+  renderTable();updateStats();
+}
+
+function exportCSV(){
+  const rows=[['الكود','الاسم','التصنيف','الرصيد','الحد الأدنى','سعر الشراء','قيمة المخزون','المورد','حالة الطلب']];
+  filtered.forEach(r=>rows.push([r.code,r.name,r.cat,r.balance,r.min,r.price,(r.balance*r.price).toFixed(2),r.supplier,isLow(r)?'اطلب':'كافي']));
+  const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='inventory.csv';a.click();
+}
+
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
+function setLang(l){
+  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
+  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
+  document.getElementById('btn-en').classList.toggle('active',l==='en');
+}
+
+const now=new Date();
+const days=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent=`${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} —`;
+
+updateStats();renderTable();
+</script>
+</body>
+</html>

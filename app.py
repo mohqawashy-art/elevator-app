@@ -65,5 +65,33 @@ def visit_report(visit_id):
 def faults():
     return render_template('faults.html')
 
+@app.route('/fault-report/<fault_id>')
+def fault_report(fault_id):
+    return render_template('fault-report.html', fault_id=fault_id)
+
+@app.route('/revenues')
+def revenues():
+    return render_template('revenues.html')
+
+@app.route('/expenses')
+def expenses():
+    return render_template('expenses.html')
+
+@app.route('/inventory')
+def inventory():
+    return render_template('inventory.html')
+
+@app.route('/stock-movements')
+def stock_movements():
+    return render_template('stock-movements.html')
+
+@app.route('/parts-billing')
+def parts_billing():
+    return render_template('parts-billing.html')
+
+@app.route('/invoices')
+def invoices():
+    return render_template('invoices.html')
+
 if __name__ == '__main__':
     app.run(debug=True)

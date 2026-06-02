@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — الفواتير وسندات القبض</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+html[dir="ltr"]{font-family:var(--font-en)}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:900px;height:200px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.sidebar-nav::-webkit-scrollbar{width:3px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
+.nav-item.active::before{content:'';position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:3px}
+html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
+.sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
+.sidebar-user-role{font-size:11px;color:var(--text3)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:90}
+.header-title{font-size:15px;font-weight:500;color:var(--text1)}
+.header-spacer{flex:1}
+.header-actions{display:flex;align-items:center;gap:8px}
+.lang-toggle{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.lang-opt{padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:var(--trans);color:var(--text3);border:none;background:none}
+.lang-opt.active{background:var(--accent);color:#fff}
+.header-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;cursor:pointer;border:2px solid var(--border2)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.hamburger svg{width:20px;height:20px}
+.content{flex:1;padding:24px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.stat-label{font-size:11px;color:var(--text3);margin-bottom:6px}
+.stat-value{font-size:18px;font-weight:600;font-family:var(--font-en)}
+.stat-value.blue{color:var(--accent)}
+.stat-value.green{color:var(--success)}
+.stat-value.gold{color:var(--gold)}
+.stat-value.red{color:var(--danger)}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:3px}
+/* TABS */
+.doc-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:4px}
+.doc-tab{flex:1;padding:8px;text-align:center;font-size:13px;color:var(--text2);cursor:pointer;border-radius:var(--r-sm);transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px}
+.doc-tab svg{width:14px;height:14px}
+.doc-tab.active{background:var(--bg4);color:var(--text1)}
+.doc-tab:hover:not(.active){background:var(--bg3);color:var(--text1)}
+/* FILTERS */
+.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end}
+.filter-group{display:flex;flex-direction:column;gap:5px}
+.filter-label{font-size:11px;color:var(--text3);font-weight:500}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
+.search-input{width:100%;padding:8px 36px 8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar)}
+.search-input:focus{border-color:var(--border2)}
+.search-input::placeholder{color:var(--text3)}
+.filter-select,.filter-input{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;cursor:pointer;transition:var(--trans);font-family:var(--font-ar)}
+.filter-select:focus,.filter-input:focus{border-color:var(--border2)}
+/* TABLE */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap;letter-spacing:.04em}
+tbody tr{border-bottom:1px solid rgba(100,160,255,.05);transition:var(--trans)}
+tbody tr:hover{background:var(--bg3)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
+.td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:600}
+.td-name{color:var(--text1);font-weight:500}
+.td-num{font-family:var(--font-en);font-weight:600}
+.td-actions{display:flex;gap:4px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-green{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-gold{background:rgba(200,160,85,.12);color:var(--gold)}
+.badge-red{background:rgba(224,72,72,.1);color:var(--danger)}
+.badge-blue{background:rgba(42,127,255,.12);color:var(--accent)}
+.badge-purple{background:rgba(150,100,255,.12);color:#9664ff}
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
+.table-info{font-size:12px;color:var(--text3)}
+.pagination{display:flex;gap:4px}
+.page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:640px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:600;color:var(--text1)}
+.modal-close{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.modal-close:hover{background:rgba(224,72,72,.15);color:var(--danger)}
+.modal-close svg{width:14px;height:14px}
+.modal-body{flex:1;overflow-y:auto;padding:22px}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field label span{color:var(--danger)}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field textarea{resize:vertical;min-height:70px}
+.doc-type-toggle{display:flex;gap:8px;margin-bottom:16px}
+.doc-type-btn{flex:1;padding:10px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:var(--font-ar);font-size:13px;font-weight:500;transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px}
+.doc-type-btn.active{border-color:var(--accent);background:rgba(42,127,255,.1);color:var(--accent)}
+/* PRINT */
+@media print{
+  .sidebar,.header,.page-header,.filters-bar,.doc-tabs,.table-footer,
+  .td-actions,.page-actions,.modal-overlay{display:none!important}
+  .main{margin:0}
+  .content{padding:0}
+}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  .sidebar.open{right:0}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .form-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore">
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">الرئيسية</div>
+    <a class="nav-item" href="/dashboard"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>لوحة التحكم</a>
+    <div class="nav-section">إدارة البيانات</div>
+    <a class="nav-item" href="/clients"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg>العملاء</a>
+    <a class="nav-item" href="/elevators"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><line x1="7" y1="7" x2="9" y2="7"/><circle cx="8" cy="11" r="1"/></svg>المصاعد</a>
+    <a class="nav-item" href="/contracts"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg>العقود</a>
+    <a class="nav-item" href="/technicians"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg>الفنيين</a>
+    <div class="nav-section">العمليات</div>
+    <a class="nav-item" href="/maintenance-visits"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>زيارات الصيانة</a>
+    <a class="nav-item" href="/faults"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>الأعطال</a>
+    <div class="nav-section">المالية</div>
+    <a class="nav-item" href="/revenues"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1v14M11 3.5H6.5a2.5 2.5 0 000 5h3a2.5 2.5 0 010 5H4.5"/></svg>الإيرادات</a>
+    <a class="nav-item" href="/expenses"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 8V14H3V8"/><path d="M14.5 4.5H1.5v3.5h13V4.5z"/><path d="M8 14.5V4.5M8 4.5H5.5a1.5 1.5 0 010-3C7 1.5 8 4.5 8 4.5zM8 4.5h2.5a1.5 1.5 0 000-3C9 1.5 8 4.5 8 4.5z"/></svg>المصروفات</a>
+    <a class="nav-item active" href="/invoices"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>الفواتير</a>
+    <div class="nav-section">المخزن</div>
+    <a class="nav-item" href="/inventory"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 10.5V5.5a1 1 0 00-.5-.87l-5-2.88a1 1 0 00-1 0L2.5 4.63a1 1 0 00-.5.87v5a1 1 0 00.5.87l5 2.88a1 1 0 001 0l5-2.88a1 1 0 00.5-.87z"/><path d="M2.27 4.37L8 7.5l5.73-3.13M8 14.05V7.5"/></svg>الأصناف</a>
+    <a class="nav-item" href="/stock-movements"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M11 1l3 3-3 3"/><path d="M2 7V6a3 3 0 013-3h9M5 15l-3-3 3-3"/><path d="M14 9v1a3 3 0 01-3 3H2"/></svg>حركة المخزن</a>
+    <a class="nav-item" href="/parts-billing"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14.5S13 12 13 7V3.5L8 1.5 3 3.5V7c0 5 5 7.5 5 7.5z"/></svg>بيان القطع</a>
+    <div class="nav-section">التقارير</div>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg>الإعدادات</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">م</div>
+      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="header">
+    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
+    <div class="header-title"><span id="h-date"></span> الفواتير وسندات القبض</div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <div class="lang-toggle">
+        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
+        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
+      </div>
+      <div class="header-avatar">م</div>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">الفواتير وسندات القبض <span id="docs-count">0 سجل</span></div>
+      <div class="page-actions">
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+          تصدير
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+          إضافة مستند
+        </button>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">إجمالي الفواتير</div>
+        <div class="stat-value blue" id="s-inv">0</div>
+        <div class="stat-sub" id="s-inv-sub">0 فاتورة</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">سندات القبض</div>
+        <div class="stat-value gold" id="s-rec">0</div>
+        <div class="stat-sub" id="s-rec-sub">0 سند</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">محصل ✓</div>
+        <div class="stat-value green" id="s-paid">0</div>
+        <div class="stat-sub" id="s-paid-sub">0 سجل</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">غير محصل ⏳</div>
+        <div class="stat-value red" id="s-unpaid">0</div>
+        <div class="stat-sub" id="s-unpaid-sub">0 سجل</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="doc-tabs">
+      <div class="doc-tab active" id="tab-all" onclick="switchTab('all')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="3.5" y1="5" x2="10.5" y2="5"/><line x1="3.5" y1="7.5" x2="10.5" y2="7.5"/><line x1="3.5" y1="10" x2="7" y2="10"/></svg>
+        الكل
+      </div>
+      <div class="doc-tab" id="tab-invoice" onclick="switchTab('invoice')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 1h10v12l-2-1.5L8 13l-2-1.5L4 13l-2-1.5V1z"/><line x1="4" y1="4" x2="10" y2="4"/><line x1="4" y1="6.5" x2="10" y2="6.5"/><line x1="4" y1="9" x2="7" y2="9"/></svg>
+        فواتير
+      </div>
+      <div class="doc-tab" id="tab-receipt" onclick="switchTab('receipt')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><path d="M4 7h6M7 4v6"/></svg>
+        سندات قبض
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+        <input class="search-input" type="text" id="f-search" placeholder="بحث بالعميل أو رقم المستند..." oninput="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">طريقة الدفع</div>
+        <select class="filter-select" id="f-pay" onchange="applyFilters()">
+          <option value="">الكل</option>
+          <option>كاش</option>
+          <option>تحويل</option>
+          <option>شيك</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">الحالة</div>
+        <select class="filter-select" id="f-status" onchange="applyFilters()">
+          <option value="">الكل</option>
+          <option>محصل</option>
+          <option>غير محصل</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">من</div>
+        <input class="filter-input" type="date" id="f-from" onchange="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">إلى</div>
+        <input class="filter-input" type="date" id="f-to" onchange="applyFilters()">
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="clearFilters()" style="align-self:flex-end">مسح</button>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>رقم المستند</th>
+              <th>النوع</th>
+              <th>العميل / العقد</th>
+              <th>التاريخ</th>
+              <th>البيان</th>
+              <th>المبلغ</th>
+              <th>طريقة الدفع</th>
+              <th>الحالة</th>
+              <th>ملاحظات</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="docs-tbody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span class="table-info" id="page-info"></span>
+        <div class="pagination" id="page-btns"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title" id="modal-title">إضافة مستند جديد</span>
+      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <!-- نوع المستند -->
+      <div class="doc-type-toggle">
+        <button class="doc-type-btn active" id="mt-invoice" onclick="setModalType('invoice')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><path d="M2 1h10v12l-2-1.5L8 13l-2-1.5L4 13l-2-1.5V1z"/></svg>
+          فاتورة
+        </button>
+        <button class="doc-type-btn" id="mt-receipt" onclick="setModalType('receipt')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><rect x="1" y="2" width="12" height="10" rx="1.5"/><path d="M4 7h6M7 4v6"/></svg>
+          سند قبض
+        </button>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>رقم العقد</label>
+          <input id="m-cn" placeholder="CN-XXXXX">
+        </div>
+        <div class="field">
+          <label>اسم العميل <span>*</span></label>
+          <input id="m-client" placeholder="اسم العميل">
+        </div>
+        <div class="field">
+          <label>التاريخ <span>*</span></label>
+          <input type="date" id="m-date">
+        </div>
+        <div class="field">
+          <label>المبلغ (ر.س) <span>*</span></label>
+          <input type="number" id="m-amount" placeholder="0.00" step="0.01">
+        </div>
+        <div class="field form-full">
+          <label>البيان <span>*</span></label>
+          <textarea id="m-desc" placeholder="وصف الخدمة أو القطع..."></textarea>
+        </div>
+        <div class="field">
+          <label>طريقة الدفع</label>
+          <select id="m-pay">
+            <option value="">—</option>
+            <option>كاش</option>
+            <option>تحويل</option>
+            <option>شيك</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>الحالة</label>
+          <select id="m-status">
+            <option>غير محصل</option>
+            <option>محصل</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>تاريخ السداد</label>
+          <input type="date" id="m-pay-date">
+        </div>
+        <div class="field">
+          <label>رقم الشيك / المرجع</label>
+          <input id="m-ref" placeholder="اختياري">
+        </div>
+        <div class="field form-full">
+          <label>ملاحظات</label>
+          <input id="m-notes" placeholder="ملاحظات إضافية">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveRecord()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT MODAL -->
+<div class="modal-overlay" id="print-modal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-head">
+      <span class="modal-title">اختر نوع الطباعة</span>
+      <button class="modal-close" onclick="document.getElementById('print-modal').classList.remove('open')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body" style="display:flex;gap:12px;flex-direction:column">
+      <button class="btn btn-secondary" style="justify-content:center;padding:14px" onclick="printDoc('invoice')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="16" height="16"><path d="M2 1h10v12l-2-1.5L8 13l-2-1.5L4 13l-2-1.5V1z"/></svg>
+        طباعة فاتورة
+      </button>
+      <button class="btn btn-secondary" style="justify-content:center;padding:14px" onclick="printDoc('receipt')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="16" height="16"><rect x="1" y="2" width="12" height="10" rx="1.5"/><path d="M4 7h6M7 4v6"/></svg>
+        طباعة سند قبض
+      </button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="document.getElementById('print-modal').classList.remove('open')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentTab='all';
+let modalType='invoice';
+let editId=null;
+let nextId=100;
+let printTarget=null;
+
+let docs=[
+  {id:1,type:'invoice',num:'INV-001',cn:'CN-00029',client:'محسن حسان القرشي',date:'2026-05-18',desc:'طقم مزايت',amount:150,pay:'كاش',status:'محصل',payDate:'2026-05-18',ref:'',notes:''},
+  {id:2,type:'receipt',num:'REC-001',cn:'CN-00013',client:'عادل فوزان القرشي',date:'2026-05-18',desc:'تجديد عقد صيانة',amount:2000,pay:'كاش',status:'محصل',payDate:'2026-05-18',ref:'',notes:''},
+  {id:3,type:'invoice',num:'INV-002',cn:'CN-00064',client:'محمد ناهض الرفاعي',date:'2026-05-13',desc:'سير باب داخلي',amount:150,pay:'',status:'غير محصل',payDate:'',ref:'',notes:''},
+  {id:4,type:'receipt',num:'REC-002',cn:'CN-00012',client:'فرج فوزان القرشي',date:'2026-05-18',desc:'تجديد عقد صيانة',amount:2000,pay:'كاش',status:'محصل',payDate:'2026-05-18',ref:'',notes:''},
+  {id:5,type:'invoice',num:'INV-003',cn:'CN-00011',client:'دخيل الله مستور الحربى',date:'2026-05-09',desc:'لف وتركيب ماتور مصعد',amount:1200,pay:'تحويل',status:'محصل',payDate:'2026-05-09',ref:'',notes:''},
+  {id:6,type:'receipt',num:'REC-003',cn:'CN-00078',client:'حمده اليزيدي',date:'2026-05-16',desc:'تجديد عقد صيانة',amount:2000,pay:'تحويل',status:'محصل',payDate:'2026-05-16',ref:'',notes:''},
+  {id:7,type:'invoice',num:'INV-004',cn:'CN-00058',client:'عبد المطلوب سالم المورعي',date:'2026-04-29',desc:'كرسي تقل إيطالي 5 ملي',amount:150,pay:'تحويل',status:'محصل',payDate:'2026-04-29',ref:'',notes:''},
+  {id:8,type:'receipt',num:'REC-004',cn:'CN-00123',client:'خالد احمد عالم',date:'2026-04-29',desc:'عقد صيانة جديد - دفعة أولى',amount:750,pay:'كاش',status:'محصل',payDate:'2026-04-29',ref:'',notes:''},
+  {id:9,type:'invoice',num:'INV-005',cn:'CN-00046',client:'مطر القرشي',date:'2026-03-26',desc:'كونتاكت براشوت إيطالي',amount:250,pay:'',status:'غير محصل',payDate:'',ref:'',notes:''},
+  {id:10,type:'receipt',num:'REC-005',cn:'CN-00093',client:'د/محمد ابراهيم السعيدي',date:'2026-04-29',desc:'تجديد عقد صيانة',amount:2500,pay:'كاش',status:'محصل',payDate:'2026-04-29',ref:'',notes:''},
+];
+
+let filtered=[...docs];
+let page=1;
+const PER=15;
+
+function fmt(n){return Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function updateStats(){
+  const all=docs;
+  const invs=all.filter(r=>r.type==='invoice');
+  const recs=all.filter(r=>r.type==='receipt');
+  const paid=all.filter(r=>r.status==='محصل');
+  const unpaid=all.filter(r=>r.status==='غير محصل');
+  document.getElementById('s-inv').textContent=fmt(invs.reduce((s,r)=>s+r.amount,0))+' ر.س';
+  document.getElementById('s-inv-sub').textContent=invs.length+' فاتورة';
+  document.getElementById('s-rec').textContent=fmt(recs.reduce((s,r)=>s+r.amount,0))+' ر.س';
+  document.getElementById('s-rec-sub').textContent=recs.length+' سند';
+  document.getElementById('s-paid').textContent=fmt(paid.reduce((s,r)=>s+r.amount,0))+' ر.س';
+  document.getElementById('s-paid-sub').textContent=paid.length+' سجل';
+  document.getElementById('s-unpaid').textContent=fmt(unpaid.reduce((s,r)=>s+r.amount,0))+' ر.س';
+  document.getElementById('s-unpaid-sub').textContent=unpaid.length+' سجل';
+}
+
+function renderTable(){
+  const total=filtered.length;
+  const pages=Math.max(1,Math.ceil(total/PER));
+  if(page>pages)page=1;
+  const s=(page-1)*PER;
+  const slice=filtered.slice(s,s+PER);
+  document.getElementById('docs-count').textContent=total+' سجل';
+  document.getElementById('page-info').textContent=`عرض ${s+1}–${Math.min(s+PER,total)} من ${total}`;
+  const tbody=document.getElementById('docs-tbody');
+  if(!slice.length){
+    tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">لا توجد بيانات</td></tr>`;
+    document.getElementById('page-btns').innerHTML='';return;
+  }
+  tbody.innerHTML=slice.map(r=>`
+    <tr>
+      <td class="td-code">${r.num}</td>
+      <td>${r.type==='invoice'
+        ?'<span class="badge badge-blue">فاتورة</span>'
+        :'<span class="badge badge-purple">سند قبض</span>'}</td>
+      <td>
+        <div class="td-name" style="max-width:130px;overflow:hidden;text-overflow:ellipsis">${r.client}</div>
+        <div style="font-size:11px;color:var(--text3)">${r.cn}</div>
+      </td>
+      <td style="color:var(--text2)">${r.date}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;font-size:12px">${r.desc||'—'}</td>
+      <td class="td-num" style="color:var(--success);font-weight:700">${fmt(r.amount)} ر.س</td>
+      <td>${r.pay?`<span class="badge ${r.pay==='كاش'?'badge-green':r.pay==='تحويل'?'badge-blue':'badge-gold'}">${r.pay}</span>`:'—'}</td>
+      <td>${r.status==='محصل'
+        ?'<span class="badge badge-green">✓ محصل</span>'
+        :'<span class="badge badge-gold">⏳ غير محصل</span>'}</td>
+      <td style="font-size:12px;color:var(--text3);max-width:100px;overflow:hidden;text-overflow:ellipsis">${r.notes||'—'}</td>
+      <td><div class="td-actions">
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="openPrintModal(${r.id})" title="طباعة" style="color:var(--gold)"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg></button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="editRecord(${r.id})" title="تعديل"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M10 2l2 2-7 7H3v-2l7-7z"/></svg></button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="deleteRecord(${r.id})" title="حذف" style="color:var(--danger)"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><polyline points="2 4 12 4"/><path d="M11 4l-.75 8H3.75L3 4"/><path d="M5.5 4V2.5h3V4"/></svg></button>
+      </div></td>
+    </tr>`).join('');
+  const pb=document.getElementById('page-btns');
+  let h=`<button class="page-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>›</button>`;
+  for(let i=1;i<=pages;i++) h+=`<button class="page-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  h+=`<button class="page-btn" onclick="goPage(${page+1})" ${page===pages?'disabled':''}>‹</button>`;
+  pb.innerHTML=h;
+}
+
+function goPage(p){const pages=Math.ceil(filtered.length/PER);if(p<1||p>pages)return;page=p;renderTable();}
+
+function switchTab(tab){
+  currentTab=tab;
+  ['all','invoice','receipt'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+  });
+  applyFilters();
+}
+
+function applyFilters(){
+  const s=document.getElementById('f-search').value.toLowerCase();
+  const py=document.getElementById('f-pay').value;
+  const st=document.getElementById('f-status').value;
+  const fr=document.getElementById('f-from').value;
+  const to=document.getElementById('f-to').value;
+  filtered=docs.filter(r=>{
+    if(currentTab!=='all'&&r.type!==currentTab)return false;
+    if(s&&!r.client.toLowerCase().includes(s)&&!r.num.toLowerCase().includes(s)&&!r.cn.toLowerCase().includes(s))return false;
+    if(py&&r.pay!==py)return false;
+    if(st&&r.status!==st)return false;
+    if(fr&&r.date<fr)return false;
+    if(to&&r.date>to)return false;
+    return true;
+  });
+  page=1;renderTable();
+}
+
+function clearFilters(){
+  ['f-search','f-pay','f-status','f-from','f-to'].forEach(id=>{const e=document.getElementById(id);if(e.tagName==='SELECT')e.selectedIndex=0;else e.value='';});
+  filtered=[...docs];page=1;renderTable();
+}
+
+function setModalType(t){
+  modalType=t;
+  document.getElementById('mt-invoice').classList.toggle('active',t==='invoice');
+  document.getElementById('mt-receipt').classList.toggle('active',t==='receipt');
+}
+
+function openModal(id=null){
+  editId=id;
+  document.getElementById('modal-title').textContent=id?'تعديل المستند':'إضافة مستند جديد';
+  if(id){
+    const r=docs.find(x=>x.id===id);
+    setModalType(r.type);
+    document.getElementById('m-cn').value=r.cn;
+    document.getElementById('m-client').value=r.client;
+    document.getElementById('m-date').value=r.date;
+    document.getElementById('m-amount').value=r.amount;
+    document.getElementById('m-desc').value=r.desc;
+    document.getElementById('m-pay').value=r.pay||'';
+    document.getElementById('m-status').value=r.status;
+    document.getElementById('m-pay-date').value=r.payDate||'';
+    document.getElementById('m-ref').value=r.ref||'';
+    document.getElementById('m-notes').value=r.notes||'';
+  } else {
+    setModalType('invoice');
+    ['m-cn','m-client','m-amount','m-desc','m-ref','m-notes'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('m-date').value=new Date().toISOString().split('T')[0];
+    document.getElementById('m-pay').selectedIndex=0;
+    document.getElementById('m-status').selectedIndex=0;
+    document.getElementById('m-pay-date').value='';
+  }
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+
+function saveRecord(){
+  const client=document.getElementById('m-client').value.trim();
+  const amount=parseFloat(document.getElementById('m-amount').value)||0;
+  const date=document.getElementById('m-date').value;
+  const desc=document.getElementById('m-desc').value.trim();
+  if(!client||!amount||!date||!desc){alert('يرجى ملء الحقول المطلوبة');return;}
+  const isInv=modalType==='invoice';
+  const prefix=isInv?'INV':'REC';
+  const rec={type:modalType,cn:document.getElementById('m-cn').value.trim(),
+    client,date,desc,amount,
+    pay:document.getElementById('m-pay').value,
+    status:document.getElementById('m-status').value,
+    payDate:document.getElementById('m-pay-date').value,
+    ref:document.getElementById('m-ref').value,
+    notes:document.getElementById('m-notes').value};
+  if(editId){
+    const i=docs.findIndex(r=>r.id===editId);
+    docs[i]={...docs[i],...rec};
+  } else {
+    const id=++nextId;
+    const cnt=docs.filter(r=>r.type===modalType).length+1;
+    docs.unshift({id,num:`${prefix}-${String(cnt).padStart(3,'0')}`,...rec});
+  }
+  filtered=[...docs];applyFilters();updateStats();closeModal();
+}
+
+function editRecord(id){openModal(id);}
+function deleteRecord(id){
+  if(!confirm('هل أنت متأكد من الحذف؟'))return;
+  docs=docs.filter(r=>r.id!==id);filtered=filtered.filter(r=>r.id!==id);
+  renderTable();updateStats();
+}
+
+function openPrintModal(id){
+  printTarget=id;
+  document.getElementById('print-modal').classList.add('open');
+}
+
+function printDoc(printType){
+  const r=docs.find(x=>x.id===printTarget);
+  if(!r)return;
+  document.getElementById('print-modal').classList.remove('open');
+  const win=window.open('','_blank','width=800,height:600');
+  const isReceipt=printType==='receipt';
+  win.document.write(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>${isReceipt?'سند قبض':'فاتورة'} — ${r.num}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#f5f5f5;padding:20px;color:#1a3a5c;direction:rtl}
+.doc{background:#fff;max-width:210mm;margin:0 auto;padding:20mm 18mm 16mm;border:2px solid #1a3a5c;border-radius:6px;min-height:${isReceipt?'148mm':'260mm'}}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #1a3a5c}
+.co-name{font-size:18px;font-weight:700;color:#1a3a5c}
+.co-sub{font-size:11px;color:#666;margin-top:2px}
+.doc-title{text-align:center;font-size:20px;font-weight:800;color:#1a3a5c;border-bottom:2px solid #1a3a5c;padding-bottom:4px}
+.doc-num{font-size:14px;color:#c0392b;font-weight:700;margin-top:4px;text-align:center}
+.info-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.info-box{background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;padding:10px 12px}
+.info-label{font-size:10px;color:#666;margin-bottom:3px;font-weight:600}
+.info-val{font-size:13px;font-weight:600;color:#1a3a5c}
+.desc-box{border:1px solid #1a3a5c;border-radius:4px;padding:12px 14px;margin:14px 0;min-height:60px}
+.desc-label{font-size:11px;color:#666;margin-bottom:6px;font-weight:700;border-bottom:1px solid #eee;padding-bottom:4px}
+.desc-text{font-size:13px;color:#1a3a5c;line-height:1.7;white-space:pre-wrap}
+.amount-box{display:flex;justify-content:space-between;align-items:center;background:#1a3a5c;color:#fff;padding:12px 16px;border-radius:4px;margin:14px 0}
+.amount-label{font-size:13px;font-weight:600}
+.amount-val{font-size:20px;font-weight:800}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+.sig-box{text-align:center;border-top:1px dashed #999;padding-top:8px;font-size:11px;color:#666}
+.status-badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:700;background:${r.status==='محصل'?'#d4edda':'#fff3cd'};color:${r.status==='محصل'?'#155724':'#856404'};border:1px solid ${r.status==='محصل'?'#c3e6cb':'#ffeeba'}}
+@media print{body{background:#fff;padding:0}.doc{border:none;border-radius:0;padding:15mm}}
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="header">
+    <div>
+      <div class="co-name">شركة المصاعد</div>
+      <div class="co-sub">Elevator Management Company</div>
+      <div class="co-sub" style="margin-top:4px">مكة المكرمة، المملكة العربية السعودية</div>
+    </div>
+    <div style="text-align:left">
+      <div class="doc-title">${isReceipt?'سند قبض':'فاتورة'}</div>
+      <div class="doc-num">${r.num}</div>
+      <div style="margin-top:6px"><span class="status-badge">${r.status}</span></div>
+    </div>
+  </div>
+
+  <div class="info-row">
+    <div class="info-box">
+      <div class="info-label">العميل</div>
+      <div class="info-val">${r.client}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">رقم العقد</div>
+      <div class="info-val">${r.cn||'—'}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">التاريخ</div>
+      <div class="info-val">${r.date}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">طريقة الدفع</div>
+      <div class="info-val">${r.pay||'—'}</div>
+    </div>
+    ${r.payDate?`<div class="info-box"><div class="info-label">تاريخ السداد</div><div class="info-val">${r.payDate}</div></div>`:''}
+    ${r.ref?`<div class="info-box"><div class="info-label">رقم المرجع</div><div class="info-val">${r.ref}</div></div>`:''}
+  </div>
+
+  <div class="desc-box">
+    <div class="desc-label">${isReceipt?'وذلك مقابل':'بيان الخدمات والقطع'}</div>
+    <div class="desc-text">${r.desc}</div>
+    ${r.notes?`<div style="margin-top:8px;font-size:11px;color:#888">ملاحظات: ${r.notes}</div>`:''}
+  </div>
+
+  <div class="amount-box">
+    <span class="amount-label">${isReceipt?'المبلغ المستلم':'إجمالي الفاتورة'}</span>
+    <span class="amount-val">${fmt(r.amount)} ر.س</span>
+  </div>
+
+  <div class="sigs">
+    <div class="sig-box">توقيع المستلم<br><br><br></div>
+    <div class="sig-box">توقيع المسؤول<br><br><br></div>
+  </div>
+</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+function exportCSV(){
+  const rows=[['رقم المستند','النوع','العميل','العقد','التاريخ','البيان','المبلغ','طريقة الدفع','الحالة','ملاحظات']];
+  filtered.forEach(r=>rows.push([r.num,r.type==='invoice'?'فاتورة':'سند قبض',r.client,r.cn,r.date,r.desc,r.amount,r.pay,r.status,r.notes]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='invoices.csv';a.click();
+}
+
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
+function setLang(l){
+  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
+  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
+  document.getElementById('btn-en').classList.toggle('active',l==='en');
+}
+
+const now=new Date();
+const days=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent=`${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} —`;
+
+updateStats();renderTable();
+</script>
+</body>
+</html>
