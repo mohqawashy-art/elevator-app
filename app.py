@@ -53,5 +53,17 @@ def contracts():
 def technicians():
     return render_template('technicians.html')
 
+@app.route('/maintenance-visits')
+def maintenance_visits():
+    return render_template('maintenance-visits.html')
+
+@app.route('/visit-report/<visit_id>')
+def visit_report(visit_id):
+    return render_template('visit-report.html', visit_id=visit_id)
+
+@app.route('/faults')
+def faults():
+    return render_template('faults.html')
+
 if __name__ == '__main__':
     app.run(debug=True)

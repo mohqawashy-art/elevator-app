@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — زيارات الصيانة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;--info:#2a9fff;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+html[dir="ltr"]{font-family:var(--font-en)}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:150px;height:44px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.sidebar-nav::-webkit-scrollbar{width:3px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
+.nav-item.active::before{content:'';position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:3px}
+html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.nav-badge{margin-right:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+html[dir="ltr"] .nav-badge{margin-left:auto;margin-right:0}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
+.sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
+.sidebar-user-role{font-size:11px;color:var(--text3)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:90}
+.header-title{font-size:15px;font-weight:500;color:var(--text1)}
+.header-title span{color:var(--text3);font-weight:400;font-size:13px;margin-right:6px}
+html[dir="ltr"] .header-title span{margin-right:0;margin-left:6px}
+.header-spacer{flex:1}
+.header-actions{display:flex;align-items:center;gap:8px}
+.icon-btn{width:34px;height:34px;border-radius:var(--r-sm);background:transparent;border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans);position:relative}
+.icon-btn:hover{background:var(--bg3);border-color:var(--border2);color:var(--text1)}
+.icon-btn svg{width:16px;height:16px}
+.notif-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--danger);border:1px solid var(--bg2)}
+html[dir="ltr"] .notif-dot{right:auto;left:6px}
+.lang-toggle{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.lang-opt{padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:var(--trans);color:var(--text3);border:none;background:none}
+.lang-opt.active{background:var(--accent);color:#fff}
+.header-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;cursor:pointer;border:2px solid var(--border2)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.hamburger svg{width:20px;height:20px}
+.content{flex:1;padding:24px;overflow-y:auto}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
+html[dir="ltr"] .page-title span{margin-right:0;margin-left:8px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
+html[dir="ltr"] .btn{font-family:var(--font-en)}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
+.btn-danger{background:rgba(224,72,72,.12);color:var(--danger);border:1px solid rgba(224,72,72,.15)}
+.btn-danger:hover{background:rgba(224,72,72,.22)}
+.btn-warning{background:rgba(224,144,48,.12);color:var(--warning);border:1px solid rgba(224,144,48,.15)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.stat-mini{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:var(--trans)}
+.stat-mini:hover{border-color:var(--border2)}
+.stat-mini::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--sm-color,var(--accent));opacity:.6}
+.stat-mini-val{font-size:22px;font-weight:600;color:var(--text1);font-family:var(--font-en);line-height:1;margin-bottom:3px}
+.stat-mini-label{font-size:11px;color:var(--text3)}
+.alerts-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.alert-chip{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--r-sm);font-size:12px;border:1px solid transparent;cursor:pointer;transition:var(--trans)}
+.alert-chip:hover{opacity:.8}
+.alert-chip.danger{background:rgba(224,72,72,.08);border-color:rgba(224,72,72,.2);color:var(--danger)}
+.alert-chip.warning{background:rgba(224,144,48,.08);border-color:rgba(224,144,48,.2);color:var(--warning)}
+.alert-chip.info{background:rgba(42,127,255,.08);border-color:rgba(42,127,255,.2);color:var(--accent)}
+.alert-chip svg{width:13px;height:13px}
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:4px}
+.tab{flex:1;padding:8px;text-align:center;font-size:13px;color:var(--text2);cursor:pointer;border-radius:var(--r-sm);transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px}
+.tab svg{width:14px;height:14px}
+.tab.active{background:var(--bg4);color:var(--text1)}
+.tab:hover:not(.active){background:var(--bg3);color:var(--text1)}
+.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
+html[dir="ltr"] .search-wrap svg{right:auto;left:11px}
+.search-input{width:100%;padding:8px 36px 8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);direction:rtl}
+html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8px 12px 8px 36px}
+.search-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.search-input::placeholder{color:var(--text3)}
+.filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;cursor:pointer;transition:var(--trans);font-family:var(--font-ar);min-width:110px}
+html[dir="ltr"] .filter-select{font-family:var(--font-en)}
+.filter-select:focus{border-color:var(--border2)}
+.date-input{padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;direction:ltr}
+.date-input:focus{border-color:var(--border2)}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap;letter-spacing:.04em}
+html[dir="ltr"] thead th{text-align:left}
+tbody tr{border-bottom:1px solid rgba(100,160,255,.05);transition:var(--trans);cursor:pointer}
+tbody tr:hover{background:var(--bg3)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
+.td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500}
+.td-name{color:var(--text1);font-weight:500}
+.td-actions{display:flex;gap:5px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.badge-scheduled{background:rgba(42,127,255,.12);color:var(--accent)}
+.badge-inprogress{background:rgba(224,144,48,.12);color:var(--warning)}
+.badge-completed{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-cancelled{background:rgba(138,155,184,.1);color:var(--text2)}
+.badge-delayed{background:rgba(224,72,72,.12);color:var(--danger)}
+.badge-low{background:rgba(31,184,122,.1);color:var(--success)}
+.badge-medium{background:rgba(42,127,255,.1);color:var(--accent)}
+.badge-high{background:rgba(224,144,48,.1);color:var(--warning)}
+.badge-critical{background:rgba(224,72,72,.1);color:var(--danger);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
+.table-info{font-size:12px;color:var(--text3)}
+.pagination{display:flex;gap:4px}
+.page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* MAP */
+.map-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.map-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.map-title{font-size:13px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
+.map-title svg{width:15px;height:15px;color:var(--accent)}
+#map{height:460px;z-index:1}
+.map-legend{display:flex;gap:16px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--border);background:var(--bg2)}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.3)}
+/* CALENDAR */
+.calendar-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.cal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cal-title{font-size:14px;font-weight:600;color:var(--text1)}
+.cal-nav{display:flex;gap:6px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border)}
+.cal-day-header{background:var(--bg3);padding:8px;text-align:center;font-size:11px;color:var(--text3);font-weight:500}
+.cal-day{background:var(--card);min-height:80px;padding:6px;cursor:pointer;transition:var(--trans)}
+.cal-day:hover{background:var(--bg3)}
+.cal-day.today{background:rgba(42,127,255,.06)}
+.cal-day.other-month{opacity:.4}
+.cal-date{font-size:12px;font-family:var(--font-en);color:var(--text2);margin-bottom:4px}
+.cal-date.today-num{background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px}
+.cal-event{font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cal-event.scheduled{background:rgba(42,127,255,.2);color:var(--accent)}
+.cal-event.completed{background:rgba(31,184,122,.2);color:var(--success)}
+.cal-event.delayed{background:rgba(224,72,72,.2);color:var(--danger)}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:860px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:600;color:var(--text1)}
+.modal-close{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.modal-close:hover{background:rgba(224,72,72,.15);color:var(--danger)}
+.modal-close svg{width:14px;height:14px}
+.modal-body{flex:1;overflow-y:auto;padding:22px}
+.modal-body::-webkit-scrollbar{width:4px}
+.modal-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.form-section{margin-bottom:22px}
+.form-section-title{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;direction:rtl;width:100%}
+html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .field textarea{font-family:var(--font-en);direction:ltr}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field textarea{resize:vertical;min-height:70px}
+/* CHECKLIST */
+.checklist{display:flex;flex-direction:column;gap:8px}
+.checklist-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm)}
+.checklist-item-name{flex:1;font-size:13px;color:var(--text1)}
+.checklist-status{display:flex;gap:6px}
+.cl-btn{padding:4px 10px;border-radius:var(--r-sm);font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--bg4);color:var(--text2);transition:var(--trans)}
+.cl-btn:hover{border-color:var(--border2);color:var(--text1)}
+.cl-btn.ok{background:rgba(31,184,122,.15);border-color:rgba(31,184,122,.3);color:var(--success)}
+.cl-btn.repair{background:rgba(224,72,72,.12);border-color:rgba(224,72,72,.25);color:var(--danger)}
+/* VIEW */
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.view-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
+.view-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+.view-val{font-size:13px;color:var(--text1);font-weight:500}
+.view-full{grid-column:1/-1}
+.view-section{font-size:11px;font-weight:600;color:var(--accent);grid-column:1/-1;padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:.06em}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:1100px){.stats-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  html[dir="ltr"] .sidebar{right:auto;left:-240px}
+  .sidebar.open{right:0}
+  html[dir="ltr"] .sidebar.open{left:0;right:auto}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .form-grid,.form-grid-3{grid-template-columns:1fr}
+  .view-grid{grid-template-columns:1fr}
+  .cal-grid{grid-template-columns:repeat(7,1fr)}
+  .cal-day{min-height:50px}
+}
+@media(max-width:480px){.stats-row{grid-template-columns:1fr 1fr};.filters-bar{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">الرئيسية</div>
+    <a class="nav-item" href="/dashboard"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg><span>لوحة التحكم</span></a>
+    <div class="nav-section">إدارة البيانات</div>
+    <a class="nav-item" href="/clients"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg><span>العملاء</span></a>
+    <a class="nav-item" href="/elevators"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg><span>المصاعد</span></a>
+    <a class="nav-item" href="/contracts"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg><span>العقود</span></a>
+    <a class="nav-item" href="/technicians"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg><span>الفنيين</span></a>
+    <div class="nav-section">العمليات</div>
+    <a class="nav-item active" href="/maintenance-visits"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg><span>زيارات الصيانة</span></a>
+    <a class="nav-item" href="/faults"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg><span>الأعطال</span><span class="nav-badge">5</span></a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/></svg><span>الفواتير</span></a>
+    <div class="nav-section">التقارير</div>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14V6l4-4h6a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg><span>التقارير</span></a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">م</div>
+      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="header">
+    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
+    <div class="header-title"><span id="h-date"></span><span>زيارات الصيانة</span></div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <div class="lang-toggle">
+        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
+        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
+      </div>
+      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
+      <div class="header-avatar">م</div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-mini" style="--sm-color:var(--accent)"><div class="stat-mini-val">9</div><div class="stat-mini-label">زيارات اليوم</div></div>
+      <div class="stat-mini" style="--sm-color:var(--warning)"><div class="stat-mini-val">3</div><div class="stat-mini-label">جاري التنفيذ</div></div>
+      <div class="stat-mini" style="--sm-color:var(--danger)"><div class="stat-mini-val">2</div><div class="stat-mini-label">متأخرة</div></div>
+      <div class="stat-mini" style="--sm-color:var(--success)"><div class="stat-mini-val">4</div><div class="stat-mini-label">مكتملة اليوم</div></div>
+      <div class="stat-mini" style="--sm-color:var(--gold)"><div class="stat-mini-val">28</div><div class="stat-mini-label">هذا الشهر</div></div>
+    </div>
+
+    <!-- ALERTS -->
+    <div class="alerts-row">
+      <div class="alert-chip danger"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>زيارتان متأخرتان — تجاوزتا الموعد</div>
+      <div class="alert-chip warning"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>زيارة حرجة غير مكتملة</div>
+      <div class="alert-chip info"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="7.5"/></svg>3 زيارات مجدولة غداً</div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" id="tab-btn-table" onclick="switchTab('table')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="5" y1="5.5" x2="5" y2="12"/></svg>
+        جدول الزيارات
+      </div>
+      <div class="tab" id="tab-btn-map" onclick="switchTab('map')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
+        خريطة اليوم
+      </div>
+      <div class="tab" id="tab-btn-cal" onclick="switchTab('cal')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="11" rx="1.5"/><path d="M4 2V1M10 2V1M1 5.5h12"/></svg>
+        التقويم
+      </div>
+    </div>
+
+    <!-- TABLE TAB -->
+    <div id="tab-table">
+      <div class="page-header">
+        <div class="page-title">زيارات الصيانة <span id="visits-count">15 زيارة</span></div>
+        <div class="page-actions">
+          <button class="btn btn-secondary btn-sm">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+            تصدير
+          </button>
+          <button class="btn btn-warning btn-sm" onclick="autoGenerate()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1v2M7 11v2M1 7h2M11 7h2M3.22 3.22l1.42 1.42M9.36 9.36l1.42 1.42M3.22 10.78l1.42-1.42M9.36 4.64l1.42-1.42"/></svg>
+            توليد تلقائي
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+            إضافة زيارة
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="search-wrap">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+          <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو العميل أو الفني..." oninput="filterTable()">
+        </div>
+        <select class="filter-select" id="f-client" onchange="filterTable()">
+          <option value="">كل العملاء</option>
+          <option>برج الياسمين</option><option>مجمع النخيل</option>
+          <option>فندق الأندلس</option><option>مستشفى السلام</option>
+          <option>أبراج الساعة</option>
+        </select>
+        <select class="filter-select" id="f-tech" onchange="filterTable()">
+          <option value="">كل الفنيين</option>
+          <option>أحمد الزهراني</option><option>خالد العمري</option>
+          <option>سعد القحطاني</option><option>فهد المالكي</option>
+        </select>
+        <select class="filter-select" id="f-status" onchange="filterTable()">
+          <option value="">كل الحالات</option>
+          <option>مجدولة</option><option>جاري التنفيذ</option>
+          <option>مكتملة</option><option>ملغية</option><option>متأخرة</option>
+        </select>
+        <select class="filter-select" id="f-type" onchange="filterTable()">
+          <option value="">كل الأنواع</option>
+          <option>صيانة دورية</option><option>زيارة طارئة</option>
+          <option>زيارة متابعة</option><option>زيارة فحص</option>
+        </select>
+        <input type="date" class="date-input" id="f-date-from" onchange="filterTable()" title="من تاريخ">
+        <input type="date" class="date-input" id="f-date-to" onchange="filterTable()" title="إلى تاريخ">
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>الكود</th><th>العميل</th><th>المصعد</th><th>الفني</th>
+                <th>النوع</th><th>التاريخ</th><th>الوقت</th><th>الأولوية</th><th>الحالة</th><th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <div class="table-info" id="table-info">عرض 15 زيارة</div>
+          <div class="pagination">
+            <button class="page-btn">‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">›</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP TAB -->
+    <div id="tab-map" style="display:none">
+      <div class="map-panel">
+        <div class="map-header">
+          <div class="map-title">
+            <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7.5 1C5.01 1 3 3.01 3 5.5c0 3.5 4.5 8.5 4.5 8.5S12 9 12 5.5C12 3.01 9.99 1 7.5 1z"/><circle cx="7.5" cy="5.5" r="1.8"/></svg>
+            زيارات اليوم على الخريطة
+          </div>
+          <span style="font-size:11px;color:var(--text3)" id="map-date-label"></span>
+        </div>
+        <div id="map"></div>
+        <div class="map-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#2a7fff"></div>مجدولة</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e09030"></div>جاري التنفيذ</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1fb87a"></div>مكتملة</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e04848"></div>متأخرة</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#888"></div>ملغية</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR TAB -->
+    <div id="tab-cal" style="display:none">
+      <div class="calendar-panel">
+        <div class="cal-header">
+          <div class="cal-title" id="cal-title">يونيو 2025</div>
+          <div class="cal-nav">
+            <button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)">‹</button>
+            <button class="btn btn-secondary btn-sm" onclick="goToday()">اليوم</button>
+            <button class="btn btn-secondary btn-sm" onclick="changeMonth(1)">›</button>
+          </div>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">إضافة زيارة صيانة جديدة</div>
+      <button class="modal-close" onclick="closeModal('modal-add')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-section">
+        <div class="form-section-title">بيانات الزيارة</div>
+        <div class="form-grid">
+          <div class="field"><label>كود الزيارة</label><input type="text" id="f-code" placeholder="V-00001" style="direction:ltr;font-family:var(--font-en)"></div>
+          <div class="field"><label>نوع الزيارة</label><select id="f-type-sel"><option>صيانة دورية</option><option>زيارة طارئة</option><option>زيارة متابعة</option><option>زيارة فحص</option></select></div>
+          <div class="field"><label>الأولوية</label><select id="f-priority"><option>منخفضة</option><option>متوسطة</option><option selected>عالية</option><option>حرجة</option></select></div>
+          <div class="field"><label>الحالة</label><select id="f-status-sel"><option>مجدولة</option><option>جاري التنفيذ</option><option>مكتملة</option><option>ملغية</option><option>متأخرة</option></select></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">الربط بالبيانات</div>
+        <div class="form-grid">
+          <div class="field"><label>العميل</label><select id="f-client-sel" onchange="loadClientData()"><option value="">اختر العميل</option><option value="C-0001">برج الياسمين</option><option value="C-0002">مجمع النخيل</option><option value="C-0003">فندق الأندلس</option><option value="C-0004">مستشفى السلام</option><option value="C-0006">أبراج الساعة</option></select></div>
+          <div class="field"><label>المصعد</label><select id="f-elevator-sel" onchange="fillElevatorData()"><option value="">اختر المصعد</option></select></div>
+          <div class="field"><label>العقد</label><select id="f-contract-sel"><option value="">بدون عقد</option></select></div>
+          <div class="field"><label>الفني المكلف</label><select id="f-tech-sel" onchange="checkTechAvailability()"><option value="">اختر الفني</option><option value="T1">أحمد الزهراني — متاح ✓</option><option value="T2">خالد العمري — مشغول ✗</option><option value="T3">سعد القحطاني — متاح ✓</option><option value="T4">فهد المالكي — متاح ✓</option><option value="T5">عمر الدوسري — متاح ✓</option></select></div>
+        </div>
+        <div id="tech-warning" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(224,72,72,.08);border:1px solid rgba(224,72,72,.2);border-radius:var(--r-sm);font-size:12px;color:var(--danger)">⚠️ هذا الفني مشغول حالياً — قد يكون هناك تعارض في المواعيد</div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">التوقيت</div>
+        <div class="form-grid">
+          <div class="field"><label>تاريخ الزيارة</label><input type="date" id="f-date" style="direction:ltr"></div>
+          <div class="field"><label>وقت الزيارة</label><input type="time" id="f-time" style="direction:ltr"></div>
+          <div class="field"><label>وقت البداية الفعلي</label><input type="time" id="f-actual-start" style="direction:ltr"></div>
+          <div class="field"><label>وقت الانتهاء الفعلي</label><input type="time" id="f-actual-end" style="direction:ltr"></div>
+          <div class="field"><label>موعد الزيارة القادمة</label><input type="date" id="f-next-visit" style="direction:ltr"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">الموقع</div>
+        <div class="form-grid">
+          <div class="field"><label>المدينة</label><input type="text" id="f-city" placeholder="مكة"></div>
+          <div class="field"><label>الحي</label><input type="text" id="f-district" placeholder="الحي"></div>
+          <div class="field form-full"><label>العنوان</label><input type="text" id="f-address" placeholder="العنوان التفصيلي"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">قائمة الفحص</div>
+        <div class="checklist" id="checklist">
+          <!-- يتولد تلقائياً -->
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">ملاحظات الفني</div>
+        <div class="form-grid">
+          <div class="field form-full"><label>الأعمال المنجزة</label><textarea id="f-work-done" placeholder="اكتب الأعمال التي تم إنجازها..."></textarea></div>
+          <div class="field form-full"><label>المشاكل المكتشفة</label><textarea id="f-issues" placeholder="أي مشاكل أو ملاحظات..."></textarea></div>
+          <div class="field form-full"><label>القطع المستخدمة</label><input type="text" id="f-parts" placeholder="اكتب القطع المستخدمة"></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add')">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveVisit()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
+        حفظ الزيارة
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="modal-overlay" id="modal-view">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="view-title">تفاصيل الزيارة</div>
+      <button class="modal-close" onclick="closeModal('modal-view')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body" id="view-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+      <button class="btn btn-secondary" onclick="printVisit()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5V2h8v3M3 9H1V5h12v4h-2M3 9v3h8V9"/></svg>
+        طباعة
+      </button>
+      <button class="btn btn-primary" onclick="closeModal('modal-view');openAddModal()">تعديل</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <div class="modal-title" style="color:var(--danger)">تأكيد الحذف</div>
+      <button class="modal-close" onclick="closeModal('modal-delete')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.7">هل أنت متأكد من حذف هذه الزيارة؟</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">حذف نهائي</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const CHECKLIST_ITEMS = [
+  {ar:'فحص أبواب المصعد',en:'Check elevator doors'},
+  {ar:'فحص لوحة التحكم',en:'Check control panel'},
+  {ar:'فحص إضاءة الكابينة',en:'Check cabin lights'},
+  {ar:'فحص منبه الطوارئ',en:'Check emergency alarm'},
+  {ar:'فحص نظام الفرامل',en:'Check brake system'},
+  {ar:'فحص غرفة الآلات',en:'Check machine room'},
+  {ar:'فحص الحبال أو الأحزمة',en:'Check ropes or belts'},
+  {ar:'فحص مستوى الزيت',en:'Check oil level if hydraulic'},
+  {ar:'فحص حساسات السلامة',en:'Check safety sensors'},
+  {ar:'اختبار حركة المصعد',en:'Test elevator movement'},
+  {ar:'تنظيف منطقة الكابينة',en:'Clean elevator cabin area'},
+];
+
+const CLIENT_DATA = {
+  'C-0001':{name:'برج الياسمين',city:'مكة',district:'العزيزية',address:'حي العزيزية، مكة',lat:21.3891,lng:39.8579,
+    elevators:[{code:'EL-0001',id:'E1'},{code:'EL-0002',id:'E2'}],
+    contracts:[{code:'CN-00001',id:'CN1'},{code:'CN-00007',id:'CN7'}]},
+  'C-0002':{name:'مجمع النخيل',city:'جدة',district:'الروضة',address:'طريق الملك فهد، جدة',lat:21.5433,lng:39.1728,
+    elevators:[{code:'EL-0003',id:'E3'},{code:'EL-0010',id:'E10'}],
+    contracts:[{code:'CN-00002',id:'CN2'},{code:'CN-00008',id:'CN8'}]},
+  'C-0003':{name:'فندق الأندلس',city:'مكة',district:'أجياد',address:'حي أجياد، مكة',lat:21.4225,lng:39.8261,
+    elevators:[{code:'EL-0004',id:'E4'}],
+    contracts:[{code:'CN-00003',id:'CN3'},{code:'CN-00010',id:'CN10'}]},
+  'C-0004':{name:'مستشفى السلام',city:'مكة',district:'النزهة',address:'حي النزهة، مكة',lat:21.4100,lng:39.8450,
+    elevators:[{code:'EL-0005',id:'E5'},{code:'EL-0006',id:'E6'}],
+    contracts:[{code:'CN-00004',id:'CN4'},{code:'CN-00009',id:'CN9'}]},
+  'C-0006':{name:'أبراج الساعة',city:'مكة',district:'أجياد',address:'أجياد، مكة',lat:21.4228,lng:39.8260,
+    elevators:[{code:'EL-0008',id:'E8'},{code:'EL-0009',id:'E9'}],
+    contracts:[{code:'CN-00006',id:'CN6'}]},
+};
+
+const STATUS_COLORS={'مجدولة':'#2a7fff','جاري التنفيذ':'#e09030','مكتملة':'#1fb87a','ملغية':'#888','متأخرة':'#e04848'};
+const STATUS_BADGE={'مجدولة':'badge-scheduled','جاري التنفيذ':'badge-inprogress','مكتملة':'badge-completed','ملغية':'badge-cancelled','متأخرة':'badge-delayed'};
+const PRIORITY_BADGE={'منخفضة':'badge-low','متوسطة':'badge-medium','عالية':'badge-high','حرجة':'badge-critical'};
+
+const today = new Date().toISOString().split('T')[0];
+const VISITS = [
+  {id:1,code:'V-00001',client:'برج الياسمين',elevator:'EL-0001',tech:'أحمد الزهراني',type:'صيانة دورية',date:today,time:'09:00',priority:'عالية',status:'مكتملة',city:'مكة',district:'العزيزية',lat:21.3891,lng:39.8579,workDone:'تم فحص جميع العناصر',issues:'لا توجد',parts:'زيت تزليق'},
+  {id:2,code:'V-00002',client:'مجمع النخيل',elevator:'EL-0003',tech:'خالد العمري',type:'زيارة طارئة',date:today,time:'10:30',priority:'حرجة',status:'جاري التنفيذ',city:'جدة',district:'الروضة',lat:21.5433,lng:39.1728,workDone:'',issues:'عطل في لوحة التحكم',parts:''},
+  {id:3,code:'V-00003',client:'فندق الأندلس',elevator:'EL-0004',tech:'سعد القحطاني',type:'صيانة دورية',date:today,time:'11:00',priority:'متوسطة',status:'مجدولة',city:'مكة',district:'أجياد',lat:21.4225,lng:39.8261,workDone:'',issues:'',parts:''},
+  {id:4,code:'V-00004',client:'مستشفى السلام',elevator:'EL-0005',tech:'فهد المالكي',type:'زيارة فحص',date:today,time:'08:00',priority:'حرجة',status:'متأخرة',city:'مكة',district:'النزهة',lat:21.4100,lng:39.8450,workDone:'',issues:'تأخر الفني',parts:''},
+  {id:5,code:'V-00005',client:'أبراج الساعة',elevator:'EL-0008',tech:'أحمد الزهراني',type:'صيانة دورية',date:today,time:'14:00',priority:'منخفضة',status:'مجدولة',city:'مكة',district:'أجياد',lat:21.4228,lng:39.8260,workDone:'',issues:'',parts:''},
+  {id:6,code:'V-00006',client:'برج الياسمين',elevator:'EL-0002',tech:'خالد العمري',type:'زيارة متابعة',date:'2025-06-03',time:'09:30',priority:'متوسطة',status:'مجدولة',city:'مكة',district:'العزيزية',lat:21.3893,lng:39.8582,workDone:'',issues:'',parts:''},
+  {id:7,code:'V-00007',client:'مجمع النخيل',elevator:'EL-0010',tech:'عمر الدوسري',type:'صيانة دورية',date:'2025-06-04',time:'10:00',priority:'عالية',status:'مجدولة',city:'جدة',district:'الروضة',lat:21.5435,lng:39.1730,workDone:'',issues:'',parts:''},
+  {id:8,code:'V-00008',client:'مستشفى السلام',elevator:'EL-0006',tech:'فهد المالكي',type:'صيانة دورية',date:'2025-06-05',time:'11:00',priority:'عالية',status:'مجدولة',city:'مكة',district:'النزهة',lat:21.4102,lng:39.8452,workDone:'',issues:'',parts:''},
+  {id:9,code:'V-00009',client:'فندق الأندلس',elevator:'EL-0004',tech:'سعد القحطاني',type:'زيارة فحص',date:'2025-06-10',time:'09:00',priority:'متوسطة',status:'مجدولة',city:'مكة',district:'أجياد',lat:21.4225,lng:39.8261,workDone:'',issues:'',parts:''},
+  {id:10,code:'V-00010',client:'أبراج الساعة',elevator:'EL-0009',tech:'أحمد الزهراني',type:'صيانة دورية',date:'2025-06-15',time:'13:00',priority:'منخفضة',status:'مجدولة',city:'مكة',district:'أجياد',lat:21.4230,lng:39.8262,workDone:'',issues:'',parts:''},
+  {id:11,code:'V-00011',client:'برج الياسمين',elevator:'EL-0001',tech:'خالد العمري',type:'صيانة دورية',date:'2025-06-20',time:'10:00',priority:'متوسطة',status:'مجدولة',city:'مكة',district:'العزيزية',lat:21.3891,lng:39.8579,workDone:'',issues:'',parts:''},
+  {id:12,code:'V-00012',client:'مجمع النخيل',elevator:'EL-0003',tech:'عمر الدوسري',type:'صيانة دورية',date:'2025-06-25',time:'11:00',priority:'متوسطة',status:'مجدولة',city:'جدة',district:'الروضة',lat:21.5433,lng:39.1728,workDone:'',issues:'',parts:''},
+  {id:13,code:'V-00013',client:'مستشفى السلام',elevator:'EL-0005',tech:'فهد المالكي',type:'زيارة طارئة',date:today,time:'15:00',priority:'حرجة',status:'مجدولة',city:'مكة',district:'النزهة',lat:21.4100,lng:39.8450,workDone:'',issues:'',parts:''},
+  {id:14,code:'V-00014',client:'فندق الأندلس',elevator:'EL-0004',tech:'سعد القحطاني',type:'صيانة دورية',date:today,time:'16:00',priority:'منخفضة',status:'مكتملة',city:'مكة',district:'أجياد',lat:21.4225,lng:39.8261,workDone:'تم الفحص الدوري',issues:'لا توجد',parts:''},
+  {id:15,code:'V-00015',client:'أبراج الساعة',elevator:'EL-0008',tech:'أحمد الزهراني',type:'زيارة متابعة',date:'2025-05-28',time:'09:00',priority:'عالية',status:'متأخرة',city:'مكة',district:'أجياد',lat:21.4228,lng:39.8260,workDone:'',issues:'',parts:''},
+];
+
+let currentDeleteId=null;
+let mapInitialized=false;
+let calDate=new Date();
+
+function renderTable(data){
+  const tbody=document.getElementById('table-body');
+  tbody.innerHTML='';
+  data.forEach(v=>{
+    const sb=STATUS_BADGE[v.status]||'badge-scheduled';
+    const pb=PRIORITY_BADGE[v.priority]||'badge-medium';
+    tbody.innerHTML+=`<tr>
+      <td class="td-code">${v.code}</td>
+      <td class="td-name">${v.client}</td>
+      <td style="font-family:var(--font-en);font-size:12px;color:var(--accent)">${v.elevator}</td>
+      <td>${v.tech}</td>
+      <td>${v.type}</td>
+      <td style="direction:ltr;font-family:var(--font-en)">${v.date}</td>
+      <td style="direction:ltr;font-family:var(--font-en)">${v.time}</td>
+      <td><span class="badge ${pb}">${v.priority}</span></td>
+      <td><span class="badge ${sb}">${v.status}</span></td>
+      <td><div class="td-actions">
+        <a href="/visit-report/${v.id}" class="btn btn-secondary btn-sm btn-icon" title="تقرير الزيارة" target="_blank">
+  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 14V6l4-4h6a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6 2v4H2"/></svg>
+</a>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="viewVisit(${v.id})" title="عرض"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="editVisit(${v.id})" title="تعديل"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteVisit(${v.id})" title="حذف"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4l.7 7.5a1 1 0 001 .9h4.6a1 1 0 001-.9L11 4"/></svg></button>
+      </div></td>
+    </tr>`;
+  });
+  document.getElementById('table-info').textContent=`عرض ${data.length} من ${VISITS.length} زيارة`;
+  document.getElementById('visits-count').textContent=`${VISITS.length} زيارة`;
+}
+
+function filterTable(){
+  const s=document.getElementById('search-input').value.toLowerCase();
+  const cl=document.getElementById('f-client').value;
+  const tc=document.getElementById('f-tech').value;
+  const st=document.getElementById('f-status').value;
+  const tp=document.getElementById('f-type').value;
+  const df=document.getElementById('f-date-from').value;
+  const dt=document.getElementById('f-date-to').value;
+  const filtered=VISITS.filter(v=>
+    (!s||v.code.toLowerCase().includes(s)||v.client.includes(s)||v.tech.includes(s))
+    &&(!cl||v.client===cl)&&(!tc||v.tech===tc)
+    &&(!st||v.status===st)&&(!tp||v.type===tp)
+    &&(!df||v.date>=df)&&(!dt||v.date<=dt)
+  );
+  renderTable(filtered);
+}
+
+function buildChecklist(){
+  const cl=document.getElementById('checklist');
+  cl.innerHTML=CHECKLIST_ITEMS.map((item,i)=>`
+    <div class="checklist-item">
+      <span class="checklist-item-name">${item.ar}</span>
+      <div class="checklist-status">
+        <button class="cl-btn" id="cl-ok-${i}" onclick="setCL(${i},'ok')">✓ سليم</button>
+        <button class="cl-btn" id="cl-rep-${i}" onclick="setCL(${i},'repair')">✗ يحتاج إصلاح</button>
+      </div>
+    </div>`).join('');
+}
+
+function setCL(i,status){
+  document.getElementById(`cl-ok-${i}`).className='cl-btn'+(status==='ok'?' ok':'');
+  document.getElementById(`cl-rep-${i}`).className='cl-btn'+(status==='repair'?' repair':'');
+}
+
+function loadClientData(){
+  const code=document.getElementById('f-client-sel').value;
+  const elevSel=document.getElementById('f-elevator-sel');
+  const cnSel=document.getElementById('f-contract-sel');
+  elevSel.innerHTML='<option value="">اختر المصعد</option>';
+  cnSel.innerHTML='<option value="">بدون عقد</option>';
+  if(!code||!CLIENT_DATA[code])return;
+  const c=CLIENT_DATA[code];
+  c.elevators.forEach(e=>elevSel.innerHTML+=`<option value="${e.id}">${e.code}</option>`);
+  c.contracts.forEach(cn=>cnSel.innerHTML+=`<option value="${cn.id}">${cn.code}</option>`);
+}
+
+function fillElevatorData(){
+  const code=document.getElementById('f-client-sel').value;
+  if(!code||!CLIENT_DATA[code])return;
+  const c=CLIENT_DATA[code];
+  document.getElementById('f-city').value=c.city;
+  document.getElementById('f-district').value=c.district;
+  document.getElementById('f-address').value=c.address;
+}
+
+function checkTechAvailability(){
+  const val=document.getElementById('f-tech-sel').value;
+  const warn=document.getElementById('tech-warning');
+  warn.style.display=(val==='T2')?'block':'none';
+}
+
+function initLeafletMap(){
+  if(mapInitialized)return;
+  mapInitialized=true;
+  const m=L.map('map',{center:[21.4,39.85],zoom:11});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(m);
+  const todayVisits=VISITS.filter(v=>v.date===today);
+  todayVisits.forEach(v=>{
+    const color=STATUS_COLORS[v.status]||'#2a7fff';
+    const icon=L.divIcon({html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)"></div>`,className:'',iconSize:[14,14],iconAnchor:[7,7],popupAnchor:[0,-10]});
+    const marker=L.marker([v.lat,v.lng],{icon}).addTo(m);
+    const mapsUrl=`https://www.google.com/maps?q=${v.lat},${v.lng}`;
+    marker.bindPopup(`<div style="font-family:IBM Plex Sans Arabic,sans-serif;direction:rtl;min-width:180px;font-size:13px">
+      <div style="font-weight:600;color:#1a1a2e;margin-bottom:5px">${v.client}</div>
+      <div style="color:#555;font-size:12px;margin-bottom:2px">🔧 ${v.elevator}</div>
+      <div style="color:#555;font-size:12px;margin-bottom:2px">👤 ${v.tech}</div>
+      <div style="color:#555;font-size:12px;margin-bottom:6px">⏰ ${v.time}</div>
+      <div style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:${color}22;color:${color};border:1px solid ${color}44;margin-bottom:8px">${v.status}</div><br>
+      <button onclick="viewVisit(${v.id})" style="background:#2a7fff;color:#fff;border:none;padding:5px 10px;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit;margin-left:6px">عرض</button>
+      <a href="${mapsUrl}" target="_blank" style="background:#f0f0f0;color:#333;padding:5px 10px;border-radius:5px;font-size:12px;text-decoration:none">خريطة</a>
+    </div>`,{maxWidth:220});
+  });
+  document.getElementById('map-date-label').textContent=`اليوم: ${today} — ${todayVisits.length} زيارات`;
+}
+
+function renderCalendar(){
+  const year=calDate.getFullYear();
+  const month=calDate.getMonth();
+  const monthNames=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  document.getElementById('cal-title').textContent=`${monthNames[month]} ${year}`;
+  const grid=document.getElementById('cal-grid');
+  grid.innerHTML='';
+  const dayNames=['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+  dayNames.forEach(d=>{grid.innerHTML+=`<div class="cal-day-header">${d}</div>`});
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const prevDays=new Date(year,month,0).getDate();
+  for(let i=firstDay-1;i>=0;i--){
+    grid.innerHTML+=`<div class="cal-day other-month"><div class="cal-date">${prevDays-i}</div></div>`;
+  }
+  const todayObj=new Date();
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=d===todayObj.getDate()&&month===todayObj.getMonth()&&year===todayObj.getFullYear();
+    const dayVisits=VISITS.filter(v=>v.date===dateStr);
+    let eventsHTML=dayVisits.slice(0,3).map(v=>{
+      const cls=v.status==='مكتملة'?'completed':v.status==='متأخرة'?'delayed':'scheduled';
+      return `<div class="cal-event ${cls}" onclick="viewVisit(${v.id})" title="${v.client}">${v.time} ${v.client}</div>`;
+    }).join('');
+    if(dayVisits.length>3)eventsHTML+=`<div style="font-size:10px;color:var(--text3)">+${dayVisits.length-3} أخرى</div>`;
+    grid.innerHTML+=`<div class="cal-day${isToday?' today':''}">
+      <div class="cal-date${isToday?' today-num':''}">${d}</div>
+      ${eventsHTML}
+    </div>`;
+  }
+  const remaining=42-(firstDay+daysInMonth);
+  for(let d=1;d<=remaining;d++){
+    grid.innerHTML+=`<div class="cal-day other-month"><div class="cal-date">${d}</div></div>`;
+  }
+}
+
+function changeMonth(dir){calDate.setMonth(calDate.getMonth()+dir);renderCalendar()}
+function goToday(){calDate=new Date();renderCalendar()}
+
+function switchTab(tab){
+  ['table','map','cal'].forEach(t=>{
+    document.getElementById(`tab-btn-${t}`).classList.toggle('active',t===tab);
+    document.getElementById(`tab-${t}`).style.display=t===tab?'':'none';
+  });
+  if(tab==='map')setTimeout(initLeafletMap,150);
+  if(tab==='cal')renderCalendar();
+}
+
+function viewVisit(id){
+  const v=VISITS.find(x=>x.id===id);
+  if(!v)return;
+  const sb=STATUS_BADGE[v.status]||'badge-scheduled';
+  const pb=PRIORITY_BADGE[v.priority]||'badge-medium';
+  const mapsUrl=`https://www.google.com/maps?q=${v.lat},${v.lng}`;
+  document.getElementById('view-title').textContent=v.code;
+  document.getElementById('view-body').innerHTML=`
+    <div class="view-grid">
+      <div class="view-section">بيانات الزيارة</div>
+      <div class="view-item"><div class="view-label">كود الزيارة</div><div class="view-val" style="font-family:var(--font-en)">${v.code}</div></div>
+      <div class="view-item"><div class="view-label">النوع</div><div class="view-val">${v.type}</div></div>
+      <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${sb}">${v.status}</span></div></div>
+      <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${pb}">${v.priority}</span></div></div>
+      <div class="view-section">الارتباطات</div>
+      <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${v.client}</div></div>
+      <div class="view-item"><div class="view-label">المصعد</div><div class="view-val" style="font-family:var(--font-en)">${v.elevator}</div></div>
+      <div class="view-item"><div class="view-label">الفني</div><div class="view-val">${v.tech}</div></div>
+      <div class="view-section">التوقيت والموقع</div>
+      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val" style="direction:ltr">${v.date}</div></div>
+      <div class="view-item"><div class="view-label">الوقت</div><div class="view-val" style="direction:ltr">${v.time}</div></div>
+      <div class="view-item"><div class="view-label">المدينة / الحي</div><div class="view-val">${v.city} — ${v.district}</div></div>
+      <div class="view-item view-full">
+        <div class="view-label">الموقع</div>
+        <a href="${mapsUrl}" target="_blank" class="btn btn-secondary btn-sm" style="margin-top:4px;display:inline-flex">فتح في الخريطة</a>
+      </div>
+      ${v.workDone?`<div class="view-section">تقرير الفني</div><div class="view-item view-full"><div class="view-label">الأعمال المنجزة</div><div class="view-val">${v.workDone}</div></div>`:''}
+      ${v.issues?`<div class="view-item view-full"><div class="view-label">المشاكل المكتشفة</div><div class="view-val">${v.issues}</div></div>`:''}
+      ${v.parts?`<div class="view-item"><div class="view-label">القطع المستخدمة</div><div class="view-val">${v.parts}</div></div>`:''}
+    </div>`;
+  document.getElementById('modal-view').classList.add('open');
+}
+
+function editVisit(id){
+  const v=VISITS.find(x=>x.id===id);
+  if(!v)return;
+  document.getElementById('modal-title').textContent='تعديل الزيارة';
+  document.getElementById('f-code').value=v.code;
+  document.getElementById('f-date').value=v.date;
+  document.getElementById('f-time').value=v.time;
+  document.getElementById('f-city').value=v.city;
+  document.getElementById('f-district').value=v.district;
+  document.getElementById('f-work-done').value=v.workDone;
+  document.getElementById('f-issues').value=v.issues;
+  document.getElementById('f-parts').value=v.parts;
+  buildChecklist();
+  document.getElementById('modal-add').classList.add('open');
+}
+
+function deleteVisit(id){currentDeleteId=id;document.getElementById('modal-delete').classList.add('open')}
+function confirmDelete(){
+  const idx=VISITS.findIndex(x=>x.id===currentDeleteId);
+  if(idx!==-1)VISITS.splice(idx,1);
+  closeModal('modal-delete');renderTable(VISITS);
+}
+
+function openAddModal(){
+  document.getElementById('modal-title').textContent='إضافة زيارة صيانة جديدة';
+  buildChecklist();
+  document.getElementById('modal-add').classList.add('open');
+}
+
+function saveVisit(){closeModal('modal-add')}
+function printVisit(){window.print()}
+function autoGenerate(){alert('سيتم توليد الزيارات تلقائياً من العقود النشطة حسب تكرار الصيانة.')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function setLang(l){
+  document.documentElement.setAttribute('lang',l);
+  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
+  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
+  document.getElementById('btn-en').classList.toggle('active',l==='en');
+}
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open')}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'))});
+document.addEventListener('click',e=>{if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay'))document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'))});
+
+const now=new Date();
+const days=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent=`${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+
+renderTable(VISITS);
+</script>
+</body>
+</html>
