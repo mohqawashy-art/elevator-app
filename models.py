@@ -1,0 +1,402 @@
+"""
+LiftCore — نماذج قاعدة البيانات
+models.py
+"""
+
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+
+db = SQLAlchemy()
+
+# =============================================
+# 1. العملاء
+# =============================================
+class Customer(db.Model):
+    __tablename__ = 'customers'
+
+    id          = db.Column(db.Integer, primary_key=True)
+    code        = db.Column(db.String(20), unique=True, nullable=False)   # C-0001
+    name        = db.Column(db.String(200), nullable=False)
+    city        = db.Column(db.String(100))
+    district    = db.Column(db.String(100))
+    address     = db.Column(db.Text)
+    phone       = db.Column(db.String(20))
+    phone2      = db.Column(db.String(20))
+    email       = db.Column(db.String(100))
+    contact_person = db.Column(db.String(100))
+    status      = db.Column(db.String(20), default='نشط')   # نشط / غير نشط
+    notes       = db.Column(db.Text)
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # علاقات
+    elevators   = db.relationship('Elevator',  backref='customer', lazy=True)
+    contracts   = db.relationship('Contract',  backref='customer', lazy=True)
+
+    def __repr__(self):
+        return f'<Customer {self.code} {self.name}>'
+
+
+# =============================================
+# 2. المصاعد
+# =============================================
+class Elevator(db.Model):
+    __tablename__ = 'elevators'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # EL-0001
+    customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
+    building_name   = db.Column(db.String(200))
+    city            = db.Column(db.String(100))
+    district        = db.Column(db.String(100))
+    elev_type       = db.Column(db.String(100))   # مصعد ركاب / بضائع / مستشفى
+    brand           = db.Column(db.String(100))   # Otis / Kone / Schindler
+    model           = db.Column(db.String(100))
+    capacity_kg     = db.Column(db.Integer)
+    floors          = db.Column(db.Integer)
+    speed           = db.Column(db.String(50))
+    serial_number   = db.Column(db.String(100))
+    install_date    = db.Column(db.Date)
+    last_maintenance= db.Column(db.Date)
+    next_maintenance= db.Column(db.Date)
+    status          = db.Column(db.String(30), default='نشط')  # نشط / متوقف / خارج الخدمة / تحت الصيانة
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # علاقات
+    visits          = db.relationship('MaintenanceVisit', backref='elevator', lazy=True)
+    faults          = db.relationship('Fault',            backref='elevator', lazy=True)
+
+    def __repr__(self):
+        return f'<Elevator {self.code}>'
+
+
+# =============================================
+# 3. العقود
+# =============================================
+class Contract(db.Model):
+    __tablename__ = 'contracts'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # CN-00001
+    customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
+    contract_type   = db.Column(db.String(50))   # عقد صيانة / ضمان / تركيب / طوارئ
+    start_date      = db.Column(db.Date, nullable=False)
+    end_date        = db.Column(db.Date, nullable=False)
+    duration_months = db.Column(db.Integer)
+    maint_frequency = db.Column(db.String(50))   # شهري / ربع سنوي / نصف سنوي / سنوي
+    visits_per_month= db.Column(db.Integer, default=1)
+    value           = db.Column(db.Float, default=0)
+    tax_pct         = db.Column(db.Float, default=15)
+    tax_amount      = db.Column(db.Float, default=0)
+    total           = db.Column(db.Float, default=0)
+    payment_terms   = db.Column(db.String(50))   # دفعة واحدة / ربع سنوي / نصف سنوي / سنوي
+    invoice_status  = db.Column(db.String(30), default='غير مدفوع')  # مدفوع / مدفوع جزئياً / غير مدفوع / متأخر
+    status          = db.Column(db.String(20), default='نشط')        # نشط / منتهي / معلق / ملغي
+    reminder_date   = db.Column(db.Date)
+    file_path       = db.Column(db.String(300))
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # علاقات
+    elevators       = db.relationship('ContractElevator', backref='contract', lazy=True)
+    visits          = db.relationship('MaintenanceVisit', backref='contract', lazy=True)
+
+    def __repr__(self):
+        return f'<Contract {self.code}>'
+
+
+# جدول وسيط بين العقد والمصاعد (علاقة many-to-many)
+class ContractElevator(db.Model):
+    __tablename__ = 'contract_elevators'
+    id          = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=False)
+    elevator_id = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
+
+
+# =============================================
+# 4. الفنيون
+# =============================================
+class Technician(db.Model):
+    __tablename__ = 'technicians'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # Tech-001
+    name            = db.Column(db.String(100), nullable=False)
+    phone           = db.Column(db.String(20))
+    phone2          = db.Column(db.String(20))
+    job_title       = db.Column(db.String(100))   # فني أول / فني ثانٍ / مشرف
+    specialization  = db.Column(db.String(100))   # مصاعد ركاب / كهرباء / ميكانيكا
+    city            = db.Column(db.String(100))
+    national_id     = db.Column(db.String(20))
+    hire_date       = db.Column(db.Date)
+    salary          = db.Column(db.Float)
+    emergency       = db.Column(db.Boolean, default=False)  # متاح للطوارئ
+    status          = db.Column(db.String(20), default='نشط')
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # علاقات
+    visits          = db.relationship('MaintenanceVisit', backref='technician', lazy=True)
+    faults          = db.relationship('Fault',            backref='technician', lazy=True)
+
+    def __repr__(self):
+        return f'<Technician {self.code} {self.name}>'
+
+
+# =============================================
+# 5. زيارات الصيانة
+# =============================================
+class MaintenanceVisit(db.Model):
+    __tablename__ = 'maintenance_visits'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # VI-00001
+    contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
+    elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
+    technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    visit_type      = db.Column(db.String(50))   # دورية / طارئة / متابعة
+    visit_date      = db.Column(db.Date, nullable=False)
+    visit_time      = db.Column(db.String(10))
+    duration_hours  = db.Column(db.Float)
+    priority        = db.Column(db.String(20), default='عادية')  # عادية / عاجلة / حرجة
+    status          = db.Column(db.String(30), default='مجدولة')  # مجدولة / مكتملة / ملغاة / متأخرة
+    works_done      = db.Column(db.Text)   # الأعمال المنفذة
+    observations    = db.Column(db.Text)   # الملاحظات
+    next_visit_date = db.Column(db.Date)
+    customer_signature = db.Column(db.Boolean, default=False)
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Visit {self.code}>'
+
+
+# =============================================
+# 6. الأعطال
+# =============================================
+class Fault(db.Model):
+    __tablename__ = 'faults'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # FA-00001
+    elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
+    technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    fault_type      = db.Column(db.String(100))
+    description     = db.Column(db.Text)
+    priority        = db.Column(db.String(20), default='عادية')  # عادية / عاجلة / حرجة
+    reported_at     = db.Column(db.DateTime, default=datetime.utcnow)
+    responded_at    = db.Column(db.DateTime)
+    resolved_at     = db.Column(db.DateTime)
+    response_time   = db.Column(db.String(50))  # محسوبة تلقائياً
+    status          = db.Column(db.String(30), default='مفتوح')  # مفتوح / قيد المعالجة / محلول / مغلق
+    resolution      = db.Column(db.Text)   # طريقة الحل
+    billed          = db.Column(db.Boolean, default=False)
+    notes           = db.Column(db.Text)
+
+    def __repr__(self):
+        return f'<Fault {self.code}>'
+
+
+# =============================================
+# 7. الإيرادات
+# =============================================
+class Revenue(db.Model):
+    __tablename__ = 'revenues'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # REV-001
+    customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'))
+    contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
+    revenue_date    = db.Column(db.Date, nullable=False)
+    revenue_type    = db.Column(db.String(100))  # عقد صيانة / قطع غيار / أعمال إضافية
+    payment_method  = db.Column(db.String(50))   # نقد / تحويل / شيك / بطاقة
+    amount          = db.Column(db.Float, nullable=False)
+    tax_amount      = db.Column(db.Float, default=0)
+    total           = db.Column(db.Float, nullable=False)
+    status          = db.Column(db.String(30), default='محصّل')  # محصّل / معلق / ملغي
+    reference       = db.Column(db.String(100))  # رقم الشيك أو التحويل
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Revenue {self.code}>'
+
+
+# =============================================
+# 8. المصروفات
+# =============================================
+class Expense(db.Model):
+    __tablename__ = 'expenses'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # EXP-001
+    expense_date    = db.Column(db.Date, nullable=False)
+    expense_type    = db.Column(db.String(100))  # رواتب / قطع غيار / وقود / أدوات
+    description     = db.Column(db.String(300))
+    responsible     = db.Column(db.String(100))
+    payment_method  = db.Column(db.String(50))
+    amount          = db.Column(db.Float, nullable=False)
+    reference       = db.Column(db.String(100))
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Expense {self.code}>'
+
+
+# =============================================
+# 9. الفواتير وسندات القبض
+# =============================================
+class Invoice(db.Model):
+    __tablename__ = 'invoices'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # INV-0001
+    invoice_type    = db.Column(db.String(30))   # فاتورة / سند قبض / إشعار دائن
+    customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'))
+    contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
+    invoice_date    = db.Column(db.Date, nullable=False)
+    due_date        = db.Column(db.Date)
+    description     = db.Column(db.String(300))
+    amount          = db.Column(db.Float, nullable=False)
+    tax_amount      = db.Column(db.Float, default=0)
+    total           = db.Column(db.Float, nullable=False)
+    payment_method  = db.Column(db.String(50))
+    status          = db.Column(db.String(30), default='غير مدفوعة')
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Invoice {self.code}>'
+
+
+# =============================================
+# 10. الأصناف (المخزن)
+# =============================================
+class InventoryItem(db.Model):
+    __tablename__ = 'inventory_items'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # #001
+    name            = db.Column(db.String(200), nullable=False)
+    category        = db.Column(db.String(100))   # أبواب / كهرباء / ميكانيكا / تشحيم
+    unit            = db.Column(db.String(20))    # قطعة / لتر / متر
+    current_qty     = db.Column(db.Float, default=0)
+    min_qty         = db.Column(db.Float, default=0)   # الحد الأدنى للطلب
+    buy_price       = db.Column(db.Float, default=0)
+    sell_price      = db.Column(db.Float, default=0)
+    supplier        = db.Column(db.String(100))
+    location        = db.Column(db.String(100))   # موقع التخزين
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # علاقات
+    movements       = db.relationship('StockMovement', backref='item', lazy=True)
+
+    @property
+    def stock_value(self):
+        return self.current_qty * self.buy_price
+
+    @property
+    def order_status(self):
+        if self.current_qty <= 0:
+            return 'نافد'
+        elif self.current_qty <= self.min_qty:
+            return 'منخفض'
+        return 'كافي'
+
+    def __repr__(self):
+        return f'<Item {self.code} {self.name}>'
+
+
+# =============================================
+# 11. حركة المخزن
+# =============================================
+class StockMovement(db.Model):
+    __tablename__ = 'stock_movements'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # MV-001
+    item_id         = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=False)
+    movement_date   = db.Column(db.Date, nullable=False)
+    direction       = db.Column(db.String(10))   # وارد / صادر
+    movement_type   = db.Column(db.String(100))  # شراء / استخدام في صيانة / استبدال / إرجاع
+    quantity        = db.Column(db.Float, nullable=False)
+    unit_price      = db.Column(db.Float, default=0)
+    total_value     = db.Column(db.Float, default=0)
+    technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'))
+    reason          = db.Column(db.String(300))
+    reference       = db.Column(db.String(100))
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<StockMovement {self.code}>'
+
+
+# =============================================
+# 12. بيان تركيب قطع الغيار
+# =============================================
+class PartsBilling(db.Model):
+    __tablename__ = 'parts_billing'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # PB-001
+    customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'))
+    contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
+    elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'))
+    technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    billing_date    = db.Column(db.Date, nullable=False)
+    description     = db.Column(db.Text)   # بيان القطع
+    cost_price      = db.Column(db.Float, default=0)   # تكلفة الشراء
+    sell_price      = db.Column(db.Float, default=0)   # سعر البيع للعميل
+    profit          = db.Column(db.Float, default=0)   # الربح
+    payment_method  = db.Column(db.String(50))
+    status          = db.Column(db.String(30), default='مكتملة')
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<PartsBilling {self.code}>'
+
+
+# =============================================
+# 13. إعدادات النظام
+# =============================================
+class Settings(db.Model):
+    __tablename__ = 'settings'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    company_name    = db.Column(db.String(200))
+    company_name_en = db.Column(db.String(200))
+    phone           = db.Column(db.String(20))
+    email           = db.Column(db.String(100))
+    address         = db.Column(db.Text)
+    city            = db.Column(db.String(100))
+    cr_number       = db.Column(db.String(50))    # السجل التجاري
+    vat_number      = db.Column(db.String(50))    # الرقم الضريبي
+    tax_pct         = db.Column(db.Float, default=15)
+    currency        = db.Column(db.String(10), default='ر.س')
+    language        = db.Column(db.String(10), default='ar')
+    logo_path       = db.Column(db.String(300))
+
+
+# =============================================
+# 14. المستخدمون
+# =============================================
+class User(db.Model):
+    __tablename__ = 'users'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    username        = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash   = db.Column(db.String(200), nullable=False)
+    full_name       = db.Column(db.String(100))
+    email           = db.Column(db.String(100))
+    role            = db.Column(db.String(30), default='viewer')  # admin / manager / viewer
+    is_active       = db.Column(db.Boolean, default=True)
+    last_login      = db.Column(db.DateTime)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<User {self.username}>'

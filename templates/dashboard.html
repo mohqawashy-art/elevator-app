@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore — Dashboard</title>
+<title>LiftCore — لوحة التحكم</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -89,7 +90,6 @@ html[dir="ltr"] .nav-section{text-transform:uppercase}
   position:relative;
   text-decoration:none;
 }
-.nav-item:hover{background:var(--bg3);color:var(--text1)}
 .nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
 .nav-item.active::before{
   content:'';position:absolute;
@@ -371,138 +371,63 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
   .two-col{grid-template-columns:1fr}
   .content{padding:16px}
 }
-@media(max-width:480px){
-  .stats-grid{grid-template-columns:1fr 1fr}
-  .stat-val{font-size:22px}
-}
+@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 </head>
 <body>
-
-<!-- Mobile overlay -->
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
-
-<!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
-    
-              <rect x="4" y="2" width="12" height="16" rx="2" stroke="#2a7fff" stroke-width="1.2"/>
-        <rect x="6.5" y="4.5" width="7" height="5.5" rx="1" fill="rgba(42,127,255,.2)" stroke="#2a7fff" stroke-width="1"/>
-        <circle cx="9" cy="14" r=".9" fill="#c8a055"/>
-        <circle cx="11.5" cy="14" r=".9" fill="rgba(200,160,85,.3)"/>
-      </svg>
-    </div>
-    
-  <nav class="sidebar-nav">
-    <div class="nav-section" id="nav-s1">الرئيسية</div>
-    <a class="nav-item active" href="/dashboard">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
-      <span id="nav-dashboard">لوحة التحكم</span>
-    </a>
 
-    <div class="nav-section" id="nav-s2">إدارة البيانات</div>
-    <a class="nav-item" href="/clients">
-      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-      <span id="nav-clients">العملاء</span>
-    </a>
-    <a class="nav-item" href="/elevators">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><line x1="7" y1="7" x2="9" y2="7"/><circle cx="8" cy="11" r="1"/></svg>
-      <span id="nav-elevators">المصاعد</span>
-    </a>
-    <a class="nav-item" href="/contracts">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg>
-      <span id="nav-contracts">العقود</span>
-    </a>
-    <a class="nav-item" href="/technicians">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg>
-      <span id="nav-technicians">الفنيين</span>
-    </a>
+    <div class="nav-section" id="ns1">الرئيسية</div>
+<a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
 
-    <div class="nav-section" id="nav-s3">العمليات</div>
-    <a class="nav-item" href="/maintenance-visits">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>
-      <span id="nav-visits">زيارات الصيانة</span>
-    </a>
-    <a class="nav-item" href="/faults">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
-      <span id="nav-faults">الأعطال</span>
-    </a>
-<a class="nav-item" href="/parts-billing">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14.5S13 12 13 7V3.5L8 1.5 3 3.5V7c0 5 5 7.5 5 7.5z"/></svg>
-      <span id="nav-parts">تركيب قطع غيار </span>
-    </a>
+<div class="nav-section" id="ns2">البيانات</div>
+<a href="/clients" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>العملاء</a>
+<a href="/elevators" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg>المصاعد</a>
+<a href="/contracts" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>العقود</a>
+<a href="/technicians" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>الفنيون</a>
 
-    <div class="nav-section" id="nav-s4">المالية</div>
-    <a class="nav-item" href="/revenues">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1v14M11 3.5H6.5a2.5 2.5 0 000 5h3a2.5 2.5 0 010 5H4.5"/></svg>
-      <span id="nav-revenues">الإيرادات</span>
-    </a>
-    <a class="nav-item" href="/expenses">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 8V14H3V8"/><path d="M14.5 4.5H1.5v3.5h13V4.5z"/><path d="M8 14.5V4.5M8 4.5H5.5a1.5 1.5 0 010-3C7 1.5 8 4.5 8 4.5zM8 4.5h2.5a1.5 1.5 0 000-3C9 1.5 8 4.5 8 4.5z"/></svg>
-      <span id="nav-expenses">المصروفات</span>
-    </a>
-      <a class="nav-item" href="/invoices">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>
-      <span id="nav-invoices">الفواتير</span>
-    </a>
-
-    <div class="nav-section" id="nav-s5">المخزن</div>
-    <a class="nav-item" href="/inventory">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 10.5V5.5a1 1 0 00-.5-.87l-5-2.88a1 1 0 00-1 0L2.5 4.63a1 1 0 00-.5.87v5a1 1 0 00.5.87l5 2.88a1 1 0 001 0l5-2.88a1 1 0 00.5-.87z"/><path d="M2.27 4.37L8 7.5l5.73-3.13M8 14.05V7.5"/></svg>
-      <span id="nav-inventory">الأصناف</span>
-    </a>
-    <a class="nav-item" href="/stock-movements">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M11 1l3 3-3 3"/><path d="M2 7V6a3 3 0 013-3h9M5 15l-3-3 3-3"/><path d="M14 9v1a3 3 0 01-3 3H2"/></svg>
-      <span id="nav-stock">حركة المخزن</span>
-    </a>
+<div class="nav-section" id="ns2">العمليات</div>
+<a href="/maintenance-visits" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>الصيانة</a>
+<a href="/faults" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأعطال</a>
+<a href="/parts-billing" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>تركيب قطع غيار</a>
   
-    <div class="nav-section" id="nav-s6">التقارير</div>
-    <a class="nav-item" href="#">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14V6l4-4h6a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6 2v4H2"/><line x1="5" y1="9" x2="11" y2="9"/><line x1="5" y1="12" x2="9" y2="12"/></svg>
-      <span id="nav-reports">التقارير</span>
-    </a>
-    <a class="nav-item" href="#">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg>
-      <span id="nav-settings">الإعدادات</span>
-    </a>
-  </nav>
+<div class="nav-section" id="ns3">المالية</div>
+<a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
+<a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
+<a href="/invoices" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>الفواتير</a>
 
+<div class="nav-section" id="ns4">المخزن</div>
+<a href="/inventory" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>الأصناف</a>
+<a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
+
+<div class="nav-section" id="ns4">التقارير</div>
+<a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
+<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
+         </nav>
   <div class="sidebar-footer">
     <div class="sidebar-user">
       <div class="sidebar-avatar">م</div>
-      <div class="sidebar-user-info">
-        <div class="sidebar-user-name" id="su-name">محمد القواشي</div>
-        <div class="sidebar-user-role" id="su-role">مدير النظام</div>
-      </div>
+      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
     </div>
   </div>
 </aside>
-
-<!-- MAIN -->
 <div class="main">
-
-  <!-- HEADER -->
   <header class="header">
-    <button class="hamburger" onclick="openSidebar()" aria-label="القائمة">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
-    </button>
-    <div class="header-title">
-      <span id="h-date">الأحد، 1 يونيو 2025</span>
-      <span id="h-page">لوحة التحكم</span>
-    </div>
+    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
+    <div class="header-title"><span id="h-date"></span><span>لوحة التحكم</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <div class="lang-toggle">
         <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
         <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
       </div>
-      <button class="icon-btn" title="الإشعارات">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg>
-        <span class="notif-dot"></span>
-      </button>
+      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
       <div class="header-avatar">م</div>
     </div>
   </header>
+
 
   <!-- CONTENT -->
   <div class="content">
@@ -852,92 +777,179 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
   </div>
 </div>
 
+
+</div>
+
 <script>
-const T = {
-  ar:{
-    dir:'rtl',lang:'ar',
-    'sb-sub':'الإدارة الذكية للمصاعد',
-    'su-name':'محمد القواشي','su-role':'مدير النظام',
-    'nav-s1':'الرئيسية','nav-s2':'إدارة البيانات','nav-s3':'العمليات','nav-s4':'التقارير',
-    'nav-dashboard':'لوحة التحكم','nav-clients':'العملاء','nav-elevators':'المصاعد',
-    'nav-contracts':'العقود','nav-technicians':'الفنيين','nav-visits':'زيارات الصيانة',
-    'nav-faults':'الأعطال','nav-invoices':'الفواتير','nav-reports':'التقارير','nav-settings':'الإعدادات',
-    'h-page':'لوحة التحكم',
-    'sl1':'Total Clients','sl1ar':'إجمالي العملاء',
-    'sl2':'Total Elevators','sl2ar':'إجمالي المصاعد',
-    'sl3':'Active Contracts','sl3ar':'عقود فعّالة',
-    'sl4':'Expired Contracts','sl4ar':'عقود منتهية',
-    'sl5':"Today's Visits",'sl5ar':'زيارات اليوم',
-    'sl6':'Open Faults','sl6ar':'أعطال مفتوحة',
-    'sl7':'Unpaid Invoices','sl7ar':'فواتير غير مدفوعة',
-    'sl8':'Available Technicians','sl8ar':'فنيون متاحون',
-    'p-alerts':'تنبيهات مهمة','p-quick':'إجراءات سريعة','p-finance':'ملخص مالي',
-    'p-visits':'زيارات الصيانة اليوم','p-faults':'الأعطال المفتوحة',
-    'sl-visits':'عرض الكل','sl-faults':'عرض الكل',
-    'a1':'عقود تنتهي خلال 30 يوم','a2':'زيارات صيانة متأخرة',
-    'a3':'أعطال بدون استجابة','a4':'فواتير مستحقة السداد','a5':'عملاء يحتاجون متابعة',
-    'qa1':'إضافة عميل','qa2':'إضافة مصعد','qa3':'إنشاء عقد',
-    'qa4':'جدولة زيارة','qa5':'تسجيل عطل','qa6':'إنشاء فاتورة',
-    'fl1':'إجمالي الفواتير','fl2':'المبالغ المحصّلة','fl3':'المبالغ المتبقية','fl4':'فواتير متأخرة',
-    'th-client':'العميل','th-loc':'الموقع','th-elev':'رقم المصعد','th-vtype':'نوع الزيارة','th-tech':'الفني','th-status':'الحالة',
-    'th-fno':'رقم العطل','th-fclient':'العميل','th-floc':'الموقع','th-fpri':'الأولوية','th-ftech':'الفني المكلّف','th-fstatus':'الحالة',
-  },
-  en:{
-    dir:'ltr',lang:'en',
-    'sb-sub':'Smart Elevator Management',
-    'su-name':'Mohammed Al-Qawashy','su-role':'System Admin',
-    'nav-s1':'Main','nav-s2':'Data Management','nav-s3':'Operations','nav-s4':'Reports',
-    'nav-dashboard':'Dashboard','nav-clients':'Clients','nav-elevators':'Elevators',
-    'nav-contracts':'Contracts','nav-technicians':'Technicians','nav-visits':'Maintenance Visits',
-    'nav-faults':'Faults','nav-invoices':'Invoices','nav-reports':'Reports','nav-settings':'Settings',
-    'h-page':'Dashboard',
-    'sl1':'Total Clients','sl1ar':'إجمالي العملاء',
-    'sl2':'Total Elevators','sl2ar':'إجمالي المصاعد',
-    'sl3':'Active Contracts','sl3ar':'عقود فعّالة',
-    'sl4':'Expired Contracts','sl4ar':'عقود منتهية',
-    'sl5':"Today's Visits",'sl5ar':'زيارات اليوم',
-    'sl6':'Open Faults','sl6ar':'أعطال مفتوحة',
-    'sl7':'Unpaid Invoices','sl7ar':'فواتير غير مدفوعة',
-    'sl8':'Available Technicians','sl8ar':'فنيون متاحون',
-    'p-alerts':'Important Alerts','p-quick':'Quick Actions','p-finance':'Financial Summary',
-    'p-visits':"Today's Maintenance Visits",'p-faults':'Open Faults',
-    'sl-visits':'View All','sl-faults':'View All',
-    'a1':'Contracts expiring in 30 days','a2':'Delayed maintenance visits',
-    'a3':'Faults with no response','a4':'Overdue invoices','a5':'Clients needing follow-up',
-    'qa1':'Add Client','qa2':'Add Elevator','qa3':'Create Contract',
-    'qa4':'Schedule Visit','qa5':'Report Fault','qa6':'Create Invoice',
-    'fl1':'Total Invoices','fl2':'Collected','fl3':'Remaining','fl4':'Overdue',
-    'th-client':'Client','th-loc':'Location','th-elev':'Elevator','th-vtype':'Type','th-tech':'Technician','th-status':'Status',
-    'th-fno':'Fault #','th-fclient':'Client','th-floc':'Location','th-fpri':'Priority','th-ftech':'Technician','th-fstatus':'Status',
-  }
+// ===== البيانات الحقيقية من Flask =====
+const STATS = {
+  customers:    {{ stats.customers }},
+  elevators:    {{ stats.elevators }},
+  contracts:    {{ stats.contracts }},
+  faults_open:  {{ stats.faults_open }},
+  visits_done:  {{ stats.visits_done }},
+  technicians:  {{ stats.technicians }},
+  revenue:      {{ stats.revenue }},
+  parts_profit: {{ stats.parts_profit }},
 };
 
-function setLang(l){
-  const t=T[l];
-  document.documentElement.setAttribute('lang',t.lang);
-  document.documentElement.setAttribute('dir',t.dir);
+// تحديث الأرقام فور التحميل
+function updateDashboard() {
+  // KPI Cards
+  const vals = document.querySelectorAll('.stat-val');
+  if(vals[0]) vals[0].textContent = STATS.customers;
+  if(vals[1]) vals[1].textContent = STATS.elevators;
+  if(vals[2]) vals[2].textContent = STATS.contracts;
+  if(vals[3]) vals[3].textContent = '—';
+  if(vals[4]) vals[4].textContent = STATS.visits_done;
+  if(vals[5]) vals[5].textContent = STATS.faults_open;
+  if(vals[6]) vals[6].textContent = '—';
+  if(vals[7]) vals[7].textContent = STATS.technicians;
+
+  // تحديث الإيرادات لو موجودة
+  const revEl = document.getElementById('total-revenue');
+  if(revEl) revEl.textContent = STATS.revenue.toLocaleString('ar-SA', {minimumFractionDigits:0}) + ' ر.س';
+
+  const profitEl = document.getElementById('total-profit');
+  if(profitEl) profitEl.textContent = STATS.parts_profit.toLocaleString('ar-SA', {minimumFractionDigits:0}) + ' ر.س';
+}
+
+// تحميل البيانات الشهرية من API
+async function loadCharts() {
+  try {
+    const res = await fetch('/api/dashboard?year=' + new Date().getFullYear());
+    const data = await res.json();
+
+    const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
+                    'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    const GRID = 'rgba(100,160,255,.08)';
+    const TICK = 'rgba(228,234,245,.6)';
+
+    // شارت الإيرادات الشهرية
+    const revCanvas = document.getElementById('chart-revenue') ||
+                      document.getElementById('revenueChart') ||
+                      document.querySelector('canvas');
+    if(revCanvas) {
+      new Chart(revCanvas, {
+        type: 'bar',
+        data: {
+          labels: MONTHS,
+          datasets: [
+            {
+              label: 'الإيرادات',
+              data: data.monthly_revenue,
+              backgroundColor: 'rgba(42,127,255,.5)',
+              borderColor: 'rgba(42,127,255,.9)',
+              borderWidth: 1,
+              borderRadius: 4,
+            },
+            {
+              label: 'المصروفات',
+              data: data.monthly_expenses,
+              backgroundColor: 'rgba(224,72,72,.35)',
+              borderColor: 'rgba(224,72,72,.8)',
+              borderWidth: 1,
+              borderRadius: 4,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: TICK, font: { family: 'IBM Plex Sans Arabic', size: 11 } } }
+          },
+          scales: {
+            x: { ticks: { color: TICK, font: { size: 10 } }, grid: { color: GRID } },
+            y: { ticks: { color: TICK, font: { size: 10 } }, grid: { color: GRID } }
+          }
+        }
+      });
+    }
+
+    // شارت حالة العقود
+    const contractCanvas = document.getElementById('chart-contracts') ||
+                           document.getElementById('contractsChart');
+    if(contractCanvas && data.contract_status) {
+      new Chart(contractCanvas, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(data.contract_status),
+          datasets: [{
+            data: Object.values(data.contract_status),
+            backgroundColor: ['rgba(31,184,122,.8)','rgba(224,72,72,.8)','rgba(224,144,48,.8)','rgba(138,155,184,.6)'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: TICK, font: { family: 'IBM Plex Sans Arabic', size: 11 } } }
+          }
+        }
+      });
+    }
+
+    // شارت حالة المصاعد
+    const elevCanvas = document.getElementById('chart-elevators') ||
+                       document.getElementById('elevatorsChart');
+    if(elevCanvas && data.elev_status) {
+      new Chart(elevCanvas, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(data.elev_status),
+          datasets: [{
+            data: Object.values(data.elev_status),
+            backgroundColor: ['rgba(31,184,122,.8)','rgba(42,159,255,.8)','rgba(224,144,48,.8)','rgba(224,72,72,.8)'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: TICK, font: { family: 'IBM Plex Sans Arabic', size: 11 } } }
+          }
+        }
+      });
+    }
+
+    // تحديث الأرقام من API
+    if(vals = document.querySelectorAll('.stat-val')) {
+      if(vals[0]) vals[0].textContent = data.customers;
+      if(vals[1]) vals[1].textContent = data.elevators;
+      if(vals[2]) vals[2].textContent = data.contracts;
+      if(vals[4]) vals[4].textContent = data.visits_done;
+      if(vals[5]) vals[5].textContent = data.faults_open;
+      if(vals[7]) vals[7].textContent = data.technicians;
+    }
+
+  } catch(e) {
+    console.log('API not ready yet:', e);
+    // استخدام البيانات الأولية من Flask
+    updateDashboard();
+  }
+}
+
+// ===== JS مشترك =====
+function setLang(l) {
+  document.documentElement.setAttribute('lang',l);
+  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
   document.getElementById('btn-ar').classList.toggle('active',l==='ar');
   document.getElementById('btn-en').classList.toggle('active',l==='en');
-  Object.keys(t).forEach(k=>{
-    if(['dir','lang'].includes(k))return;
-    const el=document.getElementById(k);
-    if(el)el.textContent=t[k];
-  });
 }
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 
-function openSidebar(){
-  document.getElementById('sidebar').classList.add('open');
-  document.getElementById('overlay').classList.add('open');
-}
-function closeSidebar(){
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('open');
-}
+const now = new Date();
+const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} — `;
 
-const now=new Date();
-const days=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-const months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-document.getElementById('h-date').textContent=`${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+// تشغيل عند التحميل
+updateDashboard();
+loadCharts();
 </script>
 </body>
 </html>

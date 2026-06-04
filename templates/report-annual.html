@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — التقرير السنوي للعميل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===== SCREEN STYLES ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:900px;height:200px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.sidebar-nav::-webkit-scrollbar{width:3px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.nav-badge{margin-right:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
+.sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
+.sidebar-user-role{font-size:11px;color:var(--text3)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:90}
+.header-title{font-size:15px;font-weight:500;color:var(--text1)}
+.header-title span{color:var(--text3);font-weight:400;font-size:13px;margin-right:6px}
+.header-spacer{flex:1}
+.header-actions{display:flex;align-items:center;gap:8px}
+.lang-toggle{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.lang-opt{padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:var(--trans);color:var(--text3);border:none;background:none}
+.lang-opt.active{background:var(--accent);color:#fff}
+.header-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;cursor:pointer;border:2px solid var(--border2)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.hamburger svg{width:20px;height:20px}
+.content{flex:1;padding:24px;overflow-y:auto}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1)}
+.btn-success{background:rgba(31,184,122,.12);color:var(--success);border:1px solid rgba(31,184,122,.2)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.filter-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:20px}
+.filter-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field select,.field input{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;width:100%}
+.field select:focus,.field input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  .sidebar.open{right:0}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .filter-row{grid-template-columns:1fr}
+}
+
+/* ===== PRINT AREA ===== */
+.print-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.print-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.print-toolbar-title{font-size:13px;font-weight:500;color:var(--text2)}
+
+/* ===== REPORT PAGE ===== */
+#report-page{
+  background:#fff;
+  color:#111;
+  padding:28px 32px;
+  font-family:var(--font-ar);
+  min-height:297mm;
+  position:relative;
+}
+
+/* هيدر التقرير */
+.rpt-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #1a4fa0;margin-bottom:20px}
+.rpt-header-logo{display:flex;flex-direction:column;align-items:flex-end}
+.rpt-header-logo img{height:56px;object-fit:contain}
+.rpt-header-logo-sub{font-size:10px;color:#555;margin-top:3px;text-align:center}
+.rpt-header-center{text-align:center;flex:1;padding:0 20px}
+.rpt-header-center h1{font-size:22px;font-weight:700;color:#1a4fa0;margin-bottom:2px}
+.rpt-header-center h2{font-size:13px;color:#666;font-weight:400;font-family:var(--font-en)}
+.rpt-header-center p{font-size:11px;color:#888;margin-top:6px;line-height:1.6}
+.rpt-header-icon{width:60px;height:60px;border:2px solid #1a4fa0;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rpt-header-icon svg{width:36px;height:36px;color:#1a4fa0}
+
+/* أقسام التقرير */
+.rpt-section{margin-bottom:16px}
+.rpt-section-title{background:#1a4fa0;color:#fff;padding:6px 12px;font-size:12px;font-weight:600;border-radius:4px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.rpt-section-title svg{width:14px;height:14px}
+
+/* شبكة البيانات */
+.rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rpt-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.rpt-field{display:flex;flex-direction:column}
+.rpt-label{font-size:10px;color:#666;margin-bottom:2px}
+.rpt-value{border-bottom:1.5px solid #bbb;padding:4px 2px;font-size:12px;color:#111;min-height:24px;font-weight:500}
+.rpt-value.en{font-family:var(--font-en);direction:ltr;text-align:left}
+
+/* جداول التقرير */
+.rpt-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
+.rpt-table th{background:#e8eef8;color:#1a4fa0;padding:6px 8px;text-align:right;font-weight:600;border:1px solid #c5d0e6}
+.rpt-table td{padding:5px 8px;border:1px solid #ddd;color:#333;vertical-align:top}
+.rpt-table tr:nth-child(even) td{background:#f8faff}
+.rpt-table .num{font-family:var(--font-en);text-align:center}
+
+/* ملخص العقد */
+.rpt-summary-box{border:1.5px solid #1a4fa0;border-radius:6px;padding:12px 16px;background:#f5f8ff}
+.rpt-summary-title{font-size:12px;font-weight:700;color:#1a4fa0;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.rpt-summary-title svg{width:14px;height:14px}
+.rpt-summary-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px solid #e0e8f5}
+.rpt-summary-row:last-child{border-bottom:none;font-weight:700;font-size:12px;color:#1a4fa0;padding-top:6px}
+.rpt-summary-row span:first-child{color:#444}
+.rpt-summary-row span:last-child{font-family:var(--font-en);font-weight:600}
+
+/* إحصائيات الأعطال */
+.rpt-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.rpt-stat{border:1px solid #ddd;border-radius:6px;padding:8px 10px;text-align:center;background:#fafbff}
+.rpt-stat-val{font-size:20px;font-weight:700;color:#1a4fa0;font-family:var(--font-en)}
+.rpt-stat-label{font-size:9px;color:#666;margin-top:2px}
+
+/* منطقة الصور */
+.rpt-photos-area{border:1.5px dashed #bbb;border-radius:6px;min-height:80px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:11px;margin-top:6px}
+
+/* التوقيعات */
+.rpt-signatures{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px;padding-top:16px;border-top:2px solid #1a4fa0}
+.rpt-sig{text-align:center}
+.rpt-sig-title{font-size:11px;font-weight:700;color:#1a4fa0;margin-bottom:16px}
+.rpt-sig-line{border-bottom:1.5px solid #333;margin:0 8px 4px}
+.rpt-sig-label{font-size:9px;color:#666}
+
+/* فوتر التقرير */
+.rpt-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:10px;border-top:1px solid #ddd;font-size:9px;color:#888}
+.rpt-footer-brand{color:#1a4fa0;font-weight:600}
+
+/* ===== PRINT MEDIA ===== */
+@media print{
+  body{background:#fff!important}
+  .sidebar,.header,.print-toolbar,.filter-card,.page-header,.mobile-overlay{display:none!important}
+  .main{display:block}
+  .content{padding:0}
+  .print-wrap{border:none;border-radius:0}
+  #report-page{padding:20px 24px}
+}
+@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
+</style>
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
+
+    <div class="nav-section" id="ns1">الرئيسية</div>
+<a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
+
+<div class="nav-section" id="ns2">البيانات</div>
+<a href="/clients" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>العملاء</a>
+<a href="/elevators" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg>المصاعد</a>
+<a href="/contracts" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>العقود</a>
+<a href="/technicians" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>الفنيون</a>
+
+<div class="nav-section" id="ns2">العمليات</div>
+<a href="/maintenance-visits" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>الصيانة</a>
+<a href="/faults" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأعطال</a>
+<a href="/parts-billing" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>قطع تركيب</a>
+  
+<div class="nav-section" id="ns3">المالية</div>
+<a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
+<a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
+<a href="/invoices" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>الفواتير</a>
+
+<div class="nav-section" id="ns4">المخزن</div>
+<a href="/inventory" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>الأصناف</a>
+<a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
+
+<div class="nav-section" id="ns4">التقارير</div>
+<a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
+<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
+         </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">م</div>
+      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="header">
+    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
+    <div class="header-title"><span id="h-date"></span><span>التقرير السنوي للعميل</span></div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <div class="lang-toggle">
+        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
+        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
+      </div>
+      <div class="header-avatar">م</div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <div class="page-header">
+      <div class="page-title">التقرير الختامي لعقد الصيانة السنوي</div>
+      <div class="page-actions">
+        <button class="btn btn-secondary btn-sm" onclick="window.print()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>
+          طباعة
+        </button>
+        <button class="btn btn-success btn-sm" onclick="exportPDF()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+          تصدير PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- فلاتر الاختيار -->
+    <div class="filter-card">
+      <div class="filter-row">
+        <div class="field">
+          <label>العميل</label>
+          <select id="sel-client" onchange="generateReport()">
+            <option value="">اختر العميل</option>
+            <option value="C-0001">برج الياسمين</option>
+            <option value="C-0002">مجمع النخيل</option>
+            <option value="C-0003">فندق الأندلس</option>
+            <option value="C-0004">مستشفى السلام</option>
+            <option value="C-0005">برج المملكة</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>رقم العقد</label>
+          <select id="sel-contract" onchange="generateReport()">
+            <option value="">اختر العقد</option>
+            <option value="CN-00001">CN-00001</option>
+            <option value="CN-00004">CN-00004</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>السنة</label>
+          <select id="sel-year" onchange="generateReport()">
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+          </select>
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="generateReport()" style="width:100%;justify-content:center">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+            توليد التقرير
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- التقرير -->
+    <div class="print-wrap" id="report-container" style="display:none">
+      <div class="print-toolbar">
+        <span class="print-toolbar-title" id="toolbar-title">التقرير الختامي</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="window.print()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
+          </button>
+          <button class="btn btn-success btn-sm" onclick="exportPDF()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- صفحة التقرير للطباعة -->
+      <div id="report-page">
+
+        <!-- هيدر التقرير -->
+        <div class="rpt-header">
+          <div class="rpt-header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="rpt-header-center">
+            <h1>التقرير الختامي لعقد الصيانة السنوي</h1>
+            <h2>Annual Maintenance Contract Closing Report</h2>
+            <p>نشكر ثقتكم في خدماتنا ونسعد بتقديم هذا التقرير عن أعمال الصيانة التي تم تنفيذها خلال فترة التعاقد</p>
+          </div>
+          <div class="rpt-header-logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="height:56px;object-fit:contain">
+            <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
+          </div>
+        </div>
+
+        <!-- 1. بيانات العميل -->
+        <div class="rpt-section">
+          <div class="rpt-section-title">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg>
+            1. بيانات العميل
+          </div>
+          <div class="rpt-grid">
+            <div class="rpt-field">
+              <div class="rpt-label">اسم العميل / المنشأة</div>
+              <div class="rpt-value" id="r-client-name"></div>
+            </div>
+            <div class="rpt-field">
+              <div class="rpt-label">الموقع / العنوان</div>
+              <div class="rpt-value" id="r-client-address"></div>
+            </div>
+            <div class="rpt-field">
+              <div class="rpt-label">رقم العقد</div>
+              <div class="rpt-value en" id="r-contract-no"></div>
+            </div>
+            <div class="rpt-field">
+              <div class="rpt-label">فترة التعاقد</div>
+              <div class="rpt-value en" id="r-contract-period"></div>
+            </div>
+            <div class="rpt-field">
+              <div class="rpt-label">نوع المصعد</div>
+              <div class="rpt-value" id="r-elev-type"></div>
+            </div>
+            <div class="rpt-field">
+              <div class="rpt-label">الموديل</div>
+              <div class="rpt-value en" id="r-elev-model"></div>
+            </div>
+            <div class="rpt-field">
+              <div class="rpt-label">الحمولة</div>
+              <div class="rpt-value en" id="r-elev-capacity"></div>
+            </div>
+            <div class="rpt-field">
+              <div class="rpt-label">رقم المصعد</div>
+              <div class="rpt-value en" id="r-elev-no"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 + 3 بجانب بعض -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+          <!-- 2. ملخص التعاقد -->
+          <div class="rpt-summary-box">
+            <div class="rpt-summary-title">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16"/><path d="M14 2v4h4"/></svg>
+              2. ملخص التعاقد
+            </div>
+            <p style="font-size:11px;color:#444;line-height:1.7;margin-bottom:10px">
+              تم تنفيذ أعمال الصيانة الدورية للمصعد طبقاً لبنود العقد طوال فترة التعاقد، مع الالتزام الكامل بزيارات الفحص المجولة والاستجابة للأعطال الطارئة، وتم تنفيذ جميع الأعمال من قبل فريق فني متخصص وبأعلى معايير الجودة والسلامة.
+            </p>
+            <div class="rpt-summary-row">
+              <span>إجمالي الزيارات المخططة</span>
+              <span id="r-planned-visits">—</span>
+            </div>
+            <div class="rpt-summary-row">
+              <span>الزيارات المنفذة</span>
+              <span id="r-done-visits">—</span>
+            </div>
+            <div class="rpt-summary-row">
+              <span>نسبة الالتزام</span>
+              <span id="r-compliance">—</span>
+            </div>
+            <div class="rpt-summary-row">
+              <span>عدد الأعطال الطارئة</span>
+              <span id="r-faults-count">—</span>
+            </div>
+            <div class="rpt-summary-row">
+              <span>نسبة إنجاز الأعطال</span>
+              <span id="r-faults-done">—</span>
+            </div>
+          </div>
+
+          <!-- 3. الأعطال التي تم التعامل معها -->
+          <div class="rpt-section" style="margin-bottom:0">
+            <div class="rpt-section-title">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
+              3. الأعطال التي تم التعامل معها
+            </div>
+            <table class="rpt-table">
+              <thead>
+                <tr><th>#</th><th>نوع العطل</th><th>التاريخ</th><th>الحالة</th></tr>
+              </thead>
+              <tbody id="r-faults-table">
+                <tr><td colspan="4" style="text-align:center;color:#aaa;padding:12px">لا توجد أعطال مسجلة</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 4. سجل الزيارات الفنية -->
+        <div class="rpt-section">
+          <div class="rpt-section-title">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>
+            4. سجل الزيارات الفنية
+          </div>
+          <table class="rpt-table">
+            <thead>
+              <tr><th>#</th><th>التاريخ</th><th>الفني</th><th>نوع الزيارة</th><th>الأعمال المنفذة</th><th>الحالة</th></tr>
+            </thead>
+            <tbody id="r-visits-table">
+              <tr><td colspan="6" style="text-align:center;color:#aaa;padding:12px">لا توجد زيارات مسجلة</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 5 + 6 بجانب بعض -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+          <!-- 5. إحصائيات الأعطال -->
+          <div class="rpt-section" style="margin-bottom:0">
+            <div class="rpt-section-title">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="10" width="3" height="4"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="2" width="3" height="12"/></svg>
+              5. إحصائيات الأداء
+            </div>
+            <div class="rpt-stats-grid">
+              <div class="rpt-stat">
+                <div class="rpt-stat-val" id="s-visits">0</div>
+                <div class="rpt-stat-label">الزيارات المنفذة</div>
+              </div>
+              <div class="rpt-stat">
+                <div class="rpt-stat-val" id="s-compliance">0%</div>
+                <div class="rpt-stat-label">نسبة الالتزام</div>
+              </div>
+              <div class="rpt-stat">
+                <div class="rpt-stat-val" id="s-faults">0</div>
+                <div class="rpt-stat-label">الأعطال الطارئة</div>
+              </div>
+              <div class="rpt-stat">
+                <div class="rpt-stat-val" id="s-resolve">0%</div>
+                <div class="rpt-stat-label">نسبة الإنجاز</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. قطع الغيار المستبدلة -->
+          <div class="rpt-section" style="margin-bottom:0">
+            <div class="rpt-section-title">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 14.5S13 12 13 7V3.5L8 1.5 3 3.5V7c0 5 5 7.5 5 7.5z"/></svg>
+              6. قطع الغيار المستبدلة
+            </div>
+            <table class="rpt-table">
+              <thead>
+                <tr><th>الصنف</th><th>الكمية</th><th>التاريخ</th></tr>
+              </thead>
+              <tbody id="r-parts-table">
+                <tr><td colspan="3" style="text-align:center;color:#aaa;padding:12px">لا توجد قطع مسجلة</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 7. صور المصعد -->
+        <div class="rpt-section">
+          <div class="rpt-section-title">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/><circle cx="8" cy="8" r="2.5"/></svg>
+            7. صور المصعد (الماكينة - لوحة التحكم - الكابينة - أعلى الكابينة - بئر المصعد)
+          </div>
+          <div class="rpt-photos-area">
+            📷 يتم إضافة الصور عند الطباعة الفعلية
+          </div>
+        </div>
+
+        <!-- التوقيعات -->
+        <div class="rpt-signatures">
+          <div class="rpt-sig">
+            <div class="rpt-sig-title">العميل أو من يمثله</div>
+            <div class="rpt-sig-line"></div>
+            <div class="rpt-sig-label">الاسم: _______________</div>
+            <div class="rpt-sig-label">التوقيع: _______________</div>
+            <div class="rpt-sig-label">التاريخ: _______________</div>
+          </div>
+          <div class="rpt-sig">
+            <div class="rpt-sig-title">مهندس الصيانة</div>
+            <div class="rpt-sig-line"></div>
+            <div class="rpt-sig-label">الاسم: _______________</div>
+            <div class="rpt-sig-label">التوقيع: _______________</div>
+            <div class="rpt-sig-label">التاريخ: _______________</div>
+          </div>
+          <div class="rpt-sig">
+            <div class="rpt-sig-title">المدير المسئول</div>
+            <div class="rpt-sig-line"></div>
+            <div class="rpt-sig-label">الاسم: _______________</div>
+            <div class="rpt-sig-label">التوقيع: _______________</div>
+            <div class="rpt-sig-label">التاريخ: _______________</div>
+          </div>
+          <div class="rpt-sig">
+            <div class="rpt-sig-title">الختم</div>
+            <div class="rpt-sig-line"></div>
+            <div style="height:48px;border:1.5px dashed #aaa;border-radius:50%;width:48px;margin:4px auto"></div>
+          </div>
+        </div>
+
+        <!-- فوتر التقرير -->
+        <div class="rpt-footer">
+          <span>نصعد بثقتكم إلى الأعلى...</span>
+          <span id="r-print-date"></span>
+          <span class="rpt-footer-brand">LiftCore — الإدارة الذكية للمصاعد</span>
+        </div>
+
+      </div><!-- end report-page -->
+    </div><!-- end print-wrap -->
+
+  </div><!-- end content -->
+</div><!-- end main -->
+
+<script>
+// بيانات نموذجية
+const CLIENTS = {
+  'C-0001':{name:'برج الياسمين',address:'مكة المكرمة - العزيزية',city:'مكة'},
+  'C-0002':{name:'مجمع النخيل',address:'جدة - الروضة',city:'جدة'},
+  'C-0003':{name:'فندق الأندلس',address:'مكة المكرمة - أجياد',city:'مكة'},
+  'C-0004':{name:'مستشفى السلام',address:'مكة المكرمة - البرهة',city:'مكة'},
+  'C-0005':{name:'برج المملكة',address:'جدة - البرهة',city:'جدة'},
+};
+const CONTRACTS = {
+  'CN-00001':{client:'C-0001',start:'2024-01-01',end:'2025-12-31',elevNo:'EL-0001',elevType:'مصعد ركاب',model:'Otis Gen2',capacity:'630 كجم',planned:24,done:22,faults:3,faultsDone:3},
+  'CN-00004':{client:'C-0004',start:'2024-01-15',end:'2026-01-14',elevNo:'EL-0005',elevType:'مصعد مستشفى',model:'ThyssenKrupp',capacity:'1600 كجم',planned:24,done:24,faults:1,faultsDone:1},
+};
+const VISITS_DATA = {
+  'CN-00001':[
+    {date:'2024-01-15',tech:'أحمد محمد',type:'صيانة دورية',works:'فحص الكابينة وتشحيم الأدلة',status:'مكتملة'},
+    {date:'2024-02-18',tech:'خالد علي',type:'صيانة دورية',works:'فحص لوحة التحكم والكوابل',status:'مكتملة'},
+    {date:'2024-03-20',tech:'أحمد محمد',type:'صيانة دورية',works:'فحص المحرك وتشحيم عام',status:'مكتملة'},
+    {date:'2024-05-10',tech:'سعد ناصر',type:'طارئة',works:'إصلاح عطل في الباب الآلي',status:'مكتملة'},
+    {date:'2024-06-22',tech:'أحمد محمد',type:'صيانة دورية',works:'فحص الكابينة وتشحيم الأدلة',status:'مكتملة'},
+  ],
+  'CN-00004':[
+    {date:'2024-02-01',tech:'خالد علي',type:'صيانة دورية',works:'فحص شامل للمصعد',status:'مكتملة'},
+    {date:'2024-03-05',tech:'خالد علي',type:'صيانة دورية',works:'تشحيم وفحص كابل',status:'مكتملة'},
+    {date:'2024-04-08',tech:'سعد ناصر',type:'صيانة دورية',works:'فحص لوحة التحكم',status:'مكتملة'},
+  ],
+};
+const FAULTS_DATA = {
+  'CN-00001':[
+    {type:'عطل في الباب الآلي',date:'2024-05-09',status:'تم الإصلاح'},
+    {type:'توقف مفاجئ',date:'2024-08-15',status:'تم الإصلاح'},
+    {type:'ضجيج في المحرك',date:'2024-11-02',status:'تم الإصلاح'},
+  ],
+  'CN-00004':[
+    {type:'خلل في مستشعر الباب',date:'2024-09-20',status:'تم الإصلاح'},
+  ],
+};
+const PARTS_DATA = {
+  'CN-00001':[
+    {name:'بكرة باب',qty:2,date:'2024-05-10'},
+    {name:'حساس مستوى',qty:1,date:'2024-08-16'},
+  ],
+  'CN-00004':[
+    {name:'مستشعر باب',qty:1,date:'2024-09-21'},
+  ],
+};
+
+function generateReport(){
+  const clientId = document.getElementById('sel-client').value;
+  const contractNo = document.getElementById('sel-contract').value;
+  const year = document.getElementById('sel-year').value;
+  if(!clientId || !contractNo) return;
+
+  const client = CLIENTS[clientId];
+  const contract = CONTRACTS[contractNo];
+  if(!client || !contract) return;
+
+  // بيانات العميل
+  document.getElementById('r-client-name').textContent = client.name;
+  document.getElementById('r-client-address').textContent = client.address;
+  document.getElementById('r-contract-no').textContent = contractNo;
+  document.getElementById('r-contract-period').textContent = `${contract.start} → ${contract.end}`;
+  document.getElementById('r-elev-type').textContent = contract.elevType;
+  document.getElementById('r-elev-model').textContent = contract.model;
+  document.getElementById('r-elev-capacity').textContent = contract.capacity;
+  document.getElementById('r-elev-no').textContent = contract.elevNo;
+
+  // إحصائيات
+  const compliance = Math.round(contract.done / contract.planned * 100);
+  const faultResolve = contract.faults > 0 ? Math.round(contract.faultsDone / contract.faults * 100) : 100;
+  document.getElementById('r-planned-visits').textContent = contract.planned;
+  document.getElementById('r-done-visits').textContent = contract.done;
+  document.getElementById('r-compliance').textContent = compliance + '%';
+  document.getElementById('r-faults-count').textContent = contract.faults;
+  document.getElementById('r-faults-done').textContent = faultResolve + '%';
+  document.getElementById('s-visits').textContent = contract.done;
+  document.getElementById('s-compliance').textContent = compliance + '%';
+  document.getElementById('s-faults').textContent = contract.faults;
+  document.getElementById('s-resolve').textContent = faultResolve + '%';
+
+  // جدول الزيارات
+  const visits = VISITS_DATA[contractNo] || [];
+  document.getElementById('r-visits-table').innerHTML = visits.length ?
+    visits.map((v,i)=>`<tr><td class="num">${i+1}</td><td class="num">${v.date}</td><td>${v.tech}</td><td>${v.type}</td><td>${v.works}</td><td>${v.status}</td></tr>`).join('') :
+    '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:12px">لا توجد زيارات</td></tr>';
+
+  // جدول الأعطال
+  const faults = FAULTS_DATA[contractNo] || [];
+  document.getElementById('r-faults-table').innerHTML = faults.length ?
+    faults.map((f,i)=>`<tr><td class="num">${i+1}</td><td>${f.type}</td><td class="num">${f.date}</td><td>${f.status}</td></tr>`).join('') :
+    '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:12px">لا توجد أعطال</td></tr>';
+
+  // جدول القطع
+  const parts = PARTS_DATA[contractNo] || [];
+  document.getElementById('r-parts-table').innerHTML = parts.length ?
+    parts.map((p,i)=>`<tr><td>${p.name}</td><td class="num">${p.qty}</td><td class="num">${p.date}</td></tr>`).join('') :
+    '<tr><td colspan="3" style="text-align:center;color:#aaa;padding:12px">لا توجد قطع</td></tr>';
+
+  // تاريخ الطباعة
+  const now = new Date();
+  document.getElementById('r-print-date').textContent = `تاريخ التقرير: ${now.toLocaleDateString('ar-SA')}`;
+  document.getElementById('toolbar-title').textContent = `التقرير الختامي — ${client.name} — ${contractNo} — ${year}`;
+
+  document.getElementById('report-container').style.display = 'block';
+  document.getElementById('report-container').scrollIntoView({behavior:'smooth'});
+}
+
+function exportPDF(){
+  window.print();
+}
+
+// JS مشترك
+const _now = new Date();
+const _days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const _months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent = `${_days[_now.getDay()]}، ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} — `;
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
+function setLang(l){document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');document.getElementById('btn-ar').classList.toggle('active',l==='ar');document.getElementById('btn-en').classList.toggle('active',l==='en');}
+</script>
+</body>
+</html>
+<script src="{{ url_for('static', filename='reports_live.js') }}"></script>
+<script>
+  loadReportData('report-clients');  // غيّر الاسم حسب الصفحة
+</script>

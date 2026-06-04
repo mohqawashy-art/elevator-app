@@ -31,7 +31,6 @@ html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
 .sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 .nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
-.nav-item:hover{background:var(--bg3);color:var(--text1)}
 .nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
 .nav-item.active::before{content:'';position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:3px}
 html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
@@ -208,7 +207,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
 
 <div class="nav-section" id="ns4">التقارير</div>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
+<a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
 <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
          </nav>
   <div class="sidebar-footer">
@@ -218,7 +217,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
   </div>
 </aside>
-
 <div class="main">
   <header class="header">
     <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
@@ -233,6 +231,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="header-avatar">م</div>
     </div>
   </header>
+
 
   <div class="content">
     <div class="tabs">
@@ -334,6 +333,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <!-- ADD MODAL -->
+
+</div>
+
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-head">
@@ -443,191 +445,195 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA"></script>
+
+
 <script>
-const SAMPLE_CLIENTS = [
-  {id:1,code:'C-0001',nameAr:'برج الياسمين',nameEn:'Al Yasmin Tower',type:'مبنى سكني',contact:'عبدالله العمري',phone:'0551234567',email:'yasmin@gmail.com',city:'مكة',district:'العزيزية',building:'برج الياسمين',address:'حي العزيزية، مكة',lat:21.3891,lng:39.8579,elevators:4,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:2,code:'C-0002',nameAr:'مجمع النخيل',nameEn:'Al Nakheel Mall',type:'مجمع تجاري',contact:'محمد الزهراني',phone:'0561234567',email:'nakheel@mall.com',city:'جدة',district:'الروضة',building:'مجمع النخيل',address:'طريق الملك فهد، جدة',lat:21.5433,lng:39.1728,elevators:8,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:3,code:'C-0003',nameAr:'فندق الأندلس',nameEn:'Andalus Hotel',type:'فندق',contact:'خالد القحطاني',phone:'0571234567',email:'hotel@andalus.com',city:'مكة',district:'أجياد',building:'فندق الأندلس',address:'حي أجياد، مكة',lat:21.4225,lng:39.8261,elevators:6,contractStatus:'منتهي',clientStatus:'نشط',notes:''},
-  {id:4,code:'C-0004',nameAr:'مستشفى السلام',nameEn:'Al Salam Hospital',type:'مستشفى',contact:'د. أحمد السلمي',phone:'0501234567',email:'info@salam.com',city:'مكة',district:'النزهة',building:'مستشفى السلام',address:'حي النزهة، مكة',lat:21.4100,lng:39.8450,elevators:12,contractStatus:'نشط',clientStatus:'نشط',notes:'أولوية عالية'},
-  {id:5,code:'C-0005',nameAr:'برج المملكة',nameEn:'Al Mamlaka Tower',type:'مبنى سكني',contact:'عمر الدوسري',phone:'0531234567',email:'mamlaka@tower.com',city:'جدة',district:'النزهة',building:'برج المملكة',address:'حي الروضة، جدة',lat:21.5200,lng:39.1900,elevators:3,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:6,code:'C-0006',nameAr:'مجمع التجارة',nameEn:'Al Tijara Complex',type:'مجمع تجاري',contact:'سعد المالكي',phone:'0541234567',email:'info@tijara.com',city:'مكة',district:'الشوقية',building:'مجمع التجارة',address:'حي الشوقية، مكة',lat:21.4300,lng:39.8100,elevators:5,contractStatus:'بدون عقد',clientStatus:'غير نشط',notes:''},
-  {id:7,code:'C-0007',nameAr:'أبراج الساعة',nameEn:'Clock Tower',type:'فندق',contact:'تركي الشمري',phone:'0591234567',email:'clock@abraj.com',city:'مكة',district:'أجياد',building:'أبراج الساعة',address:'أجياد، مكة',lat:21.4228,lng:39.8260,elevators:20,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:8,code:'C-0008',nameAr:'مركز الملك عبدالله',nameEn:'King Abdullah Center',type:'حكومي',contact:'ناصر الحربي',phone:'0511234567',email:'center@gov.sa',city:'مكة',district:'الشوقية',building:'مركز الملك عبدالله',address:'الشوقية، مكة',lat:21.4350,lng:39.8200,elevators:7,contractStatus:'نشط',clientStatus:'نشط',notes:''},
-  {id:9,code:'C-0009',nameAr:'مجمع طيبة',nameEn:'Tayba Complex',type:'مجمع تجاري',contact:'محمد الغامدي',phone:'0581234567',email:'tayba@complex.sa',city:'الطائف',district:'الحوية',building:'مجمع طيبة',address:'الحوية، الطائف',lat:21.2570,lng:40.4170,elevators:2,contractStatus:'منتهي',clientStatus:'نشط',notes:''},
-  {id:10,code:'C-0010',nameAr:'فندق قصر مكة',nameEn:'Makkah Palace Hotel',type:'فندق',contact:'فيصل العتيبي',phone:'0521234567',email:'palace@makkah.com',city:'مكة',district:'العابدية',building:'قصر مكة',address:'العابدية، مكة',lat:21.4180,lng:39.8320,elevators:10,contractStatus:'نشط',clientStatus:'نشط',notes:''},
+// ===== البيانات من Flask =====
+const CUSTOMERS = [
+  {% for c in customers %}
+  {
+    id:      {{ c.id }},
+    code:    "{{ c.code }}",
+    name:    "{{ c.name }}",
+    city:    "{{ c.city or '' }}",
+    district:"{{ c.district or '' }}",
+    phone:   "{{ c.phone or '' }}",
+    email:   "{{ c.email or '' }}",
+    contact: "{{ c.contact_person or '' }}",
+    elevators: {{ c.elevators | length }},
+    contracts: {{ c.contracts | length }},
+    contract_status: "{{ c.contracts[0].status if c.contracts else 'بدون عقد' }}",
+    status:  "{{ c.status }}",
+    notes:   "{{ c.notes or '' }}",
+  },
+  {% endfor %}
 ];
 
+// ===== إحصائيات =====
+const total     = CUSTOMERS.length;
+const active    = CUSTOMERS.filter(c => c.status === 'نشط').length;
+const noContract= CUSTOMERS.filter(c => c.contract_status === 'بدون عقد').length;
+const elevTotal = CUSTOMERS.reduce((s,c) => s + c.elevators, 0);
+
+document.querySelectorAll('.stat-mini-val')[0].textContent = total;
+document.querySelectorAll('.stat-mini-val')[1].textContent = active;
+document.querySelectorAll('.stat-mini-val')[2].textContent = noContract;
+document.querySelectorAll('.stat-mini-val')[3].textContent = elevTotal;
+
+// ===== رندر الجدول =====
 let currentDeleteId = null;
-let mapInitialized = false;
-let gMap = null;
+let filtered = [...CUSTOMERS];
 
 function renderTable(data) {
   const tbody = document.getElementById('table-body');
-  tbody.innerHTML = '';
-  data.forEach(c => {
-    const cb = c.contractStatus==='نشط'?'badge-contract-yes':c.contractStatus==='منتهي'?'badge-contract-exp':'badge-contract-no';
-    const sb = c.clientStatus==='نشط'?'badge-active':'badge-inactive';
-    tbody.innerHTML += `<tr>
+  if (!tbody) return;
+  document.getElementById('clients-count').textContent = data.length + ' عميل';
+  tbody.innerHTML = data.map(c => `
+    <tr onclick="viewClient(${c.id})">
       <td class="td-code">${c.code}</td>
-      <td class="td-name">${c.nameAr}</td>
+      <td class="td-name">${c.name}</td>
       <td>${c.city}</td>
       <td>${c.district}</td>
-      <td style="direction:ltr;font-family:var(--font-en)">${c.phone}</td>
+      <td style="direction:ltr">${c.phone}</td>
       <td style="text-align:center">${c.elevators}</td>
-      <td><span class="badge ${cb}">${c.contractStatus}</span></td>
-      <td><span class="badge ${sb}">${c.clientStatus}</span></td>
-      <td><div class="td-actions">
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="viewClient(${c.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="editClient(${c.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteClient(${c.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4l.7 7.5a1 1 0 001 .9h4.6a1 1 0 001-.9L11 4"/></svg></button>
-      </div></td>
-    </tr>`;
-  });
-  document.getElementById('table-info').textContent = `عرض ${data.length} من ${SAMPLE_CLIENTS.length} عميل`;
-  document.getElementById('clients-count').textContent = `${SAMPLE_CLIENTS.length} عميل`;
+      <td><span class="badge ${c.contract_status==='نشط'?'badge-active':c.contract_status==='بدون عقد'?'badge-cancelled':'badge-expired'}">${c.contract_status}</span></td>
+      <td><span class="badge ${c.status==='نشط'?'badge-active':'badge-cancelled'}">${c.status}</span></td>
+      <td onclick="event.stopPropagation()">
+        <div class="td-actions">
+          <button class="btn btn-secondary btn-sm btn-icon" title="عرض" onclick="viewClient(${c.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
+          </button>
+          <button class="btn btn-secondary btn-sm btn-icon" title="تعديل" onclick="editClient(${c.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
+          </button>
+          <button class="btn btn-danger btn-sm btn-icon" title="حذف" onclick="deleteClient(${c.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
 }
 
 function filterTable() {
-  const s = document.getElementById('search-input').value.toLowerCase();
-  const city = document.getElementById('filter-city').value;
-  const contract = document.getElementById('filter-contract').value;
-  const status = document.getElementById('filter-status').value;
-  const filtered = SAMPLE_CLIENTS.filter(c =>
-    (!s || c.nameAr.includes(s) || c.code.toLowerCase().includes(s) || c.phone.includes(s))
-    && (!city || c.city === city)
-    && (!contract || c.contractStatus === contract)
-    && (!status || c.clientStatus === status)
+  const s  = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const ct = document.getElementById('f-city')?.value || '';
+  const cs = document.getElementById('f-contract')?.value || '';
+  const st = document.getElementById('f-status')?.value || '';
+  filtered = CUSTOMERS.filter(c =>
+    (!s  || c.name.includes(s) || c.code.toLowerCase().includes(s) || c.phone.includes(s)) &&
+    (!ct || c.city === ct) &&
+    (!cs || c.contract_status === cs) &&
+    (!st || c.status === st)
   );
   renderTable(filtered);
 }
 
-function initGoogleMap() {
-  if (mapInitialized) return;
-  mapInitialized = true;
-  gMap = new google.maps.Map(document.getElementById('map'), {
-    center: {lat: 21.4, lng: 39.85},
-    zoom: 11
-  });
-  SAMPLE_CLIENTS.forEach(c => {
-    const marker = new google.maps.Marker({
-      map: gMap,
-      position: {lat: c.lat, lng: c.lng},
-      title: c.nameAr
-    });
-    const infoWindow = new google.maps.InfoWindow({
-      content: `<div style="direction:rtl;font-family:Arial;padding:4px;min-width:160px">
-        <b style="font-size:13px">${c.nameAr}</b><br>
-        <span style="color:#666;font-size:12px">${c.city} — ${c.district}</span><br>
-        <span style="color:#666;font-size:12px;direction:ltr;display:inline-block">${c.phone}</span><br>
-        <button onclick="viewClientFromMap(${c.id})" style="margin-top:6px;background:#2a7fff;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:12px;cursor:pointer">عرض التفاصيل</button>
-      </div>`
-    });
-    marker.addListener('click', () => infoWindow.open(gMap, marker));
-  });
-  gMap.addListener('click', e => {
-    const lat = e.latLng.lat().toFixed(6);
-    const lng = e.latLng.lng().toFixed(6);
-    document.getElementById('f-lat').value = lat;
-    document.getElementById('f-lng').value = lng;
-    openAddModal();
-  });
-}
-
-function viewClientFromMap(id) { viewClient(id); }
-
-function switchTab(tab) {
-  document.getElementById('tab-btn-table').classList.toggle('active', tab === 'table');
-  document.getElementById('tab-btn-map').classList.toggle('active', tab === 'map');
-  document.getElementById('tab-table').style.display = tab === 'table' ? '' : 'none';
-  document.getElementById('tab-map').style.display = tab === 'map' ? '' : 'none';
-  if (tab === 'map') setTimeout(initGoogleMap, 150);
-}
-
-function extractCoords(url) {
-  const m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (m) { document.getElementById('f-lat').value = m[1]; document.getElementById('f-lng').value = m[2]; }
-  document.getElementById('open-maps-btn').href = url || '#';
-}
-
+// ===== إضافة عميل =====
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة عميل جديد';
+  document.getElementById('modal-add').dataset.editId = '';
   document.getElementById('modal-add').classList.add('open');
 }
 
+function saveClient() {
+  const editId = document.getElementById('modal-add').dataset.editId;
+  const formData = new FormData();
+  formData.append('name',           document.getElementById('f-name-ar')?.value || '');
+  formData.append('city',           document.getElementById('f-city-sel')?.value || '');
+  formData.append('district',       document.getElementById('f-district')?.value || '');
+  formData.append('address',        document.getElementById('f-address')?.value || '');
+  formData.append('phone',          document.getElementById('f-phone')?.value || '');
+  formData.append('email',          document.getElementById('f-email')?.value || '');
+  formData.append('contact_person', document.getElementById('f-contact')?.value || '');
+  formData.append('status',         document.getElementById('f-status-sel')?.value || 'نشط');
+  formData.append('notes',          document.getElementById('f-notes')?.value || '');
+
+  const url = editId ? `/clients/edit/${editId}` : '/clients/add';
+  fetch(url, { method:'POST', body:formData })
+    .then(() => window.location.reload());
+}
+
+// ===== تعديل =====
 function editClient(id) {
-  const c = SAMPLE_CLIENTS.find(x => x.id === id);
+  const c = CUSTOMERS.find(x => x.id === id);
   if (!c) return;
   document.getElementById('modal-title').textContent = 'تعديل بيانات العميل';
-  document.getElementById('f-code').value = c.code;
-  document.getElementById('f-name-ar').value = c.nameAr;
-  document.getElementById('f-name-en').value = c.nameEn;
-  document.getElementById('f-contact').value = c.contact;
-  document.getElementById('f-phone').value = c.phone;
-  document.getElementById('f-email').value = c.email;
-  document.getElementById('f-city').value = c.city;
-  document.getElementById('f-district').value = c.district;
-  document.getElementById('f-building').value = c.building;
-  document.getElementById('f-address').value = c.address;
-  document.getElementById('f-lat').value = c.lat;
-  document.getElementById('f-lng').value = c.lng;
-  document.getElementById('f-elevators').value = c.elevators;
-  document.getElementById('f-notes').value = c.notes;
+  document.getElementById('modal-add').dataset.editId = id;
+  if (document.getElementById('f-name-ar'))    document.getElementById('f-name-ar').value    = c.name;
+  if (document.getElementById('f-city-sel'))   document.getElementById('f-city-sel').value   = c.city;
+  if (document.getElementById('f-district'))   document.getElementById('f-district').value   = c.district;
+  if (document.getElementById('f-phone'))      document.getElementById('f-phone').value      = c.phone;
+  if (document.getElementById('f-email'))      document.getElementById('f-email').value      = c.email;
+  if (document.getElementById('f-contact'))    document.getElementById('f-contact').value    = c.contact;
+  if (document.getElementById('f-notes'))      document.getElementById('f-notes').value      = c.notes;
   document.getElementById('modal-add').classList.add('open');
 }
 
+// ===== عرض =====
 function viewClient(id) {
-  const c = SAMPLE_CLIENTS.find(x => x.id === id);
+  const c = CUSTOMERS.find(x => x.id === id);
   if (!c) return;
-  const mapsUrl = `https://www.google.com/maps?q=${c.lat},${c.lng}`;
-  document.getElementById('view-title').textContent = c.nameAr;
+  document.getElementById('view-title').textContent = c.code + ' — ' + c.name;
   document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
-      <div class="view-item"><div class="view-label">كود العميل</div><div class="view-val" style="font-family:var(--font-en)">${c.code}</div></div>
-      <div class="view-item"><div class="view-label">نوع العميل</div><div class="view-val">${c.type}</div></div>
-      <div class="view-item"><div class="view-label">الاسم (عربي)</div><div class="view-val">${c.nameAr}</div></div>
-      <div class="view-item"><div class="view-label">الاسم (إنجليزي)</div><div class="view-val" style="direction:ltr">${c.nameEn}</div></div>
-      <div class="view-item"><div class="view-label">المسؤول</div><div class="view-val">${c.contact}</div></div>
-      <div class="view-item"><div class="view-label">عدد المصاعد</div><div class="view-val">${c.elevators}</div></div>
-      <div class="view-item"><div class="view-label">الهاتف</div><div class="view-val" style="direction:ltr;font-family:var(--font-en)">${c.phone}</div></div>
-      <div class="view-item"><div class="view-label">البريد</div><div class="view-val" style="direction:ltr">${c.email}</div></div>
+      <div class="view-section">البيانات الأساسية</div>
+      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${c.code}</div></div>
+      <div class="view-item"><div class="view-label">الاسم</div><div class="view-val">${c.name}</div></div>
       <div class="view-item"><div class="view-label">المدينة</div><div class="view-val">${c.city}</div></div>
       <div class="view-item"><div class="view-label">الحي</div><div class="view-val">${c.district}</div></div>
-      <div class="view-item view-full"><div class="view-label">العنوان</div><div class="view-val">${c.address}</div></div>
-      <div class="view-item view-full">
-        <div class="view-label">الموقع</div>
-        <div class="view-val" style="direction:ltr;font-family:var(--font-en);font-size:12px">${c.lat}, ${c.lng}</div>
-        <a href="${mapsUrl}" target="_blank" class="btn btn-secondary btn-sm" style="margin-top:8px;display:inline-flex">فتح في Google Maps</a>
-      </div>
+      <div class="view-item"><div class="view-label">الهاتف</div><div class="view-val" style="direction:ltr">${c.phone}</div></div>
+      <div class="view-item"><div class="view-label">البريد</div><div class="view-val" style="direction:ltr">${c.email}</div></div>
+      <div class="view-item"><div class="view-label">المسؤول</div><div class="view-val">${c.contact}</div></div>
+      <div class="view-item"><div class="view-label">المصاعد</div><div class="view-val">${c.elevators} مصعد</div></div>
+      <div class="view-item"><div class="view-label">حالة العقد</div><div class="view-val"><span class="badge badge-active">${c.contract_status}</span></div></div>
+      <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${c.status==='نشط'?'badge-active':'badge-cancelled'}">${c.status}</span></div></div>
+      ${c.notes ? `<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${c.notes}</div></div>` : ''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
 }
 
-function deleteClient(id) { currentDeleteId = id; document.getElementById('modal-delete').classList.add('open'); }
-function confirmDelete() {
-  const idx = SAMPLE_CLIENTS.findIndex(x => x.id === currentDeleteId);
-  if (idx !== -1) SAMPLE_CLIENTS.splice(idx, 1);
-  closeModal('modal-delete');
-  filterTable();
+// ===== حذف =====
+function deleteClient(id) {
+  currentDeleteId = id;
+  document.getElementById('modal-delete').classList.add('open');
 }
-function saveClient() { closeModal('modal-add'); }
+
+function confirmDelete() {
+  if (!currentDeleteId) return;
+  fetch(`/clients/delete/${currentDeleteId}`, { method:'POST' })
+    .then(() => window.location.reload());
+}
+
+// ===== تصدير =====
+function exportExcel() {
+  const rows = [['الكود','الاسم','المدينة','الحي','الهاتف','المصاعد','حالة العقد','الحالة']];
+  filtered.forEach(c => rows.push([c.code,c.name,c.city,c.district,c.phone,c.elevators,c.contract_status,c.status]));
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download = 'clients.csv'; a.click();
+}
+
+// ===== JS مشترك =====
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function setLang(l) {
-  document.documentElement.setAttribute('lang', l);
-  document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
-  document.getElementById('btn-ar').classList.toggle('active', l === 'ar');
-  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.documentElement.setAttribute('lang',l);
+  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
+  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
+  document.getElementById('btn-en').classList.toggle('active',l==='en');
 }
-function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
-document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
+document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
 
 const now = new Date();
 const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
-renderTable(SAMPLE_CLIENTS);
+// init
+renderTable(CUSTOMERS);
 </script>
 </body>
 </html>

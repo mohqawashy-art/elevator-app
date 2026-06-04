@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -226,57 +225,41 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   .cal-grid{grid-template-columns:repeat(7,1fr)}
   .cal-day{min-height:50px}
 }
-@media(max-width:480px){.stats-row{grid-template-columns:1fr 1fr};.filters-bar{flex-direction:column}}
+@m@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
-  <nav class="sidebar-nav">
-    <div class="nav-section">الرئيسية</div>
-    <a class="nav-item" href="/dashboard"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg><span>لوحة التحكم</span></a>
-    <div class="nav-section">إدارة البيانات</div>
-    <a class="nav-item" href="/clients"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span>العملاء</span></a>
-    <a class="nav-item" href="/elevators"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg><span>المصاعد</span></a>
-    <a class="nav-item" href="/contracts"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg><span>العقود</span></a>
-    <a class="nav-item" href="/technicians"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg><span>الفنيين</span></a>
-    <div class="nav-section">العمليات</div>
-    <a class="nav-item active" href="/maintenance-visits"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg><span>زيارات الصيانة</span></a>
-    <a class="nav-item" href="/faults"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg><span>الأعطال</span><span class="nav-badge">5</span></a>
-    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/></svg><span>الفواتير</span></a>
-    <div class="nav-section">التقارير</div>
-    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14V6l4-4h6a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg><span>التقارير</span></a>
-    <a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-  
-    <div class="nav-section" id="nav-s4">المالية</div>
-    <a class="nav-item" href="/revenues">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1v14M11 3.5H6.5a2.5 2.5 0 000 5h3a2.5 2.5 0 010 5H4.5"/></svg>
-      <span id="nav-revenues">الإيرادات</span>
-    </a>
-    <a class="nav-item" href="/expenses">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 8V14H3V8"/><path d="M14.5 4.5H1.5v3.5h13V4.5z"/><path d="M8 14.5V4.5M8 4.5H5.5a1.5 1.5 0 010-3C7 1.5 8 4.5 8 4.5zM8 4.5h2.5a1.5 1.5 0 000-3C9 1.5 8 4.5 8 4.5z"/></svg>
-      <span id="nav-expenses">المصروفات</span>
-    </a>
-    <a class="nav-item" href="/invoices">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>
-      <span id="nav-invoices2">الفواتير</span>
-    </a>
 
-    <div class="nav-section" id="nav-s5">المخزن</div>
-    <a class="nav-item" href="/inventory">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 10.5V5.5a1 1 0 00-.5-.87l-5-2.88a1 1 0 00-1 0L2.5 4.63a1 1 0 00-.5.87v5a1 1 0 00.5.87l5 2.88a1 1 0 001 0l5-2.88a1 1 0 00.5-.87z"/><path d="M2.27 4.37L8 7.5l5.73-3.13M8 14.05V7.5"/></svg>
-      <span id="nav-inventory">الأصناف</span>
-    </a>
-    <a class="nav-item" href="/stock-movements">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M11 1l3 3-3 3"/><path d="M2 7V6a3 3 0 013-3h9M5 15l-3-3 3-3"/><path d="M14 9v1a3 3 0 01-3 3H2"/></svg>
-      <span id="nav-stock">حركة المخزن</span>
-    </a>
-    <a class="nav-item" href="/parts-billing">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14.5S13 12 13 7V3.5L8 1.5 3 3.5V7c0 5 5 7.5 5 7.5z"/></svg>
-      <span id="nav-parts">بيان القطع</span>
-    </a>
-  </nav>
+    <div class="nav-section" id="ns1">الرئيسية</div>
+<a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
+
+<div class="nav-section" id="ns2">البيانات</div>
+<a href="/clients" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>العملاء</a>
+<a href="/elevators" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg>المصاعد</a>
+<a href="/contracts" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>العقود</a>
+<a href="/technicians" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>الفنيون</a>
+
+<div class="nav-section" id="ns2">العمليات</div>
+<a href="/maintenance-visits" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>الصيانة</a>
+<a href="/faults" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأعطال</a>
+<a href="/parts-billing" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>بيان قطع الغيار</a>
+  
+<div class="nav-section" id="ns3">المالية</div>
+<a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
+<a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
+<a href="/invoices" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>الفواتير</a>
+
+<div class="nav-section" id="ns4">المخزن</div>
+<a href="/inventory" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>الأصناف</a>
+<a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
+
+<div class="nav-section" id="ns4">التقارير</div>
+<a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
+<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
+         </nav>
   <div class="sidebar-footer">
     <div class="sidebar-user">
       <div class="sidebar-avatar">م</div>
@@ -284,7 +267,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
   </div>
 </aside>
-
 <div class="main">
   <header class="header">
     <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
@@ -299,6 +281,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="header-avatar">م</div>
     </div>
   </header>
+
 
   <div class="content">
 
@@ -448,6 +431,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <!-- ADD/EDIT MODAL -->
+
+</div>
+
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-head">
@@ -561,311 +547,217 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
 <script>
-const CHECKLIST_ITEMS = [
-  {ar:'فحص أبواب المصعد',en:'Check elevator doors'},
-  {ar:'فحص لوحة التحكم',en:'Check control panel'},
-  {ar:'فحص إضاءة الكابينة',en:'Check cabin lights'},
-  {ar:'فحص منبه الطوارئ',en:'Check emergency alarm'},
-  {ar:'فحص نظام الفرامل',en:'Check brake system'},
-  {ar:'فحص غرفة الآلات',en:'Check machine room'},
-  {ar:'فحص الحبال أو الأحزمة',en:'Check ropes or belts'},
-  {ar:'فحص مستوى الزيت',en:'Check oil level if hydraulic'},
-  {ar:'فحص حساسات السلامة',en:'Check safety sensors'},
-  {ar:'اختبار حركة المصعد',en:'Test elevator movement'},
-  {ar:'تنظيف منطقة الكابينة',en:'Clean elevator cabin area'},
-];
-
-const CLIENT_DATA = {
-  'C-0001':{name:'برج الياسمين',city:'مكة',district:'العزيزية',address:'حي العزيزية، مكة',lat:21.3891,lng:39.8579,
-    elevators:[{code:'EL-0001',id:'E1'},{code:'EL-0002',id:'E2'}],
-    contracts:[{code:'CN-00001',id:'CN1'},{code:'CN-00007',id:'CN7'}]},
-  'C-0002':{name:'مجمع النخيل',city:'جدة',district:'الروضة',address:'طريق الملك فهد، جدة',lat:21.5433,lng:39.1728,
-    elevators:[{code:'EL-0003',id:'E3'},{code:'EL-0010',id:'E10'}],
-    contracts:[{code:'CN-00002',id:'CN2'},{code:'CN-00008',id:'CN8'}]},
-  'C-0003':{name:'فندق الأندلس',city:'مكة',district:'أجياد',address:'حي أجياد، مكة',lat:21.4225,lng:39.8261,
-    elevators:[{code:'EL-0004',id:'E4'}],
-    contracts:[{code:'CN-00003',id:'CN3'},{code:'CN-00010',id:'CN10'}]},
-  'C-0004':{name:'مستشفى السلام',city:'مكة',district:'النزهة',address:'حي النزهة، مكة',lat:21.4100,lng:39.8450,
-    elevators:[{code:'EL-0005',id:'E5'},{code:'EL-0006',id:'E6'}],
-    contracts:[{code:'CN-00004',id:'CN4'},{code:'CN-00009',id:'CN9'}]},
-  'C-0006':{name:'أبراج الساعة',city:'مكة',district:'أجياد',address:'أجياد، مكة',lat:21.4228,lng:39.8260,
-    elevators:[{code:'EL-0008',id:'E8'},{code:'EL-0009',id:'E9'}],
-    contracts:[{code:'CN-00006',id:'CN6'}]},
-};
-
-const STATUS_COLORS={'مجدولة':'#2a7fff','جاري التنفيذ':'#e09030','مكتملة':'#1fb87a','ملغية':'#888','متأخرة':'#e04848'};
-const STATUS_BADGE={'مجدولة':'badge-scheduled','جاري التنفيذ':'badge-inprogress','مكتملة':'badge-completed','ملغية':'badge-cancelled','متأخرة':'badge-delayed'};
-const PRIORITY_BADGE={'منخفضة':'badge-low','متوسطة':'badge-medium','عالية':'badge-high','حرجة':'badge-critical'};
-
-const today = new Date().toISOString().split('T')[0];
+// ===== البيانات من Flask =====
 const VISITS = [
-  {id:1,code:'V-00001',client:'برج الياسمين',elevator:'EL-0001',tech:'أحمد الزهراني',type:'صيانة دورية',date:today,time:'09:00',priority:'عالية',status:'مكتملة',city:'مكة',district:'العزيزية',lat:21.3891,lng:39.8579,workDone:'تم فحص جميع العناصر',issues:'لا توجد',parts:'زيت تزليق'},
-  {id:2,code:'V-00002',client:'مجمع النخيل',elevator:'EL-0003',tech:'خالد العمري',type:'زيارة طارئة',date:today,time:'10:30',priority:'حرجة',status:'جاري التنفيذ',city:'جدة',district:'الروضة',lat:21.5433,lng:39.1728,workDone:'',issues:'عطل في لوحة التحكم',parts:''},
-  {id:3,code:'V-00003',client:'فندق الأندلس',elevator:'EL-0004',tech:'سعد القحطاني',type:'صيانة دورية',date:today,time:'11:00',priority:'متوسطة',status:'مجدولة',city:'مكة',district:'أجياد',lat:21.4225,lng:39.8261,workDone:'',issues:'',parts:''},
-  {id:4,code:'V-00004',client:'مستشفى السلام',elevator:'EL-0005',tech:'فهد المالكي',type:'زيارة فحص',date:today,time:'08:00',priority:'حرجة',status:'متأخرة',city:'مكة',district:'النزهة',lat:21.4100,lng:39.8450,workDone:'',issues:'تأخر الفني',parts:''},
-  {id:5,code:'V-00005',client:'أبراج الساعة',elevator:'EL-0008',tech:'أحمد الزهراني',type:'صيانة دورية',date:today,time:'14:00',priority:'منخفضة',status:'مجدولة',city:'مكة',district:'أجياد',lat:21.4228,lng:39.8260,workDone:'',issues:'',parts:''},
-  {id:6,code:'V-00006',client:'برج الياسمين',elevator:'EL-0002',tech:'خالد العمري',type:'زيارة متابعة',date:'2025-06-03',time:'09:30',priority:'متوسطة',status:'مجدولة',city:'مكة',district:'العزيزية',lat:21.3893,lng:39.8582,workDone:'',issues:'',parts:''},
-  {id:7,code:'V-00007',client:'مجمع النخيل',elevator:'EL-0010',tech:'عمر الدوسري',type:'صيانة دورية',date:'2025-06-04',time:'10:00',priority:'عالية',status:'مجدولة',city:'جدة',district:'الروضة',lat:21.5435,lng:39.1730,workDone:'',issues:'',parts:''},
-  {id:8,code:'V-00008',client:'مستشفى السلام',elevator:'EL-0006',tech:'فهد المالكي',type:'صيانة دورية',date:'2025-06-05',time:'11:00',priority:'عالية',status:'مجدولة',city:'مكة',district:'النزهة',lat:21.4102,lng:39.8452,workDone:'',issues:'',parts:''},
-  {id:9,code:'V-00009',client:'فندق الأندلس',elevator:'EL-0004',tech:'سعد القحطاني',type:'زيارة فحص',date:'2025-06-10',time:'09:00',priority:'متوسطة',status:'مجدولة',city:'مكة',district:'أجياد',lat:21.4225,lng:39.8261,workDone:'',issues:'',parts:''},
-  {id:10,code:'V-00010',client:'أبراج الساعة',elevator:'EL-0009',tech:'أحمد الزهراني',type:'صيانة دورية',date:'2025-06-15',time:'13:00',priority:'منخفضة',status:'مجدولة',city:'مكة',district:'أجياد',lat:21.4230,lng:39.8262,workDone:'',issues:'',parts:''},
-  {id:11,code:'V-00011',client:'برج الياسمين',elevator:'EL-0001',tech:'خالد العمري',type:'صيانة دورية',date:'2025-06-20',time:'10:00',priority:'متوسطة',status:'مجدولة',city:'مكة',district:'العزيزية',lat:21.3891,lng:39.8579,workDone:'',issues:'',parts:''},
-  {id:12,code:'V-00012',client:'مجمع النخيل',elevator:'EL-0003',tech:'عمر الدوسري',type:'صيانة دورية',date:'2025-06-25',time:'11:00',priority:'متوسطة',status:'مجدولة',city:'جدة',district:'الروضة',lat:21.5433,lng:39.1728,workDone:'',issues:'',parts:''},
-  {id:13,code:'V-00013',client:'مستشفى السلام',elevator:'EL-0005',tech:'فهد المالكي',type:'زيارة طارئة',date:today,time:'15:00',priority:'حرجة',status:'مجدولة',city:'مكة',district:'النزهة',lat:21.4100,lng:39.8450,workDone:'',issues:'',parts:''},
-  {id:14,code:'V-00014',client:'فندق الأندلس',elevator:'EL-0004',tech:'سعد القحطاني',type:'صيانة دورية',date:today,time:'16:00',priority:'منخفضة',status:'مكتملة',city:'مكة',district:'أجياد',lat:21.4225,lng:39.8261,workDone:'تم الفحص الدوري',issues:'لا توجد',parts:''},
-  {id:15,code:'V-00015',client:'أبراج الساعة',elevator:'EL-0008',tech:'أحمد الزهراني',type:'زيارة متابعة',date:'2025-05-28',time:'09:00',priority:'عالية',status:'متأخرة',city:'مكة',district:'أجياد',lat:21.4228,lng:39.8260,workDone:'',issues:'',parts:''},
+  {% for v in visits %}
+  {
+    id:           {{ v.id }},
+    code:         "{{ v.code }}",
+    elevator_id:  {{ v.elevator_id }},
+    elevator:     "{{ v.elevator.code }}",
+    customer:     "{{ v.elevator.customer.name }}",
+    technician:   "{{ v.technician.name if v.technician else '—' }}",
+    tech_id:      {{ v.technician_id or 'null' }},
+    visit_type:   "{{ v.visit_type or '' }}",
+    visit_date:   "{{ v.visit_date or '' }}",
+    visit_time:   "{{ v.visit_time or '' }}",
+    priority:     "{{ v.priority or 'عادية' }}",
+    status:       "{{ v.status }}",
+    works_done:   "{{ v.works_done or '' }}",
+    observations: "{{ v.observations or '' }}",
+    notes:        "{{ v.notes or '' }}",
+  },
+  {% endfor %}
 ];
 
-let currentDeleteId=null;
-let mapInitialized=false;
-let calDate=new Date();
+const ELEVATORS = [
+  {% for e in elevators %}
+  { id: {{ e.id }}, code: "{{ e.code }}", customer: "{{ e.customer.name }}" },
+  {% endfor %}
+];
 
-function renderTable(data){
-  const tbody=document.getElementById('table-body');
-  tbody.innerHTML='';
-  data.forEach(v=>{
-    const sb=STATUS_BADGE[v.status]||'badge-scheduled';
-    const pb=PRIORITY_BADGE[v.priority]||'badge-medium';
-    tbody.innerHTML+=`<tr>
-      <td class="td-code">${v.code}</td>
-      <td class="td-name">${v.client}</td>
-      <td style="font-family:var(--font-en);font-size:12px;color:var(--accent)">${v.elevator}</td>
-      <td>${v.tech}</td>
-      <td>${v.type}</td>
-      <td style="direction:ltr;font-family:var(--font-en)">${v.date}</td>
-      <td style="direction:ltr;font-family:var(--font-en)">${v.time}</td>
-      <td><span class="badge ${pb}">${v.priority}</span></td>
-      <td><span class="badge ${sb}">${v.status}</span></td>
-      <td><div class="td-actions">
-        <a href="/visit-report/${v.id}" class="btn btn-secondary btn-sm btn-icon" title="تقرير الزيارة" target="_blank">
-  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 14V6l4-4h6a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1z"/><path d="M6 2v4H2"/></svg>
-</a>
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="viewVisit(${v.id})" title="عرض"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="editVisit(${v.id})" title="تعديل"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteVisit(${v.id})" title="حذف"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4l.7 7.5a1 1 0 001 .9h4.6a1 1 0 001-.9L11 4"/></svg></button>
-      </div></td>
-    </tr>`;
-  });
-  document.getElementById('table-info').textContent=`عرض ${data.length} من ${VISITS.length} زيارة`;
-  document.getElementById('visits-count').textContent=`${VISITS.length} زيارة`;
+const TECHNICIANS = [
+  {% for t in technicians %}
+  { id: {{ t.id }}, name: "{{ t.name }}" },
+  {% endfor %}
+];
+
+// ===== إحصائيات =====
+function updateStats() {
+  const total     = VISITS.length;
+  const done      = VISITS.filter(v=>v.status==='مكتملة').length;
+  const scheduled = VISITS.filter(v=>v.status==='مجدولة').length;
+  const cancelled = VISITS.filter(v=>v.status==='ملغاة').length;
+  const vals = document.querySelectorAll('.stat-mini-val');
+  if(vals[0]) vals[0].textContent = total;
+  if(vals[1]) vals[1].textContent = done;
+  if(vals[2]) vals[2].textContent = scheduled;
+  if(vals[3]) vals[3].textContent = cancelled;
 }
 
-function filterTable(){
-  const s=document.getElementById('search-input').value.toLowerCase();
-  const cl=document.getElementById('f-client').value;
-  const tc=document.getElementById('f-tech').value;
-  const st=document.getElementById('f-status').value;
-  const tp=document.getElementById('f-type').value;
-  const df=document.getElementById('f-date-from').value;
-  const dt=document.getElementById('f-date-to').value;
-  const filtered=VISITS.filter(v=>
-    (!s||v.code.toLowerCase().includes(s)||v.client.includes(s)||v.tech.includes(s))
-    &&(!cl||v.client===cl)&&(!tc||v.tech===tc)
-    &&(!st||v.status===st)&&(!tp||v.type===tp)
-    &&(!df||v.date>=df)&&(!dt||v.date<=dt)
+const STATUS_BADGE = {
+  'مكتملة':'badge-active','مجدولة':'badge-partial',
+  'ملغاة':'badge-cancelled','متأخرة':'badge-expired'
+};
+const PRIORITY_BADGE = {
+  'عادية':'badge-active','عاجلة':'badge-pending','حرجة':'badge-expired'
+};
+
+let currentDeleteId = null;
+let filtered = [...VISITS];
+
+function renderTable(data) {
+  const tbody = document.getElementById('table-body');
+  if(!tbody) return;
+  document.getElementById('visits-count').textContent = data.length + ' زيارة';
+  tbody.innerHTML = data.map(v=>`
+    <tr onclick="viewVisit(${v.id})">
+      <td class="td-code">${v.code}</td>
+      <td class="td-name">${v.customer}</td>
+      <td style="font-family:var(--font-en)">${v.elevator}</td>
+      <td>${v.technician}</td>
+      <td>${v.visit_type}</td>
+      <td style="direction:ltr;font-family:var(--font-en)">${v.visit_date}</td>
+      <td style="font-family:var(--font-en)">${v.visit_time||'—'}</td>
+      <td><span class="badge ${PRIORITY_BADGE[v.priority]||'badge-active'}">${v.priority}</span></td>
+      <td><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${v.status}</span></td>
+      <td onclick="event.stopPropagation()">
+        <div class="td-actions">
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewVisit(${v.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
+          </button>
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="editVisit(${v.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
+          </button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteVisit(${v.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function filterTable() {
+  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const tp = document.getElementById('f-type')?.value||'';
+  const pr = document.getElementById('f-priority')?.value||'';
+  const st = document.getElementById('f-status')?.value||'';
+  filtered = VISITS.filter(v=>
+    (!s  || v.code.toLowerCase().includes(s) || v.customer.includes(s) || v.elevator.toLowerCase().includes(s)) &&
+    (!tp || v.visit_type === tp) &&
+    (!pr || v.priority === pr) &&
+    (!st || v.status === st)
   );
   renderTable(filtered);
 }
 
-function buildChecklist(){
-  const cl=document.getElementById('checklist');
-  cl.innerHTML=CHECKLIST_ITEMS.map((item,i)=>`
-    <div class="checklist-item">
-      <span class="checklist-item-name">${item.ar}</span>
-      <div class="checklist-status">
-        <button class="cl-btn" id="cl-ok-${i}" onclick="setCL(${i},'ok')">✓ سليم</button>
-        <button class="cl-btn" id="cl-rep-${i}" onclick="setCL(${i},'repair')">✗ يحتاج إصلاح</button>
-      </div>
-    </div>`).join('');
+// ===== إضافة =====
+function openAddModal() {
+  document.getElementById('modal-title').textContent = 'إضافة زيارة جديدة';
+  document.getElementById('modal-add').dataset.editId = '';
+  const esel = document.getElementById('f-elevator-sel');
+  if(esel) esel.innerHTML = '<option value="">اختر المصعد</option>' +
+    ELEVATORS.map(e=>`<option value="${e.id}">${e.code} — ${e.customer}</option>`).join('');
+  const tsel = document.getElementById('f-tech-sel');
+  if(tsel) tsel.innerHTML = '<option value="">اختر الفني</option>' +
+    TECHNICIANS.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  document.getElementById('modal-add').classList.add('open');
 }
 
-function setCL(i,status){
-  document.getElementById(`cl-ok-${i}`).className='cl-btn'+(status==='ok'?' ok':'');
-  document.getElementById(`cl-rep-${i}`).className='cl-btn'+(status==='repair'?' repair':'');
+function saveVisit() {
+  const editId = document.getElementById('modal-add').dataset.editId;
+  const fd = new FormData();
+  [['elevator_id','f-elevator-sel'],['technician_id','f-tech-sel'],
+   ['visit_type','f-type-sel'],['visit_date','f-date'],
+   ['visit_time','f-time'],['priority','f-priority-sel'],
+   ['status','f-status-sel'],['works_done','f-works'],
+   ['observations','f-obs'],['notes','f-notes']
+  ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
+
+  fetch(editId ? `/maintenance-visits/edit/${editId}` : '/maintenance-visits/add', {method:'POST',body:fd})
+    .then(()=>window.location.reload());
 }
 
-function loadClientData(){
-  const code=document.getElementById('f-client-sel').value;
-  const elevSel=document.getElementById('f-elevator-sel');
-  const cnSel=document.getElementById('f-contract-sel');
-  elevSel.innerHTML='<option value="">اختر المصعد</option>';
-  cnSel.innerHTML='<option value="">بدون عقد</option>';
-  if(!code||!CLIENT_DATA[code])return;
-  const c=CLIENT_DATA[code];
-  c.elevators.forEach(e=>elevSel.innerHTML+=`<option value="${e.id}">${e.code}</option>`);
-  c.contracts.forEach(cn=>cnSel.innerHTML+=`<option value="${cn.id}">${cn.code}</option>`);
+// ===== تعديل =====
+function editVisit(id) {
+  const v = VISITS.find(x=>x.id===id);
+  if(!v) return;
+  document.getElementById('modal-title').textContent = 'تعديل الزيارة';
+  document.getElementById('modal-add').dataset.editId = id;
+  const esel = document.getElementById('f-elevator-sel');
+  if(esel) esel.innerHTML = ELEVATORS.map(e=>`<option value="${e.id}"${e.id===v.elevator_id?' selected':''}>${e.code} — ${e.customer}</option>`).join('');
+  const tsel = document.getElementById('f-tech-sel');
+  if(tsel) tsel.innerHTML = '<option value="">— بدون فني —</option>' +
+    TECHNICIANS.map(t=>`<option value="${t.id}"${t.id===v.tech_id?' selected':''}>${t.name}</option>`).join('');
+  const map = {
+    'f-type-sel':v.visit_type,'f-date':v.visit_date,'f-time':v.visit_time,
+    'f-priority-sel':v.priority,'f-status-sel':v.status,
+    'f-works':v.works_done,'f-obs':v.observations,'f-notes':v.notes,
+  };
+  Object.entries(map).forEach(([k,val])=>{ const el=document.getElementById(k); if(el) el.value=val||''; });
+  document.getElementById('modal-add').classList.add('open');
 }
 
-function fillElevatorData(){
-  const code=document.getElementById('f-client-sel').value;
-  if(!code||!CLIENT_DATA[code])return;
-  const c=CLIENT_DATA[code];
-  document.getElementById('f-city').value=c.city;
-  document.getElementById('f-district').value=c.district;
-  document.getElementById('f-address').value=c.address;
-}
-
-function checkTechAvailability(){
-  const val=document.getElementById('f-tech-sel').value;
-  const warn=document.getElementById('tech-warning');
-  warn.style.display=(val==='T2')?'block':'none';
-}
-
-function initLeafletMap(){
-  if(mapInitialized)return;
-  mapInitialized=true;
-  const m=L.map('map',{center:[21.4,39.85],zoom:11});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(m);
-  const todayVisits=VISITS.filter(v=>v.date===today);
-  todayVisits.forEach(v=>{
-    const color=STATUS_COLORS[v.status]||'#2a7fff';
-    const icon=L.divIcon({html:`<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)"></div>`,className:'',iconSize:[14,14],iconAnchor:[7,7],popupAnchor:[0,-10]});
-    const marker=L.marker([v.lat,v.lng],{icon}).addTo(m);
-    const mapsUrl=`https://www.google.com/maps?q=${v.lat},${v.lng}`;
-    marker.bindPopup(`<div style="font-family:IBM Plex Sans Arabic,sans-serif;direction:rtl;min-width:180px;font-size:13px">
-      <div style="font-weight:600;color:#1a1a2e;margin-bottom:5px">${v.client}</div>
-      <div style="color:#555;font-size:12px;margin-bottom:2px">🔧 ${v.elevator}</div>
-      <div style="color:#555;font-size:12px;margin-bottom:2px">👤 ${v.tech}</div>
-      <div style="color:#555;font-size:12px;margin-bottom:6px">⏰ ${v.time}</div>
-      <div style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:${color}22;color:${color};border:1px solid ${color}44;margin-bottom:8px">${v.status}</div><br>
-      <button onclick="viewVisit(${v.id})" style="background:#2a7fff;color:#fff;border:none;padding:5px 10px;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit;margin-left:6px">عرض</button>
-      <a href="${mapsUrl}" target="_blank" style="background:#f0f0f0;color:#333;padding:5px 10px;border-radius:5px;font-size:12px;text-decoration:none">خريطة</a>
-    </div>`,{maxWidth:220});
-  });
-  document.getElementById('map-date-label').textContent=`اليوم: ${today} — ${todayVisits.length} زيارات`;
-}
-
-function renderCalendar(){
-  const year=calDate.getFullYear();
-  const month=calDate.getMonth();
-  const monthNames=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-  document.getElementById('cal-title').textContent=`${monthNames[month]} ${year}`;
-  const grid=document.getElementById('cal-grid');
-  grid.innerHTML='';
-  const dayNames=['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
-  dayNames.forEach(d=>{grid.innerHTML+=`<div class="cal-day-header">${d}</div>`});
-  const firstDay=new Date(year,month,1).getDay();
-  const daysInMonth=new Date(year,month+1,0).getDate();
-  const prevDays=new Date(year,month,0).getDate();
-  for(let i=firstDay-1;i>=0;i--){
-    grid.innerHTML+=`<div class="cal-day other-month"><div class="cal-date">${prevDays-i}</div></div>`;
-  }
-  const todayObj=new Date();
-  for(let d=1;d<=daysInMonth;d++){
-    const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday=d===todayObj.getDate()&&month===todayObj.getMonth()&&year===todayObj.getFullYear();
-    const dayVisits=VISITS.filter(v=>v.date===dateStr);
-    let eventsHTML=dayVisits.slice(0,3).map(v=>{
-      const cls=v.status==='مكتملة'?'completed':v.status==='متأخرة'?'delayed':'scheduled';
-      return `<div class="cal-event ${cls}" onclick="viewVisit(${v.id})" title="${v.client}">${v.time} ${v.client}</div>`;
-    }).join('');
-    if(dayVisits.length>3)eventsHTML+=`<div style="font-size:10px;color:var(--text3)">+${dayVisits.length-3} أخرى</div>`;
-    grid.innerHTML+=`<div class="cal-day${isToday?' today':''}">
-      <div class="cal-date${isToday?' today-num':''}">${d}</div>
-      ${eventsHTML}
-    </div>`;
-  }
-  const remaining=42-(firstDay+daysInMonth);
-  for(let d=1;d<=remaining;d++){
-    grid.innerHTML+=`<div class="cal-day other-month"><div class="cal-date">${d}</div></div>`;
-  }
-}
-
-function changeMonth(dir){calDate.setMonth(calDate.getMonth()+dir);renderCalendar()}
-function goToday(){calDate=new Date();renderCalendar()}
-
-function switchTab(tab){
-  ['table','map','cal'].forEach(t=>{
-    document.getElementById(`tab-btn-${t}`).classList.toggle('active',t===tab);
-    document.getElementById(`tab-${t}`).style.display=t===tab?'':'none';
-  });
-  if(tab==='map')setTimeout(initLeafletMap,150);
-  if(tab==='cal')renderCalendar();
-}
-
-function viewVisit(id){
-  const v=VISITS.find(x=>x.id===id);
-  if(!v)return;
-  const sb=STATUS_BADGE[v.status]||'badge-scheduled';
-  const pb=PRIORITY_BADGE[v.priority]||'badge-medium';
-  const mapsUrl=`https://www.google.com/maps?q=${v.lat},${v.lng}`;
-  document.getElementById('view-title').textContent=v.code;
-  document.getElementById('view-body').innerHTML=`
+// ===== عرض =====
+function viewVisit(id) {
+  const v = VISITS.find(x=>x.id===id);
+  if(!v) return;
+  document.getElementById('view-title').textContent = v.code + ' — ' + v.customer;
+  document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
       <div class="view-section">بيانات الزيارة</div>
-      <div class="view-item"><div class="view-label">كود الزيارة</div><div class="view-val" style="font-family:var(--font-en)">${v.code}</div></div>
-      <div class="view-item"><div class="view-label">النوع</div><div class="view-val">${v.type}</div></div>
-      <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${sb}">${v.status}</span></div></div>
-      <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${pb}">${v.priority}</span></div></div>
-      <div class="view-section">الارتباطات</div>
-      <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${v.client}</div></div>
+      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${v.code}</div></div>
+      <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${v.customer}</div></div>
       <div class="view-item"><div class="view-label">المصعد</div><div class="view-val" style="font-family:var(--font-en)">${v.elevator}</div></div>
-      <div class="view-item"><div class="view-label">الفني</div><div class="view-val">${v.tech}</div></div>
-      <div class="view-section">التوقيت والموقع</div>
-      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val" style="direction:ltr">${v.date}</div></div>
-      <div class="view-item"><div class="view-label">الوقت</div><div class="view-val" style="direction:ltr">${v.time}</div></div>
-      <div class="view-item"><div class="view-label">المدينة / الحي</div><div class="view-val">${v.city} — ${v.district}</div></div>
-      <div class="view-item view-full">
-        <div class="view-label">الموقع</div>
-        <a href="${mapsUrl}" target="_blank" class="btn btn-secondary btn-sm" style="margin-top:4px;display:inline-flex">فتح في الخريطة</a>
-      </div>
-      ${v.workDone?`<div class="view-section">تقرير الفني</div><div class="view-item view-full"><div class="view-label">الأعمال المنجزة</div><div class="view-val">${v.workDone}</div></div>`:''}
-      ${v.issues?`<div class="view-item view-full"><div class="view-label">المشاكل المكتشفة</div><div class="view-val">${v.issues}</div></div>`:''}
-      ${v.parts?`<div class="view-item"><div class="view-label">القطع المستخدمة</div><div class="view-val">${v.parts}</div></div>`:''}
+      <div class="view-item"><div class="view-label">الفني</div><div class="view-val">${v.technician}</div></div>
+      <div class="view-item"><div class="view-label">نوع الزيارة</div><div class="view-val">${v.visit_type}</div></div>
+      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val" style="direction:ltr">${v.visit_date}</div></div>
+      <div class="view-item"><div class="view-label">الوقت</div><div class="view-val" style="direction:ltr">${v.visit_time||'—'}</div></div>
+      <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${PRIORITY_BADGE[v.priority]||'badge-active'}">${v.priority}</span></div></div>
+      <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${v.status}</span></div></div>
+      ${v.works_done?`<div class="view-item view-full"><div class="view-label">الأعمال المنفذة</div><div class="view-val">${v.works_done}</div></div>`:''}
+      ${v.observations?`<div class="view-item view-full"><div class="view-label">الملاحظات</div><div class="view-val">${v.observations}</div></div>`:''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
 }
 
-function editVisit(id){
-  const v=VISITS.find(x=>x.id===id);
-  if(!v)return;
-  document.getElementById('modal-title').textContent='تعديل الزيارة';
-  document.getElementById('f-code').value=v.code;
-  document.getElementById('f-date').value=v.date;
-  document.getElementById('f-time').value=v.time;
-  document.getElementById('f-city').value=v.city;
-  document.getElementById('f-district').value=v.district;
-  document.getElementById('f-work-done').value=v.workDone;
-  document.getElementById('f-issues').value=v.issues;
-  document.getElementById('f-parts').value=v.parts;
-  buildChecklist();
-  document.getElementById('modal-add').classList.add('open');
+// ===== حذف =====
+function deleteVisit(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
+function confirmDelete() {
+  if(!currentDeleteId) return;
+  fetch(`/maintenance-visits/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
 }
 
-function deleteVisit(id){currentDeleteId=id;document.getElementById('modal-delete').classList.add('open')}
-function confirmDelete(){
-  const idx=VISITS.findIndex(x=>x.id===currentDeleteId);
-  if(idx!==-1)VISITS.splice(idx,1);
-  closeModal('modal-delete');renderTable(VISITS);
+function exportExcel() {
+  const rows=[['الكود','العميل','المصعد','الفني','النوع','التاريخ','الأولوية','الحالة']];
+  filtered.forEach(v=>rows.push([v.code,v.customer,v.elevator,v.technician,v.visit_type,v.visit_date,v.priority,v.status]));
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='visits.csv'; a.click();
 }
 
-function openAddModal(){
-  document.getElementById('modal-title').textContent='إضافة زيارة صيانة جديدة';
-  buildChecklist();
-  document.getElementById('modal-add').classList.add('open');
-}
-
-function saveVisit(){closeModal('modal-add')}
-function printVisit(){window.print()}
-function autoGenerate(){alert('سيتم توليد الزيارات تلقائياً من العقود النشطة حسب تكرار الصيانة.')}
-function closeModal(id){document.getElementById(id).classList.remove('open')}
-function setLang(l){
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function setLang(l) {
   document.documentElement.setAttribute('lang',l);
   document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
   document.getElementById('btn-ar').classList.toggle('active',l==='ar');
   document.getElementById('btn-en').classList.toggle('active',l==='en');
 }
-function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open')}
-function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open')}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'))});
-document.addEventListener('click',e=>{if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay'))document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'))});
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
+document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
 
-const now=new Date();
-const days=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-const months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-document.getElementById('h-date').textContent=`${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+const now = new Date();
+const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
+updateStats();
 renderTable(VISITS);
 </script>
 </body>

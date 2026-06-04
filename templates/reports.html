@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — التقارير</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+html[dir="ltr"]{font-family:var(--font-en)}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:150px;height:44px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.sidebar-nav::-webkit-scrollbar{width:3px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
+.nav-item.active::before{content:'';position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:3px}
+html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.nav-badge{margin-right:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+html[dir="ltr"] .nav-badge{margin-left:auto;margin-right:0}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
+.sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
+.sidebar-user-role{font-size:11px;color:var(--text3)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:90}
+.header-title{font-size:15px;font-weight:500;color:var(--text1)}
+.header-title span{color:var(--text3);font-weight:400;font-size:13px;margin-right:6px}
+html[dir="ltr"] .header-title span{margin-right:0;margin-left:6px}
+.header-spacer{flex:1}
+.header-actions{display:flex;align-items:center;gap:8px}
+.icon-btn{width:34px;height:34px;border-radius:var(--r-sm);background:transparent;border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans);position:relative}
+.icon-btn:hover{background:var(--bg3);border-color:var(--border2);color:var(--text1)}
+.icon-btn svg{width:16px;height:16px}
+.notif-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--danger);border:1px solid var(--bg2)}
+html[dir="ltr"] .notif-dot{right:auto;left:6px}
+.lang-toggle{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.lang-opt{padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:var(--trans);color:var(--text3);border:none;background:none}
+.lang-opt.active{background:var(--accent);color:#fff}
+.header-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;cursor:pointer;border:2px solid var(--border2)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.hamburger svg{width:20px;height:20px}
+.content{flex:1;padding:24px;overflow-y:auto}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
+html[dir="ltr"] .page-title span{margin-right:0;margin-left:8px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
+html[dir="ltr"] .btn{font-family:var(--font-en)}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
+.btn-danger{background:rgba(224,72,72,.12);color:var(--danger);border:1px solid rgba(224,72,72,.15)}
+.btn-danger:hover{background:rgba(224,72,72,.22)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:4px}
+.tab{flex:1;padding:8px;text-align:center;font-size:13px;color:var(--text2);cursor:pointer;border-radius:var(--r-sm);transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px}
+.tab svg{width:14px;height:14px}
+.tab.active{background:var(--bg4);color:var(--text1)}
+.tab:hover:not(.active){background:var(--bg3);color:var(--text1)}
+.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
+html[dir="ltr"] .search-wrap svg{right:auto;left:11px}
+.search-input{width:100%;padding:8px 36px 8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);direction:rtl}
+html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8px 12px 8px 36px}
+.search-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.search-input::placeholder{color:var(--text3)}
+.filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;cursor:pointer;transition:var(--trans);font-family:var(--font-ar);min-width:130px}
+html[dir="ltr"] .filter-select{font-family:var(--font-en)}
+.filter-select:focus{border-color:var(--border2)}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap;letter-spacing:.04em}
+html[dir="ltr"] thead th{text-align:left}
+tbody tr{border-bottom:1px solid rgba(100,160,255,.05);transition:var(--trans);cursor:pointer}
+tbody tr:hover{background:var(--bg3)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
+.td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500}
+.td-name{color:var(--text1);font-weight:500}
+.td-actions{display:flex;gap:6px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.badge-active{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-inactive{background:rgba(138,155,184,.1);color:var(--text2)}
+.badge-contract-yes{background:rgba(42,127,255,.12);color:var(--accent)}
+.badge-contract-no{background:rgba(224,72,72,.1);color:var(--danger)}
+.badge-contract-exp{background:rgba(224,144,48,.1);color:var(--warning)}
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
+.table-info{font-size:12px;color:var(--text3)}
+.pagination{display:flex;gap:4px}
+.page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.map-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.map-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.map-title{font-size:13px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
+.map-title svg{width:15px;height:15px;color:var(--accent)}
+#map{height:480px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:780px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:600;color:var(--text1)}
+.modal-close{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.modal-close:hover{background:rgba(224,72,72,.15);color:var(--danger)}
+.modal-close svg{width:14px;height:14px}
+.modal-body{flex:1;overflow-y:auto;padding:22px}
+.modal-body::-webkit-scrollbar{width:4px}
+.modal-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.form-section{margin-bottom:22px}
+.form-section-title{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;direction:rtl;width:100%}
+html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .field textarea{font-family:var(--font-en);direction:ltr}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field textarea{resize:vertical;min-height:80px}
+.field-hint{font-size:11px;color:var(--text3)}
+.phone-wrap{display:flex;gap:6px}
+.phone-code{width:80px;flex-shrink:0;padding:9px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;cursor:pointer;direction:ltr}
+.phone-input{flex:1;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;direction:ltr;font-family:var(--font-en)}
+.phone-input:focus,.phone-code:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.maps-row{display:flex;gap:8px;align-items:flex-end;margin-top:14px}
+.maps-row .field{flex:1}
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.view-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
+.view-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+.view-val{font-size:13px;color:var(--text1);font-weight:500}
+.view-full{grid-column:1/-1}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  html[dir="ltr"] .sidebar{right:auto;left:-240px;transition:left .25s ease}
+  .sidebar.open{right:0}
+  html[dir="ltr"] .sidebar.open{left:0;right:auto}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .form-grid,.form-grid-3{grid-template-columns:1fr}
+  .view-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
+</style>
+<style>
+.reports-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+.report-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;transition:var(--trans);position:relative;overflow:hidden;text-decoration:none;display:block}
+.report-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.report-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--rc-color,var(--accent));opacity:.7}
+.report-card-icon{width:40px;height:40px;border-radius:var(--r-sm);background:rgba(42,127,255,.1);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.report-card-icon svg{width:20px;height:20px;color:var(--rc-color,var(--accent))}
+.report-card-title{font-size:14px;font-weight:600;color:var(--text1);margin-bottom:4px}
+.report-card-desc{font-size:12px;color:var(--text3);line-height:1.5}
+.report-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.report-card-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;background:rgba(42,127,255,.1);color:var(--accent)}
+.report-card-arrow{width:24px;height:24px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3)}
+.report-card-arrow svg{width:12px;height:12px}
+.section-title{font-size:13px;font-weight:600;color:var(--text3);letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+@media(max-width:1100px){.reports-grid{grid-template-columns:repeat(2,1fr)}}
+@@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
+</style>
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
+
+    <div class="nav-section" id="ns1">الرئيسية</div>
+<a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
+
+<div class="nav-section" id="ns2">البيانات</div>
+<a href="/clients" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>العملاء</a>
+<a href="/elevators" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg>المصاعد</a>
+<a href="/contracts" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>العقود</a>
+<a href="/technicians" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>الفنيون</a>
+
+<div class="nav-section" id="ns2">العمليات</div>
+<a href="/maintenance-visits" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>الصيانة</a>
+<a href="/faults" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأعطال</a>
+<a href="/parts-billing" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>تركيب قطع غيار</a>
+  
+<div class="nav-section" id="ns3">المالية</div>
+<a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
+<a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
+<a href="/invoices" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>الفواتير</a>
+
+<div class="nav-section" id="ns4">المخزن</div>
+<a href="/inventory" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>الأصناف</a>
+<a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
+
+<div class="nav-section" id="ns4">التقارير</div>
+<a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
+<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
+         </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">م</div>
+      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="header">
+    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
+    <div class="header-title"><span id="h-date"></span><span>التقارير</span></div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <div class="lang-toggle">
+        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
+        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
+      </div>
+      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
+      <div class="header-avatar">م</div>
+    </div>
+  </header>
+  <div class="content">
+
+    <div class="page-header">
+      <div class="page-title">التقارير <span>14 تقرير متاح</span></div>
+    </div>
+
+    <!-- تقارير خاصة -->
+    <div class="section-title">تقارير إدارية</div>
+    <div class="reports-grid">
+
+      <a href="/reports/dashboard" class="report-card" style="--rc-color:var(--accent)">
+        <div class="report-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </div>
+        <div class="report-card-title">تقرير الداشبورد</div>
+        <div class="report-card-desc">ملخص عام للشركة — إيرادات، عقود، أعطال، وأداء الفنيين</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag">إداري</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/client-annual" class="report-card" style="--rc-color:var(--gold)">
+        <div class="report-card-icon" style="background:rgba(200,160,85,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div class="report-card-title">التقرير السنوي للعميل</div>
+        <div class="report-card-desc">ملخص سنوي شامل لكل عميل — عقوده، مصاعده، زياراته، ومدفوعاته</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(200,160,85,.1);color:var(--gold)">إداري</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- تقارير البيانات -->
+    <div class="section-title">تقارير البيانات</div>
+    <div class="reports-grid">
+
+      <a href="/reports/clients" class="report-card" style="--rc-color:#7c6fff">
+        <div class="report-card-icon" style="background:rgba(124,111,255,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <div class="report-card-title">تقرير العملاء</div>
+        <div class="report-card-desc">قائمة العملاء مع بياناتهم ومصاعدهم وحالة عقودهم</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(124,111,255,.1);color:#7c6fff">بيانات</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/elevators" class="report-card" style="--rc-color:var(--info)">
+        <div class="report-card-icon" style="background:rgba(42,159,255,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg>
+        </div>
+        <div class="report-card-title">تقرير المصاعد</div>
+        <div class="report-card-desc">قائمة المصاعد مع حالتها وبيانات الصيانة والأعطال</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(42,159,255,.1);color:var(--info)">بيانات</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/contracts" class="report-card" style="--rc-color:var(--success)">
+        <div class="report-card-icon" style="background:rgba(31,184,122,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+        </div>
+        <div class="report-card-title">تقرير العقود</div>
+        <div class="report-card-desc">قائمة العقود مع قيمها وتواريخها وحالة الدفع</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(31,184,122,.1);color:var(--success)">بيانات</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/technicians" class="report-card" style="--rc-color:#e96aff">
+        <div class="report-card-icon" style="background:rgba(233,106,255,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <div class="report-card-title">تقرير الفنيين</div>
+        <div class="report-card-desc">قائمة الفنيين مع زياراتهم وأدائهم وتخصصاتهم</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(233,106,255,.1);color:#e96aff">بيانات</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/maintenance-visits" class="report-card" style="--rc-color:var(--accent)">
+        <div class="report-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <div class="report-card-title">تقرير زيارات الصيانة</div>
+        <div class="report-card-desc">سجل الزيارات مع تفاصيل الفني والمصعد والملاحظات</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag">بيانات</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/faults" class="report-card" style="--rc-color:var(--danger)">
+        <div class="report-card-icon" style="background:rgba(224,72,72,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="report-card-title">تقرير الأعطال</div>
+        <div class="report-card-desc">سجل الأعطال مع أسبابها ووقت الاستجابة وتكلفة الإصلاح</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(224,72,72,.1);color:var(--danger)">بيانات</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- تقارير مالية -->
+    <div class="section-title">تقارير مالية</div>
+    <div class="reports-grid">
+
+      <a href="/reports/revenues" class="report-card" style="--rc-color:var(--success)">
+        <div class="report-card-icon" style="background:rgba(31,184,122,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        </div>
+        <div class="report-card-title">تقرير الإيرادات</div>
+        <div class="report-card-desc">تفصيل الإيرادات حسب الفترة والعميل ونوع الخدمة</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(31,184,122,.1);color:var(--success)">مالي</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/expenses" class="report-card" style="--rc-color:var(--danger)">
+        <div class="report-card-icon" style="background:rgba(224,72,72,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
+        </div>
+        <div class="report-card-title">تقرير المصروفات</div>
+        <div class="report-card-desc">تفصيل المصروفات حسب الفترة والفئة والمورد</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(224,72,72,.1);color:var(--danger)">مالي</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/invoices" class="report-card" style="--rc-color:var(--warning)">
+        <div class="report-card-icon" style="background:rgba(224,144,48,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>
+        </div>
+        <div class="report-card-title">تقرير الفواتير</div>
+        <div class="report-card-desc">قائمة الفواتير مع حالة الدفع والمبالغ المستحقة</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(224,144,48,.1);color:var(--warning)">مالي</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- تقارير المخزن -->
+    <div class="section-title">تقارير المخزن</div>
+    <div class="reports-grid">
+
+      <a href="/reports/inventory" class="report-card" style="--rc-color:var(--accent)">
+        <div class="report-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <div class="report-card-title">تقرير الأصناف</div>
+        <div class="report-card-desc">قائمة الأصناف مع الكميات والأسعار وحالة المخزون</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag">مخزن</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/stock-movements" class="report-card" style="--rc-color:#00d4aa">
+        <div class="report-card-icon" style="background:rgba(0,212,170,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+        </div>
+        <div class="report-card-title">تقرير حركة المخزن</div>
+        <div class="report-card-desc">سجل حركات الدخول والخروج للأصناف مع التواريخ</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(0,212,170,.1);color:#00d4aa">مخزن</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+      <a href="/reports/parts-billing" class="report-card" style="--rc-color:var(--gold)">
+        <div class="report-card-icon" style="background:rgba(200,160,85,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="report-card-title">تقرير بيان القطع</div>
+        <div class="report-card-desc">تفصيل قطع الغيار المركبة مع التكاليف والأرباح</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(200,160,85,.1);color:var(--gold)">مخزن</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+const _now = new Date();
+const _days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const _months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent = `${_days[_now.getDay()]}، ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} — `;
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
+function setLang(l){document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');document.getElementById('btn-ar').classList.toggle('active',l==='ar');document.getElementById('btn-en').classList.toggle('active',l==='en');}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));});
+document.addEventListener('click',e=>{if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay'))document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));});
+</script>
+</body>
+</html>

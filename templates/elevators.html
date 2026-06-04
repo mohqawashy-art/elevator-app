@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -204,112 +203,59 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </style>
 </head>
 <body>
-
-<!-- Mobile overlay -->
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
-
-<!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
-  
-    <div class="nav-section" id="ns1">الرئيسية</div>
-        <a class="nav-item" href="/dashboard">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
-      <span>لوحة التحكم</span>
-    </a>
-    <div class="nav-section">إدارة البيانات</div>
-    <a class="nav-item" href="/clients">
-      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-      <span>العملاء</span>
-    </a>
-    <a class="nav-item active" href="/elevators">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg>
-      <span>المصاعد</span>
-    </a>
-    <a class="nav-item" href="/contracts">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg>
-      <span>العقود</span>
-    </a>
-    <a class="nav-item" href="/technicians">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg>
-      <span>الفنيين</span>
-    </a>
-    <div class="nav-section">العمليات</div>
-    <a class="nav-item" href="/maintenance-visits">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>
-      <span>زيارات الصيانة</span>
-    </a>
-    <a class="nav-item" href="/faults">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
-      <span>الأعطال</span>
-      <span class="nav-badge">5</span>
-    </a>
-    <a class="nav-item" href="/parts-billing">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14.5S13 12 13 7V3.5L8 1.5 3 3.5V7c0 5 5 7.5 5 7.5z"/></svg>
-      <span id="nav-parts">تركيب قطع غيار</span>
-    </a>
-    <div class="nav-section" id="nav-s4">المالية</div>
-    <a class="nav-item" href="/revenues">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1v14M11 3.5H6.5a2.5 2.5 0 000 5h3a2.5 2.5 0 010 5H4.5"/></svg>
-      <span id="nav-revenues">الإيرادات</span>
-    </a>
-    <a class="nav-item" href="/expenses">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 8V14H3V8"/><path d="M14.5 4.5H1.5v3.5h13V4.5z"/><path d="M8 14.5V4.5M8 4.5H5.5a1.5 1.5 0 010-3C7 1.5 8 4.5 8 4.5zM8 4.5h2.5a1.5 1.5 0 000-3C9 1.5 8 4.5 8 4.5z"/></svg>
-      <span id="nav-expenses">المصروفات</span>
-    </a>
-    <a class="nav-item" href="/invoices">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>
-      <span id="nav-invoices2">الفواتير</span>
-    </a>
 
-    <div class="nav-section" id="nav-s5">المخزن</div>
-    <a class="nav-item" href="/inventory">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 10.5V5.5a1 1 0 00-.5-.87l-5-2.88a1 1 0 00-1 0L2.5 4.63a1 1 0 00-.5.87v5a1 1 0 00.5.87l5 2.88a1 1 0 001 0l5-2.88a1 1 0 00.5-.87z"/><path d="M2.27 4.37L8 7.5l5.73-3.13M8 14.05V7.5"/></svg>
-      <span id="nav-inventory">الأصناف</span>
-    </a>
-    <a class="nav-item" href="/stock-movements">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M11 1l3 3-3 3"/><path d="M2 7V6a3 3 0 013-3h9M5 15l-3-3 3-3"/><path d="M14 9v1a3 3 0 01-3 3H2"/></svg>
-      <span id="nav-stock">حركة المخزن</span>
-    </a>
-    <a class="nav-item" href="/parts-billing">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14.5S13 12 13 7V3.5L8 1.5 3 3.5V7c0 5 5 7.5 5 7.5z"/></svg>
-      <span id="nav-parts">بيان القطع</span>
-    </a>
-    
-  </nav>
+    <div class="nav-section" id="ns1">الرئيسية</div>
+<a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
+
+<div class="nav-section" id="ns2">البيانات</div>
+<a href="/clients" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>العملاء</a>
+<a href="/elevators" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg>المصاعد</a>
+<a href="/contracts" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>العقود</a>
+<a href="/technicians" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>الفنيون</a>
+
+<div class="nav-section" id="ns2">العمليات</div>
+<a href="/maintenance-visits" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>الصيانة</a>
+<a href="/faults" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأعطال</a>
+<a href="/parts-billing" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>تركيب قطع غيار</a>
+  
+<div class="nav-section" id="ns3">المالية</div>
+<a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
+<a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
+<a href="/invoices" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>الفواتير</a>
+
+<div class="nav-section" id="ns4">المخزن</div>
+<a href="/inventory" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>الأصناف</a>
+<a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
+
+<div class="nav-section" id="ns4">التقارير</div>
+<a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
+<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
+         </nav>
   <div class="sidebar-footer">
     <div class="sidebar-user">
       <div class="sidebar-avatar">م</div>
-      <div>
-        <div class="sidebar-user-name">محمد القواشي</div>
-        <div class="sidebar-user-role">مدير النظام</div>
-      </div>
+      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
     </div>
   </div>
 </aside>
-
 <div class="main">
   <header class="header">
-    <button class="hamburger" onclick="openSidebar()">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
-    </button>
-    <div class="header-title">
-      <span id="h-date"></span>
-      <span>المصاعد</span>
-    </div>
+    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
+    <div class="header-title"><span id="h-date"></span><span>المصاعد</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <div class="lang-toggle">
         <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
         <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
       </div>
-      <button class="icon-btn">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg>
-        <span class="notif-dot"></span>
-      </button>
+      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
       <div class="header-avatar">م</div>
     </div>
   </header>
+
 
   <div class="content">
 
@@ -465,6 +411,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <!-- ADD/EDIT MODAL -->
+
+</div>
+
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-head">
@@ -710,300 +659,205 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-const CLIENT_DATA = {
-  'C-0001':{name:'برج الياسمين',city:'مكة',district:'العزيزية',lat:21.3891,lng:39.8579,building:'برج الياسمين'},
-  'C-0002':{name:'مجمع النخيل',city:'جدة',district:'الروضة',lat:21.5433,lng:39.1728,building:'مجمع النخيل'},
-  'C-0003':{name:'فندق الأندلس',city:'مكة',district:'أجياد',lat:21.4225,lng:39.8261,building:'فندق الأندلس'},
-  'C-0004':{name:'مستشفى السلام',city:'مكة',district:'النزهة',lat:21.4100,lng:39.8450,building:'مستشفى السلام'},
-  'C-0005':{name:'برج المملكة',city:'جدة',district:'النزهة',lat:21.5200,lng:39.1900,building:'برج المملكة'},
-  'C-0006':{name:'أبراج الساعة',city:'مكة',district:'أجياد',lat:21.4228,lng:39.8260,building:'أبراج الساعة'},
-};
 
+
+<script>
+// ===== البيانات من Flask =====
 const ELEVATORS = [
-  {id:1,code:'EL-0001',clientCode:'C-0001',client:'برج الياسمين',building:'برج الياسمين',city:'مكة',district:'العزيزية',type:'مصعد ركاب',brand:'Otis',model:'Gen2',serial:'OT-2021-001',capacityKg:630,capacityP:8,floors:12,stops:12,doors:1,machine:'MRL',control:'TCBC',installDate:'2021-03-15',warranty:'2024-03-15',contractId:'CN-00001',maintFreq:'شهري',status:'نشط',lastMaint:'2025-05-01',nextMaint:'2025-06-01',lat:21.3891,lng:39.8579,notes:''},
-  {id:2,code:'EL-0002',clientCode:'C-0001',client:'برج الياسمين',building:'برج الياسمين',city:'مكة',district:'العزيزية',type:'مصعد ركاب',brand:'Otis',model:'Gen2',serial:'OT-2021-002',capacityKg:630,capacityP:8,floors:12,stops:12,doors:1,machine:'MRL',control:'TCBC',installDate:'2021-03-15',warranty:'2024-03-15',contractId:'CN-00001',maintFreq:'شهري',status:'نشط',lastMaint:'2025-05-01',nextMaint:'2025-06-01',lat:21.3893,lng:39.8582,notes:''},
-  {id:3,code:'EL-0003',clientCode:'C-0002',client:'مجمع النخيل',building:'مجمع النخيل',city:'جدة',district:'الروضة',type:'مصعد بضائع',brand:'Kone',model:'MonoSpace',serial:'KN-2020-003',capacityKg:2000,capacityP:0,floors:5,stops:5,doors:2,machine:'MR',control:'V3F',installDate:'2020-06-10',warranty:'2023-06-10',contractId:'CN-00002',maintFreq:'شهري',status:'تحت الصيانة',lastMaint:'2025-04-15',nextMaint:'2025-05-15',lat:21.5433,lng:39.1728,notes:'يحتاج قطعة غيار'},
-  {id:4,code:'EL-0004',clientCode:'C-0003',client:'فندق الأندلس',building:'فندق الأندلس',city:'مكة',district:'أجياد',type:'مصعد بانوراما',brand:'Schindler',model:'3300',serial:'SC-2019-004',capacityKg:800,capacityP:10,floors:8,stops:8,doors:1,machine:'MRL',control:'Miconic',installDate:'2019-09-20',warranty:'2022-09-20',contractId:'CN-00003',maintFreq:'شهري',status:'نشط',lastMaint:'2025-05-10',nextMaint:'2025-06-10',lat:21.4225,lng:39.8261,notes:''},
-  {id:5,code:'EL-0005',clientCode:'C-0004',client:'مستشفى السلام',building:'مستشفى السلام',city:'مكة',district:'النزهة',type:'مصعد مستشفى',brand:'ThyssenKrupp',model:'Evolution',serial:'TK-2022-005',capacityKg:1600,capacityP:20,floors:6,stops:6,doors:2,machine:'MRL',control:'microBasic',installDate:'2022-01-05',warranty:'2025-01-05',contractId:'CN-00004',maintFreq:'شهري',status:'نشط',lastMaint:'2025-05-20',nextMaint:'2025-06-20',lat:21.4100,lng:39.8450,notes:'أولوية قصوى'},
-  {id:6,code:'EL-0006',clientCode:'C-0004',client:'مستشفى السلام',building:'مستشفى السلام',city:'مكة',district:'النزهة',type:'مصعد خدمة',brand:'ThyssenKrupp',model:'Evolution',serial:'TK-2022-006',capacityKg:1000,capacityP:0,floors:6,stops:6,doors:2,machine:'MRL',control:'microBasic',installDate:'2022-01-05',warranty:'2025-01-05',contractId:'CN-00004',maintFreq:'شهري',status:'متوقف',lastMaint:'2025-04-01',nextMaint:'2025-05-01',lat:21.4102,lng:39.8452,notes:'عطل في لوحة التحكم'},
-  {id:7,code:'EL-0007',clientCode:'C-0005',client:'برج المملكة',building:'برج المملكة',city:'جدة',district:'النزهة',type:'مصعد ركاب',brand:'Mitsubishi',model:'NEXIEZ',serial:'MT-2023-007',capacityKg:800,capacityP:10,floors:20,stops:20,doors:1,machine:'MRL',control:'MP-C',installDate:'2023-03-01',warranty:'2026-03-01',contractId:'CN-00005',maintFreq:'شهري',status:'نشط',lastMaint:'2025-05-15',nextMaint:'2025-06-15',lat:21.5200,lng:39.1900,notes:''},
-  {id:8,code:'EL-0008',clientCode:'C-0006',client:'أبراج الساعة',building:'أبراج الساعة',city:'مكة',district:'أجياد',type:'مصعد ركاب',brand:'Otis',model:'Skyrise',serial:'OT-2018-008',capacityKg:1000,capacityP:13,floors:30,stops:30,doors:2,machine:'MR',control:'ReGen',installDate:'2018-11-01',warranty:'2021-11-01',contractId:'CN-00006',maintFreq:'شهري',status:'نشط',lastMaint:'2025-05-25',nextMaint:'2025-06-25',lat:21.4228,lng:39.8260,notes:''},
-  {id:9,code:'EL-0009',clientCode:'C-0006',client:'أبراج الساعة',building:'أبراج الساعة',city:'مكة',district:'أجياد',type:'مصعد خدمة',brand:'Otis',model:'Skyrise',serial:'OT-2018-009',capacityKg:1600,capacityP:0,floors:30,stops:30,doors:2,machine:'MR',control:'ReGen',installDate:'2018-11-01',warranty:'2021-11-01',contractId:'CN-00006',maintFreq:'شهري',status:'خارج الخدمة',lastMaint:'2025-03-01',nextMaint:'2025-04-01',lat:21.4230,lng:39.8262,notes:'يحتاج صيانة شاملة'},
-  {id:10,code:'EL-0010',clientCode:'C-0002',client:'مجمع النخيل',building:'مجمع النخيل',city:'جدة',district:'الروضة',type:'مصعد ركاب',brand:'Kone',model:'EcoDisc',serial:'KN-2021-010',capacityKg:1000,capacityP:13,floors:7,stops:7,doors:1,machine:'MRL',control:'V3F16L',installDate:'2021-07-20',warranty:'2024-07-20',contractId:'CN-00002',maintFreq:'شهري',status:'نشط',lastMaint:'2025-05-18',nextMaint:'2025-06-18',lat:21.5435,lng:39.1730,notes:''},
+  {% for e in elevators %}
+  {
+    id:           {{ e.id }},
+    code:         "{{ e.code }}",
+    customer_id:  {{ e.customer_id }},
+    customer:     "{{ e.customer.name }}",
+    building:     "{{ e.building_name or '' }}",
+    city:         "{{ e.city or '' }}",
+    district:     "{{ e.district or '' }}",
+    elev_type:    "{{ e.elev_type or '' }}",
+    brand:        "{{ e.brand or '' }}",
+    model:        "{{ e.model or '' }}",
+    capacity:     {{ e.capacity_kg or 0 }},
+    floors:       {{ e.floors or 0 }},
+    serial:       "{{ e.serial_number or '' }}",
+    install_date: "{{ e.install_date or '' }}",
+    last_maint:   "{{ e.last_maintenance or '' }}",
+    next_maint:   "{{ e.next_maintenance or '' }}",
+    status:       "{{ e.status }}",
+    notes:        "{{ e.notes or '' }}",
+  },
+  {% endfor %}
 ];
 
-let currentDeleteId = null;
-let filteredElevs = [...ELEVATORS];
-let map = null;
-let mapInitialized = false;
-let clickMarker = null;
+const CUSTOMERS = [
+  {% for c in customers %}
+  { id: {{ c.id }}, name: "{{ c.name }}" },
+  {% endfor %}
+];
 
-const STATUS_BADGE = {
-  'نشط':'badge-active',
-  'تحت الصيانة':'badge-maintenance',
-  'متوقف':'badge-stopped',
-  'خارج الخدمة':'badge-outofservice'
+// ===== إحصائيات =====
+function updateStats() {
+  document.getElementById('stat-total').textContent       = ELEVATORS.length;
+  document.getElementById('stat-active').textContent      = ELEVATORS.filter(e=>e.status==='نشط').length;
+  document.getElementById('stat-maintenance').textContent = ELEVATORS.filter(e=>e.status==='تحت الصيانة').length;
+  document.getElementById('stat-stopped').textContent     = ELEVATORS.filter(e=>e.status==='متوقف').length;
+  document.getElementById('stat-oos').textContent         = ELEVATORS.filter(e=>e.status==='خارج الخدمة').length;
+}
+
+const STATUS_CLASS = {
+  'نشط':'badge-active','تحت الصيانة':'badge-pending',
+  'متوقف':'badge-expired','خارج الخدمة':'badge-cancelled'
 };
+
+let currentDeleteId = null;
+let filtered = [...ELEVATORS];
 
 function renderTable(data) {
   const tbody = document.getElementById('table-body');
-  tbody.innerHTML = '';
-  data.forEach(e => {
-    const badge = STATUS_BADGE[e.status] || 'badge-active';
-    const nextDate = e.nextMaint ? new Date(e.nextMaint).toLocaleDateString('ar-SA') : '—';
-    tbody.innerHTML += `
-      <tr>
-        <td class="td-code">${e.code}</td>
-        <td class="td-name">${e.client}</td>
-        <td>${e.building}</td>
-        <td>${e.city}</td>
-        <td>${e.type}</td>
-        <td>${e.brand}</td>
-        <td style="font-family:var(--font-en)">${e.capacityKg} كجم</td>
-        <td><span class="badge ${badge}">${e.status}</span></td>
-        <td style="font-size:12px">${nextDate}</td>
-        <td>
-          <div class="td-actions">
-            <button class="btn btn-secondary btn-sm btn-icon" title="عرض" onclick="viewElevator(${e.id})">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
-            </button>
-            <button class="btn btn-secondary btn-sm btn-icon" title="تعديل" onclick="editElevator(${e.id})">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
-            </button>
-            <button class="btn btn-danger btn-sm btn-icon" title="حذف" onclick="deleteElevator(${e.id})">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M3 4l.7 7.5a1 1 0 001 .9h4.6a1 1 0 001-.9L11 4"/></svg>
-            </button>
-          </div>
-        </td>
-      </tr>`;
-  });
-  document.getElementById('table-info').textContent = `عرض ${data.length} من ${ELEVATORS.length} مصعد`;
-  document.getElementById('elev-count').textContent = `${ELEVATORS.length} مصعد`;
+  if (!tbody) return;
+  document.getElementById('elevators-count').textContent = data.length + ' مصعد';
+  tbody.innerHTML = data.map(e => `
+    <tr onclick="viewElevator(${e.id})">
+      <td class="td-code">${e.code}</td>
+      <td class="td-name">${e.customer}</td>
+      <td>${e.building}</td>
+      <td>${e.city}</td>
+      <td>${e.elev_type}</td>
+      <td style="font-family:var(--font-en)">${e.brand}</td>
+      <td style="font-family:var(--font-en)">${e.capacity ? e.capacity+' كجم' : '—'}</td>
+      <td><span class="badge ${STATUS_CLASS[e.status]||'badge-active'}">${e.status}</span></td>
+      <td style="font-family:var(--font-en);direction:ltr">${e.next_maint||'—'}</td>
+      <td onclick="event.stopPropagation()">
+        <div class="td-actions">
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewElevator(${e.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
+          </button>
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="editElevator(${e.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
+          </button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteElevator(${e.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
 }
 
 function filterTable() {
-  const s = document.getElementById('search-input').value.toLowerCase();
-  const cl = document.getElementById('f-client').value;
-  const ct = document.getElementById('f-city').value;
-  const tp = document.getElementById('f-type').value;
-  const st = document.getElementById('f-status').value;
-  filteredElevs = ELEVATORS.filter(e => {
-    const ms = !s || e.code.toLowerCase().includes(s) || e.client.includes(s) || e.building.includes(s);
-    const mc = !cl || e.client === cl;
-    const mct = !ct || e.city === ct;
-    const mtp = !tp || e.type === tp;
-    const mst = !st || e.status === st;
-    return ms && mc && mct && mtp && mst;
-  });
-  renderTable(filteredElevs);
-}
-
-function initMap() {
-  if (mapInitialized) return;
-  mapInitialized = true;
-  map = L.map('map', {
-    center: [21.4, 39.85],
-    zoom: 12,
-    zoomControl: true
-  });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19
-  }).addTo(map);
-
-  const iconColors = {
-    'نشط': '#1fb87a',
-    'تحت الصيانة': '#e09030',
-    'متوقف': '#e04848',
-    'خارج الخدمة': '#888'
-  };
-
-  ELEVATORS.forEach(e => {
-    const color = iconColors[e.status] || '#2a7fff';
-    const icon = L.divIcon({
-      html: `<div style="background:${color};width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
-      className: '',
-      iconSize: [12, 12],
-      iconAnchor: [6, 6],
-      popupAnchor: [0, -10]
-    });
-    const marker = L.marker([e.lat, e.lng], {icon}).addTo(map);
-    marker.bindPopup(`
-      <div style="font-family:IBM Plex Sans Arabic,sans-serif;direction:rtl;min-width:180px;font-size:13px">
-        <div style="font-weight:600;color:#1a1a2e;margin-bottom:6px">${e.building}</div>
-        <div style="color:#555;font-size:12px;margin-bottom:2px">الكود: <b style="font-family:monospace">${e.code}</b></div>
-        <div style="color:#555;font-size:12px;margin-bottom:2px">العميل: ${e.client}</div>
-        <div style="color:#555;font-size:12px;margin-bottom:8px">النوع: ${e.type}</div>
-        <div style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:${color}22;color:${color};border:1px solid ${color}44;margin-bottom:8px">${e.status}</div>
-        <br>
-        <button onclick="viewElevator(${e.id})" style="background:#2a7fff;color:#fff;border:none;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit">عرض التفاصيل</button>
-      </div>
-    `, {maxWidth: 220});
-  });
-
-  map.on('click', function(e) {
-    const lat = e.latlng.lat.toFixed(6);
-    const lng = e.latlng.lng.toFixed(6);
-    if (clickMarker) map.removeLayer(clickMarker);
-    clickMarker = L.marker([lat, lng], {
-      icon: L.divIcon({
-        html: `<div style="background:#2a7fff;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(42,127,255,.6)"></div>`,
-        className:'',iconSize:[14,14],iconAnchor:[7,7]
-      })
-    }).addTo(map);
-    clickMarker.bindPopup(`
-      <div style="direction:rtl;font-family:inherit;font-size:12px">
-        <div style="margin-bottom:6px">📍 موقع جديد</div>
-        <div style="font-family:monospace;color:#555;margin-bottom:8px">${lat}, ${lng}</div>
-        <button onclick="openAddFromMap(${lat},${lng})" style="background:#2a7fff;color:#fff;border:none;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit">إضافة مصعد هنا</button>
-      </div>
-    `).openPopup();
-  });
-}
-
-function openAddFromMap(lat, lng) {
-  document.getElementById('f-lat').value = lat;
-  document.getElementById('f-lng').value = lng;
-  openAddModal();
-}
-
-function fillClientData() {
-  const code = document.getElementById('f-client-sel').value;
-  if (!code || !CLIENT_DATA[code]) return;
-  const c = CLIENT_DATA[code];
-  document.getElementById('f-elev-city').value = c.city;
-  document.getElementById('f-elev-district').value = c.district;
-  document.getElementById('f-building').value = c.building;
-  document.getElementById('f-lat').value = c.lat;
-  document.getElementById('f-lng').value = c.lng;
-}
-
-function extractCoords(url) {
-  const m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (m) {
-    document.getElementById('f-lat').value = m[1];
-    document.getElementById('f-lng').value = m[2];
-  }
-  document.getElementById('open-map-btn').href = url || '#';
+  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const ct = document.getElementById('f-client')?.value||'';
+  const tp = document.getElementById('f-type')?.value||'';
+  const st = document.getElementById('f-status')?.value||'';
+  const cy = document.getElementById('f-city')?.value||'';
+  filtered = ELEVATORS.filter(e =>
+    (!s  || e.code.toLowerCase().includes(s) || e.customer.includes(s) || e.building.includes(s)) &&
+    (!ct || e.customer === ct) &&
+    (!tp || e.elev_type === tp) &&
+    (!st || e.status === st) &&
+    (!cy || e.city === cy)
+  );
+  renderTable(filtered);
 }
 
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة مصعد جديد';
+  document.getElementById('modal-add').dataset.editId = '';
+  const sel = document.getElementById('f-client-sel');
+  if (sel) sel.innerHTML = '<option value="">اختر العميل</option>' +
+    CUSTOMERS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   document.getElementById('modal-add').classList.add('open');
 }
 
+function saveElevator() {
+  const editId = document.getElementById('modal-add').dataset.editId;
+  const fd = new FormData();
+  [['customer_id','f-client-sel'],['building_name','f-building'],['city','f-city'],
+   ['district','f-district'],['elev_type','f-type'],['brand','f-brand'],
+   ['model','f-model'],['capacity_kg','f-capacity'],['floors','f-floors'],
+   ['serial_number','f-serial'],['install_date','f-install'],
+   ['status','f-status'],['notes','f-notes']].forEach(([f,i])=>{
+     const el=document.getElementById(i); if(el) fd.append(f,el.value);
+   });
+  fetch(editId ? `/elevators/edit/${editId}` : '/elevators/add', {method:'POST',body:fd})
+    .then(()=>window.location.reload());
+}
+
 function editElevator(id) {
-  const e = ELEVATORS.find(x => x.id === id);
+  const e = ELEVATORS.find(x=>x.id===id);
   if (!e) return;
   document.getElementById('modal-title').textContent = 'تعديل بيانات المصعد';
-  document.getElementById('f-elev-code').value = e.code;
-  document.getElementById('f-brand').value = e.brand;
-  document.getElementById('f-model').value = e.model;
-  document.getElementById('f-serial').value = e.serial;
-  document.getElementById('f-capacity-kg').value = e.capacityKg;
-  document.getElementById('f-capacity-p').value = e.capacityP;
-  document.getElementById('f-floors').value = e.floors;
-  document.getElementById('f-stops').value = e.stops;
-  document.getElementById('f-doors').value = e.doors;
-  document.getElementById('f-elev-city').value = e.city;
-  document.getElementById('f-elev-district').value = e.district;
-  document.getElementById('f-building').value = e.building;
-  document.getElementById('f-lat').value = e.lat;
-  document.getElementById('f-lng').value = e.lng;
-  document.getElementById('f-install-date').value = e.installDate;
-  document.getElementById('f-warranty').value = e.warranty;
-  document.getElementById('f-last-maint').value = e.lastMaint;
-  document.getElementById('f-next-maint').value = e.nextMaint;
-  document.getElementById('f-notes').value = e.notes;
+  document.getElementById('modal-add').dataset.editId = id;
+  const map = {
+    'f-building':e.building,'f-city':e.city,'f-district':e.district,
+    'f-type':e.elev_type,'f-brand':e.brand,'f-model':e.model,
+    'f-capacity':e.capacity,'f-floors':e.floors,'f-serial':e.serial,
+    'f-install':e.install_date,'f-status':e.status,'f-notes':e.notes,
+  };
+  Object.entries(map).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v||'';});
+  const sel=document.getElementById('f-client-sel');
+  if(sel) sel.innerHTML=CUSTOMERS.map(c=>`<option value="${c.id}"${c.id===e.customer_id?' selected':''}>${c.name}</option>`).join('');
   document.getElementById('modal-add').classList.add('open');
 }
 
 function viewElevator(id) {
-  const e = ELEVATORS.find(x => x.id === id);
+  const e = ELEVATORS.find(x=>x.id===id);
   if (!e) return;
-  const badge = STATUS_BADGE[e.status] || 'badge-active';
-  const mapsUrl = `https://www.google.com/maps?q=${e.lat},${e.lng}`;
-  document.getElementById('view-title').textContent = `${e.code} — ${e.building}`;
+  document.getElementById('view-title').textContent = e.code + ' — ' + e.building;
   document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
-      <div class="view-section">بيانات أساسية</div>
-      <div class="view-item"><div class="view-label">كود المصعد</div><div class="view-val" style="font-family:var(--font-en)">${e.code}</div></div>
-      <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${e.client}</div></div>
-      <div class="view-item"><div class="view-label">نوع المصعد</div><div class="view-val">${e.type}</div></div>
-      <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${badge}">${e.status}</span></div></div>
-      <div class="view-section">المواصفات التقنية</div>
-      <div class="view-item"><div class="view-label">الماركة</div><div class="view-val">${e.brand}</div></div>
-      <div class="view-item"><div class="view-label">الموديل</div><div class="view-val">${e.model}</div></div>
-      <div class="view-item"><div class="view-label">الرقم التسلسلي</div><div class="view-val" style="font-family:var(--font-en)">${e.serial}</div></div>
-      <div class="view-item"><div class="view-label">نوع الآلة</div><div class="view-val">${e.machine}</div></div>
-      <div class="view-item"><div class="view-label">الحمولة</div><div class="view-val">${e.capacityKg} كجم / ${e.capacityP} شخص</div></div>
-      <div class="view-item"><div class="view-label">الطوابق / المحطات</div><div class="view-val">${e.floors} / ${e.stops}</div></div>
-      <div class="view-section">الصيانة</div>
-      <div class="view-item"><div class="view-label">تاريخ التركيب</div><div class="view-val" style="direction:ltr">${e.installDate}</div></div>
-      <div class="view-item"><div class="view-label">انتهاء الضمان</div><div class="view-val" style="direction:ltr">${e.warranty}</div></div>
-      <div class="view-item"><div class="view-label">آخر صيانة</div><div class="view-val" style="direction:ltr">${e.lastMaint}</div></div>
-      <div class="view-item"><div class="view-label">الصيانة القادمة</div><div class="view-val" style="direction:ltr">${e.nextMaint}</div></div>
-      <div class="view-section">الموقع</div>
-      <div class="view-item"><div class="view-label">المدينة / الحي</div><div class="view-val">${e.city} — ${e.district}</div></div>
+      <div class="view-section">البيانات الأساسية</div>
+      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${e.code}</div></div>
+      <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${e.customer}</div></div>
       <div class="view-item"><div class="view-label">المبنى</div><div class="view-val">${e.building}</div></div>
-      <div class="view-item view-full">
-        <div class="view-label">الإحداثيات</div>
-        <div class="view-val" style="direction:ltr;font-family:var(--font-en)">${e.lat}, ${e.lng}</div>
-        <a href="${mapsUrl}" target="_blank" class="btn btn-secondary btn-sm" style="margin-top:8px;display:inline-flex">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
-          فتح في Google Maps
-        </a>
-      </div>
-      ${e.notes ? `<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${e.notes}</div></div>` : ''}
+      <div class="view-item"><div class="view-label">المدينة</div><div class="view-val">${e.city}</div></div>
+      <div class="view-item"><div class="view-label">النوع</div><div class="view-val">${e.elev_type}</div></div>
+      <div class="view-item"><div class="view-label">الماركة</div><div class="view-val" style="font-family:var(--font-en)">${e.brand}</div></div>
+      <div class="view-item"><div class="view-label">الموديل</div><div class="view-val" style="font-family:var(--font-en)">${e.model}</div></div>
+      <div class="view-item"><div class="view-label">الحمولة</div><div class="view-val">${e.capacity} كجم</div></div>
+      <div class="view-item"><div class="view-label">الطوابق</div><div class="view-val">${e.floors}</div></div>
+      <div class="view-item"><div class="view-label">الرقم التسلسلي</div><div class="view-val" style="font-family:var(--font-en)">${e.serial}</div></div>
+      <div class="view-section">الصيانة</div>
+      <div class="view-item"><div class="view-label">تاريخ التركيب</div><div class="view-val" style="direction:ltr">${e.install_date||'—'}</div></div>
+      <div class="view-item"><div class="view-label">آخر صيانة</div><div class="view-val" style="direction:ltr">${e.last_maint||'—'}</div></div>
+      <div class="view-item"><div class="view-label">الصيانة القادمة</div><div class="view-val" style="direction:ltr">${e.next_maint||'—'}</div></div>
+      <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_CLASS[e.status]||'badge-active'}">${e.status}</span></div></div>
+      ${e.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${e.notes}</div></div>`:''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
 }
 
-function deleteElevator(id) {
-  currentDeleteId = id;
-  document.getElementById('modal-delete').classList.add('open');
-}
-
+function deleteElevator(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
 function confirmDelete() {
-  const idx = ELEVATORS.findIndex(x => x.id === currentDeleteId);
-  if (idx !== -1) ELEVATORS.splice(idx, 1);
-  closeModal('modal-delete');
-  filterTable();
+  if(!currentDeleteId) return;
+  fetch(`/elevators/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
 }
 
-function saveElevator() { closeModal('modal-add'); }
+function exportExcel() {
+  const rows=[['الكود','العميل','المبنى','المدينة','النوع','الماركة','الحمولة','الحالة','الصيانة القادمة']];
+  filtered.forEach(e=>rows.push([e.code,e.customer,e.building,e.city,e.elev_type,e.brand,e.capacity+' كجم',e.status,e.next_maint]));
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='elevators.csv'; a.click();
+}
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-function switchTab(tab, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('tab-table').style.display = tab === 'table' ? '' : 'none';
-  document.getElementById('tab-map').style.display = tab === 'map' ? '' : 'none';
-  if (tab === 'map') setTimeout(initMap, 100);
-}
-
-function exportExcel() { alert('سيتم تصدير بيانات المصاعد إلى Excel'); }
-
 function setLang(l) {
-  document.documentElement.setAttribute('lang', l);
-  document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
-  document.getElementById('btn-ar').classList.toggle('active', l === 'ar');
-  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.documentElement.setAttribute('lang',l);
+  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
+  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
+  document.getElementById('btn-en').classList.toggle('active',l==='en');
 }
-
-function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-
-document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
-document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
+document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
 
 const now = new Date();
 const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
+updateStats();
 renderTable(ELEVATORS);
 </script>
 </body>

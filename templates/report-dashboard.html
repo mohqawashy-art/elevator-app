@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — تقرير الداشبورد</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;--info:#2a9fff;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:900px;height:200px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.sidebar-nav::-webkit-scrollbar{width:3px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.nav-badge{margin-right:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
+.sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
+.sidebar-user-role{font-size:11px;color:var(--text3)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:90}
+.header-title{font-size:15px;font-weight:500;color:var(--text1)}
+.header-title span{color:var(--text3);font-weight:400;font-size:13px;margin-right:6px}
+.header-spacer{flex:1}
+.header-actions{display:flex;align-items:center;gap:8px}
+.lang-toggle{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.lang-opt{padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:var(--trans);color:var(--text3);border:none;background:none}
+.lang-opt.active{background:var(--accent);color:#fff}
+.header-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;cursor:pointer;border:2px solid var(--border2)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.hamburger svg{width:20px;height:20px}
+.content{flex:1;padding:24px;overflow-y:auto}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1)}
+.btn-success{background:rgba(31,184,122,.12);color:var(--success);border:1px solid rgba(31,184,122,.2)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-actions{display:flex;gap:8px}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.badge-green{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-red{background:rgba(224,72,72,.12);color:var(--danger)}
+.badge-gold{background:rgba(224,144,48,.12);color:var(--warning)}
+.badge-blue{background:rgba(42,127,255,.12);color:var(--accent)}
+.badge-gray{background:rgba(138,155,184,.1);color:var(--text2)}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  .sidebar.open{right:0}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .content{padding:16px}
+}
+
+/* ===== REPORT STYLES ===== */
+.year-selector{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 12px;margin-bottom:20px}
+.year-selector label{font-size:12px;color:var(--text2)}
+.year-selector select{background:transparent;border:none;color:var(--text1);font-size:13px;font-weight:600;outline:none;font-family:var(--font-ar);cursor:pointer}
+
+/* KPI Cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,var(--accent));opacity:.7}
+.kpi-icon{width:36px;height:36px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;margin-bottom:10px;background:var(--ki-bg,rgba(42,127,255,.1))}
+.kpi-icon svg{width:18px;height:18px;color:var(--kc,var(--accent))}
+.kpi-val{font-size:26px;font-weight:700;color:var(--text1);font-family:var(--font-en);line-height:1}
+.kpi-label{font-size:11px;color:var(--text3);margin-top:4px}
+.kpi-change{font-size:11px;margin-top:6px;display:flex;align-items:center;gap:3px}
+.kpi-change.up{color:var(--success)}
+.kpi-change.down{color:var(--danger)}
+
+/* Section header */
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-title{font-size:14px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
+.sec-title::before{content:'';width:3px;height:16px;background:var(--accent);border-radius:2px}
+
+/* Charts grid */
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.charts-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.chart-title{font-size:13px;font-weight:600;color:var(--text1);margin-bottom:14px}
+.chart-wrap{position:relative;height:200px}
+.chart-wrap-sm{position:relative;height:160px}
+
+/* Tables */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:20px}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+thead th{padding:10px 12px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap}
+tbody tr{border-bottom:1px solid rgba(100,160,255,.05);transition:var(--trans)}
+tbody tr:hover{background:var(--bg3)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
+.td-code{font-family:var(--font-en);font-size:11px;color:var(--accent)}
+.td-name{color:var(--text1);font-weight:500}
+.td-num{font-family:var(--font-en)}
+
+/* Progress bars */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.prog-label{font-size:12px;color:var(--text2);width:120px;flex-shrink:0}
+.prog-bar{flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;background:var(--pf-color,var(--accent));transition:width .6s ease}
+.prog-val{font-size:11px;color:var(--text3);width:50px;text-align:left;font-family:var(--font-en)}
+
+/* Financial summary */
+.fin-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+.fin-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.fin-card-title{font-size:11px;color:var(--text3);margin-bottom:10px;font-weight:600;letter-spacing:.05em}
+.fin-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid rgba(100,160,255,.06)}
+.fin-row:last-child{border-bottom:none;padding-top:8px;font-weight:600;font-size:13px;color:var(--text1)}
+.fin-row span:first-child{color:var(--text2)}
+.fin-row span:last-child{font-family:var(--font-en)}
+
+/* Print */
+.print-toolbar{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px;margin-bottom:20px}
+@media print{
+  .sidebar,.header,.mobile-overlay,.print-toolbar,.year-selector{display:none!important}
+  .main{display:block}
+  .content{padding:16px}
+  body{background:#fff;color:#111}
+  .kpi-card,.chart-card,.table-wrap,.fin-card{background:#fff!important;border:1px solid #ddd!important}
+  .kpi-val,.sec-title,.chart-title,.td-name,.fin-row{color:#111!important}
+  .kpi-label,.td-code,.fin-row span:first-child{color:#555!important}
+  .kpi-change.up{color:#1a8a4a!important}
+  .kpi-change.down{color:#cc3333!important}
+  .charts-2,.charts-3{grid-template-columns:1fr 1fr}
+}
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.fin-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
+</style>
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
+
+    <div class="nav-section" id="ns1">الرئيسية</div>
+<a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
+
+<div class="nav-section" id="ns2">البيانات</div>
+<a href="/clients" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>العملاء</a>
+<a href="/elevators" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg>المصاعد</a>
+<a href="/contracts" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>العقود</a>
+<a href="/technicians" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>الفنيون</a>
+
+<div class="nav-section" id="ns2">العمليات</div>
+<a href="/maintenance-visits" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>الصيانة</a>
+<a href="/faults" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأعطال</a>
+<a href="/parts-billing" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>قطع تركيب</a>
+  
+<div class="nav-section" id="ns3">المالية</div>
+<a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
+<a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
+<a href="/invoices" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>الفواتير</a>
+
+<div class="nav-section" id="ns4">المخزن</div>
+<a href="/inventory" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>الأصناف</a>
+<a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
+
+<div class="nav-section" id="ns4">التقارير</div>
+<a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
+<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
+         </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">م</div>
+      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="header">
+    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
+    <div class="header-title"><span id="h-date"></span><span>تقرير الداشبورد</span></div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <div class="lang-toggle">
+        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
+        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
+      </div>
+      <div class="header-avatar">م</div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- شريط الأدوات -->
+    <div class="print-toolbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;color:var(--text2)">السنة:</span>
+        <select id="sel-year" onchange="loadData()" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);padding:5px 10px;font-size:13px;outline:none;font-family:var(--font-ar)">
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023</option>
+        </select>
+        <span style="font-size:12px;color:var(--text3)" id="report-subtitle">تقرير سنوي شامل — 2025</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="window.print()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
+        </button>
+        <button class="btn btn-success btn-sm" onclick="exportExcel()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>Excel
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI الرئيسية -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="--kc:var(--accent);--ki-bg:rgba(42,127,255,.1)">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg></div>
+        <div class="kpi-val" id="kpi-clients">130</div>
+        <div class="kpi-label">إجمالي العملاء</div>
+        <div class="kpi-change up">▲ 12 عميل جديد هذا العام</div>
+      </div>
+      <div class="kpi-card" style="--kc:var(--info);--ki-bg:rgba(42,159,255,.1)">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg></div>
+        <div class="kpi-val" id="kpi-elevators">284</div>
+        <div class="kpi-label">إجمالي المصاعد</div>
+        <div class="kpi-change up">▲ 18 مصعد جديد هذا العام</div>
+      </div>
+      <div class="kpi-card" style="--kc:var(--success);--ki-bg:rgba(31,184,122,.1)">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg></div>
+        <div class="kpi-val" id="kpi-contracts">130</div>
+        <div class="kpi-label">عقود نشطة</div>
+        <div class="kpi-change up">▲ 86.7% معدل التجديد</div>
+      </div>
+      <div class="kpi-card" style="--kc:var(--gold);--ki-bg:rgba(200,160,85,.1)">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+        <div class="kpi-val" id="kpi-revenue">275K</div>
+        <div class="kpi-label">إجمالي الإيرادات (ر.س)</div>
+        <div class="kpi-change up">▲ 18% عن العام الماضي</div>
+      </div>
+      <div class="kpi-card" style="--kc:var(--danger);--ki-bg:rgba(224,72,72,.1)">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div class="kpi-val" id="kpi-faults">89</div>
+        <div class="kpi-label">إجمالي الأعطال</div>
+        <div class="kpi-change down">▼ 91% نسبة الحل</div>
+      </div>
+      <div class="kpi-card" style="--kc:#7c6fff;--ki-bg:rgba(124,111,255,.1)">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <div class="kpi-val" id="kpi-visits">247</div>
+        <div class="kpi-label">زيارات الصيانة</div>
+        <div class="kpi-change up">▲ 89.5% نسبة الإنجاز</div>
+      </div>
+      <div class="kpi-card" style="--kc:var(--warning);--ki-bg:rgba(224,144,48,.1)">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
+        <div class="kpi-val" id="kpi-technicians">18</div>
+        <div class="kpi-label">إجمالي الفنيين</div>
+        <div class="kpi-change up">▲ 15 نشط حالياً</div>
+      </div>
+      <div class="kpi-card" style="--kc:#00d4aa;--ki-bg:rgba(0,212,170,.1)">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div class="kpi-val" id="kpi-profit">40K</div>
+        <div class="kpi-label">أرباح قطع الغيار (ر.س)</div>
+        <div class="kpi-change up">▲ 40.5% هامش ربح</div>
+      </div>
+    </div>
+
+    <!-- الملخص المالي -->
+    <div class="sec-header"><div class="sec-title">الملخص المالي</div></div>
+    <div class="fin-grid">
+      <div class="fin-card">
+        <div class="fin-card-title">الإيرادات</div>
+        <div class="fin-row"><span>عقود الصيانة</span><span style="color:var(--success)">198,450</span></div>
+        <div class="fin-row"><span>قطع الغيار</span><span style="color:var(--success)">100,286</span></div>
+        <div class="fin-row"><span>أعمال إضافية</span><span style="color:var(--success)">24,800</span></div>
+        <div class="fin-row"><span>أخرى</span><span style="color:var(--success)">12,150</span></div>
+        <div class="fin-row"><span>الإجمالي</span><span style="color:var(--success)">335,686 ر.س</span></div>
+      </div>
+      <div class="fin-card">
+        <div class="fin-card-title">المصروفات</div>
+        <div class="fin-row"><span>رواتب الفنيين</span><span style="color:var(--danger)">68,000</span></div>
+        <div class="fin-row"><span>قطع غيار (تكلفة)</span><span style="color:var(--danger)">59,689</span></div>
+        <div class="fin-row"><span>وقود ومواصلات</span><span style="color:var(--danger)">8,400</span></div>
+        <div class="fin-row"><span>أدوات ومستلزمات</span><span style="color:var(--danger)">4,200</span></div>
+        <div class="fin-row"><span>الإجمالي</span><span style="color:var(--danger)">140,289 ر.س</span></div>
+      </div>
+      <div class="fin-card">
+        <div class="fin-card-title">صافي الربح</div>
+        <div class="fin-row"><span>إجمالي الإيرادات</span><span>335,686</span></div>
+        <div class="fin-row"><span>إجمالي المصروفات</span><span>140,289</span></div>
+        <div class="fin-row"><span>صافي الربح</span><span style="color:var(--success)">195,397 ر.س</span></div>
+        <div class="fin-row"><span>هامش الربح</span><span style="color:var(--success)">58.2%</span></div>
+        <div class="fin-row"><span>المتأخرات</span><span style="color:var(--warning)">27,686 ر.س</span></div>
+      </div>
+    </div>
+
+    <!-- الرسوم البيانية -->
+    <div class="sec-header"><div class="sec-title">الإيرادات الشهرية</div></div>
+    <div class="chart-card" style="margin-bottom:20px">
+      <div class="chart-wrap" style="height:220px"><canvas id="chart-revenue"></canvas></div>
+    </div>
+
+    <div class="charts-2">
+      <div class="chart-card">
+        <div class="chart-title">توزيع الإيرادات حسب النوع</div>
+        <div class="chart-wrap-sm"><canvas id="chart-rev-type"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">حالة العقود</div>
+        <div class="chart-wrap-sm"><canvas id="chart-contracts"></canvas></div>
+      </div>
+    </div>
+
+    <div class="charts-3">
+      <div class="chart-card">
+        <div class="chart-title">زيارات الصيانة الشهرية</div>
+        <div class="chart-wrap-sm"><canvas id="chart-visits"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">حالة المصاعد</div>
+        <div class="chart-wrap-sm"><canvas id="chart-elevators"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">الأعطال حسب الشهر</div>
+        <div class="chart-wrap-sm"><canvas id="chart-faults"></canvas></div>
+      </div>
+    </div>
+
+    <!-- أداء الفنيين -->
+    <div class="sec-header"><div class="sec-title">أداء الفنيين</div></div>
+    <div class="charts-2" style="margin-bottom:20px">
+      <div class="chart-card">
+        <div class="chart-title">عدد الزيارات لكل فني</div>
+        <div style="margin-top:8px">
+          <div class="prog-row"><span class="prog-label">أحمد محمد</span><div class="prog-bar"><div class="prog-fill" style="width:82%;--pf-color:var(--accent)"></div></div><span class="prog-val">82 زيارة</span></div>
+          <div class="prog-row"><span class="prog-label">خالد عبدالله</span><div class="prog-bar"><div class="prog-fill" style="width:68%;--pf-color:var(--success)"></div></div><span class="prog-val">68 زيارة</span></div>
+          <div class="prog-row"><span class="prog-label">سعد ناصر</span><div class="prog-bar"><div class="prog-fill" style="width:54%;--pf-color:var(--gold)"></div></div><span class="prog-val">54 زيارة</span></div>
+          <div class="prog-row"><span class="prog-label">عمر حسين</span><div class="prog-bar"><div class="prog-fill" style="width:43%;--pf-color:var(--warning)"></div></div><span class="prog-val">43 زيارة</span></div>
+          <div class="prog-row"><span class="prog-label">فيصل الأحمد</span><div class="prog-bar"><div class="prog-fill" style="width:35%;--pf-color:#7c6fff"></div></div><span class="prog-val">35 زيارة</span></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">معدل إنجاز الأعطال لكل فني</div>
+        <div style="margin-top:8px">
+          <div class="prog-row"><span class="prog-label">أحمد محمد</span><div class="prog-bar"><div class="prog-fill" style="width:97%;--pf-color:var(--success)"></div></div><span class="prog-val">97%</span></div>
+          <div class="prog-row"><span class="prog-label">خالد عبدالله</span><div class="prog-bar"><div class="prog-fill" style="width:94%;--pf-color:var(--success)"></div></div><span class="prog-val">94%</span></div>
+          <div class="prog-row"><span class="prog-label">سعد ناصر</span><div class="prog-bar"><div class="prog-fill" style="width:88%;--pf-color:var(--accent)"></div></div><span class="prog-val">88%</span></div>
+          <div class="prog-row"><span class="prog-label">عمر حسين</span><div class="prog-bar"><div class="prog-fill" style="width:85%;--pf-color:var(--accent)"></div></div><span class="prog-val">85%</span></div>
+          <div class="prog-row"><span class="prog-label">فيصل الأحمد</span><div class="prog-bar"><div class="prog-fill" style="width:91%;--pf-color:var(--success)"></div></div><span class="prog-val">91%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- أفضل العملاء -->
+    <div class="sec-header"><div class="sec-title">أفضل العملاء من حيث الإيرادات</div></div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>#</th><th>العميل</th><th>المدينة</th><th>المصاعد</th><th>عدد العقود</th><th>إجمالي الإيرادات</th><th>الحالة</th></tr></thead>
+          <tbody>
+            <tr><td class="td-num">1</td><td class="td-name">أبراج الساعة</td><td>مكة</td><td class="td-num">20</td><td class="td-num">3</td><td class="td-num" style="color:var(--success)">62,500 ر.س</td><td><span class="badge badge-green">نشط</span></td></tr>
+            <tr><td class="td-num">2</td><td class="td-name">مستشفى السلام</td><td>مكة</td><td class="td-num">12</td><td class="td-num">2</td><td class="td-num" style="color:var(--success)">48,300 ر.س</td><td><span class="badge badge-green">نشط</span></td></tr>
+            <tr><td class="td-num">3</td><td class="td-name">مجمع النخيل</td><td>جدة</td><td class="td-num">8</td><td class="td-num">2</td><td class="td-num" style="color:var(--success)">38,750 ر.س</td><td><span class="badge badge-green">نشط</span></td></tr>
+            <tr><td class="td-num">4</td><td class="td-name">مركز الملك عبدالله</td><td>مكة</td><td class="td-num">7</td><td class="td-num">1</td><td class="td-num" style="color:var(--success)">29,400 ر.س</td><td><span class="badge badge-green">نشط</span></td></tr>
+            <tr><td class="td-num">5</td><td class="td-name">فندق قصر مكة</td><td>مكة</td><td class="td-num">10</td><td class="td-num">1</td><td class="td-num" style="color:var(--success)">24,800 ر.س</td><td><span class="badge badge-green">نشط</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- العقود المنتهية قريباً -->
+    <div class="sec-header"><div class="sec-title">عقود تنتهي خلال 60 يوماً</div></div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>رقم العقد</th><th>العميل</th><th>تاريخ الانتهاء</th><th>الأيام المتبقية</th><th>قيمة العقد</th><th>حالة الفاتورة</th></tr></thead>
+          <tbody>
+            <tr><td class="td-code">CN-00002</td><td class="td-name">مجمع النخيل</td><td class="td-num">2025-06-28</td><td><span class="badge badge-red">25 يوم</span></td><td class="td-num">20,700 ر.س</td><td><span class="badge badge-blue">مدفوع جزئياً</span></td></tr>
+            <tr><td class="td-code">CN-00005</td><td class="td-name">برج المملكة</td><td class="td-num">2025-07-31</td><td><span class="badge badge-gold">58 يوم</span></td><td class="td-num">11,040 ر.س</td><td><span class="badge badge-green">مدفوع</span></td></tr>
+            <tr><td class="td-code">CN-00003</td><td class="td-name">فندق الأندلس</td><td class="td-num">2025-08-31</td><td><span class="badge badge-gold">89 يوم</span></td><td class="td-num">9,775 ر.س</td><td><span class="badge badge-gold">غير مدفوع</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- المصاعد المتوقفة -->
+    <div class="sec-header"><div class="sec-title">المصاعد المتوقفة وخارج الخدمة</div></div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>كود المصعد</th><th>العميل</th><th>النوع</th><th>الحالة</th><th>آخر صيانة</th><th>الفني المسؤول</th></tr></thead>
+          <tbody>
+            <tr><td class="td-code">EL-0006</td><td class="td-name">مستشفى السلام</td><td>مصعد خدمة</td><td><span class="badge badge-gold">متوقف</span></td><td class="td-num">2025/5/1</td><td>خالد عبدالله</td></tr>
+            <tr><td class="td-code">EL-0015</td><td class="td-name">مجمع التجارة</td><td>مصعد ركاب</td><td><span class="badge badge-red">خارج الخدمة</span></td><td class="td-num">2025/4/15</td><td>سعد ناصر</td></tr>
+            <tr><td class="td-code">EL-0022</td><td class="td-name">برج الرياض</td><td>مصعد بضائع</td><td><span class="badge badge-red">خارج الخدمة</span></td><td class="td-num">2025/3/20</td><td>عمر حسين</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- المصروفات حسب الفئة -->
+    <div class="sec-header"><div class="sec-title">تفصيل المصروفات</div></div>
+    <div class="charts-2" style="margin-bottom:20px">
+      <div class="chart-card">
+        <div class="chart-title">توزيع المصروفات</div>
+        <div class="chart-wrap-sm"><canvas id="chart-expenses"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">الإيرادات مقابل المصروفات شهرياً</div>
+        <div class="chart-wrap-sm"><canvas id="chart-compare"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// بيانات
+const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const REVENUE_DATA = [18500,22000,19800,24500,21000,28000,23500,26800,22000,30000,25500,34081];
+const EXPENSE_DATA = [10200,11500,10800,12000,11200,13500,12000,13800,11500,14500,12800,14989];
+const VISITS_DATA = [18,22,19,24,21,28,23,26,22,18,16,10];
+const FAULTS_DATA = [6,8,7,9,8,10,7,9,8,7,6,4];
+
+const CHART_DEFAULTS = {
+  font:{family:'IBM Plex Sans Arabic'},
+  color:'rgba(228,234,245,.7)',
+  grid:'rgba(100,160,255,.08)',
+};
+
+function makeChart(id, type, labels, datasets, opts={}) {
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  return new Chart(ctx, {
+    type,
+    data:{labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:CHART_DEFAULTS.color,font:{family:CHART_DEFAULTS.font.family,size:11}}}},
+      scales: type==='pie'||type==='doughnut' ? {} : {
+        x:{ticks:{color:CHART_DEFAULTS.color,font:{size:10}},grid:{color:CHART_DEFAULTS.grid}},
+        y:{ticks:{color:CHART_DEFAULTS.color,font:{size:10}},grid:{color:CHART_DEFAULTS.grid}},
+      },
+      ...opts
+    }
+  });
+}
+
+// رسم الشارتات
+window.addEventListener('load', ()=>{
+  // الإيرادات الشهرية
+  makeChart('chart-revenue','bar', MONTHS, [{
+    label:'الإيرادات (ر.س)',
+    data: REVENUE_DATA,
+    backgroundColor:'rgba(42,127,255,.5)',
+    borderColor:'rgba(42,127,255,.9)',
+    borderWidth:1,
+    borderRadius:4,
+  },{
+    label:'المصروفات (ر.س)',
+    data: EXPENSE_DATA,
+    backgroundColor:'rgba(224,72,72,.35)',
+    borderColor:'rgba(224,72,72,.8)',
+    borderWidth:1,
+    borderRadius:4,
+  }]);
+
+  // توزيع الإيرادات
+  makeChart('chart-rev-type','doughnut',
+    ['عقود صيانة','قطع غيار','أعمال إضافية','أخرى'],
+    [{data:[198450,100286,24800,12150], backgroundColor:['rgba(42,127,255,.8)','rgba(31,184,122,.8)','rgba(200,160,85,.8)','rgba(138,155,184,.6)'], borderWidth:0}]);
+
+  // حالة العقود
+  makeChart('chart-contracts','doughnut',
+    ['نشطة','منتهية','معلقة','ملغاة'],
+    [{data:[112,12,4,2], backgroundColor:['rgba(31,184,122,.8)','rgba(224,72,72,.8)','rgba(224,144,48,.8)','rgba(138,155,184,.6)'], borderWidth:0}]);
+
+  // الزيارات الشهرية
+  makeChart('chart-visits','line', MONTHS, [{
+    label:'الزيارات',
+    data: VISITS_DATA,
+    borderColor:'rgba(124,111,255,.9)',
+    backgroundColor:'rgba(124,111,255,.1)',
+    fill:true, tension:.4, pointRadius:3,
+  }]);
+
+  // حالة المصاعد
+  makeChart('chart-elevators','doughnut',
+    ['نشط','تحت الصيانة','متوقف','خارج الخدمة'],
+    [{data:[261,14,6,3], backgroundColor:['rgba(31,184,122,.8)','rgba(42,159,255,.8)','rgba(224,144,48,.8)','rgba(224,72,72,.8)'], borderWidth:0}]);
+
+  // الأعطال الشهرية
+  makeChart('chart-faults','bar', MONTHS, [{
+    label:'الأعطال',
+    data: FAULTS_DATA,
+    backgroundColor:'rgba(224,72,72,.5)',
+    borderColor:'rgba(224,72,72,.8)',
+    borderWidth:1, borderRadius:4,
+  }]);
+
+  // توزيع المصروفات
+  makeChart('chart-expenses','doughnut',
+    ['رواتب','قطع غيار','وقود','أدوات','أخرى'],
+    [{data:[68000,59689,8400,4200,0], backgroundColor:['rgba(42,127,255,.8)','rgba(224,72,72,.8)','rgba(224,144,48,.8)','rgba(31,184,122,.8)','rgba(138,155,184,.6)'], borderWidth:0}]);
+
+  // مقارنة شهرية
+  makeChart('chart-compare','line', MONTHS, [
+    {label:'الإيرادات',data:REVENUE_DATA,borderColor:'rgba(31,184,122,.9)',backgroundColor:'rgba(31,184,122,.1)',fill:true,tension:.4,pointRadius:2},
+    {label:'المصروفات',data:EXPENSE_DATA,borderColor:'rgba(224,72,72,.9)',backgroundColor:'rgba(224,72,72,.1)',fill:true,tension:.4,pointRadius:2},
+  ]);
+});
+
+function exportExcel() {
+  const data = [
+    ['مؤشرات الأداء الرئيسية',''],
+    ['إجمالي العملاء','130'],
+    ['إجمالي المصاعد','284'],
+    ['العقود النشطة','130'],
+    ['إجمالي الإيرادات','335,686 ر.س'],
+    ['إجمالي المصروفات','140,289 ر.س'],
+    ['صافي الربح','195,397 ر.س'],
+    [''],
+    ['الإيرادات الشهرية',''],
+    ['الشهر','الإيرادات','المصروفات'],
+    ...MONTHS.map((m,i)=>[m, REVENUE_DATA[i], EXPENSE_DATA[i]]),
+  ];
+  const csv = data.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download = 'تقرير_الداشبورد_2025.csv';
+  a.click();
+}
+
+function loadData() {
+  const y = document.getElementById('sel-year').value;
+  document.getElementById('report-subtitle').textContent = `تقرير سنوي شامل — ${y}`;
+}
+
+// JS مشترك
+const _now = new Date();
+const _days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const _months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent = `${_days[_now.getDay()]}، ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} — `;
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
+function setLang(l){document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');document.getElementById('btn-ar').classList.toggle('active',l==='ar');document.getElementById('btn-en').classList.toggle('active',l==='en');}
+</script>
+</body>
+</html>
+<script src="{{ url_for('static', filename='reports_live.js') }}"></script>
+<script>
+  loadReportData('report-clients');  // غيّر الاسم حسب الصفحة
+</script>
