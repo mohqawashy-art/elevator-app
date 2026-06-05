@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>LiftCore — مهام الفني</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0f17;--card:#161e2b;--border:rgba(100,160,255,.15);--accent:#2a7fff;--success:#1fb87a;--danger:#e04848;--warning:#e09030;--text:#e4eaf5;--muted:#8a9bb8}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:16px;padding-bottom:80px}
+.hdr{text-align:center;margin-bottom:20px}
+.hdr h1{font-size:18px;font-weight:600}
+.hdr p{font-size:12px;color:var(--muted);margin-top:4px}
+.select-tech{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.select-tech label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
+.select-tech select{width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:#111720;color:var(--text);font-size:14px}
+.btn{display:block;width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px}
+.btn-primary{background:var(--accent);color:#fff}
+.section-title{font-size:13px;color:var(--muted);margin:18px 0 10px;display:flex;align-items:center;gap:8px}
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(42,127,255,.15);color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;text-decoration:none;color:inherit;display:block}
+.card:active{opacity:.85}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.card-code{font-family:monospace;font-size:12px;color:var(--accent)}
+.card-priority{font-size:10px;padding:2px 8px;border-radius:8px}
+.p-critical{background:rgba(255,59,59,.15);color:#ff6b6b}
+.p-high{background:rgba(224,72,72,.15);color:var(--danger)}
+.p-normal{background:rgba(42,127,255,.1);color:var(--accent)}
+.card-name{font-size:15px;font-weight:600;margin:6px 0 4px}
+.card-meta{font-size:12px;color:var(--muted);line-height:1.5}
+.card-district{display:inline-block;margin-top:6px;font-size:11px;background:rgba(200,160,85,.12);color:#c8a055;padding:2px 8px;border-radius:6px}
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
+.err{background:rgba(224,72,72,.1);border:1px solid rgba(224,72,72,.3);color:#ff8a8a;padding:12px;border-radius:10px;margin-bottom:16px}
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:13px;margin-bottom:12px}
+</style>
+<link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-format.js"></script>
+
+</head>
+<body>
+{% if error %}
+<div class="err">{{ error }}</div>
+<a class="back" href="/field">← رجوع</a>
+{% else %}
+<div class="hdr">
+  <h1>مهام الفني</h1>
+  <p>زيارات <strong>اليوم وغداً</strong> فقط — والأعطال المفتوحة</p>
+</div>
+
+<form class="select-tech" method="get" action="/field">
+  <label>اختر الفني</label>
+  <select name="tech_id" onchange="this.form.submit()">
+    <option value="">— اختر —</option>
+    {% for t in technicians %}
+    <option value="{{ t.id }}" {% if tech_id == t.id %}selected{% endif %}>{{ t.name }}{% if t.team %} ({{ t.team }}){% endif %}</option>
+    {% endfor %}
+  </select>
+</form>
+
+{% if payload %}
+<div class="section-title">زيارات اليوم <span class="badge">{{ payload.visits_today|length }}</span></div>
+{% if payload.visits_today %}
+  {% for v in payload.visits_today %}
+  <a class="card" href="{{ v.url }}">
+    <div class="card-top">
+      <span class="card-code">{{ v.code }}</span>
+      <span style="font-size:11px;color:var(--muted)">{{ v.status }}</span>
+    </div>
+    <div class="card-name">{{ v.customer }} <span style="font-size:11px;color:var(--muted)">{{ v.customer_code }}</span></div>
+    <div class="card-meta">{{ v.visit_date }} · {{ v.elevator }} · {{ v.visit_type }}</div>
+    <span class="card-district">{{ v.district }}</span>
+  </a>
+  {% endfor %}
+{% else %}
+<div class="empty">لا توجد زيارات اليوم</div>
+{% endif %}
+
+<div class="section-title">زيارات غداً <span class="badge">{{ payload.visits_tomorrow|length }}</span></div>
+{% if payload.visits_tomorrow %}
+  {% for v in payload.visits_tomorrow %}
+  <a class="card" href="{{ v.url }}">
+    <div class="card-top">
+      <span class="card-code">{{ v.code }}</span>
+      <span style="font-size:11px;color:var(--muted)">{{ v.status }}</span>
+    </div>
+    <div class="card-name">{{ v.customer }} <span style="font-size:11px;color:var(--muted)">{{ v.customer_code }}</span></div>
+    <div class="card-meta">{{ v.visit_date }} · {{ v.elevator }} · {{ v.visit_type }}</div>
+    <span class="card-district">{{ v.district }}</span>
+  </a>
+  {% endfor %}
+{% else %}
+<div class="empty">لا توجد زيارات غداً</div>
+{% endif %}
+
+<div class="section-title">الأعطال <span class="badge">{{ payload.faults|length }}</span></div>
+{% if payload.faults %}
+  {% for f in payload.faults %}
+  <a class="card" href="{{ f.url }}">
+    <div class="card-top">
+      <span class="card-code">{{ f.code }}</span>
+      <span class="card-priority {% if f.priority == 'حرجة' %}p-critical{% elif f.priority in ['عالية','عاجلة'] %}p-high{% else %}p-normal{% endif %}">{{ f.priority }}</span>
+    </div>
+    <div class="card-name">{{ f.customer }} <span style="font-size:11px;color:var(--muted)">{{ f.customer_code }}</span></div>
+    <div class="card-meta">{{ f.fault_type }} · {{ f.status }}</div>
+    <div class="card-meta" style="margin-top:6px">{{ f.client_report[:120] }}{% if f.client_report|length > 120 %}...{% endif %}</div>
+    <span class="card-district">{{ f.district }}</span>
+  </a>
+  {% endfor %}
+{% else %}
+<div class="empty">لا توجد أعطال مفتوحة</div>
+{% endif %}
+{% elif tech_id %}
+<div class="empty">لا توجد مهام</div>
+{% else %}
+<div class="empty">اختر الفني لعرض خط السير والأعطال</div>
+{% endif %}
+{% endif %}
+</body>
+</html>

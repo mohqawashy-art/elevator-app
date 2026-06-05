@@ -211,6 +211,8 @@ html[dir="ltr"] .notif-dot{right:auto;left:6px}
   animation:fadeUp .4s ease both;
 }
 .stat-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.stat-card.active{border-color:var(--accent);background:rgba(42,127,255,.06);box-shadow:0 0 0 1px rgba(42,127,255,.15)}
+.stat-card.active::before{opacity:1}
 .stat-card::before{
   content:'';position:absolute;
   top:0;left:0;right:0;height:2px;
@@ -279,6 +281,7 @@ html[dir="ltr"] .notif-dot{right:auto;left:6px}
   cursor:pointer;transition:var(--trans);
 }
 .alert-item:hover{background:var(--bg3)}
+.alert-item.active{border-color:var(--accent)!important;background:rgba(42,127,255,.08)!important}
 .alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
 .alert-item.danger{border-color:rgba(224,72,72,.15);background:rgba(224,72,72,.05)}
 .alert-item.danger .alert-dot{background:var(--danger)}
@@ -329,7 +332,10 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
 .finance-card{
   background:var(--bg3);border:1px solid var(--border);
   border-radius:var(--r-sm);padding:14px 16px;
+  cursor:pointer;transition:var(--trans);
 }
+.finance-card:hover{border-color:var(--border2)}
+.finance-card.active{border-color:var(--accent);background:rgba(42,127,255,.06)}
 .finance-label{font-size:11px;color:var(--text3);margin-bottom:6px}
 .finance-val{font-size:20px;font-weight:600;color:var(--text1);font-family:var(--font-en);line-height:1}
 .finance-val.danger{color:var(--danger)}
@@ -348,6 +354,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
   transition:var(--trans);color:var(--text2);font-size:12px;
 }
 .quick-btn:hover{background:var(--bg4);border-color:var(--border2);color:var(--text1)}
+.quick-btn.active{border-color:var(--accent);background:rgba(42,127,255,.08);color:var(--text1)}
 .quick-btn svg{width:14px;height:14px;flex-shrink:0;color:var(--accent)}
 
 /* ===== MOBILE ===== */
@@ -373,11 +380,14 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+<link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-format.js"></script>
+
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -434,75 +444,75 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
 
     <!-- STAT CARDS -->
     <div class="stats-grid">
-      <div class="stat-card c-blue" style="animation-delay:.05s">
+      <div class="stat-card c-blue" style="animation-delay:.05s" data-drill="customers" onclick="openDrill('customers',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg></div>
           <span class="stat-trend trend-up" id="tr1">+3</span>
         </div>
-        <div class="stat-val">127</div>
+        <div class="stat-val">{{ stats.customers }}</div>
         <div class="stat-label" id="sl1">Total Clients</div>
         <div class="stat-label-ar" id="sl1ar">إجمالي العملاء</div>
       </div>
-      <div class="stat-card c-gold" style="animation-delay:.1s">
+      <div class="stat-card c-gold" style="animation-delay:.1s" data-drill="elevators" onclick="openDrill('elevators',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg></div>
           <span class="stat-trend trend-up" id="tr2">+8</span>
         </div>
-        <div class="stat-val">284</div>
+        <div class="stat-val">{{ stats.elevators }}</div>
         <div class="stat-label" id="sl2">Total Elevators</div>
         <div class="stat-label-ar" id="sl2ar">إجمالي المصاعد</div>
       </div>
-      <div class="stat-card c-green" style="animation-delay:.15s">
+      <div class="stat-card c-green" style="animation-delay:.15s" data-drill="contracts" onclick="openDrill('contracts',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg></div>
-          <span class="stat-trend trend-neu" id="tr3">130</span>
+          <span class="stat-trend trend-neu" id="tr3">{{ stats.contracts }}</span>
         </div>
-        <div class="stat-val">130</div>
+        <div class="stat-val">{{ stats.contracts }}</div>
         <div class="stat-label" id="sl3">Active Contracts</div>
         <div class="stat-label-ar" id="sl3ar">عقود فعّالة</div>
       </div>
-      <div class="stat-card c-red" style="animation-delay:.2s">
+      <div class="stat-card c-red" style="animation-delay:.2s" data-drill="expired_contracts" onclick="openDrill('expired_contracts',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg></div>
           <span class="stat-trend trend-down" id="tr4">-2</span>
         </div>
-        <div class="stat-val">12</div>
+        <div class="stat-val">{{ stats.expired_contracts }}</div>
         <div class="stat-label" id="sl4">Expired Contracts</div>
         <div class="stat-label-ar" id="sl4ar">عقود منتهية</div>
       </div>
-      <div class="stat-card c-info" style="animation-delay:.25s">
+      <div class="stat-card c-info" style="animation-delay:.25s" data-drill="visits_today" onclick="openDrill('visits_today',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg></div>
           <span class="stat-trend trend-neu" id="tr5">اليوم</span>
         </div>
-        <div class="stat-val">9</div>
+        <div class="stat-val">{{ stats.visits_today }}</div>
         <div class="stat-label" id="sl5">Today's Visits</div>
         <div class="stat-label-ar" id="sl5ar">زيارات اليوم</div>
       </div>
-      <div class="stat-card c-red" style="animation-delay:.3s">
+      <div class="stat-card c-red" style="animation-delay:.3s" data-drill="faults_open" onclick="openDrill('faults_open',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1L1 14h14L8 1z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="12" r=".6" fill="currentColor"/></svg></div>
           <span class="stat-trend trend-down">عاجل</span>
         </div>
-        <div class="stat-val">5</div>
+        <div class="stat-val">{{ stats.faults_open }}</div>
         <div class="stat-label" id="sl6">Open Faults</div>
         <div class="stat-label-ar" id="sl6ar">أعطال مفتوحة</div>
       </div>
-      <div class="stat-card c-warn" style="animation-delay:.35s">
+      <div class="stat-card c-warn" style="animation-delay:.35s" data-drill="unpaid_invoices" onclick="openDrill('unpaid_invoices',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/></svg></div>
           <span class="stat-trend trend-down">متأخرة</span>
         </div>
-        <div class="stat-val">18</div>
+        <div class="stat-val">{{ stats.unpaid_invoices }}</div>
         <div class="stat-label" id="sl7">Unpaid Invoices</div>
         <div class="stat-label-ar" id="sl7ar">فواتير غير مدفوعة</div>
       </div>
-      <div class="stat-card c-green" style="animation-delay:.4s">
+      <div class="stat-card c-green" style="animation-delay:.4s" data-drill="technicians" onclick="openDrill('technicians',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg></div>
           <span class="stat-trend trend-up">متاح</span>
         </div>
-        <div class="stat-val">7</div>
+        <div class="stat-val">{{ stats.technicians }}</div>
         <div class="stat-label" id="sl8">Available Technicians</div>
         <div class="stat-label-ar" id="sl8ar">فنيون متاحون</div>
       </div>
@@ -519,46 +529,56 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="panel-body">
           <div class="alert-list">
-            <div class="alert-item danger">
+            {% if alerts.expiring_contracts_count > 0 %}
+            <div class="alert-item danger" onclick="openDrill('expiring_contracts',this)">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a1">عقود تنتهي خلال 30 يوم</div>
-                <div class="alert-sub">برج الياسمين، مجمع النخيل، فندق الأندلس</div>
+                <div class="alert-sub">{{ alerts.expiring_contracts_names or '—' }}</div>
               </div>
-              <span class="alert-count">8 عقود</span>
+              <span class="alert-count">{{ alerts.expiring_contracts_count }} عقود</span>
             </div>
-            <div class="alert-item warning">
+            {% endif %}
+            {% if alerts.low_stock_count > 0 %}
+            <div class="alert-item warning" onclick="openDrill('low_stock',this)">
               <div class="alert-dot"></div>
               <div>
-                <div class="alert-text" id="a2">زيارات صيانة متأخرة</div>
-                <div class="alert-sub">تجاوزت الموعد المحدد بأكثر من 48 ساعة</div>
+                <div class="alert-text" id="a2">مخزون قطع غيار تحت الحد الأدنى</div>
+                <div class="alert-sub">{{ alerts.low_stock_names or '—' }}</div>
               </div>
-              <span class="alert-count">3 زيارات</span>
+              <span class="alert-count">{{ alerts.low_stock_count }} صنف</span>
             </div>
-            <div class="alert-item danger">
+            {% endif %}
+            {% if stats.faults_open > 0 %}
+            <div class="alert-item danger" onclick="openDrill('faults_open',this)">
               <div class="alert-dot"></div>
               <div>
-                <div class="alert-text" id="a3">أعطال بدون استجابة</div>
-                <div class="alert-sub">مستشفى السلام — عطل حرج، أولوية عالية</div>
+                <div class="alert-text" id="a3">أعطال مفتوحة تحتاج متابعة</div>
+                <div class="alert-sub">أعطال بحالة مفتوح أو قيد المعالجة</div>
               </div>
-              <span class="alert-count">2 عطل</span>
+              <span class="alert-count">{{ stats.faults_open }} عطل</span>
             </div>
-            <div class="alert-item warning">
+            {% endif %}
+            {% if stats.unpaid_total > 0 %}
+            <div class="alert-item warning" onclick="openDrill('unpaid_invoices',this)">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a4">فواتير مستحقة السداد</div>
-                <div class="alert-sub">تجاوزت تاريخ الاستحقاق</div>
+                <div class="alert-sub">تجاوزت تاريخ الاستحقاق أو غير مدفوعة</div>
               </div>
-              <span class="alert-count">18,500 ر.س</span>
+              <span class="alert-count">{{ '{:,.0f}'.format(stats.unpaid_total) }} ر.س</span>
             </div>
+            {% endif %}
+            {% if alerts.expiring_contracts_count == 0 and alerts.low_stock_count == 0 and stats.faults_open == 0 and stats.unpaid_total == 0 %}
             <div class="alert-item info">
               <div class="alert-dot"></div>
               <div>
-                <div class="alert-text" id="a5">عملاء يحتاجون متابعة</div>
-                <div class="alert-sub">لم يتم التواصل معهم منذ أكثر من شهر</div>
+                <div class="alert-text" id="a5">لا توجد تنبيهات حالياً</div>
+                <div class="alert-sub">كل الأنظمة تعمل بشكل طبيعي</div>
               </div>
-              <span class="alert-count">5 عملاء</span>
+              <span class="alert-count">0</span>
             </div>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -574,27 +594,27 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
           </div>
           <div class="panel-body">
             <div class="quick-grid">
-              <button class="quick-btn">
+              <button type="button" class="quick-btn" onclick="quickAction('/clients')">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 6A2.5 2.5 0 107 1a2.5 2.5 0 000 5z"/><path d="M1.5 13c0-2.485 2.462-4 5.5-4"/><circle cx="11" cy="11" r="2.5"/><line x1="11" y1="9.5" x2="11" y2="12.5"/><line x1="9.5" y1="11" x2="12.5" y2="11"/></svg>
                 <span id="qa1">إضافة عميل</span>
               </button>
-              <button class="quick-btn">
+              <button type="button" class="quick-btn" onclick="quickAction('/elevators')">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="1" width="6" height="12" rx="1.5"/><circle cx="7" cy="9.5" r=".8"/><line x1="9" y1="1" x2="9" y2="13"/></svg>
                 <span id="qa2">إضافة مصعد</span>
               </button>
-              <button class="quick-btn">
+              <button type="button" class="quick-btn" onclick="quickAction('/contracts')">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5h10v8a1 1 0 01-1 1H3a1 1 0 01-1-1v-8z"/><path d="M4.5 3.5V2.5a1 1 0 011-1h3a1 1 0 011 1v1"/></svg>
                 <span id="qa3">إنشاء عقد</span>
               </button>
-              <button class="quick-btn">
+              <button type="button" class="quick-btn" onclick="quickAction('/maintenance-visits')">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="3" width="12" height="9" rx="1.5"/><path d="M4 3V2M10 3V2M1 6.5h12"/></svg>
                 <span id="qa4">جدولة زيارة</span>
               </button>
-              <button class="quick-btn">
+              <button type="button" class="quick-btn" onclick="quickAction('/faults')">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 12h12L7 1z"/><line x1="7" y1="5" x2="7" y2="8.5"/></svg>
                 <span id="qa5">تسجيل عطل</span>
               </button>
-              <button class="quick-btn">
+              <button type="button" class="quick-btn" onclick="quickAction('/invoices')">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 2.5h10v2H2zM3 4.5v7a1 1 0 001 1h6a1 1 0 001-1v-7"/><line x1="5.5" y1="7" x2="8.5" y2="7"/></svg>
                 <span id="qa6">إنشاء فاتورة</span>
               </button>
@@ -612,27 +632,27 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
           </div>
           <div class="panel-body" style="padding-top:12px">
             <div class="finance-grid">
-              <div class="finance-card">
+              <div class="finance-card" onclick="openDrill('all_invoices',this)">
                 <div class="finance-label" id="fl1">إجمالي الفواتير</div>
-                <div class="finance-val">142,800</div>
+                <div class="finance-val">{{ '{:,.0f}'.format(stats.total_invoices) }}</div>
                 <div class="finance-sub">ريال سعودي</div>
               </div>
-              <div class="finance-card">
+              <div class="finance-card" onclick="openDrill('paid_invoices',this)">
                 <div class="finance-label" id="fl2">المبالغ المحصّلة</div>
-                <div class="finance-val success">124,300</div>
-                <div class="finance-sub">87%</div>
-                <div class="finance-bar"><div class="finance-bar-fill" style="width:87%;background:var(--success)"></div></div>
+                <div class="finance-val success">{{ '{:,.0f}'.format(stats.paid_invoices) }}</div>
+                <div class="finance-sub">{{ stats.paid_pct|int }}%</div>
+                <div class="finance-bar"><div class="finance-bar-fill" style="width:{{ stats.paid_pct }}%;background:var(--success)"></div></div>
               </div>
-              <div class="finance-card">
+              <div class="finance-card" onclick="openDrill('unpaid_invoices',this)">
                 <div class="finance-label" id="fl3">المبالغ المتبقية</div>
-                <div class="finance-val">18,500</div>
-                <div class="finance-sub">13%</div>
-                <div class="finance-bar"><div class="finance-bar-fill" style="width:13%;background:var(--warning)"></div></div>
+                <div class="finance-val">{{ '{:,.0f}'.format(stats.unpaid_total) }}</div>
+                <div class="finance-sub">{{ stats.unpaid_pct|int }}%</div>
+                <div class="finance-bar"><div class="finance-bar-fill" style="width:{{ stats.unpaid_pct }}%;background:var(--warning)"></div></div>
               </div>
-              <div class="finance-card">
+              <div class="finance-card" onclick="openDrill('overdue_invoices',this)">
                 <div class="finance-label" id="fl4">فواتير متأخرة</div>
-                <div class="finance-val danger">7,200</div>
-                <div class="finance-sub">5 فواتير</div>
+                <div class="finance-val danger">{{ '{:,.0f}'.format(stats.overdue_total) }}</div>
+                <div class="finance-sub">{{ stats.overdue_count }} فواتير</div>
               </div>
             </div>
           </div>
@@ -640,136 +660,23 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
       </div>
     </div>
 
-    <!-- TODAY VISITS TABLE -->
-    <div class="panel" style="margin-bottom:24px;animation-delay:.35s">
+    <!-- DRILL-DOWN: تفاصيل العنصر المحدد -->
+    <div class="panel" id="drill-panel" style="display:none;margin-top:24px;animation-delay:.15s">
       <div class="panel-head">
         <div class="panel-title">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="3" width="12" height="9" rx="1.5"/><path d="M4 3V1M10 3V1M1 6.5h12"/></svg>
-          <span id="p-visits">زيارات الصيانة اليوم</span>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="1" width="12" height="12" rx="2"/><path d="M4 7h6M7 4v6"/></svg>
+          <span id="drill-title">التفاصيل</span>
+          <span style="font-size:11px;color:var(--text3);font-weight:400" id="drill-count"></span>
         </div>
-        <span class="section-link" id="sl-visits">عرض الكل</span>
+        <div style="display:flex;gap:12px;align-items:center">
+          <a class="section-link" id="drill-link" href="#">فتح الصفحة الكاملة</a>
+          <span class="section-link" onclick="closeDrill()">إغلاق</span>
+        </div>
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead>
-            <tr>
-              <th id="th-client">العميل</th>
-              <th id="th-loc">الموقع</th>
-              <th id="th-elev">رقم المصعد</th>
-              <th id="th-vtype">نوع الزيارة</th>
-              <th id="th-tech">الفني</th>
-              <th id="th-status">الحالة</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="td-name">برج الياسمين</td>
-              <td>حي العزيزية، مكة</td>
-              <td style="font-family:var(--font-en)">EL-0124</td>
-              <td>صيانة دورية</td>
-              <td>أحمد الزهراني</td>
-              <td><span class="badge badge-done">مكتمل</span></td>
-            </tr>
-            <tr>
-              <td class="td-name">مجمع النخيل</td>
-              <td>طريق مكة المدينة</td>
-              <td style="font-family:var(--font-en)">EL-0087</td>
-              <td>فحص دوري</td>
-              <td>خالد العمري</td>
-              <td><span class="badge badge-progress">جارٍ</span></td>
-            </tr>
-            <tr>
-              <td class="td-name">فندق الأندلس</td>
-              <td>العبدية</td>
-              <td style="font-family:var(--font-en)">EL-0201</td>
-              <td>صيانة طارئة</td>
-              <td>سعد القحطاني</td>
-              <td><span class="badge badge-pending">معلّق</span></td>
-            </tr>
-            <tr>
-              <td class="td-name">مستشفى السلام</td>
-              <td>النزهة</td>
-              <td style="font-family:var(--font-en)">EL-0033</td>
-              <td>فحص أمان</td>
-              <td>فهد المالكي</td>
-              <td><span class="badge badge-progress">جارٍ</span></td>
-            </tr>
-            <tr>
-              <td class="td-name">برج المملكة</td>
-              <td>حي الروضة</td>
-              <td style="font-family:var(--font-en)">EL-0156</td>
-              <td>صيانة دورية</td>
-              <td>عمر الدوسري</td>
-              <td><span class="badge badge-pending">لم تبدأ</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- FAULTS TABLE -->
-    <div class="panel" style="animation-delay:.4s">
-      <div class="panel-head">
-        <div class="panel-title">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 12h12L7 1z"/><line x1="7" y1="5" x2="7" y2="8.5"/></svg>
-          <span id="p-faults">الأعطال المفتوحة</span>
-        </div>
-        <span class="section-link" id="sl-faults">عرض الكل</span>
-      </div>
-      <div class="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th id="th-fno">رقم العطل</th>
-              <th id="th-fclient">العميل</th>
-              <th id="th-floc">الموقع</th>
-              <th id="th-fpri">الأولوية</th>
-              <th id="th-ftech">الفني المكلّف</th>
-              <th id="th-fstatus">الحالة</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="font-family:var(--font-en);color:var(--accent)">#F-2041</td>
-              <td class="td-name">مستشفى السلام</td>
-              <td>النزهة</td>
-              <td><span class="badge badge-high">عالية</span></td>
-              <td>أحمد الزهراني</td>
-              <td><span class="badge badge-open">مفتوح</span></td>
-            </tr>
-            <tr>
-              <td style="font-family:var(--font-en);color:var(--accent)">#F-2038</td>
-              <td class="td-name">برج الياسمين</td>
-              <td>العزيزية</td>
-              <td><span class="badge badge-med">متوسطة</span></td>
-              <td>خالد العمري</td>
-              <td><span class="badge badge-progress">قيد المعالجة</span></td>
-            </tr>
-            <tr>
-              <td style="font-family:var(--font-en);color:var(--accent)">#F-2035</td>
-              <td class="td-name">مجمع التجارة</td>
-              <td>أجياد</td>
-              <td><span class="badge badge-high">عالية</span></td>
-              <td>غير مكلف</td>
-              <td><span class="badge badge-open">مفتوح</span></td>
-            </tr>
-            <tr>
-              <td style="font-family:var(--font-en);color:var(--accent)">#F-2031</td>
-              <td class="td-name">فندق الأندلس</td>
-              <td>العبدية</td>
-              <td><span class="badge badge-low">منخفضة</span></td>
-              <td>سعد القحطاني</td>
-              <td><span class="badge badge-progress">قيد المعالجة</span></td>
-            </tr>
-            <tr>
-              <td style="font-family:var(--font-en);color:var(--accent)">#F-2028</td>
-              <td class="td-name">مركز الملك عبدالله</td>
-              <td>الشوقية</td>
-              <td><span class="badge badge-med">متوسطة</span></td>
-              <td>عمر الدوسري</td>
-              <td><span class="badge badge-progress">قيد المعالجة</span></td>
-            </tr>
-          </tbody>
+          <thead><tr id="drill-head"></tr></thead>
+          <tbody id="drill-body"></tbody>
         </table>
       </div>
     </div>
@@ -783,27 +690,29 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
 <script>
 // ===== البيانات الحقيقية من Flask =====
 const STATS = {
-  customers:    {{ stats.customers }},
-  elevators:    {{ stats.elevators }},
-  contracts:    {{ stats.contracts }},
-  faults_open:  {{ stats.faults_open }},
-  visits_done:  {{ stats.visits_done }},
-  technicians:  {{ stats.technicians }},
-  revenue:      {{ stats.revenue }},
-  parts_profit: {{ stats.parts_profit }},
+  customers:         {{ stats.customers }},
+  elevators:         {{ stats.elevators }},
+  contracts:         {{ stats.contracts }},
+  expired_contracts: {{ stats.expired_contracts }},
+  visits_today:      {{ stats.visits_today }},
+  faults_open:       {{ stats.faults_open }},
+  unpaid_invoices:   {{ stats.unpaid_invoices }},
+  visits_done:       {{ stats.visits_done }},
+  technicians:       {{ stats.technicians }},
+  revenue:           {{ stats.revenue }},
+  parts_profit:      {{ stats.parts_profit }},
 };
 
-// تحديث الأرقام فور التحميل
+// تحديث الأرقام فور التحميل (من API عند التحديث)
 function updateDashboard() {
-  // KPI Cards
   const vals = document.querySelectorAll('.stat-val');
   if(vals[0]) vals[0].textContent = STATS.customers;
   if(vals[1]) vals[1].textContent = STATS.elevators;
   if(vals[2]) vals[2].textContent = STATS.contracts;
-  if(vals[3]) vals[3].textContent = '—';
-  if(vals[4]) vals[4].textContent = STATS.visits_done;
+  if(vals[3]) vals[3].textContent = STATS.expired_contracts;
+  if(vals[4]) vals[4].textContent = STATS.visits_today;
   if(vals[5]) vals[5].textContent = STATS.faults_open;
-  if(vals[6]) vals[6].textContent = '—';
+  if(vals[6]) vals[6].textContent = STATS.unpaid_invoices;
   if(vals[7]) vals[7].textContent = STATS.technicians;
 
   // تحديث الإيرادات لو موجودة
@@ -916,20 +825,89 @@ async function loadCharts() {
     }
 
     // تحديث الأرقام من API
-    if(vals = document.querySelectorAll('.stat-val')) {
-      if(vals[0]) vals[0].textContent = data.customers;
-      if(vals[1]) vals[1].textContent = data.elevators;
-      if(vals[2]) vals[2].textContent = data.contracts;
-      if(vals[4]) vals[4].textContent = data.visits_done;
-      if(vals[5]) vals[5].textContent = data.faults_open;
-      if(vals[7]) vals[7].textContent = data.technicians;
-    }
+    const vals = document.querySelectorAll('.stat-val');
+    if(vals[0]) vals[0].textContent = data.customers;
+    if(vals[1]) vals[1].textContent = data.elevators;
+    if(vals[2]) vals[2].textContent = data.contracts;
+    if(vals[3]) vals[3].textContent = data.expired_contracts;
+    if(vals[4]) vals[4].textContent = data.visits_today;
+    if(vals[5]) vals[5].textContent = data.faults_open;
+    if(vals[6]) vals[6].textContent = data.unpaid_invoices;
+    if(vals[7]) vals[7].textContent = data.technicians;
 
   } catch(e) {
     console.log('API not ready yet:', e);
     // استخدام البيانات الأولية من Flask
     updateDashboard();
   }
+}
+
+// ===== إجراءات سريعة → فتح نموذج الإضافة =====
+function quickAction(path) {
+  window.location.href = path + '?action=add';
+}
+
+// ===== تفاصيل الكروت (Drill-down) =====
+let activeDrillEl = null;
+
+function clearDrillActive() {
+  document.querySelectorAll('.stat-card.active,.alert-item.active,.finance-card.active,.quick-btn.active')
+    .forEach(function(el) { el.classList.remove('active'); });
+}
+
+async function openDrill(type, cardEl) {
+  const panel = document.getElementById('drill-panel');
+  const head  = document.getElementById('drill-head');
+  const body  = document.getElementById('drill-body');
+  const title = document.getElementById('drill-title');
+  const count = document.getElementById('drill-count');
+  const link  = document.getElementById('drill-link');
+
+  clearDrillActive();
+  activeDrillEl = cardEl;
+  if (cardEl) cardEl.classList.add('active');
+
+  panel.style.display = 'block';
+  title.textContent = 'جاري التحميل...';
+  count.textContent = '';
+  head.innerHTML = '';
+  body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">جاري تحميل البيانات...</td></tr>';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  try {
+    const res  = await fetch('/api/dashboard/drill/' + type);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'خطأ');
+
+    title.textContent = data.title;
+    count.textContent = '(' + data.count + ' سجل)';
+    link.href = data.link;
+
+    head.innerHTML = data.columns.map(function(c) {
+      return '<th>' + c + '</th>';
+    }).join('');
+
+    if (!data.rows.length) {
+      body.innerHTML = '<tr><td colspan="' + data.columns.length + '" style="text-align:center;color:var(--text3);padding:20px">لا توجد بيانات</td></tr>';
+    } else {
+      body.innerHTML = data.rows.map(function(row) {
+        return '<tr>' + row.map(function(cell, i) {
+          const cls = i === 1 ? ' class="td-name"' : '';
+          const sty = (i === 0) ? ' style="font-family:var(--font-en);color:var(--accent)"' : '';
+          return '<td' + cls + sty + '>' + cell + '</td>';
+        }).join('') + '</tr>';
+      }).join('');
+    }
+  } catch (e) {
+    title.textContent = 'خطأ في التحميل';
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--danger);padding:20px">تعذّر تحميل البيانات</td></tr>';
+  }
+}
+
+function closeDrill() {
+  document.getElementById('drill-panel').style.display = 'none';
+  clearDrillActive();
+  activeDrillEl = null;
 }
 
 // ===== JS مشترك =====

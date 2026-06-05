@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>{{ visit.code }} — زيارة</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0f17;--card:#161e2b;--border:rgba(100,160,255,.15);--accent:#2a7fff;--success:#1fb87a;--warning:#e09030;--text:#e4eaf5;--muted:#8a9bb8}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);padding:16px;padding-bottom:40px}
+a.back{color:var(--muted);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:14px}
+.hdr h1{font-size:17px;margin-bottom:4px}
+.hdr p{font-size:12px;color:var(--muted)}
+.photo{width:100%;max-height:200px;object-fit:cover;border-radius:12px;margin:14px 0;border:1px solid var(--border)}
+.info{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:14px 0}
+.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.row:last-child{border:none}
+.row span:first-child{color:var(--muted)}
+.maps{display:block;text-align:center;background:var(--accent);color:#fff;padding:14px;border-radius:10px;text-decoration:none;font-weight:600;margin:10px 0}
+.btn-report{display:block;text-align:center;background:var(--success);color:#fff;padding:16px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px;margin:16px 0}
+.btn-report.secondary{background:var(--card);border:1px solid var(--border);color:var(--text);font-size:13px;padding:12px}
+.hint{font-size:12px;color:var(--muted);line-height:1.6;margin:12px 0;padding:12px;background:rgba(224,144,48,.08);border-radius:10px;border:1px solid rgba(224,144,48,.2)}
+</style>
+</head>
+<body>
+<a class="back" href="/field?tech_id={{ tech_id or visit.technician_id }}">← مهامي</a>
+<div class="hdr">
+  <h1>{{ visit.code }} — {{ visit.customer }}</h1>
+  <p>{{ visit.customer_code }} · {{ visit.district }} · {{ visit.visit_date }}</p>
+</div>
+
+{% if visit.building_photo %}
+<img class="photo" src="{{ visit.building_photo }}" alt="صورة المبنى">
+{% endif %}
+
+<div class="info">
+  <div class="row"><span>المصعد</span><span style="font-family:monospace">{{ visit.elevator }}</span></div>
+  <div class="row"><span>نوع الزيارة</span><span>{{ visit.visit_type }}</span></div>
+  <div class="row"><span>الحالة</span><span>{{ visit.status }}</span></div>
+  <div class="row"><span>العنوان</span><span style="max-width:60%;text-align:left">{{ visit.address or '—' }}</span></div>
+</div>
+
+{% if visit.maps_url %}
+<a class="maps" href="{{ visit.maps_url }}" target="_blank" rel="noopener">🗺 فتح الموقع والتنقل</a>
+{% endif %}
+
+<div class="hint">
+  <strong>محضر الفحص:</strong> املأ قائمة الفحص (checkbox) أثناء الزيارة — يُحفظ تلقائياً ويُصدَّر للعميل من المكتب كـ PDF.
+</div>
+
+<a class="btn-report" href="{{ visit.report_url }}">📋 فتح محضر الفحص</a>
+
+{% if visit.status == 'مكتملة' %}
+<a class="btn-report secondary" href="/maintenance-visits/{{ visit.id }}/report?print=1" target="_blank">🖨️ معاينة التقرير</a>
+{% endif %}
+</body>
+</html>

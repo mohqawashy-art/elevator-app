@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/customer_profile.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="/static/customer_profile.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -259,11 +262,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+<link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-format.js"></script>
+
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -319,20 +325,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
     <!-- STATS -->
     <div class="stats-row">
-      <div class="stat-mini" style="--sm-color:#ff3b3b"><div class="stat-mini-val">2</div><div class="stat-mini-label">أعطال حرجة</div></div>
-      <div class="stat-mini" style="--sm-color:var(--danger)"><div class="stat-mini-val">5</div><div class="stat-mini-label">مفتوحة</div></div>
-      <div class="stat-mini" style="--sm-color:var(--warning)"><div class="stat-mini-val">3</div><div class="stat-mini-label">قيد المعالجة</div></div>
-      <div class="stat-mini" style="--sm-color:var(--gold)"><div class="stat-mini-val">1</div><div class="stat-mini-label">انتظار قطع</div></div>
-      <div class="stat-mini" style="--sm-color:var(--success)"><div class="stat-mini-val">4</div><div class="stat-mini-label">أُغلقت اليوم</div></div>
-      <div class="stat-mini" style="--sm-color:var(--accent)"><div class="stat-mini-val">45</div><div class="stat-mini-label">متوسط الاستجابة (د)</div></div>
-      <div class="stat-mini" style="--sm-color:var(--info)"><div class="stat-mini-val">3</div><div class="stat-mini-label">قابلة للفوترة</div></div>
+      <div class="stat-mini" style="--sm-color:#ff3b3b"><div class="stat-mini-val">{{ fault_stats.critical }}</div><div class="stat-mini-label">أعطال حرجة</div></div>
+      <div class="stat-mini" style="--sm-color:var(--danger)"><div class="stat-mini-val">{{ fault_stats.open }}</div><div class="stat-mini-label">مفتوحة</div></div>
+      <div class="stat-mini" style="--sm-color:var(--warning)"><div class="stat-mini-val">{{ fault_stats.in_progress }}</div><div class="stat-mini-label">قيد المعالجة</div></div>
+      <div class="stat-mini" style="--sm-color:var(--gold)"><div class="stat-mini-val">{{ fault_stats.waiting_parts }}</div><div class="stat-mini-label">انتظار قطع</div></div>
+      <div class="stat-mini" style="--sm-color:var(--success)"><div class="stat-mini-val">{{ fault_stats.closed_today }}</div><div class="stat-mini-label">أُغلقت اليوم</div></div>
+      <div class="stat-mini" style="--sm-color:var(--accent)"><div class="stat-mini-val">{{ fault_stats.avg_response }}</div><div class="stat-mini-label">متوسط الاستجابة</div></div>
+      <div class="stat-mini" style="--sm-color:var(--info)"><div class="stat-mini-val">{{ fault_stats.billable }}</div><div class="stat-mini-label">بانتظار فوترة</div></div>
     </div>
 
     <!-- ALERTS -->
     <div class="alerts-row">
-      <div class="alert-chip critical"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>عطلان حرجان يحتاجان تدخلاً فورياً!</div>
-      <div class="alert-chip danger"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="7.5"/></svg>عطل متكرر — مصعد EL-0005 (3 مرات هذا الشهر)</div>
-      <div class="alert-chip warning"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>انتهاك SLA — عطل #F-2035 تجاوز 48 ساعة</div>
+      {% for a in fault_alerts %}
+      <div class="alert-chip {{ a.level }}"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>{{ a.text }}</div>
+      {% endfor %}
+      {% if not fault_alerts %}<div class="alert-chip info" style="animation:none;opacity:.7">لا تنبيهات عاجلة</div>{% endif %}
     </div>
 
     <!-- TABS -->
@@ -350,9 +357,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <!-- TABLE TAB -->
     <div id="tab-table">
       <div class="page-header">
-        <div class="page-title">الأعطال <span id="faults-count">12 عطل</span></div>
+        <div class="page-title">الأعطال <span id="faults-count">0 عطل</span></div>
         <div class="page-actions">
-          <button class="btn btn-secondary btn-sm">
+          <a class="btn btn-secondary btn-sm" href="/field" target="_blank" style="text-decoration:none">جوال الفني</a>
+          <button class="btn btn-secondary btn-sm" type="button" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
             تصدير Excel
           </button>
@@ -370,8 +378,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <select class="filter-select" id="f-client" onchange="filterTable()">
           <option value="">كل العملاء</option>
-          <option>مستشفى السلام</option><option>برج الياسمين</option>
-          <option>مجمع التجارة</option><option>فندق الأندلس</option><option>أبراج الساعة</option>
         </select>
         <select class="filter-select" id="f-priority" onchange="filterTable()">
           <option value="">كل الأولويات</option>
@@ -408,12 +414,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </table>
         </div>
         <div class="table-footer">
-          <div class="table-info" id="table-info">عرض 12 عطل</div>
-          <div class="pagination">
-            <button class="page-btn">‹</button>
-            <button class="page-btn active">1</button>
-            <button class="page-btn">›</button>
-          </div>
+          <div class="table-info" id="table-info"></div>
         </div>
       </div>
     </div>
@@ -460,7 +461,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="form-section">
         <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="5.5"/><line x1="6.5" y1="3.5" x2="6.5" y2="7"/></svg>بيانات العطل</div>
         <div class="form-grid">
-          <div class="field"><label>كود العطل</label><input type="text" id="f-code" placeholder="#F-2041" style="direction:ltr;font-family:var(--font-en)"></div>
+          <div class="field"><label>كود العطل</label><input type="text" id="f-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg4)"></div>
           <div class="field"><label>تاريخ ووقت الإبلاغ</label><input type="datetime-local" id="f-datetime" style="direction:ltr"></div>
           <div class="field"><label>نوع العطل</label>
             <select id="f-category-sel">
@@ -483,7 +484,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
           <div class="field"><label>اسم المُبلِّغ</label><input type="text" id="f-reporter" placeholder="اسم من أبلغ عن العطل"></div>
           <div class="field"><label>هاتف المُبلِّغ</label><input type="tel" id="f-reporter-phone" placeholder="05XXXXXXXX" style="direction:ltr;font-family:var(--font-en)"></div>
-          <div class="field form-full"><label>وصف العطل التفصيلي</label><textarea id="f-desc" placeholder="اشرح العطل بالتفصيل..."></textarea></div>
+          <div class="field form-full"><label>وصف البلاغ (كما أبلغ العميل)</label><textarea id="f-client-report" placeholder="اشرح ما قاله العميل بالتفصيل..."></textarea></div>
         </div>
       </div>
 
@@ -493,13 +494,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>العميل</label>
             <select id="f-client-sel" onchange="loadClientElevators()">
               <option value="">اختر العميل</option>
-              <option value="C-0001">برج الياسمين</option><option value="C-0002">مجمع النخيل</option>
-              <option value="C-0003">فندق الأندلس</option><option value="C-0004">مستشفى السلام</option>
-              <option value="C-0006">أبراج الساعة</option>
             </select>
           </div>
           <div class="field"><label>المصعد</label>
             <select id="f-elevator-sel"><option value="">اختر العميل أولاً</option></select>
+          </div>
+          <div class="field"><label>رقم الزيارة المرتبطة</label>
+            <input type="text" id="f-visit-code" placeholder="VI-00001 (اختياري)" style="direction:ltr;font-family:var(--font-en)">
+          </div>
+          <div class="field"><label>فني الأعطال <span style="color:var(--danger)">*</span></label>
+            <select id="f-tech-sel">
+              <option value="">اختر الفني</option>
+              {% for t in fault_technicians %}
+              <option value="{{ t.id }}">{{ t.name }}</option>
+              {% endfor %}
+            </select>
           </div>
           <div class="field"><label>المدينة</label><input type="text" id="f-city" placeholder="مكة" readonly style="background:var(--bg4)"></div>
           <div class="field"><label>الحي</label><input type="text" id="f-district" placeholder="الحي" readonly style="background:var(--bg4)"></div>
@@ -510,30 +519,15 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="4.5" r="2.5"/><path d="M1 12c0-2.485 2.462-4 5.5-4"/></svg>التعيين الذكي للفني</div>
         <p style="font-size:12px;color:var(--text3);margin-bottom:10px">يُقترح الفني الأنسب حسب المدينة والتخصص وعبء العمل</p>
         <div class="tech-cards" id="tech-suggestions">
-          <div class="tech-card recommended" onclick="selectTech(this,'T1','أحمد الزهراني')">
-            <div class="tc-avatar">أ</div>
+          {% for t in fault_technicians[:4] %}
+          <div class="tech-card{% if loop.first %} recommended{% endif %}" onclick="selectTech(this,{{ t.id }},{{ t.name|tojson }})">
+            <div class="tc-avatar">{{ t.name[:1] }}</div>
             <div class="tc-info">
-              <div class="tc-name">أحمد الزهراني <span class="tc-recommend">⭐ مقترح</span></div>
-              <div class="tc-meta">صيانة — مكة • 2 مهام اليوم</div>
-              <div class="tc-workload"><div class="workload-bar"><div class="workload-fill" style="width:30%;background:var(--success)"></div></div><span style="font-size:10px;color:var(--success)">متاح</span></div>
+              <div class="tc-name">{{ t.name }}{% if loop.first %} <span class="tc-recommend">⭐</span>{% endif %}</div>
+              <div class="tc-meta">{{ t.team or 'أعطال' }} — {{ t.city or '—' }}</div>
             </div>
           </div>
-          <div class="tech-card" onclick="selectTech(this,'T3','سعد القحطاني')">
-            <div class="tc-avatar">س</div>
-            <div class="tc-info">
-              <div class="tc-name">سعد القحطاني</div>
-              <div class="tc-meta">تركيب — مكة • 1 مهمة اليوم</div>
-              <div class="tc-workload"><div class="workload-bar"><div class="workload-fill" style="width:20%;background:var(--success)"></div></div><span style="font-size:10px;color:var(--success)">متاح</span></div>
-            </div>
-          </div>
-          <div class="tech-card" onclick="selectTech(this,'T4','فهد المالكي')">
-            <div class="tc-avatar">ف</div>
-            <div class="tc-info">
-              <div class="tc-name">فهد المالكي</div>
-              <div class="tc-meta">فحص — مكة • 3 مهام اليوم</div>
-              <div class="tc-workload"><div class="workload-bar"><div class="workload-fill" style="width:60%;background:var(--warning)"></div></div><span style="font-size:10px;color:var(--warning)">مشغول</span></div>
-            </div>
-          </div>
+          {% endfor %}
         </div>
         <input type="hidden" id="selected-tech-id">
         <input type="hidden" id="selected-tech-name">
@@ -607,62 +601,52 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<script src="/static/ops-common.js"></script>
 
 <script>
-// ===== البيانات من Flask =====
-const FAULTS = [
-  {% for f in faults %}
-  {
-    id:           {{ f.id }},
-    code:         "{{ f.code }}",
-    elevator_id:  {{ f.elevator_id }},
-    elevator:     "{{ f.elevator.code }}",
-    customer:     "{{ f.elevator.customer.name }}",
-    tech_id:      {{ f.technician_id or 'null' }},
-    technician:   "{{ f.technician.name if f.technician else '—' }}",
-    fault_type:   "{{ f.fault_type or '' }}",
-    description:  "{{ f.description or '' }}",
-    priority:     "{{ f.priority or 'عادية' }}",
-    reported_at:  "{{ f.reported_at.strftime('%Y-%m-%d') if f.reported_at else '' }}",
-    response_time:"{{ f.response_time or '—' }}",
-    status:       "{{ f.status }}",
-    resolution:   "{{ f.resolution or '' }}",
-    billed:       {{ 'true' if f.billed else 'false' }},
-    notes:        "{{ f.notes or '' }}",
-  },
-  {% endfor %}
-];
+const FAULTS = {{ faults_js|tojson }};
+const CUSTOMERS = {{ customers_js|tojson }};
+const ELEVATORS = {{ elevators_js|tojson }};
+const TECHNICIANS = {{ technicians_js|tojson }};
+const FAULT_MAP_POINTS = {{ fault_map_points|tojson }};
+const NEXT_FAULT_CODE = {{ next_fault_code|tojson }};
 
-const ELEVATORS = [
-  {% for e in elevators %}
-  { id: {{ e.id }}, code: "{{ e.code }}", customer: "{{ e.customer.name }}" },
-  {% endfor %}
-];
+function fillClientSelect() {
+  const sel = document.getElementById('f-client-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">اختر العميل</option>' +
+    CUSTOMERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
 
-const TECHNICIANS = [
-  {% for t in technicians %}
-  { id: {{ t.id }}, name: "{{ t.name }}" },
-  {% endfor %}
-];
+function loadClientElevators() {
+  const cid = document.getElementById('f-client-sel')?.value;
+  const esel = document.getElementById('f-elevator-sel');
+  if (!esel) return;
+  const list = cid ? ELEVATORS.filter(e => String(e.customer_id) === String(cid)) : [];
+  esel.innerHTML = '<option value="">' + (cid ? 'اختر المصعد' : 'اختر العميل أولاً') + '</option>' +
+    list.map(e => `<option value="${e.id}">${e.code} — ${e.customer}</option>`).join('');
+}
 
-// ===== إحصائيات =====
-function updateStats() {
-  const total   = FAULTS.length;
-  const open    = FAULTS.filter(f=>f.status==='مفتوح').length;
-  const inprog  = FAULTS.filter(f=>f.status==='قيد المعالجة').length;
-  const solved  = FAULTS.filter(f=>f.status==='محلول'||f.status==='مغلق').length;
-  const critical= FAULTS.filter(f=>f.priority==='حرجة').length;
-  const vals = document.querySelectorAll('.stat-mini-val');
-  if(vals[0]) vals[0].textContent = total;
-  if(vals[1]) vals[1].textContent = open;
-  if(vals[2]) vals[2].textContent = inprog;
-  if(vals[3]) vals[3].textContent = solved;
-  if(vals[4]) vals[4].textContent = critical;
+function selectTech(el, id, name) {
+  document.querySelectorAll('.tech-card').forEach(c => c.classList.remove('recommended'));
+  if (el) el.classList.add('recommended');
+  document.getElementById('selected-tech-id').value = id;
+  const nm = document.getElementById('selected-tech-name');
+  if (nm) nm.value = name;
+  const tsel = document.getElementById('f-tech-sel');
+  if (tsel) tsel.value = id;
+}
 
-  // تحديث badge العداد في الـ sidebar
+function toggleCost() {
+  const billable = document.getElementById('f-billable')?.value;
+  const costField = document.getElementById('cost-field');
+  if (costField) costField.style.display = billable === 'yes' ? '' : 'none';
+}
+
+function updateSidebarBadge() {
+  const open = FAULTS.filter(f => f.status === 'مفتوح').length;
   const badge = document.querySelector('.nav-badge');
-  if(badge) badge.textContent = open;
+  if (badge) badge.textContent = open;
 }
 
 const STATUS_BADGE = {
@@ -680,6 +664,8 @@ function renderTable(data) {
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   document.getElementById('faults-count').textContent = data.length + ' عطل';
+  const info = document.getElementById('table-info');
+  if (info) info.textContent = 'عرض ' + data.length + ' من ' + FAULTS.length;
   tbody.innerHTML = data.map(f=>`
     <tr onclick="viewFault(${f.id})">
       <td class="td-code">${f.code}</td>
@@ -709,14 +695,18 @@ function renderTable(data) {
 
 function filterTable() {
   const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const cl = document.getElementById('f-client')?.value||'';
   const pr = document.getElementById('f-priority')?.value||'';
   const st = document.getElementById('f-status')?.value||'';
+  const cat = document.getElementById('f-category')?.value||'';
   const bl = document.getElementById('f-billed')?.value||'';
   filtered = FAULTS.filter(f=>
-    (!s  || f.code.toLowerCase().includes(s) || f.customer.includes(s) || f.fault_type.includes(s)) &&
+    (!s  || f.code.toLowerCase().includes(s) || (f.customer||'').includes(s) || (f.fault_type||'').includes(s)) &&
+    (!cl || f.customer === cl) &&
     (!pr || f.priority === pr) &&
     (!st || f.status === st) &&
-    (!bl || (bl==='مفوتر'?f.billed:!f.billed))
+    (!cat || f.fault_type === cat) &&
+    (!bl || (bl==='yes' ? f.billed : !f.billed))
   );
   renderTable(filtered);
 }
@@ -725,25 +715,40 @@ function filterTable() {
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'تسجيل عطل جديد';
   document.getElementById('modal-add').dataset.editId = '';
-  const esel = document.getElementById('f-elevator-sel');
-  if(esel) esel.innerHTML = '<option value="">اختر المصعد</option>' +
-    ELEVATORS.map(e=>`<option value="${e.id}">${e.code} — ${e.customer}</option>`).join('');
+  const codeEl = document.getElementById('f-code');
+  if (codeEl) codeEl.value = NEXT_FAULT_CODE;
+  fillClientSelect();
+  loadClientElevators();
+  const vc = document.getElementById('f-visit-code');
+  if (vc) vc.value = '';
+  document.getElementById('selected-tech-id').value = '';
   const tsel = document.getElementById('f-tech-sel');
-  if(tsel) tsel.innerHTML = '<option value="">اختر الفني</option>' +
-    TECHNICIANS.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  if (tsel) tsel.value = '';
   document.getElementById('modal-add').classList.add('open');
 }
 
 function saveFault() {
   const editId = document.getElementById('modal-add').dataset.editId;
   const fd = new FormData();
-  [['elevator_id','f-elevator-sel'],['technician_id','f-tech-sel'],
-   ['fault_type','f-fault-type'],['description','f-desc'],
-   ['priority','f-priority-sel'],['status','f-status-sel'],
-   ['resolution','f-resolution'],['response_time','f-response'],
-   ['notes','f-notes']
+  const elev = document.getElementById('f-elevator-sel');
+  if (!elev || !elev.value) { alert('اختر المصعد'); return; }
+  fd.append('elevator_id', elev.value);
+  const techId = document.getElementById('selected-tech-id')?.value
+    || document.getElementById('f-tech-sel')?.value;
+  if (!techId) { alert('اختر فني الأعطال'); return; }
+  fd.append('technician_id', techId);
+  [['fault_type','f-category-sel'],['priority','f-priority-sel'],['notes','f-notes']
   ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
-  const bl=document.getElementById('f-billed'); if(bl&&bl.checked) fd.append('billed','on');
+  const cr = document.getElementById('f-client-report');
+  if (cr) fd.append('client_report', cr.value);
+  const rn = document.getElementById('f-reporter');
+  if (rn) fd.append('reporter_name', rn.value);
+  const rp = document.getElementById('f-reporter-phone');
+  if (rp) fd.append('reporter_phone', rp.value);
+  const billable = document.getElementById('f-billable');
+  if (billable) fd.append('billable', billable.value);
+  const vc = document.getElementById('f-visit-code');
+  if (vc && vc.value.trim()) fd.append('visit_code', vc.value.trim());
 
   fetch(editId ? `/faults/edit/${editId}` : '/faults/add', {method:'POST',body:fd})
     .then(()=>window.location.reload());
@@ -755,18 +760,29 @@ function editFault(id) {
   if(!f) return;
   document.getElementById('modal-title').textContent = 'تعديل العطل';
   document.getElementById('modal-add').dataset.editId = id;
-  const esel=document.getElementById('f-elevator-sel');
-  if(esel) esel.innerHTML=ELEVATORS.map(e=>`<option value="${e.id}"${e.id===f.elevator_id?' selected':''}>${e.code} — ${e.customer}</option>`).join('');
-  const tsel=document.getElementById('f-tech-sel');
-  if(tsel) tsel.innerHTML='<option value="">— بدون فني —</option>'+
-    TECHNICIANS.map(t=>`<option value="${t.id}"${t.id===f.tech_id?' selected':''}>${t.name}</option>`).join('');
-  const map={
-    'f-fault-type':f.fault_type,'f-desc':f.description,
-    'f-priority-sel':f.priority,'f-status-sel':f.status,
-    'f-resolution':f.resolution,'f-response':f.response_time,'f-notes':f.notes,
+  const codeEl = document.getElementById('f-code');
+  if (codeEl) codeEl.value = f.code;
+  fillClientSelect();
+  const elev = ELEVATORS.find(e => e.id === f.elevator_id);
+  const clientSel = document.getElementById('f-client-sel');
+  if (clientSel && elev) clientSel.value = elev.customer_id;
+  loadClientElevators();
+  const esel = document.getElementById('f-elevator-sel');
+  if (esel) esel.value = f.elevator_id;
+  const map = {
+    'f-category-sel': f.fault_type, 'f-client-report': f.client_report || f.description,
+    'f-priority-sel': f.priority, 'f-notes': f.notes,
+    'f-visit-code': f.visit_code || '',
   };
   Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
-  const bl=document.getElementById('f-billed'); if(bl) bl.checked=f.billed;
+  const billable = document.getElementById('f-billable');
+  if (billable) billable.value = f.billed ? 'yes' : 'no';
+  toggleCost();
+  if (f.tech_id) {
+    document.getElementById('selected-tech-id').value = f.tech_id;
+    const tsel = document.getElementById('f-tech-sel');
+    if (tsel) tsel.value = f.tech_id;
+  }
   document.getElementById('modal-add').classList.add('open');
 }
 
@@ -788,10 +804,13 @@ function viewFault(id) {
       <div class="view-item"><div class="view-label">وقت الاستجابة</div><div class="view-val">${f.response_time}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${f.status}</span></div></div>
       <div class="view-item"><div class="view-label">الفوترة</div><div class="view-val"><span class="badge ${f.billed?'badge-active':'badge-cancelled'}">${f.billed?'مفوتر':'غير مفوتر'}</span></div></div>
+      ${f.visit_code?`<div class="view-item"><div class="view-label">رقم الزيارة</div><div class="view-val" style="font-family:var(--font-en)">${f.visit_code}</div></div>`:''}
       ${f.description?`<div class="view-item view-full"><div class="view-label">الوصف</div><div class="view-val">${f.description}</div></div>`:''}
       ${f.resolution?`<div class="view-item view-full"><div class="view-label">طريقة الحل</div><div class="view-val">${f.resolution}</div></div>`:''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
+  var elev = ELEVATORS.find(x => x.id === f.elevator_id);
+  if (elev && elev.customer_id) LiftCoreProfile.appendToView(document.getElementById('view-body'), elev.customer_id, null, { timelineLimit: 15 });
 }
 
 // ===== حذف =====
@@ -827,8 +846,17 @@ const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء
 const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
-updateStats();
+OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
+OpsPage.initMap('map', FAULT_MAP_POINTS);
+updateSidebarBadge();
 renderTable(FAULTS);
+if (new URLSearchParams(window.location.search).get('action') === 'add') {
+  openAddModal();
+  history.replaceState(null, '', window.location.pathname);
+}
+{% if pending_whatsapp %}
+window.open({{ pending_whatsapp|tojson }}, '_blank');
+{% endif %}
 </script>
 </body>
 </html>

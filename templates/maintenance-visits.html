@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/customer_profile.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="/static/customer_profile.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -227,11 +230,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 }
 @m@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+<link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-format.js"></script>
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -287,18 +292,19 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
     <!-- STATS -->
     <div class="stats-row">
-      <div class="stat-mini" style="--sm-color:var(--accent)"><div class="stat-mini-val">9</div><div class="stat-mini-label">زيارات اليوم</div></div>
-      <div class="stat-mini" style="--sm-color:var(--warning)"><div class="stat-mini-val">3</div><div class="stat-mini-label">جاري التنفيذ</div></div>
-      <div class="stat-mini" style="--sm-color:var(--danger)"><div class="stat-mini-val">2</div><div class="stat-mini-label">متأخرة</div></div>
-      <div class="stat-mini" style="--sm-color:var(--success)"><div class="stat-mini-val">4</div><div class="stat-mini-label">مكتملة اليوم</div></div>
-      <div class="stat-mini" style="--sm-color:var(--gold)"><div class="stat-mini-val">28</div><div class="stat-mini-label">هذا الشهر</div></div>
+      <div class="stat-mini" style="--sm-color:var(--accent)"><div class="stat-mini-val">{{ visit_stats.today }}</div><div class="stat-mini-label">زيارات اليوم</div></div>
+      <div class="stat-mini" style="--sm-color:var(--warning)"><div class="stat-mini-val">{{ visit_stats.in_progress }}</div><div class="stat-mini-label">جاري التنفيذ</div></div>
+      <div class="stat-mini" style="--sm-color:var(--danger)"><div class="stat-mini-val">{{ visit_stats.late }}</div><div class="stat-mini-label">متأخرة</div></div>
+      <div class="stat-mini" style="--sm-color:var(--success)"><div class="stat-mini-val">{{ visit_stats.done_today }}</div><div class="stat-mini-label">مكتملة اليوم</div></div>
+      <div class="stat-mini" style="--sm-color:var(--gold)"><div class="stat-mini-val">{{ visit_stats.month }}</div><div class="stat-mini-label">هذا الشهر</div></div>
     </div>
 
     <!-- ALERTS -->
     <div class="alerts-row">
-      <div class="alert-chip danger"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>زيارتان متأخرتان — تجاوزتا الموعد</div>
-      <div class="alert-chip warning"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>زيارة حرجة غير مكتملة</div>
-      <div class="alert-chip info"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="7.5"/></svg>3 زيارات مجدولة غداً</div>
+      {% for a in visit_alerts %}
+      <div class="alert-chip {{ a.level }}"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>{{ a.text }}</div>
+      {% endfor %}
+      {% if not visit_alerts %}<div class="alert-chip info" style="animation:none;opacity:.7">لا تنبيهات عاجلة — الوضع طبيعي</div>{% endif %}
     </div>
 
     <!-- TABS -->
@@ -320,15 +326,19 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <!-- TABLE TAB -->
     <div id="tab-table">
       <div class="page-header">
-        <div class="page-title">زيارات الصيانة <span id="visits-count">15 زيارة</span></div>
+        <div class="page-title">زيارات الصيانة <span id="work-month-label" style="color:var(--accent);font-size:13px"></span> <span id="visits-count">0 زيارة</span></div>
         <div class="page-actions">
-          <button class="btn btn-secondary btn-sm">
+          <button class="btn btn-secondary btn-sm" type="button" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
             تصدير
           </button>
-          <button class="btn btn-warning btn-sm" onclick="autoGenerate()">
+          <a class="btn btn-secondary btn-sm" href="/field" target="_blank" style="text-decoration:none">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="1" width="10" height="12" rx="2"/><line x1="5" y1="11" x2="9" y2="11"/></svg>
+            جوال الفني
+          </a>
+          <button class="btn btn-warning btn-sm" onclick="openPlanModal()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1v2M7 11v2M1 7h2M11 7h2M3.22 3.22l1.42 1.42M9.36 9.36l1.42 1.42M3.22 10.78l1.42-1.42M9.36 4.64l1.42-1.42"/></svg>
-            توليد تلقائي
+            تخطيط الشهر
           </button>
           <button class="btn btn-primary btn-sm" onclick="openAddModal()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
@@ -338,20 +348,22 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div class="filters-bar">
+        <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 8px">
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">شهر العرض</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(-1)" title="الشهر السابق">‹</button>
+          <input type="month" class="date-input" id="work-month" value="{{ plan_default_month }}" style="direction:ltr;min-width:130px" onchange="applyWorkMonth()">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(1)" title="الشهر التالي">›</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="goWorkMonthToday()">هذا الشهر</button>
+        </div>
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
           <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو العميل أو الفني..." oninput="filterTable()">
         </div>
         <select class="filter-select" id="f-client" onchange="filterTable()">
           <option value="">كل العملاء</option>
-          <option>برج الياسمين</option><option>مجمع النخيل</option>
-          <option>فندق الأندلس</option><option>مستشفى السلام</option>
-          <option>أبراج الساعة</option>
         </select>
         <select class="filter-select" id="f-tech" onchange="filterTable()">
           <option value="">كل الفنيين</option>
-          <option>أحمد الزهراني</option><option>خالد العمري</option>
-          <option>سعد القحطاني</option><option>فهد المالكي</option>
         </select>
         <select class="filter-select" id="f-status" onchange="filterTable()">
           <option value="">كل الحالات</option>
@@ -380,13 +392,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </table>
         </div>
         <div class="table-footer">
-          <div class="table-info" id="table-info">عرض 15 زيارة</div>
-          <div class="pagination">
-            <button class="page-btn">‹</button>
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">›</button>
-          </div>
+          <div class="table-info" id="table-info"></div>
         </div>
       </div>
     </div>
@@ -418,9 +424,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="cal-header">
           <div class="cal-title" id="cal-title">يونيو 2025</div>
           <div class="cal-nav">
-            <button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)">‹</button>
-            <button class="btn btn-secondary btn-sm" onclick="goToday()">اليوم</button>
-            <button class="btn btn-secondary btn-sm" onclick="changeMonth(1)">›</button>
+            <button class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(-1)">‹</button>
+            <button class="btn btn-secondary btn-sm" onclick="goWorkMonthToday()">هذا الشهر</button>
+            <button class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(1)">›</button>
           </div>
         </div>
         <div class="cal-grid" id="cal-grid"></div>
@@ -445,9 +451,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="form-section">
         <div class="form-section-title">بيانات الزيارة</div>
         <div class="form-grid">
-          <div class="field"><label>كود الزيارة</label><input type="text" id="f-code" placeholder="V-00001" style="direction:ltr;font-family:var(--font-en)"></div>
+          <div class="field"><label>كود الزيارة</label><input type="text" id="f-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg4)"></div>
           <div class="field"><label>نوع الزيارة</label><select id="f-type-sel"><option>صيانة دورية</option><option>زيارة طارئة</option><option>زيارة متابعة</option><option>زيارة فحص</option></select></div>
-          <div class="field"><label>الأولوية</label><select id="f-priority"><option>منخفضة</option><option>متوسطة</option><option selected>عالية</option><option>حرجة</option></select></div>
+          <div class="field"><label>الأولوية</label><select id="f-priority-sel"><option>منخفضة</option><option>متوسطة</option><option>عادية</option><option selected>عالية</option><option>حرجة</option></select></div>
           <div class="field"><label>الحالة</label><select id="f-status-sel"><option>مجدولة</option><option>جاري التنفيذ</option><option>مكتملة</option><option>ملغية</option><option>متأخرة</option></select></div>
         </div>
       </div>
@@ -455,11 +461,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="form-section">
         <div class="form-section-title">الربط بالبيانات</div>
         <div class="form-grid">
-          <div class="field"><label>العميل</label><select id="f-client-sel" onchange="loadClientData()"><option value="">اختر العميل</option><option value="C-0001">برج الياسمين</option><option value="C-0002">مجمع النخيل</option><option value="C-0003">فندق الأندلس</option><option value="C-0004">مستشفى السلام</option><option value="C-0006">أبراج الساعة</option></select></div>
-          <div class="field"><label>المصعد</label><select id="f-elevator-sel" onchange="fillElevatorData()"><option value="">اختر المصعد</option></select></div>
+          <div class="field"><label>العميل</label><select id="f-client-sel" onchange="loadClientElevators()"><option value="">اختر العميل</option></select></div>
+          <div class="field"><label>المصعد</label><select id="f-elevator-sel" onchange="loadElevatorContracts()"><option value="">اختر المصعد</option></select></div>
           <div class="field"><label>العقد</label><select id="f-contract-sel"><option value="">بدون عقد</option></select></div>
-          <div class="field"><label>الفني المكلف</label><select id="f-tech-sel" onchange="checkTechAvailability()"><option value="">اختر الفني</option><option value="T1">أحمد الزهراني — متاح ✓</option><option value="T2">خالد العمري — مشغول ✗</option><option value="T3">سعد القحطاني — متاح ✓</option><option value="T4">فهد المالكي — متاح ✓</option><option value="T5">عمر الدوسري — متاح ✓</option></select></div>
+          <div class="field"><label>الفني المكلف</label><select id="f-tech-sel"><option value="">اختر الفني</option></select></div>
+          <div class="field"><label>رقم العطل المرتبط</label><input type="text" id="f-fault-code" placeholder="FA-00001 (اختياري)" style="direction:ltr;font-family:var(--font-en)"></div>
         </div>
+        <p style="font-size:11px;color:var(--text3);margin-top:6px">إذا كانت الزيارة لمعالجة عطل: أدخل رقم العطل، أو اختر نوع «عطل» لإنشاء عطل تلقائياً.</p>
         <div id="tech-warning" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(224,72,72,.08);border:1px solid rgba(224,72,72,.2);border-radius:var(--r-sm);font-size:12px;color:var(--danger)">⚠️ هذا الفني مشغول حالياً — قد يكون هناك تعارض في المواعيد</div>
       </div>
 
@@ -520,11 +528,120 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+      <a class="btn btn-primary" id="view-report-link" href="#" target="_blank" style="text-decoration:none;display:none">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10v8H2z"/><path d="M4 2h6v2H4z"/><path d="M5 7l1.5 1.5L9 5"/></svg>
+        تعديل المحضر
+      </a>
       <button class="btn btn-secondary" onclick="printVisit()">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5V2h8v3M3 9H1V5h12v4h-2M3 9v3h8V9"/></svg>
         طباعة
       </button>
       <button class="btn btn-primary" onclick="closeModal('modal-view');openAddModal()">تعديل</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAN MODAL -->
+<div class="modal-overlay" id="modal-plan">
+  <div class="modal" style="max-width:960px;max-height:92vh">
+    <div class="modal-head">
+      <div class="modal-title">تخطيط زيارات الصيانة الدورية</div>
+      <button class="modal-close" onclick="closeModal('modal-plan')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;max-height:calc(92vh - 120px)">
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="field"><label>شهر الخطة (شهر واحد فقط)</label><input type="month" id="plan-month" value="{{ plan_default_month }}" style="direction:ltr" onchange="onPlanMonthChange()"></div>
+        <div class="field" style="display:flex;align-items:flex-end;gap:8px">
+          <button class="btn btn-secondary btn-sm" type="button" onclick="syncPlanMonthFromWork()">مثل شهر العرض</button>
+          <button class="btn btn-secondary btn-sm" type="button" onclick="loadPlan()">تحميل الخطة</button>
+        </div>
+      </div>
+      <p id="plan-month-hint" style="font-size:11px;color:var(--warning);margin:-4px 0 10px"></p>
+
+      <div class="tabs" style="margin-bottom:14px">
+        <div class="tab active" id="plan-tab-auto" onclick="setPlanMode('auto')">توليد تلقائي</div>
+        <div class="tab" id="plan-tab-manual" onclick="setPlanMode('manual')">إعداد يدوي</div>
+      </div>
+
+      <div id="plan-panel-auto">
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">توليد زيارات <strong>للشهر المحدد أعلاه فقط</strong> — من العقود النشطة (كل المناطق أو منطقة واحدة).</p>
+        <div class="form-grid" style="margin-bottom:10px">
+          <div class="field" style="display:flex;align-items:flex-end">
+            <button class="btn btn-primary btn-sm" type="button" onclick="generatePlan()">توليد كل المناطق</button>
+          </div>
+          <div class="field"><label>منطقة محددة</label>
+            <select id="plan-auto-district">
+              <option value="">— اختر المنطقة —</option>
+              {% for d in plan_districts %}
+              <option value="{{ d }}">{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end">
+            <button class="btn btn-warning btn-sm" type="button" onclick="generateDistrictPlan()">توليد هذه المنطقة فقط</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="plan-panel-manual" style="display:none">
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">أضف زيارات واحدةً واحدةً حسب المنطقة والمصعد — مناسب عندما تُعدّ الخطة بنفسك.</p>
+        <div class="form-grid">
+          <div class="field"><label>المنطقة</label>
+            <select id="plan-manual-district" onchange="onManualDistrictChange()">
+              <option value="">اختر المنطقة</option>
+              {% for d in plan_districts %}
+              <option value="{{ d }}">{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field"><label>المصعد / العميل</label>
+            <select id="plan-manual-elevator"><option value="">اختر المنطقة أولاً</option></select>
+          </div>
+          <div class="field"><label>تاريخ الزيارة</label><input type="date" id="plan-manual-date" style="direction:ltr"></div>
+          <div class="field" style="display:flex;align-items:flex-end">
+            <button class="btn btn-primary btn-sm" type="button" onclick="addManualVisit()">+ إضافة للخطة</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="plan-summary" style="font-size:12px;color:var(--text3);margin:14px 0 8px"></div>
+      <div id="plan-tech-summary" style="font-size:12px;margin-bottom:12px"></div>
+
+      <div class="form-section-title">توزيع الفنيين (يمكن أكثر من فريق في نفس المنطقة)</div>
+      <p style="font-size:11px;color:var(--text3);margin-bottom:8px">هنا تُخطَّط زيارات <strong>الشهر كاملاً</strong>. الفني يرى على جواله <strong>اليوم وغداً فقط</strong> — والإرسال يومياً من الأسفل.</p>
+      <div id="plan-districts" style="margin-bottom:14px"></div>
+
+      <div class="form-section-title">إرسال خط السير على واتساب</div>
+      <p style="font-size:11px;color:var(--warning);margin-bottom:10px;padding:8px 10px;background:rgba(224,144,48,.08);border-radius:8px;border:1px solid rgba(224,144,48,.2)">
+        <strong>مهم:</strong> «تعيين المحدد» يُسند الزيارات للفني فقط — <strong>لا يرسل واتساب</strong>.
+        بعد التعيين اضغط «إرسال واتساب» أدناه (أو «تعيين وإرسال» من بطاقة المنطقة).
+      </p>
+      <div class="form-grid">
+        <div class="field"><label>الفني</label>
+          <select id="dispatch-tech">
+            <option value="">اختر الفني</option>
+            {% for t in maint_technicians %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field"><label>تاريخ الزيارات المراد إرسالها</label>
+          <input type="date" id="dispatch-date" class="date-input" style="direction:ltr;width:100%">
+        </div>
+        <div class="field"><label>اختصار</label>
+          <select id="dispatch-day" onchange="onDispatchDayShortcut()">
+            <option value="today">اليوم</option>
+            <option value="tomorrow">غداً</option>
+            <option value="custom">تاريخ محدد ↑</option>
+          </select>
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end">
+          <button class="btn btn-success btn-sm" type="button" onclick="dispatchRoute()">إرسال واتساب</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-plan')">إغلاق</button>
     </div>
   </div>
 </div>
@@ -547,56 +664,20 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<script src="/static/ops-common.js"></script>
 
 <script>
-// ===== البيانات من Flask =====
-const VISITS = [
-  {% for v in visits %}
-  {
-    id:           {{ v.id }},
-    code:         "{{ v.code }}",
-    elevator_id:  {{ v.elevator_id }},
-    elevator:     "{{ v.elevator.code }}",
-    customer:     "{{ v.elevator.customer.name }}",
-    technician:   "{{ v.technician.name if v.technician else '—' }}",
-    tech_id:      {{ v.technician_id or 'null' }},
-    visit_type:   "{{ v.visit_type or '' }}",
-    visit_date:   "{{ v.visit_date or '' }}",
-    visit_time:   "{{ v.visit_time or '' }}",
-    priority:     "{{ v.priority or 'عادية' }}",
-    status:       "{{ v.status }}",
-    works_done:   "{{ v.works_done or '' }}",
-    observations: "{{ v.observations or '' }}",
-    notes:        "{{ v.notes or '' }}",
-  },
-  {% endfor %}
-];
-
-const ELEVATORS = [
-  {% for e in elevators %}
-  { id: {{ e.id }}, code: "{{ e.code }}", customer: "{{ e.customer.name }}" },
-  {% endfor %}
-];
-
-const TECHNICIANS = [
-  {% for t in technicians %}
-  { id: {{ t.id }}, name: "{{ t.name }}" },
-  {% endfor %}
-];
-
-// ===== إحصائيات =====
-function updateStats() {
-  const total     = VISITS.length;
-  const done      = VISITS.filter(v=>v.status==='مكتملة').length;
-  const scheduled = VISITS.filter(v=>v.status==='مجدولة').length;
-  const cancelled = VISITS.filter(v=>v.status==='ملغاة').length;
-  const vals = document.querySelectorAll('.stat-mini-val');
-  if(vals[0]) vals[0].textContent = total;
-  if(vals[1]) vals[1].textContent = done;
-  if(vals[2]) vals[2].textContent = scheduled;
-  if(vals[3]) vals[3].textContent = cancelled;
-}
+const VISITS = {{ visits_js|tojson }};
+const CUSTOMERS = {{ customers_js|tojson }};
+const ELEVATORS = {{ elevators_js|tojson }};
+const CONTRACTS = {{ contracts_js|tojson }};
+const TECHNICIANS = {{ technicians_js|tojson }};
+const VISIT_MAP_POINTS = {{ visit_map_points|tojson }};
+const NEXT_VISIT_CODE = {{ next_visit_code|tojson }};
+const MAINT_TECHS = [{% for t in maint_technicians %}{ id: {{ t.id }}, name: {{ t.name|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}];
+const PLAN_DISTRICTS = {{ plan_districts|tojson }};
+let PLAN_VISITS = [];
+let PLAN_MODE = 'auto';
 
 const STATUS_BADGE = {
   'مكتملة':'badge-active','مجدولة':'badge-partial',
@@ -613,19 +694,27 @@ function renderTable(data) {
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   document.getElementById('visits-count').textContent = data.length + ' زيارة';
+  const info = document.getElementById('table-info');
+  if (info) info.textContent = 'عرض ' + data.length + ' من ' + VISITS.length;
   tbody.innerHTML = data.map(v=>`
     <tr onclick="viewVisit(${v.id})">
-      <td class="td-code">${v.code}</td>
+      <td class="td-code lc-code">${v.code}</td>
       <td class="td-name">${v.customer}</td>
-      <td style="font-family:var(--font-en)">${v.elevator}</td>
+      <td class="lc-elev">${v.elevator}</td>
       <td>${v.technician}</td>
       <td>${v.visit_type}</td>
-      <td style="direction:ltr;font-family:var(--font-en)">${v.visit_date}</td>
-      <td style="font-family:var(--font-en)">${v.visit_time||'—'}</td>
+      <td class="lc-date">${v.visit_date}</td>
+      <td class="lc-num">${v.visit_time||'—'}</td>
       <td><span class="badge ${PRIORITY_BADGE[v.priority]||'badge-active'}">${v.priority}</span></td>
       <td><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${v.status}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
+          <a class="btn btn-primary btn-sm btn-icon" href="/maintenance-visits/${v.id}/report" target="_blank" title="تعبئة / تعديل محضر الفحص" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10v8H2z"/><path d="M4 2h6v2H4z"/><path d="M5 7l1.5 1.5L9 5"/></svg>
+          </a>
+          <a class="btn btn-secondary btn-sm btn-icon" href="/maintenance-visits/${v.id}/report?print=1" target="_blank" title="طباعة محضر العميل" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10v8H2z"/><path d="M4 2h6v2H4z"/><line x1="5" y1="7" x2="9" y2="7"/><line x1="5" y1="9" x2="8" y2="9"/></svg>
+          </a>
           <button class="btn btn-secondary btn-sm btn-icon" onclick="viewVisit(${v.id})">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
           </button>
@@ -642,43 +731,499 @@ function renderTable(data) {
 
 function filterTable() {
   const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const cl = document.getElementById('f-client')?.value||'';
+  const tc = document.getElementById('f-tech')?.value||'';
   const tp = document.getElementById('f-type')?.value||'';
-  const pr = document.getElementById('f-priority')?.value||'';
   const st = document.getElementById('f-status')?.value||'';
+  const fd = document.getElementById('f-date-from')?.value||'';
+  const td = document.getElementById('f-date-to')?.value||'';
   filtered = VISITS.filter(v=>
-    (!s  || v.code.toLowerCase().includes(s) || v.customer.includes(s) || v.elevator.toLowerCase().includes(s)) &&
+    (!s  || v.code.toLowerCase().includes(s) || (v.customer||'').includes(s) || (v.elevator||'').toLowerCase().includes(s) || (v.technician||'').includes(s)) &&
+    (!cl || v.customer === cl) &&
+    (!tc || v.technician === tc) &&
     (!tp || v.visit_type === tp) &&
-    (!pr || v.priority === pr) &&
-    (!st || v.status === st)
+    (!st || v.status === st || (st === 'جاري التنفيذ' && (v.status === 'جارية' || v.status === 'مُرسلة للفني'))) &&
+    (!fd || v.visit_date >= fd) &&
+    (!td || v.visit_date <= td)
   );
   renderTable(filtered);
 }
 
 // ===== إضافة =====
+function fillClientSelect() {
+  const sel = document.getElementById('f-client-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">اختر العميل</option>' +
+    CUSTOMERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function loadClientElevators() {
+  const cid = parseInt(document.getElementById('f-client-sel').value, 10);
+  const esel = document.getElementById('f-elevator-sel');
+  const csel = document.getElementById('f-contract-sel');
+  if (!esel) return;
+  const list = cid ? ELEVATORS.filter(e => e.customer_id === cid) : ELEVATORS;
+  esel.innerHTML = '<option value="">اختر المصعد</option>' +
+    list.map(e => `<option value="${e.id}">${e.code} — ${e.customer}</option>`).join('');
+  if (csel) {
+    const contracts = cid ? CONTRACTS.filter(c => c.customer_id === cid) : [];
+    csel.innerHTML = '<option value="">بدون عقد</option>' +
+      contracts.map(c => `<option value="${c.id}">${c.code}</option>`).join('');
+  }
+}
+
+function loadElevatorContracts() {
+  const eid = parseInt(document.getElementById('f-elevator-sel').value, 10);
+  const csel = document.getElementById('f-contract-sel');
+  if (!eid || !csel) return;
+  fetch('/api/elevators/' + eid + '/links')
+    .then(r => r.json())
+    .then(data => {
+      csel.innerHTML = '<option value="">بدون عقد</option>' +
+        (data.contracts || []).map(c =>
+          `<option value="${c.id}"${c.id === data.default_contract_id ? ' selected' : ''}>${c.code}</option>`
+        ).join('');
+      const clientSel = document.getElementById('f-client-sel');
+      if (clientSel && data.customer_id) clientSel.value = data.customer_id;
+    })
+    .catch(() => {});
+}
+
+function openPlanModal() {
+  syncPlanMonthFromWork();
+  document.getElementById('modal-plan').classList.add('open');
+  updatePlanMonthHint();
+  initDispatchDate();
+  loadPlan();
+}
+
+function setPlanMode(mode) {
+  PLAN_MODE = mode;
+  document.getElementById('plan-panel-auto').style.display = mode === 'auto' ? '' : 'none';
+  document.getElementById('plan-panel-manual').style.display = mode === 'manual' ? '' : 'none';
+  document.getElementById('plan-tab-auto').classList.toggle('active', mode === 'auto');
+  document.getElementById('plan-tab-manual').classList.toggle('active', mode === 'manual');
+}
+
+function planMonth() {
+  return document.getElementById('plan-month').value;
+}
+
+function monthBounds(ym) {
+  if (!ym) return { from: '', to: '' };
+  const parts = ym.split('-').map(Number);
+  const y = parts[0], m = parts[1];
+  const last = new Date(y, m, 0).getDate();
+  return { from: ym + '-01', to: ym + '-' + String(last).padStart(2, '0') };
+}
+
+function formatMonthLabel(ym) {
+  if (!ym) return '';
+  if (window.LiftCoreFormat) return LiftCoreFormat.monthLabelText(ym);
+  const names = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const p = ym.split('-').map(Number);
+  return names[p[1] - 1] + ' ' + p[0];
+}
+
+function setMonthLabelHTML(el, ym) {
+  if (!el || !ym) return;
+  if (window.LiftCoreFormat) el.innerHTML = LiftCoreFormat.monthLabel(ym);
+  else el.textContent = formatMonthLabel(ym);
+}
+
+function updatePlanMonthHint() {
+  const el = document.getElementById('plan-month-hint');
+  const ym = planMonth();
+  if (!el || !ym) return;
+  const b = monthBounds(ym);
+  el.textContent = 'تخطط لشهر ' + formatMonthLabel(ym) + ' فقط — التواريخ من ' + b.from + ' إلى ' + b.to;
+  const d = document.getElementById('plan-manual-date');
+  if (d) {
+    if (!d.value || d.value.slice(0, 7) !== ym) d.value = b.from;
+    d.min = b.from;
+    d.max = b.to;
+  }
+}
+
+function onPlanMonthChange() {
+  updatePlanMonthHint();
+  loadPlan();
+}
+
+function syncPlanMonthFromWork() {
+  const wm = document.getElementById('work-month');
+  const pm = document.getElementById('plan-month');
+  if (wm && pm) pm.value = wm.value;
+  onPlanMonthChange();
+}
+
+function applyWorkMonth() {
+  const ym = document.getElementById('work-month')?.value;
+  if (!ym) return;
+  const b = monthBounds(ym);
+  const ff = document.getElementById('f-date-from');
+  const ft = document.getElementById('f-date-to');
+  if (ff) ff.value = b.from;
+  if (ft) ft.value = b.to;
+  const parts = ym.split('-').map(Number);
+  OpsPage.setCalendarMonth(parts[0], parts[1] - 1);
+  OpsPage.setCalendarItems(visitsInMonth(ym));
+  OpsPage.refreshCalendar('cal-grid', 'cal-title');
+  const ml = document.getElementById('work-month-label');
+  if (ml) {
+    if (window.LiftCoreFormat) ml.innerHTML = '— ' + LiftCoreFormat.monthLabel(ym);
+    else ml.textContent = '— ' + formatMonthLabel(ym);
+  }
+  filterTable();
+}
+
+function visitsInMonth(ym) {
+  const b = monthBounds(ym);
+  return VISITS.filter(v => v.visit_date >= b.from && v.visit_date <= b.to);
+}
+
+function shiftWorkMonth(delta) {
+  const inp = document.getElementById('work-month');
+  if (!inp || !inp.value) return;
+  const p = inp.value.split('-').map(Number);
+  let y = p[0], m = p[1] + delta;
+  if (m < 1) { m = 12; y--; }
+  if (m > 12) { m = 1; y++; }
+  inp.value = y + '-' + String(m).padStart(2, '0');
+  applyWorkMonth();
+}
+
+function goWorkMonthToday() {
+  const now = new Date();
+  const inp = document.getElementById('work-month');
+  if (inp) inp.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  applyWorkMonth();
+}
+
+function fetchPlanApi(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  }).then(async r => {
+    const text = await r.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (e) {
+      throw new Error(r.status === 404
+        ? 'المسار غير موجود — أعد تشغيل الخادم (python app.py)'
+        : 'استجابة غير متوقعة من الخادم (كود ' + r.status + ')');
+    }
+    if (!r.ok || data.error) {
+      throw new Error(data.error || ('خطأ من الخادم (كود ' + r.status + ')'));
+    }
+    return data;
+  });
+}
+
+function applyPlanData(data) {
+  PLAN_VISITS = data.visits || [];
+  let msg = `الخطة ${data.plan_month || planMonth()}: ${data.total || 0} زيارة`;
+  if (data.districts != null) msg += ` — ${data.districts} منطقة`;
+  if (data.created != null) msg += ` (أُنشئ ${data.created} جديد)`;
+  if (data.linked != null && data.linked > 0) msg += ` (رُبط ${data.linked} موجود)`;
+  if (data.updated != null && data.updated > 0) msg += ` — عُيِّنت ${data.updated} زيارة`;
+  document.getElementById('plan-summary').textContent = msg;
+  const ts = document.getElementById('plan-tech-summary');
+  if (ts && data.tech_summary && data.tech_summary.length) {
+    ts.innerHTML = '<strong style="font-size:12px">توزيع الفرق:</strong> ' +
+      data.tech_summary.map(t =>
+        `<span style="display:inline-block;margin:4px 6px;padding:4px 10px;background:var(--bg3);border-radius:8px;font-size:11px">` +
+        `${t.technician}: <b>${t.count}</b> (${(t.districts||[]).join('، ')})</span>`
+      ).join('');
+  } else if (ts) ts.innerHTML = '';
+  renderPlanDistricts();
+}
+
+function loadPlan() {
+  const ym = planMonth();
+  if (!ym) return;
+  const sum = document.getElementById('plan-summary');
+  if (sum) sum.textContent = 'جاري تحميل الخطة...';
+  fetch('/api/maintenance/plan?plan_month=' + encodeURIComponent(ym))
+    .then(async r => {
+      const text = await r.text();
+      let data;
+      try { data = text ? JSON.parse(text) : {}; } catch (e) {
+        throw new Error('تعذّر قراءة بيانات الخطة من الخادم');
+      }
+      if (!r.ok || data.error) throw new Error(data.error || 'تعذّر تحميل الخطة');
+      return data;
+    })
+    .then(applyPlanData)
+    .catch(err => {
+      if (sum) sum.textContent = 'تعذّر تحميل الخطة';
+      alert(err.message || err);
+    });
+}
+
+function generatePlan() {
+  fetchPlanApi('/api/maintenance/generate-plan', {plan_month: planMonth()})
+    .then(applyPlanData)
+    .catch(err => alert(err.message || err));
+}
+
+function generateDistrictPlan() {
+  const district = document.getElementById('plan-auto-district').value;
+  if (!district) { alert('اختر المنطقة من القائمة'); return; }
+  fetchPlanApi('/api/maintenance/generate-district-plan', {plan_month: planMonth(), district})
+    .then(applyPlanData)
+    .catch(err => alert(err.message || err));
+}
+
+function loadDistrictElevators() {
+  const district = document.getElementById('plan-manual-district').value;
+  const sel = document.getElementById('plan-manual-elevator');
+  if (!district || !sel) return;
+  fetch('/api/maintenance/district/' + encodeURIComponent(district) + '/elevators')
+    .then(r => r.json())
+    .then(data => {
+      sel.innerHTML = '<option value="">اختر المصعد</option>' +
+        (data.elevators || []).map(e =>
+          `<option value="${e.elevator_id}">${e.elevator_code} — ${e.customer_name}</option>`
+        ).join('');
+    });
+}
+
+function addManualVisit() {
+  const elevator_id = document.getElementById('plan-manual-elevator').value;
+  const visit_date = document.getElementById('plan-manual-date').value;
+  const ym = planMonth();
+  if (!ym) { alert('اختر شهر الخطة'); return; }
+  if (!elevator_id || !visit_date) { alert('اختر المنطقة والمصعد والتاريخ'); return; }
+  if (visit_date.slice(0, 7) !== ym) {
+    alert('تاريخ الزيارة يجب أن يكون داخل ' + formatMonthLabel(ym));
+    return;
+  }
+  fetchPlanApi('/api/maintenance/plan/add-visit', {plan_month: ym, elevator_id, visit_date})
+    .then(applyPlanData)
+    .catch(err => alert(err.message || err));
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+}
+
+function onDispatchDayShortcut() {
+  const sel = document.getElementById('dispatch-day');
+  const inp = document.getElementById('dispatch-date');
+  if (!sel || !inp) return;
+  const now = new Date();
+  if (sel.value === 'today') {
+    inp.value = now.toISOString().slice(0, 10);
+  } else if (sel.value === 'tomorrow') {
+    const t = new Date(now);
+    t.setDate(t.getDate() + 1);
+    inp.value = t.toISOString().slice(0, 10);
+  }
+}
+
+function initDispatchDate() {
+  const inp = document.getElementById('dispatch-date');
+  if (inp && !inp.value) onDispatchDayShortcut();
+}
+
+function onManualDistrictChange() {
+  const district = document.getElementById('plan-manual-district').value;
+  const auto = document.getElementById('plan-auto-district');
+  if (auto && district) auto.value = district;
+  loadDistrictElevators();
+  filterPlanDistrict(district);
+}
+
+function filterPlanDistrict(district) {
+  document.querySelectorAll('.plan-district-block').forEach(block => {
+    if (!district) {
+      block.style.display = '';
+      block.style.borderColor = '';
+    } else {
+      const match = block.dataset.district === district;
+      block.style.display = match ? '' : 'none';
+      block.style.borderColor = match ? 'var(--accent)' : '';
+    }
+  });
+  if (district) {
+    const block = Array.from(document.querySelectorAll('.plan-district-block'))
+      .find(b => b.dataset.district === district);
+    if (block) block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function renderPlanDistricts() {
+  const by = {};
+  PLAN_VISITS.forEach(v => {
+    const d = v.district || 'غير محدد';
+    if (!by[d]) by[d] = [];
+    by[d].push(v);
+  });
+  const el = document.getElementById('plan-districts');
+  if (!PLAN_VISITS.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:12px">لا توجد زيارات في هذه الخطة بعد — ولّد تلقائياً أو أضف يدوياً.</p>';
+    return;
+  }
+  const techOpts = MAINT_TECHS.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');
+  el.innerHTML = Object.keys(by).sort().map(district => {
+    const visits = by[district];
+    const rows = visits.map(v => `
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
+        <input type="checkbox" class="plan-visit-cb" data-visit-date="${escHtml(v.visit_date)}" value="${v.id}">
+        <span style="font-family:var(--font-en);color:var(--accent)">${escHtml(v.code)}</span>
+        <span>${escHtml(v.customer)}</span>
+        <span style="color:var(--text3);direction:ltr">${escHtml(v.visit_date)}</span>
+        <span style="margin-right:auto;color:var(--text3)">${escHtml(v.technician)}</span>
+      </label>`).join('');
+    return `<div class="plan-district-block" data-district="${escHtml(district)}" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <strong>${escHtml(district)}</strong>
+        <span style="font-size:11px;color:var(--text3)">${visits.length} زيارة</span>
+      </div>
+      <div class="plan-visit-list" style="max-height:160px;overflow-y:auto;margin-bottom:10px">${rows}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <select class="filter-select plan-tech-sel" style="min-width:140px">
+          <option value="">اختر الفني</option>${techOpts}
+        </select>
+        <button type="button" class="btn btn-primary btn-sm plan-assign-sel">تعيين المحدد</button>
+        <button type="button" class="btn btn-success btn-sm plan-assign-dispatch">تعيين وإرسال واتساب</button>
+        <button type="button" class="btn btn-secondary btn-sm plan-assign-free">تعيين غير المكلف فقط</button>
+        <button type="button" class="btn btn-secondary btn-sm plan-select-all">تحديد الكل</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.plan-assign-sel').forEach(btn => {
+    btn.onclick = () => assignSelectedVisits(btn, false);
+  });
+  el.querySelectorAll('.plan-assign-dispatch').forEach(btn => {
+    btn.onclick = () => assignSelectedVisits(btn, true);
+  });
+  el.querySelectorAll('.plan-assign-free').forEach(btn => {
+    btn.onclick = () => assignDistrictFree(btn);
+  });
+  el.querySelectorAll('.plan-select-all').forEach(btn => {
+    btn.onclick = () => {
+      const block = btn.closest('.plan-district-block');
+      if (block) block.querySelectorAll('.plan-visit-cb').forEach(cb => { cb.checked = true; });
+    };
+  });
+  const manualDistrict = document.getElementById('plan-manual-district')?.value;
+  if (manualDistrict) filterPlanDistrict(manualDistrict);
+}
+
+function assignSelectedVisits(btn, andDispatch) {
+  const block = btn.closest('.plan-district-block');
+  if (!block) return;
+  const techSel = block.querySelector('.plan-tech-sel');
+  const techId = techSel && techSel.value;
+  if (!techId) { alert('اختر الفني من القائمة'); return; }
+  const ids = Array.from(block.querySelectorAll('.plan-visit-cb:checked')).map(cb => cb.value);
+  if (!ids.length) { alert('حدّد زيارة واحدة على الأقل (أو اضغط تحديد الكل)'); return; }
+  const ym = planMonth();
+  if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
+  const checkedDates = Array.from(block.querySelectorAll('.plan-visit-cb:checked'))
+    .map(cb => cb.dataset.visitDate).filter(Boolean);
+  fetchPlanApi('/api/maintenance/assign-visits', {plan_month: ym, visit_ids: ids, technician_id: techId})
+    .then(data => {
+      applyPlanData(data);
+      document.getElementById('dispatch-tech').value = techId;
+      if (checkedDates[0]) {
+        document.getElementById('dispatch-date').value = checkedDates[0];
+        document.getElementById('dispatch-day').value = 'custom';
+      }
+      const techName = techSel.options[techSel.selectedIndex].text;
+      if (data.updated > 0) {
+        alert('تم تعيين ' + data.updated + ' زيارة لـ ' + techName + (andDispatch ? '' : '\n\nلإرسال واتساب: اختر تاريخ الزيارة ثم اضغط «إرسال واتساب»'));
+        if (andDispatch) dispatchRoute();
+      } else {
+        alert('لم يتم تعيين أي زيارة — تأكد من تحديد الزيارات والفني');
+      }
+    })
+    .catch(err => alert(err.message || err));
+}
+
+function assignDistrictFree(btn) {
+  const block = btn.closest('.plan-district-block');
+  if (!block) return;
+  const district = block.dataset.district;
+  const techSel = block.querySelector('.plan-tech-sel');
+  const techId = techSel && techSel.value;
+  if (!techId) { alert('اختر الفني'); return; }
+  fetchPlanApi('/api/maintenance/assign-district', {
+    plan_month: planMonth(), district, technician_id: techId, only_unassigned: true
+  }).then(data => {
+    applyPlanData(data);
+    document.getElementById('dispatch-tech').value = techId;
+    if (data.updated > 0) alert('تم تعيين ' + data.updated + ' زيارة غير مكلفة لـ ' + techSel.options[techSel.selectedIndex].text);
+  }).catch(err => alert(err.message || err));
+}
+
+function dispatchRoute() {
+  const techId = document.getElementById('dispatch-tech').value;
+  const dispatchDate = document.getElementById('dispatch-date')?.value;
+  const dispatchDay = dispatchDate || document.getElementById('dispatch-day')?.value || 'today';
+  if (!techId) { alert('اختر الفني'); return; }
+  fetch('/api/maintenance/dispatch/' + techId, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({dispatch_day: dispatchDay})
+  }).then(async r => {
+    const text = await r.text();
+    let data;
+    try { data = text ? JSON.parse(text) : {}; } catch (e) {
+      alert('تعذّر قراءة رد الخادم'); return;
+    }
+    if (data.whatsapp_url) {
+      window.open(data.whatsapp_url, '_blank');
+      alert((data.day_label || 'تم الإرسال') + ' — ' + data.count + ' زيارة');
+      setTimeout(() => window.location.reload(), 1200);
+    } else {
+      alert(data.error || 'لا توجد زيارات في التاريخ المحدد لهذا الفني.\n\nتأكد أن تاريخ الإرسال = تاريخ الزيارة المجدولة.');
+    }
+  });
+}
+
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة زيارة جديدة';
   document.getElementById('modal-add').dataset.editId = '';
-  const esel = document.getElementById('f-elevator-sel');
-  if(esel) esel.innerHTML = '<option value="">اختر المصعد</option>' +
-    ELEVATORS.map(e=>`<option value="${e.id}">${e.code} — ${e.customer}</option>`).join('');
+  const codeEl = document.getElementById('f-code');
+  if (codeEl) codeEl.value = NEXT_VISIT_CODE;
+  const fc = document.getElementById('f-fault-code');
+  if (fc) fc.value = '';
+  fillClientSelect();
+  loadClientElevators();
   const tsel = document.getElementById('f-tech-sel');
-  if(tsel) tsel.innerHTML = '<option value="">اختر الفني</option>' +
-    TECHNICIANS.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  if (tsel) tsel.innerHTML = '<option value="">اختر الفني</option>' +
+    TECHNICIANS.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   document.getElementById('modal-add').classList.add('open');
 }
 
 function saveVisit() {
   const editId = document.getElementById('modal-add').dataset.editId;
+  const elev = document.getElementById('f-elevator-sel');
+  if (!elev || !elev.value) { alert('اختر المصعد'); return; }
+  const vdate = document.getElementById('f-date');
+  if (!vdate || !vdate.value) { alert('حدد تاريخ الزيارة'); return; }
   const fd = new FormData();
-  [['elevator_id','f-elevator-sel'],['technician_id','f-tech-sel'],
-   ['visit_type','f-type-sel'],['visit_date','f-date'],
-   ['visit_time','f-time'],['priority','f-priority-sel'],
-   ['status','f-status-sel'],['works_done','f-works'],
-   ['observations','f-obs'],['notes','f-notes']
-  ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
+  const works = document.getElementById('f-work-done');
+  const issues = document.getElementById('f-issues');
+  const parts = document.getElementById('f-parts');
+  const obs = [issues && issues.value, parts && parts.value].filter(Boolean).join('\n');
+  [['elevator_id','f-elevator-sel'],['contract_id','f-contract-sel'],['technician_id','f-tech-sel'],
+   ['visit_type','f-type-sel'],['visit_date','f-date'],['visit_time','f-time'],
+   ['priority','f-priority-sel'],['status','f-status-sel']
+  ].forEach(([f,i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
+  if (works) fd.append('works_done', works.value);
+  fd.append('observations', obs);
+  const fc = document.getElementById('f-fault-code');
+  if (fc && fc.value.trim()) fd.append('fault_code', fc.value.trim());
 
   fetch(editId ? `/maintenance-visits/edit/${editId}` : '/maintenance-visits/add', {method:'POST',body:fd})
-    .then(()=>window.location.reload());
+    .then(() => window.location.reload());
 }
 
 // ===== تعديل =====
@@ -687,17 +1232,28 @@ function editVisit(id) {
   if(!v) return;
   document.getElementById('modal-title').textContent = 'تعديل الزيارة';
   document.getElementById('modal-add').dataset.editId = id;
+  fillClientSelect();
+  const clientSel = document.getElementById('f-client-sel');
+  if (clientSel) clientSel.value = v.customer_id || '';
+  loadClientElevators();
   const esel = document.getElementById('f-elevator-sel');
-  if(esel) esel.innerHTML = ELEVATORS.map(e=>`<option value="${e.id}"${e.id===v.elevator_id?' selected':''}>${e.code} — ${e.customer}</option>`).join('');
+  if (esel) esel.value = v.elevator_id || '';
+  loadElevatorContracts();
+  const csel = document.getElementById('f-contract-sel');
+  if (csel && v.contract_id) csel.value = v.contract_id;
   const tsel = document.getElementById('f-tech-sel');
-  if(tsel) tsel.innerHTML = '<option value="">— بدون فني —</option>' +
-    TECHNICIANS.map(t=>`<option value="${t.id}"${t.id===v.tech_id?' selected':''}>${t.name}</option>`).join('');
+  if (tsel) tsel.innerHTML = '<option value="">— بدون فني —</option>' +
+    TECHNICIANS.map(t => `<option value="${t.id}"${t.id===v.tech_id?' selected':''}>${t.name}</option>`).join('');
+  const codeEl = document.getElementById('f-code');
+  if (codeEl) codeEl.value = v.code;
+  const fc = document.getElementById('f-fault-code');
+  if (fc) fc.value = v.fault_code || '';
   const map = {
-    'f-type-sel':v.visit_type,'f-date':v.visit_date,'f-time':v.visit_time,
-    'f-priority-sel':v.priority,'f-status-sel':v.status,
-    'f-works':v.works_done,'f-obs':v.observations,'f-notes':v.notes,
+    'f-type-sel': v.visit_type, 'f-date': v.visit_date, 'f-time': v.visit_time,
+    'f-priority-sel': v.priority, 'f-status-sel': v.status, 'f-work-done': v.works_done,
+    'f-issues': v.observations,
   };
-  Object.entries(map).forEach(([k,val])=>{ const el=document.getElementById(k); if(el) el.value=val||''; });
+  Object.entries(map).forEach(([k,val]) => { const el = document.getElementById(k); if (el) el.value = val || ''; });
   document.getElementById('modal-add').classList.add('open');
 }
 
@@ -709,19 +1265,27 @@ function viewVisit(id) {
   document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
       <div class="view-section">بيانات الزيارة</div>
-      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${v.code}</div></div>
+      <div class="view-item"><div class="view-label">الكود</div><div class="view-val lc-code">${v.code}</div></div>
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${v.customer}</div></div>
-      <div class="view-item"><div class="view-label">المصعد</div><div class="view-val" style="font-family:var(--font-en)">${v.elevator}</div></div>
+      <div class="view-item"><div class="view-label">المصعد</div><div class="view-val lc-elev">${v.elevator}</div></div>
       <div class="view-item"><div class="view-label">الفني</div><div class="view-val">${v.technician}</div></div>
       <div class="view-item"><div class="view-label">نوع الزيارة</div><div class="view-val">${v.visit_type}</div></div>
-      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val" style="direction:ltr">${v.visit_date}</div></div>
-      <div class="view-item"><div class="view-label">الوقت</div><div class="view-val" style="direction:ltr">${v.visit_time||'—'}</div></div>
+      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val lc-date">${v.visit_date}</div></div>
+      <div class="view-item"><div class="view-label">الوقت</div><div class="view-val lc-num">${v.visit_time||'—'}</div></div>
       <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${PRIORITY_BADGE[v.priority]||'badge-active'}">${v.priority}</span></div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${v.status}</span></div></div>
+      ${v.fault_code?`<div class="view-item"><div class="view-label">رقم العطل</div><div class="view-val" style="font-family:var(--font-en)">${v.fault_code}</div></div>`:''}
       ${v.works_done?`<div class="view-item view-full"><div class="view-label">الأعمال المنفذة</div><div class="view-val">${v.works_done}</div></div>`:''}
       ${v.observations?`<div class="view-item view-full"><div class="view-label">الملاحظات</div><div class="view-val">${v.observations}</div></div>`:''}
+      ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" target="_blank" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" target="_blank" style="color:var(--accent)">طباعة PDF</a></div></div>`:''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
+  const rpt = document.getElementById('view-report-link');
+  if (rpt) {
+    rpt.href = '/maintenance-visits/' + v.id + '/report';
+    rpt.style.display = '';
+  }
+  if (v.customer_id) LiftCoreProfile.appendToView(document.getElementById('view-body'), v.customer_id, v.contract_id, { timelineLimit: 15 });
 }
 
 // ===== حذف =====
@@ -729,6 +1293,10 @@ function deleteVisit(id) { currentDeleteId=id; document.getElementById('modal-de
 function confirmDelete() {
   if(!currentDeleteId) return;
   fetch(`/maintenance-visits/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
+}
+
+function printVisit() {
+  OpsPage.printModalContent('view-title', 'view-body');
 }
 
 function exportExcel() {
@@ -752,13 +1320,20 @@ function closeSidebar() { document.getElementById('sidebar').classList.remove('o
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
 document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
 
-const now = new Date();
-const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+/* التاريخ في الهيدر: liftcore-format.js */
 
-updateStats();
-renderTable(VISITS);
+OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
+OpsPage.fillFilterSelect('f-tech', TECHNICIANS.map(t => ({ value: t.name, label: t.name })), 'كل الفنيين');
+OpsPage.initMap('map', VISIT_MAP_POINTS);
+OpsPage.initCalendar('cal-grid', 'cal-title', VISITS, 'visit_date');
+const mapLabel = document.getElementById('map-date-label');
+if (mapLabel) mapLabel.textContent = 'زيارات اليوم — ' + new Date().toISOString().slice(0, 10);
+applyWorkMonth();
+updatePlanMonthHint();
+if (new URLSearchParams(window.location.search).get('action') === 'add') {
+  openAddModal();
+  history.replaceState(null, '', window.location.pathname);
+}
 </script>
 </body>
 </html>

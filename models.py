@@ -27,7 +27,12 @@ class Customer(db.Model):
     status      = db.Column(db.String(20), default='نشط')   # نشط / غير نشط
     notes       = db.Column(db.Text)
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
-
+    contact_role = db.Column(db.String(50))
+    national_id  = db.Column(db.String(20))
+    lat          = db.Column(db.String(20))
+    lng          = db.Column(db.String(20))
+    maps_url     = db.Column(db.String(500))
+    building_photo_path = db.Column(db.String(300))  # uploads/clients/{id}/building.jpg
     # علاقات
     elevators   = db.relationship('Elevator',  backref='customer', lazy=True)
     contracts   = db.relationship('Contract',  backref='customer', lazy=True)
@@ -91,7 +96,7 @@ class Contract(db.Model):
     total           = db.Column(db.Float, default=0)
     payment_terms   = db.Column(db.String(50))   # دفعة واحدة / ربع سنوي / نصف سنوي / سنوي
     invoice_status  = db.Column(db.String(30), default='غير مدفوع')  # مدفوع / مدفوع جزئياً / غير مدفوع / متأخر
-    status          = db.Column(db.String(20), default='نشط')        # نشط / منتهي / معلق / ملغي
+    status          = db.Column(db.String(30), default='نشط')        # نشط / على وشك الانتهاء / منتهي / ملغي
     reminder_date   = db.Column(db.Date)
     file_path       = db.Column(db.String(300))
     notes           = db.Column(db.Text)
@@ -131,16 +136,38 @@ class Technician(db.Model):
     hire_date       = db.Column(db.Date)
     salary          = db.Column(db.Float)
     emergency       = db.Column(db.Boolean, default=False)  # متاح للطوارئ
-    status          = db.Column(db.String(20), default='نشط')
+    status          = db.Column(db.String(20), default='متاح')  # متاح / مشغول / إجازة / غير نشط
+    team            = db.Column(db.String(30), default='عام')   # صيانة / أعطال / عام
+    photo_path      = db.Column(db.String(300))   # uploads/technicians/{id}/photo.jpg
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
     # علاقات
     visits          = db.relationship('MaintenanceVisit', backref='technician', lazy=True)
     faults          = db.relationship('Fault',            backref='technician', lazy=True)
+    documents       = db.relationship(
+        'TechnicianDocument', backref='technician', lazy=True,
+        cascade='all, delete-orphan',
+    )
 
     def __repr__(self):
         return f'<Technician {self.code} {self.name}>'
+
+
+class TechnicianDocument(db.Model):
+    __tablename__ = 'technician_documents'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=False)
+    doc_type        = db.Column(db.String(50))   # شهادة / مؤهل / إقامة / رخصة / تدريب / أخرى
+    title           = db.Column(db.String(200))
+    file_path       = db.Column(db.String(300), nullable=False)
+    file_name       = db.Column(db.String(200))
+    mime_type       = db.Column(db.String(100))
+    uploaded_at     = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<TechnicianDocument {self.id} {self.title}>'
 
 
 # =============================================
@@ -154,14 +181,21 @@ class MaintenanceVisit(db.Model):
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
     elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
     technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    fault_id        = db.Column(db.Integer, db.ForeignKey('faults.id'))
     visit_type      = db.Column(db.String(50))   # دورية / طارئة / متابعة
     visit_date      = db.Column(db.Date, nullable=False)
     visit_time      = db.Column(db.String(10))
     duration_hours  = db.Column(db.Float)
     priority        = db.Column(db.String(20), default='عادية')  # عادية / عاجلة / حرجة
-    status          = db.Column(db.String(30), default='مجدولة')  # مجدولة / مكتملة / ملغاة / متأخرة
+    status          = db.Column(db.String(30), default='مجدولة')  # مجدولة / مُرسلة للفني / جارية / مكتملة / ملغاة / متأخرة
+    plan_month      = db.Column(db.String(7))   # 2026-06
+    route_order     = db.Column(db.Integer, default=0)
+    dispatched_at   = db.Column(db.DateTime)
     works_done      = db.Column(db.Text)   # الأعمال المنفذة
     observations    = db.Column(db.Text)   # الملاحظات
+    checklist_json  = db.Column(db.Text)   # محضر الفحص (JSON — SaaS: template_key داخل JSON)
+    checklist_template_key = db.Column(db.String(50), default='liftcore_standard_v1')
+    completed_at    = db.Column(db.DateTime)
     next_visit_date = db.Column(db.Date)
     customer_signature = db.Column(db.Boolean, default=False)
     notes           = db.Column(db.Text)
@@ -181,15 +215,22 @@ class Fault(db.Model):
     code            = db.Column(db.String(20), unique=True, nullable=False)  # FA-00001
     elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
     technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    visit_id        = db.Column(db.Integer, db.ForeignKey('maintenance_visits.id'))
     fault_type      = db.Column(db.String(100))
     description     = db.Column(db.Text)
+    client_report   = db.Column(db.Text)   # وصف العميل كما أُبلِغ
+    reporter_name   = db.Column(db.String(100))
+    reporter_phone  = db.Column(db.String(20))
+    tech_notes      = db.Column(db.Text)   # ملاحظات الفني
+    needs_parts     = db.Column(db.Boolean, default=False)
     priority        = db.Column(db.String(20), default='عادية')  # عادية / عاجلة / حرجة
     reported_at     = db.Column(db.DateTime, default=datetime.utcnow)
     responded_at    = db.Column(db.DateTime)
     resolved_at     = db.Column(db.DateTime)
     response_time   = db.Column(db.String(50))  # محسوبة تلقائياً
-    status          = db.Column(db.String(30), default='مفتوح')  # مفتوح / قيد المعالجة / محلول / مغلق
+    status          = db.Column(db.String(30), default='مفتوح')  # مفتوح / قيد المعالجة / انتظار قطع / محلول / مغلق
     resolution      = db.Column(db.Text)   # طريقة الحل
+    dispatched_at   = db.Column(db.DateTime)
     billed          = db.Column(db.Boolean, default=False)
     notes           = db.Column(db.Text)
 
@@ -347,6 +388,8 @@ class PartsBilling(db.Model):
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
     elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'))
     technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    visit_id        = db.Column(db.Integer, db.ForeignKey('maintenance_visits.id'))
+    fault_id        = db.Column(db.Integer, db.ForeignKey('faults.id'))
     billing_date    = db.Column(db.Date, nullable=False)
     description     = db.Column(db.Text)   # بيان القطع
     cost_price      = db.Column(db.Float, default=0)   # تكلفة الشراء
@@ -356,6 +399,12 @@ class PartsBilling(db.Model):
     status          = db.Column(db.String(30), default='مكتملة')
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    elevator        = db.relationship('Elevator', foreign_keys=[elevator_id])
+    contract        = db.relationship('Contract', foreign_keys=[contract_id])
+    customer        = db.relationship('Customer', foreign_keys=[customer_id])
+    visit           = db.relationship('MaintenanceVisit', foreign_keys=[visit_id])
+    fault           = db.relationship('Fault', foreign_keys=[fault_id])
 
     def __repr__(self):
         return f'<PartsBilling {self.code}>'
@@ -380,6 +429,7 @@ class Settings(db.Model):
     currency        = db.Column(db.String(10), default='ر.س')
     language        = db.Column(db.String(10), default='ar')
     logo_path       = db.Column(db.String(300))
+    checklist_template_key = db.Column(db.String(50), default='liftcore_standard_v1')  # SaaS: قالب الفحص الافتراضي
 
 
 # =============================================
@@ -400,3 +450,11 @@ class User(db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+
+MaintenanceVisit.linked_fault = db.relationship(
+    'Fault', foreign_keys=[MaintenanceVisit.fault_id], uselist=False
+)
+Fault.linked_visit = db.relationship(
+    'MaintenanceVisit', foreign_keys=[Fault.visit_id], uselist=False
+)

@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/customer_profile.css">
+<script src="/static/customer_profile.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -146,11 +148,14 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+<link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-format.js"></script>
+
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -246,6 +251,26 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       </div>
     </div>
 
+    {% if parts_alerts %}
+    <div class="alerts-row" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      {% for a in parts_alerts %}
+      <div class="alert-chip {{ a.level }}" style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;font-size:12px;{% if a.level=='warning' %}background:rgba(224,144,48,.1);color:var(--warning){% else %}background:rgba(42,127,255,.08);color:var(--accent){% endif %}">{{ a.text }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if pending_faults %}
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">طلبات قطع غيار من الفنيين ({{ pending_faults|length }})</div>
+      {% for f in pending_faults %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span><strong style="font-family:var(--font-en)">{{ f.code }}</strong> — {{ f.elevator.customer.name if f.elevator and f.elevator.customer else '—' }}</span>
+        <a class="btn btn-secondary btn-sm" href="/parts-billing?fault={{ f.code }}" style="text-decoration:none">تسجيل عرض السعر</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- FILTERS -->
     <div class="filters-bar">
       <div class="search-wrap">
@@ -286,6 +311,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <thead>
             <tr>
               <th>رقم العملية</th>
+              <th>الزيارة / العطل</th>
               <th>العميل / العقد</th>
               <th>التاريخ</th>
               <th>بيان القطع</th>
@@ -314,7 +340,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 </div>
 
 <div class="modal-overlay" id="modal">
-  <div class="modal">
+  <div class="modal" id="modal-box">
     <div class="modal-head">
       <span class="modal-title" id="modal-title">إضافة عملية جديدة</span>
       <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
@@ -322,8 +348,21 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     <div class="modal-body">
       <div class="form-grid">
         <div class="field">
+          <label>رقم العملية</label>
+          <input id="m-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg4)">
+        </div>
+        <div class="field">
+          <label>رقم الزيارة</label>
+          <input id="m-visit" placeholder="VI-00001" style="direction:ltr;font-family:var(--font-en)">
+        </div>
+        <div class="field">
+          <label>رقم العطل</label>
+          <input id="m-fault" placeholder="FA-00001" style="direction:ltr;font-family:var(--font-en)">
+        </div>
+        <p class="form-full" style="font-size:11px;color:var(--text3);grid-column:1/-1;margin:-4px 0 4px">اربط العملية برقم الزيارة أو العطل عند معالجة عطل أثناء الزيارة.</p>
+        <div class="field">
           <label>رقم العقد</label>
-          <input id="m-cn" placeholder="CN-XXXXX">
+          <input id="m-cn" placeholder="CN-XXXXX" style="direction:ltr;font-family:var(--font-en)">
         </div>
         <div class="field">
           <label>اسم العميل <span>*</span></label>
@@ -381,68 +420,73 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-view">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="view-title">تفاصيل العملية</div>
+      <button class="modal-close" onclick="closeModal('modal-view')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body" id="view-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+    </div>
+  </div>
+</div>
 
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <div class="modal-title" style="color:var(--danger)">تأكيد الحذف</div>
+      <button class="modal-close" onclick="closeModal('modal-delete')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body"><p style="font-size:14px;color:var(--text2)">هل أنت متأكد من حذف هذه العملية؟</p></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">حذف</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ===== البيانات من Flask =====
-const PARTS = [
-  {% for p in parts %}
-  {
-    id:           {{ p.id }},
-    code:         "{{ p.code }}",
-    customer_id:  {{ p.customer_id or 'null' }},
-    customer:     "{{ p.customer.name if p.customer else '—' }}",
-    contract:     "{{ p.contract.code if p.contract else '—' }}",
-    elevator:     "{{ p.elevator.code if p.elevator else '—' }}",
-    technician:   "{{ p.technician.name if p.technician else '—' }}",
-    tech_id:      {{ p.technician_id or 'null' }},
-    billing_date: "{{ p.billing_date or '' }}",
-    description:  "{{ p.description or '' }}",
-    cost_price:   {{ p.cost_price or 0 }},
-    sell_price:   {{ p.sell_price or 0 }},
-    profit:       {{ p.profit or 0 }},
-    pay_method:   "{{ p.payment_method or '' }}",
-    status:       "{{ p.status or 'مكتملة' }}",
-    notes:        "{{ p.notes or '' }}",
-  },
-  {% endfor %}
-];
-
-const CUSTOMERS = [
-  {% for c in customers %}
-  { id: {{ c.id }}, name: "{{ c.name }}" },
-  {% endfor %}
-];
-
-// ===== إحصائيات =====
-function updateStats() {
-  const total      = PARTS.length;
-  const totalCost  = PARTS.reduce((s,p)=>s+p.cost_price,0);
-  const totalSell  = PARTS.reduce((s,p)=>s+p.sell_price,0);
-  const totalProfit= PARTS.reduce((s,p)=>s+p.profit,0);
-  const vals = document.querySelectorAll('.stat-mini-val');
-  if(vals[0]) vals[0].textContent = total;
-  if(vals[1]) vals[1].textContent = totalCost.toLocaleString();
-  if(vals[2]) vals[2].textContent = totalSell.toLocaleString();
-  if(vals[3]) vals[3].textContent = totalProfit.toLocaleString();
-}
+const PARTS = {{ parts_js|tojson }};
+const NEXT_PART_CODE = {{ next_part_code|tojson }};
+const CUSTOMERS = {{ customers_js|tojson }};
+const CONTRACTS = {{ contracts_js|tojson }};
 
 const STATUS_BADGE = {
-  'مكتملة':'badge-active','معلقة':'badge-pending','ملغاة':'badge-cancelled'
+  'محصل':'badge-green','مكتملة':'badge-green','غير محصل':'badge-red','معلقة':'badge-gold'
 };
 
 let currentDeleteId = null;
 let filtered = [...PARTS];
 
+function updateStats() {
+  const totalSell = PARTS.reduce((s,p) => s + p.sell_price, 0);
+  const totalCost = PARTS.reduce((s,p) => s + p.cost_price, 0);
+  const totalProfit = PARTS.reduce((s,p) => s + p.profit, 0);
+  const collected = PARTS.filter(p => p.status === 'محصل' || p.status === 'مكتملة');
+  const pending = PARTS.filter(p => p.status === 'غير محصل' || p.status === 'معلقة');
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('s-total', totalSell.toLocaleString('ar-SA'));
+  set('s-total-sub', PARTS.length + ' عملية');
+  set('s-cost', totalCost.toLocaleString('ar-SA'));
+  set('s-profit', totalProfit.toLocaleString('ar-SA'));
+  set('s-margin', 'هامش ' + (totalSell ? ((totalProfit/totalSell)*100).toFixed(1) : 0) + '%');
+  set('s-collected', collected.reduce((s,p) => s + p.sell_price, 0).toLocaleString('ar-SA'));
+  set('s-collected-sub', collected.length + ' عملية');
+  set('s-pending', pending.reduce((s,p) => s + p.sell_price, 0).toLocaleString('ar-SA'));
+  set('s-pending-sub', pending.length + ' عملية');
+  set('bills-count', PARTS.length + ' عملية');
+}
+
 function renderTable(data) {
-  const tbody = document.getElementById('table-body');
-  if(!tbody) return;
-  const totalProfit = data.reduce((s,p)=>s+p.profit,0);
-  document.getElementById('parts-count').textContent = data.length + ' عملية';
-  document.getElementById('parts-profit').textContent = totalProfit.toLocaleString('ar-SA',{minimumFractionDigits:2}) + ' ر.س';
-  tbody.innerHTML = data.map(p=>`
+  const tbody = document.getElementById('bills-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = data.map(p => `
     <tr onclick="viewPart(${p.id})">
       <td class="td-code">${p.code}</td>
+      <td style="font-family:var(--font-en);font-size:11px;color:var(--text2)">${[p.visit_code,p.fault_code].filter(Boolean).join(' / ')||'—'}</td>
       <td>${p.customer} ${p.contract!=='—'?'/ '+p.contract:''}</td>
       <td style="direction:ltr;font-family:var(--font-en)">${p.billing_date}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${p.description||'—'}</td>
@@ -466,68 +510,113 @@ function renderTable(data) {
         </div>
       </td>
     </tr>`).join('');
+  const info = document.getElementById('page-info');
+  if (info) info.textContent = 'عرض ' + data.length + ' من ' + PARTS.length;
 }
 
-function filterTable() {
-  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const pm = document.getElementById('f-method')?.value||'';
-  const st = document.getElementById('f-status')?.value||'';
-  const fd = document.getElementById('f-from')?.value||'';
-  const td = document.getElementById('f-to')?.value||'';
-  filtered = PARTS.filter(p=>
-    (!s  || p.code.toLowerCase().includes(s) || p.customer.includes(s) || p.description.includes(s)) &&
+function applyFilters() {
+  const s  = (document.getElementById('f-search')?.value || '').toLowerCase();
+  const pm = document.getElementById('f-pay')?.value || '';
+  const st = document.getElementById('f-status')?.value || '';
+  const fd = document.getElementById('f-from')?.value || '';
+  const td = document.getElementById('f-to')?.value || '';
+  filtered = PARTS.filter(p =>
+    (!s || p.code.toLowerCase().includes(s) || (p.customer||'').includes(s) ||
+      (p.contract||'').toLowerCase().includes(s) || (p.description||'').includes(s)) &&
     (!pm || p.pay_method === pm) &&
-    (!st || p.status === st) &&
+    (!st || p.status === st || (st === 'محصل' && p.status === 'مكتملة')) &&
     (!fd || p.billing_date >= fd) &&
     (!td || p.billing_date <= td)
   );
   renderTable(filtered);
 }
 
-// ===== إضافة =====
-function openAddModal() {
-  document.getElementById('modal-title').textContent = 'إضافة بيان قطع جديد';
-  document.getElementById('modal-add').dataset.editId = '';
-  const sel = document.getElementById('f-customer-sel');
-  if(sel) sel.innerHTML = '<option value="">اختر العميل</option>' +
-    CUSTOMERS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  document.getElementById('modal-add').classList.add('open');
+function clearFilters() {
+  ['f-search','f-status','f-pay','f-from','f-to'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  applyFilters();
 }
 
-function calcProfit() {
-  const cost  = parseFloat(document.getElementById('f-cost')?.value)||0;
-  const sell  = parseFloat(document.getElementById('f-sell')?.value)||0;
-  const el = document.getElementById('f-profit');
-  if(el) el.value = (sell - cost).toFixed(2);
+function openModal(id) {
+  if (id) { editPart(id); return; }
+  document.getElementById('modal-title').textContent = 'إضافة عملية جديدة';
+  document.getElementById('modal-box').dataset.editId = '';
+  const codeEl = document.getElementById('m-code');
+  if (codeEl) codeEl.value = NEXT_PART_CODE;
+  ['m-visit','m-fault','m-cn','m-client','m-desc','m-notes','m-pay-date'].forEach(i => {
+    const el = document.getElementById(i); if (el) el.value = '';
+  });
+  ['m-cost','m-price'].forEach(i => {
+    const el = document.getElementById(i); if (el) el.value = '';
+  });
+  const d = document.getElementById('m-date');
+  if (d) d.value = new Date().toISOString().slice(0, 10);
+  document.getElementById('modal').classList.add('open');
+  updateProfit();
 }
 
-function savePart() {
-  const editId = document.getElementById('modal-add').dataset.editId;
+function closeModal(id) {
+  const el = document.getElementById(id || 'modal');
+  if (el) el.classList.remove('open');
+}
+
+function updateProfit() {
+  const cost = parseFloat(document.getElementById('m-cost')?.value) || 0;
+  const sell = parseFloat(document.getElementById('m-price')?.value) || 0;
+  const el = document.getElementById('profit-preview');
+  if (!el) return;
+  const profit = sell - cost;
+  el.textContent = profit.toLocaleString('ar-SA', {minimumFractionDigits: 2}) + ' ر.س';
+  el.style.color = profit >= 0 ? 'var(--success)' : 'var(--danger)';
+}
+
+function saveRecord() {
+  const editId = document.getElementById('modal-box').dataset.editId;
+  const cn = document.getElementById('m-cn').value.trim();
+  const client = document.getElementById('m-client').value.trim();
+  const contract = CONTRACTS.find(c => c.code.toUpperCase() === cn.toUpperCase());
+  const customer = CUSTOMERS.find(c => c.name === client);
   const fd = new FormData();
-  [['customer_id','f-customer-sel'],['billing_date','f-date'],
-   ['description','f-desc'],['cost_price','f-cost'],
-   ['sell_price','f-sell'],['payment_method','f-pay-method'],
-   ['status','f-status-sel'],['notes','f-notes']
-  ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
-  fetch(editId ? `/parts-billing/edit/${editId}` : '/parts-billing/add', {method:'POST',body:fd})
-    .then(()=>window.location.reload());
+  if (contract) fd.append('contract_id', contract.id);
+  fd.append('contract_code', cn);
+  if (customer) fd.append('customer_id', customer.id);
+  fd.append('customer_name', client);
+  fd.append('billing_date', document.getElementById('m-date').value);
+  fd.append('description', document.getElementById('m-desc').value);
+  fd.append('cost_price', document.getElementById('m-cost').value || 0);
+  fd.append('sell_price', document.getElementById('m-price').value || 0);
+  fd.append('payment_method', document.getElementById('m-pay').value);
+  fd.append('status', document.getElementById('m-status').value);
+  fd.append('notes', document.getElementById('m-notes').value);
+  const visitCode = document.getElementById('m-visit')?.value.trim();
+  const faultCode = document.getElementById('m-fault')?.value.trim();
+  if (visitCode) fd.append('visit_code', visitCode);
+  if (faultCode) fd.append('fault_code', faultCode);
+  fetch(editId ? `/parts-billing/edit/${editId}` : '/parts-billing/add', {method:'POST', body:fd})
+    .then(() => window.location.reload());
 }
 
-// ===== تعديل =====
 function editPart(id) {
-  const p = PARTS.find(x=>x.id===id);
-  if(!p) return;
-  document.getElementById('modal-title').textContent = 'تعديل بيان القطع';
-  document.getElementById('modal-add').dataset.editId = id;
-  const sel=document.getElementById('f-customer-sel');
-  if(sel) sel.innerHTML=CUSTOMERS.map(c=>`<option value="${c.id}"${c.id===p.customer_id?' selected':''}>${c.name}</option>`).join('');
-  const map={
-    'f-date':p.billing_date,'f-desc':p.description,
-    'f-cost':p.cost_price,'f-sell':p.sell_price,
-    'f-pay-method':p.pay_method,'f-status-sel':p.status,'f-notes':p.notes,
-  };
-  Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
-  document.getElementById('modal-add').classList.add('open');
+  const p = PARTS.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('modal-title').textContent = 'تعديل: ' + p.code;
+  document.getElementById('modal-box').dataset.editId = id;
+  const codeEl = document.getElementById('m-code');
+  if (codeEl) codeEl.value = p.code;
+  document.getElementById('m-visit').value = p.visit_code || '';
+  document.getElementById('m-fault').value = p.fault_code || '';
+  document.getElementById('m-cn').value = p.contract !== '—' ? p.contract : '';
+  document.getElementById('m-client').value = p.customer !== '—' ? p.customer : '';
+  document.getElementById('m-date').value = p.billing_date || '';
+  document.getElementById('m-desc').value = p.description || '';
+  document.getElementById('m-cost').value = p.cost_price || '';
+  document.getElementById('m-price').value = p.sell_price || '';
+  document.getElementById('m-pay').value = p.pay_method || '';
+  document.getElementById('m-status').value = (p.status === 'مكتملة' ? 'محصل' : p.status) || 'غير محصل';
+  document.getElementById('m-notes').value = p.notes || '';
+  updateProfit();
+  document.getElementById('modal').classList.add('open');
 }
 
 // ===== عرض =====
@@ -557,6 +646,8 @@ function viewPart(id) {
     <div class="view-grid">
       <div class="view-section">تفاصيل العملية</div>
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${p.code}</div></div>
+      ${p.visit_code?`<div class="view-item"><div class="view-label">رقم الزيارة</div><div class="view-val" style="font-family:var(--font-en)">${p.visit_code}</div></div>`:''}
+      ${p.fault_code?`<div class="view-item"><div class="view-label">رقم العطل</div><div class="view-val" style="font-family:var(--font-en)">${p.fault_code}</div></div>`:''}
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${p.customer}</div></div>
       <div class="view-item"><div class="view-label">العقد</div><div class="view-val" style="font-family:var(--font-en)">${p.contract}</div></div>
       <div class="view-item"><div class="view-label">المصعد</div><div class="view-val" style="font-family:var(--font-en)">${p.elevator}</div></div>
@@ -568,6 +659,7 @@ function viewPart(id) {
       ${p.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${p.notes}</div></div>`:''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
+  if (p.customer_id) LiftCoreProfile.appendToView(document.getElementById('view-body'), p.customer_id, p.contract_id, { timelineLimit: 15 });
 }
 
 // ===== حذف =====
@@ -577,16 +669,14 @@ function confirmDelete() {
   fetch(`/parts-billing/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
 }
 
-function exportExcel() {
-  const rows=[['الكود','العميل','العقد','التاريخ','البيان','التكلفة','سعر البيع','الربح','طريقة الدفع','الحالة']];
-  filtered.forEach(p=>rows.push([p.code,p.customer,p.contract,p.billing_date,p.description,p.cost_price,p.sell_price,p.profit,p.pay_method,p.status]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='parts-billing.csv'; a.click();
+function exportCSV() {
+  const rows = [['الكود','العميل','العقد','التاريخ','البيان','التكلفة','سعر البيع','الربح','طريقة الدفع','الحالة']];
+  filtered.forEach(p => rows.push([p.code,p.customer,p.contract,p.billing_date,p.description,p.cost_price,p.sell_price,p.profit,p.pay_method,p.status]));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(r => r.join(',')).join('\n')], {type:'text/csv;charset=utf-8'}));
+  a.download = 'parts-billing.csv';
+  a.click();
 }
-
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);
   document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
@@ -604,7 +694,15 @@ const months = ['يناير','فبراير','مارس','أبريل','مايو','
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
 updateStats();
-renderTable(PARTS);
+applyFilters();
+(function(){
+  const fc = new URLSearchParams(window.location.search).get('fault');
+  if (fc) {
+    openModal();
+    const el = document.getElementById('m-fault');
+    if (el) el.value = fc;
+  }
+})();
 </script>
 </body>
 </html>

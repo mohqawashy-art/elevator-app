@@ -12,7 +12,7 @@ from models import User, Settings
 with app.app_context():
     # إنشاء كل الجداول
     db.create_all()
-    print("✅ تم إنشاء جداول قاعدة البيانات")
+    print("[OK] Database tables created")
 
     # إضافة مستخدم admin إذا مش موجود
     if not User.query.filter_by(username='admin').first():
@@ -25,7 +25,7 @@ with app.app_context():
             is_active  = True,
         )
         db.session.add(admin)
-        print("✅ تم إنشاء المستخدم: admin / admin123")
+        print("[OK] Admin user created: admin / admin123")
 
     # إعدادات افتراضية
     if not Settings.query.first():
@@ -40,10 +40,9 @@ with app.app_context():
             language        = 'ar',
         )
         db.session.add(settings)
-        print("✅ تم إضافة الإعدادات الافتراضية")
+        print("[OK] Default settings added")
 
     db.session.commit()
-    print("\n🎉 قاعدة البيانات جاهزة!")
-    print("   ادخل على: http://127.0.0.1:5000")
-    print("   اسم المستخدم: admin")
-    print("   كلمة المرور: admin123")
+    print("Database tables ready.")
+    print("Run: python seed_data.py --reset   (to load demo data)")
+    print("Login: http://127.0.0.1:5000  |  admin / admin123")

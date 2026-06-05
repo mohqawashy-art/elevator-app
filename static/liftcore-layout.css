@@ -1,0 +1,85 @@
+/* LiftCore — مقاس logo.png: 900×200 */
+.sidebar .sidebar-logo {
+  min-height: 100px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar .sidebar-logo img {
+  width: 900px !important;
+  height: 200px !important;
+  object-fit: contain;
+  display: block;
+}
+
+.rpt-header-logo img {
+  width: 900px !important;
+  height: 200px !important;
+  object-fit: contain;
+}
+
+.logo-area {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.logo-img {
+  width: 900px !important;
+  height: 200px !important;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* ===== RTL: أكواد المصعد / العقد / التواريخ ===== */
+html[dir="rtl"] .lc-code,
+html[dir="rtl"] .lc-num,
+html[dir="rtl"] .lc-date,
+html[dir="rtl"] .lc-elev,
+html[dir="rtl"] .lc-contract,
+html[dir="rtl"] .td-code,
+html[dir="rtl"] input.lc-code-field,
+html[dir="rtl"] .field input.lc-code-field {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: right;
+  font-family: var(--font-en, 'DM Sans', monospace);
+}
+
+html[dir="rtl"] td.lc-elev,
+html[dir="rtl"] td.lc-contract,
+html[dir="rtl"] td.lc-date {
+  text-align: right;
+}
+
+html[dir="rtl"] .ar-header-date {
+  direction: rtl;
+  unicode-bidi: isolate;
+  display: inline-block;
+}
+
+html[dir="rtl"] .header-title #h-date {
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+
+html[dir="ltr"] .lc-code,
+html[dir="ltr"] .lc-date {
+  direction: ltr;
+  text-align: left;
+}
+
+/* تطبيق تلقائي على الجداول والحقول القديمة */
+html[dir="rtl"] table td[style*="font-family:var(--font-en)"],
+html[dir="rtl"] table td[style*="direction:ltr"],
+html[dir="rtl"] .view-val[style*="font-family:var(--font-en)"],
+html[dir="rtl"] input[readonly][style*="direction:ltr"],
+html[dir="rtl"] input[style*="font-family:var(--font-en)"]:not([type="date"]):not([type="time"]):not([type="month"]) {
+  direction: ltr !important;
+  unicode-bidi: isolate;
+  text-align: right !important;
+}

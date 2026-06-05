@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA&language=ar&region=SA"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -81,7 +82,19 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
-.stat-mini{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden}
+.stat-mini{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:var(--trans)}
+.stat-mini:hover{border-color:var(--border2)}
+.stat-mini.active{border-color:var(--border2);box-shadow:0 0 0 1px var(--border2)}
+.drill-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:20px;display:none}
+.drill-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.drill-title{font-size:13px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
+.drill-close{font-size:12px;color:var(--accent);cursor:pointer}
+.card-section-title{font-size:12px;font-weight:600;color:var(--text1);margin:14px 0 8px;display:flex;align-items:center;gap:6px}
+.card-section-title::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px}
+.card-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.card-table th{padding:8px 10px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.card-table td{padding:8px 10px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
+.card-table tr:last-child td{border-bottom:none}
 .stat-mini::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--sm-color,var(--accent));opacity:.6}
 .stat-mini-val{font-size:22px;font-weight:600;color:var(--text1);font-family:var(--font-en);line-height:1;margin-bottom:3px}
 .stat-mini-label{font-size:11px;color:var(--text3)}
@@ -165,10 +178,19 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
 .field input::placeholder,.field textarea::placeholder{color:var(--text3)}
 .field textarea{resize:vertical;min-height:70px}
-.phone-wrap{display:flex;gap:6px}
-.phone-code{width:80px;flex-shrink:0;padding:9px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;cursor:pointer;direction:ltr}
-.phone-input{flex:1;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;direction:ltr;font-family:var(--font-en)}
-.phone-input:focus,.phone-code:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.phone-wrap{display:flex;gap:8px;align-items:stretch;width:100%}
+.phone-wrap .phone-code{
+  width:72px;min-width:72px;max-width:72px;flex:0 0 72px;
+  padding:9px 4px;text-align:center;font-size:12px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);
+  color:var(--text1);outline:none;cursor:pointer;direction:ltr;font-family:var(--font-en);
+}
+.phone-wrap .phone-input{
+  flex:1 1 auto;min-width:0;width:auto;
+  padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);
+  color:var(--text1);font-size:14px;outline:none;direction:ltr;font-family:var(--font-en);
+}
+.phone-wrap .phone-input:focus,.phone-wrap .phone-code:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
 .districts-wrap{display:flex;flex-direction:column;gap:6px}
 .districts-list{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;max-height:120px;overflow-y:auto}
 .district-option{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:var(--r-sm);cursor:pointer;font-size:12px;color:var(--text2);transition:var(--trans)}
@@ -184,6 +206,37 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .view-val{font-size:13px;color:var(--text1);font-weight:500}
 .view-full{grid-column:1/-1}
 .view-section{font-size:11px;font-weight:600;color:var(--accent);grid-column:1/-1;padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:.06em}
+.tech-profile-header{display:flex;gap:16px;align-items:center;margin-bottom:18px;padding:16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)}
+.tech-photo-wrap{width:96px;height:96px;border-radius:50%;overflow:hidden;border:3px solid var(--border2);flex-shrink:0;background:var(--bg4);display:flex;align-items:center;justify-content:center}
+.tech-photo-wrap img{width:100%;height:100%;object-fit:cover}
+.tech-photo-placeholder{font-size:32px;font-weight:700;color:var(--accent);font-family:var(--font-en)}
+.tech-profile-meta{flex:1;min-width:0}
+.tech-profile-name{font-size:18px;font-weight:600;color:var(--text1);margin-bottom:4px}
+.tech-profile-sub{font-size:12px;color:var(--text2);line-height:1.6}
+.tech-photo-upload{display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:14px;background:var(--bg3);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer}
+.tech-photo-upload:hover{border-color:var(--accent);background:var(--bg4)}
+.tech-photo-preview{width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);display:none}
+.tech-photo-upload-ph{width:72px;height:72px;border-radius:50%;background:var(--bg4);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;text-align:center;padding:8px}
+.docs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:8px}
+.doc-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;transition:var(--trans)}
+.doc-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.doc-thumb{height:100px;background:var(--bg4);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden}
+.doc-thumb img{width:100%;height:100%;object-fit:cover}
+.doc-thumb-pdf{font-size:28px;color:var(--danger)}
+.doc-meta{padding:8px 10px}
+.doc-type{font-size:10px;color:var(--accent);margin-bottom:2px}
+.doc-title{font-size:11px;color:var(--text1);font-weight:500;line-height:1.4;word-break:break-word}
+.doc-date{font-size:10px;color:var(--text3);margin-top:4px}
+.doc-actions{display:flex;gap:6px;margin-top:6px}
+.doc-form-row{display:grid;grid-template-columns:1fr 1fr 1.2fr auto;gap:8px;align-items:end;margin-bottom:8px}
+.doc-form-row select,.doc-form-row input{font-size:12px;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);width:100%}
+.existing-docs{margin-bottom:12px}
+.existing-doc-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px;font-size:12px}
+.existing-doc-item a{color:var(--accent);text-decoration:none}
+.existing-doc-item a:hover{text-decoration:underline}
+.upload-hint{font-size:11px;color:var(--text3);margin-top:4px}
+#modal-view .modal{max-width:920px}
+#modal-add .modal{max-width:860px}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:1100px){.stats-row{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:768px){
@@ -198,13 +251,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   .view-grid{grid-template-columns:1fr}
   .workload-grid{grid-template-columns:repeat(2,1fr)}
 }
-@@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
+@media(max-width:480px){.filters-bar{flex-direction:column}.search-wrap{min-width:100%}.card-stats,.stats-row{grid-template-columns:repeat(2,1fr)!important}}
 </style>
+<link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-format.js"></script>
+
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="width:900px;height:200px;object-fit:contain;"></div>
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -213,7 +269,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <a href="/clients" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>العملاء</a>
 <a href="/elevators" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg>المصاعد</a>
 <a href="/contracts" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>العقود</a>
-<a href="/technicians" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>الفنيون</a>
+<a href="/technicians" class="nav-item active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>الفنيون</a>
 
 <div class="nav-section" id="ns2">العمليات</div>
 <a href="/maintenance-visits" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>الصيانة</a>
@@ -260,18 +316,50 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
     <!-- STATS -->
     <div class="stats-row">
-      <div class="stat-mini" style="--sm-color:var(--accent)"><div class="stat-mini-val">12</div><div class="stat-mini-label">إجمالي الفنيين</div></div>
-      <div class="stat-mini" style="--sm-color:var(--success)"><div class="stat-mini-val">7</div><div class="stat-mini-label">متاح</div></div>
-      <div class="stat-mini" style="--sm-color:var(--warning)"><div class="stat-mini-val">3</div><div class="stat-mini-label">مشغول</div></div>
-      <div class="stat-mini" style="--sm-color:var(--info)"><div class="stat-mini-val">1</div><div class="stat-mini-label">إجازة</div></div>
-      <div class="stat-mini" style="--sm-color:var(--danger)"><div class="stat-mini-val">1</div><div class="stat-mini-label">غير نشط</div></div>
+      <div class="stat-mini" style="--sm-color:var(--accent)" onclick="openTechDrill('all', this)">
+        <div class="stat-mini-val" id="stat-total">0</div>
+        <div class="stat-mini-label">إجمالي الفنيين</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--success)" onclick="openTechDrill('متاح', this)">
+        <div class="stat-mini-val" id="stat-available">0</div>
+        <div class="stat-mini-label">متاح</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--warning)" onclick="openTechDrill('مشغول', this)">
+        <div class="stat-mini-val" id="stat-busy">0</div>
+        <div class="stat-mini-label">مشغول</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--info)" onclick="openTechDrill('إجازة', this)">
+        <div class="stat-mini-val" id="stat-leave">0</div>
+        <div class="stat-mini-label">إجازة</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--danger)" onclick="openTechDrill('غير نشط', this)">
+        <div class="stat-mini-val" id="stat-inactive">0</div>
+        <div class="stat-mini-label">غير نشط</div>
+      </div>
     </div>
 
     <!-- ALERTS -->
-    <div class="alerts-bar">
-      <div class="alert-chip warning"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>إقامة تنتهي قريباً — 2 فنيين</div>
-      <div class="alert-chip warning"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>رخصة تنتهي قريباً — 1 فني</div>
-      <div class="alert-chip danger"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="7.5"/></svg>فني طوارئ غير متاح الآن</div>
+    <div class="alerts-bar" id="alerts-bar"></div>
+
+    <!-- تفاصيل الكارت -->
+    <div class="drill-panel" id="drill-panel">
+      <div class="drill-head">
+        <div class="drill-title">
+          <span id="drill-title">التفاصيل</span>
+          <span id="drill-count" style="font-size:11px;color:var(--text3);font-weight:400"></span>
+        </div>
+        <span class="drill-close" onclick="closeTechDrill()">إغلاق</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>التخصص</th><th>المدينة</th><th>الحالة</th><th>طوارئ</th>
+            </tr>
+          </thead>
+          <tbody id="drill-body"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- TABS -->
@@ -291,13 +379,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="page-header">
         <div class="page-title">الفنيين <span id="tech-count">12 فني</span></div>
         <div class="page-actions">
-          <button class="btn btn-secondary btn-sm">
+          <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
             تصدير Excel
-          </button>
-          <button class="btn btn-secondary btn-sm">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
-            استيراد Excel
           </button>
           <button class="btn btn-primary btn-sm" onclick="openAddModal()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
@@ -313,11 +397,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <select class="filter-select" id="f-city" onchange="filterTable()">
           <option value="">كل المدن</option>
-          <option>مكة</option><option>جدة</option><option>الطائف</option>
         </select>
         <select class="filter-select" id="f-spec" onchange="filterTable()">
           <option value="">كل التخصصات</option>
-          <option>صيانة</option><option>أعطال</option><option>تركيب</option><option>فحص</option>
         </select>
         <select class="filter-select" id="f-status" onchange="filterTable()">
           <option value="">كل الحالات</option>
@@ -343,7 +425,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </table>
         </div>
         <div class="table-footer">
-          <div class="table-info" id="table-info">عرض 12 فني</div>
+          <div class="table-info" id="table-info">—</div>
           <div class="pagination">
             <button class="page-btn">‹</button>
             <button class="page-btn active">1</button>
@@ -377,53 +459,70 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <!-- ADD/EDIT MODAL -->
-
-</div>
-
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title" id="modal-title">إضافة فني جديد</div>
       <button class="modal-close" onclick="closeModal('modal-add')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
-    <div class="modal-body">
-
-      <div class="form-section">
-        <div class="form-section-title">البيانات الأساسية</div>
-        <div class="form-grid">
-          <div class="field"><label>كود الفني</label><input type="text" id="f-code" placeholder="Tech-001" style="direction:ltr;font-family:var(--font-en)"></div>
-          <div class="field"><label>الجنسية</label><input type="text" id="f-nationality" placeholder="سعودي / مصري..."></div>
-          <div class="field"><label>الاسم (عربي)</label><input type="text" id="f-name-ar" placeholder="اسم الفني"></div>
-          <div class="field"><label>Name (English)</label><input type="text" id="f-name-en" placeholder="Technician Name" style="direction:ltr"></div>
-          <div class="field"><label>المسمى الوظيفي</label><input type="text" id="f-job" placeholder="فني صيانة / مهندس..."></div>
-          <div class="field"><label>التخصص</label><select id="f-spec"><option>صيانة</option><option>أعطال</option><option>تركيب</option><option>فحص</option></select></div>
-          <div class="field"><label>سنوات الخبرة</label><input type="number" id="f-exp" placeholder="5" style="direction:ltr" min="0"></div>
-          <div class="field"><label>متاح للطوارئ</label><select id="f-emergency"><option value="نعم">نعم</option><option value="لا">لا</option></select></div>
-        </div>
+    <div class="modal-body" id="modal-add-body">
+      <div class="modal-quick-nav" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:2">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="scrollTechSection('tech-section-basic')">البيانات الأساسية</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="scrollTechSection('tech-section-contact')">التواصل والجوال</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="scrollTechSection('tech-section-area')">المنطقة</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="scrollTechSection('tech-section-docs-official')">الوثائق</button>
       </div>
 
-      <div class="form-section">
-        <div class="form-section-title">بيانات التواصل</div>
+      <div class="form-section" id="tech-section-contact" style="border:1px solid rgba(42,127,255,.35);border-radius:10px;padding:14px;background:rgba(42,127,255,.06);margin-bottom:18px">
+        <div class="form-section-title" style="color:var(--accent);font-size:13px">★ بيانات التواصل — الجوال وواتساب</div>
+        <p style="font-size:11px;color:var(--text3);margin:-4px 0 10px">مطلوب لإرسال خط السير اليومي للفني على واتساب</p>
         <div class="form-grid">
-          <div class="field">
-            <label>رقم الهاتف</label>
+          <div class="field form-full">
+            <label>رقم الجوال</label>
             <div class="phone-wrap">
               <select class="phone-code" id="f-code-ph"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
-              <input type="tel" class="phone-input" id="f-phone" placeholder="5XXXXXXXX">
+              <input type="tel" class="phone-input" id="f-phone" placeholder="512345678">
             </div>
           </div>
-          <div class="field">
-            <label>رقم واتساب</label>
+          <div class="field form-full">
+            <label>رقم واتساب (لإرسال المهام)</label>
             <div class="phone-wrap">
               <select class="phone-code" id="f-code-wa"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
-              <input type="tel" class="phone-input" id="f-whatsapp" placeholder="5XXXXXXXX">
+              <input type="tel" class="phone-input" id="f-whatsapp" placeholder="512345678">
             </div>
           </div>
           <div class="field form-full"><label>البريد الإلكتروني</label><input type="email" id="f-email" placeholder="tech@liftcore.com" style="direction:ltr"></div>
         </div>
       </div>
 
-      <div class="form-section">
+      <div class="form-section" id="tech-section-photo">
+        <div class="form-section-title">صورة الفني</div>
+        <div class="tech-photo-upload" onclick="document.getElementById('f-photo').click()">
+          <img id="photo-preview" class="tech-photo-preview" alt="">
+          <div id="photo-placeholder" class="tech-photo-upload-ph">اضغط لرفع<br>صورة الفني</div>
+          <div>
+            <div style="font-size:13px;color:var(--text1);font-weight:500">الصورة الشخصية</div>
+            <div class="upload-hint">PNG · JPG · WEBP — حد أقصى 5 ميجا</div>
+          </div>
+        </div>
+        <input type="file" id="f-photo" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="previewTechPhoto(this)">
+      </div>
+
+      <div class="form-section" id="tech-section-basic">
+        <div class="form-section-title">البيانات الأساسية</div>
+        <div class="form-grid">
+          <div class="field"><label>كود الفني</label><input type="text" id="f-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.8"></div>
+          <div class="field"><label>الجنسية</label><input type="text" id="f-nationality" placeholder="سعودي / مصري..."></div>
+          <div class="field"><label>الاسم (عربي)</label><input type="text" id="f-name-ar" placeholder="اسم الفني"></div>
+          <div class="field"><label>Name (English)</label><input type="text" id="f-name-en" placeholder="Technician Name" style="direction:ltr"></div>
+          <div class="field"><label>المسمى الوظيفي</label><input type="text" id="f-job" placeholder="فني صيانة / مهندس..."></div>
+          <div class="field"><label>التخصص</label><select id="f-spec"><option>مصاعد ركاب</option><option>كهرباء</option><option>ميكانيكا</option><option>أبواب</option><option>فحص</option></select></div>
+          <div class="field"><label>سنوات الخبرة</label><input type="number" id="f-exp" placeholder="5" style="direction:ltr" min="0"></div>
+          <div class="field"><label>متاح للطوارئ</label><select id="f-emergency"><option value="نعم">نعم</option><option value="لا">لا</option></select></div>
+        </div>
+      </div>
+
+      <div class="form-section" id="tech-section-area">
         <div class="form-section-title">المنطقة المخصصة</div>
         <div class="form-grid">
           <div class="field">
@@ -443,7 +542,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </div>
 
-      <div class="form-section">
+      <div class="form-section" id="tech-section-docs-official">
         <div class="form-section-title">الوثائق الرسمية</div>
         <div class="form-grid">
           <div class="field"><label>رقم الإقامة</label><input type="text" id="f-iqama" placeholder="رقم الإقامة" style="direction:ltr;font-family:var(--font-en)"></div>
@@ -453,6 +552,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>تاريخ التوظيف</label><input type="date" id="f-hire" style="direction:ltr"></div>
           <div class="field"><label>الراتب (ر.س)</label><input type="number" id="f-salary" placeholder="3000" style="direction:ltr"></div>
         </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">المؤهلات والشهادات والمستندات</div>
+        <div id="existing-docs-wrap" class="existing-docs" style="display:none">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px">المستندات المحفوظة</div>
+          <div id="existing-docs-list"></div>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">إضافة مستندات جديدة</div>
+        <div id="new-docs-rows"></div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addDocRow()" style="margin-top:8px">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+          إضافة مستند
+        </button>
+        <div class="upload-hint">أنواع الملفات: PDF · صور — شهادات · مؤهلات · رخص · إقامة</div>
       </div>
 
       <div class="form-section">
@@ -481,7 +595,40 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-view');openAddModal()">تعديل</button>
+      <button class="btn btn-warning" onclick="editTechPhone(currentViewId)">تعديل الجوال</button>
+      <button class="btn btn-primary" onclick="editFromView()">تعديل كامل</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHONE MODAL — نافذة بسيطة لتسجيل الجوال فقط -->
+<div class="modal-overlay" id="modal-phone">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <div class="modal-title" id="phone-modal-title">تسجيل جوال الفني</div>
+      <button class="modal-close" onclick="closeModal('modal-phone')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">أدخل رقم جوال الفني ورقم واتساب لإرسال خط السير اليومي.</p>
+      <div class="field" style="margin-bottom:14px">
+        <label>رقم الجوال</label>
+        <div class="phone-wrap">
+          <select class="phone-code" id="p-code-ph"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
+          <input type="tel" class="phone-input" id="p-phone" placeholder="512345678" inputmode="tel">
+        </div>
+      </div>
+      <div class="field">
+        <label>رقم واتساب</label>
+        <div class="phone-wrap">
+          <select class="phone-code" id="p-code-wa"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
+          <input type="tel" class="phone-input" id="p-whatsapp" placeholder="512345678" inputmode="tel">
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin-top:12px">يمكنك إدخال نفس الرقم في الحقلين إذا كان واتساب على نفس الجوال.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-phone')">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveTechPhone()">حفظ الرقم</button>
     </div>
   </div>
 </div>
@@ -504,187 +651,701 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-
 <script>
-// ===== البيانات من Flask =====
+const NEXT_TECH_CODE = {{ next_tech_code|tojson }};
+const UNASSIGNED_FAULTS = {{ unassigned_faults|default(0) }};
+
 const TECHNICIANS = [
   {% for t in technicians %}
   {
     id:             {{ t.id }},
-    code:           "{{ t.code }}",
-    name:           "{{ t.name }}",
-    phone:          "{{ t.phone or '' }}",
-    phone2:         "{{ t.phone2 or '' }}",
-    job_title:      "{{ t.job_title or '' }}",
-    specialization: "{{ t.specialization or '' }}",
-    city:           "{{ t.city or '' }}",
+    code:           {{ t.code|tojson }},
+    name:           {{ t.name|tojson }},
+    phone:          {{ (t.phone or '')|tojson }},
+    phone2:         {{ (t.phone2 or '')|tojson }},
+    job_title:      {{ (t.job_title or '')|tojson }},
+    specialization: {{ (t.specialization or '')|tojson }},
+    city:           {{ (t.city or '')|tojson }},
+    national_id:    {{ (t.national_id or '')|tojson }},
+    hire_date:      {{ (t.hire_date.isoformat() if t.hire_date else '')|tojson }},
+    salary:         {{ t.salary or 0 }},
     emergency:      {{ 'true' if t.emergency else 'false' }},
-    status:         "{{ t.status }}",
+    status:         {{ (t.status or 'متاح')|tojson }},
+    display_status: {{ technician_display_status(t)|tojson }},
     visits:         {{ t.visits|length }},
-    notes:          "{{ t.notes or '' }}",
+    faults:         {{ t.faults|length }},
+    notes:          {{ (t.notes or '')|tojson }},
+    photo_url:      {{ (url_for('static', filename=t.photo_path) if t.photo_path else '')|tojson }},
+    documents:      {{ t.documents | map(attribute='id') | list | length }},
+    docs: [
+      {% for d in t.documents %}
+      {
+        id: {{ d.id }},
+        doc_type: {{ (d.doc_type or '')|tojson }},
+        title: {{ (d.title or d.file_name or '')|tojson }},
+        file_name: {{ (d.file_name or '')|tojson }},
+        url: {{ url_for('static', filename=d.file_path)|tojson }},
+        is_image: {{ (d.file_name or '').lower().endswith(('.png','.jpg','.jpeg','.webp')) }},
+        is_pdf: {{ (d.file_name or '').lower().endswith('.pdf') }},
+        uploaded_at: {{ (d.uploaded_at.strftime('%Y-%m-%d') if d.uploaded_at else '')|tojson }}
+      },
+      {% endfor %}
+    ],
   },
   {% endfor %}
 ];
 
-// ===== إحصائيات =====
-function updateStats() {
-  const total    = TECHNICIANS.length;
-  const active   = TECHNICIANS.filter(t=>t.status==='نشط').length;
-  const emergency= TECHNICIANS.filter(t=>t.emergency).length;
-  const visits   = TECHNICIANS.reduce((s,t)=>s+t.visits,0);
-  const vals = document.querySelectorAll('.stat-mini-val');
-  if(vals[0]) vals[0].textContent = total;
-  if(vals[1]) vals[1].textContent = active;
-  if(vals[2]) vals[2].textContent = emergency;
-  if(vals[3]) vals[3].textContent = visits;
+const STATUS_BADGE = {
+  'متاح': 'badge-available',
+  'مشغول': 'badge-busy',
+  'إجازة': 'badge-leave',
+  'غير نشط': 'badge-inactive',
+  'نشط': 'badge-available'
+};
+
+const DRILL_TITLES = {
+  all: 'إجمالي الفنيين',
+  'متاح': 'فنيون متاحون',
+  'مشغول': 'فنيون مشغولون',
+  'إجازة': 'فنيون في إجازة',
+  'غير نشط': 'فنيون غير نشطين',
+  emergency: 'فنيو الطوارئ'
+};
+
+const CITY_COORDS = {
+  'مكة': {lat:21.4225, lng:39.8262},
+  'جدة': {lat:21.5433, lng:39.1728},
+  'الطائف': {lat:21.2703, lng:40.4158},
+  'الرياض': {lat:24.7136, lng:46.6753},
+  'الدمام': {lat:26.4207, lng:50.0888}
+};
+
+const DISTRICTS = {
+  'مكة': ['العزيزية','الشوقية','العوالي','الزاهر','النسيم','أجياد','المسفلة','العزيزية'],
+  'جدة': ['الروضة','السلامة','الحمراء','البلد','الشاطئ'],
+  'الطائف': ['الشهداء','القمرية','الحوية']
+};
+
+var currentDeleteId = null;
+var currentViewId = null;
+var currentEditId = null;
+var filtered = TECHNICIANS.slice();
+var techMap = null;
+var techMarkers = [];
+var docRowCounter = 0;
+
+var DOC_TYPES = ['شهادة', 'مؤهل', 'رخصة', 'إقامة', 'تدريب', 'أخرى'];
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-let currentDeleteId = null;
-let filtered = [...TECHNICIANS];
+function getInitials(name) {
+  var n = String(name || '').trim();
+  return n ? n.charAt(0) : '?';
+}
+
+function previewTechPhoto(input) {
+  var preview = document.getElementById('photo-preview');
+  var ph = document.getElementById('photo-placeholder');
+  if (!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    ph.style.display = 'none';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function resetPhotoPreview(url) {
+  var preview = document.getElementById('photo-preview');
+  var ph = document.getElementById('photo-placeholder');
+  var input = document.getElementById('f-photo');
+  if (input) input.value = '';
+  if (url) {
+    preview.src = url;
+    preview.style.display = 'block';
+    ph.style.display = 'none';
+  } else {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+    ph.style.display = 'flex';
+  }
+}
+
+function addDocRow() {
+  docRowCounter += 1;
+  var row = document.createElement('div');
+  row.className = 'doc-form-row';
+  row.id = 'doc-row-' + docRowCounter;
+  var typeOpts = DOC_TYPES.map(function(tp) {
+    return '<option>' + tp + '</option>';
+  }).join('');
+  row.innerHTML =
+    '<select name="doc-type-row" class="doc-type-sel">' + typeOpts + '</select>' +
+    '<input type="text" class="doc-title-inp" placeholder="عنوان المستند">' +
+    '<input type="file" class="doc-file-inp" accept=".pdf,image/png,image/jpeg,image/webp">' +
+    '<button type="button" class="btn btn-danger btn-sm btn-icon" onclick="this.parentElement.remove()" title="إزالة">✕</button>';
+  document.getElementById('new-docs-rows').appendChild(row);
+}
+
+function renderExistingDocs(docs, techId) {
+  var wrap = document.getElementById('existing-docs-wrap');
+  var list = document.getElementById('existing-docs-list');
+  if (!wrap || !list) return;
+  if (!docs || !docs.length) {
+    wrap.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+  wrap.style.display = 'block';
+  list.innerHTML = docs.map(function(d) {
+    return '<div class="existing-doc-item">' +
+      '<div><span style="color:var(--accent)">' + esc(d.doc_type) + '</span> — ' + esc(d.title) +
+      ' <a href="' + esc(d.url) + '" target="_blank" rel="noopener">عرض</a></div>' +
+      '<button type="button" class="btn btn-danger btn-sm" onclick="deleteTechDocument(' + d.id + ',' + techId + ')">حذف</button>' +
+    '</div>';
+  }).join('');
+}
+
+function deleteTechDocument(docId, techId) {
+  if (!confirm('حذف هذا المستند؟')) return;
+  fetch('/technicians/documents/delete/' + docId, {method: 'POST'})
+    .then(function(r) { return r.json(); })
+    .then(function() {
+      var t = TECHNICIANS.find(function(x) { return x.id === techId; });
+      if (t && t.docs) t.docs = t.docs.filter(function(d) { return d.id !== docId; });
+      renderExistingDocs(t ? t.docs : [], techId);
+      if (currentViewId === techId) viewTech(techId);
+    });
+}
+
+function renderDocumentsGrid(docs, techId) {
+  if (!docs || !docs.length) {
+    return '<div class="cp-empty" style="text-align:center;padding:12px;color:var(--text3);font-size:12px">لا توجد مستندات مرفوعة</div>';
+  }
+  var html = '<div class="card-section-title">المؤهلات والشهادات والمستندات (' + docs.length + ')</div><div class="docs-grid">';
+  docs.forEach(function(d) {
+    var thumb = d.is_image
+      ? '<img src="' + esc(d.url) + '" alt="' + esc(d.title) + '">'
+      : '<div class="doc-thumb-pdf">' + (d.is_pdf ? 'PDF' : '📄') + '</div>';
+    html += '<div class="doc-card">' +
+      '<div class="doc-thumb" onclick="window.open(\'' + esc(d.url).replace(/'/g, '%27') + '\',\'_blank\')">' + thumb + '</div>' +
+      '<div class="doc-meta">' +
+        '<div class="doc-type">' + esc(d.doc_type || 'مستند') + '</div>' +
+        '<div class="doc-title">' + esc(d.title) + '</div>' +
+        '<div class="doc-date">' + esc(d.uploaded_at || '') + '</div>' +
+        '<div class="doc-actions">' +
+          '<a class="btn btn-secondary btn-sm" href="' + esc(d.url) + '" target="_blank" rel="noopener">عرض</a>' +
+        '</div>' +
+      '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function techPhotoHeaderHtml(t, photoUrl) {
+  photoUrl = photoUrl || t.photo_url;
+  var photoInner = photoUrl
+    ? '<img src="' + esc(photoUrl) + '" alt="' + esc(t.name) + '">'
+    : '<div class="tech-photo-placeholder">' + esc(getInitials(t.name)) + '</div>';
+  return '<div class="tech-profile-header">' +
+    '<div class="tech-photo-wrap">' + photoInner + '</div>' +
+    '<div class="tech-profile-meta">' +
+      '<div class="tech-profile-name">' + esc(t.name) + '</div>' +
+      '<div class="tech-profile-sub">' + esc(t.code) + ' · ' + esc(t.job_title || '—') + '<br>' +
+      esc(t.specialization || '—') + ' · ' + esc(t.city || '—') + ' · ' +
+      '<span class="badge ' + (STATUS_BADGE[t.display_status] || 'badge-inactive') + '" style="margin-top:4px">' + esc(t.display_status) + '</span></div>' +
+    '</div></div>';
+}
+
+function fullPhone(codeId, numId) {
+  var c = document.getElementById(codeId);
+  var n = document.getElementById(numId);
+  if (!n || !n.value.trim()) return '';
+  var code = c ? c.value : '+966';
+  var num = n.value.replace(/\s/g, '').replace(/^0+/, '');
+  return code + num;
+}
+
+function splitPhone(full, codeId, numId) {
+  if (!full) return;
+  var m = String(full).match(/^(\+\d{1,4})(.+)$/);
+  if (m) {
+    var cEl = document.getElementById(codeId);
+    var nEl = document.getElementById(numId);
+    if (cEl) cEl.value = m[1];
+    if (nEl) nEl.value = m[2];
+  } else {
+    var nEl2 = document.getElementById(numId);
+    if (nEl2) nEl2.value = full;
+  }
+}
+
+function getTechPinColor(status) {
+  if (status === 'متاح' || status === 'نشط') return '#1fb87a';
+  if (status === 'مشغول') return '#e09030';
+  if (status === 'إجازة') return '#2a7fff';
+  return '#666';
+}
+
+function initFilters() {
+  var cities = {}, specs = {};
+  TECHNICIANS.forEach(function(t) {
+    if (t.city) cities[t.city] = 1;
+    if (t.specialization) specs[t.specialization] = 1;
+  });
+  var citySel = document.getElementById('f-city');
+  if (citySel) {
+    Object.keys(cities).sort().forEach(function(c) {
+      citySel.innerHTML += '<option>' + esc(c) + '</option>';
+    });
+  }
+  var specSel = document.getElementById('f-spec');
+  if (specSel) {
+    Object.keys(specs).sort().forEach(function(s) {
+      specSel.innerHTML += '<option>' + esc(s) + '</option>';
+    });
+  }
+}
+
+function updateStats() {
+  var total = TECHNICIANS.length;
+  var available = TECHNICIANS.filter(function(t) { return t.display_status === 'متاح'; }).length;
+  var busy = TECHNICIANS.filter(function(t) { return t.display_status === 'مشغول'; }).length;
+  var leave = TECHNICIANS.filter(function(t) { return t.display_status === 'إجازة'; }).length;
+  var inactive = TECHNICIANS.filter(function(t) { return t.display_status === 'غير نشط'; }).length;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-available').textContent = available;
+  document.getElementById('stat-busy').textContent = busy;
+  document.getElementById('stat-leave').textContent = leave;
+  document.getElementById('stat-inactive').textContent = inactive;
+  updateAlerts();
+}
+
+function updateAlerts() {
+  var bar = document.getElementById('alerts-bar');
+  if (!bar) return;
+  var html = '';
+  var emergencyOff = TECHNICIANS.filter(function(t) {
+    return t.emergency && t.display_status !== 'متاح';
+  }).length;
+  if (emergencyOff) {
+    html += '<div class="alert-chip danger"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="7.5"/></svg>فني طوارئ غير متاح — ' + emergencyOff + '</div>';
+  }
+  if (UNASSIGNED_FAULTS > 0) {
+    html += '<div class="alert-chip warning" onclick="window.location.href=\'/faults\'"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>أعطال بدون فني — ' + UNASSIGNED_FAULTS + '</div>';
+  }
+  var busy = TECHNICIANS.filter(function(t) { return t.display_status === 'مشغول'; }).length;
+  if (busy) {
+    html += '<div class="alert-chip warning" onclick="openTechDrill(\'مشغول\', null)"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>فنيون مشغولون الآن — ' + busy + '</div>';
+  }
+  bar.innerHTML = html;
+}
+
+function getTechByDrill(type) {
+  if (type === 'all') return TECHNICIANS.slice();
+  if (type === 'emergency') return TECHNICIANS.filter(function(t) { return t.emergency; });
+  return TECHNICIANS.filter(function(t) { return t.display_status === type; });
+}
+
+function renderDrillTable(rows) {
+  document.getElementById('drill-body').innerHTML = rows.map(function(t) {
+    return '<tr style="cursor:pointer" onclick="viewTech(' + t.id + ')">' +
+      '<td class="td-code">' + esc(t.code) + '</td>' +
+      '<td class="td-name">' + (t.photo_url ? '<img src="' + esc(t.photo_url) + '" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-left:8px;border:1px solid var(--border)">' : '') + esc(t.name) + '</td>' +
+      '<td style="direction:ltr;font-family:var(--font-en);cursor:pointer;color:' + (t.phone ? 'var(--text2)' : 'var(--accent)') + '" onclick="event.stopPropagation();editTechPhone(' + t.id + ')" title="اضغط لتسجيل/تعديل الجوال">' + (esc(t.phone) || '➕ إضافة جوال') + '</td>' +
+      '<td>' + esc(t.specialization) + '</td>' +
+      '<td>' + esc(t.city) + '</td>' +
+      '<td><span class="badge ' + (STATUS_BADGE[t.display_status] || 'badge-inactive') + '">' + esc(t.display_status) + '</span></td>' +
+      '<td><span class="badge ' + (t.emergency ? 'badge-yes' : 'badge-no') + '">' + (t.emergency ? 'نعم' : 'لا') + '</span></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function openTechDrill(type, cardEl) {
+  var rows = getTechByDrill(type);
+  document.querySelectorAll('.stat-mini').forEach(function(el) { el.classList.remove('active'); });
+  if (cardEl) cardEl.classList.add('active');
+  document.getElementById('drill-title').textContent = DRILL_TITLES[type] || 'التفاصيل';
+  document.getElementById('drill-count').textContent = '(' + rows.length + ' فني)';
+  renderDrillTable(rows);
+  document.getElementById('drill-panel').style.display = 'block';
+  document.getElementById('drill-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
+  if (type === 'emergency') {
+    document.getElementById('f-emergency').value = 'نعم';
+    document.getElementById('f-status').value = '';
+  } else if (type !== 'all') {
+    document.getElementById('f-status').value = type;
+    document.getElementById('f-emergency').value = '';
+  } else {
+    document.getElementById('f-status').value = '';
+    document.getElementById('f-emergency').value = '';
+  }
+  switchTab('table', document.getElementById('tab-btn-table'));
+  filterTable();
+}
+
+function closeTechDrill() {
+  document.getElementById('drill-panel').style.display = 'none';
+  document.querySelectorAll('.stat-mini').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('f-status').value = '';
+  document.getElementById('f-emergency').value = '';
+  filterTable();
+}
 
 function renderTable(data) {
-  const tbody = document.getElementById('table-body');
-  if(!tbody) return;
-  document.getElementById('technicians-count').textContent = data.length + ' فني';
-  tbody.innerHTML = data.map(t=>`
-    <tr onclick="viewTech(${t.id})">
-      <td class="td-code">${t.code}</td>
-      <td class="td-name">${t.name}</td>
-      <td style="direction:ltr">${t.phone}</td>
-      <td>${t.job_title}</td>
-      <td>${t.specialization}</td>
-      <td>${t.city}</td>
-      <td><span class="badge ${t.status==='نشط'?'badge-active':'badge-cancelled'}">${t.status}</span></td>
-      <td><span class="badge ${t.emergency?'badge-active':'badge-cancelled'}">${t.emergency?'نعم':'لا'}</span></td>
-      <td onclick="event.stopPropagation()">
-        <div class="td-actions">
-          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewTech(${t.id})">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
-          </button>
-          <button class="btn btn-secondary btn-sm btn-icon" onclick="editTech(${t.id})">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
-          </button>
-          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteTech(${t.id})">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg>
-          </button>
-        </div>
-      </td>
-    </tr>`).join('');
+  var tbody = document.getElementById('table-body');
+  if (!tbody) return;
+  document.getElementById('tech-count').textContent = data.length + ' فني';
+  document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + TECHNICIANS.length;
+  tbody.innerHTML = data.map(function(t) {
+    return '<tr onclick="viewTech(' + t.id + ')">' +
+      '<td class="td-code">' + esc(t.code) + '</td>' +
+      '<td class="td-name">' + (t.photo_url ? '<img src="' + esc(t.photo_url) + '" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-left:8px;border:1px solid var(--border)">' : '') + esc(t.name) + '</td>' +
+      '<td style="direction:ltr;font-family:var(--font-en);cursor:pointer;color:' + (t.phone ? 'var(--text2)' : 'var(--accent)') + '" onclick="event.stopPropagation();editTechPhone(' + t.id + ')" title="اضغط لتسجيل/تعديل الجوال">' + (esc(t.phone) || '➕ إضافة جوال') + '</td>' +
+      '<td>' + esc(t.job_title) + '</td>' +
+      '<td>' + esc(t.specialization) + '</td>' +
+      '<td>' + esc(t.city) + '</td>' +
+      '<td><span class="badge ' + (STATUS_BADGE[t.display_status] || 'badge-inactive') + '">' + esc(t.display_status) + '</span></td>' +
+      '<td><span class="badge ' + (t.emergency ? 'badge-yes' : 'badge-no') + '">' + (t.emergency ? 'نعم' : 'لا') + '</span></td>' +
+      '<td onclick="event.stopPropagation()"><div class="td-actions">' +
+        '<button class="btn btn-primary btn-sm btn-icon" onclick="editTechPhone(' + t.id + ')" title="تسجيل الجوال"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2h3l1.5 3.5L6 7c1.2 2.4 3.6 4.8 6 6l1.5-1.5L17 13v3l-2 2C7 16 2 11 1 5l2-3z" transform="scale(0.75) translate(1,1)"/></svg></button>' +
+        '<button class="btn btn-secondary btn-sm btn-icon" onclick="viewTech(' + t.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
+        '<button class="btn btn-secondary btn-sm btn-icon" onclick="editTech(' + t.id + ')" title="تعديل كامل"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>' +
+        '<button class="btn btn-danger btn-sm btn-icon" onclick="deleteTech(' + t.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>' +
+      '</div></td></tr>';
+  }).join('');
 }
 
 function filterTable() {
-  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const sp = document.getElementById('f-spec')?.value||'';
-  const ct = document.getElementById('f-city')?.value||'';
-  const st = document.getElementById('f-status')?.value||'';
-  filtered = TECHNICIANS.filter(t=>
-    (!s  || t.name.includes(s) || t.code.toLowerCase().includes(s) || t.phone.includes(s)) &&
-    (!sp || t.specialization === sp) &&
-    (!ct || t.city === ct) &&
-    (!st || t.status === st)
-  );
+  var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').toLowerCase();
+  var sp = document.getElementById('f-spec') && document.getElementById('f-spec').value || '';
+  var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
+  var st = document.getElementById('f-status') && document.getElementById('f-status').value || '';
+  var em = document.getElementById('f-emergency') && document.getElementById('f-emergency').value || '';
+  filtered = TECHNICIANS.filter(function(t) {
+    return (!s || t.name.includes(s) || t.code.toLowerCase().includes(s) || (t.phone && t.phone.includes(s))) &&
+      (!sp || t.specialization === sp) &&
+      (!ct || t.city === ct) &&
+      (!st || t.display_status === st) &&
+      (!em || (em === 'نعم' ? t.emergency : !t.emergency));
+  });
   renderTable(filtered);
 }
 
-// ===== إضافة =====
+function loadDistricts() {
+  var city = document.getElementById('f-city-sel').value;
+  var list = document.getElementById('districts-list');
+  if (!list) return;
+  var districts = DISTRICTS[city] || [];
+  if (!districts.length) {
+    list.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text3);font-size:12px">لا توجد أحياء محددة لهذه المدينة</div>';
+    return;
+  }
+  list.innerHTML = districts.map(function(d, i) {
+    return '<label class="district-option"><input type="checkbox" name="districts" value="' + esc(d) + '"> ' + esc(d) + '</label>';
+  }).join('');
+}
+
+function clearTechForm() {
+  ['f-name-ar','f-name-en','f-job','f-exp','f-email','f-iqama','f-license','f-notes'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['f-iqama-exp','f-license-exp','f-hire','f-salary'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['f-phone','f-whatsapp'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('f-code').value = NEXT_TECH_CODE;
+  document.getElementById('f-spec').value = 'مصاعد ركاب';
+  document.getElementById('f-emergency').value = 'نعم';
+  document.getElementById('f-cur-status').value = 'متاح';
+  document.getElementById('f-city-sel').value = '';
+  loadDistricts();
+  resetPhotoPreview('');
+  document.getElementById('new-docs-rows').innerHTML = '';
+  document.getElementById('existing-docs-wrap').style.display = 'none';
+  document.getElementById('existing-docs-list').innerHTML = '';
+  currentEditId = null;
+}
+
+function resetTechModalScroll() {
+  var body = document.getElementById('modal-add-body');
+  if (body) body.scrollTop = 0;
+}
+
+function scrollTechSection(sectionId) {
+  var section = document.getElementById(sectionId);
+  if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (sectionId === 'tech-section-contact') {
+    var ph = document.getElementById('f-phone');
+    if (ph) setTimeout(function() { ph.focus(); }, 200);
+  }
+}
+
+function editTechPhone(id) {
+  if (!id) return;
+  var t = TECHNICIANS.find(function(x) { return x.id === id; });
+  if (!t) return;
+  closeModal('modal-view');
+  document.getElementById('phone-modal-title').textContent = 'جوال — ' + t.name;
+  document.getElementById('modal-phone').dataset.techId = id;
+  splitPhone(t.phone, 'p-code-ph', 'p-phone');
+  splitPhone(t.phone2 || t.phone, 'p-code-wa', 'p-whatsapp');
+  document.getElementById('modal-phone').classList.add('open');
+  setTimeout(function() { var el = document.getElementById('p-phone'); if (el) el.focus(); }, 120);
+}
+
+function saveTechPhone() {
+  var id = document.getElementById('modal-phone').dataset.techId;
+  if (!id) return;
+  var phone = fullPhone('p-code-ph', 'p-phone');
+  var wa = fullPhone('p-code-wa', 'p-whatsapp');
+  if (!phone && !wa) { alert('أدخل رقم الجوال أو واتساب'); return; }
+  fetch('/technicians/' + id + '/phone', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ phone: phone || wa, phone2: wa || phone })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) { alert(data.error); return; }
+    window.location.reload();
+  }).catch(function() { alert('تعذّر حفظ الرقم'); });
+}
+
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة فني جديد';
   document.getElementById('modal-add').dataset.editId = '';
+  clearTechForm();
   document.getElementById('modal-add').classList.add('open');
+  resetTechModalScroll();
 }
 
 function saveTech() {
-  const editId = document.getElementById('modal-add').dataset.editId;
-  const fd = new FormData();
-  [['name','f-name'],['phone','f-phone'],['phone2','f-phone2'],
-   ['job_title','f-job'],['specialization','f-spec-sel'],
-   ['city','f-city-sel'],['national_id','f-nid'],
-   ['hire_date','f-hire'],['salary','f-salary'],
-   ['status','f-status-sel'],['notes','f-notes']
-  ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
-  const em = document.getElementById('f-emergency');
-  if(em && em.checked) fd.append('emergency','on');
-
-  fetch(editId ? `/technicians/edit/${editId}` : '/technicians/add', {method:'POST',body:fd})
-    .then(()=>window.location.reload());
+  var name = document.getElementById('f-name-ar').value.trim();
+  if (!name) { alert('يرجى إدخال اسم الفني'); return; }
+  var editId = document.getElementById('modal-add').dataset.editId;
+  var fd = new FormData();
+  fd.append('name', name);
+  fd.append('phone', fullPhone('f-code-ph', 'f-phone'));
+  fd.append('phone2', fullPhone('f-code-wa', 'f-whatsapp'));
+  fd.append('job_title', document.getElementById('f-job').value);
+  fd.append('specialization', document.getElementById('f-spec').value);
+  fd.append('city', document.getElementById('f-city-sel').value);
+  fd.append('national_id', document.getElementById('f-iqama').value);
+  fd.append('hire_date', document.getElementById('f-hire').value);
+  fd.append('salary', document.getElementById('f-salary').value);
+  fd.append('status', document.getElementById('f-cur-status').value);
+  fd.append('notes', document.getElementById('f-notes').value);
+  if (document.getElementById('f-emergency').value === 'نعم') fd.append('emergency', 'on');
+  var photoInput = document.getElementById('f-photo');
+  if (photoInput && photoInput.files && photoInput.files[0]) {
+    fd.append('photo', photoInput.files[0]);
+  }
+  document.querySelectorAll('#new-docs-rows .doc-form-row').forEach(function(row) {
+    var fileInp = row.querySelector('.doc-file-inp');
+    var typeSel = row.querySelector('.doc-type-sel');
+    var titleInp = row.querySelector('.doc-title-inp');
+    if (fileInp && fileInp.files && fileInp.files[0]) {
+      fd.append('documents', fileInp.files[0]);
+      fd.append('doc_types', typeSel ? typeSel.value : 'أخرى');
+      fd.append('doc_titles', titleInp && titleInp.value ? titleInp.value : fileInp.files[0].name);
+    }
+  });
+  fetch(editId ? '/technicians/edit/' + editId : '/technicians/add', {method:'POST', body:fd})
+    .then(function() { window.location.reload(); });
 }
 
-// ===== تعديل =====
 function editTech(id) {
-  const t = TECHNICIANS.find(x=>x.id===id);
-  if(!t) return;
+  var t = TECHNICIANS.find(function(x) { return x.id === id; });
+  if (!t) return;
+  closeModal('modal-view');
   document.getElementById('modal-title').textContent = 'تعديل بيانات الفني';
   document.getElementById('modal-add').dataset.editId = id;
-  const map = {
-    'f-name':t.name,'f-phone':t.phone,'f-phone2':t.phone2,
-    'f-job':t.job_title,'f-spec-sel':t.specialization,
-    'f-city-sel':t.city,'f-status-sel':t.status,'f-notes':t.notes,
-  };
-  Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
-  const em=document.getElementById('f-emergency'); if(em) em.checked=t.emergency;
+  currentEditId = id;
+  document.getElementById('f-code').value = t.code;
+  document.getElementById('f-name-ar').value = t.name;
+  document.getElementById('f-job').value = t.job_title || '';
+  document.getElementById('f-spec').value = t.specialization || 'مصاعد ركاب';
+  document.getElementById('f-city-sel').value = t.city || '';
+  loadDistricts();
+  document.getElementById('f-cur-status').value = t.status === 'نشط' ? 'متاح' : (t.status || 'متاح');
+  document.getElementById('f-emergency').value = t.emergency ? 'نعم' : 'لا';
+  document.getElementById('f-iqama').value = t.national_id || '';
+  document.getElementById('f-hire').value = t.hire_date || '';
+  document.getElementById('f-salary').value = t.salary || '';
+  document.getElementById('f-notes').value = t.notes || '';
+  splitPhone(t.phone, 'f-code-ph', 'f-phone');
+  splitPhone(t.phone2, 'f-code-wa', 'f-whatsapp');
+  resetPhotoPreview(t.photo_url || '');
+  document.getElementById('new-docs-rows').innerHTML = '';
+  renderExistingDocs(t.docs || [], t.id);
   document.getElementById('modal-add').classList.add('open');
+  resetTechModalScroll();
 }
 
-// ===== عرض =====
 function viewTech(id) {
-  const t = TECHNICIANS.find(x=>x.id===id);
-  if(!t) return;
+  var t = TECHNICIANS.find(function(x) { return x.id === id; });
+  if (!t) return;
+  currentViewId = id;
   document.getElementById('view-title').textContent = t.code + ' — ' + t.name;
-  document.getElementById('view-body').innerHTML = `
-    <div class="view-grid">
-      <div class="view-section">البيانات الأساسية</div>
-      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${t.code}</div></div>
-      <div class="view-item"><div class="view-label">الاسم</div><div class="view-val">${t.name}</div></div>
-      <div class="view-item"><div class="view-label">الهاتف</div><div class="view-val" style="direction:ltr">${t.phone}</div></div>
-      <div class="view-item"><div class="view-label">هاتف 2</div><div class="view-val" style="direction:ltr">${t.phone2||'—'}</div></div>
-      <div class="view-item"><div class="view-label">المسمى الوظيفي</div><div class="view-val">${t.job_title}</div></div>
-      <div class="view-item"><div class="view-label">التخصص</div><div class="view-val">${t.specialization}</div></div>
-      <div class="view-item"><div class="view-label">المدينة</div><div class="view-val">${t.city}</div></div>
-      <div class="view-item"><div class="view-label">طوارئ</div><div class="view-val"><span class="badge ${t.emergency?'badge-active':'badge-cancelled'}">${t.emergency?'متاح':'غير متاح'}</span></div></div>
-      <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${t.status==='نشط'?'badge-active':'badge-cancelled'}">${t.status}</span></div></div>
-      <div class="view-item"><div class="view-label">إجمالي الزيارات</div><div class="view-val">${t.visits} زيارة</div></div>
-      ${t.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${t.notes}</div></div>`:''}
-    </div>`;
+  document.getElementById('view-body').innerHTML =
+    techPhotoHeaderHtml(t) +
+    '<div class="workload-grid">' +
+      '<div class="workload-card"><div class="workload-val">' + t.visits + '</div><div class="workload-label">زيارات</div></div>' +
+      '<div class="workload-card"><div class="workload-val">' + t.faults + '</div><div class="workload-label">أعطال</div></div>' +
+      '<div class="workload-card"><div class="workload-val" style="color:' + (t.emergency ? 'var(--success)' : 'var(--text3)') + '">' + (t.emergency ? 'نعم' : 'لا') + '</div><div class="workload-label">طوارئ</div></div>' +
+      '<div class="workload-card"><div class="workload-val" style="font-size:14px;color:var(--accent)">' + esc(t.display_status) + '</div><div class="workload-label">الحالة الآن</div></div>' +
+    '</div>' +
+    '<div class="view-grid">' +
+      '<div class="view-section">البيانات الأساسية</div>' +
+      '<div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">' + esc(t.code) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">الاسم</div><div class="view-val">' + esc(t.name) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">الهاتف</div><div class="view-val" style="direction:ltr">' + esc(t.phone || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">واتساب</div><div class="view-val" style="direction:ltr">' + esc(t.phone2 || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">المسمى الوظيفي</div><div class="view-val">' + esc(t.job_title || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">التخصص</div><div class="view-val">' + esc(t.specialization || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">المدينة</div><div class="view-val">' + esc(t.city || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">الحالة المسجّلة</div><div class="view-val"><span class="badge ' + (STATUS_BADGE[t.status] || 'badge-inactive') + '">' + esc(t.status) + '</span></div></div>' +
+      (t.notes ? '<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">' + esc(t.notes) + '</div></div>' : '') +
+    '</div>' +
+    '<div id="tech-docs-data"><div class="cp-loading" style="text-align:center;padding:12px;color:var(--text3)">⏳ جاري تحميل المستندات...</div></div>' +
+    '<div id="tech-profile-data"><div class="cp-loading" style="text-align:center;padding:16px;color:var(--text3)">⏳ جاري تحميل السجل...</div></div>';
   document.getElementById('modal-view').classList.add('open');
+  loadTechProfile(id);
 }
 
-// ===== حذف =====
-function deleteTech(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
+function loadTechProfile(id) {
+  fetch('/api/technicians/' + id + '/profile').then(function(r) { return r.json(); }).then(function(data) {
+    var t = TECHNICIANS.find(function(x) { return x.id === id; });
+    if (t && data.technician && data.technician.photo_url) {
+      t.photo_url = data.technician.photo_url;
+      var header = document.querySelector('#view-body .tech-profile-header');
+      if (header) header.outerHTML = techPhotoHeaderHtml(t, data.technician.photo_url);
+    }
+    var docsHtml = renderDocumentsGrid(data.documents || [], id);
+    document.getElementById('tech-docs-data').innerHTML = docsHtml;
+
+    var html = '';
+    if (data.visits && data.visits.length) {
+      html += '<div class="card-section-title">آخر الزيارات</div><table class="card-table"><thead><tr><th>الكود</th><th>التاريخ</th><th>العميل</th><th>المصعد</th><th>النوع</th><th>الحالة</th></tr></thead><tbody>';
+      data.visits.slice(0, 8).forEach(function(v) {
+        html += '<tr><td style="font-family:var(--font-en);color:var(--accent)">' + esc(v.code) + '</td><td style="direction:ltr">' + esc(v.date) + '</td><td>' + esc(v.customer) + '</td><td style="font-family:var(--font-en)">' + esc(v.elevator) + '</td><td>' + esc(v.type) + '</td><td>' + esc(v.status) + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    }
+    if (data.faults && data.faults.length) {
+      html += '<div class="card-section-title">الأعطال المرتبطة</div><table class="card-table"><thead><tr><th>الكود</th><th>التاريخ</th><th>العميل</th><th>نوع العطل</th><th>الأولوية</th><th>الحالة</th></tr></thead><tbody>';
+      data.faults.slice(0, 8).forEach(function(f) {
+        html += '<tr><td style="font-family:var(--font-en);color:var(--danger)">' + esc(f.code) + '</td><td style="direction:ltr">' + esc(f.date) + '</td><td>' + esc(f.customer) + '</td><td>' + esc(f.type) + '</td><td>' + esc(f.priority) + '</td><td>' + esc(f.status) + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    }
+    if (!html) html = '<div style="text-align:center;padding:12px;color:var(--text3);font-size:12px">لا توجد زيارات أو أعطال مسجّلة</div>';
+    document.getElementById('tech-profile-data').innerHTML = html;
+  }).catch(function() {
+    document.getElementById('tech-profile-data').innerHTML = '<div style="text-align:center;padding:12px;color:var(--text3)">تعذر تحميل السجل</div>';
+  });
+}
+
+function editFromView() {
+  closeModal('modal-view');
+  if (currentViewId) editTech(currentViewId);
+}
+
+function deleteTech(id) { currentDeleteId = id; document.getElementById('modal-delete').classList.add('open'); }
 function confirmDelete() {
-  if(!currentDeleteId) return;
-  fetch(`/technicians/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
+  if (!currentDeleteId) return;
+  fetch('/technicians/delete/' + currentDeleteId, {method:'POST'}).then(function() { window.location.reload(); });
 }
 
 function exportExcel() {
-  const rows=[['الكود','الاسم','الهاتف','المسمى','التخصص','المدينة','الحالة','طوارئ']];
-  filtered.forEach(t=>rows.push([t.code,t.name,t.phone,t.job_title,t.specialization,t.city,t.status,t.emergency?'نعم':'لا']));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='technicians.csv'; a.click();
+  var rows = [['الكود','الاسم','الهاتف','المسمى','التخصص','المدينة','الحالة','طوارئ','الزيارات']];
+  filtered.forEach(function(t) {
+    rows.push([t.code, t.name, t.phone, t.job_title, t.specialization, t.city, t.display_status, t.emergency ? 'نعم' : 'لا', t.visits]);
+  });
+  var csv = rows.map(function(r) { return r.join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'}));
+  a.download = 'technicians.csv';
+  a.click();
+}
+
+function refreshTechMap() {
+  if (typeof google === 'undefined') return;
+  var mapEl = document.getElementById('map');
+  if (!mapEl) return;
+  if (!techMap) {
+    techMap = new google.maps.Map(mapEl, {
+      center: {lat:21.4225, lng:39.8262}, zoom:11,
+      mapTypeId:'satellite', clickableIcons:false,
+      mapTypeControl:false, streetViewControl:false, fullscreenControl:true, zoomControl:true
+    });
+  }
+  techMarkers.forEach(function(m) { m.setMap(null); });
+  techMarkers = [];
+  var bounds = new google.maps.LatLngBounds();
+  var shown = 0;
+  TECHNICIANS.forEach(function(t, i) {
+    var base = CITY_COORDS[t.city] || CITY_COORDS['مكة'];
+    var pos = {lat: base.lat + (i % 5) * 0.008 - 0.016, lng: base.lng + (Math.floor(i / 5) % 5) * 0.008 - 0.016};
+    var marker = new google.maps.Marker({
+      position: pos, map: techMap,
+      title: t.name,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 9,
+        fillColor: getTechPinColor(t.display_status),
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 2
+      }
+    });
+    marker.addListener('click', function() { viewTech(t.id); });
+    techMarkers.push(marker);
+    bounds.extend(pos);
+    shown++;
+  });
+  if (shown) {
+    techMap.fitBounds(bounds, 48);
+    google.maps.event.trigger(techMap, 'resize');
+  }
+}
+
+function switchTab(tab, el) {
+  document.getElementById('tab-table').style.display = tab === 'table' ? '' : 'none';
+  document.getElementById('tab-map').style.display = tab === 'map' ? '' : 'none';
+  document.querySelectorAll('.tabs .tab').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  if (tab === 'map') setTimeout(refreshTechMap, 300);
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function setLang(l) {
-  document.documentElement.setAttribute('lang',l);
-  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
-  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
-  document.getElementById('btn-en').classList.toggle('active',l==='en');
+  document.documentElement.setAttribute('lang', l);
+  document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
+  document.getElementById('btn-ar').classList.toggle('active', l === 'ar');
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
 }
-function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
-document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(function(m) { m.classList.remove('open'); }); });
+document.addEventListener('click', function(e) { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(function(m) { m.classList.remove('open'); }); });
 
-const now = new Date();
-const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+var now = new Date();
+var days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+var months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+document.getElementById('h-date').textContent = days[now.getDay()] + '، ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
 
+initFilters();
 updateStats();
 renderTable(TECHNICIANS);
+if (new URLSearchParams(window.location.search).get('action') === 'add') {
+  openAddModal();
+  history.replaceState(null, '', window.location.pathname);
+}
 </script>
 </body>
 </html>
