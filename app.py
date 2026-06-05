@@ -63,6 +63,7 @@ with app.app_context():
                 ('tech_notes', 'TEXT'),
                 ('needs_parts', 'BOOLEAN'),
                 ('dispatched_at', 'DATETIME'),
+                ('report_json', 'TEXT'),
             ],
             'parts_billing': [('visit_id', 'INTEGER'), ('fault_id', 'INTEGER')],
             'technicians': [('team', 'VARCHAR(30)')],
@@ -605,6 +606,7 @@ def _faults_js_list(faults):
             'billed': bool(f.billed),
             'visit_code': linked.code if linked else '',
             'notes': f.notes or '',
+            'has_report': bool(f.report_json),
         })
     return rows
 
@@ -1620,6 +1622,9 @@ def maintenance_visits():
         visit_stats=visit_stats(),
         visit_alerts=visit_alerts(),
         plan_default_month=plan_default,
+        ops_today=str(today),
+        ops_tomorrow=str(today + timedelta(days=1)),
+        ops_month_start=str(today.replace(day=1)),
         maint_technicians=maint_techs,
         plan_districts=list_districts(),
     )
@@ -1953,6 +1958,52 @@ def field_fault(fault_id):
     except PermissionError as e:
         return render_template('field.html', error=str(e), technicians=[]), 403
     return render_template('field-fault.html', fault=detail, tech_id=tech_id)
+
+
+@app.route('/field/fault/<int:fault_id>/report')
+def field_fault_report(fault_id):
+    from operations import fault_report_payload
+
+    tech_id = request.args.get('tech_id', type=int)
+    try:
+        payload = fault_report_payload(
+            fault_id, editable=True, tech_id=tech_id, base_url=request.url_root
+        )
+    except PermissionError as e:
+        return render_template('field.html', error=str(e), technicians=[]), 403
+    payload['back_url'] = url_for('field_fault', fault_id=fault_id, tech_id=tech_id)
+    return render_template('fault-report.html', **payload)
+
+
+@app.route('/faults/<int:fault_id>/report')
+def office_fault_report(fault_id):
+    from operations import fault_report_payload
+
+    read_only = request.args.get('print') == '1' or request.args.get('readonly') == '1'
+    payload = fault_report_payload(
+        fault_id, editable=not read_only, base_url=request.url_root
+    )
+    payload['back_url'] = url_for('faults')
+    if not read_only and payload.get('tech_id'):
+        payload['field_edit_url'] = url_for(
+            'field_fault_report', fault_id=fault_id, tech_id=payload['tech_id']
+        )
+    else:
+        payload['field_edit_url'] = None
+    return render_template('fault-report.html', **payload)
+
+
+@app.route('/api/faults/<int:fault_id>/report', methods=['POST'])
+def api_save_fault_report(fault_id):
+    from operations import save_fault_report
+
+    data = request.get_json(silent=True) or {}
+    mark_resolved = bool(data.pop('mark_resolved', False))
+    try:
+        save_fault_report(fault_id, data, mark_resolved=mark_resolved)
+        return jsonify({'ok': True, 'fault_id': fault_id})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
 
 
 @app.route('/api/maintenance-visits/<int:visit_id>/report', methods=['POST'])

@@ -676,6 +676,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
     if late:
         alerts.append({
             'level': 'danger',
+            'filter': 'late',
             'text': f'{late} زيارة متأخرة — تجاوزت الموعد المحدد',
         })
     critical = MaintenanceVisit.query.filter(
@@ -685,6 +686,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
     if critical:
         alerts.append({
             'level': 'warning',
+            'filter': 'critical',
             'text': f'{critical} زيارة حرجة لم تُكتمل بعد',
         })
     tomorrow = MaintenanceVisit.query.filter(
@@ -694,6 +696,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
     if tomorrow:
         alerts.append({
             'level': 'info',
+            'filter': 'tomorrow',
             'text': f'{tomorrow} زيارة مجدولة غداً',
         })
     return alerts
@@ -888,6 +891,8 @@ def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
         raise PermissionError('العطل غير مخصص لهذا الفني')
     elev = f.elevator
     cust = elev.customer if elev else None
+    tech = f.technician
+    report_qs = f'?tech_id={tech_id or f.technician_id}' if (tech_id or f.technician_id) else ''
     return {
         'id': f.id,
         'code': f.code,
@@ -906,7 +911,118 @@ def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
         'building_photo': customer_photo_url(cust),
         'elevator': elev.code if elev else '',
         'technician_id': f.technician_id,
+        'technician_name': tech.name if tech else '—',
+        'report_url': f'/field/fault/{f.id}/report{report_qs}',
+        'has_report': bool(f.report_json),
     }
+
+
+def fault_report_payload(
+    fault_id: int,
+    *,
+    editable: bool = False,
+    tech_id: int | None = None,
+    base_url: str = '',
+) -> dict:
+    from fault_report import FAULT_TYPE_OPTIONS, merge_fault_report, parse_fault_report_json, report_stats
+
+    f = Fault.query.get_or_404(fault_id)
+    if tech_id and f.technician_id and f.technician_id != tech_id:
+        raise PermissionError('العطل غير مخصص لهذا الفني')
+    elev = f.elevator
+    cust = elev.customer if elev else None
+    contract = None
+    if elev:
+        from models import Contract, ContractElevator
+        link = ContractElevator.query.filter_by(elevator_id=elev.id).first()
+        if link:
+            contract = Contract.query.get(link.contract_id)
+    tech = f.technician
+    saved = parse_fault_report_json(f.report_json)
+    report_data = merge_fault_report(saved, f)
+    stats = report_stats(report_data)
+    reported = f.reported_at.strftime('%Y-%m-%d %H:%M') if f.reported_at else ''
+
+    return {
+        'fault_id': f.id,
+        'editable': editable,
+        'tech_id': tech_id or f.technician_id,
+        'fault': {
+            'code': f.code,
+            'fault_type': f.fault_type or '',
+            'priority': f.priority or 'عادية',
+            'status': f.status or '',
+            'reported_at': reported,
+            'client_report': f.client_report or f.description or '',
+            'reporter_name': f.reporter_name or '',
+            'reporter_phone': f.reporter_phone or '',
+            'billed': bool(f.billed),
+            'report_stats': stats,
+        },
+        'customer': {
+            'name': cust.name if cust else '—',
+            'code': cust.code if cust else '',
+            'phone': cust.phone if cust else '',
+            'city': cust.city if cust else '',
+            'district': cust.district if cust else '',
+            'address': cust.address if cust else '',
+        },
+        'elevator': {
+            'code': elev.code if elev else '',
+            'brand': (elev.elev_type if elev else '') or '',
+            'building': elev.building_name if elev else '',
+        },
+        'contract': {
+            'code': contract.code if contract else '',
+            'type': 'عقد صيانة نشط' if contract else 'بدون عقد',
+        },
+        'technician': {
+            'id': tech.id if tech else None,
+            'name': tech.name if tech else '—',
+        },
+        'fault_type_options': FAULT_TYPE_OPTIONS,
+        'fault_type_options_json': json.dumps(FAULT_TYPE_OPTIONS, ensure_ascii=False),
+        'report_data': report_data,
+        'report_data_json': json.dumps(report_data, ensure_ascii=False),
+        'logo_url': '/static/logo.png',
+        'base_url': base_url,
+    }
+
+
+def save_fault_report(
+    fault_id: int,
+    payload: dict,
+    *,
+    mark_resolved: bool = False,
+    status: str | None = None,
+) -> dict:
+    from fault_report import apply_report_to_fault, merge_fault_report, parse_fault_report_json
+
+    f = Fault.query.get_or_404(fault_id)
+    existing = parse_fault_report_json(f.report_json)
+    merged = merge_fault_report(existing, f)
+
+    if isinstance(payload, dict):
+        meta = payload.get('meta') or {}
+        if isinstance(meta, dict):
+            for key in merged['meta']:
+                if key in meta:
+                    merged['meta'][key] = meta.get(key) if meta.get(key) is not None else ''
+        if isinstance(payload.get('parts'), list):
+            merged['parts'] = payload['parts']
+        sig = payload.get('signatures') or {}
+        if isinstance(sig, dict):
+            merged['signatures']['tech'] = sig.get('tech') or merged['signatures'].get('tech') or ''
+            merged['signatures']['client'] = sig.get('client') or merged['signatures'].get('client') or ''
+        if isinstance(payload.get('photos'), list):
+            merged['photos'] = payload['photos']
+
+    apply_report_to_fault(f, merged, mark_resolved=mark_resolved)
+    if status:
+        f.status = status
+    f.report_json = json.dumps(merged, ensure_ascii=False)
+    db.session.commit()
+    return merged
 
 
 def complete_field_visit(

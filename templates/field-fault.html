@@ -59,6 +59,8 @@ textarea{min-height:80px;resize:vertical}
 <a class="maps" href="{{ fault.maps_url }}" target="_blank" rel="noopener">🗺 فتح الموقع والتنقل</a>
 {% endif %}
 
+<a class="maps" href="{{ fault.report_url }}" style="background:var(--success);margin-bottom:12px">📋 فتح تقرير العطل</a>
+
 <form method="post" action="/field/fault/{{ fault.id }}/complete">
   <input type="hidden" name="tech_id" value="{{ tech_id or fault.technician_id }}">
   <label>تشخيص الفني / الملاحظات</label>

@@ -233,6 +233,7 @@ class Fault(db.Model):
     dispatched_at   = db.Column(db.DateTime)
     billed          = db.Column(db.Boolean, default=False)
     notes           = db.Column(db.Text)
+    report_json     = db.Column(db.Text)
 
     def __repr__(self):
         return f'<Fault {self.code}>'

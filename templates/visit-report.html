@@ -109,6 +109,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   .tech-bar,.action-row,.sig-clear,.photo-remove{display:none!important}
   .page{box-shadow:none;margin:0}
   .status-label{border:none;background:transparent!important;color:#000!important}
+  .photo-slot:not(.has-img){display:none!important}
+  .section:has(+ .photos-grid:not(:has(.has-img))){display:none!important}
+  .photos-grid:not(:has(.has-img)){display:none!important}
 }
 @media(max-width:600px){
   .row-3,.row-4{grid-template-columns:1fr 1fr}
@@ -257,7 +260,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   {% endif %}
 </div>
 
-<script src="/static/maintenance-checklist.js?v=4"></script>
+<script src="/static/maintenance-checklist.js?v=6"></script>
 <script>
 const REPORT_CFG = {
   visitId: {{ visit_id }},
@@ -302,7 +305,7 @@ function saveReport(markComplete) {
 
 document.addEventListener('DOMContentLoaded', () => {
   LiftCoreChecklist.buildChecklistTables(CHECKLIST_TEMPLATE, '#checklist-root', REPORT_CFG.editable);
-  LiftCoreChecklist.buildPhotosGrid(6, REPORT_CFG.editable);
+  LiftCoreChecklist.buildPhotosGrid(6, REPORT_CFG.editable, REPORT_DATA.photos);
   const checklistRoot = document.getElementById('checklist-root');
   if (REPORT_CFG.editable) {
     LiftCoreChecklist.initStatusGroups(checklistRoot, updateProgress);

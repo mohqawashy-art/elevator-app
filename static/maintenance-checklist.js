@@ -171,6 +171,28 @@
     });
   }
 
+  function hidePhotoSection(hide) {
+    const grid = document.getElementById('photos-grid');
+    if (!grid) return;
+    const section = grid.previousElementSibling;
+    grid.style.display = hide ? 'none' : '';
+    if (section && section.classList.contains('section')) {
+      section.style.display = hide ? 'none' : '';
+    }
+  }
+
+  function syncPhotoVisibility() {
+    const grid = document.getElementById('photos-grid');
+    if (!grid || grid.dataset.hideEmptySlots !== '1') return;
+    let visible = 0;
+    grid.querySelectorAll('.photo-slot').forEach(slot => {
+      const show = slot.classList.contains('has-img');
+      slot.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    hidePhotoSection(visible === 0);
+  }
+
   function applyPhotos(photos) {
     (photos || []).forEach((ph, idx) => {
       const i = idx + 1;
@@ -184,6 +206,7 @@
       const cap = slot.querySelector('.photo-caption-input');
       if (cap) cap.value = ph.caption || '';
     });
+    syncPhotoVisibility();
   }
 
   function collectReportData(template) {
@@ -250,54 +273,109 @@
     return out;
   }
 
-  function buildPhotosGrid(count, editable) {
+  function initPhotosGrid(grid) {
+    if (!grid || grid._photosBound) return;
+    grid._photosBound = true;
+    grid.addEventListener('click', function (e) {
+      if (e.target.closest('.photo-remove')) {
+        const slot = e.target.closest('.photo-slot');
+        if (slot) removePhoto(e, parseInt(slot.getAttribute('data-slot'), 10));
+        return;
+      }
+      if (e.target.closest('.photo-caption-input')) return;
+      const slot = e.target.closest('.photo-slot');
+      if (!slot || slot.classList.contains('has-img')) return;
+      const input = slot.querySelector('.photo-file-input');
+      if (input) input.click();
+    });
+    grid.addEventListener('change', function (e) {
+      const input = e.target;
+      if (!input.classList || !input.classList.contains('photo-file-input')) return;
+      const slot = input.closest('.photo-slot');
+      if (!slot) return;
+      loadPhoto(input, parseInt(slot.getAttribute('data-slot'), 10));
+    });
+  }
+
+  function buildPhotosGrid(count, editable, photosHint) {
     const grid = document.getElementById('photos-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    for (let i = 1; i <= count; i++) {
-      grid.innerHTML += `
-        <label class="photo-slot" data-slot="${i}" ${editable ? `onclick="LiftCoreChecklist.triggerPhoto(${i})"` : ''}>
-          <input type="file" id="photo-input-${i}" accept="image/*" ${editable ? `onchange="LiftCoreChecklist.loadPhoto(this,${i})"` : ''} style="display:none">
-          <div class="photo-ph"><div class="icon">📷</div><div class="txt">صورة ${i}</div></div>
-          ${editable ? `<button type="button" class="photo-remove" onclick="LiftCoreChecklist.removePhoto(event,${i})">✕</button>` : ''}
-          <input type="text" class="photo-caption-input" placeholder="وصف الصورة..." onclick="event.stopPropagation()" ${editable ? '' : 'readonly'}>
-        </label>`;
+    grid._photosBound = false;
+    grid.dataset.hideEmptySlots = editable ? '0' : '1';
+    const validPhotos = (photosHint || []).filter(ph => ph && ph.url);
+    let slotCount = count;
+    if (!editable) {
+      if (!validPhotos.length) {
+        hidePhotoSection(true);
+        return;
+      }
+      slotCount = validPhotos.length;
     }
+    hidePhotoSection(false);
+    for (let i = 1; i <= slotCount; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'photo-slot';
+      slot.setAttribute('data-slot', String(i));
+      slot.innerHTML =
+        '<input type="file" class="photo-file-input" id="photo-input-' + i +
+        '" accept="image/*" capture="environment" style="display:none">' +
+        '<div class="photo-ph"><div class="icon">📷</div><div class="txt">صورة ' + i + '</div></div>' +
+        (editable ? '<button type="button" class="photo-remove" aria-label="حذف">✕</button>' : '') +
+        '<input type="text" class="photo-caption-input" placeholder="وصف الصورة..."' +
+        (editable ? '' : ' readonly') + '>';
+      grid.appendChild(slot);
+    }
+    if (editable) initPhotosGrid(grid);
   }
 
   function triggerPhoto(i) {
-    const slot = document.querySelector(`.photo-slot[data-slot="${i}"]`);
+    const slot = document.querySelector('.photo-slot[data-slot="' + i + '"]');
     if (slot && !slot.classList.contains('has-img')) {
-      document.getElementById('photo-input-' + i).click();
+      const input = slot.querySelector('.photo-file-input');
+      if (input) input.click();
     }
   }
 
   function loadPhoto(input, i) {
-    const file = input.files[0];
+    const file = input && input.files && input.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = e => {
-      const slot = document.querySelector(`.photo-slot[data-slot="${i}"]`);
-      slot.querySelector('.photo-ph').style.display = 'none';
+    reader.onload = function (e) {
+      const slot = document.querySelector('.photo-slot[data-slot="' + i + '"]');
+      if (!slot) return;
+      const ph = slot.querySelector('.photo-ph');
+      if (ph) ph.style.display = 'none';
       const oldImg = slot.querySelector('img');
       if (oldImg) oldImg.remove();
       const img = document.createElement('img');
       img.src = e.target.result;
-      slot.insertBefore(img, slot.querySelector('.photo-remove'));
+      const cap = slot.querySelector('.photo-caption-input');
+      slot.insertBefore(img, cap || null);
       slot.classList.add('has-img');
+      syncPhotoVisibility();
+    };
+    reader.onerror = function () {
+      alert('تعذّر قراءة الصورة — جرّب ملفاً أصغر أو بصيغة JPG/PNG');
     };
     reader.readAsDataURL(file);
   }
 
   function removePhoto(event, i) {
-    event.preventDefault();
-    event.stopPropagation();
-    const slot = document.querySelector(`.photo-slot[data-slot="${i}"]`);
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const slot = document.querySelector('.photo-slot[data-slot="' + i + '"]');
+    if (!slot) return;
     const img = slot.querySelector('img');
     if (img) img.remove();
-    document.getElementById('photo-input-' + i).value = '';
-    slot.querySelector('.photo-ph').style.display = '';
+    const input = slot.querySelector('.photo-file-input');
+    if (input) input.value = '';
+    const ph = slot.querySelector('.photo-ph');
+    if (ph) ph.style.display = '';
     slot.classList.remove('has-img');
+    syncPhotoVisibility();
   }
 
   function setupSignature(canvasId, editable) {
@@ -378,10 +456,15 @@
     applyReportData,
     collectReportData,
     buildPhotosGrid,
+    initPhotosGrid,
     triggerPhoto,
     loadPhoto,
     removePhoto,
     setupSignature,
     clearSig,
+    canvasDataUrl,
+    collectPhotos,
+    applySignatures,
+    applyPhotos,
   };
 })(window);
