@@ -5,6 +5,10 @@ seed_data.py
 الاستخدام:
     python seed_data.py           # يضيف البيانات إذا كانت القاعدة فارغة
     python seed_data.py --reset   # يمسح البيانات التشغيلية ويعيد الإدراج
+
+لنسخ قاعدة البيانات الحالية كاملة (للعمل من جهاز آخر):
+    python tools/db_snapshot.py export
+    python tools/db_snapshot.py restore
 """
 
 import sys
