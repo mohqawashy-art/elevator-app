@@ -11,8 +11,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/client_location.css">
+<link rel="stylesheet" href="/static/tax_calc.css">
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
+<script src="/static/client_geocode.js"></script>
+<script src="/static/liftcore_map.js"></script>
+<script src="/static/tax_calc.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -107,6 +111,7 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .map-toolbar{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--bg2)}
 .map-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text2)}
 .map-legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff}
+.map-legend-cluster{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#2a7fff;color:#fff;font-size:10px;font-weight:700;border:2px solid #fff;box-shadow:0 0 0 3px rgba(42,127,255,.2)}
 #map{height:min(68vh,620px);min-height:480px;width:100%}
 .map-info{padding:10px 12px;min-width:200px;direction:rtl;font-family:'IBM Plex Sans Arabic',sans-serif}
 .map-info-title{font-size:14px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
@@ -261,7 +266,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
+<a class="nav-item" href="/settings"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
          </nav>
   <div class="sidebar-footer">
     <div class="sidebar-user">
@@ -454,6 +459,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <span><span class="map-legend-dot" style="background:#c8a055"></span> على وشك الانتهاء</span>
             <span><span class="map-legend-dot" style="background:#e04848"></span> منتهي</span>
             <span><span class="map-legend-dot" style="background:#8a9bb8"></span> ملغي</span>
+            <span><span class="map-legend-cluster">2</span> تجميع عند التصغير</span>
             <button class="btn btn-secondary btn-sm" onclick="refreshContractMap(true)">تحديث</button>
           </div>
         </div>
@@ -512,15 +518,23 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-grid">
           <div class="field">
             <label>تاريخ البداية</label>
-            <input type="date" id="f-start" style="direction:ltr" oninput="calcDuration()">
+            <input type="date" id="f-start" style="direction:ltr" oninput="onContractStartChange()">
+          </div>
+          <div class="field">
+            <label>مدة العقد</label>
+            <select id="f-duration" onchange="applyDurationToEndDate()">
+              <option value="">— اختر المدة —</option>
+              <option value="3">3 أشهر</option>
+              <option value="6">6 أشهر</option>
+              <option value="12">12 شهر (سنة)</option>
+              <option value="24">24 شهر (سنتان)</option>
+              <option value="36">36 شهر (3 سنوات)</option>
+            </select>
+            <span class="field-hint">يُحسب تاريخ الانتهاء تلقائياً</span>
           </div>
           <div class="field">
             <label>تاريخ الانتهاء</label>
-            <input type="date" id="f-end" style="direction:ltr" oninput="calcDuration()">
-          </div>
-          <div class="field">
-            <label>المدة (بالأشهر)</label>
-            <input type="text" id="f-duration" placeholder="تلقائي" style="direction:ltr" readonly>
+            <input type="date" id="f-end" style="direction:ltr" oninput="calcDurationFromEnd()">
           </div>
           <div class="field">
             <label>تاريخ تذكير التجديد</label>
@@ -542,7 +556,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-grid" style="margin-top:12px">
           <div class="field">
             <label>تكرار الصيانة</label>
-            <select id="f-maint-freq">
+            <select id="f-maint-freq" onchange="calcTotalVisits()">
               <option>شهري</option>
               <option>كل شهرين</option>
               <option>ربع سنوي</option>
@@ -551,23 +565,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             </select>
           </div>
           <div class="field">
-            <label>عدد الزيارات شهرياً</label>
-            <input type="number" id="f-visits-month" placeholder="1" style="direction:ltr" min="1">
+            <label>إجمالي عدد الزيارات</label>
+            <input type="number" id="f-visits-month" placeholder="تلقائي" style="direction:ltr" min="1" readonly>
+            <span class="field-hint">يُحسب تلقائياً من مدة العقد وتكرار الصيانة</span>
           </div>
         </div>
       </div>
 
       <div class="form-section">
         <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="5.5"/><path d="M6.5 4v.7M6.5 8.5V9M5 7.5c0 .83.67 1.5 1.5 1.5S8 8.33 8 7.5s-.67-1.5-1.5-1.5S5 5.17 5 4.5 5.67 3 6.5 3 8 3.67 8 4.5"/></svg>البيانات المالية</div>
+        <div class="form-full">
+          {% with prefix='ctax', before_field_id='f-value', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (ر.س)', inclusive_label='قيمة العقد شامل الضريبة (ر.س)', breakdown_before_label='قيمة العقد قبل الضريبة', full_width=false %}
+          {% include '_tax_amount_block.html' %}
+          {% endwith %}
+        </div>
         <div class="form-grid">
-          <div class="field">
-            <label>قيمة العقد (ر.س)</label>
-            <input type="number" id="f-value" placeholder="0.00" style="direction:ltr" oninput="calcTax()">
-          </div>
-          <div class="field">
-            <label>نسبة الضريبة %</label>
-            <input type="number" id="f-tax-pct" value="15" style="direction:ltr" oninput="calcTax()">
-          </div>
           <div class="field">
             <label>شروط الدفع</label>
             <select id="f-payment-terms">
@@ -578,20 +590,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <option>شهري</option>
             </select>
           </div>
-          <div class="field">
-            <label>حالة الفاتورة</label>
-            <select id="f-inv-status">
-              <option>غير مدفوع</option>
-              <option>مدفوع جزئياً</option>
-              <option>مدفوع</option>
-              <option>متأخر</option>
-            </select>
-          </div>
-        </div>
-        <div class="calc-box" style="margin-top:14px">
-          <div class="calc-row"><span class="calc-label">قيمة العقد</span><span class="calc-val" id="calc-value">0.00 ر.س</span></div>
-          <div class="calc-row"><span class="calc-label">الضريبة (15%)</span><span class="calc-val" id="calc-tax">0.00 ر.س</span></div>
-          <div class="calc-row total"><span>الإجمالي</span><span id="calc-total">0.00 ر.س</span></div>
         </div>
       </div>
 
@@ -632,6 +630,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+      <button class="btn btn-secondary" id="btn-print-contract" onclick="printContractForm()" style="color:var(--gold)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg>
+        طباعة العقد
+      </button>
       <button class="btn btn-primary" onclick="editFromView()">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
         تعديل
@@ -685,7 +687,8 @@ const CONTRACTS = [
     tax_amount:    {{ c.tax_amount or 0 }},
     total:         {{ c.total or 0 }},
     pay_terms:     {{ (c.payment_terms or '')|tojson }},
-    inv_status:    {{ (c.invoice_status or 'غير مدفوع')|tojson }},
+    paid_amount:   {{ contract_paid_total(c.id) }},
+    inv_status:    {{ contract_invoice_status(c)|tojson }},
     status:        {{ c.status|tojson }},
     reminder_date: {{ (c.reminder_date.isoformat() if c.reminder_date else '')|tojson }},
     notes:         {{ (c.notes or '')|tojson }},
@@ -889,9 +892,10 @@ function renderTable(data) {
       '<td><span class="badge ' + (STATUS_BADGE[disp] || 'badge-active') + '">' + esc(disp) + '</span></td>' +
       '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span></td>' +
       '<td onclick="event.stopPropagation()"><div class="td-actions">' +
-        '<button class="btn btn-secondary btn-sm btn-icon" onclick="viewContract(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
-        '<button class="btn btn-secondary btn-sm btn-icon" onclick="editContract(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>' +
-        '<button class="btn btn-danger btn-sm btn-icon" onclick="deleteContract(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>' +
+        '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();printContractForm(' + c.id + ')" title="طباعة العقد" style="color:var(--gold)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg></button>' +
+        '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();viewContract(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
+        '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();editContract(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>' +
+        '<button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deleteContract(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>' +
       '</div></td></tr>';
   }).join('');
 }
@@ -923,19 +927,27 @@ function fillClientSelect(selectedId) {
 
 function resetContractForm() {
   document.getElementById('f-code').value = NEXT_CONTRACT_CODE;
-  ['f-start','f-end','f-duration','f-reminder','f-value','f-notes','f-visits-month'].forEach(function(id) {
+  ['f-end','f-reminder','f-notes','f-visits-month'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
+  var startEl = document.getElementById('f-start');
+  if (startEl) startEl.value = new Date().toISOString().split('T')[0];
+  var durEl = document.getElementById('f-duration');
+  if (durEl) {
+    Array.from(durEl.querySelectorAll('option[data-custom]')).forEach(function(o) { o.remove(); });
+    durEl.value = '';
+  }
   document.getElementById('f-tax-pct').value = '15';
+  var taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock) LiftCoreTaxCalc.resetElement(taxBlock);
   document.getElementById('f-type-sel').selectedIndex = 0;
   document.getElementById('f-status-sel').value = 'نشط';
-  document.getElementById('f-inv-status').value = 'غير مدفوع';
   document.getElementById('f-maint-freq').selectedIndex = 0;
   document.getElementById('f-payment-terms').selectedIndex = 0;
   document.getElementById('elevators-select').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">اختر العميل أولاً لعرض مصاعده</div>';
   document.getElementById('selected-count').textContent = 'لم يتم اختيار مصاعد';
-  calcTax();
+  calcTotalVisits();
 }
 
 function openAddModal() {
@@ -965,6 +977,8 @@ function saveContract() {
     alert('يرجى إدخال تاريخ البداية والانتهاء');
     return;
   }
+  var taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && taxBlock._lcTaxCalc) taxBlock._lcTaxCalc.update();
   var editId = document.getElementById('modal-add').dataset.editId;
   var fd = new FormData();
   fd.append('customer_id', clientSel.value);
@@ -977,7 +991,6 @@ function saveContract() {
   fd.append('value', document.getElementById('f-value').value || '0');
   fd.append('tax_pct', document.getElementById('f-tax-pct').value || '15');
   fd.append('payment_terms', document.getElementById('f-payment-terms').value);
-  fd.append('invoice_status', document.getElementById('f-inv-status').value);
   fd.append('status', document.getElementById('f-status-sel').value);
   fd.append('notes', document.getElementById('f-notes').value);
   getSelectedElevatorIds().forEach(function(id) { fd.append('elevator_ids', id); });
@@ -996,17 +1009,16 @@ function editContract(id) {
   document.getElementById('f-status-sel').value = getContractDisplayStatus(c);
   document.getElementById('f-start').value = c.start_date || '';
   document.getElementById('f-end').value = c.end_date || '';
-  document.getElementById('f-duration').value = c.duration ? (c.duration + ' شهر') : '';
+  setContractDurationSelect(c.duration);
   document.getElementById('f-reminder').value = c.reminder_date || '';
   document.getElementById('f-maint-freq').value = c.maint_freq || 'شهري';
   document.getElementById('f-visits-month').value = c.visits_month || 1;
-  document.getElementById('f-value').value = c.value || '';
-  document.getElementById('f-tax-pct').value = c.tax_pct || 15;
   document.getElementById('f-payment-terms').value = c.pay_terms || 'دفعة واحدة';
-  document.getElementById('f-inv-status').value = c.inv_status || 'غير مدفوع';
   document.getElementById('f-notes').value = c.notes || '';
-  calcTax();
+  var taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, c.value, c.tax_pct || 15);
   loadClientElevators(c.elevator_ids || []);
+  calcTotalVisits();
   document.getElementById('modal-add').classList.add('open');
 }
 
@@ -1020,7 +1032,7 @@ function viewContract(id) {
   document.getElementById('view-body').innerHTML =
     locHtml +
     '<div class="financial-summary">' +
-      '<div class="fin-row"><span>قيمة العقد</span><span>' + c.value.toLocaleString() + ' ر.س</span></div>' +
+      '<div class="fin-row"><span>قيمة العقد (قبل الضريبة)</span><span>' + c.value.toLocaleString() + ' ر.س</span></div>' +
       '<div class="fin-row"><span>الضريبة (' + c.tax_pct + '%)</span><span>' + c.tax_amount.toLocaleString() + ' ر.س</span></div>' +
       '<div class="fin-row"><span>الإجمالي</span><span>' + c.total.toLocaleString() + ' ر.س</span></div>' +
     '</div>' +
@@ -1031,12 +1043,13 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">نوع العقد</div><div class="view-val">' + esc(c.contract_type) + '</div></div>' +
       '<div class="view-item"><div class="view-label">المصاعد المرتبطة</div><div class="view-val" style="font-family:var(--font-en)">' + esc(elevatorLabels(c.elevator_ids)) + '</div></div>' +
       '<div class="view-item"><div class="view-label">حالة العقد</div><div class="view-val"><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></div></div>' +
-      '<div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span></div></div>' +
+      '<div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span> <span style="font-size:12px;color:var(--text3)">(' + (c.paid_amount || 0).toLocaleString() + ' / ' + c.total.toLocaleString() + ' ر.س)</span></div></div>' +
       '<div class="view-section">التواريخ والصيانة</div>' +
       '<div class="view-item"><div class="view-label">تاريخ البداية</div><div class="view-val" style="direction:ltr">' + esc(c.start_date) + '</div></div>' +
       '<div class="view-item"><div class="view-label">تاريخ الانتهاء</div><div class="view-val" style="direction:ltr">' + esc(c.end_date) + '</div></div>' +
       '<div class="view-item"><div class="view-label">مدة العقد</div><div class="view-val">' + (c.duration || '—') + ' شهر</div></div>' +
       '<div class="view-item"><div class="view-label">تكرار الصيانة</div><div class="view-val">' + esc(c.maint_freq || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">إجمالي الزيارات</div><div class="view-val">' + (c.visits_month || '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">شروط الدفع</div><div class="view-val">' + esc(c.pay_terms || '—') + '</div></div>' +
       (c.notes ? '<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">' + esc(c.notes) + '</div></div>' : '') +
     '</div>';
@@ -1049,6 +1062,12 @@ function editFromView() {
   if (currentViewId) editContract(currentViewId);
 }
 
+function printContractForm(id) {
+  var cid = id || currentViewId;
+  if (!cid) return;
+  window.open('/contracts/' + cid + '/print', '_blank');
+}
+
 // ===== حذف =====
 function deleteContract(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
 function confirmDelete() {
@@ -1056,27 +1075,105 @@ function confirmDelete() {
   fetch(`/contracts/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
 }
 
-// ===== حساب الضريبة =====
-function calcTax() {
-  const val = parseFloat(document.getElementById('f-value')?.value)||0;
-  const pct = parseFloat(document.getElementById('f-tax-pct')?.value)||15;
-  const tax = val*pct/100;
-  const tot = val+tax;
-  const cv=document.getElementById('calc-value'); if(cv) cv.textContent=val.toLocaleString('ar-SA',{minimumFractionDigits:2})+' ر.س';
-  const ct=document.getElementById('calc-tax');   if(ct) ct.textContent=tax.toLocaleString('ar-SA',{minimumFractionDigits:2})+' ر.س';
-  const ctt=document.getElementById('calc-total');if(ctt) ctt.textContent=tot.toLocaleString('ar-SA',{minimumFractionDigits:2})+' ر.س';
+// ===== حساب الزيارات =====
+var MAINT_FREQ_INTERVALS = {
+  'شهري': 1,
+  'كل شهرين': 2,
+  'ربع سنوي': 3,
+  'نصف سنوي': 6,
+  'سنوي': 12
+};
+
+function getContractDurationMonths() {
+  var durSel = document.getElementById('f-duration');
+  var fromSelect = durSel && durSel.value ? parseInt(durSel.value, 10) : 0;
+  if (fromSelect > 0) return fromSelect;
+  var s = document.getElementById('f-start')?.value;
+  var e = document.getElementById('f-end')?.value;
+  if (!s || !e) return 0;
+  var start = new Date(s + 'T12:00:00');
+  var end = new Date(e + 'T12:00:00');
+  if (end <= start) return 0;
+  return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
 }
 
-function calcDuration() {
-  const s=document.getElementById('f-start')?.value;
-  const e=document.getElementById('f-end')?.value;
-  if(!s||!e) return;
-  const start=new Date(s), end=new Date(e);
-  if(end<=start){ const d=document.getElementById('f-duration'); if(d) d.value='تاريخ غير صحيح'; return; }
-  const months=(end.getFullYear()-start.getFullYear())*12+(end.getMonth()-start.getMonth());
-  const d=document.getElementById('f-duration'); if(d) d.value=months+' شهر';
-  const reminder=new Date(end); reminder.setDate(reminder.getDate()-30);
-  const r=document.getElementById('f-reminder'); if(r) r.value=reminder.toISOString().split('T')[0];
+function calcTotalVisits() {
+  var visitsEl = document.getElementById('f-visits-month');
+  if (!visitsEl) return;
+  var freq = document.getElementById('f-maint-freq')?.value || '';
+  var interval = MAINT_FREQ_INTERVALS[freq];
+  var duration = getContractDurationMonths();
+  if (!interval || !duration) {
+    visitsEl.value = '';
+    return;
+  }
+  visitsEl.value = Math.max(1, Math.ceil(duration / interval));
+}
+
+function addMonthsToDate(dateStr, months) {
+  var d = new Date(dateStr + 'T12:00:00');
+  var day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+  if (d.getDate() < day) d.setDate(0);
+  return d.toISOString().split('T')[0];
+}
+
+function updateReminderFromEnd(endStr) {
+  if (!endStr) return;
+  var reminder = new Date(endStr + 'T12:00:00');
+  reminder.setDate(reminder.getDate() - 30);
+  var r = document.getElementById('f-reminder');
+  if (r) r.value = reminder.toISOString().split('T')[0];
+}
+
+function setContractDurationSelect(months) {
+  var durSel = document.getElementById('f-duration');
+  if (!durSel) return;
+  Array.from(durSel.querySelectorAll('option[data-custom]')).forEach(function(o) { o.remove(); });
+  if (!months) { durSel.value = ''; return; }
+  var val = String(months);
+  if (!Array.from(durSel.options).some(function(o) { return o.value === val; })) {
+    var opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = months + ' شهر';
+    opt.dataset.custom = '1';
+    durSel.appendChild(opt);
+  }
+  durSel.value = val;
+}
+
+function applyDurationToEndDate() {
+  var start = document.getElementById('f-start')?.value;
+  var months = parseInt(document.getElementById('f-duration')?.value, 10);
+  if (!start || !months) return;
+  var endStr = addMonthsToDate(start, months);
+  document.getElementById('f-end').value = endStr;
+  updateReminderFromEnd(endStr);
+  calcTotalVisits();
+}
+
+function onContractStartChange() {
+  if (document.getElementById('f-duration')?.value) {
+    applyDurationToEndDate();
+  } else {
+    calcDurationFromEnd();
+  }
+}
+
+function calcDurationFromEnd() {
+  var s = document.getElementById('f-start')?.value;
+  var e = document.getElementById('f-end')?.value;
+  if (!s || !e) return;
+  var start = new Date(s + 'T12:00:00');
+  var end = new Date(e + 'T12:00:00');
+  if (end <= start) {
+    document.getElementById('f-duration').value = '';
+    return;
+  }
+  var months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  setContractDurationSelect(months);
+  updateReminderFromEnd(e);
+  calcTotalVisits();
 }
 
 function loadClientElevators(selectedIds) {
@@ -1122,12 +1219,6 @@ function exportExcel() {
 var contractMap = null, contractMarkers = [], contractCluster = null, contractInfoWindow = null;
 var contractInfoPinned = false, contractHoverTimer = null;
 
-var CITY_COORDS = {
-  'مكة': {lat:21.4225, lng:39.8262}, 'جدة': {lat:21.5433, lng:39.1728},
-  'الطائف': {lat:21.2703, lng:40.4158}, 'الرياض': {lat:24.7136, lng:46.6753},
-  'الدمام': {lat:26.4207, lng:50.0888}
-};
-
 var CONTRACT_PIN_COLORS = {
   'نشط': '#1fb87a',
   'على وشك الانتهاء': '#c8a055',
@@ -1140,25 +1231,49 @@ var MAP_POI_HIDDEN = [
   {featureType: 'transit', stylers: [{visibility: 'off'}]}
 ];
 
+var CITY_COORDS = (window.LiftCoreLocation && LiftCoreLocation.CITY_COORDS) || {
+  'مكة': {lat:21.4225, lng:39.8262}, 'جدة': {lat:21.5433, lng:39.1728},
+  'الطائف': {lat:21.2703, lng:40.4158}, 'الرياض': {lat:24.7136, lng:46.6753},
+  'الدمام': {lat:26.4207, lng:50.0888}
+};
+
+function getCustomerRecord(customerId) {
+  return CUSTOMERS.find(function(x) { return x.id === customerId; });
+}
+
 function getContractPinColor(c) {
   return CONTRACT_PIN_COLORS[getContractDisplayStatus(c)] || '#2a7fff';
 }
 
 function getContractPosition(c) {
-  var lat = parseFloat(c.customer_lat), lng = parseFloat(c.customer_lng);
-  if (!isNaN(lat) && !isNaN(lng)) {
-    return {lat: lat + ((c.id % 5) * 0.0012 - 0.0024), lng: lng + ((c.id % 3) * 0.001 - 0.001), exact: true};
+  var cust = getCustomerRecord(c.customer_id);
+  if (window.LiftCoreMap) {
+    var fromMap = LiftCoreMap.coordsForRecord(cust || {
+      lat: c.customer_lat, lng: c.customer_lng, city: c.customer_city
+    });
+    if (fromMap) return fromMap;
   }
-  var base = CITY_COORDS[c.customer_city];
-  if (!base) return null;
-  return {
-    lat: base.lat + ((c.id % 7) * 0.007 - 0.021),
-    lng: base.lng + ((c.id % 5) * 0.006 - 0.012),
-    exact: false
-  };
+  if (window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer) {
+    var fromCust = LiftCoreLocation.coordsForCustomer(cust || {
+      lat: c.customer_lat,
+      lng: c.customer_lng,
+      city: c.customer_city
+    });
+    if (fromCust) return fromCust;
+  }
+  var parsed = window.LiftCoreLocation && LiftCoreLocation.parseCoords
+    ? LiftCoreLocation.parseCoords(c.customer_lat, c.customer_lng)
+    : null;
+  if (parsed) return { lat: parsed.lat, lng: parsed.lng, exact: true };
+  var city = window.LiftCoreLocation && LiftCoreLocation.resolveCityCoords
+    ? LiftCoreLocation.resolveCityCoords(c.customer_city)
+    : CITY_COORDS[c.customer_city];
+  if (!city) return null;
+  return { lat: city.lat, lng: city.lng, exact: false };
 }
 
 function makeContractPin(color) {
+  if (window.LiftCoreMap) return LiftCoreMap.makePinIcon(color, 1.25);
   return {
     path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z',
     fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2,
@@ -1166,26 +1281,57 @@ function makeContractPin(color) {
   };
 }
 
-function contractMapInfo(c) {
-  return '<div class="map-info"><div class="map-info-title">' + esc(c.code) + '</div>' +
-    '<div class="map-info-sub">' + esc(c.customer) + '<br>' + esc(c.contract_type) + '<br>' +
-    'الإجمالي: ' + c.total.toLocaleString() + ' ر.س<br>' + esc(getContractDisplayStatus(c)) + ' · ' + esc(c.inv_status) + '</div>' +
-    '<button class="map-info-btn" onclick="viewContract(' + c.id + ')">عرض العقد</button></div>';
+function buildContractLocationGroups() {
+  var groups = {};
+  CONTRACTS.forEach(function(c) {
+    var pos = getContractPosition(c);
+    if (!pos) return;
+    var key = c.customer_id + '@' + pos.lat.toFixed(6) + ',' + pos.lng.toFixed(6);
+    if (!groups[key]) {
+      groups[key] = {
+        pos: pos,
+        customer_id: c.customer_id,
+        customer: c.customer,
+        contracts: []
+      };
+    }
+    groups[key].contracts.push(c);
+  });
+  return Object.values(groups);
 }
 
-var contractClusterRenderer = {
-  render: function(cluster) {
-    var count = cluster.count;
-    var scale = Math.min(12, 7 + Math.sqrt(count) * 1.1);
-    return new google.maps.Marker({
-      position: cluster.position,
-      title: count + ' عقد',
-      icon: {path: google.maps.SymbolPath.CIRCLE, scale: scale, fillColor: '#2a7fff', fillOpacity: 0.9, strokeColor: '#fff', strokeWeight: 2},
-      label: {text: String(count), color: '#fff', fontSize: '10px', fontWeight: '700'},
-      zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
-    });
-  }
-};
+function getGroupPinColor(group) {
+  var priority = {'نشط': 4, 'على وشك الانتهاء': 3, 'منتهي': 2, 'ملغي': 1};
+  var best = group.contracts[0];
+  group.contracts.forEach(function(c) {
+    var st = getContractDisplayStatus(c);
+    if ((priority[st] || 0) > (priority[getContractDisplayStatus(best)] || 0)) best = c;
+  });
+  return getContractPinColor(best);
+}
+
+function contractGroupMapInfo(group) {
+  var locNote = group.pos.exact ? 'موقع GPS دقيق' : 'موقع تقريبي';
+  var rows = group.contracts.map(function(c) {
+    return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' +
+      '<strong>' + esc(c.code) + '</strong> — ' + esc(c.contract_type) + '<br>' +
+      esc(getContractDisplayStatus(c)) + ' · ' + c.total.toLocaleString() + ' ر.س' +
+      ' · ' + esc(c.inv_status) +
+      '<br><button class="map-info-btn" style="margin-top:6px" onclick="viewContract(' + c.id + ')">عرض العقد</button></div>';
+  }).join('');
+  return '<div class="map-info"><div class="map-info-title">' + esc(group.customer) + '</div>' +
+    '<div class="map-info-sub">' + group.contracts.length + ' عقد · ' + locNote + '</div>' +
+    rows + '</div>';
+}
+
+function contractMapInfo(c, exact) {
+  var locNote = exact ? 'موقع GPS دقيق' : 'موقع تقريبي';
+  return '<div class="map-info"><div class="map-info-title">' + esc(c.code) + '</div>' +
+    '<div class="map-info-sub">' + esc(c.customer) + '<br>' + esc(c.contract_type) + '<br>' +
+    'الإجمالي: ' + c.total.toLocaleString() + ' ر.س<br>' + esc(getContractDisplayStatus(c)) + ' · ' + esc(c.inv_status) +
+    '<br><span style="color:#888;font-size:11px">' + locNote + '</span></div>' +
+    '<button class="map-info-btn" onclick="viewContract(' + c.id + ')">عرض العقد</button></div>';
+}
 
 function clearContractMapMarkers() {
   if (contractCluster) { contractCluster.clearMarkers(); contractCluster = null; }
@@ -1193,39 +1339,23 @@ function clearContractMapMarkers() {
   contractMarkers = [];
 }
 
-function refreshContractMap(fitAgain) {
-  if (typeof google === 'undefined' || !google.maps) return;
-  var mapEl = document.getElementById('map');
-  if (!mapEl) return;
-
-  if (!contractMap) {
-    contractMap = new google.maps.Map(mapEl, {
-      center: {lat: 21.4225, lng: 39.8262}, zoom: 12, mapTypeId: 'satellite',
-      clickableIcons: false, streetViewControl: false, zoomControl: true,
-      mapTypeControlOptions: {mapTypeIds: ['satellite', 'hybrid', 'roadmap']},
-      styles: MAP_POI_HIDDEN
-    });
-    contractInfoWindow = new google.maps.InfoWindow();
-    contractMap.addListener('click', function() { contractInfoPinned = false; contractInfoWindow.close(); });
-  }
-
+function renderContractMapMarkers(fitAgain) {
   clearContractMapMarkers();
-  var bounds = new google.maps.LatLngBounds();
-  var shown = 0;
+  var groups = buildContractLocationGroups();
+  var shownContracts = 0;
+  groups.forEach(function(g) { shownContracts += g.contracts.length; });
 
-  CONTRACTS.forEach(function(c) {
-    var pos = getContractPosition(c);
-    if (!pos) return;
-    shown++;
-    var color = getContractPinColor(c);
+  groups.forEach(function(group) {
+    var pos = group.pos;
+    var color = getGroupPinColor(group);
     var marker = new google.maps.Marker({
       position: {lat: pos.lat, lng: pos.lng},
       icon: makeContractPin(color),
-      zIndex: getContractDisplayStatus(c) === 'نشط' ? 2 : 1
+      zIndex: color === '#1fb87a' ? 2 : 1
     });
     marker.addListener('mouseover', function() {
       if (contractHoverTimer) clearTimeout(contractHoverTimer);
-      contractInfoWindow.setContent(contractMapInfo(c));
+      contractInfoWindow.setContent(contractGroupMapInfo(group));
       contractInfoWindow.open(contractMap, marker);
     });
     marker.addListener('mouseout', function() {
@@ -1235,36 +1365,85 @@ function refreshContractMap(fitAgain) {
     marker.addListener('click', function() {
       if (contractHoverTimer) clearTimeout(contractHoverTimer);
       contractInfoPinned = true;
-      contractInfoWindow.setContent(contractMapInfo(c));
+      contractInfoWindow.setContent(contractGroupMapInfo(group));
       contractInfoWindow.open(contractMap, marker);
     });
     contractMarkers.push(marker);
-    bounds.extend({lat: pos.lat, lng: pos.lng});
   });
 
   var summary = document.getElementById('map-summary');
   if (summary) {
-    summary.textContent = shown
-      ? ('معروض: ' + shown + ' عقد على الخريطة (حسب موقع العميل)')
-      : 'لا توجد مواقع — أضف إحداثيات للعملاء';
+    summary.textContent = shownContracts
+      ? ('معروض: ' + shownContracts + ' عقد في ' + groups.length + ' موقع (صورة أقمار صناعية + تجميع عند التصغير)')
+      : 'لا توجد مواقع — حدّد موقع العميل على الخريطة في صفحة العملاء';
   }
 
-  if (shown && typeof markerClusterer !== 'undefined' && markerClusterer.MarkerClusterer) {
+  if (contractMarkers.length && window.LiftCoreMap) {
+    contractCluster = LiftCoreMap.attachCluster(contractMap, contractMarkers, 'موقع');
+  } else if (contractMarkers.length && typeof markerClusterer !== 'undefined' && markerClusterer.MarkerClusterer) {
     contractCluster = new markerClusterer.MarkerClusterer({
-      map: contractMap, markers: contractMarkers, renderer: contractClusterRenderer,
-      algorithm: new markerClusterer.SuperClusterAlgorithm({radius: 80, maxZoom: 15}),
-      onClusterClick: function(_e, cluster, map) { map.fitBounds(cluster.bounds); }
+      map: contractMap, markers: contractMarkers,
+      renderer: LiftCoreMap ? LiftCoreMap.createClusterRenderer('موقع') : undefined,
+      algorithm: new markerClusterer.SuperClusterAlgorithm({radius: 90, maxZoom: 16}),
+      onClusterClick: function(_e, cluster, map) { map.fitBounds(cluster.bounds, 48); }
     });
   } else {
     contractMarkers.forEach(function(m) { m.setMap(contractMap); });
   }
 
-  google.maps.event.trigger(contractMap, 'resize');
-  if (shown && fitAgain) {
-    contractMap.fitBounds(bounds, 64);
-  } else if (fitAgain) {
-    contractMap.setCenter({lat: 21.4225, lng: 39.8262});
-    contractMap.setZoom(12);
+  if (window.LiftCoreMap) {
+    LiftCoreMap.fitMapToMarkers(contractMap, contractMarkers, fitAgain);
+  } else {
+    google.maps.event.trigger(contractMap, 'resize');
+    if (contractMarkers.length && fitAgain) {
+      var bounds = new google.maps.LatLngBounds();
+      contractMarkers.forEach(function(m) { bounds.extend(m.getPosition()); });
+      contractMap.fitBounds(bounds, 64);
+    } else if (fitAgain) {
+      contractMap.setCenter({lat: 21.4225, lng: 39.8262});
+      contractMap.setZoom(12);
+    }
+  }
+}
+
+function refreshContractMap(fitAgain) {
+  if (typeof google === 'undefined' || !google.maps) return;
+  var mapEl = document.getElementById('map');
+  if (!mapEl) return;
+
+  if (!contractMap) {
+    contractMap = window.LiftCoreMap
+      ? LiftCoreMap.initMap(mapEl, null)
+      : new google.maps.Map(mapEl, {
+          center: {lat: 21.4225, lng: 39.8262}, zoom: 12, mapTypeId: 'satellite',
+          clickableIcons: false, streetViewControl: false, zoomControl: true,
+          mapTypeControlOptions: {mapTypeIds: ['satellite', 'hybrid', 'roadmap']},
+          styles: MAP_POI_HIDDEN
+        });
+    contractInfoWindow = new google.maps.InfoWindow();
+    contractMap.addListener('click', function() { contractInfoPinned = false; contractInfoWindow.close(); });
+  }
+
+  var missing = [];
+  var seen = {};
+  CONTRACTS.forEach(function(c) {
+    if (getContractPosition(c)) return;
+    var cust = getCustomerRecord(c.customer_id);
+    if (!cust || seen[cust.id]) return;
+    seen[cust.id] = true;
+    if (window.LiftCoreGeocode && !LiftCoreGeocode.hasGps(cust)) missing.push(cust);
+  });
+
+  var summary = document.getElementById('map-summary');
+  if (missing.length && summary) {
+    summary.textContent = 'جاري تحديد مواقع ' + missing.length + ' عميل...';
+  }
+
+  function finish() { renderContractMapMarkers(fitAgain); }
+  if (missing.length && window.LiftCoreGeocode) {
+    LiftCoreGeocode.geocodeAll(missing).then(finish);
+  } else {
+    finish();
   }
 }
 

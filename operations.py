@@ -9,7 +9,7 @@ from calendar import monthrange
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 
 from models import (
     Contract,
@@ -17,6 +17,7 @@ from models import (
     Customer,
     Elevator,
     Fault,
+    InventoryItem,
     MaintenanceVisit,
     PartsBilling,
     Settings,
@@ -643,6 +644,7 @@ def dispatch_fault(fault_id: int, base_url: str = '') -> dict:
 def visit_stats(today: date | None = None) -> dict:
     today = today or date.today()
     month_start = today.replace(day=1)
+    month_end = today.replace(day=monthrange(today.year, today.month)[1])
     q = MaintenanceVisit.query
     return {
         'today': q.filter(MaintenanceVisit.visit_date == today).count(),
@@ -652,12 +654,18 @@ def visit_stats(today: date | None = None) -> dict:
             ~MaintenanceVisit.status.in_(VISIT_DONE),
         ).count(),
         'done_today': q.filter(
-            MaintenanceVisit.visit_date == today,
             MaintenanceVisit.status == 'مكتملة',
+            or_(
+                func.date(MaintenanceVisit.completed_at) == today,
+                and_(
+                    MaintenanceVisit.completed_at.is_(None),
+                    MaintenanceVisit.visit_date == today,
+                ),
+            ),
         ).count(),
         'month': q.filter(
             MaintenanceVisit.visit_date >= month_start,
-            MaintenanceVisit.visit_date <= today,
+            MaintenanceVisit.visit_date <= month_end,
         ).count(),
         'scheduled_tomorrow': q.filter(
             MaintenanceVisit.visit_date == today + timedelta(days=1),
@@ -1211,6 +1219,106 @@ def complete_field_fault(
     f.status = status or 'محلول'
     f.resolved_at = datetime.utcnow()
     db.session.commit()
+
+
+PARTS_JSON_PREFIX = 'PARTS_JSON:'
+
+
+def parse_fault_parts_lines(raw: str | None) -> list[dict]:
+    if not raw or not str(raw).strip():
+        return []
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    lines = []
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get('name') or '').strip()
+        item_id = row.get('item_id')
+        if item_id not in (None, '', 0, '0'):
+            item = InventoryItem.query.get(int(item_id))
+            if item and not name:
+                name = item.name
+        qty = float(row.get('qty') or 1)
+        unit_price = float(row.get('unit_price') or 0)
+        cost_price = float(row.get('cost_price') or 0)
+        if item_id not in (None, '', 0, '0') and not cost_price:
+            item = InventoryItem.query.get(int(item_id))
+            if item:
+                cost_price = float(item.buy_price or 0)
+        if not name or qty <= 0:
+            continue
+        lines.append({
+            'item_id': int(item_id) if item_id not in (None, '', 0, '0') else None,
+            'name': name,
+            'qty': qty,
+            'unit_price': unit_price,
+            'cost_price': cost_price,
+        })
+    return lines
+
+
+def format_fault_parts_description(lines: list[dict]) -> str:
+    return '\n'.join(
+        f"{ln['qty']}× {ln['name']} — {ln['unit_price']:.2f} ر.س"
+        for ln in lines
+    )
+
+
+def fault_registration_parts_lines(fault_id: int) -> list[dict]:
+    pb = (
+        PartsBilling.query.filter_by(fault_id=fault_id)
+        .order_by(PartsBilling.id.desc())
+        .first()
+    )
+    if not pb or not pb.notes or not pb.notes.startswith(PARTS_JSON_PREFIX):
+        return []
+    try:
+        payload = json.loads(pb.notes[len(PARTS_JSON_PREFIX):])
+        return payload.get('lines') or []
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return []
+
+
+def clear_fault_parts_billing(fault_id: int) -> None:
+    PartsBilling.query.filter_by(fault_id=fault_id).delete()
+
+
+def apply_fault_parts_billing(
+    fault: Fault,
+    lines: list[dict],
+    *,
+    technician_id: int | None = None,
+) -> PartsBilling | None:
+    if not lines:
+        return None
+    sell = round(sum(ln['qty'] * ln['unit_price'] for ln in lines), 2)
+    cost = round(sum(ln['qty'] * ln['cost_price'] for ln in lines), 2)
+    elev = fault.elevator
+    cust = elev.customer if elev else None
+    pb = PartsBilling.query.filter_by(fault_id=fault.id).order_by(PartsBilling.id.desc()).first()
+    if not pb:
+        pb = PartsBilling(code=next_code(PartsBilling, 'PB-', digits=3), fault_id=fault.id)
+        db.session.add(pb)
+    pb.customer_id = cust.id if cust else None
+    pb.elevator_id = elev.id if elev else None
+    pb.technician_id = technician_id or fault.technician_id
+    pb.visit_id = fault.visit_id
+    pb.billing_date = date.today()
+    pb.description = format_fault_parts_description(lines)
+    pb.cost_price = cost
+    pb.sell_price = sell
+    pb.profit = round(sell - cost, 2)
+    pb.status = 'غير محصل'
+    pb.notes = PARTS_JSON_PREFIX + json.dumps(
+        {'lines': lines, 'label': 'جاهز للفوترة'},
+        ensure_ascii=False,
+    )
+    return pb
 
 
 def request_fault_parts(fault_id: int, *, description: str, sell_price: float = 0) -> PartsBilling:

@@ -15,9 +15,67 @@
   }
 
   function hasCoordinates(c) {
-    var lat = parseFloat(c.lat);
-    var lng = parseFloat(c.lng);
-    return !isNaN(lat) && !isNaN(lng);
+    return !!parseCoords(c && c.lat, c && c.lng);
+  }
+
+  /** تحليل lat/lng مع تصحيح الانقلاب الشائع في السعودية */
+  function parseCoords(lat, lng) {
+    function parseOne(v) {
+      if (v == null || v === '') return NaN;
+      var s = String(v).trim().replace(/,/g, '.');
+      return parseFloat(s);
+    }
+    var la = parseOne(lat);
+    var ln = parseOne(lng);
+    if (isNaN(la) || isNaN(ln) || (la === 0 && ln === 0)) return null;
+    if (la < -90 || la > 90 || ln < -180 || ln > 180) return null;
+
+    function inSaudi(la, ln) {
+      return la >= 15 && la <= 33 && ln >= 33 && ln <= 57;
+    }
+    if (inSaudi(la, ln)) return { lat: la, lng: ln };
+    if (inSaudi(ln, la)) return { lat: ln, lng: la };
+    return { lat: la, lng: ln };
+  }
+
+  var CITY_COORDS = {
+    'مكة': { lat: 21.4225, lng: 39.8262 },
+    'مكة المكرمة': { lat: 21.4225, lng: 39.8262 },
+    'جدة': { lat: 21.5433, lng: 39.1728 },
+    'جده': { lat: 21.5433, lng: 39.1728 },
+    'الطائف': { lat: 21.2703, lng: 40.4158 },
+    'المدينة': { lat: 24.4672, lng: 39.6111 },
+    'المدينة المنورة': { lat: 24.4672, lng: 39.6111 },
+    'الرياض': { lat: 24.7136, lng: 46.6753 },
+    'الدمام': { lat: 26.4207, lng: 50.0888 },
+    'الخبر': { lat: 26.2172, lng: 50.1971 },
+    'أبها': { lat: 18.2164, lng: 42.5053 },
+    'تبوك': { lat: 28.3838, lng: 36.5550 },
+    'بريدة': { lat: 26.3259, lng: 43.9740 }
+  };
+
+  function resolveCityCoords(city) {
+    if (!city) return null;
+    var key = String(city).trim();
+    if (CITY_COORDS[key]) return CITY_COORDS[key];
+    var normalized = key.replace(/\s+/g, ' ');
+    Object.keys(CITY_COORDS).some(function(k) {
+      if (normalized.indexOf(k) >= 0 || k.indexOf(normalized) >= 0) {
+        normalized = k;
+        return true;
+      }
+      return false;
+    });
+    return CITY_COORDS[normalized] || null;
+  }
+
+  function coordsForCustomer(c) {
+    if (!c) return null;
+    var parsed = parseCoords(c.lat, c.lng);
+    if (parsed) return { lat: parsed.lat, lng: parsed.lng, exact: true };
+    var city = resolveCityCoords(c.city);
+    if (city) return { lat: city.lat, lng: city.lng, exact: false };
+    return null;
   }
 
   function directionsUrl(c) {
@@ -172,6 +230,10 @@
 
   global.LiftCoreLocation = {
     formatAddress: formatAddress,
+    parseCoords: parseCoords,
+    resolveCityCoords: resolveCityCoords,
+    coordsForCustomer: coordsForCustomer,
+    CITY_COORDS: CITY_COORDS,
     directionsUrl: directionsUrl,
     openDirections: openDirections,
     showBuildingPhoto: showBuildingPhoto,

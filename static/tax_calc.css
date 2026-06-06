@@ -1,0 +1,65 @@
+.lc-tax-mode-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.lc-tax-mode-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: var(--r-sm, 7px);
+  border: 1px solid var(--border, rgba(100, 160, 255, 0.1));
+  background: var(--bg3, #161e2b);
+  color: var(--text2, #8a9bb8);
+  cursor: pointer;
+  font-family: var(--font-ar, inherit);
+  font-size: 12px;
+  font-weight: 500;
+  transition: 0.18s ease;
+}
+
+.lc-tax-mode-btn.active {
+  border-color: var(--accent, #2a7fff);
+  background: rgba(42, 127, 255, 0.1);
+  color: var(--accent, #2a7fff);
+}
+
+.lc-tax-breakdown,
+.lc-tax-summary {
+  background: var(--bg4, #1c2535);
+  border: 1px solid var(--border, rgba(100, 160, 255, 0.1));
+  border-radius: var(--r-sm, 7px);
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+
+.lc-tax-row,
+.lc-tax-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--text2, #8a9bb8);
+}
+
+.lc-tax-row span:last-child,
+.lc-tax-summary-row span:last-child {
+  font-family: var(--font-en, monospace);
+  color: var(--text1, #e4eaf5);
+}
+
+.lc-tax-row-total,
+.lc-tax-summary-total {
+  border-top: 1px solid var(--border, rgba(100, 160, 255, 0.1));
+  padding-top: 10px;
+  margin-top: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text1, #e4eaf5);
+}
+
+.lc-tax-row-total span:last-child,
+.lc-tax-summary-total span:last-child {
+  color: var(--accent, #2a7fff);
+}

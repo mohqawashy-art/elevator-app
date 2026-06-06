@@ -7,9 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/customer_profile.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="/static/customer_profile.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA&language=ar&region=SA"></script>
+<script src="https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -84,7 +83,7 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .btn-warning{background:rgba(224,144,48,.12);color:var(--warning);border:1px solid rgba(224,144,48,.15)}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
-.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.stats-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:20px}
 .stat-mini{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:var(--trans)}
 .stat-mini:hover{border-color:var(--border2);transform:translateY(-1px)}
 .stat-mini.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(42,127,255,.22);background:var(--bg4)}
@@ -167,10 +166,17 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .cal-nav{display:flex;gap:6px}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border)}
 .cal-day-header{background:var(--bg3);padding:8px;text-align:center;font-size:11px;color:var(--text3);font-weight:500}
-.cal-day{background:var(--card);min-height:80px;padding:6px;cursor:pointer;transition:var(--trans)}
+.cal-day{background:var(--card);min-height:80px;padding:6px;cursor:pointer;transition:var(--trans);border:1px solid transparent;display:flex;flex-direction:column;gap:4px}
 .cal-day:hover{background:var(--bg3)}
-.cal-day.today{background:rgba(42,127,255,.06)}
+.cal-day.today{background:rgba(42,127,255,.06);border-color:rgba(42,127,255,.25)}
 .cal-day.other-month{opacity:.4}
+.cal-day-name{background:var(--bg3);padding:8px;text-align:center;font-size:11px;color:var(--text3);font-weight:600}
+.cal-day.has-events{background:rgba(42,127,255,.08);border-color:rgba(42,127,255,.22);min-height:92px}
+.cal-day.has-events small{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;margin-top:auto;align-self:flex-start}
+.cal-day .cal-date{font-size:12px;font-weight:600;color:var(--text1);line-height:1;margin-bottom:2px}
+.cal-day .cal-date.today-num{background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+.cal-day .cal-event{font-size:10px;line-height:1.35;padding:3px 6px;border-radius:4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.cal-day.empty{min-height:0;cursor:default;pointer-events:none}
 .cal-date{font-size:12px;font-family:var(--font-en);color:var(--text2);margin-bottom:4px}
 .cal-date.today-num{background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px}
 .cal-event{font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
@@ -208,6 +214,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .checklist-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm)}
 .checklist-item-name{flex:1;font-size:13px;color:var(--text1)}
 .checklist-status{display:flex;gap:6px}
+.checklist-flagged-list{display:flex;flex-direction:column;gap:8px}
+.checklist-flagged-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;line-height:1.5}
+.checklist-flagged-item .badge{flex-shrink:0;font-size:10px}
+.checklist-item-note{color:var(--text3);font-size:12px}
+.checklist-elev-ok{display:flex;align-items:center;gap:10px;font-size:13px}
 .cl-btn{padding:4px 10px;border-radius:var(--r-sm);font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--bg4);color:var(--text2);transition:var(--trans)}
 .cl-btn:hover{border-color:var(--border2);color:var(--text1)}
 .cl-btn.ok{background:rgba(31,184,122,.15);border-color:rgba(31,184,122,.3);color:var(--success)}
@@ -220,7 +231,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .view-full{grid-column:1/-1}
 .view-section{font-size:11px;font-weight:600;color:var(--accent);grid-column:1/-1;padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:.06em}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
-@media(max-width:1100px){.stats-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1100px){.stats-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.stats-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:768px){
   .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
   html[dir="ltr"] .sidebar{right:auto;left:-240px}
@@ -234,7 +246,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   .cal-grid{grid-template-columns:repeat(7,1fr)}
   .cal-day{min-height:50px}
 }
-@m@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
+@media(max-width:480px){.filters-bar{flex-direction:column}.search-wrap{min-width:100%}}
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-format.js"></script>
@@ -444,7 +456,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div id="tab-cal" style="display:none">
       <div class="calendar-panel">
         <div class="cal-header">
-          <div class="cal-title" id="cal-title">يونيو 2025</div>
+          <div>
+            <div class="cal-title" id="cal-title">يونيو 2025</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">يُعرض اسم العميل في يوم الزيارة</div>
+          </div>
           <div class="cal-nav">
             <button class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(-1)">‹</button>
             <button class="btn btn-secondary btn-sm" onclick="goWorkMonthToday()">هذا الشهر</button>
@@ -452,6 +467,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
         </div>
         <div class="cal-grid" id="cal-grid"></div>
+        <div class="map-legend" style="border-top:1px solid var(--border);margin-top:0">
+          <div class="legend-item"><div class="legend-dot" style="background:#2a7fff"></div>مجدولة</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1fb87a"></div>مكتملة</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e04848"></div>متأخرة / ملغية</div>
+        </div>
       </div>
     </div>
 
@@ -685,13 +705,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/static/ops-common.js"></script>
+<script src="/static/liftcore_map.js"></script>
+<script src="/static/ops-common.js?v=3"></script>
 
 <script>
 const OPS_TODAY = {{ ops_today|tojson }};
 const OPS_TOMORROW = {{ ops_tomorrow|tojson }};
 const OPS_MONTH_START = {{ ops_month_start|tojson }};
+const OPS_MONTH_END = (function () {
+  var v = {% if ops_month_end is defined %}{{ ops_month_end|tojson }}{% else %}null{% endif %};
+  if (v) return v;
+  var s = OPS_MONTH_START;
+  var p = s.split('-').map(Number);
+  var last = new Date(p[0], p[1], 0).getDate();
+  return s.slice(0, 8) + String(last).padStart(2, '0');
+})();
 const VISIT_DONE_STATUSES = ['مكتملة', 'ملغاة', 'ملغية'];
 const VISIT_IN_PROGRESS = ['جارية', 'مُرسلة للفني', 'جاري التنفيذ'];
 const VISIT_FILTER_LABELS = {
@@ -714,6 +742,98 @@ const MAINT_TECHS = [{% for t in maint_technicians %}{ id: {{ t.id }}, name: {{ 
 const PLAN_DISTRICTS = {{ plan_districts|tojson }};
 let PLAN_VISITS = [];
 let PLAN_MODE = 'auto';
+let visitMap = null;
+let visitMarkers = [];
+let visitCluster = null;
+let visitInfoWindow = null;
+
+function visitStatusColor(status) {
+  const s = status || '';
+  if (s.indexOf('مكتمل') >= 0) return '#1fb87a';
+  if (s.indexOf('متأخر') >= 0) return '#e04848';
+  if (s.indexOf('ملغ') >= 0) return '#888888';
+  if (s.indexOf('جاري') >= 0 || s.indexOf('جار') >= 0 || s.indexOf('مُرسل') >= 0) return '#e09030';
+  return '#2a7fff';
+}
+
+function refreshVisitMap() {
+  if (typeof google === 'undefined' || !google.maps) return;
+  const mapEl = document.getElementById('map');
+  if (!mapEl) return;
+  if (!visitMap) {
+    visitMap = window.LiftCoreMap
+      ? LiftCoreMap.initMap(mapEl, null)
+      : new google.maps.Map(mapEl, {
+          center: { lat: 21.4225, lng: 39.8262 },
+          zoom: 12,
+          mapTypeId: 'satellite',
+          clickableIcons: false,
+          streetViewControl: false,
+        });
+    visitInfoWindow = new google.maps.InfoWindow();
+  }
+  visitMarkers.forEach(m => m.setMap(null));
+  visitMarkers = [];
+  if (visitCluster && visitCluster.clearMarkers) visitCluster.clearMarkers();
+  visitCluster = null;
+
+  (VISIT_MAP_POINTS || []).forEach(p => {
+    if (!p.lat || !p.lng) return;
+    const color = visitStatusColor(p.status);
+    const marker = new google.maps.Marker({
+      position: { lat: p.lat, lng: p.lng },
+      title: p.label || '',
+      icon: window.LiftCoreMap
+        ? LiftCoreMap.makePinIcon(color, 1.2)
+        : {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: '#fff',
+            strokeWeight: 2,
+          },
+    });
+    marker.addListener('click', () => {
+      visitInfoWindow.setContent(
+        '<div style="font-family:Tahoma,Arial;direction:rtl;text-align:right;min-width:160px">' +
+        '<b>' + (p.label || '') + '</b><br>' + (p.status || '—') +
+        '</div>'
+      );
+      visitInfoWindow.open(visitMap, marker);
+    });
+    visitMarkers.push(marker);
+  });
+
+  if (visitMarkers.length && window.LiftCoreMap) {
+    visitCluster = LiftCoreMap.attachCluster(visitMap, visitMarkers, 'زيارة');
+    LiftCoreMap.fitMapToMarkers(visitMap, visitMarkers, true);
+  } else if (visitMarkers.length) {
+    const bounds = new google.maps.LatLngBounds();
+    visitMarkers.forEach(m => { m.setMap(visitMap); bounds.extend(m.getPosition()); });
+    visitMap.fitBounds(bounds, 48);
+    google.maps.event.trigger(visitMap, 'resize');
+  } else {
+    visitMap.setCenter({ lat: 21.4225, lng: 39.8262 });
+    visitMap.setZoom(12);
+    google.maps.event.trigger(visitMap, 'resize');
+  }
+}
+
+function refreshCalendarView() {
+  const ym = document.getElementById('work-month')?.value;
+  if (!ym) return;
+  const parts = ym.split('-').map(Number);
+  OpsPage.setCalendarMonth(parts[0], parts[1] - 1);
+  OpsPage.setCalendarItems(visitsInMonth(ym));
+  OpsPage.refreshCalendar('cal-grid', 'cal-title');
+}
+
+function switchTab(name) {
+  OpsPage.switchTab(name);
+  if (name === 'map') setTimeout(refreshVisitMap, 250);
+  if (name === 'cal') setTimeout(refreshCalendarView, 50);
+}
 
 const STATUS_BADGE = {
   'مكتملة':'badge-active','مجدولة':'badge-partial',
@@ -727,14 +847,20 @@ let currentDeleteId = null;
 let filtered = [...VISITS];
 let activeVisitFilter = null;
 
+function isVisitDoneToday(v) {
+  if (v.status !== 'مكتملة') return false;
+  if (v.completed_at) return v.completed_at === OPS_TODAY;
+  return v.visit_date === OPS_TODAY;
+}
+
 function matchVisitFilter(v, key) {
   const done = VISIT_DONE_STATUSES.includes(v.status);
   switch (key) {
     case 'today': return v.visit_date === OPS_TODAY;
     case 'in_progress': return VISIT_IN_PROGRESS.includes(v.status);
     case 'late': return v.visit_date && v.visit_date < OPS_TODAY && !done;
-    case 'done_today': return v.visit_date === OPS_TODAY && v.status === 'مكتملة';
-    case 'month': return v.visit_date >= OPS_MONTH_START && v.visit_date <= OPS_TODAY;
+    case 'done_today': return isVisitDoneToday(v);
+    case 'month': return v.visit_date >= OPS_MONTH_START && v.visit_date <= OPS_MONTH_END;
     case 'critical': return v.priority === 'حرجة' && !done;
     case 'tomorrow': return v.visit_date === OPS_TOMORROW && v.status === 'مجدولة';
     default: return true;
@@ -979,9 +1105,17 @@ function applyWorkMonth() {
   filterTable();
 }
 
+function visitCustomerName(v) {
+  if (v.customer) return v.customer;
+  const c = CUSTOMERS.find(x => x.id === v.customer_id);
+  return c ? c.name : 'عميل غير محدد';
+}
+
 function visitsInMonth(ym) {
   const b = monthBounds(ym);
-  return VISITS.filter(v => v.visit_date >= b.from && v.visit_date <= b.to);
+  return VISITS
+    .filter(v => v.visit_date >= b.from && v.visit_date <= b.to)
+    .map(v => Object.assign({}, v, { customer: visitCustomerName(v) }));
 }
 
 function shiftWorkMonth(delta) {
@@ -1360,6 +1494,31 @@ function editVisit(id) {
 }
 
 // ===== عرض =====
+function isVisitAllOk(v) {
+  if (!v || !v.has_report) return false;
+  if (v.report_all_ok === true) return true;
+  if (!Array.isArray(v.report_flagged_items)) return false;
+  return v.report_filled > 0 && v.report_filled === v.report_total && v.report_flagged_items.length === 0;
+}
+
+function renderVisitFlaggedItems(v) {
+  if (!v.has_report) return '';
+  if (isVisitAllOk(v)) {
+    return '<div class="view-item view-full"><div class="view-label">بنود الفحص</div><div class="view-val">' +
+      '<div class="checklist-elev-ok"><span>حالة المصعد</span><span class="badge badge-active">جيدة</span></div></div></div>';
+  }
+  const items = v.report_flagged_items || [];
+  if (!items.length) {
+    return '<div class="view-item view-full"><div class="view-label">بنود الفحص</div><div class="view-val" style="color:var(--text3)">لا توجد بنود (لا ينطبق أو إصلاح)</div></div>';
+  }
+  const rows = items.map(it => {
+    const badgeCls = it.status_key === 'repair' ? 'badge-expired' : 'badge-cancelled';
+    const note = it.note ? '<span class="checklist-item-note"> — ' + escHtml(it.note) + '</span>' : '';
+    return '<div class="checklist-flagged-item"><span class="badge ' + badgeCls + '">' + escHtml(it.status) + '</span><span>' + escHtml(it.label) + '</span>' + note + '</div>';
+  }).join('');
+  return '<div class="view-item view-full"><div class="view-label">بنود الفحص</div><div class="view-val checklist-flagged-list">' + rows + '</div></div>';
+}
+
 function viewVisit(id) {
   const v = VISITS.find(x=>x.id===id);
   if(!v) return;
@@ -1377,7 +1536,7 @@ function viewVisit(id) {
       <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${PRIORITY_BADGE[v.priority]||'badge-active'}">${v.priority}</span></div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${v.status}</span></div></div>
       ${v.fault_code?`<div class="view-item"><div class="view-label">رقم العطل</div><div class="view-val" style="font-family:var(--font-en)">${v.fault_code}</div></div>`:''}
-      ${v.works_done?`<div class="view-item view-full"><div class="view-label">الأعمال المنفذة</div><div class="view-val">${v.works_done}</div></div>`:''}
+      ${renderVisitFlaggedItems(v)}
       ${v.observations?`<div class="view-item view-full"><div class="view-label">الملاحظات</div><div class="view-val">${v.observations}</div></div>`:''}
       ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" target="_blank" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" target="_blank" style="color:var(--accent)">طباعة PDF</a></div></div>`:''}
     </div>`;
@@ -1387,7 +1546,6 @@ function viewVisit(id) {
     rpt.href = '/maintenance-visits/' + v.id + '/report';
     rpt.style.display = '';
   }
-  if (v.customer_id) LiftCoreProfile.appendToView(document.getElementById('view-body'), v.customer_id, v.contract_id, { timelineLimit: 15 });
 }
 
 // ===== حذف =====
@@ -1426,12 +1584,25 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.
 
 OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
 OpsPage.fillFilterSelect('f-tech', TECHNICIANS.map(t => ({ value: t.name, label: t.name })), 'كل الفنيين');
-OpsPage.initMap('map', VISIT_MAP_POINTS);
-OpsPage.initCalendar('cal-grid', 'cal-title', VISITS, 'visit_date');
+OpsPage.initCalendar('cal-grid', 'cal-title', VISITS, 'visit_date', 'customer', 'status', 'العميل');
 const mapLabel = document.getElementById('map-date-label');
 if (mapLabel) mapLabel.textContent = 'زيارات اليوم — ' + new Date().toISOString().slice(0, 10);
 applyWorkMonth();
 updatePlanMonthHint();
+document.getElementById('cal-grid')?.addEventListener('click', function (e) {
+  const cell = e.target.closest('.cal-day[data-date]');
+  if (!cell || cell.classList.contains('empty')) return;
+  const d = cell.dataset.date;
+  const ff = document.getElementById('f-date-from');
+  const ft = document.getElementById('f-date-to');
+  if (ff) ff.value = d;
+  if (ft) ft.value = d;
+  activeVisitFilter = null;
+  document.querySelectorAll('[data-visit-filter]').forEach(el => el.classList.remove('active'));
+  updateVisitFilterHint();
+  switchTab('table');
+  filterTable();
+});
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);

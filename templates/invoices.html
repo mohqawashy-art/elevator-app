@@ -8,7 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/customer_profile.css">
+<link rel="stylesheet" href="/static/tax_calc.css">
 <script src="/static/customer_profile.js"></script>
+<script src="/static/tax_calc.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -842,13 +844,19 @@ function openAddModal() {
 }
 
 function calcTotal() {
-  const amt = parseFloat(document.getElementById('f-amount')?.value)||0;
-  const tax = amt * 0.15;
-  const el = document.getElementById('f-total');
-  if(el) el.value = (amt+tax).toFixed(2);
+  var block = document.querySelector('#modal-add .lc-tax-block');
+  if (block && block._lcTaxCalc) { block._lcTaxCalc.update(); return; }
+  var amt = parseFloat(document.getElementById('f-amount')?.value) || 0;
+  var result = window.LiftCoreTaxCalc
+    ? LiftCoreTaxCalc.fromBeforeTax(amt, 15)
+    : { total: amt * 1.15 };
+  var el = document.getElementById('f-total');
+  if (el) el.value = result.total.toFixed(2);
 }
 
 function saveInvoice() {
+  var block = document.querySelector('#modal-add .lc-tax-block');
+  if (block && block._lcTaxCalc) block._lcTaxCalc.update();
   const editId = document.getElementById('modal-add').dataset.editId;
   const fd = new FormData();
   [['invoice_type','f-inv-type'],['customer_id','f-customer-sel'],
@@ -876,6 +884,8 @@ function editInvoice(id) {
     'f-status-sel':i.status,'f-notes':i.notes,
   };
   Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
+  var taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, i.amount, 15);
   document.getElementById('modal-add').classList.add('open');
 }
 

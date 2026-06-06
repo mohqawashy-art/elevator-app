@@ -96,16 +96,18 @@
     });
     const labor = parseFloat(document.getElementById('labor-cost')?.value) || 0;
     const subtotal = partsTotal + labor;
-    const vat = subtotal * 0.15;
-    const grand = subtotal + vat;
+    const taxCalc = global.LiftCoreTaxCalc;
+    const breakdown = taxCalc
+      ? taxCalc.fromBeforeTax(subtotal, 15)
+      : { before: subtotal, tax: subtotal * 0.15, total: subtotal * 1.15 };
     function set(id, val) {
       const el = document.getElementById(id);
       if (el) el.textContent = val.toLocaleString('ar-SA', { minimumFractionDigits: 2 }) + ' ر.س';
     }
     set('total-parts', partsTotal);
-    set('subtotal', subtotal);
-    set('vat-amount', vat);
-    set('grand-total', grand);
+    set('subtotal', breakdown.before);
+    set('vat-amount', breakdown.tax);
+    set('grand-total', breakdown.total);
   }
 
   function collectParts() {

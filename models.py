@@ -59,6 +59,11 @@ class Elevator(db.Model):
     capacity_kg     = db.Column(db.Integer)
     floors          = db.Column(db.Integer)
     speed           = db.Column(db.String(50))
+    machine_type    = db.Column(db.String(30))    # MR / MRL / Hydraulic
+    control_type    = db.Column(db.String(50))    # Relay / PLC / VVVF
+    control_drive   = db.Column(db.String(50))    # AC VVVF / Hydraulic / DC
+    control_operation = db.Column(db.String(50))  # Simplex / Group / Destination
+    control_detail  = db.Column(db.String(200))   # Otis Gen2, Kone KCM...
     serial_number   = db.Column(db.String(100))
     install_date    = db.Column(db.Date)
     last_maintenance= db.Column(db.Date)
@@ -430,6 +435,8 @@ class Settings(db.Model):
     currency        = db.Column(db.String(10), default='ر.س')
     language        = db.Column(db.String(10), default='ar')
     logo_path       = db.Column(db.String(300))
+    rep_name        = db.Column(db.String(200))   # ممثل الشركة في العقود
+    rep_mobile      = db.Column(db.String(20))      # جوال الممثل
     checklist_template_key = db.Column(db.String(50), default='liftcore_standard_v1')  # SaaS: قالب الفحص الافتراضي
 
 

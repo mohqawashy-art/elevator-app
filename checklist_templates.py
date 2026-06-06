@@ -187,3 +187,39 @@ def checklist_summary_lines(data: dict[str, Any], template_key: str | None = Non
                 line += f" ({note.strip()})"
             lines.append(line)
     return lines
+
+
+def checklist_flagged_items(data: dict[str, Any], template_key: str | None = None) -> list[dict[str, str]]:
+    """بنود الفحص — لا ينطبق أو إصلاح فقط."""
+    tpl = get_template(template_key or data.get('template_key'))
+    items = data.get('items') or {}
+    status_ar = {'repair': 'إصلاح', 'na': 'لا ينطبق'}
+    flagged: list[dict[str, str]] = []
+    for sec in tpl['sections']:
+        for it in sec['items']:
+            st = (items.get(it['id']) or {}).get('status') or ''
+            if st not in ('repair', 'na'):
+                continue
+            note = (items.get(it['id']) or {}).get('note') or ''
+            flagged.append({
+                'section': sec['title_ar'],
+                'label': it['ar'],
+                'status': status_ar.get(st, st),
+                'status_key': st,
+                'note': note.strip(),
+            })
+    return flagged
+
+
+def checklist_all_ok(data: dict[str, Any], template_key: str | None = None) -> bool:
+    """True if every checklist item is marked ok (سليم)."""
+    if not data:
+        return False
+    tpl = get_template(template_key or data.get('template_key'))
+    items = data.get('items') or {}
+    for sec in tpl['sections']:
+        for it in sec['items']:
+            st = (items.get(it['id']) or {}).get('status') or ''
+            if st != 'ok':
+                return False
+    return True

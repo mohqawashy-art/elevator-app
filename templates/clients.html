@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA&language=ar&region=SA"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA&language=ar&region=SA&libraries=places"></script>
 <script src="https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="/static/customer_profile.css">
@@ -15,6 +15,8 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
+<script src="/static/liftcore_map.js"></script>
+<script src="/static/client_map_picker.js"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -233,6 +235,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .map-legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .map-legend-dot.active{background:#1fb87a}
 .map-legend-dot.inactive{background:#e04848}
+.map-legend-cluster{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#2a7fff;color:#fff;font-size:10px;font-weight:700;border:2px solid #fff;box-shadow:0 0 0 3px rgba(42,127,255,.2)}
 #map{height:min(68vh,620px);min-height:480px;width:100%}
 #map-empty{padding:28px;text-align:center;color:var(--text3);font-size:13px;display:none;border-top:1px solid var(--border)}
 #mini-map{height:180px;width:100%;border-radius:var(--r-sm);border:1px solid var(--border);margin-top:10px;display:none}
@@ -516,6 +519,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <div class="map-legend">
             <div class="map-legend-item"><span class="map-legend-dot active"></span> عميل نشط</div>
             <div class="map-legend-item"><span class="map-legend-dot inactive"></span> عميل غير نشط</div>
+            <div class="map-legend-item"><span class="map-legend-cluster">2</span> تجميع عند التصغير</div>
             <button class="btn btn-secondary btn-sm" onclick="refreshMainMap(true)">تحديث الخريطة</button>
           </div>
         </div>
@@ -529,7 +533,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <!-- ===== MODAL: إضافة/تعديل عميل ===== -->
 <div class="modal-overlay" id="modal-add">
-  <div class="modal" style="max-width:640px">
+  <div class="modal" style="max-width:780px">
     <div class="modal-head">
       <div class="modal-title" id="modal-title">إضافة عميل جديد</div>
       <button class="modal-close" onclick="closeModal('modal-add')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
@@ -630,10 +634,26 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             <option value="غير نشط">غير نشط</option>
           </select>
         </div>
-        <!-- العنوان -->
+        <!-- الموقع على الخريطة -->
+        <div class="field form-full map-picker-section">
+          <label>موقع العميل على الخريطة</label>
+          <p class="map-picker-hint">حدّد موقع المبنى من الخريطة داخل الصفحة — ابحث أو انقر على الخريطة أو اسحب الدبوس. لا حاجة لفتح Google Maps.</p>
+          <div class="map-picker-toolbar">
+            <input type="text" id="client-map-search" class="map-picker-search" placeholder="ابحث: برج، شارع، حي، مكة...">
+            <button type="button" class="btn btn-secondary btn-sm" id="client-map-myloc">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14"><path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              موقعي
+            </button>
+          </div>
+          <div id="client-map-picker" class="client-map-picker"></div>
+          <div class="map-picker-coords" id="client-map-coords">لم يُحدَّد موقع بعد — ابحث أو اضغط على الخريطة لتحديد العنوان</div>
+          <input type="hidden" id="f-maps-url">
+          <input type="hidden" id="f-lat">
+          <input type="hidden" id="f-lng">
+        </div>
         <div class="field form-full">
           <label>العنوان التفصيلي</label>
-          <input type="text" id="f-address" placeholder="الشارع، رقم المبنى، معلم قريب...">
+          <input type="text" id="f-address" placeholder="يُعبَّأ من الخريطة — يمكنك تعديله يدوياً">
         </div>
         <div class="field form-full">
           <label>صورة المبنى</label>
@@ -647,20 +667,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           </div>
           <input type="file" id="f-building-photo" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="previewBuildingPhoto(this)">
         </div>
-        <!-- الموقع -->
-        <div class="field form-full">
-          <label>رابط Google Maps (اختياري)</label>
-          <input type="text" id="f-maps-url" placeholder="https://maps.google.com/..." style="direction:ltr;font-size:12px" oninput="extractCoords(this.value)">
-        </div>
-        <div class="field">
-          <label>خط العرض</label>
-          <input type="text" id="f-lat" placeholder="21.3891" style="direction:ltr;font-family:var(--font-en)" oninput="previewMapPin()">
-        </div>
-        <div class="field">
-          <label>خط الطول</label>
-          <input type="text" id="f-lng" placeholder="39.8579" style="direction:ltr;font-family:var(--font-en)" oninput="previewMapPin()">
-        </div>
-        <div id="mini-map" class="form-full"></div>
         <!-- ملاحظات -->
         <div class="field form-full">
           <label>ملاحظات</label>
@@ -1079,22 +1085,96 @@ function loadClientData(id) {
   });
 }
 
+function applyCityFromMap(cityName) {
+  if (!cityName) return;
+  var sel = document.getElementById('f-city-sel');
+  if (!sel) return;
+  var i, found = false;
+  for (i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === cityName) { sel.value = cityName; found = true; break; }
+  }
+  if (!found) {
+    for (i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].text.indexOf(cityName) >= 0 || cityName.indexOf(sel.options[i].text) >= 0) {
+        sel.value = sel.options[i].value; found = true; break;
+      }
+    }
+  }
+  if (!found) {
+    var opt = document.createElement('option');
+    opt.value = cityName;
+    opt.textContent = cityName;
+    sel.appendChild(opt);
+    sel.value = cityName;
+  }
+}
+
+function onMapPickerUpdate(data) {
+  if (!data) return;
+  var addr = document.getElementById('f-address');
+  var lat = document.getElementById('f-lat');
+  var lng = document.getElementById('f-lng');
+  var maps = document.getElementById('f-maps-url');
+  if (data.address && addr && !addr.dataset.userEdited) addr.value = data.address;
+  if (lat) lat.value = data.lat || '';
+  if (lng) lng.value = data.lng || '';
+  if (maps && data.maps_url) maps.value = data.maps_url;
+  if (data.city) applyCityFromMap(data.city);
+  if (data.district) {
+    var dist = document.getElementById('f-district');
+    if (dist && !dist.value) dist.value = data.district;
+  }
+}
+
+function initClientMapPicker(retry) {
+  retry = retry || 0;
+  if (typeof google === 'undefined' || !google.maps) {
+    if (retry < 15) setTimeout(function () { initClientMapPicker(retry + 1); }, 250);
+    return;
+  }
+  if (typeof LiftCoreMapPicker === 'undefined') return;
+  LiftCoreMapPicker.init({
+    mapEl: 'client-map-picker',
+    searchEl: 'client-map-search',
+    myLocEl: 'client-map-myloc',
+    coordsEl: 'client-map-coords',
+    defaultCenter: { lat: 21.4225, lng: 39.8262 },
+    poiStyles: MAP_POI_HIDDEN_STYLES,
+    getPinColor: function () {
+      var st = document.getElementById('f-status-sel');
+      return CLIENT_PIN_COLORS[(st && st.value) || 'نشط'] || '#1fb87a';
+    },
+    onUpdate: onMapPickerUpdate,
+  });
+  setTimeout(function () { LiftCoreMapPicker.resize(); }, 300);
+  setTimeout(function () { LiftCoreMapPicker.resize(); }, 700);
+}
+
+function openClientFormModal(afterOpen) {
+  openModal('modal-add');
+  setTimeout(function () {
+    initClientMapPicker();
+    if (typeof afterOpen === 'function') afterOpen();
+    setTimeout(function () { LiftCoreMapPicker.resize(); }, 400);
+  }, 120);
+}
+
 // ===== إضافة =====
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة عميل جديد';
   document.getElementById('modal-add').dataset.editId = '';
   document.getElementById('f-code-display').textContent = NEXT_CODE;
-  ['f-name','f-district','f-address','f-contact','f-phone','f-whatsapp','f-elevators','f-maps-url','f-lat','f-lng','f-notes'].forEach(function(id){
-    var el = document.getElementById(id); if(el) el.value='';
+  ['f-name','f-district','f-address','f-contact','f-phone','f-whatsapp','f-elevators','f-maps-url','f-lat','f-lng','f-notes','client-map-search'].forEach(function(id){
+    var el = document.getElementById(id); if(el) { el.value=''; delete el.dataset.userEdited; }
   });
   resetBuildingPhotoPreview('');
   fillCitySelects('');
   fillPhoneCodeSelects('+966', '+966');
   document.getElementById('f-role').value = '';
   document.getElementById('f-status-sel').value = 'نشط';
-  document.getElementById('mini-map').style.display = 'none';
-  miniMap=null; miniMarker=null;
-  openModal('modal-add');
+  openClientFormModal(function () {
+    LiftCoreMapPicker.reset();
+  });
 }
 
 function copyPhone() {
@@ -1107,6 +1187,11 @@ function saveClient() {
   var phone = document.getElementById('f-phone').value.trim();
   if(!name) { alert('يرجى إدخال اسم العميل'); return; }
   if(!phone) { alert('يرجى إدخال رقم الهاتف'); return; }
+  var lat = document.getElementById('f-lat').value.trim();
+  var lng = document.getElementById('f-lng').value.trim();
+  if(!lat || !lng) {
+    if(!confirm('لم يُحدَّد موقع على الخريطة — لن يظهر العميل في خريطة العملاء.\n\nهل تريد الحفظ بدون موقع GPS؟')) return;
+  }
 
   var editId    = document.getElementById('modal-add').dataset.editId;
   var waNum = document.getElementById('f-whatsapp').value.trim();
@@ -1159,7 +1244,23 @@ function editClient(id) {
   fillPhoneCodeSelects(ph.code, wa.code);
   document.getElementById('f-phone').value = ph.number;
   document.getElementById('f-whatsapp').value = wa.number;
-  openModal('modal-add');
+  openClientFormModal(function () {
+    if (c.lat && c.lng) {
+      LiftCoreMapPicker.setLocation(c.lat, c.lng, {
+        address: c.address || '',
+        city: c.city || '',
+        district: c.district || '',
+        maps_url: c.maps_url || '',
+      });
+    } else {
+      LiftCoreMapPicker.reset();
+      var city = c.city || '';
+      if (city && CITY_COORDS[city] && typeof LiftCoreMapPicker.geocodeAddress === 'function') {
+        var q = [c.address, c.district, city, 'Saudi Arabia'].filter(Boolean).join(', ');
+        if (q) LiftCoreMapPicker.geocodeAddress(q);
+      }
+    }
+  });
 }
 
 function editFromCard() {
@@ -1205,6 +1306,10 @@ var CITY_COORDS = {
 };
 
 function getClientPosition(c) {
+  if (window.LiftCoreMap) return LiftCoreMap.coordsForRecord(c);
+  if (window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer) {
+    return LiftCoreLocation.coordsForCustomer(c);
+  }
   var lat = parseFloat(c.lat), lng = parseFloat(c.lng);
   if (!isNaN(lat) && !isNaN(lng)) return {lat: lat, lng: lng, exact: true};
   return null;
@@ -1217,14 +1322,11 @@ function getClientPinColor(c) {
 }
 
 function makePinIcon(color, scale) {
+  if (window.LiftCoreMap) return LiftCoreMap.makePinIcon(color, scale);
   return {
     path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z',
-    fillColor: color,
-    fillOpacity: 1,
-    strokeColor: '#ffffff',
-    strokeWeight: 2,
-    scale: scale || 1.35,
-    anchor: new google.maps.Point(12, 22)
+    fillColor: color, fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2,
+    scale: scale || 1.35, anchor: new google.maps.Point(12, 22)
   };
 }
 
@@ -1248,32 +1350,6 @@ function clearMapMarkers() {
   mapMarkers.forEach(function(m){ m.setMap(null); });
   mapMarkers = [];
 }
-
-var clientClusterRenderer = {
-  render: function(cluster, stats, map) {
-    var count = cluster.count;
-    var scale = Math.min(12, 7 + Math.sqrt(count) * 1.1);
-    return new google.maps.Marker({
-      position: cluster.position,
-      title: count + ' عميل',
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: scale,
-        fillColor: '#2a7fff',
-        fillOpacity: 0.9,
-        strokeColor: '#ffffff',
-        strokeWeight: 2
-      },
-      label: {
-        text: String(count),
-        color: '#ffffff',
-        fontSize: count > 99 ? '9px' : '10px',
-        fontWeight: '700'
-      },
-      zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
-    });
-  }
-};
 
 function refreshMainMap(fitAgain) {
   if (typeof google === 'undefined' || !google.maps) return;
@@ -1359,14 +1435,16 @@ function refreshMainMap(fitAgain) {
     bounds.extend({lat: pos.lat, lng: pos.lng});
   });
 
-  if (mapMarkers.length && typeof markerClusterer !== 'undefined' && markerClusterer.MarkerClusterer) {
+  if (mapMarkers.length && window.LiftCoreMap) {
+    markerCluster = LiftCoreMap.attachCluster(mainMap, mapMarkers, 'عميل');
+  } else if (mapMarkers.length && typeof markerClusterer !== 'undefined' && markerClusterer.MarkerClusterer) {
     markerCluster = new markerClusterer.MarkerClusterer({
       map: mainMap,
       markers: mapMarkers,
-      renderer: clientClusterRenderer,
-      algorithm: new markerClusterer.SuperClusterAlgorithm({radius: 80, maxZoom: 15}),
+      renderer: LiftCoreMap ? LiftCoreMap.createClusterRenderer('عميل') : undefined,
+      algorithm: new markerClusterer.SuperClusterAlgorithm({radius: 90, maxZoom: 16}),
       onClusterClick: function(_event, cluster, map) {
-        map.fitBounds(cluster.bounds);
+        map.fitBounds(cluster.bounds, 48);
       }
     });
   } else {
@@ -1388,7 +1466,8 @@ function refreshMainMap(fitAgain) {
     if (missing.length) {
       window._liftcoreGeocodeStarted = true;
       if (summaryEl) summaryEl.textContent = 'جاري تحديد مواقع ' + missing.length + ' عميل من العناوين...';
-      LiftCoreGeocode.geocodeAll(missing, function(done, totalMissing) {
+      var geocodeFn = window.LiftCoreMap ? LiftCoreMap.geocodeMissing : LiftCoreGeocode.geocodeAll.bind(LiftCoreGeocode);
+      geocodeFn(missing, function(done, totalMissing) {
         if (summaryEl) summaryEl.textContent = 'تم تحديد ' + done + ' من ' + totalMissing + ' موقع...';
         if (typeof updateStats === 'function') updateStats();
         if (done === totalMissing) refreshMainMap(true);
@@ -1396,22 +1475,33 @@ function refreshMainMap(fitAgain) {
     }
   }
 
-  google.maps.event.trigger(mainMap, 'resize');
-  if (total) {
-    if (fitAgain) {
-      mainMap.fitBounds(bounds, 64);
-      google.maps.event.addListenerOnce(mainMap, 'bounds_changed', function() {
-        if (mainMap.getZoom() > 15) mainMap.setZoom(15);
-      });
+  if (window.LiftCoreMap) {
+    LiftCoreMap.fitMapToMarkers(mainMap, mapMarkers, fitAgain && total > 1);
+  } else {
+    google.maps.event.trigger(mainMap, 'resize');
+    if (total) {
+      if (fitAgain) {
+        mainMap.fitBounds(bounds, 64);
+        google.maps.event.addListenerOnce(mainMap, 'bounds_changed', function() {
+          if (mainMap.getZoom() > 16) mainMap.setZoom(16);
+        });
+      }
+      if (total === 1) {
+        var only = getClientPosition(CUSTOMERS.find(function(c){ return getClientPosition(c); }));
+        if (only) mainMap.setCenter({lat: only.lat, lng: only.lng});
+        mainMap.setZoom(14);
+      }
+    } else if (fitAgain) {
+      mainMap.setCenter({lat: 21.4225, lng: 39.8262});
+      mainMap.setZoom(12);
     }
-    if (total === 1) {
-      var only = getClientPosition(CUSTOMERS.find(function(c){ return getClientPosition(c); }));
-      if (only) mainMap.setCenter({lat: only.lat, lng: only.lng});
+  }
+  if (total === 1) {
+    var single = getClientPosition(CUSTOMERS.find(function(c){ return getClientPosition(c); }));
+    if (single) {
+      mainMap.setCenter({lat: single.lat, lng: single.lng});
       mainMap.setZoom(14);
     }
-  } else if (fitAgain) {
-    mainMap.setCenter({lat: 21.4225, lng: 39.8262});
-    mainMap.setZoom(12);
   }
 }
 
@@ -1423,26 +1513,8 @@ function previewMapPin(){
   var lat=parseFloat(document.getElementById('f-lat').value);
   var lng=parseFloat(document.getElementById('f-lng').value);
   if(isNaN(lat)||isNaN(lng)) return;
-  var el=document.getElementById('mini-map');
-  el.style.display='block'; el.style.height='160px';
-  if(!miniMap){
-    miniMap=new google.maps.Map(el,{
-      center:{lat:lat,lng:lng}, zoom:16,
-      mapTypeId:'satellite',
-      clickableIcons:false,
-      mapTypeControl:false, streetViewControl:false, fullscreenControl:false,
-      zoomControl:true,
-      styles: MAP_POI_HIDDEN_STYLES
-    });
-    var previewStatus = document.getElementById('f-status-sel') ? document.getElementById('f-status-sel').value : 'نشط';
-    miniMarker=new google.maps.Marker({
-      position:{lat:lat,lng:lng}, map:miniMap,
-      icon: makePinIcon(CLIENT_PIN_COLORS[previewStatus] || '#1fb87a', 1.2)
-    });
-  } else {
-    miniMap.setCenter({lat:lat,lng:lng});
-    miniMarker.setPosition({lat:lat,lng:lng});
-    google.maps.event.trigger(miniMap, 'resize');
+  if(typeof LiftCoreMapPicker !== 'undefined') {
+    LiftCoreMapPicker.setLocation(lat, lng);
   }
 }
 
@@ -1451,7 +1523,12 @@ function extractCoords(url){
   var patterns=[/@(-?\d+\.?\d*),(-?\d+\.?\d*)/, /!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/, /q=(-?\d+\.?\d*),(-?\d+\.?\d*)/];
   for(var i=0;i<patterns.length;i++){
     var m=url.match(patterns[i]);
-    if(m){document.getElementById('f-lat').value=m[1];document.getElementById('f-lng').value=m[2];previewMapPin();break;}
+    if(m){
+      document.getElementById('f-lat').value=m[1];
+      document.getElementById('f-lng').value=m[2];
+      previewMapPin();
+      break;
+    }
   }
 }
 
@@ -1608,6 +1685,19 @@ if (window.LiftCoreLocation) {
     return CUSTOMERS.find(function(x) { return x.id === id; });
   });
 }
+
+(function bindClientFormExtras() {
+  var statusSel = document.getElementById('f-status-sel');
+  if (statusSel) {
+    statusSel.addEventListener('change', function () {
+      if (window.LiftCoreMapPicker) LiftCoreMapPicker.refreshMarkerIcon();
+    });
+  }
+  var addrIn = document.getElementById('f-address');
+  if (addrIn) {
+    addrIn.addEventListener('input', function () { this.dataset.userEdited = '1'; });
+  }
+})();
 
 fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');

@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User
+from calendar import monthrange
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, and_, text, inspect
 from werkzeug.utils import secure_filename
@@ -54,6 +55,8 @@ with app.app_context():
             ],
             'settings': [
                 ('checklist_template_key', 'VARCHAR(50)'),
+                ('rep_name', 'VARCHAR(200)'),
+                ('rep_mobile', 'VARCHAR(20)'),
             ],
             'faults': [
                 ('visit_id', 'INTEGER'),
@@ -64,6 +67,13 @@ with app.app_context():
                 ('needs_parts', 'BOOLEAN'),
                 ('dispatched_at', 'DATETIME'),
                 ('report_json', 'TEXT'),
+            ],
+            'elevators': [
+                ('machine_type', 'VARCHAR(30)'),
+                ('control_type', 'VARCHAR(50)'),
+                ('control_drive', 'VARCHAR(50)'),
+                ('control_operation', 'VARCHAR(50)'),
+                ('control_detail', 'VARCHAR(200)'),
             ],
             'parts_billing': [('visit_id', 'INTEGER'), ('fault_id', 'INTEGER')],
             'technicians': [('team', 'VARCHAR(30)')],
@@ -543,7 +553,7 @@ def _coords_from_customer(cust):
 
 
 def _visits_js_list(visits):
-    from checklist_templates import parse_report_json, report_completion_stats
+    from checklist_templates import parse_report_json, report_completion_stats, checklist_flagged_items, checklist_all_ok
 
     rows = []
     for v in visits:
@@ -570,14 +580,22 @@ def _visits_js_list(visits):
             'visit_time': v.visit_time or '',
             'priority': v.priority or 'عادية',
             'status': v.status or '',
+            'completed_at': v.completed_at.strftime('%Y-%m-%d') if v.completed_at else '',
             'works_done': v.works_done or '',
             'observations': v.observations or '',
             'notes': v.notes or '',
             'has_report': bool(saved and stats.get('filled', 0) > 0),
             'report_filled': stats.get('filled', 0),
             'report_total': stats.get('total', 0),
+            'report_flagged_items': checklist_flagged_items(saved, v.checklist_template_key) if saved else [],
+            'report_all_ok': checklist_all_ok(saved, v.checklist_template_key) if saved else False,
         })
     return rows
+
+
+def _fault_registration_parts_lines(fault_id: int):
+    from operations import fault_registration_parts_lines
+    return fault_registration_parts_lines(fault_id)
 
 
 def _faults_js_list(faults):
@@ -600,12 +618,17 @@ def _faults_js_list(faults):
             'client_report': f.client_report or f.description or '',
             'priority': f.priority or 'عادية',
             'reported_at': f.reported_at.strftime('%Y-%m-%d') if f.reported_at else '',
+            'reported_at_local': f.reported_at.strftime('%Y-%m-%dT%H:%M') if f.reported_at else '',
             'response_time': f.response_time or '—',
             'status': f.status or '',
             'resolution': f.resolution or '',
             'billed': bool(f.billed),
             'visit_code': linked.code if linked else '',
             'notes': f.notes or '',
+            'reporter_name': f.reporter_name or '',
+            'reporter_phone': f.reporter_phone or '',
+            'needs_parts': bool(f.needs_parts),
+            'parts_lines': _fault_registration_parts_lines(f.id),
             'has_report': bool(f.report_json),
         })
     return rows
@@ -777,7 +800,8 @@ def _contract_json(c):
         'tax_amount': c.tax_amount or 0,
         'total': c.total or 0,
         'pay_terms': c.payment_terms or '',
-        'inv_status': c.invoice_status or 'غير مدفوع',
+        'paid_amount': contract_paid_total(c.id),
+        'inv_status': contract_invoice_status(c),
         'status': contract_display_status(c),
         'notes': c.notes or '',
     }
@@ -901,6 +925,11 @@ def elevator_add():
         capacity_kg     = request.form.get('capacity_kg') or None,
         floors          = request.form.get('floors') or None,
         serial_number   = request.form.get('serial_number', ''),
+        machine_type    = request.form.get('machine_type', ''),
+        control_type    = request.form.get('control_type', ''),
+        control_drive   = request.form.get('control_drive', ''),
+        control_operation = request.form.get('control_operation', ''),
+        control_detail  = request.form.get('control_detail', ''),
         install_date    = _parse_date(request.form.get('install_date')),
         last_maintenance= _parse_date(request.form.get('last_maintenance')),
         next_maintenance= _parse_date(request.form.get('next_maintenance')),
@@ -925,6 +954,11 @@ def elevator_edit(id):
     e.capacity_kg      = request.form.get('capacity_kg') or None
     e.floors           = request.form.get('floors') or None
     e.serial_number    = request.form.get('serial_number', '')
+    e.machine_type     = request.form.get('machine_type', '')
+    e.control_type     = request.form.get('control_type', '')
+    e.control_drive      = request.form.get('control_drive', '')
+    e.control_operation = request.form.get('control_operation', '')
+    e.control_detail   = request.form.get('control_detail', '')
     e.install_date     = _parse_date(request.form.get('install_date'))
     e.last_maintenance = _parse_date(request.form.get('last_maintenance'))
     e.next_maintenance = _parse_date(request.form.get('next_maintenance'))
@@ -961,7 +995,43 @@ def contract_display_status(contract, today=None):
     return 'نشط'
 
 
+def contract_paid_total(contract_id):
+    if not contract_id:
+        return 0.0
+    rev = db.session.query(db.func.coalesce(db.func.sum(Revenue.total), 0)).filter(
+        Revenue.contract_id == contract_id,
+        Revenue.status.in_(('محصّل', 'محصل')),
+    ).scalar() or 0
+    inv = db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).filter(
+        Invoice.contract_id == contract_id,
+        Invoice.status.in_(PAID_INVOICE_STATUSES),
+    ).scalar() or 0
+    return round(float(rev) + float(inv), 2)
+
+
+def contract_invoice_status(contract):
+    total = contract.total or 0
+    paid = contract_paid_total(contract.id)
+    if total <= 0:
+        return 'غير مدفوع'
+    if paid >= total - 0.01:
+        return 'مدفوع'
+    if paid > 0:
+        return 'مدفوع جزئياً'
+    return 'غير مدفوع'
+
+
+def sync_contract_invoice_status(contract_id):
+    if not contract_id:
+        return
+    c = Contract.query.get(contract_id)
+    if c:
+        c.invoice_status = contract_invoice_status(c)
+
+
 app.jinja_env.globals['contract_display_status'] = contract_display_status
+app.jinja_env.globals['contract_invoice_status'] = contract_invoice_status
+app.jinja_env.globals['contract_paid_total'] = contract_paid_total
 
 
 def customer_primary_contract(customer):
@@ -1266,10 +1336,10 @@ def _apply_contract_form(c, form):
     c.tax_amount = tax_amount
     c.total = value + tax_amount
     c.payment_terms = form.get('payment_terms', '')
-    c.invoice_status = form.get('invoice_status', 'غير مدفوع')
     c.status = form.get('status', 'نشط')
     c.reminder_date = _parse_date(form.get('reminder_date'))
     c.notes = form.get('notes', '')
+    c.invoice_status = contract_invoice_status(c)
 
 
 # =============================================
@@ -1317,6 +1387,14 @@ def contract_delete(id):
     db.session.delete(c)
     db.session.commit()
     return redirect(url_for('contracts'))
+
+
+@app.route('/contracts/<int:contract_id>/print')
+def contract_print_page(contract_id):
+    from contract_print import contract_print_payload
+
+    return render_template('contract-print.html', **contract_print_payload(contract_id))
+
 
 # =============================================
 # الفنيون
@@ -1598,6 +1676,7 @@ def maintenance_visits():
     ).all()
     today = date.today()
     plan_default = f'{today.year}-{today.month:02d}'
+    month_end = today.replace(day=monthrange(today.year, today.month)[1])
     maint_techs = [t for t in technicians if (t.team or 'عام') in ('صيانة', 'عام')] or list(technicians)
     return render_template(
         'maintenance-visits.html',
@@ -1625,6 +1704,7 @@ def maintenance_visits():
         ops_today=str(today),
         ops_tomorrow=str(today + timedelta(days=1)),
         ops_month_start=str(today.replace(day=1)),
+        ops_month_end=str(month_end),
         maint_technicians=maint_techs,
         plan_districts=list_districts(),
     )
@@ -2072,6 +2152,7 @@ def faults():
     faults = Fault.query.order_by(Fault.reported_at.desc()).all()
     elevators = Elevator.query.all()
     customers = Customer.query.order_by(Customer.name).all()
+    inventory_items = InventoryItem.query.order_by(InventoryItem.name).all()
     technicians = Technician.query.filter(
         Technician.status.in_(['نشط', 'متاح', 'مشغول'])
     ).all()
@@ -2084,13 +2165,26 @@ def faults():
         customers=customers,
         technicians=technicians,
         faults_js=_faults_js_list(faults),
-        customers_js=[{'id': c.id, 'code': c.code, 'name': c.name} for c in customers],
+        customers_js=[
+            {'id': c.id, 'code': c.code, 'name': c.name,
+             'city': c.city or '', 'district': c.district or '',
+             'contact_person': c.contact_person or '', 'phone': c.phone or ''}
+            for c in customers
+        ],
         elevators_js=[
             {'id': e.id, 'code': e.code, 'customer_id': e.customer_id,
-             'customer': e.customer.name if e.customer else ''}
+             'customer': e.customer.name if e.customer else '',
+             'building_name': e.building_name or '',
+             'city': e.city or '', 'district': e.district or ''}
             for e in elevators
         ],
         technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],
+        inventory_items_js=[
+            {'id': i.id, 'code': i.code, 'name': i.name,
+             'unit': i.unit or 'قطعة', 'buy_price': i.buy_price or 0,
+             'sell_price': i.sell_price or 0}
+            for i in inventory_items
+        ],
         fault_map_points=_fault_map_points(faults),
         next_fault_code=next_code(Fault, 'FA-', digits=5),
         fault_stats=fault_stats(),
@@ -2098,6 +2192,43 @@ def faults():
         fault_technicians=fault_techs,
         pending_whatsapp=pending_wa,
     )
+
+
+def _parse_reported_at(raw: str | None):
+    if not raw or not str(raw).strip():
+        return None
+    text = str(raw).strip().replace('Z', '')
+    for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(text[:19] if 'T' in fmt else text[:10], fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _apply_fault_billing_from_form(fault, form):
+    from operations import (
+        apply_fault_parts_billing,
+        clear_fault_parts_billing,
+        parse_fault_parts_lines,
+    )
+
+    billable = form.get('billable', 'no')
+    if billable == 'yes':
+        lines = parse_fault_parts_lines(form.get('parts_lines'))
+        fault.needs_parts = True
+        fault.billed = False
+        if lines:
+            apply_fault_parts_billing(
+                fault, lines, technician_id=fault.technician_id,
+            )
+        else:
+            clear_fault_parts_billing(fault.id)
+    else:
+        fault.needs_parts = False
+        fault.billed = False
+        clear_fault_parts_billing(fault.id)
+
 
 @app.route('/faults/edit/<int:id>', methods=['POST'])
 def fault_edit(id):
@@ -2108,20 +2239,23 @@ def fault_edit(id):
     f.technician_id = request.form.get('technician_id') or None
     f.fault_type    = request.form.get('fault_type','')
     f.description   = request.form.get('description','')
+    f.client_report = request.form.get('client_report') or f.description or ''
+    f.reporter_name = request.form.get('reporter_name', f.reporter_name or '')
+    f.reporter_phone = request.form.get('reporter_phone', f.reporter_phone or '')
     f.priority      = request.form.get('priority','عادية')
     f.status        = request.form.get('status','مفتوح')
     f.resolution    = request.form.get('resolution','')
     f.response_time = request.form.get('response_time','')
-    if request.form.get('billable'):
-        f.billed = request.form.get('billable') == 'yes'
-    else:
-        f.billed = request.form.get('billed') == 'on'
-    f.notes         = request.form.get('notes','')
+    reported = _parse_reported_at(request.form.get('reported_at'))
+    if reported:
+        f.reported_at = reported
+    f.notes = request.form.get('notes', '')
     visit_code = request.form.get('visit_code', '').strip()
     if visit_code:
         visit = lookup_visit(visit_code)
         if visit:
             link_fault_to_visit(f, visit)
+    _apply_fault_billing_from_form(f, request.form)
     db.session.commit()
     return redirect(url_for('faults'))
 
@@ -2132,6 +2266,7 @@ def fault_add():
 
     billable = request.form.get('billable', 'no')
     client_report = request.form.get('client_report') or request.form.get('description', '')
+    reported = _parse_reported_at(request.form.get('reported_at'))
     f = Fault(
         code          = next_code(Fault, 'FA-', digits=5),
         elevator_id   = request.form['elevator_id'],
@@ -2143,8 +2278,8 @@ def fault_add():
         reporter_phone= request.form.get('reporter_phone', ''),
         priority      = request.form.get('priority','عادية'),
         status        = request.form.get('status','مفتوح'),
-        billed        = billable == 'yes',
         notes         = request.form.get('notes',''),
+        reported_at   = reported or datetime.utcnow(),
     )
     db.session.add(f)
     db.session.flush()
@@ -2155,6 +2290,7 @@ def fault_add():
         if visit:
             link_fault_to_visit(f, visit)
 
+    _apply_fault_billing_from_form(f, request.form)
     db.session.commit()
 
     if f.technician_id:
@@ -2195,6 +2331,7 @@ def revenue_edit(id):
     r.status         = request.form.get('status','محصّل')
     r.reference      = request.form.get('reference','')
     r.notes          = request.form.get('notes','')
+    sync_contract_invoice_status(r.contract_id)
     db.session.commit()
     return redirect(url_for('revenues'))
 
@@ -2217,13 +2354,17 @@ def revenue_add():
         notes          = request.form.get('notes',''),
     )
     db.session.add(r)
+    db.session.flush()
+    sync_contract_invoice_status(r.contract_id)
     db.session.commit()
     return redirect(url_for('revenues'))
 
 @app.route('/revenues/delete/<int:id>', methods=['POST'])
 def revenue_delete(id):
     r = Revenue.query.get_or_404(id)
+    contract_id = r.contract_id
     db.session.delete(r)
+    sync_contract_invoice_status(contract_id)
     db.session.commit()
     return redirect(url_for('revenues'))
 
@@ -2297,6 +2438,7 @@ def invoice_edit(id):
     i.payment_method = request.form.get('payment_method','')
     i.status         = request.form.get('status','غير مدفوعة')
     i.notes          = request.form.get('notes','')
+    sync_contract_invoice_status(i.contract_id)
     db.session.commit()
     return redirect(url_for('invoices'))
 
@@ -2319,13 +2461,17 @@ def invoice_add():
         notes          = request.form.get('notes',''),
     )
     db.session.add(i)
+    db.session.flush()
+    sync_contract_invoice_status(i.contract_id)
     db.session.commit()
     return redirect(url_for('invoices'))
 
 @app.route('/invoices/delete/<int:id>', methods=['POST'])
 def invoice_delete(id):
     i = Invoice.query.get_or_404(id)
+    contract_id = i.contract_id
     db.session.delete(i)
+    sync_contract_invoice_status(contract_id)
     db.session.commit()
     return redirect(url_for('invoices'))
 
@@ -2611,6 +2757,10 @@ def report_parts():
 @app.route('/settings')
 def settings():
     s = Settings.query.first()
+    if not s:
+        s = Settings()
+        db.session.add(s)
+        db.session.commit()
     users = User.query.all()
     return render_template('settings.html', settings=s, users=users)
 
@@ -2626,13 +2776,15 @@ def settings_save():
     s.email           = request.form.get('email','')
     s.address         = request.form.get('address','')
     s.city            = request.form.get('city','')
+    s.rep_name        = request.form.get('rep_name','')
+    s.rep_mobile      = request.form.get('rep_mobile','')
     s.cr_number       = request.form.get('cr_number','')
     s.vat_number      = request.form.get('vat_number','')
     s.tax_pct         = float(request.form.get('tax_pct', 15))
     s.currency        = request.form.get('currency','ر.س')
     s.language        = request.form.get('language','ar')
     db.session.commit()
-    return redirect(url_for('settings'))
+    return redirect(url_for('settings', saved=1))
 
 # =============================================
 # API للداشبورد (بيانات حقيقية)

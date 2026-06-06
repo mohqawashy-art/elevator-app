@@ -23,6 +23,9 @@
   }
 
   function hasGps(c) {
+    if (global.LiftCoreLocation && LiftCoreLocation.parseCoords) {
+      return !!LiftCoreLocation.parseCoords(c.lat, c.lng);
+    }
     var lat = parseFloat(c.lat);
     var lng = parseFloat(c.lng);
     return !isNaN(lat) && !isNaN(lng);
@@ -63,7 +66,14 @@
 
   function geocodeOne(c) {
     if (hasGps(c)) {
-      return Promise.resolve({ lat: parseFloat(c.lat), lng: parseFloat(c.lng), exact: true });
+      var parsed = global.LiftCoreLocation && LiftCoreLocation.parseCoords
+        ? LiftCoreLocation.parseCoords(c.lat, c.lng)
+        : { lat: parseFloat(c.lat), lng: parseFloat(c.lng) };
+      if (parsed) {
+        c.lat = String(parsed.lat);
+        c.lng = String(parsed.lng);
+        return Promise.resolve({ lat: parsed.lat, lng: parsed.lng, exact: true });
+      }
     }
     if (cache[c.id]) return Promise.resolve(cache[c.id]);
     if (failed[c.id]) return Promise.resolve(null);

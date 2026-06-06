@@ -208,6 +208,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .field input::placeholder,.field textarea::placeholder{color:var(--text3)}
 .field textarea{resize:vertical;min-height:70px}
 .field-hint{font-size:11px;color:var(--text3)}
+.fault-datetime-display{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-size:13px;color:var(--text1);min-height:38px;display:flex;align-items:center;line-height:1.5}
+.fault-parts-panel{margin-top:4px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm)}
+.fault-parts-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.fault-parts-table th{text-align:right;font-weight:600;color:var(--text2);padding:6px 8px;border-bottom:1px solid var(--border);font-size:11px}
+.fault-parts-table td{padding:4px 6px;vertical-align:middle}
+.fault-parts-table select,.fault-parts-table input{width:100%;padding:6px 8px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg4);color:var(--text1);font-size:12px;font-family:var(--font-ar)}
+.fault-parts-table input[readonly]{opacity:.85}
+.fault-parts-total{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 12px;background:rgba(200,160,85,.08);border:1px solid rgba(200,160,85,.2);border-radius:var(--r-sm);font-size:13px}
+.fault-parts-total-val{font-family:var(--font-en);color:var(--gold);font-weight:600}
+.fault-parts-add{margin-top:8px}
 
 /* SMART ASSIGN */
 .tech-cards{display:flex;flex-direction:column;gap:8px;margin-top:8px}
@@ -364,9 +374,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
             تصدير Excel
           </button>
-          <button class="btn btn-danger btn-sm" onclick="openAddModal()">
+          <button class="btn btn-primary btn-sm" onclick="openAddModal()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
-            تسجيل عطل جديد
+            تسجيل عطل
           </button>
         </div>
       </div>
@@ -394,7 +404,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <option>عطل كهربائي</option><option>عطل نظام أمان</option><option>عطل كابينة</option>
           <option>عطل إنذار طوارئ</option><option>عطل هيدروليك</option><option>أخرى</option>
         </select>
-        <select class="filter-select" id="f-billable" onchange="filterTable()">
+        <select class="filter-select" id="filter-billable" onchange="filterTable()">
           <option value="">الكل</option>
           <option value="yes">قابل للفوترة</option>
           <option value="no">ضمن العقد</option>
@@ -450,10 +460,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
     <div class="modal-head">
-      <div class="modal-title">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
-        <span id="modal-title">تسجيل عطل جديد</span>
-      </div>
+      <div class="modal-title" id="modal-title">تسجيل عطل جديد</div>
       <button class="modal-close" onclick="closeModal('modal-add')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
@@ -462,7 +469,25 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="5.5"/><line x1="6.5" y1="3.5" x2="6.5" y2="7"/></svg>بيانات العطل</div>
         <div class="form-grid">
           <div class="field"><label>كود العطل</label><input type="text" id="f-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg4)"></div>
-          <div class="field"><label>تاريخ ووقت الإبلاغ</label><input type="datetime-local" id="f-datetime" style="direction:ltr"></div>
+          <div class="field"><label>تاريخ ووقت الإبلاغ</label>
+            <div id="f-datetime-display" class="fault-datetime-display">—</div>
+            <input type="hidden" id="f-datetime">
+            <span class="field-hint">يُسجّل تلقائياً عند فتح النموذج</span>
+          </div>
+          <div class="field"><label>العميل <span style="color:var(--danger)">*</span></label>
+            <select id="f-client-sel" onchange="onCustomerSelected()">
+              <option value="">اختر العميل</option>
+            </select>
+            <span class="field-hint">ابدأ باختيار العميل لتحميل بياناته</span>
+          </div>
+          <div class="field"><label>المصعد <span style="color:var(--danger)">*</span></label>
+            <select id="f-elevator-sel" onchange="onElevatorSelected()">
+              <option value="">اختر العميل أولاً</option>
+            </select>
+            <span class="field-hint">يُستدعى تلقائياً حسب العميل</span>
+          </div>
+          <div class="field"><label>المدينة</label><input type="text" id="f-city" placeholder="—" readonly style="background:var(--bg4)"></div>
+          <div class="field"><label>الحي</label><input type="text" id="f-district" placeholder="—" readonly style="background:var(--bg4)"></div>
           <div class="field"><label>نوع العطل</label>
             <select id="f-category-sel">
               <option>عطل أبواب</option><option>عطل محرك</option><option>عطل لوحة تحكم</option>
@@ -489,16 +514,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div class="form-section">
-        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="1" width="5" height="11" rx="1"/></svg>ربط البيانات</div>
+        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="1" width="5" height="11" rx="1"/></svg>التعيين والربط</div>
         <div class="form-grid">
-          <div class="field"><label>العميل</label>
-            <select id="f-client-sel" onchange="loadClientElevators()">
-              <option value="">اختر العميل</option>
-            </select>
-          </div>
-          <div class="field"><label>المصعد</label>
-            <select id="f-elevator-sel"><option value="">اختر العميل أولاً</option></select>
-          </div>
           <div class="field"><label>رقم الزيارة المرتبطة</label>
             <input type="text" id="f-visit-code" placeholder="VI-00001 (اختياري)" style="direction:ltr;font-family:var(--font-en)">
           </div>
@@ -510,8 +527,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               {% endfor %}
             </select>
           </div>
-          <div class="field"><label>المدينة</label><input type="text" id="f-city" placeholder="مكة" readonly style="background:var(--bg4)"></div>
-          <div class="field"><label>الحي</label><input type="text" id="f-district" placeholder="الحي" readonly style="background:var(--bg4)"></div>
         </div>
       </div>
 
@@ -534,20 +549,39 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div class="form-section">
-        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="5.5"/><path d="M6.5 4v.7M6.5 8.5V9M5 7.5c0 .83.67 1.5 1.5 1.5S8 8.33 8 7.5"/></svg>الفوترة والتكلفة</div>
+        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="5.5"/><path d="M6.5 4v.7M6.5 8.5V9M5 7.5c0 .83.67 1.5 1.5 1.5S8 8.33 8 7.5"/></svg>الفوترة وقطع الغيار</div>
         <div class="form-grid">
-          <div class="field">
-            <label>قابل للفوترة؟</label>
-            <select id="f-billable" onchange="toggleCost()">
-              <option value="no">لا — ضمن العقد</option>
-              <option value="yes">نعم — خارج العقد</option>
+          <div class="field form-full">
+            <label>نوع الفوترة</label>
+            <select id="fault-billable-sel" onchange="toggleBillableParts()">
+              <option value="no">لا — ضمن العقد (بدون قطع غيار)</option>
+              <option value="yes">نعم — قابل للفوترة (يوجد قطع غيار)</option>
             </select>
-            <span class="field-hint">لو خارج العقد يمكن تحويله لفاتورة</span>
+            <span class="field-hint">عند وجود قطع غيار خارج العقد يُسجَّل البيان ويصبح جاهزاً للفوترة</span>
           </div>
-          <div class="field" id="cost-field" style="display:none">
-            <label>تكلفة العطل (ر.س)</label>
-            <input type="number" id="f-cost" placeholder="0.00" style="direction:ltr">
+        </div>
+        <div id="fault-parts-panel" class="fault-parts-panel" style="display:none">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">سجّل قطع الغيار من الأصناف أو أدخلها يدوياً مع السعر</div>
+          <table class="fault-parts-table">
+            <thead>
+              <tr>
+                <th style="width:28%">الصنف / القطعة</th>
+                <th style="width:22%">اسم القطعة</th>
+                <th style="width:10%">الكمية</th>
+                <th style="width:14%">سعر الوحدة</th>
+                <th style="width:14%">الإجمالي</th>
+                <th style="width:6%"></th>
+              </tr>
+            </thead>
+            <tbody id="fault-parts-body"></tbody>
+          </table>
+          <button type="button" class="btn btn-secondary btn-sm fault-parts-add" onclick="addFaultPartRow()">+ إضافة قطعة</button>
+          <div class="fault-parts-total">
+            <span>إجمالي قطع الغيار (جاهز للفوترة)</span>
+            <span class="fault-parts-total-val" id="fault-parts-total">0.00 ر.س</span>
           </div>
+        </div>
+        <div class="form-grid" style="margin-top:12px">
           <div class="field form-full"><label>ملاحظات</label><textarea id="f-notes" placeholder="أي ملاحظات إضافية..."></textarea></div>
         </div>
       </div>
@@ -607,6 +641,7 @@ const FAULTS = {{ faults_js|tojson }};
 const CUSTOMERS = {{ customers_js|tojson }};
 const ELEVATORS = {{ elevators_js|tojson }};
 const TECHNICIANS = {{ technicians_js|tojson }};
+const INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
 const FAULT_MAP_POINTS = {{ fault_map_points|tojson }};
 const NEXT_FAULT_CODE = {{ next_fault_code|tojson }};
 
@@ -692,13 +727,69 @@ function fillClientSelect() {
     CUSTOMERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 }
 
-function loadClientElevators() {
+function elevatorCustomerName(e) {
+  if (e.customer) return e.customer;
+  const c = CUSTOMERS.find(x => Number(x.id) === Number(e.customer_id));
+  return c ? c.name : '';
+}
+
+function elevatorOptionLabel(e) {
+  const name = elevatorCustomerName(e);
+  const parts = [];
+  if (name) parts.push(name);
+  if (e.code) parts.push(e.code);
+  if (e.building_name) parts.push(e.building_name);
+  return parts.length ? parts.join(' — ') : 'مصعد';
+}
+
+function resetCustomerLinkedFields() {
+  ['f-city', 'f-district', 'f-reporter', 'f-reporter-phone'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const esel = document.getElementById('f-elevator-sel');
+  if (esel) esel.innerHTML = '<option value="">اختر العميل أولاً</option>';
+}
+
+function onCustomerSelected() {
   const cid = document.getElementById('f-client-sel')?.value;
   const esel = document.getElementById('f-elevator-sel');
+  const cityEl = document.getElementById('f-city');
+  const districtEl = document.getElementById('f-district');
+  const reporterEl = document.getElementById('f-reporter');
+  const reporterPhoneEl = document.getElementById('f-reporter-phone');
+  if (!cid) {
+    resetCustomerLinkedFields();
+    return;
+  }
+  const cust = CUSTOMERS.find(c => String(c.id) === String(cid));
+  if (cityEl) cityEl.value = cust?.city || '';
+  if (districtEl) districtEl.value = cust?.district || '';
+  if (reporterEl) reporterEl.value = cust?.contact_person || '';
+  if (reporterPhoneEl) reporterPhoneEl.value = cust?.phone || '';
   if (!esel) return;
-  const list = cid ? ELEVATORS.filter(e => String(e.customer_id) === String(cid)) : [];
-  esel.innerHTML = '<option value="">' + (cid ? 'اختر المصعد' : 'اختر العميل أولاً') + '</option>' +
-    list.map(e => `<option value="${e.id}">${e.code} — ${e.customer}</option>`).join('');
+  const list = ELEVATORS.filter(e => Number(e.customer_id) === Number(cid));
+  esel.innerHTML = '<option value="">' + (list.length ? 'اختر المصعد' : 'لا توجد مصاعد لهذا العميل') + '</option>' +
+    list.map(e => `<option value="${e.id}">${elevatorOptionLabel(e)}</option>`).join('');
+  if (list.length === 1) {
+    esel.value = String(list[0].id);
+    onElevatorSelected();
+  }
+}
+
+function onElevatorSelected() {
+  const eid = document.getElementById('f-elevator-sel')?.value;
+  const elev = ELEVATORS.find(e => String(e.id) === String(eid));
+  if (!elev) return;
+  const cityEl = document.getElementById('f-city');
+  const districtEl = document.getElementById('f-district');
+  const cust = CUSTOMERS.find(c => String(c.id) === String(elev.customer_id));
+  if (cityEl) cityEl.value = elev.city || cust?.city || '';
+  if (districtEl) districtEl.value = elev.district || cust?.district || '';
+}
+
+function loadClientElevators() {
+  onCustomerSelected();
 }
 
 function selectTech(el, id, name) {
@@ -711,10 +802,116 @@ function selectTech(el, id, name) {
   if (tsel) tsel.value = id;
 }
 
-function toggleCost() {
-  const billable = document.getElementById('f-billable')?.value;
-  const costField = document.getElementById('cost-field');
-  if (costField) costField.style.display = billable === 'yes' ? '' : 'none';
+function toggleBillableParts() {
+  const billable = document.getElementById('fault-billable-sel')?.value;
+  const panel = document.getElementById('fault-parts-panel');
+  if (!panel) return;
+  const show = billable === 'yes';
+  panel.style.display = show ? '' : 'none';
+  if (show && !document.querySelector('#fault-parts-body tr')) {
+    addFaultPartRow();
+  }
+}
+
+function inventoryItemOptions(selectedId) {
+  const opts = ['<option value="">— أخرى (إدخال يدوي) —</option>'];
+  INVENTORY_ITEMS.forEach(it => {
+    const sel = String(it.id) === String(selectedId) ? ' selected' : '';
+    opts.push(`<option value="${it.id}"${sel}>${it.code} — ${it.name}</option>`);
+  });
+  return opts.join('');
+}
+
+function addFaultPartRow(data) {
+  const tbody = document.getElementById('fault-parts-body');
+  if (!tbody) return;
+  const row = data || { item_id: '', name: '', qty: 1, unit_price: '', cost_price: 0 };
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td><select class="part-item-sel">${inventoryItemOptions(row.item_id)}</select></td>` +
+    `<td><input type="text" class="part-name" placeholder="اسم القطعة" value="${(row.name || '').replace(/"/g, '&quot;')}"></td>` +
+    `<td><input type="number" class="part-qty" min="1" step="1" value="${row.qty || 1}" style="direction:ltr"></td>` +
+    `<td><input type="number" class="part-price" min="0" step="0.01" placeholder="0.00" value="${row.unit_price !== '' && row.unit_price != null ? row.unit_price : ''}" style="direction:ltr"></td>` +
+    `<td><input type="text" class="part-row-total" readonly style="direction:ltr;font-family:var(--font-en)"></td>` +
+    `<td><button type="button" class="btn btn-danger btn-sm btn-icon part-del" title="حذف">×</button></td>`;
+  tbody.appendChild(tr);
+  tr.dataset.costPrice = row.cost_price || 0;
+  tr.dataset.itemId = row.item_id || '';
+  const sel = tr.querySelector('.part-item-sel');
+  const nameEl = tr.querySelector('.part-name');
+  if (sel) sel.addEventListener('change', () => onFaultPartItemChange(tr));
+  tr.querySelectorAll('.part-qty,.part-price').forEach(inp => inp.addEventListener('input', calcFaultPartsTotal));
+  tr.querySelector('.part-del')?.addEventListener('click', () => { tr.remove(); calcFaultPartsTotal(); });
+  if (row.item_id) onFaultPartItemChange(tr, true);
+  else if (row.name) nameEl.readOnly = false;
+  calcFaultPartsTotal();
+}
+
+function onFaultPartItemChange(tr, keepPrice) {
+  const sel = tr.querySelector('.part-item-sel');
+  const nameEl = tr.querySelector('.part-name');
+  const priceEl = tr.querySelector('.part-price');
+  const itemId = sel?.value;
+  if (!itemId) {
+    tr.dataset.itemId = '';
+    tr.dataset.costPrice = 0;
+    if (nameEl) { nameEl.readOnly = false; nameEl.placeholder = 'اكتب اسم القطعة يدوياً'; }
+    return;
+  }
+  const item = INVENTORY_ITEMS.find(x => String(x.id) === String(itemId));
+  if (!item) return;
+  tr.dataset.itemId = item.id;
+  tr.dataset.costPrice = item.buy_price || 0;
+  if (nameEl) { nameEl.value = item.name; nameEl.readOnly = true; }
+  if (priceEl && !keepPrice) priceEl.value = item.sell_price > 0 ? item.sell_price : '';
+  calcFaultPartsTotal();
+}
+
+function calcFaultPartsTotal() {
+  let total = 0;
+  document.querySelectorAll('#fault-parts-body tr').forEach(tr => {
+    const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
+    const price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
+    const rowTotal = qty * price;
+    const rt = tr.querySelector('.part-row-total');
+    if (rt) rt.value = rowTotal.toFixed(2);
+    total += rowTotal;
+  });
+  const el = document.getElementById('fault-parts-total');
+  if (el) el.textContent = total.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
+}
+
+function collectFaultParts() {
+  const lines = [];
+  document.querySelectorAll('#fault-parts-body tr').forEach(tr => {
+    const name = (tr.querySelector('.part-name')?.value || '').trim();
+    const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
+    const unit_price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
+    const item_id = tr.dataset.itemId || null;
+    const cost_price = parseFloat(tr.dataset.costPrice) || 0;
+    if (name && qty > 0) {
+      lines.push({ item_id: item_id ? Number(item_id) : null, name, qty, unit_price, cost_price });
+    }
+  });
+  return lines;
+}
+
+function resetFaultPartsPanel() {
+  const tbody = document.getElementById('fault-parts-body');
+  if (tbody) tbody.innerHTML = '';
+  const sel = document.getElementById('fault-billable-sel');
+  if (sel) sel.value = 'no';
+  toggleBillableParts();
+  calcFaultPartsTotal();
+}
+
+function loadFaultPartsPanel(lines) {
+  resetFaultPartsPanel();
+  if (!lines || !lines.length) return;
+  const sel = document.getElementById('fault-billable-sel');
+  if (sel) sel.value = 'yes';
+  toggleBillableParts();
+  lines.forEach(row => addFaultPartRow(row));
 }
 
 function updateSidebarBadge() {
@@ -750,7 +947,7 @@ function renderTable(data) {
       <td>${f.technician}</td>
       <td style="font-family:var(--font-en)">${f.response_time}</td>
       <td><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${f.status}</span></td>
-      <td><span class="badge ${f.billed?'badge-active':'badge-cancelled'}">${f.billed?'مفوتر':'غير مفوتر'}</span></td>
+      <td><span class="badge ${f.needs_parts?'badge-billable':'badge-cancelled'}">${f.needs_parts?'قابل للفوترة':'ضمن العقد'}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
           <a class="btn btn-primary btn-sm btn-icon" href="/faults/${f.id}/report" target="_blank" title="تعبئة / تعديل تقرير العطل" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
@@ -779,26 +976,59 @@ function filterTable() {
   const pr = document.getElementById('f-priority')?.value||'';
   const st = document.getElementById('f-status')?.value||'';
   const cat = document.getElementById('f-category')?.value||'';
-  const bl = document.getElementById('f-billed')?.value||'';
+  const bl = document.getElementById('filter-billable')?.value||'';
   filtered = FAULTS.filter(f=>
     (!s  || f.code.toLowerCase().includes(s) || (f.customer||'').includes(s) || (f.fault_type||'').includes(s)) &&
     (!cl || f.customer === cl) &&
     (!pr || f.priority === pr) &&
     (!st || f.status === st) &&
     (!cat || f.fault_type === cat) &&
-    (!bl || (bl==='yes' ? f.billed : !f.billed))
+    (!bl || (bl==='yes' ? f.needs_parts : !f.needs_parts))
   );
   renderTable(filtered);
 }
 
 // ===== إضافة =====
+function localDatetimeInputValue(d) {
+  d = d || new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + p(d.getMinutes());
+}
+
+function formatFaultDatetimeDisplay(d) {
+  if (!(d instanceof Date) || isNaN(d.getTime())) d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const months = (window.LiftCoreFormat && LiftCoreFormat.AR_MONTHS) || [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+  ];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} — ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function setFaultReportDatetime(value) {
+  const hidden = document.getElementById('f-datetime');
+  const display = document.getElementById('f-datetime-display');
+  let d = new Date();
+  if (value) {
+    const parsed = new Date(String(value).replace(' ', 'T'));
+    if (!isNaN(parsed.getTime())) d = parsed;
+  }
+  if (hidden) hidden.value = localDatetimeInputValue(d);
+  if (display) display.textContent = formatFaultDatetimeDisplay(d);
+}
+
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'تسجيل عطل جديد';
   document.getElementById('modal-add').dataset.editId = '';
   const codeEl = document.getElementById('f-code');
   if (codeEl) codeEl.value = NEXT_FAULT_CODE;
+  setFaultReportDatetime();
   fillClientSelect();
-  loadClientElevators();
+  const clientSel = document.getElementById('f-client-sel');
+  if (clientSel) clientSel.value = '';
+  resetCustomerLinkedFields();
+  resetFaultPartsPanel();
   const vc = document.getElementById('f-visit-code');
   if (vc) vc.value = '';
   document.getElementById('selected-tech-id').value = '';
@@ -810,6 +1040,8 @@ function openAddModal() {
 function saveFault() {
   const editId = document.getElementById('modal-add').dataset.editId;
   const fd = new FormData();
+  const clientSel = document.getElementById('f-client-sel');
+  if (!clientSel || !clientSel.value) { alert('اختر العميل'); return; }
   const elev = document.getElementById('f-elevator-sel');
   if (!elev || !elev.value) { alert('اختر المصعد'); return; }
   fd.append('elevator_id', elev.value);
@@ -825,8 +1057,25 @@ function saveFault() {
   if (rn) fd.append('reporter_name', rn.value);
   const rp = document.getElementById('f-reporter-phone');
   if (rp) fd.append('reporter_phone', rp.value);
-  const billable = document.getElementById('f-billable');
-  if (billable) fd.append('billable', billable.value);
+  const dt = document.getElementById('f-datetime');
+  if (dt && dt.value) fd.append('reported_at', dt.value);
+  const billable = document.getElementById('fault-billable-sel');
+  if (billable) {
+    fd.append('billable', billable.value);
+    if (billable.value === 'yes') {
+      const lines = collectFaultParts();
+      if (!lines.length) {
+        alert('أضف قطعة غيار واحدة على الأقل عند اختيار «قابل للفوترة»');
+        return;
+      }
+      const invalid = lines.find(l => !l.unit_price || l.unit_price <= 0);
+      if (invalid) {
+        alert('أدخل سعر الوحدة لكل قطعة غيار');
+        return;
+      }
+      fd.append('parts_lines', JSON.stringify(lines));
+    }
+  }
   const vc = document.getElementById('f-visit-code');
   if (vc && vc.value.trim()) fd.append('visit_code', vc.value.trim());
 
@@ -846,18 +1095,33 @@ function editFault(id) {
   const elev = ELEVATORS.find(e => e.id === f.elevator_id);
   const clientSel = document.getElementById('f-client-sel');
   if (clientSel && elev) clientSel.value = elev.customer_id;
-  loadClientElevators();
+  onCustomerSelected();
   const esel = document.getElementById('f-elevator-sel');
   if (esel) esel.value = f.elevator_id;
+  onElevatorSelected();
   const map = {
     'f-category-sel': f.fault_type, 'f-client-report': f.client_report || f.description,
     'f-priority-sel': f.priority, 'f-notes': f.notes,
     'f-visit-code': f.visit_code || '',
   };
   Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
-  const billable = document.getElementById('f-billable');
-  if (billable) billable.value = f.billed ? 'yes' : 'no';
-  toggleCost();
+  const rn = document.getElementById('f-reporter');
+  const rp = document.getElementById('f-reporter-phone');
+  if (rn && f.reporter_name) rn.value = f.reporter_name;
+  if (rp && f.reporter_phone) rp.value = f.reporter_phone;
+  setFaultReportDatetime(f.reported_at_local || '');
+  if (f.needs_parts) {
+    if (f.parts_lines && f.parts_lines.length) loadFaultPartsPanel(f.parts_lines);
+    else {
+      resetFaultPartsPanel();
+      const billSel = document.getElementById('fault-billable-sel');
+      if (billSel) billSel.value = 'yes';
+      toggleBillableParts();
+      addFaultPartRow();
+    }
+  } else {
+    resetFaultPartsPanel();
+  }
   if (f.tech_id) {
     document.getElementById('selected-tech-id').value = f.tech_id;
     const tsel = document.getElementById('f-tech-sel');
@@ -883,7 +1147,8 @@ function viewFault(id) {
       <div class="view-item"><div class="view-label">تاريخ البلاغ</div><div class="view-val" style="direction:ltr">${f.reported_at}</div></div>
       <div class="view-item"><div class="view-label">وقت الاستجابة</div><div class="view-val">${f.response_time}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${f.status}</span></div></div>
-      <div class="view-item"><div class="view-label">الفوترة</div><div class="view-val"><span class="badge ${f.billed?'badge-active':'badge-cancelled'}">${f.billed?'مفوتر':'غير مفوتر'}</span></div></div>
+      <div class="view-item"><div class="view-label">الفوترة</div><div class="view-val"><span class="badge ${f.needs_parts?'badge-billable':'badge-cancelled'}">${f.needs_parts?'قابل للفوترة':'ضمن العقد'}</span>${f.billed?' · <span class="badge badge-active">مفوتر</span>':''}</div></div>
+      ${f.needs_parts && f.parts_lines && f.parts_lines.length ? `<div class="view-item view-full"><div class="view-label">قطع الغيار</div><div class="view-val">${f.parts_lines.map(p => `${p.qty}× ${p.name} — ${Number(p.unit_price).toFixed(2)} ر.س`).join('<br>')}</div></div>` : ''}
       ${f.visit_code?`<div class="view-item"><div class="view-label">رقم الزيارة</div><div class="view-val" style="font-family:var(--font-en)">${f.visit_code}</div></div>`:''}
       ${f.description?`<div class="view-item view-full"><div class="view-label">الوصف</div><div class="view-val">${f.description}</div></div>`:''}
       ${f.resolution?`<div class="view-item view-full"><div class="view-label">طريقة الحل</div><div class="view-val">${f.resolution}</div></div>`:''}
@@ -906,7 +1171,7 @@ function confirmDelete() {
 
 function exportExcel() {
   const rows=[['الكود','العميل','المصعد','نوع العطل','الأولوية','الفني','الاستجابة','الحالة','الفوترة']];
-  filtered.forEach(f=>rows.push([f.code,f.customer,f.elevator,f.fault_type,f.priority,f.technician,f.response_time,f.status,f.billed?'مفوتر':'غير مفوتر']));
+  filtered.forEach(f=>rows.push([f.code,f.customer,f.elevator,f.fault_type,f.priority,f.technician,f.response_time,f.status,f.needs_parts?'قابل للفوترة':'ضمن العقد']));
   const csv=rows.map(r=>r.join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
