@@ -76,9 +76,11 @@ with app.app_context():
                 ('control_detail', 'VARCHAR(200)'),
             ],
             'customers': [('name_en', 'VARCHAR(200)')],
-            'technicians': [('name_en', 'VARCHAR(100)')],
+            'technicians': [
+                ('name_en', 'VARCHAR(100)'),
+                ('team', 'VARCHAR(30)'),
+            ],
             'parts_billing': [('visit_id', 'INTEGER'), ('fault_id', 'INTEGER')],
-            'technicians': [('team', 'VARCHAR(30)')],
         }
         for table, cols in _migrate_cols.items():
             if table not in insp.get_table_names():
