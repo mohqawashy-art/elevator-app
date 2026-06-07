@@ -17,6 +17,7 @@ class Customer(db.Model):
     id          = db.Column(db.Integer, primary_key=True)
     code        = db.Column(db.String(20), unique=True, nullable=False)   # C-0001
     name        = db.Column(db.String(200), nullable=False)
+    name_en     = db.Column(db.String(200))
     city        = db.Column(db.String(100))
     district    = db.Column(db.String(100))
     address     = db.Column(db.Text)
@@ -132,6 +133,7 @@ class Technician(db.Model):
     id              = db.Column(db.Integer, primary_key=True)
     code            = db.Column(db.String(20), unique=True, nullable=False)  # Tech-001
     name            = db.Column(db.String(100), nullable=False)
+    name_en         = db.Column(db.String(100))
     phone           = db.Column(db.String(20))
     phone2          = db.Column(db.String(20))
     job_title       = db.Column(db.String(100))   # فني أول / فني ثانٍ / مشرف

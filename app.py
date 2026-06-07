@@ -75,6 +75,8 @@ with app.app_context():
                 ('control_operation', 'VARCHAR(50)'),
                 ('control_detail', 'VARCHAR(200)'),
             ],
+            'customers': [('name_en', 'VARCHAR(200)')],
+            'technicians': [('name_en', 'VARCHAR(100)')],
             'parts_billing': [('visit_id', 'INTEGER'), ('fault_id', 'INTEGER')],
             'technicians': [('team', 'VARCHAR(30)')],
         }
@@ -831,11 +833,22 @@ def api_contract_detail(contract_id):
     return jsonify(_contract_json(c))
 
 
+def _resolve_name_en(form, *, ar_key='name', en_key='name_en'):
+    from liftcore_translit import arabic_to_latin
+
+    en = (form.get(en_key) or '').strip()
+    if en:
+        return en
+    ar = (form.get(ar_key) or '').strip()
+    return arabic_to_latin(ar) if ar else ''
+
+
 @app.route('/clients/add', methods=['POST'])
 def client_add():
     c = Customer(
         code         = next_code(Customer, 'C-', digits=4),
         name         = request.form['name'],
+        name_en      = _resolve_name_en(request.form),
         city         = request.form.get('city',''),
         district     = request.form.get('district',''),
         address      = request.form.get('address',''),
@@ -860,6 +873,7 @@ def client_add():
 def client_edit(id):
     c = Customer.query.get_or_404(id)
     c.name           = request.form['name']
+    c.name_en        = _resolve_name_en(request.form)
     c.city           = request.form.get('city','')
     c.district       = request.form.get('district','')
     c.address        = request.form.get('address','')
@@ -1425,6 +1439,7 @@ app.jinja_env.globals['technician_display_status'] = technician_display_status
 
 def _apply_technician_form(t, form):
     t.name = form['name']
+    t.name_en = _resolve_name_en(form)
     t.phone = form.get('phone', '')
     t.phone2 = form.get('phone2', '')
     t.job_title = form.get('job_title', '')

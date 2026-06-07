@@ -255,6 +255,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-translit.js"></script>
 
 </head>
 <body>
@@ -514,7 +515,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>كود الفني</label><input type="text" id="f-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.8"></div>
           <div class="field"><label>الجنسية</label><input type="text" id="f-nationality" placeholder="سعودي / مصري..."></div>
           <div class="field"><label>الاسم (عربي)</label><input type="text" id="f-name-ar" placeholder="اسم الفني"></div>
-          <div class="field"><label>Name (English)</label><input type="text" id="f-name-en" placeholder="Technician Name" style="direction:ltr"></div>
+          <div class="field"><label>Name (English)</label><input type="text" id="f-name-en" placeholder="Technician Name" style="direction:ltr;font-family:var(--font-en)"><span class="field-hint">يُعبّأ تلقائياً من الاسم العربي</span></div>
           <div class="field"><label>المسمى الوظيفي</label><input type="text" id="f-job" placeholder="فني صيانة / مهندس..."></div>
           <div class="field"><label>التخصص</label><select id="f-spec"><option>مصاعد ركاب</option><option>كهرباء</option><option>ميكانيكا</option><option>أبواب</option><option>فحص</option></select></div>
           <div class="field"><label>سنوات الخبرة</label><input type="number" id="f-exp" placeholder="5" style="direction:ltr" min="0"></div>
@@ -661,6 +662,7 @@ const TECHNICIANS = [
     id:             {{ t.id }},
     code:           {{ t.code|tojson }},
     name:           {{ t.name|tojson }},
+    name_en:        {{ (t.name_en or '')|tojson }},
     phone:          {{ (t.phone or '')|tojson }},
     phone2:         {{ (t.phone2 or '')|tojson }},
     job_title:      {{ (t.job_title or '')|tojson }},
@@ -1129,6 +1131,8 @@ function saveTech() {
   var editId = document.getElementById('modal-add').dataset.editId;
   var fd = new FormData();
   fd.append('name', name);
+  var nameEn = document.getElementById('f-name-en');
+  if (nameEn) fd.append('name_en', nameEn.value.trim());
   fd.append('phone', fullPhone('f-code-ph', 'f-phone'));
   fd.append('phone2', fullPhone('f-code-wa', 'f-whatsapp'));
   fd.append('job_title', document.getElementById('f-job').value);
@@ -1167,6 +1171,7 @@ function editTech(id) {
   currentEditId = id;
   document.getElementById('f-code').value = t.code;
   document.getElementById('f-name-ar').value = t.name;
+  document.getElementById('f-name-en').value = t.name_en || '';
   document.getElementById('f-job').value = t.job_title || '';
   document.getElementById('f-spec').value = t.specialization || 'مصاعد ركاب';
   document.getElementById('f-city-sel').value = t.city || '';
@@ -1342,6 +1347,9 @@ document.getElementById('h-date').textContent = days[now.getDay()] + '، ' + now
 initFilters();
 updateStats();
 renderTable(TECHNICIANS);
+if (window.LiftCoreTranslit) {
+  LiftCoreTranslit.bindAutoLatin('f-name-ar', 'f-name-en');
+}
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);
