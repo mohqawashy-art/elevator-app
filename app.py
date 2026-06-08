@@ -49,6 +49,8 @@ if os.environ.get('LIFTCORE_HTTPS', '').strip().lower() in ('1', 'true', 'yes'):
 
 db.init_app(app)
 
+APP_VERSION = os.environ.get('LIFTCORE_VERSION', '085a530-full')
+
 
 def western_digits(value):
     if value is None:
@@ -371,6 +373,23 @@ def next_code(model, prefix, field='code', digits=4):
 # =============================================
 # تسجيل الدخول
 # =============================================
+@app.route('/api/version')
+def api_version():
+    """تحقق سريع من إصدار الكود على السيرفر (بدون تسجيل دخول)."""
+    root = app.root_path
+    return jsonify(
+        version=APP_VERSION,
+        checks={
+            'settings_full': os.path.isfile(os.path.join(root, 'templates/partials/app_header.html')),
+            'settings_tabs': os.path.isfile(os.path.join(root, 'templates/settings.html'))
+            and 'المظهر' in open(os.path.join(root, 'templates/settings.html'), encoding='utf-8').read(),
+            'shell_css': os.path.isfile(os.path.join(root, 'static/liftcore-shell.css')),
+            'purchase_orders': os.path.isfile(os.path.join(root, 'templates/purchase-orders.html')),
+            'enforce_auth': 'enforce_auth' in open(os.path.join(root, 'app.py'), encoding='utf-8').read(),
+        },
+    )
+
+
 @app.route('/')
 def index():
     if session.get('user_id'):
@@ -3389,7 +3408,7 @@ def require_admin():
     return user
 
 
-PUBLIC_ENDPOINTS = {'login', 'logout', 'static', 'index'}
+PUBLIC_ENDPOINTS = {'login', 'logout', 'static', 'index', 'api_version'}
 PUBLIC_PATH_PREFIXES = ('/field', '/static')
 
 
