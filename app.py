@@ -175,6 +175,27 @@ ROLE_LABELS = {
     'viewer': 'عرض فقط',
 }
 
+ROLE_LABELS_EN = {
+    'admin': 'System Admin',
+    'manager': 'Operations Manager',
+    'viewer': 'View Only',
+}
+
+
+def resolve_user_language(user=None):
+    lang = session.get('lang')
+    if lang in ('ar', 'en'):
+        return lang
+    if user and getattr(user, 'language', None) in ('ar', 'en'):
+        return user.language
+    try:
+        s = Settings.query.first()
+        if s and getattr(s, 'language', None) in ('ar', 'en'):
+            return s.language
+    except Exception:
+        db.session.rollback()
+    return 'ar'
+
 LIFTCORE_PRODUCT_LOGO = 'liftcore-header-logo.png'
 
 
@@ -221,6 +242,12 @@ def inject_global_template_vars():
     theme = 'dark'
     if user and getattr(user, 'theme', None) in ('dark', 'light'):
         theme = user.theme
+    lang = resolve_user_language(user)
+    role_label = ''
+    if user:
+        role_label = ROLE_LABELS.get(user.role, user.role)
+        if lang == 'en':
+            role_label = ROLE_LABELS_EN.get(user.role, role_label)
     return {
         'google_maps_api_key': os.environ.get('GOOGLE_MAPS_API_KEY', '').strip(),
         'brand_logo_url': brand_logo_url(s),
@@ -229,6 +256,7 @@ def inject_global_template_vars():
         'logo_width_report': (getattr(s, 'logo_width_report', None) or 150) if s else 150,
         'logo_width_login': (getattr(s, 'logo_width_login', None) or 180) if s else 180,
         'user_theme': theme,
+        'user_language': lang,
         'company_settings': s,
         'brand_name': (s.company_name if s and s.company_name else 'LiftCore'),
         'role_labels': ROLE_LABELS,
@@ -236,7 +264,7 @@ def inject_global_template_vars():
         'user_initials': user_initials(user),
         'user_avatar_url': user_avatar_url(user),
         'user_display_name': (user.full_name or user.username) if user else '',
-        'user_role_label': ROLE_LABELS.get(user.role, user.role) if user else '',
+        'user_role_label': role_label,
     }
 
 
@@ -275,7 +303,11 @@ with app.app_context():
                 ('logo_width_report', 'INTEGER'),
                 ('logo_width_login', 'INTEGER'),
             ],
-            'users': [('theme', 'VARCHAR(10)'), ('photo_path', 'VARCHAR(300)')],
+            'users': [
+                ('theme', 'VARCHAR(10)'),
+                ('language', 'VARCHAR(10)'),
+                ('photo_path', 'VARCHAR(300)'),
+            ],
             'faults': [
                 ('visit_id', 'INTEGER'),
                 ('client_report', 'TEXT'),
@@ -470,6 +502,12 @@ def login():
             session.clear()
             session['user_id'] = user.id
             session['username'] = user.full_name or user.username
+            form_lang = (request.form.get('lang') or '').strip()
+            if form_lang in ('ar', 'en'):
+                user.language = form_lang
+                session['lang'] = form_lang
+            else:
+                session['lang'] = resolve_user_language(user)
             session.permanent = True
             user.last_login = datetime.utcnow()
             db.session.commit()
@@ -3571,6 +3609,21 @@ def settings_theme_save():
     db.session.commit()
     session['settings_notice'] = 'تم حفظ المظهر.'
     return _settings_redirect('appearance')
+
+
+@app.route('/api/user/language', methods=['POST'])
+def api_user_language():
+    user = require_login()
+    if not user:
+        return jsonify({'ok': False, 'error': 'auth'}), 401
+    data = request.get_json(silent=True) or {}
+    lang = (data.get('lang') or request.form.get('lang') or 'ar').strip()
+    if lang not in ('ar', 'en'):
+        lang = 'ar'
+    user.language = lang
+    session['lang'] = lang
+    db.session.commit()
+    return jsonify({'ok': True, 'lang': lang})
 
 
 @app.route('/settings/users/add', methods=['POST'])

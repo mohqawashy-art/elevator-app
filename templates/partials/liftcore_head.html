@@ -1,5 +1,15 @@
-<script>document.documentElement.setAttribute('data-theme', {{ user_theme|tojson }});</script>
+<script>
+(function () {
+  document.documentElement.setAttribute('data-theme', {{ user_theme|tojson }});
+  var lang = {{ user_language|default('ar')|tojson }};
+  if (lang !== 'ar' && lang !== 'en') lang = 'ar';
+  document.documentElement.setAttribute('lang', lang);
+  document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+  window.__LC_LANG = lang;
+})();
+</script>
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-theme.css') }}">
+<script src="{{ url_for('static', filename='liftcore-i18n.js') }}"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-currency.css') }}">
 <script src="{{ url_for('static', filename='liftcore-format.js') }}"></script>
 <script>

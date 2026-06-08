@@ -62,6 +62,19 @@
   color: var(--text1, #e4eaf5);
 }
 
+.lc-fullscreen-btn .lc-fs-enter,
+.lc-fullscreen-btn .lc-fs-exit {
+  display: block;
+}
+
+html.lc-fullscreen .sidebar {
+  display: none;
+}
+
+html.lc-fullscreen .main {
+  width: 100%;
+}
+
 @media (max-width: 1100px) {
   .hamburger {
     display: flex;

@@ -1,47 +1,58 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ user_language|default('ar') }}" dir="{{ 'rtl' if user_language|default('ar') == 'ar' else 'ltr' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LiftCore — تسجيل الدخول</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   {% include 'partials/liftcore_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css') }}">
+  <script src="{{ url_for('static', filename='liftcore-shell.js') }}"></script>
+  <style>
+    .login-lang {
+      position: fixed;
+      top: 16px;
+      inset-inline-start: 16px;
+      z-index: 50;
+    }
+  </style>
 </head>
 <body>
+
+  <div class="login-lang lang-toggle">
+    <button type="button" class="lang-opt{% if user_language|default('ar') == 'ar' %} active{% endif %}" id="btn-ar" onclick="setLang('ar')" aria-label="العربية">ع</button>
+    <button type="button" class="lang-opt{% if user_language|default('ar') == 'en' %} active{% endif %}" id="btn-en" onclick="setLang('en')" aria-label="English">EN</button>
+  </div>
 
   <div class="page-wrap">
     <div class="card">
 
-      <!-- الشعار -->
       <div class="logo-area">
-  <img src="{{ brand_logo_url }}" alt="{{ brand_name }}" class="logo-img login-logo">
-</div>
-
-      <!-- رسالة الخطأ -->
-      {% if error %}
-      <div class="error-msg">
-        {{ error }}
+        <img src="{{ brand_logo_url }}" alt="{{ brand_name }}" class="logo-img login-logo">
       </div>
+
+      {% if error %}
+      <div class="error-msg" data-i18n-skip>{{ error }}</div>
       {% endif %}
 
-      <!-- النموذج -->
       <form method="POST" action="{{ url_for('login') }}">
+        <input type="hidden" name="lang" id="login-lang" value="{{ user_language|default('ar') }}">
         <div class="field">
-          <label for="email">البريد الإلكتروني أو اسم المستخدم</label>
+          <label for="email" data-i18n="login_email">البريد الإلكتروني أو اسم المستخدم</label>
           <input type="text" id="email" name="email" placeholder="admin@liftcore.sa" required>
         </div>
 
         <div class="field">
-          <label for="password">كلمة المرور</label>
+          <label for="password" data-i18n="login_password">كلمة المرور</label>
           <input type="password" id="password" name="password" placeholder="••••••••" required>
         </div>
 
         <div class="forgot-row">
-          <a href="#" class="forgot-link">نسيت كلمة المرور؟</a>
+          <a href="#" class="forgot-link" data-i18n="login_forgot">نسيت كلمة المرور؟</a>
         </div>
 
-        <button type="submit" class="btn-submit">دخول</button>
+        <button type="submit" class="btn-submit" data-i18n="login_submit">دخول</button>
       </form>
 
     </div>

@@ -508,6 +508,7 @@ class User(db.Model):
     email           = db.Column(db.String(100))
     role            = db.Column(db.String(30), default='viewer')  # admin / manager / viewer
     theme           = db.Column(db.String(10), default='dark')  # dark / light
+    language        = db.Column(db.String(10), default='ar')  # ar / en
     photo_path      = db.Column(db.String(300))
     is_active       = db.Column(db.Boolean, default=True)
     last_login      = db.Column(db.DateTime)

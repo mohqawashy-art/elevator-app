@@ -1,7 +1,7 @@
 <header class="header lc-header{% if header_solo %} lc-header--solo{% endif %}">
   <div class="header-left">
     {% if header_solo %}
-    <a class="lc-back-link" href="{{ url_for('dashboard') }}">← لوحة التحكم</a>
+    <a class="lc-back-link" href="{{ url_for('dashboard') }}" data-i18n="back_dashboard">← لوحة التحكم</a>
     {% else %}
     <button type="button" class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
     <div class="header-page">
@@ -16,11 +16,15 @@
   </a>
 
   <div class="header-right">
-    <div class="lang-toggle">
-      <button type="button" class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-      <button type="button" class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
+    <div class="lang-toggle" title="Language">
+      <button type="button" class="lang-opt{% if user_language == 'ar' %} active{% endif %}" id="btn-ar" onclick="setLang('ar')" aria-label="العربية">ع</button>
+      <button type="button" class="lang-opt{% if user_language == 'en' %} active{% endif %}" id="btn-en" onclick="setLang('en')" aria-label="English">EN</button>
     </div>
-    <a href="{{ url_for('settings') }}" class="icon-btn lc-settings-btn{% if request.endpoint == 'settings' %} is-active{% endif %}" title="الإعدادات">
+    <button type="button" class="icon-btn lc-fullscreen-btn" id="btn-fullscreen" onclick="toggleFullscreen()" data-i18n-title="fullscreen" title="شاشة كاملة" aria-label="Full screen">
+      <svg class="lc-fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
+      <svg class="lc-fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16" style="display:none"><path d="M9 9H5V5M15 9h4V5M9 15H5v4M15 15h4v4"/></svg>
+    </button>
+    <a href="{{ url_for('settings') }}" class="icon-btn lc-settings-btn{% if request.endpoint == 'settings' %} is-active{% endif %}" data-i18n-title="settings" title="الإعدادات">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
     </a>
     <div class="profile-menu-wrap" onclick="event.stopPropagation()">
@@ -36,9 +40,9 @@
           <div class="profile-dropdown-name">{{ user_display_name or 'مستخدم' }}</div>
           <div class="profile-dropdown-role">{{ user_role_label }}</div>
         </div>
-        <a href="{{ url_for('settings', tab='account') }}">تعديل البروفايل</a>
-        <a href="{{ url_for('settings', tab='appearance') }}">المظهر</a>
-        <a href="{{ url_for('logout') }}" class="logout">تسجيل الخروج</a>
+        <a href="{{ url_for('settings', tab='account') }}" data-i18n="edit_profile">تعديل البروفايل</a>
+        <a href="{{ url_for('settings', tab='appearance') }}" data-i18n="appearance">المظهر</a>
+        <a href="{{ url_for('logout') }}" class="logout" data-i18n="logout">تسجيل الخروج</a>
       </div>
     </div>
   </div>

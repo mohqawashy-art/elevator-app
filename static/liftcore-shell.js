@@ -1,13 +1,34 @@
 (function () {
   'use strict';
 
-  window.setLang = window.setLang || function (l) {
-    document.documentElement.setAttribute('lang', l);
-    document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
-    var ar = document.getElementById('btn-ar');
-    var en = document.getElementById('btn-en');
-    if (ar) ar.classList.toggle('active', l === 'ar');
-    if (en) en.classList.toggle('active', l === 'en');
+  function updateFullscreenIcon() {
+    var btn = document.getElementById('btn-fullscreen');
+    if (!btn) return;
+    var on = !!document.fullscreenElement;
+    var enter = btn.querySelector('.lc-fs-enter');
+    var exit = btn.querySelector('.lc-fs-exit');
+    if (enter) enter.style.display = on ? 'none' : '';
+    if (exit) exit.style.display = on ? '' : 'none';
+    var titleKey = on ? 'fullscreen_exit' : 'fullscreen';
+    btn.setAttribute('data-i18n-title', titleKey);
+    if (window.LiftCoreI18n && window.LiftCoreI18n.KEYS && window.LiftCoreI18n.KEYS[titleKey]) {
+      var lang = document.documentElement.getAttribute('lang') || 'ar';
+      btn.setAttribute('title', window.LiftCoreI18n.KEYS[titleKey][lang]);
+    }
+    document.documentElement.classList.toggle('lc-fullscreen', on);
+  }
+
+  window.toggleFullscreen = function () {
+    var el = document.documentElement;
+    if (!document.fullscreenElement) {
+      var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+      if (req) {
+        Promise.resolve(req.call(el)).catch(function () { /* denied */ });
+      }
+    } else {
+      var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+      if (exit) exit.call(document);
+    }
   };
 
   window.toggleProfileMenu = function (e) {
@@ -22,7 +43,11 @@
     if (menu) menu.classList.remove('open');
   });
 
+  document.addEventListener('fullscreenchange', updateFullscreenIcon);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+
   document.addEventListener('DOMContentLoaded', function () {
+    updateFullscreenIcon();
     if (window.LiftCoreFormat) {
       LiftCoreFormat.initHeaderDates();
       LiftCoreFormat.applyWesternDigits(document.body);
