@@ -153,6 +153,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
 
 </head>
@@ -292,11 +293,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       </div>
       <div class="filter-group">
         <div class="filter-label">من</div>
-        <input class="filter-input" type="date" id="f-from" onchange="applyFilters()">
+        <input class="filter-input" type="date" lang="en-GB" id="f-from" onchange="applyFilters()">
       </div>
       <div class="filter-group">
         <div class="filter-label">إلى</div>
-        <input class="filter-input" type="date" id="f-to" onchange="applyFilters()">
+        <input class="filter-input" type="date" lang="en-GB" id="f-to" onchange="applyFilters()">
       </div>
       <button class="btn btn-secondary btn-sm" onclick="clearFilters()" style="align-self:flex-end">مسح</button>
     </div>
@@ -352,7 +353,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="field">
           <label>التاريخ <span>*</span></label>
-          <input type="date" id="m-date">
+          <input type="date" lang="en-GB" id="m-date">
         </div>
         <div class="field">
           <label>نوع الإيراد <span>*</span></label>
@@ -461,7 +462,7 @@ function renderTable(data) {
     <tr onclick="viewRevenue(${r.id})">
       <td class="td-code">${r.code}</td>
       <td>${r.customer} ${r.contract!=='—'?'/ '+r.contract:''}</td>
-      <td style="direction:ltr;font-family:var(--font-en)">${r.revenue_date}</td>
+      <td class="lc-date">${fmtDateDMY(r.revenue_date)}</td>
       <td>${r.revenue_type}</td>
       <td>${r.pay_method}</td>
       <td style="font-family:var(--font-en);color:var(--success)">${r.total.toLocaleString()} ر.س</td>
@@ -571,7 +572,7 @@ function viewRevenue(id) {
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${r.code}</div></div>
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${r.customer}</div></div>
       <div class="view-item"><div class="view-label">العقد</div><div class="view-val" style="font-family:var(--font-en)">${r.contract}</div></div>
-      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val" style="direction:ltr">${r.revenue_date}</div></div>
+      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val lc-date">${fmtDateDMY(r.revenue_date)}</div></div>
       <div class="view-item"><div class="view-label">نوع الإيراد</div><div class="view-val">${r.revenue_type}</div></div>
       <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${r.pay_method}</div></div>
       <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${r.reference||'—'}</div></div>

@@ -273,6 +273,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
 
 </head>
@@ -486,6 +487,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             </select>
             <span class="field-hint">يُستدعى تلقائياً حسب العميل</span>
           </div>
+          <div class="field form-full"><label>عنوان العميل</label>
+            <input type="text" id="f-address" placeholder="يظهر تلقائياً بعد اختيار المصعد" readonly style="background:var(--bg4)">
+            <span class="field-hint" id="f-address-hint">من بيانات العميل المسجّلة في العقود والخريطة</span>
+          </div>
           <div class="field"><label>المدينة</label><input type="text" id="f-city" placeholder="—" readonly style="background:var(--bg4)"></div>
           <div class="field"><label>الحي</label><input type="text" id="f-district" placeholder="—" readonly style="background:var(--bg4)"></div>
           <div class="field"><label>نوع العطل</label>
@@ -500,7 +505,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <option>منخفضة</option><option>متوسطة</option><option>عالية</option><option>حرجة</option>
             </select>
           </div>
-          <div class="field"><label>عنوان العطل</label><input type="text" id="f-title" placeholder="وصف مختصر للعطل"></div>
           <div class="field"><label>مصدر الإبلاغ</label>
             <select id="f-source">
               <option>اتصال هاتفي</option><option>واتساب</option><option>البرنامج</option>
@@ -639,6 +643,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <script>
 const FAULTS = {{ faults_js|tojson }};
 const CUSTOMERS = {{ customers_js|tojson }};
+const CONTRACTS = {{ contracts_js|tojson }};
 const ELEVATORS = {{ elevators_js|tojson }};
 const TECHNICIANS = {{ technicians_js|tojson }};
 const INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
@@ -742,11 +747,55 @@ function elevatorOptionLabel(e) {
   return parts.length ? parts.join(' — ') : 'مصعد';
 }
 
+function activeContractForElevator(elevatorId) {
+  if (!elevatorId) return null;
+  const eid = Number(elevatorId);
+  return CONTRACTS.find(c => Array.isArray(c.elevator_ids) && c.elevator_ids.some(id => Number(id) === eid)) || null;
+}
+
+function resolveFaultSiteAddress(customer, elevator) {
+  if (!customer && !elevator) return '';
+  const fromElev = elevator?.address && String(elevator.address).trim();
+  if (fromElev) return String(elevator.address).trim();
+  if (customer?.address && String(customer.address).trim()) {
+    return String(customer.address).trim();
+  }
+  const parts = [];
+  if (elevator?.building_name) parts.push(elevator.building_name);
+  const district = elevator?.district || customer?.district;
+  const city = elevator?.city || customer?.city;
+  if (district) parts.push(district);
+  if (city) parts.push(city);
+  return parts.join(' — ');
+}
+
+function setFaultAddressFields(customer, elevator) {
+  const addressEl = document.getElementById('f-address');
+  const hintEl = document.getElementById('f-address-hint');
+  const address = resolveFaultSiteAddress(customer, elevator);
+  if (addressEl) addressEl.value = address;
+  if (!hintEl) return;
+  const contract = elevator ? activeContractForElevator(elevator.id) : null;
+  if (contract && address) {
+    hintEl.textContent = `من عقد ${contract.code} — ${address}`;
+  } else if (address) {
+    hintEl.textContent = 'عنوان العميل المسجّل في العقود والخريطة';
+  } else if (customer) {
+    hintEl.textContent = 'لا يوجد عنوان مسجّل — أضفه من صفحة العملاء أو العقود';
+  } else {
+    hintEl.textContent = 'يظهر بعد اختيار العميل والمصعد — نفس العنوان المسجّل في العقود والخريطة';
+  }
+}
+
 function resetCustomerLinkedFields() {
-  ['f-city', 'f-district', 'f-reporter', 'f-reporter-phone'].forEach(id => {
+  ['f-city', 'f-district', 'f-address', 'f-reporter', 'f-reporter-phone'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const hintEl = document.getElementById('f-address-hint');
+  if (hintEl) {
+    hintEl.textContent = 'يظهر بعد اختيار العميل والمصعد — نفس العنوان المسجّل في العقود والخريطة';
+  }
   const esel = document.getElementById('f-elevator-sel');
   if (esel) esel.innerHTML = '<option value="">اختر العميل أولاً</option>';
 }
@@ -767,6 +816,10 @@ function onCustomerSelected() {
   if (districtEl) districtEl.value = cust?.district || '';
   if (reporterEl) reporterEl.value = cust?.contact_person || '';
   if (reporterPhoneEl) reporterPhoneEl.value = cust?.phone || '';
+  const addressEl = document.getElementById('f-address');
+  if (addressEl) addressEl.value = '';
+  const hintEl = document.getElementById('f-address-hint');
+  if (hintEl) hintEl.textContent = 'يظهر تلقائياً بعد اختيار المصعد';
   if (!esel) return;
   const list = ELEVATORS.filter(e => Number(e.customer_id) === Number(cid));
   esel.innerHTML = '<option value="">' + (list.length ? 'اختر المصعد' : 'لا توجد مصاعد لهذا العميل') + '</option>' +
@@ -779,13 +832,24 @@ function onCustomerSelected() {
 
 function onElevatorSelected() {
   const eid = document.getElementById('f-elevator-sel')?.value;
+  const addressEl = document.getElementById('f-address');
+  const hintEl = document.getElementById('f-address-hint');
+  if (!eid) {
+    if (addressEl) addressEl.value = '';
+    if (hintEl) hintEl.textContent = 'يظهر تلقائياً بعد اختيار المصعد';
+    return;
+  }
   const elev = ELEVATORS.find(e => String(e.id) === String(eid));
-  if (!elev) return;
+  if (!elev) {
+    if (addressEl) addressEl.value = '';
+    return;
+  }
   const cityEl = document.getElementById('f-city');
   const districtEl = document.getElementById('f-district');
   const cust = CUSTOMERS.find(c => String(c.id) === String(elev.customer_id));
   if (cityEl) cityEl.value = elev.city || cust?.city || '';
   if (districtEl) districtEl.value = elev.district || cust?.district || '';
+  setFaultAddressFields(cust, elev);
 }
 
 function loadClientElevators() {
@@ -1109,6 +1173,8 @@ function editFault(id) {
   const rp = document.getElementById('f-reporter-phone');
   if (rn && f.reporter_name) rn.value = f.reporter_name;
   if (rp && f.reporter_phone) rp.value = f.reporter_phone;
+  const cust = CUSTOMERS.find(c => String(c.id) === String(clientSel?.value || ''));
+  setFaultAddressFields(cust, elev);
   setFaultReportDatetime(f.reported_at_local || '');
   if (f.needs_parts) {
     if (f.parts_lines && f.parts_lines.length) loadFaultPartsPanel(f.parts_lines);
@@ -1134,6 +1200,13 @@ function editFault(id) {
 function viewFault(id) {
   const f = FAULTS.find(x=>x.id===id);
   if(!f) return;
+  const elevView = ELEVATORS.find(e => e.id === f.elevator_id);
+  const custView = CUSTOMERS.find(c => c.id === f.customer_id);
+  const siteAddress = resolveFaultSiteAddress(custView, elevView);
+  const siteContract = elevView ? activeContractForElevator(elevView.id) : null;
+  const siteAddressHtml = siteAddress
+    ? `<div class="view-item view-full"><div class="view-label">عنوان الموقع</div><div class="view-val">${siteAddress}${siteContract ? ` <span style="font-size:11px;color:var(--text3)">(${siteContract.code})</span>` : ''}</div></div>`
+    : '';
   document.getElementById('view-title').textContent = f.code + ' — ' + f.customer;
   document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
@@ -1141,6 +1214,7 @@ function viewFault(id) {
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${f.code}</div></div>
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${f.customer}</div></div>
       <div class="view-item"><div class="view-label">المصعد</div><div class="view-val" style="font-family:var(--font-en)">${f.elevator}</div></div>
+      ${siteAddressHtml}
       <div class="view-item"><div class="view-label">الفني</div><div class="view-val">${f.technician}</div></div>
       <div class="view-item"><div class="view-label">نوع العطل</div><div class="view-val">${f.fault_type}</div></div>
       <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${PRIORITY_BADGE[f.priority]||'badge-active'}">${f.priority}</span></div></div>

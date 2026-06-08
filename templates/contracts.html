@@ -233,6 +233,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
 
 </head>
@@ -518,7 +519,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-grid">
           <div class="field">
             <label>تاريخ البداية</label>
-            <input type="date" id="f-start" style="direction:ltr" oninput="onContractStartChange()">
+            <input type="date" lang="en-GB" id="f-start" style="direction:ltr" oninput="onContractStartChange()">
           </div>
           <div class="field">
             <label>مدة العقد</label>
@@ -534,11 +535,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
           <div class="field">
             <label>تاريخ الانتهاء</label>
-            <input type="date" id="f-end" style="direction:ltr" oninput="calcDurationFromEnd()">
+            <input type="date" lang="en-GB" id="f-end" style="direction:ltr" oninput="calcDurationFromEnd()">
           </div>
           <div class="field">
             <label>تاريخ تذكير التجديد</label>
-            <input type="date" id="f-reminder" style="direction:ltr">
+            <input type="date" lang="en-GB" id="f-reminder" style="direction:ltr">
             <span class="field-hint">يُحسب تلقائياً قبل 30 يوم من الانتهاء</span>
           </div>
         </div>

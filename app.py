@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User
+from models import PurchaseOrder, PurchaseOrderLine
 from calendar import monthrange
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, and_, text, inspect
@@ -25,6 +26,28 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///liftcore.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+
+
+@app.template_filter('dmY')
+def format_date_dmy(value):
+    """عرض التاريخ بصيغة dd/mm/yyyy."""
+    if not value:
+        return '—'
+    if hasattr(value, 'strftime'):
+        return value.strftime('%d/%m/%Y')
+    s = str(value)[:10]
+    parts = s.split('-')
+    if len(parts) == 3 and len(parts[0]) == 4:
+        return f'{parts[2]}/{parts[1]}/{parts[0]}'
+    return str(value)
+
+
+@app.context_processor
+def inject_global_template_vars():
+    return {
+        'google_maps_api_key': os.environ.get('GOOGLE_MAPS_API_KEY', '').strip(),
+    }
+
 
 # إنشاء الجداول عند التشغيل الأول
 with app.app_context():
@@ -2497,37 +2520,75 @@ def invoice_delete(id):
 # =============================================
 @app.route('/inventory')
 def inventory():
+    from seed_inventory_parts import ensure_inventory_catalog
+
+    ensure_inventory_catalog()
     items = InventoryItem.query.order_by(InventoryItem.id.desc()).all()
-    return render_template('inventory.html', items=items)
+    items_json = [
+        {
+            'id': i.id,
+            'code': i.code or '',
+            'name': i.name or '',
+            'category': i.category or '',
+            'unit': i.unit or 'قطعة',
+            'current_qty': float(i.current_qty or 0),
+            'min_qty': float(i.min_qty or 0),
+            'buy_price': float(i.buy_price or 0),
+            'sell_price': float(i.sell_price or 0),
+            'stock_value': float(i.stock_value or 0),
+            'order_status': i.order_status,
+            'supplier': i.supplier or '',
+            'location': i.location or '',
+            'notes': i.notes or '',
+        }
+        for i in items
+    ]
+    return render_template(
+        'inventory.html',
+        items=items,
+        items_json=items_json,
+        next_item_code=next_code(InventoryItem, '#', digits=3),
+    )
 
 @app.route('/inventory/edit/<int:id>', methods=['POST'])
 def inventory_edit(id):
     item = InventoryItem.query.get_or_404(id)
-    item.name        = request.form['name']
-    item.category    = request.form.get('category','')
-    item.unit        = request.form.get('unit','قطعة')
-    item.current_qty = float(request.form.get('current_qty', 0))
-    item.min_qty     = float(request.form.get('min_qty', 0))
-    item.buy_price   = float(request.form.get('buy_price', 0))
-    item.sell_price  = float(request.form.get('sell_price', 0))
-    item.supplier    = request.form.get('supplier','')
-    item.notes       = request.form.get('notes','')
+    name = (request.form.get('name') or '').strip()
+    if not name:
+        return redirect(url_for('inventory'))
+    item.name = name
+    item.category = request.form.get('category', '')
+    item.unit = request.form.get('unit', 'قطعة')
+    item.current_qty = float(request.form.get('current_qty', 0) or 0)
+    item.min_qty = float(request.form.get('min_qty', 0) or 0)
+    item.buy_price = float(request.form.get('buy_price', 0) or 0)
+    item.sell_price = float(request.form.get('sell_price', 0) or 0)
+    item.supplier = request.form.get('supplier', '')
+    item.location = request.form.get('location', '')
+    item.notes = request.form.get('notes', '')
     db.session.commit()
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/add', methods=['POST'])
 def inventory_add():
+    name = (request.form.get('name') or '').strip()
+    if not name:
+        return redirect(url_for('inventory'))
+    code = (request.form.get('code') or '').strip() or next_code(InventoryItem, '#', digits=3)
+    if InventoryItem.query.filter_by(code=code).first():
+        code = next_code(InventoryItem, '#', digits=3)
     item = InventoryItem(
-        code       = next_code(InventoryItem, '#', digits=3),
-        name       = request.form['name'],
-        category   = request.form.get('category',''),
-        unit       = request.form.get('unit','قطعة'),
-        current_qty= float(request.form.get('current_qty', 0)),
-        min_qty    = float(request.form.get('min_qty', 0)),
-        buy_price  = float(request.form.get('buy_price', 0)),
-        sell_price = float(request.form.get('sell_price', 0)),
-        supplier   = request.form.get('supplier',''),
-        notes      = request.form.get('notes',''),
+        code=code,
+        name=name,
+        category=request.form.get('category', ''),
+        unit=request.form.get('unit', 'قطعة'),
+        current_qty=float(request.form.get('current_qty', 0) or 0),
+        min_qty=float(request.form.get('min_qty', 0) or 0),
+        buy_price=float(request.form.get('buy_price', 0) or 0),
+        sell_price=float(request.form.get('sell_price', 0) or 0),
+        supplier=request.form.get('supplier', ''),
+        location=request.form.get('location', ''),
+        notes=request.form.get('notes', ''),
     )
     db.session.add(item)
     db.session.commit()
@@ -2539,6 +2600,108 @@ def inventory_delete(id):
     db.session.delete(item)
     db.session.commit()
     return redirect(url_for('inventory'))
+
+
+PO_STATUSES = ['مسودة', 'مرسل', 'مستلم', 'ملغي']
+
+
+def _apply_purchase_receipt(order):
+    if order.status != 'مستلم' or order.received_at:
+        return
+    db.session.flush()
+    updated = False
+    for line in order.lines:
+        item = db.session.get(InventoryItem, line.item_id)
+        if item:
+            item.current_qty = (item.current_qty or 0) + (line.quantity or 0)
+            updated = True
+    if updated:
+        order.received_at = datetime.utcnow()
+
+
+@app.route('/purchase-orders')
+def purchase_orders():
+    orders = PurchaseOrder.query.order_by(PurchaseOrder.order_date.desc().nullslast()).all()
+    items = InventoryItem.query.order_by(InventoryItem.name).all()
+    return render_template(
+        'purchase-orders.html',
+        orders=orders,
+        items=items,
+        statuses=PO_STATUSES,
+        next_po_code=next_code(PurchaseOrder, 'PO-', digits=4),
+        today=date.today().isoformat(),
+    )
+
+
+@app.route('/purchase-orders/save', methods=['POST'])
+def purchase_orders_save():
+    order_id = request.form.get('order_id', '').strip()
+    supplier = request.form.get('supplier', '').strip()
+    order_date_raw = request.form.get('order_date', '').strip()
+    status = request.form.get('status', 'مسودة').strip()
+    notes = request.form.get('notes', '').strip()
+
+    try:
+        order_date = datetime.strptime(order_date_raw, '%Y-%m-%d').date() if order_date_raw else date.today()
+    except ValueError:
+        order_date = date.today()
+
+    item_ids = request.form.getlist('item_id')
+    quantities = request.form.getlist('quantity')
+    unit_prices = request.form.getlist('unit_price')
+
+    lines_data = []
+    for item_id, qty, price in zip(item_ids, quantities, unit_prices):
+        if not item_id:
+            continue
+        quantity = float(qty or 0)
+        if quantity <= 0:
+            continue
+        unit_price = float(price or 0)
+        lines_data.append({
+            'item_id': int(item_id),
+            'quantity': quantity,
+            'unit_price': unit_price,
+            'line_total': quantity * unit_price,
+        })
+
+    if not lines_data:
+        return redirect(url_for('purchase_orders'))
+
+    if order_id:
+        order = PurchaseOrder.query.get_or_404(int(order_id))
+    else:
+        order = PurchaseOrder(code=next_code(PurchaseOrder, 'PO-', digits=4))
+        db.session.add(order)
+
+    old_status = order.status
+    order.supplier = supplier or None
+    order.order_date = order_date
+    order.notes = notes or None
+    order.status = status if status in PO_STATUSES else 'مسودة'
+
+    order.lines.clear()
+    total = 0.0
+    for row in lines_data:
+        order.lines.append(PurchaseOrderLine(**row))
+        total += row['line_total']
+    order.total_amount = total
+
+    if order.status == 'مستلم' and old_status != 'مستلم':
+        _apply_purchase_receipt(order)
+
+    db.session.commit()
+    return redirect(url_for('purchase_orders'))
+
+
+@app.route('/purchase-orders/delete/<int:order_id>', methods=['POST'])
+def purchase_orders_delete(order_id):
+    order = PurchaseOrder.query.get_or_404(order_id)
+    if order.status == 'مستلم':
+        return redirect(url_for('purchase_orders'))
+    db.session.delete(order)
+    db.session.commit()
+    return redirect(url_for('purchase_orders'))
 
 # =============================================
 # حركة المخزن
@@ -3160,4 +3323,4 @@ def api_client_annual(customer_id):
 # تشغيل التطبيق
 # =============================================
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001, use_reloader=False)

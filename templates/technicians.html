@@ -237,6 +237,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .upload-hint{font-size:11px;color:var(--text3);margin-top:4px}
 #modal-view .modal{max-width:920px}
 #modal-add .modal{max-width:860px}
+#modal-add-body .tech-tab-panel{display:none}
+#modal-add-body .tech-tab-panel.active{display:block}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:1100px){.stats-row{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:768px){
@@ -254,6 +256,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 @media(max-width:480px){.filters-bar{flex-direction:column}.search-wrap{min-width:100%}.card-stats,.stats-row{grid-template-columns:repeat(2,1fr)!important}}
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
 <script src="/static/liftcore-translit.js"></script>
 
@@ -468,35 +471,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
     <div class="modal-body" id="modal-add-body">
       <div class="modal-quick-nav" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:2">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="scrollTechSection('tech-section-basic')">البيانات الأساسية</button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="scrollTechSection('tech-section-contact')">التواصل والجوال</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="scrollTechSection('tech-section-area')">المنطقة</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="scrollTechSection('tech-section-docs-official')">الوثائق</button>
+        <button type="button" class="btn btn-primary btn-sm" data-tech-tab="basic" onclick="switchTechTab('basic')">البيانات الأساسية</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="contact" onclick="switchTechTab('contact')">بيانات الاتصال</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="area" onclick="switchTechTab('area')">المنطقة</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="docs" onclick="switchTechTab('docs')">الوثائق</button>
       </div>
 
-      <div class="form-section" id="tech-section-contact" style="border:1px solid rgba(42,127,255,.35);border-radius:10px;padding:14px;background:rgba(42,127,255,.06);margin-bottom:18px">
-        <div class="form-section-title" style="color:var(--accent);font-size:13px">★ بيانات التواصل — الجوال وواتساب</div>
-        <p style="font-size:11px;color:var(--text3);margin:-4px 0 10px">مطلوب لإرسال خط السير اليومي للفني على واتساب</p>
-        <div class="form-grid">
-          <div class="field form-full">
-            <label>رقم الجوال</label>
-            <div class="phone-wrap">
-              <select class="phone-code" id="f-code-ph"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
-              <input type="tel" class="phone-input" id="f-phone" placeholder="512345678">
-            </div>
-          </div>
-          <div class="field form-full">
-            <label>رقم واتساب (لإرسال المهام)</label>
-            <div class="phone-wrap">
-              <select class="phone-code" id="f-code-wa"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
-              <input type="tel" class="phone-input" id="f-whatsapp" placeholder="512345678">
-            </div>
-          </div>
-          <div class="field form-full"><label>البريد الإلكتروني</label><input type="email" id="f-email" placeholder="tech@liftcore.com" style="direction:ltr"></div>
-        </div>
-      </div>
-
-      <div class="form-section" id="tech-section-photo">
+      <div class="form-section tech-tab-panel active" data-tech-tab="basic" id="tech-section-photo">
         <div class="form-section-title">صورة الفني</div>
         <div class="tech-photo-upload" onclick="document.getElementById('f-photo').click()">
           <img id="photo-preview" class="tech-photo-preview" alt="">
@@ -509,7 +490,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <input type="file" id="f-photo" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="previewTechPhoto(this)">
       </div>
 
-      <div class="form-section" id="tech-section-basic">
+      <div class="form-section tech-tab-panel" data-tech-tab="basic" id="tech-section-basic">
         <div class="form-section-title">البيانات الأساسية</div>
         <div class="form-grid">
           <div class="field"><label>كود الفني</label><input type="text" id="f-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.8"></div>
@@ -523,7 +504,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </div>
 
-      <div class="form-section" id="tech-section-area">
+      <div class="form-section tech-tab-panel" data-tech-tab="area" id="tech-section-area">
         <div class="form-section-title">المنطقة المخصصة</div>
         <div class="form-grid">
           <div class="field">
@@ -543,19 +524,19 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </div>
 
-      <div class="form-section" id="tech-section-docs-official">
+      <div class="form-section tech-tab-panel" data-tech-tab="docs" id="tech-section-docs-official">
         <div class="form-section-title">الوثائق الرسمية</div>
         <div class="form-grid">
           <div class="field"><label>رقم الإقامة</label><input type="text" id="f-iqama" placeholder="رقم الإقامة" style="direction:ltr;font-family:var(--font-en)"></div>
-          <div class="field"><label>تاريخ انتهاء الإقامة</label><input type="date" id="f-iqama-exp" style="direction:ltr"></div>
+          <div class="field"><label>تاريخ انتهاء الإقامة</label><input type="date" lang="en-GB" id="f-iqama-exp" style="direction:ltr"></div>
           <div class="field"><label>رقم الرخصة</label><input type="text" id="f-license" placeholder="رقم الرخصة" style="direction:ltr;font-family:var(--font-en)"></div>
-          <div class="field"><label>تاريخ انتهاء الرخصة</label><input type="date" id="f-license-exp" style="direction:ltr"></div>
-          <div class="field"><label>تاريخ التوظيف</label><input type="date" id="f-hire" style="direction:ltr"></div>
+          <div class="field"><label>تاريخ انتهاء الرخصة</label><input type="date" lang="en-GB" id="f-license-exp" style="direction:ltr"></div>
+          <div class="field"><label>تاريخ التوظيف</label><input type="date" lang="en-GB" id="f-hire" style="direction:ltr"></div>
           <div class="field"><label>الراتب (ر.س)</label><input type="number" id="f-salary" placeholder="3000" style="direction:ltr"></div>
         </div>
       </div>
 
-      <div class="form-section">
+      <div class="form-section tech-tab-panel" data-tech-tab="docs">
         <div class="form-section-title">المؤهلات والشهادات والمستندات</div>
         <div id="existing-docs-wrap" class="existing-docs" style="display:none">
           <div style="font-size:12px;color:var(--text2);margin-bottom:8px">المستندات المحفوظة</div>
@@ -570,9 +551,31 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="upload-hint">أنواع الملفات: PDF · صور — شهادات · مؤهلات · رخص · إقامة</div>
       </div>
 
-      <div class="form-section">
+      <div class="form-section tech-tab-panel" data-tech-tab="basic">
         <div class="form-section-title">ملاحظات</div>
         <div class="field"><textarea id="f-notes" placeholder="أي ملاحظات إضافية..."></textarea></div>
+      </div>
+
+      <div class="form-section tech-tab-panel" data-tech-tab="contact" id="tech-section-contact" style="border:1px solid rgba(42,127,255,.35);border-radius:10px;padding:14px;background:rgba(42,127,255,.06);margin-bottom:18px">
+        <div class="form-section-title" style="color:var(--accent);font-size:13px">بيانات الاتصال</div>
+        <p style="font-size:11px;color:var(--text3);margin:-4px 0 10px">الجوال وواتساب — لإرسال خط السير اليومي</p>
+        <div class="form-grid">
+          <div class="field form-full">
+            <label>رقم الجوال</label>
+            <div class="phone-wrap">
+              <select class="phone-code" id="f-code-ph"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
+              <input type="tel" class="phone-input" id="f-phone" placeholder="512345678">
+            </div>
+          </div>
+          <div class="field form-full">
+            <label>رقم واتساب (لإرسال المهام)</label>
+            <div class="phone-wrap">
+              <select class="phone-code" id="f-code-wa"><option>+966</option><option>+20</option><option>+971</option><option>+965</option></select>
+              <input type="tel" class="phone-input" id="f-whatsapp" placeholder="512345678">
+            </div>
+          </div>
+          <div class="field form-full"><label>البريد الإلكتروني</label><input type="email" id="f-email" placeholder="tech@liftcore.com" style="direction:ltr"></div>
+        </div>
       </div>
 
     </div>
@@ -1079,13 +1082,48 @@ function resetTechModalScroll() {
   if (body) body.scrollTop = 0;
 }
 
-function scrollTechSection(sectionId) {
-  var section = document.getElementById(sectionId);
-  if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  if (sectionId === 'tech-section-contact') {
-    var ph = document.getElementById('f-phone');
-    if (ph) setTimeout(function() { ph.focus(); }, 200);
+var TECH_TAB_SECTIONS = {
+  contact: ['tech-section-contact'],
+  basic: ['tech-section-photo', 'tech-section-basic'],
+  area: ['tech-section-area'],
+  docs: ['tech-section-docs-official']
+};
+
+function switchTechTab(tab) {
+  tab = tab || 'basic';
+  document.querySelectorAll('#modal-add-body .tech-tab-panel').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-tech-tab') === tab);
+  });
+  document.querySelectorAll('#modal-add-body .modal-quick-nav button[data-tech-tab]').forEach(function(btn) {
+    var isActive = btn.getAttribute('data-tech-tab') === tab;
+    btn.classList.toggle('btn-primary', isActive);
+    btn.classList.toggle('btn-secondary', !isActive);
+  });
+  resetTechModalScroll();
+  if (tab === 'basic') {
+    setTimeout(function() {
+      var name = document.getElementById('f-name-ar');
+      if (name) name.focus();
+    }, 120);
+  } else if (tab === 'contact') {
+    setTimeout(function() {
+      var ph = document.getElementById('f-phone');
+      if (ph) ph.focus();
+    }, 120);
   }
+}
+
+function scrollTechSection(sectionId) {
+  var tab = 'basic';
+  Object.keys(TECH_TAB_SECTIONS).some(function(key) {
+    if (TECH_TAB_SECTIONS[key].indexOf(sectionId) !== -1) {
+      tab = key;
+      return true;
+    }
+    return false;
+  });
+  if (sectionId === 'tech-section-docs-official') tab = 'docs';
+  switchTechTab(tab);
 }
 
 function editTechPhone(id) {
@@ -1122,7 +1160,7 @@ function openAddModal() {
   document.getElementById('modal-add').dataset.editId = '';
   clearTechForm();
   document.getElementById('modal-add').classList.add('open');
-  resetTechModalScroll();
+  switchTechTab('basic');
 }
 
 function saveTech() {
@@ -1188,7 +1226,7 @@ function editTech(id) {
   document.getElementById('new-docs-rows').innerHTML = '';
   renderExistingDocs(t.docs || [], t.id);
   document.getElementById('modal-add').classList.add('open');
-  resetTechModalScroll();
+  switchTechTab('basic');
 }
 
 function viewTech(id) {

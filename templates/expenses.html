@@ -143,6 +143,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
 
 </head>
@@ -274,11 +275,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       </div>
       <div class="filter-group">
         <div class="filter-label">من</div>
-        <input class="filter-input" type="date" id="f-from" onchange="applyFilters()">
+        <input class="filter-input" type="date" lang="en-GB" id="f-from" onchange="applyFilters()">
       </div>
       <div class="filter-group">
         <div class="filter-label">إلى</div>
-        <input class="filter-input" type="date" id="f-to" onchange="applyFilters()">
+        <input class="filter-input" type="date" lang="en-GB" id="f-to" onchange="applyFilters()">
       </div>
       <button class="btn btn-secondary btn-sm" onclick="clearFilters()" style="align-self:flex-end">مسح</button>
     </div>
@@ -326,7 +327,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <div class="form-grid">
         <div class="field">
           <label>التاريخ <span>*</span></label>
-          <input type="date" id="m-date">
+          <input type="date" lang="en-GB" id="m-date">
         </div>
         <div class="field">
           <label>نوع المصروف <span>*</span></label>

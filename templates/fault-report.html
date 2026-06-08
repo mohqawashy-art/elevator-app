@@ -92,6 +92,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 @media(max-width:600px){.row-3,.row-4{grid-template-columns:1fr 1fr}.photos-grid{grid-template-columns:repeat(2,1fr)}.sig-area{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
 </head>
 <body>
@@ -156,7 +157,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="section" style="margin-top:12px">
     <div class="sec-title"><span class="sec-dot"></span> بيانات الزيارة</div>
     <div class="row row-4">
-      <div class="field"><label>تاريخ الزيارة</label><input type="date" id="visit-date" style="direction:ltr" {% if not editable %}readonly{% endif %}></div>
+      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" style="direction:ltr" if not editable readonly endif></div>
       <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" style="direction:ltr" {% if not editable %}readonly{% endif %}></div>
       <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" style="direction:ltr" {% if not editable %}readonly{% endif %}></div>
       <div class="field"><label>الفني المنفذ</label><input type="text" value="{{ technician.name }}" readonly></div>
@@ -235,7 +236,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <button type="button" class="status-btn" data-outcome="needs_parts" {% if not editable %}disabled{% endif %}>✗ يحتاج قطعة غيار</button>
     </div>
     <div class="row row-2">
-      <div class="field"><label>موعد الزيارة القادمة</label><input type="date" id="next-visit" style="direction:ltr" {% if not editable %}readonly{% endif %}></div>
+      <div class="field"><label>موعد الزيارة القادمة</label><input type="date" lang="en-GB" id="next-visit" style="direction:ltr" if not editable readonly endif></div>
     </div>
     <div class="field" style="margin-top:8px">
       <label>ملاحظات ختامية</label>

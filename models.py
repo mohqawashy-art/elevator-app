@@ -4,7 +4,7 @@ models.py
 """
 
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, date
 
 db = SQLAlchemy()
 
@@ -416,6 +416,41 @@ class PartsBilling(db.Model):
 
     def __repr__(self):
         return f'<PartsBilling {self.code}>'
+
+
+# =============================================
+# 12ب. طلبات الشراء
+# =============================================
+class PurchaseOrder(db.Model):
+    __tablename__ = 'purchase_orders'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    supplier = db.Column(db.String(200))
+    order_date = db.Column(db.Date, default=date.today)
+    status = db.Column(db.String(30), default='مسودة')  # مسودة / مرسل / مستلم / ملغي
+    total_amount = db.Column(db.Float, default=0)
+    notes = db.Column(db.Text)
+    received_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    lines = db.relationship(
+        'PurchaseOrderLine', back_populates='order', cascade='all, delete-orphan', lazy='joined'
+    )
+
+
+class PurchaseOrderLine(db.Model):
+    __tablename__ = 'purchase_order_lines'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('purchase_orders.id'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=False)
+    quantity = db.Column(db.Float, default=1)
+    unit_price = db.Column(db.Float, default=0)
+    line_total = db.Column(db.Float, default=0)
+
+    order = db.relationship('PurchaseOrder', back_populates='lines')
+    item = db.relationship('InventoryItem')
 
 
 # =============================================

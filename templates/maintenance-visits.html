@@ -249,6 +249,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 @media(max-width:480px){.filters-bar{flex-direction:column}.search-wrap{min-width:100%}}
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
 </head>
 <body>
@@ -409,8 +410,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <option>صيانة دورية</option><option>زيارة طارئة</option>
           <option>زيارة متابعة</option><option>زيارة فحص</option>
         </select>
-        <input type="date" class="date-input" id="f-date-from" onchange="filterTable()" title="من تاريخ">
-        <input type="date" class="date-input" id="f-date-to" onchange="filterTable()" title="إلى تاريخ">
+        <input type="date" lang="en-GB" class="date-input" id="f-date-from" onchange="filterTable()" title="من تاريخ">
+        <input type="date" lang="en-GB" class="date-input" id="f-date-to" onchange="filterTable()" title="إلى تاريخ">
       </div>
 
       <div class="table-wrap">
@@ -516,11 +517,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="form-section">
         <div class="form-section-title">التوقيت</div>
         <div class="form-grid">
-          <div class="field"><label>تاريخ الزيارة</label><input type="date" id="f-date" style="direction:ltr"></div>
+          <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="f-date" style="direction:ltr"></div>
           <div class="field"><label>وقت الزيارة</label><input type="time" id="f-time" style="direction:ltr"></div>
           <div class="field"><label>وقت البداية الفعلي</label><input type="time" id="f-actual-start" style="direction:ltr"></div>
           <div class="field"><label>وقت الانتهاء الفعلي</label><input type="time" id="f-actual-end" style="direction:ltr"></div>
-          <div class="field"><label>موعد الزيارة القادمة</label><input type="date" id="f-next-visit" style="direction:ltr"></div>
+          <div class="field"><label>موعد الزيارة القادمة</label><input type="date" lang="en-GB" id="f-next-visit" style="direction:ltr"></div>
         </div>
       </div>
 
@@ -639,7 +640,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>المصعد / العميل</label>
             <select id="plan-manual-elevator"><option value="">اختر المنطقة أولاً</option></select>
           </div>
-          <div class="field"><label>تاريخ الزيارة</label><input type="date" id="plan-manual-date" style="direction:ltr"></div>
+          <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="plan-manual-date" style="direction:ltr"></div>
           <div class="field" style="display:flex;align-items:flex-end">
             <button class="btn btn-primary btn-sm" type="button" onclick="addManualVisit()">+ إضافة للخطة</button>
           </div>
@@ -668,7 +669,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </select>
         </div>
         <div class="field"><label>تاريخ الزيارات المراد إرسالها</label>
-          <input type="date" id="dispatch-date" class="date-input" style="direction:ltr;width:100%">
+          <input type="date" lang="en-GB" id="dispatch-date" class="date-input" style="direction:ltr;width:100%">
         </div>
         <div class="field"><label>اختصار</label>
           <select id="dispatch-day" onchange="onDispatchDayShortcut()">

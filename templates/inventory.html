@@ -153,6 +153,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
 
 </head>
@@ -181,7 +182,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <a href="/invoices" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>الفواتير</a>
 
 <div class="nav-section" id="ns4">المخزن</div>
-<a href="/inventory" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>الأصناف</a>
+<a href="/inventory" class="nav-item active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>الأصناف</a>
+<a href="/purchase-orders" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>طلبات الشراء</a>
 <a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
 
 <div class="nav-section" id="ns4">التقارير</div>
@@ -224,6 +226,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير
         </button>
+        <a class="btn btn-secondary btn-sm" href="/purchase-orders">طلب شراء</a>
         <button class="btn btn-primary btn-sm" onclick="openModal()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
           إضافة صنف
@@ -310,10 +313,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
   </div>
 </div>
 
-<!-- MODAL -->
-
-</div>
-
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <div class="modal-head">
@@ -333,8 +332,12 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="field">
           <label>التصنيف</label>
           <select id="m-cat">
-            <option>مستهلكات</option>
-            <option>قطع غيار</option>
+            <option value="قطع غيار">قطع غيار</option>
+            <option value="مستهلكات">مستهلكات</option>
+            <option value="نظام الرفع والجر">نظام الرفع والجر</option>
+            <option value="نظام التحكم الكهربائي">نظام التحكم الكهربائي</option>
+            <option value="أبواب الطوابق">أبواب الطوابق</option>
+            <option value="المسامير والبراغي">المسامير والبراغي</option>
           </select>
         </div>
         <div class="field">
@@ -351,7 +354,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="field">
           <label>سعر الشراء (ر.س)</label>
-          <input type="number" id="m-price" placeholder="0.00" step="0.01">
+          <input type="number" id="m-buy-price" placeholder="0.00" step="0.01" value="0">
+        </div>
+        <div class="field">
+          <label>سعر البيع (ر.س)</label>
+          <input type="number" id="m-sell-price" placeholder="0.00" step="0.01" value="0">
         </div>
         <div class="field">
           <label>موقع التخزين</label>
@@ -377,181 +384,172 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 
 <script>
-// ===== البيانات من Flask =====
-const ITEMS = [
-  {% for i in items %}
-  {
-    id:          {{ i.id }},
-    code:        "{{ i.code }}",
-    name:        "{{ i.name }}",
-    category:    "{{ i.category or '' }}",
-    unit:        "{{ i.unit or 'قطعة' }}",
-    current_qty: {{ i.current_qty or 0 }},
-    min_qty:     {{ i.min_qty or 0 }},
-    buy_price:   {{ i.buy_price or 0 }},
-    sell_price:  {{ i.sell_price or 0 }},
-    stock_value: {{ i.stock_value or 0 }},
-    order_status:"{{ i.order_status }}",
-    supplier:    "{{ i.supplier or '' }}",
-    notes:       "{{ i.notes or '' }}",
-  },
-  {% endfor %}
-];
+const ITEMS = {{ items_json | tojson }};
+const NEXT_CODE = {{ next_item_code | tojson }};
 
-// ===== إحصائيات =====
+const ORDER_BADGE = { 'كافي': 'badge-green', 'منخفض': 'badge-gold', 'نافد': 'badge-red' };
+let filtered = [...ITEMS];
+let deleteId = null;
+
+function fmt(n) { return Number(n || 0).toLocaleString('ar-SA'); }
+
 function updateStats() {
-  const total     = ITEMS.length;
-  const totalVal  = ITEMS.reduce((s,i)=>s+i.stock_value,0);
-  const low       = ITEMS.filter(i=>i.order_status==='منخفض').length;
-  const out       = ITEMS.filter(i=>i.order_status==='نافد').length;
-  const vals = document.querySelectorAll('.stat-mini-val');
-  if(vals[0]) vals[0].textContent = total;
-  if(vals[1]) vals[1].textContent = totalVal.toLocaleString();
-  if(vals[2]) vals[2].textContent = low;
-  if(vals[3]) vals[3].textContent = out;
+  const total = ITEMS.length;
+  const totalVal = ITEMS.reduce((s, i) => s + (i.stock_value || 0), 0);
+  const low = ITEMS.filter(i => i.order_status === 'منخفض' || i.order_status === 'نافد').length;
+  const ok = ITEMS.filter(i => i.order_status === 'كافي').length;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('inv-count', total + ' صنف');
+  set('low-count', low);
+  set('s-total', total);
+  set('s-value', fmt(totalVal));
+  set('s-low', low);
+  set('s-ok', ok);
 }
 
-const ORDER_BADGE = {
-  'كافي':'badge-active','منخفض':'badge-pending','نافد':'badge-expired'
-};
-
-let currentDeleteId = null;
-let filtered = [...ITEMS];
-
 function renderTable(data) {
-  const tbody = document.getElementById('table-body');
-  if(!tbody) return;
-  document.getElementById('items-count').textContent = data.length + ' صنف';
-  tbody.innerHTML = data.map(i=>`
-    <tr onclick="viewItem(${i.id})">
+  const tbody = document.getElementById('inv-tbody');
+  if (!tbody) return;
+  document.getElementById('page-info').textContent = 'عرض ' + data.length + ' من ' + ITEMS.length;
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">لا توجد أصناف</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(i => `
+    <tr>
       <td class="td-code">${i.code}</td>
       <td class="td-name">${i.name}</td>
-      <td>${i.category}</td>
-      <td style="font-family:var(--font-en);text-align:center">${i.current_qty} ${i.unit}</td>
-      <td style="font-family:var(--font-en);text-align:center">${i.min_qty}</td>
-      <td style="font-family:var(--font-en)">${i.buy_price.toLocaleString()} ر.س</td>
-      <td style="font-family:var(--font-en);color:var(--accent)">${i.stock_value.toLocaleString()} ر.س</td>
-      <td>${i.supplier||'—'}</td>
-      <td><span class="badge ${ORDER_BADGE[i.order_status]||'badge-active'}">${i.order_status}</span></td>
-      <td onclick="event.stopPropagation()">
-        <div class="td-actions">
-          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewItem(${i.id})">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
-          </button>
-          <button class="btn btn-secondary btn-sm btn-icon" onclick="editItem(${i.id})">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
-          </button>
-          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteItem(${i.id})">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg>
-          </button>
-        </div>
+      <td>${i.category || '—'}</td>
+      <td class="td-num">${i.current_qty} ${i.unit}</td>
+      <td class="td-num">${i.min_qty}</td>
+      <td class="td-num">${fmt(i.buy_price)}</td>
+      <td class="td-num" style="color:var(--accent)">${fmt(i.stock_value)}</td>
+      <td>${i.supplier || '—'}</td>
+      <td><span class="badge ${ORDER_BADGE[i.order_status] || 'badge-gray'}">${i.order_status}</span></td>
+      <td class="td-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editItem(${i.id})">تعديل</button>
+        <button class="btn btn-secondary btn-sm" onclick="askDelete(${i.id})">حذف</button>
       </td>
     </tr>`).join('');
 }
 
-function filterTable() {
-  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const ct = document.getElementById('f-category')?.value||'';
-  const st = document.getElementById('f-status')?.value||'';
-  filtered = ITEMS.filter(i=>
-    (!s  || i.name.includes(s) || i.code.toLowerCase().includes(s)) &&
-    (!ct || i.category === ct) &&
-    (!st || i.order_status === st)
-  );
+function applyFilters() {
+  const s = (document.getElementById('f-search')?.value || '').trim().toLowerCase();
+  const cat = document.getElementById('f-cat')?.value || '';
+  const stock = document.getElementById('f-stock')?.value || '';
+  filtered = ITEMS.filter(i => {
+    const matchSearch = !s || i.name.toLowerCase().includes(s) || (i.code || '').toLowerCase().includes(s);
+    const matchCat = !cat || i.category === cat;
+    const matchStock = !stock || (stock === 'low' && (i.order_status === 'منخفض' || i.order_status === 'نافد')) || (stock === 'ok' && i.order_status === 'كافي');
+    return matchSearch && matchCat && matchStock;
+  });
   renderTable(filtered);
 }
 
-// ===== إضافة =====
-function openAddModal() {
-  document.getElementById('modal-title').textContent = 'إضافة صنف جديد';
-  document.getElementById('modal-add').dataset.editId = '';
-  document.getElementById('modal-add').classList.add('open');
+function clearFilters() {
+  document.getElementById('f-search').value = '';
+  document.getElementById('f-cat').value = '';
+  document.getElementById('f-stock').value = '';
+  filtered = [...ITEMS];
+  renderTable(filtered);
 }
 
-function saveItem() {
-  const editId = document.getElementById('modal-add').dataset.editId;
-  const fd = new FormData();
-  [['name','f-name'],['category','f-category-sel'],['unit','f-unit'],
-   ['current_qty','f-qty'],['min_qty','f-min-qty'],
-   ['buy_price','f-buy-price'],['sell_price','f-sell-price'],
-   ['supplier','f-supplier'],['notes','f-notes']
-  ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
-  fetch(editId ? `/inventory/edit/${editId}` : '/inventory/add', {method:'POST',body:fd})
-    .then(()=>window.location.reload());
+function filterLow() {
+  document.getElementById('f-stock').value = 'low';
+  applyFilters();
 }
 
-// ===== تعديل =====
+function openModal(editId) {
+  const modal = document.getElementById('modal');
+  modal.dataset.editId = editId || '';
+  document.getElementById('modal-title').textContent = editId ? 'تعديل الصنف' : 'إضافة صنف جديد';
+  if (!editId) {
+    document.getElementById('m-code').value = NEXT_CODE;
+    document.getElementById('m-name').value = '';
+    document.getElementById('m-cat').value = 'قطع غيار';
+    document.getElementById('m-unit').value = 'قطعة';
+    document.getElementById('m-balance').value = '0';
+    document.getElementById('m-min').value = '0';
+    document.getElementById('m-buy-price').value = '0';
+    document.getElementById('m-sell-price').value = '0';
+    document.getElementById('m-location').value = '';
+    document.getElementById('m-supplier').value = '';
+    document.getElementById('m-notes').value = '';
+  }
+  modal.classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
 function editItem(id) {
-  const i = ITEMS.find(x=>x.id===id);
-  if(!i) return;
-  document.getElementById('modal-title').textContent = 'تعديل الصنف';
-  document.getElementById('modal-add').dataset.editId = id;
-  const map = {
-    'f-name':i.name,'f-category-sel':i.category,'f-unit':i.unit,
-    'f-qty':i.current_qty,'f-min-qty':i.min_qty,
-    'f-buy-price':i.buy_price,'f-sell-price':i.sell_price,
-    'f-supplier':i.supplier,'f-notes':i.notes,
-  };
-  Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
-  document.getElementById('modal-add').classList.add('open');
+  const i = ITEMS.find(x => x.id === id);
+  if (!i) return;
+  openModal(id);
+  document.getElementById('m-code').value = i.code;
+  document.getElementById('m-name').value = i.name;
+  document.getElementById('m-cat').value = i.category || 'قطع غيار';
+  document.getElementById('m-unit').value = i.unit || 'قطعة';
+  document.getElementById('m-balance').value = i.current_qty;
+  document.getElementById('m-min').value = i.min_qty;
+  document.getElementById('m-buy-price').value = i.buy_price;
+  document.getElementById('m-sell-price').value = i.sell_price;
+  document.getElementById('m-location').value = i.location || '';
+  document.getElementById('m-supplier').value = i.supplier || '';
+  document.getElementById('m-notes').value = i.notes || '';
 }
 
-// ===== عرض =====
-function viewItem(id) {
-  const i = ITEMS.find(x=>x.id===id);
-  if(!i) return;
-  document.getElementById('view-title').textContent = i.code + ' — ' + i.name;
-  document.getElementById('view-body').innerHTML = `
-    <div class="view-grid">
-      <div class="view-section">بيانات الصنف</div>
-      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${i.code}</div></div>
-      <div class="view-item"><div class="view-label">الاسم</div><div class="view-val">${i.name}</div></div>
-      <div class="view-item"><div class="view-label">التصنيف</div><div class="view-val">${i.category}</div></div>
-      <div class="view-item"><div class="view-label">وحدة القياس</div><div class="view-val">${i.unit}</div></div>
-      <div class="view-section">المخزون والأسعار</div>
-      <div class="view-item"><div class="view-label">الرصيد الحالي</div><div class="view-val" style="font-family:var(--font-en)">${i.current_qty} ${i.unit}</div></div>
-      <div class="view-item"><div class="view-label">الحد الأدنى</div><div class="view-val" style="font-family:var(--font-en)">${i.min_qty} ${i.unit}</div></div>
-      <div class="view-item"><div class="view-label">سعر الشراء</div><div class="view-val" style="font-family:var(--font-en)">${i.buy_price.toLocaleString()} ر.س</div></div>
-      <div class="view-item"><div class="view-label">سعر البيع</div><div class="view-val" style="font-family:var(--font-en)">${i.sell_price.toLocaleString()} ر.س</div></div>
-      <div class="view-item"><div class="view-label">قيمة المخزون</div><div class="view-val" style="font-family:var(--font-en);color:var(--accent)">${i.stock_value.toLocaleString()} ر.س</div></div>
-      <div class="view-item"><div class="view-label">المورد</div><div class="view-val">${i.supplier||'—'}</div></div>
-      <div class="view-item"><div class="view-label">حالة الطلب</div><div class="view-val"><span class="badge ${ORDER_BADGE[i.order_status]||'badge-active'}">${i.order_status}</span></div></div>
-      ${i.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${i.notes}</div></div>`:''}
-    </div>`;
-  document.getElementById('modal-view').classList.add('open');
+function saveRecord() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { alert('اسم الصنف مطلوب'); return; }
+  const editId = document.getElementById('modal').dataset.editId;
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('code', document.getElementById('m-code').value.trim());
+  fd.append('category', document.getElementById('m-cat').value);
+  fd.append('unit', document.getElementById('m-unit').value);
+  fd.append('current_qty', document.getElementById('m-balance').value || '0');
+  fd.append('min_qty', document.getElementById('m-min').value || '0');
+  fd.append('buy_price', document.getElementById('m-buy-price').value || '0');
+  fd.append('sell_price', document.getElementById('m-sell-price').value || '0');
+  fd.append('location', document.getElementById('m-location').value);
+  fd.append('supplier', document.getElementById('m-supplier').value);
+  fd.append('notes', document.getElementById('m-notes').value);
+  const url = editId ? `/inventory/edit/${editId}` : '/inventory/add';
+  fetch(url, { method: 'POST', body: fd })
+    .then(() => window.location.reload())
+    .catch(() => alert('تعذّر حفظ الصنف'));
 }
 
-// ===== حذف =====
-function deleteItem(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
-function confirmDelete() {
-  if(!currentDeleteId) return;
-  fetch(`/inventory/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
+function askDelete(id) {
+  if (confirm('حذف هذا الصنف؟')) {
+    fetch(`/inventory/delete/${id}`, { method: 'POST' }).then(() => window.location.reload());
+  }
 }
 
-function exportExcel() {
-  const rows=[['الكود','الاسم','التصنيف','الرصيد','الوحدة','الحد الأدنى','سعر الشراء','سعر البيع','قيمة المخزون','المورد','الحالة']];
-  filtered.forEach(i=>rows.push([i.code,i.name,i.category,i.current_qty,i.unit,i.min_qty,i.buy_price,i.sell_price,i.stock_value,i.supplier,i.order_status]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='inventory.csv'; a.click();
+function exportCSV() {
+  const rows = [['الكود', 'الاسم', 'التصنيف', 'الرصيد', 'الحد الأدنى', 'سعر الشراء', 'المورد', 'الحالة']];
+  filtered.forEach(i => rows.push([i.code, i.name, i.category, i.current_qty, i.min_qty, i.buy_price, i.supplier, i.order_status]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'inventory.csv';
+  a.click();
 }
 
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function setLang(l) {
-  document.documentElement.setAttribute('lang',l);
-  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
-  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
-  document.getElementById('btn-en').classList.toggle('active',l==='en');
+  document.documentElement.setAttribute('lang', l);
+  document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
+  document.getElementById('btn-ar').classList.toggle('active', l === 'ar');
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
 }
-function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
-document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
 
 const now = new Date();
-const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
 updateStats();

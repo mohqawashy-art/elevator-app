@@ -121,6 +121,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 }
 </style>
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
 </head>
 <body>
@@ -199,7 +200,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="section">
     <div class="sec-title"><span class="sec-dot"></span> بيانات الزيارة</div>
     <div class="row row-4">
-      <div class="field"><label>تاريخ الزيارة</label><input type="date" id="visit-date" value="{{ visit.visit_date }}" readonly style="direction:ltr"></div>
+      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" value="{{ visit.visit_date }}" readonly style="direction:ltr"></div>
       <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" style="direction:ltr" {% if not editable %}readonly{% endif %}></div>
       <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" style="direction:ltr" {% if not editable %}readonly{% endif %}></div>
       <div class="field"><label>الفني المنفذ</label><input type="text" value="{{ technician.name }}" readonly></div>
@@ -210,7 +211,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <option>ممتازة</option><option>جيدة</option><option>تحتاج متابعة</option><option>تحتاج إصلاح عاجل</option>
         </select>
       </div>
-      <div class="field"><label>تاريخ الزيارة القادمة</label><input type="date" id="next-visit" value="{{ visit.next_visit_date }}" style="direction:ltr" {% if not editable %}readonly{% endif %}></div>
+      <div class="field"><label>تاريخ الزيارة القادمة</label><input type="date" lang="en-GB" id="next-visit" value="{{ visit.next_visit_date }}" style="direction:ltr" if not editable readonly endif></div>
     </div>
   </div>
 

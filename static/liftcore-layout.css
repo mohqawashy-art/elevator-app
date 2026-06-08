@@ -83,3 +83,33 @@ html[dir="rtl"] input[style*="font-family:var(--font-en)"]:not([type="date"]):no
   unicode-bidi: isolate;
   text-align: right !important;
 }
+
+/* حقول التاريخ — عرض dd/mm/yyyy بدون انعكاس RTL */
+input[type="date"],
+input[type="month"],
+input.lc-date-input {
+  direction: ltr;
+  text-align: right;
+  unicode-bidi: isolate;
+  font-family: var(--font-en, 'DM Sans', sans-serif);
+}
+
+html[dir="rtl"] input[type="date"]::-webkit-datetime-edit,
+html[dir="rtl"] input[type="month"]::-webkit-datetime-edit {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+html[dir="rtl"] input[type="date"]::-webkit-calendar-picker-indicator,
+html[dir="rtl"] input[type="month"]::-webkit-calendar-picker-indicator {
+  margin-left: 0;
+  margin-right: 4px;
+}
+
+td.lc-date,
+.view-val.lc-date {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: right;
+  font-family: var(--font-en, 'DM Sans', sans-serif);
+}
