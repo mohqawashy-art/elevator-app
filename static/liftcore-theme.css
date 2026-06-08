@@ -1,0 +1,81 @@
+/* LiftCore — Light theme (html[data-theme="light"]) */
+html[data-theme="light"] {
+  --bg: #f0f4fa;
+  --bg2: #ffffff;
+  --bg3: #e8eef6;
+  --bg4: #dce4f0;
+  --card: #ffffff;
+  --border: rgba(30, 60, 120, 0.12);
+  --border2: rgba(30, 60, 120, 0.2);
+  --text1: #1a2433;
+  --text2: #4a5a72;
+  --text3: #7a8aa0;
+}
+
+html[data-theme="light"] body {
+  background: var(--bg);
+  color: var(--text1);
+}
+
+html[data-theme="light"] .sidebar {
+  background: var(--bg2);
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select {
+  background: var(--bg3);
+  color: var(--text1);
+}
+
+html[data-theme="light"] .header,
+html[data-theme="light"] .stat-card,
+html[data-theme="light"] .table-wrap,
+html[data-theme="light"] .modal,
+html[data-theme="light"] .table-footer,
+html[data-theme="light"] .card,
+html[data-theme="light"] .theme-card {
+  background: var(--card);
+  color: var(--text1);
+}
+
+html[data-theme="light"] thead tr {
+  background: var(--bg3);
+}
+
+html[data-theme="light"] tbody tr:hover {
+  background: var(--bg3);
+}
+
+html[data-theme="light"] .search-input,
+html[data-theme="light"] .filter-select,
+html[data-theme="light"] .filter-input {
+  background: var(--bg3);
+  color: var(--text1);
+  border-color: var(--border);
+}
+
+html[data-theme="light"] .btn-secondary {
+  background: var(--bg3);
+  color: var(--text2);
+  border-color: var(--border);
+}
+
+html[data-theme="light"] .tab:hover {
+  background: var(--bg3);
+}
+
+html[data-theme="light"] .logo-preview-wrap,
+html[data-theme="light"] .preview-box,
+html[data-theme="light"] .generated-box code {
+  background: var(--bg3);
+}
+
+html[data-theme="light"] .nav-item:hover {
+  background: var(--bg3);
+}
+
+html[data-theme="light"] .lc-app-header {
+  background: var(--bg2);
+  border-color: var(--border);
+}

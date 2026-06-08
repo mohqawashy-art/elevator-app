@@ -1,0 +1,13 @@
+/* رمز الريال السعودي (Unicode U+20C1) */
+.lc-sar::after,
+.lc-sar-char {
+  font-family: inherit;
+}
+
+.lc-sar::after {
+  content: "\20C1";
+}
+
+.lc-money {
+  white-space: nowrap;
+}

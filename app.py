@@ -384,6 +384,7 @@ def api_version():
             'settings_tabs': os.path.isfile(os.path.join(root, 'templates/settings.html'))
             and 'المظهر' in open(os.path.join(root, 'templates/settings.html'), encoding='utf-8').read(),
             'shell_css': os.path.isfile(os.path.join(root, 'static/liftcore-shell.css')),
+            'theme_css': os.path.isfile(os.path.join(root, 'static/liftcore-theme.css')),
             'purchase_orders': os.path.isfile(os.path.join(root, 'templates/purchase-orders.html')),
             'enforce_auth': 'enforce_auth' in open(os.path.join(root, 'app.py'), encoding='utf-8').read(),
         },
