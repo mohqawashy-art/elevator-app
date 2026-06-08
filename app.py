@@ -12,6 +12,8 @@ from calendar import monthrange
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, and_, text, inspect
 from werkzeug.utils import secure_filename
+from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import uuid
 import shutil
@@ -21,9 +23,16 @@ app = Flask(__name__)
 # =============================================
 # الإعدادات
 # =============================================
-app.config['SECRET_KEY'] = 'liftcore-secret-2025'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///liftcore.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'liftcore-secret-2025')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///liftcore.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+if os.environ.get('LIFTCORE_HTTPS', '').strip().lower() in ('1', 'true', 'yes'):
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['PREFERRED_URL_SCHEME'] = 'https'
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 db.init_app(app)
 
@@ -118,6 +127,17 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
+    if not User.query.filter_by(username='admin').first():
+        db.session.add(User(
+            username='admin',
+            password_hash='admin123',
+            full_name='مدير النظام',
+            email='admin@liftcore.sa',
+            role='admin',
+            is_active=True,
+        ))
+        db.session.commit()
+
 TECH_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'technicians')
 VISIT_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'visits')
 ALLOWED_TECH_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
@@ -144,17 +164,44 @@ def next_code(model, prefix, field='code', digits=4):
 # =============================================
 # تسجيل الدخول
 # =============================================
+def _verify_password(user, password):
+    stored = (user.password_hash or '').strip()
+    if not stored:
+        return False
+    if stored.startswith('pbkdf2:') or stored.startswith('scrypt:'):
+        return check_password_hash(stored, password)
+    return stored == password
+
+
+def _find_user(login_id):
+    login_id = (login_id or '').strip()
+    if not login_id:
+        return None
+    return User.query.filter(
+        User.is_active.is_(True),
+        or_(User.username == login_id, db.func.lower(User.email) == login_id.lower()),
+    ).first()
+
+
 @app.route('/', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
+    if session.get('user_id'):
+        return redirect(url_for('dashboard'))
     if request.method == 'POST':
-        username = request.form.get('email')
-        password = request.form.get('password')
-        user = User.query.filter_by(username=username, is_active=True).first()
-        if user and user.password_hash == password:  # سنضيف hashing لاحقاً
+        login_id = request.form.get('email') or request.form.get('username')
+        password = request.form.get('password') or ''
+        user = _find_user(login_id)
+        if user and _verify_password(user, password):
+            session.clear()
             session['user_id'] = user.id
-            session['username'] = user.full_name
-            return redirect(url_for('dashboard'))
+            session['username'] = user.full_name or user.username
+            session.permanent = True
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            next_url = request.args.get('next') or url_for('dashboard')
+            return redirect(next_url)
         error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
     return render_template('login.html', error=error)
 

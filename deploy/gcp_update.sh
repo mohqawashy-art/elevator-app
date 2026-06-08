@@ -38,6 +38,14 @@ else
   echo "==> no venv at $VENV — skipping pip"
 fi
 
+echo "==> ensure HTTPS session env (systemd drop-in)"
+DROP_IN="/etc/systemd/system/${SERVICE_NAME}.service.d"
+if command -v systemctl >/dev/null 2>&1; then
+  sudo mkdir -p "$DROP_IN"
+  printf '%s\n' '[Service]' 'Environment=LIFTCORE_HTTPS=1' | sudo tee "$DROP_IN/https.conf" >/dev/null
+  sudo systemctl daemon-reload
+fi
+
 echo "==> restart service: $SERVICE_NAME"
 if command -v systemctl >/dev/null 2>&1; then
   sudo systemctl restart "$SERVICE_NAME"

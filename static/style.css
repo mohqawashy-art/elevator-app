@@ -39,6 +39,18 @@ body {
   object-fit: contain;
 }
 
+.login-page .logo-img {
+  width: 100% !important;
+  max-width: 260px !important;
+  height: auto !important;
+  margin: 0 auto;
+}
+
+.login-page .logo-area {
+  min-height: auto;
+  margin-bottom: 20px;
+}
+
 .brand-en {
   font-size: 28px;
   font-weight: 700;
