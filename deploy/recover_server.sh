@@ -50,7 +50,34 @@ echo ""
 echo "==> 3) جلب آخر كود من GitHub (بدون reset --hard)"
 git fetch origin main
 BEFORE="$(git rev-parse --short HEAD 2>/dev/null || echo none)"
-git pull --ff-only origin main
+
+# ملفات نُسخت يدوياً على السيرفر وتمنع git pull
+CONFLICT_BACKUP="$APP_DIR/.merge-backup.${TS}"
+mkdir -p "$CONFLICT_BACKUP"
+for f in \
+  templates/partials/app_header.html \
+  templates/partials/liftcore_head.html \
+  zatca_qr.py \
+  static/liftcore-shell.css \
+  static/liftcore-shell.js; do
+  if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+    mkdir -p "$CONFLICT_BACKUP/$(dirname "$f")"
+    cp -a "$f" "$CONFLICT_BACKUP/$f"
+    rm -f "$f"
+    echo "  moved untracked blocker: $f"
+  fi
+done
+
+if ! git pull --ff-only origin main; then
+  echo ""
+  echo "ERROR: git pull فشل. الحالة:"
+  git status -sb
+  echo ""
+  echo "إذا ظهرت ملفات أخرى تمنع الدمج، انسخها للنسخة الاحتياطية ثم أعد التشغيل:"
+  echo "  cp -a <الملف> $CONFLICT_BACKUP/ && rm -f <الملف>"
+  exit 1
+fi
+
 AFTER="$(git rev-parse --short HEAD)"
 echo "  commit: $BEFORE -> $AFTER"
 git log -1 --oneline
