@@ -43,13 +43,60 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or _resol
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 if os.environ.get('LIFTCORE_HTTPS', '').strip().lower() in ('1', 'true', 'yes'):
     app.config['SESSION_COOKIE_SECURE'] = True
     app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 db.init_app(app)
 
-APP_VERSION = os.environ.get('LIFTCORE_VERSION', '085a530-full')
+PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version'})
+PUBLIC_PATH_PREFIXES = ('/field', '/static')
+
+
+def current_user():
+    uid = session.get('user_id')
+    if not uid:
+        return None
+    try:
+        user = db.session.get(User, uid)
+    except Exception:
+        db.session.rollback()
+        return None
+    if not user or not user.is_active:
+        return None
+    return user
+
+
+def require_login():
+    return current_user()
+
+
+def require_admin():
+    user = current_user()
+    if not user or user.role != 'admin':
+        return None
+    return user
+
+
+@app.before_request
+def enforce_auth():
+    if request.endpoint in PUBLIC_ENDPOINTS:
+        return None
+    path = request.path or ''
+    for prefix in PUBLIC_PATH_PREFIXES:
+        if path.startswith(prefix):
+            return None
+    user = current_user()
+    if user:
+        g.user = user
+        return None
+    session.clear()
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'يجب تسجيل الدخول'}), 401
+    return redirect(url_for('login', next=request.path))
+
+APP_VERSION = os.environ.get('LIFTCORE_VERSION', '4a0a9d8-auth')
 
 
 def western_digits(value):
@@ -386,14 +433,14 @@ def api_version():
             'shell_css': os.path.isfile(os.path.join(root, 'static/liftcore-shell.css')),
             'theme_css': os.path.isfile(os.path.join(root, 'static/liftcore-theme.css')),
             'purchase_orders': os.path.isfile(os.path.join(root, 'templates/purchase-orders.html')),
-            'enforce_auth': 'enforce_auth' in open(os.path.join(root, 'app.py'), encoding='utf-8').read(),
+            'enforce_auth': len(app.before_request_funcs.get(None, [])) > 0,
         },
     )
 
 
 @app.route('/')
 def index():
-    if session.get('user_id'):
+    if current_user():
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
@@ -411,7 +458,7 @@ def _find_login_user(login_id):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
-    if session.get('user_id'):
+    if current_user():
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
         login_id = request.form.get('email') or request.form.get('username')
@@ -3386,49 +3433,6 @@ with app.app_context():
 def generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + '@#$!&'
     return ''.join(secrets.choice(alphabet) for _ in range(length))
-
-
-def current_user():
-    uid = session.get('user_id')
-    if not uid:
-        return None
-    return db.session.get(User, uid)
-
-
-def require_login():
-    user = current_user()
-    if not user or not user.is_active:
-        return None
-    return user
-
-
-def require_admin():
-    user = require_login()
-    if not user or user.role != 'admin':
-        return None
-    return user
-
-
-PUBLIC_ENDPOINTS = {'login', 'logout', 'static', 'index', 'api_version'}
-PUBLIC_PATH_PREFIXES = ('/field', '/static')
-
-
-@app.before_request
-def enforce_auth():
-    if request.endpoint in PUBLIC_ENDPOINTS:
-        return None
-    path = request.path or ''
-    for prefix in PUBLIC_PATH_PREFIXES:
-        if path.startswith(prefix):
-            return None
-    user = current_user()
-    if user and user.is_active:
-        g.user = user
-        return None
-    session.clear()
-    if request.path.startswith('/api/'):
-        return jsonify({'error': 'يجب تسجيل الدخول'}), 401
-    return redirect(url_for('login', next=request.path))
 
 
 # =============================================
