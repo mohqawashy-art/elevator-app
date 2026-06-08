@@ -152,15 +152,18 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -177,7 +180,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <a href="/parts-billing" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>تركيب قطع غيار</a>
   
 <div class="nav-section" id="ns3">المالية</div>
-<a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
+<a href="/revenues" class="nav-item active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
 <a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
 <a href="/invoices" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>الفواتير</a>
 
@@ -187,30 +190,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>الإيرادات</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
-
+  {% set page_title = 'الإيرادات' %}
+  {% include 'partials/app_header.html' %}
 
   <div class="content">
 
@@ -222,7 +206,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير Excel
         </button>
-        <button class="btn btn-primary btn-sm" onclick="openModal()">
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
           إضافة إيراد
         </button>
@@ -335,29 +319,25 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 </div>
 
-<div class="modal-overlay" id="modal">
-  <div class="modal">
+<div class="modal-overlay" id="modal-add">
+  <div class="modal" style="max-width:640px">
     <div class="modal-head">
       <span class="modal-title" id="modal-title">إضافة إيراد جديد</span>
-      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeAddModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="field">
-          <label>رقم العقد <span>*</span></label>
-          <input id="m-contract" placeholder="CN-00XXX">
-        </div>
-        <div class="field">
-          <label>اسم العميل <span>*</span></label>
-          <input id="m-client" placeholder="اسم العميل">
+        <div class="field form-full">
+          <label>العميل <span>*</span></label>
+          <select id="f-customer-sel"><option value="">اختر العميل</option></select>
         </div>
         <div class="field">
           <label>التاريخ <span>*</span></label>
-          <input type="date" lang="en-GB" id="m-date">
+          <input type="date" lang="en-GB" class="lc-date-input" id="f-date" style="direction:ltr">
         </div>
         <div class="field">
           <label>نوع الإيراد <span>*</span></label>
-          <select id="m-type">
+          <select id="f-rev-type">
             <option>تجديد عقد</option>
             <option>عقد جديد</option>
             <option>قطع غيار</option>
@@ -365,37 +345,66 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             <option>زيارة</option>
           </select>
         </div>
-        <div class="field">
-          <label>المبلغ (ر.س) <span>*</span></label>
-          <input type="number" id="m-amount" placeholder="0.00">
-        </div>
+        {% with prefix='revtax', before_field_id='f-amount', pct_id='f-tax-pct' %}
+        {% include '_tax_amount_block.html' %}
+        {% endwith %}
         <div class="field">
           <label>طريقة الدفع</label>
-          <select id="m-pay">
+          <select id="f-pay-method">
+            <option value="">—</option>
             <option>كاش</option>
             <option>تحويل</option>
+            <option>شيك</option>
           </select>
         </div>
         <div class="field">
           <label>الحالة</label>
-          <select id="m-status">
-            <option>محصل</option>
-            <option>غير محصل</option>
+          <select id="f-status-sel">
+            <option>محصّل</option>
+            <option>معلق</option>
+            <option>غير محصّل</option>
           </select>
         </div>
-        <div class="field">
-          <label>المسؤول</label>
-          <input id="m-assigned" placeholder="اسم المسؤول">
+        <div class="field form-full">
+          <label>المرجع</label>
+          <input id="f-reference" placeholder="رقم العقد أو المرجع">
         </div>
         <div class="field form-full">
           <label>ملاحظات</label>
-          <textarea id="m-notes" placeholder="أي ملاحظات إضافية..."></textarea>
+          <textarea id="f-notes" placeholder="أي ملاحظات إضافية..."></textarea>
         </div>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal()">إلغاء</button>
-      <button class="btn btn-primary" onclick="saveRecord()">حفظ</button>
+      <button type="button" class="btn btn-secondary" onclick="closeAddModal()">إلغاء</button>
+      <button type="button" class="btn btn-primary" onclick="saveRevenue()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-view">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head">
+      <span class="modal-title" id="view-title">تفاصيل الإيراد</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-view')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body" id="view-body"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head">
+      <span class="modal-title">تأكيد الحذف</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-delete')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body"><p style="color:var(--text2)">هل أنت متأكد من حذف هذا الإيراد؟</p></div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
+      <button type="button" class="btn btn-danger" onclick="confirmDelete()">حذف</button>
     </div>
   </div>
 </div>
@@ -432,32 +441,46 @@ const CUSTOMERS = [
   {% endfor %}
 ];
 
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
 // ===== إحصائيات =====
 function updateStats() {
-  const total    = REVENUES.reduce((s,r)=>s+r.total,0);
-  const collected= REVENUES.filter(r=>r.status==='محصّل').reduce((s,r)=>s+r.total,0);
-  const pending  = REVENUES.filter(r=>r.status==='معلق').reduce((s,r)=>s+r.total,0);
-  const count    = REVENUES.length;
-  const vals = document.querySelectorAll('.stat-mini-val');
-  if(vals[0]) vals[0].textContent = total.toLocaleString();
-  if(vals[1]) vals[1].textContent = collected.toLocaleString();
-  if(vals[2]) vals[2].textContent = pending.toLocaleString();
-  if(vals[3]) vals[3].textContent = count;
+  const sum = (rows) => rows.reduce((s, r) => s + r.total, 0);
+  const cnt = (rows) => rows.length + ' عملية';
+  const renewal = REVENUES.filter(r => r.revenue_type === 'تجديد عقد');
+  const parts = REVENUES.filter(r => (r.revenue_type || '').includes('قطع غيار'));
+  const newContracts = REVENUES.filter(r => r.revenue_type === 'عقد جديد');
+  const pending = REVENUES.filter(r => !['محصّل', 'محصل'].includes(r.status));
+  setText('s-total', sum(REVENUES).toLocaleString('ar-SA'));
+  setText('s-total-sub', cnt(REVENUES));
+  setText('s-renewal', sum(renewal).toLocaleString('ar-SA'));
+  setText('s-renewal-sub', cnt(renewal));
+  setText('s-parts', sum(parts).toLocaleString('ar-SA'));
+  setText('s-parts-sub', cnt(parts));
+  setText('s-new', sum(newContracts).toLocaleString('ar-SA'));
+  setText('s-new-sub', cnt(newContracts));
+  setText('s-pending', sum(pending).toLocaleString('ar-SA'));
+  setText('s-pending-sub', cnt(pending));
+  setText('rev-count', REVENUES.length + ' سجل');
 }
 
 const STATUS_BADGE = {
-  'محصّل':'badge-active','معلق':'badge-pending','ملغي':'badge-cancelled'
+  'محصّل': 'badge-green', 'محصل': 'badge-green',
+  'معلق': 'badge-gold', 'غير محصّل': 'badge-red', 'غير محصل': 'badge-red',
+  'ملغي': 'badge-gray'
 };
 
 let currentDeleteId = null;
 let filtered = [...REVENUES];
 
 function renderTable(data) {
-  const tbody = document.getElementById('table-body');
-  if(!tbody) return;
-  const total = data.reduce((s,r)=>s+r.total,0);
-  document.getElementById('revenues-count').textContent = data.length + ' سجل';
-  document.getElementById('revenues-total').textContent = total.toLocaleString('ar-SA',{minimumFractionDigits:2}) + ' ر.س';
+  const tbody = document.getElementById('rev-tbody');
+  if (!tbody) return;
+  setText('rev-count', data.length + ' سجل');
+  setText('page-info', 'عرض ' + data.length + ' من ' + REVENUES.length);
   tbody.innerHTML = data.map(r=>`
     <tr onclick="viewRevenue(${r.id})">
       <td class="td-code">${r.code}</td>
@@ -484,57 +507,67 @@ function renderTable(data) {
     </tr>`).join('');
 }
 
-function filterTable() {
-  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const tp = document.getElementById('f-type')?.value||'';
-  const pm = document.getElementById('f-method')?.value||'';
-  const st = document.getElementById('f-status')?.value||'';
-  const fd = document.getElementById('f-from')?.value||'';
-  const td = document.getElementById('f-to')?.value||'';
-  filtered = REVENUES.filter(r=>
-    (!s  || r.code.toLowerCase().includes(s) || r.customer.includes(s)) &&
+function applyFilters() {
+  const s = (document.getElementById('f-search')?.value || '').trim().toLowerCase();
+  const tp = document.getElementById('f-type')?.value || '';
+  const pm = document.getElementById('f-pay')?.value || '';
+  const st = document.getElementById('f-status')?.value || '';
+  const fd = document.getElementById('f-from')?.value || '';
+  const td = document.getElementById('f-to')?.value || '';
+  filtered = REVENUES.filter(r =>
+    (!s || r.code.toLowerCase().includes(s) || r.customer.toLowerCase().includes(s)) &&
     (!tp || r.revenue_type === tp) &&
     (!pm || r.pay_method === pm) &&
-    (!st || r.status === st) &&
+    (!st || r.status === st || (st === 'محصل' && r.status === 'محصّل') || (st === 'غير محصل' && r.status === 'غير محصّل')) &&
     (!fd || r.revenue_date >= fd) &&
     (!td || r.revenue_date <= td)
   );
   renderTable(filtered);
 }
 
+function clearFilters() {
+  ['f-search', 'f-from', 'f-to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['f-type', 'f-pay', 'f-status'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  filtered = [...REVENUES];
+  renderTable(filtered);
+}
+
+function closeAddModal() { closeModal('modal-add'); }
+
 // ===== إضافة =====
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة إيراد جديد';
   document.getElementById('modal-add').dataset.editId = '';
   const sel = document.getElementById('f-customer-sel');
-  if(sel) sel.innerHTML = '<option value="">اختر العميل</option>' +
-    CUSTOMERS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if (sel) {
+    sel.innerHTML = '<option value="">اختر العميل</option>' +
+      CUSTOMERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const dateEl = document.getElementById('f-date');
+  if (dateEl) dateEl.value = today;
+  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, 0, 15);
   document.getElementById('modal-add').classList.add('open');
 }
 
-function calcTotal() {
-  var block = document.querySelector('#modal-add .lc-tax-block');
-  if (block && block._lcTaxCalc) { block._lcTaxCalc.update(); return; }
-  var amt = parseFloat(document.getElementById('f-amount')?.value) || 0;
-  var result = window.LiftCoreTaxCalc
-    ? LiftCoreTaxCalc.fromBeforeTax(amt, 15)
-    : { total: amt * 1.15 };
-  var el = document.getElementById('f-total');
-  if (el) el.value = result.total.toFixed(2);
-}
-
 function saveRevenue() {
-  var block = document.querySelector('#modal-add .lc-tax-block');
-  if (block && block._lcTaxCalc) block._lcTaxCalc.update();
+  const cust = document.getElementById('f-customer-sel');
+  if (!cust || !cust.value) { alert('اختر العميل'); return; }
+  const dateEl = document.getElementById('f-date');
+  if (!dateEl || !dateEl.value) { alert('أدخل التاريخ'); return; }
+  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && taxBlock._lcTaxCalc) taxBlock._lcTaxCalc.update();
   const editId = document.getElementById('modal-add').dataset.editId;
   const fd = new FormData();
-  [['customer_id','f-customer-sel'],['revenue_date','f-date'],
-   ['revenue_type','f-rev-type'],['payment_method','f-pay-method'],
-   ['amount','f-amount'],['status','f-status-sel'],
-   ['reference','f-reference'],['notes','f-notes']
-  ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
-  fetch(editId ? `/revenues/edit/${editId}` : '/revenues/add', {method:'POST',body:fd})
-    .then(()=>window.location.reload());
+  [['customer_id', 'f-customer-sel'], ['revenue_date', 'f-date'],
+    ['revenue_type', 'f-rev-type'], ['payment_method', 'f-pay-method'],
+    ['amount', 'f-amount'], ['status', 'f-status-sel'],
+    ['reference', 'f-reference'], ['notes', 'f-notes']
+  ].forEach(([f, i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
+  fetch(editId ? `/revenues/edit/${editId}` : '/revenues/add', { method: 'POST', body: fd })
+    .then(r => { if (!r.ok) throw new Error('fail'); window.location.reload(); })
+    .catch(() => alert('تعذر حفظ الإيراد — تحقق من البيانات'));
 }
 
 // ===== تعديل =====
@@ -552,7 +585,7 @@ function editRevenue(id) {
   };
   Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, r.amount, 15);
+  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, r.amount, 15);
   document.getElementById('modal-add').classList.add('open');
 }
 
@@ -590,31 +623,22 @@ function confirmDelete() {
   fetch(`/revenues/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
 }
 
+function exportCSV() { exportExcel(); }
 function exportExcel() {
-  const rows=[['الكود','العميل','العقد','التاريخ','النوع','طريقة الدفع','المبلغ','الضريبة','الإجمالي','الحالة']];
-  filtered.forEach(r=>rows.push([r.code,r.customer,r.contract,r.revenue_date,r.revenue_type,r.pay_method,r.amount,r.tax_amount,r.total,r.status]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='revenues.csv'; a.click();
+  const rows = [['الكود', 'العميل', 'العقد', 'التاريخ', 'النوع', 'طريقة الدفع', 'المبلغ', 'الضريبة', 'الإجمالي', 'الحالة']];
+  filtered.forEach(r => rows.push([r.code, r.customer, r.contract, r.revenue_date, r.revenue_type, r.pay_method, r.amount, r.tax_amount, r.total, r.status]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'revenues.csv';
+  a.click();
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-function setLang(l) {
-  document.documentElement.setAttribute('lang',l);
-  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
-  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
-  document.getElementById('btn-en').classList.toggle('active',l==='en');
-}
-function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
-document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
-
-const now = new Date();
-const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
+document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
 
 updateStats();
 renderTable(REVENUES);
