@@ -3,7 +3,8 @@ LiftCore — Flask Application
 app.py
 """
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, g
+from functools import wraps
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User
@@ -28,6 +29,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
 
 if os.environ.get('LIFTCORE_HTTPS', '').strip().lower() in ('1', 'true', 'yes'):
     app.config['SESSION_COOKIE_SECURE'] = True
@@ -164,6 +166,47 @@ def next_code(model, prefix, field='code', digits=4):
 # =============================================
 # تسجيل الدخول
 # =============================================
+PUBLIC_ENDPOINTS = {'login', 'logout', 'static'}
+PUBLIC_PATH_PREFIXES = ('/field', '/static')
+
+
+def _current_user():
+    uid = session.get('user_id')
+    if not uid:
+        return None
+    return User.query.get(uid)
+
+
+@app.before_request
+def require_login():
+    if request.endpoint in PUBLIC_ENDPOINTS:
+        return None
+    path = request.path or ''
+    for prefix in PUBLIC_PATH_PREFIXES:
+        if path.startswith(prefix):
+            return None
+    user = _current_user()
+    if user and user.is_active:
+        g.user = user
+        return None
+    session.clear()
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'يجب تسجيل الدخول'}), 401
+    return redirect(url_for('login', next=request.path))
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user = _current_user()
+        if not user or not user.is_active:
+            session.clear()
+            return redirect(url_for('login', next=request.path))
+        g.user = user
+        return view(*args, **kwargs)
+    return wrapped
+
+
 def _verify_password(user, password):
     stored = (user.password_hash or '').strip()
     if not stored:
@@ -187,7 +230,7 @@ def _find_user(login_id):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
-    if session.get('user_id'):
+    if _current_user():
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
         login_id = request.form.get('email') or request.form.get('username')
@@ -200,7 +243,9 @@ def login():
             session.permanent = True
             user.last_login = datetime.utcnow()
             db.session.commit()
-            next_url = request.args.get('next') or url_for('dashboard')
+            next_url = request.args.get('next') or ''
+            if not next_url.startswith('/') or next_url.startswith('//'):
+                next_url = url_for('dashboard')
             return redirect(next_url)
         error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
     return render_template('login.html', error=error)
