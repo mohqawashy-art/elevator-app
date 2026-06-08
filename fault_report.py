@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+from operations import FAULT_CLOSED, FAULT_STATUS_FIXED, FAULT_STATUS_FIXED_LEGACY
+
 FAULT_TYPE_OPTIONS = [
     'عطل كهربائي',
     'عطل ميكانيكي',
@@ -20,7 +22,7 @@ FAULT_TYPE_OPTIONS = [
 ]
 
 OUTCOME_MAP = {
-    'solved': {'status': 'محلول', 'needs_parts': False},
+    'solved': {'status': FAULT_STATUS_FIXED, 'needs_parts': False},
     'partial': {'status': 'قيد المعالجة', 'needs_parts': False},
     'needs_parts': {'status': 'انتظار قطع', 'needs_parts': True},
 }
@@ -93,7 +95,7 @@ def merge_fault_report(saved: dict | None, fault) -> dict:
             if fault.fault_type not in types:
                 types.append(fault.fault_type)
             meta['fault_types'] = types
-        if fault.status == 'محلول':
+        if fault.status in (FAULT_STATUS_FIXED, FAULT_STATUS_FIXED_LEGACY):
             meta['visit_outcome'] = meta.get('visit_outcome') or 'solved'
         elif fault.status == 'انتظار قطع':
             meta['visit_outcome'] = meta.get('visit_outcome') or 'needs_parts'
@@ -151,10 +153,10 @@ def apply_report_to_fault(fault, data: dict, *, mark_resolved: bool = False) -> 
         fault.status = mapping['status']
         fault.needs_parts = mapping['needs_parts']
     elif mark_resolved and fault.status in ('مفتوح', 'قيد المعالجة'):
-        fault.status = 'محلول'
+        fault.status = FAULT_STATUS_FIXED
         fault.needs_parts = False
 
-    if mark_resolved or fault.status in ('محلول', 'مغلق'):
+    if mark_resolved or fault.status in FAULT_CLOSED:
         fault.resolved_at = fault.resolved_at or datetime.utcnow()
 
     if not fault.responded_at and (meta.get('arrival_time') or fault.dispatched_at):

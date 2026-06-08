@@ -229,15 +229,20 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   .rpt-page{padding:16px 20px}
 }
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -264,28 +269,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>تقرير المصروفات</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'تقرير المصروفات' %}
+  {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
       <div class="page-title">تقرير المصروفات</div>
@@ -345,13 +333,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <p id="rpt-date-range">تاريخ التقرير: {}</p>
       </div>
       <div class="rpt-header-logo">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore">
+        <img src="{{ brand_logo_url }}" alt="LiftCore">
         <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
       </div>
     </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">98,450 ر.س</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي المصروفات</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">68,000 ر.س</div><div style="font-size:9px;color:#555;margin-top:2px">رواتب</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">18,200 ر.س</div><div style="font-size:9px;color:#555;margin-top:2px">قطع غيار</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">12,250 ر.س</div><div style="font-size:9px;color:#555;margin-top:2px">أخرى</div></div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">98,450 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي المصروفات</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">68,000 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">رواتب</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">18,200 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">قطع غيار</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">12,250 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">أخرى</div></div></div>
         <table class="rpt-table">
-        <thead><tr><th>رقم العملية</th><th>التاريخ</th><th>نوع المصروف</th><th>الوصف</th><th>المسؤول</th><th>طريقة الدفع</th><th>المبلغ (ر.س)</th></tr></thead>
+        <thead><tr><th>رقم العملية</th><th>التاريخ</th><th>نوع المصروف</th><th>الوصف</th><th>المسؤول</th><th>طريقة الدفع</th><th>المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)</th></tr></thead>
         <tbody><tr><td class="num">EXP-001</td><td class="num">2025-01-10</td><td class="">رواتب</td><td class="">رواتب الفنيين - يناير</td><td class="">محمد القواشي</td><td class="">تحويل</td><td class="num">28,500</td></tr><tr><td class="num">EXP-002</td><td class="num">2025-01-15</td><td class="">قطع غيار</td><td class="">شراء بكرات أبواب</td><td class="">خالد عبدالله</td><td class="">نقد</td><td class="num">1,200</td></tr><tr><td class="num">EXP-003</td><td class="num">2025-02-01</td><td class="">وقود</td><td class="">وقود السيارات - يناير</td><td class="">سعد ناصر</td><td class="">بطاقة</td><td class="num">850</td></tr><tr><td class="num">EXP-004</td><td class="num">2025-02-10</td><td class="">أدوات</td><td class="">أدوات يدوية متنوعة</td><td class="">أحمد محمد</td><td class="">نقد</td><td class="num">450</td></tr><tr><td class="num">EXP-005</td><td class="num">2025-03-01</td><td class="">رواتب</td><td class="">رواتب الفنيين - فبراير</td><td class="">محمد القواشي</td><td class="">تحويل</td><td class="num">28,500</td></tr><tr><td class="num">EXP-006</td><td class="num">2025-03-10</td><td class="">صيانة</td><td class="">صيانة سيارة الفنيين</td><td class="">عمر حسين</td><td class="">نقد</td><td class="num">2,100</td></tr></tbody>
       </table>
         <div class="rpt-footer-line">
@@ -361,11 +349,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </div>
     </div>
-    <div class="rpt-stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">98,450 ر.س</div><div class="rpt-stat-label">إجمالي المصروفات</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">68,000 ر.س</div><div class="rpt-stat-label">رواتب</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">18,200 ر.س</div><div class="rpt-stat-label">قطع غيار</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">12,250 ر.س</div><div class="rpt-stat-label">أخرى</div></div></div>
+    <div class="rpt-stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">98,450 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">إجمالي المصروفات</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">68,000 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">رواتب</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">18,200 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">قطع غيار</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">12,250 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">أخرى</div></div></div>
     <div class="table-wrap">
       <div class="table-scroll">
         <table>
-          <thead><tr><th>رقم العملية</th><th>التاريخ</th><th>نوع المصروف</th><th>الوصف</th><th>المسؤول</th><th>طريقة الدفع</th><th>المبلغ (ر.س)</th></tr></thead>
+          <thead><tr><th>رقم العملية</th><th>التاريخ</th><th>نوع المصروف</th><th>الوصف</th><th>المسؤول</th><th>طريقة الدفع</th><th>المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)</th></tr></thead>
           <tbody id="report-tbody"><tr><td class="num ltr">EXP-001</td><td class="num ltr">2025-01-10</td><td class="">رواتب</td><td class="num ltr">رواتب الفنيين - يناير</td><td class="">محمد القواشي</td><td class="">تحويل</td><td class="num ltr">28,500</td></tr><tr><td class="num ltr">EXP-002</td><td class="num ltr">2025-01-15</td><td class="">قطع غيار</td><td class="">شراء بكرات أبواب</td><td class="">خالد عبدالله</td><td class="">نقد</td><td class="num ltr">1,200</td></tr><tr><td class="num ltr">EXP-003</td><td class="num ltr">2025-02-01</td><td class="">وقود</td><td class="num ltr">وقود السيارات - يناير</td><td class="">سعد ناصر</td><td class="">بطاقة</td><td class="num ltr">850</td></tr><tr><td class="num ltr">EXP-004</td><td class="num ltr">2025-02-10</td><td class="">أدوات</td><td class="">أدوات يدوية متنوعة</td><td class="">أحمد محمد</td><td class="">نقد</td><td class="num ltr">450</td></tr><tr><td class="num ltr">EXP-005</td><td class="num ltr">2025-03-01</td><td class="">رواتب</td><td class="num ltr">رواتب الفنيين - فبراير</td><td class="">محمد القواشي</td><td class="">تحويل</td><td class="num ltr">28,500</td></tr><tr><td class="num ltr">EXP-006</td><td class="num ltr">2025-03-10</td><td class="">صيانة</td><td class="">صيانة سيارة الفنيين</td><td class="">عمر حسين</td><td class="">نقد</td><td class="num ltr">2,100</td></tr></tbody>
         </table>
       </div>
@@ -398,7 +386,7 @@ function filterTable(){
   document.getElementById('table-info').textContent = 'عرض ' + count + ' سجل';
 }
 function exportExcel(){
-  const rows = [['رقم العملية','التاريخ','نوع المصروف','الوصف','المسؤول','طريقة الدفع','المبلغ (ر.س)']];
+  const rows = [['رقم العملية','التاريخ','نوع المصروف','الوصف','المسؤول','طريقة الدفع','المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)']];
   document.querySelectorAll('#report-tbody tr').forEach(r=>{
     if(r.style.display !== 'none'){
       rows.push([...r.querySelectorAll('td')].map(td=>td.textContent.trim()));
@@ -410,9 +398,9 @@ function exportExcel(){
   a.download = 'تقرير_المصروفات.csv';
   a.click();
 }
-document.getElementById('footer-date').textContent = new Date().toLocaleDateString('ar-SA');
+document.getElementById('footer-date').textContent = (window.fmtDate ? fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
 const el = document.getElementById('rpt-date-range');
-if(el) el.textContent = 'تاريخ التقرير: ' + new Date().toLocaleDateString('ar-SA');
+if(el) el.textContent = 'تاريخ التقرير: ' + (window.fmtDate ? fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
 </script>
 </body>
 </html>

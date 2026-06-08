@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA&language=ar&region=SA&libraries=places"></script>
+{% set gmaps_libraries = 'places' %}{% include 'partials/google_maps_head.html' %}
 <script src="https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/client_location.css">
@@ -222,15 +222,20 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -257,29 +262,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>المصاعد</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'المصاعد' %}
+  {% include 'partials/app_header.html' %}
 
 
   <div class="content">
@@ -742,7 +729,7 @@ const ELEVATORS = [
     id:           {{ e.id }},
     code:         {{ e.code|tojson }},
     customer_id:  {{ e.customer_id }},
-    customer:     {{ e.customer.name|tojson }},
+    customer:     {{ (e.customer.name if e.customer else '')|tojson }},
     building:     {{ (e.building_name or '')|tojson }},
     city:         {{ (e.city or '')|tojson }},
     district:     {{ (e.district or '')|tojson }},
@@ -762,8 +749,8 @@ const ELEVATORS = [
     next_maint:   {{ (e.next_maintenance.isoformat() if e.next_maintenance else '')|tojson }},
     status:       {{ e.status|tojson }},
     notes:        {{ (e.notes or '')|tojson }},
-    customer_lat: {{ (e.customer.lat or '')|tojson }},
-    customer_lng: {{ (e.customer.lng or '')|tojson }},
+    customer_lat: {{ (e.customer.lat if e.customer else '')|tojson }},
+    customer_lng: {{ (e.customer.lng if e.customer else '')|tojson }},
   },
   {% endfor %}
 ];
@@ -1212,16 +1199,9 @@ var MAP_POI_HIDDEN = [
 
 function getElevatorPosition(e) {
   var lat = parseFloat(e.customer_lat), lng = parseFloat(e.customer_lng);
-  if (!isNaN(lat) && !isNaN(lng)) {
-    return {lat: lat + ((e.id % 5) * 0.0012 - 0.0024), lng: lng + ((e.id % 3) * 0.001 - 0.001), exact: true};
-  }
-  var base = CITY_COORDS[e.city];
-  if (!base) return null;
-  return {
-    lat: base.lat + ((e.id % 7) * 0.007 - 0.021),
-    lng: base.lng + ((e.id % 5) * 0.006 - 0.012),
-    exact: false
-  };
+  if (isNaN(lat) || isNaN(lng)) return null;
+  var spread = (e.id % 8) * 0.00012;
+  return {lat: lat + spread, lng: lng + spread * 0.8, exact: true};
 }
 
 function makeElevPin(color) {

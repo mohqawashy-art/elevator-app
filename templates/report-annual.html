@@ -165,15 +165,20 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -200,30 +205,13 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 
 <!-- MAIN -->
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>التقرير السنوي للعميل</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'التقرير السنوي للعميل' %}
+  {% include 'partials/app_header.html' %}
 
   <div class="content">
 
@@ -308,7 +296,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
             <p>نشكر ثقتكم في خدماتنا ونسعد بتقديم هذا التقرير عن أعمال الصيانة التي تم تنفيذها خلال فترة التعاقد</p>
           </div>
           <div class="rpt-header-logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore" style="height:56px;object-fit:contain">
+            <img src="{{ brand_logo_url }}" alt="LiftCore" style="height:56px;object-fit:contain">
             <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
           </div>
         </div>
@@ -622,7 +610,7 @@ function generateReport(){
 
   // تاريخ الطباعة
   const now = new Date();
-  document.getElementById('r-print-date').textContent = `تاريخ التقرير: ${now.toLocaleDateString('ar-SA')}`;
+  document.getElementById('r-print-date').textContent = `تاريخ التقرير: ${window.fmtDate ? fmtDate(now) : now.toLocaleDateString('en-GB')}`;
   document.getElementById('toolbar-title').textContent = `التقرير الختامي — ${client.name} — ${contractNo} — ${year}`;
 
   document.getElementById('report-container').style.display = 'block';

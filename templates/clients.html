@@ -51,6 +51,7 @@
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js"></script>
 <script src="/static/client_map_picker.js"></script>
+<script src="/static/name_translit.js"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -373,16 +374,20 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 }
 @media(max-width:480px){.stats-row{grid-template-columns:1fr 1fr !important}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
-<script src="/static/liftcore-translit.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -409,28 +414,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>العملاء</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'العملاء' %}
+  {% include 'partials/app_header.html' %}
 
   <div class="content">
 
@@ -476,6 +464,15 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
     <!-- قسم الجدول -->
     <div id="tab-table">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div style="margin-bottom:14px">
+        {% for category, message in messages %}
+        <div style="padding:10px 14px;border-radius:var(--r-sm);margin-bottom:8px;font-size:13px;{% if category == 'error' %}background:rgba(220,60,60,.15);border:1px solid rgba(220,60,60,.35);color:#f88{% else %}background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.3);color:var(--success){% endif %}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
       <!-- عنوان وأزرار -->
       <div class="page-header">
         <div class="page-title">العملاء <span id="clients-count"></span></div>
@@ -597,8 +594,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="field form-full">
           <label>الاسم بالإنجليزية</label>
-          <input type="text" id="f-name-en" placeholder="Burj Al-Yasmin" style="direction:ltr;font-family:var(--font-en)">
-          <span class="field-hint">يُعبّأ تلقائياً من الاسم العربي — يمكنك تعديله</span>
+          <input type="text" id="f-name-en" placeholder="Yasmin Tower" style="direction:ltr;font-family:var(--font-en)">
+          <span class="field-hint">يُترجم تلقائياً أثناء الكتابة بالعربية</span>
         </div>
         <!-- المدينة والحي -->
         <div class="field">
@@ -665,18 +662,18 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             </button>
           </div>
         </div>
-        <!-- عدد المصاعد -->
+        <!-- عدد المصاعد (تلقائي) -->
         <div class="field">
           <label>عدد المصاعد</label>
-          <input type="number" id="f-elevators" placeholder="1" min="1" style="direction:ltr">
+          <div id="f-elevators-display" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-family:var(--font-en);color:var(--text1)">0</div>
+          <span class="field-hint">يُحسب تلقائياً من المصاعد المسجّلة</span>
         </div>
-        <!-- الحالة -->
+        <!-- الحالة (تلقائية) -->
         <div class="field">
-          <label>الحالة</label>
-          <select id="f-status-sel">
-            <option value="نشط">نشط</option>
-            <option value="غير نشط">غير نشط</option>
-          </select>
+          <label>حالة المصاعد</label>
+          <div id="f-fleet-status" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;color:var(--text1)">بدون مصاعد</div>
+          <input type="hidden" id="f-status-sel" value="نشط">
+          <span class="field-hint">تُحدَّث تلقائياً عند إضافة المصاعد</span>
         </div>
         <!-- الموقع على الخريطة -->
         <div class="field form-full map-picker-section">
@@ -820,6 +817,7 @@ const CUSTOMERS = [
     contact:  {{ (c.contact_person or '')|tojson }},
     role:     {{ (c.contact_role or '')|tojson }},
     elevators:{{ c.elevators|length }},
+    fleet_status: {{ customer_fleet_status(c)|tojson }},
     contracts:{{ c.contracts|length }},
     contract_status: {{ (contract_display_status(c.contracts[0]) if c.contracts else 'بدون عقد')|tojson }},
     status:   {{ c.status|tojson }},
@@ -1067,7 +1065,7 @@ function openClientCard(id) {
       '<div class="card-stat"><div class="card-stat-val">' + c.elevators + '</div><div class="card-stat-label">مصعد</div></div>' +
       '<div class="card-stat"><div class="card-stat-val">' + c.contracts + '</div><div class="card-stat-label">عقد</div></div>' +
       '<div class="card-stat"><div class="card-stat-val" id="card-total-paid" style="font-size:15px;color:var(--success)">—</div><div class="card-stat-label">إجمالي المدفوع</div></div>' +
-      '<div class="card-stat"><div class="card-stat-val" style="color:' + (c.status==='نشط'?'var(--success)':'var(--danger)') + '">' + c.status + '</div><div class="card-stat-label">الحالة</div></div>' +
+      '<div class="card-stat"><div class="card-stat-val" style="color:' + (c.fleet_status==='نشط'?'var(--success)':(c.fleet_status==='بدون مصاعد'?'var(--text3)':'var(--warning)')) + '">' + c.fleet_status + '</div><div class="card-stat-label">حالة المصاعد</div></div>' +
       '<div class="card-stat"><div class="card-stat-val" style="font-size:14px;color:' + (c.contract_status==='نشط'?'var(--success)':'var(--warning)') + '">' + c.contract_status + '</div><div class="card-stat-label">حالة العقد</div></div>' +
     '</div>' +
     '<div class="client-card-section">البيانات الأساسية</div>' +
@@ -1126,7 +1124,7 @@ function loadClientData(id) {
   }).then(function(data) {
     if (!data || !data.financial) return;
     var el = document.getElementById('card-total-paid');
-    if (el) el.textContent = data.financial.total_paid.toLocaleString('ar-SA', {maximumFractionDigits: 0});
+    if (el) setMoneyEl(el, data.financial.total_paid, {maximumFractionDigits: 0});
   });
 }
 
@@ -1215,9 +1213,13 @@ function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة عميل جديد';
   document.getElementById('modal-add').dataset.editId = '';
   document.getElementById('f-code-display').textContent = NEXT_CODE;
-  ['f-name','f-name-en','f-district','f-address','f-contact','f-phone','f-whatsapp','f-elevators','f-maps-url','f-lat','f-lng','f-notes','client-map-search'].forEach(function(id){
+  ['f-name','f-name-en','f-district','f-address','f-contact','f-phone','f-whatsapp','f-maps-url','f-lat','f-lng','f-notes','client-map-search'].forEach(function(id){
     var el = document.getElementById(id); if(el) { el.value=''; delete el.dataset.userEdited; }
   });
+  var elevDisp = document.getElementById('f-elevators-display');
+  if (elevDisp) elevDisp.textContent = '0';
+  var fleetDisp = document.getElementById('f-fleet-status');
+  if (fleetDisp) fleetDisp.textContent = 'بدون مصاعد';
   resetBuildingPhotoPreview('');
   fillCitySelects('');
   fillPhoneCodeSelects('+966', '+966');
@@ -1257,8 +1259,7 @@ function saveClient() {
 
   var fd = new FormData();
   fd.append('name',           name);
-  var nameEn = document.getElementById('f-name-en');
-  if (nameEn) fd.append('name_en', nameEn.value.trim());
+  fd.append('name_en',        document.getElementById('f-name-en').value.trim());
   fd.append('city',           document.getElementById('f-city-sel').value||'');
   fd.append('district',       document.getElementById('f-district').value||'');
   fd.append('address',        document.getElementById('f-address').value||'');
@@ -1286,8 +1287,11 @@ function editClient(id) {
   document.getElementById('modal-add').dataset.editId = id;
   document.getElementById('f-code-display').textContent = c.code;
   document.getElementById('f-name').value       = c.name;
-  var nameEnEl = document.getElementById('f-name-en');
-  if (nameEnEl) nameEnEl.value = c.name_en || '';
+  document.getElementById('f-name-en').value    = c.name_en || '';
+  var elevDisp = document.getElementById('f-elevators-display');
+  if (elevDisp) elevDisp.textContent = String(c.elevators);
+  var fleetDisp = document.getElementById('f-fleet-status');
+  if (fleetDisp) fleetDisp.textContent = c.fleet_status || c.status || '—';
   document.getElementById('f-city-sel').value   = c.city||'';
   document.getElementById('f-district').value   = c.district||'';
   document.getElementById('f-address').value    = c.address||'';
@@ -1817,11 +1821,9 @@ if (window.LiftCoreLocation) {
   if (addrIn) {
     addrIn.addEventListener('input', function () { this.dataset.userEdited = '1'; });
   }
-  if (window.LiftCoreTranslit) {
-    LiftCoreTranslit.bindAutoLatin('f-name', 'f-name-en');
-  }
 })();
 
+if (window.LiftCoreTranslit) LiftCoreTranslit.bind('f-name', 'f-name-en');
 fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');
 updateStats();

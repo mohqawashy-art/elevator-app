@@ -1,0 +1,36 @@
+<script>document.documentElement.setAttribute('data-theme', {{ user_theme|tojson }});</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-theme.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-currency.css') }}">
+<script src="{{ url_for('static', filename='liftcore-format.js') }}"></script>
+<script>
+(function () {
+  if (!Number.prototype.__lcWesternPatched) {
+    Number.prototype.__lcWesternPatched = true;
+    var _n = Number.prototype.toLocaleString;
+    Number.prototype.toLocaleString = function (locales, options) {
+      return _n.call(this, 'en-US', options);
+    };
+  }
+  if (window.setMoneyEl) return;
+  function num(v, o) {
+    o = o || {};
+    var n = Number(v) || 0;
+    return (window.fmtNum ? fmtNum(n, o) : n.toLocaleString('en-US', o));
+  }
+  var SAR = '\u20C1';
+  window.moneySuffixHTML = function () {
+    return ' <span class="lc-sar-char" aria-label="ريال سعودي">' + SAR + '</span>';
+  };
+  window.fmtMoney = function (v, o) {
+    return '<span class="lc-money" dir="ltr">' + num(v, o) + moneySuffixHTML() + '</span>';
+  };
+  window.setMoneyEl = function (el, v, o) {
+    if (el) el.innerHTML = fmtMoney(v, o);
+  };
+})();
+</script>
+<style>:root{
+  --logo-w-sidebar: {{ logo_width_sidebar }}px;
+  --logo-w-report: {{ logo_width_report }}px;
+  --logo-w-login: {{ logo_width_login }}px;
+}</style>

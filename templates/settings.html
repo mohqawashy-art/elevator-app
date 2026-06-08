@@ -1,73 +1,126 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore — إعدادات الشركة</title>
+<title>LiftCore — الإعدادات</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css') }}">
+<script src="{{ url_for('static', filename='liftcore-shell.js') }}"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;
   --border:rgba(100,160,255,.1);--accent:#2a7fff;--gold:#c8a055;
-  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--success:#1fb87a;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--success:#1fb87a;--danger:#e04848;
   --r:10px;--r-sm:7px;
 }
-body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;padding:24px}
-.wrap{max-width:760px;margin:0 auto}
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap}
-h1{font-size:20px;font-weight:600}
-.back{color:var(--text2);text-decoration:none;font-size:13px}
-.back:hover{color:var(--accent)}
-.note{font-size:12px;color:var(--text3);background:rgba(42,127,255,.08);border:1px solid rgba(42,127,255,.15);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:18px;line-height:1.7}
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px}
-.section{font-size:13px;font-weight:600;color:var(--gold);margin:18px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-.section:first-child{margin-top:0}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 24px 40px}
+.page-heading{font-size:22px;font-weight:600;margin-bottom:16px}
+.flash{padding:10px 14px;border-radius:var(--r-sm);margin-bottom:14px;font-size:13px;line-height:1.6}
+.flash-ok{background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.25);color:var(--success)}
+.flash-warn{background:rgba(224,72,72,.1);border:1px solid rgba(224,72,72,.25);color:var(--danger)}
+.flash-info{background:rgba(42,127,255,.1);border:1px solid rgba(42,127,255,.2);color:#7eb8ff}
+.generated-box{background:rgba(200,160,85,.1);border:1px solid rgba(200,160,85,.25);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.8}
+.generated-box code{background:var(--bg3);padding:2px 8px;border-radius:4px;direction:ltr;display:inline-block}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:10px}
+.tab{padding:8px 16px;border-radius:var(--r-sm);font-size:13px;color:var(--text2);cursor:pointer;border:1px solid transparent;background:transparent;font-family:inherit}
+.tab:hover{color:var(--text1);background:var(--bg3)}
+.tab.active{color:var(--accent);border-color:rgba(42,127,255,.35);background:rgba(42,127,255,.08)}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:16px}
+.section{font-size:13px;font-weight:600;color:var(--gold);margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grid .full{grid-column:1/-1}
 label{display:block;font-size:11px;color:var(--text3);margin-bottom:6px}
-input,textarea,select{
-  width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);
-  border-radius:var(--r-sm);color:var(--text1);font-family:inherit;font-size:13px;
-}
-input:focus,textarea:focus{outline:none;border-color:var(--accent)}
-.actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+input,textarea,select{width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:inherit;font-size:13px}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+input[type=range]{padding:0;background:transparent;border:none}
+.hint{font-size:11px;color:var(--text3);margin-top:4px}
+.actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
 .btn{border:none;border-radius:var(--r-sm);padding:10px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
-.flash{background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.25);color:var(--success);padding:10px 14px;border-radius:var(--r-sm);margin-bottom:14px;font-size:13px}
-@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.btn-danger{background:rgba(224,72,72,.15);color:var(--danger);border:1px solid rgba(224,72,72,.3)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.users-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.users-table th,.users-table td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:right;vertical-align:middle}
+.users-table th{color:var(--text3);font-weight:500;font-size:11px}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;background:var(--bg3);color:var(--text2)}
+.badge-ok{color:var(--success)}.badge-off{color:var(--text3)}
+.logo-upload{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.logo-preview-wrap{background:var(--bg3);border:1px dashed var(--border);border-radius:var(--r-sm);padding:16px;min-width:200px;text-align:center}
+.logo-preview{max-width:100%;max-height:80px;object-fit:contain}
+.preview-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.preview-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;text-align:center;font-size:11px;color:var(--text3)}
+.preview-box img{object-fit:contain;margin-top:8px}
+.theme-pick{display:flex;gap:12px;flex-wrap:wrap}
+.theme-card{flex:1;min-width:140px;padding:16px;border-radius:var(--r-sm);border:2px solid var(--border);cursor:pointer;text-align:center;background:var(--bg3)}
+.theme-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px rgba(42,127,255,.2)}
+.theme-card .swatch{height:48px;border-radius:6px;margin-bottom:8px}
+.swatch-dark{background:linear-gradient(135deg,#0b0f17,#161e2b)}
+.swatch-light{background:linear-gradient(135deg,#f0f4fa,#fff)}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:700px){.grid,.preview-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+{% set header_solo = true %}
+{% set page_title = 'الإعدادات' %}
+{% include 'partials/app_header.html' %}
 <div class="wrap">
-  <div class="top">
-    <h1>إعدادات الشركة</h1>
-    <a class="back" href="{{ url_for('contracts') }}">← العودة للعقود</a>
-  </div>
-
-  <div class="note">
-    هذه البيانات تظهر تلقائياً في <strong>الطرف الأول</strong> عند طباعة عقود الصيانة (اسم الشركة، المقر، الهاتف، البريد، الممثل، الجوال).
-  </div>
+  <h1 class="page-heading">الإعدادات</h1>
 
   {% if request.args.get('saved') %}
-  <div class="flash">تم حفظ الإعدادات بنجاح.</div>
+  <div class="flash flash-ok">تم الحفظ بنجاح.</div>
+  {% endif %}
+  {% if settings_notice %}
+  <div class="flash {% if 'غير' in settings_notice or 'مطلوب' in settings_notice or 'مستخ' in settings_notice or 'لا يمكن' in settings_notice or 'صلاحية' in settings_notice %}flash-warn{% else %}flash-ok{% endif %}">{{ settings_notice }}</div>
+  {% endif %}
+  {% if generated_password and generated_username %}
+  <div class="generated-box">
+    <strong>كلمة المرور — انسخها الآن:</strong><br>
+    المستخدم: <code>{{ generated_username }}</code><br>
+    كلمة المرور: <code>{{ generated_password }}</code>
+  </div>
   {% endif %}
 
-  <form class="card" method="post" action="{{ url_for('settings_save') }}">
-    <div class="section">بيانات الشركة (الطرف الأول في العقود)</div>
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab {% if active_tab == 'company' %}active{% endif %}" data-tab="company">الشركة والهوية</button>
+    {% if current_user.role == 'admin' %}
+    <button type="button" class="tab {% if active_tab == 'users' %}active{% endif %}" data-tab="users">المستخدمون</button>
+    {% endif %}
+    <button type="button" class="tab {% if active_tab == 'account' %}active{% endif %}" data-tab="account">حسابي</button>
+    <button type="button" class="tab {% if active_tab == 'appearance' %}active{% endif %}" data-tab="appearance">المظهر</button>
+    <button type="button" class="tab {% if active_tab == 'plan' %}active{% endif %}" data-tab="plan" disabled style="opacity:.45;cursor:not-allowed" title="قريباً">الباقة</button>
+  </div>
+
+  <!-- الشركة -->
+  <div class="panel {% if active_tab == 'company' %}active{% endif %}" id="panel-company">
+    {% if current_user.role != 'admin' %}
+    <div class="card">
+      <p style="font-size:13px;color:var(--text2)">تعديل بيانات الشركة والشعار متاح لمدير النظام فقط.</p>
+    </div>
+    {% else %}
+  <form class="card" method="post" action="{{ url_for('settings_save') }}" enctype="multipart/form-data">
+    <div class="section">بيانات الشركة</div>
+    <p class="hint" style="margin-bottom:14px">تظهر في العقود والتقارير والطباعة (الطرف الأول).</p>
     <div class="grid">
       <div class="full">
         <label>اسم الشركة *</label>
-        <input name="company_name" required value="{{ settings.company_name or '' }}" placeholder="مثال: شركة تقنية جما التميز">
+        <input name="company_name" required value="{{ settings.company_name or '' }}">
       </div>
       <div>
         <label>اسم الشركة (إنجليزي)</label>
-        <input name="company_name_en" value="{{ settings.company_name_en or '' }}">
+        <input name="company_name_en" value="{{ settings.company_name_en or '' }}" dir="ltr">
       </div>
       <div>
         <label>المدينة / المقر</label>
-        <input name="city" value="{{ settings.city or '' }}" placeholder="مكة المكرمة">
+        <input name="city" value="{{ settings.city or '' }}">
       </div>
       <div class="full">
         <label>العنوان</label>
@@ -82,8 +135,8 @@ input:focus,textarea:focus{outline:none;border-color:var(--accent)}
         <input name="email" type="email" value="{{ settings.email or '' }}" dir="ltr">
       </div>
       <div>
-        <label>اسم الممثل (السيد/ ...)</label>
-        <input name="rep_name" value="{{ settings.rep_name or '' }}" placeholder="ممثل الشركة في العقود">
+        <label>اسم الممثل في العقود</label>
+        <input name="rep_name" value="{{ settings.rep_name or '' }}">
       </div>
       <div>
         <label>جوال الممثل</label>
@@ -103,15 +156,305 @@ input:focus,textarea:focus{outline:none;border-color:var(--accent)}
       </div>
       <div>
         <label>العملة</label>
-        <input name="currency" value="{{ settings.currency or 'ر.س' }}">
+        <input name="currency" value="{{ settings.currency or 'SAR' }}">
       </div>
     </div>
 
+    <div class="section" style="margin-top:22px">الشعار والمقاس</div>
+    <div class="logo-upload">
+      <div class="logo-preview-wrap">
+        <img id="logo-preview" class="logo-preview" src="{{ brand_logo_url }}" alt="{{ brand_name }}">
+        <p class="hint" style="margin-top:8px">الشعار الحالي</p>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <label>رفع شعار جديد</label>
+        <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="previewLogo(this)">
+        <p class="hint">PNG · JPG · WEBP · SVG — خلفية شفافة مفضّلة</p>
+        <div style="margin-top:16px">
+          <label>عرض الشعار في القائمة الجانبية: <strong id="lbl-sidebar">{{ settings.logo_width_sidebar or logo_width_sidebar }}</strong> px</label>
+          <input type="range" name="logo_width_sidebar" min="60" max="280" value="{{ settings.logo_width_sidebar or logo_width_sidebar }}" oninput="syncLogoPreview();document.getElementById('lbl-sidebar').textContent=this.value">
+        </div>
+        <div style="margin-top:12px">
+          <label>عرض الشعار في التقارير: <strong id="lbl-report">{{ settings.logo_width_report or logo_width_report }}</strong> px</label>
+          <input type="range" name="logo_width_report" min="60" max="320" value="{{ settings.logo_width_report or logo_width_report }}" oninput="syncLogoPreview();document.getElementById('lbl-report').textContent=this.value">
+        </div>
+        <div style="margin-top:12px">
+          <label>عرض الشعار في تسجيل الدخول: <strong id="lbl-login">{{ settings.logo_width_login or logo_width_login }}</strong> px</label>
+          <input type="range" name="logo_width_login" min="80" max="400" value="{{ settings.logo_width_login or logo_width_login }}" oninput="syncLogoPreview();document.getElementById('lbl-login').textContent=this.value">
+        </div>
+      </div>
+    </div>
+    <div class="preview-row">
+      <div class="preview-box">معاينة القائمة<br><img id="prev-sidebar" src="{{ brand_logo_url }}" alt=""></div>
+      <div class="preview-box">معاينة التقرير<br><img id="prev-report" src="{{ brand_logo_url }}" alt=""></div>
+    </div>
     <div class="actions">
-      <button type="submit" class="btn btn-primary">حفظ الإعدادات</button>
-      <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">لوحة التحكم</a>
+      <button type="submit" class="btn btn-primary">حفظ بيانات الشركة</button>
     </div>
   </form>
+    {% endif %}
+  </div>
+
+  <!-- المستخدمون -->
+  {% if current_user.role == 'admin' %}
+  <div class="panel {% if active_tab == 'users' %}active{% endif %}" id="panel-users">
+    <div class="card">
+      <div class="section">قائمة المستخدمين</div>
+      <table class="users-table">
+        <thead>
+          <tr><th>المستخدم</th><th>الاسم</th><th>الدور</th><th>آخر دخول</th><th>الحالة</th><th>إجراءات</th></tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td dir="ltr">{{ u.username }}</td>
+            <td>{{ u.full_name or '—' }}</td>
+            <td><span class="badge">{{ role_labels.get(u.role, u.role) }}</span></td>
+            <td class="lc-date" dir="ltr" style="font-size:11px">{{ u.last_login|en_datetime if u.last_login else '—' }}</td>
+            <td><span class="badge {% if u.is_active %}badge-ok{% else %}badge-off{% endif %}">{% if u.is_active %}نشط{% else %}معطّل{% endif %}</span></td>
+            <td>
+              <div class="row-actions">
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('settings', tab='users', edit_user=u.id) }}">تعديل</a>
+                {% if u.id != current_user.id %}
+                <form method="post" action="{{ url_for('settings_user_toggle', user_id=u.id) }}" style="display:inline" onsubmit="return confirm('تأكيد تغيير حالة المستخدم؟')">
+                  <button type="submit" class="btn btn-secondary btn-sm">{% if u.is_active %}تعطيل{% else %}تفعيل{% endif %}</button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if edit_user %}
+    <form class="card" method="post" action="{{ url_for('settings_user_edit', user_id=edit_user.id) }}">
+      <div class="section">تعديل: {{ edit_user.username }}</div>
+      <div class="grid">
+        <div>
+          <label>الاسم الكامل</label>
+          <input name="full_name" value="{{ edit_user.full_name or '' }}">
+        </div>
+        <div>
+          <label>البريد</label>
+          <input name="email" type="email" value="{{ edit_user.email or '' }}" dir="ltr">
+        </div>
+        <div>
+          <label>الدور</label>
+          <select name="role">
+            <option value="viewer" {% if edit_user.role == 'viewer' %}selected{% endif %}>عرض فقط</option>
+            <option value="manager" {% if edit_user.role == 'manager' %}selected{% endif %}>مدير عمليات</option>
+            <option value="admin" {% if edit_user.role == 'admin' %}selected{% endif %}>مدير النظام</option>
+          </select>
+        </div>
+        <div>
+          <label>كلمة مرور جديدة (اختياري)</label>
+          <input name="new_password" type="text" dir="ltr" placeholder="اتركها فارغة للإبقاء على الحالية" autocomplete="new-password">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+        <a class="btn btn-secondary" href="{{ url_for('settings', tab='users') }}">إلغاء</a>
+      </div>
+    </form>
+    {% else %}
+    <form class="card" method="post" action="{{ url_for('settings_user_add') }}">
+      <div class="section">إضافة مستخدم جديد</div>
+      <div class="grid">
+        <div>
+          <label>اسم المستخدم *</label>
+          <input name="username" required dir="ltr" autocomplete="off">
+        </div>
+        <div>
+          <label>الاسم الكامل</label>
+          <input name="full_name">
+        </div>
+        <div>
+          <label>البريد</label>
+          <input name="email" type="email" dir="ltr">
+        </div>
+        <div>
+          <label>الدور</label>
+          <select name="role">
+            <option value="viewer">عرض فقط</option>
+            <option value="manager">مدير عمليات</option>
+            <option value="admin">مدير النظام</option>
+          </select>
+        </div>
+        <div class="full">
+          <label>كلمة المرور</label>
+          <input id="new_user_password" name="password" type="text" dir="ltr" placeholder="فارغ = توليد تلقائي">
+        </div>
+        <div class="full">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text2)">
+            <input type="checkbox" name="auto_generate" value="1" checked style="width:auto">
+            توليد كلمة مرور تلقائياً إذا تُرك الحقل فارغاً
+          </label>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">إنشاء المستخدم</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('new_user_password').value=randomPassword()">توليد كلمة مرور</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- حسابي -->
+  <div class="panel {% if active_tab == 'account' %}active{% endif %}" id="panel-account">
+    <form class="card" method="post" action="{{ url_for('settings_profile_save') }}" enctype="multipart/form-data">
+      <div class="section">بيانات حسابي</div>
+      <div class="grid">
+        <div class="full" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div class="lc-profile-btn" style="width:72px;height:72px;font-size:22px;flex-shrink:0" id="avatar-preview-wrap">
+            {% if user_avatar_url %}
+            <img id="avatar-preview" src="{{ user_avatar_url }}" alt="">
+            {% else %}
+            <span id="avatar-preview">{{ user_initials }}</span>
+            {% endif %}
+          </div>
+          <div style="flex:1;min-width:200px">
+            <label>صورة الملف الشخصي</label>
+            <input type="file" name="photo" accept="image/png,image/jpeg,image/webp" onchange="previewAvatar(this)">
+            <p class="hint">تظهر في الهيدر — PNG · JPG · WEBP</p>
+          </div>
+        </div>
+        <div>
+          <label>اسم المستخدم</label>
+          <input value="{{ current_user.username }}" readonly dir="ltr" style="opacity:.7">
+        </div>
+        <div>
+          <label>الدور</label>
+          <input value="{{ role_labels.get(current_user.role, current_user.role) }}" readonly style="opacity:.7">
+        </div>
+        <div>
+          <label>الاسم الكامل</label>
+          <input name="full_name" value="{{ current_user.full_name or '' }}">
+        </div>
+        <div>
+          <label>البريد</label>
+          <input name="email" type="email" value="{{ current_user.email or '' }}" dir="ltr">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">حفظ البيانات</button>
+      </div>
+    </form>
+
+    <form class="card" method="post" action="{{ url_for('settings_change_password') }}">
+      <div class="section">تغيير كلمة المرور</div>
+      <div class="grid">
+        <div class="full">
+          <label>كلمة المرور الحالية *</label>
+          <input name="current_password" type="password" required autocomplete="current-password">
+        </div>
+        <div>
+          <label>كلمة المرور الجديدة *</label>
+          <input id="new_password" name="new_password" type="password" required minlength="6" autocomplete="new-password">
+        </div>
+        <div>
+          <label>تأكيد كلمة المرور *</label>
+          <input name="confirm_password" type="password" required minlength="6" autocomplete="new-password">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">تحديث كلمة المرور</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('new_password').value=randomPassword()">توليد قوية</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- المظهر -->
+  <div class="panel {% if active_tab == 'appearance' %}active{% endif %}" id="panel-appearance">
+    <form class="card" method="post" action="{{ url_for('settings_theme_save') }}" id="theme-form">
+      <div class="section">مظهر البرنامج</div>
+      <p class="hint" style="margin-bottom:14px">يُحفظ لحسابك فقط — كل مستخدم يختار المظهر المناسب له.</p>
+      <input type="hidden" name="theme" id="theme-input" value="{{ current_user.theme or 'dark' }}">
+      <div class="theme-pick">
+        <div class="theme-card {% if (current_user.theme or 'dark') == 'dark' %}selected{% endif %}" data-theme-val="dark" onclick="pickTheme('dark')">
+          <div class="swatch swatch-dark"></div>
+          <strong>داكن</strong>
+          <p class="hint">الوضع الافتراضي</p>
+        </div>
+        <div class="theme-card {% if current_user.theme == 'light' %}selected{% endif %}" data-theme-val="light" onclick="pickTheme('light')">
+          <div class="swatch swatch-light"></div>
+          <strong>فاتح</strong>
+          <p class="hint">مناسب للإضاءة القوية</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">حفظ المظهر</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- الباقة (قريباً) -->
+  <div class="panel {% if active_tab == 'plan' %}active{% endif %}" id="panel-plan">
+    <div class="card">
+      <div class="section">الباقة والاشتراك</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.8">قريباً — حدود العملاء والمصاعد والمستخدمين حسب باقة SaaS.<br>سيتضمن: الباقة الحالية، الاستخدام، تاريخ الانتهاء، وترقية الاشتراك.</p>
+    </div>
+  </div>
 </div>
+
+<script>
+function randomPassword(len) {
+  var c = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$!&', p = '';
+  for (var i = 0; i < (len || 12); i++) p += c.charAt(Math.floor(Math.random() * c.length));
+  return p;
+}
+document.querySelectorAll('.tab:not([disabled])').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var t = btn.getAttribute('data-tab');
+    document.querySelectorAll('.tab').forEach(function(x) { x.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    var panel = document.getElementById('panel-' + t);
+    if (panel) panel.classList.add('active');
+    if (window.history && history.replaceState) {
+      var u = new URL(window.location.href);
+      u.searchParams.set('tab', t);
+      u.searchParams.delete('edit_user');
+      history.replaceState(null, '', u.pathname + '?' + u.searchParams.toString());
+    }
+  });
+});
+function previewLogo(input) {
+  if (!input.files || !input.files[0]) return;
+  var url = URL.createObjectURL(input.files[0]);
+  document.getElementById('logo-preview').src = url;
+  document.getElementById('prev-sidebar').src = url;
+  document.getElementById('prev-report').src = url;
+  syncLogoPreview();
+}
+function syncLogoPreview() {
+  var sw = document.querySelector('input[name=logo_width_sidebar]');
+  var rw = document.querySelector('input[name=logo_width_report]');
+  var ps = document.getElementById('prev-sidebar');
+  var pr = document.getElementById('prev-report');
+  var lp = document.getElementById('logo-preview');
+  if (sw && ps) ps.style.width = sw.value + 'px';
+  if (rw && pr) pr.style.width = rw.value + 'px';
+  if (sw && lp) lp.style.width = sw.value + 'px';
+}
+function previewAvatar(input) {
+  if (!input.files || !input.files[0]) return;
+  var wrap = document.getElementById('avatar-preview-wrap');
+  if (!wrap) return;
+  var url = URL.createObjectURL(input.files[0]);
+  wrap.innerHTML = '<img id="avatar-preview" src="' + url + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+}
+
+function pickTheme(val) {
+  document.getElementById('theme-input').value = val;
+  document.querySelectorAll('.theme-card').forEach(function(c) {
+    c.classList.toggle('selected', c.getAttribute('data-theme-val') === val);
+  });
+  document.documentElement.setAttribute('data-theme', val);
+}
+syncLogoPreview();
+</script>
 </body>
 </html>

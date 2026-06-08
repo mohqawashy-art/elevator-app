@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/customer_profile.css">
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA&language=ar&region=SA"></script>
 <script src="/static/customer_profile.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -136,8 +135,8 @@ tbody tr:hover{background:var(--bg3)}
 tbody tr.critical-row{border-right:3px solid var(--critical)}
 html[dir="ltr"] tbody tr.critical-row{border-right:none;border-left:3px solid var(--critical)}
 tbody tr:last-child{border-bottom:none}
-tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
-.td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500}
+tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap;vertical-align:middle}
+.td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500;line-height:1.45;text-align:right}
 .td-name{color:var(--text1);font-weight:500}
 .td-actions{display:flex;gap:5px;align-items:center}
 
@@ -163,15 +162,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
 .page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
-/* MAP */
-.map-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-.map-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
-.map-title{font-size:13px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
-.map-title svg{width:15px;height:15px;color:var(--danger)}
-#map{height:480px;z-index:1}
-.map-legend{display:flex;gap:16px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--border);background:var(--bg2)}
-.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
-.legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.3)}
+.fault-modal-head{align-items:center;gap:16px}
+.fault-modal-logo-wrap{flex-shrink:0;border-radius:var(--r-sm);background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px 14px;min-height:100px}
+.fault-modal-logo-wrap img{width:auto;height:166px;max-width:260px;object-fit:contain;display:block}
+.fault-modal-head-text{flex:1;min-width:0}
+body.fault-modal-open .header-center-brand{display:none!important}
 
 /* REPEATED FAULT WARNING */
 .repeated-warn{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(255,59,59,.15);color:#ff6b6b;border:1px solid rgba(255,59,59,.3);white-space:nowrap}
@@ -272,15 +267,20 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -307,29 +307,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>الأعطال</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'الأعطال' %}
+  {% include 'partials/app_header.html' %}
 
 
   <div class="content">
@@ -353,20 +335,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       {% if not fault_alerts %}<div class="alert-chip info" style="animation:none;opacity:.7">لا تنبيهات عاجلة</div>{% endif %}
     </div>
 
-    <!-- TABS -->
-    <div class="tabs">
-      <div class="tab active" id="tab-btn-table" onclick="switchTab('table')">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="5" y1="5.5" x2="5" y2="12"/></svg>
-        جدول الأعطال
-      </div>
-      <div class="tab" id="tab-btn-map" onclick="switchTab('map')">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
-        خريطة الأعطال
-      </div>
-    </div>
-
-    <!-- TABLE TAB -->
-    <div id="tab-table">
       <div class="page-header">
         <div class="page-title">الأعطال <span id="faults-count">0 عطل</span></div>
         <div class="page-actions">
@@ -397,7 +365,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <select class="filter-select" id="f-status" onchange="filterTable()">
           <option value="">كل الحالات</option>
           <option>مفتوح</option><option>مُسند</option><option>قيد المعالجة</option>
-          <option>انتظار قطع</option><option>محلول</option><option>مغلق</option>
+          <option>انتظار قطع</option><option>تم الاصلاح</option><option>مغلق</option>
         </select>
         <select class="filter-select" id="f-category" onchange="filterTable()">
           <option value="">كل الأنواع</option>
@@ -428,28 +396,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="table-info" id="table-info"></div>
         </div>
       </div>
-    </div>
-
-    <!-- MAP TAB -->
-    <div id="tab-map" style="display:none">
-      <div class="map-panel">
-        <div class="map-header">
-          <div class="map-title">
-            <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7.5 1C5.01 1 3 3.01 3 5.5c0 3.5 4.5 8.5 4.5 8.5S12 9 12 5.5C12 3.01 9.99 1 7.5 1z"/><circle cx="7.5" cy="5.5" r="1.8"/></svg>
-            خريطة الأعطال الحالية
-          </div>
-          <span style="font-size:11px;color:var(--text3)">الأعطال المفتوحة وقيد المعالجة</span>
-        </div>
-        <div id="map"></div>
-        <div class="map-legend">
-          <div class="legend-item"><div class="legend-dot" style="background:#ff3b3b"></div>حرجة</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#e04848"></div>عالية</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#e09030"></div>متوسطة</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#2a7fff"></div>منخفضة</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#1fb87a"></div>محلول</div>
-        </div>
-      </div>
-    </div>
 
   </div>
 </div>
@@ -460,8 +406,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <div class="modal-overlay" id="modal-add">
   <div class="modal">
-    <div class="modal-head">
-      <div class="modal-title" id="modal-title">تسجيل عطل جديد</div>
+    <div class="modal-head fault-modal-head">
+      <div class="fault-modal-logo-wrap">
+        <img id="fault-customer-logo" src="{{ brand_logo_url }}" alt="{{ brand_name }}">
+      </div>
+      <div class="fault-modal-head-text">
+        <div class="modal-title" id="modal-title">تسجيل عطل جديد</div>
+      </div>
       <button class="modal-close" onclick="closeModal('modal-add')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
@@ -487,10 +438,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             </select>
             <span class="field-hint">يُستدعى تلقائياً حسب العميل</span>
           </div>
-          <div class="field form-full"><label>عنوان العميل</label>
-            <input type="text" id="f-address" placeholder="يظهر تلقائياً بعد اختيار المصعد" readonly style="background:var(--bg4)">
-            <span class="field-hint" id="f-address-hint">من بيانات العميل المسجّلة في العقود والخريطة</span>
-          </div>
           <div class="field"><label>المدينة</label><input type="text" id="f-city" placeholder="—" readonly style="background:var(--bg4)"></div>
           <div class="field"><label>الحي</label><input type="text" id="f-district" placeholder="—" readonly style="background:var(--bg4)"></div>
           <div class="field"><label>نوع العطل</label>
@@ -505,6 +452,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <option>منخفضة</option><option>متوسطة</option><option>عالية</option><option>حرجة</option>
             </select>
           </div>
+          <div class="field"><label>عنوان العطل</label><input type="text" id="f-title" placeholder="وصف مختصر للعطل"></div>
           <div class="field"><label>مصدر الإبلاغ</label>
             <select id="f-source">
               <option>اتصال هاتفي</option><option>واتساب</option><option>البرنامج</option>
@@ -582,7 +530,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <button type="button" class="btn btn-secondary btn-sm fault-parts-add" onclick="addFaultPartRow()">+ إضافة قطعة</button>
           <div class="fault-parts-total">
             <span>إجمالي قطع الغيار (جاهز للفوترة)</span>
-            <span class="fault-parts-total-val" id="fault-parts-total">0.00 ر.س</span>
+            <span class="fault-parts-total-val" id="fault-parts-total">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
           </div>
         </div>
         <div class="form-grid" style="margin-top:12px">
@@ -643,87 +591,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <script>
 const FAULTS = {{ faults_js|tojson }};
 const CUSTOMERS = {{ customers_js|tojson }};
-const CONTRACTS = {{ contracts_js|tojson }};
 const ELEVATORS = {{ elevators_js|tojson }};
 const TECHNICIANS = {{ technicians_js|tojson }};
 const INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
-const FAULT_MAP_POINTS = {{ fault_map_points|tojson }};
 const NEXT_FAULT_CODE = {{ next_fault_code|tojson }};
-
-let faultMap = null;
-let faultMarkers = [];
-let faultInfoWindow = null;
-
-function faultPriorityColor(priority) {
-  const p = priority || '';
-  if (p === 'حرجة') return '#ff3b3b';
-  if (p === 'عالية' || p === 'عاجلة') return '#e04848';
-  if (p === 'متوسطة') return '#e09030';
-  if (p === 'منخفضة' || p === 'عادية') return '#2a7fff';
-  return '#e04848';
-}
-
-function refreshFaultMap() {
-  if (typeof google === 'undefined' || !google.maps) return;
-  const mapEl = document.getElementById('map');
-  if (!mapEl) return;
-  if (!faultMap) {
-    faultMap = new google.maps.Map(mapEl, {
-      center: { lat: 21.4225, lng: 39.8262 },
-      zoom: 11,
-      mapTypeId: 'satellite',
-      clickableIcons: false,
-      streetViewControl: false,
-      fullscreenControl: true,
-      zoomControl: true,
-      mapTypeControl: true,
-      mapTypeControlOptions: { mapTypeIds: ['satellite', 'hybrid', 'roadmap'] },
-    });
-    faultInfoWindow = new google.maps.InfoWindow();
-  }
-  faultMarkers.forEach(m => m.setMap(null));
-  faultMarkers = [];
-  const bounds = new google.maps.LatLngBounds();
-  let shown = 0;
-  (FAULT_MAP_POINTS || []).forEach(p => {
-    if (!p.lat || !p.lng) return;
-    shown++;
-    const color = faultPriorityColor(p.priority);
-    const marker = new google.maps.Marker({
-      position: { lat: p.lat, lng: p.lng },
-      map: faultMap,
-      title: p.label || '',
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 10,
-        fillColor: color,
-        fillOpacity: 1,
-        strokeColor: '#fff',
-        strokeWeight: 2,
-      },
-    });
-    marker.addListener('click', () => {
-      faultInfoWindow.setContent(
-        '<div style="font-family:Tahoma,Arial;direction:rtl;text-align:right;min-width:160px">' +
-        '<b>' + (p.label || '') + '</b><br>' +
-        (p.priority || '—') + ' · ' + (p.status || '') +
-        '</div>'
-      );
-      faultInfoWindow.open(faultMap, marker);
-    });
-    faultMarkers.push(marker);
-    bounds.extend({ lat: p.lat, lng: p.lng });
-  });
-  if (shown) {
-    faultMap.fitBounds(bounds, 48);
-    google.maps.event.trigger(faultMap, 'resize');
-  }
-}
-
-function switchTab(name) {
-  OpsPage.switchTab(name);
-  if (name === 'map') setTimeout(refreshFaultMap, 250);
-}
+const COMPANY_LOGO_URL = {{ brand_logo_url|tojson }};
 
 function fillClientSelect() {
   const sel = document.getElementById('f-client-sel');
@@ -747,57 +619,23 @@ function elevatorOptionLabel(e) {
   return parts.length ? parts.join(' — ') : 'مصعد';
 }
 
-function activeContractForElevator(elevatorId) {
-  if (!elevatorId) return null;
-  const eid = Number(elevatorId);
-  return CONTRACTS.find(c => Array.isArray(c.elevator_ids) && c.elevator_ids.some(id => Number(id) === eid)) || null;
-}
-
-function resolveFaultSiteAddress(customer, elevator) {
-  if (!customer && !elevator) return '';
-  const fromElev = elevator?.address && String(elevator.address).trim();
-  if (fromElev) return String(elevator.address).trim();
-  if (customer?.address && String(customer.address).trim()) {
-    return String(customer.address).trim();
-  }
-  const parts = [];
-  if (elevator?.building_name) parts.push(elevator.building_name);
-  const district = elevator?.district || customer?.district;
-  const city = elevator?.city || customer?.city;
-  if (district) parts.push(district);
-  if (city) parts.push(city);
-  return parts.join(' — ');
-}
-
-function setFaultAddressFields(customer, elevator) {
-  const addressEl = document.getElementById('f-address');
-  const hintEl = document.getElementById('f-address-hint');
-  const address = resolveFaultSiteAddress(customer, elevator);
-  if (addressEl) addressEl.value = address;
-  if (!hintEl) return;
-  const contract = elevator ? activeContractForElevator(elevator.id) : null;
-  if (contract && address) {
-    hintEl.textContent = `من عقد ${contract.code} — ${address}`;
-  } else if (address) {
-    hintEl.textContent = 'عنوان العميل المسجّل في العقود والخريطة';
-  } else if (customer) {
-    hintEl.textContent = 'لا يوجد عنوان مسجّل — أضفه من صفحة العملاء أو العقود';
-  } else {
-    hintEl.textContent = 'يظهر بعد اختيار العميل والمصعد — نفس العنوان المسجّل في العقود والخريطة';
-  }
-}
-
 function resetCustomerLinkedFields() {
-  ['f-city', 'f-district', 'f-address', 'f-reporter', 'f-reporter-phone'].forEach(id => {
+  ['f-city', 'f-district', 'f-reporter', 'f-reporter-phone'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  const hintEl = document.getElementById('f-address-hint');
-  if (hintEl) {
-    hintEl.textContent = 'يظهر بعد اختيار العميل والمصعد — نفس العنوان المسجّل في العقود والخريطة';
-  }
   const esel = document.getElementById('f-elevator-sel');
   if (esel) esel.innerHTML = '<option value="">اختر العميل أولاً</option>';
+  updateFaultCustomerLogo();
+}
+
+function updateFaultCustomerLogo() {
+  const cid = document.getElementById('f-client-sel')?.value;
+  const img = document.getElementById('fault-customer-logo');
+  const cust = cid ? CUSTOMERS.find(c => String(c.id) === String(cid)) : null;
+  if (!img) return;
+  img.src = (cust && cust.building_photo_url) ? cust.building_photo_url : COMPANY_LOGO_URL;
+  img.alt = '';
 }
 
 function onCustomerSelected() {
@@ -816,10 +654,6 @@ function onCustomerSelected() {
   if (districtEl) districtEl.value = cust?.district || '';
   if (reporterEl) reporterEl.value = cust?.contact_person || '';
   if (reporterPhoneEl) reporterPhoneEl.value = cust?.phone || '';
-  const addressEl = document.getElementById('f-address');
-  if (addressEl) addressEl.value = '';
-  const hintEl = document.getElementById('f-address-hint');
-  if (hintEl) hintEl.textContent = 'يظهر تلقائياً بعد اختيار المصعد';
   if (!esel) return;
   const list = ELEVATORS.filter(e => Number(e.customer_id) === Number(cid));
   esel.innerHTML = '<option value="">' + (list.length ? 'اختر المصعد' : 'لا توجد مصاعد لهذا العميل') + '</option>' +
@@ -828,28 +662,18 @@ function onCustomerSelected() {
     esel.value = String(list[0].id);
     onElevatorSelected();
   }
+  updateFaultCustomerLogo();
 }
 
 function onElevatorSelected() {
   const eid = document.getElementById('f-elevator-sel')?.value;
-  const addressEl = document.getElementById('f-address');
-  const hintEl = document.getElementById('f-address-hint');
-  if (!eid) {
-    if (addressEl) addressEl.value = '';
-    if (hintEl) hintEl.textContent = 'يظهر تلقائياً بعد اختيار المصعد';
-    return;
-  }
   const elev = ELEVATORS.find(e => String(e.id) === String(eid));
-  if (!elev) {
-    if (addressEl) addressEl.value = '';
-    return;
-  }
+  if (!elev) return;
   const cityEl = document.getElementById('f-city');
   const districtEl = document.getElementById('f-district');
   const cust = CUSTOMERS.find(c => String(c.id) === String(elev.customer_id));
   if (cityEl) cityEl.value = elev.city || cust?.city || '';
   if (districtEl) districtEl.value = elev.district || cust?.district || '';
-  setFaultAddressFields(cust, elev);
 }
 
 function loadClientElevators() {
@@ -942,7 +766,7 @@ function calcFaultPartsTotal() {
     total += rowTotal;
   });
   const el = document.getElementById('fault-parts-total');
-  if (el) el.textContent = total.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
+  if (el) setMoneyEl(el, total, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function collectFaultParts() {
@@ -986,7 +810,7 @@ function updateSidebarBadge() {
 
 const STATUS_BADGE = {
   'مفتوح':'badge-expired','قيد المعالجة':'badge-pending',
-  'محلول':'badge-active','مغلق':'badge-cancelled'
+  'تم الاصلاح':'badge-active','محلول':'badge-active','مغلق':'badge-cancelled'
 };
 const PRIORITY_BADGE = {
   'عادية':'badge-active','عاجلة':'badge-pending','حرجة':'badge-expired'
@@ -995,21 +819,30 @@ const PRIORITY_BADGE = {
 let currentDeleteId = null;
 let filtered = [...FAULTS];
 
+function formatResponseTimeCell(val) {
+  if (!val || val === '—') return '—';
+  const m = String(val).match(/^(-?\d+(?:\.\d+)?)\s*(.+)$/);
+  if (m) return '<span class="lc-num">' + m[1] + '</span> ' + m[2];
+  return '<span class="lc-num">' + String(val).replace(/</g, '&lt;') + '</span>';
+}
+
 function renderTable(data) {
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
-  document.getElementById('faults-count').textContent = data.length + ' عطل';
+  document.getElementById('faults-count').innerHTML = '<span class="lc-num">' + data.length + '</span> عطل';
   const info = document.getElementById('table-info');
-  if (info) info.textContent = 'عرض ' + data.length + ' من ' + FAULTS.length;
+  if (info) {
+    info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + FAULTS.length + '</span>';
+  }
   tbody.innerHTML = data.map(f=>`
     <tr onclick="viewFault(${f.id})">
-      <td class="td-code">${f.code}</td>
+      <td class="td-code lc-code">${f.code}</td>
       <td class="td-name">${f.customer}</td>
-      <td style="font-family:var(--font-en)">${f.elevator}</td>
+      <td class="td-code">${f.elevator}</td>
       <td>${f.fault_type}</td>
       <td><span class="badge ${PRIORITY_BADGE[f.priority]||'badge-active'}">${f.priority}</span></td>
       <td>${f.technician}</td>
-      <td style="font-family:var(--font-en)">${f.response_time}</td>
+      <td>${formatResponseTimeCell(f.response_time)}</td>
       <td><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${f.status}</span></td>
       <td><span class="badge ${f.needs_parts?'badge-billable':'badge-cancelled'}">${f.needs_parts?'قابل للفوترة':'ضمن العقد'}</span></td>
       <td onclick="event.stopPropagation()">
@@ -1098,7 +931,8 @@ function openAddModal() {
   document.getElementById('selected-tech-id').value = '';
   const tsel = document.getElementById('f-tech-sel');
   if (tsel) tsel.value = '';
-  document.getElementById('modal-add').classList.add('open');
+  updateFaultCustomerLogo();
+  openModal('modal-add');
 }
 
 function saveFault() {
@@ -1173,8 +1007,6 @@ function editFault(id) {
   const rp = document.getElementById('f-reporter-phone');
   if (rn && f.reporter_name) rn.value = f.reporter_name;
   if (rp && f.reporter_phone) rp.value = f.reporter_phone;
-  const cust = CUSTOMERS.find(c => String(c.id) === String(clientSel?.value || ''));
-  setFaultAddressFields(cust, elev);
   setFaultReportDatetime(f.reported_at_local || '');
   if (f.needs_parts) {
     if (f.parts_lines && f.parts_lines.length) loadFaultPartsPanel(f.parts_lines);
@@ -1193,20 +1025,14 @@ function editFault(id) {
     const tsel = document.getElementById('f-tech-sel');
     if (tsel) tsel.value = f.tech_id;
   }
-  document.getElementById('modal-add').classList.add('open');
+  updateFaultCustomerLogo();
+  openModal('modal-add');
 }
 
 // ===== عرض =====
 function viewFault(id) {
   const f = FAULTS.find(x=>x.id===id);
   if(!f) return;
-  const elevView = ELEVATORS.find(e => e.id === f.elevator_id);
-  const custView = CUSTOMERS.find(c => c.id === f.customer_id);
-  const siteAddress = resolveFaultSiteAddress(custView, elevView);
-  const siteContract = elevView ? activeContractForElevator(elevView.id) : null;
-  const siteAddressHtml = siteAddress
-    ? `<div class="view-item view-full"><div class="view-label">عنوان الموقع</div><div class="view-val">${siteAddress}${siteContract ? ` <span style="font-size:11px;color:var(--text3)">(${siteContract.code})</span>` : ''}</div></div>`
-    : '';
   document.getElementById('view-title').textContent = f.code + ' — ' + f.customer;
   document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
@@ -1214,7 +1040,6 @@ function viewFault(id) {
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${f.code}</div></div>
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${f.customer}</div></div>
       <div class="view-item"><div class="view-label">المصعد</div><div class="view-val" style="font-family:var(--font-en)">${f.elevator}</div></div>
-      ${siteAddressHtml}
       <div class="view-item"><div class="view-label">الفني</div><div class="view-val">${f.technician}</div></div>
       <div class="view-item"><div class="view-label">نوع العطل</div><div class="view-val">${f.fault_type}</div></div>
       <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${PRIORITY_BADGE[f.priority]||'badge-active'}">${f.priority}</span></div></div>
@@ -1222,7 +1047,7 @@ function viewFault(id) {
       <div class="view-item"><div class="view-label">وقت الاستجابة</div><div class="view-val">${f.response_time}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${f.status}</span></div></div>
       <div class="view-item"><div class="view-label">الفوترة</div><div class="view-val"><span class="badge ${f.needs_parts?'badge-billable':'badge-cancelled'}">${f.needs_parts?'قابل للفوترة':'ضمن العقد'}</span>${f.billed?' · <span class="badge badge-active">مفوتر</span>':''}</div></div>
-      ${f.needs_parts && f.parts_lines && f.parts_lines.length ? `<div class="view-item view-full"><div class="view-label">قطع الغيار</div><div class="view-val">${f.parts_lines.map(p => `${p.qty}× ${p.name} — ${Number(p.unit_price).toFixed(2)} ر.س`).join('<br>')}</div></div>` : ''}
+      ${f.needs_parts && f.parts_lines && f.parts_lines.length ? `<div class="view-item view-full"><div class="view-label">قطع الغيار</div><div class="view-val">${f.parts_lines.map(p => `${p.qty}× ${p.name} — ${Number(p.unit_price).toFixed(2)} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>`).join('<br>')}</div></div>` : ''}
       ${f.visit_code?`<div class="view-item"><div class="view-label">رقم الزيارة</div><div class="view-val" style="font-family:var(--font-en)">${f.visit_code}</div></div>`:''}
       ${f.description?`<div class="view-item view-full"><div class="view-label">الوصف</div><div class="view-val">${f.description}</div></div>`:''}
       ${f.resolution?`<div class="view-item view-full"><div class="view-label">طريقة الحل</div><div class="view-val">${f.resolution}</div></div>`:''}
@@ -1231,13 +1056,13 @@ function viewFault(id) {
         · <a href="/faults/${f.id}/report?print=1" target="_blank" style="color:var(--accent)">طباعة PDF</a>
       </div></div>
     </div>`;
-  document.getElementById('modal-view').classList.add('open');
+  openModal('modal-view');
   var elev = ELEVATORS.find(x => x.id === f.elevator_id);
   if (elev && elev.customer_id) LiftCoreProfile.appendToView(document.getElementById('view-body'), elev.customer_id, null, { timelineLimit: 15 });
 }
 
 // ===== حذف =====
-function deleteFault(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
+function deleteFault(id) { currentDeleteId=id; openModal('modal-delete'); }
 function confirmDelete() {
   if(!currentDeleteId) return;
   fetch(`/faults/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
@@ -1252,7 +1077,20 @@ function exportExcel() {
   a.download='faults.csv'; a.click();
 }
 
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function syncFaultModalBodyClass() {
+  const anyOpen = document.querySelector('.modal-overlay.open');
+  document.body.classList.toggle('fault-modal-open', !!anyOpen);
+}
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('open');
+  syncFaultModalBodyClass();
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+  syncFaultModalBodyClass();
+}
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);
   document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
@@ -1261,8 +1099,8 @@ function setLang(l) {
 }
 function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
-document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') { document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); syncFaultModalBodyClass(); } });
+document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) { document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); syncFaultModalBodyClass(); } });
 
 const now = new Date();
 const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];

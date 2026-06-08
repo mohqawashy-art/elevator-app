@@ -229,15 +229,20 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   .rpt-page{padding:16px 20px}
 }
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -264,28 +269,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>تقرير الأعطال</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'تقرير الأعطال' %}
+  {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
       <div class="page-title">تقرير الأعطال</div>
@@ -349,14 +337,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <p id="rpt-date-range">تاريخ التقرير: {}</p>
       </div>
       <div class="rpt-header-logo">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore">
+        <img src="{{ brand_logo_url }}" alt="LiftCore">
         <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
       </div>
     </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">89</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي الأعطال</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">12</div><div style="font-size:9px;color:#555;margin-top:2px">هذا الشهر</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">81</div><div style="font-size:9px;color:#555;margin-top:2px">محلولة</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">1.8 ساعة</div><div style="font-size:9px;color:#555;margin-top:2px">متوسط الاستجابة</div></div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">89</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي الأعطال</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">12</div><div style="font-size:9px;color:#555;margin-top:2px">هذا الشهر</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">81</div><div style="font-size:9px;color:#555;margin-top:2px">تم الاصلاح</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">1.8 ساعة</div><div style="font-size:9px;color:#555;margin-top:2px">متوسط الاستجابة</div></div></div>
         <table class="rpt-table">
         <thead><tr><th>الكود</th><th>العميل</th><th>المصعد</th><th>نوع العطل</th><th>الأولوية</th><th>الفني</th><th>الاستجابة</th><th>الحالة</th><th>فوترة</th></tr></thead>
-        <tbody><tr><td class="num">FA-00001</td><td class="">برج الياسمين</td><td class="num">EL-0001</td><td class="">عطل في الباب الآلي</td><td class="">عادية</td><td class="">أحمد محمد</td><td class="num">2 ساعة</td><td class=""><span class="badge badge-green">محلول</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num">FA-00002</td><td class="">مجمع النخيل</td><td class="num">EL-0003</td><td class="">توقف مفاجئ</td><td class="">عاجلة</td><td class="">خالد عبدالله</td><td class="num">45 دقيقة</td><td class=""><span class="badge badge-green">محلول</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num">FA-00003</td><td class="">مستشفى السلام</td><td class="num">EL-0006</td><td class="">خلل كهربائي</td><td class="">حرجة</td><td class="">سعد ناصر</td><td class="num">30 دقيقة</td><td class=""><span class="badge badge-gold">قيد المعالجة</span></td><td class=""><span class="badge badge-gold">معلق</span></td></tr><tr><td class="num">FA-00004</td><td class="">فندق الأندلس</td><td class="num">EL-0004</td><td class="">ضجيج في المحرك</td><td class="">عادية</td><td class="">عمر حسين</td><td class="num">4 ساعات</td><td class=""><span class="badge badge-green">محلول</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num">FA-00005</td><td class="">أبراج الساعة</td><td class="num">EL-0008</td><td class="">عطل في مستشعر</td><td class="">عادية</td><td class="">فيصل الأحمد</td><td class="num">3 ساعات</td><td class=""><span class="badge badge-red">مفتوح</span></td><td class=""><span class="badge badge-red">غير مفوتر</span></td></tr></tbody>
+        <tbody><tr><td class="num">FA-00001</td><td class="">برج الياسمين</td><td class="num">EL-0001</td><td class="">عطل في الباب الآلي</td><td class="">عادية</td><td class="">أحمد محمد</td><td class="num">2 ساعة</td><td class=""><span class="badge badge-green">تم الاصلاح</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num">FA-00002</td><td class="">مجمع النخيل</td><td class="num">EL-0003</td><td class="">توقف مفاجئ</td><td class="">عاجلة</td><td class="">خالد عبدالله</td><td class="num">45 دقيقة</td><td class=""><span class="badge badge-green">تم الاصلاح</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num">FA-00003</td><td class="">مستشفى السلام</td><td class="num">EL-0006</td><td class="">خلل كهربائي</td><td class="">حرجة</td><td class="">سعد ناصر</td><td class="num">30 دقيقة</td><td class=""><span class="badge badge-gold">قيد المعالجة</span></td><td class=""><span class="badge badge-gold">معلق</span></td></tr><tr><td class="num">FA-00004</td><td class="">فندق الأندلس</td><td class="num">EL-0004</td><td class="">ضجيج في المحرك</td><td class="">عادية</td><td class="">عمر حسين</td><td class="num">4 ساعات</td><td class=""><span class="badge badge-green">تم الاصلاح</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num">FA-00005</td><td class="">أبراج الساعة</td><td class="num">EL-0008</td><td class="">عطل في مستشعر</td><td class="">عادية</td><td class="">فيصل الأحمد</td><td class="num">3 ساعات</td><td class=""><span class="badge badge-red">مفتوح</span></td><td class=""><span class="badge badge-red">غير مفوتر</span></td></tr></tbody>
       </table>
         <div class="rpt-footer-line">
           <span>LiftCore — الإدارة الذكية للمصاعد</span>
@@ -365,12 +353,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </div>
     </div>
-    <div class="rpt-stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">89</div><div class="rpt-stat-label">إجمالي الأعطال</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">12</div><div class="rpt-stat-label">هذا الشهر</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">81</div><div class="rpt-stat-label">محلولة</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">1.8 ساعة</div><div class="rpt-stat-label">متوسط الاستجابة</div></div></div>
+    <div class="rpt-stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">89</div><div class="rpt-stat-label">إجمالي الأعطال</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">12</div><div class="rpt-stat-label">هذا الشهر</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">81</div><div class="rpt-stat-label">تم الاصلاح</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">1.8 ساعة</div><div class="rpt-stat-label">متوسط الاستجابة</div></div></div>
     <div class="table-wrap">
       <div class="table-scroll">
         <table>
           <thead><tr><th>الكود</th><th>العميل</th><th>المصعد</th><th>نوع العطل</th><th>الأولوية</th><th>الفني</th><th>الاستجابة</th><th>الحالة</th><th>فوترة</th></tr></thead>
-          <tbody id="report-tbody"><tr><td class="num ltr">FA-00001</td><td class="">برج الياسمين</td><td class="num ltr">EL-0001</td><td class="">عطل في الباب الآلي</td><td class="">عادية</td><td class="">أحمد محمد</td><td class="num ltr">2 ساعة</td><td class=""><span class="badge badge-green">محلول</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num ltr">FA-00002</td><td class="">مجمع النخيل</td><td class="num ltr">EL-0003</td><td class="">توقف مفاجئ</td><td class="">عاجلة</td><td class="">خالد عبدالله</td><td class="num ltr">45 دقيقة</td><td class=""><span class="badge badge-green">محلول</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num ltr">FA-00003</td><td class="">مستشفى السلام</td><td class="num ltr">EL-0006</td><td class="">خلل كهربائي</td><td class="">حرجة</td><td class="">سعد ناصر</td><td class="num ltr">30 دقيقة</td><td class=""><span class="badge badge-gold">قيد المعالجة</span></td><td class=""><span class="badge badge-gold">معلق</span></td></tr><tr><td class="num ltr">FA-00004</td><td class="">فندق الأندلس</td><td class="num ltr">EL-0004</td><td class="">ضجيج في المحرك</td><td class="">عادية</td><td class="">عمر حسين</td><td class="num ltr">4 ساعات</td><td class=""><span class="badge badge-green">محلول</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num ltr">FA-00005</td><td class="">أبراج الساعة</td><td class="num ltr">EL-0008</td><td class="">عطل في مستشعر</td><td class="">عادية</td><td class="">فيصل الأحمد</td><td class="num ltr">3 ساعات</td><td class=""><span class="badge badge-red">مفتوح</span></td><td class=""><span class="badge badge-red">غير مفوتر</span></td></tr></tbody>
+          <tbody id="report-tbody"><tr><td class="num ltr">FA-00001</td><td class="">برج الياسمين</td><td class="num ltr">EL-0001</td><td class="">عطل في الباب الآلي</td><td class="">عادية</td><td class="">أحمد محمد</td><td class="num ltr">2 ساعة</td><td class=""><span class="badge badge-green">تم الاصلاح</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num ltr">FA-00002</td><td class="">مجمع النخيل</td><td class="num ltr">EL-0003</td><td class="">توقف مفاجئ</td><td class="">عاجلة</td><td class="">خالد عبدالله</td><td class="num ltr">45 دقيقة</td><td class=""><span class="badge badge-green">تم الاصلاح</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num ltr">FA-00003</td><td class="">مستشفى السلام</td><td class="num ltr">EL-0006</td><td class="">خلل كهربائي</td><td class="">حرجة</td><td class="">سعد ناصر</td><td class="num ltr">30 دقيقة</td><td class=""><span class="badge badge-gold">قيد المعالجة</span></td><td class=""><span class="badge badge-gold">معلق</span></td></tr><tr><td class="num ltr">FA-00004</td><td class="">فندق الأندلس</td><td class="num ltr">EL-0004</td><td class="">ضجيج في المحرك</td><td class="">عادية</td><td class="">عمر حسين</td><td class="num ltr">4 ساعات</td><td class=""><span class="badge badge-green">تم الاصلاح</span></td><td class=""><span class="badge badge-green">مفوتر</span></td></tr><tr><td class="num ltr">FA-00005</td><td class="">أبراج الساعة</td><td class="num ltr">EL-0008</td><td class="">عطل في مستشعر</td><td class="">عادية</td><td class="">فيصل الأحمد</td><td class="num ltr">3 ساعات</td><td class=""><span class="badge badge-red">مفتوح</span></td><td class=""><span class="badge badge-red">غير مفوتر</span></td></tr></tbody>
         </table>
       </div>
       <div class="table-footer">
@@ -414,9 +402,9 @@ function exportExcel(){
   a.download = 'تقرير_الأعطال.csv';
   a.click();
 }
-document.getElementById('footer-date').textContent = new Date().toLocaleDateString('ar-SA');
+document.getElementById('footer-date').textContent = (window.fmtDate ? fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
 const el = document.getElementById('rpt-date-range');
-if(el) el.textContent = 'تاريخ التقرير: ' + new Date().toLocaleDateString('ar-SA');
+if(el) el.textContent = 'تاريخ التقرير: ' + (window.fmtDate ? fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
 </script>
 </body>
 </html>

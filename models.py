@@ -235,7 +235,7 @@ class Fault(db.Model):
     responded_at    = db.Column(db.DateTime)
     resolved_at     = db.Column(db.DateTime)
     response_time   = db.Column(db.String(50))  # محسوبة تلقائياً
-    status          = db.Column(db.String(30), default='مفتوح')  # مفتوح / قيد المعالجة / انتظار قطع / محلول / مغلق
+    status          = db.Column(db.String(30), default='مفتوح')  # مفتوح / قيد المعالجة / انتظار قطع / تم الاصلاح / مغلق
     resolution      = db.Column(db.Text)   # طريقة الحل
     dispatched_at   = db.Column(db.DateTime)
     billed          = db.Column(db.Boolean, default=False)
@@ -256,6 +256,8 @@ class Revenue(db.Model):
     code            = db.Column(db.String(20), unique=True, nullable=False)  # REV-001
     customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'))
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
+    invoice_id      = db.Column(db.Integer, db.ForeignKey('invoices.id'))
+    parts_billing_id = db.Column(db.Integer, db.ForeignKey('parts_billing.id'))
     revenue_date    = db.Column(db.Date, nullable=False)
     revenue_type    = db.Column(db.String(100))  # عقد صيانة / قطع غيار / أعمال إضافية
     payment_method  = db.Column(db.String(50))   # نقد / تحويل / شيك / بطاقة
@@ -266,6 +268,11 @@ class Revenue(db.Model):
     reference       = db.Column(db.String(100))  # رقم الشيك أو التحويل
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    customer        = db.relationship('Customer', foreign_keys=[customer_id])
+    contract        = db.relationship('Contract', foreign_keys=[contract_id])
+    invoice         = db.relationship('Invoice', foreign_keys=[invoice_id])
+    parts_billing   = db.relationship('PartsBilling', foreign_keys=[parts_billing_id])
 
     def __repr__(self):
         return f'<Revenue {self.code}>'
@@ -304,16 +311,22 @@ class Invoice(db.Model):
     invoice_type    = db.Column(db.String(30))   # فاتورة / سند قبض / إشعار دائن
     customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'))
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
+    parts_billing_id = db.Column(db.Integer, db.ForeignKey('parts_billing.id'))
     invoice_date    = db.Column(db.Date, nullable=False)
     due_date        = db.Column(db.Date)
     description     = db.Column(db.String(300))
     amount          = db.Column(db.Float, nullable=False)
     tax_amount      = db.Column(db.Float, default=0)
     total           = db.Column(db.Float, nullable=False)
+    paid_amount     = db.Column(db.Float, default=0)
     payment_method  = db.Column(db.String(50))
     status          = db.Column(db.String(30), default='غير مدفوعة')
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    customer        = db.relationship('Customer', foreign_keys=[customer_id])
+    contract        = db.relationship('Contract', foreign_keys=[contract_id])
+    parts_billing   = db.relationship('PartsBilling', foreign_keys=[parts_billing_id])
 
     def __repr__(self):
         return f'<Invoice {self.code}>'
@@ -402,6 +415,7 @@ class PartsBilling(db.Model):
     description     = db.Column(db.Text)   # بيان القطع
     cost_price      = db.Column(db.Float, default=0)   # تكلفة الشراء
     sell_price      = db.Column(db.Float, default=0)   # سعر البيع للعميل
+    paid_amount     = db.Column(db.Float, default=0)
     profit          = db.Column(db.Float, default=0)   # الربح
     payment_method  = db.Column(db.String(50))
     status          = db.Column(db.String(30), default='مكتملة')
@@ -411,6 +425,7 @@ class PartsBilling(db.Model):
     elevator        = db.relationship('Elevator', foreign_keys=[elevator_id])
     contract        = db.relationship('Contract', foreign_keys=[contract_id])
     customer        = db.relationship('Customer', foreign_keys=[customer_id])
+    technician      = db.relationship('Technician', foreign_keys=[technician_id])
     visit           = db.relationship('MaintenanceVisit', foreign_keys=[visit_id])
     fault           = db.relationship('Fault', foreign_keys=[fault_id])
 
@@ -428,7 +443,7 @@ class PurchaseOrder(db.Model):
     code = db.Column(db.String(20), unique=True, nullable=False)
     supplier = db.Column(db.String(200))
     order_date = db.Column(db.Date, default=date.today)
-    status = db.Column(db.String(30), default='مسودة')  # مسودة / مرسل / مستلم / ملغي
+    status = db.Column(db.String(30), default='مسودة')
     total_amount = db.Column(db.Float, default=0)
     notes = db.Column(db.Text)
     received_at = db.Column(db.DateTime)
@@ -469,9 +484,12 @@ class Settings(db.Model):
     cr_number       = db.Column(db.String(50))    # السجل التجاري
     vat_number      = db.Column(db.String(50))    # الرقم الضريبي
     tax_pct         = db.Column(db.Float, default=15)
-    currency        = db.Column(db.String(10), default='ر.س')
+    currency        = db.Column(db.String(10), default='SAR')
     language        = db.Column(db.String(10), default='ar')
     logo_path       = db.Column(db.String(300))
+    logo_width_sidebar = db.Column(db.Integer, default=150)
+    logo_width_report  = db.Column(db.Integer, default=150)
+    logo_width_login   = db.Column(db.Integer, default=180)
     rep_name        = db.Column(db.String(200))   # ممثل الشركة في العقود
     rep_mobile      = db.Column(db.String(20))      # جوال الممثل
     checklist_template_key = db.Column(db.String(50), default='liftcore_standard_v1')  # SaaS: قالب الفحص الافتراضي
@@ -489,6 +507,8 @@ class User(db.Model):
     full_name       = db.Column(db.String(100))
     email           = db.Column(db.String(100))
     role            = db.Column(db.String(30), default='viewer')  # admin / manager / viewer
+    theme           = db.Column(db.String(10), default='dark')  # dark / light
+    photo_path      = db.Column(db.String(300))
     is_active       = db.Column(db.Boolean, default=True)
     last_login      = db.Column(db.DateTime)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)

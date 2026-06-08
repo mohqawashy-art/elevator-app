@@ -21,7 +21,16 @@ VENV="${VENV:-$APP_DIR/.venv}"
 echo "==> LiftCore update in $APP_DIR"
 cd "$APP_DIR"
 
-echo "==> git pull"
+echo "==> backup database"
+for db in "$APP_DIR/instance/liftcore.db" "$APP_DIR/liftcore.db"; do
+  if [ -f "$db" ]; then
+    cp "$db" "${db}.bak.$(date +%Y%m%d%H%M%S)"
+    echo "  backed up $db"
+    break
+  fi
+done
+
+echo "==> git pull (never reset --hard)"
 git fetch origin main
 git pull --ff-only origin main
 
@@ -61,7 +70,10 @@ echo "==> verify"
 test -f "$APP_DIR/static/liftcore-dates.js" && echo "  liftcore-dates.js OK"
 test -f "$APP_DIR/templates/purchase-orders.html" && echo "  purchase-orders.html OK"
 grep -q "purchase-orders" "$APP_DIR/app.py" && echo "  purchase-orders route OK"
+test -f "$APP_DIR/templates/settings.html" && grep -q "settings_user_add" "$APP_DIR/app.py" && echo "  full settings UI OK"
+test -f "$APP_DIR/static/liftcore-shell.css" && echo "  liftcore-shell.css OK"
+test -f "$APP_DIR/templates/partials/app_header.html" && echo "  app_header partial OK"
 
 echo ""
 echo "==> Done — https://app.liftcoreapp.com"
-echo "    تحقق: /inventory و /purchase-orders"
+echo "    تحقق: /settings (تبويبات الشركة/المستخدمين/حسابي/المظهر)"

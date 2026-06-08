@@ -380,15 +380,18 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -415,29 +418,11 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
          </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>لوحة التحكم</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'لوحة التحكم' %}
+  {% include 'partials/app_header.html' %}
 
 
   <!-- CONTENT -->
@@ -567,7 +552,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
                 <div class="alert-text" id="a4">فواتير مستحقة السداد</div>
                 <div class="alert-sub">تجاوزت تاريخ الاستحقاق أو غير مدفوعة</div>
               </div>
-              <span class="alert-count">{{ '{:,.0f}'.format(stats.unpaid_total) }} ر.س</span>
+              <span class="alert-count">{{ '{:,.0f}'.format(stats.unpaid_total) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
             </div>
             {% endif %}
             {% if alerts.expiring_contracts_count == 0 and alerts.low_stock_count == 0 and stats.faults_open == 0 and stats.unpaid_total == 0 %}
@@ -718,10 +703,10 @@ function updateDashboard() {
 
   // تحديث الإيرادات لو موجودة
   const revEl = document.getElementById('total-revenue');
-  if(revEl) revEl.textContent = STATS.revenue.toLocaleString('ar-SA', {minimumFractionDigits:0}) + ' ر.س';
+  if(revEl) setMoneyEl(revEl, STATS.revenue, {minimumFractionDigits:0});
 
   const profitEl = document.getElementById('total-profit');
-  if(profitEl) profitEl.textContent = STATS.parts_profit.toLocaleString('ar-SA', {minimumFractionDigits:0}) + ' ر.س';
+  if(profitEl) setMoneyEl(profitEl, STATS.parts_profit, {minimumFractionDigits:0});
 }
 
 // تحميل البيانات الشهرية من API

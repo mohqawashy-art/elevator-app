@@ -152,15 +152,20 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -188,29 +193,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>الأصناف</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'الأصناف' %}
+  {% include 'partials/app_header.html' %}
 
 
   <div class="content">
@@ -244,7 +231,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <div class="stat-card">
         <div class="stat-label">قيمة المخزون</div>
         <div class="stat-value green" id="s-value">0</div>
-        <div class="stat-sub">ر.س إجمالي</div>
+        <div class="stat-sub"><span class="lc-sar" role="img" aria-label="ريال"></span> إجمالي</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">تحتاج طلب ⚠️</div>
@@ -313,6 +300,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
   </div>
 </div>
 
+<!-- MODAL -->
+
+</div>
+
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <div class="modal-head">
@@ -332,12 +323,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="field">
           <label>التصنيف</label>
           <select id="m-cat">
-            <option value="قطع غيار">قطع غيار</option>
-            <option value="مستهلكات">مستهلكات</option>
-            <option value="نظام الرفع والجر">نظام الرفع والجر</option>
-            <option value="نظام التحكم الكهربائي">نظام التحكم الكهربائي</option>
-            <option value="أبواب الطوابق">أبواب الطوابق</option>
-            <option value="المسامير والبراغي">المسامير والبراغي</option>
+            <option>مستهلكات</option>
+            <option>قطع غيار</option>
           </select>
         </div>
         <div class="field">
@@ -353,7 +340,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <input type="number" id="m-min" placeholder="1">
         </div>
         <div class="field">
-          <label>سعر الشراء (ر.س)</label>
+          <label>سعر الشراء (<span class="lc-sar" role="img" aria-label="ريال"></span>)</label>
           <input type="number" id="m-buy-price" placeholder="0.00" step="0.01" value="0">
         </div>
         <div class="field">
@@ -389,7 +376,6 @@ const NEXT_CODE = {{ next_item_code | tojson }};
 
 const ORDER_BADGE = { 'كافي': 'badge-green', 'منخفض': 'badge-gold', 'نافد': 'badge-red' };
 let filtered = [...ITEMS];
-let deleteId = null;
 
 function fmt(n) { return Number(n || 0).toLocaleString('ar-SA'); }
 
@@ -537,19 +523,20 @@ function exportCSV() {
   a.download = 'inventory.csv';
   a.click();
 }
-
 function setLang(l) {
-  document.documentElement.setAttribute('lang', l);
-  document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
-  document.getElementById('btn-ar').classList.toggle('active', l === 'ar');
-  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.documentElement.setAttribute('lang',l);
+  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
+  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
+  document.getElementById('btn-en').classList.toggle('active',l==='en');
 }
-function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
+document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
 
 const now = new Date();
-const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
 updateStats();

@@ -28,6 +28,9 @@ from models import (
 VISIT_ACTIVE = ('مجدولة', 'مُرسلة للفني', 'جارية')
 VISIT_DONE = ('مكتملة', 'ملغاة')
 FAULT_OPEN = ('مفتوح', 'قيد المعالجة', 'انتظار قطع')
+FAULT_STATUS_FIXED = 'تم الاصلاح'
+FAULT_STATUS_FIXED_LEGACY = 'محلول'
+FAULT_CLOSED = (FAULT_STATUS_FIXED, FAULT_STATUS_FIXED_LEGACY, 'مغلق')
 
 
 def next_code(model, prefix, field='code', digits=4):
@@ -152,9 +155,15 @@ def _visits_for_plan_month(plan_month: str) -> list[MaintenanceVisit]:
 def _is_maintenance_contract(c: Contract) -> bool:
     ctype = (c.contract_type or '').strip()
     freq = (c.maint_frequency or '').strip()
-    if 'صيانة' in ctype or 'ضمان' in ctype:
+    ctype_l = ctype.lower()
+    freq_l = freq.lower()
+    if any(k in ctype for k in ('صيانة', 'ضمان')) or 'maintenance' in ctype_l or 'warranty' in ctype_l:
         return True
-    return freq in ('شهري', 'monthly', 'Monthly')
+    maint_freqs = (
+        'شهري', 'monthly', 'ربع سنوي', 'نصف سنوي', 'سنوي',
+        'quarterly', 'semi', 'annual', 'yearly',
+    )
+    return any(f in freq_l or f in freq for f in maint_freqs)
 
 
 def _elevators_for_contract(contract: Contract) -> list[Elevator]:
@@ -255,13 +264,21 @@ def generate_monthly_plan(year: int, month: int, *, replace_draft: bool = False)
 
     db.session.commit()
     result = get_plan(plan_month)
-    return {
+    payload = {
         **result,
         'created': created,
         'linked': linked,
         'skipped': skipped,
         'districts': len(district_groups),
     }
+    if not district_groups:
+        payload['hint'] = (
+            'لا توجد عقود صيانة نشطة تغطي هذا الشهر — '
+            'تأكد من العقود (نوع صيانة/ضمان)، الحالة «نشط»، وربط المصاعد.'
+        )
+    elif created == 0 and linked == 0 and not result.get('total'):
+        payload['hint'] = 'لم يُنشأ شيء — قد تكون الزيارات موجودة مسبقاً أو المصاعد بدون عقد نشط.'
+    return payload
 
 
 def _customer_district(cust: Customer | None, elev: Elevator | None = None) -> str:
@@ -714,7 +731,7 @@ def fault_stats(today: date | None = None) -> dict:
     today = today or date.today()
     q = Fault.query
     closed_today = q.filter(
-        Fault.status.in_(('محلول', 'مغلق')),
+        Fault.status.in_(FAULT_CLOSED),
         Fault.resolved_at >= datetime.combine(today, datetime.min.time()),
     ).count()
     waiting_parts = q.filter(Fault.status == 'انتظار قطع').count()
@@ -933,6 +950,7 @@ def fault_report_payload(
     base_url: str = '',
 ) -> dict:
     from fault_report import FAULT_TYPE_OPTIONS, merge_fault_report, parse_fault_report_json, report_stats
+    from models import InventoryItem
 
     f = Fault.query.get_or_404(fault_id)
     if tech_id and f.technician_id and f.technician_id != tech_id:
@@ -974,6 +992,7 @@ def fault_report_payload(
             'city': cust.city if cust else '',
             'district': cust.district if cust else '',
             'address': cust.address if cust else '',
+            'building_photo': customer_photo_url(cust, base_url) if cust else '',
         },
         'elevator': {
             'code': elev.code if elev else '',
@@ -992,9 +1011,40 @@ def fault_report_payload(
         'fault_type_options_json': json.dumps(FAULT_TYPE_OPTIONS, ensure_ascii=False),
         'report_data': report_data,
         'report_data_json': json.dumps(report_data, ensure_ascii=False),
-        'logo_url': '/static/logo.png',
+        'inventory_items_json': json.dumps([
+            {
+                'id': i.id,
+                'code': i.code,
+                'name': i.name,
+                'unit': i.unit or 'قطعة',
+                'buy_price': i.buy_price or 0,
+                'sell_price': i.sell_price or 0,
+                'current_qty': i.current_qty or 0,
+            }
+            for i in InventoryItem.query.order_by(InventoryItem.name).all()
+        ], ensure_ascii=False),
+        'logo_url': _report_brand_logo_url(),
+        'company_name': _report_company_name(),
+        'company_name_en': _report_company_name_en(),
         'base_url': base_url,
     }
+
+
+def _report_brand_logo_url() -> str:
+    settings = Settings.query.first()
+    if settings and settings.logo_path:
+        return '/static/' + str(settings.logo_path).replace('\\', '/')
+    return '/static/logo.png'
+
+
+def _report_company_name() -> str:
+    settings = Settings.query.first()
+    return (settings.company_name if settings and settings.company_name else 'LiftCore')
+
+
+def _report_company_name_en() -> str:
+    settings = Settings.query.first()
+    return (settings.company_name_en if settings and settings.company_name_en else '')
 
 
 def save_fault_report(
@@ -1211,17 +1261,33 @@ def complete_field_fault(
     *,
     tech_notes: str,
     resolution: str,
-    status: str = 'محلول',
+    status: str = FAULT_STATUS_FIXED,
 ) -> None:
     f = Fault.query.get_or_404(fault_id)
     f.tech_notes = tech_notes
     f.resolution = resolution
-    f.status = status or 'محلول'
+    f.status = status or FAULT_STATUS_FIXED
     f.resolved_at = datetime.utcnow()
     db.session.commit()
 
 
 PARTS_JSON_PREFIX = 'PARTS_JSON:'
+
+
+def parts_billing_notes_display(notes: str | None) -> str:
+    """عرض ملاحظات المستخدم فقط — إخفاء بيانات PARTS_JSON الداخلية."""
+    if not notes or not str(notes).strip():
+        return ''
+    raw = str(notes).strip()
+    if raw.startswith(PARTS_JSON_PREFIX):
+        try:
+            payload = json.loads(raw[len(PARTS_JSON_PREFIX):])
+            if isinstance(payload, dict):
+                return str(payload.get('label') or '').strip()
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+        return ''
+    return raw
 
 
 def parse_fault_parts_lines(raw: str | None) -> list[dict]:
@@ -1264,9 +1330,69 @@ def parse_fault_parts_lines(raw: str | None) -> list[dict]:
 
 def format_fault_parts_description(lines: list[dict]) -> str:
     return '\n'.join(
-        f"{ln['qty']}× {ln['name']} — {ln['unit_price']:.2f} ر.س"
+        f"{ln['qty']}× {ln['name']} — {ln['unit_price']:.2f} \u20C1"
         for ln in lines
     )
+
+
+def parts_billing_invoice_lines(pb: PartsBilling | None) -> list[dict]:
+    """بنود الفاتورة من عملية قطع الغيار (PARTS_JSON أو الوصف)."""
+    if not pb:
+        return []
+
+    def _row(name: str, qty: float, unit_price: float) -> dict:
+        q = float(qty or 1)
+        u = float(unit_price or 0)
+        return {
+            'name': name.strip(),
+            'qty': q,
+            'unit_price': round(u, 2),
+            'total': round(q * u, 2),
+        }
+
+    if pb.notes and str(pb.notes).startswith(PARTS_JSON_PREFIX):
+        try:
+            payload = json.loads(str(pb.notes)[len(PARTS_JSON_PREFIX):])
+            rows = []
+            for row in payload.get('lines') or []:
+                if not isinstance(row, dict):
+                    continue
+                name = str(row.get('name') or '').strip()
+                if not name and row.get('item_id'):
+                    item = InventoryItem.query.get(int(row['item_id']))
+                    name = item.name if item else ''
+                qty = float(row.get('qty') or 1)
+                unit_price = float(row.get('unit_price') or 0)
+                if name and qty > 0:
+                    rows.append(_row(name, qty, unit_price))
+            if rows:
+                return rows
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+
+    if pb.description:
+        parsed = []
+        for line in str(pb.description).splitlines():
+            text = line.strip()
+            if not text:
+                continue
+            m = re.match(
+                r'(\d+(?:\.\d+)?)\s*[×xX]\s*(.+?)\s*[—–\-]\s*([\d.,]+)',
+                text,
+            )
+            if m:
+                qty = float(m.group(1).replace(',', ''))
+                name = m.group(2).strip()
+                unit_price = float(m.group(3).replace(',', ''))
+                parsed.append(_row(name, qty, unit_price))
+            else:
+                parsed.append(_row(text, 1, float(pb.sell_price or 0)))
+        if parsed:
+            return parsed
+
+    if pb.sell_price or pb.description:
+        return [_row(pb.description or 'قطع غيار / خدمة', 1, float(pb.sell_price or 0))]
+    return []
 
 
 def fault_registration_parts_lines(fault_id: int) -> list[dict]:

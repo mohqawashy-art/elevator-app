@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA&language=ar&region=SA"></script>
+{% include 'partials/google_maps_head.html' %}
 <script src="https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -248,14 +248,19 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 }
 @media(max-width:480px){.filters-bar{flex-direction:column}.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -282,29 +287,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>زيارات الصيانة</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'زيارات الصيانة' %}
+  {% include 'partials/app_header.html' %}
 
 
   <div class="content">
@@ -1019,11 +1006,12 @@ function loadElevatorContracts() {
 }
 
 function openPlanModal() {
+  const modal = document.getElementById('modal-plan');
+  if (!modal) return;
   syncPlanMonthFromWork();
-  document.getElementById('modal-plan').classList.add('open');
+  modal.classList.add('open');
   updatePlanMonthHint();
   initDispatchDate();
-  loadPlan();
 }
 
 function setPlanMode(mode) {
@@ -1159,14 +1147,41 @@ function fetchPlanApi(url, body) {
   });
 }
 
+function refreshVisitsFromServer(monthYm) {
+  const ym = monthYm || document.getElementById('work-month')?.value || planMonth();
+  if (!ym) return Promise.resolve();
+  return fetch('/api/maintenance/visits?month=' + encodeURIComponent(ym))
+    .then(async r => {
+      const text = await r.text();
+      let data;
+      try { data = text ? JSON.parse(text) : {}; } catch (e) {
+        throw new Error('تعذّر قراءة قائمة الزيارات');
+      }
+      if (!r.ok || data.error) throw new Error(data.error || 'تعذّر تحديث الجدول');
+      return data;
+    })
+    .then(data => {
+      const incoming = data.visits || [];
+      const b = monthBounds(ym);
+      const kept = VISITS.filter(v => !v.visit_date || v.visit_date < b.from || v.visit_date > b.to);
+      VISITS.splice(0, VISITS.length, ...kept, ...incoming);
+      const wm = document.getElementById('work-month')?.value;
+      if (wm === ym) applyWorkMonth();
+      return data;
+    });
+}
+
 function applyPlanData(data) {
   PLAN_VISITS = data.visits || [];
-  let msg = `الخطة ${data.plan_month || planMonth()}: ${data.total || 0} زيارة`;
+  const pm = data.plan_month || planMonth();
+  let msg = `الخطة ${pm}: ${data.total || 0} زيارة`;
   if (data.districts != null) msg += ` — ${data.districts} منطقة`;
   if (data.created != null) msg += ` (أُنشئ ${data.created} جديد)`;
   if (data.linked != null && data.linked > 0) msg += ` (رُبط ${data.linked} موجود)`;
   if (data.updated != null && data.updated > 0) msg += ` — عُيِّنت ${data.updated} زيارة`;
-  document.getElementById('plan-summary').textContent = msg;
+  if (data.hint) msg += ' — ' + data.hint;
+  const sum = document.getElementById('plan-summary');
+  if (sum) sum.textContent = msg;
   const ts = document.getElementById('plan-tech-summary');
   if (ts && data.tech_summary && data.tech_summary.length) {
     ts.innerHTML = '<strong style="font-size:12px">توزيع الفرق:</strong> ' +
@@ -1176,13 +1191,19 @@ function applyPlanData(data) {
       ).join('');
   } else if (ts) ts.innerHTML = '';
   renderPlanDistricts();
+  if (pm) refreshVisitsFromServer(pm).catch(() => {});
 }
 
 function loadPlan() {
   const ym = planMonth();
-  if (!ym) return;
+  if (!ym) {
+    alert('اختر شهر الخطة أولاً');
+    return;
+  }
   const sum = document.getElementById('plan-summary');
+  const districts = document.getElementById('plan-districts');
   if (sum) sum.textContent = 'جاري تحميل الخطة...';
+  if (districts) districts.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:12px">جاري التحميل...</p>';
   fetch('/api/maintenance/plan?plan_month=' + encodeURIComponent(ym))
     .then(async r => {
       const text = await r.text();
@@ -1293,15 +1314,16 @@ function filterPlanDistrict(district) {
 }
 
 function renderPlanDistricts() {
+  const el = document.getElementById('plan-districts');
+  if (!el) return;
   const by = {};
   PLAN_VISITS.forEach(v => {
     const d = v.district || 'غير محدد';
     if (!by[d]) by[d] = [];
     by[d].push(v);
   });
-  const el = document.getElementById('plan-districts');
   if (!PLAN_VISITS.length) {
-    el.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:12px">لا توجد زيارات في هذه الخطة بعد — ولّد تلقائياً أو أضف يدوياً.</p>';
+    el.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:12px">لا توجد زيارات في هذه الخطة بعد — اضغط «توليد كل المناطق» أو أضف يدوياً من تبويب الإعداد اليدوي.</p>';
     return;
   }
   const techOpts = MAINT_TECHS.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');

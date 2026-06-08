@@ -142,15 +142,20 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -177,29 +182,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>المصروفات</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'المصروفات' %}
+  {% include 'partials/app_header.html' %}
 
 
   <div class="content">
@@ -296,7 +283,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th>الوصف</th>
               <th>المسؤول</th>
               <th>طريقة الدفع</th>
-              <th>المبلغ (ر.س)</th>
+              <th>المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)</th>
               <th>ملاحظات</th>
               <th></th>
             </tr>
@@ -345,7 +332,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <input id="m-desc" placeholder="وصف المصروف">
         </div>
         <div class="field">
-          <label>المبلغ (ر.س) <span>*</span></label>
+          <label>المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>) <span>*</span></label>
           <input type="number" id="m-amount" placeholder="0.00">
         </div>
         <div class="field">
@@ -418,7 +405,7 @@ function renderTable(data) {
   if(!tbody) return;
   const total = data.reduce((s,e)=>s+e.amount,0);
   document.getElementById('expenses-count').textContent = data.length + ' سجل';
-  document.getElementById('expenses-total').textContent = total.toLocaleString('ar-SA',{minimumFractionDigits:2}) + ' ر.س';
+  setMoneyEl(document.getElementById('expenses-total'), total, {minimumFractionDigits:2,maximumFractionDigits:2});
   tbody.innerHTML = data.map(e=>`
     <tr onclick="viewExpense(${e.id})">
       <td class="td-code">${e.code}</td>
@@ -427,7 +414,7 @@ function renderTable(data) {
       <td>${e.description||'—'}</td>
       <td>${e.responsible||'—'}</td>
       <td>${e.pay_method}</td>
-      <td style="font-family:var(--font-en);color:var(--danger)">${e.amount.toLocaleString()} ر.س</td>
+      <td style="font-family:var(--font-en);color:var(--danger)">${e.amount.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
       <td style="color:var(--text3);font-size:11px">${e.notes||'—'}</td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
@@ -507,7 +494,7 @@ function viewExpense(id) {
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${e.code}</div></div>
       <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val" style="direction:ltr">${e.expense_date}</div></div>
       <div class="view-item"><div class="view-label">نوع المصروف</div><div class="view-val">${e.expense_type}</div></div>
-      <div class="view-item"><div class="view-label">المبلغ</div><div class="view-val" style="font-family:var(--font-en);color:var(--danger)">${e.amount.toLocaleString()} ر.س</div></div>
+      <div class="view-item"><div class="view-label">المبلغ</div><div class="view-val" style="font-family:var(--font-en);color:var(--danger)">${e.amount.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div></div>
       <div class="view-item"><div class="view-label">المسؤول</div><div class="view-val">${e.responsible||'—'}</div></div>
       <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${e.pay_method}</div></div>
       <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${e.reference||'—'}</div></div>

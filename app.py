@@ -3,8 +3,7 @@ LiftCore — Flask Application
 app.py
 """
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, g
-from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User
@@ -13,35 +12,138 @@ from calendar import monthrange
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, and_, text, inspect
 from werkzeug.utils import secure_filename
-from werkzeug.security import check_password_hash, generate_password_hash
-from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import re
 import uuid
 import shutil
+import secrets
+import string
 
 app = Flask(__name__)
+
+
+def _resolve_database_uri():
+    """استخدم instance/liftcore.db إن وُجد (الإنتاج) وإلا liftcore.db في جذر المشروع."""
+    os.makedirs(app.instance_path, exist_ok=True)
+    instance_db = os.path.join(app.instance_path, 'liftcore.db')
+    root_db = os.path.join(app.root_path, 'liftcore.db')
+    if os.path.isfile(instance_db) and os.path.getsize(instance_db) > 0:
+        return 'sqlite:///' + instance_db.replace('\\', '/')
+    if os.path.isfile(root_db) and os.path.getsize(root_db) > 0:
+        return 'sqlite:///' + root_db.replace('\\', '/')
+    return 'sqlite:///' + instance_db.replace('\\', '/')
+
 
 # =============================================
 # الإعدادات
 # =============================================
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'liftcore-secret-2025')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///liftcore.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or _resolve_database_uri()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
-
 if os.environ.get('LIFTCORE_HTTPS', '').strip().lower() in ('1', 'true', 'yes'):
     app.config['SESSION_COOKIE_SECURE'] = True
     app.config['PREFERRED_URL_SCHEME'] = 'https'
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 db.init_app(app)
 
 
+def western_digits(value):
+    if value is None:
+        return ''
+    text = str(value)
+    for i, ar in enumerate('٠١٢٣٤٥٦٧٨٩'):
+        text = text.replace(ar, str(i))
+    for i, fa in enumerate('۰۱۲۳۴۵۶۷۸۹'):
+        text = text.replace(fa, str(i))
+    return text
+
+
+@app.template_filter('en_num')
+def en_num_filter(value):
+    if value is None or value == '':
+        return ''
+    try:
+        n = float(value)
+        if n == int(n):
+            return f'{int(n):,}'
+        return f'{n:,.2f}'
+    except (TypeError, ValueError):
+        return western_digits(value)
+
+
+@app.template_filter('en_date')
+def en_date_filter(value):
+    if not value:
+        return ''
+    if hasattr(value, 'strftime'):
+        return value.strftime('%d/%m/%Y')
+    text = western_digits(str(value))
+    m = re.match(r'^(\d{4})-(\d{2})-(\d{2})', text)
+    if m:
+        return f'{m.group(3)}/{m.group(2)}/{m.group(1)}'
+    return text
+
+
+@app.template_filter('en_datetime')
+def en_datetime_filter(value):
+    if not value:
+        return ''
+    if hasattr(value, 'strftime'):
+        return value.strftime('%d/%m/%Y %H:%M')
+    text = western_digits(str(value))
+    m = re.match(r'^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})', text)
+    if m:
+        return f'{m.group(3)}/{m.group(2)}/{m.group(1)} {m.group(4)}:{m.group(5)}'
+    return en_date_filter(text)
+
+
+def get_app_settings():
+    try:
+        s = Settings.query.first()
+    except Exception:
+        db.session.rollback()
+        s = None
+    if not s:
+        s = Settings()
+        db.session.add(s)
+        db.session.commit()
+    return s
+
+
+def brand_logo_url(settings=None):
+    s = settings or get_app_settings()
+    if s.logo_path:
+        return url_for('static', filename=s.logo_path.replace('\\', '/'))
+    return url_for('static', filename='logo.png')
+
+
+ROLE_LABELS = {
+    'admin': 'مدير النظام',
+    'manager': 'مدير عمليات',
+    'viewer': 'عرض فقط',
+}
+
+LIFTCORE_PRODUCT_LOGO = 'liftcore-header-logo.png'
+
+
+def user_initials(user):
+    if not user:
+        return '?'
+    name = (user.full_name or user.username or '?').strip()
+    return name[0] if name else '?'
+
+
+def user_avatar_url(user):
+    if user and user.photo_path:
+        return url_for('static', filename=user.photo_path.replace('\\', '/'))
+    return None
+
+
 @app.template_filter('dmY')
 def format_date_dmy(value):
-    """عرض التاريخ بصيغة dd/mm/yyyy."""
     if not value:
         return '—'
     if hasattr(value, 'strftime'):
@@ -55,8 +157,37 @@ def format_date_dmy(value):
 
 @app.context_processor
 def inject_global_template_vars():
+    try:
+        s = Settings.query.first()
+    except Exception:
+        db.session.rollback()
+        s = None
+    uid = session.get('user_id')
+    user = None
+    if uid:
+        try:
+            user = db.session.get(User, uid)
+        except Exception:
+            db.session.rollback()
+    theme = 'dark'
+    if user and getattr(user, 'theme', None) in ('dark', 'light'):
+        theme = user.theme
     return {
         'google_maps_api_key': os.environ.get('GOOGLE_MAPS_API_KEY', '').strip(),
+        'brand_logo_url': brand_logo_url(s),
+        'liftcore_logo_url': url_for('static', filename=LIFTCORE_PRODUCT_LOGO),
+        'logo_width_sidebar': (getattr(s, 'logo_width_sidebar', None) or 150) if s else 150,
+        'logo_width_report': (getattr(s, 'logo_width_report', None) or 150) if s else 150,
+        'logo_width_login': (getattr(s, 'logo_width_login', None) or 180) if s else 180,
+        'user_theme': theme,
+        'company_settings': s,
+        'brand_name': (s.company_name if s and s.company_name else 'LiftCore'),
+        'role_labels': ROLE_LABELS,
+        'auth_user': user,
+        'user_initials': user_initials(user),
+        'user_avatar_url': user_avatar_url(user),
+        'user_display_name': (user.full_name or user.username) if user else '',
+        'user_role_label': ROLE_LABELS.get(user.role, user.role) if user else '',
     }
 
 
@@ -91,7 +222,11 @@ with app.app_context():
                 ('checklist_template_key', 'VARCHAR(50)'),
                 ('rep_name', 'VARCHAR(200)'),
                 ('rep_mobile', 'VARCHAR(20)'),
+                ('logo_width_sidebar', 'INTEGER'),
+                ('logo_width_report', 'INTEGER'),
+                ('logo_width_login', 'INTEGER'),
             ],
+            'users': [('theme', 'VARCHAR(10)'), ('photo_path', 'VARCHAR(300)')],
             'faults': [
                 ('visit_id', 'INTEGER'),
                 ('client_report', 'TEXT'),
@@ -109,46 +244,116 @@ with app.app_context():
                 ('control_operation', 'VARCHAR(50)'),
                 ('control_detail', 'VARCHAR(200)'),
             ],
-            'customers': [('name_en', 'VARCHAR(200)')],
-            'technicians': [
-                ('name_en', 'VARCHAR(100)'),
-                ('team', 'VARCHAR(30)'),
+            'parts_billing': [
+                ('visit_id', 'INTEGER'), ('fault_id', 'INTEGER'), ('paid_amount', 'FLOAT'),
             ],
-            'parts_billing': [('visit_id', 'INTEGER'), ('fault_id', 'INTEGER')],
+            'invoices': [('paid_amount', 'FLOAT'), ('parts_billing_id', 'INTEGER')],
+            'revenues': [
+                ('invoice_id', 'INTEGER'),
+                ('parts_billing_id', 'INTEGER'),
+            ],
+            'technicians': [('team', 'VARCHAR(30)'), ('name_en', 'VARCHAR(100)')],
+            'customers': [('name_en', 'VARCHAR(200)')],
         }
         for table, cols in _migrate_cols.items():
             if table not in insp.get_table_names():
                 continue
             existing = {c['name'] for c in insp.get_columns(table)}
             for col_name, col_type in cols:
-                if col_name not in existing:
+                if col_name in existing:
+                    continue
+                try:
                     db.session.execute(text(
                         f'ALTER TABLE {table} ADD COLUMN {col_name} {col_type}'
                     ))
-            db.session.commit()
-    except Exception:
+                    db.session.commit()
+                except Exception as exc:
+                    db.session.rollback()
+                    app.logger.warning('Migration skip %s.%s: %s', table, col_name, exc)
+        if 'faults' in insp.get_table_names():
+            try:
+                db.session.execute(text(
+                    "UPDATE faults SET status = 'تم الاصلاح' WHERE status = 'محلول'"
+                ))
+                db.session.commit()
+            except Exception as exc:
+                db.session.rollback()
+                app.logger.warning('Fault status migration skip: %s', exc)
+    except Exception as exc:
         db.session.rollback()
-
-    if not User.query.filter_by(username='admin').first():
-        db.session.add(User(
-            username='admin',
-            password_hash='admin123',
-            full_name='مدير النظام',
-            email='admin@liftcore.sa',
-            role='admin',
-            is_active=True,
-        ))
-        db.session.commit()
+        app.logger.warning('Schema migration error: %s', exc)
 
 TECH_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'technicians')
 VISIT_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'visits')
+COMPANY_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'company')
+USER_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'users')
+CLIENT_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'clients')
 ALLOWED_TECH_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
+ALLOWED_LOGO_EXT = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
 ALLOWED_TECH_DOC_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 ALLOWED_CLIENT_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 
 # =============================================
 # Helper — توليد الكودات التلقائية
 # =============================================
+def normalize_phone(phone):
+    if not phone:
+        return ''
+    digits = re.sub(r'\D', '', str(phone))
+    if digits.startswith('966') and len(digits) > 9:
+        digits = '0' + digits[3:]
+    return digits
+
+
+def phone_key(phone):
+    d = normalize_phone(phone)
+    return d[-9:] if len(d) >= 9 else d
+
+
+def phone_taken(phone, *, customer_id=None, technician_id=None):
+    key = phone_key(phone)
+    if not key or len(key) < 9:
+        return False, None
+    for c in Customer.query.all():
+        if customer_id and c.id == customer_id:
+            continue
+        for p in (c.phone, c.phone2):
+            if p and phone_key(p) == key:
+                return True, f'رقم الجوال مستخدم للعميل «{c.name}» ({c.code})'
+    for t in Technician.query.all():
+        if technician_id and t.id == technician_id:
+            continue
+        for p in (t.phone, t.phone2):
+            if p and phone_key(p) == key:
+                return True, f'رقم الجوال مستخدم للفني «{t.name}» ({t.code})'
+    return False, None
+
+
+def customer_fleet_status(customer):
+    elevs = customer.elevators
+    if not elevs:
+        return 'بدون مصاعد'
+    statuses = [e.status or '' for e in elevs]
+    if any(s in ('متوقف', 'خارج الخدمة') for s in statuses):
+        return 'يحتاج متابعة'
+    if any(s == 'تحت الصيانة' for s in statuses):
+        return 'تحت الصيانة'
+    if all(s == 'نشط' for s in statuses):
+        return 'نشط'
+    return statuses[0] or 'نشط'
+
+
+def sync_customer_from_elevators(customer):
+    if not customer:
+        return
+    n = len(customer.elevators)
+    if n > 0:
+        customer.status = customer_fleet_status(customer)
+
+
+app.jinja_env.globals['customer_fleet_status'] = customer_fleet_status
+
+
 def next_code(model, prefix, field='code', digits=4):
     import re
 
@@ -166,57 +371,14 @@ def next_code(model, prefix, field='code', digits=4):
 # =============================================
 # تسجيل الدخول
 # =============================================
-PUBLIC_ENDPOINTS = {'login', 'logout', 'static'}
-PUBLIC_PATH_PREFIXES = ('/field', '/static')
+@app.route('/')
+def index():
+    if session.get('user_id'):
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
 
 
-def _current_user():
-    uid = session.get('user_id')
-    if not uid:
-        return None
-    return User.query.get(uid)
-
-
-@app.before_request
-def require_login():
-    if request.endpoint in PUBLIC_ENDPOINTS:
-        return None
-    path = request.path or ''
-    for prefix in PUBLIC_PATH_PREFIXES:
-        if path.startswith(prefix):
-            return None
-    user = _current_user()
-    if user and user.is_active:
-        g.user = user
-        return None
-    session.clear()
-    if request.path.startswith('/api/'):
-        return jsonify({'error': 'يجب تسجيل الدخول'}), 401
-    return redirect(url_for('login', next=request.path))
-
-
-def login_required(view):
-    @wraps(view)
-    def wrapped(*args, **kwargs):
-        user = _current_user()
-        if not user or not user.is_active:
-            session.clear()
-            return redirect(url_for('login', next=request.path))
-        g.user = user
-        return view(*args, **kwargs)
-    return wrapped
-
-
-def _verify_password(user, password):
-    stored = (user.password_hash or '').strip()
-    if not stored:
-        return False
-    if stored.startswith('pbkdf2:') or stored.startswith('scrypt:'):
-        return check_password_hash(stored, password)
-    return stored == password
-
-
-def _find_user(login_id):
+def _find_login_user(login_id):
     login_id = (login_id or '').strip()
     if not login_id:
         return None
@@ -226,17 +388,18 @@ def _find_user(login_id):
     ).first()
 
 
-@app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
-    if _current_user():
+    if session.get('user_id'):
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
         login_id = request.form.get('email') or request.form.get('username')
         password = request.form.get('password') or ''
-        user = _find_user(login_id)
-        if user and _verify_password(user, password):
+        user = _find_login_user(login_id)
+        if user and verify_password(user.password_hash, password):
+            if not password_is_hashed(user.password_hash):
+                user.password_hash = hash_password(password)
             session.clear()
             session['user_id'] = user.id
             session['username'] = user.full_name or user.username
@@ -377,7 +540,7 @@ def api_dashboard_drill(card_type):
         rows = [
             [c.code, c.customer.name, c.contract_type or '—',
              str(c.start_date), str(c.end_date),
-             f'{c.total:,.0f} ر.س' if c.total else '—', c.status]
+             f'{c.total:,.0f} \u20c1' if c.total else '—', c.status]
             for c in Contract.query.filter_by(status='نشط').order_by(Contract.end_date).all()
         ]
         payload = {
@@ -435,7 +598,7 @@ def api_dashboard_drill(card_type):
         rows = [
             [i.code, (cust.name if cust else '—'),
              str(i.invoice_date), str(i.due_date or '—'),
-             f'{i.total:,.0f} ر.س' if i.total else '—', i.status]
+             f'{i.total:,.0f} \u20c1' if i.total else '—', i.status]
             for i, cust in invs
         ]
         payload = {
@@ -493,7 +656,7 @@ def api_dashboard_drill(card_type):
         )
         rows = [
             [i.code, cust.name if cust else '—', str(i.invoice_date),
-             f'{i.total:,.0f} ر.س' if i.total else '—', i.status]
+             f'{i.total:,.0f} \u20c1' if i.total else '—', i.status]
             for i, cust in invs
         ]
         payload = {
@@ -511,7 +674,7 @@ def api_dashboard_drill(card_type):
         )
         rows = [
             [i.code, cust.name if cust else '—', str(i.invoice_date),
-             f'{i.total:,.0f} ر.س' if i.total else '—', i.status]
+             f'{i.total:,.0f} \u20c1' if i.total else '—', i.status]
             for i, cust in invs
         ]
         payload = {
@@ -532,7 +695,7 @@ def api_dashboard_drill(card_type):
         )
         rows = [
             [i.code, cust.name if cust else '—', str(i.due_date or '—'),
-             f'{i.total:,.0f} ر.س' if i.total else '—', i.status]
+             f'{i.total:,.0f} \u20c1' if i.total else '—', i.status]
             for i, cust in invs
         ]
         payload = {
@@ -662,6 +825,35 @@ def api_customer_profile(customer_id):
     return jsonify(build_customer_profile(customer_id, contract_id))
 
 
+@app.route('/api/customers/<int:customer_id>/uncollected-ops')
+def api_customer_uncollected_ops(customer_id):
+    from customer_billing import customer_uncollected_ops
+
+    Customer.query.get_or_404(customer_id)
+    return jsonify({
+        'customer_id': customer_id,
+        'operations': customer_uncollected_ops(customer_id),
+    })
+
+
+@app.route('/api/customers/<int:customer_id>/billable-ops')
+def api_customer_billable_ops(customer_id):
+    from customer_billing import customer_billable_ops
+
+    Customer.query.get_or_404(customer_id)
+    return jsonify({
+        'customer_id': customer_id,
+        'operations': customer_billable_ops(customer_id),
+    })
+
+
+@app.route('/api/customers/<int:customer_id>/statement')
+def api_customer_statement(customer_id):
+    from customer_billing import build_customer_statement
+
+    return jsonify(build_customer_statement(customer_id))
+
+
 def _coords_from_customer(cust):
     if not cust or not cust.lat or not cust.lng:
         return None
@@ -774,6 +966,8 @@ def _visit_map_points(visits, today_only=True):
 
 
 def _parts_js_list(parts):
+    from operations import parts_billing_notes_display
+
     rows = []
     for p in parts:
         rows.append({
@@ -795,30 +989,9 @@ def _parts_js_list(parts):
             'status': p.status or 'مكتملة',
             'visit_code': p.visit.code if p.visit else '',
             'fault_code': p.fault.code if p.fault else '',
-            'notes': p.notes or '',
+            'notes': parts_billing_notes_display(p.notes),
         })
     return rows
-
-
-def _fault_map_points(faults):
-    open_status = ('مفتوح', 'قيد المعالجة', 'انتظار قطع')
-    points = []
-    for f in faults:
-        if f.status not in open_status:
-            continue
-        elev = f.elevator
-        cust = elev.customer if elev else None
-        coords = _coords_from_customer(cust)
-        if not coords:
-            continue
-        points.append({
-            'lat': coords[0],
-            'lng': coords[1],
-            'label': f'{f.code} — {cust.name}',
-            'priority': f.priority or '',
-            'status': f.status or '',
-        })
-    return points
 
 
 def _visit_json(v):
@@ -873,6 +1046,8 @@ def _fault_json(f):
 
 
 def _part_json(p):
+    from operations import parts_billing_notes_display
+
     return {
         'id': p.id,
         'code': p.code,
@@ -893,7 +1068,7 @@ def _part_json(p):
         'profit': p.profit or 0,
         'pay_method': p.payment_method or '',
         'status': p.status or 'مكتملة',
-        'notes': p.notes or '',
+        'notes': parts_billing_notes_display(p.notes),
     }
 
 
@@ -950,27 +1125,28 @@ def api_contract_detail(contract_id):
     return jsonify(_contract_json(c))
 
 
-def _resolve_name_en(form, *, ar_key='name', en_key='name_en'):
-    from liftcore_translit import arabic_to_latin
-
-    en = (form.get(en_key) or '').strip()
-    if en:
-        return en
-    ar = (form.get(ar_key) or '').strip()
-    return arabic_to_latin(ar) if ar else ''
-
-
 @app.route('/clients/add', methods=['POST'])
 def client_add():
+    phone = request.form.get('phone', '')
+    taken, msg = phone_taken(phone)
+    if taken:
+        flash(msg, 'error')
+        return redirect(url_for('clients'))
+    wa = request.form.get('phone2', '')
+    if wa and phone_key(wa) != phone_key(phone):
+        taken2, msg2 = phone_taken(wa)
+        if taken2:
+            flash(msg2, 'error')
+            return redirect(url_for('clients'))
     c = Customer(
         code         = next_code(Customer, 'C-', digits=4),
         name         = request.form['name'],
-        name_en      = _resolve_name_en(request.form),
+        name_en      = request.form.get('name_en', ''),
         city         = request.form.get('city',''),
         district     = request.form.get('district',''),
         address      = request.form.get('address',''),
-        phone        = request.form.get('phone',''),
-        phone2       = request.form.get('phone2',''),
+        phone        = phone,
+        phone2       = wa,
         email        = request.form.get('email',''),
         contact_person = request.form.get('contact_person',''),
         contact_role   = request.form.get('contact_role',''),
@@ -989,22 +1165,35 @@ def client_add():
 @app.route('/clients/edit/<int:id>', methods=['POST'])
 def client_edit(id):
     c = Customer.query.get_or_404(id)
+    phone = request.form.get('phone', '')
+    taken, msg = phone_taken(phone, customer_id=c.id)
+    if taken:
+        flash(msg, 'error')
+        return redirect(url_for('clients'))
+    wa = request.form.get('phone2', '')
+    if wa and phone_key(wa) != phone_key(phone):
+        taken2, msg2 = phone_taken(wa, customer_id=c.id)
+        if taken2:
+            flash(msg2, 'error')
+            return redirect(url_for('clients'))
     c.name           = request.form['name']
-    c.name_en        = _resolve_name_en(request.form)
+    c.name_en        = request.form.get('name_en', '')
     c.city           = request.form.get('city','')
     c.district       = request.form.get('district','')
     c.address        = request.form.get('address','')
-    c.phone          = request.form.get('phone','')
-    c.phone2         = request.form.get('phone2','')
+    c.phone          = phone
+    c.phone2         = wa
     c.email          = request.form.get('email','')
     c.contact_person = request.form.get('contact_person','')
-    c.status         = request.form.get('status','نشط')
+    if len(c.elevators) == 0:
+        c.status = request.form.get('status', 'نشط')
     c.notes          = request.form.get('notes','')
     c.contact_role   = request.form.get('contact_role','')
     c.national_id    = request.form.get('national_id','')
     c.lat            = request.form.get('lat','')
     c.lng            = request.form.get('lng','')
     c.maps_url       = request.form.get('maps_url','')
+    sync_customer_from_elevators(c)
     _save_client_building_photo(c, request.files.get('building_photo'))
     db.session.commit()
     return redirect(url_for('clients'))
@@ -1068,6 +1257,8 @@ def elevator_add():
         notes           = request.form.get('notes', ''),
     )
     db.session.add(e)
+    db.session.flush()
+    sync_customer_from_elevators(e.customer)
     db.session.commit()
     return redirect(url_for('elevators'))
 
@@ -1095,13 +1286,17 @@ def elevator_edit(id):
     e.next_maintenance = _parse_date(request.form.get('next_maintenance'))
     e.status           = request.form.get('status', 'نشط')
     e.notes            = request.form.get('notes', '')
+    sync_customer_from_elevators(e.customer)
     db.session.commit()
     return redirect(url_for('elevators'))
 
 @app.route('/elevators/delete/<int:id>', methods=['POST'])
 def elevator_delete(id):
     e = Elevator.query.get_or_404(id)
+    customer = e.customer
     db.session.delete(e)
+    db.session.flush()
+    sync_customer_from_elevators(customer)
     db.session.commit()
     return redirect(url_for('elevators'))
 
@@ -1127,17 +1322,8 @@ def contract_display_status(contract, today=None):
 
 
 def contract_paid_total(contract_id):
-    if not contract_id:
-        return 0.0
-    rev = db.session.query(db.func.coalesce(db.func.sum(Revenue.total), 0)).filter(
-        Revenue.contract_id == contract_id,
-        Revenue.status.in_(('محصّل', 'محصل')),
-    ).scalar() or 0
-    inv = db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).filter(
-        Invoice.contract_id == contract_id,
-        Invoice.status.in_(PAID_INVOICE_STATUSES),
-    ).scalar() or 0
-    return round(float(rev) + float(inv), 2)
+    from customer_billing import contract_paid_amount
+    return contract_paid_amount(contract_id)
 
 
 def contract_invoice_status(contract):
@@ -1195,6 +1381,8 @@ def _customer_in_period_filter(model, contract, date_field):
 
 
 def build_customer_profile(customer_id, contract_id=None):
+    from customer_billing import customer_uncollected_ops
+
     customer = Customer.query.get_or_404(customer_id)
     if contract_id:
         contract = Contract.query.filter_by(
@@ -1231,32 +1419,14 @@ def build_customer_profile(customer_id, contract_id=None):
     parts = parts_q.order_by(PartsBilling.billing_date.desc()).all()
     invoices = inv_q.order_by(Invoice.invoice_date.desc()).all()
 
-    rev_keys = {(r.revenue_date, round(r.total or 0, 2)) for r in revenues}
-    invoice_extra = [
-        i for i in invoices
-        if (i.invoice_date, round(i.total or 0, 2)) not in rev_keys
-    ]
+    from customer_billing import customer_financial_totals
 
-    _CONTRACT_REV_TYPES = (
-        'عقد صيانة', 'عقد ضمان', 'عقد تركيب', 'تجديد عقد', 'عقد جديد', 'صيانة',
-    )
-    contract_payments = sum(
-        r.total or 0 for r in revenues
-        if (r.revenue_type or 'عقد صيانة') in _CONTRACT_REV_TYPES
-    )
-    parts_from_rev = sum(
-        r.total or 0 for r in revenues if r.revenue_type == 'قطع غيار'
-    )
-    other_payments = sum(
-        r.total or 0 for r in revenues if r.revenue_type == 'أعمال إضافية'
-    )
-    parts_payments = sum(p.sell_price or 0 for p in parts) + parts_from_rev
-    contract_payments += sum(i.total or 0 for i in invoice_extra)
-    total_paid = (
-        sum(r.total or 0 for r in revenues)
-        + sum(p.sell_price or 0 for p in parts)
-        + sum(i.total or 0 for i in invoice_extra)
-    )
+    fin = customer_financial_totals(revenues, parts, invoices)
+    contract_payments = fin['contract_payments']
+    parts_payments = fin['parts_payments']
+    other_payments = fin['other_payments']
+    total_paid = fin['total_paid']
+    invoice_extra = fin['invoice_extra']
 
     contract_value = contract.total if contract else 0
     balance = max(contract_value - contract_payments, 0) if contract else 0
@@ -1421,6 +1591,9 @@ def build_customer_profile(customer_id, contract_id=None):
             'other_payments': round(other_payments, 2),
             'total_paid': round(total_paid, 2),
             'balance': round(balance, 2),
+            'outstanding_total': round(
+                sum(op['remaining'] for op in customer_uncollected_ops(customer_id)), 2
+            ),
         },
         'timeline': timeline[:80],
         'sections': sections,
@@ -1556,7 +1729,7 @@ app.jinja_env.globals['technician_display_status'] = technician_display_status
 
 def _apply_technician_form(t, form):
     t.name = form['name']
-    t.name_en = _resolve_name_en(form)
+    t.name_en = form.get('name_en', '')
     t.phone = form.get('phone', '')
     t.phone2 = form.get('phone2', '')
     t.job_title = form.get('job_title', '')
@@ -1726,6 +1899,17 @@ def api_technician_profile(tech_id):
 
 @app.route('/technicians/add', methods=['POST'])
 def technician_add():
+    phone = request.form.get('phone', '')
+    taken, msg = phone_taken(phone)
+    if taken:
+        flash(msg, 'error')
+        return redirect(url_for('technicians'))
+    wa = request.form.get('phone2', '')
+    if wa and phone_key(wa) != phone_key(phone):
+        taken2, msg2 = phone_taken(wa)
+        if taken2:
+            flash(msg2, 'error')
+            return redirect(url_for('technicians'))
     t = Technician(code=next_code(Technician, 'Tech-', digits=3))
     _apply_technician_form(t, request.form)
     db.session.add(t)
@@ -1749,6 +1933,12 @@ def technician_update_phone(id):
     phone2 = (data.get('phone2') or '').strip()
     if not phone and not phone2:
         return jsonify({'error': 'أدخل رقم الجوال أو واتساب'}), 400
+    for p in (phone, phone2):
+        if not p:
+            continue
+        taken, msg = phone_taken(p, technician_id=t.id)
+        if taken:
+            return jsonify({'error': msg}), 400
     t.phone = phone or phone2
     t.phone2 = phone2 or phone
     db.session.commit()
@@ -1758,6 +1948,17 @@ def technician_update_phone(id):
 @app.route('/technicians/edit/<int:id>', methods=['POST'])
 def technician_edit(id):
     t = Technician.query.get_or_404(id)
+    phone = request.form.get('phone', '')
+    taken, msg = phone_taken(phone, technician_id=t.id)
+    if taken:
+        flash(msg, 'error')
+        return redirect(url_for('technicians'))
+    wa = request.form.get('phone2', '')
+    if wa and phone_key(wa) != phone_key(phone):
+        taken2, msg2 = phone_taken(wa, technician_id=t.id)
+        if taken2:
+            flash(msg2, 'error')
+            return redirect(url_for('technicians'))
     _apply_technician_form(t, request.form)
     _save_technician_photo(t, request.files.get('photo'))
     _save_technician_documents(
@@ -1892,7 +2093,7 @@ def visit_add():
             description=v.works_done or v.observations or 'عطل سُجّل أثناء الزيارة',
             priority=v.priority or 'عادية',
             reported_at=datetime.combine(v.visit_date, datetime.min.time()),
-            status='محلول' if v.status == 'مكتملة' else 'قيد المعالجة',
+            status='تم الاصلاح' if v.status == 'مكتملة' else 'قيد المعالجة',
             resolution=v.works_done or '',
         )
         db.session.add(fault)
@@ -1942,6 +2143,25 @@ def visit_delete(id):
     return redirect(url_for('maintenance_visits'))
 
 
+@app.route('/api/maintenance/visits', methods=['GET'])
+def api_maintenance_visits():
+    """قائمة زيارات شهر معيّن — لتحديث الجدول بعد تخطيط الشهر."""
+    month = request.args.get('month', '').strip()
+    q = MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc())
+    if month and '-' in month:
+        try:
+            year, m = map(int, month.split('-', 1))
+            start = date(year, m, 1)
+            end = date(year, m, monthrange(year, m)[1])
+            q = q.filter(
+                MaintenanceVisit.visit_date >= start,
+                MaintenanceVisit.visit_date <= end,
+            )
+        except (TypeError, ValueError):
+            return jsonify({'error': 'صيغة الشهر غير صحيحة (YYYY-MM)'}), 400
+    return jsonify({'visits': _visits_js_list(q.all()), 'month': month})
+
+
 @app.route('/api/maintenance/plan', methods=['GET'])
 def api_get_plan():
     from operations import get_plan, list_districts
@@ -1949,7 +2169,11 @@ def api_get_plan():
     plan_month = request.args.get('plan_month', '').strip()
     if not plan_month:
         return jsonify({'error': 'حدد شهر الخطة'}), 400
-    return jsonify(get_plan(plan_month) | {'district_list': list_districts()})
+    try:
+        return jsonify(get_plan(plan_month) | {'district_list': list_districts()})
+    except Exception as exc:
+        app.logger.exception('get_plan failed for %s', plan_month)
+        return jsonify({'error': f'تعذّر تحميل الخطة: {exc}'}), 500
 
 
 @app.route('/api/maintenance/districts', methods=['GET'])
@@ -2254,7 +2478,7 @@ def field_fault_complete(fault_id):
         fault_id,
         tech_notes=request.form.get('tech_notes', ''),
         resolution=request.form.get('resolution', ''),
-        status=request.form.get('status', 'محلول'),
+        status=request.form.get('status', 'تم الاصلاح'),
     )
     tech_id = request.form.get('tech_id')
     return redirect(url_for('field_home', tech_id=tech_id))
@@ -2300,7 +2524,8 @@ def faults():
         customers_js=[
             {'id': c.id, 'code': c.code, 'name': c.name,
              'city': c.city or '', 'district': c.district or '',
-             'contact_person': c.contact_person or '', 'phone': c.phone or ''}
+             'contact_person': c.contact_person or '', 'phone': c.phone or '',
+             'building_photo_url': _static_upload_url(c.building_photo_path) or ''}
             for c in customers
         ],
         elevators_js=[
@@ -2317,7 +2542,6 @@ def faults():
              'sell_price': i.sell_price or 0}
             for i in inventory_items
         ],
-        fault_map_points=_fault_map_points(faults),
         next_fault_code=next_code(Fault, 'FA-', digits=5),
         fault_stats=fault_stats(),
         fault_alerts=fault_alerts(),
@@ -2448,44 +2672,70 @@ def revenues():
     customers = Customer.query.all()
     return render_template('revenues.html', revenues=revs, customers=customers)
 
+def _revenue_from_form(form, existing: Revenue | None = None):
+    from customer_billing import apply_payment_to_source
+
+    amount = float(form.get('amount', 0) or 0)
+    tax = round(amount * 0.15, 2)
+    total = round(amount + tax, 2)
+    source_type = (form.get('source_type') or '').strip()
+    source_id = (form.get('source_id') or '').strip()
+    notes = form.get('notes', '')
+    contract_id = form.get('contract_id') or None
+    invoice_id = None
+    parts_billing_id = None
+    revenue_type = form.get('revenue_type', '')
+    customer_id = form.get('customer_id') or None
+
+    if source_type and source_id and not existing:
+        link = apply_payment_to_source(source_type, int(source_id), total)
+        customer_id = link['customer_id']
+        contract_id = link['contract_id']
+        invoice_id = link['invoice_id']
+        parts_billing_id = link['parts_billing_id']
+        revenue_type = link['revenue_type']
+        ref_note = link.get('reference_note') or ''
+        if ref_note and ref_note not in (notes or ''):
+            notes = (ref_note + (' — ' + notes if notes else '')).strip()
+
+    data = {
+        'customer_id': int(customer_id) if customer_id else None,
+        'contract_id': int(contract_id) if contract_id else None,
+        'invoice_id': invoice_id,
+        'parts_billing_id': parts_billing_id,
+        'revenue_date': datetime.strptime(form['revenue_date'], '%Y-%m-%d').date(),
+        'revenue_type': revenue_type,
+        'payment_method': form.get('payment_method', ''),
+        'amount': amount,
+        'tax_amount': tax,
+        'total': total,
+        'status': form.get('status', 'محصّل'),
+        'reference': form.get('reference', ''),
+        'notes': notes,
+    }
+    if existing:
+        for key, val in data.items():
+            setattr(existing, key, val)
+        return existing
+    r = Revenue(code=next_code(Revenue, 'REV-', digits=3), **data)
+    db.session.add(r)
+    return r
+
+
 @app.route('/revenues/edit/<int:id>', methods=['POST'])
 def revenue_edit(id):
     r = Revenue.query.get_or_404(id)
-    amount = float(request.form.get('amount', 0))
-    tax = amount * 0.15
-    r.customer_id    = request.form.get('customer_id') or None
-    r.revenue_date   = datetime.strptime(request.form['revenue_date'], '%Y-%m-%d').date()
-    r.revenue_type   = request.form.get('revenue_type','')
-    r.payment_method = request.form.get('payment_method','')
-    r.amount         = amount
-    r.tax_amount     = tax
-    r.total          = amount + tax
-    r.status         = request.form.get('status','محصّل')
-    r.reference      = request.form.get('reference','')
-    r.notes          = request.form.get('notes','')
+    old_contract_id = r.contract_id
+    _revenue_from_form(request.form, existing=r)
     sync_contract_invoice_status(r.contract_id)
+    if old_contract_id and old_contract_id != r.contract_id:
+        sync_contract_invoice_status(old_contract_id)
     db.session.commit()
     return redirect(url_for('revenues'))
 
 @app.route('/revenues/add', methods=['POST'])
 def revenue_add():
-    amount = float(request.form.get('amount', 0))
-    tax = amount * 0.15
-    r = Revenue(
-        code           = next_code(Revenue, 'REV-', digits=3),
-        customer_id    = request.form.get('customer_id') or None,
-        contract_id    = request.form.get('contract_id') or None,
-        revenue_date   = datetime.strptime(request.form['revenue_date'], '%Y-%m-%d').date(),
-        revenue_type   = request.form.get('revenue_type',''),
-        payment_method = request.form.get('payment_method',''),
-        amount         = amount,
-        tax_amount     = tax,
-        total          = amount + tax,
-        status         = request.form.get('status','محصّل'),
-        reference      = request.form.get('reference',''),
-        notes          = request.form.get('notes',''),
-    )
-    db.session.add(r)
+    r = _revenue_from_form(request.form)
     db.session.flush()
     sync_contract_invoice_status(r.contract_id)
     db.session.commit()
@@ -2559,7 +2809,7 @@ def invoice_edit(id):
     i = Invoice.query.get_or_404(id)
     amount = float(request.form.get('amount', 0))
     tax = amount * 0.15
-    i.invoice_type   = request.form.get('invoice_type','فاتورة')
+    i.invoice_type   = request.form.get('invoice_type', 'فاتورة ضريبية')
     i.customer_id    = request.form.get('customer_id') or None
     i.invoice_date   = datetime.strptime(request.form['invoice_date'], '%Y-%m-%d').date()
     i.due_date       = datetime.strptime(request.form['due_date'], '%Y-%m-%d').date() if request.form.get('due_date') else None
@@ -2576,27 +2826,85 @@ def invoice_edit(id):
 
 @app.route('/invoices/add', methods=['POST'])
 def invoice_add():
-    amount = float(request.form.get('amount', 0))
-    tax = amount * 0.15
+    amount = float(request.form.get('amount', 0) or 0)
+    tax = round(amount * 0.15, 2)
+    total = round(amount + tax, 2)
+    source_type = (request.form.get('source_type') or '').strip()
+    source_id = (request.form.get('source_id') or '').strip()
+    customer_id = request.form.get('customer_id') or None
+    contract_id = request.form.get('contract_id') or None
+    parts_billing_id = None
+    notes = request.form.get('notes', '')
+
+    if source_type == 'parts_billing' and source_id:
+        pb = PartsBilling.query.get_or_404(int(source_id))
+        if Invoice.query.filter_by(parts_billing_id=pb.id).first():
+            flash('يوجد فاتورة لهذه العملية مسبقاً', 'error')
+            return redirect(url_for('invoices'))
+        customer_id = pb.customer_id
+        contract_id = pb.contract_id
+        parts_billing_id = pb.id
+        ref = f'فاتورة عملية {pb.code}'
+        if ref not in (notes or ''):
+            notes = (ref + (' — ' + notes if notes else '')).strip()
+    elif source_type == 'contract' and source_id:
+        c = Contract.query.get_or_404(int(source_id))
+        from customer_billing import _invoice_exists_for_contract, contract_paid_amount
+        if _invoice_exists_for_contract(c.id):
+            flash('يوجد فاتورة لهذا العقد مسبقاً', 'error')
+            return redirect(url_for('invoices'))
+        customer_id = c.customer_id
+        contract_id = c.id
+        ref = f'فاتورة عقد {c.code}'
+        if ref not in (notes or ''):
+            notes = (ref + (' — ' + notes if notes else '')).strip()
+
+    due_raw = request.form.get('due_date', '').strip()
+    invoice_status = request.form.get('status', 'غير مدفوعة')
+    invoice_paid = 0.0
+    if source_type == 'parts_billing' and source_id:
+        pb = PartsBilling.query.get(int(source_id))
+        if pb and (pb.paid_amount or 0) >= (pb.sell_price or 0) - 0.01:
+            invoice_paid = total
+            if invoice_status in ('', 'غير مدفوعة'):
+                invoice_status = 'مدفوعة'
+    elif source_type == 'contract' and source_id:
+        from customer_billing import contract_paid_amount
+        c = Contract.query.get(int(source_id))
+        if c and contract_paid_amount(c.id) >= (c.total or 0) - 0.01:
+            invoice_paid = total
+            if invoice_status in ('', 'غير مدفوعة'):
+                invoice_status = 'مدفوعة'
+
     i = Invoice(
-        code           = next_code(Invoice, 'INV-', digits=4),
-        invoice_type   = request.form.get('invoice_type','فاتورة'),
-        customer_id    = request.form.get('customer_id') or None,
-        contract_id    = request.form.get('contract_id') or None,
-        invoice_date   = datetime.strptime(request.form['invoice_date'], '%Y-%m-%d').date(),
-        description    = request.form.get('description',''),
-        amount         = amount,
-        tax_amount     = tax,
-        total          = amount + tax,
-        payment_method = request.form.get('payment_method',''),
-        status         = request.form.get('status','غير مدفوعة'),
-        notes          = request.form.get('notes',''),
+        code=next_code(Invoice, 'INV-', digits=4),
+        invoice_type=request.form.get('invoice_type', 'فاتورة ضريبية'),
+        customer_id=int(customer_id) if customer_id else None,
+        contract_id=int(contract_id) if contract_id else None,
+        parts_billing_id=parts_billing_id,
+        invoice_date=datetime.strptime(request.form['invoice_date'], '%Y-%m-%d').date(),
+        due_date=datetime.strptime(due_raw, '%Y-%m-%d').date() if due_raw else None,
+        description=request.form.get('description', ''),
+        amount=amount,
+        tax_amount=tax,
+        total=total,
+        paid_amount=invoice_paid,
+        payment_method=request.form.get('payment_method', ''),
+        status=invoice_status,
+        notes=notes,
     )
     db.session.add(i)
     db.session.flush()
     sync_contract_invoice_status(i.contract_id)
     db.session.commit()
     return redirect(url_for('invoices'))
+
+@app.route('/invoices/<int:invoice_id>/print')
+def invoice_print_page(invoice_id):
+    from invoice_print import invoice_print_payload
+
+    return render_template('invoice-print.html', **invoice_print_payload(invoice_id))
+
 
 @app.route('/invoices/delete/<int:id>', methods=['POST'])
 def invoice_delete(id):
@@ -2732,7 +3040,6 @@ def purchase_orders_save():
     order_date_raw = request.form.get('order_date', '').strip()
     status = request.form.get('status', 'مسودة').strip()
     notes = request.form.get('notes', '').strip()
-
     try:
         order_date = datetime.strptime(order_date_raw, '%Y-%m-%d').date() if order_date_raw else date.today()
     except ValueError:
@@ -2741,7 +3048,6 @@ def purchase_orders_save():
     item_ids = request.form.getlist('item_id')
     quantities = request.form.getlist('quantity')
     unit_prices = request.form.getlist('unit_price')
-
     lines_data = []
     for item_id, qty, price in zip(item_ids, quantities, unit_prices):
         if not item_id:
@@ -2756,7 +3062,6 @@ def purchase_orders_save():
             'unit_price': unit_price,
             'line_total': quantity * unit_price,
         })
-
     if not lines_data:
         return redirect(url_for('purchase_orders'))
 
@@ -2771,17 +3076,14 @@ def purchase_orders_save():
     order.order_date = order_date
     order.notes = notes or None
     order.status = status if status in PO_STATUSES else 'مسودة'
-
     order.lines.clear()
     total = 0.0
     for row in lines_data:
         order.lines.append(PurchaseOrderLine(**row))
         total += row['line_total']
     order.total_amount = total
-
     if order.status == 'مستلم' and old_status != 'مستلم':
         _apply_purchase_receipt(order)
-
     db.session.commit()
     return redirect(url_for('purchase_orders'))
 
@@ -2807,30 +3109,23 @@ def stock_movements():
 
 @app.route('/stock-movements/add', methods=['POST'])
 def stock_add():
-    item_id = request.form.get('item_id', '').strip()
-    if not item_id:
-        return redirect(url_for('stock_movements'))
-    item_id = int(item_id)
-    qty = float(request.form.get('quantity', 0) or 0)
-    if qty <= 0:
-        return redirect(url_for('stock_movements'))
-    direction = request.form.get('direction', 'صادر')
-    unit_price = float(request.form.get('unit_price', 0) or 0)
-    tech_raw = request.form.get('technician_id', '').strip()
-    technician_id = int(tech_raw) if tech_raw else None
+    item_id   = int(request.form['item_id'])
+    qty       = float(request.form.get('quantity', 0))
+    direction = request.form.get('direction','صادر')
+    unit_price= float(request.form.get('unit_price', 0))
 
     m = StockMovement(
         code          = next_code(StockMovement, 'MV-', digits=3),
         item_id       = item_id,
         movement_date = datetime.strptime(request.form['movement_date'], '%Y-%m-%d').date(),
         direction     = direction,
-        movement_type = request.form.get('movement_type', ''),
+        movement_type = request.form.get('movement_type',''),
         quantity      = qty,
         unit_price    = unit_price,
         total_value   = qty * unit_price,
-        technician_id = technician_id,
-        reason        = request.form.get('reason', ''),
-        notes         = request.form.get('notes', ''),
+        technician_id = request.form.get('technician_id') or None,
+        reason        = request.form.get('reason',''),
+        notes         = request.form.get('notes',''),
     )
     db.session.add(m)
 
@@ -3031,39 +3326,344 @@ def report_parts():
     return render_template('report-parts.html')
 
 # =============================================
+# المستخدمون — مساعدات
+# =============================================
+def password_is_hashed(stored):
+    return bool(stored) and stored.startswith(('pbkdf2:', 'scrypt:', 'argon2:'))
+
+
+def hash_password(plain):
+    return generate_password_hash(plain or '')
+
+
+def verify_password(stored, plain):
+    if not stored or plain is None:
+        return False
+    if password_is_hashed(stored):
+        return check_password_hash(stored, plain)
+    return stored == plain
+
+
+def _migrate_plain_text_passwords():
+    """ترقية كلمات المرور القديمة (نص صريح) إلى تشفير pbkdf2 عند التشغيل."""
+    changed = False
+    for u in User.query.all():
+        if u.password_hash and not password_is_hashed(u.password_hash):
+            u.password_hash = hash_password(u.password_hash)
+            changed = True
+    if changed:
+        db.session.commit()
+
+
+with app.app_context():
+    try:
+        _migrate_plain_text_passwords()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Password migration error: %s', exc)
+
+
+def generate_password(length=12):
+    alphabet = string.ascii_letters + string.digits + '@#$!&'
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+def current_user():
+    uid = session.get('user_id')
+    if not uid:
+        return None
+    return db.session.get(User, uid)
+
+
+def require_login():
+    user = current_user()
+    if not user or not user.is_active:
+        return None
+    return user
+
+
+def require_admin():
+    user = require_login()
+    if not user or user.role != 'admin':
+        return None
+    return user
+
+
+PUBLIC_ENDPOINTS = {'login', 'logout', 'static', 'index'}
+PUBLIC_PATH_PREFIXES = ('/field', '/static')
+
+
+@app.before_request
+def enforce_auth():
+    if request.endpoint in PUBLIC_ENDPOINTS:
+        return None
+    path = request.path or ''
+    for prefix in PUBLIC_PATH_PREFIXES:
+        if path.startswith(prefix):
+            return None
+    user = current_user()
+    if user and user.is_active:
+        g.user = user
+        return None
+    session.clear()
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'يجب تسجيل الدخول'}), 401
+    return redirect(url_for('login', next=request.path))
+
+
+# =============================================
 # الإعدادات
 # =============================================
+def _save_company_logo(settings_row, file_storage):
+    if not file_storage or not file_storage.filename:
+        return
+    if not _ext_ok(file_storage.filename, ALLOWED_LOGO_EXT):
+        return
+    os.makedirs(COMPANY_UPLOAD_ROOT, exist_ok=True)
+    ext = file_storage.filename.rsplit('.', 1)[1].lower()
+    if ext == 'svg':
+        filename = 'logo.svg'
+    else:
+        filename = f'logo.{ext}'
+    for old in os.listdir(COMPANY_UPLOAD_ROOT):
+        if old.startswith('logo.'):
+            try:
+                os.remove(os.path.join(COMPANY_UPLOAD_ROOT, old))
+            except OSError:
+                pass
+    file_storage.save(os.path.join(COMPANY_UPLOAD_ROOT, filename))
+    settings_row.logo_path = f'uploads/company/{filename}'
+
+
+def _clamp_logo_width(value, default=150, min_w=60, max_w=400):
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(min_w, min(max_w, n))
+
+
+def _settings_redirect(tab='company', **kwargs):
+    params = {'tab': tab, **kwargs}
+    return redirect(url_for('settings', **params))
+
+
 @app.route('/settings')
 def settings():
-    s = Settings.query.first()
-    if not s:
-        s = Settings()
-        db.session.add(s)
-        db.session.commit()
-    users = User.query.all()
-    return render_template('settings.html', settings=s, users=users)
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+    s = get_app_settings()
+    users = User.query.order_by(User.id).all()
+    edit_user = None
+    edit_id = request.args.get('edit_user', type=int)
+    if edit_id and user.role == 'admin':
+        edit_user = User.query.get(edit_id)
+    return render_template(
+        'settings.html',
+        settings=s,
+        users=users,
+        current_user=user,
+        active_tab=request.args.get('tab', 'company'),
+        edit_user=edit_user,
+        settings_notice=session.pop('settings_notice', None),
+        generated_username=session.pop('settings_generated_username', None),
+        generated_password=session.pop('settings_generated_password', None),
+    )
+
 
 @app.route('/settings/save', methods=['POST'])
 def settings_save():
-    s = Settings.query.first()
-    if not s:
-        s = Settings()
-        db.session.add(s)
-    s.company_name    = request.form.get('company_name','')
-    s.company_name_en = request.form.get('company_name_en','')
-    s.phone           = request.form.get('phone','')
-    s.email           = request.form.get('email','')
-    s.address         = request.form.get('address','')
-    s.city            = request.form.get('city','')
-    s.rep_name        = request.form.get('rep_name','')
-    s.rep_mobile      = request.form.get('rep_mobile','')
-    s.cr_number       = request.form.get('cr_number','')
-    s.vat_number      = request.form.get('vat_number','')
-    s.tax_pct         = float(request.form.get('tax_pct', 15))
-    s.currency        = request.form.get('currency','ر.س')
-    s.language        = request.form.get('language','ar')
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة لتعديل بيانات الشركة.'
+        return _settings_redirect('company')
+    s = get_app_settings()
+    s.company_name    = request.form.get('company_name', '')
+    s.company_name_en = request.form.get('company_name_en', '')
+    s.phone           = request.form.get('phone', '')
+    s.email           = request.form.get('email', '')
+    s.address         = request.form.get('address', '')
+    s.city            = request.form.get('city', '')
+    s.rep_name        = request.form.get('rep_name', '')
+    s.rep_mobile      = request.form.get('rep_mobile', '')
+    s.cr_number       = request.form.get('cr_number', '')
+    s.vat_number      = request.form.get('vat_number', '')
+    try:
+        s.tax_pct = float(request.form.get('tax_pct', 15))
+    except ValueError:
+        s.tax_pct = 15
+    s.currency        = request.form.get('currency', 'SAR')
+    s.language        = request.form.get('language', 'ar')
+    s.logo_width_sidebar = _clamp_logo_width(request.form.get('logo_width_sidebar'), 150)
+    s.logo_width_report  = _clamp_logo_width(request.form.get('logo_width_report'), 150)
+    s.logo_width_login   = _clamp_logo_width(request.form.get('logo_width_login'), 180, min_w=80, max_w=500)
+    _save_company_logo(s, request.files.get('logo'))
     db.session.commit()
-    return redirect(url_for('settings', saved=1))
+    session['settings_notice'] = 'تم حفظ بيانات الشركة بنجاح.'
+    return _settings_redirect('company', saved=1)
+
+
+def _save_user_photo(user, file_storage):
+    if not file_storage or not file_storage.filename:
+        return
+    if not _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT):
+        return
+    ext = file_storage.filename.rsplit('.', 1)[1].lower()
+    folder = os.path.join(USER_UPLOAD_ROOT, str(user.id))
+    os.makedirs(folder, exist_ok=True)
+    for old in os.listdir(folder):
+        if old.startswith('avatar.'):
+            try:
+                os.remove(os.path.join(folder, old))
+            except OSError:
+                pass
+    filename = f'avatar.{ext}'
+    file_storage.save(os.path.join(folder, filename))
+    user.photo_path = f'uploads/users/{user.id}/{filename}'
+
+
+@app.route('/settings/profile', methods=['POST'])
+def settings_profile_save():
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+    user.full_name = (request.form.get('full_name') or '').strip() or user.username
+    user.email = (request.form.get('email') or '').strip()
+    _save_user_photo(user, request.files.get('photo'))
+    db.session.commit()
+    session['settings_notice'] = 'تم تحديث بيانات حسابك.'
+    return _settings_redirect('account')
+
+
+@app.route('/settings/theme', methods=['POST'])
+def settings_theme_save():
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+    theme = (request.form.get('theme') or 'dark').strip()
+    if theme not in ('dark', 'light'):
+        theme = 'dark'
+    user.theme = theme
+    db.session.commit()
+    session['settings_notice'] = 'تم حفظ المظهر.'
+    return _settings_redirect('appearance')
+
+
+@app.route('/settings/users/add', methods=['POST'])
+def settings_user_add():
+    admin = require_admin()
+    if not admin:
+        return redirect(url_for('login'))
+
+    username = (request.form.get('username') or '').strip()
+    full_name = (request.form.get('full_name') or '').strip()
+    email = (request.form.get('email') or '').strip()
+    role = (request.form.get('role') or 'viewer').strip()
+    password = (request.form.get('password') or '').strip()
+    auto_generate = request.form.get('auto_generate') == '1'
+
+    if not username:
+        session['settings_notice'] = 'اسم المستخدم مطلوب.'
+        return _settings_redirect('users')
+
+    if User.query.filter_by(username=username).first():
+        session['settings_notice'] = f'اسم المستخدم «{username}» مستخدم مسبقاً.'
+        return _settings_redirect('users')
+
+    if role not in ('admin', 'manager', 'viewer'):
+        role = 'viewer'
+
+    if auto_generate or not password:
+        password = generate_password()
+        session['settings_generated_username'] = username
+        session['settings_generated_password'] = password
+
+    user = User(
+        username=username,
+        password_hash=hash_password(password),
+        full_name=full_name or username,
+        email=email,
+        role=role,
+        is_active=True,
+    )
+    db.session.add(user)
+    db.session.commit()
+    session['settings_notice'] = f'تم إنشاء المستخدم «{username}» بنجاح.'
+    return _settings_redirect('users')
+
+
+@app.route('/settings/users/edit/<int:user_id>', methods=['POST'])
+def settings_user_edit(user_id):
+    admin = require_admin()
+    if not admin:
+        return redirect(url_for('login'))
+    target = User.query.get_or_404(user_id)
+    full_name = (request.form.get('full_name') or '').strip()
+    email = (request.form.get('email') or '').strip()
+    role = (request.form.get('role') or target.role).strip()
+    if role not in ('admin', 'manager', 'viewer'):
+        role = target.role
+    if target.id == admin.id and role != 'admin':
+        session['settings_notice'] = 'لا يمكنك تغيير دورك من مدير النظام.'
+        return _settings_redirect('users', edit_user=target.id)
+    target.full_name = full_name or target.username
+    target.email = email
+    target.role = role
+    new_pass = (request.form.get('new_password') or '').strip()
+    if new_pass:
+        if len(new_pass) < 6:
+            session['settings_notice'] = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.'
+            return _settings_redirect('users', edit_user=target.id)
+        target.password_hash = hash_password(new_pass)
+        session['settings_generated_username'] = target.username
+        session['settings_generated_password'] = new_pass
+    db.session.commit()
+    session['settings_notice'] = f'تم تحديث المستخدم «{target.username}».'
+    return _settings_redirect('users')
+
+
+@app.route('/settings/users/toggle/<int:user_id>', methods=['POST'])
+def settings_user_toggle(user_id):
+    admin = require_admin()
+    if not admin:
+        return redirect(url_for('login'))
+    target = User.query.get_or_404(user_id)
+    if target.id == admin.id:
+        session['settings_notice'] = 'لا يمكنك تعطيل حسابك.'
+        return _settings_redirect('users')
+    target.is_active = not target.is_active
+    db.session.commit()
+    state = 'تفعيل' if target.is_active else 'تعطيل'
+    session['settings_notice'] = f'تم {state} المستخدم «{target.username}».'
+    return _settings_redirect('users')
+
+
+@app.route('/settings/password', methods=['POST'])
+def settings_change_password():
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+
+    current = request.form.get('current_password') or ''
+    new_pass = (request.form.get('new_password') or '').strip()
+    confirm = (request.form.get('confirm_password') or '').strip()
+
+    if not verify_password(user.password_hash, current):
+        session['settings_notice'] = 'كلمة المرور الحالية غير صحيحة.'
+        return _settings_redirect('account')
+
+    if len(new_pass) < 6:
+        session['settings_notice'] = 'كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل.'
+        return _settings_redirect('account')
+
+    if new_pass != confirm:
+        session['settings_notice'] = 'تأكيد كلمة المرور غير متطابق.'
+        return _settings_redirect('account')
+
+    user.password_hash = hash_password(new_pass)
+    db.session.commit()
+    session['settings_notice'] = 'تم تغيير كلمة المرور بنجاح.'
+    return _settings_redirect('account')
 
 # =============================================
 # API للداشبورد (بيانات حقيقية)
@@ -3367,7 +3967,7 @@ def api_client_annual(customer_id):
 
     planned_visits = len(contracts) * 12  # تقديري
     done_visits    = len([v for v in visits if v.status == 'مكتملة'])
-    solved_faults  = len([f for f in faults if f.status in ['محلول','مغلق']])
+    solved_faults  = len([f for f in faults if f.status in ['تم الاصلاح', 'محلول', 'مغلق']])
 
     return jsonify({
         'customer': {
@@ -3422,4 +4022,4 @@ def api_client_annual(customer_id):
 # تشغيل التطبيق
 # =============================================
 if __name__ == '__main__':
-    app.run(debug=True, port=5001, use_reloader=False)
+    app.run(debug=True, port=5000)

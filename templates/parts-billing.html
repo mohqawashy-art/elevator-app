@@ -148,15 +148,20 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -183,29 +188,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>بيان القطع</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'بيان القطع' %}
+  {% include 'partials/app_header.html' %}
 
 
   <div class="content">
@@ -386,11 +373,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <textarea id="m-desc" placeholder="وصف القطع والأعمال المنفذة..."></textarea>
         </div>
         <div class="field">
-          <label>سعر التكلفة (ر.س)</label>
+          <label>سعر التكلفة (<span class="lc-sar" role="img" aria-label="ريال"></span>)</label>
           <input type="number" id="m-cost" placeholder="0.00" step="0.01" oninput="updateProfit()">
         </div>
         <div class="field">
-          <label>سعر العميل (ر.س) <span>*</span></label>
+          <label>سعر العميل (<span class="lc-sar" role="img" aria-label="ريال"></span>) <span>*</span></label>
           <input type="number" id="m-price" placeholder="0.00" step="0.01" oninput="updateProfit()">
         </div>
         <div class="field">
@@ -411,7 +398,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       </div>
       <div class="profit-preview">
         <span class="profit-preview-label">صافي الربح المتوقع:</span>
-        <span class="profit-preview-val" id="profit-preview" style="color:var(--text3)">0.00 ر.س</span>
+        <span class="profit-preview-val" id="profit-preview" style="color:var(--text3)">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
       </div>
     </div>
     <div class="modal-foot">
@@ -462,6 +449,10 @@ const STATUS_BADGE = {
 let currentDeleteId = null;
 let filtered = [...PARTS];
 
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+}
+
 function updateStats() {
   const totalSell = PARTS.reduce((s,p) => s + p.sell_price, 0);
   const totalCost = PARTS.reduce((s,p) => s + p.cost_price, 0);
@@ -469,14 +460,14 @@ function updateStats() {
   const collected = PARTS.filter(p => p.status === 'محصل' || p.status === 'مكتملة');
   const pending = PARTS.filter(p => p.status === 'غير محصل' || p.status === 'معلقة');
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('s-total', totalSell.toLocaleString('ar-SA'));
+  setMoneyEl(document.getElementById('s-total'), totalSell);
   set('s-total-sub', PARTS.length + ' عملية');
-  set('s-cost', totalCost.toLocaleString('ar-SA'));
-  set('s-profit', totalProfit.toLocaleString('ar-SA'));
+  setMoneyEl(document.getElementById('s-cost'), totalCost);
+  setMoneyEl(document.getElementById('s-profit'), totalProfit);
   set('s-margin', 'هامش ' + (totalSell ? ((totalProfit/totalSell)*100).toFixed(1) : 0) + '%');
-  set('s-collected', collected.reduce((s,p) => s + p.sell_price, 0).toLocaleString('ar-SA'));
+  setMoneyEl(document.getElementById('s-collected'), collected.reduce((s,p) => s + p.sell_price, 0));
   set('s-collected-sub', collected.length + ' عملية');
-  set('s-pending', pending.reduce((s,p) => s + p.sell_price, 0).toLocaleString('ar-SA'));
+  setMoneyEl(document.getElementById('s-pending'), pending.reduce((s,p) => s + p.sell_price, 0));
   set('s-pending-sub', pending.length + ' عملية');
   set('bills-count', PARTS.length + ' عملية');
 }
@@ -491,12 +482,12 @@ function renderTable(data) {
       <td>${p.customer} ${p.contract!=='—'?'/ '+p.contract:''}</td>
       <td style="direction:ltr;font-family:var(--font-en)">${p.billing_date}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${p.description||'—'}</td>
-      <td style="font-family:var(--font-en);color:var(--danger)">${p.cost_price.toLocaleString()} ر.س</td>
-      <td style="font-family:var(--font-en);color:var(--text1)">${p.sell_price.toLocaleString()} ر.س</td>
-      <td style="font-family:var(--font-en);color:var(--success)">${p.profit.toLocaleString()} ر.س</td>
+      <td style="font-family:var(--font-en);color:var(--danger)">${p.cost_price.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+      <td style="font-family:var(--font-en);color:var(--text1)">${p.sell_price.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+      <td style="font-family:var(--font-en);color:var(--success)">${p.profit.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
       <td>${p.pay_method||'—'}</td>
       <td><span class="badge ${STATUS_BADGE[p.status]||'badge-active'}">${p.status}</span></td>
-      <td style="color:var(--text3);font-size:11px">${p.notes||'—'}</td>
+      <td style="color:var(--text3);font-size:11px">${p.notes ? escHtml(p.notes) : '—'}</td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
           <button class="btn btn-secondary btn-sm btn-icon" onclick="viewPart(${p.id})">
@@ -568,7 +559,7 @@ function updateProfit() {
   const el = document.getElementById('profit-preview');
   if (!el) return;
   const profit = sell - cost;
-  el.textContent = profit.toLocaleString('ar-SA', {minimumFractionDigits: 2}) + ' ر.س';
+  setMoneyEl(el, profit, {minimumFractionDigits: 2, maximumFractionDigits: 2});
   el.style.color = profit >= 0 ? 'var(--success)' : 'var(--danger)';
 }
 
@@ -631,17 +622,17 @@ function viewPart(id) {
       <div style="background:rgba(224,72,72,.08);border:1px solid rgba(224,72,72,.2);border-radius:8px;padding:12px;text-align:center">
         <div style="font-size:11px;color:var(--text3);margin-bottom:4px">التكلفة</div>
         <div style="font-size:18px;font-weight:700;color:var(--danger);font-family:var(--font-en)">${p.cost_price.toLocaleString()}</div>
-        <div style="font-size:10px;color:var(--text3)">ر.س</div>
+        <div style="font-size:10px;color:var(--text3)"><span class="lc-sar" role="img" aria-label="ريال"></span></div>
       </div>
       <div style="background:rgba(42,127,255,.08);border:1px solid rgba(42,127,255,.2);border-radius:8px;padding:12px;text-align:center">
         <div style="font-size:11px;color:var(--text3);margin-bottom:4px">سعر البيع</div>
         <div style="font-size:18px;font-weight:700;color:var(--accent);font-family:var(--font-en)">${p.sell_price.toLocaleString()}</div>
-        <div style="font-size:10px;color:var(--text3)">ر.س</div>
+        <div style="font-size:10px;color:var(--text3)"><span class="lc-sar" role="img" aria-label="ريال"></span></div>
       </div>
       <div style="background:rgba(31,184,122,.08);border:1px solid rgba(31,184,122,.2);border-radius:8px;padding:12px;text-align:center">
         <div style="font-size:11px;color:var(--text3);margin-bottom:4px">الربح (${margin}%)</div>
         <div style="font-size:18px;font-weight:700;color:var(--success);font-family:var(--font-en)">${p.profit.toLocaleString()}</div>
-        <div style="font-size:10px;color:var(--text3)">ر.س</div>
+        <div style="font-size:10px;color:var(--text3)"><span class="lc-sar" role="img" aria-label="ريال"></span></div>
       </div>
     </div>
     <div class="view-grid">

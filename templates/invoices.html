@@ -10,7 +10,6 @@
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/tax_calc.css">
 <script src="/static/customer_profile.js"></script>
-<script src="/static/tax_calc.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -142,8 +141,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
 .field input::placeholder,.field textarea::placeholder{color:var(--text3)}
 .field textarea{resize:vertical;min-height:70px}
-.doc-type-toggle{display:flex;gap:8px;margin-bottom:16px}
-.doc-type-btn{flex:1;padding:10px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:var(--font-ar);font-size:13px;font-weight:500;transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px}
+.doc-type-toggle{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.doc-type-btn{flex:1;min-width:120px;padding:9px 8px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:var(--font-ar);font-size:12px;font-weight:500;transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px;text-align:center}
 .doc-type-btn.active{border-color:var(--accent);background:rgba(42,127,255,.1);color:var(--accent)}
 /* PRINT */
 @media print{
@@ -164,15 +163,21 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+
 <script src="/static/liftcore-format.js"></script>
+<script src="/static/tax_calc.js"></script>
+<script src="/static/liftcore-shell.js"></script>
+
 
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><img src="{{ url_for('static', filename='logo.png') }}" alt="LiftCore"></div>
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
 
     <div class="nav-section" id="ns1">الرئيسية</div>
 <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
@@ -199,40 +204,22 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <div class="nav-section" id="ns4">التقارير</div>
 <a class="nav-item" href="/reports"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>التقارير</span></a>
-<a class="nav-item" href="#"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg><span>الإعدادات</span></a>
-         </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">م</div>
-      <div><div class="sidebar-user-name">محمد القواشي</div><div class="sidebar-user-role">مدير النظام</div></div>
-    </div>
-  </div>
+</nav>
 </aside>
 <div class="main">
-  <header class="header">
-    <button class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <div class="header-title"><span id="h-date"></span><span>الفواتير</span></div>
-    <div class="header-spacer"></div>
-    <div class="header-actions">
-      <div class="lang-toggle">
-        <button class="lang-opt active" id="btn-ar" onclick="setLang('ar')">ع</button>
-        <button class="lang-opt" id="btn-en" onclick="setLang('en')">EN</button>
-      </div>
-      <button class="icon-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1a5 5 0 00-5 5v2.5L1.5 11h13L13 8.5V6a5 5 0 00-5-5z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg><span class="notif-dot"></span></button>
-      <div class="header-avatar">م</div>
-    </div>
-  </header>
+  {% set page_title = 'الفواتير' %}
+  {% include 'partials/app_header.html' %}
 
 
   <div class="content">
     <div class="page-header">
-      <div class="page-title">الفواتير وسندات القبض <span id="docs-count">0 سجل</span></div>
+      <div class="page-title">الفواتير وسندات القبض <span id="invoices-count">0 سجل</span></div>
       <div class="page-actions">
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير
         </button>
-        <button class="btn btn-primary btn-sm" onclick="openModal()">
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
           إضافة مستند
         </button>
@@ -331,7 +318,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th></th>
             </tr>
           </thead>
-          <tbody id="docs-tbody"></tbody>
+          <tbody id="table-body"></tbody>
         </table>
       </div>
       <div class="table-footer">
@@ -341,53 +328,49 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     </div>
   </div>
 </div>
-
-<!-- ADD/EDIT MODAL -->
-
-</div>
-
-<div class="modal-overlay" id="modal">
-  <div class="modal">
+<div class="modal-overlay" id="modal-add">
+  <div class="modal" style="max-width:720px">
     <div class="modal-head">
-      <span class="modal-title" id="modal-title">إضافة مستند جديد</span>
-      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+      <span class="modal-title" id="modal-title">إضافة فاتورة جديدة</span>
+      <button type="button" class="modal-close" onclick="closeAddModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
-      <!-- نوع المستند -->
       <div class="doc-type-toggle">
-        <button class="doc-type-btn active" id="mt-invoice" onclick="setModalType('invoice')">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><path d="M2 1h10v12l-2-1.5L8 13l-2-1.5L4 13l-2-1.5V1z"/></svg>
-          فاتورة
-        </button>
-        <button class="doc-type-btn" id="mt-receipt" onclick="setModalType('receipt')">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><rect x="1" y="2" width="12" height="10" rx="1.5"/><path d="M4 7h6M7 4v6"/></svg>
-          سند قبض
-        </button>
+        <button type="button" class="doc-type-btn active" id="mt-invoice" onclick="setDocType('فاتورة ضريبية')">فاتورة ضريبية (B2B)</button>
+        <button type="button" class="doc-type-btn" id="mt-simple" onclick="setDocType('فاتورة ضريبية مبسطة')">فاتورة مبسطة (B2C)</button>
+        <button type="button" class="doc-type-btn" id="mt-receipt" onclick="setDocType('سند قبض')">سند قبض</button>
       </div>
       <div class="form-grid">
-        <div class="field">
-          <label>رقم العقد</label>
-          <input id="m-cn" placeholder="CN-XXXXX">
+        <div class="field form-full">
+          <label>العميل <span>*</span></label>
+          <select id="f-customer-sel" onchange="onInvoiceCustomerChange()"><option value="">اختر العميل</option></select>
+        </div>
+        <input type="hidden" id="f-source-type" value="">
+        <input type="hidden" id="f-source-id" value="">
+        <input type="hidden" id="f-contract-id" value="">
+        <div class="form-full" id="inv-billable-wrap" style="display:none;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">عمليات جاهزة للفوترة — اختر العملية</div>
+          <div id="inv-billable-hint" style="font-size:11px;color:var(--warning);margin-bottom:8px"></div>
+          <div id="inv-billable-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
         </div>
         <div class="field">
-          <label>اسم العميل <span>*</span></label>
-          <input id="m-client" placeholder="اسم العميل">
+          <label>تاريخ الإصدار <span>*</span></label>
+          <input type="date" lang="en-GB" id="f-date" style="direction:ltr">
         </div>
         <div class="field">
-          <label>التاريخ <span>*</span></label>
-          <input type="date" lang="en-GB" id="m-date">
-        </div>
-        <div class="field">
-          <label>المبلغ (ر.س) <span>*</span></label>
-          <input type="number" id="m-amount" placeholder="0.00" step="0.01">
+          <label>تاريخ الاستحقاق</label>
+          <input type="date" lang="en-GB" id="f-due-date" style="direction:ltr">
         </div>
         <div class="field form-full">
           <label>البيان <span>*</span></label>
-          <textarea id="m-desc" placeholder="وصف الخدمة أو القطع..."></textarea>
+          <textarea id="f-desc" placeholder="وصف الخدمة أو القطع..."></textarea>
         </div>
+        {% with prefix='invtax', before_field_id='f-amount', pct_id='f-tax-pct' %}
+        {% include '_tax_amount_block.html' %}
+        {% endwith %}
         <div class="field">
           <label>طريقة الدفع</label>
-          <select id="m-pay">
+          <select id="f-pay-method">
             <option value="">—</option>
             <option>كاش</option>
             <option>تحويل</option>
@@ -396,560 +379,425 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="field">
           <label>الحالة</label>
-          <select id="m-status">
-            <option>غير محصل</option>
-            <option>محصل</option>
+          <select id="f-status-sel">
+            <option>غير مدفوعة</option>
+            <option>مدفوعة</option>
+            <option>مدفوع جزئياً</option>
+            <option>متأخرة</option>
           </select>
-        </div>
-        <div class="field">
-          <label>تاريخ السداد</label>
-          <input type="date" lang="en-GB" id="m-pay-date">
-        </div>
-        <div class="field">
-          <label>رقم الشيك / المرجع</label>
-          <input id="m-ref" placeholder="اختياري">
         </div>
         <div class="field form-full">
           <label>ملاحظات</label>
-          <input id="m-notes" placeholder="ملاحظات إضافية">
+          <textarea id="f-notes" placeholder="ملاحظات إضافية"></textarea>
         </div>
+        <input type="hidden" id="f-inv-type" value="فاتورة ضريبية">
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal()">إلغاء</button>
-      <button class="btn btn-primary" onclick="saveRecord()">حفظ</button>
+      <button type="button" class="btn btn-secondary" onclick="closeAddModal()">إلغاء</button>
+      <button type="button" class="btn btn-primary" onclick="saveInvoice()">حفظ</button>
     </div>
   </div>
 </div>
 
-<!-- PRINT MODAL -->
-<div class="modal-overlay" id="print-modal">
-  <div class="modal" style="max-width:500px">
+<div class="modal-overlay" id="modal-view">
+  <div class="modal" style="max-width:720px">
     <div class="modal-head">
-      <span class="modal-title">اختر نوع الطباعة</span>
-      <button class="modal-close" onclick="document.getElementById('print-modal').classList.remove('open')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+      <span class="modal-title" id="view-title">تفاصيل المستند</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-view')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
-    <div class="modal-body" style="display:flex;gap:12px;flex-direction:column">
-      <button class="btn btn-secondary" style="justify-content:center;padding:14px" onclick="printDoc('invoice')">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="16" height="16"><path d="M2 1h10v12l-2-1.5L8 13l-2-1.5L4 13l-2-1.5V1z"/></svg>
-        طباعة فاتورة
-      </button>
-      <button class="btn btn-secondary" style="justify-content:center;padding:14px" onclick="printDoc('receipt')">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="16" height="16"><rect x="1" y="2" width="12" height="10" rx="1.5"/><path d="M4 7h6M7 4v6"/></svg>
-        طباعة سند قبض
-      </button>
-    </div>
+    <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="document.getElementById('print-modal').classList.remove('open')">إلغاء</button>
+      <button type="button" class="btn btn-secondary" id="view-print-btn" style="display:none" onclick="printInvoice(currentViewId)">طباعة</button>
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head">
+      <span class="modal-title">تأكيد الحذف</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-delete')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body"><p style="color:var(--text2)">هل أنت متأكد من حذف هذا المستند؟</p></div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
+      <button type="button" class="btn btn-danger" onclick="confirmDelete()">حذف</button>
     </div>
   </div>
 </div>
 
 <script>
-let currentTab='all';
-let modalType='invoice';
-let editId=null;
-let nextId=100;
-let printTarget=null;
-
-let docs=[
-  {id:1,type:'invoice',num:'INV-001',cn:'CN-00029',client:'محسن حسان القرشي',date:'2026-05-18',desc:'طقم مزايت',amount:150,pay:'كاش',status:'محصل',payDate:'2026-05-18',ref:'',notes:''},
-  {id:2,type:'receipt',num:'REC-001',cn:'CN-00013',client:'عادل فوزان القرشي',date:'2026-05-18',desc:'تجديد عقد صيانة',amount:2000,pay:'كاش',status:'محصل',payDate:'2026-05-18',ref:'',notes:''},
-  {id:3,type:'invoice',num:'INV-002',cn:'CN-00064',client:'محمد ناهض الرفاعي',date:'2026-05-13',desc:'سير باب داخلي',amount:150,pay:'',status:'غير محصل',payDate:'',ref:'',notes:''},
-  {id:4,type:'receipt',num:'REC-002',cn:'CN-00012',client:'فرج فوزان القرشي',date:'2026-05-18',desc:'تجديد عقد صيانة',amount:2000,pay:'كاش',status:'محصل',payDate:'2026-05-18',ref:'',notes:''},
-  {id:5,type:'invoice',num:'INV-003',cn:'CN-00011',client:'دخيل الله مستور الحربى',date:'2026-05-09',desc:'لف وتركيب ماتور مصعد',amount:1200,pay:'تحويل',status:'محصل',payDate:'2026-05-09',ref:'',notes:''},
-  {id:6,type:'receipt',num:'REC-003',cn:'CN-00078',client:'حمده اليزيدي',date:'2026-05-16',desc:'تجديد عقد صيانة',amount:2000,pay:'تحويل',status:'محصل',payDate:'2026-05-16',ref:'',notes:''},
-  {id:7,type:'invoice',num:'INV-004',cn:'CN-00058',client:'عبد المطلوب سالم المورعي',date:'2026-04-29',desc:'كرسي تقل إيطالي 5 ملي',amount:150,pay:'تحويل',status:'محصل',payDate:'2026-04-29',ref:'',notes:''},
-  {id:8,type:'receipt',num:'REC-004',cn:'CN-00123',client:'خالد احمد عالم',date:'2026-04-29',desc:'عقد صيانة جديد - دفعة أولى',amount:750,pay:'كاش',status:'محصل',payDate:'2026-04-29',ref:'',notes:''},
-  {id:9,type:'invoice',num:'INV-005',cn:'CN-00046',client:'مطر القرشي',date:'2026-03-26',desc:'كونتاكت براشوت إيطالي',amount:250,pay:'',status:'غير محصل',payDate:'',ref:'',notes:''},
-  {id:10,type:'receipt',num:'REC-005',cn:'CN-00093',client:'د/محمد ابراهيم السعيدي',date:'2026-04-29',desc:'تجديد عقد صيانة',amount:2500,pay:'كاش',status:'محصل',payDate:'2026-04-29',ref:'',notes:''},
-];
-
-let filtered=[...docs];
-let page=1;
-const PER=15;
-
-function fmt(n){return Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
-
-function updateStats(){
-  const all=docs;
-  const invs=all.filter(r=>r.type==='invoice');
-  const recs=all.filter(r=>r.type==='receipt');
-  const paid=all.filter(r=>r.status==='محصل');
-  const unpaid=all.filter(r=>r.status==='غير محصل');
-  document.getElementById('s-inv').textContent=fmt(invs.reduce((s,r)=>s+r.amount,0))+' ر.س';
-  document.getElementById('s-inv-sub').textContent=invs.length+' فاتورة';
-  document.getElementById('s-rec').textContent=fmt(recs.reduce((s,r)=>s+r.amount,0))+' ر.س';
-  document.getElementById('s-rec-sub').textContent=recs.length+' سند';
-  document.getElementById('s-paid').textContent=fmt(paid.reduce((s,r)=>s+r.amount,0))+' ر.س';
-  document.getElementById('s-paid-sub').textContent=paid.length+' سجل';
-  document.getElementById('s-unpaid').textContent=fmt(unpaid.reduce((s,r)=>s+r.amount,0))+' ر.س';
-  document.getElementById('s-unpaid-sub').textContent=unpaid.length+' سجل';
-}
-
-function renderTable(){
-  const total=filtered.length;
-  const pages=Math.max(1,Math.ceil(total/PER));
-  if(page>pages)page=1;
-  const s=(page-1)*PER;
-  const slice=filtered.slice(s,s+PER);
-  document.getElementById('docs-count').textContent=total+' سجل';
-  document.getElementById('page-info').textContent=`عرض ${s+1}–${Math.min(s+PER,total)} من ${total}`;
-  const tbody=document.getElementById('docs-tbody');
-  if(!slice.length){
-    tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3)">لا توجد بيانات</td></tr>`;
-    document.getElementById('page-btns').innerHTML='';return;
-  }
-  tbody.innerHTML=slice.map(r=>`
-    <tr>
-      <td class="td-code">${r.num}</td>
-      <td>${r.type==='invoice'
-        ?'<span class="badge badge-blue">فاتورة</span>'
-        :'<span class="badge badge-purple">سند قبض</span>'}</td>
-      <td>
-        <div class="td-name" style="max-width:130px;overflow:hidden;text-overflow:ellipsis">${r.client}</div>
-        <div style="font-size:11px;color:var(--text3)">${r.cn}</div>
-      </td>
-      <td style="color:var(--text2)">${r.date}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;font-size:12px">${r.desc||'—'}</td>
-      <td class="td-num" style="color:var(--success);font-weight:700">${fmt(r.amount)} ر.س</td>
-      <td>${r.pay?`<span class="badge ${r.pay==='كاش'?'badge-green':r.pay==='تحويل'?'badge-blue':'badge-gold'}">${r.pay}</span>`:'—'}</td>
-      <td>${r.status==='محصل'
-        ?'<span class="badge badge-green">✓ محصل</span>'
-        :'<span class="badge badge-gold">⏳ غير محصل</span>'}</td>
-      <td style="font-size:12px;color:var(--text3);max-width:100px;overflow:hidden;text-overflow:ellipsis">${r.notes||'—'}</td>
-      <td><div class="td-actions">
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="openPrintModal(${r.id})" title="طباعة" style="color:var(--gold)"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg></button>
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="editRecord(${r.id})" title="تعديل"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M10 2l2 2-7 7H3v-2l7-7z"/></svg></button>
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="deleteRecord(${r.id})" title="حذف" style="color:var(--danger)"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><polyline points="2 4 12 4"/><path d="M11 4l-.75 8H3.75L3 4"/><path d="M5.5 4V2.5h3V4"/></svg></button>
-      </div></td>
-    </tr>`).join('');
-  const pb=document.getElementById('page-btns');
-  let h=`<button class="page-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>›</button>`;
-  for(let i=1;i<=pages;i++) h+=`<button class="page-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`;
-  h+=`<button class="page-btn" onclick="goPage(${page+1})" ${page===pages?'disabled':''}>‹</button>`;
-  pb.innerHTML=h;
-}
-
-function goPage(p){const pages=Math.ceil(filtered.length/PER);if(p<1||p>pages)return;page=p;renderTable();}
-
-function switchTab(tab){
-  currentTab=tab;
-  ['all','invoice','receipt'].forEach(t=>{
-    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
-  });
-  applyFilters();
-}
-
-function applyFilters(){
-  const s=document.getElementById('f-search').value.toLowerCase();
-  const py=document.getElementById('f-pay').value;
-  const st=document.getElementById('f-status').value;
-  const fr=document.getElementById('f-from').value;
-  const to=document.getElementById('f-to').value;
-  filtered=docs.filter(r=>{
-    if(currentTab!=='all'&&r.type!==currentTab)return false;
-    if(s&&!r.client.toLowerCase().includes(s)&&!r.num.toLowerCase().includes(s)&&!r.cn.toLowerCase().includes(s))return false;
-    if(py&&r.pay!==py)return false;
-    if(st&&r.status!==st)return false;
-    if(fr&&r.date<fr)return false;
-    if(to&&r.date>to)return false;
-    return true;
-  });
-  page=1;renderTable();
-}
-
-function clearFilters(){
-  ['f-search','f-pay','f-status','f-from','f-to'].forEach(id=>{const e=document.getElementById(id);if(e.tagName==='SELECT')e.selectedIndex=0;else e.value='';});
-  filtered=[...docs];page=1;renderTable();
-}
-
-function setModalType(t){
-  modalType=t;
-  document.getElementById('mt-invoice').classList.toggle('active',t==='invoice');
-  document.getElementById('mt-receipt').classList.toggle('active',t==='receipt');
-}
-
-function openModal(id=null){
-  editId=id;
-  document.getElementById('modal-title').textContent=id?'تعديل المستند':'إضافة مستند جديد';
-  if(id){
-    const r=docs.find(x=>x.id===id);
-    setModalType(r.type);
-    document.getElementById('m-cn').value=r.cn;
-    document.getElementById('m-client').value=r.client;
-    document.getElementById('m-date').value=r.date;
-    document.getElementById('m-amount').value=r.amount;
-    document.getElementById('m-desc').value=r.desc;
-    document.getElementById('m-pay').value=r.pay||'';
-    document.getElementById('m-status').value=r.status;
-    document.getElementById('m-pay-date').value=r.payDate||'';
-    document.getElementById('m-ref').value=r.ref||'';
-    document.getElementById('m-notes').value=r.notes||'';
-  } else {
-    setModalType('invoice');
-    ['m-cn','m-client','m-amount','m-desc','m-ref','m-notes'].forEach(i=>document.getElementById(i).value='');
-    document.getElementById('m-date').value=new Date().toISOString().split('T')[0];
-    document.getElementById('m-pay').selectedIndex=0;
-    document.getElementById('m-status').selectedIndex=0;
-    document.getElementById('m-pay-date').value='';
-  }
-  document.getElementById('modal').classList.add('open');
-}
-function closeModal(){document.getElementById('modal').classList.remove('open');}
-
-function saveRecord(){
-  const client=document.getElementById('m-client').value.trim();
-  const amount=parseFloat(document.getElementById('m-amount').value)||0;
-  const date=document.getElementById('m-date').value;
-  const desc=document.getElementById('m-desc').value.trim();
-  if(!client||!amount||!date||!desc){alert('يرجى ملء الحقول المطلوبة');return;}
-  const isInv=modalType==='invoice';
-  const prefix=isInv?'INV':'REC';
-  const rec={type:modalType,cn:document.getElementById('m-cn').value.trim(),
-    client,date,desc,amount,
-    pay:document.getElementById('m-pay').value,
-    status:document.getElementById('m-status').value,
-    payDate:document.getElementById('m-pay-date').value,
-    ref:document.getElementById('m-ref').value,
-    notes:document.getElementById('m-notes').value};
-  if(editId){
-    const i=docs.findIndex(r=>r.id===editId);
-    docs[i]={...docs[i],...rec};
-  } else {
-    const id=++nextId;
-    const cnt=docs.filter(r=>r.type===modalType).length+1;
-    docs.unshift({id,num:`${prefix}-${String(cnt).padStart(3,'0')}`,...rec});
-  }
-  filtered=[...docs];applyFilters();updateStats();closeModal();
-}
-
-function editRecord(id){openModal(id);}
-function deleteRecord(id){
-  if(!confirm('هل أنت متأكد من الحذف؟'))return;
-  docs=docs.filter(r=>r.id!==id);filtered=filtered.filter(r=>r.id!==id);
-  renderTable();updateStats();
-}
-
-function openPrintModal(id){
-  printTarget=id;
-  document.getElementById('print-modal').classList.add('open');
-}
-
-function printDoc(printType){
-  const r=docs.find(x=>x.id===printTarget);
-  if(!r)return;
-  document.getElementById('print-modal').classList.remove('open');
-  const win=window.open('','_blank','width=800,height:600');
-  const isReceipt=printType==='receipt';
-  win.document.write(`<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<title>${isReceipt?'سند قبض':'فاتورة'} — ${r.num}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#f5f5f5;padding:20px;color:#1a3a5c;direction:rtl}
-.doc{background:#fff;max-width:210mm;margin:0 auto;padding:20mm 18mm 16mm;border:2px solid #1a3a5c;border-radius:6px;min-height:${isReceipt?'148mm':'260mm'}}
-.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #1a3a5c}
-.co-name{font-size:18px;font-weight:700;color:#1a3a5c}
-.co-sub{font-size:11px;color:#666;margin-top:2px}
-.doc-title{text-align:center;font-size:20px;font-weight:800;color:#1a3a5c;border-bottom:2px solid #1a3a5c;padding-bottom:4px}
-.doc-num{font-size:14px;color:#c0392b;font-weight:700;margin-top:4px;text-align:center}
-.info-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
-.info-box{background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;padding:10px 12px}
-.info-label{font-size:10px;color:#666;margin-bottom:3px;font-weight:600}
-.info-val{font-size:13px;font-weight:600;color:#1a3a5c}
-.desc-box{border:1px solid #1a3a5c;border-radius:4px;padding:12px 14px;margin:14px 0;min-height:60px}
-.desc-label{font-size:11px;color:#666;margin-bottom:6px;font-weight:700;border-bottom:1px solid #eee;padding-bottom:4px}
-.desc-text{font-size:13px;color:#1a3a5c;line-height:1.7;white-space:pre-wrap}
-.amount-box{display:flex;justify-content:space-between;align-items:center;background:#1a3a5c;color:#fff;padding:12px 16px;border-radius:4px;margin:14px 0}
-.amount-label{font-size:13px;font-weight:600}
-.amount-val{font-size:20px;font-weight:800}
-.sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
-.sig-box{text-align:center;border-top:1px dashed #999;padding-top:8px;font-size:11px;color:#666}
-.status-badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:700;background:${r.status==='محصل'?'#d4edda':'#fff3cd'};color:${r.status==='محصل'?'#155724':'#856404'};border:1px solid ${r.status==='محصل'?'#c3e6cb':'#ffeeba'}}
-@media print{body{background:#fff;padding:0}.doc{border:none;border-radius:0;padding:15mm}}
-</style>
-</head>
-<body>
-<div class="doc">
-  <div class="header">
-    <div>
-      <div class="co-name">شركة المصاعد</div>
-      <div class="co-sub">Elevator Management Company</div>
-      <div class="co-sub" style="margin-top:4px">مكة المكرمة، المملكة العربية السعودية</div>
-    </div>
-    <div style="text-align:left">
-      <div class="doc-title">${isReceipt?'سند قبض':'فاتورة'}</div>
-      <div class="doc-num">${r.num}</div>
-      <div style="margin-top:6px"><span class="status-badge">${r.status}</span></div>
-    </div>
-  </div>
-
-  <div class="info-row">
-    <div class="info-box">
-      <div class="info-label">العميل</div>
-      <div class="info-val">${r.client}</div>
-    </div>
-    <div class="info-box">
-      <div class="info-label">رقم العقد</div>
-      <div class="info-val">${r.cn||'—'}</div>
-    </div>
-    <div class="info-box">
-      <div class="info-label">التاريخ</div>
-      <div class="info-val">${r.date}</div>
-    </div>
-    <div class="info-box">
-      <div class="info-label">طريقة الدفع</div>
-      <div class="info-val">${r.pay||'—'}</div>
-    </div>
-    ${r.payDate?`<div class="info-box"><div class="info-label">تاريخ السداد</div><div class="info-val">${r.payDate}</div></div>`:''}
-    ${r.ref?`<div class="info-box"><div class="info-label">رقم المرجع</div><div class="info-val">${r.ref}</div></div>`:''}
-  </div>
-
-  <div class="desc-box">
-    <div class="desc-label">${isReceipt?'وذلك مقابل':'بيان الخدمات والقطع'}</div>
-    <div class="desc-text">${r.desc}</div>
-    ${r.notes?`<div style="margin-top:8px;font-size:11px;color:#888">ملاحظات: ${r.notes}</div>`:''}
-  </div>
-
-  <div class="amount-box">
-    <span class="amount-label">${isReceipt?'المبلغ المستلم':'إجمالي الفاتورة'}</span>
-    <span class="amount-val">${fmt(r.amount)} ر.س</span>
-  </div>
-
-  <div class="sigs">
-    <div class="sig-box">توقيع المستلم<br><br><br></div>
-    <div class="sig-box">توقيع المسؤول<br><br><br></div>
-  </div>
-</div>
-
-
-<script>
-// ===== البيانات من Flask =====
 const INVOICES = [
   {% for i in invoices %}
   {
-    id:           {{ i.id }},
-    code:         "{{ i.code }}",
-    invoice_type: "{{ i.invoice_type or 'فاتورة' }}",
-    customer_id:  {{ i.customer_id or 'null' }},
-    contract_id:  {{ i.contract_id or 'null' }},
-    customer:     "{{ i.customer.name if i.customer else '—' }}",
-    contract:     "{{ i.contract.code if i.contract else '—' }}",
-    invoice_date: "{{ i.invoice_date or '' }}",
-    due_date:     "{{ i.due_date or '' }}",
-    description:  "{{ i.description or '' }}",
-    amount:       {{ i.amount or 0 }},
-    tax_amount:   {{ i.tax_amount or 0 }},
-    total:        {{ i.total or 0 }},
-    pay_method:   "{{ i.payment_method or '' }}",
-    status:       "{{ i.status or 'غير مدفوعة' }}",
-    notes:        "{{ i.notes or '' }}",
+    id: {{ i.id }},
+    code: {{ i.code|tojson }},
+    invoice_type: {{ (i.invoice_type or 'فاتورة')|tojson }},
+    customer_id: {{ i.customer_id or 'null' }},
+    contract_id: {{ i.contract_id or 'null' }},
+    customer: {{ (i.customer.name if i.customer else '—')|tojson }},
+    contract: {{ (i.contract.code if i.contract else '—')|tojson }},
+    invoice_date: {{ (i.invoice_date|string if i.invoice_date else '')|tojson }},
+    due_date: {{ (i.due_date|string if i.due_date else '')|tojson }},
+    description: {{ (i.description or '')|tojson }},
+    amount: {{ i.amount or 0 }},
+    tax_amount: {{ i.tax_amount or 0 }},
+    total: {{ i.total or 0 }},
+    pay_method: {{ (i.payment_method or '')|tojson }},
+    status: {{ (i.status or 'غير مدفوعة')|tojson }},
+    notes: {{ (i.notes or '')|tojson }},
   },
   {% endfor %}
 ];
 
 const CUSTOMERS = [
   {% for c in customers %}
-  { id: {{ c.id }}, name: "{{ c.name }}" },
+  { id: {{ c.id }}, name: {{ c.name|tojson }} },
   {% endfor %}
 ];
 
-// ===== إحصائيات =====
+const PAID_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل', 'محصل'];
+const UNPAID_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخرة', 'متأخر', 'مدفوع جزئياً'];
+
+function moneyCell(v, o) {
+  o = o || { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+  return window.fmtMoney ? fmtMoney(v, o) : ('<span class="lc-money" dir="ltr">' + Number(v || 0).toLocaleString('en-US', o) + moneySuffixHTML() + '</span>');
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+}
+
+function invoiceTabType(row) {
+  const t = (row.invoice_type || '').trim();
+  return t.indexOf('سند') >= 0 ? 'receipt' : 'invoice';
+}
+
+function isPaidStatus(st) {
+  return PAID_STATUSES.includes(st) || st === 'محصل';
+}
+
+let currentTab = 'all';
+let currentDeleteId = null;
+let filtered = [...INVOICES];
+let billableOps = [];
+
 function updateStats() {
-  const total   = INVOICES.length;
-  const paid    = INVOICES.filter(i=>i.status==='مدفوعة').length;
-  const unpaid  = INVOICES.filter(i=>i.status==='غير مدفوعة').length;
-  const overdue = INVOICES.filter(i=>i.status==='متأخرة').length;
-  const totalVal= INVOICES.reduce((s,i)=>s+i.total,0);
-  const vals = document.querySelectorAll('.stat-mini-val');
-  if(vals[0]) vals[0].textContent = total;
-  if(vals[1]) vals[1].textContent = paid;
-  if(vals[2]) vals[2].textContent = unpaid;
-  if(vals[3]) vals[3].textContent = overdue;
-  if(vals[4]) vals[4].textContent = totalVal.toLocaleString();
+  const invs = INVOICES.filter(i => invoiceTabType(i) === 'invoice');
+  const recs = INVOICES.filter(i => invoiceTabType(i) === 'receipt');
+  const paid = INVOICES.filter(i => isPaidStatus(i.status));
+  const unpaid = INVOICES.filter(i => !isPaidStatus(i.status));
+  setMoneyEl(document.getElementById('s-inv'), invs.reduce((s, i) => s + i.total, 0), { maximumFractionDigits: 0 });
+  document.getElementById('s-inv-sub').textContent = invs.length + ' فاتورة';
+  setMoneyEl(document.getElementById('s-rec'), recs.reduce((s, i) => s + i.total, 0), { maximumFractionDigits: 0 });
+  document.getElementById('s-rec-sub').textContent = recs.length + ' سند';
+  setMoneyEl(document.getElementById('s-paid'), paid.reduce((s, i) => s + i.total, 0), { maximumFractionDigits: 0 });
+  document.getElementById('s-paid-sub').textContent = paid.length + ' سجل';
+  setMoneyEl(document.getElementById('s-unpaid'), unpaid.reduce((s, i) => s + i.total, 0), { maximumFractionDigits: 0 });
+  document.getElementById('s-unpaid-sub').textContent = unpaid.length + ' سجل';
 }
 
 const STATUS_BADGE = {
-  'مدفوعة':'badge-active','غير مدفوعة':'badge-pending',
-  'متأخرة':'badge-expired','ملغاة':'badge-cancelled','معلقة':'badge-partial'
+  'مدفوعة':'badge-active','غير مدفوعة':'badge-pending','مدفوع جزئياً':'badge-partial',
+  'متأخرة':'badge-expired','ملغاة':'badge-cancelled'
 };
 const TYPE_BADGE = {
-  'فاتورة':'badge-blue','سند قبض':'badge-green','إشعار دائن':'badge-gold'
+  'فاتورة':'badge-blue','فاتورة ضريبية':'badge-blue','فاتورة ضريبية مبسطة':'badge-purple','سند قبض':'badge-green','إشعار دائن':'badge-gold'
 };
-
-let currentDeleteId = null;
-let filtered = [...INVOICES];
 
 function renderTable(data) {
   const tbody = document.getElementById('table-body');
-  if(!tbody) return;
-  const total = data.reduce((s,i)=>s+i.total,0);
-  document.getElementById('invoices-count').textContent = data.length + ' مستند';
-  document.getElementById('invoices-total').textContent = total.toLocaleString('ar-SA',{minimumFractionDigits:2}) + ' ر.س';
-  tbody.innerHTML = data.map(i=>`
+  if (!tbody) return;
+  document.getElementById('invoices-count').textContent = data.length + ' سجل';
+  const info = document.getElementById('page-info');
+  if (info) info.textContent = 'عرض ' + data.length + ' من ' + INVOICES.length;
+  tbody.innerHTML = data.map(i => `
     <tr onclick="viewInvoice(${i.id})">
-      <td class="td-code">${i.code}</td>
-      <td><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${i.invoice_type}</span></td>
-      <td>${i.customer} ${i.contract!=='—'?'/ '+i.contract:''}</td>
-      <td style="direction:ltr;font-family:var(--font-en)">${i.invoice_date}</td>
-      <td>${i.description||'—'}</td>
-      <td style="font-family:var(--font-en);color:var(--text1)">${i.total.toLocaleString()} ر.س</td>
-      <td>${i.pay_method||'—'}</td>
-      <td><span class="badge ${STATUS_BADGE[i.status]||'badge-pending'}">${i.status}</span></td>
-      <td style="color:var(--text3);font-size:11px">${i.notes||'—'}</td>
+      <td class="td-code">${escHtml(i.code)}</td>
+      <td><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${escHtml(i.invoice_type)}</span></td>
+      <td>${escHtml(i.customer)} ${i.contract!=='—'?'/ '+escHtml(i.contract):''}</td>
+      <td class="lc-date" style="direction:ltr">${escHtml(i.invoice_date)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${escHtml(i.description||'—')}</td>
+      <td class="td-amount">${moneyCell(i.total)}</td>
+      <td>${escHtml(i.pay_method||'—')}</td>
+      <td><span class="badge ${STATUS_BADGE[i.status]||'badge-pending'}">${escHtml(i.status)}</span></td>
+      <td style="color:var(--text3);font-size:11px">${escHtml(i.notes||'—')}</td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
-          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewInvoice(${i.id})">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
-          </button>
-          <button class="btn btn-secondary btn-sm btn-icon" onclick="editInvoice(${i.id})">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
-          </button>
-          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteInvoice(${i.id})">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg>
-          </button>
+          <a class="btn btn-secondary btn-sm btn-icon" href="/invoices/${i.id}/print" target="_blank" title="طباعة" onclick="event.stopPropagation()" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg>
+          </a>
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="editInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>
         </div>
       </td>
     </tr>`).join('');
 }
 
-function filterTable() {
-  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const tp = document.getElementById('f-type')?.value||'';
-  const pm = document.getElementById('f-method')?.value||'';
-  const st = document.getElementById('f-status')?.value||'';
-  const fd = document.getElementById('f-from')?.value||'';
-  const td = document.getElementById('f-to')?.value||'';
-  filtered = INVOICES.filter(i=>
-    (!s  || i.code.toLowerCase().includes(s) || i.customer.includes(s)) &&
-    (!tp || i.invoice_type === tp) &&
-    (!pm || i.pay_method === pm) &&
-    (!st || i.status === st) &&
-    (!fd || i.invoice_date >= fd) &&
-    (!td || i.invoice_date <= td)
-  );
+function switchTab(tab) {
+  currentTab = tab;
+  ['all','invoice','receipt'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.classList.toggle('active', t === tab);
+  });
+  applyFilters();
+}
+
+function applyFilters() {
+  const s = (document.getElementById('f-search')?.value || '').toLowerCase();
+  const py = document.getElementById('f-pay')?.value || '';
+  const st = document.getElementById('f-status')?.value || '';
+  const fr = document.getElementById('f-from')?.value || '';
+  const to = document.getElementById('f-to')?.value || '';
+  filtered = INVOICES.filter(i => {
+    if (currentTab !== 'all' && invoiceTabType(i) !== currentTab) return false;
+    const stMatch = !st || (st === 'محصل' && isPaidStatus(i.status)) || (st === 'غير محصل' && !isPaidStatus(i.status));
+    return (!s || i.code.toLowerCase().includes(s) || (i.customer||'').includes(s) || (i.contract||'').toLowerCase().includes(s)) &&
+      (!py || i.pay_method === py) && stMatch &&
+      (!fr || i.invoice_date >= fr) && (!to || i.invoice_date <= to);
+  });
   renderTable(filtered);
 }
 
-// ===== إضافة =====
+function clearFilters() {
+  ['f-search','f-pay','f-status','f-from','f-to'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'SELECT') el.selectedIndex = 0; else el.value = '';
+  });
+  currentTab = 'all';
+  ['all','invoice','receipt'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.classList.toggle('active', t === 'all');
+  });
+  filtered = [...INVOICES];
+  renderTable(filtered);
+}
+
+function isReceiptType(t) {
+  return (t || '').indexOf('سند') >= 0;
+}
+function isTaxInvoiceType(t) {
+  return !isReceiptType(t);
+}
+function isSimpleTaxType(t) {
+  return (t || '').indexOf('مبسطة') >= 0;
+}
+function setDocType(t) {
+  document.getElementById('f-inv-type').value = t;
+  document.getElementById('mt-invoice').classList.toggle('active', isTaxInvoiceType(t) && !isSimpleTaxType(t));
+  const ms = document.getElementById('mt-simple');
+  if (ms) ms.classList.toggle('active', isSimpleTaxType(t));
+  document.getElementById('mt-receipt').classList.toggle('active', isReceiptType(t));
+}
+
+function clearInvoiceSource() {
+  ['f-source-type','f-source-id','f-contract-id'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('.inv-op-row').forEach(row => { row.style.background = ''; });
+}
+
+function onInvoiceCustomerChange() {
+  const cid = document.getElementById('f-customer-sel')?.value;
+  const wrap = document.getElementById('inv-billable-wrap');
+  const list = document.getElementById('inv-billable-list');
+  const hint = document.getElementById('inv-billable-hint');
+  clearInvoiceSource();
+  billableOps = [];
+  if (!cid) { if (wrap) wrap.style.display = 'none'; return; }
+  if (wrap) wrap.style.display = '';
+  if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
+  fetch('/api/customers/' + cid + '/billable-ops')
+    .then(r => r.json())
+    .then(data => {
+      billableOps = data.operations || [];
+      if (hint) hint.textContent = billableOps.length
+        ? ('يوجد ' + billableOps.length + ' عملية بدون فاتورة — اختر واحدة (تشمل المحصّل مسبقاً)')
+        : 'لا توجد عمليات بدون فاتورة — يمكنك إدخال الفاتورة يدوياً';
+      renderBillableOps();
+    })
+    .catch(() => {
+      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل العمليات</p>';
+    });
+}
+
+function renderBillableOps() {
+  const list = document.getElementById('inv-billable-list');
+  if (!list) return;
+  if (!billableOps.length) {
+    list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد عمليات جاهزة للفوترة.</p>';
+    return;
+  }
+  list.innerHTML = billableOps.map((op, idx) => `
+    <div class="inv-op-row" data-op-idx="${idx}" onclick="selectBillableOp(${idx})"
+      style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">
+      <div style="display:flex;justify-content:space-between;gap:8px">
+        <div>
+          <strong style="font-family:var(--font-en);color:var(--accent)">${escHtml(op.code)}</strong>
+          <span style="font-size:11px;color:var(--text3);margin-right:6px">${escHtml(op.date)}</span>
+          <div style="font-size:12px;margin-top:4px">${escHtml(op.title)} — ${escHtml(op.description)}</div>
+          ${op.hint ? `<div style="font-size:11px;color:${op.collected?'var(--success)':'var(--warning)'};margin-top:4px">${escHtml(op.hint)}</div>` : ''}
+        </div>
+        <div style="text-align:left;font-size:11px;white-space:nowrap">
+          <div style="color:var(--warning);font-weight:600">الإجمالي: ${Number(op.total||0).toLocaleString('en-US')}</div>
+          ${op.paid > 0 ? `<div style="color:var(--success)">محصّل: ${Number(op.paid||0).toLocaleString('en-US')}</div>` : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function selectBillableOp(idx) {
+  const op = billableOps[idx];
+  if (!op) return;
+  document.getElementById('f-source-type').value = op.source_type;
+  document.getElementById('f-source-id').value = op.source_id;
+  document.getElementById('f-contract-id').value = op.contract_id || '';
+  document.getElementById('f-desc').value = op.description || '';
+  const amt = document.getElementById('f-amount');
+  if (amt) amt.value = Number(op.amount_before_tax || 0).toFixed(2);
+  const st = document.getElementById('f-status-sel');
+  if (st) st.value = op.collected ? 'مدفوعة' : 'غير مدفوعة';
+  const hintEl = document.getElementById('inv-billable-hint');
+  if (hintEl && op.collected) {
+    hintEl.textContent = 'العملية محصّلة مسبقاً — يمكنك إصدار فاتورة ضريبية للتوثيق أو سند قبض حسب اختيارك أعلاه.';
+  }
+  calcTotal();
+  document.querySelectorAll('.inv-op-row').forEach(row => {
+    const on = String(row.dataset.opIdx) === String(idx);
+    row.style.background = on ? 'rgba(42,127,255,.12)' : '';
+  });
+}
+
+function closeAddModal() { closeModal('modal-add'); }
+
 function openAddModal() {
-  document.getElementById('modal-title').textContent = 'إضافة مستند جديد';
+  document.getElementById('modal-title').textContent = 'إضافة فاتورة جديدة';
   document.getElementById('modal-add').dataset.editId = '';
   const sel = document.getElementById('f-customer-sel');
-  if(sel) sel.innerHTML = '<option value="">اختر العميل</option>' +
-    CUSTOMERS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if (sel) sel.innerHTML = '<option value="">اختر العميل</option>' + CUSTOMERS.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  ['f-desc','f-notes','f-amount','f-due-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  clearInvoiceSource();
+  billableOps = [];
+  const wrap = document.getElementById('inv-billable-wrap');
+  if (wrap) wrap.style.display = 'none';
+  setDocType('فاتورة ضريبية');
+  const d = document.getElementById('f-date');
+  if (d) d.value = new Date().toISOString().slice(0, 10);
+  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.resetElement(taxBlock);
   document.getElementById('modal-add').classList.add('open');
 }
 
 function calcTotal() {
   var block = document.querySelector('#modal-add .lc-tax-block');
   if (block && block._lcTaxCalc) { block._lcTaxCalc.update(); return; }
-  var amt = parseFloat(document.getElementById('f-amount')?.value) || 0;
-  var result = window.LiftCoreTaxCalc
-    ? LiftCoreTaxCalc.fromBeforeTax(amt, 15)
-    : { total: amt * 1.15 };
-  var el = document.getElementById('f-total');
-  if (el) el.value = result.total.toFixed(2);
 }
 
 function saveInvoice() {
   var block = document.querySelector('#modal-add .lc-tax-block');
   if (block && block._lcTaxCalc) block._lcTaxCalc.update();
   const editId = document.getElementById('modal-add').dataset.editId;
+  const cust = document.getElementById('f-customer-sel');
+  if (!cust || !cust.value) { alert('اختر العميل'); return; }
+  if (!document.getElementById('f-date')?.value) { alert('حدد تاريخ الإصدار'); return; }
+  if (!document.getElementById('f-desc')?.value.trim()) { alert('أدخل البيان'); return; }
+  if (!parseFloat(document.getElementById('f-amount')?.value || 0)) { alert('أدخل المبلغ'); return; }
   const fd = new FormData();
-  [['invoice_type','f-inv-type'],['customer_id','f-customer-sel'],
-   ['invoice_date','f-date'],['due_date','f-due-date'],
-   ['description','f-desc'],['amount','f-amount'],
-   ['payment_method','f-pay-method'],['status','f-status-sel'],
-   ['notes','f-notes']
-  ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
-  fetch(editId ? `/invoices/edit/${editId}` : '/invoices/add', {method:'POST',body:fd})
-    .then(()=>window.location.reload());
+  [['invoice_type','f-inv-type'],['customer_id','f-customer-sel'],['invoice_date','f-date'],['due_date','f-due-date'],
+   ['description','f-desc'],['amount','f-amount'],['payment_method','f-pay-method'],['status','f-status-sel'],['notes','f-notes'],
+   ['source_type','f-source-type'],['source_id','f-source-id'],['contract_id','f-contract-id']
+  ].forEach(([f,i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
+  fetch(editId ? `/invoices/edit/${editId}` : '/invoices/add', { method:'POST', body:fd })
+    .then(() => window.location.reload());
 }
 
-// ===== تعديل =====
 function editInvoice(id) {
-  const i = INVOICES.find(x=>x.id===id);
-  if(!i) return;
+  const i = INVOICES.find(x => x.id === id);
+  if (!i) return;
   document.getElementById('modal-title').textContent = 'تعديل المستند';
   document.getElementById('modal-add').dataset.editId = id;
-  const sel=document.getElementById('f-customer-sel');
-  if(sel) sel.innerHTML=CUSTOMERS.map(c=>`<option value="${c.id}"${c.id===i.customer_id?' selected':''}>${c.name}</option>`).join('');
-  const map={
-    'f-inv-type':i.invoice_type,'f-date':i.invoice_date,
-    'f-due-date':i.due_date,'f-desc':i.description,
-    'f-amount':i.amount,'f-pay-method':i.pay_method,
-    'f-status-sel':i.status,'f-notes':i.notes,
+  const sel = document.getElementById('f-customer-sel');
+  if (sel) sel.innerHTML = CUSTOMERS.map(c => `<option value="${c.id}"${c.id===i.customer_id?' selected':''}>${escHtml(c.name)}</option>`).join('');
+  setDocType(i.invoice_type || 'فاتورة ضريبية');
+  const map = {
+    'f-date': i.invoice_date, 'f-due-date': i.due_date, 'f-desc': i.description,
+    'f-amount': i.amount, 'f-pay-method': i.pay_method, 'f-status-sel': i.status, 'f-notes': i.notes,
   };
-  Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
+  Object.entries(map).forEach(([k,v]) => { const el = document.getElementById(k); if (el) el.value = v || ''; });
+  clearInvoiceSource();
+  const wrap = document.getElementById('inv-billable-wrap');
+  if (wrap) wrap.style.display = 'none';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, i.amount, 15);
+  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, i.amount, 15);
   document.getElementById('modal-add').classList.add('open');
 }
 
-// ===== عرض =====
+let currentViewId = null;
+
 function viewInvoice(id) {
-  const i = INVOICES.find(x=>x.id===id);
-  if(!i) return;
+  const i = INVOICES.find(x => x.id === id);
+  if (!i) return;
+  currentViewId = id;
+  const printBtn = document.getElementById('view-print-btn');
+  if (printBtn) printBtn.style.display = '';
   document.getElementById('view-title').textContent = i.code + ' — ' + i.invoice_type;
   document.getElementById('view-body').innerHTML = `
-    <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">المبلغ</span><span style="font-family:var(--font-en)">${i.amount.toLocaleString()} ر.س</span></div>
-      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">الضريبة (15%)</span><span style="font-family:var(--font-en)">${i.tax_amount.toLocaleString()} ر.س</span></div>
-      <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-size:14px;font-weight:600"><span>الإجمالي</span><span style="font-family:var(--font-en);color:var(--accent)">${i.total.toLocaleString()} ر.س</span></div>
+    <div class="fin-summary" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">المبلغ</span><span>${moneyCell(i.amount)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">الضريبة (15%)</span><span>${moneyCell(i.tax_amount)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-size:14px;font-weight:600"><span>الإجمالي</span><span style="color:var(--accent)">${moneyCell(i.total)}</span></div>
     </div>
     <div class="view-grid">
       <div class="view-section">تفاصيل المستند</div>
-      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${i.code}</div></div>
-      <div class="view-item"><div class="view-label">النوع</div><div class="view-val"><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${i.invoice_type}</span></div></div>
-      <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${i.customer}</div></div>
-      <div class="view-item"><div class="view-label">العقد</div><div class="view-val" style="font-family:var(--font-en)">${i.contract}</div></div>
-      <div class="view-item"><div class="view-label">تاريخ الإصدار</div><div class="view-val" style="direction:ltr">${i.invoice_date}</div></div>
-      <div class="view-item"><div class="view-label">تاريخ الاستحقاق</div><div class="view-val" style="direction:ltr">${i.due_date||'—'}</div></div>
-      <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${i.pay_method||'—'}</div></div>
-      <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[i.status]||'badge-pending'}">${i.status}</span></div></div>
-      ${i.description?`<div class="view-item view-full"><div class="view-label">البيان</div><div class="view-val">${i.description}</div></div>`:''}
-      ${i.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${i.notes}</div></div>`:''}
+      <div class="view-item"><div class="view-label">الكود</div><div class="view-val lc-code">${escHtml(i.code)}</div></div>
+      <div class="view-item"><div class="view-label">النوع</div><div class="view-val">${escHtml(i.invoice_type)}</div></div>
+      <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${escHtml(i.customer)}</div></div>
+      <div class="view-item"><div class="view-label">العقد</div><div class="view-val lc-code">${escHtml(i.contract)}</div></div>
+      <div class="view-item"><div class="view-label">تاريخ الإصدار</div><div class="view-val lc-date">${escHtml(i.invoice_date)}</div></div>
+      <div class="view-item"><div class="view-label">تاريخ الاستحقاق</div><div class="view-val lc-date">${escHtml(i.due_date||'—')}</div></div>
+      <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${escHtml(i.pay_method||'—')}</div></div>
+      <div class="view-item"><div class="view-label">الحالة</div><div class="view-val">${escHtml(i.status)}</div></div>
+      ${i.description ? `<div class="view-item view-full"><div class="view-label">البيان</div><div class="view-val">${escHtml(i.description)}</div></div>` : ''}
+      ${i.notes ? `<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${escHtml(i.notes)}</div></div>` : ''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
-  if (i.customer_id) LiftCoreProfile.appendToView(document.getElementById('view-body'), i.customer_id, i.contract_id, { timelineLimit: 15 });
+  if (i.customer_id && window.LiftCoreProfile) LiftCoreProfile.appendToView(document.getElementById('view-body'), i.customer_id, i.contract_id, { timelineLimit: 15 });
 }
 
-// ===== حذف =====
-function deleteInvoice(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
+function printInvoice(id) {
+  window.open('/invoices/' + id + '/print?print=1', '_blank');
+}
+
+function deleteInvoice(id) { currentDeleteId = id; document.getElementById('modal-delete').classList.add('open'); }
 function confirmDelete() {
-  if(!currentDeleteId) return;
-  fetch(`/invoices/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
+  if (!currentDeleteId) return;
+  fetch('/invoices/delete/' + currentDeleteId, { method:'POST' }).then(() => window.location.reload());
 }
 
-function exportExcel() {
-  const rows=[['الكود','النوع','العميل','العقد','التاريخ','البيان','المبلغ','الضريبة','الإجمالي','طريقة الدفع','الحالة']];
-  filtered.forEach(i=>rows.push([i.code,i.invoice_type,i.customer,i.contract,i.invoice_date,i.description,i.amount,i.tax_amount,i.total,i.pay_method,i.status]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='invoices.csv'; a.click();
+function exportCSV() {
+  const rows = [['الكود','النوع','العميل','العقد','التاريخ','البيان','المبلغ','الضريبة','الإجمالي','طريقة الدفع','الحالة']];
+  filtered.forEach(i => rows.push([i.code,i.invoice_type,i.customer,i.contract,i.invoice_date,i.description,i.amount,i.tax_amount,i.total,i.pay_method,i.status]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type:'text/csv;charset=utf-8' }));
+  a.download = 'invoices.csv';
+  a.click();
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-function setLang(l) {
-  document.documentElement.setAttribute('lang',l);
-  document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
-  document.getElementById('btn-ar').classList.toggle('active',l==='ar');
-  document.getElementById('btn-en').classList.toggle('active',l==='en');
-}
-function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
-document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
+document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
 
-const now = new Date();
-const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+if (window.LiftCoreFormat && LiftCoreFormat.setHeaderDate) {
+  LiftCoreFormat.setHeaderDate(document.getElementById('h-date'), new Date());
+}
 
 updateStats();
 renderTable(INVOICES);

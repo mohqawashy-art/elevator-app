@@ -28,6 +28,7 @@ textarea{min-height:80px;resize:vertical}
 .btn-warning{background:rgba(224,144,48,.2);color:var(--warning);border:1px solid rgba(224,144,48,.3)}
 .parts-box{background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:14px;margin-top:20px}
 </style>
+{% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js"></script>
@@ -71,7 +72,7 @@ textarea{min-height:80px;resize:vertical}
   <label>الحالة</label>
   <select name="status">
     <option value="قيد المعالجة" {% if fault.status == 'قيد المعالجة' %}selected{% endif %}>قيد المعالجة</option>
-    <option value="محلول" {% if fault.status == 'محلول' %}selected{% endif %}>محلول</option>
+    <option value="تم الاصلاح" {% if fault.status in ['تم الاصلاح', 'محلول'] %}selected{% endif %}>تم الاصلاح</option>
     <option value="انتظار قطع" {% if fault.status == 'انتظار قطع' %}selected{% endif %}>انتظار قطع</option>
   </select>
   <button class="btn btn-success" type="submit">حفظ التقرير</button>
@@ -83,7 +84,7 @@ textarea{min-height:80px;resize:vertical}
   <form method="post" action="/field/fault/{{ fault.id }}/request-parts">
     <input type="hidden" name="tech_id" value="{{ tech_id or fault.technician_id }}">
     <textarea name="parts_description" placeholder="وصف القطع المطلوبة..." required></textarea>
-    <label>السعر المقترح للعميل (ر.س)</label>
+    <label>السعر المقترح للعميل (<span class="lc-sar" role="img" aria-label="ريال"></span>)</label>
     <input type="number" name="sell_price" step="0.01" min="0" placeholder="0.00">
     <button class="btn btn-warning" type="submit">طلب قطع غيار من المكتب</button>
   </form>
