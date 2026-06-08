@@ -2715,23 +2715,30 @@ def stock_movements():
 
 @app.route('/stock-movements/add', methods=['POST'])
 def stock_add():
-    item_id   = int(request.form['item_id'])
-    qty       = float(request.form.get('quantity', 0))
-    direction = request.form.get('direction','صادر')
-    unit_price= float(request.form.get('unit_price', 0))
+    item_id = request.form.get('item_id', '').strip()
+    if not item_id:
+        return redirect(url_for('stock_movements'))
+    item_id = int(item_id)
+    qty = float(request.form.get('quantity', 0) or 0)
+    if qty <= 0:
+        return redirect(url_for('stock_movements'))
+    direction = request.form.get('direction', 'صادر')
+    unit_price = float(request.form.get('unit_price', 0) or 0)
+    tech_raw = request.form.get('technician_id', '').strip()
+    technician_id = int(tech_raw) if tech_raw else None
 
     m = StockMovement(
         code          = next_code(StockMovement, 'MV-', digits=3),
         item_id       = item_id,
         movement_date = datetime.strptime(request.form['movement_date'], '%Y-%m-%d').date(),
         direction     = direction,
-        movement_type = request.form.get('movement_type',''),
+        movement_type = request.form.get('movement_type', ''),
         quantity      = qty,
         unit_price    = unit_price,
         total_value   = qty * unit_price,
-        technician_id = request.form.get('technician_id') or None,
-        reason        = request.form.get('reason',''),
-        notes         = request.form.get('notes',''),
+        technician_id = technician_id,
+        reason        = request.form.get('reason', ''),
+        notes         = request.form.get('notes', ''),
     )
     db.session.add(m)
 

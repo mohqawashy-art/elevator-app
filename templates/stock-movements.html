@@ -297,6 +297,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th>الفني / المستلم</th>
               <th>السبب / الموقع</th>
               <th>ملاحظات</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="mov-tbody"></tbody>
@@ -310,21 +311,17 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
   </div>
 </div>
 
-<!-- MODAL -->
-
-</div>
-
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <div class="modal-head">
-      <span class="modal-title">تسجيل حركة مخزن</span>
+      <span class="modal-title" id="modal-title">تسجيل حركة مخزن</span>
       <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="form-grid">
         <div class="field">
           <label>التاريخ <span>*</span></label>
-          <input type="date" lang="en-GB" id="m-date">
+          <input type="date" lang="en-GB" class="lc-date-input" id="m-date">
         </div>
         <div class="field">
           <label>الاتجاه <span>*</span></label>
@@ -342,21 +339,29 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             <option>اضافة مخزنية (شراء)</option>
           </select>
         </div>
-        <div class="field">
+        <div class="field form-full">
           <label>الصنف <span>*</span></label>
-          <input id="m-item" placeholder="اسم الصنف">
+          <select id="m-item-id">
+            <option value="">— اختر الصنف —</option>
+          </select>
         </div>
         <div class="field">
           <label>الكمية <span>*</span></label>
-          <input type="number" id="m-qty" placeholder="0" min="1">
+          <input type="number" id="m-qty" placeholder="0" min="0.01" step="0.01" oninput="calcTotal()">
         </div>
         <div class="field">
           <label>سعر الوحدة (ر.س)</label>
-          <input type="number" id="m-price" placeholder="0.00" step="0.01">
+          <input type="number" id="m-price" placeholder="0.00" step="0.01" oninput="calcTotal()">
+        </div>
+        <div class="field">
+          <label>إجمالي القيمة</label>
+          <input type="text" id="m-total" readonly placeholder="0.00">
         </div>
         <div class="field form-full">
           <label>الفني / المستلم</label>
-          <input id="m-tech" placeholder="اسم الفني أو المستلم">
+          <select id="m-tech-id">
+            <option value="">— بدون فني —</option>
+          </select>
         </div>
         <div class="field form-full">
           <label>السبب / الموقع</label>
@@ -403,7 +408,7 @@ const MOVEMENTS = [
 
 const ITEMS = [
   {% for i in items %}
-  { id: {{ i.id }}, code: "{{ i.code }}", name: "{{ i.name }}", unit: "{{ i.unit or 'قطعة' }}" },
+  { id: {{ i.id }}, code: "{{ i.code }}", name: "{{ i.name }}", unit: "{{ i.unit or 'قطعة' }}", buy_price: {{ i.buy_price or 0 }} },
   {% endfor %}
 ];
 
@@ -415,28 +420,36 @@ const TECHNICIANS = [
 
 // ===== إحصائيات =====
 function updateStats() {
-  const total   = MOVEMENTS.length;
-  const incoming= MOVEMENTS.filter(m=>m.direction==='وارد').length;
-  const outgoing= MOVEMENTS.filter(m=>m.direction==='صادر').length;
-  const outVal  = MOVEMENTS.filter(m=>m.direction==='صادر').reduce((s,m)=>s+m.total_value,0);
-  const vals = document.querySelectorAll('.stat-mini-val');
-  if(vals[0]) vals[0].textContent = total;
-  if(vals[1]) vals[1].textContent = incoming;
-  if(vals[2]) vals[2].textContent = outgoing;
-  if(vals[3]) vals[3].textContent = outVal.toLocaleString();
+  const total = MOVEMENTS.length;
+  const incoming = MOVEMENTS.filter(m => m.direction === 'وارد');
+  const outgoing = MOVEMENTS.filter(m => m.direction === 'صادر');
+  const project = MOVEMENTS.filter(m => m.movement_type === 'صرف لمشروع / عميل');
+  setText('s-total', total);
+  setText('s-in-val', incoming.reduce((s, m) => s + m.total_value, 0).toLocaleString('ar-SA'));
+  setText('s-in-cnt', incoming.length + ' حركة');
+  setText('s-out-val', outgoing.reduce((s, m) => s + m.total_value, 0).toLocaleString('ar-SA'));
+  setText('s-out-cnt', outgoing.length + ' حركة');
+  setText('s-proj-val', project.reduce((s, m) => s + m.total_value, 0).toLocaleString('ar-SA'));
+  setText('s-proj-cnt', project.length + ' حركة');
+  setText('mov-count', total + ' حركة');
 }
 
-let currentDeleteId = null;
 let filtered = [...MOVEMENTS];
 
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
 function renderTable(data) {
-  const tbody = document.getElementById('table-body');
-  if(!tbody) return;
-  document.getElementById('movements-count').textContent = data.length + ' حركة';
-  tbody.innerHTML = data.map(m=>`
+  const tbody = document.getElementById('mov-tbody');
+  if (!tbody) return;
+  setText('page-info', 'عرض ' + data.length + ' من ' + MOVEMENTS.length);
+  setText('mov-count', data.length + ' حركة');
+  tbody.innerHTML = data.map(m => `
     <tr onclick="viewMovement(${m.id})">
       <td class="td-code">${m.code}</td>
-      <td style="direction:ltr;font-family:var(--font-en)">${m.movement_date}</td>
+      <td class="lc-date">${fmtDateDMY(m.movement_date)}</td>
       <td><span class="badge ${m.direction==='وارد'?'badge-active':'badge-expired'}">${m.direction}</span></td>
       <td>${m.movement_type}</td>
       <td>${m.item_name} <span style="font-family:var(--font-en);color:var(--text3);font-size:11px">(${m.item_code})</span></td>
@@ -458,95 +471,133 @@ function renderTable(data) {
     </tr>`).join('');
 }
 
-function filterTable() {
-  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const dr = document.getElementById('f-direction')?.value||'';
-  const tp = document.getElementById('f-type')?.value||'';
-  const fd = document.getElementById('f-from')?.value||'';
-  const td = document.getElementById('f-to')?.value||'';
-  filtered = MOVEMENTS.filter(m=>
-    (!s  || m.item_name.includes(s) || m.code.toLowerCase().includes(s) || m.technician.includes(s)) &&
+function applyFilters() {
+  const s = (document.getElementById('f-search')?.value || '').trim().toLowerCase();
+  const dr = document.getElementById('f-dir')?.value || '';
+  const tp = document.getElementById('f-type')?.value || '';
+  const itemId = document.getElementById('f-item')?.value || '';
+  const fd = document.getElementById('f-from')?.value || '';
+  const td = document.getElementById('f-to')?.value || '';
+  filtered = MOVEMENTS.filter(m =>
+    (!s || m.item_name.toLowerCase().includes(s) || m.code.toLowerCase().includes(s) || m.technician.toLowerCase().includes(s)) &&
     (!dr || m.direction === dr) &&
     (!tp || m.movement_type === tp) &&
+    (!itemId || String(m.item_id) === itemId) &&
     (!fd || m.movement_date >= fd) &&
     (!td || m.movement_date <= td)
   );
   renderTable(filtered);
 }
 
-// ===== إضافة =====
-function openAddModal() {
-  document.getElementById('modal-title').textContent = 'إضافة حركة مخزن';
-  document.getElementById('modal-add').dataset.editId = '';
-  const isel = document.getElementById('f-item-sel');
-  if(isel) isel.innerHTML = '<option value="">اختر الصنف</option>' +
-    ITEMS.map(i=>`<option value="${i.id}">${i.code} — ${i.name}</option>`).join('');
-  const tsel = document.getElementById('f-tech-sel');
-  if(tsel) tsel.innerHTML = '<option value="">— بدون فني —</option>' +
-    TECHNICIANS.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
-  document.getElementById('modal-add').classList.add('open');
+function clearFilters() {
+  ['f-search', 'f-from', 'f-to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['f-dir', 'f-type', 'f-item'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  filtered = [...MOVEMENTS];
+  renderTable(filtered);
+}
+
+function fillItemFilter() {
+  const sel = document.getElementById('f-item');
+  if (!sel || sel.options.length > 1) return;
+  ITEMS.forEach(i => {
+    const opt = document.createElement('option');
+    opt.value = i.id;
+    opt.textContent = i.code + ' — ' + i.name;
+    sel.appendChild(opt);
+  });
+}
+
+function openModal() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('modal-title').textContent = 'تسجيل حركة مخزن';
+  document.getElementById('m-date').value = today;
+  document.getElementById('m-dir').value = 'صادر';
+  document.getElementById('m-type').value = 'صرف لفني';
+  document.getElementById('m-qty').value = '1';
+  document.getElementById('m-price').value = '0';
+  document.getElementById('m-reason').value = '';
+  document.getElementById('m-notes').value = '';
+  const isel = document.getElementById('m-item-id');
+  isel.innerHTML = '<option value="">— اختر الصنف —</option>' +
+    ITEMS.map(i => `<option value="${i.id}">${i.code} — ${i.name}</option>`).join('');
+  const tsel = document.getElementById('m-tech-id');
+  tsel.innerHTML = '<option value="">— بدون فني —</option>' +
+    TECHNICIANS.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  isel.onchange = function () {
+    const item = ITEMS.find(x => String(x.id) === this.value);
+    if (item) {
+      const priceEl = document.getElementById('m-price');
+      if (priceEl && (!priceEl.value || priceEl.value === '0')) priceEl.value = item.buy_price || 0;
+    }
+    calcTotal();
+  };
+  calcTotal();
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
 }
 
 function calcTotal() {
-  const qty   = parseFloat(document.getElementById('f-qty')?.value)||0;
-  const price = parseFloat(document.getElementById('f-unit-price')?.value)||0;
-  const el = document.getElementById('f-total-val');
-  if(el) el.value = (qty*price).toFixed(2);
+  const qty = parseFloat(document.getElementById('m-qty')?.value) || 0;
+  const price = parseFloat(document.getElementById('m-price')?.value) || 0;
+  const el = document.getElementById('m-total');
+  if (el) el.value = (qty * price).toFixed(2);
 }
 
-function saveMovement() {
+function saveRecord() {
+  const itemId = document.getElementById('m-item-id').value;
+  const qty = document.getElementById('m-qty').value;
+  const date = document.getElementById('m-date').value;
+  if (!itemId) { alert('اختر الصنف'); return; }
+  if (!qty || parseFloat(qty) <= 0) { alert('أدخل كمية صحيحة'); return; }
+  if (!date) { alert('أدخل التاريخ'); return; }
   const fd = new FormData();
-  [['item_id','f-item-sel'],['movement_date','f-date'],
-   ['direction','f-direction-sel'],['movement_type','f-type-sel'],
-   ['quantity','f-qty'],['unit_price','f-unit-price'],
-   ['technician_id','f-tech-sel'],['reason','f-reason'],
-   ['notes','f-notes']
-  ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
-  fetch('/stock-movements/add', {method:'POST',body:fd})
-    .then(()=>window.location.reload());
+  fd.append('item_id', itemId);
+  fd.append('movement_date', date);
+  fd.append('direction', document.getElementById('m-dir').value);
+  fd.append('movement_type', document.getElementById('m-type').value);
+  fd.append('quantity', qty);
+  fd.append('unit_price', document.getElementById('m-price').value || '0');
+  const techId = document.getElementById('m-tech-id').value;
+  if (techId) fd.append('technician_id', techId);
+  fd.append('reason', document.getElementById('m-reason').value);
+  fd.append('notes', document.getElementById('m-notes').value);
+  fetch('/stock-movements/add', { method: 'POST', body: fd })
+    .then(r => { if (!r.ok) throw new Error('fail'); window.location.reload(); })
+    .catch(() => alert('تعذّر حفظ الحركة'));
 }
 
-// ===== عرض =====
 function viewMovement(id) {
-  const m = MOVEMENTS.find(x=>x.id===id);
-  if(!m) return;
-  document.getElementById('view-title').textContent = m.code;
-  document.getElementById('view-body').innerHTML = `
-    <div class="view-grid">
-      <div class="view-section">تفاصيل الحركة</div>
-      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${m.code}</div></div>
-      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val" style="direction:ltr">${m.movement_date}</div></div>
-      <div class="view-item"><div class="view-label">الاتجاه</div><div class="view-val"><span class="badge ${m.direction==='وارد'?'badge-active':'badge-expired'}">${m.direction}</span></div></div>
-      <div class="view-item"><div class="view-label">نوع الحركة</div><div class="view-val">${m.movement_type}</div></div>
-      <div class="view-item"><div class="view-label">الصنف</div><div class="view-val">${m.item_name}</div></div>
-      <div class="view-item"><div class="view-label">كود الصنف</div><div class="view-val" style="font-family:var(--font-en)">${m.item_code}</div></div>
-      <div class="view-item"><div class="view-label">الكمية</div><div class="view-val" style="font-family:var(--font-en)">${m.quantity}</div></div>
-      <div class="view-item"><div class="view-label">سعر الوحدة</div><div class="view-val" style="font-family:var(--font-en)">${m.unit_price.toLocaleString()} ر.س</div></div>
-      <div class="view-item"><div class="view-label">إجمالي القيمة</div><div class="view-val" style="font-family:var(--font-en);color:var(--accent)">${m.total_value.toLocaleString()} ر.س</div></div>
-      <div class="view-item"><div class="view-label">الفني / المستلم</div><div class="view-val">${m.technician}</div></div>
-      ${m.reason?`<div class="view-item view-full"><div class="view-label">السبب / الموقع</div><div class="view-val">${m.reason}</div></div>`:''}
-      ${m.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${m.notes}</div></div>`:''}
-    </div>`;
-  document.getElementById('modal-view').classList.add('open');
+  const m = MOVEMENTS.find(x => x.id === id);
+  if (!m) return;
+  alert(
+    m.code + '\n' +
+    'التاريخ: ' + (window.fmtDateDMY ? fmtDateDMY(m.movement_date) : m.movement_date) + '\n' +
+    'الاتجاه: ' + m.direction + '\n' +
+    'الصنف: ' + m.item_name + ' (' + m.item_code + ')\n' +
+    'الكمية: ' + m.quantity + '\n' +
+    'القيمة: ' + m.total_value + ' ر.س'
+  );
 }
 
-// ===== حذف =====
-function deleteMovement(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
-function confirmDelete() {
-  if(!currentDeleteId) return;
-  fetch(`/stock-movements/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
+function deleteMovement(id) {
+  if (!confirm('حذف هذه الحركة؟')) return;
+  fetch('/stock-movements/delete/' + id, { method: 'POST' })
+    .then(() => window.location.reload())
+    .catch(() => alert('تعذّر الحذف'));
 }
 
-function exportExcel() {
-  const rows=[['الكود','التاريخ','الاتجاه','النوع','الصنف','الكمية','القيمة','الفني','السبب']];
-  filtered.forEach(m=>rows.push([m.code,m.movement_date,m.direction,m.movement_type,m.item_name,m.quantity,m.total_value,m.technician,m.reason]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='stock-movements.csv'; a.click();
+function exportCSV() {
+  const rows = [['الكود', 'التاريخ', 'الاتجاه', 'النوع', 'الصنف', 'الكمية', 'القيمة', 'الفني', 'السبب']];
+  filtered.forEach(m => rows.push([m.code, m.movement_date, m.direction, m.movement_type, m.item_name, m.quantity, m.total_value, m.technician, m.reason]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'stock-movements.csv';
+  a.click();
 }
-
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);
   document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
@@ -563,6 +614,7 @@ const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء
 const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
+fillItemFilter();
 updateStats();
 renderTable(MOVEMENTS);
 </script>
