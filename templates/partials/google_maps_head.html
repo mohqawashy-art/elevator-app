@@ -1,0 +1,26 @@
+<script>
+  window.LIFTCORE_GOOGLE_MAPS_KEY = {{ google_maps_api_key|tojson }};
+  window.whenGoogleMapsReady = function (fn) {
+    if (!window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed) { fn(); return; }
+    if (window.google && window.google.maps) { fn(); return; }
+    window.__gmapsQueue = window.__gmapsQueue || [];
+    window.__gmapsQueue.push(fn);
+  };
+  window.initGoogleMapsApi = function () {
+    var q = window.__gmapsQueue || [];
+    window.__gmapsQueue = [];
+    q.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } });
+  };
+  window.gm_authFailure = function () {
+    window.__gmapsAuthFailed = true;
+    if (typeof refreshElevatorMap === 'function') refreshElevatorMap(true);
+    if (typeof refreshMainMap === 'function') refreshMainMap(true);
+  };
+</script>
+{% if google_maps_api_key %}
+<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&language=ar&region=SA&libraries={{ gmaps_libraries|default('places') }}&callback=initGoogleMapsApi"
+  onerror="window.__gmapsAuthFailed=true"></script>
+{% endif %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
