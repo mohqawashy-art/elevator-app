@@ -337,7 +337,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <!-- TABLE TAB -->
     <div id="tab-table">
       <div class="page-header">
-        <div class="page-title">المصاعد <span id="elev-count">0 مصعد</span></div>
+        <div class="page-title">المصاعد <span id="elev-count" data-i18n-skip></span></div>
         <div class="page-actions">
           <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
@@ -1403,6 +1403,17 @@ document.addEventListener('liftcore:lang', function () {
 document.addEventListener('liftcore:display-refresh', function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : ELEVATORS);
 });
+window.__lcRefreshPage = function () {
+  renderTable(typeof filtered !== 'undefined' ? filtered : ELEVATORS);
+  if (currentElevDrillType != null) {
+    var rows = getElevatorsByDrill(currentElevDrillType);
+    document.getElementById('drill-title').textContent = lcDisp(ELEV_DRILL_TITLES[currentElevDrillType] || 'التفاصيل');
+    document.getElementById('drill-count').textContent = window.LiftCoreDisplay
+      ? '(' + LiftCoreDisplay.fmtElevatorsCount(rows.length) + ')'
+      : ('(' + rows.length + ' مصعد)');
+    renderDrillTable(rows);
+  }
+};
 if (new URLSearchParams(window.location.search).get('view') === 'map') {
   switchElevTab('map', document.getElementById('tab-btn-map'));
 }

@@ -190,7 +190,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
   <div class="content">
     <div class="page-header">
-      <div class="page-title">حركة المخزن <span id="mov-count">0 حركة</span></div>
+      <div class="page-title">حركة المخزن <span id="mov-count" data-i18n-skip></span></div>
       <div class="page-actions">
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
@@ -435,20 +435,27 @@ let filtered = [...MOVEMENTS];
 function renderTable(data) {
   const tbody = document.getElementById('mov-tbody');
   if (!tbody) return;
-  setText('page-info', 'عرض ' + data.length + ' من ' + MOVEMENTS.length);
-  setText('mov-count', data.length + ' حركة');
+  const D = window.lcDisp || (s => s);
+  const LC = window.LiftCoreDisplay;
+  if (LC) {
+    LC.setCountEl('page-info', LC.fmtShowing(data.length, MOVEMENTS.length));
+    LC.setCountEl('mov-count', LC.fmtMovementsCount(data.length));
+  } else {
+    setText('page-info', 'عرض ' + data.length + ' من ' + MOVEMENTS.length);
+    setText('mov-count', data.length + ' حركة');
+  }
   tbody.innerHTML = data.map(m => `
     <tr onclick="viewMovement(${m.id})">
       <td class="td-code">${m.code}</td>
       <td class="lc-date">${window.fmtDateDMY ? fmtDateDMY(m.movement_date) : m.movement_date}</td>
-      <td><span class="badge ${m.direction==='وارد'?'badge-active':'badge-expired'}">${m.direction}</span></td>
-      <td>${m.movement_type}</td>
-      <td>${m.item_name} <span style="font-family:var(--font-en);color:var(--text3);font-size:11px">(${m.item_code})</span></td>
+      <td><span class="badge ${m.direction==='وارد'?'badge-active':'badge-expired'}">${D(m.direction)}</span></td>
+      <td>${D(m.movement_type)}</td>
+      <td>${D(m.item_name)} <span style="font-family:var(--font-en);color:var(--text3);font-size:11px">(${m.item_code})</span></td>
       <td style="font-family:var(--font-en);text-align:center">${m.quantity}</td>
-      <td style="font-family:var(--font-en);color:var(--text1)">${m.total_value.toLocaleString()} ر.س</td>
-      <td>${m.technician}</td>
-      <td style="color:var(--text3);font-size:11px">${m.reason||'—'}</td>
-      <td style="color:var(--text3);font-size:11px">${m.notes||'—'}</td>
+      <td style="font-family:var(--font-en);color:var(--text1)">${D(m.total_value.toLocaleString() + ' ر.س')}</td>
+      <td>${D(m.technician)}</td>
+      <td style="color:var(--text3);font-size:11px">${D(m.reason||'—')}</td>
+      <td style="color:var(--text3);font-size:11px">${D(m.notes||'—')}</td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
           <button class="btn btn-secondary btn-sm btn-icon" onclick="viewMovement(${m.id})">
@@ -608,6 +615,10 @@ document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.g
 fillItemFilter();
 updateStats();
 renderTable(MOVEMENTS);
+window.__lcRefreshPage = function () {
+  updateStats();
+  renderTable(typeof filtered !== 'undefined' ? filtered : MOVEMENTS);
+};
 </script>
 </body>
 </html>

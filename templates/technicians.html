@@ -361,7 +361,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       {% endif %}
       {% endwith %}
       <div class="page-header">
-        <div class="page-title">الفنيين <span id="tech-count">12 فني</span></div>
+        <div class="page-title">الفنيين <span id="tech-count" data-i18n-skip></span></div>
         <div class="page-actions">
           <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
@@ -952,18 +952,25 @@ function closeTechDrill() {
 function renderTable(data) {
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
-  document.getElementById('tech-count').textContent = data.length + ' فني';
-  document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + TECHNICIANS.length;
+  var D = window.lcDisp || function(s) { return s; };
+  var LC = window.LiftCoreDisplay;
+  if (LC) {
+    LC.setCountEl('tech-count', LC.fmtTechniciansCount(data.length));
+    LC.setCountEl('table-info', LC.fmtShowing(data.length, TECHNICIANS.length));
+  } else {
+    document.getElementById('tech-count').textContent = data.length + ' فني';
+    document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + TECHNICIANS.length;
+  }
   tbody.innerHTML = data.map(function(t) {
     return '<tr onclick="viewTech(' + t.id + ')">' +
       '<td class="td-code">' + esc(t.code) + '</td>' +
-      '<td class="td-name">' + (t.photo_url ? '<img src="' + esc(t.photo_url) + '" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-left:8px;border:1px solid var(--border)">' : '') + esc(t.name) + '</td>' +
-      '<td style="direction:ltr;font-family:var(--font-en);cursor:pointer;color:' + (t.phone ? 'var(--text2)' : 'var(--accent)') + '" onclick="event.stopPropagation();editTechPhone(' + t.id + ')" title="اضغط لتسجيل/تعديل الجوال">' + (esc(t.phone) || '➕ إضافة جوال') + '</td>' +
-      '<td>' + esc(t.job_title) + '</td>' +
-      '<td>' + esc(t.specialization) + '</td>' +
-      '<td>' + esc(t.city) + '</td>' +
-      '<td><span class="badge ' + (STATUS_BADGE[t.display_status] || 'badge-inactive') + '">' + esc(t.display_status) + '</span></td>' +
-      '<td><span class="badge ' + (t.emergency ? 'badge-yes' : 'badge-no') + '">' + (t.emergency ? 'نعم' : 'لا') + '</span></td>' +
+      '<td class="td-name">' + (t.photo_url ? '<img src="' + esc(t.photo_url) + '" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-left:8px;border:1px solid var(--border)">' : '') + esc(LC ? LC.techName(t) : t.name) + '</td>' +
+      '<td style="direction:ltr;font-family:var(--font-en);cursor:pointer;color:' + (t.phone ? 'var(--text2)' : 'var(--accent)') + '" onclick="event.stopPropagation();editTechPhone(' + t.id + ')" title="اضغط لتسجيل/تعديل الجوال">' + (esc(t.phone) || D('➕ إضافة جوال')) + '</td>' +
+      '<td>' + esc(D(t.job_title)) + '</td>' +
+      '<td>' + esc(D(t.specialization)) + '</td>' +
+      '<td>' + esc(D(t.city)) + '</td>' +
+      '<td><span class="badge ' + (STATUS_BADGE[t.display_status] || 'badge-inactive') + '">' + esc(D(t.display_status)) + '</span></td>' +
+      '<td><span class="badge ' + (t.emergency ? 'badge-yes' : 'badge-no') + '">' + (t.emergency ? D('نعم') : D('لا')) + '</span></td>' +
       '<td onclick="event.stopPropagation()"><div class="td-actions">' +
         '<button class="btn btn-primary btn-sm btn-icon" onclick="editTechPhone(' + t.id + ')" title="تسجيل الجوال"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2h3l1.5 3.5L6 7c1.2 2.4 3.6 4.8 6 6l1.5-1.5L17 13v3l-2 2C7 16 2 11 1 5l2-3z" transform="scale(0.75) translate(1,1)"/></svg></button>' +
         '<button class="btn btn-secondary btn-sm btn-icon" onclick="viewTech(' + t.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
@@ -1284,6 +1291,9 @@ document.getElementById('h-date').textContent = days[now.getDay()] + '، ' + now
 initFilters();
 updateStats();
 renderTable(TECHNICIANS);
+window.__lcRefreshPage = function () {
+  renderTable(typeof filtered !== 'undefined' ? filtered : TECHNICIANS);
+};
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);

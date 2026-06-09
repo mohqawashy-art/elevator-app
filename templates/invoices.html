@@ -213,7 +213,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
   <div class="content">
     <div class="page-header">
-      <div class="page-title">الفواتير وسندات القبض <span id="invoices-count">0 سجل</span></div>
+      <div class="page-title">الفواتير وسندات القبض <span id="invoices-count" data-i18n-skip></span></div>
       <div class="page-actions">
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
@@ -438,6 +438,7 @@ const INVOICES = [
     customer_id: {{ i.customer_id or 'null' }},
     contract_id: {{ i.contract_id or 'null' }},
     customer: {{ (i.customer.name if i.customer else '—')|tojson }},
+    customer_name_en: {{ (i.customer.name_en if i.customer else '')|tojson }},
     contract: {{ (i.contract.code if i.contract else '—')|tojson }},
     invoice_date: {{ (i.invoice_date|string if i.invoice_date else '')|tojson }},
     due_date: {{ (i.due_date|string if i.due_date else '')|tojson }},
@@ -489,14 +490,16 @@ function updateStats() {
   const recs = INVOICES.filter(i => invoiceTabType(i) === 'receipt');
   const paid = INVOICES.filter(i => isPaidStatus(i.status));
   const unpaid = INVOICES.filter(i => !isPaidStatus(i.status));
+  const LC = window.LiftCoreDisplay;
+  const D = window.lcDisp || (s => s);
   setMoneyEl(document.getElementById('s-inv'), invs.reduce((s, i) => s + i.total, 0), { maximumFractionDigits: 0 });
-  document.getElementById('s-inv-sub').textContent = invs.length + ' فاتورة';
+  document.getElementById('s-inv-sub').textContent = LC ? LC.fmtInvoicesCount(invs.length) : (invs.length + ' فاتورة');
   setMoneyEl(document.getElementById('s-rec'), recs.reduce((s, i) => s + i.total, 0), { maximumFractionDigits: 0 });
-  document.getElementById('s-rec-sub').textContent = recs.length + ' سند';
+  document.getElementById('s-rec-sub').textContent = LC ? (recs.length + (recs.length === 1 ? ' receipt' : ' receipts')) : (recs.length + ' سند');
   setMoneyEl(document.getElementById('s-paid'), paid.reduce((s, i) => s + i.total, 0), { maximumFractionDigits: 0 });
-  document.getElementById('s-paid-sub').textContent = paid.length + ' سجل';
+  document.getElementById('s-paid-sub').textContent = LC ? LC.fmtRecordsCount(paid.length) : (paid.length + ' سجل');
   setMoneyEl(document.getElementById('s-unpaid'), unpaid.reduce((s, i) => s + i.total, 0), { maximumFractionDigits: 0 });
-  document.getElementById('s-unpaid-sub').textContent = unpaid.length + ' سجل';
+  document.getElementById('s-unpaid-sub').textContent = LC ? LC.fmtRecordsCount(unpaid.length) : (unpaid.length + ' سجل');
 }
 
 const STATUS_BADGE = {
@@ -510,19 +513,27 @@ const TYPE_BADGE = {
 function renderTable(data) {
   const tbody = document.getElementById('table-body');
   if (!tbody) return;
-  document.getElementById('invoices-count').textContent = data.length + ' سجل';
-  const info = document.getElementById('page-info');
-  if (info) info.textContent = 'عرض ' + data.length + ' من ' + INVOICES.length;
+  const D = window.lcDisp || (s => s);
+  const LC = window.LiftCoreDisplay;
+  if (LC) {
+    LC.setCountEl('invoices-count', LC.fmtRecordsCount(data.length));
+    const info = document.getElementById('page-info');
+    if (info) info.textContent = LC.fmtShowing(data.length, INVOICES.length);
+  } else {
+    document.getElementById('invoices-count').textContent = data.length + ' سجل';
+    const info = document.getElementById('page-info');
+    if (info) info.textContent = 'عرض ' + data.length + ' من ' + INVOICES.length;
+  }
   tbody.innerHTML = data.map(i => `
     <tr onclick="viewInvoice(${i.id})">
       <td class="td-code">${escHtml(i.code)}</td>
-      <td><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${escHtml(i.invoice_type)}</span></td>
-      <td>${escHtml(i.customer)} ${i.contract!=='—'?'/ '+escHtml(i.contract):''}</td>
+      <td><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${escHtml(D(i.invoice_type))}</span></td>
+      <td>${escHtml(D(LC ? LC.name(i.customer, i.customer_name_en) : i.customer))} ${i.contract!=='—'?'/ '+escHtml(i.contract):''}</td>
       <td class="lc-date" style="direction:ltr">${escHtml(i.invoice_date)}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${escHtml(i.description||'—')}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${escHtml(D(i.description||'—'))}</td>
       <td class="td-amount">${moneyCell(i.total)}</td>
-      <td>${escHtml(i.pay_method||'—')}</td>
-      <td><span class="badge ${STATUS_BADGE[i.status]||'badge-pending'}">${escHtml(i.status)}</span></td>
+      <td>${escHtml(D(i.pay_method||'—'))}</td>
+      <td><span class="badge ${STATUS_BADGE[i.status]||'badge-pending'}">${escHtml(D(i.status))}</span></td>
       <td style="color:var(--text3);font-size:11px">${escHtml(i.notes||'—')}</td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
@@ -801,6 +812,10 @@ if (window.LiftCoreFormat && LiftCoreFormat.setHeaderDate) {
 
 updateStats();
 renderTable(INVOICES);
+window.__lcRefreshPage = function () {
+  updateStats();
+  renderTable(typeof filtered !== 'undefined' ? filtered : INVOICES);
+};
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);

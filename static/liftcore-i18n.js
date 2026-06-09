@@ -316,7 +316,19 @@
     return String(text)
       .replace(/(\d+)\s*سجل/g, '$1 records')
       .replace(/(\d+)\s*عملية/g, '$1 transactions')
-      .replace(/(\d+)\s*عمليات/g, '$1 transactions');
+      .replace(/(\d+)\s*عمليات/g, '$1 transactions')
+      .replace(/(\d+)\s*مصعد/g, '$1 elevators')
+      .replace(/(\d+)\s*مصاعد/g, '$1 elevators')
+      .replace(/(\d+)\s*عميل/g, '$1 clients')
+      .replace(/(\d+)\s*عقد/g, '$1 contracts')
+      .replace(/(\d+)\s*عطل/g, '$1 faults')
+      .replace(/(\d+)\s*زيارة/g, '$1 visits')
+      .replace(/(\d+)\s*فني/g, '$1 technicians')
+      .replace(/(\d+)\s*فاتورة/g, '$1 invoices')
+      .replace(/(\d+)\s*سند/g, '$1 receipts')
+      .replace(/(\d+)\s*صنف/g, '$1 items')
+      .replace(/(\d+)\s*حركة/g, '$1 movements')
+      .replace(/عرض\s+(\d+)\s+من\s+(\d+)/g, 'Showing $1 of $2');
   }
 
   function setNavItemLabel(link, lang) {
@@ -412,7 +424,7 @@
       if (!storedAr.has(node)) storedAr.set(node, raw);
       var en = lookupEn(key) || translateRecordCount(raw, 'en');
       if (en !== raw) node.textContent = en;
-      else if (/سجل|عملية/.test(raw)) node.textContent = translateRecordCount(raw, 'en');
+      else if (/سجل|عملية|مصعد|عميل|عقد|عرض/.test(raw)) node.textContent = translateRecordCount(raw, 'en');
     } else if (storedAr.has(node)) {
       node.textContent = storedAr.get(node);
     } else if (REVERSE[key]) {

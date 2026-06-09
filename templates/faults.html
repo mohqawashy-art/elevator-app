@@ -336,7 +336,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
 
       <div class="page-header">
-        <div class="page-title">الأعطال <span id="faults-count">0 عطل</span></div>
+        <div class="page-title">الأعطال <span id="faults-count" data-i18n-skip></span></div>
         <div class="page-actions">
           <a class="btn btn-secondary btn-sm" href="/field" target="_blank" style="text-decoration:none">جوال الفني</a>
           <button class="btn btn-secondary btn-sm" type="button" onclick="exportExcel()">
@@ -829,22 +829,27 @@ function formatResponseTimeCell(val) {
 function renderTable(data) {
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
-  document.getElementById('faults-count').innerHTML = '<span class="lc-num">' + data.length + '</span> عطل';
-  const info = document.getElementById('table-info');
-  if (info) {
-    info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + FAULTS.length + '</span>';
+  const D = window.lcDisp || (s => s);
+  const LC = window.LiftCoreDisplay;
+  if (LC) {
+    LC.setCountEl('faults-count', LC.fmtFaultsCount(data.length));
+    LC.setCountEl('table-info', LC.fmtShowing(data.length, FAULTS.length));
+  } else {
+    document.getElementById('faults-count').innerHTML = '<span class="lc-num">' + data.length + '</span> عطل';
+    const info = document.getElementById('table-info');
+    if (info) info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + FAULTS.length + '</span>';
   }
   tbody.innerHTML = data.map(f=>`
     <tr onclick="viewFault(${f.id})">
       <td class="td-code lc-code">${f.code}</td>
-      <td class="td-name">${f.customer}</td>
+      <td class="td-name">${D(LC ? LC.name(f.customer, f.customer_name_en) : f.customer)}</td>
       <td class="td-code">${f.elevator}</td>
-      <td>${f.fault_type}</td>
-      <td><span class="badge ${PRIORITY_BADGE[f.priority]||'badge-active'}">${f.priority}</span></td>
-      <td>${f.technician}</td>
+      <td>${D(f.fault_type)}</td>
+      <td><span class="badge ${PRIORITY_BADGE[f.priority]||'badge-active'}">${D(f.priority)}</span></td>
+      <td>${D(f.technician)}</td>
       <td>${formatResponseTimeCell(f.response_time)}</td>
-      <td><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${f.status}</span></td>
-      <td><span class="badge ${f.needs_parts?'badge-billable':'badge-cancelled'}">${f.needs_parts?'قابل للفوترة':'ضمن العقد'}</span></td>
+      <td><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${D(f.status)}</span></td>
+      <td><span class="badge ${f.needs_parts?'badge-billable':'badge-cancelled'}">${D(f.needs_parts?'قابل للفوترة':'ضمن العقد')}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
           <a class="btn btn-primary btn-sm btn-icon" href="/faults/${f.id}/report" target="_blank" title="تعبئة / تعديل تقرير العطل" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
@@ -1110,6 +1115,10 @@ document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.g
 OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
 updateSidebarBadge();
 renderTable(FAULTS);
+window.__lcRefreshPage = function () {
+  renderTable(typeof filtered !== 'undefined' ? filtered : FAULTS);
+  if (typeof updateSidebarBadge === 'function') updateSidebarBadge();
+};
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);

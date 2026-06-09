@@ -348,7 +348,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <!-- TABLE TAB -->
     <div id="tab-table">
       <div class="page-header">
-        <div class="page-title">زيارات الصيانة <span id="work-month-label" style="color:var(--accent);font-size:13px"></span> <span id="visits-count">0 زيارة</span></div>
+        <div class="page-title">زيارات الصيانة <span id="work-month-label" style="color:var(--accent);font-size:13px"></span> <span id="visits-count" data-i18n-skip></span></div>
         <div class="page-actions">
           <button class="btn btn-secondary btn-sm" type="button" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
@@ -904,20 +904,27 @@ function clearVisitFilter() {
 function renderTable(data) {
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
-  document.getElementById('visits-count').textContent = data.length + ' زيارة';
-  const info = document.getElementById('table-info');
-  if (info) info.textContent = 'عرض ' + data.length + ' من ' + VISITS.length;
+  const D = window.lcDisp || (s => s);
+  const LC = window.LiftCoreDisplay;
+  if (LC) {
+    LC.setCountEl('visits-count', LC.fmtVisitsCount(data.length));
+    LC.setCountEl('table-info', LC.fmtShowing(data.length, VISITS.length));
+  } else {
+    document.getElementById('visits-count').textContent = data.length + ' زيارة';
+    const info = document.getElementById('table-info');
+    if (info) info.textContent = 'عرض ' + data.length + ' من ' + VISITS.length;
+  }
   tbody.innerHTML = data.map(v=>`
     <tr onclick="viewVisit(${v.id})">
       <td class="td-code lc-code">${v.code}</td>
-      <td class="td-name">${v.customer}</td>
+      <td class="td-name">${D(LC ? LC.name(v.customer, v.customer_name_en) : v.customer)}</td>
       <td class="lc-elev">${v.elevator}</td>
-      <td>${v.technician}</td>
-      <td>${v.visit_type}</td>
+      <td>${D(v.technician)}</td>
+      <td>${D(v.visit_type)}</td>
       <td class="lc-date">${v.visit_date}</td>
       <td class="lc-num">${v.visit_time||'—'}</td>
-      <td><span class="badge ${PRIORITY_BADGE[v.priority]||'badge-active'}">${v.priority}</span></td>
-      <td><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${v.status}</span></td>
+      <td><span class="badge ${PRIORITY_BADGE[v.priority]||'badge-active'}">${D(v.priority)}</span></td>
+      <td><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${D(v.status)}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
           <a class="btn btn-primary btn-sm btn-icon" href="/maintenance-visits/${v.id}/report" target="_blank" title="تعبئة / تعديل محضر الفحص" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
@@ -1630,6 +1637,10 @@ if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);
 }
+window.__lcRefreshPage = function () {
+  renderTable(typeof filtered !== 'undefined' ? filtered : VISITS);
+  if (typeof updateStats === 'function') updateStats();
+};
 </script>
 </body>
 </html>

@@ -350,7 +350,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div id="tab-table">
     <!-- PAGE HEADER -->
     <div class="page-header">
-      <div class="page-title">العقود <span id="contracts-count">0 عقد</span></div>
+      <div class="page-title">العقود <span id="contracts-count" data-i18n-skip></span></div>
       <div class="page-actions">
         <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
@@ -659,6 +659,7 @@ const CONTRACTS = [
     code:          {{ c.code|tojson }},
     customer_id:   {{ c.customer_id }},
     customer:      {{ (c.customer.name if c.customer else '')|tojson }},
+    customer_name_en: {{ (c.customer.name_en if c.customer else '')|tojson }},
     customer_city: {{ (c.customer.city or '')|tojson }},
     customer_lat:  {{ (c.customer.lat or '')|tojson }},
     customer_lng:  {{ (c.customer.lng or '')|tojson }},
@@ -864,21 +865,28 @@ function closeContractDrill() {
 function renderTable(data) {
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
-  document.getElementById('contracts-count').textContent = data.length + ' عقد';
-  document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + CONTRACTS.length;
+  var D = lcDisp;
+  var LC = window.LiftCoreDisplay;
+  if (LC) {
+    LC.setCountEl('contracts-count', LC.fmtContractsCount(data.length));
+    LC.setCountEl('table-info', LC.fmtShowing(data.length, CONTRACTS.length));
+  } else {
+    document.getElementById('contracts-count').textContent = data.length + ' عقد';
+    document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + CONTRACTS.length;
+  }
   tbody.innerHTML = data.map(function(c) {
     var disp = getContractDisplayStatus(c);
     return '<tr onclick="viewContract(' + c.id + ')">' +
       '<td class="td-code">' + esc(c.code) + '</td>' +
-      '<td class="td-name">' + esc(c.customer) + '</td>' +
-      '<td>' + esc(c.contract_type) + '</td>' +
+      '<td class="td-name">' + esc(LC ? LC.name(c.customer, c.customer_name_en) : c.customer) + '</td>' +
+      '<td>' + esc(D(c.contract_type)) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.start_date) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
       '<td style="text-align:center" title="' + esc(elevatorLabels(c.elevator_ids)) + '">' + c.elevators + '</td>' +
       '<td class="td-amount">' + c.value.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td class="td-amount">' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
-      '<td><span class="badge ' + (STATUS_BADGE[disp] || 'badge-active') + '">' + esc(disp) + '</span></td>' +
-      '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span></td>' +
+      '<td><span class="badge ' + (STATUS_BADGE[disp] || 'badge-active') + '">' + esc(D(disp)) + '</span></td>' +
+      '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(D(c.inv_status)) + '</span></td>' +
       '<td onclick="event.stopPropagation()"><div class="td-actions">' +
         '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();printContractForm(' + c.id + ')" title="طباعة العقد" style="color:var(--gold)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg></button>' +
         '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();viewContract(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
@@ -1474,6 +1482,10 @@ if (window.LiftCoreLocation) {
 initFilters();
 updateStats();
 renderTable(CONTRACTS);
+window.__lcRefreshPage = function () {
+  renderTable(typeof filtered !== 'undefined' ? filtered : CONTRACTS);
+  if (typeof updateStats === 'function') updateStats();
+};
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);
