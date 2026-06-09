@@ -59,6 +59,7 @@
     'المصاعد': 'Elevators',
     'العقود': 'Contracts',
     'الفنيون': 'Technicians',
+    'الفنيين': 'Technicians',
     'الصيانة': 'Maintenance',
     'الأعطال': 'Faults',
     'تركيب قطع غيار': 'Parts Installation',
@@ -463,6 +464,10 @@
   function translateElement(el, lang) {
     if (!el || el.closest('[data-i18n-skip]')) return;
     if (el.hasAttribute('data-i18n')) return;
+    if (el.classList && el.classList.contains('page-title')) {
+      translateMixed(el, lang);
+      return;
+    }
     var tag = (el.tagName || '').toUpperCase();
     if (el.querySelector('svg')) {
       translateMixed(el, lang);
@@ -501,7 +506,10 @@
       '.profile-dropdown-role',
       '.btn',
       '.tab:not(.lang-opt)',
-      '.flash',
+      '.tabs .tab',
+      '.stat-mini-label',
+      '.alert-expiry',
+      '.form-section-title',
       'label',
       'th',
       'h1',
@@ -560,6 +568,7 @@
     try {
     if (lang !== 'ar' && lang !== 'en') lang = 'ar';
     currentLang = lang;
+    global.__LC_LANG = lang;
     var root = document.documentElement;
     root.setAttribute('lang', lang);
     root.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
@@ -586,6 +595,10 @@
     }
 
     updateHeaderDate(lang);
+
+    if (global.LiftCoreDisplay && global.LiftCoreDisplay.applyDom) {
+      global.LiftCoreDisplay.applyDom(document, lang);
+    }
 
     document.dispatchEvent(new CustomEvent('liftcore:lang', { detail: { lang: lang } }));
     } finally {
