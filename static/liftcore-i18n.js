@@ -508,6 +508,32 @@
     persistLanguage(lang);
   }
 
+  function installSetLang() {
+    global.setLang = setLang;
+    global.LiftCoreI18n = {
+      apply: applyLanguage,
+      setLang: setLang,
+      t: t,
+      TEXT: TEXT,
+      KEYS: KEYS,
+    };
+  }
+
+  /* أزرار EN/AR — تشتغل حتى لو الصفحة عرّفت setLang قديم */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.id) return;
+    if (t.id === 'btn-ar') {
+      e.preventDefault();
+      e.stopPropagation();
+      setLang('ar');
+    } else if (t.id === 'btn-en') {
+      e.preventDefault();
+      e.stopPropagation();
+      setLang('en');
+    }
+  }, true);
+
   function initLanguage() {
     var lang = global.__LC_LANG;
     if (!lang) {
@@ -517,20 +543,7 @@
     applyLanguage(lang);
   }
 
-  global.LiftCoreI18n = {
-    apply: applyLanguage,
-    setLang: setLang,
-    t: t,
-    TEXT: TEXT,
-    KEYS: KEYS,
-  };
-
-  global.setLang = setLang;
-
-  /* صفحات قديمة تعرّف setLang محلياً في آخر الصفحة — نستعيد النسخة الكاملة بعد التحميل */
-  function bindSetLang() {
-    global.setLang = setLang;
-  }
+  installSetLang();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initLanguage);
@@ -538,14 +551,9 @@
     initLanguage();
   }
   window.addEventListener('load', function () {
-    bindSetLang();
+    installSetLang();
     applyLanguage(currentLang);
-    /* جداول وبطاقات تُبنى بـ JS بعد التحميل */
-    setTimeout(function () { applyLanguage(currentLang); }, 400);
-    setTimeout(function () { applyLanguage(currentLang); }, 1200);
-  });
-
-  document.addEventListener('liftcore:lang', function () {
-    setTimeout(function () { applyLanguage(currentLang); }, 50);
+    setTimeout(function () { installSetLang(); applyLanguage(currentLang); }, 400);
+    setTimeout(function () { installSetLang(); applyLanguage(currentLang); }, 1200);
   });
 })(window);

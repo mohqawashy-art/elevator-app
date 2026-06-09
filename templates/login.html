@@ -21,8 +21,8 @@
 <body>
 
   <div class="login-lang lang-toggle">
-    <button type="button" class="lang-opt{% if user_language|default('ar') == 'ar' %} active{% endif %}" id="btn-ar" onclick="setLang('ar')" aria-label="العربية">ع</button>
-    <button type="button" class="lang-opt{% if user_language|default('ar') == 'en' %} active{% endif %}" id="btn-en" onclick="setLang('en')" aria-label="English">EN</button>
+    <button type="button" class="lang-opt{% if user_language|default('ar') == 'ar' %} active{% endif %}" id="btn-ar" onclick="LiftCoreI18n.setLang('ar')" aria-label="العربية">ع</button>
+    <button type="button" class="lang-opt{% if user_language|default('ar') == 'en' %} active{% endif %}" id="btn-en" onclick="LiftCoreI18n.setLang('en')" aria-label="English">EN</button>
   </div>
 
   <div class="page-wrap">
