@@ -263,6 +263,12 @@
     'تأكيد كلمة المرور *': 'Confirm Password *',
   };
 
+  if (global.__LC_I18N_UI) {
+    Object.keys(global.__LC_I18N_UI).forEach(function (k) {
+      TEXT[k] = global.__LC_I18N_UI[k];
+    });
+  }
+
   var KEYS = {
     settings: { ar: 'الإعدادات', en: 'Settings' },
     fullscreen: { ar: 'شاشة كاملة', en: 'Full Screen' },
@@ -335,6 +341,67 @@
     }
   }
 
+  function lookupEn(key) {
+    return TEXT[key] || SECTIONS[key] || ROLES[key] || null;
+  }
+
+  function shouldSkipTextNode(node) {
+    var p = node.parentElement;
+    if (!p) return true;
+    if (p.closest('[data-i18n-skip], script, style, noscript')) return true;
+    if (p.tagName === 'INPUT' || p.tagName === 'TEXTAREA' || p.tagName === 'SCRIPT') return true;
+    var td = p.closest('td');
+    if (td && td.closest('tbody')) {
+      if (td.classList.contains('lc-code') || td.classList.contains('lc-date') ||
+          td.classList.contains('lc-num') || td.classList.contains('lc-elev') ||
+          td.classList.contains('lc-contract')) return true;
+      if (td.querySelector('a[href], input, select, button')) return true;
+      var key = norm(node.textContent);
+      if (!lookupEn(key) && !/^(نشط|غير نشط|منتهي|معلق|مكتمل|ملغى|عاجل|عادي|ساري|محصل|غير محصل|مدفوعة|غير مدفوعة)$/.test(key)) {
+        if (key.length > 40 || /[0-9]{2,}/.test(key)) return true;
+      }
+    }
+    return false;
+  }
+
+  function walkTextNodes(root, lang) {
+    if (!root) return;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) {
+      if (shouldSkipTextNode(node)) continue;
+      translateNode(node, lang);
+    }
+  }
+
+  function translateFormAttributes(root, lang) {
+    root.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(function (el) {
+      var ph = el.getAttribute('placeholder');
+      if (!ph || !/[\u0600-\u06FF]/.test(ph)) return;
+      if (lang === 'en') {
+        if (!el.dataset.i18nPhAr) el.dataset.i18nPhAr = ph;
+        var en = lookupEn(norm(ph));
+        if (en) el.setAttribute('placeholder', en);
+      } else if (el.dataset.i18nPhAr) {
+        el.setAttribute('placeholder', el.dataset.i18nPhAr);
+      }
+    });
+    root.querySelectorAll('option').forEach(function (el) {
+      translateElement(el, lang);
+    });
+    root.querySelectorAll('[title]').forEach(function (el) {
+      var ti = el.getAttribute('title');
+      if (!ti || !/[\u0600-\u06FF]/.test(ti)) return;
+      if (lang === 'en') {
+        if (!el.dataset.i18nTitleAr) el.dataset.i18nTitleAr = ti;
+        var en = lookupEn(norm(ti));
+        if (en) el.setAttribute('title', en);
+      } else if (el.dataset.i18nTitleAr) {
+        el.setAttribute('title', el.dataset.i18nTitleAr);
+      }
+    });
+  }
+
   function translateNode(node, lang) {
     if (!node) return;
     var raw = node.textContent;
@@ -343,7 +410,7 @@
 
     if (lang === 'en') {
       if (!storedAr.has(node)) storedAr.set(node, raw);
-      var en = TEXT[key] || SECTIONS[key] || ROLES[key] || translateRecordCount(raw, 'en');
+      var en = lookupEn(key) || translateRecordCount(raw, 'en');
       if (en !== raw) node.textContent = en;
       else if (/سجل|عملية/.test(raw)) node.textContent = translateRecordCount(raw, 'en');
     } else if (storedAr.has(node)) {
@@ -472,7 +539,13 @@
     });
   }
 
+  var applying = false;
+  var moTimer = null;
+
   function applyLanguage(lang) {
+    if (applying) return;
+    applying = true;
+    try {
     if (lang !== 'ar' && lang !== 'en') lang = 'ar';
     currentLang = lang;
     var root = document.documentElement;
@@ -481,15 +554,31 @@
     try { localStorage.setItem('liftcore_lang', lang); } catch (e) { /* ignore */ }
 
     var ar = document.getElementById('btn-ar');
-    var en = document.getElementById('btn-en');
+    var enBtn = document.getElementById('btn-en');
     if (ar) ar.classList.toggle('active', lang === 'ar');
-    if (en) en.classList.toggle('active', lang === 'en');
+    if (enBtn) enBtn.classList.toggle('active', lang === 'en');
 
     applyDataI18n(document, lang);
     applySelectors(document, lang);
+
+    var zones = document.querySelectorAll(
+      '.sidebar, .main, .content, .wrap, .lc-header, .modal, .modal-overlay, .page-wrap, .card, .modal-body, .modal-content'
+    );
+    zones.forEach(function (z) {
+      walkTextNodes(z, lang);
+      translateFormAttributes(z, lang);
+    });
+    if (!zones.length) {
+      walkTextNodes(document.body, lang);
+      translateFormAttributes(document.body, lang);
+    }
+
     updateHeaderDate(lang);
 
     document.dispatchEvent(new CustomEvent('liftcore:lang', { detail: { lang: lang } }));
+    } finally {
+      applying = false;
+    }
   }
 
   function persistLanguage(lang) {
@@ -555,5 +644,21 @@
     applyLanguage(currentLang);
     setTimeout(function () { installSetLang(); applyLanguage(currentLang); }, 400);
     setTimeout(function () { installSetLang(); applyLanguage(currentLang); }, 1200);
+    setTimeout(function () { installSetLang(); applyLanguage(currentLang); }, 2500);
   });
+
+  if (typeof MutationObserver !== 'undefined') {
+    var mo = new MutationObserver(function () {
+      if (currentLang !== 'en' || applying) return;
+      clearTimeout(moTimer);
+      moTimer = setTimeout(function () { applyLanguage('en'); }, 300);
+    });
+    if (document.body) {
+      mo.observe(document.body, { childList: true, subtree: true });
+    } else {
+      document.addEventListener('DOMContentLoaded', function () {
+        mo.observe(document.body, { childList: true, subtree: true });
+      });
+    }
+  }
 })(window);
