@@ -233,6 +233,10 @@ input[type=range]{padding:0;background:transparent;border:none}
       <div class="section">تعديل: {{ edit_user.username }}</div>
       <div class="grid">
         <div>
+          <label>اسم المستخدم</label>
+          <input name="username" value="{{ edit_user.username }}" required dir="ltr" autocomplete="off">
+        </div>
+        <div>
           <label>الاسم الكامل</label>
           <input name="full_name" value="{{ edit_user.full_name or '' }}">
         </div>
@@ -323,7 +327,8 @@ input[type=range]{padding:0;background:transparent;border:none}
         </div>
         <div>
           <label>اسم المستخدم</label>
-          <input value="{{ current_user.username }}" readonly dir="ltr" style="opacity:.7">
+          <input name="username" value="{{ current_user.username }}" required dir="ltr" autocomplete="username">
+          <p class="hint">يُستخدم لتسجيل الدخول — يجب أن يكون فريداً</p>
         </div>
         <div>
           <label>الدور</label>

@@ -1,6 +1,6 @@
-/* LiftCore — مقاس logo.png: 900×200 */
+/* LiftCore — مقاس الشعار من الإعدادات (--logo-w-* في liftcore_head) */
 .sidebar .sidebar-logo {
-  min-height: 100px;
+  min-height: var(--header-h, 60px);
   padding: 12px 16px;
   display: flex;
   align-items: center;
@@ -8,29 +8,32 @@
 }
 
 .sidebar .sidebar-logo img {
-  width: 900px !important;
-  height: 200px !important;
+  width: var(--logo-w-sidebar, 150px) !important;
+  height: auto !important;
+  max-height: 120px;
   object-fit: contain;
   display: block;
 }
 
 .rpt-header-logo img {
-  width: 900px !important;
-  height: 200px !important;
+  width: var(--logo-w-report, 150px) !important;
+  height: auto !important;
+  max-height: 120px;
   object-fit: contain;
 }
 
 .logo-area {
-  min-height: 200px;
+  min-height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 12px 0;
 }
 
-.logo-img {
-  width: 900px !important;
-  height: 200px !important;
+.logo-img,
+.login-logo {
+  width: var(--logo-w-login, 180px) !important;
+  height: auto !important;
   max-width: 100%;
   object-fit: contain;
 }

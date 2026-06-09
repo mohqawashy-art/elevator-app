@@ -129,6 +129,138 @@
     'نسيت كلمة المرور؟': 'Forgot password?',
     'اسم المستخدم أو كلمة المرور غير صحيحة': 'Invalid username or password',
     'تم الحفظ بنجاح.': 'Saved successfully.',
+    /* — جداول وعناوين الصفحات — */
+    'الكود': 'Code',
+    'اسم العميل': 'Client Name',
+    'المدينة': 'City',
+    'الحي': 'District',
+    'الهاتف': 'Phone',
+    'المصاعد': 'Elevators',
+    'حالة العقد': 'Contract Status',
+    'إجراءات': 'Actions',
+    'الاسم': 'Name',
+    'اسم الفني': 'Technician Name',
+    'التخصص': 'Specialization',
+    'طوارئ': 'Emergency',
+    'المسمى الوظيفي': 'Job Title',
+    'النوع': 'Type',
+    'البداية': 'Start',
+    'الانتهاء': 'End',
+    'تاريخ البداية': 'Start Date',
+    'تاريخ الانتهاء': 'End Date',
+    'قيمة العقد': 'Contract Value',
+    'حالة الفاتورة': 'Invoice Status',
+    'الفاتورة': 'Invoice',
+    'المبنى': 'Building',
+    'الماركة': 'Brand',
+    'الحمولة': 'Capacity',
+    'الصيانة القادمة': 'Next Maintenance',
+    'رقم العملية': 'Transaction #',
+    'نوع الإيراد': 'Revenue Type',
+    'نوع المصروف': 'Expense Type',
+    'طريقة الدفع': 'Payment Method',
+    'المبلغ (ر.س)': 'Amount (SAR)',
+    'المبلغ (SAR)': 'Amount (SAR)',
+    'العميل / العقد': 'Client / Contract',
+    'رقم المستند': 'Document #',
+    'البيان': 'Description',
+    'اسم الصنف': 'Item Name',
+    'التصنيف': 'Category',
+    'الرصيد': 'Balance',
+    'الحد الأدنى': 'Min Stock',
+    'سعر الشراء': 'Purchase Price',
+    'قيمة المخزون': 'Stock Value',
+    'المورد': 'Supplier',
+    'حالة الطلب': 'Order Status',
+    'نوع العطل': 'Fault Type',
+    'الأولوية': 'Priority',
+    'الاستجابة': 'Response',
+    'فوترة': 'Billing',
+    'الوقت': 'Time',
+    'رقم الحركة': 'Movement #',
+    'الاتجاه': 'Direction',
+    'نوع الحركة': 'Movement Type',
+    'الصنف': 'Item',
+    'الكمية': 'Quantity',
+    'القيمة': 'Value',
+    'الفني / المستلم': 'Technician / Recipient',
+    'السبب': 'Reason',
+    'السبب / الموقع': 'Reason / Location',
+    'بيان القطع': 'Parts Description',
+    'التكلفة': 'Cost',
+    'سعر العميل': 'Client Price',
+    'الربح': 'Profit',
+    'المسؤول': 'Responsible',
+    'عدد العقود': 'Contracts Count',
+    'الأيام المتبقية': 'Days Remaining',
+    'كود المصعد': 'Elevator Code',
+    'آخر صيانة': 'Last Maintenance',
+    'الفني المسؤول': 'Assigned Technician',
+    'نوع الزيارة': 'Visit Type',
+    'الأعمال المنفذة': 'Work Done',
+    'آخر الزيارات': 'Recent Visits',
+    'الأعطال المرتبطة': 'Related Faults',
+    'قائمة العملاء': 'Clients List',
+    'قائمة المصاعد': 'Elevators List',
+    'قائمة العقود': 'Contracts List',
+    'قائمة الفنيين': 'Technicians List',
+    'سجل الصيانة': 'Maintenance Log',
+    'سجل الأعطال': 'Faults Log',
+    'خريطة العملاء': 'Clients Map',
+    'إضافة عميل جديد': 'Add New Client',
+    'إضافة مصعد جديد': 'Add New Elevator',
+    'إضافة عقد جديد': 'Add New Contract',
+    'إضافة فني جديد': 'Add New Technician',
+    'تسجيل عطل': 'Register Fault',
+    'تسجيل زيارة': 'Register Visit',
+    'فلترة متقدمة': 'Advanced Filter',
+    'عرض الخريطة': 'Map View',
+    'عرض القائمة': 'List View',
+    'عرض البطاقات': 'Card View',
+    'عرض الجدول': 'Table View',
+    'نشط': 'Active',
+    'غير نشط': 'Inactive',
+    'معطّل': 'Disabled',
+    'ساري': 'Valid',
+    'منتهي': 'Expired',
+    'محصل': 'Collected',
+    'غير محصل': 'Uncollected',
+    'عاجل': 'Urgent',
+    'عادي': 'Normal',
+    'مفتوح': 'Open',
+    'مغلق': 'Closed',
+    'قيد التنفيذ': 'In Progress',
+    'مجدول': 'Scheduled',
+    'مرسل': 'Dispatched',
+    /* — الإعدادات — */
+    'الشركة والهوية': 'Company & Branding',
+    'المستخدمون': 'Users',
+    'حسابي': 'My Account',
+    'الباقة': 'Plan',
+    'بيانات الشركة': 'Company Details',
+    'الشعار والمقاس': 'Logo & Size',
+    'بيانات حسابي': 'My Account Details',
+    'تغيير كلمة المرور': 'Change Password',
+    'مظهر البرنامج': 'App Appearance',
+    'قائمة المستخدمين': 'Users List',
+    'إضافة مستخدم جديد': 'Add New User',
+    'المستخدم': 'Username',
+    'الدور': 'Role',
+    'آخر دخول': 'Last Login',
+    'تفعيل': 'Enable',
+    'تعطيل': 'Disable',
+    'داكن': 'Dark',
+    'فاتح': 'Light',
+    'حفظ الإعدادات': 'Save Settings',
+    'حفظ بيانات الشركة': 'Save Company',
+    'حفظ البيانات': 'Save Profile',
+    'حفظ المظهر': 'Save Theme',
+    'تحديث كلمة المرور': 'Update Password',
+    'إنشاء المستخدم': 'Create User',
+    'حفظ التعديلات': 'Save Changes',
+    'كلمة المرور الحالية *': 'Current Password *',
+    'كلمة المرور الجديدة *': 'New Password *',
+    'تأكيد كلمة المرور *': 'Confirm Password *',
   };
 
   var KEYS = {
@@ -249,6 +381,30 @@
     });
   }
 
+  function translateElement(el, lang) {
+    if (!el || el.closest('[data-i18n-skip]')) return;
+    if (el.hasAttribute('data-i18n')) return;
+    var tag = (el.tagName || '').toUpperCase();
+    if (el.querySelector('svg')) {
+      translateMixed(el, lang);
+      return;
+    }
+    if (el.querySelector('input, select, textarea, button')) {
+      if (tag === 'LABEL') translateMixed(el, lang);
+      return;
+    }
+    if (tag === 'TH' || tag === 'TD') {
+      translateMixed(el, lang);
+      if (!el.querySelector('*')) replaceExact(el, lang);
+      return;
+    }
+    if (tag === 'OPTION') {
+      replaceExact(el, lang);
+      return;
+    }
+    replaceExact(el, lang);
+  }
+
   function applySelectors(root, lang) {
     var selectors = [
       '.nav-section',
@@ -259,31 +415,40 @@
       '.page-heading',
       '.stat-label',
       '.section-title',
+      '.card-section-title',
       '.modal-title',
       '.profile-dropdown a',
       '.profile-dropdown-name',
       '.profile-dropdown-role',
       '.btn',
-      '.tab',
+      '.tab:not(.lang-opt)',
       '.flash',
       'label',
       'th',
+      'h1',
+      'h2',
+      'h3',
+      '.toolbar-title',
+      '.filter-label',
+      '.hint',
+      'option',
     ];
     selectors.forEach(function (sel) {
       root.querySelectorAll(sel).forEach(function (el) {
-        if (el.querySelector('svg')) {
-          translateMixed(el, lang);
-        } else if (!el.querySelector('input, select, textarea')) {
-          replaceExact(el, lang);
+        translateElement(el, lang);
+      });
+    });
+
+    root.querySelectorAll('.main, .wrap').forEach(function (scope) {
+      scope.querySelectorAll('p, span.badge, .stat-val-label').forEach(function (el) {
+        if (!el.children.length || (el.children.length === 1 && el.querySelector('.lc-sar'))) {
+          translateElement(el, lang);
         }
       });
     });
 
     root.querySelectorAll('.nav-item[href]').forEach(function (a) {
       setNavItemLabel(a, lang);
-    });
-    root.querySelectorAll('.nav-section').forEach(function (el) {
-      replaceExact(el, lang);
     });
   }
 
@@ -375,5 +540,12 @@
   window.addEventListener('load', function () {
     bindSetLang();
     applyLanguage(currentLang);
+    /* جداول وبطاقات تُبنى بـ JS بعد التحميل */
+    setTimeout(function () { applyLanguage(currentLang); }, 400);
+    setTimeout(function () { applyLanguage(currentLang); }, 1200);
+  });
+
+  document.addEventListener('liftcore:lang', function () {
+    setTimeout(function () { applyLanguage(currentLang); }, 50);
   });
 })(window);

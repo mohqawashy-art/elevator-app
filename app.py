@@ -3584,11 +3584,32 @@ def _save_user_photo(user, file_storage):
     user.photo_path = f'uploads/users/{user.id}/{filename}'
 
 
+def _apply_username_change(user, new_username):
+    """تحديث اسم المستخدم مع التحقق من التفرد."""
+    new_username = (new_username or '').strip()
+    if not new_username:
+        return 'اسم المستخدم مطلوب.'
+    if new_username == user.username:
+        return None
+    taken = User.query.filter(
+        User.username == new_username,
+        User.id != user.id,
+    ).first()
+    if taken:
+        return f'اسم المستخدم «{new_username}» مستخدم مسبقاً.'
+    user.username = new_username
+    return None
+
+
 @app.route('/settings/profile', methods=['POST'])
 def settings_profile_save():
     user = require_login()
     if not user:
         return redirect(url_for('login'))
+    username_err = _apply_username_change(user, request.form.get('username'))
+    if username_err:
+        session['settings_notice'] = username_err
+        return _settings_redirect('account')
     user.full_name = (request.form.get('full_name') or '').strip() or user.username
     user.email = (request.form.get('email') or '').strip()
     _save_user_photo(user, request.files.get('photo'))
@@ -3675,6 +3696,10 @@ def settings_user_edit(user_id):
     if not admin:
         return redirect(url_for('login'))
     target = User.query.get_or_404(user_id)
+    username_err = _apply_username_change(target, request.form.get('username'))
+    if username_err:
+        session['settings_notice'] = username_err
+        return _settings_redirect('users', edit_user=target.id)
     full_name = (request.form.get('full_name') or '').strip()
     email = (request.form.get('email') or '').strip()
     role = (request.form.get('role') or target.role).strip()
