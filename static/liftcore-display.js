@@ -49,6 +49,7 @@
     '.form-section-title', '.modal-title',
     '.alert-expiry span', '.table-info', '.page-info',
     '.filter-select option', '.search-input',
+    '.legend-item', '.alert-chip', '.tab', 'label', 'th',
   ].join(',');
 
   function currentLang() {
@@ -69,6 +70,9 @@
     var k = String(key).replace(/\s+/g, ' ').trim();
     if (global.LiftCoreI18n && global.LiftCoreI18n.TEXT && global.LiftCoreI18n.TEXT[k]) {
       return global.LiftCoreI18n.TEXT[k];
+    }
+    if (global.__LC_TRANSLATIONS && global.__LC_TRANSLATIONS[k]) {
+      return global.__LC_TRANSLATIONS[k];
     }
     if (ENUM[k]) return ENUM[k];
     return null;

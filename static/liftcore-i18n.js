@@ -264,6 +264,11 @@
     'تأكيد كلمة المرور *': 'Confirm Password *',
   };
 
+  if (global.__LC_TRANSLATIONS) {
+    Object.keys(global.__LC_TRANSLATIONS).forEach(function (k) {
+      TEXT[k] = global.__LC_TRANSLATIONS[k];
+    });
+  }
   if (global.__LC_I18N_UI) {
     Object.keys(global.__LC_I18N_UI).forEach(function (k) {
       TEXT[k] = global.__LC_I18N_UI[k];
@@ -508,6 +513,9 @@
       '.tab:not(.lang-opt)',
       '.tabs .tab',
       '.stat-mini-label',
+      '.alert-chip',
+      '.legend-item',
+      '.cal-title',
       '.alert-expiry',
       '.form-section-title',
       'label',
