@@ -18,7 +18,12 @@
   ];
 
   function fmt(n) {
+    if (global.LiftCoreDisplay) return global.LiftCoreDisplay.fmtMoney(n);
     return (n || 0).toLocaleString('ar-SA', { maximumFractionDigits: 2 }) + ' ر.س';
+  }
+
+  function L(s) {
+    return global.LiftCoreDisplay ? global.LiftCoreDisplay.text(s) : s;
   }
 
   function esc(s) {
@@ -39,19 +44,19 @@
     var c = data.contract;
     var period = c
       ? esc(c.start) + ' — ' + esc(c.end) + ' · ' + esc(c.code)
-      : 'كل الفترات (لا يوجد عقد نشط)';
+      : L('كل الفترات (لا يوجد عقد نشط)');
 
     var html = '<div class="cp-financial">';
-    html += '<div class="cp-fin-title">المدفوعات خلال فترة التعاقد <span class="cp-fin-period">' + period + '</span></div>';
-    html += '<div class="cp-fin-total"><span>إجمالي ما دفعه العميل</span><span>' + fmt(f.total_paid) + '</span></div>';
-    html += '<div class="cp-fin-row"><span>دفعات العقد / الفواتير</span><span>' + fmt(f.contract_payments) + '</span></div>';
-    html += '<div class="cp-fin-row"><span>قطع الغيار والتركيب</span><span>' + fmt(f.parts_payments) + '</span></div>';
+    html += '<div class="cp-fin-title">' + L('المدفوعات خلال فترة التعاقد') + ' <span class="cp-fin-period">' + period + '</span></div>';
+    html += '<div class="cp-fin-total"><span>' + L('إجمالي ما دفعه العميل') + '</span><span>' + fmt(f.total_paid) + '</span></div>';
+    html += '<div class="cp-fin-row"><span>' + L('دفعات العقد / الفواتير') + '</span><span>' + fmt(f.contract_payments) + '</span></div>';
+    html += '<div class="cp-fin-row"><span>' + L('قطع الغيار والتركيب') + '</span><span>' + fmt(f.parts_payments) + '</span></div>';
     if (f.other_payments > 0) {
-      html += '<div class="cp-fin-row"><span>أعمال إضافية</span><span>' + fmt(f.other_payments) + '</span></div>';
+      html += '<div class="cp-fin-row"><span>' + L('أعمال إضافية') + '</span><span>' + fmt(f.other_payments) + '</span></div>';
     }
     if (c) {
-      html += '<div class="cp-fin-row"><span>قيمة العقد</span><span>' + fmt(f.contract_value) + '</span></div>';
-      html += '<div class="cp-fin-row"><span>المتبقي على العقد</span><span style="color:var(--warning)">' + fmt(f.balance) + '</span></div>';
+      html += '<div class="cp-fin-row"><span>' + L('قيمة العقد') + '</span><span>' + fmt(f.contract_value) + '</span></div>';
+      html += '<div class="cp-fin-row"><span>' + L('المتبقي على العقد') + '</span><span style="color:var(--warning)">' + fmt(f.balance) + '</span></div>';
     }
     html += '</div>';
     return html;
@@ -61,7 +66,7 @@
     var list = data.contracts || [];
     if (list.length < 2) return '';
     var html = '<select class="cp-contract-sel" onchange="LiftCoreProfile.reloadCard(' + customerId + ', this.value)">';
-    html += '<option value="">كل العقود / الفترة الحالية</option>';
+    html += '<option value="">' + L('كل العقود / الفترة الحالية') + '</option>';
     list.forEach(function (ct) {
       html += '<option value="' + ct.id + '"' + (String(ct.id) === String(selectedId) ? ' selected' : '') + '>'
         + esc(ct.code) + ' (' + esc(ct.start) + ' — ' + esc(ct.end) + ')</option>';
@@ -72,19 +77,19 @@
 
   function renderSectionTable(rows, entityType, emptyLabel) {
     if (!rows || !rows.length) {
-      return '<div class="cp-empty">لا توجد ' + esc(emptyLabel) + ' مسجّلة</div>';
+      return '<div class="cp-empty">' + L('لا توجد') + ' ' + esc(L(emptyLabel)) + '</div>';
     }
     var html = '<table class="cp-table cp-table-clickable"><thead><tr>'
-      + '<th>التاريخ</th><th>الكود</th><th>البيان</th><th>التفاصيل</th><th>المبلغ</th><th>الحالة</th>'
+      + '<th>' + L('التاريخ') + '</th><th>' + L('الكود') + '</th><th>' + L('البيان') + '</th><th>' + L('التفاصيل') + '</th><th>' + L('المبلغ') + '</th><th>' + L('الحالة') + '</th>'
       + '</tr></thead><tbody>';
     rows.forEach(function (row) {
-      html += '<tr class="cp-click-row" data-entity="' + entityType + '" data-id="' + row.id + '" title="اضغط لعرض التفاصيل">'
+      html += '<tr class="cp-click-row" data-entity="' + entityType + '" data-id="' + row.id + '" title="' + L('اضغط لعرض التفاصيل') + '">'
         + '<td class="cp-date">' + esc(row.date) + '</td>'
         + '<td class="cp-date" style="color:var(--accent)">' + esc(row.code) + '</td>'
-        + '<td>' + esc(row.title) + '</td>'
-        + '<td style="font-size:11px;color:var(--text3)">' + esc(row.detail) + '</td>'
+        + '<td>' + esc(L(row.title)) + '</td>'
+        + '<td style="font-size:11px;color:var(--text3)">' + esc(L(row.detail)) + '</td>'
         + '<td class="cp-amount">' + (row.amount > 0 ? fmt(row.amount) : '—') + '</td>'
-        + '<td>' + esc(row.status || '—') + '</td>'
+        + '<td>' + esc(L(row.status || '—')) + '</td>'
         + '</tr>';
     });
     html += '</tbody></table>';
@@ -107,7 +112,7 @@
       var n = countMap[tab.key] || 0;
       html += '<button type="button" class="cp-tab' + (activeTab === tab.key ? ' active' : '') + '"'
         + ' data-tab="' + tab.key + '" role="tab">'
-        + tab.label + ' <span class="cp-tab-count">' + n + '</span></button>';
+        + L(tab.label) + ' <span class="cp-tab-count">' + n + '</span></button>';
     });
     html += '</div>';
 
@@ -169,7 +174,7 @@
       html += renderFinancialBlock(data);
     }
     if (options.showSections !== false) {
-      html += '<div class="cp-section">سجل العميل</div>';
+      html += '<div class="cp-section">' + L('سجل العميل') + '</div>';
       html += '<div id="cp-sections-mount">' + renderSectionTabs(data, options.activeTab || 'contracts') + '</div>';
     } else if (options.showTimeline !== false) {
       html += renderTimelineLegacy(data, options.timelineLimit || 25);
@@ -180,20 +185,20 @@
   function renderTimelineLegacy(data, limit) {
     var rows = (data.timeline || []).slice(0, limit);
     if (!rows.length) {
-      return '<div class="cp-empty">لا توجد أحداث مسجّلة في هذه الفترة</div>';
+      return '<div class="cp-empty">' + L('لا توجد أحداث مسجّلة في هذه الفترة') + '</div>';
     }
     var html = '<table class="cp-table"><thead><tr>'
-      + '<th>التاريخ</th><th>النوع</th><th>الكود</th><th>البيان</th><th>المبلغ</th><th>الحالة</th>'
+      + '<th>' + L('التاريخ') + '</th><th>' + L('النوع') + '</th><th>' + L('الكود') + '</th><th>' + L('البيان') + '</th><th>' + L('المبلغ') + '</th><th>' + L('الحالة') + '</th>'
       + '</tr></thead><tbody>';
     rows.forEach(function (row) {
       var cls = TYPE_CLASS[row.type] || 'cp-type-rev';
       html += '<tr>'
         + '<td class="cp-date">' + esc(row.date) + '</td>'
-        + '<td><span class="cp-type ' + cls + '">' + esc(row.type) + '</span></td>'
+        + '<td><span class="cp-type ' + cls + '">' + esc(L(row.type)) + '</span></td>'
         + '<td class="cp-date" style="color:var(--accent)">' + esc(row.code) + '</td>'
-        + '<td>' + esc(row.title) + '</td>'
+        + '<td>' + esc(L(row.title)) + '</td>'
         + '<td class="cp-amount">' + (row.amount > 0 ? fmt(row.amount) : '—') + '</td>'
-        + '<td>' + esc(row.status || '—') + '</td>'
+        + '<td>' + esc(L(row.status || '—')) + '</td>'
         + '</tr>';
     });
     html += '</tbody></table>';
@@ -205,15 +210,18 @@
     options = options || {};
     var activeTab = el._cpActiveTab || options.activeTab || 'contracts';
 
-    el.innerHTML = '<div class="cp-loading">⏳ جاري تحميل بيانات العميل...</div>';
+    el.innerHTML = '<div class="cp-loading">' + L('جاري تحميل بيانات العميل...') + '</div>';
     return fetchCustomerProfile(customerId, contractId).then(function (data) {
       options.activeTab = activeTab;
       el.innerHTML = renderCustomerProfilePanel(data, options);
       var mount = el.querySelector('#cp-sections-mount');
       if (mount) bindSectionTabs(mount, customerId, el);
+      if (global.LiftCoreI18n && global.LiftCoreDisplay && global.LiftCoreDisplay.isEn()) {
+        global.LiftCoreI18n.apply('en');
+      }
       return data;
     }).catch(function () {
-      el.innerHTML = '<div class="cp-empty">تعذر تحميل بيانات العميل</div>';
+      el.innerHTML = '<div class="cp-empty">' + L('تعذر تحميل بيانات العميل') + '</div>';
     });
   }
 

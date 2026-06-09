@@ -730,6 +730,7 @@ const ELEVATORS = [
     code:         {{ e.code|tojson }},
     customer_id:  {{ e.customer_id }},
     customer:     {{ (e.customer.name if e.customer else '')|tojson }},
+    customer_name_en: {{ (e.customer.name_en if e.customer else '')|tojson }},
     building:     {{ (e.building_name or '')|tojson }},
     city:         {{ (e.city or '')|tojson }},
     district:     {{ (e.district or '')|tojson }},
@@ -754,6 +755,8 @@ const ELEVATORS = [
   },
   {% endfor %}
 ];
+
+var filtered = ELEVATORS.slice();
 
 const CUSTOMERS = [
   {% for c in customers %}
@@ -924,6 +927,7 @@ var ELEV_DRILL_TITLES = {
   'متوقف': 'المصاعد المتوقفة',
   'خارج الخدمة': 'المصاعد خارج الخدمة'
 };
+var currentElevDrillType = null;
 
 function updateStats() {
   document.getElementById('stat-total').textContent = ELEVATORS.length;
@@ -947,11 +951,11 @@ function renderDrillTable(rows) {
   body.innerHTML = rows.map(function(e) {
     return '<tr style="cursor:pointer" onclick="viewElevator(' + e.id + ')">' +
       '<td class="td-code">' + esc(e.code) + '</td>' +
-      '<td class="td-name">' + esc(e.customer) + '</td>' +
-      '<td>' + esc(e.building || '—') + '</td>' +
-      '<td>' + esc(e.city || '—') + '</td>' +
-      '<td>' + esc(e.elev_type || '—') + '</td>' +
-      '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(e.status) + '</span></td>' +
+      '<td class="td-name">' + esc(elevCustomer(e)) + '</td>' +
+      '<td>' + esc(lcDisp(e.building || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(e.city || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(e.elev_type || '—')) + '</td>' +
+      '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></td>' +
       '<td style="font-family:var(--font-en);direction:ltr">' + esc(e.next_maint || '—') + '</td>' +
     '</tr>';
   }).join('');
@@ -960,12 +964,15 @@ function renderDrillTable(rows) {
 function openElevDrill(type, cardEl) {
   var panel = document.getElementById('drill-panel');
   var rows = getElevatorsByDrill(type);
+  currentElevDrillType = type;
 
   document.querySelectorAll('.stat-mini').forEach(function(el) { el.classList.remove('active'); });
   if (cardEl) cardEl.classList.add('active');
 
-  document.getElementById('drill-title').textContent = ELEV_DRILL_TITLES[type] || 'التفاصيل';
-  document.getElementById('drill-count').textContent = '(' + rows.length + ' مصعد)';
+  document.getElementById('drill-title').textContent = lcDisp(ELEV_DRILL_TITLES[type] || 'التفاصيل');
+  document.getElementById('drill-count').textContent = window.LiftCoreDisplay
+    ? '(' + LiftCoreDisplay.fmtElevatorsCount(rows.length) + ')'
+    : ('(' + rows.length + ' مصعد)');
   renderDrillTable(rows);
   panel.style.display = 'block';
   panel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
@@ -977,6 +984,7 @@ function openElevDrill(type, cardEl) {
 
 function closeElevDrill() {
   document.getElementById('drill-panel').style.display = 'none';
+  currentElevDrillType = null;
   document.querySelectorAll('.stat-mini').forEach(function(el) { el.classList.remove('active'); });
 }
 
@@ -984,21 +992,32 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function lcDisp(s) {
+  return (window.LiftCoreDisplay) ? LiftCoreDisplay.text(s == null ? '' : s) : (s || '—');
+}
+function elevCustomer(e) {
+  return (window.LiftCoreDisplay) ? LiftCoreDisplay.name(e.customer, e.customer_name_en) : e.customer;
+}
+
 function renderTable(data) {
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
-  document.getElementById('elev-count').textContent = data.length + ' مصعد';
-  document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + ELEVATORS.length;
+  document.getElementById('elev-count').textContent = window.LiftCoreDisplay
+    ? LiftCoreDisplay.fmtElevatorsCount(data.length)
+    : (data.length + ' مصعد');
+  document.getElementById('table-info').textContent = window.LiftCoreDisplay
+    ? LiftCoreDisplay.fmtShowing(data.length, ELEVATORS.length)
+    : ('عرض ' + data.length + ' من ' + ELEVATORS.length);
   tbody.innerHTML = data.map(function(e) {
     return '<tr onclick="viewElevator(' + e.id + ')">' +
       '<td class="td-code">' + esc(e.code) + '</td>' +
-      '<td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="event.stopPropagation();window.location=\'/clients\'">' + esc(e.customer) + '</td>' +
-      '<td>' + esc(e.building || '—') + '</td>' +
-      '<td>' + esc(e.city || '—') + '</td>' +
-      '<td>' + esc(e.elev_type || '—') + '</td>' +
+      '<td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="event.stopPropagation();window.location=\'/clients\'">' + esc(elevCustomer(e)) + '</td>' +
+      '<td>' + esc(lcDisp(e.building || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(e.city || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(e.elev_type || '—')) + '</td>' +
       '<td style="font-family:var(--font-en)">' + esc(e.brand || '—') + '</td>' +
-      '<td style="font-family:var(--font-en)">' + (e.capacity ? e.capacity + ' كجم' : '—') + '</td>' +
-      '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(e.status) + '</span></td>' +
+      '<td style="font-family:var(--font-en)">' + (e.capacity ? lcDisp(e.capacity + ' كجم') : '—') + '</td>' +
+      '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></td>' +
       '<td style="font-family:var(--font-en);direction:ltr">' + esc(e.next_maint || '—') + '</td>' +
       '<td onclick="event.stopPropagation()"><div class="td-actions">' +
         '<button class="btn btn-secondary btn-sm btn-icon" title="عرض" onclick="viewElevator(' + e.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
@@ -1137,29 +1156,30 @@ function viewElevator(id) {
   var e = ELEVATORS.find(function(x) { return x.id === id; });
   if (!e) return;
   currentViewId = id;
-  document.getElementById('view-title').textContent = e.code + ' — ' + (e.building || e.customer);
+  document.getElementById('view-title').textContent = e.code + ' — ' + lcDisp(e.building || elevCustomer(e));
   document.getElementById('view-body').innerHTML =
     '<div class="view-grid">' +
-      '<div class="view-section">البيانات الأساسية</div>' +
-      '<div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">' + esc(e.code) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">العميل</div><div class="view-val">' + esc(e.customer) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">المبنى</div><div class="view-val">' + esc(e.building || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">المدينة</div><div class="view-val">' + esc(e.city || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">الحي</div><div class="view-val">' + esc(e.district || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">النوع</div><div class="view-val">' + esc(e.elev_type || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">الماركة</div><div class="view-val" style="font-family:var(--font-en)">' + esc(e.brand || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">نوع الآلة</div><div class="view-val">' + esc(MACHINE_LABELS[e.machine_type] || e.machine_type || '—') + '</div></div>' +
-      '<div class="view-item view-full"><div class="view-label">نظام التحكم</div><div class="view-val">' + esc(formatControlSummary(e)) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">الحمولة</div><div class="view-val">' + (e.capacity ? e.capacity + ' كجم' : '—') + '</div></div>' +
-      '<div class="view-section">الصيانة</div>' +
-      '<div class="view-item"><div class="view-label">تاريخ التركيب</div><div class="view-val" style="direction:ltr">' + esc(e.install_date || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">آخر صيانة</div><div class="view-val" style="direction:ltr">' + esc(e.last_maint || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">الصيانة القادمة</div><div class="view-val" style="direction:ltr">' + esc(e.next_maint || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(e.status) + '</span></div></div>' +
-      (e.notes ? '<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">' + esc(e.notes) + '</div></div>' : '') +
+      '<div class="view-section">' + lcDisp('البيانات الأساسية') + '</div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('الكود') + '</div><div class="view-val" style="font-family:var(--font-en)">' + esc(e.code) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('العميل') + '</div><div class="view-val">' + esc(elevCustomer(e)) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('المبنى') + '</div><div class="view-val">' + esc(lcDisp(e.building || '—')) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('المدينة') + '</div><div class="view-val">' + esc(lcDisp(e.city || '—')) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('الحي') + '</div><div class="view-val">' + esc(lcDisp(e.district || '—')) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('النوع') + '</div><div class="view-val">' + esc(lcDisp(e.elev_type || '—')) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('الماركة') + '</div><div class="view-val" style="font-family:var(--font-en)">' + esc(e.brand || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('نوع الآلة') + '</div><div class="view-val">' + esc(lcDisp(MACHINE_LABELS[e.machine_type] || e.machine_type || '—')) + '</div></div>' +
+      '<div class="view-item view-full"><div class="view-label">' + lcDisp('نظام التحكم') + '</div><div class="view-val">' + esc(formatControlSummary(e)) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('الحمولة') + '</div><div class="view-val">' + (e.capacity ? lcDisp(e.capacity + ' كجم') : '—') + '</div></div>' +
+      '<div class="view-section">' + lcDisp('الصيانة') + '</div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('تاريخ التركيب') + '</div><div class="view-val" style="direction:ltr">' + esc(e.install_date || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('آخر صيانة') + '</div><div class="view-val" style="direction:ltr">' + esc(e.last_maint || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('الصيانة القادمة') + '</div><div class="view-val" style="direction:ltr">' + esc(e.next_maint || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + lcDisp('الحالة') + '</div><div class="view-val"><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></div></div>' +
+      (e.notes ? '<div class="view-item view-full"><div class="view-label">' + lcDisp('ملاحظات') + '</div><div class="view-val">' + esc(e.notes) + '</div></div>' : '') +
     '</div>';
   document.getElementById('modal-view').classList.add('open');
   LiftCoreProfile.appendToView(document.getElementById('view-body'), e.customer_id, null, { timelineLimit: 15 });
+  if (window.LiftCoreI18n && LiftCoreDisplay && LiftCoreDisplay.isEn()) LiftCoreI18n.apply('en');
 }
 
 function editFromView() {
@@ -1369,6 +1389,20 @@ document.getElementById('h-date').textContent = days[now.getDay()] + '، ' + now
 initFilters();
 updateStats();
 renderTable(ELEVATORS);
+document.addEventListener('liftcore:lang', function () {
+  renderTable(typeof filtered !== 'undefined' ? filtered : ELEVATORS);
+  if (currentElevDrillType != null) {
+    document.getElementById('drill-title').textContent = lcDisp(ELEV_DRILL_TITLES[currentElevDrillType] || 'التفاصيل');
+    var rows = getElevatorsByDrill(currentElevDrillType);
+    document.getElementById('drill-count').textContent = window.LiftCoreDisplay
+      ? '(' + LiftCoreDisplay.fmtElevatorsCount(rows.length) + ')'
+      : ('(' + rows.length + ' مصعد)');
+    renderDrillTable(rows);
+  }
+});
+document.addEventListener('liftcore:display-refresh', function () {
+  renderTable(typeof filtered !== 'undefined' ? filtered : ELEVATORS);
+});
 if (new URLSearchParams(window.location.search).get('view') === 'map') {
   switchElevTab('map', document.getElementById('tab-btn-map'));
 }
