@@ -168,7 +168,7 @@ body{
 
 <p class="w-t16-both">هاتف: {{ customer.phone or '0000000000' }}                                                     {% if customer and (customer.entity_type or 'فرد') == 'شركة' %}رقم السجل التجاري: {{ customer.cr_number or '0000000000' }}{% else %}رقم هوية المتعاقد: {{ customer.national_id or '0000000000' }}{% endif %}</p>
 
-<p class="w-t16-both">على البنود التالية: </p>
+<p class="w-t16-both w-page-break-before">على البنود التالية: </p>
 
 <p class="w-t16-both">1ـ وافق الطرف الأول بالقيام بأعمال الفحص والصيانة الدورية {{ maint_phrase }} لعدد ({{ elevator_count }}) مصعد خاص بالطرف الثاني.</p>
 
@@ -192,7 +192,7 @@ body{
 <p class="w-t16-both">فحص السيور والتأكد من سلامتها </p>
 <p class="w-t16-both">فحص سلكتور الطوابق </p>
 <p class="w-t16-both">فحص جهاز الهبوط الاضطراري </p>
-<p class="w-t16-both w-page-break-before">فحص منظم السرعة وضبطه </p>
+<p class="w-t16-both">فحص منظم السرعة وضبطه </p>
 <p class="w-t16-both">تنظيف ارضية الغرفة </p>
 <p class="w-t16-both">التأكد من سلامة التمديدات الكهربائية بالغرفة </p>
 <p class="w-t16-both">التأكد من عدم وجود تهريب مياه بالغرفة </p>
