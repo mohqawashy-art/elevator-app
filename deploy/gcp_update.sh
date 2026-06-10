@@ -73,6 +73,8 @@ grep -q "purchase-orders" "$APP_DIR/app.py" && echo "  purchase-orders route OK"
 test -f "$APP_DIR/templates/settings.html" && grep -q "settings_user_add" "$APP_DIR/app.py" && echo "  full settings UI OK"
 test -f "$APP_DIR/static/liftcore-shell.css" && echo "  liftcore-shell.css OK"
 grep -q "letter-box" "$APP_DIR/templates/purchase-order-print.html" && echo "  PO print v2 (invoice layout + e-sig) OK"
+grep -q "sig_clear" "$APP_DIR/templates/purchase-order-print.html" && echo "  PO print v2.5 (clear btn + header + i18n) OK" || echo "  WARN: PO print v2.5 missing — run: git pull origin main"
+grep -q "address_en" "$APP_DIR/app.py" && echo "  PO bilingual address OK"
 test -f "$APP_DIR/static/js/html2pdf.bundle.min.js" && echo "  html2pdf.js OK"
 
 echo ""
