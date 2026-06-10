@@ -292,6 +292,8 @@
 
   var REVERSE = {};
   Object.keys(TEXT).forEach(function (ar) {
+    /* رمز الريال ⃁ ليس ترجمة تُعكس — يبقى كما هو في اللغتين */
+    if (String(TEXT[ar]).indexOf('\u20C1') !== -1) return;
     REVERSE[TEXT[ar]] = ar;
   });
   Object.keys(SECTIONS).forEach(function (ar) {
@@ -399,7 +401,7 @@
   function shouldSkipTextNode(node) {
     var p = node.parentElement;
     if (!p) return true;
-    if (p.closest('[data-i18n-skip], script, style, noscript')) return true;
+    if (p.closest('[data-i18n-skip], script, style, noscript, .lc-sar, .lc-sar-char')) return true;
     if (p.tagName === 'INPUT' || p.tagName === 'TEXTAREA' || p.tagName === 'SCRIPT') return true;
     /* نص أزرار الجداول (تعديل / حذف ...) يُترجم دائماً */
     if (p.closest('button')) return false;

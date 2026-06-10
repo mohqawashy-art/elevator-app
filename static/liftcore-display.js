@@ -38,7 +38,7 @@
     'وارد': 'Incoming', 'صادر': 'Outgoing', 'منخفض': 'Low', 'نافد': 'Out of Service', 'كافي': 'Sufficient', 'قطعة': 'Piece',
   };
 
-  var DOM_SKIP = 'script, style, input, select, textarea, .td-code, .td-actions, .lc-num, .lc-code, .lc-date, .lc-sar, [data-i18n-skip]';
+  var DOM_SKIP = 'script, style, input, select, textarea, .td-code, .td-actions, .lc-num, .lc-code, .lc-date, .lc-sar, .lc-sar-char, [data-i18n-skip]';
 
   var DOM_TARGETS = [
     'table tbody td',
