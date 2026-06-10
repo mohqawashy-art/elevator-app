@@ -35,6 +35,33 @@ body{
 @media print{
   .toolbar{display:none!important}
   .doc{margin:0;padding:0;max-width:none}
+  @page{
+    size:A4;
+    margin:26mm 12mm 16mm 11mm;
+  }
+  .w-empty-top{height:10pt}
+  .doc-head{margin-bottom:14pt;padding-bottom:0}
+  .doc-head-title{font-size:17pt;line-height:1.35;margin-bottom:6pt}
+  .doc-head-num{font-size:17pt;line-height:1.3}
+  .doc-intro{margin-top:4pt}
+  .w-t16-both,.w-t14-both,.w-maint-line{
+    line-height:1.06;
+    margin:0 0 0;
+  }
+  .w-t16-both{font-size:15pt}
+  .w-t14-both{font-size:13pt}
+  .w-maint-line{font-size:12.5pt}
+  .w-maint-head{font-size:13pt;font-weight:700}
+  .w-empty{height:8pt}
+  .signatures-block{margin-top:12pt}
+  .sig-title{font-size:14pt;margin-bottom:8pt}
+  .sig-party-name{font-size:12pt;margin-bottom:4pt;min-height:1.6em}
+  .sig-label{font-size:12pt;margin-bottom:2pt}
+  .sig-pad{height:34pt;margin-top:6pt}
+  .signatures-row{gap:20pt}
+  .w-t16-both,.w-t14-both,.w-maint-line,.w-maint-head{
+    orphans:1;widows:1;
+  }
 }
 
 /* رأس العقد — العنوان ورقم العقد */
@@ -125,7 +152,15 @@ body{
 }
 .w-spacer-sm{height:8pt}
 .w-spacer-md{height:14pt}
-/* فواصل الصفحات — مطابق لـ CN0000.docx */
+.w-maint-line{
+  text-align:justify;font-size:14pt;font-weight:400;
+  line-height:1.12;margin:0 0 1pt;
+}
+.w-maint-head{
+  text-align:justify;font-size:15pt;font-weight:700;
+  line-height:1.12;margin:0 0 1pt;
+}
+/* فواصل الصفحات — 3 صفحات */
 .w-page-break-before{
   page-break-before:always;
   break-before:page;
@@ -168,7 +203,7 @@ body{
 
 <p class="w-t16-both">هاتف: {{ customer.phone or '0000000000' }}                                                     {% if customer and (customer.entity_type or 'فرد') == 'شركة' %}رقم السجل التجاري: {{ customer.cr_number or '0000000000' }}{% else %}رقم هوية المتعاقد: {{ customer.national_id or '0000000000' }}{% endif %}</p>
 
-<p class="w-t16-both w-page-break-before">على البنود التالية: </p>
+<p class="w-t16-both">على البنود التالية: </p>
 
 <p class="w-t16-both">1ـ وافق الطرف الأول بالقيام بأعمال الفحص والصيانة الدورية {{ maint_phrase }} لعدد ({{ elevator_count }}) مصعد خاص بالطرف الثاني.</p>
 
@@ -185,45 +220,45 @@ body{
 <p class="w-t14-both">4ـ يتحمل الطرف الأول أي خسائر أو أضرار قد تنشأ عن استخدامه لعمالة غير مدربة ومتخصصة في الصيانة أو الفحص أو الإصلاح.</p>
 <p class="w-t14-both">5ـ يقوم الطرف الأول بتأمين فني يكون متواجدا في الشركة خلال (24) ساعة لتقديم خدمة الطوارئ وإصلاح الأعطال الطارئة التي يبلغ بها الطرف الثاني.</p>
 <p class="w-t14-both">6ـ يقوم الطرف الأول بأعمال الفحص والصيانة والتنظيف والتزييت والتشحيم والإصلاح الشهري، وتشمل ما يلي:</p>
-<p class="w-t16-both">في غرفة المحرك:</p>
-<p class="w-t16-both">فحص زيت المحرك والتأكد من سيره الطبيعي.</p>
-<p class="w-t16-both">فحص قماش الفرامل.</p>
-<p class="w-t16-both">فحص عمل الفرامل وتضبطيه وتشحيم المحاور </p>
-<p class="w-t16-both">فحص السيور والتأكد من سلامتها </p>
-<p class="w-t16-both">فحص سلكتور الطوابق </p>
-<p class="w-t16-both">فحص جهاز الهبوط الاضطراري </p>
-<p class="w-t16-both">فحص منظم السرعة وضبطه </p>
-<p class="w-t16-both">تنظيف ارضية الغرفة </p>
-<p class="w-t16-both">التأكد من سلامة التمديدات الكهربائية بالغرفة </p>
-<p class="w-t16-both">التأكد من عدم وجود تهريب مياه بالغرفة </p>
-<p class="w-t16-both">التأكد من عدم وجود تخزين بالغرفة </p>
-<p class="w-t16-both">التأكد من تشغيل التكييف بحالة سليمة.</p>
-<p class="w-t16-both">في بئر المصعد:</p>
-<p class="w-t16-both">فحص التوصيلات الكهربائية أعلى المصاعد والتأكد من سلامتها </p>
-<p class="w-t16-both">فحص جهاز الريفزيون في حالة الصعود والهبوط والتوقف </p>
-<p class="w-t16-both">فحص حبال الجر وتثبيتات الحبال </p>
-<p class="w-t16-both">فحص بكرات الحبال والتأكد من سلامتها </p>
-<p class="w-t16-both">تزييت وتشحيم أدلة سير المصاعد والثقل </p>
-<p class="w-t16-both">فحص قواطع نهاية المشوار </p>
-<p class="w-t16-both">فحص مغناطيسات الأدوار </p>
-<p class="w-t16-both">الكشف على مروحة المصاعد </p>
-<p class="w-t16-both">في داخل المصعد:</p>
-<p class="w-t16-both">الكشف على أزرار التحكم والتشغيل </p>
-<p class="w-t16-both">الكشف على الإنارة والجرس وال أنتركم </p>
-<p class="w-t16-both">تنظيف مجاري الأبواب.</p>
-<p class="w-t16-both">أبواب الطوابق:</p>
-<p class="w-t16-both">فحص أبواب الأدوار وضبطها.</p>
-<p class="w-t16-both">فحص محركات الأبواب </p>
-<p class="w-t16-both">فحص وتنظيف ألاشوك والكوالين </p>
-<p class="w-t16-both">فحص مفصلات الأبواب </p>
-<p class="w-t16-both">فحص الكبسات والمؤشرات والمبينات وتضبيط الإضاءة. </p>
-<p class="w-t16-both">في حفرة البئر:</p>
-<p class="w-t16-both">الكشف على بكرة منظم السرعة  </p>
-<p class="w-t16-both">تنظيف وفحص قواطع نهاية المشوار </p>
-<p class="w-t16-both">فحص التوصيلات الكهربائية أسفل المصاعد والتأكد من سلامتها </p>
-<p class="w-t16-both">تنظيف الحفرة </p>
-<p class="w-t16-both">فحص أي أجزاء أخرى أو حسب ما يراه أحد طرفي العقد.</p>
-<p class="w-t14-both">7ـ يقوم الطرف الأول بتوفير مواد التنظيف والتشحيم.</p>
+<p class="w-maint-head w-page-break-before">في غرفة المحرك:</p>
+<p class="w-maint-line">فحص زيت المحرك والتأكد من سيره الطبيعي.</p>
+<p class="w-maint-line">فحص قماش الفرامل.</p>
+<p class="w-maint-line">فحص عمل الفرامل وتضبطيه وتشحيم المحاور </p>
+<p class="w-maint-line">فحص السيور والتأكد من سلامتها </p>
+<p class="w-maint-line">فحص سلكتور الطوابق </p>
+<p class="w-maint-line">فحص جهاز الهبوط الاضطراري </p>
+<p class="w-maint-line">فحص منظم السرعة وضبطه </p>
+<p class="w-maint-line">تنظيف ارضية الغرفة </p>
+<p class="w-maint-line">التأكد من سلامة التمديدات الكهربائية بالغرفة </p>
+<p class="w-maint-line">التأكد من عدم وجود تهريب مياه بالغرفة </p>
+<p class="w-maint-line">التأكد من عدم وجود تخزين بالغرفة </p>
+<p class="w-maint-line">التأكد من تشغيل التكييف بحالة سليمة.</p>
+<p class="w-maint-head">في بئر المصعد:</p>
+<p class="w-maint-line">فحص التوصيلات الكهربائية أعلى المصاعد والتأكد من سلامتها </p>
+<p class="w-maint-line">فحص جهاز الريفزيون في حالة الصعود والهبوط والتوقف </p>
+<p class="w-maint-line">فحص حبال الجر وتثبيتات الحبال </p>
+<p class="w-maint-line">فحص بكرات الحبال والتأكد من سلامتها </p>
+<p class="w-maint-line">تزييت وتشحيم أدلة سير المصاعد والثقل </p>
+<p class="w-maint-line">فحص قواطع نهاية المشوار </p>
+<p class="w-maint-line">فحص مغناطيسات الأدوار </p>
+<p class="w-maint-line">الكشف على مروحة المصاعد </p>
+<p class="w-maint-head">في داخل المصعد:</p>
+<p class="w-maint-line">الكشف على أزرار التحكم والتشغيل </p>
+<p class="w-maint-line">الكشف على الإنارة والجرس وال أنتركم </p>
+<p class="w-maint-line">تنظيف مجاري الأبواب.</p>
+<p class="w-maint-head">أبواب الطوابق:</p>
+<p class="w-maint-line">فحص أبواب الأدوار وضبطها.</p>
+<p class="w-maint-line">فحص محركات الأبواب </p>
+<p class="w-maint-line">فحص وتنظيف ألاشوك والكوالين </p>
+<p class="w-maint-line">فحص مفصلات الأبواب </p>
+<p class="w-maint-line">فحص الكبسات والمؤشرات والمبينات وتضبيط الإضاءة. </p>
+<p class="w-maint-head">في حفرة البئر:</p>
+<p class="w-maint-line">الكشف على بكرة منظم السرعة  </p>
+<p class="w-maint-line">تنظيف وفحص قواطع نهاية المشوار </p>
+<p class="w-maint-line">فحص التوصيلات الكهربائية أسفل المصاعد والتأكد من سلامتها </p>
+<p class="w-maint-line">تنظيف الحفرة </p>
+<p class="w-maint-line">فحص أي أجزاء أخرى أو حسب ما يراه أحد طرفي العقد.</p>
+<p class="w-t14-both w-page-break-before">7ـ يقوم الطرف الأول بتوفير مواد التنظيف والتشحيم.</p>
 <p class="w-t14-both">8ـ يقوم الطرف الأول بإصلاح جميع الأعطال التي تظهر أثناء الفحص.</p>
 <p class="w-t14-both">9ـ يقوم الطرف الأول بإصلاح جميع الأعطال التي تحدث للمصاعد بمجرد التبليغ من قبل الطرف الثاني فيما لا يتجاوز الأربع والعشرين ساعة </p>
 <p class="w-t14-both">10ـ يتحمل الطرف الثاني قيمة قطع الغيار التي يتم تركيبها في المصعد نتيجة الاستهلاك او سوء الاستعمال من خلال تقديم فاتورة من الطرف الأول موضحا بها سعر القطع والفترة الزمنية اللازمة ليتم اعتمادها من قبل الطرف الثاني لتوريدها وتركيبها.</p>
@@ -236,7 +271,7 @@ body{
 <p class="w-t14-both">17ـ في حالة انتقال ملكية المبنى أثناء سريان العقد فعلى الطرف الثاني إشعار الطرف الأول باسم المالك الجديد وعنوانه كاملا مع إخلاء التزاماته التعاقدية مع الطرف الأول </p>
 <p class="w-t14-both">18ـ إذا ما أراد الطرف الثاني إلغاء هذا العقد لأي سبب كان فلا يحق له المطالبة بأية مبالغ يكون قد دفعها مقدما للطرف الأول، إذ تصبح هذه المبالغ من حق الطرف الأول.</p>
 
-<p class="w-t14-both w-page-break-before">19ـ في حالة إخلال الطرف الأول وعدم تجاوبه بأعمال الصيانة في مواعيدها المقررة، فيتوجب على الطرف الأول دفع قيمة ما تم أخذه من الطرف الثاني في حالة عدم وجود مشهد الصيانة الشهرية وذلك عن طريق إدارة الحقوق المدنية.</p>
+<p class="w-t14-both">19ـ في حالة إخلال الطرف الأول وعدم تجاوبه بأعمال الصيانة في مواعيدها المقررة، فيتوجب على الطرف الأول دفع قيمة ما تم أخذه من الطرف الثاني في حالة عدم وجود مشهد الصيانة الشهرية وذلك عن طريق إدارة الحقوق المدنية.</p>
 <p class="w-t14-both">20ـ من المتفق عليه بين الطرفين بأن فواتير قطع الغيار المقدمة من الطرف الأول تدفع في مهلة أقصاها (5 يوم)، ويحق للطرف الأول إيقاف الصيانة بعد تبليغ إدارة الدفاع المدني خطيا بذلك في حالة عدم قيام الطرف الثاني بتسديد </p>
 <p class="w-t14-both">المبالغ المستحقة في أوقاتها وإذا ما قرر الطرفان إيقاف العمل قبل انتهاء مدته يحتفظ الطرف الأول بكامل حقوقه المالية عن الفترة السابقة لإنهاء العقد.</p>
 <p class="w-t14-both">21ـ يعمل بهذا العقد لمدة سنة كاملة تبدأ من {{ start_gregorian }} م إلى {{ end_gregorian }} م والتوقيع عليه من الطرفين واستلام الطرف الأول الدفعة المتوجبة.</p>
