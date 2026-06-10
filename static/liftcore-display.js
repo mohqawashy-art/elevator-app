@@ -215,6 +215,72 @@
   [0, 100, 400, 1000, 2500].forEach(function (ms) { setTimeout(lockGlobalSetLang, ms); });
   global.addEventListener('load', lockGlobalSetLang);
 
+  /* ── رمز الريال السعودي U+20C1 ──
+     أنظمة كثيرة (ويندوز 10 مثلاً) لا تملك الرمز في خطوطها.
+     نغلّف كل ظهور نصي للرمز بـ <span class="lc-sar-char"> المربوط بخط الرمز. */
+  var SAR_CHAR = '\u20C1';
+
+  function wrapSarChars(root) {
+    root = root || document.body;
+    if (!root) return;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var nodes = [];
+    var n;
+    while ((n = walker.nextNode())) {
+      if (n.textContent.indexOf(SAR_CHAR) === -1) continue;
+      var p = n.parentElement;
+      if (!p) continue;
+      var tag = p.tagName;
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'OPTION' || tag === 'TITLE') continue;
+      if (p.closest('.lc-sar-char')) continue;
+      nodes.push(n);
+    }
+    nodes.forEach(function (node) {
+      var parts = node.textContent.split(SAR_CHAR);
+      var frag = document.createDocumentFragment();
+      parts.forEach(function (part, i) {
+        if (i) {
+          var s = document.createElement('span');
+          s.className = 'lc-sar-char';
+          s.setAttribute('aria-label', 'ريال سعودي');
+          s.textContent = SAR_CHAR;
+          frag.appendChild(s);
+        }
+        if (part) frag.appendChild(document.createTextNode(part));
+      });
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+
+  var sarTimer = null;
+  function scheduleSarWrap() {
+    clearTimeout(sarTimer);
+    sarTimer = setTimeout(function () { wrapSarChars(document.body); }, 250);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scheduleSarWrap);
+  } else {
+    scheduleSarWrap();
+  }
+  document.addEventListener('liftcore:lang', scheduleSarWrap);
+  if (typeof MutationObserver !== 'undefined') {
+    var sarMo = new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) {
+        var t = muts[i].target;
+        if (t && t.textContent && t.textContent.indexOf(SAR_CHAR) !== -1) {
+          scheduleSarWrap();
+          return;
+        }
+      }
+    });
+    var startSarMo = function () {
+      if (document.body) sarMo.observe(document.body, { childList: true, subtree: true, characterData: true });
+    };
+    if (document.body) startSarMo();
+    else document.addEventListener('DOMContentLoaded', startSarMo);
+  }
+
   global.lcDisp = text;
   global.lcName = name;
 

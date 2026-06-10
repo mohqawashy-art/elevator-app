@@ -623,7 +623,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
               <div class="finance-card" onclick="openDrill('all_invoices',this)">
                 <div class="finance-label" id="fl1">إجمالي الفواتير</div>
                 <div class="finance-val">{{ '{:,.0f}'.format(stats.total_invoices) }}</div>
-                <div class="finance-sub">ريال سعودي</div>
+                <div class="finance-sub"><span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div>
               </div>
               <div class="finance-card" onclick="openDrill('paid_invoices',this)">
                 <div class="finance-label" id="fl2">المبالغ المحصّلة</div>

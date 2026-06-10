@@ -38,9 +38,12 @@
   font-display: swap;
 }
 
+/* font-family مع inherit في قائمة = إعلان غير صالح يتجاهله المتصفح — لذلك اسم الخط فقط وبـ !important */
 .lc-sar::after,
 .lc-sar-char {
-  font-family: 'SaudiRiyal', inherit;
+  font-family: 'SaudiRiyal', 'IBM Plex Sans Arabic', 'DM Sans', sans-serif !important;
+  font-style: normal;
+  font-weight: normal;
 }
 
 .lc-sar::after {
