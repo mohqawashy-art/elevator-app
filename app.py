@@ -1839,7 +1839,13 @@ def _sync_contract_elevators(contract_id, elevator_ids):
 def _apply_contract_form(c, form):
     value = _money_round(form.get('value', 0))
     tax_pct = _money_round(form.get('tax_pct', 15) or 15)
-    tax_amount = _money_round(value * tax_pct / 100)
+    total_raw = form.get('total')
+    if total_raw not in (None, ''):
+        total = _money_round(total_raw)
+        tax_amount = _money_round(total - value)
+    else:
+        tax_amount = _money_round(value * tax_pct / 100)
+        total = _money_round(value + tax_amount)
     start = _parse_date(form.get('start_date'))
     end = _parse_date(form.get('end_date'))
     c.customer_id = form['customer_id']
@@ -1853,7 +1859,7 @@ def _apply_contract_form(c, form):
     c.value = value
     c.tax_pct = tax_pct
     c.tax_amount = tax_amount
-    c.total = _money_round(value + tax_amount)
+    c.total = total
     c.payment_terms = form.get('payment_terms', '')
     c.status = form.get('status', 'نشط')
     c.reminder_date = _parse_date(form.get('reminder_date'))

@@ -4,6 +4,7 @@
 {% endwith %}
 #}
 <div class="lc-tax-block" data-lc-tax-prefix="{{ prefix }}" data-before-field="{{ before_field_id }}"
+  {% if total_field_id %}data-total-field="{{ total_field_id }}"{% endif %}
   {% if before_label %}data-label-before="{{ before_label }}"{% endif %}
   {% if inclusive_label %}data-label-inclusive="{{ inclusive_label }}"{% endif %}>
   <div class="field {% if full_width|default(true) %}form-full{% endif %}">
@@ -14,6 +15,7 @@
     </div>
     <input type="number" id="{{ prefix }}-input" class="lc-tax-input" placeholder="0.00" step="0.01" min="0" style="direction:ltr">
     <input type="hidden" id="{{ before_field_id }}">
+    {% if total_field_id %}<input type="hidden" id="{{ total_field_id }}">{% endif %}
   </div>
   {% if show_pct|default(true) %}
   <div class="field">

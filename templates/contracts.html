@@ -590,7 +590,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="form-section">
         <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="5.5"/><path d="M6.5 4v.7M6.5 8.5V9M5 7.5c0 .83.67 1.5 1.5 1.5S8 8.33 8 7.5s-.67-1.5-1.5-1.5S5 5.17 5 4.5 5.67 3 6.5 3 8 3.67 8 4.5"/></svg>البيانات المالية</div>
         <div class="form-full">
-          {% with prefix='ctax', before_field_id='f-value', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (<span class="lc-sar" role="img" aria-label="ريال"></span>)', inclusive_label='قيمة العقد شامل الضريبة (<span class="lc-sar" role="img" aria-label="ريال"></span>)', breakdown_before_label='قيمة العقد قبل الضريبة', full_width=false %}
+          {% with prefix='ctax', before_field_id='f-value', total_field_id='f-total', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (<span class="lc-sar" role="img" aria-label="ريال"></span>)', inclusive_label='قيمة العقد شامل الضريبة (<span class="lc-sar" role="img" aria-label="ريال"></span>)', breakdown_before_label='قيمة العقد قبل الضريبة', full_width=false %}
           {% include '_tax_amount_block.html' %}
           {% endwith %}
         </div>
@@ -1024,6 +1024,8 @@ function saveContract() {
   fd.append('maint_frequency', document.getElementById('f-maint-freq').value);
   fd.append('visits_per_month', document.getElementById('f-visits-month').value || '1');
   fd.append('value', document.getElementById('f-value').value || '0');
+  var totalEl = document.getElementById('f-total');
+  fd.append('total', totalEl ? totalEl.value : '');
   fd.append('tax_pct', document.getElementById('f-tax-pct').value || '15');
   fd.append('payment_terms', document.getElementById('f-payment-terms').value);
   fd.append('status', document.getElementById('f-status-sel').value);
