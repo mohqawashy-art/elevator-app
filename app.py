@@ -3118,6 +3118,138 @@ def inventory_delete(id):
 
 
 PO_STATUSES = ['مسودة', 'مرسل', 'مستلم', 'ملغي']
+PO_STATUS_EN = {'مسودة': 'Draft', 'مرسل': 'Sent', 'مستلم': 'Received', 'ملغي': 'Cancelled'}
+
+PO_PRINT_LABELS = {
+    'ar': {
+        'toolbar_title': 'طباعة وإرسال طلب الشراء',
+        'supplier_mobile': 'جوال المورد (واتساب)',
+        'supplier_email': 'إيميل المورد',
+        'print_pdf': '🖨️ طباعة / PDF',
+        'save_sig': '✍️ حفظ التوقيع',
+        'wa_supplier': '📄 واتساب PDF للمورد',
+        'wa_purchasing': '📄 واتساب PDF للمشتريات',
+        'email_pdf': '✉️ إيميل PDF',
+        'save_contact': '💾 حفظ الجوال/الإيميل',
+        'back': '← رجوع',
+        'phone': 'الهاتف:',
+        'vat': 'الرقم الضريبي:',
+        'cr': 'السجل التجاري:',
+        'address': 'العنوان:',
+        'doc_title': 'طلب شراء',
+        'doc_title_en': 'Purchase Order',
+        'order_no': 'رقم الطلب',
+        'supplier': 'المورد',
+        'supplier_default': 'المورد',
+        'order_date': 'تاريخ الطلب',
+        'status': 'الحالة',
+        'supplier_phone': 'جوال المورد',
+        'supplier_email_lbl': 'إيميل المورد',
+        'salutation': 'السادة / {name} المحترمين،',
+        'letter_p1': 'تحية طيبة وبعد، نأمل منكم التفضل بتوريد البنود المذكورة في الجدول المرفق وفق الكميات والأسعار الموضحة، وذلك في أقرب وقت ممكن.',
+        'letter_p2': 'نشكركم على تعاونكم، وتفضلوا بقبول فائق الاحترام والتقدير.',
+        'items_title': 'تفاصيل الأصناف المطلوبة',
+        'col_code_item': 'الكود / الصنف',
+        'col_qty': 'الكمية',
+        'col_unit_price': 'سعر الوحدة',
+        'col_total': 'الإجمالي',
+        'notes': 'ملاحظات:',
+        'grand_total': 'إجمالي طلب الشراء',
+        'sig_supplier': 'توقيع المورد / الاعتماد',
+        'sig_name_line': 'الاسم والتوقيع',
+        'sig_auth': 'توقيع المعتمد',
+        'sig_alt': 'التوقيع',
+        'clear': 'مسح',
+        'doc_foot': 'وثيقة صادرة من نظام LiftCore — إدارة المشتريات والمخزون',
+        'doc_foot_mid': 'طلب شراء',
+        'sig_required': 'يرجى رسم التوقيع أولاً',
+        'sig_save_fail': 'تعذّر حفظ التوقيع',
+        'sig_saved': '✅ تم حفظ التوقيع',
+        'phone_required': 'يرجى إدخال جوال المورد',
+        'email_required': 'يرجى إدخال إيميل المورد',
+        'purch_phone_required': 'يرجى إضافة هاتف الشركة في الإعدادات (إدارة المشتريات)',
+        'phone_invalid': 'رقم الجوال غير صالح',
+        'pdf_generating': 'جاري إنشاء PDF...',
+        'pdf_upload_fail': 'تعذّر رفع PDF',
+        'wa_greeting': 'السلام عليكم',
+        'wa_salutation': 'السادة / {name} المحترمين،',
+        'wa_body': 'نرفق لكم طلب الشراء رقم {code}',
+        'wa_date': ' بتاريخ {date}',
+        'wa_link': 'يمكنكم تحميل ملف PDF من الرابط:',
+        'wa_closing': 'نأمل منكم التفضل بتوريد البنود المذكورة في الطلب.',
+        'wa_regards': 'مع التحية،',
+        'email_subject': 'طلب شراء {code} — {company}',
+    },
+    'en': {
+        'toolbar_title': 'Print & Send Purchase Order',
+        'supplier_mobile': 'Supplier Mobile (WhatsApp)',
+        'supplier_email': 'Supplier Email',
+        'print_pdf': '🖨️ Print / PDF',
+        'save_sig': '✍️ Save Signature',
+        'wa_supplier': '📄 WhatsApp PDF to Supplier',
+        'wa_purchasing': '📄 WhatsApp PDF to Purchasing',
+        'email_pdf': '✉️ Email PDF',
+        'save_contact': '💾 Save Phone/Email',
+        'back': '← Back',
+        'phone': 'Phone:',
+        'vat': 'VAT No.:',
+        'cr': 'CR No.:',
+        'address': 'Address:',
+        'doc_title': 'Purchase Order',
+        'doc_title_en': 'Purchase Order',
+        'order_no': 'Order No.',
+        'supplier': 'Supplier',
+        'supplier_default': 'Supplier',
+        'order_date': 'Order Date',
+        'status': 'Status',
+        'supplier_phone': 'Supplier Mobile',
+        'supplier_email_lbl': 'Supplier Email',
+        'salutation': 'Dear / {name},',
+        'letter_p1': 'Greetings. We kindly request you to supply the items listed in the attached table according to the quantities and prices shown, at your earliest convenience.',
+        'letter_p2': 'Thank you for your cooperation. Sincerely yours,',
+        'items_title': 'Requested Items',
+        'col_code_item': 'Code / Item',
+        'col_qty': 'Qty',
+        'col_unit_price': 'Unit Price',
+        'col_total': 'Total',
+        'notes': 'Notes:',
+        'grand_total': 'Purchase Order Total',
+        'sig_supplier': 'Supplier / Approval Signature',
+        'sig_name_line': 'Name & Signature',
+        'sig_auth': 'Authorized Signature',
+        'sig_alt': 'Signature',
+        'clear': 'Clear',
+        'doc_foot': 'Document issued by LiftCore — Purchasing & Inventory',
+        'doc_foot_mid': 'Purchase Order',
+        'sig_required': 'Please draw your signature first',
+        'sig_save_fail': 'Could not save signature',
+        'sig_saved': '✅ Signature saved',
+        'phone_required': 'Please enter supplier mobile',
+        'email_required': 'Please enter supplier email',
+        'purch_phone_required': 'Add company phone in Settings (Purchasing)',
+        'phone_invalid': 'Invalid mobile number',
+        'pdf_generating': 'Generating PDF...',
+        'pdf_upload_fail': 'Could not upload PDF',
+        'wa_greeting': 'Hello',
+        'wa_salutation': 'Dear / {name},',
+        'wa_body': 'Please find purchase order no. {code}',
+        'wa_date': ' dated {date}',
+        'wa_link': 'You can download the PDF file from:',
+        'wa_closing': 'We kindly request you to supply the items listed in the order.',
+        'wa_regards': 'Best regards,',
+        'email_subject': 'Purchase Order {code} — {company}',
+    },
+}
+
+
+def _po_print_labels(lang):
+    return PO_PRINT_LABELS['en' if lang == 'en' else 'ar']
+
+
+def _po_status_label(status, lang):
+    if lang == 'en':
+        return PO_STATUS_EN.get(status, status)
+    return status
 
 
 def _apply_purchase_receipt(order):
@@ -3212,12 +3344,23 @@ def purchase_order_print(order_id):
     order = PurchaseOrder.query.get_or_404(order_id)
     s = Settings.query.first()
     logo_w = (getattr(s, 'logo_width_report', None) or 150) if s else 150
+    uid = session.get('user_id')
+    user = db.session.get(User, uid) if uid else None
+    lang = resolve_user_language(user)
+    po_t = _po_print_labels(lang)
+    company_name = (s.company_name if s and s.company_name else 'LiftCore')
+    if lang == 'en' and s and getattr(s, 'company_name_en', None):
+        company_name = s.company_name_en
     return render_template(
         'purchase-order-print.html',
         order=order,
         logo_width=logo_w,
         purchasing_phone=(getattr(s, 'phone', None) or '') if s else '',
         purchasing_email=(getattr(s, 'email', None) or '') if s else '',
+        po_t=po_t,
+        po_lang=lang,
+        po_status_label=_po_status_label(order.status, lang),
+        po_company_name=company_name,
     )
 
 
