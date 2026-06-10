@@ -3197,7 +3197,7 @@ PO_PRINT_LABELS = {
         'cr': 'CR No.:',
         'address': 'Address:',
         'doc_title': 'Purchase Order',
-        'doc_title_en': 'Purchase Order',
+        'doc_title_en': 'طلب شراء',
         'order_no': 'Order No.',
         'supplier': 'Supplier',
         'supplier_default': 'Supplier',
@@ -3257,9 +3257,7 @@ def _company_address(settings, lang):
     if not settings:
         return ''
     if lang == 'en':
-        en_addr = getattr(settings, 'address_en', None) or ''
-        if en_addr.strip():
-            return en_addr.strip()
+        return (getattr(settings, 'address_en', None) or '').strip()
     return (settings.address or '').strip()
 
 
