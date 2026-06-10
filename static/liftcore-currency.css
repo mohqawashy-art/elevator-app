@@ -1,7 +1,46 @@
-/* رمز الريال السعودي (Unicode U+20C1) */
+/* رمز الريال السعودي الجديد (Unicode U+20C1)
+   ويندوز 10 وأغلب الأنظمة لا تملك الرمز في خطوطها — نحمّل خطاً صغيراً (1.3KB)
+   يحتوي الرمز فقط (unicode-range) ويندمج مع خطوط البرنامج تلقائياً. */
+
+@font-face {
+  font-family: 'SaudiRiyal';
+  src: url('fonts/saudi_riyal.woff2') format('woff2');
+  unicode-range: U+20C1;
+  font-display: swap;
+}
+
+/* دمج الرمز داخل نفس عائلات خطوط البرنامج — أي نص يحتوي U+20C1 يعرض الرمز */
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  src: url('fonts/saudi_riyal.woff2') format('woff2');
+  unicode-range: U+20C1;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  src: url('fonts/saudi_riyal.woff2') format('woff2');
+  unicode-range: U+20C1;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('fonts/saudi_riyal.woff2') format('woff2');
+  unicode-range: U+20C1;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Segoe UI';
+  src: url('fonts/saudi_riyal.woff2') format('woff2');
+  unicode-range: U+20C1;
+  font-display: swap;
+}
+
 .lc-sar::after,
 .lc-sar-char {
-  font-family: inherit;
+  font-family: 'SaudiRiyal', inherit;
 }
 
 .lc-sar::after {
@@ -10,4 +49,9 @@
 
 .lc-money {
   white-space: nowrap;
+}
+
+/* ضمان عرض الرمز حتى داخل عناصر بخطوط أخرى (أرقام lc-num وغيرها) */
+body {
+  font-variant-emoji: text;
 }

@@ -340,7 +340,16 @@
       .replace(/(\d+)\s*فاتورة/g, '$1 invoices')
       .replace(/(\d+)\s*سند/g, '$1 receipts')
       .replace(/(\d+)\s*صنف/g, '$1 items')
+      .replace(/(\d+)\s*أصناف/g, '$1 items')
       .replace(/(\d+)\s*حركة/g, '$1 movements')
+      .replace(/(\d+)\s*عقود/g, '$1 contracts')
+      .replace(/(\d+)\s*فواتير/g, '$1 invoices')
+      .replace(/(\d+)\s*أعطال/g, '$1 faults')
+      .replace(/(\d+)\s*زيارات/g, '$1 visits')
+      .replace(/(\d+)\s*عملاء/g, '$1 clients')
+      .replace(/([0-9.,]+)\s*قطعة/g, '$1 pcs')
+      .replace(/([0-9.,]+)\s*متر/g, '$1 m')
+      .replace(/([0-9.,]+)\s*لتر/g, '$1 L')
       .replace(/عرض\s+(\d+)\s+من\s+(\d+)/g, 'Showing $1 of $2');
   }
 
@@ -375,6 +384,8 @@
     if (!p) return true;
     if (p.closest('[data-i18n-skip], script, style, noscript')) return true;
     if (p.tagName === 'INPUT' || p.tagName === 'TEXTAREA' || p.tagName === 'SCRIPT') return true;
+    /* نص أزرار الجداول (تعديل / حذف ...) يُترجم دائماً */
+    if (p.closest('button')) return false;
     var td = p.closest('td');
     if (td && td.closest('tbody')) {
       if (td.classList.contains('lc-code') || td.classList.contains('lc-date') ||
@@ -382,6 +393,8 @@
           td.classList.contains('lc-contract')) return true;
       if (td.querySelector('a[href], input, select, button')) return true;
       var key = norm(node.textContent);
+      /* كميات بالوحدات: 12 قطعة / 5 متر ... */
+      if (/^[0-9٠-٩.,]+\s*(قطعة|متر|لتر|كجم)$/.test(key)) return false;
       if (!lookupEn(key) && !/^(نشط|غير نشط|منتهي|معلق|مكتمل|ملغى|عاجل|عادي|ساري|محصل|غير محصل|مدفوعة|غير مدفوعة)$/.test(key)) {
         if (key.length > 40 || /[0-9]{2,}/.test(key)) return true;
       }
@@ -616,6 +629,11 @@
     }
 
     document.dispatchEvent(new CustomEvent('liftcore:lang', { detail: { lang: lang } }));
+
+    /* بعض الصفحات تعيد كتابة نصوص عربية في معالجات الحدث أعلاه — نترجم مرة أخيرة */
+    zones.forEach(function (z) {
+      walkTextNodes(z, lang);
+    });
     } finally {
       applying = false;
     }

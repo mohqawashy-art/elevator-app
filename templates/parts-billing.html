@@ -460,17 +460,19 @@ function updateStats() {
   const collected = PARTS.filter(p => p.status === 'محصل' || p.status === 'مكتملة');
   const pending = PARTS.filter(p => p.status === 'غير محصل' || p.status === 'معلقة');
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const LC = window.LiftCoreDisplay;
+  const cnt = (n) => (LC ? LC.fmtTransactionsCount(n) : n + ' عملية');
   setMoneyEl(document.getElementById('s-total'), totalSell);
-  set('s-total-sub', PARTS.length + ' عملية');
+  set('s-total-sub', cnt(PARTS.length));
   setMoneyEl(document.getElementById('s-cost'), totalCost);
   setMoneyEl(document.getElementById('s-profit'), totalProfit);
-  set('s-margin', 'هامش ' + (totalSell ? ((totalProfit/totalSell)*100).toFixed(1) : 0) + '%');
+  const marginPct = totalSell ? ((totalProfit/totalSell)*100).toFixed(1) : 0;
+  set('s-margin', LC ? LC.fmtMargin(marginPct) : 'هامش ' + marginPct + '%');
   setMoneyEl(document.getElementById('s-collected'), collected.reduce((s,p) => s + p.sell_price, 0));
-  set('s-collected-sub', collected.length + ' عملية');
+  set('s-collected-sub', cnt(collected.length));
   setMoneyEl(document.getElementById('s-pending'), pending.reduce((s,p) => s + p.sell_price, 0));
-  set('s-pending-sub', pending.length + ' عملية');
-  const LC = window.LiftCoreDisplay;
-  set('bills-count', LC ? (PARTS.length + (PARTS.length === 1 ? ' operation' : ' operations')) : (PARTS.length + ' عملية'));
+  set('s-pending-sub', cnt(pending.length));
+  set('bills-count', cnt(PARTS.length));
 }
 
 function renderTable(data) {

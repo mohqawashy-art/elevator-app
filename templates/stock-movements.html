@@ -420,14 +420,16 @@ function updateStats() {
   const incoming = MOVEMENTS.filter(m => m.direction === 'وارد');
   const outgoing = MOVEMENTS.filter(m => m.direction === 'صادر');
   const project = MOVEMENTS.filter(m => m.movement_type === 'صرف لمشروع / عميل');
+  const LC = window.LiftCoreDisplay;
+  const cnt = (n) => (LC ? LC.fmtMovementsCount(n) : n + ' حركة');
   setText('s-total', total);
-  setText('s-in-val', incoming.reduce((s, m) => s + m.total_value, 0).toLocaleString('ar-SA'));
-  setText('s-in-cnt', incoming.length + ' حركة');
-  setText('s-out-val', outgoing.reduce((s, m) => s + m.total_value, 0).toLocaleString('ar-SA'));
-  setText('s-out-cnt', outgoing.length + ' حركة');
-  setText('s-proj-val', project.reduce((s, m) => s + m.total_value, 0).toLocaleString('ar-SA'));
-  setText('s-proj-cnt', project.length + ' حركة');
-  setText('mov-count', total + ' حركة');
+  setText('s-in-val', incoming.reduce((s, m) => s + m.total_value, 0).toLocaleString());
+  setText('s-in-cnt', cnt(incoming.length));
+  setText('s-out-val', outgoing.reduce((s, m) => s + m.total_value, 0).toLocaleString());
+  setText('s-out-cnt', cnt(outgoing.length));
+  setText('s-proj-val', project.reduce((s, m) => s + m.total_value, 0).toLocaleString());
+  setText('s-proj-cnt', cnt(project.length));
+  setText('mov-count', cnt(total));
 }
 
 let filtered = [...MOVEMENTS];
@@ -576,7 +578,8 @@ function viewMovement(id) {
     'الاتجاه: ' + m.direction + '\n' +
     'الصنف: ' + m.item_name + ' (' + m.item_code + ')\n' +
     'الكمية: ' + m.quantity + '\n' +
-    'القيمة: ' + m.total_value + ' ⃁'
+    /* نافذة alert نظامية لا تدعم خط الرمز — نستخدم كلمة ريال */
+    'القيمة: ' + m.total_value + ' ريال'
   );
 }
 

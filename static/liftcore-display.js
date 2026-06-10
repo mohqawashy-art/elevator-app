@@ -133,6 +133,8 @@
   function fmtItemsCount(n) { n = Number(n) || 0; return isEn() ? fmtEnCount(n, 'item', 'items') : n + ' \u0635\u0646\u0641'; }
   function fmtMovementsCount(n) { n = Number(n) || 0; return isEn() ? fmtEnCount(n, 'movement', 'movements') : n + ' \u062D\u0631\u0643\u0629'; }
   function fmtInvoicesCount(n) { n = Number(n) || 0; return isEn() ? fmtEnCount(n, 'invoice', 'invoices') : n + ' \u0641\u0627\u062A\u0648\u0631\u0629'; }
+  function fmtTransactionsCount(n) { n = Number(n) || 0; return isEn() ? fmtEnCount(n, 'transaction', 'transactions') : n + ' \u0639\u0645\u0644\u064A\u0629'; }
+  function fmtMargin(p) { return isEn() ? ('Margin ' + p + '%') : ('\u0647\u0627\u0645\u0634 ' + p + '%'); }
   function fmtShowing(a, b) { return isEn() ? ('Showing ' + a + ' of ' + b) : ('\u0639\u0631\u0636 ' + a + ' \u0645\u0646 ' + b); }
 
   function setCountEl(id, textVal) {
@@ -235,6 +237,8 @@
     fmtItemsCount: fmtItemsCount,
     fmtMovementsCount: fmtMovementsCount,
     fmtInvoicesCount: fmtInvoicesCount,
+    fmtTransactionsCount: fmtTransactionsCount,
+    fmtMargin: fmtMargin,
     fmtShowing: fmtShowing,
     setCountEl: setCountEl,
     applyDom: applyDom,

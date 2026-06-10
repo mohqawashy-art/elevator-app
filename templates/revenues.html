@@ -449,7 +449,7 @@ function setText(id, val) {
 // ===== إحصائيات =====
 function updateStats() {
   const sum = (rows) => rows.reduce((s, r) => s + r.total, 0);
-  const cnt = (rows) => rows.length + ' عملية';
+  const cnt = (rows) => (window.LiftCoreDisplay ? LiftCoreDisplay.fmtTransactionsCount(rows.length) : rows.length + ' عملية');
   const renewal = REVENUES.filter(r => r.revenue_type === 'تجديد عقد');
   const parts = REVENUES.filter(r => (r.revenue_type || '').includes('قطع غيار'));
   const newContracts = REVENUES.filter(r => r.revenue_type === 'عقد جديد');
