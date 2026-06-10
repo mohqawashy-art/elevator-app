@@ -335,7 +335,11 @@ with app.app_context():
                 ('parts_billing_id', 'INTEGER'),
             ],
             'technicians': [('team', 'VARCHAR(30)'), ('name_en', 'VARCHAR(100)')],
-            'customers': [('name_en', 'VARCHAR(200)')],
+            'customers': [
+                ('name_en', 'VARCHAR(200)'),
+                ('entity_type', 'VARCHAR(20)'),
+                ('cr_number', 'VARCHAR(50)'),
+            ],
             'purchase_orders': [
                 ('supplier_phone', 'VARCHAR(30)'),
                 ('supplier_email', 'VARCHAR(120)'),
@@ -1266,7 +1270,9 @@ def client_add():
         email        = request.form.get('email',''),
         contact_person = request.form.get('contact_person',''),
         contact_role   = request.form.get('contact_role',''),
+        entity_type    = request.form.get('entity_type', 'فرد') or 'فرد',
         national_id    = request.form.get('national_id',''),
+        cr_number      = request.form.get('cr_number',''),
         status       = request.form.get('status','نشط'),
         notes        = request.form.get('notes',''),
         lat          = request.form.get('lat',''),
@@ -1306,7 +1312,9 @@ def client_edit(id):
         c.status = request.form.get('status', 'نشط')
     c.notes          = request.form.get('notes','')
     c.contact_role   = request.form.get('contact_role','')
+    c.entity_type    = request.form.get('entity_type', 'فرد') or 'فرد'
     c.national_id    = request.form.get('national_id','')
+    c.cr_number      = request.form.get('cr_number','')
     c.lat            = request.form.get('lat','')
     c.lng            = request.form.get('lng','')
     c.maps_url       = request.form.get('maps_url','')

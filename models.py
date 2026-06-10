@@ -29,7 +29,9 @@ class Customer(db.Model):
     notes       = db.Column(db.Text)
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
     contact_role = db.Column(db.String(50))
+    entity_type  = db.Column(db.String(20), default='فرد')   # فرد / شركة
     national_id  = db.Column(db.String(20))
+    cr_number    = db.Column(db.String(50))   # السجل التجاري
     lat          = db.Column(db.String(20))
     lng          = db.Column(db.String(20))
     maps_url     = db.Column(db.String(500))

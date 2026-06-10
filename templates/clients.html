@@ -578,6 +578,14 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>كود العميل</label>
           <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-family:var(--font-en);color:var(--accent);font-weight:600" id="f-code-display">—</div>
         </div>
+        <!-- نوع المتعاقد -->
+        <div class="field">
+          <label>نوع المتعاقد</label>
+          <select id="f-entity-type" onchange="updateContractorIdField()">
+            <option value="فرد">فرد</option>
+            <option value="شركة">شركة</option>
+          </select>
+        </div>
         <!-- نوع العميل -->
         <div class="field">
           <label>نوع العميل</label>
@@ -628,9 +636,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           </select>
         </div>
         <div class="field">
-          <label>رقم هوية المتعاقد</label>
+          <label id="f-contractor-id-label">رقم هوية المتعاقد</label>
           <input type="text" id="f-national-id" placeholder="1XXXXXXXXX" inputmode="numeric" maxlength="20" style="direction:ltr;font-family:var(--font-en)">
-          <span class="field-hint">رقم الهوية أو الإقامة لصاحب التوقيع على العقد</span>
+          <span class="field-hint" id="f-contractor-id-hint">رقم الهوية أو الإقامة لصاحب التوقيع على العقد</span>
         </div>
         <!-- الجوال -->
         <div class="field form-full">
@@ -821,7 +829,9 @@ const CUSTOMERS = [
     email:    {{ (c.email or '')|tojson }},
     contact:  {{ (c.contact_person or '')|tojson }},
     role:     {{ (c.contact_role or '')|tojson }},
+    entity_type: {{ (c.entity_type or 'فرد')|tojson }},
     national_id: {{ (c.national_id or '')|tojson }},
+    cr_number:   {{ (c.cr_number or '')|tojson }},
     elevators:{{ c.elevators|length }},
     fleet_status: {{ customer_fleet_status(c)|tojson }},
     contracts:{{ c.contracts|length }},
@@ -851,7 +861,30 @@ const DEFAULT_PHONE_CODES = [
   {v:'+962', l:'+962 الأردن'},
 ];
 
-function getExtraCities() {
+function contractorIdLabel(entityType) {
+  return entityType === 'شركة' ? 'رقم السجل التجاري' : 'رقم هوية المتعاقد';
+}
+function contractorIdValue(c) {
+  if (!c) return '—';
+  return (c.entity_type === 'شركة' ? c.cr_number : c.national_id) || '—';
+}
+function updateContractorIdField() {
+  var isCompany = document.getElementById('f-entity-type').value === 'شركة';
+  var label = document.getElementById('f-contractor-id-label');
+  var input = document.getElementById('f-national-id');
+  var hint = document.getElementById('f-contractor-id-hint');
+  if (!label || !input) return;
+  if (isCompany) {
+    label.textContent = 'رقم السجل التجاري';
+    input.placeholder = '1010XXXXXX';
+    if (hint) hint.textContent = 'رقم السجل التجاري للشركة أو المؤسسة';
+  } else {
+    label.textContent = 'رقم هوية المتعاقد';
+    input.placeholder = '1XXXXXXXXX';
+    if (hint) hint.textContent = 'رقم الهوية أو الإقامة لصاحب التوقيع على العقد';
+  }
+}
+
   try { return JSON.parse(localStorage.getItem('liftcore_cities') || '[]'); } catch(e) { return []; }
 }
 function getExtraPhoneCodes() {
@@ -1093,7 +1126,8 @@ function openClientCard(id) {
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الحي') + '</div><div class="client-card-val">' + lcDisp(c.district||'—') + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('المسؤول') + '</div><div class="client-card-val">' + lcDisp(c.contact||'—') + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الصفة') + '</div><div class="client-card-val">' + lcDisp(c.role||'—') + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('رقم هوية المتعاقد') + '</div><div class="client-card-val" style="direction:ltr;font-family:var(--font-en)">' + (c.national_id||'—') + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('نوع المتعاقد') + '</div><div class="client-card-val">' + lcDisp(c.entity_type || 'فرد') + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">' + lcDisp(contractorIdLabel(c.entity_type)) + '</div><div class="client-card-val" style="direction:ltr;font-family:var(--font-en)">' + contractorIdValue(c) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('واتساب المسؤول') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone2||'—') + '</span>' + waButtonHtml(c.phone2, c.contact) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('رقم الجوال') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone||'—') + '</span>' + waButtonHtml(c.phone, lcClient(c)) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('البريد') + '</div><div class="client-card-val" style="direction:ltr">' + (c.email||'—') + '</div></div>' +
@@ -1242,6 +1276,8 @@ function openAddModal() {
   fillCitySelects('');
   fillPhoneCodeSelects('+966', '+966');
   document.getElementById('f-role').value = '';
+  document.getElementById('f-entity-type').value = 'فرد';
+  updateContractorIdField();
   document.getElementById('f-status-sel').value = 'نشط';
   openClientFormModal(function () {
     LiftCoreMapPicker.reset();
@@ -1285,7 +1321,16 @@ function saveClient() {
   fd.append('phone2',         fullWa);
   fd.append('contact_person', document.getElementById('f-contact').value||'');
   fd.append('contact_role',   document.getElementById('f-role').value||'');
-  fd.append('national_id',    document.getElementById('f-national-id').value.trim());
+  var entityType = document.getElementById('f-entity-type').value || 'فرد';
+  var contractorId = document.getElementById('f-national-id').value.trim();
+  fd.append('entity_type', entityType);
+  if (entityType === 'شركة') {
+    fd.append('cr_number', contractorId);
+    fd.append('national_id', '');
+  } else {
+    fd.append('national_id', contractorId);
+    fd.append('cr_number', '');
+  }
   fd.append('status',         document.getElementById('f-status-sel').value||'نشط');
   fd.append('notes',          document.getElementById('f-notes').value||'');
   fd.append('lat',            document.getElementById('f-lat').value||'');
@@ -1318,7 +1363,9 @@ function editClient(id) {
   resetBuildingPhotoPreview(c.building_photo_url || '');
   document.getElementById('f-contact').value    = c.contact||'';
   document.getElementById('f-role').value       = c.role||'';
-  document.getElementById('f-national-id').value = c.national_id||'';
+  document.getElementById('f-entity-type').value = c.entity_type || 'فرد';
+  document.getElementById('f-national-id').value = contractorIdValue(c) === '—' ? '' : contractorIdValue(c);
+  updateContractorIdField();
   document.getElementById('f-status-sel').value = c.status||'نشط';
   document.getElementById('f-notes').value      = c.notes||'';
   document.getElementById('f-lat').value        = c.lat||'';
@@ -1768,7 +1815,15 @@ async function confirmImport(){
     fd.append('phone',   row['رقم الهاتف']||row['الهاتف']||row['phone']||'');
     fd.append('email',   row['البريد الإلكتروني']||row['email']||'');
     fd.append('contact_person',row['اسم المسؤول']||row['contact']||'');
-    fd.append('national_id', row['رقم هوية المتعاقد']||row['رقم الهوية']||row['national_id']||'');
+    var entityType = row['نوع المتعاقد'] || row['entity_type'] || 'فرد';
+    fd.append('entity_type', entityType);
+    if (entityType === 'شركة') {
+      fd.append('cr_number', row['رقم السجل التجاري']||row['cr_number']||'');
+      fd.append('national_id', '');
+    } else {
+      fd.append('national_id', row['رقم هوية المتعاقد']||row['رقم الهوية']||row['national_id']||'');
+      fd.append('cr_number', '');
+    }
     fd.append('status','نشط');
     var r = await fetch('/clients/add',{method:'POST',body:fd});
     if(r.ok) ok++;
@@ -1779,8 +1834,10 @@ async function confirmImport(){
 
 // ===== تصدير =====
 function exportExcel(){
-  var headers = ['الكود','الاسم','المدينة','الحي','الهاتف','المسؤول','هوية المتعاقد','المصاعد','حالة العقد','الحالة'];
-  var rows = [headers].concat(filtered.map(function(c){return [c.code,c.name,c.city,c.district,c.phone,c.contact,c.national_id||'',c.elevators,c.contract_status,c.status];}));
+  var headers = ['الكود','الاسم','نوع المتعاقد','المدينة','الحي','الهاتف','المسؤول','هوية المتعاقد','السجل التجاري','المصاعد','حالة العقد','الحالة'];
+  var rows = [headers].concat(filtered.map(function(c){
+    return [c.code,c.name,c.entity_type||'فرد',c.city,c.district,c.phone,c.contact,c.national_id||'',c.cr_number||'',c.elevators,c.contract_status,c.status];
+  }));
   var csv = rows.map(function(r){return r.map(function(v){return '"'+(v||'')+'"';}).join(',');}).join('\n');
   var a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));

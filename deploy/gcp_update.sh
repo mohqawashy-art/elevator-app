@@ -75,7 +75,7 @@ test -f "$APP_DIR/static/liftcore-shell.css" && echo "  liftcore-shell.css OK"
 grep -q "letter-box" "$APP_DIR/templates/purchase-order-print.html" && echo "  PO print v2 (invoice layout + e-sig) OK"
 grep -q "sig_clear" "$APP_DIR/templates/purchase-order-print.html" && echo "  PO print v2.5 (clear btn + header + i18n) OK" || echo "  WARN: PO print v2.5 missing — run: git pull origin main"
 grep -q "table-body" "$APP_DIR/templates/elevators.html" && ! grep -q "let filtered = ELEVATORS" "$APP_DIR/templates/elevators.html" && echo "  elevators table JS fix OK" || echo "  WARN: elevators table fix missing — run: git pull origin main"
-grep -q "f-national-id" "$APP_DIR/templates/clients.html" && echo "  client contractor ID field OK" || echo "  WARN: client national_id UI missing — run: git pull origin main"
+grep -q "f-entity-type" "$APP_DIR/templates/clients.html" && echo "  client entity type + ID/CR fields OK" || echo "  WARN: client entity type UI missing — run: git pull origin main"
 grep -q "address_en" "$APP_DIR/app.py" && echo "  PO bilingual address OK"
 test -f "$APP_DIR/static/js/html2pdf.bundle.min.js" && echo "  html2pdf.js OK"
 
