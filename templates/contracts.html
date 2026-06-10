@@ -724,7 +724,7 @@ const CUSTOMERS = [
     lat: {{ (c.lat or '')|tojson }},
     lng: {{ (c.lng or '')|tojson }},
     maps_url: {{ (c.maps_url or '')|tojson }},
-    building_photo_url: {{ (url_for('static', filename=c.building_photo_path) if c.building_photo_path else '')|tojson }},
+    building_photo_url: {{ upload_url(c.building_photo_path)|tojson }},
   },
   {% endfor %}
 ];

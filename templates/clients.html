@@ -865,7 +865,7 @@ const CUSTOMERS = [
     lat:      {{ (c.lat or '')|tojson }},
     lng:      {{ (c.lng or '')|tojson }},
     maps_url: {{ (c.maps_url or '')|tojson }},
-    building_photo_url: {{ (url_for('static', filename=c.building_photo_path) if c.building_photo_path else '')|tojson }},
+    building_photo_url: {{ upload_url(c.building_photo_path)|tojson }},
   },
   {% endfor %}
 ];
@@ -1225,6 +1225,9 @@ function openClientCard(id) {
   var mapSection = (cardPos || hasAddress) ? '<div class="card-section-title">الموقع</div><div id="card-map" style="height:200px;border-radius:var(--r-sm);border:1px solid var(--border);margin-top:8px"></div>' : '';
 
   document.getElementById('card-body').innerHTML =
+    (c.building_photo_url
+      ? '<div style="margin-bottom:14px;text-align:center"><img src="' + esc(c.building_photo_url) + '" alt="صورة المبنى" style="max-width:100%;max-height:240px;border-radius:var(--r-sm);object-fit:cover;border:1px solid var(--border)"></div>'
+      : '') +
     LiftCoreLocation.renderLocationBlock(c) +
     '<div class="card-stats">' +
       '<div class="card-stat"><div class="card-stat-val">' + c.elevators + '</div><div class="card-stat-label">' + lcDisp('مصعد') + '</div></div>' +
@@ -1987,10 +1990,19 @@ function resetBuildingPhotoPreview(url) {
   var inp = document.getElementById('f-building-photo');
   if (inp) inp.value = '';
   if (url) {
-    if (img) { img.src = url; img.style.display = 'block'; }
-    if (ph) ph.style.display = 'none';
+    if (img) {
+      img.onerror = function() {
+        img.style.display = 'none';
+        if (ph) ph.style.display = 'flex';
+      };
+      img.onload = function() {
+        img.style.display = 'block';
+        if (ph) ph.style.display = 'none';
+      };
+      img.src = url;
+    }
   } else {
-    if (img) { img.src = ''; img.style.display = 'none'; }
+    if (img) { img.src = ''; img.onerror = null; img.onload = null; img.style.display = 'none'; }
     if (ph) ph.style.display = 'flex';
   }
 }

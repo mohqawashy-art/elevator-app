@@ -84,10 +84,13 @@ def customer_maps_link(customer: Customer) -> str:
 def customer_photo_url(customer: Customer, base: str = '') -> str:
     if not customer or not customer.building_photo_path:
         return ''
-    path = customer.building_photo_path
+    path = customer.building_photo_path.replace('\\', '/')
     if path.startswith('http'):
         return path
-    return (base.rstrip('/') + '/' + path.lstrip('/')) if base else '/' + path.lstrip('/')
+    static_path = '/static/' + path.lstrip('/')
+    if base:
+        return base.rstrip('/') + static_path
+    return static_path
 
 
 def _month_bounds(year: int, month: int) -> tuple[date, date]:

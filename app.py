@@ -3,7 +3,7 @@ LiftCore — Flask Application
 app.py
 """
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User
@@ -924,9 +924,9 @@ def _client_dir(client_id):
 
 def _save_client_building_photo(customer, file_storage):
     if not file_storage or not file_storage.filename:
-        return
+        return None
     if not _ext_ok(file_storage.filename, ALLOWED_CLIENT_PHOTO_EXT):
-        return
+        return 'صيغة صورة المبنى غير مدعومة — استخدم JPG أو PNG أو WEBP'
     ext = file_storage.filename.rsplit('.', 1)[1].lower()
     folder = _client_dir(customer.id)
     for old in os.listdir(folder):
@@ -938,6 +938,7 @@ def _save_client_building_photo(customer, file_storage):
     filename = f'building.{ext}'
     file_storage.save(os.path.join(folder, filename))
     customer.building_photo_path = f'uploads/clients/{customer.id}/{filename}'
+    return None
 
 
 def _customer_location_payload(customer):
@@ -1340,7 +1341,10 @@ def client_add():
     )
     db.session.add(c)
     db.session.flush()
-    _save_client_building_photo(c, request.files.get('building_photo'))
+    photo_err = _save_client_building_photo(c, request.files.get('building_photo'))
+    if photo_err:
+        flash(photo_err, 'error')
+        return redirect(url_for('clients'))
     db.session.commit()
     return redirect(url_for('clients'))
 
@@ -1390,7 +1394,10 @@ def client_edit(id):
     c.lng            = request.form.get('lng','')
     c.maps_url       = request.form.get('maps_url','')
     sync_customer_from_elevators(c)
-    _save_client_building_photo(c, request.files.get('building_photo'))
+    photo_err = _save_client_building_photo(c, request.files.get('building_photo'))
+    if photo_err:
+        flash(photo_err, 'error')
+        return redirect(url_for('clients'))
     db.session.commit()
     return redirect(url_for('clients'))
 
@@ -1946,10 +1953,35 @@ def _tech_dir(tech_id, sub=''):
     return path
 
 
+def upload_url(relative_path):
+    """رابط ملف مرفوع تحت static/uploads مع cache-buster."""
+    if not relative_path:
+        return ''
+    rel = relative_path.replace('\\', '/').lstrip('/')
+    url = '/static/' + rel
+    full = os.path.join(app.root_path, 'static', rel.replace('/', os.sep))
+    if os.path.isfile(full):
+        url += '?v=' + str(int(os.path.getmtime(full)))
+    return url
+
+
 def _static_upload_url(relative_path):
     if not relative_path:
         return None
-    return '/static/' + relative_path.replace('\\', '/')
+    return upload_url(relative_path)
+
+
+@app.route('/static/uploads/<path:subpath>')
+def serve_upload_file(subpath):
+    """تأكيد تقديم الملفات المرفوعة (صور المباني، مستندات الفنيين...)."""
+    directory = os.path.join(app.root_path, 'static', 'uploads')
+    full = os.path.normpath(os.path.join(directory, subpath))
+    if not full.startswith(os.path.normpath(directory)) or not os.path.isfile(full):
+        abort(404)
+    return send_from_directory(directory, subpath)
+
+
+app.jinja_env.globals['upload_url'] = upload_url
 
 
 def _ext_ok(filename, allowed):
