@@ -1342,10 +1342,9 @@ def client_add():
     db.session.add(c)
     db.session.flush()
     photo_err = _save_client_building_photo(c, request.files.get('building_photo'))
+    db.session.commit()
     if photo_err:
         flash(photo_err, 'error')
-        return redirect(url_for('clients'))
-    db.session.commit()
     return redirect(url_for('clients'))
 
 @app.route('/clients/edit/<int:id>', methods=['POST'])
@@ -1395,10 +1394,9 @@ def client_edit(id):
     c.maps_url       = request.form.get('maps_url','')
     sync_customer_from_elevators(c)
     photo_err = _save_client_building_photo(c, request.files.get('building_photo'))
+    db.session.commit()
     if photo_err:
         flash(photo_err, 'error')
-        return redirect(url_for('clients'))
-    db.session.commit()
     return redirect(url_for('clients'))
 
 @app.route('/clients/delete/<int:id>', methods=['POST'])
