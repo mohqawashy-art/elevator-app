@@ -369,6 +369,7 @@
       .replace(/([0-9.,]+)\s*قطعة/g, '$1 pcs')
       .replace(/([0-9.,]+)\s*متر/g, '$1 m')
       .replace(/([0-9.,]+)\s*لتر/g, '$1 L')
+      .replace(/الطلبات السابقة\s*\((\d+)\)/g, 'Previous Orders ($1)')
       .replace(/عرض\s+(\d+)\s+من\s+(\d+)/g, 'Showing $1 of $2');
   }
 

@@ -34,6 +34,7 @@ html[data-theme="light"] .table-wrap,
 html[data-theme="light"] .modal,
 html[data-theme="light"] .table-footer,
 html[data-theme="light"] .card,
+html[data-theme="light"] .panel,
 html[data-theme="light"] .theme-card {
   background: var(--card);
   color: var(--text1);

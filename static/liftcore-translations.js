@@ -846,6 +846,21 @@ window.__LC_TRANSLATIONS = {
   'المبلغ (': 'Amount (',
   'إجمالي الإيرادات (': 'Total Revenues (',
   'أرباح قطع الغيار (': 'Spare Parts Profit (',
+  /* — طلبات الشراء — */
+  'طلبات الشراء': 'Purchase Orders',
+  'طلب شراء جديد': 'New Purchase Order',
+  'رقم الطلب (تلقائي عند الحفظ)': 'Order # (auto on save)',
+  'حفظ الطلب': 'Save Order',
+  'الطلبات السابقة': 'Previous Orders',
+  'لا توجد طلبات بعد.': 'No orders yet.',
+  'لا توجد طلبات بعد': 'No orders yet',
+  'حذف الطلب؟': 'Delete this order?',
+  '+ سطر': '+ Line',
+  'مسودة': 'Draft',
+  'مرسل': 'Sent',
+  'مستلم': 'Received',
+  'ملغي': 'Cancelled',
+  '— اختر —': '— Select —',
 };
 window.__LC_I18N_UI = window.__LC_TRANSLATIONS;
 

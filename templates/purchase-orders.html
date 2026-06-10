@@ -4,128 +4,197 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — طلبات الشراء</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/liftcore-layout.css">
-<script src="/static/liftcore-dates.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--success:#1fb87a;--danger:#e04848;--r:10px;--r-sm:7px}
-body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text1);padding:24px;max-width:1200px;margin:0 auto}
-a{color:var(--accent);text-decoration:none}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
-h1{font-size:20px}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+html[dir="ltr"]{font-family:var(--font-en)}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:900px;height:200px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
+.nav-item.active::before{content:'';position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:3px}
+html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:inherit;text-decoration:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1)}
+.btn-sm{padding:5px 10px;font-size:12px}
 .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.panel-title{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--text1)}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{padding:10px;border-bottom:1px solid var(--border);text-align:right}
-th{color:var(--text3);font-size:11px}
-.btn{padding:8px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text1);cursor:pointer;font-family:inherit}
-.btn-primary{background:var(--accent);border-color:var(--accent)}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
-input,select,textarea{width:100%;padding:8px 10px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-family:inherit}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:right}
+th{color:var(--text3);font-size:11px;font-weight:500}
+tbody tr:hover{background:var(--bg3)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px}
+.form-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;font-family:inherit;padding:9px 12px;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2)}
 .lines-table input,.lines-table select{min-width:100px}
-.full{grid-column:1/-1}
-.badge{padding:3px 8px;border-radius:8px;font-size:11px}
-.badge-ok{background:rgba(31,184,122,.15);color:var(--success)}
-.badge-warn{background:rgba(224,144,48,.15);color:#e09030}
+.badge{display:inline-flex;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500}
+.badge-ok{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-warn{background:rgba(224,144,48,.12);color:var(--warning)}
+.empty-msg{color:var(--text3);font-size:13px}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  .sidebar.open{right:0}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .form-grid{grid-template-columns:1fr}
+}
 </style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css">
+<script src="/static/liftcore-dates.js" defer></script>
+<link rel="stylesheet" href="/static/liftcore-shell.css">
+<script src="/static/liftcore-format.js?v=15"></script>
+<script src="/static/liftcore-shell.js"></script>
 </head>
 <body>
-<div class="header">
-  <h1>طلبات الشراء</h1>
-  <div>
-    <a href="/inventory" class="btn">← الأصناف</a>
-    <a href="/dashboard" class="btn">لوحة التحكم</a>
-  </div>
-</div>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section" id="ns1">الرئيسية</div>
+    <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
+    <div class="nav-section" id="ns4">المخزن</div>
+    <a href="/inventory" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>الأصناف</a>
+    <a href="/purchase-orders" class="nav-item active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>طلبات الشراء</a>
+    <a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
+  </nav>
+</aside>
+<div class="main">
+  {% set page_title = 'طلبات الشراء' %}
+  {% include 'partials/app_header.html' %}
 
-<div class="panel">
-  <h2 style="font-size:15px;margin-bottom:12px">طلب شراء جديد</h2>
-  <form method="post" action="/purchase-orders/save" id="po-form">
-    <div class="form-grid">
-      <div>
-        <label>رقم الطلب (تلقائي عند الحفظ)</label>
-        <input value="{{ next_po_code }}" disabled>
-      </div>
-      <div>
-        <label>التاريخ</label>
-        <input type="date" name="order_date" lang="en-GB" class="lc-date-input" value="{{ today }}">
-      </div>
-      <div>
-        <label>المورد</label>
-        <input name="supplier" placeholder="اسم المورد">
-      </div>
-      <div>
-        <label>الحالة</label>
-        <select name="status">
-          {% for st in statuses %}
-          <option value="{{ st }}">{{ st }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="full">
-        <label>ملاحظات</label>
-        <textarea name="notes" rows="2"></textarea>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">طلبات الشراء</div>
+      <div class="page-actions">
+        <a href="/inventory" class="btn btn-secondary btn-sm">← الأصناف</a>
       </div>
     </div>
-    <table class="lines-table">
-      <thead>
-        <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th></th></tr>
-      </thead>
-      <tbody id="lines-body">
-        <tr class="line-row">
-          <td>
-            <select name="item_id">
-              <option value="">— اختر —</option>
-              {% for it in items %}
-              <option value="{{ it.id }}" data-price="{{ it.buy_price or 0 }}">{{ it.code }} — {{ it.name }}</option>
+
+    <div class="panel">
+      <h2 class="panel-title">طلب شراء جديد</h2>
+      <form method="post" action="/purchase-orders/save" id="po-form">
+        <div class="form-grid">
+          <div class="field">
+            <label>رقم الطلب (تلقائي عند الحفظ)</label>
+            <input value="{{ next_po_code }}" disabled style="opacity:.85">
+          </div>
+          <div class="field">
+            <label>التاريخ</label>
+            <input type="date" name="order_date" lang="en-GB" class="lc-date-input" value="{{ today }}">
+          </div>
+          <div class="field">
+            <label>المورد</label>
+            <input name="supplier" placeholder="اسم المورد">
+          </div>
+          <div class="field">
+            <label>الحالة</label>
+            <select name="status">
+              {% for st in statuses %}
+              <option value="{{ st }}">{{ st }}</option>
               {% endfor %}
             </select>
-          </td>
-          <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
-          <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
-          <td><button type="button" class="btn" onclick="removeLine(this)">حذف</button></td>
-        </tr>
-      </tbody>
-    </table>
-    <div style="margin-top:10px;display:flex;gap:8px">
-      <button type="button" class="btn" onclick="addLine()">+ سطر</button>
-      <button type="submit" class="btn btn-primary">حفظ الطلب</button>
+          </div>
+          <div class="field form-full">
+            <label>ملاحظات</label>
+            <textarea name="notes" rows="2"></textarea>
+          </div>
+        </div>
+        <table class="lines-table">
+          <thead>
+            <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th></th></tr>
+          </thead>
+          <tbody id="lines-body">
+            <tr class="line-row">
+              <td>
+                <select name="item_id">
+                  <option value="">— اختر —</option>
+                  {% for it in items %}
+                  <option value="{{ it.id }}" data-price="{{ it.buy_price or 0 }}">{{ it.code }} — {{ it.name }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
+              <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
+              <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ سطر</button>
+          <button type="submit" class="btn btn-primary btn-sm">حفظ الطلب</button>
+        </div>
+      </form>
     </div>
-  </form>
-</div>
 
-<div class="panel">
-  <h2 style="font-size:15px;margin-bottom:12px">الطلبات السابقة ({{ orders|length }})</h2>
-  {% if orders %}
-  <table>
-    <thead>
-      <tr><th>الرقم</th><th>المورد</th><th>التاريخ</th><th>الحالة</th><th>الإجمالي</th><th></th></tr>
-    </thead>
-    <tbody>
-      {% for o in orders %}
-      <tr>
-        <td>{{ o.code }}</td>
-        <td>{{ o.supplier or '—' }}</td>
-        <td class="lc-date">{{ o.order_date | dmY }}</td>
-        <td>
-          <span class="badge {% if o.status == 'مستلم' %}badge-ok{% else %}badge-warn{% endif %}">{{ o.status }}</span>
-        </td>
-        <td>{{ '%.2f'|format(o.total_amount or 0) }} ⃁</td>
-        <td>
-          {% if o.status != 'مستلم' %}
-          <form method="post" action="/purchase-orders/delete/{{ o.id }}" style="display:inline" onsubmit="return confirm('حذف الطلب؟')">
-            <button type="submit" class="btn">حذف</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p style="color:var(--text3)">لا توجد طلبات بعد.</p>
-  {% endif %}
+    <div class="panel">
+      <h2 class="panel-title">الطلبات السابقة ({{ orders|length }})</h2>
+      {% if orders %}
+      <table>
+        <thead>
+          <tr><th>الرقم</th><th>المورد</th><th>التاريخ</th><th>الحالة</th><th>الإجمالي</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td class="td-code">{{ o.code }}</td>
+            <td>{{ o.supplier or '—' }}</td>
+            <td class="lc-date">{{ o.order_date | dmY }}</td>
+            <td>
+              <span class="badge {% if o.status == 'مستلم' %}badge-ok{% else %}badge-warn{% endif %}">{{ o.status }}</span>
+            </td>
+            <td style="font-family:var(--font-en)">{{ '%.2f'|format(o.total_amount or 0) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+            <td>
+              {% if o.status != 'مستلم' %}
+              <form method="post" action="/purchase-orders/delete/{{ o.id }}" style="display:inline" onsubmit="return confirmDelete()">
+                <button type="submit" class="btn btn-secondary btn-sm">حذف</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty-msg">لا توجد طلبات بعد.</p>
+      {% endif %}
+    </div>
+  </div>
 </div>
 
 <template id="line-tpl">
@@ -140,7 +209,7 @@ input,select,textarea{width:100%;padding:8px 10px;border-radius:var(--r-sm);bord
     </td>
     <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
     <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
-    <td><button type="button" class="btn" onclick="removeLine(this)">حذف</button></td>
+    <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
   </tr>
 </template>
 
@@ -165,6 +234,12 @@ function removeLine(btn) {
   const body = document.getElementById('lines-body');
   if (body.querySelectorAll('.line-row').length > 1) btn.closest('tr').remove();
 }
+function confirmDelete() {
+  var msg = (window.__LC_LANG === 'en') ? 'Delete this order?' : 'حذف الطلب؟';
+  return confirm(msg);
+}
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 document.querySelectorAll('.line-row').forEach(bindLine);
 </script>
 </body>
