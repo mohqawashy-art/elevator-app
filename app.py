@@ -24,15 +24,18 @@ app = Flask(__name__)
 
 
 def _resolve_database_uri():
-    """استخدم instance/liftcore.db إن وُجد (الإنتاج) وإلا liftcore.db في جذر المشروع."""
+    """استخدم liftcore.db — إن وُجد أكثر من نسخة، اختر الأكبر (البيانات الفعلية)."""
     os.makedirs(app.instance_path, exist_ok=True)
     instance_db = os.path.join(app.instance_path, 'liftcore.db')
     root_db = os.path.join(app.root_path, 'liftcore.db')
-    if os.path.isfile(instance_db) and os.path.getsize(instance_db) > 0:
+    candidates = []
+    for path in (instance_db, root_db):
+        if os.path.isfile(path) and os.path.getsize(path) > 0:
+            candidates.append(path)
+    if not candidates:
         return 'sqlite:///' + instance_db.replace('\\', '/')
-    if os.path.isfile(root_db) and os.path.getsize(root_db) > 0:
-        return 'sqlite:///' + root_db.replace('\\', '/')
-    return 'sqlite:///' + instance_db.replace('\\', '/')
+    best = max(candidates, key=os.path.getsize)
+    return 'sqlite:///' + best.replace('\\', '/')
 
 
 # =============================================
@@ -468,8 +471,22 @@ def next_code(model, prefix, field='code', digits=4):
 def api_version():
     """تحقق سريع من إصدار الكود على السيرفر (بدون تسجيل دخول)."""
     root = app.root_path
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    db_path = db_uri.replace('sqlite:///', '').replace('/', os.sep) if db_uri.startswith('sqlite:///') else ''
+    db_info = {}
+    if db_path and os.path.isfile(db_path):
+        db_info = {
+            'file': os.path.basename(os.path.dirname(db_path)) + '/' + os.path.basename(db_path),
+            'bytes': os.path.getsize(db_path),
+        }
+        try:
+            db_info['customers'] = Customer.query.count()
+            db_info['elevators'] = Elevator.query.count()
+        except Exception:
+            pass
     return jsonify(
         version=APP_VERSION,
+        db=db_info,
         checks={
             'settings_full': os.path.isfile(os.path.join(root, 'templates/partials/app_header.html')),
             'settings_tabs': os.path.isfile(os.path.join(root, 'templates/settings.html'))

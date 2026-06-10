@@ -475,7 +475,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       {% endwith %}
       <!-- عنوان وأزرار -->
       <div class="page-header">
-        <div class="page-title">العملاء <span id="clients-count" data-i18n-skip></span></div>
+        <div class="page-title">العملاء <span id="clients-count" data-i18n-skip>({{ customers|length }} عميل)</span></div>
         <div class="page-actions">
           <a class="btn btn-secondary btn-sm" href="/static/templates/clients_template.xlsx" download>
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
@@ -532,11 +532,34 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
                 <th>إجراءات</th>
               </tr>
             </thead>
-            <tbody id="table-body"></tbody>
+            <tbody id="table-body">
+            {% set status_b = {'نشط': 'badge-active', 'غير نشط': 'badge-cancelled'} %}
+            {% set contract_b = {'نشط': 'badge-active', 'على وشك الانتهاء': 'badge-expiring', 'منتهي': 'badge-expired', 'ملغي': 'badge-cancelled', 'بدون عقد': 'badge-cancelled', 'معلق': 'badge-cancelled'} %}
+            {% for c in customers %}
+            {% set cstat = contract_display_status(c.contracts[0]) if c.contracts else 'بدون عقد' %}
+            <tr>
+              <td class="td-code">{{ c.code }}</td>
+              <td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="openClientCard({{ c.id }})">{{ c.name }}</td>
+              <td>{{ c.city or '—' }}</td>
+              <td>{{ c.district or '—' }}</td>
+              <td><span style="direction:ltr;font-family:var(--font-en)">{{ c.phone or '—' }}</span></td>
+              <td style="text-align:center;font-family:var(--font-en)">{{ c.elevators|length }}</td>
+              <td><span class="badge {{ contract_b.get(cstat, 'badge-cancelled') }}">{{ cstat }}</span></td>
+              <td><span class="badge {{ status_b.get(c.status, 'badge-active') }}">{{ c.status }}</span></td>
+              <td><div class="td-actions">
+                <button class="btn btn-secondary btn-sm btn-icon" title="عرض" onclick="openClientCard({{ c.id }})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
+                <button class="btn btn-secondary btn-sm btn-icon" title="تعديل" onclick="editClient({{ c.id }})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>
+                <button class="btn btn-danger btn-sm btn-icon" title="حذف" onclick="deleteClient({{ c.id }})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>
+              </div></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text3)">لا توجد بيانات — اضغط «إضافة عميل» للبدء</td></tr>
+            {% endfor %}
+            </tbody>
           </table>
         </div>
         <div class="table-footer">
-          <span class="table-info" id="table-info"></span>
+          <span class="table-info" id="table-info">عرض {{ customers|length }} من {{ customers|length }}</span>
         </div>
       </div>
     </div>
@@ -885,6 +908,7 @@ function updateContractorIdField() {
   }
 }
 
+function getExtraCities() {
   try { return JSON.parse(localStorage.getItem('liftcore_cities') || '[]'); } catch(e) { return []; }
 }
 function getExtraPhoneCodes() {
@@ -1911,8 +1935,7 @@ window.__lcRefreshPage = function () {
 };
 fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');
-updateStats();
-renderTable(CUSTOMERS);
+try { updateStats(); renderTable(CUSTOMERS); } catch (bootErr) { console.error('clients boot', bootErr); }
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);
