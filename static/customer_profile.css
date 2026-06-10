@@ -40,3 +40,8 @@
 .fin-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(100,160,255,.06)}
 .fin-row:last-child{border-bottom:none;font-weight:600;color:var(--success)}
 .fin-row span:last-child{font-family:var(--font-en)}
+.ep-activity-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.ep-act-stat{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;text-align:center}
+.ep-act-val{display:block;font-size:20px;font-weight:600;color:var(--accent);margin-bottom:4px}
+.ep-act-label{font-size:11px;color:var(--text3)}
+.ep-sub-title{font-size:11px;font-weight:600;color:var(--text2);margin:14px 0 6px}

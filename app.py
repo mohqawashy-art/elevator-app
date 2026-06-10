@@ -2268,6 +2268,139 @@ def maintenance_visits():
         plan_districts=list_districts(),
     )
 
+def build_elevator_profile(elevator_id):
+    """ملخص المصعد + سجل مصروفاته (قطع غيار + صرف مخزن)."""
+    elev = Elevator.query.get_or_404(elevator_id)
+    customer = elev.customer
+
+    parts = (
+        PartsBilling.query.filter_by(elevator_id=elevator_id)
+        .order_by(PartsBilling.billing_date.desc(), PartsBilling.id.desc())
+        .all()
+    )
+    stock_moves = (
+        StockMovement.query.filter_by(elevator_id=elevator_id, direction='صادر')
+        .order_by(StockMovement.movement_date.desc(), StockMovement.id.desc())
+        .all()
+    )
+
+    ledger = []
+    for p in parts:
+        cost = float(p.cost_price or 0)
+        ledger.append({
+            'date': str(p.billing_date or ''),
+            'code': p.code,
+            'type': 'قطع غيار',
+            'category': 'parts',
+            'description': (p.description or 'تركيب قطع غيار').strip(),
+            'amount': cost,
+            'detail': (p.technician.name if p.technician else '') or (p.status or ''),
+        })
+    for m in stock_moves:
+        amt = float(m.total_value or 0)
+        if amt <= 0:
+            amt = float((m.quantity or 0) * (m.unit_price or 0))
+        item_name = m.item.name if m.item else ''
+        ledger.append({
+            'date': str(m.movement_date or ''),
+            'code': m.code,
+            'type': m.movement_type or 'صرف مخزن',
+            'category': 'stock',
+            'description': (m.reason or item_name or 'حركة مخزن').strip(),
+            'amount': amt,
+            'detail': item_name,
+        })
+
+    ledger.sort(key=lambda row: row.get('date') or '', reverse=True)
+
+    parts_total = round(sum(r['amount'] for r in ledger if r['category'] == 'parts'), 2)
+    stock_total = round(sum(r['amount'] for r in ledger if r['category'] == 'stock'), 2)
+    total_cost = round(parts_total + stock_total, 2)
+
+    visits = (
+        MaintenanceVisit.query.filter_by(elevator_id=elevator_id)
+        .order_by(MaintenanceVisit.visit_date.desc())
+        .limit(8)
+        .all()
+    )
+    faults = (
+        Fault.query.filter_by(elevator_id=elevator_id)
+        .order_by(Fault.reported_at.desc())
+        .limit(8)
+        .all()
+    )
+
+    active_contract = None
+    from entity_links import active_contract_for_elevator
+    ac = active_contract_for_elevator(elevator_id)
+    if ac:
+        active_contract = {'id': ac.id, 'code': ac.code, 'status': ac.status}
+
+    return {
+        'elevator': {
+            'id': elev.id,
+            'code': elev.code,
+            'customer_id': elev.customer_id,
+            'customer': customer.name if customer else '',
+            'building': elev.building_name or '',
+            'city': elev.city or '',
+            'district': elev.district or '',
+            'elev_type': elev.elev_type or '',
+            'brand': elev.brand or '',
+            'model': elev.model or '',
+            'capacity_kg': elev.capacity_kg,
+            'floors': elev.floors,
+            'speed': elev.speed or '',
+            'serial_number': elev.serial_number or '',
+            'machine_type': elev.machine_type or '',
+            'control_type': elev.control_type or '',
+            'control_drive': elev.control_drive or '',
+            'control_operation': elev.control_operation or '',
+            'control_detail': elev.control_detail or '',
+            'install_date': str(elev.install_date or ''),
+            'last_maintenance': str(elev.last_maintenance or ''),
+            'next_maintenance': str(elev.next_maintenance or ''),
+            'status': elev.status or '',
+            'notes': elev.notes or '',
+        },
+        'contract': active_contract,
+        'costs': {
+            'total': total_cost,
+            'parts_total': parts_total,
+            'stock_total': stock_total,
+            'count': len(ledger),
+            'ledger': ledger,
+        },
+        'activity': {
+            'visits_count': MaintenanceVisit.query.filter_by(elevator_id=elevator_id).count(),
+            'faults_count': Fault.query.filter_by(elevator_id=elevator_id).count(),
+            'recent_visits': [
+                {
+                    'code': v.code,
+                    'date': str(v.visit_date or ''),
+                    'type': v.visit_type or '',
+                    'status': v.status or '',
+                }
+                for v in visits
+            ],
+            'recent_faults': [
+                {
+                    'code': f.code,
+                    'date': str(f.reported_at.date() if f.reported_at else ''),
+                    'type': f.fault_type or '',
+                    'status': f.status or '',
+                }
+                for f in faults
+            ],
+        },
+    }
+
+
+@app.route('/api/elevators/<int:elevator_id>/profile')
+def api_elevator_profile(elevator_id):
+    return jsonify(build_elevator_profile(elevator_id))
+
+
 @app.route('/api/elevators/<int:elevator_id>/links')
 def api_elevator_links(elevator_id):
     from entity_links import elevator_link_payload

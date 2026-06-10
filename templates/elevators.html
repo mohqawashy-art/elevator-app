@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/client_location.css">
 <script src="/static/customer_profile.js"></script>
+<script src="/static/elevator_profile.js"></script>
 <script src="/static/client_map_picker.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -705,7 +706,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <!-- VIEW MODAL -->
 <div class="modal-overlay" id="modal-view">
-  <div class="modal">
+  <div class="modal" style="max-width:920px">
     <div class="modal-head">
       <div class="modal-title" id="view-title">بيانات المصعد</div>
       <button class="modal-close" onclick="closeModal('modal-view')">
@@ -761,6 +762,7 @@ const ELEVATORS = [
     model:        {{ (e.model or '')|tojson }},
     capacity:     {{ e.capacity_kg or 0 }},
     floors:       {{ e.floors or 0 }},
+    speed:        {{ (e.speed or '')|tojson }},
     serial:       {{ (e.serial_number or '')|tojson }},
     machine_type: {{ (e.machine_type or '')|tojson }},
     control_type: {{ (e.control_type or '')|tojson }},
@@ -1186,33 +1188,53 @@ function editElevator(id) {
   });
 }
 
+function viewItem(label, val, opts) {
+  opts = opts || {};
+  var style = opts.style ? ' style="' + opts.style + '"' : '';
+  var cls = opts.full ? ' view-item view-full' : ' view-item';
+  return '<div class="' + cls.trim() + '"><div class="view-label">' + lcDisp(label) + '</div><div class="view-val"' + style + '>' + val + '</div></div>';
+}
+
 function viewElevator(id) {
   var e = ELEVATORS.find(function(x) { return x.id === id; });
   if (!e) return;
   currentViewId = id;
   document.getElementById('view-title').textContent = e.code + ' — ' + lcDisp(e.building || elevCustomer(e));
-  document.getElementById('view-body').innerHTML =
+  var body = document.getElementById('view-body');
+  body.innerHTML =
     '<div class="view-grid">' +
-      '<div class="view-section">' + lcDisp('البيانات الأساسية') + '</div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('الكود') + '</div><div class="view-val" style="font-family:var(--font-en)">' + esc(e.code) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('العميل') + '</div><div class="view-val">' + esc(elevCustomer(e)) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('المبنى') + '</div><div class="view-val">' + esc(lcDisp(e.building || '—')) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('المدينة') + '</div><div class="view-val">' + esc(lcDisp(e.city || '—')) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('الحي') + '</div><div class="view-val">' + esc(lcDisp(e.district || '—')) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('النوع') + '</div><div class="view-val">' + esc(lcDisp(e.elev_type || '—')) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('الماركة') + '</div><div class="view-val" style="font-family:var(--font-en)">' + esc(e.brand || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('نوع الآلة') + '</div><div class="view-val">' + esc(lcDisp(MACHINE_LABELS[e.machine_type] || e.machine_type || '—')) + '</div></div>' +
-      '<div class="view-item view-full"><div class="view-label">' + lcDisp('نظام التحكم') + '</div><div class="view-val">' + esc(formatControlSummary(e)) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('الحمولة') + '</div><div class="view-val">' + (e.capacity ? lcDisp(e.capacity + ' كجم') : '—') + '</div></div>' +
-      '<div class="view-section">' + lcDisp('الصيانة') + '</div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('تاريخ التركيب') + '</div><div class="view-val" style="direction:ltr">' + esc(e.install_date || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('آخر صيانة') + '</div><div class="view-val" style="direction:ltr">' + esc(e.last_maint || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('الصيانة القادمة') + '</div><div class="view-val" style="direction:ltr">' + esc(e.next_maint || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">' + lcDisp('الحالة') + '</div><div class="view-val"><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></div></div>' +
-      (e.notes ? '<div class="view-item view-full"><div class="view-label">' + lcDisp('ملاحظات') + '</div><div class="view-val">' + esc(e.notes) + '</div></div>' : '') +
-    '</div>';
+      '<div class="view-section">' + lcDisp('الموقع والعميل') + '</div>' +
+      viewItem('الكود', esc(e.code), { style: 'font-family:var(--font-en);color:var(--accent)' }) +
+      viewItem('العميل', esc(elevCustomer(e))) +
+      viewItem('المبنى', esc(lcDisp(e.building || '—'))) +
+      viewItem('المدينة', esc(lcDisp(e.city || '—'))) +
+      viewItem('الحي', esc(lcDisp(e.district || '—'))) +
+      '<div class="view-section">' + lcDisp('المواصفات الفنية') + '</div>' +
+      viewItem('نوع المصعد', esc(lcDisp(e.elev_type || '—'))) +
+      viewItem('الماركة', esc(e.brand || '—'), { style: 'font-family:var(--font-en)' }) +
+      viewItem('الموديل', esc(e.model || '—'), { style: 'font-family:var(--font-en)' }) +
+      viewItem('الرقم التسلسلي', esc(e.serial || '—'), { style: 'font-family:var(--font-en)' }) +
+      viewItem('عدد الطوابق', e.floors ? '<span style="font-family:var(--font-en)">' + esc(String(e.floors)) + '</span>' : '—') +
+      viewItem('السرعة', e.speed ? esc(lcDisp(e.speed)) : '—') +
+      viewItem('الحمولة', e.capacity ? lcDisp(e.capacity + ' كجم') : '—') +
+      viewItem('نوع الآلة', esc(lcDisp(MACHINE_LABELS[e.machine_type] || e.machine_type || '—'))) +
+      '<div class="view-section">' + lcDisp('نظام التحكم') + '</div>' +
+      viewItem('نوع النظام', esc(e.control_type || '—'), { style: 'font-family:var(--font-en)' }) +
+      viewItem('نوع المحرك / القيادة', esc(e.control_drive || '—'), { style: 'font-family:var(--font-en)' }) +
+      viewItem('طريقة التشغيل', esc(e.control_operation || '—'), { style: 'font-family:var(--font-en)' }) +
+      viewItem('تفاصيل إضافية', esc(e.control_detail || '—'), { full: true, style: 'font-family:var(--font-en)' }) +
+      '<div class="view-section">' + lcDisp('الصيانة والحالة') + '</div>' +
+      viewItem('تاريخ التركيب', esc(e.install_date || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
+      viewItem('آخر صيانة', esc(e.last_maint || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
+      viewItem('الصيانة القادمة', esc(e.next_maint || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
+      viewItem('الحالة', '<span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span>') +
+      (e.notes ? viewItem('ملاحظات', esc(e.notes), { full: true }) : '') +
+    '</div>' +
+    '<div id="elev-profile-costs" style="margin-top:16px"></div>';
   document.getElementById('modal-view').classList.add('open');
-  LiftCoreProfile.appendToView(document.getElementById('view-body'), e.customer_id, null, { timelineLimit: 15 });
+  if (window.LiftCoreElevProfile) {
+    LiftCoreElevProfile.loadIntoElement(document.getElementById('elev-profile-costs'), id);
+  }
   if (window.LiftCoreI18n && LiftCoreDisplay && LiftCoreDisplay.isEn()) LiftCoreI18n.apply('en');
 }
 
