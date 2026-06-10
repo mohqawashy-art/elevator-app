@@ -1547,6 +1547,18 @@ def sync_contract_invoice_status(contract_id):
         c.invoice_status = contract_invoice_status(c)
 
 
+def _money_round(n):
+    return round(float(n or 0), 2)
+
+
+def format_money_amount(n):
+    """عرض مبالغ بدون كسور عائمة (3000 لا 2999.9999)."""
+    n = _money_round(n)
+    if n == int(n):
+        return f'{int(n):,}'
+    return f'{n:,.2f}'
+
+
 app.jinja_env.globals['contract_display_status'] = contract_display_status
 app.jinja_env.globals['contract_invoice_status'] = contract_invoice_status
 app.jinja_env.globals['contract_paid_total'] = contract_paid_total
@@ -1822,18 +1834,6 @@ def _sync_contract_elevators(contract_id, elevator_ids):
     for eid in elevator_ids:
         if eid:
             db.session.add(ContractElevator(contract_id=contract_id, elevator_id=int(eid)))
-
-
-def _money_round(n):
-    return round(float(n or 0), 2)
-
-
-def format_money_amount(n):
-    """عرض مبالغ بدون كسور عائمة (3000 لا 2999.9999)."""
-    n = _money_round(n)
-    if n == int(n):
-        return f'{int(n):,}'
-    return f'{n:,.2f}'
 
 
 def _apply_contract_form(c, form):
