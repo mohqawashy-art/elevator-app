@@ -1237,9 +1237,6 @@ function openClientCard(id) {
     ? LiftCoreLocation.renderLocationBlock(c) : '';
 
   document.getElementById('card-body').innerHTML =
-    (c.building_photo_url
-      ? '<div style="margin-bottom:14px;text-align:center"><img src="' + esc(c.building_photo_url) + '" alt="صورة المبنى" style="max-width:100%;max-height:240px;border-radius:var(--r-sm);object-fit:cover;border:1px solid var(--border)"></div>'
-      : '') +
     locBlock +
     '<div class="card-stats">' +
       '<div class="card-stat"><div class="card-stat-val">' + c.elevators + '</div><div class="card-stat-label">' + lcDisp('مصعد') + '</div></div>' +
@@ -1512,7 +1509,7 @@ function editClient(id) {
   document.getElementById('f-address').value    = c.address||'';
   document.getElementById('f-maps-url').value   = c.maps_url||'';
   pendingBuildingPhotoFile = null;
-  resetBuildingPhotoPreview(c.building_photo_url || '');
+  resetBuildingPhotoPreview('');
   document.getElementById('f-contact').value    = c.contact||'';
   document.getElementById('f-role').value       = c.role||'';
   document.getElementById('f-entity-type').value = c.entity_type || 'فرد';
