@@ -861,6 +861,20 @@ window.__LC_TRANSLATIONS = {
   'مستلم': 'Received',
   'ملغي': 'Cancelled',
   '— اختر —': '— Select —',
+  'طلب شراء': 'Purchase Order',
+  'جوال المورد (واتساب)': 'Supplier Mobile (WhatsApp)',
+  'إيميل المورد': 'Supplier Email',
+  'حفظ وطباعة': 'Save & Print',
+  'طباعة / إرسال': 'Print / Send',
+  '🖨️ طباعة / إرسال': 'Print / Send',
+  'طباعة وإرسال طلب الشراء': 'Print & Send Purchase Order',
+  'طباعة / PDF': 'Print / PDF',
+  'إرسال إيميل': 'Send Email',
+  'حفظ الجوال/الإيميل': 'Save Phone/Email',
+  '💾 حفظ الجوال/الإيميل': 'Save Phone/Email',
+  'يرجى إدخال جوال المورد': 'Please enter supplier mobile',
+  'يرجى إدخال إيميل المورد': 'Please enter supplier email',
+  'إجراءات': 'Actions',
 };
 window.__LC_I18N_UI = window.__LC_TRANSLATIONS;
 

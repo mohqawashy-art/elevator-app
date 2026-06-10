@@ -44,6 +44,8 @@ html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
 .btn-primary:hover{background:#1e6fe8}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .btn-secondary:hover{background:var(--bg4);color:var(--text1)}
+.btn-wa{background:#25D366;color:#fff}
+.btn-wa:hover{background:#1da851}
 .btn-sm{padding:5px 10px;font-size:12px}
 .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
 .panel-title{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--text1)}
@@ -123,6 +125,14 @@ tbody tr:hover{background:var(--bg3)}
             <input name="supplier" placeholder="اسم المورد">
           </div>
           <div class="field">
+            <label>جوال المورد (واتساب)</label>
+            <input type="tel" name="supplier_phone" placeholder="05XXXXXXXX" inputmode="tel" style="direction:ltr;font-family:var(--font-en)">
+          </div>
+          <div class="field">
+            <label>إيميل المورد</label>
+            <input type="email" name="supplier_email" placeholder="supplier@example.com" style="direction:ltr;font-family:var(--font-en)">
+          </div>
+          <div class="field">
             <label>الحالة</label>
             <select name="status">
               {% for st in statuses %}
@@ -157,7 +167,7 @@ tbody tr:hover{background:var(--bg3)}
         </table>
         <div style="margin-top:10px;display:flex;gap:8px">
           <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ سطر</button>
-          <button type="submit" class="btn btn-primary btn-sm">حفظ الطلب</button>
+          <button type="submit" class="btn btn-primary btn-sm">حفظ وطباعة</button>
         </div>
       </form>
     </div>
@@ -167,7 +177,7 @@ tbody tr:hover{background:var(--bg3)}
       {% if orders %}
       <table>
         <thead>
-          <tr><th>الرقم</th><th>المورد</th><th>التاريخ</th><th>الحالة</th><th>الإجمالي</th><th></th></tr>
+          <tr><th>الرقم</th><th>المورد</th><th>التاريخ</th><th>الحالة</th><th>الإجمالي</th><th>إجراءات</th></tr>
         </thead>
         <tbody>
           {% for o in orders %}
@@ -179,7 +189,8 @@ tbody tr:hover{background:var(--bg3)}
               <span class="badge {% if o.status == 'مستلم' %}badge-ok{% else %}badge-warn{% endif %}">{{ o.status }}</span>
             </td>
             <td style="font-family:var(--font-en)">{{ '%.2f'|format(o.total_amount or 0) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
-            <td>
+            <td style="white-space:nowrap">
+              <a href="{{ url_for('purchase_order_print', order_id=o.id) }}" class="btn btn-primary btn-sm">🖨️ طباعة / إرسال</a>
               {% if o.status != 'مستلم' %}
               <form method="post" action="/purchase-orders/delete/{{ o.id }}" style="display:inline" onsubmit="return confirmDelete()">
                 <button type="submit" class="btn btn-secondary btn-sm">حذف</button>

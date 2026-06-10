@@ -335,6 +335,10 @@ with app.app_context():
             ],
             'technicians': [('team', 'VARCHAR(30)'), ('name_en', 'VARCHAR(100)')],
             'customers': [('name_en', 'VARCHAR(200)')],
+            'purchase_orders': [
+                ('supplier_phone', 'VARCHAR(30)'),
+                ('supplier_email', 'VARCHAR(120)'),
+            ],
         }
         for table, cols in _migrate_cols.items():
             if table not in insp.get_table_names():
@@ -3145,6 +3149,8 @@ def purchase_orders():
 def purchase_orders_save():
     order_id = request.form.get('order_id', '').strip()
     supplier = request.form.get('supplier', '').strip()
+    supplier_phone = request.form.get('supplier_phone', '').strip()
+    supplier_email = request.form.get('supplier_email', '').strip()
     order_date_raw = request.form.get('order_date', '').strip()
     status = request.form.get('status', 'مسودة').strip()
     notes = request.form.get('notes', '').strip()
@@ -3181,6 +3187,8 @@ def purchase_orders_save():
 
     old_status = order.status
     order.supplier = supplier or None
+    order.supplier_phone = supplier_phone or None
+    order.supplier_email = supplier_email or None
     order.order_date = order_date
     order.notes = notes or None
     order.status = status if status in PO_STATUSES else 'مسودة'
@@ -3193,7 +3201,22 @@ def purchase_orders_save():
     if order.status == 'مستلم' and old_status != 'مستلم':
         _apply_purchase_receipt(order)
     db.session.commit()
-    return redirect(url_for('purchase_orders'))
+    return redirect(url_for('purchase_order_print', order_id=order.id))
+
+
+@app.route('/purchase-orders/<int:order_id>/print')
+def purchase_order_print(order_id):
+    order = PurchaseOrder.query.get_or_404(order_id)
+    return render_template('purchase-order-print.html', order=order)
+
+
+@app.route('/purchase-orders/<int:order_id>/contact', methods=['POST'])
+def purchase_order_update_contact(order_id):
+    order = PurchaseOrder.query.get_or_404(order_id)
+    order.supplier_phone = request.form.get('supplier_phone', '').strip() or None
+    order.supplier_email = request.form.get('supplier_email', '').strip() or None
+    db.session.commit()
+    return redirect(url_for('purchase_order_print', order_id=order.id))
 
 
 @app.route('/purchase-orders/delete/<int:order_id>', methods=['POST'])
