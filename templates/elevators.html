@@ -912,14 +912,12 @@ function onElevMapPickerUpdate(data) {
   if (data.maps_url) document.getElementById('f-maps-url').value = data.maps_url;
 }
 
-function initElevMapPicker(retry) {
-  retry = retry || 0;
-  if (typeof google === 'undefined' || !google.maps) {
-    if (retry < 15) setTimeout(function () { initElevMapPicker(retry + 1); }, 250);
-    return;
-  }
-  if (typeof LiftCoreMapPicker === 'undefined') return;
-  LiftCoreMapPicker.init({
+function initElevMapPicker() {
+  if (typeof LiftCoreMapPicker === 'undefined') return false;
+  var coords = document.getElementById('elev-map-coords');
+  if (coords) coords.style.color = '';
+  LiftCoreMapPicker.hardReset();
+  var ok = LiftCoreMapPicker.init({
     mapEl: 'elev-map-picker',
     searchEl: 'elev-map-search',
     myLocEl: 'elev-map-myloc',
@@ -927,17 +925,25 @@ function initElevMapPicker(retry) {
     defaultCenter: { lat: 21.4225, lng: 39.8262 },
     onUpdate: onElevMapPickerUpdate,
   });
-  setTimeout(function () { LiftCoreMapPicker.resize(); }, 300);
-  setTimeout(function () { LiftCoreMapPicker.resize(); }, 700);
+  if (!ok && coords) {
+    coords.textContent = 'تعذّر تحميل الخريطة — تحقق من الاتصال أو مفتاح Google Maps';
+    coords.style.color = 'var(--danger)';
+  }
+  [120, 400, 800, 1400].forEach(function (ms) {
+    setTimeout(function () { LiftCoreMapPicker.resize(); }, ms);
+  });
+  return ok;
 }
 
 function openElevFormModal(afterOpen) {
   document.getElementById('modal-add').classList.add('open');
-  setTimeout(function () {
-    initElevMapPicker();
-    if (typeof afterOpen === 'function') afterOpen();
-    setTimeout(function () { if (window.LiftCoreMapPicker) LiftCoreMapPicker.resize(); }, 450);
-  }, 120);
+  function bootMap() {
+    whenGoogleMapsReady(function () {
+      initElevMapPicker();
+      if (typeof afterOpen === 'function') afterOpen();
+    });
+  }
+  setTimeout(bootMap, 60);
 }
 
 // ===== إحصائيات وجدول =====

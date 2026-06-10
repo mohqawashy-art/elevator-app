@@ -412,18 +412,28 @@
     return true;
   }
 
+  function mapHasGoogleError(mapEl) {
+    if (!mapEl) return false;
+    if (mapEl.querySelector('.gm-err-container, .gm-err-title, .gm-err-message')) return true;
+    var t = (mapEl.innerText || mapEl.textContent || '').toLowerCase();
+    return (t.indexOf('google maps') >= 0 || t.indexOf('خرائط google') >= 0 || (t.indexOf('google') >= 0 && t.indexOf('خطأ') >= 0)) &&
+      (t.indexOf('error') >= 0 || t.indexOf('خطأ') >= 0 || t.indexOf('didn') >= 0 || t.indexOf('load') >= 0 || t.indexOf('تحم') >= 0);
+  }
+
+  function fallbackFromGoogleError() {
+    if (state.provider !== 'google') return;
+    var mapEl = state.opts && $(state.opts.mapEl);
+    if (!mapHasGoogleError(mapEl)) return;
+    global.__gmapsAuthFailed = true;
+    var opts = state.opts;
+    hardReset();
+    if (opts) init(opts);
+  }
+
   function scheduleGoogleErrorCheck() {
-    setTimeout(function () {
-      if (state.provider !== 'google') return;
-      var mapEl = state.opts && $(state.opts.mapEl);
-      if (!mapEl) return;
-      if (mapEl.querySelector('.gm-err-container')) {
-        global.__gmapsAuthFailed = true;
-        var opts = state.opts;
-        hardReset();
-        if (opts) init(opts);
-      }
-    }, 1800);
+    [700, 1500, 2800].forEach(function (ms) {
+      setTimeout(fallbackFromGoogleError, ms);
+    });
   }
 
   function init(options) {

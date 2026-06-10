@@ -13,6 +13,12 @@
   };
   window.gm_authFailure = function () {
     window.__gmapsAuthFailed = true;
+    if (window.LiftCoreMapPicker && window.LiftCoreMapPicker._lastOpts) {
+      var opts = window.LiftCoreMapPicker._lastOpts;
+      LiftCoreMapPicker.hardReset();
+      LiftCoreMapPicker.init(opts);
+      setTimeout(function () { LiftCoreMapPicker.resize(); }, 200);
+    }
     if (typeof refreshElevatorMap === 'function') refreshElevatorMap(true);
     if (typeof refreshMainMap === 'function') refreshMainMap(true);
   };
