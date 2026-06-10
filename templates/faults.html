@@ -385,8 +385,17 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th><th class="th-sort" data-sort-col="date">تاريخ البلاغ <span class="sort-ind"></span></th><th>العميل</th><th>المصعد</th><th>نوع العطل</th>
-                <th>الأولوية</th><th>الفني</th><th>الاستجابة</th><th>الحالة</th><th>فوترة</th><th>إجراءات</th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="reported_at">تاريخ البلاغ <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="elevator">المصعد <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="fault_type">نوع العطل <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="priority">الأولوية <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="technician">الفني <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="response_time">الاستجابة <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="billing">فوترة <span class="sort-ind"></span></th>
+                <th>إجراءات</th>
               </tr>
             </thead>
             <tbody id="table-body"></tbody>
@@ -819,9 +828,15 @@ const PRIORITY_BADGE = {
 let currentDeleteId = null;
 let filtered = [...FAULTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
-  defaultCol: 'date',
+  defaultCol: 'reported_at',
   defaultDir: 'desc',
-  dateField: 'reported_at',
+  dateCols: ['reported_at'],
+  getters: {
+    customer: function (f) {
+      return window.LiftCoreDisplay ? LiftCoreDisplay.name(f.customer, f.customer_name_en) : f.customer;
+    },
+    billing: function (f) { return f.needs_parts ? 1 : 0; },
+  },
   onChange: function () { renderTable(filtered); },
 }) : null;
 

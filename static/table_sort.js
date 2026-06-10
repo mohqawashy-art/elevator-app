@@ -1,5 +1,5 @@
 /**
- * LiftCore — ترتيب جداول (كود / تاريخ) تصاعدي وتنازلي
+ * LiftCore — ترتيب جداول (كل الأعمدة) تصاعدي وتنازلي
  */
 (function (global) {
   'use strict';
@@ -19,12 +19,31 @@
     return isNaN(t) ? 0 : t;
   }
 
+  function parseNumber(val) {
+    if (typeof val === 'number') return val;
+    if (val == null || val === '') return 0;
+    var n = parseFloat(String(val).replace(/,/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+
   function isCodeCol(col, opts) {
+    if (opts.codeCols && opts.codeCols.indexOf(col) >= 0) return true;
     return col === 'code' || col === (opts.codeCol || 'code');
   }
 
   function isDateCol(col, opts) {
-    return col === 'date' || col === opts.dateField || col === (opts.dateCol || 'date');
+    if (opts.dateCols && opts.dateCols.indexOf(col) >= 0) return true;
+    if (col === 'date' || col === opts.dateField) return true;
+    return /(_date|_at|Date)$/.test(col);
+  }
+
+  function isNumberCol(col, opts) {
+    return opts.numberCols && opts.numberCols.indexOf(col) >= 0;
+  }
+
+  function defaultDirForCol(col, opts) {
+    if (isDateCol(col, opts) || isCodeCol(col, opts) || isNumberCol(col, opts)) return 'desc';
+    return 'asc';
   }
 
   function create(options) {
@@ -37,15 +56,17 @@
 
     function getValue(row, col) {
       if (getters[col]) return getters[col](row);
-      if (isDateCol(col, options) && options.dateField) return row[options.dateField];
-      if (isCodeCol(col, options)) return row[options.codeField || 'code'];
-      return row[col];
+      if (isDateCol(col, options) && options.dateField && (col === 'date' || col === options.dateField)) {
+        return row[options.dateField];
+      }
+      if (row[col] !== undefined) return row[col];
+      return '';
     }
 
     function normalize(col, val) {
       if (isCodeCol(col, options)) return parseCode(val);
       if (isDateCol(col, options)) return parseDate(val);
-      if (typeof val === 'number') return val;
+      if (isNumberCol(col, options) || typeof val === 'number') return parseNumber(val);
       if (val == null) return '';
       return String(val);
     }
@@ -55,7 +76,7 @@
         state.dir = state.dir === 'asc' ? 'desc' : 'asc';
       } else {
         state.col = col;
-        state.dir = (isDateCol(col, options) || isCodeCol(col, options)) ? 'desc' : 'asc';
+        state.dir = defaultDirForCol(col, options);
       }
       if (options.onChange) options.onChange();
     }
@@ -86,7 +107,8 @@
       (root || document).querySelectorAll('th.th-sort[data-sort-col]').forEach(function (th) {
         if (th._lcSortBound) return;
         th._lcSortBound = true;
-        th.addEventListener('click', function () {
+        th.addEventListener('click', function (e) {
+          e.stopPropagation();
           toggle(th.getAttribute('data-sort-col'));
         });
       });
@@ -110,9 +132,7 @@
       }
       return inst;
     }
-    function boot() {
-      ensure();
-    }
+    function boot() { ensure(); }
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', boot);
     } else {
@@ -120,16 +140,12 @@
     }
     return {
       apply: function (list) {
-        var s = ensure();
-        return s.apply(list);
+        return ensure().apply(list);
       },
       updateIndicators: function () {
-        var s = inst;
-        if (s) s.updateIndicators();
+        if (inst) inst.updateIndicators();
       },
-      bindHeaders: function () {
-        ensure();
-      },
+      bindHeaders: function () { ensure(); },
     };
   }
 

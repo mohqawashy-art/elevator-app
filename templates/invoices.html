@@ -307,14 +307,14 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <thead>
             <tr>
               <th class="th-sort" data-sort-col="code">رقم المستند <span class="sort-ind"></span></th>
-              <th>النوع</th>
-              <th>العميل / العقد</th>
-              <th class="th-sort" data-sort-col="date">التاريخ <span class="sort-ind"></span></th>
-              <th>البيان</th>
-              <th>المبلغ</th>
-              <th>طريقة الدفع</th>
-              <th>الحالة</th>
-              <th>ملاحظات</th>
+              <th class="th-sort" data-sort-col="invoice_type">النوع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="customer">العميل / العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="invoice_date">التاريخ <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="description">البيان <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="total">المبلغ <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="pay_method">طريقة الدفع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="notes">ملاحظات <span class="sort-ind"></span></th>
               <th></th>
             </tr>
           </thead>
@@ -485,9 +485,16 @@ let currentDeleteId = null;
 let filtered = [...INVOICES];
 let billableOps = [];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
-  defaultCol: 'date',
+  defaultCol: 'invoice_date',
   defaultDir: 'desc',
-  dateField: 'invoice_date',
+  dateCols: ['invoice_date', 'due_date'],
+  numberCols: ['total', 'amount', 'tax_amount'],
+  getters: {
+    customer: function (i) {
+      var n = window.LiftCoreDisplay ? LiftCoreDisplay.name(i.customer, i.customer_name_en) : i.customer;
+      return n + ' ' + (i.contract || '');
+    },
+  },
   onChange: function () { renderTable(filtered); },
 }) : null;
 

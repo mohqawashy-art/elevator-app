@@ -533,7 +533,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
                 <th class="th-sort" data-sort-col="name">اسم العميل <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="city">المدينة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="district">الحي <span class="sort-ind"></span></th>
-                <th>الهاتف</th>
+                <th class="th-sort" data-sort-col="phone">الهاتف <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
@@ -1197,6 +1197,7 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
     elevators: function (c) { return c.elevators || 0; },
     contract_status: function (c) { return c.contract_status || ''; },
     status: function (c) { return c.status || ''; },
+    phone: function (c) { return c.phone || ''; },
   },
   onChange: function () { renderTable(filtered); },
 }) : null;

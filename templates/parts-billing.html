@@ -299,16 +299,16 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <thead>
             <tr>
               <th class="th-sort" data-sort-col="code">رقم العملية <span class="sort-ind"></span></th>
-              <th>الزيارة / العطل</th>
-              <th>العميل / العقد</th>
-              <th class="th-sort" data-sort-col="date">التاريخ <span class="sort-ind"></span></th>
-              <th>بيان القطع</th>
-              <th>التكلفة</th>
-              <th>سعر العميل</th>
-              <th>الربح</th>
-              <th>طريقة الدفع</th>
-              <th>الحالة</th>
-              <th>ملاحظات</th>
+              <th class="th-sort" data-sort-col="ref_code">الزيارة / العطل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="customer">العميل / العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="billing_date">التاريخ <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="description">بيان القطع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="cost_price">التكلفة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="sell_price">سعر العميل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="profit">الربح <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="pay_method">طريقة الدفع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="notes">ملاحظات <span class="sort-ind"></span></th>
               <th></th>
             </tr>
           </thead>
@@ -449,9 +449,17 @@ const STATUS_BADGE = {
 let currentDeleteId = null;
 let filtered = [...PARTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
-  defaultCol: 'date',
+  defaultCol: 'billing_date',
   defaultDir: 'desc',
-  dateField: 'billing_date',
+  dateCols: ['billing_date'],
+  numberCols: ['cost_price', 'sell_price', 'profit'],
+  getters: {
+    ref_code: function (p) { return [p.visit_code, p.fault_code].filter(Boolean).join(' '); },
+    customer: function (p) {
+      var n = window.LiftCoreDisplay ? LiftCoreDisplay.name(p.customer, p.customer_name_en) : p.customer;
+      return n + ' ' + (p.contract || '');
+    },
+  },
   onChange: function () { renderTable(filtered); },
 }) : null;
 

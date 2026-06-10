@@ -406,8 +406,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th><th>العميل</th><th>المصعد</th><th>الفني</th>
-                <th>النوع</th><th class="th-sort" data-sort-col="date">التاريخ <span class="sort-ind"></span></th><th>الوقت</th><th>الأولوية</th><th>الحالة</th><th>إجراءات</th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="elevator">المصعد <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="technician">الفني <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="visit_type">النوع <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="visit_date">التاريخ <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="visit_time">الوقت <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="priority">الأولوية <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+                <th>إجراءات</th>
               </tr>
             </thead>
             <tbody id="table-body"></tbody>
@@ -834,9 +842,14 @@ const PRIORITY_BADGE = {
 let currentDeleteId = null;
 let filtered = [...VISITS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
-  defaultCol: 'date',
+  defaultCol: 'visit_date',
   defaultDir: 'desc',
-  dateField: 'visit_date',
+  dateCols: ['visit_date'],
+  getters: {
+    customer: function (v) {
+      return window.LiftCoreDisplay ? LiftCoreDisplay.name(v.customer, v.customer_name_en) : v.customer;
+    },
+  },
   onChange: function () { renderTable(filtered); },
 }) : null;
 let activeVisitFilter = null;

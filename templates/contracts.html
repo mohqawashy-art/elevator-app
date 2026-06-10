@@ -406,15 +406,15 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <thead>
             <tr>
               <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
-              <th>العميل</th>
-              <th>النوع</th>
-              <th>تاريخ البداية</th>
-              <th>تاريخ الانتهاء</th>
-              <th>المصاعد</th>
-              <th>قيمة العقد</th>
-              <th>الإجمالي</th>
-              <th>حالة العقد</th>
-              <th>حالة الفاتورة</th>
+              <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract_type">النوع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="start_date">تاريخ البداية <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="end_date">تاريخ الانتهاء <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="value">قيمة العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="total">الإجمالي <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="inv_status">حالة الفاتورة <span class="sort-ind"></span></th>
               <th>إجراءات</th>
             </tr>
           </thead>
@@ -842,6 +842,14 @@ let filtered = CONTRACTS.slice();
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'desc',
+  dateCols: ['start_date', 'end_date'],
+  numberCols: ['elevators', 'value', 'total'],
+  getters: {
+    customer: function (c) {
+      return window.LiftCoreDisplay ? LiftCoreDisplay.name(c.customer, c.customer_name_en) : c.customer;
+    },
+    contract_status: function (c) { return getContractDisplayStatus(c); },
+  },
   onChange: function () { renderTable(filtered); },
 }) : null;
 

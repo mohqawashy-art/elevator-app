@@ -391,14 +391,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <thead>
               <tr>
                 <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
-                <th>العميل</th>
-                <th>المبنى</th>
-                <th>المدينة</th>
-                <th>النوع</th>
-                <th>الماركة</th>
-                <th>الحمولة</th>
-                <th>الحالة</th>
-                <th>الصيانة القادمة</th>
+                <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="building">المبنى <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="city">المدينة <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="elev_type">النوع <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="brand">الماركة <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="capacity">الحمولة <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="next_maint">الصيانة القادمة <span class="sort-ind"></span></th>
                 <th>إجراءات</th>
               </tr>
             </thead>
@@ -784,6 +784,11 @@ var filtered = ELEVATORS.slice();
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'desc',
+  dateCols: ['next_maint', 'install_date', 'last_maint'],
+  numberCols: ['capacity', 'floors'],
+  getters: {
+    customer: function (e) { return elevCustomer(e); },
+  },
   onChange: function () { renderTable(filtered); },
 }) : null;
 

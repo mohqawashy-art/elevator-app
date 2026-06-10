@@ -275,15 +275,15 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <thead>
             <tr>
               <th class="th-sort" data-sort-col="code">رقم الحركة <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="date">التاريخ <span class="sort-ind"></span></th>
-              <th>الاتجاه</th>
-              <th>نوع الحركة</th>
-              <th>الصنف</th>
-              <th>الكمية</th>
-              <th>القيمة</th>
-              <th>الفني / المستلم</th>
-              <th>السبب / الموقع</th>
-              <th>ملاحظات</th>
+              <th class="th-sort" data-sort-col="movement_date">التاريخ <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="direction">الاتجاه <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="movement_type">نوع الحركة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="item_name">الصنف <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="quantity">الكمية <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="total_value">القيمة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="technician">الفني / المستلم <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="reason">السبب / الموقع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="notes">ملاحظات <span class="sort-ind"></span></th>
               <th></th>
             </tr>
           </thead>
@@ -434,9 +434,10 @@ function updateStats() {
 
 let filtered = [...MOVEMENTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
-  defaultCol: 'date',
+  defaultCol: 'movement_date',
   defaultDir: 'desc',
-  dateField: 'movement_date',
+  dateCols: ['movement_date'],
+  numberCols: ['quantity', 'total_value'],
   onChange: function () { renderTable(filtered); },
 }) : null;
 

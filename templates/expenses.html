@@ -278,13 +278,13 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <thead>
             <tr>
               <th class="th-sort" data-sort-col="code">رقم العملية <span class="sort-ind"></span></th>
-              <th>التاريخ</th>
-              <th>نوع المصروف</th>
-              <th>الوصف</th>
-              <th>المسؤول</th>
-              <th>طريقة الدفع</th>
-              <th>المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)</th>
-              <th>ملاحظات</th>
+              <th class="th-sort" data-sort-col="expense_date">التاريخ <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="expense_type">نوع المصروف <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="description">الوصف <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="responsible">المسؤول <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="pay_method">طريقة الدفع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="amount">المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>) <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="notes">ملاحظات <span class="sort-ind"></span></th>
               <th></th>
             </tr>
           </thead>
@@ -402,6 +402,8 @@ let filtered = [...EXPENSES];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'desc',
+  dateCols: ['expense_date'],
+  numberCols: ['amount'],
   onChange: function () { renderTable(filtered); },
 }) : null;
 
