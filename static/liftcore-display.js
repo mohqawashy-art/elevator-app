@@ -48,9 +48,23 @@
     '.stat-mini-label', '.card-stat-label', '.card-section-title',
     '.form-section-title', '.modal-title',
     '.alert-expiry span', '.table-info', '.page-info',
-    '.filter-select option', '.search-input',
+    '.filter-select option',
     '.legend-item', '.alert-chip', '.tab', 'label', 'th',
   ].join(',');
+
+  function applySearchPlaceholders(root, lang) {
+    (root || document).querySelectorAll('.search-input[placeholder]').forEach(function (el) {
+      if (el.closest('.modal-overlay:not(.open)')) return;
+      if (lang === 'en') {
+        if (!el.dataset.lcPhAr && AR.test(el.placeholder)) el.dataset.lcPhAr = el.placeholder;
+        var ph = text(el.placeholder);
+        if (ph !== el.placeholder) el.placeholder = ph;
+      } else if (el.dataset.lcPhAr) {
+        el.placeholder = el.dataset.lcPhAr;
+        delete el.dataset.lcPhAr;
+      }
+    });
+  }
 
   function currentLang() {
     if (global.__LC_LANG) return global.__LC_LANG;
@@ -183,9 +197,7 @@
     root.querySelectorAll(DOM_TARGETS).forEach(function (el) {
       applyElText(el, lang);
     });
-    root.querySelectorAll('.search-input').forEach(function (el) {
-      applyElText(el, lang);
-    });
+    applySearchPlaceholders(root, lang);
   }
 
   function refreshPage() {

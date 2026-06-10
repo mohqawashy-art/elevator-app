@@ -51,7 +51,6 @@
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js"></script>
 <script src="/static/client_map_picker.js"></script>
-<script src="/static/name_translit.js"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -137,6 +136,7 @@ html[dir="ltr"] .search-wrap svg{right:auto;left:11px}
 .search-input{width:100%;padding:8px 36px 8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);direction:rtl}
 html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8px 12px 8px 36px}
 .search-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.search-input:focus:not(:focus-visible){border-color:var(--border);box-shadow:none}
 .search-input::placeholder{color:var(--text3)}
 .filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;cursor:pointer;transition:var(--trans);font-family:var(--font-ar);min-width:130px}
 html[dir="ltr"] .filter-select{font-family:var(--font-en)}
@@ -166,8 +166,8 @@ tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
 .pagination{display:flex;gap:4px}
 .page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
 .page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
-.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;visibility:hidden;transition:opacity .25s,visibility .25s}
+.modal-overlay.open{opacity:1;pointer-events:all;visibility:visible}
 .modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:780px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
 .modal-overlay.open .modal{transform:translateY(0)}
 .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -290,8 +290,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .stat-mini-label{font-size:11px;color:var(--text3)}
 
 /* ===== MODAL ===== */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
-.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;visibility:hidden;transition:opacity .25s,visibility .25s}
+.modal-overlay.open{opacity:1;pointer-events:all;visibility:visible}
 .modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:640px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
 .modal-overlay.open .modal{transform:translateY(0)}
 .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -320,6 +320,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
 thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap}
+html[dir="ltr"] thead th{text-align:left}
 tbody tr{border-bottom:1px solid rgba(100,160,255,.05);transition:var(--trans)}
 tbody tr:hover{background:var(--bg3)}
 tbody tr:last-child{border-bottom:none}
@@ -345,8 +346,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
 .search-wrap{position:relative;flex:1;min-width:200px}
 .search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
+html[dir="ltr"] .search-wrap svg{right:auto;left:11px}
 .search-input{width:100%;padding:8px 36px 8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);direction:rtl}
+html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8px 12px 8px 36px}
 .search-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.search-input:focus:not(:focus-visible){border-color:var(--border);box-shadow:none}
 .search-input::placeholder{color:var(--text3)}
 .filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;cursor:pointer;font-family:var(--font-ar)}
 .filter-select:focus{border-color:var(--border2)}
@@ -1996,12 +2000,46 @@ function exportExcel(){
 }
 
 // ===== مشترك =====
-function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
+function syncModalA11y() {
+  document.querySelectorAll('.modal-overlay').forEach(function(m) {
+    var open = m.classList.contains('open');
+    if (open) {
+      m.removeAttribute('inert');
+      m.removeAttribute('aria-hidden');
+    } else {
+      m.setAttribute('inert', '');
+      m.setAttribute('aria-hidden', 'true');
+      if (m.contains(document.activeElement) && document.activeElement && document.activeElement.blur) {
+        document.activeElement.blur();
+      }
+    }
+  });
+}
+function openModal(id){
+  document.querySelectorAll('.modal-overlay.open').forEach(function(m){ m.classList.remove('open'); });
+  var el = document.getElementById(id);
+  if (el) el.classList.add('open');
+  syncModalA11y();
+}
+function closeModal(id){
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+  syncModalA11y();
+}
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
-document.addEventListener('keydown',function(e){if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(function(m){m.classList.remove('open');});});
-document.addEventListener('click',function(e){if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay'))document.querySelectorAll('.modal-overlay').forEach(function(m){m.classList.remove('open');});});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape') {
+    document.querySelectorAll('.modal-overlay').forEach(function(m){ m.classList.remove('open'); });
+    syncModalA11y();
+  }
+});
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) {
+    document.querySelectorAll('.modal-overlay').forEach(function(m){ m.classList.remove('open'); });
+    syncModalA11y();
+  }
+});
 
 var now=new Date();
 var days=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -2065,6 +2103,7 @@ if (window.LiftCoreTranslit) LiftCoreTranslit.bindAutoLatin('f-name', 'f-name-en
 
 document.addEventListener('liftcore:lang', function () {
   renderTable(filtered);
+  syncModalA11y();
 });
 document.addEventListener('liftcore:display-refresh', function () {
   renderTable(filtered);
@@ -2078,7 +2117,7 @@ window.__lcRefreshPage = function () {
 fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');
 bindPhoneInputs();
-try { updateStats(); renderTable(CUSTOMERS); } catch (bootErr) { console.error('clients boot', bootErr); }
+try { updateStats(); renderTable(CUSTOMERS); syncModalA11y(); } catch (bootErr) { console.error('clients boot', bootErr); }
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);

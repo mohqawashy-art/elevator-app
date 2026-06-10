@@ -432,8 +432,13 @@
     }
   }
 
+  function shouldTranslateZone(el) {
+    return !(el.classList && el.classList.contains('modal-overlay') && !el.classList.contains('open'));
+  }
+
   function translateFormAttributes(root, lang) {
     root.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(function (el) {
+      if (el.closest('.modal-overlay:not(.open)')) return;
       var ph = el.getAttribute('placeholder');
       if (!ph || !/[\u0600-\u06FF]/.test(ph)) return;
       if (lang === 'en') {
@@ -634,6 +639,7 @@
       '.sidebar, .main, .content, .wrap, .lc-header, .modal, .modal-overlay, .page-wrap, .card, .modal-body, .modal-content'
     );
     zones.forEach(function (z) {
+      if (!shouldTranslateZone(z)) return;
       walkTextNodes(z, lang);
       translateFormAttributes(z, lang);
     });
@@ -652,6 +658,7 @@
 
     /* بعض الصفحات تعيد كتابة نصوص عربية في معالجات الحدث أعلاه — نترجم مرة أخيرة */
     zones.forEach(function (z) {
+      if (!shouldTranslateZone(z)) return;
       walkTextNodes(z, lang);
     });
     } finally {
