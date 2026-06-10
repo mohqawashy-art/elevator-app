@@ -538,7 +538,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             {% for c in customers %}
             {% set cstat = contract_display_status(c.contracts[0]) if c.contracts else 'بدون عقد' %}
             <tr>
-              <td class="td-code">{{ c.code }}</td>
+              <td class="td-code" style="cursor:pointer;color:var(--accent)" onclick="openClientCard({{ c.id }})">{{ c.code }}</td>
               <td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="openClientCard({{ c.id }})">{{ c.name }}</td>
               <td>{{ c.city or '—' }}</td>
               <td>{{ c.district or '—' }}</td>
@@ -891,6 +891,13 @@ function contractorIdValue(c) {
   if (!c) return '—';
   return (c.entity_type === 'شركة' ? c.cr_number : c.national_id) || '—';
 }
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 function updateContractorIdField() {
   var isCompany = document.getElementById('f-entity-type').value === 'شركة';
   var label = document.getElementById('f-contractor-id-label');
@@ -1179,7 +1186,7 @@ function renderTable(data) {
     return;
   }
   tbody.innerHTML = data.map(c => '<tr>' +
-    '<td class="td-code">' + c.code + '</td>' +
+    '<td class="td-code" style="cursor:pointer;color:var(--accent)" onclick="openClientCard(' + c.id + ')">' + c.code + '</td>' +
     '<td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="openClientCard(' + c.id + ')">' + lcClient(c) + '</td>' +
     '<td>' + lcDisp(c.city||'—') + '</td>' +
     '<td>' + lcDisp(c.district||'—') + '</td>' +
@@ -1205,7 +1212,7 @@ function filterTable() {
   var cs = document.getElementById('f-contract').value||'';
   var st = document.getElementById('f-status').value||'';
   filtered = CUSTOMERS.filter(function(c) {
-    return (!s  || c.name.includes(s)||c.code.toLowerCase().includes(s)||c.phone.includes(s)||c.district.includes(s)) &&
+    return (!s  || (c.name||'').includes(s)||String(c.code||'').toLowerCase().includes(s)||(c.phone||'').includes(s)||(c.district||'').includes(s)) &&
            (!ct || c.city===ct) &&
            (!cs || c.contract_status===cs) &&
            (!st || c.status===st);
@@ -1215,20 +1222,25 @@ function filterTable() {
 
 // ===== كارت العميل =====
 function openClientCard(id) {
+  id = parseInt(id, 10);
+  if (!id) return;
   var c = CUSTOMERS.find(function(x){return x.id===id;});
   if(!c) return;
   currentCardId = id;
+  try {
   document.getElementById('card-title').textContent = c.code + ' — ' + lcClient(c);
 
   var cardPos = getClientPosition(c);
   var hasAddress = !!(c.address || c.city || c.district);
   var mapSection = (cardPos || hasAddress) ? '<div class="card-section-title">الموقع</div><div id="card-map" style="height:200px;border-radius:var(--r-sm);border:1px solid var(--border);margin-top:8px"></div>' : '';
+  var locBlock = (window.LiftCoreLocation && LiftCoreLocation.renderLocationBlock)
+    ? LiftCoreLocation.renderLocationBlock(c) : '';
 
   document.getElementById('card-body').innerHTML =
     (c.building_photo_url
       ? '<div style="margin-bottom:14px;text-align:center"><img src="' + esc(c.building_photo_url) + '" alt="صورة المبنى" style="max-width:100%;max-height:240px;border-radius:var(--r-sm);object-fit:cover;border:1px solid var(--border)"></div>'
       : '') +
-    LiftCoreLocation.renderLocationBlock(c) +
+    locBlock +
     '<div class="card-stats">' +
       '<div class="card-stat"><div class="card-stat-val">' + c.elevators + '</div><div class="card-stat-label">' + lcDisp('مصعد') + '</div></div>' +
       '<div class="card-stat"><div class="card-stat-val">' + c.contracts + '</div><div class="card-stat-label">' + lcDisp('عقد') + '</div></div>' +
@@ -1285,9 +1297,14 @@ function openClientCard(id) {
       if (pos) showCardMap(pos);
     });
   }
+  } catch (err) {
+    console.error('openClientCard', err);
+    alert('تعذّر عرض بيانات العميل');
+  }
 }
 
 function loadClientData(id) {
+  if (!window.LiftCoreProfile || !LiftCoreProfile.loadIntoElement) return;
   LiftCoreProfile.loadIntoElement(document.getElementById('card-dynamic-data'), id, null, {
     showContractSelect: true,
     showSections: true,
