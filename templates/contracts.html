@@ -188,25 +188,29 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .field textarea{resize:vertical;min-height:70px}
 .field-hint{font-size:11px;color:var(--text3)}
 .field-calc{font-size:12px;color:var(--accent);margin-top:3px}
-/* فورم إضافة/تعديل العقد — مسافات أوضح بين السطور */
-#modal-add .modal-body{padding:26px 28px}
-#modal-add .form-section{margin-bottom:30px}
+/* فورم إضافة/تعديل العقد — مسافات واسعة بين السطور */
+#modal-add .modal-body{padding:30px 32px;line-height:1.75}
+#modal-add .form-section{margin-bottom:44px}
 #modal-add .form-section:last-child{margin-bottom:0}
-#modal-add .form-section-title{margin-bottom:16px;padding-bottom:10px}
-#modal-add .form-grid,#modal-add .form-grid-3{gap:20px 22px}
-#modal-add .field{gap:9px}
-#modal-add .field label{line-height:1.5}
-#modal-add .field input,#modal-add .field select,#modal-add .field textarea{padding:11px 14px;line-height:1.45}
-#modal-add .field textarea{min-height:88px}
-#modal-add .field-hint{margin-top:5px;line-height:1.55;display:block}
-#modal-add .field-calc{margin-top:10px;margin-bottom:6px;line-height:1.5}
-#modal-add .elevators-select{padding:10px;margin-top:6px}
-#modal-add .elev-option{padding:10px 12px;line-height:1.45}
-#modal-add .upload-area{padding:26px;margin-top:8px}
-#modal-add .lc-tax-mode-toggle{margin-bottom:12px}
-#modal-add .lc-tax-breakdown{margin-top:14px;padding:15px 16px}
-#modal-add .lc-tax-row{padding:7px 0}
-#modal-add .form-full .field{margin-bottom:4px}
+#modal-add .form-section-title{margin-bottom:22px;padding-bottom:14px;line-height:1.6}
+#modal-add .form-grid,#modal-add .form-grid-3{gap:36px 28px;align-items:start}
+#modal-add .field{gap:14px}
+#modal-add .field label{font-size:13px;line-height:1.75;margin-bottom:2px}
+#modal-add .field input,#modal-add .field select,#modal-add .field textarea{padding:14px 16px;line-height:1.75;font-size:14px}
+#modal-add .field textarea{min-height:110px;padding-top:14px;padding-bottom:14px}
+#modal-add .field-hint{font-size:12px;margin-top:8px;line-height:1.8;display:block}
+#modal-add .field-calc{margin-top:14px;margin-bottom:10px;line-height:1.75;font-size:13px}
+#modal-add .elevators-select{padding:14px;margin-top:12px;gap:12px;display:flex;flex-direction:column;max-height:200px}
+#modal-add .elev-option{padding:14px 14px;line-height:1.75}
+#modal-add .upload-area{padding:32px;margin-top:14px;line-height:1.75}
+#modal-add .lc-tax-block{margin-top:8px}
+#modal-add .lc-tax-mode-toggle{gap:10px;margin-bottom:18px}
+#modal-add .lc-tax-mode-btn{padding:12px 14px;line-height:1.6;font-size:13px}
+#modal-add .lc-tax-breakdown,#modal-add .lc-tax-summary{margin-top:18px;padding:18px 20px}
+#modal-add .lc-tax-row,#modal-add .lc-tax-summary-row{padding:12px 0;line-height:1.75;font-size:14px}
+#modal-add .lc-tax-row-total,#modal-add .lc-tax-summary-total{padding-top:14px;margin-top:10px}
+#modal-add .form-full .field{margin-bottom:12px}
+#modal-add .form-full .field:last-child{margin-bottom:0}
 .calc-box{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-top:4px}
 .calc-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0}
 .calc-row.total{border-top:1px solid var(--border);padding-top:10px;margin-top:6px;font-weight:600;color:var(--text1);font-size:14px}
@@ -587,7 +591,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
         </div>
         <div class="field-calc" id="selected-count">لم يتم اختيار مصاعد</div>
-        <div class="form-grid" style="margin-top:12px">
+        <div class="form-grid" style="margin-top:28px">
           <div class="field">
             <label>تكرار الصيانة</label>
             <select id="f-maint-freq" onchange="calcTotalVisits()">
