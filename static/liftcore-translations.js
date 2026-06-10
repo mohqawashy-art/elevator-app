@@ -888,6 +888,7 @@ window.__LC_TRANSLATIONS = {
   'يرجى رسم التوقيع أولاً': 'Please draw your signature first',
   'تم حفظ التوقيع': 'Signature saved',
   'يرجى إضافة هاتف الشركة في الإعدادات (إدارة المشتريات)': 'Add company phone in Settings (Purchasing)',
+  'العنوان (إنجليزي)': 'Address (English)',
   'إجراءات': 'Actions',
 };
 window.__LC_I18N_UI = window.__LC_TRANSLATIONS;

@@ -484,6 +484,7 @@ class Settings(db.Model):
     phone           = db.Column(db.String(20))
     email           = db.Column(db.String(100))
     address         = db.Column(db.Text)
+    address_en      = db.Column(db.Text)
     city            = db.Column(db.String(100))
     cr_number       = db.Column(db.String(50))    # السجل التجاري
     vat_number      = db.Column(db.String(50))    # الرقم الضريبي

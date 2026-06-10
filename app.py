@@ -302,6 +302,7 @@ with app.app_context():
                 ('logo_width_sidebar', 'INTEGER'),
                 ('logo_width_report', 'INTEGER'),
                 ('logo_width_login', 'INTEGER'),
+                ('address_en', 'TEXT'),
             ],
             'users': [
                 ('theme', 'VARCHAR(10)'),
@@ -3159,7 +3160,7 @@ PO_PRINT_LABELS = {
         'sig_name_line': 'الاسم والتوقيع',
         'sig_auth': 'توقيع المعتمد',
         'sig_alt': 'التوقيع',
-        'clear': 'مسح',
+        'sig_clear': 'مسح',
         'doc_foot': 'وثيقة صادرة من نظام LiftCore — إدارة المشتريات والمخزون',
         'doc_foot_mid': 'طلب شراء',
         'sig_required': 'يرجى رسم التوقيع أولاً',
@@ -3218,7 +3219,7 @@ PO_PRINT_LABELS = {
         'sig_name_line': 'Name & Signature',
         'sig_auth': 'Authorized Signature',
         'sig_alt': 'Signature',
-        'clear': 'Clear',
+        'sig_clear': 'Clear',
         'doc_foot': 'Document issued by LiftCore — Purchasing & Inventory',
         'doc_foot_mid': 'Purchase Order',
         'sig_required': 'Please draw your signature first',
@@ -3250,6 +3251,16 @@ def _po_status_label(status, lang):
     if lang == 'en':
         return PO_STATUS_EN.get(status, status)
     return status
+
+
+def _company_address(settings, lang):
+    if not settings:
+        return ''
+    if lang == 'en':
+        en_addr = getattr(settings, 'address_en', None) or ''
+        if en_addr.strip():
+            return en_addr.strip()
+    return (settings.address or '').strip()
 
 
 def _apply_purchase_receipt(order):
@@ -3361,6 +3372,7 @@ def purchase_order_print(order_id):
         po_lang=lang,
         po_status_label=_po_status_label(order.status, lang),
         po_company_name=company_name,
+        po_company_address=_company_address(s, lang),
     )
 
 
@@ -3753,6 +3765,7 @@ def settings_save():
     s.phone           = request.form.get('phone', '')
     s.email           = request.form.get('email', '')
     s.address         = request.form.get('address', '')
+    s.address_en      = request.form.get('address_en', '')
     s.city            = request.form.get('city', '')
     s.rep_name        = request.form.get('rep_name', '')
     s.rep_mobile      = request.form.get('rep_mobile', '')

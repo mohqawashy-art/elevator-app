@@ -126,6 +126,10 @@ input[type=range]{padding:0;background:transparent;border:none}
         <label>العنوان</label>
         <textarea name="address" rows="2">{{ settings.address or '' }}</textarea>
       </div>
+      <div class="full">
+        <label>العنوان (إنجليزي)</label>
+        <textarea name="address_en" rows="2" dir="ltr">{{ settings.address_en or '' }}</textarea>
+      </div>
       <div>
         <label>هاتف الشركة</label>
         <input name="phone" value="{{ settings.phone or '' }}" dir="ltr">
