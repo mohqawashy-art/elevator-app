@@ -13,7 +13,7 @@ body{
   color:#1a3a5c;background:#e8ecf2;font-size:12px;
   -webkit-print-color-adjust:exact;print-color-adjust:exact;
 }
-@page{size:A4 portrait;margin:12mm 10mm}
+@page{size:A4 portrait;margin:10mm 8mm}
 
 .toolbar{
   position:fixed;top:0;left:0;right:0;z-index:99;background:#1a2433;color:#fff;
@@ -41,16 +41,45 @@ body{
 .toolbar .btn-sig{background:#1a3a5c;color:#fff;border:1px solid #3a5a7c}
 
 body.page-a4 .doc{
-  width:210mm;min-height:297mm;max-width:210mm;margin:120px auto 24px;background:#fff;
-  border:1px solid #c5d0e0;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:12mm 10mm;
+  width:210mm;max-width:210mm;margin:120px auto 24px;background:#fff;
+  border:1px solid #c5d0e0;box-shadow:0 4px 24px rgba(0,0,0,.12);
+  padding:10mm 8mm;
 }
 
 @media print{
   .toolbar,.sig-tools,.no-print{display:none!important}
-  body{background:#fff}
-  body.page-a4 .doc{margin:0;border:none;box-shadow:none;width:100%;max-width:none;min-height:auto;padding:0}
+  html,body{width:100%;height:auto;background:#fff}
+  body.page-a4 .doc{
+    margin:0;border:none;box-shadow:none;width:100%;max-width:100%;
+    min-height:0;padding:0;
+  }
   .sig-canvas-wrap{display:none!important}
   .sig-print-img{display:block!important}
+
+  /* ضغط المحتوى ليتسع في A4 */
+  .doc-head{padding-bottom:8px;margin-bottom:8px;gap:8px 10px}
+  .head-co{font-size:9px;line-height:1.45}
+  .head-co .co-name{font-size:13px}
+  .head-logo img{max-height:72px!important;width:auto!important}
+  .head-doc .doc-title{font-size:14px}
+  .inv-meta{gap:5px;margin-bottom:8px}
+  .inv-meta .cell{padding:4px 6px}
+  .letter-box{padding:8px 10px;margin-bottom:8px;font-size:10px;line-height:1.55}
+  .letter-box p{margin-bottom:3px}
+  .letter-box p:last-child{margin-bottom:0}
+  .sec-title{padding:4px 10px;margin-top:2px;font-size:9px}
+  .items-table{font-size:9px;margin-bottom:6px}
+  .items-table thead th{padding:4px 3px;font-size:8px}
+  .items-table tbody td{padding:4px 3px}
+  .notes-box{padding:6px 8px;margin:6px 0;font-size:9px}
+  .totals-wrap{margin:6px 0}
+  .totals .row.grand{padding:8px 10px}
+  .totals .row.grand span:last-child{font-size:13px}
+  .sigs{margin-top:10px;gap:10px}
+  .sig-block{min-height:64px}
+  .sig-label{font-size:9px;margin-bottom:4px}
+  .sig-line{margin-top:20px}
+  .doc-foot{margin-top:8px;padding-top:6px;font-size:7px}
 }
 
 .doc-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px 14px;border-bottom:2px solid #1a3a5c;padding-bottom:12px;margin-bottom:12px}
@@ -70,7 +99,7 @@ body.page-a4 .doc{
 .head-doc .doc-num{font-size:12px;color:#c0392b;font-weight:700;margin-top:6px;direction:ltr}
 .head-doc .doc-date-lbl{font-size:9px;color:#666;margin-top:4px}
 
-.inv-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.inv-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px}
 .inv-meta .cell{border:1px solid #dee2e6;border-radius:4px;padding:6px 8px;background:#f8f9fa}
 .inv-meta .cell label{font-size:8px;color:#666;font-weight:700;display:block}
 .inv-meta .cell div{font-size:11px;font-weight:600}
@@ -91,12 +120,18 @@ body.page-a4 .doc{
 .letter-box p{margin-bottom:6px}
 
 .sec-title{font-size:10px;font-weight:700;color:#fff;background:#1a3a5c;padding:5px 12px;border-radius:4px 4px 0 0;margin-top:4px}
-.items-table{width:100%;border-collapse:collapse;font-size:10px;border:1px solid #1a3a5c;border-top:none;margin-bottom:10px}
+.items-table{width:100%;border-collapse:collapse;font-size:10px;border:1px solid #1a3a5c;border-top:none;margin-bottom:10px;table-layout:fixed}
+.items-table thead{display:table-header-group}
 .items-table thead th{background:#eef2f8;color:#1a3a5c;font-weight:700;padding:6px 5px;border-bottom:1px solid #c5d0e0;text-align:center;font-size:9px}
-.items-table tbody td{padding:6px 5px;border-bottom:1px solid #e8ecf2;vertical-align:top}
+.items-table tbody td{padding:6px 5px;border-bottom:1px solid #e8ecf2;vertical-align:top;word-wrap:break-word}
+.items-table tbody tr{page-break-inside:avoid;break-inside:avoid-page}
 .items-table tbody tr:nth-child(even){background:#fafbfc}
-.items-table .col-name{text-align:right;min-width:120px}
+.items-table .col-name{text-align:right;width:42%}
 .items-table .num{direction:ltr;text-align:center;white-space:nowrap;font-weight:600}
+
+.items-section{page-break-inside:auto}
+.doc-top{page-break-inside:avoid;break-inside:avoid-page}
+.doc-bottom{page-break-inside:avoid;break-inside:avoid-page;margin-top:4px}
 
 .totals-wrap{display:flex;justify-content:flex-end;margin:10px 0}
 .totals{min-width:280px;max-width:340px}
@@ -128,7 +163,7 @@ body.page-a4 .doc{
 {% set supplier_name = order.supplier or 'المورد' %}
 
 <div class="toolbar no-print">
-  <div class="toolbar-title">طباعة وإرسال طلب الشراء {{ order.code }} <span style="opacity:.6;font-size:11px">(v2)</span></div>
+  <div class="toolbar-title">طباعة وإرسال طلب الشراء {{ order.code }} <span style="opacity:.6;font-size:11px">(v2.1)</span></div>
   <form method="post" action="{{ url_for('purchase_order_update_contact', order_id=order.id) }}" style="display:contents" id="contact-form">
     <div class="field">
       <label>جوال المورد (واتساب)</label>
@@ -151,6 +186,7 @@ body.page-a4 .doc{
 </div>
 
 <div class="doc" id="po-document">
+  <div class="doc-top">
   <div class="doc-head">
     <div class="head-co">
       <div class="co-name">{{ s.company_name if s and s.company_name else brand_name }}</div>
@@ -180,22 +216,18 @@ body.page-a4 .doc{
     <div class="cell"><label>المورد</label><div>{{ supplier_name }}</div></div>
     <div class="cell"><label>تاريخ الطلب</label><div class="ltr">{{ order.order_date | dmY if order.order_date else '—' }}</div></div>
     <div class="cell"><label>الحالة</label><div>{{ order.status }}</div></div>
-  </div>
-
-  <div class="party">
-    <h3>بيانات المورد</h3>
-    <div class="row"><span class="k">الاسم:</span><span class="v">{{ supplier_name }}</span></div>
-    {% if order.supplier_phone %}<div class="row"><span class="k">الجوال:</span><span class="v ltr">{{ order.supplier_phone }}</span></div>{% endif %}
-    {% if order.supplier_email %}<div class="row"><span class="k">الإيميل:</span><span class="v ltr">{{ order.supplier_email }}</span></div>{% endif %}
+    {% if order.supplier_phone %}<div class="cell"><label>جوال المورد</label><div class="ltr">{{ order.supplier_phone }}</div></div>{% endif %}
+    {% if order.supplier_email %}<div class="cell"><label>إيميل المورد</label><div class="ltr">{{ order.supplier_email }}</div></div>{% endif %}
   </div>
 
   <div class="letter-box">
     <div class="salutation">السادة / {{ supplier_name }} المحترمين،</div>
-    <p>تحية طيبة وبعد،</p>
-    <p>نأمل منكم التفضل بتوريد البنود المذكورة في الجدول أدناه وفق الكميات والأسعار الموضحة، وذلك في أقرب وقت ممكن مع إفادتنا بحالة التوريد.</p>
-    <p>نشكركم على تعاونكم الدائم، وتفضلوا بقبول فائق الاحترام والتقدير.</p>
+    <p>تحية طيبة وبعد، نأمل منكم التفضل بتوريد البنود المذكورة في الجدول المرفق وفق الكميات والأسعار الموضحة، وذلك في أقرب وقت ممكن.</p>
+    <p>نشكركم على تعاونكم، وتفضلوا بقبول فائق الاحترام والتقدير.</p>
+  </div>
   </div>
 
+  <div class="items-section">
   <div class="sec-title">تفاصيل الأصناف المطلوبة</div>
   <table class="items-table">
     <thead>
@@ -222,7 +254,9 @@ body.page-a4 .doc{
       {% endfor %}
     </tbody>
   </table>
+  </div>
 
+  <div class="doc-bottom">
   {% if order.notes %}
   <div class="notes-box"><strong>ملاحظات:</strong> {{ order.notes }}</div>
   {% endif %}
@@ -257,6 +291,7 @@ body.page-a4 .doc{
   <div class="doc-foot">
     {{ s.company_name if s and s.company_name else brand_name }} — طلب شراء {{ order.code }} — {{ order.order_date | dmY if order.order_date else '' }}<br>
     وثيقة صادرة من نظام LiftCore — إدارة المشتريات والمخزون
+  </div>
   </div>
 </div>
 
@@ -331,12 +366,12 @@ function generateAndUploadPdf() {
   syncSignatureToPrint();
   var el = document.getElementById('po-document');
   var opt = {
-    margin: [8, 8, 8, 8],
+    margin: [10, 8, 10, 8],
     filename: PO.code + '.pdf',
     image: {type: 'jpeg', quality: 0.98},
-    html2canvas: {scale: 2, useCORS: true, logging: false},
+    html2canvas: {scale: 2, useCORS: true, logging: false, scrollY: 0},
     jsPDF: {unit: 'mm', format: 'a4', orientation: 'portrait'},
-    pagebreak: {mode: ['avoid-all', 'css', 'legacy']},
+    pagebreak: {mode: ['css', 'legacy'], before: '.page-break-before', avoid: ['.doc-top', '.doc-bottom', 'tr']},
   };
   return html2pdf().set(opt).from(el).output('blob')
     .then(function(blob) {
