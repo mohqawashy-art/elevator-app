@@ -253,7 +253,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <script src="/static/liftcore-dates.js" defer></script>
 <link rel="stylesheet" href="/static/liftcore-shell.css">
 
-<script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-format.js?v=15"></script>
 <script src="/static/liftcore-shell.js"></script>
 
 </head>
@@ -1635,6 +1635,8 @@ if (new URLSearchParams(window.location.search).get('action') === 'add') {
 window.__lcRefreshPage = function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : VISITS);
   if (typeof updateStats === 'function') updateStats();
+  /* يعيد رسم تسمية الشهر (يونيو 2026 / June 2026) باللغة الحالية */
+  if (typeof applyWorkMonth === 'function') applyWorkMonth();
 };
 </script>
 </body>

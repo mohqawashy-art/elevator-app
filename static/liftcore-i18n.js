@@ -160,7 +160,7 @@
     'نوع الإيراد': 'Revenue Type',
     'نوع المصروف': 'Expense Type',
     'طريقة الدفع': 'Payment Method',
-    'المبلغ (ر.س)': 'Amount (SAR)',
+    'المبلغ (ر.س)': 'Amount (\u20C1)',
     'المبلغ (SAR)': 'Amount (SAR)',
     'العميل / العقد': 'Client / Contract',
     'رقم المستند': 'Document #',
@@ -320,6 +320,13 @@
   function translateRecordCount(text, lang) {
     if (lang !== 'en') return text;
     return String(text)
+      /* جمل التنبيهات الديناميكية — قبل الأنماط العامة */
+      .replace(/(\d+)\s*عطل حرج يحتاج تدخلاً فورياً/g, '$1 critical fault(s) need immediate action')
+      .replace(/(\d+)\s*عطل بانتظار توفير قطع الغيار/g, '$1 fault(s) awaiting spare parts')
+      .replace(/(\d+)\s*عطل تجاوز 48 ساعة بدون إغلاق/g, '$1 fault(s) open for over 48 hours')
+      .replace(/(\d+)\s*طلب قطع غيار من الفنيين بانتظار المكتب/g, '$1 parts request(s) from technicians awaiting office')
+      .replace(/(\d+)\s*عرض سعر بانتظار موافقة العميل/g, '$1 quotation(s) awaiting client approval')
+      .replace(/هامش\s*([\d.]+)\s*%/g, 'Margin $1%')
       .replace(/(\d+)\s*سجل/g, '$1 records')
       .replace(/(\d+)\s*عملية/g, '$1 transactions')
       .replace(/(\d+)\s*عمليات/g, '$1 transactions')

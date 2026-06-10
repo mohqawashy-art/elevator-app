@@ -102,7 +102,7 @@
       : { before: subtotal, tax: subtotal * 0.15, total: subtotal * 1.15 };
     function set(id, val) {
       const el = document.getElementById(id);
-      if (el) el.textContent = val.toLocaleString('ar-SA', { minimumFractionDigits: 2 }) + ' ر.س';
+      if (el) el.textContent = val.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' \u20C1';
     }
     set('total-parts', partsTotal);
     set('subtotal', breakdown.before);

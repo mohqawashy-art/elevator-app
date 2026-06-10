@@ -29,7 +29,7 @@
     'مالك': 'Owner', 'مدير': 'Manager', 'مستأجر': 'Tenant', 'مسؤول': 'Contact',
     'عقد': 'Contract', 'عقد صيانة': 'Maintenance Contract', 'عقد تركيب': 'Installation Contract',
     'إيراد': 'Revenue', 'فاتورة': 'Invoice', 'عطل': 'Fault',
-    'كجم': 'kg', 'ر.س': 'SAR', 'واتساب': 'WhatsApp',
+    'كجم': 'kg', 'ر.س': '\u20C1', 'واتساب': 'WhatsApp',
     'نعم': 'Yes', 'لا': 'No', 'متاح': 'Available', 'مشغول': 'Busy', 'إجازة': 'On Leave',
     'مكة': 'Makkah', 'مكة المكرمة': 'Makkah', 'جدة': 'Jeddah', 'الرياض': 'Riyadh',
     'الدمام': 'Dammam', 'المدينة المنورة': 'Madinah', 'المدينة': 'Madinah', 'الطائف': 'Taif',
@@ -87,7 +87,7 @@
     if (AR.test(s) && global.LiftCoreTranslit) {
       return global.LiftCoreTranslit.arabicToLatin(s);
     }
-    return s.replace(/(\d+)\s*كجم/g, '$1 kg').replace(/ر\.س/g, 'SAR');
+    return s.replace(/(\d+)\s*كجم/g, '$1 kg').replace(/ر\.س/g, '\u20C1');
   }
 
   function name(arName, enName) {
@@ -119,8 +119,8 @@
 
   function fmtMoney(n) {
     var v = Number(n) || 0;
-    if (isEn()) return v.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' SAR';
-    return v.toLocaleString('ar-SA', { maximumFractionDigits: 2 }) + ' \u0631.\u0633';
+    /* رمز الريال السعودي الجديد U+20C1 في اللغتين */
+    return v.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' \u20C1';
   }
 
   function fmtClientsCount(n) { n = Number(n) || 0; return isEn() ? fmtEnCount(n, 'client', 'clients') : n + ' \u0639\u0645\u064A\u0644'; }

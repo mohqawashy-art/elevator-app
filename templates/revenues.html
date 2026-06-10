@@ -156,7 +156,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
 <link rel="stylesheet" href="/static/liftcore-shell.css">
-<script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-format.js?v=15"></script>
 <script src="/static/liftcore-shell.js"></script>
 
 </head>
@@ -297,7 +297,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th>التاريخ</th>
               <th>نوع الإيراد</th>
               <th>طريقة الدفع</th>
-              <th>المبلغ (ر.س)</th>
+              <th>المبلغ (⃁)</th>
               <th>الحالة</th>
               <th>ملاحظات</th>
               <th></th>
@@ -495,7 +495,7 @@ function renderTable(data) {
       <td class="lc-date">${fmtDateDMY(r.revenue_date)}</td>
       <td>${D(r.revenue_type)}</td>
       <td>${D(r.pay_method)}</td>
-      <td style="font-family:var(--font-en);color:var(--success)">${D(r.total.toLocaleString() + ' ر.س')}</td>
+      <td style="font-family:var(--font-en);color:var(--success)">${D(r.total.toLocaleString() + ' ⃁')}</td>
       <td><span class="badge ${STATUS_BADGE[r.status]||'badge-active'}">${D(r.status)}</span></td>
       <td style="color:var(--text3);font-size:11px">${r.notes||'—'}</td>
       <td onclick="event.stopPropagation()">
@@ -603,9 +603,9 @@ function viewRevenue(id) {
   document.getElementById('view-title').textContent = r.code;
   document.getElementById('view-body').innerHTML = `
     <div class="fin-summary" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">المبلغ</span><span style="font-family:var(--font-en)">${r.amount.toLocaleString()} ر.س</span></div>
-      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">الضريبة (15%)</span><span style="font-family:var(--font-en)">${r.tax_amount.toLocaleString()} ر.س</span></div>
-      <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-size:14px;font-weight:600"><span>الإجمالي</span><span style="font-family:var(--font-en);color:var(--success)">${r.total.toLocaleString()} ر.س</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">المبلغ</span><span style="font-family:var(--font-en)">${r.amount.toLocaleString()} ⃁</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">الضريبة (15%)</span><span style="font-family:var(--font-en)">${r.tax_amount.toLocaleString()} ⃁</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-size:14px;font-weight:600"><span>الإجمالي</span><span style="font-family:var(--font-en);color:var(--success)">${r.total.toLocaleString()} ⃁</span></div>
     </div>
     <div class="view-grid">
       <div class="view-section">تفاصيل الإيراد</div>

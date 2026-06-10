@@ -28,7 +28,7 @@
   }
 
   function formatMoney(n) {
-    return round2(n).toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
+    return round2(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' \u20C1';
   }
 
   function setDisplays(cfg, result) {
@@ -99,8 +99,8 @@
       if (inclusiveBtn) inclusiveBtn.classList.toggle('active', mode === 'inclusive');
       if (labelEl) {
         labelEl.textContent = mode === 'inclusive'
-          ? (cfg.labelInclusive || 'الإجمالي شامل الضريبة (ر.س)')
-          : (cfg.labelBefore || 'المبلغ قبل الضريبة (ر.س)');
+          ? (cfg.labelInclusive || 'الإجمالي شامل الضريبة (\u20C1)')
+          : (cfg.labelBefore || 'المبلغ قبل الضريبة (\u20C1)');
       }
       updateBlock(cfg);
     };

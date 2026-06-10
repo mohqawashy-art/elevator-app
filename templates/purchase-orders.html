@@ -111,7 +111,7 @@ input,select,textarea{width:100%;padding:8px 10px;border-radius:var(--r-sm);bord
         <td>
           <span class="badge {% if o.status == 'مستلم' %}badge-ok{% else %}badge-warn{% endif %}">{{ o.status }}</span>
         </td>
-        <td>{{ '%.2f'|format(o.total_amount or 0) }} ر.س</td>
+        <td>{{ '%.2f'|format(o.total_amount or 0) }} ⃁</td>
         <td>
           {% if o.status != 'مستلم' %}
           <form method="post" action="/purchase-orders/delete/{{ o.id }}" style="display:inline" onsubmit="return confirm('حذف الطلب؟')">

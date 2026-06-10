@@ -272,7 +272,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <script src="/static/liftcore-dates.js" defer></script>
 <link rel="stylesheet" href="/static/liftcore-shell.css">
 
-<script src="/static/liftcore-format.js"></script>
+<script src="/static/liftcore-format.js?v=15"></script>
 <script src="/static/liftcore-shell.js"></script>
 
 
@@ -900,8 +900,12 @@ function localDatetimeInputValue(d) {
 function formatFaultDatetimeDisplay(d) {
   if (!(d instanceof Date) || isNaN(d.getTime())) d = new Date();
   const p = n => String(n).padStart(2, '0');
-  const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-  const months = (window.LiftCoreFormat && LiftCoreFormat.AR_MONTHS) || [
+  const isEn = window.__LC_LANG === 'en';
+  const days = isEn
+    ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    : ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const months = (window.LiftCoreFormat && LiftCoreFormat.MONTHS && LiftCoreFormat.MONTHS()) ||
+    (window.LiftCoreFormat && LiftCoreFormat.AR_MONTHS) || [
     'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
     'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
   ];

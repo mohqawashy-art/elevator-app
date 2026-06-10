@@ -1,5 +1,5 @@
 {# تضمين:
-{% with prefix='ctax', before_field_id='f-value', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (ر.س)' %}
+{% with prefix='ctax', before_field_id='f-value', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (⃁)' %}
 {% include '_tax_amount_block.html' %}
 {% endwith %}
 #}
@@ -7,7 +7,7 @@
   {% if before_label %}data-label-before="{{ before_label }}"{% endif %}
   {% if inclusive_label %}data-label-inclusive="{{ inclusive_label }}"{% endif %}>
   <div class="field {% if full_width|default(true) %}form-full{% endif %}">
-    <label id="{{ prefix }}-input-label">{{ before_label|default('المبلغ قبل الضريبة (ر.س)') }}</label>
+    <label id="{{ prefix }}-input-label">{{ before_label|default('المبلغ قبل الضريبة (⃁)') }}</label>
     <div class="lc-tax-mode-toggle">
       <button type="button" class="lc-tax-mode-btn active" id="{{ prefix }}-mode-before">قبل الضريبة</button>
       <button type="button" class="lc-tax-mode-btn" id="{{ prefix }}-mode-inclusive">شامل الضريبة</button>
@@ -22,8 +22,8 @@
   </div>
   {% endif %}
   <div class="lc-tax-breakdown">
-    <div class="lc-tax-row"><span>{{ breakdown_before_label|default('المبلغ قبل الضريبة') }}</span><span id="{{ prefix }}-before">0.00 ر.س</span></div>
-    <div class="lc-tax-row"><span id="{{ prefix }}-tax-label">الضريبة (15%)</span><span id="{{ prefix }}-tax">0.00 ر.س</span></div>
-    <div class="lc-tax-row lc-tax-row-total"><span>الإجمالي</span><span id="{{ prefix }}-total">0.00 ر.س</span></div>
+    <div class="lc-tax-row"><span>{{ breakdown_before_label|default('المبلغ قبل الضريبة') }}</span><span id="{{ prefix }}-before">0.00 ⃁</span></div>
+    <div class="lc-tax-row"><span id="{{ prefix }}-tax-label">الضريبة (15%)</span><span id="{{ prefix }}-tax">0.00 ⃁</span></div>
+    <div class="lc-tax-row lc-tax-row-total"><span>الإجمالي</span><span id="{{ prefix }}-total">0.00 ⃁</span></div>
   </div>
 </div>

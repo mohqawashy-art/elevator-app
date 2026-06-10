@@ -129,9 +129,9 @@
 
   function renderContract(c) {
     return '<div class="financial-summary" style="margin-bottom:14px">'
-      + '<div class="fin-row"><span>قيمة العقد</span><span>' + fmt(c.value) + ' ر.س</span></div>'
-      + '<div class="fin-row"><span>الضريبة (' + c.tax_pct + '%)</span><span>' + fmt(c.tax_amount) + ' ر.س</span></div>'
-      + '<div class="fin-row"><span>الإجمالي</span><span>' + fmt(c.total) + ' ر.س</span></div>'
+      + '<div class="fin-row"><span>قيمة العقد</span><span>' + fmt(c.value) + ' \u20C1</span></div>'
+      + '<div class="fin-row"><span>الضريبة (' + c.tax_pct + '%)</span><span>' + fmt(c.tax_amount) + ' \u20C1</span></div>'
+      + '<div class="fin-row"><span>الإجمالي</span><span>' + fmt(c.total) + ' \u20C1</span></div>'
       + '</div>'
       + '<div class="view-grid">'
       + '<div class="view-section">بيانات العقد</div>'

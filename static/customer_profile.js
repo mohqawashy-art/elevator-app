@@ -19,7 +19,7 @@
 
   function fmt(n) {
     if (global.LiftCoreDisplay) return global.LiftCoreDisplay.fmtMoney(n);
-    return (n || 0).toLocaleString('ar-SA', { maximumFractionDigits: 2 }) + ' ر.س';
+    return (n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' \u20C1';
   }
 
   function L(s) {

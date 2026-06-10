@@ -77,9 +77,9 @@ function updateReportStats(reportId, data) {
       const totalRev  = data.reduce((s,r) => s + r.total, 0);
       const collected = data.filter(r => r.status === 'محصّل').reduce((s,r) => s + r.total, 0);
       const pending   = data.filter(r => r.status === 'معلق').reduce((s,r) => s + r.total, 0);
-      if(statsEls[0]) statsEls[0].textContent = totalRev.toLocaleString() + ' ر.س';
-      if(statsEls[1]) statsEls[1].textContent = collected.toLocaleString() + ' ر.س';
-      if(statsEls[2]) statsEls[2].textContent = pending.toLocaleString() + ' ر.س';
+      if(statsEls[0]) statsEls[0].textContent = totalRev.toLocaleString() + ' ⃁';
+      if(statsEls[1]) statsEls[1].textContent = collected.toLocaleString() + ' ⃁';
+      if(statsEls[2]) statsEls[2].textContent = pending.toLocaleString() + ' ⃁';
       if(statsEls[3]) statsEls[3].textContent = data.length;
       break;
 
@@ -87,9 +87,9 @@ function updateReportStats(reportId, data) {
       const totalExp   = data.reduce((s,e) => s + e.amount, 0);
       const salaries   = data.filter(e => e.expense_type === 'رواتب').reduce((s,e) => s + e.amount, 0);
       const partsExp   = data.filter(e => e.expense_type === 'قطع غيار').reduce((s,e) => s + e.amount, 0);
-      if(statsEls[0]) statsEls[0].textContent = totalExp.toLocaleString() + ' ر.س';
-      if(statsEls[1]) statsEls[1].textContent = salaries.toLocaleString() + ' ر.س';
-      if(statsEls[2]) statsEls[2].textContent = partsExp.toLocaleString() + ' ر.س';
+      if(statsEls[0]) statsEls[0].textContent = totalExp.toLocaleString() + ' ⃁';
+      if(statsEls[1]) statsEls[1].textContent = salaries.toLocaleString() + ' ⃁';
+      if(statsEls[2]) statsEls[2].textContent = partsExp.toLocaleString() + ' ⃁';
       if(statsEls[3]) statsEls[3].textContent = data.length;
       break;
 
@@ -98,9 +98,9 @@ function updateReportStats(reportId, data) {
       const totalSell   = data.reduce((s,p) => s + p.sell_price, 0);
       const totalProfit = data.reduce((s,p) => s + p.profit, 0);
       if(statsEls[0]) statsEls[0].textContent = data.length;
-      if(statsEls[1]) statsEls[1].textContent = totalCost.toLocaleString() + ' ر.س';
-      if(statsEls[2]) statsEls[2].textContent = totalSell.toLocaleString() + ' ر.س';
-      if(statsEls[3]) statsEls[3].textContent = totalProfit.toLocaleString() + ' ر.س';
+      if(statsEls[1]) statsEls[1].textContent = totalCost.toLocaleString() + ' ⃁';
+      if(statsEls[2]) statsEls[2].textContent = totalSell.toLocaleString() + ' ⃁';
+      if(statsEls[3]) statsEls[3].textContent = totalProfit.toLocaleString() + ' ⃁';
       break;
 
     case 'report-inventory':
@@ -108,7 +108,7 @@ function updateReportStats(reportId, data) {
       const lowItems  = data.filter(i => i.order_status === 'منخفض').length;
       const outItems  = data.filter(i => i.order_status === 'نافد').length;
       if(statsEls[0]) statsEls[0].textContent = data.length;
-      if(statsEls[1]) statsEls[1].textContent = totalVal.toLocaleString() + ' ر.س';
+      if(statsEls[1]) statsEls[1].textContent = totalVal.toLocaleString() + ' ⃁';
       if(statsEls[2]) statsEls[2].textContent = lowItems;
       if(statsEls[3]) statsEls[3].textContent = outItems;
       break;
