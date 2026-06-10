@@ -152,22 +152,25 @@
     if (shouldSkipEl(el)) return;
     if (el.tagName === 'INPUT' && el.placeholder) {
       if (lang === 'en') {
-        if (!el.dataset.lcPhAr) el.dataset.lcPhAr = el.placeholder;
+        /* نخزّن الأصل فقط لو لسه عربي — حتى لا نخزن نصاً مترجماً بالخطأ */
+        if (!el.dataset.lcPhAr && AR.test(el.placeholder)) el.dataset.lcPhAr = el.placeholder;
         var ph = text(el.placeholder);
         if (ph !== el.placeholder) el.placeholder = ph;
       } else if (el.dataset.lcPhAr) {
         el.placeholder = el.dataset.lcPhAr;
+        delete el.dataset.lcPhAr;
       }
       return;
     }
     var raw = el.textContent;
     if (!raw || !String(raw).trim()) return;
     if (lang === 'en') {
-      if (el.dataset.lcAr == null) el.dataset.lcAr = raw;
+      if (el.dataset.lcAr == null && AR.test(raw)) el.dataset.lcAr = raw;
       var en = text(raw);
       if (en !== raw) el.textContent = en;
     } else if (el.dataset.lcAr != null) {
       el.textContent = el.dataset.lcAr;
+      delete el.dataset.lcAr;
     }
   }
 

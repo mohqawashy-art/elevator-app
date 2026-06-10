@@ -615,7 +615,7 @@
   }
 
   function persistLanguage(lang) {
-    fetch('/api/user/language', {
+    return fetch('/api/user/language', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify({ lang: lang }),
@@ -624,9 +624,20 @@
   }
 
   function setLang(lang) {
-    applyLanguage(lang);
+    var wasEn = currentLang === 'en';
     var loginLang = document.getElementById('login-lang');
     if (loginLang) loginLang.value = lang;
+    try { localStorage.setItem('liftcore_lang', lang); } catch (e) { /* ignore */ }
+
+    /* الرجوع للعربية: الصفحة مكتوبة عربي أصلاً — إعادة تحميل تضمن استرجاعاً نظيفاً 100% */
+    if (lang === 'ar' && wasEn && !loginLang) {
+      var reload = function () { global.location.reload(); };
+      var p = persistLanguage('ar');
+      if (p && p.then) { p.then(reload, reload); } else { setTimeout(reload, 200); }
+      return;
+    }
+
+    applyLanguage(lang);
     persistLanguage(lang);
   }
 
