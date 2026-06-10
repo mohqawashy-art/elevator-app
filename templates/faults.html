@@ -385,7 +385,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th>الكود</th><th>العميل</th><th>المصعد</th><th>نوع العطل</th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th><th class="th-sort" data-sort-col="date">تاريخ البلاغ <span class="sort-ind"></span></th><th>العميل</th><th>المصعد</th><th>نوع العطل</th>
                 <th>الأولوية</th><th>الفني</th><th>الاستجابة</th><th>الحالة</th><th>فوترة</th><th>إجراءات</th>
               </tr>
             </thead>
@@ -818,6 +818,12 @@ const PRIORITY_BADGE = {
 
 let currentDeleteId = null;
 let filtered = [...FAULTS];
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+  defaultCol: 'date',
+  defaultDir: 'desc',
+  dateField: 'reported_at',
+  onChange: function () { renderTable(filtered); },
+}) : null;
 
 function formatResponseTimeCell(val) {
   if (!val || val === '—') return '—';
@@ -827,6 +833,10 @@ function formatResponseTimeCell(val) {
 }
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -842,6 +852,7 @@ function renderTable(data) {
   tbody.innerHTML = data.map(f=>`
     <tr onclick="viewFault(${f.id})">
       <td class="td-code lc-code">${f.code}</td>
+      <td class="lc-date" style="direction:ltr;font-family:var(--font-en)">${f.reported_at || '—'}</td>
       <td class="td-name">${D(LC ? LC.name(f.customer, f.customer_name_en) : f.customer)}</td>
       <td class="td-code">${f.elevator}</td>
       <td>${D(f.fault_type)}</td>
@@ -1118,6 +1129,7 @@ document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.g
 
 OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
 updateSidebarBadge();
+if (tableSort) tableSort.bindHeaders();
 renderTable(FAULTS);
 window.__lcRefreshPage = function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : FAULTS);

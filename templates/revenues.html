@@ -292,7 +292,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <table>
           <thead>
             <tr>
-              <th>رقم العملية</th>
+              <th class="th-sort" data-sort-col="code">رقم العملية <span class="sort-ind"></span></th>
               <th>العميل / العقد</th>
               <th>التاريخ</th>
               <th>نوع الإيراد</th>
@@ -475,8 +475,17 @@ const STATUS_BADGE = {
 
 let currentDeleteId = null;
 let filtered = [...REVENUES];
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+  defaultCol: 'code',
+  defaultDir: 'desc',
+  onChange: function () { renderTable(filtered); },
+}) : null;
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   const tbody = document.getElementById('rev-tbody');
   if (!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -648,6 +657,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') document.que
 document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
 
 updateStats();
+if (tableSort) tableSort.bindHeaders();
 renderTable(REVENUES);
 window.__lcRefreshPage = function () {
   if (typeof updateStats === 'function') updateStats();

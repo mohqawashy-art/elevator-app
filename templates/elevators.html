@@ -390,7 +390,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th>الكود</th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
                 <th>العميل</th>
                 <th>المبنى</th>
                 <th>المدينة</th>
@@ -781,6 +781,11 @@ const ELEVATORS = [
 ];
 
 var filtered = ELEVATORS.slice();
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+  defaultCol: 'code',
+  defaultDir: 'desc',
+  onChange: function () { renderTable(filtered); },
+}) : null;
 
 const CUSTOMERS = [
   {% for c in customers %}
@@ -1029,6 +1034,10 @@ function elevCustomer(e) {
 }
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   document.getElementById('elev-count').textContent = window.LiftCoreDisplay
@@ -1443,7 +1452,7 @@ var months = ['يناير','فبراير','مارس','أبريل','مايو','ي
 var hDateEl = document.getElementById('h-date');
 if (hDateEl) hDateEl.textContent = days[now.getDay()] + '، ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
 
-try { initFilters(); updateStats(); renderTable(ELEVATORS); } catch (bootErr) { console.error('elevators boot', bootErr); }
+try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(ELEVATORS); } catch (bootErr) { console.error('elevators boot', bootErr); }
 document.addEventListener('liftcore:lang', function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : ELEVATORS);
   if (currentElevDrillType != null) {

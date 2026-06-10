@@ -529,14 +529,14 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           <table>
             <thead>
               <tr>
-                <th class="th-sort" data-sort="code" onclick="sortClients('code')">الكود <span class="sort-ind" id="sort-ind-code"></span></th>
-                <th class="th-sort" data-sort="name" onclick="sortClients('name')">اسم العميل <span class="sort-ind" id="sort-ind-name"></span></th>
-                <th class="th-sort" data-sort="city" onclick="sortClients('city')">المدينة <span class="sort-ind" id="sort-ind-city"></span></th>
-                <th class="th-sort" data-sort="district" onclick="sortClients('district')">الحي <span class="sort-ind" id="sort-ind-district"></span></th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="name">اسم العميل <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="city">المدينة <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="district">الحي <span class="sort-ind"></span></th>
                 <th>الهاتف</th>
-                <th class="th-sort" data-sort="elevators" onclick="sortClients('elevators')">المصاعد <span class="sort-ind" id="sort-ind-elevators"></span></th>
-                <th class="th-sort" data-sort="contract_status" onclick="sortClients('contract_status')">حالة العقد <span class="sort-ind" id="sort-ind-contract_status"></span></th>
-                <th class="th-sort" data-sort="status" onclick="sortClients('status')">الحالة <span class="sort-ind" id="sort-ind-status"></span></th>
+                <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
                 <th>إجراءات</th>
               </tr>
             </thead>
@@ -1176,8 +1176,6 @@ const CONTRACT_B = {'نشط':'badge-active','على وشك الانتهاء':'ba
 let filtered = [...CUSTOMERS];
 let currentDeleteId = null;
 let currentCardId = null;
-let clientSortCol = 'id';
-let clientSortDir = 'desc';
 let cardMapInstance = null;
 let cardMapMarker = null;
 
@@ -1188,56 +1186,26 @@ function lcClient(c) {
   return (window.LiftCoreDisplay) ? LiftCoreDisplay.clientName(c) : c.name;
 }
 
-function sortClients(col) {
-  if (clientSortCol === col) {
-    clientSortDir = clientSortDir === 'asc' ? 'desc' : 'asc';
-  } else {
-    clientSortCol = col;
-    clientSortDir = (col === 'code' || col === 'name' || col === 'city' || col === 'district') ? 'asc' : 'desc';
-  }
-  renderTable(filtered);
-}
-
-function clientSortValue(c, col) {
-  switch (col) {
-    case 'id': return c.id || 0;
-    case 'code': return c.code || '';
-    case 'name': return lcClient(c) || '';
-    case 'city': return c.city || '';
-    case 'district': return c.district || '';
-    case 'elevators': return c.elevators || 0;
-    case 'contract_status': return c.contract_status || '';
-    case 'status': return c.status || '';
-    default: return '';
-  }
-}
-
-function sortClientList(list) {
-  var col = clientSortCol;
-  var mul = clientSortDir === 'asc' ? 1 : -1;
-  return list.slice().sort(function (a, b) {
-    var va = clientSortValue(a, col);
-    var vb = clientSortValue(b, col);
-    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * mul;
-    return String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: 'base' }) * mul;
-  });
-}
-
-function updateSortIndicators() {
-  ['code', 'name', 'city', 'district', 'elevators', 'contract_status', 'status'].forEach(function (col) {
-    var el = document.getElementById('sort-ind-' + col);
-    if (!el) return;
-    if (clientSortCol === col) {
-      el.textContent = clientSortDir === 'asc' ? '▲' : '▼';
-    } else {
-      el.textContent = '';
-    }
-  });
-}
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+  defaultCol: 'code',
+  defaultDir: 'desc',
+  getters: {
+    code: function (c) { return c.code; },
+    name: function (c) { return lcClient(c); },
+    city: function (c) { return c.city || ''; },
+    district: function (c) { return c.district || ''; },
+    elevators: function (c) { return c.elevators || 0; },
+    contract_status: function (c) { return c.contract_status || ''; },
+    status: function (c) { return c.status || ''; },
+  },
+  onChange: function () { renderTable(filtered); },
+}) : null;
 
 function renderTable(data) {
-  data = sortClientList(data);
-  updateSortIndicators();
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   const tbody = document.getElementById('table-body');
   document.getElementById('clients-count').textContent = window.LiftCoreDisplay
     ? LiftCoreDisplay.fmtClientsCount(data.length)
@@ -2236,7 +2204,7 @@ window.__lcRefreshPage = function () {
 fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');
 bindPhoneInputs();
-try { updateStats(); renderTable(CUSTOMERS); syncModalA11y(); } catch (bootErr) { console.error('clients boot', bootErr); }
+try { if (tableSort) tableSort.bindHeaders(); updateStats(); renderTable(CUSTOMERS); syncModalA11y(); } catch (bootErr) { console.error('clients boot', bootErr); }
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);

@@ -401,7 +401,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th>الكود</th><th>اسم الفني</th><th>الهاتف</th><th>المسمى الوظيفي</th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th><th>اسم الفني</th><th>الهاتف</th><th>المسمى الوظيفي</th>
                 <th>التخصص</th><th>المدينة</th><th>الحالة</th><th>طوارئ</th><th>إجراءات</th>
               </tr>
             </thead>
@@ -687,6 +687,11 @@ var currentDeleteId = null;
 var currentViewId = null;
 var currentEditId = null;
 var filtered = TECHNICIANS.slice();
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+  defaultCol: 'code',
+  defaultDir: 'desc',
+  onChange: function () { renderTable(filtered); },
+}) : null;
 var docRowCounter = 0;
 
 var DOC_TYPES = ['شهادة', 'مؤهل', 'رخصة', 'إقامة', 'تدريب', 'أخرى'];
@@ -950,6 +955,10 @@ function closeTechDrill() {
 }
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   var D = window.lcDisp || function(s) { return s; };
@@ -1285,6 +1294,7 @@ document.getElementById('h-date').textContent = days[now.getDay()] + '، ' + now
 
 initFilters();
 updateStats();
+if (tableSort) tableSort.bindHeaders();
 renderTable(TECHNICIANS);
 window.__lcRefreshPage = function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : TECHNICIANS);

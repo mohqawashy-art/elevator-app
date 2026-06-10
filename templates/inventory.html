@@ -276,7 +276,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <table>
           <thead>
             <tr>
-              <th>الكود</th>
+              <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
               <th>اسم الصنف</th>
               <th>التصنيف</th>
               <th>الرصيد الحالي</th>
@@ -376,6 +376,11 @@ const NEXT_CODE = {{ next_item_code | tojson }};
 
 const ORDER_BADGE = { 'كافي': 'badge-green', 'منخفض': 'badge-gold', 'نافد': 'badge-red' };
 let filtered = [...ITEMS];
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+  defaultCol: 'code',
+  defaultDir: 'desc',
+  onChange: function () { renderTable(filtered); },
+}) : null;
 
 function fmt(n) { return Number(n || 0).toLocaleString('ar-SA'); }
 
@@ -395,6 +400,10 @@ function updateStats() {
 }
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   const tbody = document.getElementById('inv-tbody');
   if (!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -544,6 +553,7 @@ const months = ['يناير','فبراير','مارس','أبريل','مايو','
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
 updateStats();
+if (tableSort) tableSort.bindHeaders();
 renderTable(ITEMS);
 window.__lcRefreshPage = function () {
   if (typeof updateStats === 'function') updateStats();

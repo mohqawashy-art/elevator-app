@@ -406,8 +406,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th>الكود</th><th>العميل</th><th>المصعد</th><th>الفني</th>
-                <th>النوع</th><th>التاريخ</th><th>الوقت</th><th>الأولوية</th><th>الحالة</th><th>إجراءات</th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th><th>العميل</th><th>المصعد</th><th>الفني</th>
+                <th>النوع</th><th class="th-sort" data-sort-col="date">التاريخ <span class="sort-ind"></span></th><th>الوقت</th><th>الأولوية</th><th>الحالة</th><th>إجراءات</th>
               </tr>
             </thead>
             <tbody id="table-body"></tbody>
@@ -833,6 +833,12 @@ const PRIORITY_BADGE = {
 
 let currentDeleteId = null;
 let filtered = [...VISITS];
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+  defaultCol: 'date',
+  defaultDir: 'desc',
+  dateField: 'visit_date',
+  onChange: function () { renderTable(filtered); },
+}) : null;
 let activeVisitFilter = null;
 
 function isVisitDoneToday(v) {
@@ -902,6 +908,10 @@ function clearVisitFilter() {
 }
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -1607,6 +1617,7 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.
 
 /* التاريخ في الهيدر: liftcore-format.js */
 
+if (tableSort) tableSort.bindHeaders();
 OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
 OpsPage.fillFilterSelect('f-tech', TECHNICIANS.map(t => ({ value: t.name, label: t.name })), 'كل الفنيين');
 OpsPage.initCalendar('cal-grid', 'cal-title', VISITS, 'visit_date', 'customer', 'status', 'العميل');
