@@ -627,6 +627,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             <option>حارس</option><option>مشرف</option><option>أخرى</option>
           </select>
         </div>
+        <div class="field">
+          <label>رقم هوية المتعاقد</label>
+          <input type="text" id="f-national-id" placeholder="1XXXXXXXXX" inputmode="numeric" maxlength="20" style="direction:ltr;font-family:var(--font-en)">
+          <span class="field-hint">رقم الهوية أو الإقامة لصاحب التوقيع على العقد</span>
+        </div>
         <!-- الجوال -->
         <div class="field form-full">
           <label>رقم الجوال <span style="color:var(--danger)">*</span></label>
@@ -816,6 +821,7 @@ const CUSTOMERS = [
     email:    {{ (c.email or '')|tojson }},
     contact:  {{ (c.contact_person or '')|tojson }},
     role:     {{ (c.contact_role or '')|tojson }},
+    national_id: {{ (c.national_id or '')|tojson }},
     elevators:{{ c.elevators|length }},
     fleet_status: {{ customer_fleet_status(c)|tojson }},
     contracts:{{ c.contracts|length }},
@@ -1087,6 +1093,7 @@ function openClientCard(id) {
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الحي') + '</div><div class="client-card-val">' + lcDisp(c.district||'—') + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('المسؤول') + '</div><div class="client-card-val">' + lcDisp(c.contact||'—') + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الصفة') + '</div><div class="client-card-val">' + lcDisp(c.role||'—') + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('رقم هوية المتعاقد') + '</div><div class="client-card-val" style="direction:ltr;font-family:var(--font-en)">' + (c.national_id||'—') + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('واتساب المسؤول') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone2||'—') + '</span>' + waButtonHtml(c.phone2, c.contact) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('رقم الجوال') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone||'—') + '</span>' + waButtonHtml(c.phone, lcClient(c)) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('البريد') + '</div><div class="client-card-val" style="direction:ltr">' + (c.email||'—') + '</div></div>' +
@@ -1224,7 +1231,7 @@ function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة عميل جديد';
   document.getElementById('modal-add').dataset.editId = '';
   document.getElementById('f-code-display').textContent = NEXT_CODE;
-  ['f-name','f-name-en','f-district','f-address','f-contact','f-phone','f-whatsapp','f-maps-url','f-lat','f-lng','f-notes','client-map-search'].forEach(function(id){
+  ['f-name','f-name-en','f-district','f-address','f-contact','f-national-id','f-phone','f-whatsapp','f-maps-url','f-lat','f-lng','f-notes','client-map-search'].forEach(function(id){
     var el = document.getElementById(id); if(el) { el.value=''; delete el.dataset.userEdited; }
   });
   var elevDisp = document.getElementById('f-elevators-display');
@@ -1278,6 +1285,7 @@ function saveClient() {
   fd.append('phone2',         fullWa);
   fd.append('contact_person', document.getElementById('f-contact').value||'');
   fd.append('contact_role',   document.getElementById('f-role').value||'');
+  fd.append('national_id',    document.getElementById('f-national-id').value.trim());
   fd.append('status',         document.getElementById('f-status-sel').value||'نشط');
   fd.append('notes',          document.getElementById('f-notes').value||'');
   fd.append('lat',            document.getElementById('f-lat').value||'');
@@ -1310,6 +1318,7 @@ function editClient(id) {
   resetBuildingPhotoPreview(c.building_photo_url || '');
   document.getElementById('f-contact').value    = c.contact||'';
   document.getElementById('f-role').value       = c.role||'';
+  document.getElementById('f-national-id').value = c.national_id||'';
   document.getElementById('f-status-sel').value = c.status||'نشط';
   document.getElementById('f-notes').value      = c.notes||'';
   document.getElementById('f-lat').value        = c.lat||'';
@@ -1759,6 +1768,7 @@ async function confirmImport(){
     fd.append('phone',   row['رقم الهاتف']||row['الهاتف']||row['phone']||'');
     fd.append('email',   row['البريد الإلكتروني']||row['email']||'');
     fd.append('contact_person',row['اسم المسؤول']||row['contact']||'');
+    fd.append('national_id', row['رقم هوية المتعاقد']||row['رقم الهوية']||row['national_id']||'');
     fd.append('status','نشط');
     var r = await fetch('/clients/add',{method:'POST',body:fd});
     if(r.ok) ok++;
@@ -1769,8 +1779,8 @@ async function confirmImport(){
 
 // ===== تصدير =====
 function exportExcel(){
-  var headers = ['الكود','الاسم','المدينة','الحي','الهاتف','المسؤول','المصاعد','حالة العقد','الحالة'];
-  var rows = [headers].concat(filtered.map(function(c){return [c.code,c.name,c.city,c.district,c.phone,c.contact,c.elevators,c.contract_status,c.status];}));
+  var headers = ['الكود','الاسم','المدينة','الحي','الهاتف','المسؤول','هوية المتعاقد','المصاعد','حالة العقد','الحالة'];
+  var rows = [headers].concat(filtered.map(function(c){return [c.code,c.name,c.city,c.district,c.phone,c.contact,c.national_id||'',c.elevators,c.contract_status,c.status];}));
   var csv = rows.map(function(r){return r.map(function(v){return '"'+(v||'')+'"';}).join(',');}).join('\n');
   var a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));

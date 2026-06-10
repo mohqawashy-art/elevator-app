@@ -196,6 +196,7 @@ window.__LC_TRANSLATIONS = {
   'راتب': 'Salary',
   'تاريخ التعيين': 'Hire Date',
   'رقم الهوية': 'National ID',
+  'رقم هوية المتعاقد': 'Contractor ID Number',
   'هاتف إضافي': 'Secondary Phone',
   'جهة الطوارئ': 'Emergency Contact',
   'تخطيط الصيانة': 'Maintenance Planning',

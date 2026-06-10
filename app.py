@@ -1266,6 +1266,7 @@ def client_add():
         email        = request.form.get('email',''),
         contact_person = request.form.get('contact_person',''),
         contact_role   = request.form.get('contact_role',''),
+        national_id    = request.form.get('national_id',''),
         status       = request.form.get('status','نشط'),
         notes        = request.form.get('notes',''),
         lat          = request.form.get('lat',''),
