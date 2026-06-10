@@ -156,6 +156,10 @@ tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
 .td-actions{display:flex;gap:6px;align-items:center}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
 .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+th.th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+th.th-sort:hover{color:var(--text1)}
+th.th-sort .sort-ind{display:inline-block;margin-inline-start:4px;font-size:10px;color:var(--accent);min-width:10px}
+#card-map{overflow:hidden;background:var(--bg3)}
 .badge-active{background:rgba(31,184,122,.12);color:var(--success)}
 .badge-inactive{background:rgba(138,155,184,.1);color:var(--text2)}
 .badge-contract-yes{background:rgba(42,127,255,.12);color:var(--accent)}
@@ -525,14 +529,14 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           <table>
             <thead>
               <tr>
-                <th>الكود</th>
-                <th>اسم العميل</th>
-                <th>المدينة</th>
-                <th>الحي</th>
+                <th class="th-sort" data-sort="code" onclick="sortClients('code')">الكود <span class="sort-ind" id="sort-ind-code"></span></th>
+                <th class="th-sort" data-sort="name" onclick="sortClients('name')">اسم العميل <span class="sort-ind" id="sort-ind-name"></span></th>
+                <th class="th-sort" data-sort="city" onclick="sortClients('city')">المدينة <span class="sort-ind" id="sort-ind-city"></span></th>
+                <th class="th-sort" data-sort="district" onclick="sortClients('district')">الحي <span class="sort-ind" id="sort-ind-district"></span></th>
                 <th>الهاتف</th>
-                <th>المصاعد</th>
-                <th>حالة العقد</th>
-                <th>الحالة</th>
+                <th class="th-sort" data-sort="elevators" onclick="sortClients('elevators')">المصاعد <span class="sort-ind" id="sort-ind-elevators"></span></th>
+                <th class="th-sort" data-sort="contract_status" onclick="sortClients('contract_status')">حالة العقد <span class="sort-ind" id="sort-ind-contract_status"></span></th>
+                <th class="th-sort" data-sort="status" onclick="sortClients('status')">الحالة <span class="sort-ind" id="sort-ind-status"></span></th>
                 <th>إجراءات</th>
               </tr>
             </thead>
@@ -775,11 +779,14 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
           تعديل
         </button>
-        <button class="modal-close" onclick="closeModal('modal-client-card')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+        <button type="button" class="modal-close" onclick="closeClientCard()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
       </div>
     </div>
     <div class="modal-body" id="card-body">
       <!-- يتعبى بالـ JS -->
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" onclick="closeClientCard()">إغلاق</button>
     </div>
   </div>
 </div>
@@ -1169,6 +1176,10 @@ const CONTRACT_B = {'نشط':'badge-active','على وشك الانتهاء':'ba
 let filtered = [...CUSTOMERS];
 let currentDeleteId = null;
 let currentCardId = null;
+let clientSortCol = 'id';
+let clientSortDir = 'desc';
+let cardMapInstance = null;
+let cardMapMarker = null;
 
 function lcDisp(s) {
   return (window.LiftCoreDisplay) ? LiftCoreDisplay.text(s == null ? '' : s) : (s || '—');
@@ -1177,7 +1188,56 @@ function lcClient(c) {
   return (window.LiftCoreDisplay) ? LiftCoreDisplay.clientName(c) : c.name;
 }
 
+function sortClients(col) {
+  if (clientSortCol === col) {
+    clientSortDir = clientSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    clientSortCol = col;
+    clientSortDir = (col === 'code' || col === 'name' || col === 'city' || col === 'district') ? 'asc' : 'desc';
+  }
+  renderTable(filtered);
+}
+
+function clientSortValue(c, col) {
+  switch (col) {
+    case 'id': return c.id || 0;
+    case 'code': return c.code || '';
+    case 'name': return lcClient(c) || '';
+    case 'city': return c.city || '';
+    case 'district': return c.district || '';
+    case 'elevators': return c.elevators || 0;
+    case 'contract_status': return c.contract_status || '';
+    case 'status': return c.status || '';
+    default: return '';
+  }
+}
+
+function sortClientList(list) {
+  var col = clientSortCol;
+  var mul = clientSortDir === 'asc' ? 1 : -1;
+  return list.slice().sort(function (a, b) {
+    var va = clientSortValue(a, col);
+    var vb = clientSortValue(b, col);
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * mul;
+    return String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: 'base' }) * mul;
+  });
+}
+
+function updateSortIndicators() {
+  ['code', 'name', 'city', 'district', 'elevators', 'contract_status', 'status'].forEach(function (col) {
+    var el = document.getElementById('sort-ind-' + col);
+    if (!el) return;
+    if (clientSortCol === col) {
+      el.textContent = clientSortDir === 'asc' ? '▲' : '▼';
+    } else {
+      el.textContent = '';
+    }
+  });
+}
+
 function renderTable(data) {
+  data = sortClientList(data);
+  updateSortIndicators();
   const tbody = document.getElementById('table-body');
   document.getElementById('clients-count').textContent = window.LiftCoreDisplay
     ? LiftCoreDisplay.fmtClientsCount(data.length)
@@ -1225,23 +1285,82 @@ function filterTable() {
 }
 
 // ===== كارت العميل =====
+function destroyClientCardMap() {
+  if (cardMapMarker) {
+    cardMapMarker.setMap(null);
+    cardMapMarker = null;
+  }
+  cardMapInstance = null;
+  var mapEl = document.getElementById('card-map');
+  if (mapEl) mapEl.innerHTML = '';
+}
+
+function showClientCardMap(pos, c) {
+  if (!pos || !c) return;
+  whenGoogleMapsReady(function () {
+    var mapEl = document.getElementById('card-map');
+    if (!mapEl || typeof google === 'undefined') return;
+    var center = { lat: pos.lat, lng: pos.lng };
+    if (!cardMapInstance) {
+      cardMapInstance = new google.maps.Map(mapEl, {
+        center: center,
+        zoom: 15,
+        mapTypeId: 'satellite',
+        clickableIcons: false,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControl: true,
+        gestureHandling: 'cooperative',
+        styles: MAP_POI_HIDDEN_STYLES
+      });
+    } else {
+      cardMapInstance.setCenter(center);
+    }
+    if (cardMapMarker) cardMapMarker.setMap(null);
+    cardMapMarker = new google.maps.Marker({
+      position: center,
+      map: cardMapInstance,
+      title: c.name,
+      icon: makePinIcon(getClientPinColor(c), 1.2)
+    });
+    setTimeout(function () {
+      if (!cardMapInstance) return;
+      google.maps.event.trigger(cardMapInstance, 'resize');
+      cardMapInstance.setCenter(center);
+    }, 400);
+  });
+}
+
+function closeClientCard() {
+  currentCardId = null;
+  destroyClientCardMap();
+  var el = document.getElementById('modal-client-card');
+  if (el) el.classList.remove('open');
+  syncModalA11y();
+}
+
 function openClientCard(id) {
   id = parseInt(id, 10);
   if (!id) return;
   var c = CUSTOMERS.find(function(x){return x.id===id;});
   if(!c) return;
   currentCardId = id;
+  destroyClientCardMap();
   try {
   document.getElementById('card-title').textContent = c.code + ' — ' + lcClient(c);
 
   var cardPos = getClientPosition(c);
   var hasAddress = !!(c.address || c.city || c.district);
-  var mapSection = (cardPos || hasAddress) ? '<div class="card-section-title">الموقع</div><div id="card-map" style="height:200px;border-radius:var(--r-sm);border:1px solid var(--border);margin-top:8px"></div>' : '';
+  var mapSection = (cardPos || hasAddress)
+    ? '<div class="card-section-title">' + lcDisp('الموقع') + '</div><div id="card-map" data-i18n-skip style="height:200px;border-radius:var(--r-sm);border:1px solid var(--border);margin:8px 0 12px"></div>'
+    : '';
   var locBlock = (window.LiftCoreLocation && LiftCoreLocation.renderLocationBlock)
     ? LiftCoreLocation.renderLocationBlock(c) : '';
 
   document.getElementById('card-body').innerHTML =
     locBlock +
+    mapSection +
     '<div class="card-stats">' +
       '<div class="card-stat"><div class="card-stat-val">' + c.elevators + '</div><div class="card-stat-label">' + lcDisp('مصعد') + '</div></div>' +
       '<div class="card-stat"><div class="card-stat-val">' + c.contracts + '</div><div class="card-stat-label">' + lcDisp('عقد') + '</div></div>' +
@@ -1264,38 +1383,17 @@ function openClientCard(id) {
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('البريد') + '</div><div class="client-card-val" style="direction:ltr">' + (c.email||'—') + '</div></div>' +
       (c.notes ? '<div class="client-card-item full"><div class="client-card-label">' + lcDisp('ملاحظات') + '</div><div class="client-card-val">' + c.notes + '</div></div>' : '') +
     '</div>' +
-    '<div id="card-dynamic-data"><div style="text-align:center;padding:16px;color:var(--text3);font-size:13px">⏳ جاري تحميل البيانات...</div></div>' +
-    mapSection;
+    '<div id="card-dynamic-data"><div style="text-align:center;padding:16px;color:var(--text3);font-size:13px">⏳ ' + lcDisp('جاري تحميل البيانات...') + '</div></div>';
 
   openModal('modal-client-card');
+  if (window.LiftCoreDisplay) LiftCoreDisplay.applyDom(document.getElementById('card-body'), LiftCoreDisplay.currentLang());
   loadClientData(id);
 
-  function showCardMap(pos) {
-    if (!pos) return;
-    setTimeout(function(){
-      var mapEl = document.getElementById('card-map');
-      if(mapEl && typeof google !== 'undefined') {
-        var m = new google.maps.Map(mapEl,{
-          center:{lat:pos.lat,lng:pos.lng}, zoom:15,
-          mapTypeId:'satellite',
-          clickableIcons:false,
-          mapTypeControl:false, streetViewControl:false, fullscreenControl:false, zoomControl:true,
-          styles: MAP_POI_HIDDEN_STYLES
-        });
-        new google.maps.Marker({
-          position:{lat:pos.lat,lng:pos.lng}, map:m, title:c.name,
-          icon: makePinIcon(getClientPinColor(c), 1.2)
-        });
-        google.maps.event.trigger(m, 'resize');
-      }
-    }, 300);
-  }
-
   if (cardPos) {
-    showCardMap(cardPos);
+    showClientCardMap(cardPos, c);
   } else if (window.LiftCoreGeocode) {
     LiftCoreGeocode.geocodeOne(c).then(function(pos) {
-      if (pos) showCardMap(pos);
+      if (pos && currentCardId === id) showClientCardMap(pos, c);
     });
   }
   } catch (err) {
@@ -1550,8 +1648,9 @@ function editClient(id) {
 }
 
 function editFromCard() {
-  closeModal('modal-client-card');
-  editClient(currentCardId);
+  var id = currentCardId;
+  closeClientCard();
+  editClient(id);
 }
 
 // ===== حذف =====
@@ -2022,6 +2121,10 @@ function openModal(id){
   syncModalA11y();
 }
 function closeModal(id){
+  if (id === 'modal-client-card') {
+    closeClientCard();
+    return;
+  }
   var el = document.getElementById(id);
   if (el) el.classList.remove('open');
   syncModalA11y();
@@ -2030,13 +2133,23 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape') {
-    document.querySelectorAll('.modal-overlay').forEach(function(m){ m.classList.remove('open'); });
+    var cardModal = document.getElementById('modal-client-card');
+    if (cardModal && cardModal.classList.contains('open')) {
+      closeClientCard();
+    } else {
+      document.querySelectorAll('.modal-overlay').forEach(function(m){ m.classList.remove('open'); });
+    }
     syncModalA11y();
   }
 });
 document.addEventListener('click',function(e){
   if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) {
-    document.querySelectorAll('.modal-overlay').forEach(function(m){ m.classList.remove('open'); });
+    var overlay = e.target.closest('.modal-overlay');
+    if (overlay && overlay.id === 'modal-client-card') {
+      closeClientCard();
+    } else {
+      document.querySelectorAll('.modal-overlay').forEach(function(m){ m.classList.remove('open'); });
+    }
     syncModalA11y();
   }
 });
@@ -2103,16 +2216,22 @@ if (window.LiftCoreTranslit) LiftCoreTranslit.bindAutoLatin('f-name', 'f-name-en
 
 document.addEventListener('liftcore:lang', function () {
   renderTable(filtered);
+  var cardModal = document.getElementById('modal-client-card');
+  if (cardModal && cardModal.classList.contains('open') && window.LiftCoreDisplay) {
+    LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
+  }
   syncModalA11y();
 });
 document.addEventListener('liftcore:display-refresh', function () {
   renderTable(filtered);
-  if (currentCardId) openClientCard(currentCardId);
 });
 window.__lcRefreshPage = function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : CUSTOMERS);
-  if (typeof currentCardId !== 'undefined' && currentCardId) openClientCard(currentCardId);
   if (typeof updateStats === 'function') updateStats();
+  var cardModal = document.getElementById('modal-client-card');
+  if (cardModal && cardModal.classList.contains('open') && window.LiftCoreDisplay) {
+    LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
+  }
 };
 fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');

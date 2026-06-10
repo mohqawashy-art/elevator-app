@@ -216,8 +216,8 @@
       el.innerHTML = renderCustomerProfilePanel(data, options);
       var mount = el.querySelector('#cp-sections-mount');
       if (mount) bindSectionTabs(mount, customerId, el);
-      if (global.LiftCoreI18n && global.LiftCoreDisplay && global.LiftCoreDisplay.isEn()) {
-        global.LiftCoreI18n.apply('en');
+      if (global.LiftCoreDisplay && global.LiftCoreDisplay.isEn()) {
+        global.LiftCoreDisplay.applyDom(el, 'en');
       }
       return data;
     }).catch(function () {
