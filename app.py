@@ -393,16 +393,46 @@ ALLOWED_CLIENT_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 # Helper — توليد الكودات التلقائية
 # =============================================
 def normalize_phone(phone):
+    """توحيد الرقم: 966XXXXXXXXX بدون 0 بعد كود السعودية."""
     if not phone:
         return ''
     digits = re.sub(r'\D', '', str(phone))
-    if digits.startswith('966') and len(digits) > 9:
-        digits = '0' + digits[3:]
+    if digits.startswith('966'):
+        rest = digits[3:]
+        if rest.startswith('0'):
+            rest = rest[1:]
+        return '966' + rest
+    if digits.startswith('0') and len(digits) >= 10:
+        return '966' + digits[1:]
     return digits
+
+
+def format_phone_storage(phone):
+    d = normalize_phone(phone)
+    return ('+' + d) if d else ''
+
+
+def client_phone_error(phone):
+    """تحقق من رقم جوال العميل — بدون 0 في البداية."""
+    raw = re.sub(r'\D', '', phone or '')
+    if not raw:
+        return 'يرجى إدخال رقم الجوال'
+    if raw.startswith('9660'):
+        return 'لا تبدأ رقم الجوال بـ 0 — أدخل الرقم بدون الصفر (مثال: 512345678)'
+    if raw.startswith('0') and not raw.startswith('00'):
+        return 'لا تبدأ رقم الجوال بـ 0 — أدخل الرقم بدون الصفر (مثال: 512345678)'
+    d = normalize_phone(phone)
+    local = d[3:] if d.startswith('966') else d
+    if len(local) < 9:
+        return 'رقم الجوال غير مكتمل — أدخل 9 أرقام على الأقل'
+    return None
 
 
 def phone_key(phone):
     d = normalize_phone(phone)
+    if d.startswith('966') and len(d) > 3:
+        local = d[3:]
+        return local[-9:] if len(local) >= 9 else local
     return d[-9:] if len(d) >= 9 else d
 
 
@@ -1264,12 +1294,24 @@ def api_contract_detail(contract_id):
 
 @app.route('/clients/add', methods=['POST'])
 def client_add():
-    phone = request.form.get('phone', '')
+    phone_raw = request.form.get('phone', '')
+    phone_err = client_phone_error(phone_raw)
+    if phone_err:
+        flash(phone_err, 'error')
+        return redirect(url_for('clients'))
+    phone = format_phone_storage(phone_raw)
     taken, msg = phone_taken(phone)
     if taken:
         flash(msg, 'error')
         return redirect(url_for('clients'))
-    wa = request.form.get('phone2', '')
+    wa_raw = request.form.get('phone2', '')
+    wa = ''
+    if wa_raw:
+        wa_err = client_phone_error(wa_raw)
+        if wa_err:
+            flash('واتساب المسؤول: ' + wa_err, 'error')
+            return redirect(url_for('clients'))
+        wa = format_phone_storage(wa_raw)
     if wa and phone_key(wa) != phone_key(phone):
         taken2, msg2 = phone_taken(wa)
         if taken2:
@@ -1305,12 +1347,24 @@ def client_add():
 @app.route('/clients/edit/<int:id>', methods=['POST'])
 def client_edit(id):
     c = Customer.query.get_or_404(id)
-    phone = request.form.get('phone', '')
+    phone_raw = request.form.get('phone', '')
+    phone_err = client_phone_error(phone_raw)
+    if phone_err:
+        flash(phone_err, 'error')
+        return redirect(url_for('clients'))
+    phone = format_phone_storage(phone_raw)
     taken, msg = phone_taken(phone, customer_id=c.id)
     if taken:
         flash(msg, 'error')
         return redirect(url_for('clients'))
-    wa = request.form.get('phone2', '')
+    wa_raw = request.form.get('phone2', '')
+    wa = ''
+    if wa_raw:
+        wa_err = client_phone_error(wa_raw)
+        if wa_err:
+            flash('واتساب المسؤول: ' + wa_err, 'error')
+            return redirect(url_for('clients'))
+        wa = format_phone_storage(wa_raw)
     if wa and phone_key(wa) != phone_key(phone):
         taken2, msg2 = phone_taken(wa, customer_id=c.id)
         if taken2:

@@ -671,10 +671,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <select class="phone-code" id="f-code-phone"></select>
               <button type="button" class="add-opt-btn" onclick="addNewPhoneCode('f-code-phone')" title="إضافة كود دولة">+</button>
             </div>
-            <input type="tel" class="phone-input" id="f-phone" placeholder="05XXXXXXXX" inputmode="tel" maxlength="15" autocomplete="tel">
+            <input type="tel" class="phone-input" id="f-phone" placeholder="512345678" inputmode="tel" maxlength="15" autocomplete="tel">
           </div>
           <div class="contact-actions">
-            <span class="field-hint" style="margin:0">رقم جوال العميل / المبنى</span>
+            <span class="field-hint" style="margin:0">بدون صفر في البداية — مثال: 512345678 (مع كود +966)</span>
             <button type="button" class="btn-wa" onclick="testWhatsAppMobile()">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.75.75 0 00.918.918l4.458-1.495A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.714 9.714 0 01-4.95-1.35l-.355-.21-3.28 1.1 1.1-3.195-.231-.37A9.735 9.735 0 012.25 12C2.25 6.9 6.9 2.25 12 2.25S21.75 6.9 21.75 12 17.1 21.75 12 21.75z"/></svg>
               تواصل واتساب
@@ -688,7 +688,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <select class="phone-code" id="f-code-wa"></select>
               <button type="button" class="add-opt-btn" onclick="addNewPhoneCode('f-code-wa')" title="إضافة كود دولة">+</button>
             </div>
-            <input type="tel" class="phone-input" id="f-whatsapp" placeholder="05XXXXXXXX" inputmode="tel" maxlength="15" autocomplete="tel">
+            <input type="tel" class="phone-input" id="f-whatsapp" placeholder="512345678" inputmode="tel" maxlength="15" autocomplete="tel">
           </div>
           <div class="contact-actions">
             <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="copyPhone()">← نسخ من رقم الجوال</span>
@@ -980,8 +980,99 @@ function parsePhoneParts(full) {
   if(!full) return {code:'+966', number:''};
   var codes = allPhoneCodes().map(function(c){ return c.v; }).sort(function(a,b){ return b.length - a.length; });
   var found = codes.find(function(cd){ return full.indexOf(cd) === 0; });
-  if(found) return {code: found, number: full.slice(found.length).replace(/\D/g,'')};
-  return {code:'+966', number: full.replace(/\D/g,'')};
+  if(found) {
+    var num = full.slice(found.length).replace(/\D/g,'');
+    if (num.charAt(0) === '0') num = num.replace(/^0+/, '');
+    return {code: found, number: num};
+  }
+  var digits = full.replace(/\D/g,'');
+  if (digits.indexOf('966') === 0) {
+    var local = digits.slice(3);
+    if (local.charAt(0) === '0') local = local.slice(1);
+    return {code: '+966', number: local};
+  }
+  if (digits.charAt(0) === '0') digits = digits.slice(1);
+  return {code:'+966', number: digits};
+}
+function phoneKeyFromFull(full) {
+  var d = String(full || '').replace(/\D/g, '');
+  if (d.indexOf('966') === 0) {
+    var rest = d.slice(3);
+    if (rest.charAt(0) === '0') rest = rest.slice(1);
+    d = '966' + rest;
+  } else if (d.charAt(0) === '0' && d.length >= 10) {
+    d = '966' + d.slice(1);
+  }
+  var local = d.indexOf('966') === 0 ? d.slice(3) : d;
+  return local.length >= 9 ? local.slice(-9) : local;
+}
+function buildClientPhone(codeSelId, inputId) {
+  var code = document.getElementById(codeSelId).value || '+966';
+  var raw = document.getElementById(inputId).value.replace(/\D/g, '');
+  if (raw.charAt(0) === '0') raw = raw.replace(/^0+/, '');
+  return code + raw;
+}
+function stripLeadingZeroPhoneInput(input) {
+  if (!input) return;
+  var digits = input.value.replace(/\D/g, '');
+  if (digits.charAt(0) === '0') input.value = digits.replace(/^0+/, '');
+}
+function bindPhoneInputs() {
+  ['f-phone', 'f-whatsapp'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el || el.dataset.lcPhoneBound) return;
+    el.dataset.lcPhoneBound = '1';
+    el.addEventListener('input', function() { stripLeadingZeroPhoneInput(el); });
+  });
+}
+function findPhoneDuplicate(fullPhone, editId) {
+  var key = phoneKeyFromFull(fullPhone);
+  if (!key || key.length < 9) return null;
+  return CUSTOMERS.find(function(c) {
+    if (editId && c.id === editId) return false;
+    return phoneKeyFromFull(c.phone) === key || phoneKeyFromFull(c.phone2) === key;
+  }) || null;
+}
+function validateClientPhoneFields() {
+  var phoneRaw = document.getElementById('f-phone').value.trim();
+  if (!phoneRaw) {
+    alert('يرجى إدخال رقم الجوال');
+    return false;
+  }
+  if (phoneRaw.replace(/\D/g, '').charAt(0) === '0') {
+    alert('لا تبدأ رقم الجوال بـ 0 — أدخل الرقم بدون الصفر (مثال: 512345678)');
+    return false;
+  }
+  var editId = parseInt(document.getElementById('modal-add').dataset.editId || '0', 10) || 0;
+  var fullPhone = buildClientPhone('f-code-phone', 'f-phone');
+  var phoneKey = phoneKeyFromFull(fullPhone);
+  if (phoneKey.length < 9) {
+    alert('رقم الجوال غير مكتمل — أدخل 9 أرقام على الأقل');
+    return false;
+  }
+  var dup = findPhoneDuplicate(fullPhone, editId);
+  if (dup) {
+    alert('رقم الجوال مستخدم للعميل «' + dup.name + '» (' + dup.code + ')');
+    return false;
+  }
+  var waNum = document.getElementById('f-whatsapp').value.trim();
+  if (waNum) {
+    if (waNum.replace(/\D/g, '').charAt(0) === '0') {
+      alert('لا تبدأ واتساب المسؤول بـ 0 — أدخل الرقم بدون الصفر');
+      return false;
+    }
+    var fullWa = buildClientPhone('f-code-wa', 'f-whatsapp');
+    if (phoneKeyFromFull(fullWa).length < 9) {
+      alert('رقم واتساب المسؤول غير مكتمل');
+      return false;
+    }
+    if (phoneKeyFromFull(fullWa) !== phoneKey && findPhoneDuplicate(fullWa, editId)) {
+      var dupWa = findPhoneDuplicate(fullWa, editId);
+      alert('واتساب المسؤول مستخدم للعميل «' + dupWa.name + '» (' + dupWa.code + ')');
+      return false;
+    }
+  }
+  return true;
 }
 function whatsappDigits(phone) {
   if(!phone) return '';
@@ -1306,6 +1397,7 @@ function openAddModal() {
   openClientFormModal(function () {
     LiftCoreMapPicker.reset();
   });
+  bindPhoneInputs();
 }
 
 function copyClientNameToContact() {
@@ -1321,9 +1413,8 @@ function copyPhone() {
 
 function saveClient() {
   var name  = document.getElementById('f-name').value.trim();
-  var phone = document.getElementById('f-phone').value.trim();
   if(!name) { alert('يرجى إدخال اسم العميل'); return; }
-  if(!phone) { alert('يرجى إدخال رقم الهاتف'); return; }
+  if (!validateClientPhoneFields()) return;
   var lat = document.getElementById('f-lat').value.trim();
   var lng = document.getElementById('f-lng').value.trim();
   if(!lat || !lng) {
@@ -1331,9 +1422,9 @@ function saveClient() {
   }
 
   var editId    = document.getElementById('modal-add').dataset.editId;
+  var fullPhone = buildClientPhone('f-code-phone', 'f-phone');
   var waNum = document.getElementById('f-whatsapp').value.trim();
-  var fullPhone = document.getElementById('f-code-phone').value + phone.replace(/\D/g,'');
-  var fullWa    = waNum ? (document.getElementById('f-code-wa').value + waNum.replace(/\D/g,'')) : '';
+  var fullWa    = waNum ? buildClientPhone('f-code-wa', 'f-whatsapp') : '';
 
   var fd = new FormData();
   fd.append('name',           name);
@@ -1363,8 +1454,15 @@ function saveClient() {
   var bphoto = document.getElementById('f-building-photo');
   if (bphoto && bphoto.files && bphoto.files[0]) fd.append('building_photo', bphoto.files[0]);
 
-  fetch(editId ? '/clients/edit/' + editId : '/clients/add', {method:'POST', body:fd})
-    .then(function(){window.location.reload();});
+  fetch(editId ? '/clients/edit/' + editId : '/clients/add', {method:'POST', body:fd, credentials:'same-origin'})
+    .then(function(res) {
+      if (res.redirected || res.ok) {
+        window.location.href = res.url || '/clients';
+        return;
+      }
+      alert('فشل حفظ العميل — تحقق من البيانات وحاول مجدداً');
+    })
+    .catch(function() { alert('فشل الاتصال بالخادم'); });
 }
 
 // ===== تعديل =====
@@ -1417,9 +1515,8 @@ function editClient(id) {
       }
     }
   });
+  bindPhoneInputs();
 }
-
-function editFromCard() {
   closeModal('modal-client-card');
   editClient(currentCardId);
 }
@@ -1935,6 +2032,7 @@ window.__lcRefreshPage = function () {
 };
 fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');
+bindPhoneInputs();
 try { updateStats(); renderTable(CUSTOMERS); } catch (bootErr) { console.error('clients boot', bootErr); }
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
