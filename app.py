@@ -3253,12 +3253,17 @@ def _po_status_label(status, lang):
     return status
 
 
-def _company_address(settings, lang):
+def _company_address_info(settings, lang):
+    """Return (address text, use_ltr_direction)."""
     if not settings:
-        return ''
+        return '', lang == 'en'
+    ar_addr = (settings.address or '').strip()
+    en_addr = (getattr(settings, 'address_en', None) or '').strip()
     if lang == 'en':
-        return (getattr(settings, 'address_en', None) or '').strip()
-    return (settings.address or '').strip()
+        if en_addr:
+            return en_addr, True
+        return ar_addr, False
+    return ar_addr, False
 
 
 def _apply_purchase_receipt(order):
@@ -3360,6 +3365,7 @@ def purchase_order_print(order_id):
     company_name = (s.company_name if s and s.company_name else 'LiftCore')
     if lang == 'en' and s and getattr(s, 'company_name_en', None):
         company_name = s.company_name_en
+    addr_text, addr_ltr = _company_address_info(s, lang)
     return render_template(
         'purchase-order-print.html',
         order=order,
@@ -3370,7 +3376,8 @@ def purchase_order_print(order_id):
         po_lang=lang,
         po_status_label=_po_status_label(order.status, lang),
         po_company_name=company_name,
-        po_company_address=_company_address(s, lang),
+        po_company_address=addr_text,
+        po_address_ltr=addr_ltr,
     )
 
 
