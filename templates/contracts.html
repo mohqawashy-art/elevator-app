@@ -431,8 +431,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <td style="direction:ltr;font-family:var(--font-en)">{{ c.start_date.isoformat() if c.start_date else '—' }}</td>
             <td style="direction:ltr;font-family:var(--font-en)">{{ c.end_date.isoformat() if c.end_date else '—' }}</td>
             <td style="text-align:center">{{ c.elevators|length }}</td>
-            <td class="td-amount">{{ '{:,.2f}'.format(c.value or 0) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
-            <td class="td-amount">{{ '{:,.2f}'.format(c.total or 0) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+            <td class="td-amount">{{ format_money_amount(c.value) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+            <td class="td-amount">{{ format_money_amount(c.total) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
             <td><span class="badge {{ ctr_badges.get(disp, 'badge-active') }}">{{ disp }}</span></td>
             <td><span class="badge {{ inv_badges.get(inv, 'badge-unpaid') }}">{{ inv }}</span></td>
             <td onclick="event.stopPropagation()"><div class="td-actions">
@@ -736,6 +736,18 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function fmtMoneyAmt(n) {
+  if (window.LiftCoreTaxCalc && window.LiftCoreTaxCalc.round2) {
+    n = LiftCoreTaxCalc.round2(n);
+  } else {
+    n = Math.round((parseFloat(n) || 0) * 100) / 100;
+  }
+  if (Math.abs(n - Math.round(n)) < 0.001) {
+    return Math.round(n).toLocaleString('en-US');
+  }
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function isExpiring(c) {
   return getContractDisplayStatus(c) === 'على وشك الانتهاء';
 }
@@ -779,8 +791,8 @@ function updateStats() {
   document.getElementById('stat-active').textContent = active;
   document.getElementById('stat-expired').textContent = expired;
   document.getElementById('stat-expiring').textContent = expiring;
-  document.getElementById('stat-total-val').textContent = totalVal.toLocaleString();
-  document.getElementById('stat-unpaid-val').textContent = unpaid.toLocaleString();
+  document.getElementById('stat-total-val').textContent = fmtMoneyAmt(totalVal);
+  document.getElementById('stat-unpaid-val').textContent = fmtMoneyAmt(unpaid);
 
   var alertBox = document.getElementById('expiry-alert');
   var expiryCount = document.getElementById('expiry-count');
@@ -852,7 +864,7 @@ function renderDrillTable(rows) {
       '<td>' + esc(c.contract_type) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
       '<td style="text-align:center">' + c.elevators + '</td>' +
-      '<td style="font-family:var(--font-en)">' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
+      '<td style="font-family:var(--font-en)">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></td>' +
       '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span></td>' +
     '</tr>';
@@ -910,8 +922,8 @@ function renderTable(data) {
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.start_date) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
       '<td style="text-align:center" title="' + esc(elevatorLabels(c.elevator_ids)) + '">' + c.elevators + '</td>' +
-      '<td class="td-amount">' + c.value.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
-      '<td class="td-amount">' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
+      '<td class="td-amount">' + fmtMoneyAmt(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
+      '<td class="td-amount">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td><span class="badge ' + (STATUS_BADGE[disp] || 'badge-active') + '">' + esc(D(disp)) + '</span></td>' +
       '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(D(c.inv_status)) + '</span></td>' +
       '<td onclick="event.stopPropagation()"><div class="td-actions">' +
@@ -1062,9 +1074,9 @@ function viewContract(id) {
   document.getElementById('view-body').innerHTML =
     locHtml +
     '<div class="financial-summary">' +
-      '<div class="fin-row"><span>قيمة العقد (قبل الضريبة)</span><span>' + c.value.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
-      '<div class="fin-row"><span>الضريبة (' + c.tax_pct + '%)</span><span>' + c.tax_amount.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
-      '<div class="fin-row"><span>الإجمالي</span><span>' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
+      '<div class="fin-row"><span>قيمة العقد (قبل الضريبة)</span><span>' + fmtMoneyAmt(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
+      '<div class="fin-row"><span>الضريبة (' + c.tax_pct + '%)</span><span>' + fmtMoneyAmt(c.tax_amount) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
+      '<div class="fin-row"><span>الإجمالي</span><span>' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
     '</div>' +
     '<div class="view-grid">' +
       '<div class="view-section">البيانات الأساسية</div>' +
@@ -1073,7 +1085,7 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">نوع العقد</div><div class="view-val">' + esc(c.contract_type) + '</div></div>' +
       '<div class="view-item"><div class="view-label">المصاعد المرتبطة</div><div class="view-val" style="font-family:var(--font-en)">' + esc(elevatorLabels(c.elevator_ids)) + '</div></div>' +
       '<div class="view-item"><div class="view-label">حالة العقد</div><div class="view-val"><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></div></div>' +
-      '<div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span> <span style="font-size:12px;color:var(--text3)">(' + (c.paid_amount || 0).toLocaleString() + ' / ' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>)</span></div></div>' +
+      '<div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span> <span style="font-size:12px;color:var(--text3)">(' + fmtMoneyAmt(c.paid_amount || 0) + ' / ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>)</span></div></div>' +
       '<div class="view-section">التواريخ والصيانة</div>' +
       '<div class="view-item"><div class="view-label">تاريخ البداية</div><div class="view-val" style="direction:ltr">' + esc(c.start_date) + '</div></div>' +
       '<div class="view-item"><div class="view-label">تاريخ الانتهاء</div><div class="view-val" style="direction:ltr">' + esc(c.end_date) + '</div></div>' +
@@ -1345,7 +1357,7 @@ function contractGroupMapInfo(group) {
   var rows = group.contracts.map(function(c) {
     return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' +
       '<strong>' + esc(c.code) + '</strong> — ' + esc(c.contract_type) + '<br>' +
-      esc(getContractDisplayStatus(c)) + ' · ' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>' +
+      esc(getContractDisplayStatus(c)) + ' · ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>' +
       ' · ' + esc(c.inv_status) +
       '<br><button class="map-info-btn" style="margin-top:6px" onclick="viewContract(' + c.id + ')">عرض العقد</button></div>';
   }).join('');
@@ -1358,7 +1370,7 @@ function contractMapInfo(c, exact) {
   var locNote = exact ? 'موقع GPS دقيق' : 'موقع تقريبي';
   return '<div class="map-info"><div class="map-info-title">' + esc(c.code) + '</div>' +
     '<div class="map-info-sub">' + esc(c.customer) + '<br>' + esc(c.contract_type) + '<br>' +
-    'الإجمالي: ' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span><br>' + esc(getContractDisplayStatus(c)) + ' · ' + esc(c.inv_status) +
+    'الإجمالي: ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span><br>' + esc(getContractDisplayStatus(c)) + ' · ' + esc(c.inv_status) +
     '<br><span style="color:#888;font-size:11px">' + locNote + '</span></div>' +
     '<button class="map-info-btn" onclick="viewContract(' + c.id + ')">عرض العقد</button></div>';
 }

@@ -1550,6 +1550,8 @@ def sync_contract_invoice_status(contract_id):
 app.jinja_env.globals['contract_display_status'] = contract_display_status
 app.jinja_env.globals['contract_invoice_status'] = contract_invoice_status
 app.jinja_env.globals['contract_paid_total'] = contract_paid_total
+app.jinja_env.globals['format_money_amount'] = format_money_amount
+app.jinja_env.globals['money_round'] = _money_round
 
 
 def customer_primary_contract(customer):
@@ -1822,10 +1824,22 @@ def _sync_contract_elevators(contract_id, elevator_ids):
             db.session.add(ContractElevator(contract_id=contract_id, elevator_id=int(eid)))
 
 
+def _money_round(n):
+    return round(float(n or 0), 2)
+
+
+def format_money_amount(n):
+    """عرض مبالغ بدون كسور عائمة (3000 لا 2999.9999)."""
+    n = _money_round(n)
+    if n == int(n):
+        return f'{int(n):,}'
+    return f'{n:,.2f}'
+
+
 def _apply_contract_form(c, form):
-    value = float(form.get('value', 0) or 0)
-    tax_pct = float(form.get('tax_pct', 15) or 15)
-    tax_amount = value * tax_pct / 100
+    value = _money_round(form.get('value', 0))
+    tax_pct = _money_round(form.get('tax_pct', 15) or 15)
+    tax_amount = _money_round(value * tax_pct / 100)
     start = _parse_date(form.get('start_date'))
     end = _parse_date(form.get('end_date'))
     c.customer_id = form['customer_id']
@@ -1839,7 +1853,7 @@ def _apply_contract_form(c, form):
     c.value = value
     c.tax_pct = tax_pct
     c.tax_amount = tax_amount
-    c.total = value + tax_amount
+    c.total = _money_round(value + tax_amount)
     c.payment_terms = form.get('payment_terms', '')
     c.status = form.get('status', 'نشط')
     c.reminder_date = _parse_date(form.get('reminder_date'))
