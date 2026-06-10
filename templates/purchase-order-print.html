@@ -124,13 +124,13 @@ body.page-a4 .doc{
 
   .sig-print-img{display:block!important}
 
-  .doc-head{padding-bottom:8px;margin-bottom:8px;gap:8px 10px}
+  .doc-head{padding-bottom:8px;margin-bottom:8px;gap:3px 10px;row-gap:3px}
 
-  .head-co{font-size:9px;line-height:1.45}
+  .co-details{font-size:9px;line-height:1.3}
 
-  .head-logo-inline img{max-height:72px!important;width:auto!important}
+  .head-logo-inline img{max-height:64px!important;width:auto!important}
 
-  .head-doc .doc-title{font-size:14px}
+  .head-doc-top .doc-title{font-size:14px}
 
   .inv-meta{gap:5px;margin-bottom:8px}
 
@@ -172,39 +172,41 @@ body.page-a4 .doc{
 
 
 
-.doc-head{display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:10px 14px;border-bottom:2px solid #1a3a5c;padding-bottom:12px;margin-bottom:12px}
+.doc-head{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:4px 14px;align-items:center;border-bottom:2px solid #1a3a5c;padding-bottom:10px;margin-bottom:12px}
 
-.head-co{text-align:right;align-self:start;font-size:10px;line-height:1.55}
+.head-logo-inline{grid-column:1;grid-row:1;align-self:center;margin:0}
 
-html[lang="en"] .head-co{text-align:left}
-
-.head-logo-inline{margin-bottom:8px}
-
-.head-logo-inline img{width:{{ logo_width }}px;height:auto;max-height:{{ logo_width + 36 }}px;object-fit:contain;display:block}
+.head-logo-inline img{width:{{ logo_width }}px;height:auto;max-height:{{ logo_width + 20 }}px;object-fit:contain;display:block}
 
 html[lang="ar"] .head-logo-inline img{margin-right:0;margin-left:auto}
 
 html[lang="en"] .head-logo-inline img{margin-left:0;margin-right:auto}
 
-.head-co .lbl{color:#666;font-size:9px}
+.co-details{grid-column:1;grid-row:2;font-size:10px;line-height:1.35;margin-top:0}
 
-.head-co .val{font-weight:600}
+.co-details div{margin-bottom:1px}
 
-.head-co .val.ltr{direction:ltr;display:inline-block}
+.co-details .lbl{color:#666;font-size:9px}
 
+.co-details .val{font-weight:600}
 
+.co-details .val.ltr{direction:ltr;display:inline-block}
 
-.head-doc{text-align:left;align-self:start;justify-self:end}
+.head-doc-top{grid-column:2;grid-row:1;align-self:center;justify-self:end;text-align:left}
 
-html[lang="en"] .head-doc{text-align:right}
+html[lang="en"] .head-doc-top{text-align:right}
 
-.head-doc .doc-title{font-size:16px;font-weight:800;color:#1a3a5c}
+.head-doc-top .doc-title{font-size:16px;font-weight:800;color:#1a3a5c;line-height:1.2}
 
-.head-doc .doc-title-en{font-size:10px;color:#666;direction:ltr;margin-top:2px}
+.head-doc-top .doc-title-en{font-size:10px;color:#666;direction:ltr;margin-top:1px;line-height:1.2}
 
-.head-doc .doc-num{font-size:12px;color:#c0392b;font-weight:700;margin-top:6px;direction:ltr}
+.head-doc-meta{grid-column:2;grid-row:2;justify-self:end;text-align:left;font-size:10px}
 
-.head-doc .doc-date-lbl{font-size:9px;color:#666;margin-top:4px}
+html[lang="en"] .head-doc-meta{text-align:right}
+
+.head-doc-meta .doc-date-lbl{font-size:9px;color:#666;margin-top:2px}
+
+.head-doc-meta .doc-num{font-size:12px;color:#c0392b;font-weight:700;margin-top:2px;direction:ltr}
 
 
 
@@ -326,7 +328,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   <div class="toolbar-title">
 
-    <span>{{ po_t.toolbar_title }} {{ order.code }} <span style="opacity:.6;font-size:11px">(v2.3)</span></span>
+    <span>{{ po_t.toolbar_title }} {{ order.code }} <span style="opacity:.6;font-size:11px">(v2.4)</span></span>
 
     <div class="toolbar-lang no-print">
 
@@ -386,37 +388,41 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   <div class="doc-head">
 
-    <div class="head-co">
+    {% if brand_logo_url %}
 
-      {% if brand_logo_url %}
+    <div class="head-logo-inline">
 
-      <div class="head-logo-inline">
-
-        <img src="{{ brand_logo_url }}" alt="">
-
-      </div>
-
-      {% endif %}
-
-      <div class="co-details">
-
-        {% if s and s.phone %}<div><span class="lbl">{{ po_t.phone }} </span><span class="val ltr">{{ s.phone }}</span></div>{% endif %}
-
-        {% if s and s.vat_number %}<div><span class="lbl">{{ po_t.vat }} </span><span class="val ltr">{{ s.vat_number }}</span></div>{% endif %}
-
-        {% if s and s.cr_number %}<div><span class="lbl">{{ po_t.cr }} </span><span class="val ltr">{{ s.cr_number }}</span></div>{% endif %}
-
-        {% if s and s.address %}<div><span class="lbl">{{ po_t.address }} </span><span class="val">{{ s.address }}</span></div>{% endif %}
-
-      </div>
+      <img src="{{ brand_logo_url }}" alt="">
 
     </div>
 
-    <div class="head-doc">
+    {% else %}
+
+    <div class="head-logo-inline"></div>
+
+    {% endif %}
+
+    <div class="head-doc-top">
 
       <div class="doc-title">{{ po_t.doc_title }}</div>
 
       <div class="doc-title-en">{{ po_t.doc_title_en }}</div>
+
+    </div>
+
+    <div class="co-details">
+
+      {% if s and s.phone %}<div><span class="lbl">{{ po_t.phone }} </span><span class="val ltr">{{ s.phone }}</span></div>{% endif %}
+
+      {% if s and s.vat_number %}<div><span class="lbl">{{ po_t.vat }} </span><span class="val ltr">{{ s.vat_number }}</span></div>{% endif %}
+
+      {% if s and s.cr_number %}<div><span class="lbl">{{ po_t.cr }} </span><span class="val ltr">{{ s.cr_number }}</span></div>{% endif %}
+
+      {% if s and s.address %}<div><span class="lbl">{{ po_t.address }} </span><span class="val">{{ s.address }}</span></div>{% endif %}
+
+    </div>
+
+    <div class="head-doc-meta">
 
       <div class="doc-date-lbl">{{ po_t.order_no }}</div>
 
