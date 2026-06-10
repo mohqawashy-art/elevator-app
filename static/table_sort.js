@@ -101,8 +101,41 @@
     };
   }
 
+  function lazy(options) {
+    var inst = null;
+    function ensure() {
+      if (!inst) {
+        inst = create(options);
+        inst.bindHeaders();
+      }
+      return inst;
+    }
+    function boot() {
+      ensure();
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', boot);
+    } else {
+      boot();
+    }
+    return {
+      apply: function (list) {
+        var s = ensure();
+        return s.apply(list);
+      },
+      updateIndicators: function () {
+        var s = inst;
+        if (s) s.updateIndicators();
+      },
+      bindHeaders: function () {
+        ensure();
+      },
+    };
+  }
+
   global.LiftCoreTableSort = {
     create: create,
+    lazy: lazy,
     parseCode: parseCode,
     parseDate: parseDate,
   };

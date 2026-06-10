@@ -833,7 +833,7 @@ const PRIORITY_BADGE = {
 
 let currentDeleteId = null;
 let filtered = [...VISITS];
-var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'date',
   defaultDir: 'desc',
   dateField: 'visit_date',

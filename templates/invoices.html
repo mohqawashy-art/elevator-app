@@ -484,7 +484,7 @@ let currentTab = 'all';
 let currentDeleteId = null;
 let filtered = [...INVOICES];
 let billableOps = [];
-var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'date',
   defaultDir: 'desc',
   dateField: 'invoice_date',

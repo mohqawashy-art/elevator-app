@@ -687,7 +687,7 @@ var currentDeleteId = null;
 var currentViewId = null;
 var currentEditId = null;
 var filtered = TECHNICIANS.slice();
-var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'desc',
   onChange: function () { renderTable(filtered); },

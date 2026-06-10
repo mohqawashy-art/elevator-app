@@ -448,7 +448,7 @@ const STATUS_BADGE = {
 
 let currentDeleteId = null;
 let filtered = [...PARTS];
-var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'date',
   defaultDir: 'desc',
   dateField: 'billing_date',

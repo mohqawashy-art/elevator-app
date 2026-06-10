@@ -376,7 +376,7 @@ const NEXT_CODE = {{ next_item_code | tojson }};
 
 const ORDER_BADGE = { 'كافي': 'badge-green', 'منخفض': 'badge-gold', 'نافد': 'badge-red' };
 let filtered = [...ITEMS];
-var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'desc',
   onChange: function () { renderTable(filtered); },

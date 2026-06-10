@@ -1186,7 +1186,7 @@ function lcClient(c) {
   return (window.LiftCoreDisplay) ? LiftCoreDisplay.clientName(c) : c.name;
 }
 
-var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'desc',
   getters: {

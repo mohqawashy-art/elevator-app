@@ -839,7 +839,7 @@ var DRILL_TITLES = {
 let currentDeleteId = null;
 let currentViewId = null;
 let filtered = CONTRACTS.slice();
-var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.create({
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'desc',
   onChange: function () { renderTable(filtered); },
