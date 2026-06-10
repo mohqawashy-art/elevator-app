@@ -338,6 +338,8 @@ with app.app_context():
             'purchase_orders': [
                 ('supplier_phone', 'VARCHAR(30)'),
                 ('supplier_email', 'VARCHAR(120)'),
+                ('signature_data', 'TEXT'),
+                ('pdf_path', 'VARCHAR(300)'),
             ],
         }
         for table, cols in _migrate_cols.items():
@@ -373,6 +375,7 @@ VISIT_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'visits')
 COMPANY_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'company')
 USER_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'users')
 CLIENT_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'clients')
+PO_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'purchase_orders')
 ALLOWED_TECH_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_LOGO_EXT = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
 ALLOWED_TECH_DOC_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
@@ -3207,7 +3210,15 @@ def purchase_orders_save():
 @app.route('/purchase-orders/<int:order_id>/print')
 def purchase_order_print(order_id):
     order = PurchaseOrder.query.get_or_404(order_id)
-    return render_template('purchase-order-print.html', order=order)
+    s = Settings.query.first()
+    logo_w = (getattr(s, 'logo_width_report', None) or 150) if s else 150
+    return render_template(
+        'purchase-order-print.html',
+        order=order,
+        logo_width=logo_w,
+        purchasing_phone=(getattr(s, 'phone', None) or '') if s else '',
+        purchasing_email=(getattr(s, 'email', None) or '') if s else '',
+    )
 
 
 @app.route('/purchase-orders/<int:order_id>/contact', methods=['POST'])
@@ -3217,6 +3228,34 @@ def purchase_order_update_contact(order_id):
     order.supplier_email = request.form.get('supplier_email', '').strip() or None
     db.session.commit()
     return redirect(url_for('purchase_order_print', order_id=order.id))
+
+
+@app.route('/purchase-orders/<int:order_id>/signature', methods=['POST'])
+def purchase_order_save_signature(order_id):
+    order = PurchaseOrder.query.get_or_404(order_id)
+    payload = request.get_json(silent=True) or {}
+    sig = (payload.get('signature') or '').strip()
+    if sig and sig.startswith('data:image/') and len(sig) < 600000:
+        order.signature_data = sig
+        db.session.commit()
+    return jsonify(ok=True)
+
+
+@app.route('/purchase-orders/<int:order_id>/pdf', methods=['POST'])
+def purchase_order_upload_pdf(order_id):
+    order = PurchaseOrder.query.get_or_404(order_id)
+    upload = request.files.get('pdf')
+    if not upload:
+        return jsonify(ok=False, error='لم يُرفَع ملف PDF'), 400
+    folder = os.path.join(PO_UPLOAD_ROOT, str(order_id))
+    os.makedirs(folder, exist_ok=True)
+    safe_code = re.sub(r'[^\w\-]', '_', order.code or f'PO-{order_id}')
+    filename = f'{safe_code}.pdf'
+    upload.save(os.path.join(folder, filename))
+    order.pdf_path = f'uploads/purchase_orders/{order_id}/{filename}'
+    db.session.commit()
+    pdf_url = url_for('static', filename=order.pdf_path, _external=True)
+    return jsonify(ok=True, url=pdf_url)
 
 
 @app.route('/purchase-orders/delete/<int:order_id>', methods=['POST'])

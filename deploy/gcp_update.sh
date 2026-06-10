@@ -72,7 +72,8 @@ test -f "$APP_DIR/templates/purchase-orders.html" && echo "  purchase-orders.htm
 grep -q "purchase-orders" "$APP_DIR/app.py" && echo "  purchase-orders route OK"
 test -f "$APP_DIR/templates/settings.html" && grep -q "settings_user_add" "$APP_DIR/app.py" && echo "  full settings UI OK"
 test -f "$APP_DIR/static/liftcore-shell.css" && echo "  liftcore-shell.css OK"
-test -f "$APP_DIR/templates/partials/app_header.html" && echo "  app_header partial OK"
+grep -q "letter-box" "$APP_DIR/templates/purchase-order-print.html" && echo "  PO print v2 (invoice layout + e-sig) OK"
+test -f "$APP_DIR/static/js/html2pdf.bundle.min.js" && echo "  html2pdf.js OK"
 
 echo ""
 echo "==> Done — https://app.liftcoreapp.com"

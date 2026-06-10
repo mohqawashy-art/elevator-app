@@ -448,6 +448,8 @@ class PurchaseOrder(db.Model):
     status = db.Column(db.String(30), default='مسودة')
     total_amount = db.Column(db.Float, default=0)
     notes = db.Column(db.Text)
+    signature_data = db.Column(db.Text)
+    pdf_path = db.Column(db.String(300))
     received_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
