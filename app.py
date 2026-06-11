@@ -3623,6 +3623,10 @@ def _po_print_labels(lang):
     return PO_PRINT_LABELS['en' if lang == 'en' else 'ar']
 
 
+def _has_arabic(text):
+    return bool(text) and any('\u0600' <= c <= '\u06FF' for c in str(text))
+
+
 def _po_item_name_en(item):
     if not item:
         return ''
@@ -3634,10 +3638,43 @@ def _po_item_name_en(item):
         return ''
     if ' — ' in notes:
         part = notes.split(' — ', 1)[0].strip()
-        if part and not any('\u0600' <= c <= '\u06FF' for c in part):
+        if part and not _has_arabic(part):
             return part
-    if not any('\u0600' <= c <= '\u06FF' for c in notes[:40]):
+    if not _has_arabic(notes[:40]):
         return notes
+    return ''
+
+
+def _po_line_label_en(line):
+    name_en = _po_item_name_en(line.item)
+    if name_en:
+        return name_en
+    if line.item and line.item.code:
+        return line.item.code
+    return '—'
+
+
+def _po_company_display_en(settings):
+    if not settings:
+        return 'LiftCore'
+    en = (getattr(settings, 'company_name_en', None) or '').strip()
+    if en:
+        return en
+    ar = (settings.company_name or '').strip()
+    if ar and not _has_arabic(ar):
+        return ar
+    return 'LiftCore'
+
+
+def _po_address_display_en(settings):
+    if not settings:
+        return ''
+    en = (getattr(settings, 'address_en', None) or '').strip()
+    if en:
+        return en
+    ar = (settings.address or '').strip()
+    if ar and not _has_arabic(ar):
+        return ar
     return ''
 
 
@@ -3750,6 +3787,13 @@ def _purchase_order_print_context(order, *, en_only=False):
     company_address_ar = (s.address or '').strip() if s else ''
     company_address_en = (getattr(s, 'address_en', None) or '').strip() if s else ''
     item_names_en = {line.id: _po_item_name_en(line.item) for line in order.lines}
+    item_labels_en = {line.id: _po_line_label_en(line) for line in order.lines}
+    if en_only:
+        company_display = _po_company_display_en(s)
+        address_display = _po_address_display_en(s)
+    else:
+        company_display = company_name_en or company_name_ar
+        address_display = company_address_en or company_address_ar
     return dict(
         order=order,
         logo_width=logo_w,
@@ -3768,9 +3812,10 @@ def _purchase_order_print_context(order, *, en_only=False):
         po_company_name_en=company_name_en,
         po_company_address_ar=company_address_ar,
         po_company_address_en=company_address_en,
-        po_company_display=company_name_en or company_name_ar,
-        po_address_display=company_address_en or company_address_ar,
+        po_company_display=company_display,
+        po_address_display=address_display,
         item_names_en=item_names_en,
+        item_labels_en=item_labels_en,
     )
 
 

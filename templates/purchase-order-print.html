@@ -21,7 +21,7 @@
 
 body{
 
-  font-family:Arial,'IBM Plex Sans Arabic','Traditional Arabic',Tahoma,sans-serif;
+  font-family:{% if en_only %}'DM Sans',Arial,Helvetica,sans-serif{% else %}Arial,'IBM Plex Sans Arabic','Traditional Arabic',Tahoma,sans-serif{% endif %};
 
   color:#1a3a5c;background:#e8ecf2;font-size:12px;
 
@@ -341,7 +341,7 @@ html[dir="ltr"] .head-doc{text-align:right}
     {% if not en_only %}
     <a href="{{ url_for('purchase_order_print_en', order_id=order.id) }}" class="btn btn-secondary btn-sm lc-open-tab" style="font-size:11px;padding:4px 10px">English only</a>
     {% else %}
-    <a href="{{ url_for('purchase_order_print', order_id=order.id) }}" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px">عربي / EN</a>
+    <a href="{{ url_for('purchase_order_print', order_id=order.id) }}" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px">Bilingual AR+EN</a>
     {% endif %}
 
   </div>
@@ -529,7 +529,7 @@ html[dir="ltr"] .head-doc{text-align:right}
           {% set name_en = item_names_en.get(line.id, '') %}
 
           {% if en_only %}
-          {{ name_en or (line.item.name if line.item else '—') }}
+          {{ item_labels_en.get(line.id, '—') }}
           {% else %}
           {{ line.item.name if line.item else '—' }}
           {% if name_en %}<div class="item-name-en">{{ name_en }}</div>{% endif %}
