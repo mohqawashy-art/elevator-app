@@ -94,7 +94,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 <script src="/static/liftcore-dates.js" defer></script>
 <script src="/static/liftcore-format.js?v=15"></script>
 </head>
-<body>
+<body{% if not editable or request.args.get('popup') == '1' %} data-lc-popup="1"{% endif %}>
 
 {% if not editable %}
 <div class="readonly-banner">

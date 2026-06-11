@@ -52,8 +52,8 @@ a.back{color:var(--muted);text-decoration:none;font-size:13px;display:inline-blo
 <a class="btn-report" href="{{ visit.report_url }}">📋 فتح محضر الفحص</a>
 
 {% if visit.status == 'مكتملة' %}
-<a class="btn-report secondary" href="/maintenance-visits/{{ visit.id }}/report?print=1" target="_blank">🖨️ معاينة التقرير</a>
+<a class="btn-report secondary lc-open-tab" href="/maintenance-visits/{{ visit.id }}/report?print=1">🖨️ معاينة التقرير</a>
 {% endif %}
-<script src="/static/liftcore-nav.js?v=1"></script>
+<script src="/static/liftcore-nav.js?v=2"></script>
 </body>
 </html>

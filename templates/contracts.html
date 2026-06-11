@@ -1181,7 +1181,8 @@ function editFromView() {
 function printContractForm(id) {
   var cid = id || currentViewId;
   if (!cid) return;
-  window.open('/contracts/' + cid + '/print', '_blank');
+  if (window.LiftCoreNav) LiftCoreNav.openTab('/contracts/' + cid + '/print');
+  else window.open('/contracts/' + cid + '/print?popup=1', '_blank');
 }
 
 // ===== حذف =====

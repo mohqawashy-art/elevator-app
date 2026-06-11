@@ -320,7 +320,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
 </head>
 
-<body class="page-a4">
+<body class="page-a4"{% if request.args.get('popup') == '1' %} data-lc-popup="1"{% endif %}>
 
 {% set s = company_settings %}
 

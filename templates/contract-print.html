@@ -93,7 +93,7 @@ body{
 }
 </style>
 </head>
-<body>
+<body{% if request.args.get('popup') == '1' %} data-lc-popup="1"{% endif %}>
 
 <div class="toolbar">
   <span>طباعة على كليشة — Arial (Body CS) 18pt</span>
@@ -216,6 +216,6 @@ body{
 </div>
 
 </div>
-<script src="/static/liftcore-nav.js?v=1"></script>
+<script src="/static/liftcore-nav.js?v=2"></script>
 </body>
 </html>
