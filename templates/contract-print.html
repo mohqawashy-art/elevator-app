@@ -5,15 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>عقد {{ contract_code }}</title>
 <style>
-/* مطابق لـ CN0000.docx — Arial، بدون كليشة، هامش علوي للورق المطبوّع */
+/* طباعة العقد — Arial (Body CS) 18pt، صفحات متتابعة */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 @page{
   size:A4;
   margin:33.3mm 17.9mm 25.4mm 14.3mm;
 }
-html{font-size:16pt}
+html{font-size:18pt}
 body{
-  font-family:Arial,'Traditional Arabic',Tahoma,sans-serif;
+  font-family:"Arial (Body CS)",Arial,Tahoma,sans-serif;
+  font-size:18pt;
   color:#000;background:#fff;
   -webkit-print-color-adjust:exact;print-color-adjust:exact;
 }
@@ -31,142 +32,62 @@ body{
   max-width:210mm;margin:48px auto 24px;
   padding:33.3mm 17.9mm 25.4mm 14.3mm;
   background:#fff;
-}
-@media print{
-  .toolbar{display:none!important}
-  .doc{margin:0;padding:0;max-width:none}
-  @page{
-    size:A4;
-    margin:26mm 12mm 16mm 11mm;
-  }
-  .w-empty-top{height:10pt}
-  .doc-head{margin-bottom:14pt;padding-bottom:0}
-  .doc-head-title{font-size:17pt;line-height:1.35;margin-bottom:6pt}
-  .doc-head-num{font-size:17pt;line-height:1.3}
-  .doc-intro{margin-top:4pt}
-  .w-t16-both,.w-t14-both,.w-maint-line{
-    line-height:1.06;
-    margin:0 0 0;
-  }
-  .w-t16-both{font-size:15pt}
-  .w-t14-both{font-size:13pt}
-  .w-maint-line{font-size:12.5pt}
-  .w-maint-head{font-size:13pt;font-weight:700}
-  .w-empty{height:8pt}
-  .signatures-block{margin-top:12pt}
-  .sig-title{font-size:14pt;margin-bottom:8pt}
-  .sig-party-name{font-size:12pt;margin-bottom:4pt;min-height:1.6em}
-  .sig-label{font-size:12pt;margin-bottom:2pt}
-  .sig-pad{height:34pt;margin-top:6pt}
-  .signatures-row{gap:20pt}
-  .w-t16-both,.w-t14-both,.w-maint-line,.w-maint-head{
-    orphans:1;widows:1;
-  }
+  font-family:"Arial (Body CS)",Arial,Tahoma,sans-serif;
+  font-size:18pt;
 }
 
-/* رأس العقد — العنوان ورقم العقد */
 .doc-head{
   text-align:center;
-  margin-bottom:32pt;
+  margin-bottom:24pt;
   padding-bottom:4pt;
 }
-.doc-head-title{
+.doc-head-title,.doc-head-num{
+  font-family:"Arial (Body CS)",Arial,Tahoma,sans-serif;
   font-size:18pt;font-weight:700;
-  line-height:1.65;
-  margin:0 0 14pt;
-  letter-spacing:0.02em;
+  line-height:1.3;margin:0;
 }
-.doc-head-num{
-  font-size:18pt;font-weight:700;
-  line-height:1.5;
-  margin:0;
+.doc-head-title{margin-bottom:10pt}
+.doc-intro{margin-top:6pt}
+
+.w-body,.w-t16-both,.w-t14-both,.w-maint-line,.w-maint-head{
+  font-family:"Arial (Body CS)",Arial,Tahoma,sans-serif;
+  font-size:18pt;font-weight:400;
+  text-align:justify;
+  line-height:1.2;
+  margin:0 0 2pt;
 }
-.doc-intro{
-  margin-top:8pt;
-}
-/* sz=36 → 18pt — العنوان (احتياط) */
-.w-t18-center{
-  text-align:center;font-size:18pt;font-weight:700;
-  line-height:1.15;margin:0;
-}
-/* sz=32 → 16pt — المتن الأساسي والقوائم */
-.w-t16-both{
-  text-align:justify;font-size:16pt;font-weight:400;
-  line-height:1.15;margin:0 0 2pt;
-}
-/* sz=28 → 14pt — البنود من 3 إلى 22 */
-.w-t14-both{
-  text-align:justify;font-size:14pt;font-weight:400;
-  line-height:1.15;margin:0 0 2pt;
-}
-/* sz=40 → 20pt — التوقيعات (احتياط) */
-.w-t20-both{
-  text-align:justify;font-size:20pt;font-weight:400;
-  line-height:1.15;margin:0;
-}
-/* توقيع الطرفين — الأول يمين، الثاني يسار */
+.w-maint-head{font-weight:700}
+
 .signatures-block{
-  margin-top:28pt;
+  margin-top:20pt;
   page-break-inside:avoid;
   break-inside:avoid;
 }
 .signatures-row{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:32pt;
+  gap:28pt;
   direction:rtl;
   align-items:start;
 }
-.sig-col{
-  text-align:center;
-  min-width:0;
+.sig-col{text-align:center;min-width:0}
+.sig-title,.sig-party-name,.sig-label{
+  font-family:"Arial (Body CS)",Arial,Tahoma,sans-serif;
+  font-size:18pt;
+  line-height:1.3;
 }
-.sig-title{
-  font-size:16pt;
-  font-weight:700;
-  line-height:1.4;
-  margin-bottom:14pt;
-}
-.sig-party-name{
-  font-size:13pt;
-  font-weight:600;
-  line-height:1.5;
-  margin-bottom:6pt;
-  min-height:2.2em;
-  padding:0 8pt;
-}
-.sig-label{
-  font-size:13pt;
-  line-height:1.4;
-  margin-bottom:4pt;
-}
-.sig-pad{
-  height:52pt;
-  margin-top:10pt;
-}
-.w-empty{
-  height:18pt;margin:0;padding:0;
-}
-.w-empty-top{
-  height:28pt;margin:0;padding:0;
-}
-.w-spacer-sm{height:8pt}
-.w-spacer-md{height:14pt}
-.w-maint-line{
-  text-align:justify;font-size:14pt;font-weight:400;
-  line-height:1.12;margin:0 0 1pt;
-}
-.w-maint-head{
-  text-align:justify;font-size:15pt;font-weight:700;
-  line-height:1.12;margin:0 0 1pt;
-}
-/* فواصل الصفحات — 3 صفحات */
-.w-page-break-before{
-  page-break-before:always;
-  break-before:page;
-}
+.sig-title{font-weight:700;margin-bottom:10pt}
+.sig-party-name{font-weight:600;margin-bottom:6pt;min-height:2em;padding:0 8pt}
+.sig-label{margin-bottom:4pt}
+.sig-pad{height:48pt;margin-top:8pt}
+
+.w-empty{height:14pt}
+.w-empty-top{height:24pt}
+
 @media print{
-  .w-t16-both,.w-t14-both,.w-t20-both{
+  .toolbar{display:none!important}
+  .doc{margin:0;padding:0;max-width:none}
+  .w-body,.w-t16-both,.w-t14-both,.w-maint-line,.w-maint-head{
     orphans:2;widows:2;
   }
 }
@@ -175,7 +96,7 @@ body{
 <body>
 
 <div class="toolbar">
-  <span>طباعة على كليشة — بدون رأس الصفحة</span>
+  <span>طباعة على كليشة — Arial (Body CS) 18pt</span>
   <div>
     <a class="back" href="{{ url_for('contracts') }}">← العقود</a>
     <button type="button" class="print" onclick="window.print()">طباعة</button>
@@ -191,36 +112,36 @@ body{
   <p class="doc-head-num">عقد رقم ({{ contract_code }})</p>
 </div>
 
-<p class="w-t16-both doc-intro">انه في يوم {{ sign_day }} {{ sign_hijri }} الموافق {{ sign_gregorian }} م، تم الاتفاق والتراضي بين كل من الطرف الأول: شركة / <strong>{{ company.company_name }}</strong>                               ومقرها: {{ company.city_full }} </p>
+<p class="w-body doc-intro">انه في يوم {{ sign_day }} {{ sign_hijri }} الموافق {{ sign_gregorian }} م، تم الاتفاق والتراضي بين كل من الطرف الأول: شركة / <strong>{{ company.company_name }}</strong>                               ومقرها: {{ company.city_full }} </p>
 
-<p class="w-t16-both">هاتف :{{ company.phone }}                                   بريد الكتروني: {{ company.email }}</p>
+<p class="w-body">هاتف :{{ company.phone }}                                   بريد الكتروني: {{ company.email }}</p>
 
-<p class="w-t16-both">ويمثلها السيد/ {{ company.rep_name }}                                    جوال: {{ company.rep_mobile }}</p>
+<p class="w-body">ويمثلها السيد/ {{ company.rep_name }}                                    جوال: {{ company.rep_mobile }}</p>
 
-<p class="w-t16-both">الطرف الثاني: {% if customer and (customer.entity_type or 'فرد') == 'شركة' %}شركة / {% else %}السيد / {% endif %}{% if customer %}<strong>{{ customer.name }}</strong>{% endif %}</p>
+<p class="w-body">الطرف الثاني: {% if customer and (customer.entity_type or 'فرد') == 'شركة' %}شركة / {% else %}السيد / {% endif %}{% if customer %}<strong>{{ customer.name }}</strong>{% endif %}</p>
 
-<p class="w-t16-both">وعنوانه /   {{ customer_address }} </p>
+<p class="w-body">وعنوانه /   {{ customer_address }} </p>
 
-<p class="w-t16-both">هاتف: {{ customer.phone or '0000000000' }}                                                     {% if customer and (customer.entity_type or 'فرد') == 'شركة' %}رقم السجل التجاري: {{ customer.cr_number or '0000000000' }}{% else %}رقم هوية المتعاقد: {{ customer.national_id or '0000000000' }}{% endif %}</p>
+<p class="w-body">هاتف: {{ customer.phone or '0000000000' }}                                                     {% if customer and (customer.entity_type or 'فرد') == 'شركة' %}رقم السجل التجاري: {{ customer.cr_number or '0000000000' }}{% else %}رقم هوية المتعاقد: {{ customer.national_id or '0000000000' }}{% endif %}</p>
 
-<p class="w-t16-both">على البنود التالية: </p>
+<p class="w-body">على البنود التالية: </p>
 
-<p class="w-t16-both">1ـ وافق الطرف الأول بالقيام بأعمال الفحص والصيانة الدورية {{ maint_phrase }} لعدد ({{ elevator_count }}) مصعد خاص بالطرف الثاني.</p>
+<p class="w-body">1ـ وافق الطرف الأول بالقيام بأعمال الفحص والصيانة الدورية {{ maint_phrase }} لعدد ({{ elevator_count }}) مصعد خاص بالطرف الثاني.</p>
 
-<p class="w-t16-both">2ـ مواصفات مصعد / مصاعد الطرف الثاني كالاتي:</p>
+<p class="w-body">2ـ مواصفات مصعد / مصاعد الطرف الثاني كالاتي:</p>
 
 {% for el in elevators %}
-<p class="w-t16-both">النــــــــــوع / {{ el.type }}</p>
-<p class="w-t16-both">عدد الوقفات /   {{ el.floors }}     وقفات</p>
-<p class="w-t16-both">نوع الأبواب / {{ el.doors }}</p>
-<p class="w-t16-both">الحمولة /      {{ el.capacity }}        كجم</p>
+<p class="w-body">النــــــــــوع / {{ el.type }}</p>
+<p class="w-body">عدد الوقفات /   {{ el.floors }}     وقفات</p>
+<p class="w-body">نوع الأبواب / {{ el.doors }}</p>
+<p class="w-body">الحمولة /      {{ el.capacity }}        كجم</p>
 {% endfor %}
 
-<p class="w-t14-both">3ـ يقوم الطرف الأول بفحص وصيانة وإصلاح المصاعد بأيدي فنية مدربة ومتخصصة.</p>
-<p class="w-t14-both">4ـ يتحمل الطرف الأول أي خسائر أو أضرار قد تنشأ عن استخدامه لعمالة غير مدربة ومتخصصة في الصيانة أو الفحص أو الإصلاح.</p>
-<p class="w-t14-both">5ـ يقوم الطرف الأول بتأمين فني يكون متواجدا في الشركة خلال (24) ساعة لتقديم خدمة الطوارئ وإصلاح الأعطال الطارئة التي يبلغ بها الطرف الثاني.</p>
-<p class="w-t14-both">6ـ يقوم الطرف الأول بأعمال الفحص والصيانة والتنظيف والتزييت والتشحيم والإصلاح الشهري، وتشمل ما يلي:</p>
-<p class="w-maint-head w-page-break-before">في غرفة المحرك:</p>
+<p class="w-body">3ـ يقوم الطرف الأول بفحص وصيانة وإصلاح المصاعد بأيدي فنية مدربة ومتخصصة.</p>
+<p class="w-body">4ـ يتحمل الطرف الأول أي خسائر أو أضرار قد تنشأ عن استخدامه لعمالة غير مدربة ومتخصصة في الصيانة أو الفحص أو الإصلاح.</p>
+<p class="w-body">5ـ يقوم الطرف الأول بتأمين فني يكون متواجدا في الشركة خلال (24) ساعة لتقديم خدمة الطوارئ وإصلاح الأعطال الطارئة التي يبلغ بها الطرف الثاني.</p>
+<p class="w-body">6ـ يقوم الطرف الأول بأعمال الفحص والصيانة والتنظيف والتزييت والتشحيم والإصلاح الشهري، وتشمل ما يلي:</p>
+<p class="w-maint-head">في غرفة المحرك:</p>
 <p class="w-maint-line">فحص زيت المحرك والتأكد من سيره الطبيعي.</p>
 <p class="w-maint-line">فحص قماش الفرامل.</p>
 <p class="w-maint-line">فحص عمل الفرامل وتضبطيه وتشحيم المحاور </p>
@@ -258,24 +179,23 @@ body{
 <p class="w-maint-line">فحص التوصيلات الكهربائية أسفل المصاعد والتأكد من سلامتها </p>
 <p class="w-maint-line">تنظيف الحفرة </p>
 <p class="w-maint-line">فحص أي أجزاء أخرى أو حسب ما يراه أحد طرفي العقد.</p>
-<p class="w-t14-both w-page-break-before">7ـ يقوم الطرف الأول بتوفير مواد التنظيف والتشحيم.</p>
-<p class="w-t14-both">8ـ يقوم الطرف الأول بإصلاح جميع الأعطال التي تظهر أثناء الفحص.</p>
-<p class="w-t14-both">9ـ يقوم الطرف الأول بإصلاح جميع الأعطال التي تحدث للمصاعد بمجرد التبليغ من قبل الطرف الثاني فيما لا يتجاوز الأربع والعشرين ساعة </p>
-<p class="w-t14-both">10ـ يتحمل الطرف الثاني قيمة قطع الغيار التي يتم تركيبها في المصعد نتيجة الاستهلاك او سوء الاستعمال من خلال تقديم فاتورة من الطرف الأول موضحا بها سعر القطع والفترة الزمنية اللازمة ليتم اعتمادها من قبل الطرف الثاني لتوريدها وتركيبها.</p>
-<p class="w-t14-both">11ـ يقوم الطرف الأول بتسليم الطرف الثاني كافة قطع الغيار المستبدلة رسميا.</p>
-<p class="w-t14-both">12ـ يتحمل الطرف الأول جميع الخسائر والأضرار التي قد تحدث في حالة تركيب قطع غيار مقلدة عن طريقه، وكذا الحال في تحمل المسؤولية على الطرف الثاني عند تركيبها من خلاله.</p>
-<p class="w-t14-both">13ـ يتعهد الطرف الأول بتدريب الشخص أو الحارس المعين من قبل الطرف الثاني عالي تحريك المصاعد يدويا في حالة الطوارئ، مع تسليمه مفتاح خاص لأبواب المصاعد.</p>
-<p class="w-t14-both">14ـ يتعهد الطرف الثاني بإتباع الإرشادات المقدمة من الطرف الأول بخصوص استعمال المصعد / المصاعد وفي حالة عدم إتباعه هذه الإرشادات يخلي مسئولية الطرف الأول تماما من أية أضرار قد تحدث لا سمح الله من جراء ذلك.</p>
-<p class="w-t14-both">15ـ اتفق الطرفان على إن تكون قيمة عقد الصيانة هو مبلغ ({{ amount }}) ريال فقط غير شامل ضريبة القيمة المضافة {{ amount_words }} ريال لا غير، سنويا لقاء الأعمال والخدمات المذكورة أعلاه.</p>
-<p class="w-t14-both">16ـ طريق الدفع: {{ pay_phrase }}</p>
-<p class="w-t14-both">17ـ في حالة انتقال ملكية المبنى أثناء سريان العقد فعلى الطرف الثاني إشعار الطرف الأول باسم المالك الجديد وعنوانه كاملا مع إخلاء التزاماته التعاقدية مع الطرف الأول </p>
-<p class="w-t14-both">18ـ إذا ما أراد الطرف الثاني إلغاء هذا العقد لأي سبب كان فلا يحق له المطالبة بأية مبالغ يكون قد دفعها مقدما للطرف الأول، إذ تصبح هذه المبالغ من حق الطرف الأول.</p>
-
-<p class="w-t14-both">19ـ في حالة إخلال الطرف الأول وعدم تجاوبه بأعمال الصيانة في مواعيدها المقررة، فيتوجب على الطرف الأول دفع قيمة ما تم أخذه من الطرف الثاني في حالة عدم وجود مشهد الصيانة الشهرية وذلك عن طريق إدارة الحقوق المدنية.</p>
-<p class="w-t14-both">20ـ من المتفق عليه بين الطرفين بأن فواتير قطع الغيار المقدمة من الطرف الأول تدفع في مهلة أقصاها (5 يوم)، ويحق للطرف الأول إيقاف الصيانة بعد تبليغ إدارة الدفاع المدني خطيا بذلك في حالة عدم قيام الطرف الثاني بتسديد </p>
-<p class="w-t14-both">المبالغ المستحقة في أوقاتها وإذا ما قرر الطرفان إيقاف العمل قبل انتهاء مدته يحتفظ الطرف الأول بكامل حقوقه المالية عن الفترة السابقة لإنهاء العقد.</p>
-<p class="w-t14-both">21ـ يعمل بهذا العقد لمدة سنة كاملة تبدأ من {{ start_gregorian }} م إلى {{ end_gregorian }} م والتوقيع عليه من الطرفين واستلام الطرف الأول الدفعة المتوجبة.</p>
-<p class="w-t14-both">22ـ حرر هذا العقد من نسختين وتم توقيع الطرفين على جميع صفحاتها وبيد كل طرف نسخة للمعمل بموجبها ولإبرازه عند اللزوم لجهات الاختصاص في أي نزاع لا قدر الله قد ينشأ بين الطرفين. </p>
+<p class="w-body">7ـ يقوم الطرف الأول بتوفير مواد التنظيف والتشحيم.</p>
+<p class="w-body">8ـ يقوم الطرف الأول بإصلاح جميع الأعطال التي تظهر أثناء الفحص.</p>
+<p class="w-body">9ـ يقوم الطرف الأول بإصلاح جميع الأعطال التي تحدث للمصاعد بمجرد التبليغ من قبل الطرف الثاني فيما لا يتجاوز الأربع والعشرين ساعة </p>
+<p class="w-body">10ـ يتحمل الطرف الثاني قيمة قطع الغيار التي يتم تركيبها في المصعد نتيجة الاستهلاك او سوء الاستعمال من خلال تقديم فاتورة من الطرف الأول موضحا بها سعر القطع والفترة الزمنية اللازمة ليتم اعتمادها من قبل الطرف الثاني لتوريدها وتركيبها.</p>
+<p class="w-body">11ـ يقوم الطرف الأول بتسليم الطرف الثاني كافة قطع الغيار المستبدلة رسميا.</p>
+<p class="w-body">12ـ يتحمل الطرف الأول جميع الخسائر والأضرار التي قد تحدث في حالة تركيب قطع غيار مقلدة عن طريقه، وكذا الحال في تحمل المسؤولية على الطرف الثاني عند تركيبها من خلاله.</p>
+<p class="w-body">13ـ يتعهد الطرف الأول بتدريب الشخص أو الحارس المعين من قبل الطرف الثاني عالي تحريك المصاعد يدويا في حالة الطوارئ، مع تسليمه مفتاح خاص لأبواب المصاعد.</p>
+<p class="w-body">14ـ يتعهد الطرف الثاني بإتباع الإرشادات المقدمة من الطرف الأول بخصوص استعمال المصعد / المصاعد وفي حالة عدم إتباعه هذه الإرشادات يخلي مسئولية الطرف الأول تماما من أية أضرار قد تحدث لا سمح الله من جراء ذلك.</p>
+<p class="w-body">15ـ اتفق الطرفان على إن تكون قيمة عقد الصيانة هو مبلغ ({{ amount }}) ريال فقط غير شامل ضريبة القيمة المضافة {{ amount_words }} ريال لا غير، سنويا لقاء الأعمال والخدمات المذكورة أعلاه.</p>
+<p class="w-body">16ـ طريق الدفع: {{ pay_phrase }}</p>
+<p class="w-body">17ـ في حالة انتقال ملكية المبنى أثناء سريان العقد فعلى الطرف الثاني إشعار الطرف الأول باسم المالك الجديد وعنوانه كاملا مع إخلاء التزاماته التعاقدية مع الطرف الأول </p>
+<p class="w-body">18ـ إذا ما أراد الطرف الثاني إلغاء هذا العقد لأي سبب كان فلا يحق له المطالبة بأية مبالغ يكون قد دفعها مقدما للطرف الأول، إذ تصبح هذه المبالغ من حق الطرف الأول.</p>
+<p class="w-body">19ـ في حالة إخلال الطرف الأول وعدم تجاوبه بأعمال الصيانة في مواعيدها المقررة، فيتوجب على الطرف الأول دفع قيمة ما تم أخذه من الطرف الثاني في حالة عدم وجود مشهد الصيانة الشهرية وذلك عن طريق إدارة الحقوق المدنية.</p>
+<p class="w-body">20ـ من المتفق عليه بين الطرفين بأن فواتير قطع الغيار المقدمة من الطرف الأول تدفع في مهلة أقصاها (5 يوم)، ويحق للطرف الأول إيقاف الصيانة بعد تبليغ إدارة الدفاع المدني خطيا بذلك في حالة عدم قيام الطرف الثاني بتسديد </p>
+<p class="w-body">المبالغ المستحقة في أوقاتها وإذا ما قرر الطرفان إيقاف العمل قبل انتهاء مدته يحتفظ الطرف الأول بكامل حقوقه المالية عن الفترة السابقة لإنهاء العقد.</p>
+<p class="w-body">21ـ يعمل بهذا العقد لمدة سنة كاملة تبدأ من {{ start_gregorian }} م إلى {{ end_gregorian }} م والتوقيع عليه من الطرفين واستلام الطرف الأول الدفعة المتوجبة.</p>
+<p class="w-body">22ـ حرر هذا العقد من نسختين وتم توقيع الطرفين على جميع صفحاتها وبيد كل طرف نسخة للمعمل بموجبها ولإبرازه عند اللزوم لجهات الاختصاص في أي نزاع لا قدر الله قد ينشأ بين الطرفين. </p>
 <p class="w-empty">&nbsp;</p>
 
 <div class="signatures-block">
