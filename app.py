@@ -4169,8 +4169,6 @@ def settings_signatory_add():
         db.session.rollback()
         app.logger.exception('settings_signatory_add failed')
         msg = str(exc) or 'تعذّر حفظ التوقيع'
-        if 'cryptography' in msg.lower():
-            msg = 'حزمة cryptography غير مثبتة على السيرفر — نفّذ: pip install cryptography'
         session['settings_notice'] = msg
     return _settings_redirect('signatures')
 

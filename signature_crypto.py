@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import os
 from hashlib import sha256
 
@@ -12,23 +14,60 @@ except ImportError:  # pragma: no cover
     Fernet = None
     InvalidToken = Exception
 
+_FALLBACK_MAGIC = b'LCX1'
+
+
+def _derive_key(secret: str) -> bytes:
+    return sha256((secret or 'liftcore').encode('utf-8')).digest()
+
 
 def _fernet(secret: str):
     if not Fernet:
-        raise RuntimeError('حزمة cryptography غير مثبتة على السيرفر')
-    key = base64.urlsafe_b64encode(sha256((secret or 'liftcore').encode('utf-8')).digest())
+        return None
+    key = base64.urlsafe_b64encode(_derive_key(secret))
     return Fernet(key)
 
 
+def _fallback_encrypt(data: bytes, secret: str) -> bytes:
+    key = _derive_key(secret)
+    payload = bytearray(b ^ key[i % len(key)] for i, b in enumerate(data))
+    sig = hmac.new(key, bytes(payload), hashlib.sha256).digest()
+    return _FALLBACK_MAGIC + sig + bytes(payload)
+
+
+def _fallback_decrypt(token: bytes, secret: str) -> bytes:
+    if not token.startswith(_FALLBACK_MAGIC) or len(token) < len(_FALLBACK_MAGIC) + 32:
+        raise ValueError('تعذّر فك تشفير التوقيع')
+    key = _derive_key(secret)
+    sig = token[len(_FALLBACK_MAGIC):len(_FALLBACK_MAGIC) + 32]
+    payload = token[len(_FALLBACK_MAGIC) + 32:]
+    expected = hmac.new(key, payload, hashlib.sha256).digest()
+    if not hmac.compare_digest(sig, expected):
+        raise ValueError('تعذّر فك تشفير التوقيع')
+    return bytes(b ^ key[i % len(key)] for i, b in enumerate(payload))
+
+
 def encrypt_bytes(data: bytes, secret: str) -> bytes:
-    return _fernet(secret).encrypt(data)
+    fernet = _fernet(secret)
+    if fernet:
+        return fernet.encrypt(data)
+    return _fallback_encrypt(data, secret)
 
 
 def decrypt_bytes(token: bytes, secret: str) -> bytes:
+    if token.startswith(_FALLBACK_MAGIC):
+        return _fallback_decrypt(token, secret)
+    fernet = _fernet(secret)
+    if not fernet:
+        raise ValueError('تعذّر فك تشفير التوقيع')
     try:
-        return _fernet(secret).decrypt(token)
+        return fernet.decrypt(token)
     except InvalidToken as exc:
         raise ValueError('تعذّر فك تشفير التوقيع') from exc
+
+
+def using_strong_crypto() -> bool:
+    return Fernet is not None
 
 
 def _image_mime(raw: bytes) -> str:

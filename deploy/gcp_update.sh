@@ -41,8 +41,9 @@ if [ -d "$VENV" ]; then
   if [ -f requirements.txt ]; then
     pip install -q -r requirements.txt
   else
-    pip install -q flask flask-sqlalchemy gunicorn werkzeug
+    pip install -q flask flask-sqlalchemy gunicorn werkzeug cryptography
   fi
+  python -c "import cryptography; print('  cryptography OK')" 2>/dev/null || echo "  WARN: cryptography missing — pip install cryptography"
 else
   echo "==> no venv at $VENV — skipping pip"
 fi

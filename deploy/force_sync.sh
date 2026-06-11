@@ -81,7 +81,7 @@ VENV="${VENV:-$APP_DIR/.venv}"
 if [ -d "$VENV" ]; then
   # shellcheck disable=SC1091
   source "$VENV/bin/activate"
-  pip install -q -r requirements.txt 2>/dev/null || pip install -q flask flask-sqlalchemy gunicorn werkzeug
+  pip install -q -r requirements.txt 2>/dev/null || pip install -q flask flask-sqlalchemy gunicorn werkzeug cryptography
 fi
 
 echo ""
