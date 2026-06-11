@@ -3489,6 +3489,14 @@ def inventory_delete(id):
 PO_STATUSES = ['مسودة', 'مرسل', 'مستلم', 'ملغي']
 PO_STATUS_EN = {'مسودة': 'Draft', 'مرسل': 'Sent', 'مستلم': 'Received', 'ملغي': 'Cancelled'}
 
+try:
+    from inventory_parts_data import ITEMS as _PO_CATALOG_ITEMS
+except ImportError:
+    _PO_CATALOG_ITEMS = []
+_PO_ITEM_EN_BY_CODE = {
+    code: name_en for _cat, code, _name_ar, name_en, _desc, _unit in _PO_CATALOG_ITEMS
+}
+
 PO_PRINT_LABELS = {
     'ar': {
         'toolbar_title': 'طباعة وإرسال طلب الشراء',
@@ -3615,23 +3623,30 @@ def _po_print_labels(lang):
     return PO_PRINT_LABELS['en' if lang == 'en' else 'ar']
 
 
-def _po_status_label(status, lang):
-    if lang == 'en':
-        return PO_STATUS_EN.get(status, status)
+def _po_item_name_en(item):
+    if not item:
+        return ''
+    code = (item.code or '').strip()
+    if code and code in _PO_ITEM_EN_BY_CODE:
+        return _PO_ITEM_EN_BY_CODE[code]
+    notes = (item.notes or '').strip()
+    if not notes:
+        return ''
+    if ' — ' in notes:
+        part = notes.split(' — ', 1)[0].strip()
+        if part and not any('\u0600' <= c <= '\u06FF' for c in part):
+            return part
+    if not any('\u0600' <= c <= '\u06FF' for c in notes[:40]):
+        return notes
+    return ''
+
+
+def _po_status_bilingual(status):
+    status = status or ''
+    en = PO_STATUS_EN.get(status, '')
+    if en and en != status:
+        return f'{status} / {en}'
     return status
-
-
-def _company_address_info(settings, lang):
-    """Return (address text, use_ltr_direction)."""
-    if not settings:
-        return '', lang == 'en'
-    ar_addr = (settings.address or '').strip()
-    en_addr = (getattr(settings, 'address_en', None) or '').strip()
-    if lang == 'en':
-        if en_addr:
-            return en_addr, True
-        return ar_addr, False
-    return ar_addr, False
 
 
 def _apply_purchase_receipt(order):
@@ -3729,23 +3744,30 @@ def purchase_order_print(order_id):
     uid = session.get('user_id')
     user = db.session.get(User, uid) if uid else None
     lang = resolve_user_language(user)
-    po_t = _po_print_labels(lang)
-    company_name = (s.company_name if s and s.company_name else 'LiftCore')
-    if lang == 'en' and s and getattr(s, 'company_name_en', None):
-        company_name = s.company_name_en
-    addr_text, addr_ltr = _company_address_info(s, lang)
+    po_ar = PO_PRINT_LABELS['ar']
+    po_en = PO_PRINT_LABELS['en']
+    po_ui = _po_print_labels(lang)
+    company_name_ar = (s.company_name if s and s.company_name else 'LiftCore')
+    company_name_en = (getattr(s, 'company_name_en', None) or '').strip() if s else ''
+    company_address_ar = (s.address or '').strip() if s else ''
+    company_address_en = (getattr(s, 'address_en', None) or '').strip() if s else ''
+    item_names_en = {line.id: _po_item_name_en(line.item) for line in order.lines}
     return render_template(
         'purchase-order-print.html',
         order=order,
         logo_width=logo_w,
         purchasing_phone=(getattr(s, 'phone', None) or '') if s else '',
         purchasing_email=(getattr(s, 'email', None) or '') if s else '',
-        po_t=po_t,
+        po_ar=po_ar,
+        po_en=po_en,
+        po_ui=po_ui,
         po_lang=lang,
-        po_status_label=_po_status_label(order.status, lang),
-        po_company_name=company_name,
-        po_company_address=addr_text,
-        po_address_ltr=addr_ltr,
+        po_status_label=_po_status_bilingual(order.status),
+        po_company_name_ar=company_name_ar,
+        po_company_name_en=company_name_en,
+        po_company_address_ar=company_address_ar,
+        po_company_address_en=company_address_en,
+        item_names_en=item_names_en,
     )
 
 

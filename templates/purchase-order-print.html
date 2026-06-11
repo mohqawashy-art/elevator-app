@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html lang="{{ po_lang|default('ar') }}" dir="{{ 'rtl' if po_lang|default('ar') == 'ar' else 'ltr' }}">
+<html lang="ar" dir="rtl">
 
 <head>
 
@@ -8,7 +8,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>LiftCore — {{ po_t.doc_title }} {{ order.code }}</title>
+<title>LiftCore — {{ po_ar.doc_title }} {{ order.code }}</title>
 
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -128,7 +128,7 @@ body.page-a4 .doc{
 
   .co-details{font-size:9px;line-height:1.2;padding-top:1px}
 
-  .head-logo-inline img{max-height:{{ logo_width + 36 }}px!important;width:{{ logo_width }}px!important}
+  .head-logo img{max-height:{{ logo_width + 36 }}px!important;width:{{ logo_width }}px!important}
 
   .head-doc-top .doc-title{font-size:14px}
 
@@ -172,45 +172,39 @@ body.page-a4 .doc{
 
 
 
-.doc-head{display:flex;flex-direction:column;gap:2px;border-bottom:2px solid #1a3a5c;padding-bottom:8px;margin-bottom:10px}
+.doc-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px 14px;border-bottom:2px solid #1a3a5c;padding-bottom:12px;margin-bottom:12px}
 
-.head-row-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.head-co{text-align:right;align-self:start;font-size:10px;line-height:1.55}
 
-.head-row-bottom{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.head-co .co-name{font-size:15px;font-weight:800;color:#1a3a5c}
 
-.head-logo-inline{flex:0 0 auto;margin:0;padding:0;line-height:0}
+.head-co .co-en{font-size:9px;color:#666;direction:ltr}
 
-.head-logo-inline img{width:{{ logo_width }}px;max-width:100%;height:auto;max-height:{{ logo_width + 36 }}px;object-fit:contain;display:block}
+.head-co .lbl{color:#666;font-size:9px}
 
-html[lang="ar"] .head-logo-inline img{margin-right:0;margin-left:auto}
+.head-co .val{font-weight:600}
 
-html[lang="en"] .head-logo-inline img{margin-left:0;margin-right:auto}
+.head-co .val.ltr{direction:ltr;display:inline-block}
 
-.co-details{flex:1;min-width:0;font-size:10px;line-height:1.2;margin:0;padding:0}
+.head-logo{text-align:center;justify-self:center}
 
-.co-details div{margin-bottom:0}
+.head-logo img{width:{{ logo_width }}px;height:auto;max-height:{{ logo_width + 36 }}px;object-fit:contain;display:block;margin:0 auto}
 
-.co-details .lbl{color:#666;font-size:9px}
+.head-doc{text-align:left;align-self:start;justify-self:end}
 
-.co-details .val{font-weight:600}
+.head-doc .doc-title{font-size:16px;font-weight:800;color:#1a3a5c;line-height:1.1;margin:0}
 
-.co-details .val.ltr{direction:ltr;display:inline-block}
+.head-doc .doc-title-en{font-size:10px;color:#666;direction:ltr;margin-top:2px}
 
-.head-doc-top{flex:1;min-width:0;text-align:left}
+.head-doc .doc-date-lbl{font-size:9px;color:#666;margin-top:4px;line-height:1.2}
 
-html[lang="en"] .head-doc-top{text-align:right}
+.head-doc .doc-num{font-size:12px;color:#c0392b;font-weight:700;margin:0;direction:ltr;line-height:1.2}
 
-.head-doc-top .doc-title{font-size:16px;font-weight:800;color:#1a3a5c;line-height:1.1;margin:0}
+.bi-en{color:#666;font-size:.92em;direction:ltr;display:inline}
 
-.head-doc-top .doc-title-en{font-size:10px;color:#666;direction:ltr;margin:0;line-height:1.1}
+.item-name-en{font-size:9px;color:#666;direction:ltr;margin-top:2px}
 
-.head-doc-meta{flex:1;min-width:0;text-align:left;font-size:10px;margin:0;padding:0;line-height:1.2}
-
-html[lang="en"] .head-doc-meta{text-align:right}
-
-.head-doc-meta .doc-date-lbl{font-size:9px;color:#666;margin:0;line-height:1.2}
-
-.head-doc-meta .doc-num{font-size:12px;color:#c0392b;font-weight:700;margin:0;direction:ltr;line-height:1.2}
+.letter-en{margin-top:10px;padding-top:8px;border-top:1px dashed #dee2e6;direction:ltr;text-align:left}
 
 
 
@@ -256,7 +250,7 @@ html[lang="en"] .head-doc-meta{text-align:right}
 
 .items-table .col-name{text-align:right;width:42%}
 
-html[lang="en"] .items-table .col-name{text-align:left}
+.items-table .item-name-en{text-align:left}
 
 .items-table .num{direction:ltr;text-align:center;white-space:nowrap;font-weight:600}
 
@@ -324,7 +318,9 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
 {% set s = company_settings %}
 
-{% set supplier_name = order.supplier or po_t.supplier_default %}
+{% macro bi(ar, en) %}{{ ar }}{% if en and en != ar %}<span class="bi-en"> / {{ en }}</span>{% endif %}{% endmacro %}
+
+{% set supplier_name = order.supplier or po_ar.supplier_default %}
 
 
 
@@ -332,15 +328,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   <div class="toolbar-title">
 
-    <span>{{ po_t.toolbar_title }} {{ order.code }} <span style="opacity:.6;font-size:11px">(v2.7)</span></span>
-
-    <div class="toolbar-lang no-print">
-
-      <button type="button" class="lang-opt{% if po_lang == 'ar' %} active{% endif %}" onclick="LiftCoreI18n.setLang('ar')" aria-label="العربية">ع</button>
-
-      <button type="button" class="lang-opt{% if po_lang == 'en' %} active{% endif %}" onclick="LiftCoreI18n.setLang('en')" aria-label="English">EN</button>
-
-    </div>
+    <span>{{ po_ui.toolbar_title }} {{ order.code }} <span style="opacity:.6;font-size:11px">(v2.8)</span></span>
 
   </div>
 
@@ -348,7 +336,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
     <div class="field">
 
-      <label>{{ po_t.supplier_mobile }}</label>
+      <label>{{ po_ui.supplier_mobile }}</label>
 
       <input type="tel" name="supplier_phone" id="send-phone" value="{{ order.supplier_phone or '' }}" placeholder="05XXXXXXXX" inputmode="tel">
 
@@ -356,7 +344,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
     <div class="field">
 
-      <label>{{ po_t.supplier_email }}</label>
+      <label>{{ po_ui.supplier_email }}</label>
 
       <input type="email" name="supplier_email" id="send-email" value="{{ order.supplier_email or '' }}" placeholder="supplier@example.com">
 
@@ -366,19 +354,19 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   <div class="actions">
 
-    <button type="button" class="btn-print" onclick="window.print()">{{ po_t.print_pdf }}</button>
+    <button type="button" class="btn-print" onclick="window.print()">{{ po_ui.print_pdf }}</button>
 
-    <button type="button" class="btn-sig" onclick="saveSignature()">{{ po_t.save_sig }}</button>
+    <button type="button" class="btn-sig" onclick="saveSignature()">{{ po_ui.save_sig }}</button>
 
-    <button type="button" class="btn-wa" onclick="sendWhatsAppPdf('supplier', this)">{{ po_t.wa_supplier }}</button>
+    <button type="button" class="btn-wa" onclick="sendWhatsAppPdf('supplier', this)">{{ po_ui.wa_supplier }}</button>
 
-    <button type="button" class="btn-purch" onclick="sendWhatsAppPdf('purchasing', this)">{{ po_t.wa_purchasing }}</button>
+    <button type="button" class="btn-purch" onclick="sendWhatsAppPdf('purchasing', this)">{{ po_ui.wa_purchasing }}</button>
 
-    <button type="button" class="btn-email" onclick="sendEmailPdf(this)">{{ po_t.email_pdf }}</button>
+    <button type="button" class="btn-email" onclick="sendEmailPdf(this)">{{ po_ui.email_pdf }}</button>
 
-    <button type="submit" form="contact-form" class="btn-save">{{ po_t.save_contact }}</button>
+    <button type="submit" form="contact-form" class="btn-save">{{ po_ui.save_contact }}</button>
 
-    <a href="{{ url_for('purchase_orders') }}" class="btn-back">{{ po_t.back }}</a>
+    <a href="{{ url_for('purchase_orders') }}" class="btn-back">{{ po_ui.back }}</a>
 
   </div>
 
@@ -392,59 +380,45 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   <div class="doc-head">
 
-    <div class="head-row-top">
+    <div class="head-co">
 
-      {% if brand_logo_url %}
+      <div class="co-name">{{ po_company_name_ar }}</div>
 
-      <div class="head-logo-inline">
+      {% if po_company_name_en %}<div class="co-en">{{ po_company_name_en }}</div>{% endif %}
 
-        <img src="{{ brand_logo_url }}" alt="">
+      <div style="margin-top:6px">
 
-      </div>
+        {% if s and s.phone %}<div><span class="lbl">{{ bi(po_ar.phone, po_en.phone) }} </span><span class="val ltr">{{ s.phone }}</span></div>{% endif %}
 
-      {% else %}
+        {% if s and s.vat_number %}<div><span class="lbl">{{ bi(po_ar.vat, po_en.vat) }} </span><span class="val ltr">{{ s.vat_number }}</span></div>{% endif %}
 
-      <div class="head-logo-inline"></div>
+        {% if s and s.cr_number %}<div><span class="lbl">{{ bi(po_ar.cr, po_en.cr) }} </span><span class="val ltr">{{ s.cr_number }}</span></div>{% endif %}
 
-      {% endif %}
+        {% if po_company_address_ar %}<div><span class="lbl">{{ bi(po_ar.address, po_en.address) }} </span><span class="val">{{ po_company_address_ar }}</span></div>{% endif %}
 
-      <div class="head-doc-top">
-
-        <div class="doc-title">{{ po_t.doc_title }}</div>
-
-        {% if po_t.doc_title_en and po_t.doc_title_en != po_t.doc_title %}
-
-        <div class="doc-title-en">{{ po_t.doc_title_en }}</div>
-
-        {% endif %}
+        {% if po_company_address_en %}<div><span class="lbl"></span><span class="val ltr">{{ po_company_address_en }}</span></div>{% endif %}
 
       </div>
 
     </div>
 
-    <div class="head-row-bottom">
+    <div class="head-logo">
 
-      <div class="co-details">
+      {% if brand_logo_url %}<img src="{{ brand_logo_url }}" alt="{{ po_company_name_ar }}">{% endif %}
 
-        {% if s and s.phone %}<div><span class="lbl">{{ po_t.phone }} </span><span class="val ltr">{{ s.phone }}</span></div>{% endif %}
+    </div>
 
-        {% if s and s.vat_number %}<div><span class="lbl">{{ po_t.vat }} </span><span class="val ltr">{{ s.vat_number }}</span></div>{% endif %}
+    <div class="head-doc">
 
-        {% if s and s.cr_number %}<div><span class="lbl">{{ po_t.cr }} </span><span class="val ltr">{{ s.cr_number }}</span></div>{% endif %}
+      <div class="doc-title">{{ po_ar.doc_title }}</div>
 
-        {% if po_company_address %}<div><span class="lbl">{{ po_t.address }} </span><span class="val{% if po_address_ltr %} ltr{% endif %}">{{ po_company_address }}</span></div>{% endif %}
+      <div class="doc-title-en">{{ po_en.doc_title }}</div>
 
-      </div>
+      <div class="doc-date-lbl">{{ bi(po_ar.order_no, po_en.order_no) }}</div>
 
-      <div class="head-doc-meta">
+      <div class="doc-num">{{ order.code }}</div>
 
-        <div class="doc-date-lbl">{{ po_t.order_no }}</div>
-
-        <div class="doc-num">{{ order.code }}</div>
-
-        <div class="doc-date-lbl">{{ order.order_date | dmY if order.order_date else '—' }}</div>
-
-      </div>
+      <div class="doc-date-lbl ltr">{{ order.order_date | dmY if order.order_date else '—' }}</div>
 
     </div>
 
@@ -454,15 +428,15 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   <div class="inv-meta">
 
-    <div class="cell"><label>{{ po_t.supplier }}</label><div>{{ supplier_name }}</div></div>
+    <div class="cell"><label>{{ bi(po_ar.supplier, po_en.supplier) }}</label><div>{{ supplier_name }}</div></div>
 
-    <div class="cell"><label>{{ po_t.order_date }}</label><div class="ltr">{{ order.order_date | dmY if order.order_date else '—' }}</div></div>
+    <div class="cell"><label>{{ bi(po_ar.order_date, po_en.order_date) }}</label><div class="ltr">{{ order.order_date | dmY if order.order_date else '—' }}</div></div>
 
-    <div class="cell"><label>{{ po_t.status }}</label><div>{{ po_status_label }}</div></div>
+    <div class="cell"><label>{{ bi(po_ar.status, po_en.status) }}</label><div>{{ po_status_label }}</div></div>
 
-    {% if order.supplier_phone %}<div class="cell"><label>{{ po_t.supplier_phone }}</label><div class="ltr">{{ order.supplier_phone }}</div></div>{% endif %}
+    {% if order.supplier_phone %}<div class="cell"><label>{{ bi(po_ar.supplier_phone, po_en.supplier_phone) }}</label><div class="ltr">{{ order.supplier_phone }}</div></div>{% endif %}
 
-    {% if order.supplier_email %}<div class="cell"><label>{{ po_t.supplier_email_lbl }}</label><div class="ltr">{{ order.supplier_email }}</div></div>{% endif %}
+    {% if order.supplier_email %}<div class="cell"><label>{{ bi(po_ar.supplier_email_lbl, po_en.supplier_email_lbl) }}</label><div class="ltr">{{ order.supplier_email }}</div></div>{% endif %}
 
   </div>
 
@@ -470,11 +444,21 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   <div class="letter-box">
 
-    <div class="salutation">{{ po_t.salutation.format(name=supplier_name) }}</div>
+    <div class="salutation">{{ po_ar.salutation.format(name=supplier_name) }}</div>
 
-    <p>{{ po_t.letter_p1 }}</p>
+    <p>{{ po_ar.letter_p1 }}</p>
 
-    <p>{{ po_t.letter_p2 }}</p>
+    <p>{{ po_ar.letter_p2 }}</p>
+
+    <div class="letter-en">
+
+      <div class="salutation">{{ po_en.salutation.format(name=supplier_name) }}</div>
+
+      <p>{{ po_en.letter_p1 }}</p>
+
+      <p>{{ po_en.letter_p2 }}</p>
+
+    </div>
 
   </div>
 
@@ -484,7 +468,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   <div class="items-section">
 
-  <div class="sec-title">{{ po_t.items_title }}</div>
+  <div class="sec-title">{{ bi(po_ar.items_title, po_en.items_title) }}</div>
 
   <table class="items-table">
 
@@ -494,13 +478,13 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
         <th>#</th>
 
-        <th class="col-name">{{ po_t.col_code_item }}</th>
+        <th class="col-name">{{ bi(po_ar.col_code_item, po_en.col_code_item) }}</th>
 
-        <th>{{ po_t.col_qty }}</th>
+        <th>{{ bi(po_ar.col_qty, po_en.col_qty) }}</th>
 
-        <th>{{ po_t.col_unit_price }}</th>
+        <th>{{ bi(po_ar.col_unit_price, po_en.col_unit_price) }}</th>
 
-        <th>{{ po_t.col_total }}</th>
+        <th>{{ bi(po_ar.col_total, po_en.col_total) }}</th>
 
       </tr>
 
@@ -519,6 +503,10 @@ html[lang="en"] .items-table .col-name{text-align:left}
           {% if line.item and line.item.code %}<span class="ltr" style="direction:ltr;font-weight:700">{{ line.item.code }}</span> — {% endif %}
 
           {{ line.item.name if line.item else '—' }}
+
+          {% set name_en = item_names_en.get(line.id, '') %}
+
+          {% if name_en %}<div class="item-name-en">{{ name_en }}</div>{% endif %}
 
         </td>
 
@@ -544,7 +532,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   {% if order.notes %}
 
-  <div class="notes-box"><strong>{{ po_t.notes }}</strong> {{ order.notes }}</div>
+  <div class="notes-box"><strong>{{ bi(po_ar.notes, po_en.notes) }}</strong> {{ order.notes }}</div>
 
   {% endif %}
 
@@ -556,7 +544,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
       <div class="row grand">
 
-        <span>{{ po_t.grand_total }}</span>
+        <span>{{ bi(po_ar.grand_total, po_en.grand_total) }}</span>
 
         <span>{{ '%.2f'|format(order.total_amount or 0) }} &#x20C1;</span>
 
@@ -572,17 +560,17 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
     <div class="sig-block">
 
-      <div class="sig-label">{{ po_t.sig_supplier }}</div>
+      <div class="sig-label">{{ bi(po_ar.sig_supplier, po_en.sig_supplier) }}</div>
 
-      <div class="sig-line">{{ po_t.sig_name_line }}</div>
+      <div class="sig-line">{{ bi(po_ar.sig_name_line, po_en.sig_name_line) }}</div>
 
     </div>
 
     <div class="sig-block">
 
-      <div class="sig-label">{{ po_t.sig_auth }} — {{ po_company_name }}</div>
+      <div class="sig-label">{{ bi(po_ar.sig_auth, po_en.sig_auth) }} — {{ po_company_name_ar }}{% if po_company_name_en %} <span class="bi-en">/ {{ po_company_name_en }}</span>{% endif %}</div>
 
-      <img class="sig-print-img" id="sig-print-img" alt="{{ po_t.sig_alt }}" {% if not order.signature_data %}style="display:none"{% endif %}
+      <img class="sig-print-img" id="sig-print-img" alt="{{ po_ar.sig_alt }}" {% if not order.signature_data %}style="display:none"{% endif %}
 
            {% if order.signature_data %}src="{{ order.signature_data }}"{% endif %}>
 
@@ -592,7 +580,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
         <div class="sig-tools no-print">
 
-          <button type="button" onclick="LiftCoreChecklist.clearSig('sig-auth')">{{ po_t.sig_clear }}</button>
+          <button type="button" onclick="LiftCoreChecklist.clearSig('sig-auth')">{{ po_ui.sig_clear }}</button>
 
         </div>
 
@@ -606,9 +594,9 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
   <div class="doc-foot">
 
-    {{ po_company_name }} — {{ po_t.doc_foot_mid }} {{ order.code }} — {{ order.order_date | dmY if order.order_date else '' }}<br>
+    {{ po_company_name_ar }}{% if po_company_name_en %} / {{ po_company_name_en }}{% endif %} — {{ bi(po_ar.doc_foot_mid, po_en.doc_foot_mid) }} {{ order.code }} — {{ order.order_date | dmY if order.order_date else '' }}<br>
 
-    {{ po_t.doc_foot }}
+    {{ bi(po_ar.doc_foot, po_en.doc_foot) }}
 
   </div>
 
@@ -626,7 +614,7 @@ html[lang="en"] .items-table .col-name{text-align:left}
 
 var ORDER_ID = {{ order.id }};
 
-var PO_T = {{ po_t|tojson }};
+var PO_T = {{ po_ui|tojson }};
 
 var PO = {
 
@@ -642,7 +630,7 @@ var PO = {
 
   notes: {{ (order.notes or '')|tojson }},
 
-  company: {{ po_company_name|tojson }},
+  company: {{ po_company_name_ar|tojson }},
 
   purchasingPhone: {{ purchasing_phone|tojson }},
 
