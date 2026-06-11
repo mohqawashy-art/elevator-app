@@ -1,6 +1,7 @@
+{% set en_only = en_only|default(false) %}
 <!DOCTYPE html>
 
-<html lang="ar" dir="rtl">
+<html lang="{{ 'en' if en_only else 'ar' }}" dir="{{ 'ltr' if en_only else 'rtl' }}">
 
 <head>
 
@@ -8,7 +9,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>LiftCore — {{ po_ar.doc_title }} {{ order.code }}</title>
+<title>LiftCore — {{ po_en.doc_title if en_only else po_ar.doc_title }} {{ order.code }}</title>
 
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -176,6 +177,10 @@ body.page-a4 .doc{
 
 .head-co{text-align:right;align-self:start;font-size:10px;line-height:1.55}
 
+html[dir="ltr"] .head-co{text-align:left}
+
+html[dir="ltr"] .head-doc{text-align:right}
+
 .head-co .co-name{font-size:15px;font-weight:800;color:#1a3a5c}
 
 .head-co .co-en{font-size:9px;color:#666;direction:ltr}
@@ -318,9 +323,13 @@ body.page-a4 .doc{
 
 {% set s = company_settings %}
 
+{% if en_only %}
+{% macro bi(ar, en) %}{{ en }}{% endmacro %}
+{% else %}
 {% macro bi(ar, en) %}{{ ar }}{% if en and en != ar %}<span class="bi-en"> / {{ en }}</span>{% endif %}{% endmacro %}
+{% endif %}
 
-{% set supplier_name = order.supplier or po_ar.supplier_default %}
+{% set supplier_name = order.supplier or (po_en.supplier_default if en_only else po_ar.supplier_default) %}
 
 
 
@@ -328,11 +337,18 @@ body.page-a4 .doc{
 
   <div class="toolbar-title">
 
-    <span>{{ po_ui.toolbar_title }} {{ order.code }} <span style="opacity:.6;font-size:11px">(v2.8)</span></span>
+    <span>{{ po_ui.toolbar_title }} {{ order.code }} <span style="opacity:.6;font-size:11px">({% if en_only %}EN v1{% else %}v2.9{% endif %})</span></span>
+    {% if not en_only %}
+    <a href="{{ url_for('purchase_order_print_en', order_id=order.id) }}" class="btn btn-secondary btn-sm lc-open-tab" style="font-size:11px;padding:4px 10px">English only</a>
+    {% else %}
+    <a href="{{ url_for('purchase_order_print', order_id=order.id) }}" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px">عربي / EN</a>
+    {% endif %}
 
   </div>
 
   <form method="post" action="{{ url_for('purchase_order_update_contact', order_id=order.id) }}" style="display:contents" id="contact-form">
+
+    {% if en_only %}<input type="hidden" name="en_only" value="1">{% endif %}
 
     <div class="field">
 
@@ -382,9 +398,12 @@ body.page-a4 .doc{
 
     <div class="head-co">
 
+      {% if en_only %}
+      <div class="co-name">{{ po_company_display }}</div>
+      {% else %}
       <div class="co-name">{{ po_company_name_ar }}</div>
-
       {% if po_company_name_en %}<div class="co-en">{{ po_company_name_en }}</div>{% endif %}
+      {% endif %}
 
       <div style="margin-top:6px">
 
@@ -394,9 +413,12 @@ body.page-a4 .doc{
 
         {% if s and s.cr_number %}<div><span class="lbl">{{ bi(po_ar.cr, po_en.cr) }} </span><span class="val ltr">{{ s.cr_number }}</span></div>{% endif %}
 
+        {% if en_only %}
+        {% if po_address_display %}<div><span class="lbl">{{ po_en.address }} </span><span class="val">{{ po_address_display }}</span></div>{% endif %}
+        {% else %}
         {% if po_company_address_ar %}<div><span class="lbl">{{ bi(po_ar.address, po_en.address) }} </span><span class="val">{{ po_company_address_ar }}</span></div>{% endif %}
-
         {% if po_company_address_en %}<div><span class="lbl"></span><span class="val ltr">{{ po_company_address_en }}</span></div>{% endif %}
+        {% endif %}
 
       </div>
 
@@ -404,15 +426,18 @@ body.page-a4 .doc{
 
     <div class="head-logo">
 
-      {% if brand_logo_url %}<img src="{{ brand_logo_url }}" alt="{{ po_company_name_ar }}">{% endif %}
+      {% if brand_logo_url %}<img src="{{ brand_logo_url }}" alt="{{ po_company_display if en_only else po_company_name_ar }}">{% endif %}
 
     </div>
 
     <div class="head-doc">
 
+      {% if en_only %}
+      <div class="doc-title">{{ po_en.doc_title }}</div>
+      {% else %}
       <div class="doc-title">{{ po_ar.doc_title }}</div>
-
       <div class="doc-title-en">{{ po_en.doc_title }}</div>
+      {% endif %}
 
       <div class="doc-date-lbl">{{ bi(po_ar.order_no, po_en.order_no) }}</div>
 
@@ -444,21 +469,20 @@ body.page-a4 .doc{
 
   <div class="letter-box">
 
+    {% if en_only %}
+    <div class="salutation">{{ po_en.salutation.format(name=supplier_name) }}</div>
+    <p>{{ po_en.letter_p1 }}</p>
+    <p>{{ po_en.letter_p2 }}</p>
+    {% else %}
     <div class="salutation">{{ po_ar.salutation.format(name=supplier_name) }}</div>
-
     <p>{{ po_ar.letter_p1 }}</p>
-
     <p>{{ po_ar.letter_p2 }}</p>
-
     <div class="letter-en">
-
       <div class="salutation">{{ po_en.salutation.format(name=supplier_name) }}</div>
-
       <p>{{ po_en.letter_p1 }}</p>
-
       <p>{{ po_en.letter_p2 }}</p>
-
     </div>
+    {% endif %}
 
   </div>
 
@@ -502,11 +526,14 @@ body.page-a4 .doc{
 
           {% if line.item and line.item.code %}<span class="ltr" style="direction:ltr;font-weight:700">{{ line.item.code }}</span> — {% endif %}
 
-          {{ line.item.name if line.item else '—' }}
-
           {% set name_en = item_names_en.get(line.id, '') %}
 
+          {% if en_only %}
+          {{ name_en or (line.item.name if line.item else '—') }}
+          {% else %}
+          {{ line.item.name if line.item else '—' }}
           {% if name_en %}<div class="item-name-en">{{ name_en }}</div>{% endif %}
+          {% endif %}
 
         </td>
 
@@ -568,9 +595,9 @@ body.page-a4 .doc{
 
     <div class="sig-block">
 
-      <div class="sig-label">{{ bi(po_ar.sig_auth, po_en.sig_auth) }} — {{ po_company_name_ar }}{% if po_company_name_en %} <span class="bi-en">/ {{ po_company_name_en }}</span>{% endif %}</div>
+      <div class="sig-label">{{ bi(po_ar.sig_auth, po_en.sig_auth) }} — {% if en_only %}{{ po_company_display }}{% else %}{{ po_company_name_ar }}{% if po_company_name_en %} <span class="bi-en">/ {{ po_company_name_en }}</span>{% endif %}{% endif %}</div>
 
-      <img class="sig-print-img" id="sig-print-img" alt="{{ po_ar.sig_alt }}" {% if not order.signature_data %}style="display:none"{% endif %}
+      <img class="sig-print-img" id="sig-print-img" alt="{{ po_en.sig_alt if en_only else po_ar.sig_alt }}" {% if not order.signature_data %}style="display:none"{% endif %}
 
            {% if order.signature_data %}src="{{ order.signature_data }}"{% endif %}>
 
@@ -594,7 +621,7 @@ body.page-a4 .doc{
 
   <div class="doc-foot">
 
-    {{ po_company_name_ar }}{% if po_company_name_en %} / {{ po_company_name_en }}{% endif %} — {{ bi(po_ar.doc_foot_mid, po_en.doc_foot_mid) }} {{ order.code }} — {{ order.order_date | dmY if order.order_date else '' }}<br>
+    {% if en_only %}{{ po_company_display }}{% else %}{{ po_company_name_ar }}{% if po_company_name_en %} / {{ po_company_name_en }}{% endif %}{% endif %} — {{ bi(po_ar.doc_foot_mid, po_en.doc_foot_mid) }} {{ order.code }} — {{ order.order_date | dmY if order.order_date else '' }}<br>
 
     {{ bi(po_ar.doc_foot, po_en.doc_foot) }}
 
@@ -630,7 +657,7 @@ var PO = {
 
   notes: {{ (order.notes or '')|tojson }},
 
-  company: {{ po_company_name_ar|tojson }},
+  company: {{ (po_company_display if en_only else po_company_name_ar)|tojson }},
 
   purchasingPhone: {{ purchasing_phone|tojson }},
 

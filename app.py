@@ -3736,24 +3736,21 @@ def purchase_orders_save():
     return redirect(url_for('purchase_order_print', order_id=order.id))
 
 
-@app.route('/purchase-orders/<int:order_id>/print')
-def purchase_order_print(order_id):
-    order = PurchaseOrder.query.get_or_404(order_id)
+def _purchase_order_print_context(order, *, en_only=False):
     s = Settings.query.first()
     logo_w = (getattr(s, 'logo_width_report', None) or 150) if s else 150
     uid = session.get('user_id')
     user = db.session.get(User, uid) if uid else None
-    lang = resolve_user_language(user)
+    lang = 'en' if en_only else resolve_user_language(user)
     po_ar = PO_PRINT_LABELS['ar']
     po_en = PO_PRINT_LABELS['en']
-    po_ui = _po_print_labels(lang)
+    po_ui = po_en if en_only else _po_print_labels(lang)
     company_name_ar = (s.company_name if s and s.company_name else 'LiftCore')
     company_name_en = (getattr(s, 'company_name_en', None) or '').strip() if s else ''
     company_address_ar = (s.address or '').strip() if s else ''
     company_address_en = (getattr(s, 'address_en', None) or '').strip() if s else ''
     item_names_en = {line.id: _po_item_name_en(line.item) for line in order.lines}
-    return render_template(
-        'purchase-order-print.html',
+    return dict(
         order=order,
         logo_width=logo_w,
         purchasing_phone=(getattr(s, 'phone', None) or '') if s else '',
@@ -3762,12 +3759,36 @@ def purchase_order_print(order_id):
         po_en=po_en,
         po_ui=po_ui,
         po_lang=lang,
-        po_status_label=_po_status_bilingual(order.status),
+        en_only=en_only,
+        po_status_label=(
+            PO_STATUS_EN.get(order.status, order.status)
+            if en_only else _po_status_bilingual(order.status)
+        ),
         po_company_name_ar=company_name_ar,
         po_company_name_en=company_name_en,
         po_company_address_ar=company_address_ar,
         po_company_address_en=company_address_en,
+        po_company_display=company_name_en or company_name_ar,
+        po_address_display=company_address_en or company_address_ar,
         item_names_en=item_names_en,
+    )
+
+
+@app.route('/purchase-orders/<int:order_id>/print')
+def purchase_order_print(order_id):
+    order = PurchaseOrder.query.get_or_404(order_id)
+    return render_template(
+        'purchase-order-print.html',
+        **_purchase_order_print_context(order),
+    )
+
+
+@app.route('/purchase-orders/<int:order_id>/print-en')
+def purchase_order_print_en(order_id):
+    order = PurchaseOrder.query.get_or_404(order_id)
+    return render_template(
+        'purchase-order-print.html',
+        **_purchase_order_print_context(order, en_only=True),
     )
 
 
@@ -3777,6 +3798,8 @@ def purchase_order_update_contact(order_id):
     order.supplier_phone = request.form.get('supplier_phone', '').strip() or None
     order.supplier_email = request.form.get('supplier_email', '').strip() or None
     db.session.commit()
+    if request.form.get('en_only') == '1':
+        return redirect(url_for('purchase_order_print_en', order_id=order.id))
     return redirect(url_for('purchase_order_print', order_id=order.id))
 
 
