@@ -201,7 +201,11 @@
       const el = document.getElementById(elId);
       if (el && v != null) el.value = v;
     });
-    applySignatures(reportData.signatures || {});
+    const sig = reportData.signatures || {};
+    applySignatures(sig);
+    if (global.LiftCoreDigitalSign && sig.tech_method === 'pin') {
+      global.LiftCoreDigitalSign.applyTechSignMeta(sig);
+    }
     applyPhotos(reportData.photos || []);
     syncAutoTechNotes(template);
   }
@@ -289,10 +293,18 @@
         parts_used: val('parts-used'),
         next_visit: val('next-visit'),
       },
-      signatures: {
-        tech: canvasDataUrl('sig-tech'),
-        client: canvasDataUrl('sig-client'),
-      },
+      signatures: (function () {
+        const techMeta = global.LiftCoreDigitalSign
+          ? global.LiftCoreDigitalSign.getTechSignMeta()
+          : { method: '', signed_by: '', signed_at: '' };
+        return {
+          tech: canvasDataUrl('sig-tech'),
+          client: canvasDataUrl('sig-client'),
+          tech_method: techMeta.method || '',
+          tech_signed_by: techMeta.signed_by || '',
+          tech_signed_at: techMeta.signed_at || '',
+        };
+      })(),
       photos: collectPhotos(),
     };
   }

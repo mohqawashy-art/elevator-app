@@ -99,6 +99,22 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .sig-label{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px}
 .sig-canvas{width:100%;height:80px;border:1px dashed var(--border);border-radius:3px;background:#fff;touch-action:none}
 .sig-clear{font-size:10px;padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:#fff;cursor:pointer;margin-top:6px;font-family:var(--font)}
+.sig-mode{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:6px 0;font-size:10px;color:var(--text2)}
+.sig-mode label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.sig-pin-btn{font-size:10px;padding:5px 12px;border:1px solid var(--navy);border-radius:3px;background:var(--navy);color:#fff;cursor:pointer;margin-top:4px;font-family:var(--font);display:none}
+.sig-pin-meta{font-size:9px;color:var(--text3);margin-top:4px}
+#dsign-modal{display:none;position:fixed;inset:0;z-index:9999}
+#dsign-modal.open{display:block}
+.dsign-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.dsign-card{background:#fff;border-radius:8px;padding:16px;width:min(360px,100%);box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.dsign-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.dsign-hint{font-size:11px;color:var(--text2);margin-bottom:10px}
+.dsign-card label{font-size:10px;font-weight:600;color:var(--text2);display:block;margin:8px 0 4px}
+.dsign-card input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:4px;font-size:13px}
+.dsign-error{font-size:11px;color:#c0392b;min-height:16px;margin-top:8px}
+.dsign-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.dsign-btn{padding:8px 14px;border-radius:4px;border:1px solid var(--border);cursor:pointer;font-family:var(--font);font-size:12px}
+.dsign-ok{background:var(--navy);color:#fff;border-color:var(--navy)}
 .doc-footer{margin:0 16px 12px;padding-top:6px;border-top:1px solid var(--gold);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:9px;color:var(--text3)}
 .action-row{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin:0 16px 20px}
 .print-btn,.complete-btn{width:100%;padding:12px;font-size:14px;font-weight:700;border:none;border-radius:var(--r);cursor:pointer;font-family:var(--font)}
@@ -106,7 +122,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .complete-btn{background:#27ae60;color:#fff}
 .progress-pill{font-size:11px;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:20px}
 @media print{
-  .tech-bar,.action-row,.sig-clear,.photo-remove{display:none!important}
+  .tech-bar,.action-row,.sig-clear,.sig-mode,.sig-pin-btn,.photo-remove{display:none!important}
   .page{box-shadow:none;margin:0}
   .status-label{border:none;background:transparent!important;color:#000!important}
   .photo-slot:not(.has-img){display:none!important}
@@ -238,8 +254,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="sig-area">
     <div class="sig-box">
       <div class="sig-label">توقيع الفني</div>
+      {% if editable %}
+      <div class="sig-mode" id="sig-tech-mode">
+        <label><input type="radio" name="sig-tech-method" value="draw" checked> رسم التوقيع</label>
+        <label><input type="radio" name="sig-tech-method" value="pin"> هوية + رمز</label>
+      </div>
+      {% endif %}
       <canvas class="sig-canvas" id="sig-tech" width="300" height="80"></canvas>
-      {% if editable %}<button type="button" class="sig-clear" onclick="LiftCoreChecklist.clearSig('sig-tech')">مسح</button>{% endif %}
+      {% if editable %}
+      <button type="button" class="sig-pin-btn" id="sig-tech-pin-btn">✍️ توقيع بالهوية</button>
+      <button type="button" class="sig-clear" onclick="LiftCoreChecklist.clearSig('sig-tech'); if(window.LiftCoreDigitalSign) LiftCoreDigitalSign.clearTechSignMeta();">مسح</button>
+      {% endif %}
+      <div class="sig-pin-meta" id="sig-tech-pin-meta"></div>
       <div style="font-size:9px;color:var(--text3);margin-top:4px">{{ technician.name }}</div>
     </div>
     <div class="sig-box">
@@ -262,7 +288,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   {% endif %}
 </div>
 
-<script src="/static/maintenance-checklist.js?v=7"></script>
+<script src="/static/maintenance-checklist.js?v=8"></script>
+<script src="/static/digital-signature.js?v=1"></script>
 <script>
 const REPORT_CFG = {
   visitId: {{ visit_id }},
@@ -272,6 +299,8 @@ const REPORT_CFG = {
 };
 const CHECKLIST_TEMPLATE = {{ template_json|safe }};
 const REPORT_DATA = {{ report_data_json|safe }};
+const SIGN_CONFIG = {{ sign_config|tojson }};
+const TECH_NATIONAL_ID = {{ (technician.national_id or '')|tojson }};
 
 function updateProgress() {
   const data = LiftCoreChecklist.collectReportData(CHECKLIST_TEMPLATE);
@@ -314,8 +343,29 @@ document.addEventListener('DOMContentLoaded', () => {
     LiftCoreChecklist.initStatusGroups(checklistRoot, updateProgress);
     LiftCoreChecklist.setupSignature('sig-tech', true);
     LiftCoreChecklist.setupSignature('sig-client', true);
+    if (window.LiftCoreDigitalSign) {
+      LiftCoreDigitalSign.initTechSignSlot({
+        editable: true,
+        visitId: REPORT_CFG.visitId,
+        defaultMethod: SIGN_CONFIG.default_method || 'both',
+        prefillNationalId: TECH_NATIONAL_ID,
+        onSuccess: function (meta) {
+          var el = document.getElementById('sig-tech-pin-meta');
+          if (el && meta && meta.signed_by) {
+            el.textContent = 'وقّع رقمياً: ' + meta.signed_by;
+          }
+        },
+      });
+    }
   }
   LiftCoreChecklist.applyReportData(REPORT_DATA, CHECKLIST_TEMPLATE);
+  (function () {
+    var sig = (REPORT_DATA.signatures || {});
+    if (sig.tech_method === 'pin' && sig.tech_signed_by) {
+      var el = document.getElementById('sig-tech-pin-meta');
+      if (el) el.textContent = 'وقّع رقمياً: ' + sig.tech_signed_by;
+    }
+  })();
   const os = document.getElementById('overall-status');
   if (os && REPORT_DATA.meta && REPORT_DATA.meta.overall_status) {
     os.value = REPORT_DATA.meta.overall_status;

@@ -1177,6 +1177,7 @@ def visit_report_payload(
         'technician': {
             'id': tech.id if tech else None,
             'name': tech.name if tech else '—',
+            'national_id': tech.national_id if tech else '',
         },
         'checklist_template': template,
         'report_data': report_data,
@@ -1184,6 +1185,22 @@ def visit_report_payload(
         'template_json': json.dumps(template, ensure_ascii=False),
         'logo_url': '/static/logo.png',
         'base_url': base_url,
+        'sign_config': _visit_sign_config(),
+    }
+
+
+def _visit_sign_config() -> dict:
+    from models import Settings
+
+    s = Settings.query.first()
+    method = (getattr(s, 'default_sign_method', None) or 'both').strip() if s else 'both'
+    if method not in ('draw', 'pin', 'both'):
+        method = 'both'
+    rep_sig = (getattr(s, 'rep_signature_path', None) or '') if s else ''
+    return {
+        'default_method': method,
+        'pin_enabled': True,
+        'rep_has_signature': bool(rep_sig),
     }
 
 
@@ -1222,8 +1239,9 @@ def save_visit_report(
                     merged['meta'][key] = meta.get(key) or ''
         sig = payload.get('signatures') or {}
         if isinstance(sig, dict):
-            merged['signatures']['tech'] = sig.get('tech') or merged['signatures'].get('tech') or ''
-            merged['signatures']['client'] = sig.get('client') or merged['signatures'].get('client') or ''
+            for key in merged['signatures']:
+                if key in sig:
+                    merged['signatures'][key] = sig.get(key) or ''
         if isinstance(payload.get('photos'), list):
             merged['photos'] = payload['photos']
 

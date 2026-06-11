@@ -302,6 +302,10 @@ with app.app_context():
                 ('checklist_template_key', 'VARCHAR(50)'),
                 ('rep_name', 'VARCHAR(200)'),
                 ('rep_mobile', 'VARCHAR(20)'),
+                ('rep_national_id', 'VARCHAR(20)'),
+                ('rep_signature_path', 'VARCHAR(300)'),
+                ('rep_sign_pin_hash', 'VARCHAR(200)'),
+                ('default_sign_method', 'VARCHAR(20)'),
                 ('logo_width_sidebar', 'INTEGER'),
                 ('logo_width_report', 'INTEGER'),
                 ('logo_width_login', 'INTEGER'),
@@ -337,7 +341,12 @@ with app.app_context():
                 ('invoice_id', 'INTEGER'),
                 ('parts_billing_id', 'INTEGER'),
             ],
-            'technicians': [('team', 'VARCHAR(30)'), ('name_en', 'VARCHAR(100)')],
+            'technicians': [
+                ('team', 'VARCHAR(30)'),
+                ('name_en', 'VARCHAR(100)'),
+                ('signature_path', 'VARCHAR(300)'),
+                ('sign_pin_hash', 'VARCHAR(200)'),
+            ],
             'customers': [
                 ('name_en', 'VARCHAR(200)'),
                 ('entity_type', 'VARCHAR(20)'),
@@ -1963,6 +1972,7 @@ def _apply_technician_form(t, form):
     t.emergency = form.get('emergency') == 'on'
     t.status = form.get('status', 'متاح')
     t.notes = form.get('notes', '')
+    _apply_technician_sign_pin(t, form.get('sign_pin', ''))
 
 
 def _tech_dir(tech_id, sub=''):
@@ -2006,6 +2016,54 @@ def _ext_ok(filename, allowed):
     if not filename or '.' not in filename:
         return False
     return filename.rsplit('.', 1)[1].lower() in allowed
+
+
+def _save_technician_signature(tech, file_storage):
+    if not file_storage or not file_storage.filename:
+        return
+    if not _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT):
+        return
+    ext = file_storage.filename.rsplit('.', 1)[1].lower()
+    folder = _tech_dir(tech.id)
+    for old in os.listdir(folder):
+        if old.startswith('signature.'):
+            try:
+                os.remove(os.path.join(folder, old))
+            except OSError:
+                pass
+    filename = f'signature.{ext}'
+    abs_path = os.path.join(folder, filename)
+    file_storage.save(abs_path)
+    tech.signature_path = f'uploads/technicians/{tech.id}/{filename}'
+
+
+def _save_rep_signature(settings_row, file_storage):
+    if not file_storage or not file_storage.filename:
+        return
+    if not _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT):
+        return
+    ext = file_storage.filename.rsplit('.', 1)[1].lower()
+    os.makedirs(COMPANY_UPLOAD_ROOT, exist_ok=True)
+    for old in os.listdir(COMPANY_UPLOAD_ROOT):
+        if old.startswith('rep-signature.'):
+            try:
+                os.remove(os.path.join(COMPANY_UPLOAD_ROOT, old))
+            except OSError:
+                pass
+    filename = f'rep-signature.{ext}'
+    file_storage.save(os.path.join(COMPANY_UPLOAD_ROOT, filename))
+    settings_row.rep_signature_path = f'uploads/company/{filename}'
+
+
+def _apply_technician_sign_pin(tech, pin_raw):
+    from signature_auth import validate_sign_pin
+
+    pin = str(pin_raw or '').strip()
+    if not pin:
+        return
+    if not validate_sign_pin(pin):
+        raise ValueError('رمز التوقيع يجب أن يكون 6 أرقام')
+    tech.sign_pin_hash = hash_password(pin)
 
 
 def _save_technician_photo(tech, file_storage):
@@ -2157,10 +2215,15 @@ def technician_add():
             flash(msg2, 'error')
             return redirect(url_for('technicians'))
     t = Technician(code=next_code(Technician, 'Tech-', digits=3))
-    _apply_technician_form(t, request.form)
+    try:
+        _apply_technician_form(t, request.form)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('technicians'))
     db.session.add(t)
     db.session.flush()
     _save_technician_photo(t, request.files.get('photo'))
+    _save_technician_signature(t, request.files.get('signature'))
     _save_technician_documents(
         t,
         request.files.getlist('documents'),
@@ -2205,8 +2268,13 @@ def technician_edit(id):
         if taken2:
             flash(msg2, 'error')
             return redirect(url_for('technicians'))
-    _apply_technician_form(t, request.form)
+    try:
+        _apply_technician_form(t, request.form)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('technicians'))
     _save_technician_photo(t, request.files.get('photo'))
+    _save_technician_signature(t, request.files.get('signature'))
     _save_technician_documents(
         t,
         request.files.getlist('documents'),
@@ -2819,6 +2887,38 @@ def api_save_fault_report(fault_id):
         return jsonify({'ok': True, 'fault_id': fault_id})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 400
+
+
+@app.route('/api/signatures/verify', methods=['POST'])
+def api_verify_signature():
+    from signature_auth import verify_signature_credentials
+
+    data = request.get_json(silent=True) or {}
+    national_id = (data.get('national_id') or '').strip()
+    pin = (data.get('pin') or '').strip()
+    role = (data.get('role') or 'technician').strip()
+    visit_id = data.get('visit_id')
+    visit_technician_id = None
+    if visit_id:
+        v = MaintenanceVisit.query.get(visit_id)
+        if v:
+            visit_technician_id = v.technician_id
+
+    result = verify_signature_credentials(
+        national_id=national_id,
+        pin=pin,
+        role=role,
+        verify_password_fn=verify_password,
+        settings_row=get_app_settings(),
+        visit_technician_id=visit_technician_id,
+    )
+    if not result.get('ok'):
+        return jsonify(result), 401
+
+    sig_path = result.pop('signature_path', '')
+    result['signature_url'] = upload_url(sig_path) if sig_path else ''
+    result['signed_at'] = datetime.utcnow().isoformat() + 'Z'
+    return jsonify(result)
 
 
 @app.route('/api/maintenance-visits/<int:visit_id>/report', methods=['POST'])
@@ -4048,7 +4148,20 @@ def settings_save():
     s.logo_width_sidebar = _clamp_logo_width(request.form.get('logo_width_sidebar'), 150)
     s.logo_width_report  = _clamp_logo_width(request.form.get('logo_width_report'), 150)
     s.logo_width_login   = _clamp_logo_width(request.form.get('logo_width_login'), 180, min_w=80, max_w=500)
+    s.rep_national_id = request.form.get('rep_national_id', '').strip()
+    sign_method = (request.form.get('default_sign_method') or 'both').strip()
+    if sign_method not in ('draw', 'pin', 'both'):
+        sign_method = 'both'
+    s.default_sign_method = sign_method
+    rep_pin = request.form.get('rep_sign_pin', '').strip()
+    if rep_pin:
+        from signature_auth import validate_sign_pin
+        if not validate_sign_pin(rep_pin):
+            session['settings_notice'] = 'رمز توقيع الممثل يجب أن يكون 6 أرقام.'
+            return _settings_redirect('company')
+        s.rep_sign_pin_hash = hash_password(rep_pin)
     _save_company_logo(s, request.files.get('logo'))
+    _save_rep_signature(s, request.files.get('rep_signature'))
     db.session.commit()
     session['settings_notice'] = 'تم حفظ بيانات الشركة بنجاح.'
     return _settings_redirect('company', saved=1)

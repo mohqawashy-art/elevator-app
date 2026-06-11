@@ -131,7 +131,13 @@ def empty_report_data(template_key: str | None = None) -> dict[str, Any]:
             'parts_used': '',
             'next_visit': '',
         },
-        'signatures': {'tech': '', 'client': ''},
+        'signatures': {
+            'tech': '',
+            'client': '',
+            'tech_method': '',
+            'tech_signed_by': '',
+            'tech_signed_at': '',
+        },
         'photos': [],
     }
 
@@ -164,8 +170,8 @@ def merge_report_data(saved: dict[str, Any] | None, template_key: str | None = N
         base['meta'].update({k: meta.get(k) or base['meta'].get(k, '') for k in base['meta']})
     sig = saved.get('signatures') or {}
     if isinstance(sig, dict):
-        base['signatures']['tech'] = sig.get('tech') or ''
-        base['signatures']['client'] = sig.get('client') or ''
+        for key in base['signatures']:
+            base['signatures'][key] = sig.get(key) or base['signatures'].get(key) or ''
     if isinstance(saved.get('photos'), list):
         base['photos'] = saved['photos']
     return base

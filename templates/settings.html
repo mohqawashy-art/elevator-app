@@ -147,6 +147,30 @@ input[type=range]{padding:0;background:transparent;border:none}
         <input name="rep_mobile" value="{{ settings.rep_mobile or '' }}" dir="ltr">
       </div>
       <div>
+        <label>هوية الممثل (للتوقيع الرقمي)</label>
+        <input name="rep_national_id" value="{{ settings.rep_national_id or '' }}" dir="ltr" placeholder="رقم الهوية / الإقامة">
+      </div>
+      <div>
+        <label>طريقة التوقيع الافتراضية في المحاضر</label>
+        <select name="default_sign_method">
+          <option value="both" {% if (settings.default_sign_method or 'both') == 'both' %}selected{% endif %}>الاثنان متاحان (يختار الفني)</option>
+          <option value="draw" {% if settings.default_sign_method == 'draw' %}selected{% endif %}>رسم التوقيع فقط</option>
+          <option value="pin" {% if settings.default_sign_method == 'pin' %}selected{% endif %}>هوية + رمز فقط</option>
+        </select>
+      </div>
+      <div>
+        <label>رمز توقيع الممثل (6 أرقام)</label>
+        <input name="rep_sign_pin" type="password" inputmode="numeric" maxlength="6" dir="ltr" placeholder="{% if settings.rep_sign_pin_hash %}•••••• — اتركه فارغاً للإبقاء{% else %}123456{% endif %}" autocomplete="new-password">
+      </div>
+      <div class="full">
+        <label>صورة توقيع الممثل / المدير</label>
+        <input type="file" name="rep_signature" accept="image/png,image/jpeg,image/webp">
+        {% if settings.rep_signature_path %}
+        <p class="hint" style="margin-top:6px">التوقيع الحالي:</p>
+        <img src="{{ upload_url(settings.rep_signature_path) }}" alt="توقيع الممثل" style="max-height:64px;margin-top:4px">
+        {% endif %}
+      </div>
+      <div>
         <label>السجل التجاري</label>
         <input name="cr_number" value="{{ settings.cr_number or '' }}">
       </div>

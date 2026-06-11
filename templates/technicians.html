@@ -446,6 +446,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="contact" onclick="switchTechTab('contact')">بيانات الاتصال</button>
         <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="area" onclick="switchTechTab('area')">المنطقة</button>
         <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="docs" onclick="switchTechTab('docs')">الوثائق</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="signature" onclick="switchTechTab('signature')">التوقيع الرقمي</button>
       </div>
 
       <div class="form-section tech-tab-panel active" data-tech-tab="basic" id="tech-section-photo">
@@ -492,6 +493,22 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="districts-wrap" style="margin-top:12px">
           <label style="font-size:12px;font-weight:500;color:var(--text2)">الأحياء المخصصة</label>
           <div class="districts-list" id="districts-list"><div style="padding:10px;text-align:center;color:var(--text3);font-size:12px">اختر المدينة أولاً</div></div>
+        </div>
+      </div>
+
+      <div class="form-section tech-tab-panel" data-tech-tab="signature" id="tech-section-signature">
+        <div class="form-section-title">التوقيع الرقمي (اختياري)</div>
+        <p class="upload-hint" style="margin-bottom:10px">ارفع صورة التوقيع وحدّد رمزاً من 6 أرقام — يُستخدم في محضر الصيانة بدلاً من الرسم.</p>
+        <div class="form-grid">
+          <div class="field full">
+            <label>صورة التوقيع</label>
+            <input type="file" id="f-signature" accept="image/png,image/jpeg,image/webp">
+            <img id="signature-preview" alt="" style="max-height:72px;margin-top:8px;display:none">
+          </div>
+          <div class="field">
+            <label>رمز التوقيع (6 أرقام)</label>
+            <input type="password" id="f-sign-pin" inputmode="numeric" maxlength="6" dir="ltr" placeholder="اتركه فارغاً عند التعديل للإبقاء" autocomplete="new-password">
+          </div>
         </div>
       </div>
 
@@ -651,7 +668,9 @@ const TECHNICIANS = [
     visits:         {{ t.visits|length }},
     faults:         {{ t.faults|length }},
     notes:          {{ (t.notes or '')|tojson }},
-    photo_url:      {{ (url_for('static', filename=t.photo_path) if t.photo_path else '')|tojson }},
+    photo_url:      {{ (upload_url(t.photo_path) if t.photo_path else '')|tojson }},
+    signature_url:  {{ (upload_url(t.signature_path) if t.signature_path else '')|tojson }},
+    has_sign_pin:   {{ (t.sign_pin_hash is not none and t.sign_pin_hash != '')|tojson }},
     documents:      {{ t.documents | map(attribute='id') | list | length }},
     docs: [
       {% for d in t.documents %}
@@ -747,6 +766,22 @@ function resetPhotoPreview(url) {
     preview.removeAttribute('src');
     preview.style.display = 'none';
     ph.style.display = 'flex';
+  }
+}
+
+function resetSignaturePreview(url) {
+  var preview = document.getElementById('signature-preview');
+  var input = document.getElementById('f-signature');
+  var pin = document.getElementById('f-sign-pin');
+  if (input) input.value = '';
+  if (pin) pin.value = '';
+  if (!preview) return;
+  if (url) {
+    preview.src = url;
+    preview.style.display = 'block';
+  } else {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
   }
 }
 
@@ -1090,6 +1125,7 @@ function clearTechForm() {
   document.getElementById('f-city-sel').value = '';
   loadDistricts();
   resetPhotoPreview('');
+  resetSignaturePreview('');
   document.getElementById('new-docs-rows').innerHTML = '';
   document.getElementById('existing-docs-wrap').style.display = 'none';
   document.getElementById('existing-docs-list').innerHTML = '';
@@ -1205,6 +1241,12 @@ function saveTech() {
   if (photoInput && photoInput.files && photoInput.files[0]) {
     fd.append('photo', photoInput.files[0]);
   }
+  var signPin = document.getElementById('f-sign-pin');
+  if (signPin && signPin.value.trim()) fd.append('sign_pin', signPin.value.trim());
+  var signInput = document.getElementById('f-signature');
+  if (signInput && signInput.files && signInput.files[0]) {
+    fd.append('signature', signInput.files[0]);
+  }
   document.querySelectorAll('#new-docs-rows .doc-form-row').forEach(function(row) {
     var fileInp = row.querySelector('.doc-file-inp');
     var typeSel = row.querySelector('.doc-type-sel');
@@ -1243,6 +1285,7 @@ function editTech(id) {
   splitPhone(t.phone, 'f-code-ph', 'f-phone');
   splitPhone(t.phone2, 'f-code-wa', 'f-whatsapp');
   resetPhotoPreview(t.photo_url || '');
+  resetSignaturePreview(t.signature_url || '');
   document.getElementById('new-docs-rows').innerHTML = '';
   renderExistingDocs(t.docs || [], t.id);
   document.getElementById('modal-add').classList.add('open');
