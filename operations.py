@@ -1036,8 +1036,21 @@ def fault_report_payload(
 def _report_brand_logo_url() -> str:
     settings = Settings.query.first()
     if settings and settings.logo_path:
-        return '/static/' + str(settings.logo_path).replace('\\', '/')
+        try:
+            from app import upload_url
+            return upload_url(settings.logo_path)
+        except Exception:
+            return '/static/' + str(settings.logo_path).replace('\\', '/')
     return '/static/logo.png'
+
+
+def _report_logo_width() -> int:
+    settings = Settings.query.first()
+    try:
+        width = int(getattr(settings, 'logo_width_report', None) or 150)
+    except (TypeError, ValueError):
+        width = 150
+    return max(100, min(220, width))
 
 
 def _report_company_name() -> str:
@@ -1183,7 +1196,8 @@ def visit_report_payload(
         'report_data': report_data,
         'report_data_json': json.dumps(report_data, ensure_ascii=False),
         'template_json': json.dumps(template, ensure_ascii=False),
-        'logo_url': '/static/logo.png',
+        'logo_url': _report_brand_logo_url(),
+        'logo_width': _report_logo_width(),
         'base_url': base_url,
         'sign_config': _visit_sign_config(),
     }
