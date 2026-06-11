@@ -121,7 +121,9 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .map-info-title{font-size:14px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 .map-info-sub{font-size:12px;color:#555;line-height:1.5}
 .map-info-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #d0d7e5;background:#f5f8ff;color:#2a7fff;cursor:pointer;margin-top:8px}
-.alert-expiry{background:rgba(224,144,48,.08);border:1px solid rgba(224,144,48,.2);border-radius:var(--r);padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--warning)}
+.alert-expired{background:rgba(224,72,72,.1);border:1px solid rgba(224,72,72,.28);border-radius:var(--r);padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--danger);cursor:pointer}
+.alert-expired svg{width:16px;height:16px;flex-shrink:0}
+.alert-expiry{background:rgba(224,144,48,.08);border:1px solid rgba(224,144,48,.2);border-radius:var(--r);padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--warning);cursor:pointer}
 .alert-expiry svg{width:16px;height:16px;flex-shrink:0}
 .filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
 .search-wrap{position:relative;flex:1;min-width:200px}
@@ -357,8 +359,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
     </div>
 
+    <!-- EXPIRED ALERT -->
+    <div class="alert-expired" id="expired-alert" style="display:none" onclick="openContractDrill('expired', this)" title="عرض العقود المنتهية">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
+      <span>تنبيه: <strong id="expired-count">0 عقود</strong> منتهية — يُرجى مراجعة العقود وتجديدها أو إغلاقها.</span>
+    </div>
+
     <!-- EXPIRY ALERT -->
-    <div class="alert-expiry" id="expiry-alert" style="display:none">
+    <div class="alert-expiry" id="expiry-alert" style="display:none" onclick="openContractDrill('expiring', this)" title="عرض العقود على وشك الانتهاء">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1L1 14h14L8 1z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="12" r=".6" fill="currentColor"/></svg>
       <span>تنبيه: <strong id="expiry-count">0 عقود</strong> على وشك الانتهاء خلال 30 يوماً — يُنصح بالتجديد قبل انتهاء المدة.</span>
     </div>
@@ -831,6 +839,15 @@ function updateStats() {
   document.getElementById('stat-expiring').textContent = expiring;
   document.getElementById('stat-total-val').textContent = fmtMoneyAmt(totalVal);
   document.getElementById('stat-unpaid-val').textContent = fmtMoneyAmt(unpaid);
+
+  var expiredAlert = document.getElementById('expired-alert');
+  var expiredCount = document.getElementById('expired-count');
+  if (expired > 0) {
+    if (expiredAlert) expiredAlert.style.display = 'flex';
+    if (expiredCount) expiredCount.textContent = expired + ' عقود';
+  } else if (expiredAlert) {
+    expiredAlert.style.display = 'none';
+  }
 
   var alertBox = document.getElementById('expiry-alert');
   var expiryCount = document.getElementById('expiry-count');
