@@ -382,14 +382,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <select class="filter-select" id="f-city" onchange="filterTable()">
           <option value="">كل المدن</option>
         </select>
-        <select class="filter-select" id="f-spec" onchange="filterTable()">
+        <select class="filter-select" id="filter-spec" onchange="filterTable()">
           <option value="">كل التخصصات</option>
         </select>
-        <select class="filter-select" id="f-status" onchange="filterTable()">
+        <select class="filter-select" id="filter-status" onchange="filterTable()">
           <option value="">كل الحالات</option>
           <option>متاح</option><option>مشغول</option><option>إجازة</option><option>غير نشط</option>
         </select>
-        <select class="filter-select" id="f-emergency" onchange="filterTable()">
+        <select class="filter-select" id="filter-emergency" onchange="filterTable()">
           <option value="">الطوارئ</option>
           <option value="نعم">متاح للطوارئ</option>
           <option value="لا">غير متاح</option>
@@ -873,12 +873,16 @@ function initFilters() {
       citySel.innerHTML += '<option>' + esc(c) + '</option>';
     });
   }
-  var specSel = document.getElementById('f-spec');
+  var specSel = document.getElementById('filter-spec');
   if (specSel) {
     Object.keys(specs).sort().forEach(function(s) {
       specSel.innerHTML += '<option>' + esc(s) + '</option>';
     });
   }
+}
+
+function getTechEmergencySelect() {
+  return document.querySelector('#modal-add select#f-emergency');
 }
 
 function updateStats() {
@@ -945,14 +949,14 @@ function openTechDrill(type, cardEl) {
   document.getElementById('drill-panel').style.display = 'block';
   document.getElementById('drill-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
   if (type === 'emergency') {
-    document.getElementById('f-emergency').value = 'نعم';
-    document.getElementById('f-status').value = '';
+    document.getElementById('filter-emergency').value = 'نعم';
+    document.getElementById('filter-status').value = '';
   } else if (type !== 'all') {
-    document.getElementById('f-status').value = type;
-    document.getElementById('f-emergency').value = '';
+    document.getElementById('filter-status').value = type;
+    document.getElementById('filter-emergency').value = '';
   } else {
-    document.getElementById('f-status').value = '';
-    document.getElementById('f-emergency').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-emergency').value = '';
   }
   filterTable();
 }
@@ -960,8 +964,8 @@ function openTechDrill(type, cardEl) {
 function closeTechDrill() {
   document.getElementById('drill-panel').style.display = 'none';
   document.querySelectorAll('.stat-mini').forEach(function(el) { el.classList.remove('active'); });
-  document.getElementById('f-status').value = '';
-  document.getElementById('f-emergency').value = '';
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-emergency').value = '';
   filterTable();
 }
 
@@ -1002,10 +1006,10 @@ function renderTable(data) {
 
 function filterTable() {
   var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').toLowerCase();
-  var sp = document.getElementById('f-spec') && document.getElementById('f-spec').value || '';
+  var sp = document.getElementById('filter-spec') && document.getElementById('filter-spec').value || '';
   var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
-  var st = document.getElementById('f-status') && document.getElementById('f-status').value || '';
-  var em = document.getElementById('f-emergency') && document.getElementById('f-emergency').value || '';
+  var st = document.getElementById('filter-status') && document.getElementById('filter-status').value || '';
+  var em = document.getElementById('filter-emergency') && document.getElementById('filter-emergency').value || '';
   filtered = TECHNICIANS.filter(function(t) {
     return (!s || t.name.includes(s) || t.code.toLowerCase().includes(s) || (t.phone && t.phone.includes(s))) &&
       (!sp || t.specialization === sp) &&
@@ -1042,7 +1046,8 @@ function clearTechForm() {
   });
   document.getElementById('f-code').value = NEXT_TECH_CODE;
   document.getElementById('f-spec').value = 'مصاعد ركاب';
-  document.getElementById('f-emergency').value = 'نعم';
+  var emSel = getTechEmergencySelect();
+  if (emSel) emSel.value = 'نعم';
   document.getElementById('f-cur-status').value = 'متاح';
   document.getElementById('f-city-sel').value = '';
   loadDistricts();
@@ -1156,7 +1161,8 @@ function saveTech() {
   fd.append('salary', document.getElementById('f-salary').value);
   fd.append('status', document.getElementById('f-cur-status').value);
   fd.append('notes', document.getElementById('f-notes').value);
-  if (document.getElementById('f-emergency').value === 'نعم') fd.append('emergency', 'on');
+  var emSel = getTechEmergencySelect();
+  if (emSel && emSel.value === 'نعم') fd.append('emergency', 'on');
   var photoInput = document.getElementById('f-photo');
   if (photoInput && photoInput.files && photoInput.files[0]) {
     fd.append('photo', photoInput.files[0]);
@@ -1190,7 +1196,8 @@ function editTech(id) {
   document.getElementById('f-city-sel').value = t.city || '';
   loadDistricts();
   document.getElementById('f-cur-status').value = t.status === 'نشط' ? 'متاح' : (t.status || 'متاح');
-  document.getElementById('f-emergency').value = t.emergency ? 'نعم' : 'لا';
+  var emSel = getTechEmergencySelect();
+  if (emSel) emSel.value = t.emergency ? 'نعم' : 'لا';
   document.getElementById('f-iqama').value = t.national_id || '';
   document.getElementById('f-hire').value = t.hire_date || '';
   document.getElementById('f-salary').value = t.salary || '';
