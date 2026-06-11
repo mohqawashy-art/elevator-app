@@ -1193,7 +1193,7 @@ def _visit_sign_config() -> dict:
     from models import Settings
 
     s = Settings.query.first()
-    method = (getattr(s, 'default_sign_method', None) or 'both').strip() if s else 'both'
+    method = (getattr(s, 'default_sign_method', None) or 'pin').strip() if s else 'pin'
     if method not in ('draw', 'pin', 'both'):
         method = 'both'
     rep_sig = (getattr(s, 'rep_signature_path', None) or '') if s else ''

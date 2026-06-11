@@ -477,6 +477,25 @@ class PurchaseOrderLine(db.Model):
 
 
 # =============================================
+# 12ب. الموقّعون (توقيعات مشفّرة)
+# =============================================
+class Signatory(db.Model):
+    __tablename__ = 'signatories'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    name            = db.Column(db.String(100), nullable=False)
+    national_id     = db.Column(db.String(20), nullable=False, index=True)
+    role            = db.Column(db.String(30), default='technician')  # technician | manager
+    sign_pin_hash   = db.Column(db.String(200), nullable=False)
+    signature_path  = db.Column(db.String(300))  # uploads/signatures/{id}.enc
+    technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=True)
+    is_active       = db.Column(db.Boolean, default=True)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    technician = db.relationship('Technician', backref='signatory', uselist=False)
+
+
+# =============================================
 # 13. إعدادات النظام
 # =============================================
 class Settings(db.Model):

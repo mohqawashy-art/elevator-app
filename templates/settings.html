@@ -93,6 +93,7 @@ input[type=range]{padding:0;background:transparent;border:none}
     <button type="button" class="tab {% if active_tab == 'company' %}active{% endif %}" data-tab="company">الشركة والهوية</button>
     {% if current_user.role == 'admin' %}
     <button type="button" class="tab {% if active_tab == 'users' %}active{% endif %}" data-tab="users">المستخدمون</button>
+    <button type="button" class="tab {% if active_tab == 'signatures' %}active{% endif %}" data-tab="signatures">التوقيعات</button>
     {% endif %}
     <button type="button" class="tab {% if active_tab == 'account' %}active{% endif %}" data-tab="account">حسابي</button>
     <button type="button" class="tab {% if active_tab == 'appearance' %}active{% endif %}" data-tab="appearance">المظهر</button>
@@ -147,30 +148,6 @@ input[type=range]{padding:0;background:transparent;border:none}
         <input name="rep_mobile" value="{{ settings.rep_mobile or '' }}" dir="ltr">
       </div>
       <div>
-        <label>هوية الممثل (للتوقيع الرقمي)</label>
-        <input name="rep_national_id" value="{{ settings.rep_national_id or '' }}" dir="ltr" placeholder="رقم الهوية / الإقامة">
-      </div>
-      <div>
-        <label>طريقة التوقيع الافتراضية في المحاضر</label>
-        <select name="default_sign_method">
-          <option value="both" {% if (settings.default_sign_method or 'both') == 'both' %}selected{% endif %}>الاثنان متاحان (يختار الفني)</option>
-          <option value="draw" {% if settings.default_sign_method == 'draw' %}selected{% endif %}>رسم التوقيع فقط</option>
-          <option value="pin" {% if settings.default_sign_method == 'pin' %}selected{% endif %}>هوية + رمز فقط</option>
-        </select>
-      </div>
-      <div>
-        <label>رمز توقيع الممثل (6 أرقام)</label>
-        <input name="rep_sign_pin" type="password" inputmode="numeric" maxlength="6" dir="ltr" placeholder="{% if settings.rep_sign_pin_hash %}•••••• — اتركه فارغاً للإبقاء{% else %}123456{% endif %}" autocomplete="new-password">
-      </div>
-      <div class="full">
-        <label>صورة توقيع الممثل / المدير</label>
-        <input type="file" name="rep_signature" accept="image/png,image/jpeg,image/webp">
-        {% if settings.rep_signature_path %}
-        <p class="hint" style="margin-top:6px">التوقيع الحالي:</p>
-        <img src="{{ upload_url(settings.rep_signature_path) }}" alt="توقيع الممثل" style="max-height:64px;margin-top:4px">
-        {% endif %}
-      </div>
-      <div>
         <label>السجل التجاري</label>
         <input name="cr_number" value="{{ settings.cr_number or '' }}">
       </div>
@@ -222,6 +199,91 @@ input[type=range]{padding:0;background:transparent;border:none}
   </form>
     {% endif %}
   </div>
+
+  <!-- التوقيعات -->
+  {% if current_user.role == 'admin' %}
+  <div class="panel {% if active_tab == 'signatures' %}active{% endif %}" id="panel-signatures">
+    <div class="card">
+      <div class="section">إعدادات التوقيع في النماذج</div>
+      <form method="post" action="{{ url_for('settings_signatures_prefs') }}">
+        <div class="grid">
+          <div>
+            <label>طريقة التوقيع في المحاضر</label>
+            <select name="default_sign_method">
+              <option value="pin" {% if (settings.default_sign_method or 'pin') == 'pin' %}selected{% endif %}>زر إضافة توقيع (هوية + كلمة مرور)</option>
+              <option value="both" {% if settings.default_sign_method == 'both' %}selected{% endif %}>إضافة توقيع + رسم يدوي</option>
+              <option value="draw" {% if settings.default_sign_method == 'draw' %}selected{% endif %}>رسم يدوي فقط</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:12px">
+          <button type="submit" class="btn btn-secondary btn-sm">حفظ الإعداد</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="section">الموقّعون المسجّلون</div>
+      <p class="hint" style="margin-bottom:12px">ارفع صورة التوقيع هنا — تُحفظ مشفّرة على السيرفر. عند التوقيع في النماذج يُطلب رقم الهوية وكلمة المرور (6 أرقام).</p>
+      {% if signatories %}
+      <table class="users-table">
+        <thead>
+          <tr><th>الاسم</th><th>الهوية</th><th>الدور</th><th>مربوط بفني</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for sg in signatories %}
+          <tr>
+            <td>{{ sg.name }}</td>
+            <td dir="ltr">{{ sg.national_id }}</td>
+            <td>{% if sg.role == 'manager' %}مدير{% else %}فني{% endif %}</td>
+            <td>{% if sg.technician_id %}نعم{% else %}—{% endif %}</td>
+            <td>
+              <form method="post" action="{{ url_for('settings_signatory_delete', sig_id=sg.id) }}" onsubmit="return confirm('حذف هذا التوقيع؟')">
+                <button type="submit" class="btn btn-secondary btn-sm">حذف</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="font-size:13px;color:var(--text2)">لا يوجد موقّعون بعد.</p>
+      {% endif %}
+    </div>
+
+    <form class="card" method="post" action="{{ url_for('settings_signatory_add') }}" enctype="multipart/form-data" style="margin-top:16px">
+      <div class="section">إضافة موقّع جديد</div>
+      <div class="grid">
+        <div>
+          <label>الاسم *</label>
+          <input name="name" required>
+        </div>
+        <div>
+          <label>رقم الهوية / الإقامة *</label>
+          <input name="national_id" required dir="ltr">
+        </div>
+        <div>
+          <label>الدور</label>
+          <select name="role">
+            <option value="technician">فني</option>
+            <option value="manager">مدير / ممثل</option>
+          </select>
+        </div>
+        <div>
+          <label>كلمة مرور التوقيع (6 أرقام) *</label>
+          <input name="sign_pin" type="password" inputmode="numeric" maxlength="6" required dir="ltr" autocomplete="new-password">
+        </div>
+        <div class="full">
+          <label>صورة التوقيع *</label>
+          <input type="file" name="signature" accept="image/png,image/jpeg,image/webp" required>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">حفظ التوقيع</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 
   <!-- المستخدمون -->
   {% if current_user.role == 'admin' %}

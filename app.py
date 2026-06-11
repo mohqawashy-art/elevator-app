@@ -6,7 +6,7 @@ app.py
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
-from models import InventoryItem, StockMovement, PartsBilling, Settings, User
+from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
 from calendar import monthrange
 from datetime import datetime, date, timedelta
@@ -1972,7 +1972,6 @@ def _apply_technician_form(t, form):
     t.emergency = form.get('emergency') == 'on'
     t.status = form.get('status', 'متاح')
     t.notes = form.get('notes', '')
-    _apply_technician_sign_pin(t, form.get('sign_pin', ''))
 
 
 def _tech_dir(tech_id, sub=''):
@@ -2018,52 +2017,31 @@ def _ext_ok(filename, allowed):
     return filename.rsplit('.', 1)[1].lower() in allowed
 
 
-def _save_technician_signature(tech, file_storage):
-    if not file_storage or not file_storage.filename:
-        return
-    if not _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT):
-        return
-    ext = file_storage.filename.rsplit('.', 1)[1].lower()
-    folder = _tech_dir(tech.id)
-    for old in os.listdir(folder):
-        if old.startswith('signature.'):
-            try:
-                os.remove(os.path.join(folder, old))
-            except OSError:
-                pass
-    filename = f'signature.{ext}'
-    abs_path = os.path.join(folder, filename)
-    file_storage.save(abs_path)
-    tech.signature_path = f'uploads/technicians/{tech.id}/{filename}'
+def _save_technician_signature(tech, file_storage, pin_plain=''):
+    from signatory_service import upsert_signatory
 
-
-def _save_rep_signature(settings_row, file_storage):
-    if not file_storage or not file_storage.filename:
+    pin = str(pin_plain or '').strip()
+    has_file = file_storage and file_storage.filename and _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT)
+    existing = Signatory.query.filter_by(technician_id=tech.id, is_active=True).first()
+    if not has_file and not pin and not existing:
         return
-    if not _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT):
-        return
-    ext = file_storage.filename.rsplit('.', 1)[1].lower()
-    os.makedirs(COMPANY_UPLOAD_ROOT, exist_ok=True)
-    for old in os.listdir(COMPANY_UPLOAD_ROOT):
-        if old.startswith('rep-signature.'):
-            try:
-                os.remove(os.path.join(COMPANY_UPLOAD_ROOT, old))
-            except OSError:
-                pass
-    filename = f'rep-signature.{ext}'
-    file_storage.save(os.path.join(COMPANY_UPLOAD_ROOT, filename))
-    settings_row.rep_signature_path = f'uploads/company/{filename}'
-
-
-def _apply_technician_sign_pin(tech, pin_raw):
-    from signature_auth import validate_sign_pin
-
-    pin = str(pin_raw or '').strip()
-    if not pin:
-        return
-    if not validate_sign_pin(pin):
-        raise ValueError('رمز التوقيع يجب أن يكون 6 أرقام')
-    tech.sign_pin_hash = hash_password(pin)
+    if not tech.national_id:
+        raise ValueError('أدخل رقم الإقامة في الوثائق الرسمية قبل حفظ التوقيع')
+    raw = file_storage.read() if has_file else None
+    row = upsert_signatory(
+        name=tech.name,
+        national_id=tech.national_id,
+        role='technician',
+        pin_plain=pin,
+        pin_hash_fn=hash_password,
+        image_bytes=raw,
+        app_root=app.root_path,
+        secret=app.config['SECRET_KEY'],
+        technician_id=tech.id,
+        signatory_id=existing.id if existing else None,
+    )
+    tech.signature_path = row.signature_path
+    tech.sign_pin_hash = row.sign_pin_hash
 
 
 def _save_technician_photo(tech, file_storage):
@@ -2223,7 +2201,11 @@ def technician_add():
     db.session.add(t)
     db.session.flush()
     _save_technician_photo(t, request.files.get('photo'))
-    _save_technician_signature(t, request.files.get('signature'))
+    try:
+        _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('technicians'))
     _save_technician_documents(
         t,
         request.files.getlist('documents'),
@@ -2274,7 +2256,11 @@ def technician_edit(id):
         flash(str(exc), 'error')
         return redirect(url_for('technicians'))
     _save_technician_photo(t, request.files.get('photo'))
-    _save_technician_signature(t, request.files.get('signature'))
+    try:
+        _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('technicians'))
     _save_technician_documents(
         t,
         request.files.getlist('documents'),
@@ -2916,9 +2902,28 @@ def api_verify_signature():
         return jsonify(result), 401
 
     sig_path = result.pop('signature_path', '')
-    result['signature_url'] = upload_url(sig_path) if sig_path else ''
+    result['signature_data'] = _signature_data_url(sig_path)
     result['signed_at'] = datetime.utcnow().isoformat() + 'Z'
     return jsonify(result)
+
+
+def _signature_data_url(relative_path: str) -> str:
+    from signature_crypto import image_data_url, load_encrypted_signature
+
+    if not relative_path:
+        return ''
+    rel = relative_path.replace('\\', '/')
+    if rel.endswith('.enc'):
+        try:
+            raw = load_encrypted_signature(app.root_path, app.config['SECRET_KEY'], rel)
+            return image_data_url(raw)
+        except (FileNotFoundError, ValueError):
+            return ''
+    static_path = os.path.join(app.root_path, 'static', rel.replace('/', os.sep))
+    if os.path.isfile(static_path):
+        with open(static_path, 'rb') as fh:
+            return image_data_url(fh.read())
+    return upload_url(rel)
 
 
 @app.route('/api/maintenance-visits/<int:visit_id>/report', methods=['POST'])
@@ -4109,10 +4114,12 @@ def settings():
     edit_id = request.args.get('edit_user', type=int)
     if edit_id and user.role == 'admin':
         edit_user = User.query.get(edit_id)
+    signatories = Signatory.query.filter_by(is_active=True).order_by(Signatory.name).all()
     return render_template(
         'settings.html',
         settings=s,
         users=users,
+        signatories=signatories,
         current_user=user,
         active_tab=request.args.get('tab', 'company'),
         edit_user=edit_user,
@@ -4120,6 +4127,71 @@ def settings():
         generated_username=session.pop('settings_generated_username', None),
         generated_password=session.pop('settings_generated_password', None),
     )
+
+
+@app.route('/settings/signatories/add', methods=['POST'])
+def settings_signatory_add():
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('signatures')
+    from signatory_service import upsert_signatory
+
+    name = request.form.get('name', '').strip()
+    national_id = request.form.get('national_id', '').strip()
+    role = request.form.get('role', 'technician')
+    pin = request.form.get('sign_pin', '').strip()
+    file_storage = request.files.get('signature')
+    has_file = file_storage and file_storage.filename and _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT)
+    try:
+        if not has_file:
+            raise ValueError('صورة التوقيع مطلوبة')
+        upsert_signatory(
+            name=name,
+            national_id=national_id,
+            role=role,
+            pin_plain=pin,
+            pin_hash_fn=hash_password,
+            image_bytes=file_storage.read(),
+            app_root=app.root_path,
+            secret=app.config['SECRET_KEY'],
+        )
+        db.session.commit()
+        session['settings_notice'] = 'تم حفظ التوقيع بنجاح.'
+    except ValueError as exc:
+        db.session.rollback()
+        session['settings_notice'] = str(exc)
+    return _settings_redirect('signatures')
+
+
+@app.route('/settings/signatories/<int:sig_id>/delete', methods=['POST'])
+def settings_signatory_delete(sig_id):
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('signatures')
+    from signatory_service import delete_signatory_files
+
+    row = Signatory.query.get_or_404(sig_id)
+    delete_signatory_files(app.root_path, row)
+    row.is_active = False
+    row.signature_path = None
+    db.session.commit()
+    session['settings_notice'] = 'تم حذف الموقّع.'
+    return _settings_redirect('signatures')
+
+
+@app.route('/settings/signatures/save', methods=['POST'])
+def settings_signatures_prefs():
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('signatures')
+    s = get_app_settings()
+    sign_method = (request.form.get('default_sign_method') or 'pin').strip()
+    if sign_method not in ('draw', 'pin', 'both'):
+        sign_method = 'pin'
+    s.default_sign_method = sign_method
+    db.session.commit()
+    session['settings_notice'] = 'تم حفظ إعدادات التوقيع.'
+    return _settings_redirect('signatures')
 
 
 @app.route('/settings/save', methods=['POST'])
@@ -4148,20 +4220,7 @@ def settings_save():
     s.logo_width_sidebar = _clamp_logo_width(request.form.get('logo_width_sidebar'), 150)
     s.logo_width_report  = _clamp_logo_width(request.form.get('logo_width_report'), 150)
     s.logo_width_login   = _clamp_logo_width(request.form.get('logo_width_login'), 180, min_w=80, max_w=500)
-    s.rep_national_id = request.form.get('rep_national_id', '').strip()
-    sign_method = (request.form.get('default_sign_method') or 'both').strip()
-    if sign_method not in ('draw', 'pin', 'both'):
-        sign_method = 'both'
-    s.default_sign_method = sign_method
-    rep_pin = request.form.get('rep_sign_pin', '').strip()
-    if rep_pin:
-        from signature_auth import validate_sign_pin
-        if not validate_sign_pin(rep_pin):
-            session['settings_notice'] = 'رمز توقيع الممثل يجب أن يكون 6 أرقام.'
-            return _settings_redirect('company')
-        s.rep_sign_pin_hash = hash_password(rep_pin)
     _save_company_logo(s, request.files.get('logo'))
-    _save_rep_signature(s, request.files.get('rep_signature'))
     db.session.commit()
     session['settings_notice'] = 'تم حفظ بيانات الشركة بنجاح.'
     return _settings_redirect('company', saved=1)

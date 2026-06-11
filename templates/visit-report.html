@@ -99,9 +99,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .sig-label{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px}
 .sig-canvas{width:100%;height:80px;border:1px dashed var(--border);border-radius:3px;background:#fff;touch-action:none}
 .sig-clear{font-size:10px;padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:#fff;cursor:pointer;margin-top:6px;font-family:var(--font)}
-.sig-mode{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:6px 0;font-size:10px;color:var(--text2)}
-.sig-mode label{display:flex;align-items:center;gap:4px;cursor:pointer}
-.sig-pin-btn{font-size:10px;padding:5px 12px;border:1px solid var(--navy);border-radius:3px;background:var(--navy);color:#fff;cursor:pointer;margin-top:4px;font-family:var(--font);display:none}
+.sig-add-btn{font-size:11px;padding:7px 14px;border:none;border-radius:4px;background:var(--navy);color:#fff;cursor:pointer;margin-top:6px;font-family:var(--font);font-weight:700}
+.sig-draw-link{font-size:10px;color:var(--navy2);text-decoration:underline;cursor:pointer;background:none;border:none;font-family:var(--font);margin-top:4px}
 .sig-pin-meta{font-size:9px;color:var(--text3);margin-top:4px}
 #dsign-modal{display:none;position:fixed;inset:0;z-index:9999}
 #dsign-modal.open{display:block}
@@ -122,7 +121,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .complete-btn{background:#27ae60;color:#fff}
 .progress-pill{font-size:11px;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:20px}
 @media print{
-  .tech-bar,.action-row,.sig-clear,.sig-mode,.sig-pin-btn,.photo-remove{display:none!important}
+  .tech-bar,.action-row,.sig-clear,.sig-add-btn,.sig-draw-link,.photo-remove{display:none!important}
   .page{box-shadow:none;margin:0}
   .status-label{border:none;background:transparent!important;color:#000!important}
   .photo-slot:not(.has-img){display:none!important}
@@ -254,15 +253,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="sig-area">
     <div class="sig-box">
       <div class="sig-label">توقيع الفني</div>
-      {% if editable %}
-      <div class="sig-mode" id="sig-tech-mode">
-        <label><input type="radio" name="sig-tech-method" value="draw" checked> رسم التوقيع</label>
-        <label><input type="radio" name="sig-tech-method" value="pin"> هوية + رمز</label>
-      </div>
-      {% endif %}
       <canvas class="sig-canvas" id="sig-tech" width="300" height="80"></canvas>
       {% if editable %}
-      <button type="button" class="sig-pin-btn" id="sig-tech-pin-btn">✍️ توقيع بالهوية</button>
+      <button type="button" class="sig-add-btn" id="sig-tech-add-btn">✍️ إضافة توقيع</button>
+      <button type="button" class="sig-draw-link" id="sig-tech-draw-link">أو رسم التوقيع يدوياً</button>
       <button type="button" class="sig-clear" onclick="LiftCoreChecklist.clearSig('sig-tech'); if(window.LiftCoreDigitalSign) LiftCoreDigitalSign.clearTechSignMeta();">مسح</button>
       {% endif %}
       <div class="sig-pin-meta" id="sig-tech-pin-meta"></div>
@@ -289,7 +283,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 </div>
 
 <script src="/static/maintenance-checklist.js?v=8"></script>
-<script src="/static/digital-signature.js?v=1"></script>
+<script src="/static/digital-signature.js?v=2"></script>
 <script>
 const REPORT_CFG = {
   visitId: {{ visit_id }},
