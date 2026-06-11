@@ -6,7 +6,7 @@ import os
 
 from models import Signatory, db
 from signature_auth import normalize_national_id, validate_sign_pin
-from signature_crypto import encrypted_signature_path, save_encrypted_signature
+from signature_crypto import save_encrypted_signature
 
 
 def upsert_signatory(

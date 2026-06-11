@@ -4114,7 +4114,12 @@ def settings():
     edit_id = request.args.get('edit_user', type=int)
     if edit_id and user.role == 'admin':
         edit_user = User.query.get(edit_id)
-    signatories = Signatory.query.filter_by(is_active=True).order_by(Signatory.name).all()
+    try:
+        signatories = Signatory.query.filter_by(is_active=True).order_by(Signatory.name).all()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('signatories load failed: %s', exc)
+        signatories = []
     return render_template(
         'settings.html',
         settings=s,
@@ -4160,6 +4165,13 @@ def settings_signatory_add():
     except ValueError as exc:
         db.session.rollback()
         session['settings_notice'] = str(exc)
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('settings_signatory_add failed')
+        msg = str(exc) or 'تعذّر حفظ التوقيع'
+        if 'cryptography' in msg.lower():
+            msg = 'حزمة cryptography غير مثبتة على السيرفر — نفّذ: pip install cryptography'
+        session['settings_notice'] = msg
     return _settings_redirect('signatures')
 
 

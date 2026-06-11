@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-import imghdr
 import os
 from hashlib import sha256
 
@@ -32,11 +31,20 @@ def decrypt_bytes(token: bytes, secret: str) -> bytes:
         raise ValueError('تعذّر فك تشفير التوقيع') from exc
 
 
+def _image_mime(raw: bytes) -> str:
+    if raw.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'png'
+    if raw[:3] == b'\xff\xd8\xff':
+        return 'jpeg'
+    if raw[:6] in (b'GIF87a', b'GIF89a'):
+        return 'gif'
+    if len(raw) >= 12 and raw[:4] == b'RIFF' and raw[8:12] == b'WEBP':
+        return 'webp'
+    return 'png'
+
+
 def image_data_url(raw: bytes) -> str:
-    kind = imghdr.what(None, raw) or 'png'
-    mime = 'jpeg' if kind == 'jpeg' else kind
-    if mime not in ('png', 'jpeg', 'gif', 'webp'):
-        mime = 'png'
+    mime = _image_mime(raw)
     b64 = base64.b64encode(raw).decode('ascii')
     return f'data:image/{mime};base64,{b64}'
 
