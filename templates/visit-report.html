@@ -142,13 +142,39 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .print-btn{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff}
 .complete-btn{background:#27ae60;color:#fff}
 .progress-pill{font-size:11px;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:20px}
+.print-header-fixed{display:none}
+@page{
+  size:A4;
+  margin:32mm 10mm 14mm 10mm;
+}
 @media print{
-  .tech-bar,.action-row,.sig-clear,.sig-add-btn,.sig-draw-link,.photo-remove{display:none!important}
-  .page{box-shadow:none;margin:0}
+  html,body{background:#fff!important}
+  .readonly-banner,.tech-bar,.action-row,.sig-clear,.sig-add-btn,.sig-draw-link,.photo-remove{display:none!important}
+  .page{box-shadow:none;margin:0;max-width:none;border-radius:0;overflow:visible}
+  .print-header-fixed{
+    display:block!important;
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:9999;
+    background:#fff;
+    padding:0 10mm;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .print-header-fixed .doc-header{
+    min-height:24mm;
+    padding:8px 0 6px;
+    border-bottom:3px solid var(--gold);
+  }
+  .page>.doc-header{display:none!important}
   .status-label{border:none;background:transparent!important;color:#000!important}
   .photo-slot:not(.has-img){display:none!important}
   .section:has(+ .photos-grid:not(:has(.has-img))){display:none!important}
   .photos-grid:not(:has(.has-img)){display:none!important}
+  .checklist-section{break-inside:avoid-page;page-break-inside:avoid}
+  .sig-area,.doc-footer{break-inside:avoid-page;page-break-inside:avoid}
 }
 @media(max-width:600px){
   .doc-header{grid-template-columns:1fr;min-height:0;text-align:center}
@@ -199,21 +225,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   </div>
 </div>
 
+<div class="print-header-fixed" aria-hidden="true">
+  {% include 'partials/visit-report-header.html' %}
+</div>
+
 <div class="page">
-  <div class="doc-header">
-    <div class="doc-right">
-      <div class="doc-badge">محضر صيانة</div>
-      <div class="doc-meta">التاريخ: <b>{{ visit.visit_date }}</b></div>
-      <div class="doc-num">رقم: {{ visit.code }}</div>
-    </div>
-    <div class="doc-center">
-      <h1>محضر صيانة مصعد</h1>
-      <div class="sub">Elevator Maintenance Report</div>
-    </div>
-    <div class="doc-logo-only">
-      <img src="{{ logo_url }}" alt="">
-    </div>
-  </div>
+  {% include 'partials/visit-report-header.html' %}
 
   <div class="status-bar">
     <div class="status-item">📋 {{ visit.visit_type }}</div>
