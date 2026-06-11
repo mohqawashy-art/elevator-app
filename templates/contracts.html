@@ -108,8 +108,13 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .tab:hover:not(.active){background:var(--bg3);color:var(--text1)}
 .map-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .map-toolbar{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--bg2)}
-.map-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text2)}
-.map-legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff}
+.map-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text2)}
+.map-legend-item{display:flex;align-items:center;gap:6px}
+.map-legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);flex-shrink:0}
+.map-legend-dot.status-active{background:#1fb87a}
+.map-legend-dot.status-expiring{background:#e8b923}
+.map-legend-dot.status-expired{background:#e04848}
+.map-legend-dot.status-cancelled{background:#8a9bb8}
 .map-legend-cluster{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#2a7fff;color:#fff;font-size:10px;font-weight:700;border:2px solid #fff;box-shadow:0 0 0 3px rgba(42,127,255,.2)}
 #map{height:min(68vh,620px);min-height:480px;width:100%}
 .map-info{padding:10px 12px;min-width:200px;direction:rtl;font-family:'IBM Plex Sans Arabic',sans-serif}
@@ -493,12 +498,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <div id="map-summary" style="font-size:12px;color:var(--text3);margin-top:4px"></div>
           </div>
           <div class="map-legend">
-            <span><span class="map-legend-dot" style="background:#1fb87a"></span> نشط</span>
-            <span><span class="map-legend-dot" style="background:#c8a055"></span> على وشك الانتهاء</span>
-            <span><span class="map-legend-dot" style="background:#e04848"></span> منتهي</span>
-            <span><span class="map-legend-dot" style="background:#8a9bb8"></span> ملغي</span>
-            <span><span class="map-legend-cluster">2</span> تجميع عند التصغير</span>
-            <button class="btn btn-secondary btn-sm" onclick="refreshContractMap(true)">تحديث</button>
+            <div class="map-legend-item"><span class="map-legend-dot status-active"></span> نشط</div>
+            <div class="map-legend-item"><span class="map-legend-dot status-expiring"></span> على وشك الانتهاء</div>
+            <div class="map-legend-item"><span class="map-legend-dot status-expired"></span> منتهي</div>
+            <div class="map-legend-item"><span class="map-legend-dot status-cancelled"></span> ملغي</div>
+            <div class="map-legend-item"><span class="map-legend-cluster">2</span> تجميع</div>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="refreshContractMap(true)" title="تحديث الخريطة">تحديث</button>
           </div>
         </div>
         <div id="map"></div>
@@ -1315,7 +1320,7 @@ var contractInfoPinned = false, contractHoverTimer = null;
 
 var CONTRACT_PIN_COLORS = {
   'نشط': '#1fb87a',
-  'على وشك الانتهاء': '#c8a055',
+  'على وشك الانتهاء': '#e8b923',
   'منتهي': '#e04848',
   'ملغي': '#8a9bb8'
 };
@@ -1468,7 +1473,7 @@ function renderContractMapMarkers(fitAgain) {
   var summary = document.getElementById('map-summary');
   if (summary) {
     summary.textContent = shownContracts
-      ? ('معروض: ' + shownContracts + ' عقد في ' + groups.length + ' موقع (صورة أقمار صناعية + تجميع عند التصغير)')
+      ? ('معروض: ' + shownContracts + ' عقد في ' + groups.length + ' موقع')
       : 'لا توجد مواقع — حدّد موقع العميل على الخريطة في صفحة العملاء';
   }
 
