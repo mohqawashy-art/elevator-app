@@ -262,7 +262,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   {% endif %}
 </div>
 
-<script src="/static/maintenance-checklist.js?v=6"></script>
+<script src="/static/maintenance-checklist.js?v=7"></script>
 <script>
 const REPORT_CFG = {
   visitId: {{ visit_id }},
@@ -279,6 +279,7 @@ function updateProgress() {
   const filled = Object.values(data.items).filter(i => i.status).length;
   const el = document.getElementById('progress-pill');
   if (el) el.textContent = filled + '/' + total + ' بند';
+  LiftCoreChecklist.syncAutoTechNotes(CHECKLIST_TEMPLATE);
 }
 
 function saveReport(markComplete) {

@@ -13,13 +13,13 @@ from typing import Any
 
 DEFAULT_TEMPLATE_KEY = 'liftcore_standard_v1'
 
-# بنود بدون افتراض «سليم» عند فتح محضر جديد
-DEFAULT_OK_EXCLUDED_ITEM_IDS = frozenset({'5_3', '5_4'})
+# بنود افتراضها «لا ينطبق» عند فتح محضر جديد (إيماتيك، إنذار الحريق)
+DEFAULT_NA_ITEM_IDS = frozenset({'5_3', '5_4'})
 
 
 def default_checklist_item_status(item_id: str) -> str:
-    if item_id in DEFAULT_OK_EXCLUDED_ITEM_IDS:
-        return ''
+    if item_id in DEFAULT_NA_ITEM_IDS:
+        return 'na'
     return 'ok'
 
 # قالب افتراضي — 5 أقسام (مطابق لمحضر الصيانة)

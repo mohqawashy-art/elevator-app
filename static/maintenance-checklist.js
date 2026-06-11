@@ -126,7 +126,8 @@
     document.addEventListener('touchend', onStatusTap, { capture: true, passive: false });
   }
 
-  const DEFAULT_OK_EXCLUDED = ['5_3', '5_4'];
+  const DEFAULT_NA_ITEMS = ['5_3', '5_4'];
+  const AUTO_TECH_NOTE = 'تم عمل الصيانة اللازمة والمصعد بحالة جيدة';
 
   function applyDefaultItemStatuses(template, reportData) {
     if (!template || !template.sections) return;
@@ -137,11 +138,41 @@
         const status = (val.status || '').trim();
         if (status) {
           setItemStatus(item.id, status);
-        } else if (DEFAULT_OK_EXCLUDED.indexOf(item.id) < 0) {
+        } else if (DEFAULT_NA_ITEMS.indexOf(item.id) >= 0) {
+          setItemStatus(item.id, 'na');
+        } else {
           setItemStatus(item.id, 'ok');
         }
       });
     });
+  }
+
+  function allItemsOkOrNa(template) {
+    if (!template || !template.sections) return false;
+    for (let si = 0; si < template.sections.length; si++) {
+      const sec = template.sections[si];
+      const secItems = sec.items || [];
+      for (let ii = 0; ii < secItems.length; ii++) {
+        const item = secItems[ii];
+        const group = findStatusGroup(item.id);
+        const selected = group ? group.querySelector('.status-btn.is-selected') : null;
+        const status = selected ? selected.getAttribute('data-value') || '' : '';
+        if (!status || (status !== 'ok' && status !== 'na')) return false;
+      }
+    }
+    return true;
+  }
+
+  function syncAutoTechNotes(template) {
+    const el = document.getElementById('tech-notes');
+    if (!el || el.readOnly) return;
+    const shouldFill = allItemsOkOrNa(template);
+    const cur = (el.value || '').trim();
+    if (shouldFill) {
+      if (!cur || cur === AUTO_TECH_NOTE) el.value = AUTO_TECH_NOTE;
+    } else if (cur === AUTO_TECH_NOTE) {
+      el.value = '';
+    }
   }
 
   function applyReportData(reportData, template) {
@@ -172,6 +203,7 @@
     });
     applySignatures(reportData.signatures || {});
     applyPhotos(reportData.photos || []);
+    syncAutoTechNotes(template);
   }
 
   function applySignatures(signatures) {
@@ -473,6 +505,7 @@
     pickStatus,
     setItemStatus,
     applyReportData,
+    syncAutoTechNotes,
     collectReportData,
     buildPhotosGrid,
     initPhotosGrid,
