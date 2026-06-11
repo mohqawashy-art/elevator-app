@@ -316,7 +316,7 @@ function saveReport(markResolved) {
       updateProgress();
       if (markResolved) {
         alert('✅ تم حفظ التقرير وإغلاق العطل');
-        if (REPORT_CFG.backUrl) window.location.href = REPORT_CFG.backUrl;
+        if (REPORT_CFG.backUrl) (window.LiftCoreNav ? LiftCoreNav.goBack(REPORT_CFG.backUrl) : (window.location.href = REPORT_CFG.backUrl));
       } else {
         alert('✅ تم حفظ التقرير');
       }

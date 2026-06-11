@@ -321,7 +321,7 @@ function saveReport(markComplete) {
       updateProgress();
       if (markComplete) {
         alert('✅ تم حفظ المحضر وإنهاء الزيارة');
-        if (REPORT_CFG.backUrl) window.location.href = REPORT_CFG.backUrl;
+        if (REPORT_CFG.backUrl) (window.LiftCoreNav ? LiftCoreNav.goBack(REPORT_CFG.backUrl) : (window.location.href = REPORT_CFG.backUrl));
       } else {
         alert('✅ تم حفظ المحضر');
       }

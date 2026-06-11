@@ -103,7 +103,7 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
   <span>{{ doc_title }} — {{ irn }} ({{ page_size }})</span>
   <div>
     <button type="button" class="print" onclick="window.print()">طباعة</button>
-    <a class="back" href="/invoices" onclick="window.close();return false;">إغلاق</a>
+    <a class="back" href="/invoices">إغلاق</a>
   </div>
 </div>
 
@@ -266,5 +266,6 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
 {% if request.args.get('print') == '1' %}
 <script>window.addEventListener('load',function(){window.print();});</script>
 {% endif %}
+<script src="/static/liftcore-nav.js?v=1"></script>
 </body>
 </html>

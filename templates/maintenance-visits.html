@@ -566,7 +566,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
-      <a class="btn btn-primary" id="view-report-link" href="#" target="_blank" style="text-decoration:none;display:none">
+      <a class="btn btn-primary" id="view-report-link" href="#" style="text-decoration:none;display:none">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10v8H2z"/><path d="M4 2h6v2H4z"/><path d="M5 7l1.5 1.5L9 5"/></svg>
         تعديل المحضر
       </a>
@@ -950,7 +950,7 @@ function renderTable(data) {
       <td><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${D(v.status)}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
-          <a class="btn btn-primary btn-sm btn-icon" href="/maintenance-visits/${v.id}/report" target="_blank" title="تعبئة / تعديل محضر الفحص" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+          <a class="btn btn-primary btn-sm btn-icon" href="/maintenance-visits/${v.id}/report" title="تعبئة / تعديل محضر الفحص" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10v8H2z"/><path d="M4 2h6v2H4z"/><path d="M5 7l1.5 1.5L9 5"/></svg>
           </a>
           <a class="btn btn-secondary btn-sm btn-icon" href="/maintenance-visits/${v.id}/report?print=1" target="_blank" title="طباعة محضر العميل" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
@@ -1591,7 +1591,7 @@ function viewVisit(id) {
       ${v.fault_code?`<div class="view-item"><div class="view-label">رقم العطل</div><div class="view-val" style="font-family:var(--font-en)">${v.fault_code}</div></div>`:''}
       ${renderVisitFlaggedItems(v)}
       ${v.observations?`<div class="view-item view-full"><div class="view-label">الملاحظات</div><div class="view-val">${v.observations}</div></div>`:''}
-      ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" target="_blank" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" target="_blank" style="color:var(--accent)">طباعة PDF</a></div></div>`:''}
+      ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" target="_blank" rel="noopener" style="color:var(--accent)">طباعة PDF</a></div></div>`:''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
   const rpt = document.getElementById('view-report-link');
