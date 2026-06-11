@@ -1044,15 +1044,6 @@ def _report_brand_logo_url() -> str:
     return '/static/logo.png'
 
 
-def _report_logo_width() -> int:
-    settings = Settings.query.first()
-    try:
-        width = int(getattr(settings, 'logo_width_report', None) or 150)
-    except (TypeError, ValueError):
-        width = 150
-    return max(100, min(220, width))
-
-
 def _report_company_name() -> str:
     settings = Settings.query.first()
     return (settings.company_name if settings and settings.company_name else 'LiftCore')
@@ -1197,7 +1188,6 @@ def visit_report_payload(
         'report_data_json': json.dumps(report_data, ensure_ascii=False),
         'template_json': json.dumps(template, ensure_ascii=False),
         'logo_url': _report_brand_logo_url(),
-        'logo_width': _report_logo_width(),
         'base_url': base_url,
         'sign_config': _visit_sign_config(),
     }
