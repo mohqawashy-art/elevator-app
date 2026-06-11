@@ -13,6 +13,15 @@ from typing import Any
 
 DEFAULT_TEMPLATE_KEY = 'liftcore_standard_v1'
 
+# بنود بدون افتراض «سليم» عند فتح محضر جديد
+DEFAULT_OK_EXCLUDED_ITEM_IDS = frozenset({'5_3', '5_4'})
+
+
+def default_checklist_item_status(item_id: str) -> str:
+    if item_id in DEFAULT_OK_EXCLUDED_ITEM_IDS:
+        return ''
+    return 'ok'
+
 # قالب افتراضي — 5 أقسام (مطابق لمحضر الصيانة)
 TEMPLATES: dict[str, dict[str, Any]] = {
     DEFAULT_TEMPLATE_KEY: {
@@ -107,7 +116,8 @@ def empty_report_data(template_key: str | None = None) -> dict[str, Any]:
     items: dict[str, dict[str, str]] = {}
     for sec in tpl['sections']:
         for item in sec['items']:
-            items[item['id']] = {'status': '', 'note': ''}
+            iid = item['id']
+            items[iid] = {'status': default_checklist_item_status(iid), 'note': ''}
     return {
         'template_key': tpl['key'],
         'template_version': tpl['version'],
@@ -144,8 +154,9 @@ def merge_report_data(saved: dict[str, Any] | None, template_key: str | None = N
     base['template_version'] = saved.get('template_version') or base['template_version']
     for item_id, val in (saved.get('items') or {}).items():
         if item_id in base['items'] and isinstance(val, dict):
+            saved_status = (val.get('status') or '').strip()
             base['items'][item_id] = {
-                'status': val.get('status') or '',
+                'status': saved_status if saved_status else base['items'][item_id]['status'],
                 'note': val.get('note') or '',
             }
     meta = saved.get('meta') or {}

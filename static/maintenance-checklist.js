@@ -126,8 +126,27 @@
     document.addEventListener('touchend', onStatusTap, { capture: true, passive: false });
   }
 
+  const DEFAULT_OK_EXCLUDED = ['5_3', '5_4'];
+
+  function applyDefaultItemStatuses(template, reportData) {
+    if (!template || !template.sections) return;
+    const items = (reportData && reportData.items) || {};
+    template.sections.forEach(function (sec) {
+      (sec.items || []).forEach(function (item) {
+        const val = items[item.id] || {};
+        const status = (val.status || '').trim();
+        if (status) {
+          setItemStatus(item.id, status);
+        } else if (DEFAULT_OK_EXCLUDED.indexOf(item.id) < 0) {
+          setItemStatus(item.id, 'ok');
+        }
+      });
+    });
+  }
+
   function applyReportData(reportData, template) {
     if (!reportData) return;
+    applyDefaultItemStatuses(template, reportData);
     const items = reportData.items || {};
     Object.keys(items).forEach(itemId => {
       const val = items[itemId] || {};
