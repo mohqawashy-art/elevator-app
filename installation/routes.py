@@ -662,7 +662,8 @@ def timeline_step_edit(project_id, step_id):
             return redirect(url_for('installation.project_execution', project_id=project.id))
         return redirect(url_for('installation.project_report', project_id=project.id))
     auto_amount = None
-    if accepted := project.accepted_quotation:
+    accepted = project.accepted_quotation
+    if accepted:
         pct = step_amount_pct(step.step_key, accepted)
         if pct is not None:
             auto_amount = {
