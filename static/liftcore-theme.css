@@ -76,8 +76,11 @@ html[data-theme="light"] .nav-item:hover {
   background: var(--bg3);
 }
 
-html[data-theme="light"] .lc-app-header {
-  background: var(--bg2);
+html[data-theme="light"] .stat-card,
+html[data-theme="light"] .panel,
+html[data-theme="light"] .quick-card,
+html[data-theme="light"] .alert-panel {
+  background: var(--card);
   border-color: var(--border);
 }
 

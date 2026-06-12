@@ -548,6 +548,12 @@ function pickTheme(val) {
     c.classList.toggle('selected', c.getAttribute('data-theme-val') === val);
   });
   document.documentElement.setAttribute('data-theme', val);
+  fetch('/api/user/theme', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme: val }),
+    credentials: 'same-origin'
+  }).catch(function () { /* ignore */ });
 }
 syncLogoPreview();
 </script>

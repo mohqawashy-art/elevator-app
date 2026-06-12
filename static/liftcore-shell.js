@@ -43,11 +43,36 @@
     if (menu) menu.classList.remove('open');
   });
 
+  window.openSidebar = function () {
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('overlay');
+    if (sidebar) sidebar.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+  };
+
+  window.closeSidebar = function () {
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('overlay');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+  };
+
+  function bindSidebarNav() {
+    document.querySelectorAll('#sidebar .nav-item[href], .sidebar .nav-item[href]').forEach(function (a) {
+      if (a.dataset.lcNavBound) return;
+      a.dataset.lcNavBound = '1';
+      a.addEventListener('click', function () {
+        window.closeSidebar();
+      });
+    });
+  }
+
   document.addEventListener('fullscreenchange', updateFullscreenIcon);
   document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
 
   document.addEventListener('DOMContentLoaded', function () {
     updateFullscreenIcon();
+    bindSidebarNav();
     if (window.LiftCoreFormat) {
       LiftCoreFormat.initHeaderDates();
       LiftCoreFormat.applyWesternDigits(document.body);

@@ -4432,6 +4432,20 @@ def api_user_language():
     return jsonify({'ok': True, 'lang': lang})
 
 
+@app.route('/api/user/theme', methods=['POST'])
+def api_user_theme():
+    user = require_login()
+    if not user:
+        return jsonify({'ok': False, 'error': 'auth'}), 401
+    data = request.get_json(silent=True) or {}
+    theme = (data.get('theme') or request.form.get('theme') or 'dark').strip()
+    if theme not in ('dark', 'light'):
+        theme = 'dark'
+    user.theme = theme
+    db.session.commit()
+    return jsonify({'ok': True, 'theme': theme})
+
+
 @app.route('/settings/users/add', methods=['POST'])
 def settings_user_add():
     admin = require_admin()

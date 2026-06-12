@@ -64,6 +64,15 @@ tbody tr:hover{background:var(--bg3)}
 .stat-val{font-size:24px;font-weight:700;font-family:var(--font-en)}
 .stat-label{font-size:11px;color:var(--text3);margin-top:4px}
 @media(max-width:768px){.form-grid,.stat-grid{grid-template-columns:1fr}}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:768px){
+  :root{--sidebar-w:260px}
+  .sidebar{position:fixed;right:-260px;top:0;height:100vh;transition:right .25s ease;z-index:100}
+  html[dir="ltr"] .sidebar{right:auto;left:-260px;transition:left .25s ease}
+  .sidebar.open{right:0;box-shadow:-8px 0 32px rgba(0,0,0,.4)}
+  html[dir="ltr"] .sidebar.open{left:0;right:auto;box-shadow:8px 0 32px rgba(0,0,0,.4)}
+  .mobile-overlay.open{display:block}
+}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}">
