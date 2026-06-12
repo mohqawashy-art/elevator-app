@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+{% include 'installation/_layout_head.html' %}
+</head>
+<body>
+{% include 'installation/_sidebar.html' %}
+<div class="main">
+  <div class="install-beta">تجريبي — محلي فقط · المرحلة 1: Lead / استفسار عميل</div>
+  {% set page_title = 'فرص البيع' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">فرص البيع — تركيب مصاعد</div>
+      <div class="page-actions">
+        <a href="{{ url_for('installation.index') }}" class="btn btn-secondary btn-sm">لوحة المشاريع</a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="flash" style="background:#fff8e6;border-color:#e8c547;color:#5c4a00;margin-bottom:16px">
+      <b>الخطوة الأولى:</b> سجّل العميل في
+      <a href="/clients" target="_blank" style="font-weight:600">صفحة العملاء (C-xxxx)</a>
+      ثم اختره هنا عند إضافة فرصة البيع.
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">إضافة فرصة بيع</h2>
+      {% if not customers %}
+      <p style="color:var(--warning);font-size:13px;margin-bottom:12px">
+        لا يوجد عملاء نشطون — <a href="/clients" target="_blank">أضف عميلاً أولاً</a>
+      </p>
+      {% endif %}
+      <form method="post" action="{{ url_for('installation.leads_add') }}" id="leadForm">
+        <div class="form-grid">
+          <div class="field">
+            <label>كود الفرصة</label>
+            <input value="{{ next_lead_code }}" disabled style="opacity:.85;direction:ltr;font-family:var(--font-en)">
+          </div>
+          <div class="field">
+            <label>تاريخ الطلب</label>
+            <input type="date" name="inquiry_date" lang="en-GB" style="direction:ltr">
+          </div>
+          <div class="field form-full" style="grid-column:1/-1">
+            <label>اختر العميل من LiftCore *</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <select name="customer_id" id="lCustomer" required style="flex:1;min-width:220px"{% if not customers %} disabled{% endif %}>
+                <option value="">— اختر عميلاً —</option>
+                {% for c in customers %}
+                <option value="{{ c.id }}">{{ c.code }} — {{ c.name }}</option>
+                {% endfor %}
+              </select>
+              <a href="/clients" target="_blank" class="btn btn-secondary btn-sm">+ عميل جديد</a>
+            </div>
+          </div>
+          <div class="field"><label>اسم العميل</label><input type="text" id="lName" readonly style="opacity:.85"></div>
+          <div class="field"><label>الجوال</label><input type="text" id="lPhone" readonly style="direction:ltr;opacity:.85"></div>
+          <div class="field"><label>البريد الإلكتروني</label><input type="text" id="lEmail" readonly style="direction:ltr;opacity:.85"></div>
+          <div class="field"><label>المدينة</label><input type="text" id="lCity" readonly style="opacity:.85"></div>
+          <div class="field"><label>الحي</label><input type="text" id="lDistrict" readonly style="opacity:.85"></div>
+          <div class="field form-full">
+            <label>العنوان</label>
+            <input type="text" id="lAddr" readonly style="opacity:.85">
+          </div>
+          <div class="field">
+            <label>مصدر الاستفسار</label>
+            <select name="source">
+              <option value="">— اختر —</option>
+              {% for s in sources %}
+              <option value="{{ s }}">{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>نوع المبنى</label>
+            <input name="building_type" placeholder="سكني، تجاري، فندقي...">
+          </div>
+          <div class="field">
+            <label>الحالة</label>
+            <select name="status">
+              {% for st in statuses if st != 'تم تحويله لمشروع' %}
+              <option value="{{ st }}">{{ st }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field form-full">
+            <label>ملاحظات الاستفسار</label>
+            <textarea name="notes" rows="3" placeholder="تفاصيل الطلب، عدد المصاعد، الموقع..."></textarea>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:12px"{% if not customers %} disabled{% endif %}>حفظ الفرصة</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">الفرص المسجّلة ({{ leads|length }})</h2>
+      {% if not leads %}
+      <p style="color:var(--text3);font-size:13px">لا توجد فرص بعد.</p>
+      {% else %}
+      <table>
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>التاريخ</th>
+            <th>العميل</th>
+            <th>الجوال</th>
+            <th>المدينة</th>
+            <th>المصدر</th>
+            <th>الحالة</th>
+            <th>المشروع</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in leads %}
+          <tr>
+            <td style="font-family:var(--font-en);color:var(--accent)">{{ l.code }}</td>
+            <td style="direction:ltr">{{ l.inquiry_date or '—' }}</td>
+            <td>
+              {% if l.customer %}
+              <span style="font-family:var(--font-en);font-weight:600">{{ l.customer.code }}</span> — {{ l.client_display }}
+              {% else %}
+              {{ l.client_display }}
+              {% endif %}
+            </td>
+            <td style="direction:ltr">{{ l.phone or '—' }}</td>
+            <td>{{ l.city or '—' }}</td>
+            <td>{{ l.source or '—' }}</td>
+            <td>
+              {% if l.status == 'جديد' %}<span class="badge badge-new">{{ l.status }}</span>
+              {% elif l.status == 'ملغي' %}<span class="badge badge-muted">{{ l.status }}</span>
+              {% elif l.status == 'تم تحويله لمشروع' %}<span class="badge badge-ok">{{ l.status }}</span>
+              {% else %}<span class="badge badge-warn">{{ l.status }}</span>{% endif %}
+            </td>
+            <td style="font-family:var(--font-en)">
+              {% if l.project %}
+              <a href="/installation/projects/{{ l.project.id }}">{{ l.project.code }}</a>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if l.project %}
+              <a href="/installation/projects/{{ l.project.id }}/quote" class="btn btn-primary btn-sm">تسعير</a>
+              {% elif l.status != 'ملغي' %}
+              <form method="post" action="{{ url_for('installation.leads_convert', lead_id=l.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-secondary btn-sm">تحويل لمشروع</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<script>
+window.__INSTALL_LEADS__ = { customers: {{ customers_js | tojson }} };
+document.addEventListener('DOMContentLoaded', function () {
+  var customers = (window.__INSTALL_LEADS__ || {}).customers || [];
+  var sel = document.getElementById('lCustomer');
+  if (!sel) return;
+  function fill() {
+    var id = parseInt(sel.value, 10);
+    var c = null;
+    var i;
+    for (i = 0; i < customers.length; i++) {
+      if (customers[i].id === id) { c = customers[i]; break; }
+    }
+    document.getElementById('lName').value = c ? c.name : '';
+    document.getElementById('lPhone').value = c ? c.phone : '';
+    document.getElementById('lEmail').value = c ? (c.email || '') : '';
+    document.getElementById('lCity').value = c ? c.city : '';
+    document.getElementById('lDistrict').value = c ? c.district : '';
+    document.getElementById('lAddr').value = c ? c.address : '';
+  }
+  sel.addEventListener('change', fill);
+  fill();
+});
+</script>
+</body>
+</html>

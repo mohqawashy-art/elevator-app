@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+{% include 'installation/_layout_head.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-execution.css') }}">
+</head>
+<body>
+{% include 'installation/_sidebar.html' %}
+<div class="main">
+  <div class="install-beta">تجريبي — مرحلة التنفيذ</div>
+  {% set page_title = 'تنفيذ ' ~ project.code %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">{{ project.code }} — التنفيذ</div>
+      <div class="page-actions">
+        <a href="/installation/projects/{{ project.id }}" class="btn btn-secondary btn-sm">← المشروع</a>
+        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm" target="_blank">تقرير</a>
+        <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm" target="_blank">محضر استلام</a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="exec-top">
+      <div class="exec-top-main">
+        <div style="font-size:15px;font-weight:600">{{ project.client_display }}</div>
+        <div class="exec-kpis">
+          <span>العرض: <b>{{ accepted_quote.code if accepted_quote else '—' }}</b></span>
+          <span>العقد: <b>{{ '{:,.0f}'.format(accepted_quote.grand_total) if accepted_quote else 0 }}</b> ر.س</span>
+          <span>محصّل: <b>{{ '{:,.0f}'.format(payments_received) }}</b> ر.س</span>
+          <span>الحالة: <b>{{ project.status }}</b></span>
+        </div>
+        <div class="exec-bar"><span style="width:{{ progress }}%"></span></div>
+      </div>
+      <div class="exec-top-side">
+        <div>
+          <div class="pct">{{ progress }}%</div>
+          <div class="sub">{{ completed_count }} / {{ total_steps }} خطوة</div>
+        </div>
+      </div>
+    </div>
+
+    {% if phase_track %}
+    <div class="exec-phases">
+      {% for ph in phase_track %}
+      <span class="exec-phase-pill {{ ph.state }}">
+        <span class="dot"></span>
+        {{ ph.name }}
+        <span style="opacity:.7;font-size:10px;font-family:var(--font-en)">{{ ph.done }}/{{ ph.total }}</span>
+      </span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not current_step %}
+    <div class="exec-done-panel">
+      <h2>تم إكمال جميع مراحل التنفيذ</h2>
+      <p style="font-size:13px;color:var(--text3)">المشروع {{ project.status }} — لا توجد خطوات متبقية</p>
+      <div class="exec-done-actions">
+        <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-primary btn-sm" target="_blank">محضر استلام العميل</a>
+        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm" target="_blank">تقرير الإغلاق</a>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="exec-layout">
+      <div>
+        <div class="exec-hero">
+          <div class="exec-hero-phase">مرحلة {{ current_step.phase_group }}</div>
+          <div class="exec-hero-label">المهمة الحالية · {{ remaining_count }} خطوة متبقية</div>
+          <div class="exec-hero-title">{{ current_step.title }}</div>
+          {% if current_step.hint %}
+          <div class="exec-hero-hint">{{ current_step.hint }}</div>
+          {% endif %}
+
+          <form method="post" action="/installation/projects/{{ project.id }}/timeline/{{ current_step.id }}/update" class="exec-form-simple">
+            <div class="exec-form-row">
+              <div class="field">
+                <label>تاريخ مخطط</label>
+                <input type="date" name="planned_date" value="{{ current_step.planned_date.strftime('%Y-%m-%d') if current_step.planned_date else '' }}">
+              </div>
+              {% if current_step.has_amount and auto_amount %}
+              <div class="exec-auto-amount">
+                <div class="exec-auto-lbl">المبلغ المحسوب تلقائياً</div>
+                <div class="exec-auto-val">{{ '{:,.0f}'.format(auto_amount.amount) }} <span>ر.س</span></div>
+                <div class="exec-auto-note">{{ auto_amount.pct }}% من العقد ({{ '{:,.0f}'.format(accepted_quote.grand_total) }} ر.س)</div>
+              </div>
+              {% elif current_step.has_amount %}
+              <div class="field">
+                <label>المبلغ (ر.س)</label>
+                <input type="number" name="amount" min="0" step="any" value="{{ current_step.amount or '' }}" placeholder="0">
+              </div>
+              {% endif %}
+            </div>
+            <div class="exec-form-row single">
+              <div class="field">
+                <label>ملاحظات</label>
+                <input type="text" name="notes" value="{{ current_step.notes or '' }}" placeholder="تفاصيل، رقم تحويل، ملاحظات العميل...">
+              </div>
+            </div>
+
+            <input type="hidden" name="status" id="stepStatus" value="{{ current_step.status }}">
+
+            <details class="exec-more">
+              <summary>خيارات متقدمة (تغيير الحالة يدوياً)</summary>
+              <div class="field" style="margin-top:10px">
+                <label>الحالة</label>
+                <select id="stepStatusSelect" onchange="document.getElementById('stepStatus').value=this.value">
+                  {% for st in step_statuses %}
+                  <option value="{{ st }}"{% if current_step.status == st %} selected{% endif %}>{{ st }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </details>
+
+            <div class="exec-actions">
+              <button type="submit" class="btn btn-primary btn-complete"
+                onclick="document.getElementById('stepStatus').value='مكتمل'">
+                ✓ إتمام هذه الخطوة والانتقال للتالية
+              </button>
+              <button type="submit" class="btn btn-secondary btn-save">حفظ دون إتمام</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <aside class="exec-aside">
+        {% if upcoming_steps %}
+        <div class="exec-aside-card">
+          <div class="exec-aside-title">التالي في الطابور</div>
+          <ul class="exec-next-list">
+            {% for step in upcoming_steps %}
+            <li class="exec-next-item">
+              <div class="n">{{ step.phase_group }}</div>
+              {{ step.title }}
+            </li>
+            {% endfor %}
+          </ul>
+          {% if remaining_count > upcoming_steps|length + 1 %}
+          <div class="exec-next-more">+ {{ remaining_count - upcoming_steps|length - 1 }} خطوة أخرى</div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="exec-aside-card">
+          <div class="exec-aside-title">مستندات</div>
+          <div class="exec-links">
+            {% if accepted_quote %}
+            <a href="/installation/quotes/{{ accepted_quote.id }}/print" target="_blank">عرض السعر المعتمد</a>
+            {% endif %}
+            <a href="/installation/projects/{{ project.id }}/handover" target="_blank">محضر استلام العميل</a>
+            <a href="/installation/projects/{{ project.id }}/report" target="_blank">تقرير المشروع الكامل</a>
+          </div>
+        </div>
+
+        <div class="exec-aside-card" style="font-size:11px;color:var(--text3);line-height:1.6">
+          عند الإتمام تختفي الخطوة وتظهر التالية تلقائياً. السجل الكامل في تقرير المشروع.
+        </div>
+      </aside>
+    </div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

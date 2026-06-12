@@ -6,7 +6,7 @@ app.py
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
-from models import InventoryItem, StockMovement, PartsBilling, Settings, User
+from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
 from calendar import monthrange
 from datetime import datetime, date, timedelta
@@ -52,6 +52,10 @@ if os.environ.get('LIFTCORE_HTTPS', '').strip().lower() in ('1', 'true', 'yes'):
     app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 db.init_app(app)
+
+# موديول تركيب المصاعد (جداول منفصلة — يُفعّل محلياً فقط)
+import installation.models  # noqa: F401, E402
+from installation.config import install_module_enabled
 
 PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version'})
 PUBLIC_PATH_PREFIXES = ('/field', '/static')
@@ -268,6 +272,7 @@ def inject_global_template_vars():
         'user_avatar_url': user_avatar_url(user),
         'user_display_name': (user.full_name or user.username) if user else '',
         'user_role_label': role_label,
+        'install_module_enabled': install_module_enabled(),
     }
 
 
@@ -302,6 +307,10 @@ with app.app_context():
                 ('checklist_template_key', 'VARCHAR(50)'),
                 ('rep_name', 'VARCHAR(200)'),
                 ('rep_mobile', 'VARCHAR(20)'),
+                ('rep_national_id', 'VARCHAR(20)'),
+                ('rep_signature_path', 'VARCHAR(300)'),
+                ('rep_sign_pin_hash', 'VARCHAR(200)'),
+                ('default_sign_method', 'VARCHAR(20)'),
                 ('logo_width_sidebar', 'INTEGER'),
                 ('logo_width_report', 'INTEGER'),
                 ('logo_width_login', 'INTEGER'),
@@ -337,7 +346,12 @@ with app.app_context():
                 ('invoice_id', 'INTEGER'),
                 ('parts_billing_id', 'INTEGER'),
             ],
-            'technicians': [('team', 'VARCHAR(30)'), ('name_en', 'VARCHAR(100)')],
+            'technicians': [
+                ('team', 'VARCHAR(30)'),
+                ('name_en', 'VARCHAR(100)'),
+                ('signature_path', 'VARCHAR(300)'),
+                ('sign_pin_hash', 'VARCHAR(200)'),
+            ],
             'customers': [
                 ('name_en', 'VARCHAR(200)'),
                 ('entity_type', 'VARCHAR(20)'),
@@ -348,6 +362,23 @@ with app.app_context():
                 ('supplier_email', 'VARCHAR(120)'),
                 ('signature_data', 'TEXT'),
                 ('pdf_path', 'VARCHAR(300)'),
+            ],
+            'installation_quotations': [
+                ('customer_id', 'INTEGER'),
+                ('approved_at', 'DATETIME'),
+                ('pay_advance_pct', 'FLOAT'),
+                ('pay_supply_pct', 'FLOAT'),
+                ('pay_final_pct', 'FLOAT'),
+            ],
+            'installation_projects': [
+                ('accepted_quotation_id', 'INTEGER'),
+                ('execution_started_at', 'DATETIME'),
+            ],
+            'installation_leads': [
+                ('customer_id', 'INTEGER'),
+            ],
+            'installation_timeline_steps': [
+                ('started_at', 'DATETIME'),
             ],
         }
         for table, cols in _migrate_cols.items():
@@ -1547,9 +1578,23 @@ def sync_contract_invoice_status(contract_id):
         c.invoice_status = contract_invoice_status(c)
 
 
+def _money_round(n):
+    return round(float(n or 0), 2)
+
+
+def format_money_amount(n):
+    """عرض مبالغ بدون كسور عائمة (3000 لا 2999.9999)."""
+    n = _money_round(n)
+    if n == int(n):
+        return f'{int(n):,}'
+    return f'{n:,.2f}'
+
+
 app.jinja_env.globals['contract_display_status'] = contract_display_status
 app.jinja_env.globals['contract_invoice_status'] = contract_invoice_status
 app.jinja_env.globals['contract_paid_total'] = contract_paid_total
+app.jinja_env.globals['format_money_amount'] = format_money_amount
+app.jinja_env.globals['money_round'] = _money_round
 
 
 def customer_primary_contract(customer):
@@ -1823,9 +1868,15 @@ def _sync_contract_elevators(contract_id, elevator_ids):
 
 
 def _apply_contract_form(c, form):
-    value = float(form.get('value', 0) or 0)
-    tax_pct = float(form.get('tax_pct', 15) or 15)
-    tax_amount = value * tax_pct / 100
+    value = _money_round(form.get('value', 0))
+    tax_pct = _money_round(form.get('tax_pct', 15) or 15)
+    total_raw = form.get('total')
+    if total_raw not in (None, ''):
+        total = _money_round(total_raw)
+        tax_amount = _money_round(total - value)
+    else:
+        tax_amount = _money_round(value * tax_pct / 100)
+        total = _money_round(value + tax_amount)
     start = _parse_date(form.get('start_date'))
     end = _parse_date(form.get('end_date'))
     c.customer_id = form['customer_id']
@@ -1839,7 +1890,7 @@ def _apply_contract_form(c, form):
     c.value = value
     c.tax_pct = tax_pct
     c.tax_amount = tax_amount
-    c.total = value + tax_amount
+    c.total = total
     c.payment_terms = form.get('payment_terms', '')
     c.status = form.get('status', 'نشط')
     c.reminder_date = _parse_date(form.get('reminder_date'))
@@ -1986,6 +2037,33 @@ def _ext_ok(filename, allowed):
     if not filename or '.' not in filename:
         return False
     return filename.rsplit('.', 1)[1].lower() in allowed
+
+
+def _save_technician_signature(tech, file_storage, pin_plain=''):
+    from signatory_service import upsert_signatory
+
+    pin = str(pin_plain or '').strip()
+    has_file = file_storage and file_storage.filename and _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT)
+    existing = Signatory.query.filter_by(technician_id=tech.id, is_active=True).first()
+    if not has_file and not pin and not existing:
+        return
+    if not tech.national_id:
+        raise ValueError('أدخل رقم الإقامة في الوثائق الرسمية قبل حفظ التوقيع')
+    raw = file_storage.read() if has_file else None
+    row = upsert_signatory(
+        name=tech.name,
+        national_id=tech.national_id,
+        role='technician',
+        pin_plain=pin,
+        pin_hash_fn=hash_password,
+        image_bytes=raw,
+        app_root=app.root_path,
+        secret=app.config['SECRET_KEY'],
+        technician_id=tech.id,
+        signatory_id=existing.id if existing else None,
+    )
+    tech.signature_path = row.signature_path
+    tech.sign_pin_hash = row.sign_pin_hash
 
 
 def _save_technician_photo(tech, file_storage):
@@ -2137,10 +2215,19 @@ def technician_add():
             flash(msg2, 'error')
             return redirect(url_for('technicians'))
     t = Technician(code=next_code(Technician, 'Tech-', digits=3))
-    _apply_technician_form(t, request.form)
+    try:
+        _apply_technician_form(t, request.form)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('technicians'))
     db.session.add(t)
     db.session.flush()
     _save_technician_photo(t, request.files.get('photo'))
+    try:
+        _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('technicians'))
     _save_technician_documents(
         t,
         request.files.getlist('documents'),
@@ -2185,8 +2272,17 @@ def technician_edit(id):
         if taken2:
             flash(msg2, 'error')
             return redirect(url_for('technicians'))
-    _apply_technician_form(t, request.form)
+    try:
+        _apply_technician_form(t, request.form)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('technicians'))
     _save_technician_photo(t, request.files.get('photo'))
+    try:
+        _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('technicians'))
     _save_technician_documents(
         t,
         request.files.getlist('documents'),
@@ -2267,6 +2363,139 @@ def maintenance_visits():
         maint_technicians=maint_techs,
         plan_districts=list_districts(),
     )
+
+def build_elevator_profile(elevator_id):
+    """ملخص المصعد + سجل مصروفاته (قطع غيار + صرف مخزن)."""
+    elev = Elevator.query.get_or_404(elevator_id)
+    customer = elev.customer
+
+    parts = (
+        PartsBilling.query.filter_by(elevator_id=elevator_id)
+        .order_by(PartsBilling.billing_date.desc(), PartsBilling.id.desc())
+        .all()
+    )
+    stock_moves = (
+        StockMovement.query.filter_by(elevator_id=elevator_id, direction='صادر')
+        .order_by(StockMovement.movement_date.desc(), StockMovement.id.desc())
+        .all()
+    )
+
+    ledger = []
+    for p in parts:
+        cost = float(p.cost_price or 0)
+        ledger.append({
+            'date': str(p.billing_date or ''),
+            'code': p.code,
+            'type': 'قطع غيار',
+            'category': 'parts',
+            'description': (p.description or 'تركيب قطع غيار').strip(),
+            'amount': cost,
+            'detail': (p.technician.name if p.technician else '') or (p.status or ''),
+        })
+    for m in stock_moves:
+        amt = float(m.total_value or 0)
+        if amt <= 0:
+            amt = float((m.quantity or 0) * (m.unit_price or 0))
+        item_name = m.item.name if m.item else ''
+        ledger.append({
+            'date': str(m.movement_date or ''),
+            'code': m.code,
+            'type': m.movement_type or 'صرف مخزن',
+            'category': 'stock',
+            'description': (m.reason or item_name or 'حركة مخزن').strip(),
+            'amount': amt,
+            'detail': item_name,
+        })
+
+    ledger.sort(key=lambda row: row.get('date') or '', reverse=True)
+
+    parts_total = round(sum(r['amount'] for r in ledger if r['category'] == 'parts'), 2)
+    stock_total = round(sum(r['amount'] for r in ledger if r['category'] == 'stock'), 2)
+    total_cost = round(parts_total + stock_total, 2)
+
+    visits = (
+        MaintenanceVisit.query.filter_by(elevator_id=elevator_id)
+        .order_by(MaintenanceVisit.visit_date.desc())
+        .limit(8)
+        .all()
+    )
+    faults = (
+        Fault.query.filter_by(elevator_id=elevator_id)
+        .order_by(Fault.reported_at.desc())
+        .limit(8)
+        .all()
+    )
+
+    active_contract = None
+    from entity_links import active_contract_for_elevator
+    ac = active_contract_for_elevator(elevator_id)
+    if ac:
+        active_contract = {'id': ac.id, 'code': ac.code, 'status': ac.status}
+
+    return {
+        'elevator': {
+            'id': elev.id,
+            'code': elev.code,
+            'customer_id': elev.customer_id,
+            'customer': customer.name if customer else '',
+            'building': elev.building_name or '',
+            'city': elev.city or '',
+            'district': elev.district or '',
+            'elev_type': elev.elev_type or '',
+            'brand': elev.brand or '',
+            'model': elev.model or '',
+            'capacity_kg': elev.capacity_kg,
+            'floors': elev.floors,
+            'speed': elev.speed or '',
+            'serial_number': elev.serial_number or '',
+            'machine_type': elev.machine_type or '',
+            'control_type': elev.control_type or '',
+            'control_drive': elev.control_drive or '',
+            'control_operation': elev.control_operation or '',
+            'control_detail': elev.control_detail or '',
+            'install_date': str(elev.install_date or ''),
+            'last_maintenance': str(elev.last_maintenance or ''),
+            'next_maintenance': str(elev.next_maintenance or ''),
+            'status': elev.status or '',
+            'notes': elev.notes or '',
+        },
+        'contract': active_contract,
+        'costs': {
+            'total': total_cost,
+            'parts_total': parts_total,
+            'stock_total': stock_total,
+            'count': len(ledger),
+            'ledger': ledger,
+        },
+        'activity': {
+            'visits_count': MaintenanceVisit.query.filter_by(elevator_id=elevator_id).count(),
+            'faults_count': Fault.query.filter_by(elevator_id=elevator_id).count(),
+            'recent_visits': [
+                {
+                    'code': v.code,
+                    'date': str(v.visit_date or ''),
+                    'type': v.visit_type or '',
+                    'status': v.status or '',
+                }
+                for v in visits
+            ],
+            'recent_faults': [
+                {
+                    'code': f.code,
+                    'date': str(f.reported_at.date() if f.reported_at else ''),
+                    'type': f.fault_type or '',
+                    'status': f.status or '',
+                }
+                for f in faults
+            ],
+        },
+    }
+
+
+@app.route('/api/elevators/<int:elevator_id>/profile')
+def api_elevator_profile(elevator_id):
+    return jsonify(build_elevator_profile(elevator_id))
+
 
 @app.route('/api/elevators/<int:elevator_id>/links')
 def api_elevator_links(elevator_id):
@@ -2666,6 +2895,57 @@ def api_save_fault_report(fault_id):
         return jsonify({'ok': True, 'fault_id': fault_id})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 400
+
+
+@app.route('/api/signatures/verify', methods=['POST'])
+def api_verify_signature():
+    from signature_auth import verify_signature_credentials
+
+    data = request.get_json(silent=True) or {}
+    national_id = (data.get('national_id') or '').strip()
+    pin = (data.get('pin') or '').strip()
+    role = (data.get('role') or 'technician').strip()
+    visit_id = data.get('visit_id')
+    visit_technician_id = None
+    if visit_id:
+        v = MaintenanceVisit.query.get(visit_id)
+        if v:
+            visit_technician_id = v.technician_id
+
+    result = verify_signature_credentials(
+        national_id=national_id,
+        pin=pin,
+        role=role,
+        verify_password_fn=verify_password,
+        settings_row=get_app_settings(),
+        visit_technician_id=visit_technician_id,
+    )
+    if not result.get('ok'):
+        return jsonify(result), 401
+
+    sig_path = result.pop('signature_path', '')
+    result['signature_data'] = _signature_data_url(sig_path)
+    result['signed_at'] = datetime.utcnow().isoformat() + 'Z'
+    return jsonify(result)
+
+
+def _signature_data_url(relative_path: str) -> str:
+    from signature_crypto import image_data_url, load_encrypted_signature
+
+    if not relative_path:
+        return ''
+    rel = relative_path.replace('\\', '/')
+    if rel.endswith('.enc'):
+        try:
+            raw = load_encrypted_signature(app.root_path, app.config['SECRET_KEY'], rel)
+            return image_data_url(raw)
+        except (FileNotFoundError, ValueError):
+            return ''
+    static_path = os.path.join(app.root_path, 'static', rel.replace('/', os.sep))
+    if os.path.isfile(static_path):
+        with open(static_path, 'rb') as fh:
+            return image_data_url(fh.read())
+    return upload_url(rel)
 
 
 @app.route('/api/maintenance-visits/<int:visit_id>/report', methods=['POST'])
@@ -3231,6 +3511,14 @@ def inventory_delete(id):
 PO_STATUSES = ['مسودة', 'مرسل', 'مستلم', 'ملغي']
 PO_STATUS_EN = {'مسودة': 'Draft', 'مرسل': 'Sent', 'مستلم': 'Received', 'ملغي': 'Cancelled'}
 
+try:
+    from inventory_parts_data import ITEMS as _PO_CATALOG_ITEMS
+except ImportError:
+    _PO_CATALOG_ITEMS = []
+_PO_ITEM_EN_BY_CODE = {
+    code: name_en for _cat, code, _name_ar, name_en, _desc, _unit in _PO_CATALOG_ITEMS
+}
+
 PO_PRINT_LABELS = {
     'ar': {
         'toolbar_title': 'طباعة وإرسال طلب الشراء',
@@ -3357,23 +3645,67 @@ def _po_print_labels(lang):
     return PO_PRINT_LABELS['en' if lang == 'en' else 'ar']
 
 
-def _po_status_label(status, lang):
-    if lang == 'en':
-        return PO_STATUS_EN.get(status, status)
-    return status
+def _has_arabic(text):
+    return bool(text) and any('\u0600' <= c <= '\u06FF' for c in str(text))
 
 
-def _company_address_info(settings, lang):
-    """Return (address text, use_ltr_direction)."""
+def _po_item_name_en(item):
+    if not item:
+        return ''
+    code = (item.code or '').strip()
+    if code and code in _PO_ITEM_EN_BY_CODE:
+        return _PO_ITEM_EN_BY_CODE[code]
+    notes = (item.notes or '').strip()
+    if not notes:
+        return ''
+    if ' — ' in notes:
+        part = notes.split(' — ', 1)[0].strip()
+        if part and not _has_arabic(part):
+            return part
+    if not _has_arabic(notes[:40]):
+        return notes
+    return ''
+
+
+def _po_line_label_en(line):
+    name_en = _po_item_name_en(line.item)
+    if name_en:
+        return name_en
+    if line.item and line.item.code:
+        return line.item.code
+    return '—'
+
+
+def _po_company_display_en(settings):
     if not settings:
-        return '', lang == 'en'
-    ar_addr = (settings.address or '').strip()
-    en_addr = (getattr(settings, 'address_en', None) or '').strip()
-    if lang == 'en':
-        if en_addr:
-            return en_addr, True
-        return ar_addr, False
-    return ar_addr, False
+        return 'LiftCore'
+    en = (getattr(settings, 'company_name_en', None) or '').strip()
+    if en:
+        return en
+    ar = (settings.company_name or '').strip()
+    if ar and not _has_arabic(ar):
+        return ar
+    return 'LiftCore'
+
+
+def _po_address_display_en(settings):
+    if not settings:
+        return ''
+    en = (getattr(settings, 'address_en', None) or '').strip()
+    if en:
+        return en
+    ar = (settings.address or '').strip()
+    if ar and not _has_arabic(ar):
+        return ar
+    return ''
+
+
+def _po_status_bilingual(status):
+    status = status or ''
+    en = PO_STATUS_EN.get(status, '')
+    if en and en != status:
+        return f'{status} / {en}'
+    return status
 
 
 def _apply_purchase_receipt(order):
@@ -3463,31 +3795,67 @@ def purchase_orders_save():
     return redirect(url_for('purchase_order_print', order_id=order.id))
 
 
-@app.route('/purchase-orders/<int:order_id>/print')
-def purchase_order_print(order_id):
-    order = PurchaseOrder.query.get_or_404(order_id)
+def _purchase_order_print_context(order, *, en_only=False):
     s = Settings.query.first()
     logo_w = (getattr(s, 'logo_width_report', None) or 150) if s else 150
     uid = session.get('user_id')
     user = db.session.get(User, uid) if uid else None
-    lang = resolve_user_language(user)
-    po_t = _po_print_labels(lang)
-    company_name = (s.company_name if s and s.company_name else 'LiftCore')
-    if lang == 'en' and s and getattr(s, 'company_name_en', None):
-        company_name = s.company_name_en
-    addr_text, addr_ltr = _company_address_info(s, lang)
-    return render_template(
-        'purchase-order-print.html',
+    lang = 'en' if en_only else resolve_user_language(user)
+    po_ar = PO_PRINT_LABELS['ar']
+    po_en = PO_PRINT_LABELS['en']
+    po_ui = po_en if en_only else _po_print_labels(lang)
+    company_name_ar = (s.company_name if s and s.company_name else 'LiftCore')
+    company_name_en = (getattr(s, 'company_name_en', None) or '').strip() if s else ''
+    company_address_ar = (s.address or '').strip() if s else ''
+    company_address_en = (getattr(s, 'address_en', None) or '').strip() if s else ''
+    item_names_en = {line.id: _po_item_name_en(line.item) for line in order.lines}
+    item_labels_en = {line.id: _po_line_label_en(line) for line in order.lines}
+    if en_only:
+        company_display = _po_company_display_en(s)
+        address_display = _po_address_display_en(s)
+    else:
+        company_display = company_name_en or company_name_ar
+        address_display = company_address_en or company_address_ar
+    return dict(
         order=order,
         logo_width=logo_w,
         purchasing_phone=(getattr(s, 'phone', None) or '') if s else '',
         purchasing_email=(getattr(s, 'email', None) or '') if s else '',
-        po_t=po_t,
+        po_ar=po_ar,
+        po_en=po_en,
+        po_ui=po_ui,
         po_lang=lang,
-        po_status_label=_po_status_label(order.status, lang),
-        po_company_name=company_name,
-        po_company_address=addr_text,
-        po_address_ltr=addr_ltr,
+        en_only=en_only,
+        po_status_label=(
+            PO_STATUS_EN.get(order.status, order.status)
+            if en_only else _po_status_bilingual(order.status)
+        ),
+        po_company_name_ar=company_name_ar,
+        po_company_name_en=company_name_en,
+        po_company_address_ar=company_address_ar,
+        po_company_address_en=company_address_en,
+        po_company_display=company_display,
+        po_address_display=address_display,
+        item_names_en=item_names_en,
+        item_labels_en=item_labels_en,
+    )
+
+
+@app.route('/purchase-orders/<int:order_id>/print')
+def purchase_order_print(order_id):
+    order = PurchaseOrder.query.get_or_404(order_id)
+    return render_template(
+        'purchase-order-print.html',
+        **_purchase_order_print_context(order),
+    )
+
+
+@app.route('/purchase-orders/<int:order_id>/print-en')
+def purchase_order_print_en(order_id):
+    order = PurchaseOrder.query.get_or_404(order_id)
+    return render_template(
+        'purchase-order-print.html',
+        **_purchase_order_print_context(order, en_only=True),
     )
 
 
@@ -3497,6 +3865,8 @@ def purchase_order_update_contact(order_id):
     order.supplier_phone = request.form.get('supplier_phone', '').strip() or None
     order.supplier_email = request.form.get('supplier_email', '').strip() or None
     db.session.commit()
+    if request.form.get('en_only') == '1':
+        return redirect(url_for('purchase_order_print_en', order_id=order.id))
     return redirect(url_for('purchase_order_print', order_id=order.id))
 
 
@@ -3856,10 +4226,17 @@ def settings():
     edit_id = request.args.get('edit_user', type=int)
     if edit_id and user.role == 'admin':
         edit_user = User.query.get(edit_id)
+    try:
+        signatories = Signatory.query.filter_by(is_active=True).order_by(Signatory.name).all()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('signatories load failed: %s', exc)
+        signatories = []
     return render_template(
         'settings.html',
         settings=s,
         users=users,
+        signatories=signatories,
         current_user=user,
         active_tab=request.args.get('tab', 'company'),
         edit_user=edit_user,
@@ -3867,6 +4244,76 @@ def settings():
         generated_username=session.pop('settings_generated_username', None),
         generated_password=session.pop('settings_generated_password', None),
     )
+
+
+@app.route('/settings/signatories/add', methods=['POST'])
+def settings_signatory_add():
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('signatures')
+    from signatory_service import upsert_signatory
+
+    name = request.form.get('name', '').strip()
+    national_id = request.form.get('national_id', '').strip()
+    role = request.form.get('role', 'technician')
+    pin = request.form.get('sign_pin', '').strip()
+    file_storage = request.files.get('signature')
+    has_file = file_storage and file_storage.filename and _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT)
+    try:
+        if not has_file:
+            raise ValueError('صورة التوقيع مطلوبة')
+        upsert_signatory(
+            name=name,
+            national_id=national_id,
+            role=role,
+            pin_plain=pin,
+            pin_hash_fn=hash_password,
+            image_bytes=file_storage.read(),
+            app_root=app.root_path,
+            secret=app.config['SECRET_KEY'],
+        )
+        db.session.commit()
+        session['settings_notice'] = 'تم حفظ التوقيع بنجاح.'
+    except ValueError as exc:
+        db.session.rollback()
+        session['settings_notice'] = str(exc)
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('settings_signatory_add failed')
+        msg = str(exc) or 'تعذّر حفظ التوقيع'
+        session['settings_notice'] = msg
+    return _settings_redirect('signatures')
+
+
+@app.route('/settings/signatories/<int:sig_id>/delete', methods=['POST'])
+def settings_signatory_delete(sig_id):
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('signatures')
+    from signatory_service import delete_signatory_files
+
+    row = Signatory.query.get_or_404(sig_id)
+    delete_signatory_files(app.root_path, row)
+    row.is_active = False
+    row.signature_path = None
+    db.session.commit()
+    session['settings_notice'] = 'تم حذف الموقّع.'
+    return _settings_redirect('signatures')
+
+
+@app.route('/settings/signatures/save', methods=['POST'])
+def settings_signatures_prefs():
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('signatures')
+    s = get_app_settings()
+    sign_method = (request.form.get('default_sign_method') or 'pin').strip()
+    if sign_method not in ('draw', 'pin', 'both'):
+        sign_method = 'pin'
+    s.default_sign_method = sign_method
+    db.session.commit()
+    session['settings_notice'] = 'تم حفظ إعدادات التوقيع.'
+    return _settings_redirect('signatures')
 
 
 @app.route('/settings/save', methods=['POST'])
@@ -4456,6 +4903,35 @@ def api_client_annual(customer_id):
             'date':        str(p.billing_date or ''),
         } for p in parts],
     })
+# =============================================
+# موديول تركيب المصاعد (تجريبي)
+# =============================================
+from installation import register_install_module
+register_install_module(app)
+
+
+def _ensure_installation_project_routes(flask_app):
+    """تسجيل مسارات المشاريع إذا كانت نسخة قديمة من blueprint لم تُحمَّل."""
+    endpoints = {rule.endpoint for rule in flask_app.url_map.iter_rules()}
+    if 'installation.projects_list' in endpoints:
+        return
+    from installation.routes import (
+        projects_list,
+        project_detail,
+        project_quote,
+        project_quote_save,
+        quote_print,
+    )
+
+    flask_app.add_url_rule('/installation/projects', view_func=projects_list, endpoint='installation.projects_list')
+    flask_app.add_url_rule('/installation/projects/<int:project_id>', view_func=project_detail, endpoint='installation.project_detail')
+    flask_app.add_url_rule('/installation/projects/<int:project_id>/quote', view_func=project_quote, endpoint='installation.project_quote')
+    flask_app.add_url_rule('/installation/projects/<int:project_id>/quote/save', view_func=project_quote_save, methods=['POST'], endpoint='installation.project_quote_save')
+    flask_app.add_url_rule('/installation/quotes/<int:quotation_id>/print', view_func=quote_print, endpoint='installation.quote_print')
+
+
+_ensure_installation_project_routes(app)
+
 # =============================================
 # تشغيل التطبيق
 # =============================================

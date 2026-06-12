@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقرير مشروع {{ project.code }} — LiftCore</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f6fa;color:#1c2738;font-size:14px;padding:20px}
+.toolbar{max-width:900px;margin:0 auto 12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #e3e8f0;background:#fff;cursor:pointer;font-size:13px;text-decoration:none;color:#0a2647}
+.btn-primary{background:#0a2647;color:#fff;border-color:#0a2647}
+.sheet{background:#fff;max-width:900px;margin:0 auto;padding:34px 40px;border-radius:10px}
+.r-head{display:flex;justify-content:space-between;border-bottom:3px solid #c9a14a;padding-bottom:16px;margin-bottom:16px}
+.r-head .nm{font-size:22px;font-weight:800;color:#0a2647}
+.r-head .sub{font-size:12px;color:#6b7a90}
+.r-meta{text-align:left;font-size:12px;color:#6b7a90}
+.r-title{text-align:center;font-size:18px;font-weight:800;color:#0a2647;margin:12px 0}
+.r-sec{margin-top:16px}
+.r-sec h3{font-size:14px;font-weight:800;color:#0a2647;border-right:4px solid #c9a14a;padding-right:8px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th{background:#0a2647;color:#fff;padding:7px 9px;text-align:right}
+td{padding:7px 9px;border-bottom:1px solid #e3e8f0;vertical-align:top}
+tr.phase td{background:#f3e8cf;font-weight:700;color:#0a2647}
+tr.done td{background:#f8fdf9}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.summary-box{border:1px solid #e3e8f0;border-radius:8px;padding:12px;text-align:center}
+.summary-box .v{font-size:18px;font-weight:800;color:#0a2647;font-family:monospace}
+.summary-box .l{font-size:11px;color:#6b7a90;margin-top:4px}
+.badge-done{display:inline-block;background:#e8f8ef;color:#1a7a4a;padding:2px 8px;border-radius:8px;font-size:11px}
+.badge-pending{display:inline-block;background:#f0f0f0;color:#666;padding:2px 8px;border-radius:8px;font-size:11px}
+.btn-edit{display:inline-block;padding:4px 10px;border-radius:6px;border:1px solid #c9a14a;background:#fffaf0;color:#0a2647;font-size:11px;text-decoration:none;white-space:nowrap}
+.btn-edit:hover{background:#f3e8cf}
+.complete-banner{background:#e8f8ef;border:1px solid #b8e6c8;color:#1a7a4a;padding:10px 14px;border-radius:8px;text-align:center;margin-bottom:14px;font-weight:600}
+@media print{.toolbar{display:none}body{background:#fff;padding:0}.sheet{border-radius:0;max-width:100%}}
+@media(max-width:700px){.summary-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="window.print()">طباعة / PDF</button>
+  <a class="btn" href="/installation/projects/{{ project.id }}/handover" target="_blank">محضر استلام العميل</a>
+  <a class="btn" href="/installation/projects/{{ project.id }}">← المشروع</a>
+  {% if not is_complete %}
+  <a class="btn" href="/installation/projects/{{ project.id }}/execution">جدول التنفيذ</a>
+  {% endif %}
+</div>
+<div class="sheet">
+  <div class="r-head">
+    <div>
+      <div class="nm">LiftCore</div>
+      <div class="sub">تقرير مشروع تركيب مصاعد</div>
+    </div>
+    <div class="r-meta">
+      المشروع: <b>{{ project.code }}</b><br>
+      التاريخ: <b>{{ report_date.strftime('%Y-%m-%d') }}</b><br>
+      الحالة: <b>{{ project.status }}</b>
+    </div>
+  </div>
+
+  <div class="r-title">
+    {% if is_complete %}تقرير إغلاق مشروع — {{ project.client_display }}
+    {% else %}تقرير متابعة مشروع — {{ project.client_display }} ({{ progress }}%){% endif %}
+  </div>
+
+  {% if is_complete %}
+  <div class="complete-banner">تم إكمال جميع مراحل التنفيذ بنجاح</div>
+  {% endif %}
+
+  <div class="r-sec">
+    <h3>بيانات العميل</h3>
+    <table>
+      <tbody>
+        <tr>
+          <td><b>كود العميل</b></td><td>{{ project.customer.code if project.customer else '—' }}</td>
+          <td><b>الاسم</b></td><td>{{ project.client_display }}</td>
+        </tr>
+        <tr>
+          <td><b>الجوال</b></td><td>{{ project.customer.phone if project.customer else (accepted_quote.client_phone if accepted_quote else '—') }}</td>
+          <td><b>المدينة</b></td><td>{{ project.customer.city if project.customer else '—' }}</td>
+        </tr>
+        {% if project.lead %}
+        <tr>
+          <td><b>فرصة البيع</b></td><td>{{ project.lead.code }}</td>
+          <td><b>تاريخ الاستفسار</b></td><td>{{ project.lead.inquiry_date or '—' }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td><b>بدء التنفيذ</b></td><td>{{ project.execution_started_at.strftime('%Y-%m-%d') if project.execution_started_at else '—' }}</td>
+          <td><b>تاريخ إنشاء المشروع</b></td><td>{{ project.created_at.strftime('%Y-%m-%d') if project.created_at else '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  {% if accepted_quote %}
+  <div class="r-sec">
+    <h3>العرض المعتمد والقيمة المالية</h3>
+    <div class="summary-grid">
+      <div class="summary-box">
+        <div class="v">{{ accepted_quote.code }}</div>
+        <div class="l">كود العرض</div>
+      </div>
+      <div class="summary-box">
+        <div class="v">{{ '{:,.0f}'.format(accepted_quote.grand_total) }}</div>
+        <div class="l">قيمة العقد (شامل الضريبة) ر.س</div>
+      </div>
+      <div class="summary-box">
+        <div class="v">{{ '{:,.0f}'.format(payments.client_paid) }}</div>
+        <div class="l">محصّل من العميل (شامل الضريبة) ر.س</div>
+      </div>
+    </div>
+    <table style="margin-top:12px">
+      <tbody>
+        <tr>
+          <td><b>نوع المشروع</b></td><td>{{ 'تركيب جديد' if accepted_quote.quote_type == 'new' else 'تحديث' }}</td>
+          <td><b>تاريخ القبول</b></td><td>{{ accepted_quote.approved_at.strftime('%Y-%m-%d') if accepted_quote.approved_at else '—' }}</td>
+        </tr>
+        <tr>
+          <td><b>مدفوعات للمورد</b></td><td>{{ '{:,.0f}'.format(payments.supplier_paid) }} ر.س</td>
+          <td><b>متبقي من العميل</b></td><td>{{ '{:,.0f}'.format(accepted_quote.grand_total - payments.client_paid) }} ر.س</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  {% if accepted_quote.quote_type == 'new' and spec %}
+  <div class="r-sec">
+    <h3>المواصفات الفنية</h3>
+    <table>
+      <tbody>
+        <tr>
+          <td><b>الوقفات / الحمولة</b></td><td>{{ spec.stops or '—' }} وقفات · {{ spec.capacity or '—' }} كجم</td>
+          <td><b>الماكينة</b></td><td>{{ origin_label }}{% if machine_brand != '—' %} — {{ machine_brand }}{% endif %}</td>
+        </tr>
+        <tr>
+          <td><b>لوحة التحكم</b></td><td>{{ panel_origin_label }}{% if panel_brand != '—' %} — {{ panel_brand }}{% endif %}</td>
+          <td><b>البئر / الكبينة</b></td>
+          <td>{% if dims.shaft_w %}{{ dims.shaft_w }}×{{ dims.shaft_d }} سم{% else %}—{% endif %}
+            {% if dims.cabin_w %} · كبينة {{ dims.cabin_w }}×{{ dims.cabin_d }} سم{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if lines_by_stage %}
+  <div class="r-sec">
+    <h3>ملخص بنود العرض</h3>
+    <table>
+      <thead><tr><th>المرحلة / البند</th><th>الكمية</th><th>الإجمالي (تكلفة)</th></tr></thead>
+      <tbody>
+        {% for stage, lines in lines_by_stage.items() %}
+        <tr class="phase"><td colspan="3">{{ stage }}</td></tr>
+        {% for ln in lines %}
+        <tr>
+          <td style="padding-right:18px">{{ ln.name }}</td>
+          <td>{{ ln.qty }}</td>
+          <td>{{ '{:,.0f}'.format(ln.line_total) }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <div class="r-sec">
+    <h3>سجل التنفيذ — الجدول الزمني الكامل</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>المرحلة</th><th>الخطوة</th><th>الحالة</th><th>مخطط</th><th>بدء المرحلة</th><th>اكتمل</th><th>المبلغ</th><th>ملاحظات</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for group_name, group_steps in step_groups %}
+        <tr class="phase"><td colspan="9">{{ group_name }}</td></tr>
+        {% for step in group_steps %}
+        <tr class="{% if step.status == 'مكتمل' %}done{% endif %}">
+          <td>{{ group_name }}</td>
+          <td>{{ step.title }}{% if step.hint %}<br><small style="color:#6b7a90">{{ step.hint }}</small>{% endif %}</td>
+          <td>{% if step.status == 'مكتمل' %}<span class="badge-done">{{ step.status }}</span>{% else %}<span class="badge-pending">{{ step.status }}</span>{% endif %}</td>
+          <td>{{ step.planned_date.strftime('%Y-%m-%d') if step.planned_date else '—' }}</td>
+          <td>{{ step.started_at.strftime('%Y-%m-%d') if step.started_at else '—' }}</td>
+          <td>{{ step.completed_at.strftime('%Y-%m-%d') if step.completed_at else '—' }}</td>
+          <td>{% if step.has_amount %}{% set step_amt = client_payment_amount(step, accepted_quote) if accepted_quote else (step.amount or 0) %}{{ '{:,.0f}'.format(step_amt) if step_amt else '—' }}{% else %}—{% endif %}</td>
+          <td>{{ step.notes or '—' }}</td>
+          <td><a class="btn-edit" href="/installation/projects/{{ project.id }}/timeline/{{ step.id }}/edit?return=report">تعديل</a></td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if quotations|length > 1 %}
+  <div class="r-sec">
+    <h3>عروض الأسعار (السجل)</h3>
+    <table>
+      <thead><tr><th>الكود</th><th>الحالة</th><th>الإجمالي</th><th>التاريخ</th></tr></thead>
+      <tbody>
+        {% for q in quotations %}
+        <tr>
+          <td>{{ q.code }}</td>
+          <td>{{ q.status }}</td>
+          <td>{{ '{:,.0f}'.format(q.grand_total) }} ر.س</td>
+          <td>{{ q.created_at.strftime('%Y-%m-%d') if q.created_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="r-sec" style="margin-top:24px;font-size:12px;color:#6b7a90;text-align:center">
+    تقرير صادر من LiftCore — موديول التركيب · {{ report_date.strftime('%Y-%m-%d') }}
+  </div>
+</div>
+</body>
+</html>
