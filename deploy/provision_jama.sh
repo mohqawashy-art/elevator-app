@@ -43,7 +43,18 @@ if [ ! -d "$VENV" ]; then
 fi
 # shellcheck disable=SC1091
 source "$VENV/bin/activate"
-pip install -q -r requirements.txt 2>/dev/null || pip install -q flask flask-sqlalchemy gunicorn werkzeug cryptography
+pip install -q --upgrade pip
+if [ -f requirements.txt ]; then
+  pip install -q -r requirements.txt
+fi
+pip install -q gunicorn flask flask-sqlalchemy werkzeug cryptography
+
+GUNICORN_BIN="$VENV/bin/gunicorn"
+if [ ! -x "$GUNICORN_BIN" ]; then
+  echo "ERROR: gunicorn missing after pip install — run: $VENV/bin/pip install gunicorn"
+  exit 1
+fi
+echo "  gunicorn OK: $GUNICORN_BIN"
 
 mkdir -p "$(dirname "$DB_FILE")"
 export DATABASE_URL="sqlite:///${DB_FILE}"
@@ -80,7 +91,7 @@ Environment=DATABASE_URL=sqlite:///${DB_FILE}
 Environment=LIFTCORE_HTTPS=1
 Environment=LIFTCORE_INSTALL_MODULE=1
 Environment=SECRET_KEY=${JAMA_SECRET}
-ExecStart=${VENV}/bin/gunicorn -w 2 -b 127.0.0.1:${PORT} --timeout 120 app:app
+ExecStart=${GUNICORN_BIN} -w 2 -b 127.0.0.1:${PORT} --timeout 120 app:app
 Restart=on-failure
 RestartSec=5
 
