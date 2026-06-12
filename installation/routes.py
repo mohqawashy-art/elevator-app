@@ -409,6 +409,25 @@ def quote_send(project_id, quotation_id):
     return redirect(url_for('installation.project_detail', project_id=project.id))
 
 
+@install_bp.route('/projects/<int:project_id>/quotes/<int:quotation_id>/cancel', methods=['POST'])
+def quote_cancel(project_id, quotation_id):
+    project = InstallProject.query.get_or_404(project_id)
+    q = InstallQuotation.query.filter_by(id=quotation_id, project_id=project.id).first_or_404()
+    if q.status == 'مقبول':
+        flash('لا يمكن إلغاء عرض مقبول — المشروع في مرحلة التنفيذ', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id))
+    if q.status == 'مرفوض':
+        flash('هذا العرض ملغى مسبقاً', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id))
+    if project.execution_active:
+        flash('لا يمكن إلغاء العروض بعد بدء التنفيذ', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id))
+    q.status = 'مرفوض'
+    db.session.commit()
+    flash(f'تم إلغاء العرض {q.code}', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id))
+
+
 @install_bp.route('/projects/<int:project_id>/quotes/<int:quotation_id>/approve', methods=['POST'])
 def quote_approve(project_id, quotation_id):
     project = InstallProject.query.get_or_404(project_id)
@@ -762,6 +781,21 @@ def leads_status(lead_id):
     if status in LEAD_STATUSES:
         lead.status = status
         db.session.commit()
+    return redirect(url_for('installation.leads_list'))
+
+
+@install_bp.route('/leads/<int:lead_id>/cancel', methods=['POST'])
+def leads_cancel(lead_id):
+    lead = InstallLead.query.get_or_404(lead_id)
+    if lead.status == 'ملغي':
+        flash('هذه الفرصة ملغاة مسبقاً', 'error')
+        return redirect(url_for('installation.leads_list'))
+    if lead.status == 'تم تحويله لمشروع' or lead.project:
+        flash('لا يمكن إلغاء فرصة مُحوّلة لمشروع', 'error')
+        return redirect(url_for('installation.leads_list'))
+    lead.status = 'ملغي'
+    db.session.commit()
+    flash(f'تم إلغاء الفرصة {lead.code}', 'success')
     return redirect(url_for('installation.leads_list'))
 
 

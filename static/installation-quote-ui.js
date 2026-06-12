@@ -575,7 +575,6 @@ document.addEventListener('DOMContentLoaded', function () {
             u.searchParams.set('quotation_id', String(data.id));
             window.history.replaceState({}, '', u.pathname + u.search);
           }
-          if (data.print_url) window.open(data.print_url, '_blank');
         } else {
           alert(data.error || 'فشل الحفظ');
         }

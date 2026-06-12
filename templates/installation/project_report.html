@@ -38,7 +38,7 @@ tr.done td{background:#f8fdf9}
 <body>
 <div class="toolbar">
   <button class="btn btn-primary" onclick="window.print()">طباعة / PDF</button>
-  <a class="btn" href="/installation/projects/{{ project.id }}/handover" target="_blank">محضر استلام العميل</a>
+  <a class="btn" href="/installation/projects/{{ project.id }}/handover">محضر استلام العميل</a>
   <a class="btn" href="/installation/projects/{{ project.id }}">← المشروع</a>
   {% if not is_complete %}
   <a class="btn" href="/installation/projects/{{ project.id }}/execution">جدول التنفيذ</a>

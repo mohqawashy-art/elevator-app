@@ -15,8 +15,8 @@
       <div class="page-title">{{ project.code }} — التنفيذ</div>
       <div class="page-actions">
         <a href="/installation/projects/{{ project.id }}" class="btn btn-secondary btn-sm">← المشروع</a>
-        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm" target="_blank">تقرير</a>
-        <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm" target="_blank">محضر استلام</a>
+        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير</a>
+        <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm">محضر استلام</a>
       </div>
     </div>
 
@@ -62,8 +62,8 @@
       <h2>تم إكمال جميع مراحل التنفيذ</h2>
       <p style="font-size:13px;color:var(--text3)">المشروع {{ project.status }} — لا توجد خطوات متبقية</p>
       <div class="exec-done-actions">
-        <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-primary btn-sm" target="_blank">محضر استلام العميل</a>
-        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm" target="_blank">تقرير الإغلاق</a>
+        <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-primary btn-sm">محضر استلام العميل</a>
+        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير الإغلاق</a>
       </div>
     </div>
 
@@ -132,7 +132,7 @@
       <aside class="exec-aside">
         {% if upcoming_steps %}
         <div class="exec-aside-card">
-          <div class="exec-aside-title">التالي في الطابور</div>
+          <div class="exec-aside-title">الخطوات التالية</div>
           <ul class="exec-next-list">
             {% for step in upcoming_steps %}
             <li class="exec-next-item">
@@ -151,10 +151,10 @@
           <div class="exec-aside-title">مستندات</div>
           <div class="exec-links">
             {% if accepted_quote %}
-            <a href="/installation/quotes/{{ accepted_quote.id }}/print" target="_blank">عرض السعر المعتمد</a>
+            <a href="/installation/quotes/{{ accepted_quote.id }}/print">عرض السعر المعتمد</a>
             {% endif %}
-            <a href="/installation/projects/{{ project.id }}/handover" target="_blank">محضر استلام العميل</a>
-            <a href="/installation/projects/{{ project.id }}/report" target="_blank">تقرير المشروع الكامل</a>
+            <a href="/installation/projects/{{ project.id }}/handover">محضر استلام العميل</a>
+            <a href="/installation/projects/{{ project.id }}/report">تقرير المشروع الكامل</a>
           </div>
         </div>
 
