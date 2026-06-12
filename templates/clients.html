@@ -485,7 +485,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <div class="page-header">
         <div class="page-title">العملاء <span id="clients-count" data-i18n-skip>({{ customers|length }} عميل)</span></div>
         <div class="page-actions">
-          <a class="btn btn-secondary btn-sm" href="/static/templates/clients_template.xlsx" download>
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('clients_import_template') }}" download>
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
             تحميل النموذج
           </a>
@@ -815,7 +815,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         <div style="color:var(--accent)">الاسم، رقم الهاتف</div>
         <div style="color:var(--text3);margin-top:4px">اختيارية: المدينة، الحي، المسؤول، البريد</div>
         <div style="margin-top:8px">
-          <a href="/static/templates/clients_template.xlsx" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
+          <a href="{{ url_for('clients_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
         </div>
       </div>
     </div>

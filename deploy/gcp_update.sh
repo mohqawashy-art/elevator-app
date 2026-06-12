@@ -92,6 +92,9 @@ echo "==> verify"
 test -d "$APP_DIR/installation" && echo "  installation module OK"
 grep -q "register_install_module" "$APP_DIR/app.py" && echo "  install routes OK"
 test -f "$APP_DIR/static/liftcore-dates.js" && echo "  liftcore-dates.js OK"
+if [ -d "$VENV" ]; then
+  python "$APP_DIR/scripts/build_clients_template.py" 2>/dev/null && echo "  clients import template OK" || true
+fi
 test -f "$APP_DIR/templates/purchase-orders.html" && echo "  purchase-orders.html OK"
 grep -q "purchase-orders" "$APP_DIR/app.py" && echo "  purchase-orders route OK"
 test -f "$APP_DIR/templates/settings.html" && grep -q "settings_user_add" "$APP_DIR/app.py" && echo "  full settings UI OK"

@@ -949,6 +949,29 @@ def clients():
     )
 
 
+@app.route('/clients/template')
+def clients_import_template():
+    """تحميل نموذج استيراد العملاء."""
+    path = os.path.join(app.root_path, 'static', 'templates', 'clients_template.xlsx')
+    if not os.path.isfile(path):
+        script = os.path.join(app.root_path, 'scripts', 'build_clients_template.py')
+        if os.path.isfile(script):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('build_clients_template', script)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                mod.build_xlsx(path)
+        if not os.path.isfile(path):
+            abort(404)
+    return send_from_directory(
+        os.path.dirname(path),
+        os.path.basename(path),
+        as_attachment=True,
+        download_name='clients_template.xlsx',
+    )
+
+
 def _client_dir(client_id):
     path = os.path.join(CLIENT_UPLOAD_ROOT, str(client_id))
     os.makedirs(path, exist_ok=True)
