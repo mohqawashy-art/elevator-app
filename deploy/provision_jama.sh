@@ -58,6 +58,8 @@ echo "  gunicorn OK: $GUNICORN_BIN"
 
 mkdir -p "$(dirname "$DB_FILE")"
 export DATABASE_URL="sqlite:///${DB_FILE}"
+# لا تترك liftcore.db في مجلد جما — يُربك التطبيق
+rm -f "$JAMA_DIR/instance/liftcore.db" "$JAMA_DIR/liftcore.db" 2>/dev/null || true
 
 echo ""
 echo "==> 3) قاعدة بيانات جما"
