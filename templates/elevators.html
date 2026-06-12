@@ -14,6 +14,7 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/elevator_profile.js"></script>
 <script src="/static/client_map_picker.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -207,6 +208,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .view-full{grid-column:1/-1}
 .view-section{font-size:11px;font-weight:600;color:var(--accent);grid-column:1/-1;padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px}
 
+/* استيراد */
+.import-area{border:2px dashed var(--border);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:var(--trans)}
+.import-area:hover{border-color:var(--accent);background:rgba(42,127,255,.04)}
+.import-area svg{width:32px;height:32px;color:var(--text3);margin-bottom:10px}
+
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:1200px){.stats-row{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
@@ -340,15 +346,18 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="page-header">
         <div class="page-title">المصاعد <span id="elev-count" data-i18n-skip>({{ elevators|length }} مصعد)</span></div>
         <div class="page-actions">
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('elevators_import_template') }}" download>
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+            تحميل النموذج
+          </a>
+          <button class="btn btn-secondary btn-sm" onclick="openModal('modal-import')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
+            استيراد Excel
+          </button>
           <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
             تصدير Excel
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('imp').click()">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
-            استيراد Excel
-          </button>
-          <input type="file" id="imp" accept=".xlsx,.xls" style="display:none">
           <button class="btn btn-primary btn-sm" onclick="openAddModal()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
             إضافة مصعد
@@ -719,6 +728,44 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <button class="btn btn-primary" onclick="editFromView()">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
         تعديل
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <div class="modal-title">استيراد مصاعد من Excel</div>
+      <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="import-area" onclick="document.getElementById('import-file').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
+        <p>اسحب ملف Excel هنا أو <span>اضغط للاختيار</span></p>
+        <p style="font-size:11px;margin-top:4px">.xlsx أو .csv</p>
+        <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleElevImport(this)">
+      </div>
+      <div id="import-preview" style="margin-top:14px;display:none">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">معاينة:</div>
+        <div id="import-table-wrap" style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)"></div>
+        <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
+        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
+        <div style="color:var(--accent)">كود العميل أو اسم العميل (يجب أن يكون العميل مسجّلاً مسبقاً)</div>
+        <div style="color:var(--text3);margin-top:4px">اختيارية: المبنى، المدينة، النوع، الماركة، الحمولة، الحالة...</div>
+        <div style="margin-top:8px">
+          <a href="{{ url_for('elevators_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-import')">إلغاء</button>
+      <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmElevImport()" style="display:none">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
+        استيراد
       </button>
     </div>
   </div>
@@ -1267,6 +1314,132 @@ function confirmDelete() {
   fetch('/elevators/delete/' + currentDeleteId, {method: 'POST'}).then(function() { window.location.reload(); });
 }
 
+// ===== استيراد =====
+var elevImportData = [];
+
+function resolveCustomerId(row) {
+  var code = String(row['كود العميل'] || row['customer_code'] || '').trim();
+  if (code) {
+    var byCode = CUSTOMERS.find(function(c) { return c.code === code; });
+    if (byCode) return byCode.id;
+  }
+  var name = String(row['اسم العميل'] || row['العميل'] || row['customer'] || row['name'] || '').trim();
+  if (name) {
+    var byName = CUSTOMERS.find(function(c) { return c.name === name; });
+    if (byName) return byName.id;
+  }
+  return null;
+}
+
+function handleElevImport(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  if (file.name.toLowerCase().endsWith('.csv')) {
+    reader.onload = function(e) { parseElevCSV(e.target.result); };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.onload = function(e) { processElevXLSX(new Uint8Array(e.target.result)); };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function processElevXLSX(data) {
+  var wb = XLSX.read(data, {type: 'array'});
+  var ws = wb.Sheets[wb.SheetNames[0]];
+  var rows = XLSX.utils.sheet_to_json(ws, {header: 1});
+  var hi = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].some(function(v) {
+      var s = String(v || '');
+      return s.includes('كود العميل') || s.includes('اسم العميل') || s.toLowerCase().includes('customer');
+    })) { hi = i; break; }
+  }
+  var headers = rows[hi].map(function(h) { return String(h || '').trim(); });
+  elevImportData = [];
+  for (var j = hi + 1; j < rows.length; j++) {
+    var row = {};
+    headers.forEach(function(h, k) { row[h] = String(rows[j][k] || '').trim(); });
+    if (resolveCustomerId(row)) elevImportData.push(row);
+  }
+  showElevImportPreview(headers.filter(function(h) { return h; }));
+}
+
+function parseElevCSV(text) {
+  var lines = text.split('\n').filter(function(l) { return l.trim(); });
+  var headers = lines[0].split(',').map(function(h) { return h.trim().replace(/"/g, ''); });
+  elevImportData = [];
+  for (var i = 1; i < lines.length; i++) {
+    var vals = lines[i].split(',').map(function(v) { return v.trim().replace(/"/g, ''); });
+    var row = {};
+    headers.forEach(function(h, j) { row[h] = vals[j] || ''; });
+    if (resolveCustomerId(row)) elevImportData.push(row);
+  }
+  showElevImportPreview(headers);
+}
+
+function showElevImportPreview(headers) {
+  document.getElementById('import-preview').style.display = 'block';
+  document.getElementById('import-status').textContent = 'تم قراءة ' + elevImportData.length + ' سجل';
+  var tableHtml = '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>';
+  headers.slice(0, 6).forEach(function(h) {
+    tableHtml += '<th style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text3)">' + h + '</th>';
+  });
+  tableHtml += '</tr></thead><tbody>';
+  elevImportData.slice(0, 4).forEach(function(row) {
+    tableHtml += '<tr>';
+    headers.slice(0, 6).forEach(function(h) {
+      tableHtml += '<td style="padding:5px 6px;border:1px solid var(--border);color:var(--text2)">' + (row[h] || '') + '</td>';
+    });
+    tableHtml += '</tr>';
+  });
+  tableHtml += '</tbody></table>';
+  if (elevImportData.length > 4) {
+    tableHtml += '<div style="padding:4px 6px;font-size:11px;color:var(--text3)">... و ' + (elevImportData.length - 4) + ' سجل آخر</div>';
+  }
+  document.getElementById('import-table-wrap').innerHTML = tableHtml;
+  document.getElementById('btn-confirm-import').style.display = elevImportData.length ? 'flex' : 'none';
+}
+
+async function confirmElevImport() {
+  var btn = document.getElementById('btn-confirm-import');
+  btn.innerHTML = 'جاري الاستيراد...';
+  btn.disabled = true;
+  var ok = 0;
+  var skip = 0;
+  for (var i = 0; i < elevImportData.length; i++) {
+    var row = elevImportData[i];
+    var customerId = resolveCustomerId(row);
+    if (!customerId) { skip++; continue; }
+    var fd = new FormData();
+    fd.append('customer_id', customerId);
+    fd.append('building_name', row['المبنى'] || row['building'] || '');
+    fd.append('city', row['المدينة'] || row['city'] || '');
+    fd.append('district', row['الحي'] || row['district'] || '');
+    fd.append('elev_type', row['نوع المصعد'] || row['elev_type'] || 'مصعد ركاب');
+    fd.append('brand', row['الماركة'] || row['brand'] || '');
+    fd.append('model', row['الموديل'] || row['model'] || '');
+    fd.append('capacity_kg', row['الحمولة (كجم)'] || row['الحمولة'] || row['capacity'] || '');
+    fd.append('floors', row['عدد الطوابق'] || row['floors'] || '');
+    fd.append('serial_number', row['الرقم التسلسلي'] || row['serial'] || '');
+    fd.append('machine_type', row['نوع الآلة'] || row['machine_type'] || 'MR');
+    fd.append('control_type', row['نوع النظام'] || row['control_type'] || '');
+    fd.append('control_drive', row['نوع المحرك'] || row['control_drive'] || '');
+    fd.append('control_operation', row['طريقة التشغيل'] || row['control_operation'] || '');
+    fd.append('control_detail', row['تفاصيل التحكم'] || row['control_detail'] || '');
+    fd.append('install_date', row['تاريخ التركيب'] || row['install_date'] || '');
+    fd.append('last_maintenance', row['آخر صيانة'] || row['last_maintenance'] || '');
+    fd.append('next_maintenance', row['الصيانة القادمة'] || row['next_maintenance'] || '');
+    fd.append('status', row['الحالة'] || row['status'] || 'نشط');
+    fd.append('notes', row['ملاحظات'] || row['notes'] || '');
+    var r = await fetch('/elevators/add', {method: 'POST', body: fd, credentials: 'same-origin'});
+    if (r.ok || r.redirected) ok++;
+    else skip++;
+  }
+  alert('تم استيراد ' + ok + ' مصعد بنجاح' + (skip ? (' — تم تخطي ' + skip + ' سجل') : ''));
+  window.location.reload();
+}
+
 function exportExcel() {
   var rows = [['الكود','العميل','المبنى','المدينة','النوع','الماركة','نوع الآلة','نظام التحكم','الحمولة','الحالة','الصيانة القادمة']];
   filtered.forEach(function(e) {
@@ -1439,6 +1612,11 @@ function switchElevTab(tab, el) {
   }
 }
 
+function openModal(id) {
+  document.querySelectorAll('.modal-overlay.open').forEach(function(m) { m.classList.remove('open'); });
+  var el = document.getElementById(id);
+  if (el) el.classList.add('open');
+}
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function setLang(l) {
   document.documentElement.setAttribute('lang', l);
