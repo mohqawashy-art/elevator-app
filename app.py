@@ -556,6 +556,8 @@ def api_version():
             'theme_css': os.path.isfile(os.path.join(root, 'static/liftcore-theme.css')),
             'purchase_orders': os.path.isfile(os.path.join(root, 'templates/purchase-orders.html')),
             'enforce_auth': len(app.before_request_funcs.get(None, [])) > 0,
+            'installation_module': os.path.isdir(os.path.join(root, 'installation')),
+            'install_enabled': install_module_enabled(),
         },
     )
 

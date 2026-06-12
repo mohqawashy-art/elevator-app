@@ -90,7 +90,11 @@ if command -v systemctl >/dev/null 2>&1; then
   DROP_IN="/etc/systemd/system/${SERVICE_NAME}.service.d"
   sudo mkdir -p "$DROP_IN"
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_HTTPS=1' | sudo tee "$DROP_IN/https.conf" >/dev/null
+  printf '%s\n' '[Service]' 'Environment=LIFTCORE_INSTALL_MODULE=1' | sudo tee "$DROP_IN/install-module.conf" >/dev/null
   sudo systemctl daemon-reload
+  if [ -f "$APP_DIR/scripts/init_install_module.py" ]; then
+    python "$APP_DIR/scripts/init_install_module.py" || true
+  fi
   sudo systemctl restart "$SERVICE_NAME"
   sleep 3
   sudo systemctl is-active "$SERVICE_NAME"
