@@ -37,4 +37,11 @@ sleep 3
 sudo systemctl status "$SERVICE_NAME" --no-pager -l || true
 curl -sS "http://127.0.0.1:${PORT}/api/version" | head -c 400 || true
 echo ""
-echo "افتح: https://${DOMAIN}"
+MAIN_DIR="${MAIN_DIR:-$HOME/liftcore/elevator-app}"
+if [ -f "$MAIN_DIR/deploy/fix_jama_nginx.sh" ]; then
+  echo ""
+  echo "==> إصلاح Nginx (إزالة Coming Soon)"
+  bash "$MAIN_DIR/deploy/fix_jama_nginx.sh"
+else
+  echo "افتح: https://${DOMAIN}/login"
+fi
