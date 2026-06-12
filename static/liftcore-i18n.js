@@ -21,6 +21,9 @@
     '/purchase-orders': { ar: 'طلبات الشراء', en: 'Purchase Orders' },
     '/reports': { ar: 'التقارير', en: 'Reports' },
     '/settings': { ar: 'الإعدادات', en: 'Settings' },
+    '/installation/': { ar: 'لوحة المشاريع', en: 'Projects Home' },
+    '/installation/leads': { ar: 'فرص البيع', en: 'Sales Leads' },
+    '/installation/projects': { ar: 'المشاريع والتسعير', en: 'Projects & Pricing' },
   };
 
   var SECTIONS = {
@@ -30,6 +33,7 @@
     'المالية': 'Finance',
     'المخزن': 'Inventory',
     'التقارير': 'Reports',
+    'تركيب جديد': 'New Installation',
   };
 
   var ROLES = {
@@ -370,7 +374,14 @@
       .replace(/([0-9.,]+)\s*متر/g, '$1 m')
       .replace(/([0-9.,]+)\s*لتر/g, '$1 L')
       .replace(/الطلبات السابقة\s*\((\d+)\)/g, 'Previous Orders ($1)')
-      .replace(/عرض\s+(\d+)\s+من\s+(\d+)/g, 'Showing $1 of $2');
+      .replace(/عرض\s+(\d+)\s+من\s+(\d+)/g, 'Showing $1 of $2')
+      .replace(/(\d+)\s*\/\s*(\d+)\s*خطوة/g, '$1 / $2 steps')
+      .replace(/المهمة الحالية · (\d+) خطوة متبقية/g, 'Current task · $1 steps remaining')
+      .replace(/جدول التنفيذ\s*\((\d+)%\)/g, 'Timeline ($1%)')
+      .replace(/مرحلة\s+(\d+)/g, 'Phase $1')
+      .replace(/الفرص المسجّلة\s*\((\d+)\)/g, 'Registered Leads ($1)')
+      .replace(/متابعة التسعير\s*\(([^)]+)\)/g, 'Continue Pricing ($1)')
+      .replace(/(\d+)%\s*من العقد/g, '$1% of contract');
   }
 
   function setNavItemLabel(link, lang) {
@@ -572,6 +583,15 @@
       '.filter-label',
       '.hint',
       'option',
+      '.panel-title',
+      '.exec-aside-title',
+      '.exec-hero-label',
+      '.exec-hero-hint',
+      '.exec-hero-phase',
+      '.exec-auto-lbl',
+      '.exec-auto-note',
+      '.exec-done-panel h2',
+      'summary',
     ];
     selectors.forEach(function (sel) {
       root.querySelectorAll(sel).forEach(function (el) {

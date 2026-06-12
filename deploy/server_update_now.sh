@@ -32,6 +32,9 @@ bash deploy/gcp_update.sh
 
 echo ""
 echo "==> تحقق (يجب install_enabled: true)"
-curl -sS "http://127.0.0.1:5001/api/version" 2>/dev/null || curl -sS "http://127.0.0.1:5000/api/version" 2>/dev/null || true
+for PORT in 5000 5001 8000; do
+  OUT="$(curl -sS --max-time 3 "http://127.0.0.1:${PORT}/api/version" 2>/dev/null || true)"
+  if [ -n "$OUT" ]; then echo "  :${PORT} => $OUT"; break; fi
+done
 echo ""
 echo "افتح: https://app.liftcoreapp.com/installation/ (بعد تسجيل الدخول)"

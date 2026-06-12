@@ -48,7 +48,13 @@ sleep 3
 if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
   echo ""
   echo "OK — الخدمة تعمل"
-  curl -sS "http://127.0.0.1:5001/api/version" 2>/dev/null | head -c 400 || true
+  for PORT in 5000 5001 8000; do
+    OUT="$(curl -sS --max-time 3 "http://127.0.0.1:${PORT}/api/version" 2>/dev/null || true)"
+    if [ -n "$OUT" ]; then
+      echo "  api/version on :${PORT} => $OUT" | head -c 500
+      break
+    fi
+  done
   echo ""
   echo "افتح: https://app.liftcoreapp.com/dashboard"
 else
