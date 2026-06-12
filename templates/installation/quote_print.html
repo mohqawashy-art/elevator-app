@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>عرض سعر {{ quotation.code }} — LiftCore</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f6fa;color:#1c2738;font-size:14px;padding:20px}
+.toolbar{max-width:840px;margin:0 auto 12px;display:flex;gap:10px;justify-content:flex-end}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #e3e8f0;background:#fff;cursor:pointer;font-size:13px;text-decoration:none;color:#0a2647}
+.btn-primary{background:#0a2647;color:#fff;border-color:#0a2647}
+.sheet{background:#fff;max-width:840px;margin:0 auto;padding:34px 40px;border-radius:10px}
+.q-head{display:flex;justify-content:space-between;border-bottom:3px solid #c9a14a;padding-bottom:16px;margin-bottom:16px}
+.q-head .nm{font-size:22px;font-weight:800;color:#0a2647}
+.q-head .sub{font-size:12px;color:#6b7a90}
+.q-meta{text-align:left;font-size:12px;color:#6b7a90}
+.q-title{text-align:center;font-size:18px;font-weight:800;color:#0a2647;margin:12px 0}
+.q-sec{margin-top:14px}
+.q-sec h3{font-size:14px;font-weight:800;color:#0a2647;border-right:4px solid #c9a14a;padding-right:8px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#0a2647;color:#fff;padding:7px 9px;text-align:right}
+td{padding:7px 9px;border-bottom:1px solid #e3e8f0}
+tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
+.totals{width:280px;margin-top:12px;margin-right:auto}
+.totals .r{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e8f0}
+.totals .g{background:#0a2647;color:#c9a14a;font-weight:800;padding:9px 12px;border-radius:8px;margin-top:6px;display:flex;justify-content:space-between}
+.terms{font-size:12px;line-height:1.9;margin-top:12px}
+@media print{.toolbar{display:none}body{background:#fff;padding:0}.sheet{border-radius:0;max-width:100%}}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="window.print()">طباعة / PDF</button>
+  <a class="btn" href="/installation/projects/{{ project.id }}">← المشروع</a>
+</div>
+<div class="sheet">
+  <div class="q-head">
+    <div>
+      <div class="nm">LiftCore</div>
+      <div class="sub">شركة تركيب وصيانة وتحديث المصاعد</div>
+    </div>
+    <div class="q-meta">
+      رقم العرض: <b>{{ quotation.code }}</b><br>
+      المشروع: <b>{{ project.code }}</b><br>
+      الصلاحية: <b>{{ quotation.valid_days }} يوم</b>
+    </div>
+  </div>
+  <div class="q-title">عرض سعر — {{ 'توريد وتركيب مصعد جديد' if quotation.quote_type == 'new' else 'تحديث مصعد قائم' }}</div>
+
+  <div class="q-sec">
+    <h3>بيانات العميل</h3>
+    <div class="terms">
+      {% if customer_code and customer_code != '—' %}
+      <b>كود العميل:</b> {{ customer_code }} &nbsp;
+      {% endif %}
+      <b>الاسم:</b> {{ quotation.client_name or '—' }} &nbsp;
+      <b>الجوال:</b> {{ quotation.client_phone or '—' }} &nbsp;
+      <b>الموقع:</b> {{ quotation.client_address or '—' }}
+    </div>
+  </div>
+
+  {% if quotation.quote_type == 'new' and spec %}
+  <div class="q-sec">
+    <h3>المواصفات الفنية</h3>
+    <table>
+      <tbody>
+        {% if spec.stops or spec.capacity %}
+        <tr>
+          <td><b>عدد الوقفات</b></td><td>{{ spec.stops or '—' }} وقفات</td>
+          <td><b>الحمولة</b></td><td>{{ spec.capacity or '—' }} كجم</td>
+        </tr>
+        {% endif %}
+        {% if spec.machine or spec.speed %}
+        <tr>
+          <td><b>نوع الماكينة</b></td>
+          <td>{{ 'جيرلس MRL' if spec.machine == 'gearless' else ('جير بغرفة ماكينة' if spec.machine == 'geared' else '—') }}</td>
+          <td><b>السرعة</b></td><td>{{ spec.speed or '—' }} م/ث</td>
+        </tr>
+        {% endif %}
+        {% if origin_label != '—' or machine_brand != '—' or panel_origin_label != '—' or panel_brand != '—' %}
+        <tr>
+          <td><b>بلد منشئ الماكينة</b></td>
+          <td>{{ origin_label }}{% if machine_brand != '—' %} — {{ machine_brand }}{% endif %}</td>
+          <td><b>بلد منشئ اللوحة</b></td>
+          <td>{{ panel_origin_label }}{% if panel_brand != '—' %} — {{ panel_brand }}{% endif %}</td>
+        </tr>
+        {% endif %}
+        {% if dims.shaft_w or dims.shaft_d or dims.cabin_w or dims.cabin_d %}
+        <tr>
+          <td><b>البئر الداخلي</b></td>
+          <td>
+            {{ dims.shaft_w or '—' }}×{{ dims.shaft_d or '—' }} سم
+          </td>
+          <td><b>مقاس الكبينة</b></td>
+          <td>
+            {% if dims.cabin_w and dims.cabin_d %}
+              {{ dims.cabin_w }}×{{ dims.cabin_d }} سم
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="q-sec">
+    <h3>بنود العرض</h3>
+    <table>
+      <thead><tr><th>البيان</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي (تكلفة)</th></tr></thead>
+      <tbody>
+        {% set ns = namespace(stage='') %}
+        {% for line in quotation.lines %}
+          {% if line.stage != ns.stage %}
+            {% set ns.stage = line.stage %}
+            <tr class="stage"><td colspan="4">{{ line.stage }}</td></tr>
+          {% endif %}
+          <tr>
+            <td style="padding-right:18px">{{ line.name }}</td>
+            <td>{{ line.qty }}</td>
+            <td>{{ '{:,.0f}'.format(line.unit_price) }}</td>
+            <td>{{ '{:,.0f}'.format(line.line_total) }}</td>
+          </tr>
+        {% endfor %}
+        <tr class="stage"><td colspan="3">أعمال التركيب والتشغيل والتسليم</td>
+          <td>{{ '{:,.0f}'.format((quotation.labor + quotation.transport + quotation.other_costs) * (1 + quotation.profit_pct / 100)) }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  {% set sell_factor = 1 + quotation.profit_pct / 100 %}
+  {% set client_before = quotation.before_tax %}
+  <div class="totals">
+    <div class="r"><span>الإجمالي قبل الضريبة (للعميل)</span><b>{{ '{:,.0f}'.format(client_before) }} ر.س</b></div>
+    <div class="r"><span>ضريبة القيمة المضافة 15%</span><b>{{ '{:,.0f}'.format(quotation.vat_amount) }} ر.س</b></div>
+    <div class="g"><span>الإجمالي شامل الضريبة</span><span>{{ '{:,.0f}'.format(quotation.grand_total) }} ر.س</span></div>
+  </div>
+
+  {% set sched = quotation.payment_schedule() %}
+  {% set adv_amt = quotation.payment_amount('advance_payment') %}
+  {% set sup_amt = quotation.payment_amount('payment_on_delivery') %}
+  {% set fin_amt = quotation.payment_amount('payment_final') %}
+  <div class="q-sec">
+    <h3>الشروط</h3>
+    <div class="terms">
+      <b>شروط الدفع:</b>
+      {{ '{:.0f}'.format(sched.advance_pct) }}% دفعة مقدمة ({{ '{:,.0f}'.format(adv_amt or 0) }} ر.س) —
+      {{ '{:.0f}'.format(sched.supply_pct) }}% عند التوريد ({{ '{:,.0f}'.format(sup_amt or 0) }} ر.س) —
+      {{ '{:.0f}'.format(sched.final_pct) }}% عند التسليم ({{ '{:,.0f}'.format(fin_amt or 0) }} ر.س).<br>
+      <b>الضمان:</b> سنة على أعمال التركيب + صيانة مجانية 12 شهراً.
+    </div>
+  </div>
+</div>
+</body>
+</html>

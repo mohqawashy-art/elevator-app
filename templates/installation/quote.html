@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+{% include 'installation/_layout_head.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}">
+</head>
+<body>
+{% include 'installation/_sidebar.html' %}
+<div class="main">
+  <div class="install-beta">تجريبي — المراحل 3–6: هندسة · تكلفة · عرض سعر</div>
+  {% set page_title = 'تسعير وعرض سعر' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">تسعير — {{ project.code }} · {{ project.client_display }}</div>
+      <div class="page-actions">
+        <a href="/installation/projects/{{ project.id }}" class="btn btn-secondary btn-sm">← المشروع</a>
+        {% if quotation %}
+        <a href="/installation/quotes/{{ quotation.id }}/print" class="btn btn-secondary btn-sm" target="_blank">طباعة محفوظ</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if quotation %}
+    <div class="quote-resume-banner">
+      <span>تعديل العرض المحفوظ <b style="font-family:var(--font-en)">{{ quotation.code }}</b> — الحالة: {{ quotation.status }}</span>
+      <a href="/installation/projects/{{ project.id }}/quote?new=1" class="btn btn-secondary btn-sm">+ عرض سعر جديد</a>
+    </div>
+    {% elif request.args.get('new') %}
+    <div class="quote-resume-banner quote-resume-new">
+      <span>إنشاء عرض سعر جديد للمشروع {{ project.code }}</span>
+      <a href="/installation/projects/{{ project.id }}" class="btn btn-secondary btn-sm">← المشروع</a>
+    </div>
+    {% endif %}
+
+    <div class="pricing-tabs">
+      <button type="button" class="pricing-tab active" id="tabNewBtn">تركيب مصعد جديد<span class="tag">مواصفات → BOM تلقائي</span></button>
+      <button type="button" class="pricing-tab" id="tabUpgBtn">تحديث مصعد قائم<span class="tag">اختر المكونات</span></button>
+    </div>
+
+    <div class="pricing-layout">
+      <div>
+        <div class="pricing-card">
+          <h3><span class="step-no">١</span> العميل من LiftCore <span class="pricing-hint" style="font-weight:400">— يجب تسجيله في العملاء أولاً</span></h3>
+          <div class="pricing-grid">
+            <div class="field form-full" style="grid-column:1/-1">
+              <label>اختر العميل *</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <select id="cCustomer" style="flex:1;min-width:200px" required>
+                  <option value="">— اختر عميلاً —</option>
+                </select>
+                <a href="/clients" target="_blank" class="btn btn-secondary btn-sm">+ عميل جديد</a>
+              </div>
+            </div>
+            <div class="field"><label>اسم العميل</label><input type="text" id="cName" readonly style="opacity:.85"></div>
+            <div class="field"><label>الجوال</label><input type="tel" id="cPhone" readonly style="direction:ltr;opacity:.85"></div>
+            <div class="field"><label>الموقع</label><input type="text" id="cAddr" readonly style="opacity:.85"></div>
+            <div class="field"><label>صلاحية العرض (يوم)</label><input type="number" id="cValid" value="30" min="1" max="120"></div>
+          </div>
+        </div>
+
+        <div class="pricing-card">
+          <h3><span class="step-no">٢</span> بلد المنشئ والماركة <span class="pricing-hint" style="font-weight:400">— يؤثر على سعر الماكينة واللوحة</span></h3>
+          <div class="pricing-grid">
+            <div class="field form-full" style="grid-column:1/-1;margin-top:0">
+              <div style="font-size:12px;font-weight:700;color:var(--text2)">الماكينة</div>
+            </div>
+            <div class="field"><label>بلد منشئ الماكينة</label>
+              <select id="sOrigin">
+                {% for o in machine_origins %}
+                <option value="{{ o.id }}"{% if o.id == 'chinese' %} selected{% endif %}>{{ o.label }}</option>
+                {% endfor %}
+              </select>
+              <input type="text" id="sOriginCustom" placeholder="اسم البلد (مثال: تايواني)" style="display:none;margin-top:6px">
+            </div>
+            <div class="field"><label>ماركة الماكينة</label>
+              <select id="sBrand"></select>
+              <input type="text" id="sBrandCustom" placeholder="اسم الشركة / المورد" style="display:none;margin-top:6px">
+            </div>
+
+            <div class="field form-full" style="grid-column:1/-1;margin-top:4px">
+              <div style="font-size:12px;font-weight:700;color:var(--text2)">لوحة التحكم + الإنفرتر</div>
+            </div>
+            <div class="field"><label>بلد منشئ اللوحة</label>
+              <select id="sPanelOrigin">
+                {% for o in machine_origins %}
+                <option value="{{ o.id }}"{% if o.id == 'chinese' %} selected{% endif %}>{{ o.label }}</option>
+                {% endfor %}
+              </select>
+              <input type="text" id="sPanelOriginCustom" placeholder="اسم البلد (مثال: سويسري)" style="display:none;margin-top:6px">
+            </div>
+            <div class="field"><label>ماركة اللوحة</label>
+              <select id="sPanelBrand"></select>
+              <input type="text" id="sPanelBrandCustom" placeholder="اسم الشركة / المورد" style="display:none;margin-top:6px">
+            </div>
+          </div>
+        </div>
+
+        <div id="paneNew">
+          <div class="pricing-card">
+            <h3><span class="step-no">٣</span> مواصفات المصعد</h3>
+            <div class="pricing-grid">
+              <div class="field"><label>عدد الوقفات</label><select id="sStops"></select></div>
+              <div class="field"><label>الحمولة</label>
+                <select id="sCap">
+                  <option value="320">320 كجم</option><option value="450">450 كجم</option>
+                  <option value="630" selected>630 كجم</option><option value="800">800 كجم</option><option value="1000">1000 كجم</option>
+                </select></div>
+              <div class="field"><label>نوع الماكينة</label>
+                <select id="sMachine"><option value="gearless" selected>جيرلس MRL</option><option value="geared">جير</option></select></div>
+              <div class="field"><label>السرعة</label>
+                <select id="sSpeed"><option value="1.0" selected>1.0 م/ث</option><option value="1.6">1.6 م/ث</option></select></div>
+
+              <div class="field form-full" style="grid-column:1/-1;margin-top:4px">
+                <div style="font-size:12px;font-weight:700;color:var(--text2)">البئر والكبينة</div>
+              </div>
+              <div class="field"><label>عرض البئر الداخلي (سم)</label>
+                <input type="number" id="sShaftW" value="180" min="120" max="350" step="5">
+                <div class="pricing-hint">المسافة الصافية بين الجدران</div></div>
+              <div class="field"><label>عمق البئر الداخلي (سم)</label>
+                <input type="number" id="sShaftD" value="180" min="120" max="350" step="5">
+                <div class="pricing-hint">من باب الدور إلى خلف البئر</div></div>
+              <div class="field form-full" style="grid-column:1/-1">
+                <div class="pricing-hint" id="cabinCalcHint" style="padding:8px 10px;background:var(--bg2);border-radius:8px">أدخل أبعاد البئر لحساب مقاس الكبينة والسعر</div>
+              </div>
+              <div class="field"><label>تشطيب الكبينة</label>
+                <select id="sCabin"><option value="paint">دهان</option><option value="steel" selected>ستانلس</option><option value="pano">بانوراما</option></select></div>
+              <div class="field"><label>أبواب الأدوار</label>
+                <select id="sDoor"><option value="tele" selected>تليسكوبي</option><option value="center">سنتر</option><option value="semi">نص أوتوماتيك</option></select></div>
+              <div class="field"><label>المداخل</label>
+                <select id="sEntr"><option value="1" selected>واحد</option><option value="2">اثنان</option></select></div>
+              <div class="field"><label>ارتفاع الدور (سم)</label>
+                <input type="number" id="sFloorH" value="300" min="250" max="600" step="5">
+                <div class="pricing-hint">يُحسب منه السكك والحبال</div></div>
+              <div class="field"><label>حالة البئر</label>
+                <select id="sShaft"><option value="ready" selected>بئر جاهز</option><option value="steel">هيكل حديد</option></select></div>
+            </div>
+            <div class="pricing-actions">
+              <button type="button" class="btn btn-primary btn-sm" id="buildBtn">بناء قائمة القطع</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="paneUpg" style="display:none">
+          <div class="pricing-card">
+            <h3><span class="step-no">٣</span> مكونات التحديث</h3>
+            <div class="pricing-grid" style="margin-bottom:12px">
+              <div class="field"><label>عدد الوقفات</label><select id="uStops"></select></div>
+              <div class="field"><label>الحمولة</label>
+                <select id="uCap"><option value="320">320</option><option value="450">450</option>
+                  <option value="630" selected>630</option><option value="800">800</option><option value="1000">1000</option></select></div>
+            </div>
+            <div class="upg-grid" id="upgGrid"></div>
+            <div class="pricing-actions">
+              <button type="button" class="btn btn-primary btn-sm" id="buildUpgBtn">بناء قائمة التحديث</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pricing-card">
+          <h3><span class="step-no">٤</span> قائمة البنود <span class="pricing-hint" style="font-weight:400">— عدّل السعر والكمية</span></h3>
+          <div style="overflow-x:auto">
+            <table class="pricing-items">
+              <thead><tr><th style="width:34%">البند</th><th>الوحدة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th></tr></thead>
+              <tbody id="itemsBody"><tr><td colspan="6" class="pricing-empty">حدد المواصفات ثم اضغط «بناء قائمة القطع»</td></tr></tbody>
+            </table>
+          </div>
+          <div class="pricing-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="addRowBtn">+ بند يدوي</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="pricing-summary">
+        <div class="head">ملخص التكلفة</div>
+        <div class="body">
+          <div class="sum-row"><span class="lbl">المواد والقطع</span><b id="sumMat">0</b></div>
+          <div class="sum-row"><span class="lbl">المصنعيات</span><input type="number" id="sumLabor" value="0" min="0"></div>
+          <div class="sum-row"><span class="lbl">نقل ورافعة</span><input type="number" id="sumTrans" value="2000" min="0"></div>
+          <div class="sum-row"><span class="lbl">مصاريف أخرى</span><input type="number" id="sumOther" value="0" min="0"></div>
+          <div class="sum-row sub"><span class="lbl">التكلفة قبل الربح</span><b id="sumCost">0</b></div>
+          <div class="sum-row"><span class="lbl">هامش الربح %</span><input type="number" id="sumProfitP" value="20" min="0" max="100"></div>
+          <div class="sum-row"><span class="lbl">قيمة الربح</span><b id="sumProfit">0</b></div>
+          <div class="sum-row sub"><span class="lbl">قبل الضريبة</span><b id="sumBefore">0</b></div>
+          <div class="sum-row"><span class="lbl">ض.ق.م 15%</span><b id="sumVat">0</b></div>
+          <div class="sum-grand"><span>الإجمالي النهائي</span><span class="v" id="sumGrand">0 ر.س</span></div>
+
+          <div class="pay-schedule">
+            <div class="pay-schedule-head">جدول الدفعات <span class="pay-schedule-note">المجموع 100%</span></div>
+            <div class="sum-row"><span class="lbl">دفعة مقدمة %</span><input type="number" id="payAdvance" value="50" min="0" max="100" step="1"></div>
+            <div class="sum-row"><span class="lbl">دفعة التوريد %</span><input type="number" id="paySupply" value="40" min="0" max="100" step="1"></div>
+            <div class="sum-row"><span class="lbl">دفعة نهائية %</span><input type="number" id="payFinal" value="10" min="0" max="100" step="1"></div>
+            <div class="pay-schedule-total" id="payPctTotal">المجموع: <b>100%</b></div>
+            <div class="pay-schedule-preview" id="payPreview"></div>
+          </div>
+
+          <div class="pricing-warn" id="warnBox"></div>
+          <div class="pricing-warn" id="payWarnBox"></div>
+          <div class="pricing-actions" style="margin-top:14px;flex-direction:column">
+            <button type="button" class="btn btn-primary btn-sm" style="width:100%" id="saveBtn">حفظ عرض السعر</button>
+            <button type="button" class="btn btn-secondary btn-sm" style="width:100%" id="previewBtn">معاينة وطباعة</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div id="quoteOverlay">
+  <div class="q-toolbar">
+    <label class="toggle"><input type="checkbox" id="qDetailed"> عرض تفصيلي</label>
+    <button type="button" class="btn btn-primary btn-sm" id="printBtn">طباعة / PDF</button>
+    <button type="button" class="btn btn-secondary btn-sm" id="closeQuoteBtn">إغلاق</button>
+  </div>
+  <div class="quote-sheet" id="quoteSheet"></div>
+</div>
+
+<script>
+window.__INSTALL_QUOTE__ = {
+  saveUrl: {{ url_for('installation.project_quote_save', project_id=project.id) | tojson }},
+  quoteCode: {{ next_quote_code | tojson }},
+  prefill: {{ prefill | tojson }},
+  saved: {{ saved_json | safe }},
+  quotationId: {{ quotation.id if quotation else 'null' }},
+  customers: {{ customers_js | tojson }},
+  machineBrands: {{ machine_brands | tojson }},
+  panelBrands: {{ panel_brands | tojson }},
+  customBrandOption: '__custom__',
+  customOriginOption: '__custom__',
+  machineOrigins: {{ machine_origins | tojson }},
+  defaultCustomerId: {{ default_customer_id | tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}"></script>
+</body>
+</html>

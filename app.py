@@ -53,6 +53,10 @@ if os.environ.get('LIFTCORE_HTTPS', '').strip().lower() in ('1', 'true', 'yes'):
 
 db.init_app(app)
 
+# موديول تركيب المصاعد (جداول منفصلة)
+import installation.models  # noqa: F401, E402
+from installation.config import install_module_enabled
+
 PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version'})
 PUBLIC_PATH_PREFIXES = ('/field', '/static')
 
@@ -268,6 +272,7 @@ def inject_global_template_vars():
         'user_avatar_url': user_avatar_url(user),
         'user_display_name': (user.full_name or user.username) if user else '',
         'user_role_label': role_label,
+        'install_module_enabled': install_module_enabled(),
     }
 
 
@@ -357,6 +362,23 @@ with app.app_context():
                 ('supplier_email', 'VARCHAR(120)'),
                 ('signature_data', 'TEXT'),
                 ('pdf_path', 'VARCHAR(300)'),
+            ],
+            'installation_quotations': [
+                ('customer_id', 'INTEGER'),
+                ('approved_at', 'DATETIME'),
+                ('pay_advance_pct', 'FLOAT'),
+                ('pay_supply_pct', 'FLOAT'),
+                ('pay_final_pct', 'FLOAT'),
+            ],
+            'installation_projects': [
+                ('accepted_quotation_id', 'INTEGER'),
+                ('execution_started_at', 'DATETIME'),
+            ],
+            'installation_leads': [
+                ('customer_id', 'INTEGER'),
+            ],
+            'installation_timeline_steps': [
+                ('started_at', 'DATETIME'),
             ],
         }
         for table, cols in _migrate_cols.items():
@@ -4881,6 +4903,35 @@ def api_client_annual(customer_id):
             'date':        str(p.billing_date or ''),
         } for p in parts],
     })
+# =============================================
+# موديول تركيب المصاعد
+# =============================================
+from installation import register_install_module
+register_install_module(app)
+
+
+def _ensure_installation_project_routes(flask_app):
+    """تسجيل مسارات المشاريع إذا كانت نسخة قديمة من blueprint لم تُحمَّل."""
+    endpoints = {rule.endpoint for rule in flask_app.url_map.iter_rules()}
+    if 'installation.projects_list' in endpoints:
+        return
+    from installation.routes import (
+        projects_list,
+        project_detail,
+        project_quote,
+        project_quote_save,
+        quote_print,
+    )
+
+    flask_app.add_url_rule('/installation/projects', view_func=projects_list, endpoint='installation.projects_list')
+    flask_app.add_url_rule('/installation/projects/<int:project_id>', view_func=project_detail, endpoint='installation.project_detail')
+    flask_app.add_url_rule('/installation/projects/<int:project_id>/quote', view_func=project_quote, endpoint='installation.project_quote')
+    flask_app.add_url_rule('/installation/projects/<int:project_id>/quote/save', view_func=project_quote_save, methods=['POST'], endpoint='installation.project_quote_save')
+    flask_app.add_url_rule('/installation/quotes/<int:quotation_id>/print', view_func=quote_print, endpoint='installation.quote_print')
+
+
+_ensure_installation_project_routes(app)
+
 # =============================================
 # تشغيل التطبيق
 # =============================================

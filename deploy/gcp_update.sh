@@ -48,12 +48,18 @@ else
   echo "==> no venv at $VENV — skipping pip"
 fi
 
-echo "==> ensure HTTPS session env (systemd drop-in)"
+echo "==> ensure HTTPS + install module env (systemd drop-in)"
 DROP_IN="/etc/systemd/system/${SERVICE_NAME}.service.d"
 if command -v systemctl >/dev/null 2>&1; then
   sudo mkdir -p "$DROP_IN"
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_HTTPS=1' | sudo tee "$DROP_IN/https.conf" >/dev/null
+  printf '%s\n' '[Service]' 'Environment=LIFTCORE_INSTALL_MODULE=1' | sudo tee "$DROP_IN/install-module.conf" >/dev/null
   sudo systemctl daemon-reload
+fi
+
+if [ -d "$VENV" ] && [ -f "$APP_DIR/scripts/init_install_module.py" ]; then
+  echo "==> installation module DB tables"
+  python "$APP_DIR/scripts/init_install_module.py" || echo "  WARN: init_install_module failed"
 fi
 
 echo "==> restart service: $SERVICE_NAME"
@@ -68,6 +74,8 @@ else
 fi
 
 echo "==> verify"
+test -d "$APP_DIR/installation" && echo "  installation module OK"
+grep -q "register_install_module" "$APP_DIR/app.py" && echo "  install routes OK"
 test -f "$APP_DIR/static/liftcore-dates.js" && echo "  liftcore-dates.js OK"
 test -f "$APP_DIR/templates/purchase-orders.html" && echo "  purchase-orders.html OK"
 grep -q "purchase-orders" "$APP_DIR/app.py" && echo "  purchase-orders route OK"

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+{% include 'installation/_layout_head.html' %}
+</head>
+<body>
+{% include 'installation/_sidebar.html' %}
+<div class="main">
+  <div class="install-beta">تجريبي — موديول التركيب (نسخة أولية على السيرفر)</div>
+  {% set page_title = 'مشاريع التركيب' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">مشاريع تركيب المصاعد</div>
+      <div class="page-actions">
+        <a href="{{ url_for('installation.leads_list') }}" class="btn btn-primary btn-sm">+ فرصة بيع جديدة</a>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-val">{{ active_leads }}</div>
+        <div class="stat-label">فرص نشطة</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">{{ lead_count }}</div>
+        <div class="stat-label">إجمالي الفرص</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">{{ project_count }}</div>
+        <div class="stat-label">مشاريع مُنشأة</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">المراحل المفعّلة</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:12px">
+        <b>1 Lead</b> · <b>3–6 تسعير</b> · <b>7 تنفيذ وجدول زمني</b>. المعاينة الميدانية (مرحلة 2) قادمة.
+      </p>
+      <a href="/installation/projects" class="btn btn-primary btn-sm">المشاريع والتسعير</a>
+    </div>
+    {% if recent_projects %}
+    <div class="panel">
+      <div class="panel-title">آخر المشاريع</div>
+      <table>
+        <thead><tr><th>الكود</th><th>العميل</th><th>الحالة</th><th></th></tr></thead>
+        <tbody>
+          {% for p in recent_projects %}
+          <tr>
+            <td style="font-family:var(--font-en)">{{ p.code }}</td>
+            <td>{{ p.client_display }}</td>
+            <td><span class="badge badge-new">{{ p.status }}</span></td>
+            <td>
+              <a href="/installation/projects/{{ p.id }}/quote" class="btn btn-secondary btn-sm">تسعير</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

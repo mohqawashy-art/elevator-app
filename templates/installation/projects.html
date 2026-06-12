@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+{% include 'installation/_layout_head.html' %}
+</head>
+<body>
+{% include 'installation/_sidebar.html' %}
+<div class="main">
+  <div class="install-beta">تجريبي — محلي فقط</div>
+  {% set page_title = 'مشاريع التركيب' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">مشاريع التركيب</div>
+      <div class="page-actions">
+        <a href="{{ url_for('installation.leads_list') }}" class="btn btn-primary btn-sm">+ فرصة بيع</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>العميل</th>
+            <th>الحالة</th>
+            <th>تاريخ الإنشاء</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in projects %}
+          <tr>
+            <td style="font-family:var(--font-en)"><a href="/installation/projects/{{ p.id }}" style="font-weight:600;color:var(--accent)">{{ p.code }}</a></td>
+            <td>
+              {% if p.customer %}
+              <span style="font-family:var(--font-en);font-weight:600">{{ p.customer.code }}</span> — {{ p.customer.name }}
+              {% else %}
+              {{ p.client_display }}
+              <span style="color:var(--text3);font-size:11px">(غير مربوط)</span>
+              {% endif %}
+            </td>
+            <td><span class="badge badge-new">{{ p.status }}</span></td>
+            <td style="font-family:var(--font-en)">{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '—' }}</td>
+            <td>
+              <a href="/installation/projects/{{ p.id }}" class="btn btn-secondary btn-sm">فتح</a>
+              {% if p.execution_active %}
+              <a href="/installation/projects/{{ p.id }}/execution" class="btn btn-primary btn-sm">تنفيذ</a>
+              {% else %}
+              <a href="/installation/projects/{{ p.id }}" class="btn btn-primary btn-sm">فتح المشروع</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">لا توجد مشاريع — حوّل فرصة بيع أولاً</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>
