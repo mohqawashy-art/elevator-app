@@ -2034,6 +2034,7 @@ async function confirmImport(){
     fd.append('name',    row['الاسم (عربي)']||row['الاسم']||row['name']||'');
     fd.append('city',    row['المدينة']||row['city']||'');
     fd.append('district',row['الحي']||row['district']||'');
+    fd.append('address', row['العنوان']||row['العنوان التفصيلي']||row['address']||'');
     fd.append('phone',   row['رقم الهاتف']||row['الهاتف']||row['phone']||'');
     fd.append('email',   row['البريد الإلكتروني']||row['email']||'');
     fd.append('contact_person',row['اسم المسؤول']||row['contact']||'');
