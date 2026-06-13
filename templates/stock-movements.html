@@ -439,7 +439,7 @@ function updateStats() {
 let filtered = [...MOVEMENTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'movement_date',
-  defaultDir: 'desc',
+  defaultDir: 'asc',
   dateCols: ['movement_date'],
   numberCols: ['quantity', 'total_value'],
   onChange: function () { renderTable(filtered); },

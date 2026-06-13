@@ -436,7 +436,7 @@ let currentDeleteId = null;
 let filtered = [...PARTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'billing_date',
-  defaultDir: 'desc',
+  defaultDir: 'asc',
   dateCols: ['billing_date'],
   numberCols: ['cost_price', 'sell_price', 'profit'],
   getters: {

@@ -41,8 +41,7 @@
     return opts.numberCols && opts.numberCols.indexOf(col) >= 0;
   }
 
-  function defaultDirForCol(col, opts) {
-    if (isDateCol(col, opts) || isCodeCol(col, opts) || isNumberCol(col, opts)) return 'desc';
+  function defaultDirForCol() {
     return 'asc';
   }
 
@@ -51,7 +50,7 @@
     var getters = options.getters || {};
     var state = {
       col: options.defaultCol || 'code',
-      dir: options.defaultDir || 'desc',
+      dir: options.defaultDir || 'asc',
     };
 
     function getValue(row, col) {

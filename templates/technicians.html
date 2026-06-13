@@ -720,7 +720,7 @@ var currentEditId = null;
 var filtered = TECHNICIANS.slice();
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
-  defaultDir: 'desc',
+  defaultDir: 'asc',
   getters: {
     name: function (t) { return window.LiftCoreDisplay ? LiftCoreDisplay.techName(t) : t.name; },
     emergency: function (t) { return isTechEmergencyOn(t) ? 1 : 0; },

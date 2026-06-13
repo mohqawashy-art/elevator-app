@@ -815,7 +815,7 @@ let currentDeleteId = null;
 let filtered = [...FAULTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'reported_at',
-  defaultDir: 'desc',
+  defaultDir: 'asc',
   dateCols: ['reported_at'],
   getters: {
     customer: function (f) {

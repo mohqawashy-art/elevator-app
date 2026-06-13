@@ -833,7 +833,7 @@ const ELEVATORS = [
 var filtered = ELEVATORS.slice();
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
-  defaultDir: 'desc',
+  defaultDir: 'asc',
   dateCols: ['next_maint', 'install_date', 'last_maint'],
   numberCols: ['capacity', 'floors'],
   getters: {

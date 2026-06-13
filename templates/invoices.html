@@ -493,7 +493,7 @@ let filtered = [...INVOICES];
 let billableOps = [];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'invoice_date',
-  defaultDir: 'desc',
+  defaultDir: 'asc',
   dateCols: ['invoice_date', 'due_date'],
   numberCols: ['total', 'amount', 'tax_amount'],
   getters: {

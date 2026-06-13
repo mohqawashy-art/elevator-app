@@ -424,7 +424,7 @@ const ORDER_BADGE = { 'كافي': 'badge-green', 'منخفض': 'badge-gold', 'ن
 let filtered = [...ITEMS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
-  defaultDir: 'desc',
+  defaultDir: 'asc',
   numberCols: ['current_qty', 'min_qty', 'buy_price', 'stock_value'],
   onChange: function () { renderTable(filtered); },
 }) : null;

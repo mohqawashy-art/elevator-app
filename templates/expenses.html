@@ -403,7 +403,7 @@ function updateStats() {
 let filtered = [...EXPENSES];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
-  defaultDir: 'desc',
+  defaultDir: 'asc',
   dateCols: ['expense_date'],
   numberCols: ['amount'],
   onChange: function () { renderTable(filtered); },

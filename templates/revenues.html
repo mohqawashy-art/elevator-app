@@ -520,7 +520,7 @@ let currentDeleteId = null;
 let filtered = [...REVENUES];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
-  defaultDir: 'desc',
+  defaultDir: 'asc',
   dateCols: ['revenue_date'],
   numberCols: ['total', 'amount'],
   getters: {
