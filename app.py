@@ -4242,7 +4242,7 @@ def parts_billing():
         parts_js=_parts_js_list(parts),
         customers=customers,
         contracts=contracts,
-        customers_js=[{'id': c.id, 'name': c.name} for c in customers],
+        customers_js=[{'id': c.id, 'code': c.code, 'name': c.name} for c in customers],
         contracts_js=[{'id': c.id, 'code': c.code, 'customer_id': c.customer_id} for c in contracts],
         next_part_code=next_code(PartsBilling, 'PB-', digits=3),
         parts_workflow_stats=parts_stats(),

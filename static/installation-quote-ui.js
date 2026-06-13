@@ -44,6 +44,19 @@ document.addEventListener('DOMContentLoaded', function () {
   fillStopsSelect('uStops', cfg.stops || 6);
 
   function fillCustomerSelect() {
+    if (typeof LcClientSelect !== 'undefined') {
+      if (!LcClientSelect.isUpgraded('cCustomer')) {
+        LcClientSelect.upgradeSelect('cCustomer', {
+          customers: customers,
+          onChange: onCustomerChange,
+          placeholder: 'ابحث بالاسم أو الكود...',
+        });
+      }
+      var defId = cfg.defaultCustomerId || (cfg.prefill && cfg.prefill.customer_id);
+      LcClientSelect.setCustomers('cCustomer', customers, defId || '');
+      onCustomerChange();
+      return;
+    }
     var sel = el('cCustomer');
     if (!sel) return;
     var html = '<option value="">— اختر عميلاً —</option>';
@@ -59,9 +72,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function onCustomerChange() {
-    var sel = el('cCustomer');
-    if (!sel) return;
-    var id = parseInt(sel.value, 10);
+    var hidden = el('cCustomer');
+    if (!hidden) return;
+    var id = parseInt(hidden.value, 10);
     var c = null;
     var i;
     for (i = 0; i < customers.length; i++) {
@@ -585,7 +598,13 @@ document.addEventListener('DOMContentLoaded', function () {
   function loadSaved() {
     if (!cfg.saved) return;
     var s = cfg.saved;
-    if (el('cCustomer') && s.customer_id) el('cCustomer').value = String(s.customer_id);
+    if (s.customer_id) {
+      if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
+        LcClientSelect.setCustomers('cCustomer', customers, s.customer_id);
+      } else if (el('cCustomer')) {
+        el('cCustomer').value = String(s.customer_id);
+      }
+    }
     onCustomerChange();
     if (el('cValid')) el('cValid').value = s.valid_days || 30;
     if (el('sumLabor')) el('sumLabor').value = s.labor || 0;
@@ -625,7 +644,9 @@ document.addEventListener('DOMContentLoaded', function () {
   fillBrandSelect('sBrand', 'sBrandCustom', machineBrands, el('sOrigin') ? el('sOrigin').value : 'chinese', '');
   fillBrandSelect('sPanelBrand', 'sPanelBrandCustom', panelBrands, el('sPanelOrigin') ? el('sPanelOrigin').value : 'chinese', '');
 
-  if (el('cCustomer')) el('cCustomer').addEventListener('change', onCustomerChange);
+  if (el('cCustomer') && (typeof LcClientSelect === 'undefined' || !LcClientSelect.isUpgraded('cCustomer'))) {
+    el('cCustomer').addEventListener('change', onCustomerChange);
+  }
   if (el('sOrigin')) {
     el('sOrigin').addEventListener('change', function () {
       toggleCustomOrigin('sOrigin', 'sOriginCustom', '');
@@ -680,8 +701,12 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   loadSaved();
-  if (!cfg.saved && cfg.prefill && cfg.prefill.customer_id && el('cCustomer')) {
-    el('cCustomer').value = String(cfg.prefill.customer_id);
+  if (!cfg.saved && cfg.prefill && cfg.prefill.customer_id) {
+    if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
+      LcClientSelect.setCustomers('cCustomer', customers, cfg.prefill.customer_id);
+    } else if (el('cCustomer')) {
+      el('cCustomer').value = String(cfg.prefill.customer_id);
+    }
     onCustomerChange();
   }
   recalc();

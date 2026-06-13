@@ -1024,12 +1024,18 @@ function filterTable() {
 }
 
 function fillClientSelect(selectedId) {
-  var sel = document.getElementById('f-client-sel');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">اختر العميل</option>' +
-    CUSTOMERS.map(function(c) {
-      return '<option value="' + c.id + '"' + (selectedId === c.id ? ' selected' : '') + '>' + c.name + '</option>';
-    }).join('');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, selectedId);
+    return;
+  }
+}
+
+function initContractClientSelect() {
+  if (typeof LcClientSelect === 'undefined') return;
+  LcClientSelect.upgradeSelect('f-client-sel', {
+    customers: CUSTOMERS,
+    onChange: loadClientElevators,
+  });
 }
 
 function resetContractForm() {
@@ -1596,7 +1602,7 @@ if (window.LiftCoreLocation) {
   LiftCoreLocation.setLookup(getCustomerById);
 }
 
-try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); } catch (bootErr) { console.error('contracts boot', bootErr); }
+try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); initContractClientSelect(); } catch (bootErr) { console.error('contracts boot', bootErr); }
 window.__lcRefreshPage = function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : CONTRACTS);
   if (typeof updateStats === 'function') updateStats();

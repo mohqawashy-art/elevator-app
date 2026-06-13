@@ -137,7 +137,7 @@ tbody tr:hover{background:var(--bg3)}
             </div>
             <div class="field">
               <label>العميل (اختياري)</label>
-              <select name="customer_id">
+              <select name="customer_id" id="est-customer-sel">
                 <option value="">— بدون —</option>
                 {% for c in customers %}
                 <option value="{{ c.id }}" {% if edit_est and edit_est.customer_id == c.id %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
@@ -421,6 +421,18 @@ document.getElementById('doors_count').addEventListener('input', function () { t
 
 document.querySelectorAll('#lines-body .line-row:not(.empty-line)').forEach(bindLine);
 recalcTotals();
+
+const EST_CUSTOMERS = [
+  {% for c in customers %}
+  { id: {{ c.id }}, code: {{ c.code|tojson }}, name: {{ c.name|tojson }} },
+  {% endfor %}
+];
+if (typeof LcClientSelect !== 'undefined') {
+  LcClientSelect.upgradeSelect('est-customer-sel', {
+    customers: EST_CUSTOMERS,
+    placeholder: 'ابحث بالاسم أو الكود...',
+  });
+}
 </script>
 </body>
 </html>

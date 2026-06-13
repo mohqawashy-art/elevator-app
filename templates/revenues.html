@@ -437,7 +437,7 @@ const REVENUES = [
 
 const CUSTOMERS = [
   {% for c in customers %}
-  { id: {{ c.id }}, name: "{{ c.name }}" },
+  { id: {{ c.id }}, name: {{ c.name|tojson }}, code: {{ c.code|tojson }} },
   {% endfor %}
 ];
 
@@ -559,10 +559,14 @@ function closeAddModal() { closeModal('modal-add'); }
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة إيراد جديد';
   document.getElementById('modal-add').dataset.editId = '';
-  const sel = document.getElementById('f-customer-sel');
-  if (sel) {
-    sel.innerHTML = '<option value="">اختر العميل</option>' +
-      CUSTOMERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, '');
+  } else {
+    const sel = document.getElementById('f-customer-sel');
+    if (sel) {
+      sel.innerHTML = '<option value="">اختر العميل</option>' +
+        CUSTOMERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    }
   }
   const today = new Date().toISOString().slice(0, 10);
   const dateEl = document.getElementById('f-date');
@@ -598,7 +602,11 @@ function editRevenue(id) {
   document.getElementById('modal-title').textContent = 'تعديل الإيراد';
   document.getElementById('modal-add').dataset.editId = id;
   const sel=document.getElementById('f-customer-sel');
-  if(sel) sel.innerHTML=CUSTOMERS.map(c=>`<option value="${c.id}"${c.id===r.customer_id?' selected':''}>${c.name}</option>`).join('');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, r.customer_id);
+  } else if (sel) {
+    sel.innerHTML=CUSTOMERS.map(c=>`<option value="${c.id}"${c.id===r.customer_id?' selected':''}>${c.name}</option>`).join('');
+  }
   const map={
     'f-date':r.revenue_date,'f-rev-type':r.revenue_type,
     'f-pay-method':r.pay_method,'f-amount':r.amount,
@@ -663,6 +671,9 @@ document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.t
 
 updateStats();
 if (tableSort) tableSort.bindHeaders();
+if (typeof LcClientSelect !== 'undefined') {
+  LcClientSelect.upgradeSelect('f-customer-sel', { customers: CUSTOMERS });
+}
 renderTable(REVENUES);
 window.__lcRefreshPage = function () {
   if (typeof updateStats === 'function') updateStats();

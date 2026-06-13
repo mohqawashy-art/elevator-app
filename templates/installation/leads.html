@@ -165,10 +165,9 @@
 window.__INSTALL_LEADS__ = { customers: {{ customers_js | tojson }} };
 document.addEventListener('DOMContentLoaded', function () {
   var customers = (window.__INSTALL_LEADS__ || {}).customers || [];
-  var sel = document.getElementById('lCustomer');
-  if (!sel) return;
   function fill() {
-    var id = parseInt(sel.value, 10);
+    var el = document.getElementById('lCustomer');
+    var id = parseInt(el && el.value, 10);
     var c = null;
     var i;
     for (i = 0; i < customers.length; i++) {
@@ -181,7 +180,17 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('lDistrict').value = c ? c.district : '';
     document.getElementById('lAddr').value = c ? c.address : '';
   }
-  sel.addEventListener('change', fill);
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.upgradeSelect('lCustomer', {
+      customers: customers,
+      onChange: fill,
+      placeholder: 'ابحث بالاسم أو الكود...',
+      requiredMessage: 'اختر العميل',
+    });
+  } else {
+    var sel = document.getElementById('lCustomer');
+    if (sel) sel.addEventListener('change', fill);
+  }
   fill();
 });
 </script>

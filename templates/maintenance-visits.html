@@ -998,10 +998,18 @@ function filterTable() {
 
 // ===== إضافة =====
 function fillClientSelect() {
-  const sel = document.getElementById('f-client-sel');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">اختر العميل</option>' +
-    CUSTOMERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-client-sel', CUSTOMERS);
+    return;
+  }
+}
+
+function initVisitClientSelect() {
+  if (typeof LcClientSelect === 'undefined') return;
+  LcClientSelect.upgradeSelect('f-client-sel', {
+    customers: CUSTOMERS,
+    onChange: loadClientElevators,
+  });
 }
 
 function loadClientElevators() {
@@ -1634,6 +1642,7 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.
 
 if (tableSort) tableSort.bindHeaders();
 OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
+initVisitClientSelect();
 OpsPage.fillFilterSelect('f-tech', TECHNICIANS.map(t => ({ value: t.name, label: t.name })), 'كل الفنيين');
 OpsPage.initCalendar('cal-grid', 'cal-title', VISITS, 'visit_date', 'customer', 'status', 'العميل');
 const mapLabel = document.getElementById('map-date-label');

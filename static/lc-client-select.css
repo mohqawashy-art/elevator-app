@@ -1,0 +1,10 @@
+.lc-client-select{position:relative;width:100%}
+.lc-client-select-input{width:100%}
+.lc-client-select-list{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:220px;overflow-y:auto;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-sm);z-index:120;
+  margin:0;padding:4px 0;list-style:none;box-shadow:0 8px 24px rgba(0,0,0,.35)
+}
+.lc-client-select-item{padding:9px 12px;font-size:13px;color:var(--text2);cursor:pointer}
+.lc-client-select-item:hover,.lc-client-select-item.active{background:var(--bg3);color:var(--text1)}
+.lc-client-select-empty{padding:10px 12px;font-size:12px;color:var(--text3)}

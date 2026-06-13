@@ -455,7 +455,7 @@ const INVOICES = [
 
 const CUSTOMERS = [
   {% for c in customers %}
-  { id: {{ c.id }}, name: {{ c.name|tojson }} },
+  { id: {{ c.id }}, name: {{ c.name|tojson }}, code: {{ c.code|tojson }} },
   {% endfor %}
 ];
 
@@ -707,8 +707,12 @@ function closeAddModal() { closeModal('modal-add'); }
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة فاتورة جديدة';
   document.getElementById('modal-add').dataset.editId = '';
-  const sel = document.getElementById('f-customer-sel');
-  if (sel) sel.innerHTML = '<option value="">اختر العميل</option>' + CUSTOMERS.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, '');
+  } else {
+    const sel = document.getElementById('f-customer-sel');
+    if (sel) sel.innerHTML = '<option value="">اختر العميل</option>' + CUSTOMERS.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  }
   ['f-desc','f-notes','f-amount','f-due-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   clearInvoiceSource();
   billableOps = [];
@@ -751,7 +755,11 @@ function editInvoice(id) {
   document.getElementById('modal-title').textContent = 'تعديل المستند';
   document.getElementById('modal-add').dataset.editId = id;
   const sel = document.getElementById('f-customer-sel');
-  if (sel) sel.innerHTML = CUSTOMERS.map(c => `<option value="${c.id}"${c.id===i.customer_id?' selected':''}>${escHtml(c.name)}</option>`).join('');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, i.customer_id);
+  } else if (sel) {
+    sel.innerHTML = CUSTOMERS.map(c => `<option value="${c.id}"${c.id===i.customer_id?' selected':''}>${escHtml(c.name)}</option>`).join('');
+  }
   setDocType(i.invoice_type || 'فاتورة ضريبية');
   const map = {
     'f-date': i.invoice_date, 'f-due-date': i.due_date, 'f-desc': i.description,
@@ -831,6 +839,12 @@ if (window.LiftCoreFormat && LiftCoreFormat.setHeaderDate) {
 
 updateStats();
 if (tableSort) tableSort.bindHeaders();
+if (typeof LcClientSelect !== 'undefined') {
+  LcClientSelect.upgradeSelect('f-customer-sel', {
+    customers: CUSTOMERS,
+    onChange: onInvoiceCustomerChange,
+  });
+}
 renderTable(INVOICES);
 window.__lcRefreshPage = function () {
   updateStats();

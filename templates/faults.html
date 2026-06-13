@@ -607,10 +607,18 @@ const NEXT_FAULT_CODE = {{ next_fault_code|tojson }};
 const COMPANY_LOGO_URL = {{ brand_logo_url|tojson }};
 
 function fillClientSelect() {
-  const sel = document.getElementById('f-client-sel');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">اختر العميل</option>' +
-    CUSTOMERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-client-sel', CUSTOMERS);
+    return;
+  }
+}
+
+function initFaultClientSelect() {
+  if (typeof LcClientSelect === 'undefined') return;
+  LcClientSelect.upgradeSelect('f-client-sel', {
+    customers: CUSTOMERS,
+    onChange: onCustomerSelected,
+  });
 }
 
 function elevatorCustomerName(e) {
@@ -958,8 +966,12 @@ function openAddModal() {
   if (codeEl) codeEl.value = NEXT_FAULT_CODE;
   setFaultReportDatetime();
   fillClientSelect();
-  const clientSel = document.getElementById('f-client-sel');
-  if (clientSel) clientSel.value = '';
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.clearSelection('f-client-sel');
+  } else {
+    const clientSel = document.getElementById('f-client-sel');
+    if (clientSel) clientSel.value = '';
+  }
   resetCustomerLinkedFields();
   resetFaultPartsPanel();
   const vc = document.getElementById('f-visit-code');
@@ -1145,6 +1157,7 @@ const months = ['يناير','فبراير','مارس','أبريل','مايو','
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
 OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
+initFaultClientSelect();
 updateSidebarBadge();
 if (tableSort) tableSort.bindHeaders();
 renderTable(FAULTS);

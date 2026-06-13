@@ -15,7 +15,6 @@
 <script src="/static/elevator_profile.js"></script>
 <script src="/static/client_map_picker.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/static/lc-client-select.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -201,12 +200,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .maps-row{display:flex;gap:8px;align-items:flex-end;margin-top:14px}
 .maps-row .field{flex:1}
-.lc-client-select{position:relative}
-.lc-client-select-input{width:100%}
-.lc-client-select-list{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:220px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-sm);z-index:120;margin:0;padding:4px 0;list-style:none;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-.lc-client-select-item{padding:9px 12px;font-size:13px;color:var(--text2);cursor:pointer}
-.lc-client-select-item:hover,.lc-client-select-item.active{background:var(--bg3);color:var(--text1)}
-.lc-client-select-empty{padding:10px 12px;font-size:12px;color:var(--text3)}
 
 .view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .view-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}

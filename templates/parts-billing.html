@@ -352,9 +352,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>رقم العقد</label>
           <input id="m-cn" placeholder="CN-XXXXX" style="direction:ltr;font-family:var(--font-en)">
         </div>
-        <div class="field">
-          <label>اسم العميل <span>*</span></label>
-          <input id="m-client" placeholder="اسم العميل">
+        <div class="field form-full">
+          <label>العميل <span>*</span></label>
+          <select id="m-client-sel"><option value="">اختر العميل</option></select>
         </div>
         <div class="field">
           <label>التاريخ <span>*</span></label>
@@ -559,9 +559,12 @@ function openModal(id) {
   document.getElementById('modal-box').dataset.editId = '';
   const codeEl = document.getElementById('m-code');
   if (codeEl) codeEl.value = NEXT_PART_CODE;
-  ['m-visit','m-fault','m-cn','m-client','m-desc','m-notes','m-pay-date'].forEach(i => {
+  ['m-visit','m-fault','m-cn','m-desc','m-notes','m-pay-date'].forEach(i => {
     const el = document.getElementById(i); if (el) el.value = '';
   });
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.clearSelection('m-client-sel');
+  }
   ['m-cost','m-price'].forEach(i => {
     const el = document.getElementById(i); if (el) el.value = '';
   });
@@ -589,14 +592,15 @@ function updateProfit() {
 function saveRecord() {
   const editId = document.getElementById('modal-box').dataset.editId;
   const cn = document.getElementById('m-cn').value.trim();
-  const client = document.getElementById('m-client').value.trim();
+  const clientEl = document.getElementById('m-client-sel');
+  if (!clientEl || !clientEl.value) { alert('اختر العميل'); return; }
+  const customer = CUSTOMERS.find(c => String(c.id) === String(clientEl.value));
   const contract = CONTRACTS.find(c => c.code.toUpperCase() === cn.toUpperCase());
-  const customer = CUSTOMERS.find(c => c.name === client);
   const fd = new FormData();
   if (contract) fd.append('contract_id', contract.id);
   fd.append('contract_code', cn);
   if (customer) fd.append('customer_id', customer.id);
-  fd.append('customer_name', client);
+  fd.append('customer_name', customer ? customer.name : '');
   fd.append('billing_date', document.getElementById('m-date').value);
   fd.append('description', document.getElementById('m-desc').value);
   fd.append('cost_price', document.getElementById('m-cost').value || 0);
@@ -622,7 +626,12 @@ function editPart(id) {
   document.getElementById('m-visit').value = p.visit_code || '';
   document.getElementById('m-fault').value = p.fault_code || '';
   document.getElementById('m-cn').value = p.contract !== '—' ? p.contract : '';
-  document.getElementById('m-client').value = p.customer !== '—' ? p.customer : '';
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('m-client-sel', CUSTOMERS, p.customer_id || '');
+  } else {
+    const sel = document.getElementById('m-client-sel');
+    if (sel) sel.value = p.customer_id ? String(p.customer_id) : '';
+  }
   document.getElementById('m-date').value = p.billing_date || '';
   document.getElementById('m-desc').value = p.description || '';
   document.getElementById('m-cost').value = p.cost_price || '';
@@ -710,6 +719,9 @@ document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.g
 
 updateStats();
 if (tableSort) tableSort.bindHeaders();
+if (typeof LcClientSelect !== 'undefined') {
+  LcClientSelect.upgradeSelect('m-client-sel', { customers: CUSTOMERS });
+}
 applyFilters();
 (function(){
   const fc = new URLSearchParams(window.location.search).get('fault');
