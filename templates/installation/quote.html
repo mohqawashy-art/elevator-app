@@ -11,13 +11,13 @@
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
+      <div class="page-title">تسعير — {{ project.code }} · {{ project.client_display }}</div>
       <div class="page-actions">
         <a href="/installation/projects/{{ project.id }}" class="btn btn-secondary btn-sm">← المشروع</a>
         {% if quotation %}
         <a href="/installation/quotes/{{ quotation.id }}/print" class="btn btn-secondary btn-sm">طباعة محفوظ</a>
         {% endif %}
       </div>
-      <div class="page-title">تسعير — {{ project.code }} · {{ project.client_display }}</div>
     </div>
 
     {% if quotation %}

@@ -274,31 +274,23 @@ html[dir="ltr"] .profile-dropdown {
   }
 }
 
-/* ترويسة الصفحة الموحّدة: أزرار يساراً ثم العنوان */
+/* تنسيق صفحة موحّد — مطابق لصفحة العملاء */
+.content .stats-row,
+.content .stat-grid {
+  margin-bottom: 20px;
+}
+
 .content .page-header {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 20px;
-  flex-wrap: nowrap;
-}
-
-.content .page-header .page-actions {
-  order: 1;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-html[dir="ltr"] .content .page-header .page-actions {
-  justify-content: flex-start;
 }
 
 .content .page-header .page-title {
-  order: 2;
   font-size: 18px;
   font-weight: 600;
   color: var(--text1, #e4eaf5);
@@ -309,4 +301,12 @@ html[dir="ltr"] .content .page-header .page-actions {
   font-weight: 400;
   color: var(--text3, #4a5a72);
   margin-inline-start: 8px;
+}
+
+.content .page-header .page-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-inline-start: auto;
 }

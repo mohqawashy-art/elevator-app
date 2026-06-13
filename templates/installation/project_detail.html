@@ -9,29 +9,6 @@
   {% set page_title = project.code %}
   {% include 'partials/app_header.html' %}
   <div class="content">
-    <div class="page-header">
-      <div class="page-actions">
-        <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
-        {% if project.execution_active %}
-        <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm">محضر استلام</a>
-        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير المشروع</a>
-        <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">{% if execution_complete %}مكتمل{% else %}جدول التنفيذ ({{ execution_progress }}%){% endif %}</a>
-        {% elif latest_draft %}
-        <a href="/installation/projects/{{ project.id }}/quote?quotation_id={{ latest_draft.id }}" class="btn btn-primary btn-sm">متابعة التسعير ({{ latest_draft.code }})</a>
-        <a href="/installation/projects/{{ project.id }}/quote?new=1" class="btn btn-secondary btn-sm">+ عرض جديد</a>
-        {% else %}
-        <a href="/installation/projects/{{ project.id }}/quote" class="btn btn-primary btn-sm">+ تسعير وعرض سعر</a>
-        {% endif %}
-      </div>
-      <div class="page-title">{{ project.code }} — {{ project.client_display }}</div>
-    </div>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for cat, msg in messages %}
-        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
-      {% endfor %}
-    {% endwith %}
-
     <div class="stat-grid">
       <div class="stat-card">
         <div class="stat-val" style="font-size:16px">{{ project.status }}</div>
@@ -48,6 +25,29 @@
       <div class="stat-card">
         <div class="stat-val" style="font-size:14px;font-family:var(--font-en)">{{ project.customer.code if project.customer else '—' }}</div>
         <div class="stat-label">عميل LiftCore</div>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="page-header">
+      <div class="page-title">{{ project.code }} — {{ project.client_display }}</div>
+      <div class="page-actions">
+        <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
+        {% if project.execution_active %}
+        <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm">محضر استلام</a>
+        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير المشروع</a>
+        <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">{% if execution_complete %}مكتمل{% else %}جدول التنفيذ ({{ execution_progress }}%){% endif %}</a>
+        {% elif latest_draft %}
+        <a href="/installation/projects/{{ project.id }}/quote?quotation_id={{ latest_draft.id }}" class="btn btn-primary btn-sm">متابعة التسعير ({{ latest_draft.code }})</a>
+        <a href="/installation/projects/{{ project.id }}/quote?new=1" class="btn btn-secondary btn-sm">+ عرض جديد</a>
+        {% else %}
+        <a href="/installation/projects/{{ project.id }}/quote" class="btn btn-primary btn-sm">+ تسعير وعرض سعر</a>
+        {% endif %}
       </div>
     </div>
 

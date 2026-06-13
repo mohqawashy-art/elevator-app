@@ -9,12 +9,6 @@
   {% set page_title = 'مشاريع التركيب' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
-    <div class="page-header">
-      <div class="page-actions">
-        <a href="{{ url_for('installation.leads_list') }}" class="btn btn-primary btn-sm">+ فرصة بيع جديدة</a>
-      </div>
-      <div class="page-title">مشاريع تركيب المصاعد</div>
-    </div>
     <div class="stat-grid">
       <div class="stat-card">
         <div class="stat-val">{{ active_leads }}</div>
@@ -27,6 +21,12 @@
       <div class="stat-card">
         <div class="stat-val">{{ project_count }}</div>
         <div class="stat-label">مشاريع مُنشأة</div>
+      </div>
+    </div>
+    <div class="page-header">
+      <div class="page-title">مشاريع تركيب المصاعد</div>
+      <div class="page-actions">
+        <a href="{{ url_for('installation.leads_list') }}" class="btn btn-primary btn-sm">+ فرصة بيع جديدة</a>
       </div>
     </div>
     <div class="panel">

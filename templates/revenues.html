@@ -198,21 +198,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
   <div class="content">
 
-    <!-- PAGE HEADER -->
-    <div class="page-header">
-      <div class="page-title">الإيرادات <span id="rev-count" data-i18n-skip></span></div>
-      <div class="page-actions">
-        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-          تصدير Excel
-        </button>
-        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
-          إضافة إيراد
-        </button>
-      </div>
-    </div>
-
     <!-- STATS -->
     <div class="stats-row">
       <div class="stat-card">
@@ -239,6 +224,20 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="stat-label">غير محصل</div>
         <div class="stat-value red" id="s-pending">0</div>
         <div class="stat-sub" id="s-pending-sub">0 عملية</div>
+      </div>
+    </div>
+
+    <div class="page-header">
+      <div class="page-title">الإيرادات <span id="rev-count" data-i18n-skip></span></div>
+      <div class="page-actions">
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+          تصدير Excel
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+          إضافة إيراد
+        </button>
       </div>
     </div>
 

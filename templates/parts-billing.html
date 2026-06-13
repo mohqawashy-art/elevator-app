@@ -59,7 +59,7 @@ html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
 .page-title{font-size:18px;font-weight:600;color:var(--text1)}
 .page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
-.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-inline-start:auto}
 .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
 .btn svg{width:14px;height:14px}
 .btn-primary{background:var(--accent);color:#fff}
@@ -78,9 +78,7 @@ html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
 .stat-value.blue{color:var(--accent)}
 .stat-value.purple{color:#9664ff}
 .stat-sub{font-size:11px;color:var(--text3);margin-top:3px}
-.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end}
-.filter-group{display:flex;flex-direction:column;gap:5px}
-.filter-label{font-size:11px;color:var(--text3);font-weight:500}
+.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
 .search-wrap{position:relative;flex:1;min-width:200px}
 .search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
 .search-input{width:100%;padding:8px 36px 8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar)}
@@ -151,7 +149,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
-<link rel="stylesheet" href="/static/liftcore-shell.css">
+<link rel="stylesheet" href="/static/liftcore-shell.css?v=3">
 
 <script src="/static/liftcore-format.js?v=15"></script>
 <script src="/static/liftcore-shell.js"></script>
@@ -175,7 +173,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <div class="nav-section" id="ns2">العمليات</div>
 <a href="/maintenance-visits" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>الصيانة</a>
 <a href="/faults" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأعطال</a>
-<a href="/parts-billing" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>تركيب قطع غيار</a>
+<a href="/parts-billing" class="nav-item active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>تركيب قطع غيار</a>
   
 <div class="nav-section" id="ns3">المالية</div>
 <a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
@@ -196,20 +194,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 
   <div class="content">
-    <div class="page-header">
-      <div class="page-actions">
-        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-          تصدير
-        </button>
-        <button class="btn btn-primary btn-sm" onclick="openModal()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
-          إضافة عملية
-        </button>
-      </div>
-      <div class="page-title">بيان تركيب قطع الغيار <span id="bills-count" data-i18n-skip></span></div>
-    </div>
-
     <!-- STATS -->
     <div class="stats-row">
       <div class="stat-card">
@@ -239,6 +223,41 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       </div>
     </div>
 
+    <div class="page-header">
+      <div class="page-title">بيان تركيب قطع الغيار <span id="bills-count" data-i18n-skip></span></div>
+      <div class="page-actions">
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+          تصدير Excel
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+          إضافة عملية
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+        <input class="search-input" type="text" id="f-search" placeholder="بحث بالعميل أو العقد أو البيان..." oninput="applyFilters()">
+      </div>
+      <select class="filter-select" id="f-status" onchange="applyFilters()">
+        <option value="">حالة التحصيل</option>
+        <option>محصل</option>
+        <option>غير محصل</option>
+      </select>
+      <select class="filter-select" id="f-pay" onchange="applyFilters()">
+        <option value="">طريقة الدفع</option>
+        <option>كاش</option>
+        <option>تحويل</option>
+      </select>
+      <input class="filter-input" type="date" lang="en-GB" id="f-from" title="من" onchange="applyFilters()">
+      <input class="filter-input" type="date" lang="en-GB" id="f-to" title="إلى" onchange="applyFilters()">
+      <button class="btn btn-secondary btn-sm" onclick="clearFilters()">مسح</button>
+    </div>
+
     {% if parts_alerts %}
     <div class="alerts-row" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
       {% for a in parts_alerts %}
@@ -258,39 +277,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       {% endfor %}
     </div>
     {% endif %}
-
-    <!-- FILTERS -->
-    <div class="filters-bar">
-      <div class="search-wrap">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-        <input class="search-input" type="text" id="f-search" placeholder="بحث بالعميل أو العقد أو البيان..." oninput="applyFilters()">
-      </div>
-      <div class="filter-group">
-        <div class="filter-label">حالة التحصيل</div>
-        <select class="filter-select" id="f-status" onchange="applyFilters()">
-          <option value="">الكل</option>
-          <option>محصل</option>
-          <option>غير محصل</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <div class="filter-label">طريقة الدفع</div>
-        <select class="filter-select" id="f-pay" onchange="applyFilters()">
-          <option value="">الكل</option>
-          <option>كاش</option>
-          <option>تحويل</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <div class="filter-label">من</div>
-        <input class="filter-input" type="date" lang="en-GB" id="f-from" onchange="applyFilters()">
-      </div>
-      <div class="filter-group">
-        <div class="filter-label">إلى</div>
-        <input class="filter-input" type="date" lang="en-GB" id="f-to" onchange="applyFilters()">
-      </div>
-      <button class="btn btn-secondary btn-sm" onclick="clearFilters()" style="align-self:flex-end">مسح</button>
-    </div>
 
     <!-- TABLE -->
     <div class="table-wrap">
