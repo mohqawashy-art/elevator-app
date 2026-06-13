@@ -229,6 +229,8 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'amount_before_tax': round(remaining / 1.15, 2),
             'contract_id': c.id,
             'status': c.invoice_status or 'غير مدفوع',
+            'collected': False,
+            'hint': f'غير محصّل — المتبقي {_round_money(remaining)}',
         })
 
     invoices = (
@@ -255,6 +257,8 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'amount_before_tax': round(remaining / 1.15, 2),
             'contract_id': inv.contract_id,
             'status': inv.status or 'غير مدفوعة',
+            'collected': False,
+            'hint': f'غير محصّل — المتبقي {_round_money(remaining)}',
         })
 
     parts = (
@@ -283,6 +287,8 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'status': pb.status or 'غير محصل',
             'fault_code': pb.fault.code if pb.fault else '',
             'visit_code': pb.visit.code if pb.visit else '',
+            'collected': False,
+            'hint': f'غير محصّل — المتبقي {_round_money(remaining)}',
         })
 
     rows.sort(key=lambda x: (x['date'], x['code']), reverse=True)

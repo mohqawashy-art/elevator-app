@@ -144,6 +144,13 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .doc-type-toggle{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
 .doc-type-btn{flex:1;min-width:120px;padding:9px 8px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:var(--font-ar);font-size:12px;font-weight:500;transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px;text-align:center}
 .doc-type-btn.active{border-color:var(--accent);background:rgba(42,127,255,.1);color:var(--accent)}
+.lc-ops-pick-table{width:100%;border-collapse:collapse;font-size:12px}
+.lc-ops-pick-table th,.lc-ops-pick-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;vertical-align:top}
+.lc-ops-pick-table th{font-size:11px;color:var(--text3);font-weight:500;background:var(--bg4);position:sticky;top:0;z-index:1}
+.lc-ops-pick-table tr.lc-op-row{cursor:pointer;transition:background .15s}
+.lc-ops-pick-table tr.lc-op-row:hover,.lc-ops-pick-table tr.lc-op-row.selected{background:rgba(42,127,255,.12)}
+.lc-ops-pick-table td.lc-num{font-family:var(--font-en);direction:ltr;text-align:left;white-space:nowrap}
+.lc-ops-pick-table td.lc-code{font-family:var(--font-en);color:var(--accent)}
 /* PRINT */
 @media print{
   .sidebar,.header,.page-header,.filters-bar,.doc-tabs,.table-footer,
@@ -349,9 +356,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <input type="hidden" id="f-source-id" value="">
         <input type="hidden" id="f-contract-id" value="">
         <div class="form-full" id="inv-billable-wrap" style="display:none;margin-bottom:12px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">إيرادات محصّلة — اختر لإصدار فاتورة</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">إيرادات محصّلة — اختر من الجدول لإصدار فاتورة</div>
           <div id="inv-billable-hint" style="font-size:11px;color:var(--warning);margin-bottom:8px"></div>
-          <div id="inv-billable-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
+          <div id="inv-billable-list" style="max-height:240px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
         </div>
         <div class="field">
           <label>تاريخ الإصدار <span>*</span></label>
@@ -628,7 +635,7 @@ function clearInvoiceSource() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.querySelectorAll('.inv-op-row').forEach(row => { row.style.background = ''; });
+  document.querySelectorAll('#inv-billable-list tr.lc-op-row').forEach(row => { row.classList.remove('selected'); });
 }
 
 function onInvoiceCustomerChange() {
@@ -639,19 +646,22 @@ function onInvoiceCustomerChange() {
   clearInvoiceSource();
   billableOps = [];
   if (!cid) { if (wrap) wrap.style.display = 'none'; return; }
-  if (wrap) wrap.style.display = '';
+  if (wrap) wrap.style.display = 'block';
   if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
-  fetch('/api/customers/' + cid + '/invoicable-revenues')
-    .then(r => r.json())
+  fetch('/api/customers/' + cid + '/invoicable-revenues', { credentials: 'same-origin' })
+    .then(r => {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    })
     .then(data => {
       billableOps = data.operations || [];
       if (hint) hint.textContent = billableOps.length
-        ? ('يوجد ' + billableOps.length + ' إيراد محصّل بدون فاتورة — اختر واحداً لإصدار فاتورة ضريبية')
-        : 'لا توجد إيرادات محصّلة بدون فاتورة — يمكنك إدخال الفاتورة يدوياً';
+        ? ('يوجد ' + billableOps.length + ' إيراد محصّل بدون فاتورة — اختر صفاً من الجدول')
+        : 'لا توجد إيرادات محصّلة بدون فاتورة — سجّل التحصيل من صفحة الإيرادات أولاً';
       renderBillableOps();
     })
     .catch(() => {
-      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل العمليات</p>';
+      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل الإيرادات — حدّث الصفحة وحاول مرة أخرى</p>';
     });
 }
 
@@ -662,22 +672,28 @@ function renderBillableOps() {
     list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد إيرادات محصّلة جاهزة للفوترة.</p>';
     return;
   }
-  list.innerHTML = billableOps.map((op, idx) => `
-    <div class="inv-op-row" data-op-idx="${idx}" onclick="selectBillableOp(${idx})"
-      style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">
-      <div style="display:flex;justify-content:space-between;gap:8px">
-        <div>
-          <strong style="font-family:var(--font-en);color:var(--accent)">${escHtml(op.code)}</strong>
-          <span style="font-size:11px;color:var(--text3);margin-right:6px">${escHtml(op.date)}</span>
-          <div style="font-size:12px;margin-top:4px">${escHtml(op.title)} — ${escHtml(op.description)}</div>
-          ${op.hint ? `<div style="font-size:11px;color:${op.collected?'var(--success)':'var(--warning)'};margin-top:4px">${escHtml(op.hint)}</div>` : ''}
-        </div>
-        <div style="text-align:left;font-size:11px;white-space:nowrap">
-          <div style="color:var(--warning);font-weight:600">الإجمالي: ${Number(op.total||0).toLocaleString('en-US')}</div>
-          ${op.paid > 0 ? `<div style="color:var(--success)">محصّل: ${Number(op.paid||0).toLocaleString('en-US')}</div>` : ''}
-        </div>
-      </div>
-    </div>`).join('');
+  list.innerHTML = `
+    <table class="lc-ops-pick-table">
+      <thead>
+        <tr>
+          <th>كود الإيراد</th>
+          <th>التاريخ</th>
+          <th>النوع / البيان</th>
+          <th>المبلغ</th>
+          <th>الإجمالي</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${billableOps.map((op, idx) => `
+          <tr class="lc-op-row" data-op-idx="${idx}" onclick="selectBillableOp(${idx})">
+            <td class="lc-code">${escHtml(op.code)}</td>
+            <td class="lc-num">${escHtml(op.date)}</td>
+            <td>${escHtml(op.title)} — ${escHtml(op.description)}</td>
+            <td class="lc-num">${Number(op.amount_before_tax || 0).toLocaleString('en-US')}</td>
+            <td class="lc-num" style="color:var(--success);font-weight:600">${Number(op.total || 0).toLocaleString('en-US')}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
 }
 
 function selectBillableOp(idx) {
@@ -700,9 +716,8 @@ function selectBillableOp(idx) {
       : 'العملية غير محصّلة — يُفضّل التحصيل من صفحة الإيرادات أولاً.';
   }
   calcTotal();
-  document.querySelectorAll('.inv-op-row').forEach(row => {
-    const on = String(row.dataset.opIdx) === String(idx);
-    row.style.background = on ? 'rgba(42,127,255,.12)' : '';
+  document.querySelectorAll('#inv-billable-list tr.lc-op-row').forEach(row => {
+    row.classList.toggle('selected', String(row.dataset.opIdx) === String(idx));
   });
 }
 

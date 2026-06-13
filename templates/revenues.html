@@ -140,6 +140,13 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
 .field input::placeholder,.field textarea::placeholder{color:var(--text3)}
 .field textarea{resize:vertical;min-height:70px}
+.lc-ops-pick-table{width:100%;border-collapse:collapse;font-size:12px}
+.lc-ops-pick-table th,.lc-ops-pick-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;vertical-align:top}
+.lc-ops-pick-table th{font-size:11px;color:var(--text3);font-weight:500;background:var(--bg4);position:sticky;top:0;z-index:1}
+.lc-ops-pick-table tr.lc-op-row{cursor:pointer;transition:background .15s}
+.lc-ops-pick-table tr.lc-op-row:hover,.lc-ops-pick-table tr.lc-op-row.selected{background:rgba(42,127,255,.12)}
+.lc-ops-pick-table td.lc-num{font-family:var(--font-en);direction:ltr;text-align:left;white-space:nowrap}
+.lc-ops-pick-table td.lc-code{font-family:var(--font-en);color:var(--accent)}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:768px){
   .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
@@ -334,9 +341,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <input type="hidden" id="f-source-id" value="">
         <input type="hidden" id="f-contract-id" value="">
         <div class="form-full" id="rev-billable-wrap" style="display:none;margin-bottom:12px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">عمليات جاهزة للتحصيل — اختر العملية</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">عمليات غير محصّلة — اختر من الجدول</div>
           <div id="rev-billable-hint" style="font-size:11px;color:var(--warning);margin-bottom:8px"></div>
-          <div id="rev-billable-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
+          <div id="rev-billable-list" style="max-height:240px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
         </div>
         <div class="field">
           <label>التاريخ <span>*</span></label>
@@ -572,14 +579,14 @@ const REV_TYPE_BY_SOURCE = {
   parts_billing: 'قطع غيار',
 };
 
-let billableOps = [];
+let pendingOps = [];
 
 function clearRevenueSource() {
   ['f-source-type', 'f-source-id', 'f-contract-id'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.querySelectorAll('.inv-op-row').forEach(row => { row.style.background = ''; });
+  document.querySelectorAll('#rev-billable-list tr.lc-op-row').forEach(row => { row.classList.remove('selected'); });
 }
 
 function onRevenueCustomerChange() {
@@ -590,51 +597,62 @@ function onRevenueCustomerChange() {
   const list = document.getElementById('rev-billable-list');
   const hint = document.getElementById('rev-billable-hint');
   clearRevenueSource();
-  billableOps = [];
+  pendingOps = [];
   if (!cid) { if (wrap) wrap.style.display = 'none'; return; }
-  if (wrap) wrap.style.display = '';
+  if (wrap) wrap.style.display = 'block';
   if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
-  fetch('/api/customers/' + cid + '/billable-ops')
-    .then(r => r.json())
+  fetch('/api/customers/' + cid + '/uncollected-ops', { credentials: 'same-origin' })
+    .then(r => {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    })
     .then(data => {
-      billableOps = (data.operations || []).filter(op => !op.collected);
-      if (hint) hint.textContent = billableOps.length
-        ? ('يوجد ' + billableOps.length + ' عملية غير محصّلة — اختر واحدة للتحصيل')
+      pendingOps = data.operations || [];
+      if (hint) hint.textContent = pendingOps.length
+        ? ('يوجد ' + pendingOps.length + ' عملية غير محصّلة — اختر صفاً من الجدول')
         : 'لا توجد عمليات غير محصّلة — يمكنك إدخال الإيراد يدوياً';
-      renderRevenueBillableOps();
+      renderRevenuePendingOps();
     })
     .catch(() => {
-      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل العمليات</p>';
+      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل العمليات — حدّث الصفحة وحاول مرة أخرى</p>';
     });
 }
 
-function renderRevenueBillableOps() {
+function renderRevenuePendingOps() {
   const list = document.getElementById('rev-billable-list');
   if (!list) return;
-  if (!billableOps.length) {
-    list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد عمليات جاهزة للتحصيل.</p>';
+  if (!pendingOps.length) {
+    list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد عمليات غير محصّلة لهذا العميل.</p>';
     return;
   }
-  list.innerHTML = billableOps.map((op, idx) => `
-    <div class="inv-op-row" data-op-idx="${idx}" onclick="selectRevenueBillableOp(${idx})"
-      style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">
-      <div style="display:flex;justify-content:space-between;gap:8px">
-        <div>
-          <strong style="font-family:var(--font-en);color:var(--accent)">${escHtml(op.code)}</strong>
-          <span style="font-size:11px;color:var(--text3);margin-right:6px">${escHtml(op.date)}</span>
-          <div style="font-size:12px;margin-top:4px">${escHtml(op.title)} — ${escHtml(op.description)}</div>
-          ${op.hint ? `<div style="font-size:11px;color:var(--warning);margin-top:4px">${escHtml(op.hint)}</div>` : ''}
-        </div>
-        <div style="text-align:left;font-size:11px;white-space:nowrap">
-          <div style="color:var(--warning);font-weight:600">الإجمالي: ${Number(op.total || 0).toLocaleString('en-US')}</div>
-          ${op.paid > 0 ? `<div style="color:var(--success)">محصّل: ${Number(op.paid || 0).toLocaleString('en-US')}</div>` : ''}
-        </div>
-      </div>
-    </div>`).join('');
+  list.innerHTML = `
+    <table class="lc-ops-pick-table">
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>التاريخ</th>
+          <th>البيان</th>
+          <th>الإجمالي</th>
+          <th>محصّل</th>
+          <th>المتبقي</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${pendingOps.map((op, idx) => `
+          <tr class="lc-op-row" data-op-idx="${idx}" onclick="selectRevenuePendingOp(${idx})">
+            <td class="lc-code">${escHtml(op.code)}</td>
+            <td class="lc-num">${escHtml(op.date)}</td>
+            <td>${escHtml(op.title)} — ${escHtml(op.description)}</td>
+            <td class="lc-num">${Number(op.total || 0).toLocaleString('en-US')}</td>
+            <td class="lc-num">${Number(op.paid || 0).toLocaleString('en-US')}</td>
+            <td class="lc-num" style="color:var(--warning);font-weight:600">${Number(op.remaining || 0).toLocaleString('en-US')}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
 }
 
-function selectRevenueBillableOp(idx) {
-  const op = billableOps[idx];
+function selectRevenuePendingOp(idx) {
+  const op = pendingOps[idx];
   if (!op) return;
   document.getElementById('f-source-type').value = op.source_type;
   document.getElementById('f-source-id').value = op.source_id;
@@ -650,9 +668,7 @@ function selectRevenueBillableOp(idx) {
   if (dateEl && op.date) dateEl.value = op.date;
   const st = document.getElementById('f-status-sel');
   if (st) st.value = 'محصّل';
-  const pay = document.getElementById('f-pay-method');
-  if (pay && op.payment_method && !pay.value) pay.value = op.payment_method;
-  const beforeTax = Number(op.amount_before_tax || 0);
+  const beforeTax = Number(op.amount_before_tax != null ? op.amount_before_tax : (op.remaining || 0) / 1.15);
   const taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, beforeTax, 15);
   else {
@@ -661,10 +677,10 @@ function selectRevenueBillableOp(idx) {
   }
   const hintEl = document.getElementById('rev-billable-hint');
   if (hintEl) {
-    hintEl.textContent = 'تم اختيار: ' + (op.code || '') + ' — المتبقي للتحصيل ' + Number(op.total || 0).toLocaleString('en-US') + ' ⃁ (شامل الضريبة)';
+    hintEl.textContent = 'تم اختيار: ' + (op.code || '') + ' — المتبقي ' + Number(op.remaining || 0).toLocaleString('en-US') + ' ⃁ (شامل الضريبة)';
   }
-  document.querySelectorAll('.inv-op-row').forEach(row => {
-    row.style.background = String(row.dataset.opIdx) === String(idx) ? 'rgba(42,127,255,.12)' : '';
+  document.querySelectorAll('#rev-billable-list tr.lc-op-row').forEach(row => {
+    row.classList.toggle('selected', String(row.dataset.opIdx) === String(idx));
   });
 }
 
@@ -683,7 +699,7 @@ function openAddModal() {
   }
   ['f-reference', 'f-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   clearRevenueSource();
-  billableOps = [];
+  pendingOps = [];
   const wrap = document.getElementById('rev-billable-wrap');
   if (wrap) wrap.style.display = 'none';
   const today = new Date().toISOString().slice(0, 10);
@@ -740,7 +756,7 @@ function editRevenue(id) {
   };
   Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
   clearRevenueSource();
-  billableOps = [];
+  pendingOps = [];
   const wrap = document.getElementById('rev-billable-wrap');
   if (wrap) wrap.style.display = 'none';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
