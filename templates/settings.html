@@ -163,6 +163,15 @@ input[type=range]{padding:0;background:transparent;border:none}
         <label>العملة</label>
         <input name="currency" value="{{ settings.currency or 'SAR' }}">
       </div>
+      <div class="full">
+        <label>خرائط Google (المنصة)</label>
+        {% if google_maps_key_source == 'platform' %}
+        <p class="hint" style="color:var(--success)">✓ مفتاح المنصة مفعّل — يخدم كل المواقع (<code>app</code> و <code>jama</code> و أي عميل على <code>*.liftcoreapp.com</code>)</p>
+        {% else %}
+        <p class="hint" style="color:var(--warning)">⚠ مفتاح المنصة غير مضبوط على هذا السيرفر — قد تظهر OpenStreetMap. الإعداد مرة واحدة للجميع (انظر <code>deploy/MAPS-PLATFORM.md</code>)</p>
+        {% endif %}
+        <p class="hint" style="margin-top:6px">الخرائط <strong>لا تُعدّ لكل عميل</strong> — مفتاح واحد + DNS فرعي (<code>jama.liftcoreapp.com</code>) مسموح في Google Cloud.</p>
+      </div>
     </div>
 
     <div class="section" style="margin-top:22px">الشعار والمقاس</div>

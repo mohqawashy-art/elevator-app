@@ -15,6 +15,7 @@
 <script src="/static/elevator_profile.js"></script>
 <script src="/static/client_map_picker.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="/static/lc-client-select.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -200,6 +201,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .maps-row{display:flex;gap:8px;align-items:flex-end;margin-top:14px}
 .maps-row .field{flex:1}
+.lc-client-select{position:relative}
+.lc-client-select-input{width:100%}
+.lc-client-select-list{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:220px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-sm);z-index:120;margin:0;padding:4px 0;list-style:none;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.lc-client-select-item{padding:9px 12px;font-size:13px;color:var(--text2);cursor:pointer}
+.lc-client-select-item:hover,.lc-client-select-item.active{background:var(--bg3);color:var(--text1)}
+.lc-client-select-empty{padding:10px 12px;font-size:12px;color:var(--text3)}
 
 .view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .view-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
@@ -250,6 +257,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <div class="nav-section" id="ns2">البيانات</div>
 <a href="/clients" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>العملاء</a>
 <a href="/elevators" class="nav-item active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg>المصاعد</a>
+<a href="/elevator-estimates" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تقدير تكلفة مصعد</a>
 <a href="/contracts" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>العقود</a>
 <a href="/technicians" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>الفنيون</a>
 
@@ -494,9 +502,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-grid">
           <div class="field">
             <label>العميل</label>
-            <select id="f-client-sel" onchange="fillClientData()">
-              <option value="">اختر العميل</option>
-            </select>
+            <div class="lc-client-select" id="elev-client-select">
+              <input type="text" class="lc-client-select-input" id="f-client-sel-input" placeholder="ابحث بالاسم أو الكود..." autocomplete="off">
+              <input type="hidden" id="f-client-sel" value="">
+              <ul class="lc-client-select-list" id="f-client-sel-list" hidden role="listbox"></ul>
+            </div>
           </div>
           <div class="field">
             <label>كود المصعد</label>
@@ -855,6 +865,17 @@ const CUSTOMERS = [
 
 const NEXT_ELEV_CODE = {{ next_elevator_code|tojson }};
 
+if (typeof LcClientSelect !== 'undefined') {
+  LcClientSelect.mount({
+    wrapId: 'elev-client-select',
+    hiddenId: 'f-client-sel',
+    inputId: 'f-client-sel-input',
+    listId: 'f-client-sel-list',
+    customers: CUSTOMERS,
+    onChange: fillClientData,
+  });
+}
+
 const MACHINE_LABELS = {
   MR: 'MR — بغرفة آلة',
   MRL: 'MRL — بدون غرفة آلة',
@@ -936,12 +957,13 @@ function initFilters() {
 }
 
 function fillClientSelect(selectedId) {
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setValue('elev-client-select', selectedId || '');
+    return;
+  }
   var sel = document.getElementById('f-client-sel');
   if (!sel) return;
-  sel.innerHTML = '<option value="">اختر العميل</option>' +
-    CUSTOMERS.map(function(c) {
-      return '<option value="' + c.id + '"' + (selectedId === c.id ? ' selected' : '') + '>' + c.name + '</option>';
-    }).join('');
+  sel.value = selectedId || '';
 }
 
 function fillClientData() {

@@ -48,12 +48,23 @@ else
   echo "==> no venv at $VENV — skipping pip"
 fi
 
-echo "==> ensure HTTPS + install module env (systemd drop-in)"
+echo "==> ensure platform env + HTTPS + install module (systemd drop-in)"
 DROP_IN="/etc/systemd/system/${SERVICE_NAME}.service.d"
+PLATFORM_ENV="/etc/liftcore/platform.env"
 if command -v systemctl >/dev/null 2>&1; then
   sudo mkdir -p "$DROP_IN"
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_HTTPS=1' | sudo tee "$DROP_IN/https.conf" >/dev/null
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_INSTALL_MODULE=1' | sudo tee "$DROP_IN/install-module.conf" >/dev/null
+  if [ -f "$PLATFORM_ENV" ]; then
+    printf '%s\n' '[Service]' "EnvironmentFile=$PLATFORM_ENV" | sudo tee "$DROP_IN/platform-env.conf" >/dev/null
+    echo "  platform env: $PLATFORM_ENV"
+  elif [ -f "$APP_DIR/.env" ] && grep -q GOOGLE_MAPS_API_KEY "$APP_DIR/.env" 2>/dev/null; then
+    grep '^GOOGLE_MAPS_API_KEY=' "$APP_DIR/.env" | sudo tee "$DROP_IN/maps-key.conf.tmp" >/dev/null
+    printf '%s\n' '[Service]' > "$DROP_IN/maps-key.conf"
+    sed 's/^/Environment=/' "$DROP_IN/maps-key.conf.tmp" | sudo tee -a "$DROP_IN/maps-key.conf" >/dev/null
+    sudo rm -f "$DROP_IN/maps-key.conf.tmp"
+    echo "  maps key from $APP_DIR/.env (consider /etc/liftcore/platform.env for all tenants)"
+  fi
   sudo systemctl daemon-reload
 fi
 

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — تقدير {{ est.code }}</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+{% include 'partials/liftcore_head.html' %}
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,'IBM Plex Sans Arabic',Tahoma,sans-serif;color:#1a3a5c;background:#e8ecf2;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4 portrait;margin:10mm 8mm}
+.toolbar{position:fixed;top:0;left:0;right:0;z-index:99;background:#1a2433;color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-bottom:2px solid #c8a055}
+.toolbar button,.toolbar a{border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600;text-decoration:none;font-size:12px;color:#fff;background:#2a7fff}
+.toolbar .btn-print{background:#f0a500;color:#000}
+.doc{width:210mm;max-width:210mm;margin:70px auto 24px;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:14mm 12mm}
+.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a3a5c;padding-bottom:10px;margin-bottom:14px;gap:12px}
+.head img{max-height:48px;object-fit:contain}
+.title{font-size:18px;font-weight:700;color:#1a3a5c}
+.sub{font-size:11px;color:#5a7088;margin-top:4px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:16px;font-size:11px}
+.meta div{display:flex;gap:6px}
+.meta b{color:#1a3a5c;min-width:90px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:11px}
+th,td{border:1px solid #c5d0dc;padding:7px 8px;text-align:right}
+th{background:#eef3f8;color:#1a3a5c;font-weight:600}
+td.num{font-family:'DM Sans',sans-serif;direction:ltr;text-align:left}
+.totals{margin-top:12px;width:280px;margin-right:auto;margin-left:0}
+.totals div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #c5d0dc;font-size:11px}
+.totals .grand{font-size:14px;font-weight:700;color:#1a3a5c;border-bottom:none;border-top:2px solid #1a3a5c;margin-top:6px;padding-top:8px}
+.notes{margin-top:16px;font-size:11px;color:#5a7088}
+.foot{margin-top:20px;padding-top:10px;border-top:1px solid #c5d0dc;font-size:10px;color:#7a8a9c;text-align:center}
+@media print{.toolbar{display:none!important}.doc{margin:0;box-shadow:none;width:auto;max-width:none}}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span>تقدير تكلفة مصعد — {{ est.code }}</span>
+  <button type="button" class="btn-print" onclick="window.print()">🖨️ طباعة</button>
+  <a href="/elevator-estimates?edit={{ est.id }}">← تعديل</a>
+  <a href="/elevator-estimates">القائمة</a>
+</div>
+
+<div class="doc">
+  <div class="head">
+    <div>
+      <div class="title">عرض سعر — توريد وتركيب مصعد</div>
+      <div class="sub">{{ est.project_name or 'مشروع مصعد' }}</div>
+    </div>
+    {% if company_settings and company_settings.logo_path %}
+    <img src="{{ url_for('static', filename=company_settings.logo_path) }}" alt="Logo" style="max-width:{{ logo_width }}px">
+    {% endif %}
+  </div>
+
+  <div class="meta">
+    <div><b>رقم التقدير:</b> {{ est.code }}</div>
+    <div><b>التاريخ:</b> {{ est.estimate_date | dmY }}</div>
+    <div><b>العميل:</b> {{ est.customer.name if est.customer else '—' }}</div>
+    <div><b>المدينة:</b> {{ est.city or '—' }}</div>
+    <div><b>نوع المصعد:</b> {{ est.elev_type or '—' }}</div>
+    <div><b>المكينة:</b> {{ est.machine_type or '—' }}</div>
+    <div><b>الطوابق:</b> {{ est.floors or '—' }}</div>
+    <div><b>المحطات:</b> {{ est.stops or '—' }}</div>
+    <div><b>الحمولة:</b> {{ est.capacity_kg or '—' }} كجم</div>
+    <div><b>السرعة:</b> {{ est.speed or '—' }}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>الفئة</th><th>الوصف</th><th>الكمية</th><th>الوحدة</th><th>السعر</th><th>الإجمالي</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ln in est.lines %}
+      <tr>
+        <td class="num">{{ loop.index }}</td>
+        <td>{{ ln.category or '—' }}</td>
+        <td>{{ ln.description or '—' }}</td>
+        <td class="num">{{ '%.2f'|format(ln.quantity or 0) }}</td>
+        <td>{{ ln.unit or '—' }}</td>
+        <td class="num">{{ '%.2f'|format(ln.unit_price or 0) }}</td>
+        <td class="num">{{ '%.2f'|format(ln.line_total or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div><span>تكلفة البنود</span><span class="num">{{ '%.2f'|format(est.cost_subtotal or 0) }}</span></div>
+    <div><span>هامش ربح ({{ '%.1f'|format(est.margin_pct or 0) }}%)</span><span class="num">{{ '%.2f'|format(est.margin_amount or 0) }}</span></div>
+    <div><span>قبل الضريبة</span><span class="num">{{ '%.2f'|format(est.subtotal or 0) }}</span></div>
+    <div><span>ضريبة VAT ({{ '%.1f'|format(est.vat_pct or 0) }}%)</span><span class="num">{{ '%.2f'|format(est.vat_amount or 0) }}</span></div>
+    <div class="grand"><span>الإجمالي شامل الضريبة</span><span class="num">{{ '%.2f'|format(est.total or 0) }} ر.س</span></div>
+  </div>
+
+  {% if est.notes %}
+  <div class="notes"><b>ملاحظات:</b> {{ est.notes }}</div>
+  {% endif %}
+
+  <div class="foot">
+    {{ company_settings.company_name if company_settings and company_settings.company_name else 'LiftCore' }}
+    {% if company_settings and company_settings.phone %} — {{ company_settings.phone }}{% endif %}
+    <br>هذا العرض استرشادي — الأسعار قابلة للتعديل حسب موقع المشروع والمواصفات النهائية.
+  </div>
+</div>
+</body>
+</html>

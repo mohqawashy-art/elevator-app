@@ -8,6 +8,12 @@ from models import db, Customer, Elevator, Contract, ContractElevator, Technicia
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
+from models import ElevatorEstimate, ElevatorEstimateLine
+from elevator_estimate_calc import (
+    calculate_lines, summarize_lines, MACHINE_TYPES, ELEV_TYPES,
+    ESTIMATE_STATUSES, DEFAULT_VAT_PCT, DEFAULT_MARGIN_PCT,
+)
+from geocode import DEFAULT_KEY as GOOGLE_MAPS_DEFAULT_KEY
 from calendar import monthrange
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, and_, text, inspect
@@ -19,6 +25,51 @@ import uuid
 import shutil
 import secrets
 import string
+
+
+def _load_env_file():
+    """تحميل إعدادات المنصة — مرة واحدة لكل العملاء (LiftCore + جما + أي subdomain)."""
+    paths = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'),
+        '/etc/liftcore/platform.env',
+    ]
+    for path in paths:
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, encoding='utf-8') as fh:
+                for raw in fh:
+                    line = raw.strip()
+                    if not line or line.startswith('#') or '=' not in line:
+                        continue
+                    key, _, val = line.partition('=')
+                    key = key.strip()
+                    val = val.strip().strip('"').strip("'")
+                    if key and key not in os.environ:
+                        os.environ[key] = val
+        except OSError as exc:
+            print(f'Warning: could not read {path}: {exc}')
+
+
+_load_env_file()
+
+
+def resolve_google_maps_api_key(settings=None):
+    """مفتاح Google Maps على مستوى المنصة — مش لكل عميل."""
+    key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
+    if key:
+        return key
+    return GOOGLE_MAPS_DEFAULT_KEY
+
+
+def google_maps_key_source(settings=None):
+    """مصدر المفتاح (للتشخيص — بدون كشف القيمة)."""
+    if os.environ.get('GOOGLE_MAPS_API_KEY', '').strip():
+        return 'platform'
+    if GOOGLE_MAPS_DEFAULT_KEY:
+        return 'default'
+    return 'none'
+
 
 app = Flask(__name__)
 
@@ -256,7 +307,8 @@ def inject_global_template_vars():
         if lang == 'en':
             role_label = ROLE_LABELS_EN.get(user.role, role_label)
     return {
-        'google_maps_api_key': os.environ.get('GOOGLE_MAPS_API_KEY', '').strip(),
+        'google_maps_api_key': resolve_google_maps_api_key(s),
+        'google_maps_key_source': google_maps_key_source(s),
         'brand_logo_url': brand_logo_url(s),
         'liftcore_logo_url': url_for('static', filename=LIFTCORE_PRODUCT_LOGO),
         'logo_width_sidebar': (getattr(s, 'logo_width_sidebar', None) or 150) if s else 150,
@@ -304,6 +356,7 @@ with app.app_context():
                 ('completed_at', 'DATETIME'),
             ],
             'settings': [
+                ('google_maps_api_key', 'VARCHAR(200)'),
                 ('checklist_template_key', 'VARCHAR(50)'),
                 ('rep_name', 'VARCHAR(200)'),
                 ('rep_mobile', 'VARCHAR(20)'),
@@ -3954,6 +4007,170 @@ def purchase_orders_delete(order_id):
     db.session.delete(order)
     db.session.commit()
     return redirect(url_for('purchase_orders'))
+
+
+# =============================================
+# تقدير تكلفة إنشاء مصعد
+# =============================================
+def _parse_estimate_spec(form):
+    floors = int(form.get('floors') or 2)
+    stops = int(form.get('stops') or floors)
+    return {
+        'machine_type': form.get('machine_type', 'MR').strip(),
+        'elev_type': form.get('elev_type', 'مصعد ركاب').strip(),
+        'floors': floors,
+        'stops': stops,
+        'capacity_kg': form.get('capacity_kg'),
+        'doors_count': form.get('doors_count') or stops,
+        'include_installation': form.get('include_installation', '1'),
+        'include_shaft_work': form.get('include_shaft_work', '0'),
+    }
+
+
+def _parse_estimate_lines(form):
+    categories = form.getlist('line_category')
+    descriptions = form.getlist('line_description')
+    quantities = form.getlist('line_quantity')
+    units = form.getlist('line_unit')
+    unit_prices = form.getlist('line_unit_price')
+    lines = []
+    for cat, desc, qty, unit, price in zip(categories, descriptions, quantities, units, unit_prices):
+        desc = (desc or '').strip()
+        if not desc:
+            continue
+        quantity = float(qty or 0)
+        unit_price = float(price or 0)
+        if quantity <= 0:
+            continue
+        lines.append({
+            'category': (cat or '').strip() or 'أخرى',
+            'description': desc,
+            'quantity': quantity,
+            'unit': (unit or '').strip() or 'وحدة',
+            'unit_price': unit_price,
+            'line_total': round(quantity * unit_price, 2),
+        })
+    return lines
+
+
+@app.route('/elevator-estimates')
+def elevator_estimates():
+    estimates = ElevatorEstimate.query.order_by(ElevatorEstimate.created_at.desc()).all()
+    customers = Customer.query.order_by(Customer.name).all()
+    edit_raw = request.args.get('edit', '').strip()
+    edit_est = None
+    if edit_raw.isdigit():
+        edit_est = ElevatorEstimate.query.get(int(edit_raw))
+    return render_template(
+        'elevator-estimates.html',
+        estimates=estimates,
+        customers=customers,
+        edit_est=edit_est,
+        machine_types=MACHINE_TYPES,
+        elev_types=ELEV_TYPES,
+        statuses=ESTIMATE_STATUSES,
+        next_es_code=next_code(ElevatorEstimate, 'ES-', digits=4),
+        today=date.today().isoformat(),
+        default_vat=DEFAULT_VAT_PCT,
+        default_margin=DEFAULT_MARGIN_PCT,
+    )
+
+
+@app.route('/api/elevator-estimates/calculate', methods=['POST'])
+def api_elevator_estimate_calculate():
+    data = request.get_json(silent=True) or request.form
+    spec = {
+        'machine_type': data.get('machine_type', 'MR'),
+        'elev_type': data.get('elev_type', 'مصعد ركاب'),
+        'floors': data.get('floors'),
+        'stops': data.get('stops'),
+        'capacity_kg': data.get('capacity_kg'),
+        'doors_count': data.get('doors_count'),
+        'include_installation': data.get('include_installation', '1'),
+        'include_shaft_work': data.get('include_shaft_work', '0'),
+    }
+    lines = calculate_lines(spec)
+    totals = summarize_lines(lines, data.get('margin_pct'), data.get('vat_pct'))
+    return jsonify(ok=True, lines=lines, totals=totals)
+
+
+@app.route('/elevator-estimates/save', methods=['POST'])
+def elevator_estimates_save():
+    estimate_id = request.form.get('estimate_id', '').strip()
+    lines_data = _parse_estimate_lines(request.form)
+    if not lines_data:
+        auto_lines = calculate_lines(_parse_estimate_spec(request.form))
+        lines_data = auto_lines
+    if not lines_data:
+        return redirect(url_for('elevator_estimates'))
+
+    margin_pct = float(request.form.get('margin_pct') or DEFAULT_MARGIN_PCT)
+    vat_pct = float(request.form.get('vat_pct') or DEFAULT_VAT_PCT)
+    totals = summarize_lines(lines_data, margin_pct, vat_pct)
+
+    if estimate_id:
+        est = ElevatorEstimate.query.get_or_404(int(estimate_id))
+    else:
+        est = ElevatorEstimate(code=next_code(ElevatorEstimate, 'ES-', digits=4))
+        db.session.add(est)
+
+    cust_raw = request.form.get('customer_id', '').strip()
+    est.customer_id = int(cust_raw) if cust_raw.isdigit() else None
+    est.project_name = request.form.get('project_name', '').strip() or None
+    est.city = request.form.get('city', '').strip() or None
+    est.machine_type = request.form.get('machine_type', 'MR').strip()
+    est.elev_type = request.form.get('elev_type', 'مصعد ركاب').strip()
+    est.floors = int(request.form.get('floors') or 2)
+    est.stops = int(request.form.get('stops') or est.floors)
+    est.capacity_kg = int(request.form.get('capacity_kg') or 630)
+    est.speed = request.form.get('speed', '').strip() or None
+    travel_raw = request.form.get('travel_m', '').strip()
+    est.travel_m = float(travel_raw) if travel_raw else None
+    est.doors_count = int(request.form.get('doors_count') or est.stops)
+    est.include_installation = request.form.get('include_installation') == '1'
+    est.include_shaft_work = request.form.get('include_shaft_work') == '1'
+    est.margin_pct = margin_pct
+    est.vat_pct = vat_pct
+    est.cost_subtotal = totals['cost_subtotal']
+    est.margin_amount = totals['margin_amount']
+    est.subtotal = totals['subtotal']
+    est.vat_amount = totals['vat_amount']
+    est.total = totals['total']
+    status = request.form.get('status', 'مسودة').strip()
+    est.status = status if status in ESTIMATE_STATUSES else 'مسودة'
+    est.notes = request.form.get('notes', '').strip() or None
+    date_raw = request.form.get('estimate_date', '').strip()
+    try:
+        est.estimate_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date.today()
+    except ValueError:
+        est.estimate_date = date.today()
+
+    est.lines.clear()
+    for row in lines_data:
+        est.lines.append(ElevatorEstimateLine(**row))
+    db.session.commit()
+    return redirect(url_for('elevator_estimate_print', estimate_id=est.id))
+
+
+@app.route('/elevator-estimates/delete/<int:estimate_id>', methods=['POST'])
+def elevator_estimates_delete(estimate_id):
+    est = ElevatorEstimate.query.get_or_404(estimate_id)
+    db.session.delete(est)
+    db.session.commit()
+    return redirect(url_for('elevator_estimates'))
+
+
+@app.route('/elevator-estimates/print/<int:estimate_id>')
+def elevator_estimate_print(estimate_id):
+    est = ElevatorEstimate.query.get_or_404(estimate_id)
+    s = Settings.query.first()
+    logo_w = (getattr(s, 'logo_width_report', None) or 150) if s else 150
+    return render_template(
+        'elevator-estimate-print.html',
+        est=est,
+        logo_width=logo_w,
+        company_settings=s,
+    )
 
 # =============================================
 # حركة المخزن

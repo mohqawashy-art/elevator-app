@@ -477,6 +477,60 @@ class PurchaseOrderLine(db.Model):
 
 
 # =============================================
+# 12ج. تقدير تكلفة إنشاء مصعد
+# =============================================
+class ElevatorEstimate(db.Model):
+    __tablename__ = 'elevator_estimates'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True)
+    project_name = db.Column(db.String(200))
+    city = db.Column(db.String(100))
+    machine_type = db.Column(db.String(30), default='MR')
+    elev_type = db.Column(db.String(100), default='مصعد ركاب')
+    floors = db.Column(db.Integer, default=2)
+    stops = db.Column(db.Integer, default=2)
+    capacity_kg = db.Column(db.Integer, default=630)
+    speed = db.Column(db.String(50))
+    travel_m = db.Column(db.Float)
+    doors_count = db.Column(db.Integer, default=2)
+    include_installation = db.Column(db.Boolean, default=True)
+    include_shaft_work = db.Column(db.Boolean, default=False)
+    margin_pct = db.Column(db.Float, default=12)
+    vat_pct = db.Column(db.Float, default=15)
+    cost_subtotal = db.Column(db.Float, default=0)
+    margin_amount = db.Column(db.Float, default=0)
+    subtotal = db.Column(db.Float, default=0)
+    vat_amount = db.Column(db.Float, default=0)
+    total = db.Column(db.Float, default=0)
+    status = db.Column(db.String(30), default='مسودة')
+    estimate_date = db.Column(db.Date, default=date.today)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    customer = db.relationship('Customer', foreign_keys=[customer_id])
+    lines = db.relationship(
+        'ElevatorEstimateLine', back_populates='estimate', cascade='all, delete-orphan', lazy='joined'
+    )
+
+
+class ElevatorEstimateLine(db.Model):
+    __tablename__ = 'elevator_estimate_lines'
+
+    id = db.Column(db.Integer, primary_key=True)
+    estimate_id = db.Column(db.Integer, db.ForeignKey('elevator_estimates.id'), nullable=False)
+    category = db.Column(db.String(50))
+    description = db.Column(db.String(300))
+    quantity = db.Column(db.Float, default=1)
+    unit = db.Column(db.String(30))
+    unit_price = db.Column(db.Float, default=0)
+    line_total = db.Column(db.Float, default=0)
+
+    estimate = db.relationship('ElevatorEstimate', back_populates='lines')
+
+
+# =============================================
 # 12ب. الموقّعون (توقيعات مشفّرة)
 # =============================================
 class Signatory(db.Model):
@@ -525,6 +579,7 @@ class Settings(db.Model):
     rep_sign_pin_hash = db.Column(db.String(200))
     default_sign_method = db.Column(db.String(20), default='both')  # draw | pin | both
     checklist_template_key = db.Column(db.String(50), default='liftcore_standard_v1')  # SaaS: قالب الفحص الافتراضي
+    google_maps_api_key = db.Column(db.String(200))  # اختياري — يُستخدم إن لم يُضبط GOOGLE_MAPS_API_KEY
 
 
 # =============================================

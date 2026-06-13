@@ -856,6 +856,15 @@ window.__LC_TRANSLATIONS = {
   'أرباح قطع الغيار (': 'Spare Parts Profit (',
   /* — طلبات الشراء — */
   'طلبات الشراء': 'Purchase Orders',
+  /* — تقدير تكلفة مصعد — */
+  'تقدير تكلفة مصعد': 'Elevator Cost Estimate',
+  'تقدير تكلفة إنشاء مصعد': 'New Elevator Cost Estimate',
+  'مواصفات المشروع': 'Project Specifications',
+  'بنود التكلفة': 'Cost Line Items',
+  '⚡ احسب التكلفة': '⚡ Calculate Cost',
+  'حفظ وطباعة': 'Save & Print',
+  'التقديرات المحفوظة': 'Saved Estimates',
+  'لا توجد تقديرات بعد — أنشئ أول تقدير من النموذج أعلاه.': 'No estimates yet — create your first estimate above.',
   'طلب شراء جديد': 'New Purchase Order',
   'رقم الطلب (تلقائي عند الحفظ)': 'Order # (auto on save)',
   'حفظ الطلب': 'Save Order',
