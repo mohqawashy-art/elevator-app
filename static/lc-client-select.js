@@ -157,8 +157,10 @@
     if (!sel) return null;
     if (sel.tagName !== 'SELECT') {
       if (isUpgraded(selectId)) {
+        var existing = mounts[hiddenIndex[selectId]];
+        if (existing && opts.onChange) existing.onChange = opts.onChange;
         if (opts.customers) setCustomers(selectId, opts.customers, opts.selectedId);
-        return mounts[hiddenIndex[selectId]];
+        return existing;
       }
       return null;
     }

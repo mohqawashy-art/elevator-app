@@ -292,6 +292,37 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <button class="btn btn-secondary btn-sm" onclick="clearFilters()" style="align-self:flex-end">مسح</button>
     </div>
 
+    <!-- مستحقات غير محصّلة (جدول رئيسي) -->
+    <div class="table-wrap" id="rev-pending-panel" style="margin-bottom:18px">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text1)">مستحقات غير محصّلة</div>
+          <div id="rev-pending-hint" style="font-size:11px;color:var(--warning);margin-top:4px">اختر العميل لعرض ما لم يُحصّل — ثم اضغط صفاً أو «إضافة إيراد»</div>
+        </div>
+        <div class="field" style="min-width:280px;flex:1;max-width:420px;margin:0">
+          <label style="font-size:11px;color:var(--text3);margin-bottom:4px;display:block">العميل</label>
+          <select id="f-pending-customer"><option value="">اختر العميل...</option></select>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <div id="rev-pending-empty" style="padding:20px;color:var(--text3);font-size:13px;text-align:center">اختر عميلاً من القائمة لعرض المستحقات</div>
+        <table id="rev-pending-table" style="display:none">
+          <thead>
+            <tr>
+              <th>الكود</th>
+              <th>التاريخ</th>
+              <th>البيان</th>
+              <th>الإجمالي</th>
+              <th>محصّل</th>
+              <th>المتبقي</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rev-pending-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- TABLE -->
     <div class="table-wrap">
       <div class="table-scroll">
@@ -322,8 +353,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 </div>
 
 <!-- MODAL -->
-
-</div>
 
 <div class="modal-overlay" id="modal-add">
   <div class="modal" style="max-width:720px">
@@ -431,20 +460,20 @@ const REVENUES = [
   {% for r in revenues %}
   {
     id:           {{ r.id }},
-    code:         "{{ r.code }}",
+    code:         {{ r.code|tojson }},
     customer_id:  {{ r.customer_id or 'null' }},
     contract_id:  {{ r.contract_id or 'null' }},
-    customer:     "{{ r.customer.name if r.customer else '—' }}",
-    contract:     "{{ r.contract.code if r.contract else '—' }}",
-    revenue_date: "{{ r.revenue_date or '' }}",
-    revenue_type: "{{ r.revenue_type or '' }}",
-    pay_method:   "{{ r.payment_method or '' }}",
+    customer:     {{ (r.customer.name if r.customer else '—')|tojson }},
+    contract:     {{ (r.contract.code if r.contract else '—')|tojson }},
+    revenue_date: {{ (r.revenue_date|string if r.revenue_date else '')|tojson }},
+    revenue_type: {{ (r.revenue_type or '')|tojson }},
+    pay_method:   {{ (r.payment_method or '')|tojson }},
     amount:       {{ r.amount or 0 }},
     tax_amount:   {{ r.tax_amount or 0 }},
     total:        {{ r.total or 0 }},
-    status:       "{{ r.status or 'محصّل' }}",
-    reference:    "{{ r.reference or '' }}",
-    notes:        "{{ r.notes or '' }}",
+    status:       {{ (r.status or 'محصّل')|tojson }},
+    reference:    {{ (r.reference or '')|tojson }},
+    notes:        {{ (r.notes or '')|tojson }},
   },
   {% endfor %}
 ];
@@ -580,42 +609,166 @@ const REV_TYPE_BY_SOURCE = {
 };
 
 let pendingOps = [];
+let pendingLoadToken = 0;
+let syncingCustomers = false;
 
-function clearRevenueSource() {
-  ['f-source-type', 'f-source-id', 'f-contract-id'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
+function initRevenueClientSelects() {
+  if (typeof LcClientSelect === 'undefined') return;
+  LcClientSelect.upgradeSelect('f-customer-sel', {
+    customers: CUSTOMERS,
+    onChange: onRevenueCustomerChange,
   });
-  document.querySelectorAll('#rev-billable-list tr.lc-op-row').forEach(row => { row.classList.remove('selected'); });
+  LcClientSelect.upgradeSelect('f-pending-customer', {
+    customers: CUSTOMERS,
+    onChange: onPendingCustomerChange,
+  });
+}
+
+function syncRevenueCustomerSelectors(cid) {
+  if (typeof LcClientSelect === 'undefined') return;
+  syncingCustomers = true;
+  const modalEl = document.getElementById('f-customer-sel');
+  const pendingEl = document.getElementById('f-pending-customer');
+  if (modalEl && String(modalEl.value || '') !== String(cid || '')) {
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, cid || '');
+  }
+  if (pendingEl && String(pendingEl.value || '') !== String(cid || '')) {
+    LcClientSelect.setCustomers('f-pending-customer', CUSTOMERS, cid || '');
+  }
+  syncingCustomers = false;
+}
+
+function onPendingCustomerChange() {
+  if (syncingCustomers) return;
+  const cid = document.getElementById('f-pending-customer')?.value;
+  if (document.getElementById('modal-add')?.classList.contains('open') && !document.getElementById('modal-add')?.dataset.editId) {
+    syncRevenueCustomerSelectors(cid);
+  }
+  loadUncollectedOps(cid);
 }
 
 function onRevenueCustomerChange() {
+  if (syncingCustomers) return;
   const editId = document.getElementById('modal-add')?.dataset.editId;
   if (editId) return;
   const cid = document.getElementById('f-customer-sel')?.value;
+  syncRevenueCustomerSelectors(cid);
+  loadUncollectedOps(cid);
+}
+
+function loadUncollectedOps(cid) {
   const wrap = document.getElementById('rev-billable-wrap');
   const list = document.getElementById('rev-billable-list');
   const hint = document.getElementById('rev-billable-hint');
+  const mainHint = document.getElementById('rev-pending-hint');
+  const mainEmpty = document.getElementById('rev-pending-empty');
+  const mainTable = document.getElementById('rev-pending-table');
+  const mainBody = document.getElementById('rev-pending-tbody');
   clearRevenueSource();
   pendingOps = [];
-  if (!cid) { if (wrap) wrap.style.display = 'none'; return; }
+
+  if (!cid) {
+    if (wrap) wrap.style.display = 'none';
+    if (mainEmpty) { mainEmpty.style.display = ''; mainEmpty.textContent = 'اختر عميلاً من القائمة لعرض المستحقات'; }
+    if (mainTable) mainTable.style.display = 'none';
+    if (mainBody) mainBody.innerHTML = '';
+    if (mainHint) mainHint.textContent = 'اختر العميل لعرض ما لم يُحصّل — ثم اضغط صفاً أو «إضافة إيراد»';
+    return;
+  }
+
+  const token = ++pendingLoadToken;
   if (wrap) wrap.style.display = 'block';
   if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
+  if (mainEmpty) { mainEmpty.style.display = ''; mainEmpty.textContent = 'جاري التحميل...'; }
+  if (mainTable) mainTable.style.display = 'none';
+
   fetch('/api/customers/' + cid + '/uncollected-ops', { credentials: 'same-origin' })
     .then(r => {
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
     })
     .then(data => {
+      if (token !== pendingLoadToken) return;
       pendingOps = data.operations || [];
+      const msg = pendingOps.length
+        ? ('يوجد ' + pendingOps.length + ' عملية غير محصّلة')
+        : 'لا توجد عمليات غير محصّلة لهذا العميل';
       if (hint) hint.textContent = pendingOps.length
-        ? ('يوجد ' + pendingOps.length + ' عملية غير محصّلة — اختر صفاً من الجدول')
-        : 'لا توجد عمليات غير محصّلة — يمكنك إدخال الإيراد يدوياً';
+        ? (msg + ' — اختر صفاً من الجدول')
+        : msg + ' — يمكنك إدخال الإيراد يدوياً';
+      if (mainHint) mainHint.textContent = msg;
       renderRevenuePendingOps();
+      renderRevenuePendingMainTable();
     })
     .catch(() => {
-      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل العمليات — حدّث الصفحة وحاول مرة أخرى</p>';
+      if (token !== pendingLoadToken) return;
+      const err = 'تعذّر تحميل العمليات — حدّث الصفحة وحاول مرة أخرى';
+      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">' + err + '</p>';
+      if (mainEmpty) { mainEmpty.style.display = ''; mainEmpty.textContent = err; mainEmpty.style.color = 'var(--danger)'; }
+      if (mainTable) mainTable.style.display = 'none';
     });
+}
+
+function renderRevenuePendingMainTable() {
+  const mainEmpty = document.getElementById('rev-pending-empty');
+  const mainTable = document.getElementById('rev-pending-table');
+  const mainBody = document.getElementById('rev-pending-tbody');
+  if (!mainBody || !mainTable) return;
+  if (!pendingOps.length) {
+    if (mainEmpty) {
+      mainEmpty.style.display = '';
+      mainEmpty.style.color = 'var(--text3)';
+      mainEmpty.textContent = 'لا توجد عمليات غير محصّلة لهذا العميل.';
+    }
+    mainTable.style.display = 'none';
+    mainBody.innerHTML = '';
+    return;
+  }
+  if (mainEmpty) mainEmpty.style.display = 'none';
+  mainTable.style.display = '';
+  mainBody.innerHTML = pendingOps.map((op, idx) => `
+    <tr class="lc-op-row" data-op-idx="${idx}" style="cursor:pointer" onclick="pickPendingOp(${idx})">
+      <td class="td-code">${escHtml(op.code)}</td>
+      <td class="lc-date">${escHtml(op.date)}</td>
+      <td>${escHtml(op.title)} — ${escHtml(op.description)}</td>
+      <td style="font-family:var(--font-en)">${Number(op.total || 0).toLocaleString('en-US')}</td>
+      <td style="font-family:var(--font-en);color:var(--success)">${Number(op.paid || 0).toLocaleString('en-US')}</td>
+      <td style="font-family:var(--font-en);color:var(--warning);font-weight:600">${Number(op.remaining || 0).toLocaleString('en-US')}</td>
+      <td onclick="event.stopPropagation()">
+        <button type="button" class="btn btn-primary btn-sm" onclick="pickPendingOp(${idx})">تحصيل</button>
+      </td>
+    </tr>`).join('');
+}
+
+function pickPendingOp(idx) {
+  const cid = document.getElementById('f-pending-customer')?.value;
+  openAddModal(cid || null, { keepPendingOps: true });
+  selectRevenuePendingOp(idx);
+}
+
+function applyPendingOpFields(op) {
+  if (!op) return;
+  document.getElementById('f-source-type').value = op.source_type;
+  document.getElementById('f-source-id').value = op.source_id;
+  document.getElementById('f-contract-id').value = op.contract_id || '';
+  const revType = REV_TYPE_BY_SOURCE[op.source_type] || 'زيارة';
+  const rt = document.getElementById('f-rev-type');
+  if (rt) rt.value = revType;
+  const ref = document.getElementById('f-reference');
+  if (ref) ref.value = op.code || '';
+  const notes = document.getElementById('f-notes');
+  if (notes && !notes.value.trim()) notes.value = (op.title || '') + ' — ' + (op.description || '');
+  const dateEl = document.getElementById('f-date');
+  if (dateEl && op.date) dateEl.value = op.date;
+  const st = document.getElementById('f-status-sel');
+  if (st) st.value = 'محصّل';
+  const beforeTax = Number(op.amount_before_tax != null ? op.amount_before_tax : (op.remaining || 0) / 1.15);
+  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, beforeTax, 15);
+  else {
+    const amt = document.getElementById('f-amount');
+    if (amt) amt.value = beforeTax.toFixed(2);
+  }
 }
 
 function renderRevenuePendingOps() {
@@ -654,54 +807,38 @@ function renderRevenuePendingOps() {
 function selectRevenuePendingOp(idx) {
   const op = pendingOps[idx];
   if (!op) return;
-  document.getElementById('f-source-type').value = op.source_type;
-  document.getElementById('f-source-id').value = op.source_id;
-  document.getElementById('f-contract-id').value = op.contract_id || '';
-  const revType = REV_TYPE_BY_SOURCE[op.source_type] || 'زيارة';
-  const rt = document.getElementById('f-rev-type');
-  if (rt) rt.value = revType;
-  const ref = document.getElementById('f-reference');
-  if (ref) ref.value = op.code || '';
-  const notes = document.getElementById('f-notes');
-  if (notes && !notes.value.trim()) notes.value = (op.title || '') + ' — ' + (op.description || '');
-  const dateEl = document.getElementById('f-date');
-  if (dateEl && op.date) dateEl.value = op.date;
-  const st = document.getElementById('f-status-sel');
-  if (st) st.value = 'محصّل';
-  const beforeTax = Number(op.amount_before_tax != null ? op.amount_before_tax : (op.remaining || 0) / 1.15);
-  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, beforeTax, 15);
-  else {
-    const amt = document.getElementById('f-amount');
-    if (amt) amt.value = beforeTax.toFixed(2);
-  }
+  applyPendingOpFields(op);
   const hintEl = document.getElementById('rev-billable-hint');
   if (hintEl) {
     hintEl.textContent = 'تم اختيار: ' + (op.code || '') + ' — المتبقي ' + Number(op.remaining || 0).toLocaleString('en-US') + ' ⃁ (شامل الضريبة)';
   }
-  document.querySelectorAll('#rev-billable-list tr.lc-op-row').forEach(row => {
+  document.querySelectorAll('#rev-billable-list tr.lc-op-row, #rev-pending-tbody tr.lc-op-row').forEach(row => {
     row.classList.toggle('selected', String(row.dataset.opIdx) === String(idx));
   });
 }
 
+function clearRevenueSource() {
+  ['f-source-type', 'f-source-id', 'f-contract-id'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('#rev-billable-list tr.lc-op-row, #rev-pending-tbody tr.lc-op-row').forEach(row => {
+    row.classList.remove('selected');
+  });
+}
+
 // ===== إضافة =====
-function openAddModal() {
+function openAddModal(preselectedCustomerId, opts) {
+  opts = opts || {};
   document.getElementById('modal-title').textContent = 'إضافة إيراد جديد';
   document.getElementById('modal-add').dataset.editId = '';
-  if (typeof LcClientSelect !== 'undefined') {
-    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, '');
-  } else {
-    const sel = document.getElementById('f-customer-sel');
-    if (sel) {
-      sel.innerHTML = '<option value="">اختر العميل</option>' +
-        CUSTOMERS.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
-    }
-  }
+  initRevenueClientSelects();
+  const cid = preselectedCustomerId || document.getElementById('f-pending-customer')?.value || '';
+  syncRevenueCustomerSelectors(cid);
   ['f-reference', 'f-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   clearRevenueSource();
-  pendingOps = [];
   const wrap = document.getElementById('rev-billable-wrap');
-  if (wrap) wrap.style.display = 'none';
+  if (!cid && wrap) wrap.style.display = 'none';
   const today = new Date().toISOString().slice(0, 10);
   const dateEl = document.getElementById('f-date');
   if (dateEl) dateEl.value = today;
@@ -712,6 +849,12 @@ function openAddModal() {
   const taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.resetElement(taxBlock);
   document.getElementById('modal-add').classList.add('open');
+  if (cid && opts.keepPendingOps && pendingOps.length) {
+    if (wrap) wrap.style.display = 'block';
+    renderRevenuePendingOps();
+  } else if (cid) {
+    loadUncollectedOps(cid);
+  }
 }
 
 function saveRevenue() {
@@ -817,12 +960,7 @@ document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.t
 
 updateStats();
 if (tableSort) tableSort.bindHeaders();
-if (typeof LcClientSelect !== 'undefined') {
-  LcClientSelect.upgradeSelect('f-customer-sel', {
-    customers: CUSTOMERS,
-    onChange: onRevenueCustomerChange,
-  });
-}
+initRevenueClientSelects();
 renderTable(REVENUES);
 window.__lcRefreshPage = function () {
   if (typeof updateStats === 'function') updateStats();
