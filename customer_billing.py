@@ -157,6 +157,50 @@ def customer_billable_ops(customer_id: int) -> list[dict]:
     return rows
 
 
+def customer_invoicable_revenues(customer_id: int) -> list[dict]:
+    """إيرادات محصّلة لم تُربط بفاتورة بعد — لإصدار فاتورة ضريبية."""
+    rows: list[dict] = []
+    revs = (
+        Revenue.query.filter_by(customer_id=customer_id)
+        .filter(Revenue.status.in_(COLLECTED_REVENUE_STATUSES))
+        .filter(Revenue.invoice_id.is_(None))
+        .order_by(Revenue.revenue_date.desc())
+        .all()
+    )
+    for r in revs:
+        desc = (r.notes or '').strip()
+        if r.contract_id and r.contract:
+            desc = desc or f'عقد {r.contract.code}'
+        elif r.parts_billing_id and r.parts_billing:
+            pb = r.parts_billing
+            desc = desc or (pb.description or f'قطع {pb.code}')
+        elif r.reference:
+            desc = desc or r.reference
+
+        rows.append({
+            'source_type': 'revenue',
+            'source_id': r.id,
+            'code': r.code,
+            'date': str(r.revenue_date or ''),
+            'title': r.revenue_type or 'إيراد',
+            'description': desc or r.revenue_type or 'إيراد',
+            'amount_before_tax': _round_money(r.amount),
+            'total': _round_money(r.total),
+            'paid': _round_money(r.total),
+            'remaining': 0,
+            'contract_id': r.contract_id,
+            'contract_code': r.contract.code if r.contract else '',
+            'parts_billing_id': r.parts_billing_id,
+            'collected': True,
+            'hint': 'تم التحصيل — إصدار فاتورة للتوثيق',
+            'payment_method': r.payment_method or '',
+            'reference': r.reference or '',
+        })
+
+    rows.sort(key=lambda x: (x['date'], x['code']), reverse=True)
+    return rows
+
+
 def customer_uncollected_ops(customer_id: int) -> list[dict]:
     """عمليات العميل غير المحصّلة بالكامل."""
     rows: list[dict] = []
@@ -182,6 +226,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'total': _round_money(c.total),
             'paid': paid,
             'remaining': remaining,
+            'amount_before_tax': round(remaining / 1.15, 2),
             'contract_id': c.id,
             'status': c.invoice_status or 'غير مدفوع',
         })
@@ -207,6 +252,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'total': _round_money(inv.total),
             'paid': _round_money(getattr(inv, 'paid_amount', 0) or 0),
             'remaining': remaining,
+            'amount_before_tax': round(remaining / 1.15, 2),
             'contract_id': inv.contract_id,
             'status': inv.status or 'غير مدفوعة',
         })
@@ -232,6 +278,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'total': _round_money(pb.sell_price),
             'paid': _round_money(getattr(pb, 'paid_amount', 0) or 0),
             'remaining': remaining,
+            'amount_before_tax': round(remaining / 1.15, 2),
             'contract_id': pb.contract_id,
             'status': pb.status or 'غير محصل',
             'fault_code': pb.fault.code if pb.fault else '',

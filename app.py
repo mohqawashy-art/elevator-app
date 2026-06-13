@@ -1117,6 +1117,17 @@ def api_customer_profile(customer_id):
     return jsonify(build_customer_profile(customer_id, contract_id))
 
 
+@app.route('/api/customers/<int:customer_id>/invoicable-revenues')
+def api_customer_invoicable_revenues(customer_id):
+    from customer_billing import customer_invoicable_revenues
+
+    Customer.query.get_or_404(customer_id)
+    return jsonify({
+        'customer_id': customer_id,
+        'operations': customer_invoicable_revenues(customer_id),
+    })
+
+
 @app.route('/api/customers/<int:customer_id>/uncollected-ops')
 def api_customer_uncollected_ops(customer_id):
     from customer_billing import customer_uncollected_ops
@@ -3522,6 +3533,22 @@ def invoice_add():
         ref = f'فاتورة عملية {pb.code}'
         if ref not in (notes or ''):
             notes = (ref + (' — ' + notes if notes else '')).strip()
+    elif source_type == 'revenue' and source_id:
+        from customer_billing import COLLECTED_REVENUE_STATUSES
+
+        rev = Revenue.query.get_or_404(int(source_id))
+        if rev.invoice_id:
+            flash('يوجد فاتورة مرتبطة بهذا الإيراد مسبقاً', 'error')
+            return redirect(url_for('invoices'))
+        if (rev.status or '') not in COLLECTED_REVENUE_STATUSES:
+            flash('لا يمكن إصدار فاتورة لإيراد غير محصّل', 'error')
+            return redirect(url_for('invoices'))
+        customer_id = rev.customer_id
+        contract_id = rev.contract_id
+        parts_billing_id = rev.parts_billing_id
+        ref = f'فاتورة إيراد {rev.code}'
+        if ref not in (notes or ''):
+            notes = (ref + (' — ' + notes if notes else '')).strip()
     elif source_type == 'contract' and source_id:
         c = Contract.query.get_or_404(int(source_id))
         from customer_billing import _invoice_exists_for_contract, contract_paid_amount
@@ -3537,7 +3564,16 @@ def invoice_add():
     due_raw = request.form.get('due_date', '').strip()
     invoice_status = request.form.get('status', 'غير مدفوعة')
     invoice_paid = 0.0
-    if source_type == 'parts_billing' and source_id:
+    linked_revenue = None
+    if source_type == 'revenue' and source_id:
+        from customer_billing import _round_money
+
+        linked_revenue = Revenue.query.get(int(source_id))
+        if linked_revenue:
+            invoice_paid = _round_money(linked_revenue.total)
+            if invoice_status in ('', 'غير مدفوعة'):
+                invoice_status = 'مدفوعة'
+    elif source_type == 'parts_billing' and source_id:
         pb = PartsBilling.query.get(int(source_id))
         if pb and (pb.paid_amount or 0) >= (pb.sell_price or 0) - 0.01:
             invoice_paid = total
@@ -3570,6 +3606,8 @@ def invoice_add():
     )
     db.session.add(i)
     db.session.flush()
+    if linked_revenue:
+        linked_revenue.invoice_id = i.id
     sync_contract_invoice_status(i.contract_id)
     db.session.commit()
     return redirect(url_for('invoices'))

@@ -349,7 +349,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <input type="hidden" id="f-source-id" value="">
         <input type="hidden" id="f-contract-id" value="">
         <div class="form-full" id="inv-billable-wrap" style="display:none;margin-bottom:12px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">عمليات جاهزة للفوترة — اختر العملية</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">إيرادات محصّلة — اختر لإصدار فاتورة</div>
           <div id="inv-billable-hint" style="font-size:11px;color:var(--warning);margin-bottom:8px"></div>
           <div id="inv-billable-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
         </div>
@@ -641,13 +641,13 @@ function onInvoiceCustomerChange() {
   if (!cid) { if (wrap) wrap.style.display = 'none'; return; }
   if (wrap) wrap.style.display = '';
   if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
-  fetch('/api/customers/' + cid + '/billable-ops')
+  fetch('/api/customers/' + cid + '/invoicable-revenues')
     .then(r => r.json())
     .then(data => {
       billableOps = data.operations || [];
       if (hint) hint.textContent = billableOps.length
-        ? ('يوجد ' + billableOps.length + ' عملية بدون فاتورة — اختر واحدة (تشمل المحصّل مسبقاً)')
-        : 'لا توجد عمليات بدون فاتورة — يمكنك إدخال الفاتورة يدوياً';
+        ? ('يوجد ' + billableOps.length + ' إيراد محصّل بدون فاتورة — اختر واحداً لإصدار فاتورة ضريبية')
+        : 'لا توجد إيرادات محصّلة بدون فاتورة — يمكنك إدخال الفاتورة يدوياً';
       renderBillableOps();
     })
     .catch(() => {
@@ -659,7 +659,7 @@ function renderBillableOps() {
   const list = document.getElementById('inv-billable-list');
   if (!list) return;
   if (!billableOps.length) {
-    list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد عمليات جاهزة للفوترة.</p>';
+    list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد إيرادات محصّلة جاهزة للفوترة.</p>';
     return;
   }
   list.innerHTML = billableOps.map((op, idx) => `
@@ -691,9 +691,13 @@ function selectBillableOp(idx) {
   if (amt) amt.value = Number(op.amount_before_tax || 0).toFixed(2);
   const st = document.getElementById('f-status-sel');
   if (st) st.value = op.collected ? 'مدفوعة' : 'غير مدفوعة';
+  const pay = document.getElementById('f-pay-method');
+  if (pay && op.payment_method && !pay.value) pay.value = op.payment_method;
   const hintEl = document.getElementById('inv-billable-hint');
-  if (hintEl && op.collected) {
-    hintEl.textContent = 'العملية محصّلة مسبقاً — يمكنك إصدار فاتورة ضريبية للتوثيق أو سند قبض حسب اختيارك أعلاه.';
+  if (hintEl) {
+    hintEl.textContent = op.collected
+      ? 'تم اختيار إيراد ' + (op.code || '') + ' — يمكنك إصدار فاتورة ضريبية أو سند قبض حسب اختيارك أعلاه.'
+      : 'العملية غير محصّلة — يُفضّل التحصيل من صفحة الإيرادات أولاً.';
   }
   calcTotal();
   document.querySelectorAll('.inv-op-row').forEach(row => {

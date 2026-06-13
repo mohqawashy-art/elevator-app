@@ -319,7 +319,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 </div>
 
 <div class="modal-overlay" id="modal-add">
-  <div class="modal" style="max-width:640px">
+  <div class="modal" style="max-width:720px">
     <div class="modal-head">
       <span class="modal-title" id="modal-title">إضافة إيراد جديد</span>
       <button type="button" class="modal-close" onclick="closeAddModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
@@ -328,7 +328,15 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <div class="form-grid">
         <div class="field form-full">
           <label>العميل <span>*</span></label>
-          <select id="f-customer-sel"><option value="">اختر العميل</option></select>
+          <select id="f-customer-sel" onchange="onRevenueCustomerChange()"><option value="">اختر العميل</option></select>
+        </div>
+        <input type="hidden" id="f-source-type" value="">
+        <input type="hidden" id="f-source-id" value="">
+        <input type="hidden" id="f-contract-id" value="">
+        <div class="form-full" id="rev-billable-wrap" style="display:none;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">عمليات جاهزة للتحصيل — اختر العملية</div>
+          <div id="rev-billable-hint" style="font-size:11px;color:var(--warning);margin-bottom:8px"></div>
+          <div id="rev-billable-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
         </div>
         <div class="field">
           <label>التاريخ <span>*</span></label>
@@ -554,6 +562,112 @@ function clearFilters() {
 
 function closeAddModal() { closeModal('modal-add'); }
 
+function escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+const REV_TYPE_BY_SOURCE = {
+  contract: 'تجديد عقد',
+  invoice: 'عقد جديد',
+  parts_billing: 'قطع غيار',
+};
+
+let billableOps = [];
+
+function clearRevenueSource() {
+  ['f-source-type', 'f-source-id', 'f-contract-id'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('.inv-op-row').forEach(row => { row.style.background = ''; });
+}
+
+function onRevenueCustomerChange() {
+  const editId = document.getElementById('modal-add')?.dataset.editId;
+  if (editId) return;
+  const cid = document.getElementById('f-customer-sel')?.value;
+  const wrap = document.getElementById('rev-billable-wrap');
+  const list = document.getElementById('rev-billable-list');
+  const hint = document.getElementById('rev-billable-hint');
+  clearRevenueSource();
+  billableOps = [];
+  if (!cid) { if (wrap) wrap.style.display = 'none'; return; }
+  if (wrap) wrap.style.display = '';
+  if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
+  fetch('/api/customers/' + cid + '/billable-ops')
+    .then(r => r.json())
+    .then(data => {
+      billableOps = (data.operations || []).filter(op => !op.collected);
+      if (hint) hint.textContent = billableOps.length
+        ? ('يوجد ' + billableOps.length + ' عملية غير محصّلة — اختر واحدة للتحصيل')
+        : 'لا توجد عمليات غير محصّلة — يمكنك إدخال الإيراد يدوياً';
+      renderRevenueBillableOps();
+    })
+    .catch(() => {
+      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل العمليات</p>';
+    });
+}
+
+function renderRevenueBillableOps() {
+  const list = document.getElementById('rev-billable-list');
+  if (!list) return;
+  if (!billableOps.length) {
+    list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد عمليات جاهزة للتحصيل.</p>';
+    return;
+  }
+  list.innerHTML = billableOps.map((op, idx) => `
+    <div class="inv-op-row" data-op-idx="${idx}" onclick="selectRevenueBillableOp(${idx})"
+      style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">
+      <div style="display:flex;justify-content:space-between;gap:8px">
+        <div>
+          <strong style="font-family:var(--font-en);color:var(--accent)">${escHtml(op.code)}</strong>
+          <span style="font-size:11px;color:var(--text3);margin-right:6px">${escHtml(op.date)}</span>
+          <div style="font-size:12px;margin-top:4px">${escHtml(op.title)} — ${escHtml(op.description)}</div>
+          ${op.hint ? `<div style="font-size:11px;color:var(--warning);margin-top:4px">${escHtml(op.hint)}</div>` : ''}
+        </div>
+        <div style="text-align:left;font-size:11px;white-space:nowrap">
+          <div style="color:var(--warning);font-weight:600">الإجمالي: ${Number(op.total || 0).toLocaleString('en-US')}</div>
+          ${op.paid > 0 ? `<div style="color:var(--success)">محصّل: ${Number(op.paid || 0).toLocaleString('en-US')}</div>` : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function selectRevenueBillableOp(idx) {
+  const op = billableOps[idx];
+  if (!op) return;
+  document.getElementById('f-source-type').value = op.source_type;
+  document.getElementById('f-source-id').value = op.source_id;
+  document.getElementById('f-contract-id').value = op.contract_id || '';
+  const revType = REV_TYPE_BY_SOURCE[op.source_type] || 'زيارة';
+  const rt = document.getElementById('f-rev-type');
+  if (rt) rt.value = revType;
+  const ref = document.getElementById('f-reference');
+  if (ref) ref.value = op.code || '';
+  const notes = document.getElementById('f-notes');
+  if (notes && !notes.value.trim()) notes.value = (op.title || '') + ' — ' + (op.description || '');
+  const dateEl = document.getElementById('f-date');
+  if (dateEl && op.date) dateEl.value = op.date;
+  const st = document.getElementById('f-status-sel');
+  if (st) st.value = 'محصّل';
+  const pay = document.getElementById('f-pay-method');
+  if (pay && op.payment_method && !pay.value) pay.value = op.payment_method;
+  const beforeTax = Number(op.amount_before_tax || 0);
+  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, beforeTax, 15);
+  else {
+    const amt = document.getElementById('f-amount');
+    if (amt) amt.value = beforeTax.toFixed(2);
+  }
+  const hintEl = document.getElementById('rev-billable-hint');
+  if (hintEl) {
+    hintEl.textContent = 'تم اختيار: ' + (op.code || '') + ' — المتبقي للتحصيل ' + Number(op.total || 0).toLocaleString('en-US') + ' ⃁ (شامل الضريبة)';
+  }
+  document.querySelectorAll('.inv-op-row').forEach(row => {
+    row.style.background = String(row.dataset.opIdx) === String(idx) ? 'rgba(42,127,255,.12)' : '';
+  });
+}
+
 // ===== إضافة =====
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة إيراد جديد';
@@ -564,14 +678,23 @@ function openAddModal() {
     const sel = document.getElementById('f-customer-sel');
     if (sel) {
       sel.innerHTML = '<option value="">اختر العميل</option>' +
-        CUSTOMERS.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        CUSTOMERS.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
     }
   }
+  ['f-reference', 'f-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  clearRevenueSource();
+  billableOps = [];
+  const wrap = document.getElementById('rev-billable-wrap');
+  if (wrap) wrap.style.display = 'none';
   const today = new Date().toISOString().slice(0, 10);
   const dateEl = document.getElementById('f-date');
   if (dateEl) dateEl.value = today;
+  const revType = document.getElementById('f-rev-type');
+  if (revType) revType.value = 'تجديد عقد';
+  const statusEl = document.getElementById('f-status-sel');
+  if (statusEl) statusEl.value = 'محصّل';
   const taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, 0, 15);
+  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.resetElement(taxBlock);
   document.getElementById('modal-add').classList.add('open');
 }
 
@@ -589,6 +712,10 @@ function saveRevenue() {
     ['amount', 'f-amount'], ['status', 'f-status-sel'],
     ['reference', 'f-reference'], ['notes', 'f-notes']
   ].forEach(([f, i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
+  if (!editId) {
+    [['source_type', 'f-source-type'], ['source_id', 'f-source-id'], ['contract_id', 'f-contract-id']]
+      .forEach(([f, i]) => { const el = document.getElementById(i); if (el && el.value) fd.append(f, el.value); });
+  }
   fetch(editId ? `/revenues/edit/${editId}` : '/revenues/add', { method: 'POST', body: fd })
     .then(r => { if (!r.ok) throw new Error('fail'); window.location.reload(); })
     .catch(() => alert('تعذر حفظ الإيراد — تحقق من البيانات'));
@@ -612,6 +739,10 @@ function editRevenue(id) {
     'f-status-sel':r.status,'f-reference':r.reference,'f-notes':r.notes,
   };
   Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
+  clearRevenueSource();
+  billableOps = [];
+  const wrap = document.getElementById('rev-billable-wrap');
+  if (wrap) wrap.style.display = 'none';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, r.amount, 15);
   document.getElementById('modal-add').classList.add('open');
@@ -671,7 +802,10 @@ document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.t
 updateStats();
 if (tableSort) tableSort.bindHeaders();
 if (typeof LcClientSelect !== 'undefined') {
-  LcClientSelect.upgradeSelect('f-customer-sel', { customers: CUSTOMERS });
+  LcClientSelect.upgradeSelect('f-customer-sel', {
+    customers: CUSTOMERS,
+    onChange: onRevenueCustomerChange,
+  });
 }
 renderTable(REVENUES);
 window.__lcRefreshPage = function () {
