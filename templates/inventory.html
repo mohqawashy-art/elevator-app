@@ -140,6 +140,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;width:100%}
 .field input:focus,.field select:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
 .field input::placeholder{color:var(--text3)}
+/* استيراد */
+.import-area{border:2px dashed var(--border);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:var(--trans)}
+.import-area:hover{border-color:var(--accent);background:rgba(42,127,255,.04)}
+.import-area svg{width:32px;height:32px;color:var(--text3);margin-bottom:10px}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:768px){
   .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
@@ -157,6 +161,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <script src="/static/liftcore-dates.js" defer></script>
 <link rel="stylesheet" href="/static/liftcore-shell.css">
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/static/liftcore-format.js?v=15"></script>
 <script src="/static/liftcore-shell.js"></script>
 
@@ -237,6 +242,14 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير
         </button>
+        <a class="btn btn-secondary btn-sm" href="{{ url_for('inventory_import_template') }}" download>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+          نموذج Excel
+        </a>
+        <button class="btn btn-secondary btn-sm" onclick="openImportModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 9V2M4.5 4.5L7 2l2.5 2.5"/></svg>
+          استيراد Excel
+        </button>
         <a class="btn btn-secondary btn-sm" href="/purchase-orders">طلب شراء</a>
         <button class="btn btn-primary btn-sm" onclick="openModal()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
@@ -300,8 +313,41 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
   </div>
 </div>
 
-<!-- MODAL -->
-
+<!-- MODAL: استيراد -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">استيراد أصناف من Excel</div>
+      <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="import-area" onclick="document.getElementById('import-file').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        <p style="font-size:13px;color:var(--text2)">اضغط لاختيار ملف Excel أو CSV</p>
+        <p style="font-size:11px;margin-top:4px;color:var(--text3)">.xlsx أو .csv</p>
+        <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImport(this)">
+      </div>
+      <div id="import-preview" style="margin-top:14px;display:none">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px">معاينة البيانات</div>
+        <div id="import-table-wrap" style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)"></div>
+        <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
+      </div>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:var(--r-sm);font-size:11px;color:var(--text3);line-height:1.6">
+        <strong style="color:var(--text2)">تعليمات:</strong>
+        حمّل النموذج، املأ «اسم الصنف» (إلزامي) وباقي الأعمدة حسب الحاجة. إذا تركت «كود الصنف» فارغاً يُولَّد تلقائياً.
+        <div style="margin-top:6px">
+          <a href="{{ url_for('inventory_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-import')">إلغاء</button>
+      <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmImport()" style="display:none">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 9V2M4.5 4.5L7 2l2.5 2.5"/></svg>
+        استيراد
+      </button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modal">
@@ -479,8 +525,20 @@ function openModal(editId) {
   modal.classList.add('open');
 }
 
-function closeModal() {
-  document.getElementById('modal').classList.remove('open');
+function closeModal(id) {
+  const el = document.getElementById(id || 'modal');
+  if (el) el.classList.remove('open');
+}
+
+function openImportModal() {
+  importData = [];
+  const preview = document.getElementById('import-preview');
+  const btn = document.getElementById('btn-confirm-import');
+  const file = document.getElementById('import-file');
+  if (preview) preview.style.display = 'none';
+  if (btn) { btn.style.display = 'none'; btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 9V2M4.5 4.5L7 2l2.5 2.5"/></svg> استيراد'; }
+  if (file) file.value = '';
+  document.getElementById('modal-import').classList.add('open');
 }
 
 function editItem(id) {
@@ -537,6 +595,120 @@ function exportCSV() {
   a.download = 'inventory.csv';
   a.click();
 }
+
+// ===== استيراد =====
+var importData = [];
+
+function pickRow(row, keys) {
+  for (var i = 0; i < keys.length; i++) {
+    var v = row[keys[i]];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+  }
+  return '';
+}
+
+function handleImport(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  if (file.name.toLowerCase().endsWith('.csv')) {
+    reader.onload = function(e) { parseImportCSV(e.target.result); };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.onload = function(e) { processImportXLSX(new Uint8Array(e.target.result)); };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function processImportXLSX(data) {
+  var wb = XLSX.read(data, { type: 'array' });
+  var ws = wb.Sheets[wb.SheetNames[0]];
+  var rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+  var hi = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].some(function(v) {
+      var s = String(v || '');
+      return s.includes('اسم') || s.toLowerCase().includes('name');
+    })) { hi = i; break; }
+  }
+  var headers = rows[hi].map(function(h) { return String(h || '').trim(); });
+  importData = [];
+  for (var j = hi + 1; j < rows.length; j++) {
+    var row = {};
+    headers.forEach(function(h, k) { row[h] = String(rows[j][k] || '').trim(); });
+    var name = pickRow(row, ['اسم الصنف', 'الاسم', 'name', 'Name']);
+    if (name) importData.push(row);
+  }
+  showImportPreview(headers.filter(function(h) { return h; }));
+}
+
+function parseImportCSV(text) {
+  var lines = text.split('\n').filter(function(l) { return l.trim(); });
+  if (!lines.length) return;
+  var headers = lines[0].split(',').map(function(h) { return h.trim().replace(/"/g, ''); });
+  importData = [];
+  for (var i = 1; i < lines.length; i++) {
+    var vals = lines[i].split(',').map(function(v) { return v.trim().replace(/"/g, ''); });
+    var row = {};
+    headers.forEach(function(h, j) { row[h] = vals[j] || ''; });
+    var name = pickRow(row, ['اسم الصنف', 'الاسم', 'name', 'Name']);
+    if (name) importData.push(row);
+  }
+  showImportPreview(headers);
+}
+
+function showImportPreview(headers) {
+  document.getElementById('import-preview').style.display = 'block';
+  document.getElementById('import-status').textContent = 'تم قراءة ' + importData.length + ' صنف';
+  var tableHtml = '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>';
+  headers.forEach(function(h) {
+    tableHtml += '<th style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text3)">' + h + '</th>';
+  });
+  tableHtml += '</tr></thead><tbody>';
+  importData.slice(0, 4).forEach(function(row) {
+    tableHtml += '<tr>';
+    headers.forEach(function(h) {
+      tableHtml += '<td style="padding:5px 6px;border:1px solid var(--border);color:var(--text2)">' + (row[h] || '') + '</td>';
+    });
+    tableHtml += '</tr>';
+  });
+  tableHtml += '</tbody></table>';
+  if (importData.length > 4) {
+    tableHtml += '<div style="padding:4px 6px;font-size:11px;color:var(--text3)">... و ' + (importData.length - 4) + ' صنف آخر</div>';
+  }
+  document.getElementById('import-table-wrap').innerHTML = tableHtml;
+  document.getElementById('btn-confirm-import').style.display = 'flex';
+}
+
+async function confirmImport() {
+  if (!importData.length) { alert('لا توجد بيانات للاستيراد'); return; }
+  var btn = document.getElementById('btn-confirm-import');
+  btn.innerHTML = 'جاري الاستيراد...';
+  btn.disabled = true;
+  var ok = 0;
+  for (var i = 0; i < importData.length; i++) {
+    var row = importData[i];
+    var name = pickRow(row, ['اسم الصنف', 'الاسم', 'name', 'Name']);
+    if (!name) continue;
+    var fd = new FormData();
+    fd.append('name', name);
+    fd.append('code', pickRow(row, ['كود الصنف', 'الكود', 'code', 'Code']));
+    fd.append('category', pickRow(row, ['التصنيف', 'category']) || 'قطع غيار');
+    fd.append('unit', pickRow(row, ['الوحدة', 'unit']) || 'قطعة');
+    fd.append('current_qty', pickRow(row, ['الرصيد الحالي', 'الرصيد', 'current_qty']) || '0');
+    fd.append('min_qty', pickRow(row, ['الحد الأدنى', 'min_qty']) || '0');
+    fd.append('buy_price', pickRow(row, ['سعر الشراء', 'buy_price']) || '0');
+    fd.append('sell_price', pickRow(row, ['سعر البيع', 'sell_price']) || '0');
+    fd.append('location', pickRow(row, ['موقع التخزين', 'location']));
+    fd.append('supplier', pickRow(row, ['المورد', 'supplier']));
+    fd.append('notes', pickRow(row, ['ملاحظات', 'notes']));
+    var r = await fetch('/inventory/add', { method: 'POST', body: fd });
+    if (r.ok) ok++;
+  }
+  alert('تم استيراد ' + ok + ' صنف بنجاح');
+  window.location.reload();
+}
+
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);
   document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');

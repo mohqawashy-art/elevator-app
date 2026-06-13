@@ -3735,6 +3735,29 @@ def inventory_delete(id):
     return redirect(url_for('inventory'))
 
 
+@app.route('/inventory/template')
+def inventory_import_template():
+    """تحميل نموذج استيراد الأصناف."""
+    path = os.path.join(app.root_path, 'static', 'templates', 'inventory_template.xlsx')
+    if not os.path.isfile(path):
+        script = os.path.join(app.root_path, 'scripts', 'build_inventory_template.py')
+        if os.path.isfile(script):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('build_inventory_template', script)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                mod.build_xlsx(path)
+        if not os.path.isfile(path):
+            abort(404)
+    return send_from_directory(
+        os.path.dirname(path),
+        os.path.basename(path),
+        as_attachment=True,
+        download_name='inventory_template.xlsx',
+    )
+
+
 PO_STATUSES = ['مسودة', 'مرسل', 'مستلم', 'ملغي']
 PO_STATUS_EN = {'مسودة': 'Draft', 'مرسل': 'Sent', 'مستلم': 'Received', 'ملغي': 'Cancelled'}
 
