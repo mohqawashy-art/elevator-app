@@ -3421,10 +3421,20 @@ def revenue_edit(id):
 
 @app.route('/revenues/add', methods=['POST'])
 def revenue_add():
+    from customer_billing import COLLECTED_REVENUE_STATUSES
+
     r = _revenue_from_form(request.form)
     db.session.flush()
     sync_contract_invoice_status(r.contract_id)
     db.session.commit()
+    if (
+        r.customer_id
+        and not r.invoice_id
+        and (r.status or '') in COLLECTED_REVENUE_STATUSES
+    ):
+        return redirect(
+            f"{url_for('invoices')}?action=add&revenue_id={r.id}&customer_id={r.customer_id}"
+        )
     return redirect(url_for('revenues'))
 
 @app.route('/revenues/delete/<int:id>', methods=['POST'])

@@ -706,8 +706,15 @@ function selectBillableOp(idx) {
   document.getElementById('f-desc').value = accountDesc;
   const invDate = document.getElementById('f-date');
   if (invDate && op.date) invDate.value = op.date;
-  const amt = document.getElementById('f-amount');
-  if (amt) amt.value = Number(op.amount_before_tax || 0).toFixed(2);
+  const beforeTax = Number(op.amount_before_tax || 0);
+  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    LiftCoreTaxCalc.loadElement(taxBlock, beforeTax, 15);
+  } else {
+    const amt = document.getElementById('f-amount');
+    if (amt) amt.value = beforeTax.toFixed(2);
+    calcTotal();
+  }
   const st = document.getElementById('f-status-sel');
   if (st) st.value = op.collected ? 'مدفوعة' : 'غير مدفوعة';
   const pay = document.getElementById('f-pay-method');
@@ -719,13 +726,50 @@ function selectBillableOp(idx) {
   const hintEl = document.getElementById('inv-billable-hint');
   if (hintEl) {
     hintEl.textContent = op.collected
-      ? 'تم اختيار إيراد ' + (op.code || '') + ' — تم تعبئة بيان الحساب تلقائياً.'
+      ? 'تم اختيار إيراد ' + (op.code || '') + ' — تم تعبئة البيان والمبلغ تلقائياً.'
       : 'العملية غير محصّلة — يُفضّل التحصيل من صفحة الإيرادات أولاً.';
   }
-  calcTotal();
   document.querySelectorAll('#inv-billable-list tr.lc-op-row').forEach(row => {
     row.classList.toggle('selected', String(row.dataset.opIdx) === String(idx));
   });
+}
+
+function prefillInvoiceFromRevenue(customerId, revenueId) {
+  if (!customerId || !revenueId) {
+    openAddModal();
+    return;
+  }
+  openAddModal();
+  const wrap = document.getElementById('inv-billable-wrap');
+  const list = document.getElementById('inv-billable-list');
+  const hint = document.getElementById('inv-billable-hint');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, customerId);
+  }
+  if (wrap) wrap.style.display = 'block';
+  if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري تحميل الإيراد...</p>';
+  fetch('/api/customers/' + customerId + '/invoicable-revenues', { credentials: 'same-origin' })
+    .then(r => {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    })
+    .then(data => {
+      billableOps = data.operations || [];
+      if (hint) {
+        hint.textContent = billableOps.length
+          ? ('تم تحميل ' + billableOps.length + ' إيراد — تم اختيار الإيراد المحصّل تلقائياً')
+          : 'لا توجد إيرادات محصّلة بدون فاتورة';
+      }
+      renderBillableOps();
+      const idx = billableOps.findIndex(op =>
+        op.source_type === 'revenue' && String(op.source_id) === String(revenueId)
+      );
+      if (idx >= 0) selectBillableOp(idx);
+      else if (hint) hint.textContent = 'تعذّر العثور على الإيراد — اختره يدوياً من الجدول';
+    })
+    .catch(() => {
+      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل الإيراد</p>';
+    });
 }
 
 function closeAddModal() { closeModal('modal-add'); }
@@ -876,7 +920,14 @@ window.__lcRefreshPage = function () {
   updateStats();
   renderTable(typeof filtered !== 'undefined' ? filtered : INVOICES);
 };
-if (new URLSearchParams(window.location.search).get('action') === 'add') {
+const urlParams = new URLSearchParams(window.location.search);
+const actionAdd = urlParams.get('action') === 'add';
+const prefillRevenueId = urlParams.get('revenue_id');
+const prefillCustomerId = urlParams.get('customer_id');
+if (actionAdd && prefillRevenueId && prefillCustomerId) {
+  prefillInvoiceFromRevenue(prefillCustomerId, prefillRevenueId);
+  history.replaceState(null, '', window.location.pathname);
+} else if (actionAdd) {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);
 }
