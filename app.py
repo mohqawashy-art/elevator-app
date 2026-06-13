@@ -486,6 +486,8 @@ ALLOWED_TECH_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_LOGO_EXT = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
 ALLOWED_TECH_DOC_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 ALLOWED_CLIENT_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
+ALLOWED_CONTRACT_FILE_EXT = {'pdf'}
+MAX_CONTRACT_FILE_BYTES = 10 * 1024 * 1024
 
 # =============================================
 # Helper — توليد الكودات التلقائية
@@ -2015,6 +2017,52 @@ def _apply_contract_form(c, form):
     c.invoice_status = contract_invoice_status(c)
 
 
+def _contract_upload_dir(contract_id):
+    path = os.path.join(app.root_path, 'static', 'uploads', 'contracts', str(contract_id))
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def contract_file_display_name(relative_path):
+    if not relative_path:
+        return ''
+    base = os.path.basename(relative_path.replace('\\', '/'))
+    if '_' in base:
+        return base.split('_', 1)[1]
+    return base
+
+
+def _remove_contract_file(c):
+    if not c.file_path:
+        return
+    full = os.path.join(app.root_path, 'static', c.file_path.replace('/', os.sep))
+    if os.path.isfile(full):
+        try:
+            os.remove(full)
+        except OSError:
+            pass
+
+
+def _save_contract_file(c, file_storage):
+    if not file_storage or not file_storage.filename:
+        return
+    if not _ext_ok(file_storage.filename, ALLOWED_CONTRACT_FILE_EXT):
+        return
+    file_storage.seek(0, os.SEEK_END)
+    size = file_storage.tell()
+    file_storage.seek(0)
+    if size > MAX_CONTRACT_FILE_BYTES:
+        return
+    if not c.id:
+        db.session.flush()
+    _remove_contract_file(c)
+    original = secure_filename(file_storage.filename) or 'contract.pdf'
+    stored = f'{uuid.uuid4().hex[:10]}_{original}'
+    abs_path = os.path.join(_contract_upload_dir(c.id), stored)
+    file_storage.save(abs_path)
+    c.file_path = f'uploads/contracts/{c.id}/{stored}'
+
+
 # =============================================
 # العقود
 # =============================================
@@ -2039,6 +2087,7 @@ def contracts():
 def contract_edit(id):
     c = Contract.query.get_or_404(id)
     _apply_contract_form(c, request.form)
+    _save_contract_file(c, request.files.get('contract_file'))
     _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
     db.session.commit()
     return redirect(url_for('contracts'))
@@ -2050,6 +2099,7 @@ def contract_add():
     _apply_contract_form(c, request.form)
     db.session.add(c)
     db.session.flush()
+    _save_contract_file(c, request.files.get('contract_file'))
     _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
     db.session.commit()
     return redirect(url_for('contracts'))
@@ -2057,6 +2107,7 @@ def contract_add():
 @app.route('/contracts/delete/<int:id>', methods=['POST'])
 def contract_delete(id):
     c = Contract.query.get_or_404(id)
+    _remove_contract_file(c)
     db.session.delete(c)
     db.session.commit()
     return redirect(url_for('contracts'))
@@ -2148,6 +2199,7 @@ def serve_upload_file(subpath):
 
 
 app.jinja_env.globals['upload_url'] = upload_url
+app.jinja_env.globals['contract_file_display_name'] = contract_file_display_name
 
 
 def _ext_ok(filename, allowed):

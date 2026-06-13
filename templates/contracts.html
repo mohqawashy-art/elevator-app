@@ -235,6 +235,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .upload-area svg{width:28px;height:28px;color:var(--text3);margin-bottom:8px}
 .upload-area p{font-size:12px;color:var(--text3)}
 .upload-area span{color:var(--accent)}
+.contract-attach-link{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--accent);text-decoration:none;font-weight:500}
+.contract-attach-link:hover{text-decoration:underline}
+.contract-attach-empty{color:var(--text3);font-size:12px}
 .view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .view-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
 .view-label{font-size:11px;color:var(--text3);margin-bottom:4px}
@@ -451,6 +454,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <th class="th-sort" data-sort-col="total">الإجمالي <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="inv_status">حالة الفاتورة <span class="sort-ind"></span></th>
+              <th>مرفق</th>
               <th>إجراءات</th>
             </tr>
           </thead>
@@ -471,6 +475,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <td class="td-amount">{{ format_money_amount(c.total) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
             <td><span class="badge {{ ctr_badges.get(disp, 'badge-active') }}">{{ disp }}</span></td>
             <td><span class="badge {{ inv_badges.get(inv, 'badge-unpaid') }}">{{ inv }}</span></td>
+            <td>{% if c.file_path %}<a class="contract-attach-link" href="{{ upload_url(c.file_path) }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 PDF</a>{% else %}<span class="contract-attach-empty">—</span>{% endif %}</td>
             <td onclick="event.stopPropagation()"><div class="td-actions">
               <button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();printContractForm({{ c.id }})" title="طباعة العقد" style="color:var(--gold)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg></button>
               <button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();viewContract({{ c.id }})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
@@ -653,6 +658,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <input type="file" id="contract-file" accept=".pdf" style="display:none" onchange="showFileName(this)">
         </div>
         <div id="file-name" style="font-size:12px;color:var(--accent);margin-top:8px;display:none"></div>
+        <div id="existing-file-wrap" style="display:none;margin-top:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;color:var(--text2)">
+          <span>الملف الحالي: </span><a id="existing-file-link" href="#" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none"></a>
+        </div>
       </div>
 
       <div class="form-section">
@@ -744,6 +752,8 @@ const CONTRACTS = [
     status:        {{ c.status|tojson }},
     reminder_date: {{ (c.reminder_date.isoformat() if c.reminder_date else '')|tojson }},
     notes:         {{ (c.notes or '')|tojson }},
+    file_url:      {{ upload_url(c.file_path)|tojson }},
+    file_name:     {{ contract_file_display_name(c.file_path)|tojson }},
   },
   {% endfor %}
 ];
@@ -770,6 +780,38 @@ const NEXT_CONTRACT_CODE = {{ next_contract_code|tojson }};
 
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function contractAttachmentCell(c) {
+  if (!c.file_url) return '<span class="contract-attach-empty">—</span>';
+  return '<a class="contract-attach-link" href="' + esc(c.file_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + esc(c.file_name || 'PDF') + '">📄 PDF</a>';
+}
+
+function contractAttachmentBlock(c) {
+  if (!c.file_url) {
+    return '<div class="view-section">المرفقات</div>' +
+      '<div class="view-item view-full"><div class="view-label">ملف العقد</div><div class="view-val contract-attach-empty">لا يوجد مرفق</div></div>';
+  }
+  return '<div class="view-section">المرفقات</div>' +
+    '<div class="view-item view-full"><div class="view-label">ملف العقد (PDF)</div><div class="view-val">' +
+    '<a class="contract-attach-link" href="' + esc(c.file_url) + '" target="_blank" rel="noopener">📄 ' + esc(c.file_name || 'فتح المرفق') + '</a>' +
+    '</div></div>';
+}
+
+function setContractFileUi(c) {
+  var fn = document.getElementById('file-name');
+  var wrap = document.getElementById('existing-file-wrap');
+  var link = document.getElementById('existing-file-link');
+  var input = document.getElementById('contract-file');
+  if (input) input.value = '';
+  if (fn) { fn.style.display = 'none'; fn.textContent = ''; }
+  if (c && c.file_url && wrap && link) {
+    wrap.style.display = 'block';
+    link.href = c.file_url;
+    link.textContent = c.file_name || 'contract.pdf';
+  } else if (wrap) {
+    wrap.style.display = 'none';
+  }
 }
 
 function moneyRound2(n) {
@@ -998,6 +1040,7 @@ function renderTable(data) {
       '<td class="td-amount">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td><span class="badge ' + (STATUS_BADGE[disp] || 'badge-active') + '">' + esc(D(disp)) + '</span></td>' +
       '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(D(c.inv_status)) + '</span></td>' +
+      '<td>' + contractAttachmentCell(c) + '</td>' +
       '<td onclick="event.stopPropagation()"><div class="td-actions">' +
         '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();printContractForm(' + c.id + ')" title="طباعة العقد" style="color:var(--gold)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg></button>' +
         '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();viewContract(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
@@ -1060,6 +1103,7 @@ function resetContractForm() {
   document.getElementById('f-payment-terms').selectedIndex = 0;
   document.getElementById('elevators-select').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">اختر العميل أولاً لعرض مصاعده</div>';
   document.getElementById('selected-count').textContent = 'لم يتم اختيار مصاعد';
+  setContractFileUi(null);
   calcTotalVisits();
 }
 
@@ -1109,6 +1153,10 @@ function saveContract() {
   fd.append('status', document.getElementById('f-status-sel').value);
   fd.append('notes', document.getElementById('f-notes').value);
   getSelectedElevatorIds().forEach(function(id) { fd.append('elevator_ids', id); });
+  var fileInput = document.getElementById('contract-file');
+  if (fileInput && fileInput.files && fileInput.files.length) {
+    fd.append('contract_file', fileInput.files[0]);
+  }
   fetch(editId ? '/contracts/edit/' + editId : '/contracts/add', {method: 'POST', body: fd, credentials: 'same-origin'})
     .then(function(res) {
       if (res.redirected || res.ok) {
@@ -1141,6 +1189,7 @@ function editContract(id) {
   if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, c.value, c.tax_pct || 15);
   loadClientElevators(c.elevator_ids || []);
   calcTotalVisits();
+  setContractFileUi(c);
   document.getElementById('modal-add').classList.add('open');
 }
 
@@ -1174,6 +1223,7 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">إجمالي الزيارات</div><div class="view-val">' + (c.visits_month || '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">شروط الدفع</div><div class="view-val">' + esc(c.pay_terms || '—') + '</div></div>' +
       (c.notes ? '<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">' + esc(c.notes) + '</div></div>' : '') +
+      contractAttachmentBlock(c) +
     '</div>';
   document.getElementById('modal-view').classList.add('open');
   LiftCoreProfile.appendToView(document.getElementById('view-body'), c.customer_id, c.id, { timelineLimit: 15 });
