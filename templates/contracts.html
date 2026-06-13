@@ -249,6 +249,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .fin-row:last-child{border-bottom:none;padding-top:10px;font-weight:600;font-size:14px;color:var(--text1)}
 .fin-row span:first-child{color:var(--text2)}
 .fin-row span:last-child{font-family:var(--font-en);color:var(--text1)}
+/* استيراد */
+.import-area{border:2px dashed var(--border);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:var(--trans)}
+.import-area:hover{border-color:var(--accent);background:rgba(42,127,255,.04)}
+.import-area svg{width:32px;height:32px;color:var(--text3);margin-bottom:10px}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:1200px){.stats-row{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:768px){
@@ -269,6 +273,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <script src="/static/liftcore-dates.js" defer></script>
 <link rel="stylesheet" href="/static/liftcore-shell.css">
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/static/liftcore-format.js?v=15"></script>
 <script src="/static/tax_calc.js"></script>
 <script src="/static/liftcore-shell.js"></script>
@@ -395,7 +400,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير Excel
         </button>
-        <button class="btn btn-secondary btn-sm">
+        <a class="btn btn-secondary btn-sm" href="{{ url_for('contracts_import_template') }}" download>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+          نموذج Excel
+        </a>
+        <button class="btn btn-secondary btn-sm" onclick="openImportModal()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
           استيراد Excel
         </button>
@@ -523,6 +532,44 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- MODAL: استيراد -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-head">
+      <div class="modal-title">استيراد عقود من Excel</div>
+      <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="import-area" onclick="document.getElementById('contract-import-file').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        <p style="font-size:13px;color:var(--text2)">اضغط لاختيار ملف Excel أو CSV</p>
+        <p style="font-size:11px;margin-top:4px;color:var(--text3)">.xlsx أو .csv</p>
+        <input type="file" id="contract-import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleContractImport(this)">
+      </div>
+      <div id="import-preview" style="margin-top:14px;display:none">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px">معاينة البيانات</div>
+        <div id="import-table-wrap" style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)"></div>
+        <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
+      </div>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:var(--r-sm);font-size:11px;color:var(--text3);line-height:1.7">
+        <strong style="color:var(--text2)">تعليمات:</strong>
+        يجب أن يكون العميل موجوداً مسبقاً (كود أو اسم). التواريخ بصيغة <code style="font-family:var(--font-en)">YYYY-MM-DD</code>.
+        أكواد المصاعد مفصولة بفاصلة (مثل: EL-0001، EL-0002).
+        <div style="margin-top:6px">
+          <a href="{{ url_for('contracts_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-import')">إلغاء</button>
+      <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmContractImport()" style="display:none">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
+        استيراد
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1386,6 +1433,190 @@ function exportExcel() {
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
   a.download='contracts.csv'; a.click();
+}
+
+// ===== استيراد العقود =====
+var contractImportData = [];
+
+function pickImportRow(row, keys) {
+  for (var i = 0; i < keys.length; i++) {
+    var v = row[keys[i]];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+  }
+  return '';
+}
+
+function resolveImportCustomer(row) {
+  var code = pickImportRow(row, ['كود العميل', 'customer_code', 'Client Code']);
+  if (code) {
+    var byCode = CUSTOMERS.find(function(c) { return String(c.code).toLowerCase() === code.toLowerCase(); });
+    if (byCode) return byCode;
+  }
+  var name = pickImportRow(row, ['اسم العميل', 'العميل', 'customer', 'Customer']);
+  if (name) {
+    var byName = CUSTOMERS.find(function(c) { return c.name === name; });
+    if (byName) return byName;
+  }
+  return null;
+}
+
+function importDate(val) {
+  var s = String(val || '').trim();
+  if (!s) return '';
+  if (/^\d+(\.\d+)?$/.test(s) && typeof XLSX !== 'undefined' && XLSX.SSF && XLSX.SSF.parse_date_code) {
+    var d = XLSX.SSF.parse_date_code(parseFloat(s));
+    if (d) {
+      return d.y + '-' + String(d.m).padStart(2, '0') + '-' + String(d.d).padStart(2, '0');
+    }
+  }
+  if (s.length >= 10) return s.slice(0, 10);
+  return s;
+}
+
+function resolveImportElevatorIds(codesStr, customerId) {
+  if (!codesStr) return [];
+  var parts = String(codesStr).split(/[,،;|]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+  var ids = [];
+  parts.forEach(function(code) {
+    Object.keys(ELEVATOR_LOOKUP).forEach(function(k) {
+      var e = ELEVATOR_LOOKUP[k];
+      if (String(e.code).toLowerCase() === code.toLowerCase() && Number(e.customer_id) === Number(customerId)) {
+        if (ids.indexOf(String(k)) < 0) ids.push(String(k));
+      }
+    });
+  });
+  return ids;
+}
+
+function openImportModal() {
+  contractImportData = [];
+  var preview = document.getElementById('import-preview');
+  var btn = document.getElementById('btn-confirm-import');
+  var file = document.getElementById('contract-import-file');
+  if (preview) preview.style.display = 'none';
+  if (btn) {
+    btn.style.display = 'none';
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg> استيراد';
+  }
+  if (file) file.value = '';
+  document.getElementById('modal-import').classList.add('open');
+}
+
+function handleContractImport(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  if (file.name.toLowerCase().endsWith('.csv')) {
+    reader.onload = function(e) { parseContractImportCSV(e.target.result); };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.onload = function(e) { processContractImportXLSX(new Uint8Array(e.target.result)); };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function processContractImportXLSX(data) {
+  var wb = XLSX.read(data, { type: 'array' });
+  var ws = wb.Sheets[wb.SheetNames[0]];
+  var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+  var hi = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].some(function(v) {
+      var s = String(v || '');
+      return s.includes('كود العميل') || s.includes('اسم العميل') || s.toLowerCase().includes('customer');
+    })) { hi = i; break; }
+  }
+  var headers = rows[hi].map(function(h) { return String(h || '').trim(); });
+  contractImportData = [];
+  for (var j = hi + 1; j < rows.length; j++) {
+    var row = {};
+    headers.forEach(function(h, k) { row[h] = String(rows[j][k] || '').trim(); });
+    if (resolveImportCustomer(row)) contractImportData.push(row);
+  }
+  showContractImportPreview(headers.filter(function(h) { return h; }));
+}
+
+function parseContractImportCSV(text) {
+  var lines = text.split('\n').filter(function(l) { return l.trim(); });
+  if (!lines.length) return;
+  var headers = lines[0].split(',').map(function(h) { return h.trim().replace(/"/g, ''); });
+  contractImportData = [];
+  for (var i = 1; i < lines.length; i++) {
+    var vals = lines[i].split(',').map(function(v) { return v.trim().replace(/"/g, ''); });
+    var row = {};
+    headers.forEach(function(h, j) { row[h] = vals[j] || ''; });
+    if (resolveImportCustomer(row)) contractImportData.push(row);
+  }
+  showContractImportPreview(headers);
+}
+
+function showContractImportPreview(headers) {
+  document.getElementById('import-preview').style.display = 'block';
+  document.getElementById('import-status').textContent = 'تم قراءة ' + contractImportData.length + ' عقد';
+  var showHeaders = headers.slice(0, 6);
+  var tableHtml = '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>';
+  showHeaders.forEach(function(h) {
+    tableHtml += '<th style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text3)">' + h + '</th>';
+  });
+  tableHtml += '</tr></thead><tbody>';
+  contractImportData.slice(0, 4).forEach(function(row) {
+    tableHtml += '<tr>';
+    showHeaders.forEach(function(h) {
+      tableHtml += '<td style="padding:5px 6px;border:1px solid var(--border);color:var(--text2)">' + (row[h] || '') + '</td>';
+    });
+    tableHtml += '</tr>';
+  });
+  tableHtml += '</tbody></table>';
+  if (contractImportData.length > 4) {
+    tableHtml += '<div style="padding:4px 6px;font-size:11px;color:var(--text3)">... و ' + (contractImportData.length - 4) + ' عقد آخر</div>';
+  }
+  document.getElementById('import-table-wrap').innerHTML = tableHtml;
+  document.getElementById('btn-confirm-import').style.display = contractImportData.length ? 'flex' : 'none';
+}
+
+async function confirmContractImport() {
+  if (!contractImportData.length) { alert('لا توجد بيانات للاستيراد'); return; }
+  var btn = document.getElementById('btn-confirm-import');
+  btn.innerHTML = 'جاري الاستيراد...';
+  btn.disabled = true;
+  var ok = 0;
+  var skip = 0;
+  for (var i = 0; i < contractImportData.length; i++) {
+    var row = contractImportData[i];
+    var customer = resolveImportCustomer(row);
+    if (!customer) { skip++; continue; }
+    var startDate = importDate(pickImportRow(row, ['تاريخ البداية', 'start_date', 'Start Date']));
+    var endDate = importDate(pickImportRow(row, ['تاريخ الانتهاء', 'end_date', 'End Date']));
+    if (!startDate || !endDate) { skip++; continue; }
+    var fd = new FormData();
+    fd.append('customer_id', customer.id);
+    fd.append('contract_type', pickImportRow(row, ['نوع العقد', 'contract_type']) || 'عقد صيانة');
+    fd.append('start_date', startDate);
+    fd.append('end_date', endDate);
+    fd.append('maint_frequency', pickImportRow(row, ['تكرار الصيانة', 'maint_frequency']) || 'شهري');
+    fd.append('visits_per_month', '1');
+    fd.append('value', pickImportRow(row, ['قيمة العقد قبل الضريبة', 'value', 'القيمة']) || '0');
+    fd.append('tax_pct', pickImportRow(row, ['نسبة الضريبة %', 'tax_pct', 'نسبة الضريبة']) || '15');
+    var total = pickImportRow(row, ['الإجمالي شامل الضريبة', 'total', 'الإجمالي']);
+    if (total) fd.append('total', total);
+    fd.append('payment_terms', pickImportRow(row, ['شروط الدفع', 'payment_terms']) || 'دفعة واحدة');
+    fd.append('status', pickImportRow(row, ['حالة العقد', 'status']) || 'نشط');
+    fd.append('notes', pickImportRow(row, ['ملاحظات', 'notes']));
+    resolveImportElevatorIds(
+      pickImportRow(row, ['أكواد المصاعد', 'elevator_codes', 'المصاعد']),
+      customer.id
+    ).forEach(function(id) { fd.append('elevator_ids', id); });
+    try {
+      var res = await fetch('/contracts/add', { method: 'POST', body: fd, credentials: 'same-origin' });
+      if (res.redirected || res.ok) ok++;
+      else skip++;
+    } catch (e) {
+      skip++;
+    }
+  }
+  alert('تم استيراد ' + ok + ' عقد' + (skip ? (' — تم تخطي ' + skip + ' سجل') : ''));
+  window.location.reload();
 }
 
 // ===== خريطة العقود =====

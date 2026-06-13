@@ -2099,6 +2099,29 @@ def contracts():
     )
 
 
+@app.route('/contracts/template')
+def contracts_import_template():
+    """تحميل نموذج استيراد العقود."""
+    path = os.path.join(app.root_path, 'static', 'templates', 'contracts_template.xlsx')
+    if not os.path.isfile(path):
+        script = os.path.join(app.root_path, 'scripts', 'build_contracts_template.py')
+        if os.path.isfile(script):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('build_contracts_template', script)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                mod.build_xlsx(path)
+        if not os.path.isfile(path):
+            abort(404)
+    return send_from_directory(
+        os.path.dirname(path),
+        os.path.basename(path),
+        as_attachment=True,
+        download_name='contracts_template.xlsx',
+    )
+
+
 @app.route('/contracts/edit/<int:id>', methods=['POST'])
 def contract_edit(id):
     c = Contract.query.get_or_404(id)
