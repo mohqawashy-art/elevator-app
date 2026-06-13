@@ -92,9 +92,15 @@ def geocode_address(
     return None
 
 
-def geocode_customer(customer, *, delay: float = 0.12) -> bool:
-    """يحدّث حقول العميل ويرجع True عند النجاح."""
-    if customer.lat and customer.lng:
+def geocode_customer(
+    customer,
+    *,
+    delay: float = 0.12,
+    query_address: str | None = None,
+    force: bool = False,
+) -> bool:
+    """يحدّث lat/lng/maps_url — query_address للبحث (مثلاً عنوان OSM كامل)."""
+    if not force and customer.lat and customer.lng:
         try:
             float(customer.lat)
             float(customer.lng)
@@ -103,13 +109,13 @@ def geocode_customer(customer, *, delay: float = 0.12) -> bool:
             pass
 
     result = geocode_address(
-        address=customer.address or "",
+        address=query_address if query_address is not None else (customer.address or ""),
         city=customer.city or "",
         district=customer.district or "",
         prefer_nominatim=True,
     )
     if delay:
-        time.sleep(max(delay, 1.05))
+        time.sleep(max(delay, 0.25))
     if not result:
         return False
 

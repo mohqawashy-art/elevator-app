@@ -125,6 +125,19 @@ def _build_customer_index(customers: list[Customer]) -> tuple[dict[str, Customer
     return by_code, by_name
 
 
+def _display_address(city: str, district: str, geo_address: str) -> str:
+    """عنوان عربي قصير للواجهة — الخريطة تعتمد lat/lng وليس هذا الحقل."""
+    if district and city:
+        return f'{district}، {city}'
+    if district:
+        return district
+    if city:
+        return city
+    if geo_address:
+        return geo_address.split(',')[0].strip()
+    return ''
+
+
 def _lookup_customer(
     row: dict[str, str],
     by_code: dict[str, Customer],
@@ -167,9 +180,10 @@ def import_client_addresses(
 
         city = _cell(row, 'المدينة', 'city')
         district = _cell(row, 'الحي أو المنطقة', 'الحي', 'district')
-        address = _cell(row, 'العنوان', 'address', 'العنوان التفصيلي')
+        geo_query = _cell(row, 'العنوان', 'address', 'العنوان التفصيلي')
+        display_addr = _display_address(city, district, geo_query)
 
-        if not address and not city and not district:
+        if not geo_query and not city and not district:
             skipped += 1
             continue
 
@@ -180,8 +194,8 @@ def import_client_addresses(
         if district and customer.district != district:
             customer.district = district
             changed = True
-        if address and customer.address != address:
-            customer.address = address
+        if display_addr and customer.address != display_addr:
+            customer.address = display_addr
             changed = True
 
         need_geo = not no_geocode and (
@@ -201,7 +215,12 @@ def import_client_addresses(
             if not has_gps or force_geocode:
                 if dry_run:
                     changed = True
-                elif geocode_customer(customer, delay=geocode_delay):
+                elif geocode_customer(
+                    customer,
+                    delay=geocode_delay,
+                    query_address=geo_query or None,
+                    force=force_geocode,
+                ):
                     geocoded += 1
                     changed = True
                 else:
@@ -222,6 +241,48 @@ def import_client_addresses(
         'geocoded': geocoded,
         'geo_fail': geo_fail,
         'missing_codes': missing_codes,
+        'dry_run': dry_run,
+    }
+
+
+def geocode_customers_missing(
+    *,
+    dry_run: bool = False,
+    force: bool = False,
+    geocode_delay: float = 0.35,
+    db_session=None,
+) -> dict:
+    """تحديد مواقع الخريطة (lat/lng) للعملاء الذين لديهم عنوان/مدينة بدون GPS."""
+    geocoded = geo_fail = skipped = 0
+    for customer in Customer.query.all():
+        has_gps = False
+        if customer.lat and customer.lng and not force:
+            try:
+                float(customer.lat)
+                float(customer.lng)
+                has_gps = True
+            except (TypeError, ValueError):
+                pass
+        if has_gps:
+            continue
+        if not (customer.address or customer.city or customer.district):
+            skipped += 1
+            continue
+        if dry_run:
+            geocoded += 1
+            continue
+        if geocode_customer(customer, delay=geocode_delay, force=force):
+            geocoded += 1
+        else:
+            geo_fail += 1
+
+    if not dry_run and db_session is not None:
+        db_session.commit()
+
+    return {
+        'geocoded': geocoded,
+        'geo_fail': geo_fail,
+        'skipped': skipped,
         'dry_run': dry_run,
     }
 
