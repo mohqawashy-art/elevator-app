@@ -3630,7 +3630,8 @@ def invoice_add():
 def invoice_print_page(invoice_id):
     from invoice_print import invoice_print_payload
 
-    return render_template('invoice-print.html', **invoice_print_payload(invoice_id))
+    invo = Invoice.query.get_or_404(invoice_id)
+    return render_template('invoice-print.html', **invoice_print_payload(invo))
 
 
 @app.route('/invoices/delete/<int:id>', methods=['POST'])
