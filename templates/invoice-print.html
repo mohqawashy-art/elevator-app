@@ -31,38 +31,49 @@ body.page-a5 .doc{width:148mm;min-height:210mm;max-width:148mm;margin:56px auto 
   body.page-a4 .doc,body.page-a5 .doc{margin:0;border:none;box-shadow:none;width:100%;max-width:none;min-height:auto;padding:0}
 }
 
-.doc-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px 14px;border-bottom:2px solid #1a3a5c;padding-bottom:12px;margin-bottom:12px}
-.head-co{text-align:right;align-self:start;font-size:10px;line-height:1.55}
-.head-co .co-name{font-size:15px;font-weight:800;color:#1a3a5c}
-.head-co .co-en{font-size:9px;color:#666;direction:ltr}
-.head-co .lbl{color:#666;font-size:9px}
-.head-co .val{font-weight:600}
-.head-co .val.ltr{direction:ltr;display:inline-block}
+.doc-head{
+  display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:14px 20px;
+  border-bottom:2px solid #1a3a5c;padding-bottom:12px;margin-bottom:12px;
+}
+.head-brand{text-align:right}
+.head-brand img{
+  width:{{ logo_width }}px;height:auto;max-height:{{ logo_width + 36 }}px;
+  object-fit:contain;display:block;margin-right:0;margin-left:auto;
+}
+.head-brand .head-contact{margin-top:8px;font-size:10px;line-height:1.65;text-align:right}
+.head-brand .lbl{color:#666;font-size:9px}
+.head-brand .val{font-weight:600}
+.head-brand .val.ltr{direction:ltr;unicode-bidi:embed;display:inline-block;text-align:left}
 
-.head-logo{text-align:center;justify-self:center}
-.head-logo img{width:{{ logo_width }}px;height:auto;max-height:{{ logo_width + 36 }}px;object-fit:contain;display:block;margin:0 auto}
-
-.head-doc{text-align:left;align-self:start;justify-self:end}
+.head-doc{text-align:right;align-self:start}
 .head-doc .doc-title{font-size:16px;font-weight:800;color:#1a3a5c}
-.head-doc .doc-title-en{font-size:10px;color:#666;direction:ltr;margin-top:2px}
-.head-doc .doc-num{font-size:12px;color:#c0392b;font-weight:700;margin-top:6px;direction:ltr}
+.head-doc .doc-title-en{font-size:10px;color:#666;direction:ltr;text-align:right;margin-top:2px}
+.head-doc .doc-num{font-size:12px;color:#c0392b;font-weight:700;margin-top:6px;direction:ltr;text-align:right}
 .head-doc .irn-lbl{font-size:9px;color:#666;margin-top:4px}
 
 .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.party{border:1px solid #dee2e6;border-radius:4px;padding:10px;background:#fafbfc}
-.party h3{font-size:11px;font-weight:800;color:#fff;background:#1a3a5c;margin:-10px -10px 8px;padding:5px 10px;border-radius:4px 4px 0 0}
-.party .row{margin-bottom:4px;font-size:10px}
-.party .row .k{color:#666;display:inline-block;min-width:88px}
-.party .row .v{font-weight:600}
-.party .row .v.ltr{direction:ltr;display:inline-block}
+.party{
+  border:1px solid #dee2e6;border-radius:4px;padding:10px;background:#fafbfc;text-align:right;
+}
+.party h3{
+  font-size:11px;font-weight:800;color:#fff;background:#1a3a5c;
+  margin:-10px -10px 10px;padding:6px 10px;border-radius:4px 4px 0 0;text-align:right;
+}
+.party .row{margin-bottom:8px;font-size:10px;line-height:1.5}
+.party .row:last-child{margin-bottom:0}
+.party .row .k{color:#666;display:block;font-size:9px;font-weight:700;margin-bottom:2px}
+.party .row .v{font-weight:600;display:block}
+.party .row .v.ltr{direction:ltr;unicode-bidi:embed;text-align:right}
 
 .inv-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.inv-meta .cell{border:1px solid #dee2e6;border-radius:4px;padding:6px 8px;background:#f8f9fa}
-.inv-meta .cell label{font-size:8px;color:#666;font-weight:700;display:block}
+.inv-meta .cell{
+  border:1px solid #dee2e6;border-radius:4px;padding:8px 10px;background:#f8f9fa;text-align:right;
+}
+.inv-meta .cell label{font-size:8px;color:#666;font-weight:700;display:block;margin-bottom:3px}
 .inv-meta .cell div{font-size:11px;font-weight:600}
-.inv-meta .cell div.ltr{direction:ltr}
+.inv-meta .cell div.ltr{direction:ltr;unicode-bidi:embed;text-align:right}
 
-.sec-title{font-size:10px;font-weight:700;color:#fff;background:#1a3a5c;padding:5px 12px;border-radius:4px 4px 0 0;margin-top:4px}
+.sec-title{font-size:10px;font-weight:700;color:#fff;background:#1a3a5c;padding:5px 12px;border-radius:4px 4px 0 0;margin-top:4px;text-align:right}
 .items-table{width:100%;border-collapse:collapse;font-size:10px;border:1px solid #1a3a5c;border-top:none;margin-bottom:10px}
 .items-table thead th{background:#eef2f8;color:#1a3a5c;font-weight:700;padding:6px 5px;border-bottom:1px solid #c5d0e0;text-align:center;font-size:9px}
 .items-table tbody td{padding:6px 5px;border-bottom:1px solid #e8ecf2;vertical-align:top}
@@ -70,30 +81,32 @@ body.page-a5 .doc{width:148mm;min-height:210mm;max-width:148mm;margin:56px auto 
 .items-table .col-name{text-align:right;min-width:120px}
 .items-table .num{direction:ltr;text-align:center;white-space:nowrap;font-weight:600}
 .items-table .col-incl{color:#1b7a3d;font-weight:700}
+.cur{font-size:9px;font-weight:700;color:#666;margin-right:2px}
 
 .totals-wrap{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:10px 0;flex-wrap:wrap}
-.totals{min-width:280px;max-width:340px;flex:1}
-.totals .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #ddd;font-size:11px}
-.totals .row span:last-child{direction:ltr;font-weight:600}
+.totals{min-width:280px;max-width:340px;flex:1;text-align:right}
+.totals .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;border-bottom:1px dashed #ddd;font-size:11px}
+.totals .row span:first-child{text-align:right;flex:1}
+.totals .row span:last-child{direction:ltr;font-weight:600;white-space:nowrap;text-align:left}
 .totals .row.grand{background:#1a3a5c;color:#fff;padding:10px 12px;border-radius:4px;border-bottom:none;margin-top:4px;font-weight:700}
 .totals .row.grand span:last-child{font-size:15px}
-.totals .stmt{font-size:9px;color:#666;margin-top:6px;font-style:italic}
+.totals .stmt{font-size:9px;color:#666;margin-top:6px;font-style:italic;text-align:right}
 
-.zatca-block{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:10px;border:1px solid #dee2e6;border-radius:6px;background:#fafbfc;min-width:260px}
+.zatca-block{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:10px;border:1px solid #dee2e6;border-radius:6px;background:#fafbfc;min-width:260px;text-align:right}
 .zatca-qr-img{display:block;width:130px;height:130px;margin:0 auto}
 .zatca-label{font-size:8px;color:#666;margin-top:4px;text-align:center;font-weight:600}
 .zatca-meta{font-size:9px;line-height:1.7;color:#444}
 
-.compliance-box{margin:10px 0;padding:8px 10px;background:#fff3cd;border:1px solid #f0c040;border-radius:4px;font-size:9px;color:#7d5a00}
+.compliance-box{margin:10px 0;padding:8px 10px;background:#fff3cd;border:1px solid #f0c040;border-radius:4px;font-size:9px;color:#7d5a00;text-align:right}
 .compliance-box ul{margin:4px 16px 0 0}
-.notes-box{margin:8px 0;font-size:10px;color:#666;padding:8px;background:#f8f9fa;border-radius:4px}
+.notes-box{margin:8px 0;font-size:10px;color:#666;padding:8px;background:#f8f9fa;border-radius:4px;text-align:right}
 .sigs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
 .sig{border-top:1px solid #999;padding-top:6px;text-align:center;font-size:10px;color:#666;min-height:50px}
 .doc-foot{margin-top:14px;padding-top:8px;border-top:1px dashed #ccc;font-size:8px;color:#888;text-align:center;line-height:1.6}
 
 body.page-a5 .doc-head .doc-title{font-size:13px}
 body.page-a5 .items-table{font-size:9px}
-body.page-a5 .head-logo img{max-height:{{ logo_width + 20 }}px}
+body.page-a5 .head-brand img{max-height:{{ logo_width + 20 }}px}
 body.page-a5 .inv-meta{grid-template-columns:1fr 1fr}
 body.page-a5 .zatca-qr-img{width:100px;height:100px}
 </style>
@@ -108,19 +121,15 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
 </div>
 
 <div class="doc">
-  <!-- رأس: يمين الشركة | وسط الشعار | يسار عنوان المستند -->
+  <!-- رأس: يمين الشعار | يسار بيانات الفاتورة (محاذاة يمين) -->
   <div class="doc-head">
-    <div class="head-co">
-      <div class="co-name">{{ company_name }}</div>
-      {% if company_name_en %}<div class="co-en">{{ company_name_en }}</div>{% endif %}
-      <div style="margin-top:6px">
+    <div class="head-brand">
+      <img src="{{ logo_url }}" alt="{{ company_name }}">
+      <div class="head-contact">
         {% if company_phone %}<div><span class="lbl">الهاتف: </span><span class="val ltr">{{ company_phone }}</span></div>{% endif %}
         {% if vat_number %}<div><span class="lbl">الرقم الضريبي: </span><span class="val ltr">{{ vat_number }}</span></div>{% endif %}
         {% if cr_number %}<div><span class="lbl">{{ seller_id_type }}: </span><span class="val ltr">{{ cr_number }}</span></div>{% endif %}
       </div>
-    </div>
-    <div class="head-logo">
-      <img src="{{ logo_url }}" alt="{{ company_name }}">
     </div>
     <div class="head-doc">
       <div class="doc-title">{{ doc_title }}</div>
@@ -131,7 +140,6 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
   </div>
 
   {% if is_tax_invoice and not is_receipt %}
-  <!-- معرّفات وتواريخ ZATCA -->
   <div class="inv-meta">
     <div class="cell"><label>تاريخ إصدار الفاتورة</label><div class="ltr">{{ issue_date_iso }}</div></div>
     <div class="cell"><label>وقت الإصدار</label><div class="ltr">{{ issue_time }}</div></div>
@@ -141,20 +149,19 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
     <div class="cell"><label>حالة الفاتورة</label><div>{{ status }}</div></div>
   </div>
 
-  <!-- المورد والمشتري -->
   <div class="meta-grid">
     <div class="party">
       <h3>بيانات المورد (البائع)</h3>
-      <div class="row"><span class="k">الاسم:</span><span class="v">{{ company_name }}</span></div>
-      <div class="row"><span class="k">العنوان:</span><span class="v">{{ supplier_address }}</span></div>
-      <div class="row"><span class="k">الرقم الضريبي:</span><span class="v ltr">{{ vat_number or '—' }}</span></div>
-      <div class="row"><span class="k">{{ seller_id_type }}:</span><span class="v ltr">{{ cr_number or '—' }}</span></div>
+      <div class="row"><span class="k">الاسم</span><span class="v">{{ company_name }}</span></div>
+      <div class="row"><span class="k">العنوان</span><span class="v">{{ supplier_address }}</span></div>
+      <div class="row"><span class="k">الرقم الضريبي</span><span class="v ltr">{{ vat_number or '—' }}</span></div>
+      <div class="row"><span class="k">{{ seller_id_type }}</span><span class="v ltr">{{ cr_number or '—' }}</span></div>
     </div>
     <div class="party">
       <h3>بيانات المشتري (العميل){% if is_simplified %} <span style="font-weight:400;font-size:9px">— اختياري للفاتورة المبسطة</span>{% endif %}</h3>
-      <div class="row"><span class="k">الاسم:</span><span class="v">{{ customer_name }}</span></div>
-      <div class="row"><span class="k">العنوان:</span><span class="v">{{ buyer_address or '—' }}</span></div>
-      {% if customer_phone %}<div class="row"><span class="k">الهاتف:</span><span class="v ltr">{{ customer_phone }}</span></div>{% endif %}
+      <div class="row"><span class="k">الاسم</span><span class="v">{{ customer_name }}</span></div>
+      <div class="row"><span class="k">العنوان</span><span class="v">{{ buyer_address or '—' }}</span></div>
+      {% if customer_phone %}<div class="row"><span class="k">الهاتف</span><span class="v ltr">{{ customer_phone }}</span></div>{% endif %}
     </div>
   </div>
   {% else %}
@@ -166,7 +173,6 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
   </div>
   {% endif %}
 
-  <!-- بنود الفاتورة — ZATCA 7.x -->
   <div class="sec-title">{% if is_receipt %}وذلك مقابل{% else %}تفاصيل السلع / الخدمات{% endif %}</div>
   <table class="items-table">
     <thead>
@@ -192,12 +198,12 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
         <td class="num">{{ loop.index }}</td>
         <td class="col-name">{{ ln.name }}</td>
         <td class="num">{{ '%g'|format(ln.qty) }}</td>
-        <td class="num">{{ '%.2f'|format(ln.unit_price) }} &#x20C1;</td>
-        <td class="num">{{ '%.2f'|format(ln.total) }} &#x20C1;</td>
+        <td class="num">{{ '%.2f'|format(ln.unit_price) }} <span class="cur">ر.س</span></td>
+        <td class="num">{{ '%.2f'|format(ln.total) }} <span class="cur">ر.س</span></td>
         {% if is_tax_invoice and not is_receipt %}
         <td class="num">{{ '%.0f'|format(ln.vat_rate) }}%</td>
-        <td class="num">{{ '%.2f'|format(ln.vat_amount) }} &#x20C1;</td>
-        <td class="num col-incl">{{ '%.2f'|format(ln.total_incl_vat) }} &#x20C1;</td>
+        <td class="num">{{ '%.2f'|format(ln.vat_amount) }} <span class="cur">ر.س</span></td>
+        <td class="num col-incl">{{ '%.2f'|format(ln.total_incl_vat) }} <span class="cur">ر.س</span></td>
         {% endif %}
       </tr>
       {% endfor %}
@@ -209,16 +215,16 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
   <div class="totals-wrap">
     <div class="totals">
       {% if is_tax_invoice and not is_receipt %}
-      <div class="row"><span>المجموع الخاضع للضريبة (غير شامل)</span><span>{{ '%.2f'|format(items_subtotal) }} &#x20C1;</span></div>
-      <div class="row"><span>إجمالي ضريبة القيمة المضافة ({{ tax_pct }}%)</span><span>{{ '%.2f'|format(tax_amount) }} &#x20C1;</span></div>
+      <div class="row"><span>المجموع الخاضع للضريبة (غير شامل)</span><span>{{ '%.2f'|format(items_subtotal) }} <span class="cur">ر.س</span></span></div>
+      <div class="row"><span>إجمالي ضريبة القيمة المضافة ({{ tax_pct }}%)</span><span>{{ '%.2f'|format(tax_amount) }} <span class="cur">ر.س</span></span></div>
       <div class="row grand">
         <span>إجمالي الفاتورة (شامل الضريبة)</span>
-        <span>{{ '%.2f'|format(total) }} &#x20C1;</span>
+        <span>{{ '%.2f'|format(total) }} <span class="cur">ر.س</span></span>
       </div>
       <div class="stmt">{{ amount_includes_vat_label }} — Amount includes VAT</div>
       {% else %}
-      <div class="row"><span>مجموع البنود</span><span>{{ '%.2f'|format(items_subtotal) }} &#x20C1;</span></div>
-      <div class="row grand"><span>المبلغ المستلم</span><span>{{ '%.2f'|format(total) }} &#x20C1;</span></div>
+      <div class="row"><span>مجموع البنود</span><span>{{ '%.2f'|format(items_subtotal) }} <span class="cur">ر.س</span></span></div>
+      <div class="row grand"><span>المبلغ المستلم</span><span>{{ '%.2f'|format(total) }} <span class="cur">ر.س</span></span></div>
       {% endif %}
     </div>
 
@@ -231,8 +237,8 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
         <div>الرقم الضريبي: <span class="ltr" style="direction:ltr">{{ vat_number }}</span></div>
         <div>IRN: <span style="direction:ltr">{{ irn }}</span></div>
         <div>التاريخ: <span style="direction:ltr">{{ issue_date_iso }} {{ issue_time }}</span></div>
-        <div>الإجمالي شامل الضريبة: <span style="direction:ltr">{{ '%.2f'|format(total) }}</span></div>
-        <div>ضريبة القيمة المضافة: <span style="direction:ltr">{{ '%.2f'|format(tax_amount) }}</span></div>
+        <div>الإجمالي شامل الضريبة: <span style="direction:ltr">{{ '%.2f'|format(total) }} ر.س</span></div>
+        <div>ضريبة القيمة المضافة: <span style="direction:ltr">{{ '%.2f'|format(tax_amount) }} ر.س</span></div>
       </div>
       <div>
         <img src="{{ zatca_qr_image }}" alt="ZATCA QR" class="zatca-qr-img">
