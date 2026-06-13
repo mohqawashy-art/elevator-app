@@ -4224,7 +4224,9 @@ def _parse_estimate_spec(form):
         'capacity_kg': form.get('capacity_kg'),
         'doors_count': form.get('doors_count') or stops,
         'include_installation': form.get('include_installation', '1'),
+        'include_install_materials': form.get('include_install_materials', '1'),
         'include_shaft_work': form.get('include_shaft_work', '0'),
+        'travel_m': form.get('travel_m'),
     }
 
 
@@ -4288,7 +4290,9 @@ def api_elevator_estimate_calculate():
         'capacity_kg': data.get('capacity_kg'),
         'doors_count': data.get('doors_count'),
         'include_installation': data.get('include_installation', '1'),
+        'include_install_materials': data.get('include_install_materials', '1'),
         'include_shaft_work': data.get('include_shaft_work', '0'),
+        'travel_m': data.get('travel_m'),
     }
     lines = calculate_lines(spec)
     totals = summarize_lines(lines, data.get('margin_pct'), data.get('vat_pct'))

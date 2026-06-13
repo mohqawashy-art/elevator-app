@@ -206,8 +206,9 @@ tbody tr:hover{background:var(--bg3)}
             </div>
             <div class="field form-full">
               <label class="check-row"><input type="checkbox" name="include_installation" value="1" id="include_installation" {% if not edit_est or edit_est.include_installation %}checked{% endif %}> يشمل التركيب والتشغيل والنقل</label>
+              <label class="check-row" style="margin-top:6px"><input type="checkbox" name="include_install_materials" value="1" id="include_install_materials" checked> تفصيل مواد التركيب (BF014 سكك وأبواب · BF015 ماكينة · BF016 كنترول)</label>
               <label class="check-row" style="margin-top:6px"><input type="checkbox" name="include_shaft_work" value="1" id="include_shaft_work" {% if edit_est and edit_est.include_shaft_work %}checked{% endif %}> يشمل أعمال البئر/الهيكل</label>
-              <p class="hint">الأسعار افتراضية — اضغط «احسب» ثم عدّل البنود قبل الحفظ</p>
+              <p class="hint">الأسعار افتراضية — اضغط «احسب» ثم عدّل أسعار البنود قبل الحفظ</p>
             </div>
             <div class="field form-full">
               <label>ملاحظات</label>
@@ -382,6 +383,7 @@ async function calculateEstimate() {
       capacity_kg: document.getElementById('capacity_kg').value,
       doors_count: document.getElementById('doors_count').value,
       include_installation: document.getElementById('include_installation').checked ? '1' : '0',
+      include_install_materials: document.getElementById('include_install_materials').checked ? '1' : '0',
       include_shaft_work: document.getElementById('include_shaft_work').checked ? '1' : '0',
       margin_pct: document.getElementById('margin_pct').value,
       vat_pct: document.getElementById('vat_pct').value,

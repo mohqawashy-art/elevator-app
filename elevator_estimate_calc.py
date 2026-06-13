@@ -1,5 +1,7 @@
 """حساب تكلفة إنشاء/تركيب مصعد — أسعار افتراضية قابلة للتعديل في الواجهة."""
 
+from elevator_install_parts import installation_material_lines
+
 DEFAULT_VAT_PCT = 15.0
 DEFAULT_MARGIN_PCT = 12.0
 
@@ -94,6 +96,7 @@ def calculate_lines(spec):
     doors = _safe_int(spec.get('doors_count'), stops, minimum=1)
     include_install = str(spec.get('include_installation', '1')).lower() not in ('0', 'false', 'no')
     include_shaft = str(spec.get('include_shaft_work', '0')).lower() in ('1', 'true', 'yes')
+    include_materials = str(spec.get('include_install_materials', '1')).lower() not in ('0', 'false', 'no')
     elev_type = (spec.get('elev_type') or 'مصعد ركاب').strip()
 
     machine_price = rates['machine_base']
@@ -107,11 +110,17 @@ def calculate_lines(spec):
     lines = [
         _line('مكينة', f'مجموعة مكينة {machine_type} — {capacity} كجم', 1, 'مجموعة', machine_price),
         _line('كابينة', f'كابينة {elev_type}', 1, 'كابينة', rates['cabin']),
-        _line('مزلاق', f'مزلاق وأوزان — {floors} طوابق', floors, 'طابق', rates['rail_per_floor']),
-        _line('أبواب', f'أبواب أوتوماتيك — {doors} باب', doors, 'باب', rates['door_automatic']),
         _line('تحكم', 'لوحة تحكم + محول VVVF + أجهزة أمان', 1, 'مجموعة', rates['control_panel']),
-        _line('كهرباء', 'كابلات + حبال + تمديدات كهربائية', 1, 'مجموعة', rates['electrical_package']),
     ]
+
+    if include_materials and include_install:
+        lines.extend(installation_material_lines(spec, _line))
+    else:
+        lines.extend([
+            _line('مزلاق', f'مزلاق وأوزان — {floors} طوابق', floors, 'طابق', rates['rail_per_floor']),
+            _line('أبواب', f'أبواب أوتوماتيك — {doors} باب', doors, 'باب', rates['door_automatic']),
+            _line('كهرباء', 'كابلات + حبال + تمديدات كهربائية', 1, 'مجموعة', rates['electrical_package']),
+        ])
 
     if include_install:
         lines.append(
