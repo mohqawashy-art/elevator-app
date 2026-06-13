@@ -5,8 +5,13 @@
 
 set -euo pipefail
 
+SCRIPT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
 if [ -n "${APP_DIR:-}" ] && [ -d "$APP_DIR/.git" ]; then
   :
+elif [ "$(basename "$SCRIPT_ROOT")" = "jama-elevator-app" ] && [ -d "$SCRIPT_ROOT/.git" ]; then
+  APP_DIR="$SCRIPT_ROOT"
+  SERVICE_NAME="${SERVICE_NAME:-liftcore-jama}"
 elif [ -d "$HOME/liftcore/elevator-app/.git" ]; then
   APP_DIR="$HOME/liftcore/elevator-app"
 elif [ -d "/var/www/elevator-app/.git" ]; then
@@ -18,7 +23,7 @@ fi
 SERVICE_NAME="${SERVICE_NAME:-liftcore}"
 VENV="${VENV:-$APP_DIR/.venv}"
 
-echo "==> LiftCore update in $APP_DIR"
+echo "==> LiftCore update in $APP_DIR (service: $SERVICE_NAME)"
 cd "$APP_DIR"
 
 echo "==> backup database"
@@ -60,8 +65,10 @@ if command -v systemctl >/dev/null 2>&1; then
     echo "  platform env: $PLATFORM_ENV"
   elif [ -f "$APP_DIR/.env" ] && grep -q GOOGLE_MAPS_API_KEY "$APP_DIR/.env" 2>/dev/null; then
     grep '^GOOGLE_MAPS_API_KEY=' "$APP_DIR/.env" | sudo tee "$DROP_IN/maps-key.conf.tmp" >/dev/null
-    printf '%s\n' '[Service]' > "$DROP_IN/maps-key.conf"
-    sed 's/^/Environment=/' "$DROP_IN/maps-key.conf.tmp" | sudo tee -a "$DROP_IN/maps-key.conf" >/dev/null
+    {
+      printf '%s\n' '[Service]'
+      sudo sed 's/^/Environment=/' "$DROP_IN/maps-key.conf.tmp"
+    } | sudo tee "$DROP_IN/maps-key.conf" >/dev/null
     sudo rm -f "$DROP_IN/maps-key.conf.tmp"
     echo "  maps key from $APP_DIR/.env (consider /etc/liftcore/platform.env for all tenants)"
   fi

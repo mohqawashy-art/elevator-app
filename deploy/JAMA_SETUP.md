@@ -35,5 +35,14 @@ git pull origin main
 source .venv/bin/activate
 pip install -q -r requirements.txt
 python scripts/init_install_module.py || true
-sudo systemctl restart liftcore-jama
+bash ~/liftcore/elevator-app/deploy/fix_jama_maps.sh
 ```
+
+## خرائط Google (مرة واحدة)
+
+```bash
+# بعد إنشاء /etc/liftcore/platform.env
+bash ~/liftcore/elevator-app/deploy/fix_jama_maps.sh
+```
+
+انظر `deploy/MAPS-PLATFORM.md` — أضف `https://*.liftcoreapp.com/*` في Google Cloud.

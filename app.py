@@ -611,6 +611,8 @@ def api_version():
             'enforce_auth': len(app.before_request_funcs.get(None, [])) > 0,
             'installation_module': os.path.isdir(os.path.join(root, 'installation')),
             'install_enabled': install_module_enabled(),
+            'google_maps_key': bool(resolve_google_maps_api_key()),
+            'google_maps_key_source': google_maps_key_source(),
         },
     )
 

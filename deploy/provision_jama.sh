@@ -92,6 +92,7 @@ WorkingDirectory=${JAMA_DIR}
 Environment=DATABASE_URL=sqlite:///${DB_FILE}
 Environment=LIFTCORE_HTTPS=1
 Environment=LIFTCORE_INSTALL_MODULE=1
+EnvironmentFile=-/etc/liftcore/platform.env
 Environment=SECRET_KEY=${JAMA_SECRET}
 ExecStart=${GUNICORN_BIN} -w 2 -b 127.0.0.1:${PORT} --timeout 120 app:app
 Restart=on-failure
