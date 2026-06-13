@@ -518,6 +518,35 @@ function fillItemFilter() {
   });
 }
 
+function itemSelectOptions() {
+  return ITEMS.map(i => ({ id: String(i.id), code: i.code, name: i.name }));
+}
+
+function onItemPicked() {
+  const itemId = document.getElementById('m-item-id')?.value;
+  const item = ITEMS.find(x => String(x.id) === String(itemId));
+  if (item) {
+    const priceEl = document.getElementById('m-price');
+    if (priceEl && (!priceEl.value || priceEl.value === '0')) priceEl.value = item.buy_price || 0;
+  }
+  calcTotal();
+}
+
+function initItemSelect() {
+  if (typeof LcClientSelect === 'undefined') return;
+  const sel = document.getElementById('m-item-id');
+  if (sel && sel.tagName === 'SELECT') {
+    sel.innerHTML = '<option value="">— اختر الصنف —</option>' +
+      ITEMS.map(i => `<option value="${i.id}">${i.code} — ${i.name}</option>`).join('');
+  }
+  LcClientSelect.upgradeSelect('m-item-id', {
+    customers: itemSelectOptions(),
+    placeholder: 'ابحث بالكود أو اسم الصنف...',
+    requiredMessage: 'اختر الصنف',
+    onChange: onItemPicked,
+  });
+}
+
 function openModal() {
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('modal-title').textContent = 'تسجيل حركة مخزن';
@@ -528,20 +557,15 @@ function openModal() {
   document.getElementById('m-price').value = '0';
   document.getElementById('m-reason').value = '';
   document.getElementById('m-notes').value = '';
-  const isel = document.getElementById('m-item-id');
-  isel.innerHTML = '<option value="">— اختر الصنف —</option>' +
-    ITEMS.map(i => `<option value="${i.id}">${i.code} — ${i.name}</option>`).join('');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.clearSelection('m-item-id');
+  } else {
+    const isel = document.getElementById('m-item-id');
+    if (isel) isel.value = '';
+  }
   const tsel = document.getElementById('m-tech-id');
   tsel.innerHTML = '<option value="">— بدون فني —</option>' +
     TECHNICIANS.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-  isel.onchange = function () {
-    const item = ITEMS.find(x => String(x.id) === this.value);
-    if (item) {
-      const priceEl = document.getElementById('m-price');
-      if (priceEl && (!priceEl.value || priceEl.value === '0')) priceEl.value = item.buy_price || 0;
-    }
-    calcTotal();
-  };
   calcTotal();
   document.getElementById('modal').classList.add('open');
 }
@@ -627,6 +651,7 @@ const months = ['يناير','فبراير','مارس','أبريل','مايو','
 document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
 fillItemFilter();
+initItemSelect();
 updateStats();
 if (tableSort) tableSort.bindHeaders();
 renderTable(MOVEMENTS);
