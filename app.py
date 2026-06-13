@@ -382,6 +382,11 @@ with app.app_context():
                 ('logo_width_report', 'INTEGER'),
                 ('logo_width_login', 'INTEGER'),
                 ('address_en', 'TEXT'),
+                ('company_website', 'VARCHAR(200)'),
+                ('bank_name', 'VARCHAR(100)'),
+                ('bank_account_name', 'VARCHAR(200)'),
+                ('bank_iban', 'VARCHAR(50)'),
+                ('bank_account_no', 'VARCHAR(50)'),
             ],
             'users': [
                 ('theme', 'VARCHAR(10)'),
@@ -4719,6 +4724,11 @@ def settings_save():
     s.rep_mobile      = request.form.get('rep_mobile', '')
     s.cr_number       = request.form.get('cr_number', '')
     s.vat_number      = request.form.get('vat_number', '')
+    s.company_website = request.form.get('company_website', '')
+    s.bank_name       = request.form.get('bank_name', '')
+    s.bank_account_name = request.form.get('bank_account_name', '')
+    s.bank_iban       = request.form.get('bank_iban', '')
+    s.bank_account_no = request.form.get('bank_account_no', '')
     try:
         s.tax_pct = float(request.form.get('tax_pct', 15))
     except ValueError:

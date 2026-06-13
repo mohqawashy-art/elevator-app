@@ -580,6 +580,11 @@ class Settings(db.Model):
     default_sign_method = db.Column(db.String(20), default='both')  # draw | pin | both
     checklist_template_key = db.Column(db.String(50), default='liftcore_standard_v1')  # SaaS: قالب الفحص الافتراضي
     google_maps_api_key = db.Column(db.String(200))  # اختياري — يُستخدم إن لم يُضبط GOOGLE_MAPS_API_KEY
+    company_website   = db.Column(db.String(200))
+    bank_name         = db.Column(db.String(100))
+    bank_account_name = db.Column(db.String(200))
+    bank_iban         = db.Column(db.String(50))
+    bank_account_no   = db.Column(db.String(50))
 
 
 # =============================================

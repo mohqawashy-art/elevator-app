@@ -165,6 +165,27 @@ html[data-theme="report"] .theme-card.selected{border-color:#002147;box-shadow:0
         <label>العملة</label>
         <input name="currency" value="{{ settings.currency or 'SAR' }}">
       </div>
+      <div class="full section" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">بيانات التحويل البنكي (تظهر في الفاتورة)</div>
+      <div>
+        <label>اسم البنك</label>
+        <input name="bank_name" value="{{ settings.bank_name or '' }}">
+      </div>
+      <div>
+        <label>اسم الحساب</label>
+        <input name="bank_account_name" value="{{ settings.bank_account_name or '' }}">
+      </div>
+      <div>
+        <label>IBAN</label>
+        <input name="bank_iban" value="{{ settings.bank_iban or '' }}" dir="ltr">
+      </div>
+      <div>
+        <label>رقم الحساب</label>
+        <input name="bank_account_no" value="{{ settings.bank_account_no or '' }}" dir="ltr">
+      </div>
+      <div>
+        <label>الموقع الإلكتروني</label>
+        <input name="company_website" value="{{ settings.company_website or '' }}" dir="ltr" placeholder="https://">
+      </div>
       <div class="full">
         <label>خرائط Google (المنصة)</label>
         {% if google_maps_key_source == 'platform' %}

@@ -19,7 +19,9 @@ from zatca_qr import (
 class PrintLineItem:
     name: str
     qty: float
+    unit: str
     unit_price: float
+    discount: float
     total: float
     vat_rate: float = 15.0
     vat_amount: float = 0.0
@@ -35,13 +37,13 @@ def _logo_url(settings: Settings) -> str:
 def _customer_address(customer: Customer | None) -> str:
     if not customer:
         return ''
-    parts = [p for p in (customer.city, customer.district, customer.address) if (p or '').strip()]
-    return '، '.join(parts)
+    parts = [p for p in (customer.address, customer.district, customer.city) if (p or '').strip()]
+    return ' — '.join(parts)
 
 
 def _supplier_address(settings: Settings) -> str:
     parts = [p for p in (settings.city, settings.address) if (p or '').strip()]
-    return '، '.join(parts)
+    return ' — '.join(parts) if parts else ''
 
 
 def _payment_method_ar(raw: str | None) -> str:
@@ -55,8 +57,19 @@ def _fmt_date(d: date | None) -> str:
     return d.strftime('%d/%m/%Y')
 
 
+def _fmt_time_12h(dt: datetime) -> str:
+    h = dt.hour % 12 or 12
+    ampm = 'PM' if dt.hour >= 12 else 'AM'
+    return f'{h:02d}:{dt.minute:02d} {ampm}'
+
+
 def _is_simplified(invoice_type: str | None) -> bool:
     return 'مبسطة' in (invoice_type or '')
+
+
+def _is_paid_status(status: str | None) -> bool:
+    s = (status or '').strip()
+    return s in ('مدفوعة', 'مسددة', 'مدفوع', 'Paid', 'paid')
 
 
 def _doc_titles(invoice_type: str | None, is_tax: bool, is_receipt: bool, is_simplified: bool) -> tuple[str, str]:
@@ -110,7 +123,6 @@ def _compliance_warnings(
 
 
 def _amount_in_words_sar(total: float) -> str:
-    """تفقيط المبلغ بالريال السعودي."""
     t = round(float(total or 0), 2)
     riyals = int(t)
     halalas = int(round((t - riyals) * 100))
@@ -121,7 +133,6 @@ def _amount_in_words_sar(total: float) -> str:
 
 
 def invoice_print_payload(invo: Invoice) -> dict:
-    """يُرجع كل متغيرات قالب invoice-print.html."""
     settings = Settings.query.first()
     if not settings:
         raise RuntimeError('إعدادات النظام غير موجودة')
@@ -135,9 +146,11 @@ def invoice_print_payload(invo: Invoice) -> dict:
     is_simplified = _is_simplified(invo.invoice_type)
     doc_title, doc_title_en = _doc_titles(invo.invoice_type, is_tax, is_receipt, is_simplified)
     page_size = 'A5' if is_receipt else 'A4'
+    status = invo.status or '—'
+    is_paid = _is_paid_status(status)
 
     inv_date = invo.invoice_date or date.today()
-    supply_date = invo.due_date or inv_date
+    supply_date = inv_date
     issue_dt = datetime.combine(inv_date, time(12, 0, 0))
     if invo.created_at:
         issue_dt = invo.created_at
@@ -155,7 +168,9 @@ def invoice_print_payload(invo: Invoice) -> dict:
     line = PrintLineItem(
         name=desc,
         qty=1,
+        unit='خدمة',
         unit_price=round(amount, 2),
+        discount=0.0,
         total=round(amount, 2),
         vat_rate=tax_pct,
         vat_amount=round(tax_amount, 2),
@@ -163,12 +178,11 @@ def invoice_print_payload(invo: Invoice) -> dict:
     )
     line_items = [line]
     items_subtotal = round(amount, 2)
+    total_discount = 0.0
 
     company_name = settings.company_name or '—'
     vat_number = (settings.vat_number or '').strip().replace(' ', '')
     cr_number = (settings.cr_number or '').strip()
-    buyer_cr = (customer.cr_number or '').strip() if customer else ''
-    buyer_entity = (customer.entity_type or '').strip() if customer else ''
 
     zatca_qr_image = ''
     zatca_warning = ''
@@ -186,14 +200,18 @@ def invoice_print_payload(invo: Invoice) -> dict:
             zatca_qr_image = zatca_qr_image_data_url(tlv) or ''
             show_zatca_qr = bool(zatca_qr_image)
             if not zatca_qr_image:
-                zatca_warning = (
-                    'تعذّر إنشاء رمز QR — ثبّت الحزمة qrcode[pil] على الخادم: pip install "qrcode[pil]"'
-                )
+                zatca_warning = 'تعذّر إنشاء رمز QR — ثبّت qrcode[pil] على الخادم.'
         except Exception as exc:
             zatca_warning = f'تعذّر إنشاء رمز QR: {exc}'
 
     logo_width = int(settings.logo_width_report or 150)
     currency_code = (settings.currency or 'SAR').strip() or 'SAR'
+    bank_name = (getattr(settings, 'bank_name', None) or '').strip()
+    bank_account_name = (getattr(settings, 'bank_account_name', None) or '').strip()
+    bank_iban = (getattr(settings, 'bank_iban', None) or '').strip()
+    bank_account_no = (getattr(settings, 'bank_account_no', None) or '').strip()
+    company_website = (getattr(settings, 'company_website', None) or '').strip()
+    show_bank = bool(bank_name or bank_iban or bank_account_no)
 
     return {
         'doc_title': doc_title,
@@ -206,32 +224,39 @@ def invoice_print_payload(invo: Invoice) -> dict:
         'is_receipt': is_receipt,
         'is_tax_invoice': is_tax,
         'is_simplified': is_simplified,
+        'is_paid': is_paid,
         'company_name': company_name,
         'company_name_en': settings.company_name_en or '',
         'company_phone': settings.phone or '',
         'company_email': settings.email or '',
+        'company_website': company_website,
         'vat_number': vat_number,
         'cr_number': cr_number,
         'seller_id_type': 'السجل التجاري',
         'supplier_address': _supplier_address(settings) or '—',
         'customer_name': (customer.name if customer else '—'),
+        'customer_code': (customer.code if customer else '—'),
+        'customer_city': (customer.city if customer else '') or '—',
+        'customer_district': (customer.district if customer else '') or '—',
+        'customer_address_line': (customer.address if customer else '') or '—',
         'customer_phone': (customer.phone if customer else '') or '',
         'buyer_address': _customer_address(customer),
-        'buyer_cr': buyer_cr,
-        'buyer_entity': buyer_entity,
+        'buyer_cr': (customer.cr_number or '').strip() if customer else '',
         'invoice_date': _fmt_date(inv_date),
         'issue_date_display': _fmt_date(inv_date),
         'issue_date_iso': inv_date.isoformat(),
         'issue_time': issue_dt.strftime('%H:%M:%S'),
+        'issue_time_display': _fmt_time_12h(issue_dt),
         'supply_date_display': _fmt_date(supply_date),
-        'supply_date_iso': supply_date.isoformat(),
-        'due_date_display': _fmt_date(invo.due_date) if invo.due_date else '',
+        'due_date_display': _fmt_date(invo.due_date) if invo.due_date else '—',
         'payment_method_ar': _payment_method_ar(invo.payment_method),
-        'contract_code': contract.code if contract else '',
-        'status': invo.status or '—',
+        'contract_code': contract.code if contract else '—',
+        'status': status,
         'line_items': line_items,
         'notes': (invo.notes or '').strip(),
         'items_subtotal': items_subtotal,
+        'total_discount': total_discount,
+        'taxable_amount': items_subtotal - total_discount,
         'tax_pct': tax_pct,
         'tax_amount': round(tax_amount, 2),
         'total': round(total, 2),
@@ -242,6 +267,11 @@ def invoice_print_payload(invo: Invoice) -> dict:
         'show_zatca_qr': show_zatca_qr,
         'zatca_qr_image': zatca_qr_image,
         'zatca_warning': zatca_warning,
+        'show_bank': show_bank,
+        'bank_name': bank_name,
+        'bank_account_name': bank_account_name or company_name,
+        'bank_iban': bank_iban,
+        'bank_account_no': bank_account_no,
         'compliance_warnings': _compliance_warnings(
             settings,
             customer,
