@@ -386,18 +386,20 @@ const EXPENSES = [
 
 // ===== إحصائيات =====
 function updateStats() {
-  const total    = EXPENSES.reduce((s,e)=>s+e.amount,0);
-  const salaries = EXPENSES.filter(e=>e.expense_type==='رواتب').reduce((s,e)=>s+e.amount,0);
-  const parts    = EXPENSES.filter(e=>e.expense_type==='قطع غيار').reduce((s,e)=>s+e.amount,0);
-  const other    = total - salaries - parts;
-  const vals = document.querySelectorAll('.stat-mini-val');
-  if(vals[0]) vals[0].textContent = total.toLocaleString();
-  if(vals[1]) vals[1].textContent = salaries.toLocaleString();
-  if(vals[2]) vals[2].textContent = parts.toLocaleString();
-  if(vals[3]) vals[3].textContent = other.toLocaleString();
+  const total = EXPENSES.reduce((s, e) => s + e.amount, 0);
+  const fuel = EXPENSES.filter(e => e.expense_type === 'محروقات').reduce((s, e) => s + e.amount, 0);
+  const parts = EXPENSES.filter(e => e.expense_type === 'قطع غيار').reduce((s, e) => s + e.amount, 0);
+  const cars = EXPENSES.filter(e => e.expense_type === 'صيانة سيارات').reduce((s, e) => s + e.amount, 0);
+  const other = EXPENSES.filter(e => !['محروقات', 'قطع غيار', 'صيانة سيارات'].includes(e.expense_type)).reduce((s, e) => s + e.amount, 0);
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val.toLocaleString(); };
+  const setSub = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n + ' عملية'; };
+  set('s-total', total); setSub('s-total-sub', EXPENSES.length);
+  set('s-fuel', fuel); setSub('s-fuel-sub', EXPENSES.filter(e => e.expense_type === 'محروقات').length);
+  set('s-parts', parts); setSub('s-parts-sub', EXPENSES.filter(e => e.expense_type === 'قطع غيار').length);
+  set('s-cars', cars); setSub('s-cars-sub', EXPENSES.filter(e => e.expense_type === 'صيانة سيارات').length);
+  set('s-other', other); setSub('s-other-sub', EXPENSES.filter(e => !['محروقات', 'قطع غيار', 'صيانة سيارات'].includes(e.expense_type)).length);
 }
 
-let currentDeleteId = null;
 let filtered = [...EXPENSES];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
@@ -422,7 +424,6 @@ function renderTable(data) {
   } else {
     document.getElementById('exp-count').textContent = data.length + ' سجل';
   }
-  setMoneyEl(document.getElementById('expenses-total'), total, {minimumFractionDigits:2,maximumFractionDigits:2});
   tbody.innerHTML = data.map(e=>`
     <tr onclick="viewExpense(${e.id})">
       <td class="td-code">${e.code}</td>
@@ -449,14 +450,14 @@ function renderTable(data) {
     </tr>`).join('');
 }
 
-function filterTable() {
-  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const tp = document.getElementById('f-type')?.value||'';
-  const pm = document.getElementById('f-method')?.value||'';
-  const fd = document.getElementById('f-from')?.value||'';
-  const td = document.getElementById('f-to')?.value||'';
-  filtered = EXPENSES.filter(e=>
-    (!s  || e.code.toLowerCase().includes(s) || e.description.includes(s) || e.responsible.includes(s)) &&
+function applyFilters() {
+  const s  = (document.getElementById('f-search')?.value || '').toLowerCase();
+  const tp = document.getElementById('f-type')?.value || '';
+  const pm = document.getElementById('f-pay')?.value || '';
+  const fd = document.getElementById('f-from')?.value || '';
+  const td = document.getElementById('f-to')?.value || '';
+  filtered = EXPENSES.filter(e =>
+    (!s || e.code.toLowerCase().includes(s) || (e.description || '').includes(s) || (e.responsible || '').includes(s)) &&
     (!tp || e.expense_type === tp) &&
     (!pm || e.pay_method === pm) &&
     (!fd || e.expense_date >= fd) &&
@@ -465,79 +466,94 @@ function filterTable() {
   renderTable(filtered);
 }
 
-// ===== إضافة =====
-function openAddModal() {
-  document.getElementById('modal-title').textContent = 'إضافة مصروف جديد';
-  document.getElementById('modal-add').dataset.editId = '';
-  document.getElementById('modal-add').classList.add('open');
+function clearFilters() {
+  ['f-search', 'f-type', 'f-pay', 'f-from', 'f-to'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  filtered = [...EXPENSES];
+  renderTable(filtered);
 }
 
-function saveExpense() {
-  const editId = document.getElementById('modal-add').dataset.editId;
+function openModal(editId) {
+  const modal = document.getElementById('modal');
+  modal.dataset.editId = editId || '';
+  document.getElementById('modal-title').textContent = editId ? 'تعديل المصروف' : 'إضافة مصروف جديد';
+  if (!editId) {
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('m-date').value = today;
+    document.getElementById('m-type').value = 'محروقات';
+    document.getElementById('m-desc').value = '';
+    document.getElementById('m-amount').value = '';
+    document.getElementById('m-pay').value = 'كاش';
+    document.getElementById('m-assigned').value = '';
+    document.getElementById('m-attach').value = '';
+    document.getElementById('m-notes').value = '';
+  }
+  modal.classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function saveRecord() {
+  const date = document.getElementById('m-date').value;
+  const desc = document.getElementById('m-desc').value.trim();
+  const amount = document.getElementById('m-amount').value;
+  if (!date) { alert('التاريخ مطلوب'); return; }
+  if (!desc) { alert('الوصف مطلوب'); return; }
+  if (!amount || Number(amount) <= 0) { alert('المبلغ مطلوب'); return; }
+  const editId = document.getElementById('modal').dataset.editId;
   const fd = new FormData();
-  [['expense_date','f-date'],['expense_type','f-type-sel'],
-   ['description','f-desc'],['responsible','f-responsible'],
-   ['payment_method','f-pay-method'],['amount','f-amount'],
-   ['reference','f-reference'],['notes','f-notes']
-  ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
-  fetch(editId ? `/expenses/edit/${editId}` : '/expenses/add', {method:'POST',body:fd})
-    .then(()=>window.location.reload());
+  fd.append('expense_date', date);
+  fd.append('expense_type', document.getElementById('m-type').value);
+  fd.append('description', desc);
+  fd.append('responsible', document.getElementById('m-assigned').value);
+  fd.append('payment_method', document.getElementById('m-pay').value);
+  fd.append('amount', amount);
+  fd.append('reference', document.getElementById('m-attach').value);
+  fd.append('notes', document.getElementById('m-notes').value);
+  const url = editId ? `/expenses/edit/${editId}` : '/expenses/add';
+  fetch(url, { method: 'POST', body: fd })
+    .then(r => { if (!r.ok) throw new Error('save failed'); window.location.reload(); })
+    .catch(() => alert('تعذّر حفظ المصروف'));
 }
 
-// ===== تعديل =====
 function editExpense(id) {
-  const e = EXPENSES.find(x=>x.id===id);
-  if(!e) return;
-  document.getElementById('modal-title').textContent = 'تعديل المصروف';
-  document.getElementById('modal-add').dataset.editId = id;
-  const map = {
-    'f-date':e.expense_date,'f-type-sel':e.expense_type,
-    'f-desc':e.description,'f-responsible':e.responsible,
-    'f-pay-method':e.pay_method,'f-amount':e.amount,
-    'f-reference':e.reference,'f-notes':e.notes,
-  };
-  Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
-  document.getElementById('modal-add').classList.add('open');
+  const e = EXPENSES.find(x => x.id === id);
+  if (!e) return;
+  openModal(id);
+  document.getElementById('m-date').value = e.expense_date || '';
+  document.getElementById('m-type').value = e.expense_type || 'محروقات';
+  document.getElementById('m-desc').value = e.description || '';
+  document.getElementById('m-amount').value = e.amount || '';
+  document.getElementById('m-pay').value = e.pay_method || 'كاش';
+  document.getElementById('m-assigned').value = e.responsible || '';
+  document.getElementById('m-attach').value = e.reference || '';
+  document.getElementById('m-notes').value = e.notes || '';
 }
 
-// ===== عرض =====
 function viewExpense(id) {
-  const e = EXPENSES.find(x=>x.id===id);
-  if(!e) return;
-  document.getElementById('view-title').textContent = e.code;
-  document.getElementById('view-body').innerHTML = `
-    <div class="view-grid">
-      <div class="view-section">تفاصيل المصروف</div>
-      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${e.code}</div></div>
-      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val" style="direction:ltr">${e.expense_date}</div></div>
-      <div class="view-item"><div class="view-label">نوع المصروف</div><div class="view-val">${e.expense_type}</div></div>
-      <div class="view-item"><div class="view-label">المبلغ</div><div class="view-val" style="font-family:var(--font-en);color:var(--danger)">${e.amount.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div></div>
-      <div class="view-item"><div class="view-label">المسؤول</div><div class="view-val">${e.responsible||'—'}</div></div>
-      <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${e.pay_method}</div></div>
-      <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${e.reference||'—'}</div></div>
-      ${e.description?`<div class="view-item view-full"><div class="view-label">الوصف</div><div class="view-val">${e.description}</div></div>`:''}
-      ${e.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${e.notes}</div></div>`:''}
-    </div>`;
-  document.getElementById('modal-view').classList.add('open');
+  editExpense(id);
 }
 
-// ===== حذف =====
-function deleteExpense(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
-function confirmDelete() {
-  if(!currentDeleteId) return;
-  fetch(`/expenses/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
+function deleteExpense(id) {
+  if (!confirm('حذف هذا المصروف؟')) return;
+  fetch(`/expenses/delete/${id}`, { method: 'POST' })
+    .then(() => window.location.reload())
+    .catch(() => alert('تعذّر حذف المصروف'));
 }
 
-function exportExcel() {
-  const rows=[['الكود','التاريخ','النوع','الوصف','المسؤول','طريقة الدفع','المبلغ']];
-  filtered.forEach(e=>rows.push([e.code,e.expense_date,e.expense_type,e.description,e.responsible,e.pay_method,e.amount]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='expenses.csv'; a.click();
+function exportCSV() {
+  const rows = [['الكود', 'التاريخ', 'النوع', 'الوصف', 'المسؤول', 'طريقة الدفع', 'المبلغ']];
+  filtered.forEach(e => rows.push([e.code, e.expense_date, e.expense_type, e.description, e.responsible, e.pay_method, e.amount]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'expenses.csv';
+  a.click();
 }
-
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);
   document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');
