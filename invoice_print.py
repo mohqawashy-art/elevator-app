@@ -6,6 +6,7 @@ from datetime import date, datetime, time
 
 from flask import url_for
 
+from contract_print import amount_in_words
 from models import Contract, Customer, Invoice, Settings
 from zatca_qr import (
     is_tax_invoice as zatca_is_tax_invoice,
@@ -106,6 +107,17 @@ def _compliance_warnings(
             warnings.append('وصف البند / الخدمة مطلوب على الفاتورة.')
             break
     return warnings
+
+
+def _amount_in_words_sar(total: float) -> str:
+    """تفقيط المبلغ بالريال السعودي."""
+    t = round(float(total or 0), 2)
+    riyals = int(t)
+    halalas = int(round((t - riyals) * 100))
+    core = amount_in_words(riyals)
+    if halalas > 0:
+        return f'{core} ريال سعودي و{amount_in_words(halalas)} هللة فقط لا غير'
+    return f'{core} ريال سعودي فقط لا غير'
 
 
 def invoice_print_payload(invo: Invoice) -> dict:
@@ -223,6 +235,7 @@ def invoice_print_payload(invo: Invoice) -> dict:
         'tax_pct': tax_pct,
         'tax_amount': round(tax_amount, 2),
         'total': round(total, 2),
+        'total_words': _amount_in_words_sar(total),
         'currency_code': currency_code,
         'currency_label': 'ريال سعودي' if currency_code == 'SAR' else currency_code,
         'amount_includes_vat_label': 'المبلغ شامل ضريبة القيمة المضافة',

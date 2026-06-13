@@ -56,19 +56,30 @@ body.page-a5 .doc{width:148mm;min-height:210mm;max-width:148mm;margin:56px auto 
 .head-doc .doc-meta .val{font-weight:600}
 .head-doc .doc-meta .val.ltr{direction:ltr;unicode-bidi:embed;display:inline-block}
 
-.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .party{
-  border:1px solid #dee2e6;border-radius:4px;padding:10px;background:#fafbfc;text-align:right;
+  border:1px solid #dee2e6;border-radius:4px;padding:6px 8px;background:#fafbfc;text-align:right;
+  font-size:9px;line-height:1.45;
 }
 .party h3{
-  font-size:11px;font-weight:800;color:#fff;background:#1a3a5c;
-  margin:-10px -10px 10px;padding:6px 10px;border-radius:4px 4px 0 0;text-align:right;
+  font-size:9px;font-weight:800;color:#fff;background:#1a3a5c;
+  margin:-6px -8px 6px;padding:4px 8px;border-radius:4px 4px 0 0;text-align:right;
 }
-.party .row{margin-bottom:8px;font-size:10px;line-height:1.5}
+.party .row{margin-bottom:4px;font-size:9px;line-height:1.4}
 .party .row:last-child{margin-bottom:0}
-.party .row .k{color:#666;display:block;font-size:9px;font-weight:700;margin-bottom:2px}
-.party .row .v{font-weight:600;display:block}
-.party .row .v.ltr{direction:ltr;unicode-bidi:embed;text-align:right}
+.party .row .k{color:#666;display:inline;font-size:8px;font-weight:700;margin-left:4px}
+.party .row .k::after{content:':'}
+.party .row .v{font-weight:600;display:inline}
+.party .row .v.ltr{direction:ltr;unicode-bidi:embed}
+
+.money{direction:ltr;unicode-bidi:embed;display:inline-block;white-space:nowrap;font-weight:600}
+.money .cur{font-size:9px;font-weight:700;color:#666;margin-right:4px}
+
+.tafqeet-box{
+  margin:8px 0 10px;padding:8px 10px;background:#f8f9fa;border:1px solid #dee2e6;
+  border-radius:4px;font-size:10px;line-height:1.6;text-align:right;color:#1a3a5c;
+}
+.tafqeet-box strong{font-size:9px;color:#666;display:block;margin-bottom:3px}
 
 .inv-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .inv-meta .cell{
@@ -86,7 +97,6 @@ body.page-a5 .doc{width:148mm;min-height:210mm;max-width:148mm;margin:56px auto 
 .items-table .col-name{text-align:right;min-width:120px}
 .items-table .num{direction:ltr;text-align:center;white-space:nowrap;font-weight:600}
 .items-table .col-incl{color:#1b7a3d;font-weight:700}
-.cur{font-size:9px;font-weight:700;color:#666;margin-right:2px}
 
 .totals-wrap{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:10px 0;flex-wrap:wrap}
 .totals{min-width:280px;max-width:340px;flex:1;text-align:right}
@@ -117,6 +127,7 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
 </style>
 </head>
 <body class="{% if is_receipt %}page-a5{% else %}page-a4{% endif %}"{% if request.args.get('popup') == '1' or request.args.get('print') == '1' %} data-lc-popup="1"{% endif %}>
+{% macro money(v) %}<span class="money"><span class="cur">ر.س</span>{{ '%.2f'|format(v) }}</span>{% endmacro %}
 <div class="toolbar">
   <span>{{ doc_title }} — {{ irn }} ({{ page_size }})</span>
   <div>
@@ -166,21 +177,16 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
 
   <div class="meta-grid">
     <div class="party">
-      <h3>بيانات المورد (البائع) — Seller</h3>
-      <div class="row"><span class="k">الاسم</span><span class="v">{{ company_name }}</span></div>
-      {% if company_name_en %}<div class="row"><span class="k">الاسم (EN)</span><span class="v ltr">{{ company_name_en }}</span></div>{% endif %}
-      <div class="row"><span class="k">العنوان</span><span class="v">{{ supplier_address }}</span></div>
-      <div class="row"><span class="k">الرقم الضريبي (VAT)</span><span class="v ltr">{{ vat_number or '—' }}</span></div>
-      <div class="row"><span class="k">{{ seller_id_type }}</span><span class="v ltr">{{ cr_number or '—' }}</span></div>
-      {% if company_phone %}<div class="row"><span class="k">الهاتف</span><span class="v ltr">{{ company_phone }}</span></div>{% endif %}
-      {% if company_email %}<div class="row"><span class="k">البريد الإلكتروني</span><span class="v ltr">{{ company_email }}</span></div>{% endif %}
+      <h3>المورد (البائع)</h3>
+      <div class="row"><span class="k">الاسم</span> <span class="v">{{ company_name }}</span></div>
+      <div class="row"><span class="k">العنوان</span> <span class="v">{{ supplier_address }}</span></div>
     </div>
     <div class="party">
-      <h3>بيانات المشتري (العميل) — Buyer{% if is_simplified %} <span style="font-weight:400;font-size:9px">(مبسطة)</span>{% endif %}</h3>
-      <div class="row"><span class="k">الاسم</span><span class="v">{{ customer_name }}</span></div>
-      <div class="row"><span class="k">العنوان</span><span class="v">{{ buyer_address or '—' }}</span></div>
-      {% if not is_simplified and buyer_cr %}<div class="row"><span class="k">السجل التجاري / الرقم الضريبي</span><span class="v ltr">{{ buyer_cr }}</span></div>{% endif %}
-      {% if customer_phone %}<div class="row"><span class="k">الهاتف</span><span class="v ltr">{{ customer_phone }}</span></div>{% endif %}
+      <h3>المشتري (العميل){% if is_simplified %} <span style="font-weight:400">— مبسطة</span>{% endif %}</h3>
+      <div class="row"><span class="k">الاسم</span> <span class="v">{{ customer_name }}</span></div>
+      <div class="row"><span class="k">العنوان</span> <span class="v">{{ buyer_address or '—' }}</span></div>
+      {% if not is_simplified and buyer_cr %}<div class="row"><span class="k">السجل التجاري</span> <span class="v ltr">{{ buyer_cr }}</span></div>{% endif %}
+      {% if customer_phone %}<div class="row"><span class="k">الهاتف</span> <span class="v ltr">{{ customer_phone }}</span></div>{% endif %}
     </div>
   </div>
   {% else %}
@@ -217,12 +223,12 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
         <td class="num">{{ loop.index }}</td>
         <td class="col-name">{{ ln.name }}</td>
         <td class="num">{{ '%g'|format(ln.qty) }}</td>
-        <td class="num">{{ '%.2f'|format(ln.unit_price) }} <span class="cur">ر.س</span></td>
-        <td class="num">{{ '%.2f'|format(ln.total) }} <span class="cur">ر.س</span></td>
+        <td class="num">{{ money(ln.unit_price) }}</td>
+        <td class="num">{{ money(ln.total) }}</td>
         {% if is_tax_invoice and not is_receipt %}
         <td class="num">{{ '%.0f'|format(ln.vat_rate) }}%</td>
-        <td class="num">{{ '%.2f'|format(ln.vat_amount) }} <span class="cur">ر.س</span></td>
-        <td class="num col-incl">{{ '%.2f'|format(ln.total_incl_vat) }} <span class="cur">ر.س</span></td>
+        <td class="num">{{ money(ln.vat_amount) }}</td>
+        <td class="num col-incl">{{ money(ln.total_incl_vat) }}</td>
         {% endif %}
       </tr>
       {% endfor %}
@@ -234,16 +240,24 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
   <div class="totals-wrap">
     <div class="totals">
       {% if is_tax_invoice and not is_receipt %}
-      <div class="row"><span>إجمالي المبلغ الخاضع للضريبة (غير شامل)</span><span>{{ '%.2f'|format(items_subtotal) }} <span class="cur">ر.س</span></span></div>
-      <div class="row"><span>إجمالي ضريبة القيمة المضافة ({{ tax_pct }}%)</span><span>{{ '%.2f'|format(tax_amount) }} <span class="cur">ر.س</span></span></div>
+      <div class="row"><span>إجمالي المبلغ الخاضع للضريبة (غير شامل)</span><span>{{ money(items_subtotal) }}</span></div>
+      <div class="row"><span>إجمالي ضريبة القيمة المضافة ({{ tax_pct }}%)</span><span>{{ money(tax_amount) }}</span></div>
       <div class="row grand">
         <span>إجمالي الفاتورة (شامل الضريبة)</span>
-        <span>{{ '%.2f'|format(total) }} <span class="cur">ر.س</span></span>
+        <span>{{ money(total) }}</span>
       </div>
-      <div class="stmt">{{ amount_includes_vat_label }} — Amount includes VAT — {{ currency_code }}</div>
+      <div class="tafqeet-box">
+        <strong>التفقيط (Amount in words)</strong>
+        {{ total_words }}
+      </div>
+      <div class="stmt">{{ amount_includes_vat_label }} — Amount includes VAT</div>
       {% else %}
-      <div class="row"><span>مجموع البنود</span><span>{{ '%.2f'|format(items_subtotal) }} <span class="cur">ر.س</span></span></div>
-      <div class="row grand"><span>المبلغ المستلم</span><span>{{ '%.2f'|format(total) }} <span class="cur">ر.س</span></span></div>
+      <div class="row"><span>مجموع البنود</span><span>{{ money(items_subtotal) }}</span></div>
+      <div class="row grand"><span>المبلغ المستلم</span><span>{{ money(total) }}</span></div>
+      <div class="tafqeet-box">
+        <strong>التفقيط</strong>
+        {{ total_words }}
+      </div>
       {% endif %}
     </div>
 
@@ -256,8 +270,8 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
         <div>الرقم الضريبي: <span class="ltr">{{ vat_number }}</span></div>
         <div>رقم الفاتورة: <span class="ltr">{{ irn }}</span></div>
         <div>التاريخ: <span class="ltr">{{ issue_date_display }} {{ issue_time }}</span></div>
-        <div>الإجمالي شامل الضريبة: <span class="ltr">{{ '%.2f'|format(total) }} {{ currency_code }}</span></div>
-        <div>ضريبة القيمة المضافة: <span class="ltr">{{ '%.2f'|format(tax_amount) }} {{ currency_code }}</span></div>
+        <div>الإجمالي شامل الضريبة: <span class="money"><span class="cur">ر.س</span>{{ '%.2f'|format(total) }}</span></div>
+        <div>ضريبة القيمة المضافة: <span class="money"><span class="cur">ر.س</span>{{ '%.2f'|format(tax_amount) }}</span></div>
       </div>
       <div>
         <img src="{{ zatca_qr_image }}" alt="ZATCA QR" class="zatca-qr-img">
