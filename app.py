@@ -241,6 +241,12 @@ ROLE_LABELS_EN = {
 
 USER_THEMES = frozenset({'dark', 'light', 'report'})
 
+USER_THEME_OPTIONS = (
+    {'id': 'dark', 'label_ar': 'داكن', 'hint_ar': 'الوضع الافتراضي', 'swatch': 'swatch-dark'},
+    {'id': 'light', 'label_ar': 'فاتح', 'hint_ar': 'مناسب للإضاءة القوية', 'swatch': 'swatch-light'},
+    {'id': 'report', 'label_ar': 'احترافي', 'hint_ar': 'كحلي وذهبي — مثل التقارير', 'swatch': 'swatch-report'},
+)
+
 
 def normalize_user_theme(value):
     theme = (value or 'dark').strip()
@@ -322,6 +328,7 @@ def inject_global_template_vars():
         'logo_width_report': (getattr(s, 'logo_width_report', None) or 150) if s else 150,
         'logo_width_login': (getattr(s, 'logo_width_login', None) or 180) if s else 180,
         'user_theme': theme,
+        'user_theme_options': USER_THEME_OPTIONS,
         'user_language': lang,
         'company_settings': s,
         'brand_name': (s.company_name if s and s.company_name else 'LiftCore'),

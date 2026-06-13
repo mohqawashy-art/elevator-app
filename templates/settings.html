@@ -479,21 +479,13 @@ html[data-theme="report"] .theme-card.selected{border-color:#002147;box-shadow:0
       <p class="hint" style="margin-bottom:14px">يُحفظ لحسابك فقط — كل مستخدم يختار المظهر المناسب له.</p>
       <input type="hidden" name="theme" id="theme-input" value="{{ current_user.theme or 'dark' }}">
       <div class="theme-pick">
-        <div class="theme-card {% if (current_user.theme or 'dark') == 'dark' %}selected{% endif %}" data-theme-val="dark" onclick="pickTheme('dark')">
-          <div class="swatch swatch-dark"></div>
-          <strong>داكن</strong>
-          <p class="hint">الوضع الافتراضي</p>
+        {% for opt in user_theme_options %}
+        <div class="theme-card {% if (current_user.theme or 'dark') == opt.id %}selected{% endif %}" data-theme-val="{{ opt.id }}" onclick="pickTheme('{{ opt.id }}')">
+          <div class="swatch {{ opt.swatch }}"></div>
+          <strong>{{ opt.label_ar }}</strong>
+          <p class="hint">{{ opt.hint_ar }}</p>
         </div>
-        <div class="theme-card {% if current_user.theme == 'light' %}selected{% endif %}" data-theme-val="light" onclick="pickTheme('light')">
-          <div class="swatch swatch-light"></div>
-          <strong>فاتح</strong>
-          <p class="hint">مناسب للإضاءة القوية</p>
-        </div>
-        <div class="theme-card {% if current_user.theme == 'report' %}selected{% endif %}" data-theme-val="report" onclick="pickTheme('report')">
-          <div class="swatch swatch-report"></div>
-          <strong>احترافي</strong>
-          <p class="hint">كحلي وذهبي — مثل التقارير</p>
-        </div>
+        {% endfor %}
       </div>
       <div class="actions">
         <button type="submit" class="btn btn-primary">حفظ المظهر</button>
