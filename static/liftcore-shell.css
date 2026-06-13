@@ -273,3 +273,40 @@ html[dir="ltr"] .profile-dropdown {
     max-width: min(200px, 48vw);
   }
 }
+
+/* ترويسة الصفحة الموحّدة: أزرار يساراً ثم العنوان */
+.content .page-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: nowrap;
+}
+
+.content .page-header .page-actions {
+  order: 1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+html[dir="ltr"] .content .page-header .page-actions {
+  justify-content: flex-start;
+}
+
+.content .page-header .page-title {
+  order: 2;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text1, #e4eaf5);
+}
+
+.content .page-header .page-title span {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text3, #4a5a72);
+  margin-inline-start: 8px;
+}

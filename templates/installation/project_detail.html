@@ -10,7 +10,6 @@
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
-      <div class="page-title">{{ project.code }} — {{ project.client_display }}</div>
       <div class="page-actions">
         <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
         {% if project.execution_active %}
@@ -24,6 +23,7 @@
         <a href="/installation/projects/{{ project.id }}/quote" class="btn btn-primary btn-sm">+ تسعير وعرض سعر</a>
         {% endif %}
       </div>
+      <div class="page-title">{{ project.code }} — {{ project.client_display }}</div>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}

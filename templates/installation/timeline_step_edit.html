@@ -19,7 +19,6 @@
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
-      <div class="page-title">تعديل خطوة — {{ project.code }}</div>
       <div class="page-actions">
         {% if return_to == 'execution' %}
         <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-secondary btn-sm">← التنفيذ</a>
@@ -27,6 +26,7 @@
         <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">← التقرير</a>
         {% endif %}
       </div>
+      <div class="page-title">تعديل خطوة — {{ project.code }}</div>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
