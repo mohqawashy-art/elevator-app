@@ -6,8 +6,8 @@
 <title>{{ doc_title }} — {{ irn }}</title>
 <style>
 :root{
-  --navy:#1a3a5c;--navy2:#234a72;--gold:#c9a227;--bg:#eef2f7;--line:#d5dee8;
-  --text:#1a3a5c;--muted:#6b7c93;--danger:#c0392b;--success:#1b7a3d;
+  --navy:#1a3a5c;--bg:#eef2f7;--line:#d5dee8;--text:#1a3a5c;
+  --muted:#6b7c93;--danger:#c0392b;--success:#1b7a3d;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{
@@ -27,161 +27,158 @@ body{
 {% else %}@page{size:A4 portrait;margin:10mm}{% endif %}
 
 .doc{
-  width:210mm;max-width:210mm;margin:56px auto 24px;background:#fff;
+  width:210mm;max-width:210mm;min-height:277mm;
+  margin:56px auto 24px;background:#fff;
   border:1px solid var(--line);box-shadow:0 8px 32px rgba(26,58,92,.12);
-  overflow:hidden;
+  display:flex;flex-direction:column;overflow:hidden;
 }
-body.page-a5 .doc{width:148mm;max-width:148mm}
+.doc-body{flex:1;display:flex;flex-direction:column}
+body.page-a5 .doc{width:148mm;max-width:148mm;min-height:auto}
 
 @media print{
   .toolbar,.compliance-box{display:none!important}
   body{background:#fff}
-  .doc{margin:0;border:none;box-shadow:none;width:100%;max-width:none}
+  .doc{margin:0;border:none;box-shadow:none;width:100%;max-width:none;min-height:277mm}
 }
 
-/* ── Header ── */
 .inv-head{
   display:grid;grid-template-columns:1.1fr .9fr;gap:0;
   border-bottom:3px solid var(--navy);
 }
 .inv-brand{
-  padding:14px 16px 12px;border-left:1px solid var(--line);
+  padding:12px 14px 10px;border-left:1px solid var(--line);
   background:linear-gradient(180deg,#fafcfe 0%,#fff 100%);
 }
-.brand-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.brand-row img{width:{{ logo_width }}px;max-height:{{ logo_width + 10 }}px;object-fit:contain}
-.brand-names .co-ar{font-size:13px;font-weight:800;color:var(--navy);line-height:1.35}
-.brand-names .co-en{font-size:9px;color:var(--muted);direction:ltr;text-align:right;margin-top:2px}
+.brand-row img{
+  width:{{ logo_width }}px;max-height:{{ logo_width + 16 }}px;
+  object-fit:contain;display:block;margin-right:0;margin-left:auto;
+}
 
-.seller-lines{display:grid;gap:5px;font-size:9px;line-height:1.45}
+.seller-lines{display:grid;gap:4px;font-size:9px;line-height:1.4;margin-top:8px}
 .seller-line{display:flex;align-items:flex-start;gap:6px;text-align:right}
 .seller-line .ico{
-  width:16px;height:16px;border-radius:50%;background:var(--navy);color:#fff;
-  font-size:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
+  width:15px;height:15px;border-radius:50%;background:var(--navy);color:#fff;
+  font-size:7px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
 }
-.seller-line .txt{flex:1}
-.seller-line .lbl{color:var(--muted);font-size:8px;display:block}
+.seller-line .txt{flex:1;font-size:9px}
+.seller-line .lbl{color:var(--muted);font-size:8px}
+.seller-line .lbl::after{content:': '}
 .seller-line .val{font-weight:600;color:var(--text)}
-.seller-line .val.ltr{direction:ltr;unicode-bidi:embed;text-align:right}
+.seller-line .val.ltr{direction:ltr;unicode-bidi:embed}
 
 .inv-title-side{
-  padding:14px 16px 10px;display:flex;flex-direction:column;
+  padding:12px 14px 8px;display:flex;flex-direction:column;
   align-items:flex-start;text-align:left;direction:ltr;
 }
 .inv-title-side .big-title{
-  font-size:22px;font-weight:900;color:var(--navy);letter-spacing:.5px;
+  font-size:20px;font-weight:900;color:var(--navy);
   direction:rtl;text-align:left;width:100%;
 }
-.inv-title-side .big-sub{font-size:11px;color:var(--muted);font-weight:700;margin-top:2px;letter-spacing:1px}
-.inv-title-side .e-note{font-size:8px;color:var(--muted);margin-top:6px;direction:rtl;text-align:left;width:100%}
+.inv-title-side .big-sub{font-size:10px;color:var(--muted);font-weight:700;margin-top:2px;letter-spacing:.5px}
+.inv-title-side .e-note{font-size:8px;color:var(--muted);margin-top:4px;direction:rtl;text-align:left;width:100%}
 
-.facts-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:9px;direction:rtl}
-.facts-table th,.facts-table td{border:1px solid var(--line);padding:5px 8px;vertical-align:middle}
-.facts-table th{
-  background:var(--navy);color:#fff;font-weight:700;text-align:right;
-  white-space:nowrap;width:42%;font-size:8px;
-}
-.facts-table td{background:#fff;font-weight:600;text-align:right}
+.facts-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:8px;direction:rtl}
+.facts-table th,.facts-table td{border:1px solid var(--line);padding:4px 6px;vertical-align:middle}
+.facts-table th{background:var(--navy);color:#fff;font-weight:700;text-align:right;white-space:nowrap;width:40%;font-size:7.5px}
+.facts-table td{background:#fff;font-weight:600;text-align:right;font-size:8px}
 .facts-table td.ltr{direction:ltr;unicode-bidi:embed}
-.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:8px;font-weight:800}
+.badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:7px;font-weight:800}
 .badge.unpaid{background:#fdecea;color:var(--danger);border:1px solid #f5c6c6}
 .badge.paid{background:#e8f7ee;color:var(--success);border:1px solid #b8e6c8}
 
-/* ── Customer ── */
-.sec-bar{
-  background:var(--navy);color:#fff;font-size:10px;font-weight:800;
-  padding:6px 14px;text-align:right;
-}
+.sec-bar{background:var(--navy);color:#fff;font-size:9px;font-weight:800;padding:5px 12px;text-align:right}
 .cust-grid{
   display:grid;grid-template-columns:1fr 1fr;gap:0;
   border-bottom:1px solid var(--line);font-size:9px;
 }
-.cust-col{padding:8px 14px;border-left:1px solid var(--line)}
+.cust-col{padding:6px 12px;border-left:1px solid var(--line);text-align:right;line-height:1.55}
 .cust-col:last-child{border-left:none}
-.cust-row{display:flex;gap:6px;margin-bottom:4px;line-height:1.45}
+.cust-row{margin-bottom:2px;font-size:9px}
 .cust-row:last-child{margin-bottom:0}
-.cust-row .k{color:var(--muted);font-size:8px;font-weight:700;min-width:72px;flex-shrink:0}
-.cust-row .v{font-weight:600;flex:1}
+.cust-row .k{color:var(--muted);font-size:8px;font-weight:700}
+.cust-row .k::after{content:': '}
+.cust-row .v{font-weight:600}
 .cust-row .v.ltr{direction:ltr;unicode-bidi:embed}
 
-/* ── Items table ── */
-.items-wrap{padding:0 0 0;border-bottom:1px solid var(--line)}
-.items-table{width:100%;border-collapse:collapse;font-size:8.5px}
+.items-wrap{border-bottom:1px solid var(--line)}
+.items-table{width:100%;border-collapse:collapse;font-size:8px}
 .items-table thead th{
-  background:var(--navy);color:#fff;font-weight:700;padding:7px 4px;
-  text-align:center;border-left:1px solid rgba(255,255,255,.15);font-size:8px;line-height:1.35;
+  background:var(--navy);color:#fff;font-weight:700;padding:5px 3px;
+  text-align:center;border-left:1px solid rgba(255,255,255,.12);font-size:7.5px;line-height:1.3;
 }
 .items-table thead th:first-child{border-left:none}
 .items-table tbody td{
-  padding:7px 4px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);
+  padding:5px 3px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);
   vertical-align:middle;text-align:center;
 }
 .items-table tbody td:first-child{border-left:none}
 .items-table tbody tr:nth-child(even){background:#f8fafc}
-.items-table .col-desc{text-align:right;padding-right:8px;min-width:100px;font-weight:600}
-.items-table .num{direction:ltr;font-weight:600;white-space:nowrap}
+.items-table .col-desc{text-align:right;padding-right:6px;font-weight:600}
+.items-table .num-amt{text-align:left;direction:ltr;font-weight:600;white-space:nowrap;padding-left:4px}
 .items-table .col-total{color:var(--navy);font-weight:800}
 
-.money{direction:ltr;unicode-bidi:embed;display:inline-block;white-space:nowrap}
-.money .cur{font-size:8px;color:var(--muted);margin-right:3px;font-weight:700}
+.money{direction:ltr;unicode-bidi:embed;display:inline-block;white-space:nowrap;font-weight:600}
+.money .cur{font-size:7.5px;color:var(--muted);margin-left:3px;font-weight:700}
 
-/* ── Totals + QR ── */
-.bottom-grid{
-  display:grid;grid-template-columns:1fr auto;gap:0;
-  border-bottom:1px solid var(--line);
+.bottom-grid{display:grid;grid-template-columns:1fr auto;gap:0;border-bottom:1px solid var(--line)}
+.sum-side{padding:8px 12px;display:flex;flex-direction:column;align-items:flex-end}
+.sum-table{
+  width:auto;min-width:200px;max-width:260px;border-collapse:collapse;
+  font-size:8px;margin-bottom:6px;
 }
-.sum-side{padding:10px 14px}
-.sum-table{width:100%;border-collapse:collapse;font-size:9px;margin-bottom:8px}
-.sum-table th,.sum-table td{border:1px solid var(--line);padding:6px 8px}
-.sum-table th{background:#f0f4f9;color:var(--navy);font-weight:700;text-align:right;width:58%;font-size:8px}
-.sum-table td{text-align:left;direction:ltr;font-weight:700;background:#fff}
-.sum-table tr.grand th,.sum-table tr.grand td{
-  background:var(--navy);color:#fff;font-size:10px;font-weight:800;
+.sum-table th,.sum-table td{border:1px solid var(--line);padding:3px 6px}
+.sum-table th{
+  background:#f0f4f9;color:var(--navy);font-weight:700;text-align:right;
+  font-size:7.5px;white-space:nowrap;
 }
+.sum-table td{text-align:right;background:#fff;font-size:8px}
+.sum-table td .money-wrap{display:inline-block;direction:ltr;text-align:left}
+.sum-table tr.grand th,.sum-table tr.grand td{background:var(--navy);color:#fff;font-size:8.5px;font-weight:800}
+
 .tafqeet-line{
-  font-size:9px;line-height:1.55;color:var(--text);text-align:right;
-  padding:6px 8px;background:#f8fafc;border:1px solid var(--line);border-radius:4px;
+  font-size:8px;line-height:1.5;color:var(--text);text-align:right;
+  padding:5px 8px;background:#f8fafc;border:1px solid var(--line);border-radius:3px;
+  max-width:100%;width:100%;
 }
-.tafqeet-line strong{color:var(--muted);font-size:8px}
+.tafqeet-line strong{color:var(--muted);font-size:7.5px}
 
 .qr-side{
-  padding:12px 16px;border-right:1px solid var(--line);
+  padding:10px 12px;border-right:1px solid var(--line);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  min-width:170px;background:#fafcfe;
+  min-width:150px;background:#fafcfe;
 }
-.qr-side img{width:130px;height:130px;display:block}
-.qr-side .qr-cap{font-size:8px;color:var(--muted);margin-top:6px;text-align:center;line-height:1.5;max-width:140px}
+.qr-side img{width:120px;height:120px;display:block}
+.qr-side .qr-cap{font-size:7px;color:var(--muted);margin-top:4px;text-align:center;line-height:1.4;max-width:130px}
 
-/* ── Footer boxes ── */
-.footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;font-size:9px}
-.footer-box{padding:10px 14px;border-left:1px solid var(--line);min-height:72px}
+.footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;font-size:8.5px;border-bottom:1px solid var(--line)}
+.footer-box{padding:8px 12px;border-left:1px solid var(--line)}
 .footer-box:last-child{border-left:none}
-.footer-box h4{font-size:9px;color:var(--navy);margin-bottom:6px;font-weight:800}
-.footer-box p,.footer-box li{line-height:1.55;color:var(--text)}
-.footer-box ul{margin:0;padding-right:16px}
-.footer-box .bank-row{margin-bottom:3px}
+.footer-box h4{font-size:8.5px;color:var(--navy);margin-bottom:4px;font-weight:800}
+.footer-box ul{margin:0;padding-right:14px;line-height:1.5}
+.footer-box .bank-row{margin-bottom:2px;font-size:8.5px}
 .footer-box .bank-row .k{color:var(--muted);font-size:8px}
-.footer-box .bank-row .v{font-weight:600}
+.footer-box .bank-row .k::after{content:': '}
 .footer-box .v.ltr{direction:ltr;unicode-bidi:embed}
 
 .contact-ribbon{
-  background:var(--navy);color:#fff;padding:8px 14px;
-  display:flex;flex-wrap:wrap;justify-content:center;gap:12px 20px;
-  font-size:8px;line-height:1.4;
+  margin-top:auto;background:var(--navy);color:#fff;padding:7px 12px;
+  display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 18px;
+  font-size:8px;line-height:1.35;
 }
-.contact-ribbon span{direction:ltr;unicode-bidi:embed}
+.contact-ribbon span{white-space:nowrap}
+.contact-ribbon .ltr{direction:ltr;unicode-bidi:embed}
 
-.compliance-box{margin:8px 14px;padding:8px;background:#fff8e6;border:1px solid #f0c040;border-radius:4px;font-size:8px;color:#7d5a00;text-align:right}
-.compliance-box ul{margin:4px 14px 0 0}
+.compliance-box{margin:6px 12px;padding:6px;background:#fff8e6;border:1px solid #f0c040;border-radius:3px;font-size:7.5px;color:#7d5a00;text-align:right}
+.compliance-box ul{margin:3px 12px 0 0}
 
 body.page-a5 .inv-head{grid-template-columns:1fr}
-body.page-a5 .big-title{font-size:16px}
-body.page-a5 .items-table{font-size:7.5px}
-body.page-a5 .qr-side img{width:90px;height:90px}
+body.page-a5 .doc{min-height:auto}
+body.page-a5 .items-table{font-size:7px}
+body.page-a5 .qr-side img{width:85px;height:85px}
 </style>
 </head>
 <body class="{% if is_receipt %}page-a5{% else %}page-a4{% endif %}"{% if request.args.get('popup') == '1' or request.args.get('print') == '1' %} data-lc-popup="1"{% endif %}>
-{% macro money(v) %}<span class="money"><span class="cur">ر.س</span>{{ '%.2f'|format(v) }}</span>{% endmacro %}
+{% macro money(v) %}<span class="money">{{ '%.2f'|format(v) }}<span class="cur">ر.س</span></span>{% endmacro %}
 
 <div class="toolbar">
   <span>{{ doc_title }} — {{ irn }}</span>
@@ -192,15 +189,12 @@ body.page-a5 .qr-side img{width:90px;height:90px}
 </div>
 
 <div class="doc">
-  <!-- ═══ HEADER ═══ -->
+<div class="doc-body">
+
   <div class="inv-head">
     <div class="inv-brand">
       <div class="brand-row">
         <img src="{{ logo_url }}" alt="{{ company_name }}">
-        <div class="brand-names">
-          <div class="co-ar">{{ company_name }}</div>
-          {% if company_name_en %}<div class="co-en">{{ company_name_en }}</div>{% endif %}
-        </div>
       </div>
       <div class="seller-lines">
         {% if vat_number %}<div class="seller-line"><span class="ico">V</span><div class="txt"><span class="lbl">الرقم الضريبي</span><span class="val ltr">{{ vat_number }}</span></div></div>{% endif %}
@@ -237,7 +231,6 @@ body.page-a5 .qr-side img{width:90px;height:90px}
   </div>
 
   {% if is_tax_invoice and not is_receipt %}
-  <!-- ═══ CUSTOMER ═══ -->
   <div class="sec-bar">بيانات العميل</div>
   <div class="cust-grid">
     <div class="cust-col">
@@ -262,7 +255,6 @@ body.page-a5 .qr-side img{width:90px;height:90px}
   </div>
   {% endif %}
 
-  <!-- ═══ ITEMS ═══ -->
   <div class="items-wrap">
     <table class="items-table">
       <thead>
@@ -272,12 +264,12 @@ body.page-a5 .qr-side img{width:90px;height:90px}
           <th>الوحدة</th>
           <th>الكمية</th>
           {% if is_tax_invoice and not is_receipt %}
-          <th>سعر الوحدة<br>(ر.س)</th>
-          <th>الخصم<br>(ر.س)</th>
-          <th>قبل الضريبة<br>(ر.س)</th>
-          <th>نسبة<br>الضريبة</th>
-          <th>قيمة<br>الضريبة</th>
-          <th>الإجمالي شامل<br>الضريبة (ر.س)</th>
+          <th>سعر الوحدة</th>
+          <th>الخصم</th>
+          <th>قبل الضريبة</th>
+          <th>نسبة الضريبة</th>
+          <th>قيمة الضريبة</th>
+          <th>الإجمالي شامل الضريبة</th>
           {% else %}
           <th>سعر الوحدة</th>
           <th>الإجمالي</th>
@@ -287,19 +279,19 @@ body.page-a5 .qr-side img{width:90px;height:90px}
       <tbody>
         {% for ln in line_items %}
         <tr>
-          <td class="num">{{ loop.index }}</td>
+          <td>{{ loop.index }}</td>
           <td class="col-desc">{{ ln.name }}</td>
           <td>{{ ln.unit }}</td>
-          <td class="num">{{ '%g'|format(ln.qty) }}</td>
-          <td class="num">{{ money(ln.unit_price) }}</td>
+          <td>{{ '%g'|format(ln.qty) }}</td>
+          <td class="num-amt">{{ money(ln.unit_price) }}</td>
           {% if is_tax_invoice and not is_receipt %}
-          <td class="num">{{ money(ln.discount) }}</td>
-          <td class="num">{{ money(ln.total) }}</td>
-          <td class="num">{{ '%.0f'|format(ln.vat_rate) }}%</td>
-          <td class="num">{{ money(ln.vat_amount) }}</td>
-          <td class="num col-total">{{ money(ln.total_incl_vat) }}</td>
+          <td class="num-amt">{{ money(ln.discount) }}</td>
+          <td class="num-amt">{{ money(ln.total) }}</td>
+          <td>{{ '%.0f'|format(ln.vat_rate) }}%</td>
+          <td class="num-amt">{{ money(ln.vat_amount) }}</td>
+          <td class="num-amt col-total">{{ money(ln.total_incl_vat) }}</td>
           {% else %}
-          <td class="num col-total">{{ money(ln.total_incl_vat if ln.total_incl_vat else ln.total) }}</td>
+          <td class="num-amt col-total">{{ money(ln.total_incl_vat if ln.total_incl_vat else ln.total) }}</td>
           {% endif %}
         </tr>
         {% endfor %}
@@ -307,31 +299,27 @@ body.page-a5 .qr-side img{width:90px;height:90px}
     </table>
   </div>
 
-  <!-- ═══ TOTALS + QR ═══ -->
   <div class="bottom-grid">
     <div class="sum-side">
       {% if is_tax_invoice and not is_receipt %}
       <table class="sum-table">
-        <tr><th>إجمالي قبل الضريبة</th><td>{{ money(items_subtotal) }}</td></tr>
-        <tr><th>إجمالي الخصم</th><td>{{ money(total_discount) }}</td></tr>
-        <tr><th>المبلغ الخاضع للضريبة</th><td>{{ money(taxable_amount) }}</td></tr>
-        <tr><th>ضريبة القيمة المضافة ({{ tax_pct }}%)</th><td>{{ money(tax_amount) }}</td></tr>
-        <tr class="grand"><th>الإجمالي شامل الضريبة</th><td>{{ money(total) }}</td></tr>
+        <tr><th>إجمالي قبل الضريبة</th><td><span class="money-wrap">{{ money(items_subtotal) }}</span></td></tr>
+        <tr><th>إجمالي الخصم</th><td><span class="money-wrap">{{ money(total_discount) }}</span></td></tr>
+        <tr><th>المبلغ الخاضع للضريبة</th><td><span class="money-wrap">{{ money(taxable_amount) }}</span></td></tr>
+        <tr><th>ضريبة القيمة المضافة ({{ tax_pct }}%)</th><td><span class="money-wrap">{{ money(tax_amount) }}</span></td></tr>
+        <tr class="grand"><th>الإجمالي شامل الضريبة</th><td><span class="money-wrap">{{ money(total) }}</span></td></tr>
       </table>
       {% else %}
       <table class="sum-table">
-        <tr class="grand"><th>المبلغ الإجمالي</th><td>{{ money(total) }}</td></tr>
+        <tr class="grand"><th>المبلغ الإجمالي</th><td><span class="money-wrap">{{ money(total) }}</span></td></tr>
       </table>
       {% endif %}
-      <div class="tafqeet-line">
-        <strong>المبلغ كتابة:</strong> {{ total_words }}
-      </div>
+      <div class="tafqeet-line"><strong>المبلغ كتابة:</strong> {{ total_words }}</div>
     </div>
-
     {% if show_zatca_qr %}
     <div class="qr-side">
       <img src="{{ zatca_qr_image }}" alt="ZATCA QR">
-      <div class="qr-cap">امسح الرمز للتحقق من صحة الفاتورة<br>Scan to verify</div>
+      <div class="qr-cap">امسح الرمز للتحقق من صحة الفاتورة</div>
     </div>
     {% endif %}
   </div>
@@ -346,32 +334,31 @@ body.page-a5 .qr-side img{width:90px;height:90px}
   </div>
   {% endif %}
 
-  <!-- ═══ FOOTER ═══ -->
   <div class="footer-grid">
     {% if show_bank %}
     <div class="footer-box">
       <h4>بيانات التحويل البنكي</h4>
-      {% if bank_name %}<div class="bank-row"><span class="k">البنك: </span><span class="v">{{ bank_name }}</span></div>{% endif %}
-      {% if bank_account_name %}<div class="bank-row"><span class="k">اسم الحساب: </span><span class="v">{{ bank_account_name }}</span></div>{% endif %}
-      {% if bank_iban %}<div class="bank-row"><span class="k">IBAN: </span><span class="v ltr">{{ bank_iban }}</span></div>{% endif %}
-      {% if bank_account_no %}<div class="bank-row"><span class="k">رقم الحساب: </span><span class="v ltr">{{ bank_account_no }}</span></div>{% endif %}
+      {% if bank_name %}<div class="bank-row"><span class="k">البنك</span><span class="v">{{ bank_name }}</span></div>{% endif %}
+      {% if bank_account_name %}<div class="bank-row"><span class="k">اسم الحساب</span><span class="v">{{ bank_account_name }}</span></div>{% endif %}
+      {% if bank_iban %}<div class="bank-row"><span class="k">IBAN</span><span class="v ltr">{{ bank_iban }}</span></div>{% endif %}
+      {% if bank_account_no %}<div class="bank-row"><span class="k">رقم الحساب</span><span class="v ltr">{{ bank_account_no }}</span></div>{% endif %}
     </div>
     {% endif %}
     <div class="footer-box" {% if not show_bank %}style="grid-column:1/-1"{% endif %}>
       <h4>ملاحظات</h4>
       <ul>
         <li>هذه الفاتورة صادرة إلكترونياً ولا تحتاج إلى توقيع أو ختم.</li>
-        <li>جميع الأسعار بال{{ currency_label }} ({{ currency_code }}) {% if is_tax_invoice %}شاملة ضريبة القيمة المضافة{% endif %}.</li>
-        {% if notes %}<li>{{ notes }}</li>{% endif %}
-        <li>للاستفسارات: {% if company_phone %}{{ company_phone }}{% endif %}{% if company_email %} — {{ company_email }}{% endif %}</li>
+        <li>جميع الأسعار بالريال السعودي{% if is_tax_invoice %} شاملة ضريبة القيمة المضافة{% endif %}.</li>
       </ul>
     </div>
   </div>
 
+</div><!-- doc-body -->
+
   <div class="contact-ribbon">
-    {% if company_phone %}<span>☎ {{ company_phone }}</span>{% endif %}
-    {% if company_email %}<span>✉ {{ company_email }}</span>{% endif %}
-    {% if company_website %}<span>🌐 {{ company_website }}</span>{% endif %}
+    {% if company_phone %}<span>☎ <span class="ltr">{{ company_phone }}</span></span>{% endif %}
+    {% if company_email %}<span>✉ <span class="ltr">{{ company_email }}</span></span>{% endif %}
+    {% if company_website %}<span>🌐 <span class="ltr">{{ company_website }}</span></span>{% endif %}
     {% if supplier_address and supplier_address != '—' %}<span>📍 {{ supplier_address }}</span>{% endif %}
   </div>
 </div>
