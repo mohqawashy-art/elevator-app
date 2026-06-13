@@ -50,7 +50,7 @@ body.page-a5 .doc{width:148mm;max-width:148mm;min-height:auto}
   background:linear-gradient(180deg,#fafcfe 0%,#fff 100%);
 }
 .brand-row img{
-  width:{{ logo_width }}px;max-height:{{ logo_width + 16 }}px;
+  width:{{ (logo_width * 1.3)|round|int }}px;max-height:{{ ((logo_width + 16) * 1.3)|round|int }}px;
   object-fit:contain;display:block;margin-right:0;margin-left:auto;
 }
 
@@ -88,17 +88,18 @@ body.page-a5 .doc{width:148mm;max-width:148mm;min-height:auto}
 
 .sec-bar{background:var(--navy);color:#fff;font-size:9px;font-weight:800;padding:5px 12px;text-align:right}
 .cust-grid{
-  display:grid;grid-template-columns:1fr 1fr;gap:0;
   border-bottom:1px solid var(--line);font-size:9px;
+  padding:6px 12px;
 }
-.cust-col{padding:6px 12px;border-left:1px solid var(--line);text-align:right;line-height:1.55}
-.cust-col:last-child{border-left:none}
-.cust-row{margin-bottom:2px;font-size:9px}
-.cust-row:last-child{margin-bottom:0}
-.cust-row .k{color:var(--muted);font-size:8px;font-weight:700}
+.cust-rows{display:grid;gap:3px}
+.cust-row{
+  display:grid;grid-template-columns:72px 1fr 72px 1fr;
+  gap:2px 10px;align-items:baseline;text-align:right;line-height:1.45;
+}
+.cust-row .k{color:var(--muted);font-size:8px;font-weight:700;white-space:nowrap}
 .cust-row .k::after{content:': '}
-.cust-row .v{font-weight:600}
-.cust-row .v.ltr{direction:ltr;unicode-bidi:embed}
+.cust-row .v{font-weight:600;min-width:0}
+.cust-row .v.ltr{direction:ltr;unicode-bidi:embed;text-align:right}
 
 .items-wrap{border-bottom:1px solid var(--line)}
 .items-table{width:100%;border-collapse:collapse;font-size:8px}
@@ -120,10 +121,16 @@ body.page-a5 .doc{width:148mm;max-width:148mm;min-height:auto}
 .money{direction:ltr;unicode-bidi:embed;display:inline-block;white-space:nowrap;font-weight:600}
 .money .cur{font-size:7.5px;color:var(--muted);margin-left:3px;font-weight:700}
 
-.bottom-grid{display:grid;grid-template-columns:1fr auto;gap:0;border-bottom:1px solid var(--line)}
-.sum-side{padding:8px 12px;display:flex;flex-direction:column;align-items:flex-end}
+.bottom-grid{
+  display:grid;grid-template-columns:auto 1fr;direction:rtl;
+  gap:12px;border-bottom:1px solid var(--line);padding:8px 12px;
+}
+.sum-side{
+  display:flex;flex-direction:column;align-items:flex-start;
+  justify-self:start;
+}
 .sum-table{
-  width:auto;min-width:200px;max-width:260px;border-collapse:collapse;
+  width:auto;min-width:200px;max-width:240px;border-collapse:collapse;
   font-size:8px;margin-bottom:6px;
 }
 .sum-table th,.sum-table td{border:1px solid var(--line);padding:3px 6px}
@@ -138,14 +145,14 @@ body.page-a5 .doc{width:148mm;max-width:148mm;min-height:auto}
 .tafqeet-line{
   font-size:8px;line-height:1.5;color:var(--text);text-align:right;
   padding:5px 8px;background:#f8fafc;border:1px solid var(--line);border-radius:3px;
-  max-width:100%;width:100%;
+  max-width:240px;width:100%;
 }
 .tafqeet-line strong{color:var(--muted);font-size:7.5px}
 
 .qr-side{
-  padding:10px 12px;border-right:1px solid var(--line);
+  padding:4px 0;justify-self:center;align-self:center;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  min-width:150px;background:#fafcfe;
+  min-width:140px;
 }
 .qr-side img{width:120px;height:120px;display:block}
 .qr-side .qr-cap{font-size:7px;color:var(--muted);margin-top:4px;text-align:center;line-height:1.4;max-width:130px}
@@ -216,15 +223,12 @@ body.page-a5 .qr-side img{width:85px;height:85px}
         <tr><th>وقت الإصدار</th><td class="ltr">{{ issue_time_display }}</td></tr>
         <tr><th>نوع الفاتورة</th><td>{{ invoice_type_label }}</td></tr>
         {% if contract_code and contract_code != '—' %}<tr><th>رقم العقد</th><td class="ltr">{{ contract_code }}</td></tr>{% endif %}
-        <tr><th>طريقة الدفع</th><td>{{ payment_method_ar }}</td></tr>
         <tr><th>حالة السداد</th><td><span class="badge {% if is_paid %}paid{% else %}unpaid{% endif %}">{{ status }}</span></td></tr>
-        <tr><th>تاريخ الاستحقاق</th><td>{{ due_date_display }}</td></tr>
       </table>
       {% else %}
       <table class="facts-table">
         <tr><th>رقم المستند</th><td class="ltr">{{ irn }}</td></tr>
         <tr><th>التاريخ</th><td>{{ invoice_date }}</td></tr>
-        <tr><th>طريقة الدفع</th><td>{{ payment_method_ar }}</td></tr>
       </table>
       {% endif %}
     </div>
@@ -233,24 +237,50 @@ body.page-a5 .qr-side img{width:85px;height:85px}
   {% if is_tax_invoice and not is_receipt %}
   <div class="sec-bar">بيانات العميل</div>
   <div class="cust-grid">
-    <div class="cust-col">
-      <div class="cust-row"><span class="k">اسم العميل</span><span class="v">{{ customer_name }}</span></div>
-      {% if buyer_cr %}<div class="cust-row"><span class="k">الرقم الضريبي</span><span class="v ltr">{{ buyer_cr }}</span></div>{% endif %}
-      {% if customer_phone %}<div class="cust-row"><span class="k">الجوال</span><span class="v ltr">{{ customer_phone }}</span></div>{% endif %}
-    </div>
-    <div class="cust-col">
-      <div class="cust-row"><span class="k">رقم العميل</span><span class="v ltr">{{ customer_code }}</span></div>
-      <div class="cust-row"><span class="k">المدينة</span><span class="v">{{ customer_city }}</span></div>
-      <div class="cust-row"><span class="k">الحي</span><span class="v">{{ customer_district }}</span></div>
-      <div class="cust-row"><span class="k">العنوان</span><span class="v">{{ customer_address_line }}</span></div>
+    <div class="cust-rows">
+      <div class="cust-row">
+        <span class="k">اسم العميل</span><span class="v">{{ customer_name }}</span>
+        <span class="k">رقم العميل</span><span class="v ltr">{{ customer_code }}</span>
+      </div>
+      {% if buyer_cr %}
+      <div class="cust-row">
+        <span class="k">الرقم الضريبي</span><span class="v ltr">{{ buyer_cr }}</span>
+        <span class="k">المدينة</span><span class="v">{{ customer_city }}</span>
+      </div>
+      {% else %}
+      <div class="cust-row">
+        <span></span><span></span>
+        <span class="k">المدينة</span><span class="v">{{ customer_city }}</span>
+      </div>
+      {% endif %}
+      <div class="cust-row">
+        {% if customer_phone %}
+        <span class="k">الجوال</span><span class="v ltr">{{ customer_phone }}</span>
+        {% else %}
+        <span></span><span></span>
+        {% endif %}
+        <span class="k">الحي</span><span class="v">{{ customer_district }}</span>
+      </div>
+      <div class="cust-row">
+        <span></span><span></span>
+        <span class="k">العنوان</span><span class="v">{{ customer_address_line }}</span>
+      </div>
     </div>
   </div>
   {% else %}
   <div class="sec-bar">بيانات العميل</div>
   <div class="cust-grid">
-    <div class="cust-col" style="grid-column:1/-1">
-      <div class="cust-row"><span class="k">الاسم</span><span class="v">{{ customer_name }}</span></div>
-      {% if customer_phone %}<div class="cust-row"><span class="k">الجوال</span><span class="v ltr">{{ customer_phone }}</span></div>{% endif %}
+    <div class="cust-rows">
+      <div class="cust-row">
+        <span class="k">الاسم</span><span class="v">{{ customer_name }}</span>
+        <span></span><span></span>
+      </div>
+      {% if customer_phone %}
+      <div class="cust-row">
+        <span class="k">الجوال</span><span class="v ltr">{{ customer_phone }}</span>
+        <span></span><span></span>
+      </div>
+      {% endif %}
     </div>
   </div>
   {% endif %}
