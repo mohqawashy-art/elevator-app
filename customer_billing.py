@@ -157,6 +157,66 @@ def customer_billable_ops(customer_id: int) -> list[dict]:
     return rows
 
 
+def _fmt_date_dmy(d) -> str:
+    if not d:
+        return '—'
+    return d.strftime('%d/%m/%Y')
+
+
+def _is_renewal_revenue(revenue: Revenue) -> bool:
+    rev_type = (revenue.revenue_type or '').strip()
+    if 'تجديد' in rev_type:
+        return True
+    if rev_type in ('تجديد عقد', 'عقد صيانة', 'صيانة', 'عقد ضمان') and revenue.contract_id:
+        return True
+    return False
+
+
+def invoice_description_for_revenue(revenue: Revenue) -> str:
+    """بيان الحساب للفاتورة عند الربط بإيراد محصّل."""
+    rev_type = (revenue.revenue_type or '').strip()
+    contract = revenue.contract
+
+    if contract and _is_renewal_revenue(revenue):
+        return (
+            'تجديد عقد صيانة مصاعد عن الفترة '
+            f'من {_fmt_date_dmy(contract.start_date)} إلى {_fmt_date_dmy(contract.end_date)}'
+        )
+
+    if revenue.parts_billing_id and revenue.parts_billing:
+        pb = revenue.parts_billing
+        desc = (pb.description or '').strip()
+        if desc:
+            return desc
+        return f'تركيب قطع غيار — {pb.code}'
+
+    if rev_type == 'قطع غيار':
+        notes = (revenue.notes or '').strip()
+        if notes:
+            return notes
+        return f'قطع غيار — {revenue.code}'
+
+    if rev_type == 'عقد جديد' and contract:
+        return (
+            'عقد جديد صيانة مصاعد عن الفترة '
+            f'من {_fmt_date_dmy(contract.start_date)} إلى {_fmt_date_dmy(contract.end_date)}'
+        )
+
+    if contract:
+        return (
+            f'{rev_type or "خدمة"} — عقد {contract.code} '
+            f'من {_fmt_date_dmy(contract.start_date)} إلى {_fmt_date_dmy(contract.end_date)}'
+        )
+
+    notes = (revenue.notes or '').strip()
+    if notes:
+        return notes
+    ref = (revenue.reference or '').strip()
+    if ref:
+        return ref
+    return rev_type or f'إيراد {revenue.code}'
+
+
 def customer_invoicable_revenues(customer_id: int) -> list[dict]:
     """إيرادات محصّلة لم تُربط بفاتورة بعد — لإصدار فاتورة ضريبية."""
     rows: list[dict] = []
@@ -168,28 +228,26 @@ def customer_invoicable_revenues(customer_id: int) -> list[dict]:
         .all()
     )
     for r in revs:
-        desc = (r.notes or '').strip()
-        if r.contract_id and r.contract:
-            desc = desc or f'عقد {r.contract.code}'
-        elif r.parts_billing_id and r.parts_billing:
-            pb = r.parts_billing
-            desc = desc or (pb.description or f'قطع {pb.code}')
-        elif r.reference:
-            desc = desc or r.reference
-
+        invoice_desc = invoice_description_for_revenue(r)
+        contract = r.contract
         rows.append({
             'source_type': 'revenue',
             'source_id': r.id,
             'code': r.code,
             'date': str(r.revenue_date or ''),
             'title': r.revenue_type or 'إيراد',
-            'description': desc or r.revenue_type or 'إيراد',
+            'description': invoice_desc,
+            'invoice_description': invoice_desc,
+            'revenue_type': r.revenue_type or '',
             'amount_before_tax': _round_money(r.amount),
             'total': _round_money(r.total),
             'paid': _round_money(r.total),
             'remaining': 0,
             'contract_id': r.contract_id,
-            'contract_code': r.contract.code if r.contract else '',
+            'contract_code': contract.code if contract else '',
+            'contract_start': str(contract.start_date or '') if contract else '',
+            'contract_end': str(contract.end_date or '') if contract else '',
+            'is_renewal': _is_renewal_revenue(r),
             'parts_billing_id': r.parts_billing_id,
             'collected': True,
             'hint': 'تم التحصيل — إصدار فاتورة للتوثيق',

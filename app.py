@@ -3565,6 +3565,7 @@ def invoice_add():
     invoice_status = request.form.get('status', 'غير مدفوعة')
     invoice_paid = 0.0
     linked_revenue = None
+    description = (request.form.get('description') or '').strip()
     if source_type == 'revenue' and source_id:
         from customer_billing import _round_money
 
@@ -3573,6 +3574,9 @@ def invoice_add():
             invoice_paid = _round_money(linked_revenue.total)
             if invoice_status in ('', 'غير مدفوعة'):
                 invoice_status = 'مدفوعة'
+            if not description:
+                from customer_billing import invoice_description_for_revenue
+                description = invoice_description_for_revenue(linked_revenue)
     elif source_type == 'parts_billing' and source_id:
         pb = PartsBilling.query.get(int(source_id))
         if pb and (pb.paid_amount or 0) >= (pb.sell_price or 0) - 0.01:
@@ -3595,7 +3599,7 @@ def invoice_add():
         parts_billing_id=parts_billing_id,
         invoice_date=datetime.strptime(request.form['invoice_date'], '%Y-%m-%d').date(),
         due_date=datetime.strptime(due_raw, '%Y-%m-%d').date() if due_raw else None,
-        description=request.form.get('description', ''),
+        description=description,
         amount=amount,
         tax_amount=tax,
         total=total,

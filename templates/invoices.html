@@ -702,17 +702,24 @@ function selectBillableOp(idx) {
   document.getElementById('f-source-type').value = op.source_type;
   document.getElementById('f-source-id').value = op.source_id;
   document.getElementById('f-contract-id').value = op.contract_id || '';
-  document.getElementById('f-desc').value = op.description || '';
+  const accountDesc = op.invoice_description || op.description || '';
+  document.getElementById('f-desc').value = accountDesc;
+  const invDate = document.getElementById('f-date');
+  if (invDate && op.date) invDate.value = op.date;
   const amt = document.getElementById('f-amount');
   if (amt) amt.value = Number(op.amount_before_tax || 0).toFixed(2);
   const st = document.getElementById('f-status-sel');
   if (st) st.value = op.collected ? 'مدفوعة' : 'غير مدفوعة';
   const pay = document.getElementById('f-pay-method');
-  if (pay && op.payment_method && !pay.value) pay.value = op.payment_method;
+  if (pay && op.payment_method) pay.value = op.payment_method;
+  const notes = document.getElementById('f-notes');
+  if (notes && !notes.value.trim() && op.code) {
+    notes.value = 'مرتبط بإيراد ' + op.code;
+  }
   const hintEl = document.getElementById('inv-billable-hint');
   if (hintEl) {
     hintEl.textContent = op.collected
-      ? 'تم اختيار إيراد ' + (op.code || '') + ' — يمكنك إصدار فاتورة ضريبية أو سند قبض حسب اختيارك أعلاه.'
+      ? 'تم اختيار إيراد ' + (op.code || '') + ' — تم تعبئة بيان الحساب تلقائياً.'
       : 'العملية غير محصّلة — يُفضّل التحصيل من صفحة الإيرادات أولاً.';
   }
   calcTotal();
