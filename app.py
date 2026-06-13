@@ -1048,6 +1048,35 @@ def clients_import_template():
     )
 
 
+@app.route('/clients/import-addresses', methods=['POST'])
+def clients_import_addresses():
+    """تحديث عناوين عملاء موجودين من Excel + إحداثيات للخريطة."""
+    upload = request.files.get('file')
+    if not upload or not upload.filename:
+        return jsonify({'error': 'لم يُرفَع ملف Excel'}), 400
+    if not upload.filename.lower().endswith(('.xlsx', '.xls')):
+        return jsonify({'error': 'الملف يجب أن يكون .xlsx'}), 400
+
+    dry_run = request.form.get('dry_run') == '1'
+    no_geocode = request.form.get('no_geocode') == '1'
+
+    try:
+        from client_address_import import import_client_addresses_file
+
+        result = import_client_addresses_file(
+            upload.read(),
+            dry_run=dry_run,
+            no_geocode=no_geocode,
+            db_session=None if dry_run else db.session,
+        )
+        return jsonify(result)
+    except ImportError:
+        return jsonify({'error': 'مكتبة openpyxl غير مثبتة على السيرفر'}), 500
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({'error': f'فشل الاستيراد: {exc}'}), 500
+
+
 def _client_dir(client_id):
     path = os.path.join(CLIENT_UPLOAD_ROOT, str(client_id))
     os.makedirs(path, exist_ok=True)
