@@ -529,6 +529,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+function revFmtDate(iso) {
+  if (typeof window.fmtDateDMY === 'function') return window.fmtDateDMY(iso);
+  if (!iso) return '—';
+  const p = String(iso).slice(0, 10).split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(iso);
+}
+
 function renderTable(data) {
   if (tableSort) {
     data = tableSort.apply(data);
@@ -547,12 +554,12 @@ function renderTable(data) {
   }
   tbody.innerHTML = data.map(r=>`
     <tr onclick="viewRevenue(${r.id})">
-      <td class="td-code">${r.code}</td>
-      <td>${D(r.customer)} ${r.contract!=='—'?'/ '+r.contract:''}</td>
-      <td class="lc-date">${fmtDateDMY(r.revenue_date)}</td>
+      <td class="td-code">${escHtml(r.code)}</td>
+      <td>${escHtml(D(r.customer))}${r.contract && r.contract !== '—' ? ' / ' + escHtml(r.contract) : ''}</td>
+      <td class="lc-date">${revFmtDate(r.revenue_date)}</td>
       <td>${D(r.revenue_type)}</td>
-      <td>${D(r.pay_method)}</td>
-      <td style="font-family:var(--font-en);color:var(--success)">${D(r.total.toLocaleString() + ' ⃁')}</td>
+      <td>${D(r.pay_method || '—')}</td>
+      <td style="font-family:var(--font-en);color:var(--success)">${D(Number(r.total || 0).toLocaleString('en-US') + ' ⃁')}</td>
       <td><span class="badge ${STATUS_BADGE[r.status]||'badge-active'}">${D(r.status)}</span></td>
       <td style="color:var(--text3);font-size:11px">${r.notes||'—'}</td>
       <td onclick="event.stopPropagation()">
@@ -923,7 +930,7 @@ function viewRevenue(id) {
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${r.code}</div></div>
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${r.customer}</div></div>
       <div class="view-item"><div class="view-label">العقد</div><div class="view-val" style="font-family:var(--font-en)">${r.contract}</div></div>
-      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val lc-date">${fmtDateDMY(r.revenue_date)}</div></div>
+      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val lc-date">${revFmtDate(r.revenue_date)}</div></div>
       <div class="view-item"><div class="view-label">نوع الإيراد</div><div class="view-val">${r.revenue_type}</div></div>
       <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${r.pay_method}</div></div>
       <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${r.reference||'—'}</div></div>
@@ -958,10 +965,19 @@ function closeSidebar() { document.getElementById('sidebar').classList.remove('o
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
 document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
 
-updateStats();
-if (tableSort) tableSort.bindHeaders();
-initRevenueClientSelects();
-renderTable(REVENUES);
+function initRevenuesPage() {
+  updateStats();
+  if (tableSort) tableSort.bindHeaders();
+  initRevenueClientSelects();
+  renderTable(REVENUES);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initRevenuesPage);
+} else {
+  initRevenuesPage();
+}
+
 window.__lcRefreshPage = function () {
   if (typeof updateStats === 'function') updateStats();
   renderTable(typeof filtered !== 'undefined' ? filtered : REVENUES);
