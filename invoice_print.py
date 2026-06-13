@@ -48,27 +48,63 @@ def _payment_method_ar(raw: str | None) -> str:
     return val or '—'
 
 
-def _doc_titles(invoice_type: str | None, is_tax: bool, is_receipt: bool) -> tuple[str, str]:
+def _fmt_date(d: date | None) -> str:
+    if not d:
+        return '—'
+    return d.strftime('%d/%m/%Y')
+
+
+def _is_simplified(invoice_type: str | None) -> bool:
+    return 'مبسطة' in (invoice_type or '')
+
+
+def _doc_titles(invoice_type: str | None, is_tax: bool, is_receipt: bool, is_simplified: bool) -> tuple[str, str]:
     t = (invoice_type or '').strip()
     if is_receipt or 'سند' in t:
         return 'سند قبض', 'Receipt Voucher'
+    if is_simplified:
+        return 'فاتورة ضريبية مبسطة', 'Simplified Tax Invoice'
     if is_tax:
         return 'فاتورة ضريبية', 'Tax Invoice'
     return 'فاتورة', 'Invoice'
 
 
-def _compliance_warnings(settings: Settings, customer: Customer | None, is_tax: bool) -> list[str]:
-    if not is_tax:
+def _compliance_warnings(
+    settings: Settings,
+    customer: Customer | None,
+    *,
+    is_tax: bool,
+    is_receipt: bool,
+    is_simplified: bool,
+    show_zatca_qr: bool,
+    vat_number: str,
+    line_items: list[PrintLineItem],
+) -> list[str]:
+    if not is_tax or is_receipt:
         return []
+
     warnings: list[str] = []
-    if not (settings.vat_number or '').strip():
-        warnings.append('الرقم الضريبي للمورد غير مسجّل في الإعدادات.')
+    if not (settings.company_name or '').strip():
+        warnings.append('اسم المورد (البائع) غير مسجّل في إعدادات الشركة — مطلوب ZATCA.')
+    if not vat_number:
+        warnings.append('الرقم الضريبي للمورد (15 رقم) غير مسجّل — مطلوب ZATCA.')
+    elif len(vat_number.replace(' ', '')) != 15 or not vat_number.isdigit():
+        warnings.append('تحقق من الرقم الضريبي للمورد — يجب أن يكون 15 رقمًا.')
     if not (settings.cr_number or '').strip():
         warnings.append('السجل التجاري للمورد غير مسجّل في الإعدادات.')
     if not _supplier_address(settings):
-        warnings.append('عنوان المورد غير مكتمل في الإعدادات.')
-    if customer and not _customer_address(customer):
-        warnings.append('عنوان العميل غير مسجّل — مقبول للفاتورة المبسطة.')
+        warnings.append('عنوان المورد غير مكتمل في الإعدادات — مطلوب ZATCA.')
+    if not show_zatca_qr and vat_number:
+        warnings.append('رمز QR (المرحلة الأولى) غير متوفر — مطلوب على الفاتورة الضريبية.')
+    if not is_simplified:
+        if not customer or not (customer.name or '').strip():
+            warnings.append('اسم المشتري (العميل) مطلوب في الفاتورة الضريبية (B2B).')
+        if customer and not _customer_address(customer):
+            warnings.append('عنوان المشتري غير مسجّل — مطلوب في الفاتورة الضريبية (B2B).')
+    for ln in line_items:
+        if not (ln.name or '').strip() or ln.name == '—':
+            warnings.append('وصف البند / الخدمة مطلوب على الفاتورة.')
+            break
     return warnings
 
 
@@ -84,11 +120,12 @@ def invoice_print_payload(invo: Invoice) -> dict:
     tax_pct = float(settings.tax_pct or 15)
     is_receipt = not zatca_is_tax_invoice(invo.invoice_type)
     is_tax = zatca_is_tax_invoice(invo.invoice_type)
-    is_simplified = True
-    doc_title, doc_title_en = _doc_titles(invo.invoice_type, is_tax, is_receipt)
+    is_simplified = _is_simplified(invo.invoice_type)
+    doc_title, doc_title_en = _doc_titles(invo.invoice_type, is_tax, is_receipt, is_simplified)
     page_size = 'A5' if is_receipt else 'A4'
 
     inv_date = invo.invoice_date or date.today()
+    supply_date = invo.due_date or inv_date
     issue_dt = datetime.combine(inv_date, time(12, 0, 0))
     if invo.created_at:
         issue_dt = invo.created_at
@@ -116,8 +153,10 @@ def invoice_print_payload(invo: Invoice) -> dict:
     items_subtotal = round(amount, 2)
 
     company_name = settings.company_name or '—'
-    vat_number = (settings.vat_number or '').strip()
+    vat_number = (settings.vat_number or '').strip().replace(' ', '')
     cr_number = (settings.cr_number or '').strip()
+    buyer_cr = (customer.cr_number or '').strip() if customer else ''
+    buyer_entity = (customer.entity_type or '').strip() if customer else ''
 
     zatca_qr_image = ''
     zatca_warning = ''
@@ -142,10 +181,12 @@ def invoice_print_payload(invo: Invoice) -> dict:
             zatca_warning = f'تعذّر إنشاء رمز QR: {exc}'
 
     logo_width = int(settings.logo_width_report or 150)
+    currency_code = (settings.currency or 'SAR').strip() or 'SAR'
 
     return {
         'doc_title': doc_title,
         'doc_title_en': doc_title_en,
+        'invoice_type_label': (invo.invoice_type or doc_title).strip(),
         'irn': invo.code,
         'logo_url': _logo_url(settings),
         'logo_width': logo_width,
@@ -156,6 +197,7 @@ def invoice_print_payload(invo: Invoice) -> dict:
         'company_name': company_name,
         'company_name_en': settings.company_name_en or '',
         'company_phone': settings.phone or '',
+        'company_email': settings.email or '',
         'vat_number': vat_number,
         'cr_number': cr_number,
         'seller_id_type': 'السجل التجاري',
@@ -163,10 +205,15 @@ def invoice_print_payload(invo: Invoice) -> dict:
         'customer_name': (customer.name if customer else '—'),
         'customer_phone': (customer.phone if customer else '') or '',
         'buyer_address': _customer_address(customer),
-        'invoice_date': inv_date.strftime('%d/%m/%Y'),
+        'buyer_cr': buyer_cr,
+        'buyer_entity': buyer_entity,
+        'invoice_date': _fmt_date(inv_date),
+        'issue_date_display': _fmt_date(inv_date),
         'issue_date_iso': inv_date.isoformat(),
         'issue_time': issue_dt.strftime('%H:%M:%S'),
-        'supply_date_iso': inv_date.isoformat(),
+        'supply_date_display': _fmt_date(supply_date),
+        'supply_date_iso': supply_date.isoformat(),
+        'due_date_display': _fmt_date(invo.due_date) if invo.due_date else '',
         'payment_method_ar': _payment_method_ar(invo.payment_method),
         'contract_code': contract.code if contract else '',
         'status': invo.status or '—',
@@ -176,9 +223,20 @@ def invoice_print_payload(invo: Invoice) -> dict:
         'tax_pct': tax_pct,
         'tax_amount': round(tax_amount, 2),
         'total': round(total, 2),
+        'currency_code': currency_code,
+        'currency_label': 'ريال سعودي' if currency_code == 'SAR' else currency_code,
         'amount_includes_vat_label': 'المبلغ شامل ضريبة القيمة المضافة',
         'show_zatca_qr': show_zatca_qr,
         'zatca_qr_image': zatca_qr_image,
         'zatca_warning': zatca_warning,
-        'compliance_warnings': _compliance_warnings(settings, customer, is_tax),
+        'compliance_warnings': _compliance_warnings(
+            settings,
+            customer,
+            is_tax=is_tax,
+            is_receipt=is_receipt,
+            is_simplified=is_simplified,
+            show_zatca_qr=show_zatca_qr,
+            vat_number=vat_number,
+            line_items=line_items,
+        ),
     }

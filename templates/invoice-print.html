@@ -35,7 +35,7 @@ body.page-a5 .doc{width:148mm;min-height:210mm;max-width:148mm;margin:56px auto 
   display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:14px 20px;
   border-bottom:2px solid #1a3a5c;padding-bottom:12px;margin-bottom:12px;
 }
-.head-brand{text-align:right}
+.head-brand{text-align:right;justify-self:stretch}
 .head-brand img{
   width:{{ logo_width }}px;height:auto;max-height:{{ logo_width + 36 }}px;
   object-fit:contain;display:block;margin-right:0;margin-left:auto;
@@ -45,11 +45,16 @@ body.page-a5 .doc{width:148mm;min-height:210mm;max-width:148mm;margin:56px auto 
 .head-brand .val{font-weight:600}
 .head-brand .val.ltr{direction:ltr;unicode-bidi:embed;display:inline-block;text-align:left}
 
-.head-doc{text-align:right;align-self:start}
-.head-doc .doc-title{font-size:16px;font-weight:800;color:#1a3a5c}
-.head-doc .doc-title-en{font-size:10px;color:#666;direction:ltr;text-align:right;margin-top:2px}
-.head-doc .doc-num{font-size:12px;color:#c0392b;font-weight:700;margin-top:6px;direction:ltr;text-align:right}
-.head-doc .irn-lbl{font-size:9px;color:#666;margin-top:4px}
+.head-doc{
+  text-align:left;align-self:start;justify-self:stretch;
+  direction:ltr;
+}
+.head-doc .doc-title{font-size:16px;font-weight:800;color:#1a3a5c;text-align:left;direction:rtl}
+.head-doc .doc-title-en{font-size:10px;color:#666;text-align:left;margin-top:2px}
+.head-doc .doc-meta{margin-top:8px;font-size:10px;line-height:1.7;text-align:left;direction:rtl}
+.head-doc .doc-meta .lbl{color:#666;font-size:9px;display:inline-block;min-width:92px}
+.head-doc .doc-meta .val{font-weight:600}
+.head-doc .doc-meta .val.ltr{direction:ltr;unicode-bidi:embed;display:inline-block}
 
 .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .party{
@@ -121,12 +126,13 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
 </div>
 
 <div class="doc">
-  <!-- رأس: يمين الشعار | يسار بيانات الفاتورة (محاذاة يمين) -->
+  <!-- رأس: يمين الشعار | يسار عنوان الفاتورة ورقمها (محاذاة يسار) -->
   <div class="doc-head">
     <div class="head-brand">
       <img src="{{ logo_url }}" alt="{{ company_name }}">
       <div class="head-contact">
         {% if company_phone %}<div><span class="lbl">الهاتف: </span><span class="val ltr">{{ company_phone }}</span></div>{% endif %}
+        {% if company_email %}<div><span class="lbl">البريد: </span><span class="val ltr">{{ company_email }}</span></div>{% endif %}
         {% if vat_number %}<div><span class="lbl">الرقم الضريبي: </span><span class="val ltr">{{ vat_number }}</span></div>{% endif %}
         {% if cr_number %}<div><span class="lbl">{{ seller_id_type }}: </span><span class="val ltr">{{ cr_number }}</span></div>{% endif %}
       </div>
@@ -134,57 +140,70 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
     <div class="head-doc">
       <div class="doc-title">{{ doc_title }}</div>
       <div class="doc-title-en">{{ doc_title_en }}</div>
-      <div class="irn-lbl">رقم الفاتورة (IRN)</div>
-      <div class="doc-num">{{ irn }}</div>
+      <div class="doc-meta">
+        <div><span class="lbl">رقم الفاتورة:</span> <span class="val ltr">{{ irn }}</span></div>
+        {% if is_tax_invoice and not is_receipt %}
+        <div><span class="lbl">تاريخ الإصدار:</span> <span class="val">{{ issue_date_display }}</span></div>
+        <div><span class="lbl">وقت الإصدار:</span> <span class="val ltr">{{ issue_time }}</span></div>
+        <div><span class="lbl">تاريخ التوريد:</span> <span class="val">{{ supply_date_display }}</span></div>
+        {% else %}
+        <div><span class="lbl">التاريخ:</span> <span class="val">{{ invoice_date }}</span></div>
+        {% endif %}
+      </div>
     </div>
   </div>
 
   {% if is_tax_invoice and not is_receipt %}
+  <!-- حقول ZATCA — المرحلة الأولى -->
   <div class="inv-meta">
-    <div class="cell"><label>تاريخ إصدار الفاتورة</label><div class="ltr">{{ issue_date_iso }}</div></div>
-    <div class="cell"><label>وقت الإصدار</label><div class="ltr">{{ issue_time }}</div></div>
-    <div class="cell"><label>تاريخ التوريد</label><div class="ltr">{{ supply_date_iso }}</div></div>
+    <div class="cell"><label>نوع الفاتورة</label><div>{{ invoice_type_label }}</div></div>
+    <div class="cell"><label>العملة</label><div>{{ currency_label }} ({{ currency_code }})</div></div>
     <div class="cell"><label>طريقة الدفع</label><div>{{ payment_method_ar }}</div></div>
-    {% if contract_code %}<div class="cell"><label>رقم العقد</label><div class="ltr">{{ contract_code }}</div></div>{% endif %}
-    <div class="cell"><label>حالة الفاتورة</label><div>{{ status }}</div></div>
+    {% if due_date_display %}<div class="cell"><label>تاريخ الاستحقاق</label><div>{{ due_date_display }}</div></div>{% endif %}
+    {% if contract_code %}<div class="cell"><label>مرجع العقد</label><div class="ltr">{{ contract_code }}</div></div>{% endif %}
+    <div class="cell"><label>حالة السداد</label><div>{{ status }}</div></div>
   </div>
 
   <div class="meta-grid">
     <div class="party">
-      <h3>بيانات المورد (البائع)</h3>
+      <h3>بيانات المورد (البائع) — Seller</h3>
       <div class="row"><span class="k">الاسم</span><span class="v">{{ company_name }}</span></div>
+      {% if company_name_en %}<div class="row"><span class="k">الاسم (EN)</span><span class="v ltr">{{ company_name_en }}</span></div>{% endif %}
       <div class="row"><span class="k">العنوان</span><span class="v">{{ supplier_address }}</span></div>
-      <div class="row"><span class="k">الرقم الضريبي</span><span class="v ltr">{{ vat_number or '—' }}</span></div>
+      <div class="row"><span class="k">الرقم الضريبي (VAT)</span><span class="v ltr">{{ vat_number or '—' }}</span></div>
       <div class="row"><span class="k">{{ seller_id_type }}</span><span class="v ltr">{{ cr_number or '—' }}</span></div>
+      {% if company_phone %}<div class="row"><span class="k">الهاتف</span><span class="v ltr">{{ company_phone }}</span></div>{% endif %}
+      {% if company_email %}<div class="row"><span class="k">البريد الإلكتروني</span><span class="v ltr">{{ company_email }}</span></div>{% endif %}
     </div>
     <div class="party">
-      <h3>بيانات المشتري (العميل){% if is_simplified %} <span style="font-weight:400;font-size:9px">— اختياري للفاتورة المبسطة</span>{% endif %}</h3>
+      <h3>بيانات المشتري (العميل) — Buyer{% if is_simplified %} <span style="font-weight:400;font-size:9px">(مبسطة)</span>{% endif %}</h3>
       <div class="row"><span class="k">الاسم</span><span class="v">{{ customer_name }}</span></div>
       <div class="row"><span class="k">العنوان</span><span class="v">{{ buyer_address or '—' }}</span></div>
+      {% if not is_simplified and buyer_cr %}<div class="row"><span class="k">السجل التجاري / الرقم الضريبي</span><span class="v ltr">{{ buyer_cr }}</span></div>{% endif %}
       {% if customer_phone %}<div class="row"><span class="k">الهاتف</span><span class="v ltr">{{ customer_phone }}</span></div>{% endif %}
     </div>
   </div>
   {% else %}
   <div class="inv-meta">
     <div class="cell"><label>العميل</label><div>{{ customer_name }}</div></div>
-    <div class="cell"><label>التاريخ</label><div class="ltr">{{ invoice_date }}</div></div>
+    <div class="cell"><label>التاريخ</label><div>{{ invoice_date }}</div></div>
     <div class="cell"><label>طريقة الدفع</label><div>{{ payment_method_ar }}</div></div>
     {% if customer_phone %}<div class="cell"><label>جوال العميل</label><div class="ltr">{{ customer_phone }}</div></div>{% endif %}
   </div>
   {% endif %}
 
-  <div class="sec-title">{% if is_receipt %}وذلك مقابل{% else %}تفاصيل السلع / الخدمات{% endif %}</div>
+  <div class="sec-title">{% if is_receipt %}وذلك مقابل{% else %}تفاصيل السلع / الخدمات — Line Items{% endif %}</div>
   <table class="items-table">
     <thead>
       <tr>
         <th>#</th>
-        <th class="col-name">الصنف / الوصف</th>
-        <th>الكمية</th>
+        <th class="col-name">الوصف / Description</th>
+        <th>الكمية<br><span style="font-weight:400;font-size:8px">Qty</span></th>
         {% if is_tax_invoice and not is_receipt %}
         <th>سعر الوحدة<br><span style="font-weight:400;font-size:8px">(غير شامل الضريبة)</span></th>
-        <th>الإجمالي<br><span style="font-weight:400;font-size:8px">(غير شامل الضريبة)</span></th>
-        <th>نسبة الضريبة</th>
-        <th>مبلغ الضريبة</th>
+        <th>المبلغ الخاضع<br><span style="font-weight:400;font-size:8px">(غير شامل الضريبة)</span></th>
+        <th>نسبة الضريبة<br><span style="font-weight:400;font-size:8px">VAT %</span></th>
+        <th>مبلغ الضريبة<br><span style="font-weight:400;font-size:8px">VAT Amount</span></th>
         <th class="col-incl">الإجمالي<br><span style="font-weight:400;font-size:8px">(شامل الضريبة)</span></th>
         {% else %}
         <th>سعر الوحدة</th>
@@ -215,13 +234,13 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
   <div class="totals-wrap">
     <div class="totals">
       {% if is_tax_invoice and not is_receipt %}
-      <div class="row"><span>المجموع الخاضع للضريبة (غير شامل)</span><span>{{ '%.2f'|format(items_subtotal) }} <span class="cur">ر.س</span></span></div>
+      <div class="row"><span>إجمالي المبلغ الخاضع للضريبة (غير شامل)</span><span>{{ '%.2f'|format(items_subtotal) }} <span class="cur">ر.س</span></span></div>
       <div class="row"><span>إجمالي ضريبة القيمة المضافة ({{ tax_pct }}%)</span><span>{{ '%.2f'|format(tax_amount) }} <span class="cur">ر.س</span></span></div>
       <div class="row grand">
         <span>إجمالي الفاتورة (شامل الضريبة)</span>
         <span>{{ '%.2f'|format(total) }} <span class="cur">ر.س</span></span>
       </div>
-      <div class="stmt">{{ amount_includes_vat_label }} — Amount includes VAT</div>
+      <div class="stmt">{{ amount_includes_vat_label }} — Amount includes VAT — {{ currency_code }}</div>
       {% else %}
       <div class="row"><span>مجموع البنود</span><span>{{ '%.2f'|format(items_subtotal) }} <span class="cur">ر.س</span></span></div>
       <div class="row grand"><span>المبلغ المستلم</span><span>{{ '%.2f'|format(total) }} <span class="cur">ر.س</span></span></div>
@@ -231,14 +250,14 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
     {% if show_zatca_qr %}
     <div class="zatca-block">
       <div class="zatca-meta">
-        <div><strong>رمز الاستجابة السريعة — ZATCA</strong></div>
-        <div>المرحلة الأولى (الجيل)</div>
+        <div><strong>رمز الاستجابة السريعة — ZATCA QR</strong></div>
+        <div>المرحلة الأولى (Generation Phase)</div>
         <div>المورد: {{ company_name }}</div>
-        <div>الرقم الضريبي: <span class="ltr" style="direction:ltr">{{ vat_number }}</span></div>
-        <div>IRN: <span style="direction:ltr">{{ irn }}</span></div>
-        <div>التاريخ: <span style="direction:ltr">{{ issue_date_iso }} {{ issue_time }}</span></div>
-        <div>الإجمالي شامل الضريبة: <span style="direction:ltr">{{ '%.2f'|format(total) }} ر.س</span></div>
-        <div>ضريبة القيمة المضافة: <span style="direction:ltr">{{ '%.2f'|format(tax_amount) }} ر.س</span></div>
+        <div>الرقم الضريبي: <span class="ltr">{{ vat_number }}</span></div>
+        <div>رقم الفاتورة: <span class="ltr">{{ irn }}</span></div>
+        <div>التاريخ: <span class="ltr">{{ issue_date_display }} {{ issue_time }}</span></div>
+        <div>الإجمالي شامل الضريبة: <span class="ltr">{{ '%.2f'|format(total) }} {{ currency_code }}</span></div>
+        <div>ضريبة القيمة المضافة: <span class="ltr">{{ '%.2f'|format(tax_amount) }} {{ currency_code }}</span></div>
       </div>
       <div>
         <img src="{{ zatca_qr_image }}" alt="ZATCA QR" class="zatca-qr-img">
@@ -253,7 +272,7 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
   {% endif %}
   {% if compliance_warnings and is_tax_invoice %}
   <div class="compliance-box">
-    <strong>تنبيهات الامتثال لـ ZATCA:</strong>
+    <strong>تنبيهات الامتثال لـ ZATCA (هيئة الزكاة والضريبة والجمارك):</strong>
     <ul>{% for w in compliance_warnings %}<li>{{ w }}</li>{% endfor %}</ul>
   </div>
   {% endif %}
@@ -264,8 +283,8 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
   </div>
 
   <div class="doc-foot">
-    {{ company_name }} — {{ doc_title }} — IRN: {{ irn }} — {{ issue_date_iso }}<br>
-    فاتورة إلكترونية صادرة من نظام LiftCore — متوافقة مع متطلبات هيئة الزكاة والضريبة والجمارك (المرحلة الأولى)
+    {{ company_name }} — {{ doc_title }} — {{ irn }} — {{ issue_date_display }} {{ issue_time }}<br>
+    فاتورة إلكترونية — متوافقة مع متطلبات هيئة الزكاة والضريبة والجمارك (ZATCA) — المرحلة الأولى
   </div>
 </div>
 
