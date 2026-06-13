@@ -1,6 +1,6 @@
-"""تحميل كاتالوج قطع الغيار إلى inventory_items."""
+"""إدارة أصناف المخزن — بدون كاتالوج تلقائي."""
 
-from models import InventoryItem, db
+from models import InventoryItem, StockMovement, PurchaseOrderLine, db
 
 try:
     from inventory_parts_data import CATEGORIES, ITEMS
@@ -12,6 +12,7 @@ CAT_BY_CODE = {code: name for code, name, _sort in CATEGORIES}
 
 
 def ensure_inventory_catalog():
+    """Legacy: لم يعد يُحمّل كاتالوجاً. يُبقي التوافق مع السكربتات القديمة."""
     if not ITEMS:
         return 0
 
@@ -25,9 +26,9 @@ def ensure_inventory_catalog():
             InventoryItem(
                 code=item_code,
                 name=name_ar,
-                category=CAT_BY_CODE.get(cat_code, "قطع غيار"),
-                unit=unit or "قطعة",
-                notes=" — ".join(note_parts) if note_parts else None,
+                category=CAT_BY_CODE.get(cat_code, 'قطع غيار'),
+                unit=unit or 'قطعة',
+                notes=' — '.join(note_parts) if note_parts else None,
             )
         )
         existing.add(item_code)
@@ -36,3 +37,19 @@ def ensure_inventory_catalog():
     if added:
         db.session.commit()
     return added
+
+
+def purge_inventory_catalog():
+    """حذف أصناف الكاتالوج التلقائي (SP-xxx) وحركاتها المرتبطة."""
+    items = InventoryItem.query.filter(InventoryItem.code.like('SP-%')).all()
+    if not items:
+        return 0
+
+    deleted = 0
+    for item in items:
+        StockMovement.query.filter_by(item_id=item.id).delete(synchronize_session=False)
+        PurchaseOrderLine.query.filter_by(item_id=item.id).delete(synchronize_session=False)
+        db.session.delete(item)
+        deleted += 1
+    db.session.commit()
+    return deleted

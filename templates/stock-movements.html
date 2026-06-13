@@ -127,6 +127,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .field label{font-size:12px;font-weight:500;color:var(--text2)}
 .field label span{color:var(--danger)}
 .field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;width:100%}
+.lc-client-select-input{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;padding:9px 12px;width:100%}
+.lc-client-select-list{z-index:300}
 .field input:focus,.field select:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
 .field input::placeholder{color:var(--text3)}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
@@ -332,9 +334,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="field form-full">
           <label>الصنف <span>*</span></label>
-          <select id="m-item-id">
-            <option value="">— اختر الصنف —</option>
-          </select>
+          <div class="lc-client-select" id="m-item-select-wrap">
+            <input type="text" class="lc-client-select-input" id="m-item-id-input" placeholder="ابحث بالكود أو اسم الصنف..." autocomplete="off">
+            <input type="hidden" id="m-item-id">
+            <ul class="lc-client-select-list" id="m-item-id-list" hidden role="listbox"></ul>
+          </div>
         </div>
         <div class="field">
           <label>الكمية <span>*</span></label>
@@ -534,17 +538,23 @@ function onItemPicked() {
 
 function initItemSelect() {
   if (typeof LcClientSelect === 'undefined') return;
-  const sel = document.getElementById('m-item-id');
-  if (sel && sel.tagName === 'SELECT') {
-    sel.innerHTML = '<option value="">— اختر الصنف —</option>' +
-      ITEMS.map(i => `<option value="${i.id}">${i.code} — ${i.name}</option>`).join('');
-  }
-  LcClientSelect.upgradeSelect('m-item-id', {
+  LcClientSelect.mount({
+    wrapId: 'm-item-select-wrap',
+    hiddenId: 'm-item-id',
+    inputId: 'm-item-id-input',
+    listId: 'm-item-id-list',
     customers: itemSelectOptions(),
-    placeholder: 'ابحث بالكود أو اسم الصنف...',
-    requiredMessage: 'اختر الصنف',
     onChange: onItemPicked,
   });
+}
+
+function refreshItemSelect() {
+  if (typeof LcClientSelect === 'undefined') return;
+  if (LcClientSelect.isUpgraded('m-item-id')) {
+    LcClientSelect.setCustomers('m-item-id', itemSelectOptions(), '');
+  } else {
+    initItemSelect();
+  }
 }
 
 function openModal() {
@@ -561,7 +571,9 @@ function openModal() {
     LcClientSelect.clearSelection('m-item-id');
   } else {
     const isel = document.getElementById('m-item-id');
+    const iinp = document.getElementById('m-item-id-input');
     if (isel) isel.value = '';
+    if (iinp) iinp.value = '';
   }
   const tsel = document.getElementById('m-tech-id');
   tsel.innerHTML = '<option value="">— بدون فني —</option>' +
