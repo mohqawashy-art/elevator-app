@@ -239,6 +239,13 @@ ROLE_LABELS_EN = {
     'viewer': 'View Only',
 }
 
+USER_THEMES = frozenset({'dark', 'light', 'report'})
+
+
+def normalize_user_theme(value):
+    theme = (value or 'dark').strip()
+    return theme if theme in USER_THEMES else 'dark'
+
 
 def resolve_user_language(user=None):
     lang = session.get('lang')
@@ -298,8 +305,8 @@ def inject_global_template_vars():
         except Exception:
             db.session.rollback()
     theme = 'dark'
-    if user and getattr(user, 'theme', None) in ('dark', 'light'):
-        theme = user.theme
+    if user and getattr(user, 'theme', None):
+        theme = normalize_user_theme(user.theme)
     lang = resolve_user_language(user)
     role_label = ''
     if user:
@@ -4673,9 +4680,7 @@ def settings_theme_save():
     user = require_login()
     if not user:
         return redirect(url_for('login'))
-    theme = (request.form.get('theme') or 'dark').strip()
-    if theme not in ('dark', 'light'):
-        theme = 'dark'
+    theme = normalize_user_theme(request.form.get('theme'))
     user.theme = theme
     db.session.commit()
     session['settings_notice'] = 'تم حفظ المظهر.'
@@ -4703,9 +4708,7 @@ def api_user_theme():
     if not user:
         return jsonify({'ok': False, 'error': 'auth'}), 401
     data = request.get_json(silent=True) or {}
-    theme = (data.get('theme') or request.form.get('theme') or 'dark').strip()
-    if theme not in ('dark', 'light'):
-        theme = 'dark'
+    theme = normalize_user_theme(data.get('theme') or request.form.get('theme'))
     user.theme = theme
     db.session.commit()
     return jsonify({'ok': True, 'theme': theme})

@@ -84,6 +84,238 @@ html[data-theme="light"] .alert-panel {
   border-color: var(--border);
 }
 
+/* LiftCore — Report / corporate theme (html[data-theme="report"]) */
+html[data-theme="report"] {
+  --bg: #f4f5f7;
+  --bg2: #ffffff;
+  --bg3: #eef0f4;
+  --bg4: #e3e6ec;
+  --card: #ffffff;
+  --border: rgba(0, 33, 71, 0.1);
+  --border2: rgba(0, 33, 71, 0.18);
+  --accent: #002147;
+  --gold: #c9a962;
+  --gold-light: #e8dcc8;
+  --text1: #002147;
+  --text2: #4a5568;
+  --text3: #7a8699;
+  --success: #1a7a52;
+  --warning: #b8860b;
+  --danger: #c0392b;
+}
+
+html[data-theme="report"] body {
+  background: var(--bg);
+  color: var(--text1);
+}
+
+html[data-theme="report"] .sidebar,
+html[data-theme="report"] .header,
+html[data-theme="report"] .lc-header {
+  background: var(--bg2);
+  border-color: var(--border);
+}
+
+html[data-theme="report"] .stat-card,
+html[data-theme="report"] .stat-mini,
+html[data-theme="report"] .table-wrap,
+html[data-theme="report"] .modal,
+html[data-theme="report"] .table-footer,
+html[data-theme="report"] .card,
+html[data-theme="report"] .panel,
+html[data-theme="report"] .theme-card,
+html[data-theme="report"] .quick-card,
+html[data-theme="report"] .alert-panel {
+  background: var(--card);
+  color: var(--text1);
+  border-color: var(--border);
+  box-shadow: 0 1px 3px rgba(0, 33, 71, 0.04);
+}
+
+html[data-theme="report"] .stat-card,
+html[data-theme="report"] .stat-mini {
+  border-top: 3px solid var(--gold);
+}
+
+html[data-theme="report"] .stat-value.blue,
+html[data-theme="report"] .stat-mini-val,
+html[data-theme="report"] .td-code {
+  color: var(--accent);
+}
+
+html[data-theme="report"] .stat-value.gold {
+  color: var(--gold);
+}
+
+html[data-theme="report"] input,
+html[data-theme="report"] textarea,
+html[data-theme="report"] select,
+html[data-theme="report"] .search-input,
+html[data-theme="report"] .filter-select,
+html[data-theme="report"] .filter-input {
+  background: var(--bg3);
+  color: var(--text1);
+  border-color: var(--border);
+}
+
+html[data-theme="report"] input:focus,
+html[data-theme="report"] textarea:focus,
+html[data-theme="report"] select:focus,
+html[data-theme="report"] .search-input:focus,
+html[data-theme="report"] .filter-select:focus,
+html[data-theme="report"] .filter-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 33, 71, 0.08);
+}
+
+html[data-theme="report"] .btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+}
+
+html[data-theme="report"] .btn-primary:hover {
+  background: #003366;
+  border-color: #003366;
+}
+
+html[data-theme="report"] .btn-secondary {
+  background: var(--bg2);
+  color: var(--accent);
+  border: 1px solid var(--border2);
+}
+
+html[data-theme="report"] .btn-secondary:hover {
+  background: var(--gold-light);
+  color: var(--accent);
+  border-color: var(--gold);
+}
+
+html[data-theme="report"] .nav-item:hover {
+  background: var(--bg3);
+  color: var(--text1);
+}
+
+html[data-theme="report"] .nav-item.active {
+  background: rgba(0, 33, 71, 0.08);
+  color: var(--accent);
+}
+
+html[data-theme="report"] .nav-item.active::before {
+  background: var(--gold);
+}
+
+html[data-theme="report"] .lang-opt.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="report"] .sidebar-avatar,
+html[data-theme="report"] .header-avatar,
+html[data-theme="report"] .lc-profile-btn {
+  background: linear-gradient(135deg, var(--accent), var(--gold));
+}
+
+html[data-theme="report"] thead tr {
+  background: var(--accent);
+  border-bottom: none;
+}
+
+html[data-theme="report"] thead th {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+html[data-theme="report"] th.th-sort:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="report"] th.th-sort .sort-ind {
+  color: var(--gold-light);
+}
+
+html[data-theme="report"] tbody tr {
+  border-bottom-color: rgba(0, 33, 71, 0.06);
+}
+
+html[data-theme="report"] tbody tr:hover {
+  background: rgba(232, 220, 200, 0.25);
+}
+
+html[data-theme="report"] .table-footer {
+  background: var(--bg3);
+}
+
+html[data-theme="report"] .page-btn:hover,
+html[data-theme="report"] .page-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="report"] .content .page-header .page-title,
+html[data-theme="report"] .content .page-title,
+html[data-theme="report"] .page-heading {
+  color: var(--accent);
+  border-inline-start: 4px solid var(--gold);
+  padding-inline-start: 12px;
+}
+
+html[data-theme="report"] .section,
+html[data-theme="report"] .form-section-title,
+html[data-theme="report"] .card-section-title {
+  color: var(--accent);
+}
+
+html[data-theme="report"] .card-section-title::before,
+html[data-theme="report"] .form-section-title svg {
+  background: var(--gold);
+}
+
+html[data-theme="report"] .tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="report"] .tab:hover:not(.active) {
+  background: var(--gold-light);
+  color: var(--accent);
+}
+
+html[data-theme="report"] .badge-blue {
+  background: rgba(0, 33, 71, 0.1);
+  color: var(--accent);
+}
+
+html[data-theme="report"] .badge-gold {
+  background: rgba(201, 169, 98, 0.15);
+  color: #8a6d2b;
+}
+
+html[data-theme="report"] .icon-btn:hover,
+html[data-theme="report"] .lc-settings-btn.is-active {
+  background: var(--gold-light);
+  color: var(--accent);
+  border-color: var(--gold);
+}
+
+html[data-theme="report"] .logo-preview-wrap,
+html[data-theme="report"] .preview-box,
+html[data-theme="report"] .generated-box code {
+  background: var(--bg3);
+}
+
+html[data-theme="report"] .modal-head {
+  border-bottom-color: var(--border);
+}
+
+html[data-theme="report"] .modal-title {
+  color: var(--accent);
+  border-inline-start: 4px solid var(--gold);
+  padding-inline-start: 10px;
+}
+
 /* ترتيب أعمدة الجداول */
 th.th-sort {
   cursor: pointer;

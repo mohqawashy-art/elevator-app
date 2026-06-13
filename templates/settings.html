@@ -64,6 +64,8 @@ input[type=range]{padding:0;background:transparent;border:none}
 .theme-card .swatch{height:48px;border-radius:6px;margin-bottom:8px}
 .swatch-dark{background:linear-gradient(135deg,#0b0f17,#161e2b)}
 .swatch-light{background:linear-gradient(135deg,#f0f4fa,#fff)}
+.swatch-report{background:linear-gradient(135deg,#002147 0%,#002147 38%,#e8dcc8 38%,#ffffff 100%)}
+html[data-theme="report"] .theme-card.selected{border-color:#002147;box-shadow:0 0 0 1px rgba(0,33,71,.15)}
 .row-actions{display:flex;gap:6px;flex-wrap:wrap}
 @media(max-width:700px){.grid,.preview-row{grid-template-columns:1fr}}
 </style>
@@ -486,6 +488,11 @@ input[type=range]{padding:0;background:transparent;border:none}
           <div class="swatch swatch-light"></div>
           <strong>فاتح</strong>
           <p class="hint">مناسب للإضاءة القوية</p>
+        </div>
+        <div class="theme-card {% if current_user.theme == 'report' %}selected{% endif %}" data-theme-val="report" onclick="pickTheme('report')">
+          <div class="swatch swatch-report"></div>
+          <strong>احترافي</strong>
+          <p class="hint">كحلي وذهبي — مثل التقارير</p>
         </div>
       </div>
       <div class="actions">
