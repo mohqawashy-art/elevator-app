@@ -44,10 +44,6 @@ html[data-theme="light"] thead tr {
   background: var(--bg3);
 }
 
-html[data-theme="light"] tbody tr:hover {
-  background: var(--bg3);
-}
-
 html[data-theme="light"] .search-input,
 html[data-theme="light"] .filter-select,
 html[data-theme="light"] .filter-input {

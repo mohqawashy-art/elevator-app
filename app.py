@@ -477,6 +477,17 @@ with app.app_context():
             except Exception as exc:
                 db.session.rollback()
                 app.logger.warning('Fault status migration skip: %s', exc)
+        if 'customers' in insp.get_table_names():
+            try:
+                db.session.execute(text(
+                    "UPDATE customers SET status = 'نشط' "
+                    "WHERE status IS NULL OR status = '' "
+                    "OR status NOT IN ('نشط', 'غير نشط')"
+                ))
+                db.session.commit()
+            except Exception as exc:
+                db.session.rollback()
+                app.logger.warning('Customer status migration skip: %s', exc)
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Schema migration error: %s', exc)
@@ -574,12 +585,13 @@ def customer_fleet_status(customer):
     return statuses[0] or 'نشط'
 
 
+def _client_account_status(raw):
+    return 'غير نشط' if (raw or '').strip() == 'غير نشط' else 'نشط'
+
+
 def sync_customer_from_elevators(customer):
-    if not customer:
-        return
-    n = len(customer.elevators)
-    if n > 0:
-        customer.status = customer_fleet_status(customer)
+    """حالة المصاعد تُحسب عبر customer_fleet_status() — لا تُخزَّن في Customer.status."""
+    return
 
 
 app.jinja_env.globals['customer_fleet_status'] = customer_fleet_status
@@ -1580,7 +1592,7 @@ def client_add():
         entity_type    = request.form.get('entity_type', 'فرد') or 'فرد',
         national_id    = request.form.get('national_id',''),
         cr_number      = request.form.get('cr_number',''),
-        status       = request.form.get('status','نشط'),
+        status       = _client_account_status(request.form.get('status', 'نشط')),
         notes        = request.form.get('notes',''),
         lat          = request.form.get('lat',''),
         lng          = request.form.get('lng',''),
@@ -1629,8 +1641,7 @@ def client_edit(id):
     c.phone2         = wa
     c.email          = request.form.get('email','')
     c.contact_person = request.form.get('contact_person','')
-    if len(c.elevators) == 0:
-        c.status = request.form.get('status', 'نشط')
+    c.status = _client_account_status(request.form.get('status', 'نشط'))
     c.notes          = request.form.get('notes','')
     c.contact_role   = request.form.get('contact_role','')
     c.entity_type    = request.form.get('entity_type', 'فرد') or 'فرد'
@@ -2057,6 +2068,7 @@ def build_customer_profile(customer_id, contract_id=None):
             'name': customer.name,
             'city': customer.city or '',
             'phone': customer.phone or '',
+            'status': _client_account_status(customer.status),
         },
         'contract': {
             'id': contract.id,

@@ -33,8 +33,8 @@
 .cp-tab-panel{display:none}
 .cp-tab-panel.active{display:block}
 .cp-table-clickable tbody tr.cp-click-row{cursor:pointer;transition:background .15s}
-.cp-table-clickable tbody tr.cp-click-row:hover{background:rgba(42,127,255,.08)}
-.cp-table-clickable tbody tr.cp-click-row:hover td{color:var(--text1)}
+.cp-table-clickable tbody tr.cp-click-row:hover{background:inherit}
+.cp-table-clickable tbody tr.cp-click-row:hover td{color:inherit}
 .view-section{grid-column:1/-1;font-size:12px;font-weight:600;color:var(--accent);padding:6px 0 2px;border-bottom:1px solid var(--border);margin-top:4px}
 .financial-summary{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:14px}
 .fin-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(100,160,255,.06)}

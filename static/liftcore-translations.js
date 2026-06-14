@@ -14,6 +14,7 @@ window.__LC_TRANSLATIONS = {
   'على وشك الانتهاء': 'Expiring Soon',
   'ملغي': 'Cancelled',
   'غير نشط': 'Inactive',
+  'نشط': 'Active',
   'خريطة مواقع العملاء': 'Clients Location Map',
   'تحديث الخريطة': 'Refresh Map',
   'جاري تحميل مواقع العملاء من العناوين... افتح تاب الخريطة وانتظر قليلاً.': 'Loading client locations from addresses... Open the map tab and wait a moment.',

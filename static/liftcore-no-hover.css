@@ -1,0 +1,46 @@
+/* LiftCore — بدون تظليل صف الجدول (يمنع وميض EN / i18n) */
+tbody tr:hover,
+tbody tr:hover > td,
+tbody tr:hover td,
+.table-wrap tbody tr:hover,
+.table-wrap tbody tr:hover > td,
+.table-scroll tbody tr:hover,
+.table-scroll tbody tr:hover > td,
+table:not(.rpt-table) tbody tr:hover,
+table:not(.rpt-table) tbody tr:hover > td,
+.card-table tbody tr:hover,
+.card-table tbody tr:hover > td,
+.card-table tr:hover,
+.card-table tr:hover td,
+html[data-theme="light"] tbody tr:hover,
+html[data-theme="light"] tbody tr:hover > td,
+table tbody tr:nth-child(even):hover,
+table tbody tr:nth-child(even):hover > td,
+.rpt-table tbody tr:hover,
+.rpt-table tbody tr:hover > td,
+.rpt-table tbody tr:nth-child(even):hover > td,
+.rpt-page .rpt-table tbody tr:hover > td,
+.rpt-page .rpt-table tbody tr:nth-child(even):hover > td,
+.cp-table-clickable tbody tr.cp-click-row:hover,
+.cp-table-clickable tbody tr.cp-click-row:hover > td,
+.cp-table-clickable tbody tr.cp-click-row:hover td {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* حفظ تلوين الصفوف الزوجية في التقارير بدون تمييز hover */
+.rpt-table tr:nth-child(even):hover > td {
+  background-color: #f8faff !important;
+}
+html[data-theme="dark"] .rpt-table tr:nth-child(even):hover > td,
+:root:not([data-theme="light"]) .rpt-table tr:nth-child(even):hover > td {
+  background-color: transparent !important;
+}
+
+tbody tr,
+tbody tr > td,
+.card-table tr,
+.card-table tr > td {
+  transition: none !important;
+}

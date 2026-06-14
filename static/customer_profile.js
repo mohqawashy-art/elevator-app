@@ -47,6 +47,11 @@
       : L('كل الفترات (لا يوجد عقد نشط)');
 
     var html = '<div class="cp-financial">';
+    if (data.customer && data.customer.status) {
+      var st = data.customer.status;
+      var stCls = st === 'غير نشط' ? 'badge-cancelled' : 'badge-active';
+      html += '<div class="cp-fin-row" style="margin-bottom:10px"><span>' + L('حالة العميل') + '</span><span class="badge ' + stCls + '">' + esc(L(st)) + '</span></div>';
+    }
     html += '<div class="cp-fin-title">' + L('المدفوعات خلال فترة التعاقد') + ' <span class="cp-fin-period">' + period + '</span></div>';
     html += '<div class="cp-fin-total"><span>' + L('إجمالي ما دفعه العميل') + '</span><span>' + fmt(f.total_paid) + '</span></div>';
     html += '<div class="cp-fin-row"><span>' + L('دفعات العقد / الفواتير') + '</span><span>' + fmt(f.contract_payments) + '</span></div>';
