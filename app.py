@@ -2635,9 +2635,12 @@ def technician_delete(id):
 # =============================================
 @app.route('/maintenance-visits')
 def maintenance_visits():
-    from operations import list_districts, visit_alerts, visit_stats
+    from operations import is_fault_visit_type, list_districts, visit_alerts, visit_stats
 
-    visits = MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc()).all()
+    visits = [
+        v for v in MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc()).all()
+        if not is_fault_visit_type(v.visit_type)
+    ]
     elevators = Elevator.query.all()
     customers = Customer.query.order_by(Customer.name).all()
     contracts = Contract.query.order_by(Contract.start_date.desc()).all()
@@ -2916,8 +2919,12 @@ def visit_delete(id):
 @app.route('/api/maintenance/visits', methods=['GET'])
 def api_maintenance_visits():
     """قائمة زيارات شهر معيّن — لتحديث الجدول بعد تخطيط الشهر."""
+    from operations import exclude_fault_visits
+
     month = request.args.get('month', '').strip()
-    q = MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc())
+    q = exclude_fault_visits(
+        MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc())
+    )
     if month and '-' in month:
         try:
             year, m = map(int, month.split('-', 1))

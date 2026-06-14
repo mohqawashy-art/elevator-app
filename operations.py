@@ -27,6 +27,21 @@ from models import (
 
 VISIT_ACTIVE = ('مجدولة', 'مُرسلة للفني', 'جارية')
 VISIT_DONE = ('مكتملة', 'ملغاة')
+
+
+def is_fault_visit_type(visit_type: str | None) -> bool:
+    return 'عطل' in (visit_type or '').strip()
+
+
+def exclude_fault_visits(q):
+    """استبعاد زيارات نوعها «عطل» — تُدار من صفحة الأعطال."""
+    return q.filter(
+        or_(
+            MaintenanceVisit.visit_type.is_(None),
+            MaintenanceVisit.visit_type == '',
+            ~MaintenanceVisit.visit_type.contains('عطل'),
+        )
+    )
 FAULT_OPEN = ('مفتوح', 'قيد المعالجة', 'انتظار قطع')
 FAULT_STATUS_FIXED = 'تم الاصلاح'
 FAULT_STATUS_FIXED_LEGACY = 'محلول'
@@ -665,7 +680,7 @@ def visit_stats(today: date | None = None) -> dict:
     today = today or date.today()
     month_start = today.replace(day=1)
     month_end = today.replace(day=monthrange(today.year, today.month)[1])
-    q = MaintenanceVisit.query
+    q = exclude_fault_visits(MaintenanceVisit.query)
     return {
         'today': q.filter(MaintenanceVisit.visit_date == today).count(),
         'in_progress': q.filter(MaintenanceVisit.status.in_(('جارية', 'مُرسلة للفني'))).count(),
@@ -697,7 +712,7 @@ def visit_stats(today: date | None = None) -> dict:
 def visit_alerts(today: date | None = None) -> list[dict]:
     today = today or date.today()
     alerts = []
-    late = MaintenanceVisit.query.filter(
+    late = exclude_fault_visits(MaintenanceVisit.query).filter(
         MaintenanceVisit.visit_date < today,
         ~MaintenanceVisit.status.in_(VISIT_DONE),
     ).count()
@@ -707,7 +722,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
             'filter': 'late',
             'text': f'{late} زيارة متأخرة — تجاوزت الموعد المحدد',
         })
-    critical = MaintenanceVisit.query.filter(
+    critical = exclude_fault_visits(MaintenanceVisit.query).filter(
         MaintenanceVisit.priority == 'حرجة',
         ~MaintenanceVisit.status.in_(VISIT_DONE),
     ).count()
@@ -717,7 +732,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
             'filter': 'critical',
             'text': f'{critical} زيارة حرجة لم تُكتمل بعد',
         })
-    tomorrow = MaintenanceVisit.query.filter(
+    tomorrow = exclude_fault_visits(MaintenanceVisit.query).filter(
         MaintenanceVisit.visit_date == today + timedelta(days=1),
         MaintenanceVisit.status == 'مجدولة',
     ).count()

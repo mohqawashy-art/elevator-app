@@ -98,6 +98,10 @@ def _map_visit_type(raw: str) -> str:
     return s or 'صيانة دورية'
 
 
+def _is_fault_visit_row(row: tuple) -> bool:
+    return _str(row[6] if len(row) > 6 else '') == 'عطل'
+
+
 def _pick_elevator_code(el_text: str, report_text: str) -> str | None:
     codes = _extract_all_codes(el_text, 'EL')
     if not codes:
@@ -183,6 +187,7 @@ def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
         'imported': 0,
         'skipped_existing': 0,
         'skipped_missing': 0,
+        'skipped_fault': 0,
         'errors': 0,
     }
     missing_samples: list[str] = []
@@ -193,6 +198,10 @@ def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
     existing_visits = {v.code.upper() for v in MaintenanceVisit.query.all() if v.code}
 
     for row in rows:
+        if _is_fault_visit_row(row):
+            stats['skipped_fault'] += 1
+            continue
+
         visit_code = _norm_visit_code(row[1] if len(row) > 1 else '')
         cn_code = _extract_code(row[3] if len(row) > 3 else '', 'CN')
         el_code = _pick_elevator_code(row[4] if len(row) > 4 else '', row[10] if len(row) > 10 else '')
@@ -277,6 +286,7 @@ def main() -> int:
             print(f"Imported: {result['imported']}")
         print(f"Skipped (existing): {result['skipped_existing']}")
         print(f"Skipped (missing elevator/contract): {result['skipped_missing']}")
+        print(f"Skipped (fault visits — use faults import): {result['skipped_fault']}")
         print(f"Errors: {result['errors']}")
         if result.get('missing_samples'):
             print('Missing samples:')
