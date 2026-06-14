@@ -1339,6 +1339,10 @@ function showClientCardMap(pos, c) {
 function closeClientCard() {
   currentCardId = null;
   destroyClientCardMap();
+  if (window.LiftCoreLocation) {
+    LiftCoreLocation.closePhoto();
+    LiftCoreLocation.closeActions();
+  }
   var el = document.getElementById('modal-client-card');
   if (el) el.classList.remove('open');
   syncModalA11y();
@@ -2172,6 +2176,32 @@ function syncModalA11y() {
     }
   });
 }
+window.syncModalA11y = syncModalA11y;
+
+function getOpenModals() {
+  return Array.prototype.slice.call(document.querySelectorAll('.modal-overlay.open'));
+}
+
+function closeTopModal() {
+  var open = getOpenModals();
+  if (!open.length) return;
+  var top = open[open.length - 1];
+  if (top.id === 'modal-client-card') {
+    closeClientCard();
+    return;
+  }
+  if (top.id === 'modal-cloc-photo' && window.LiftCoreLocation && LiftCoreLocation.closePhoto) {
+    LiftCoreLocation.closePhoto();
+    return;
+  }
+  if (top.id === 'modal-cloc-actions' && window.LiftCoreLocation && LiftCoreLocation.closeActions) {
+    LiftCoreLocation.closeActions();
+    return;
+  }
+  top.classList.remove('open');
+  syncModalA11y();
+}
+
 function openModal(id){
   document.querySelectorAll('.modal-overlay.open').forEach(function(m){ m.classList.remove('open'); });
   var el = document.getElementById(id);
@@ -2191,24 +2221,12 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape') {
-    var cardModal = document.getElementById('modal-client-card');
-    if (cardModal && cardModal.classList.contains('open')) {
-      closeClientCard();
-    } else {
-      document.querySelectorAll('.modal-overlay').forEach(function(m){ m.classList.remove('open'); });
-    }
-    syncModalA11y();
+    closeTopModal();
   }
 });
 document.addEventListener('click',function(e){
   if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) {
-    var overlay = e.target.closest('.modal-overlay');
-    if (overlay && overlay.id === 'modal-client-card') {
-      closeClientCard();
-    } else {
-      document.querySelectorAll('.modal-overlay').forEach(function(m){ m.classList.remove('open'); });
-    }
-    syncModalA11y();
+    closeTopModal();
   }
 });
 

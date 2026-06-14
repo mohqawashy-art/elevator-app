@@ -98,6 +98,23 @@
     return null;
   }
 
+  function syncModals() {
+    if (typeof global.syncModalA11y === 'function') global.syncModalA11y();
+  }
+
+  function setModalOpen(id, open) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (open) {
+      el.classList.add('open');
+      el.removeAttribute('inert');
+      el.removeAttribute('aria-hidden');
+    } else {
+      el.classList.remove('open');
+    }
+    syncModals();
+  }
+
   function ensureModals() {
     if (document.getElementById('modal-cloc-actions')) return;
     document.body.insertAdjacentHTML('beforeend',
@@ -151,14 +168,19 @@
 
   function showBuildingPhoto(c) {
     ensureModals();
+    global._clocCurrent = c;
     document.getElementById('cloc-photo-title').textContent = 'صورة المبنى — ' + (c.name || '');
     var wrap = document.getElementById('cloc-photo-wrap');
     if (c.building_photo_url) {
-      wrap.innerHTML = '<img src="' + esc(c.building_photo_url) + '" alt="صورة المبنى">';
+      wrap.innerHTML = '';
+      var img = document.createElement('img');
+      img.alt = 'صورة المبنى';
+      img.src = c.building_photo_url;
+      wrap.appendChild(img);
     } else {
       wrap.innerHTML = '<div class="cloc-photo-empty">لا توجد صورة مبنى مرفوعة لهذا العميل.<br>يمكن رفعها من تعديل بيانات العميل.</div>';
     }
-    document.getElementById('modal-cloc-photo').classList.add('open');
+    setModalOpen('modal-cloc-photo', true);
   }
 
   function openActions(c) {
@@ -166,17 +188,15 @@
     global._clocCurrent = c;
     document.getElementById('cloc-actions-title').textContent = c.name || 'موقع العميل';
     document.getElementById('cloc-actions-address').textContent = formatAddress(c);
-    document.getElementById('modal-cloc-actions').classList.add('open');
+    setModalOpen('modal-cloc-actions', true);
   }
 
   function closeActions() {
-    var el = document.getElementById('modal-cloc-actions');
-    if (el) el.classList.remove('open');
+    setModalOpen('modal-cloc-actions', false);
   }
 
   function closePhoto() {
-    var el = document.getElementById('modal-cloc-photo');
-    if (el) el.classList.remove('open');
+    setModalOpen('modal-cloc-photo', false);
   }
 
   var _lookupFn = null;
