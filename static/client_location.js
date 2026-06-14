@@ -147,6 +147,9 @@
               '</svg></button></div>' +
           '<div class="modal-body cloc-photo-body">' +
             '<div class="cloc-photo-wrap" id="cloc-photo-wrap"></div>' +
+          '</div>' +
+          '<div class="modal-foot cloc-photo-foot" id="cloc-photo-foot" style="display:none">' +
+            '<button type="button" class="btn btn-secondary btn-sm" id="cloc-photo-download">تحميل الصورة</button>' +
           '</div></div></div>'
     );
     document.getElementById('cloc-btn-directions').addEventListener('click', function () {
@@ -155,6 +158,27 @@
     document.getElementById('cloc-btn-building').addEventListener('click', function () {
       if (global._clocCurrent) showBuildingPhoto(global._clocCurrent);
     });
+    document.getElementById('cloc-photo-download').addEventListener('click', function () {
+      if (global._clocPhotoDownloadUrl) {
+        var a = document.createElement('a');
+        a.href = global._clocPhotoDownloadUrl;
+        a.download = global._clocPhotoDownloadName || 'building.jpg';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    });
+  }
+
+  var _defaultBuildingPhoto = '/static/liftcore-header-logo.png';
+
+  function setDefaultBuildingPhoto(url) {
+    if (url) _defaultBuildingPhoto = url;
+  }
+
+  function buildingPhotoSrc(c) {
+    return (c && c.building_photo_url) ? c.building_photo_url : _defaultBuildingPhoto;
   }
 
   function openDirections(c) {
@@ -169,17 +193,23 @@
   function showBuildingPhoto(c) {
     ensureModals();
     global._clocCurrent = c;
-    document.getElementById('cloc-photo-title').textContent = 'صورة المبنى — ' + (c.name || '');
+    var hasCustom = !!(c && c.building_photo_url);
+    var src = buildingPhotoSrc(c);
+    document.getElementById('cloc-photo-title').textContent = hasCustom
+      ? ('صورة المبنى — ' + (c.name || ''))
+      : ('LiftCore — ' + (c.name || ''));
     var wrap = document.getElementById('cloc-photo-wrap');
-    if (c.building_photo_url) {
-      wrap.innerHTML = '';
-      var img = document.createElement('img');
-      img.alt = 'صورة المبنى';
-      img.src = c.building_photo_url;
-      wrap.appendChild(img);
-    } else {
-      wrap.innerHTML = '<div class="cloc-photo-empty">لا توجد صورة مبنى مرفوعة لهذا العميل.<br>يمكن رفعها من تعديل بيانات العميل.</div>';
-    }
+    wrap.classList.toggle('cloc-photo-wrap--default', !hasCustom);
+    wrap.innerHTML = '';
+    var img = document.createElement('img');
+    img.alt = hasCustom ? 'صورة المبنى' : 'LiftCore';
+    img.src = src;
+    img.className = hasCustom ? '' : 'cloc-photo-default-logo';
+    wrap.appendChild(img);
+    var foot = document.getElementById('cloc-photo-foot');
+    if (foot) foot.style.display = hasCustom ? 'flex' : 'none';
+    global._clocPhotoDownloadUrl = hasCustom ? c.building_photo_url : '';
+    global._clocPhotoDownloadName = 'building-' + (c.code || c.id || 'client') + '.jpg';
     setModalOpen('modal-cloc-photo', true);
   }
 
@@ -264,6 +294,8 @@
     normalize: normalize,
     fetchAndOpen: fetchAndOpen,
     openById: openById,
-    setLookup: setLookup
+    setLookup: setLookup,
+    setDefaultBuildingPhoto: setDefaultBuildingPhoto,
+    buildingPhotoSrc: buildingPhotoSrc,
   };
 })(typeof window !== 'undefined' ? window : this);

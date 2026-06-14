@@ -746,14 +746,22 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         </div>
         <div class="field form-full">
           <label>صورة المبنى</label>
-          <div class="cloc-building-upload" onclick="document.getElementById('f-building-photo').click()">
-            <img id="building-photo-preview" class="cloc-building-preview" alt="">
-            <div id="building-photo-ph" class="cloc-building-ph">رفع صورة<br>المبنى</div>
-            <div>
-              <div style="font-size:13px;color:var(--text1)">صورة واجهة المبنى</div>
-              <div style="font-size:11px;color:var(--text3);margin-top:4px">للاستخدام من الفني عند الوصول للموقع</div>
+          <div class="cloc-building-row">
+            <div class="cloc-building-upload" onclick="triggerBuildingPhotoUpload(event)">
+              <img id="building-photo-preview" class="cloc-building-preview cloc-building-default-logo" alt="صورة المبنى">
+              <div id="building-photo-ph" class="cloc-building-ph" style="display:none">رفع صورة<br>المبنى</div>
+              <div>
+                <div style="font-size:13px;color:var(--text1)">صورة واجهة المبنى</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">بدون رفع — يظهر شعار LiftCore</div>
+              </div>
+            </div>
+            <div class="cloc-building-actions">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="triggerBuildingPhotoUpload(event)">رفع / تغيير</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-download-building-photo" style="display:none" onclick="downloadBuildingPhoto()">تحميل</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-delete-building-photo" style="display:none" onclick="deleteBuildingPhoto()">حذف</button>
             </div>
           </div>
+          <input type="hidden" id="f-delete-building-photo" value="">
           <input type="file" id="f-building-photo" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="previewBuildingPhoto(this)">
         </div>
         <!-- ملاحظات -->
@@ -1514,7 +1522,7 @@ function openAddModal() {
   if (elevDisp) elevDisp.textContent = '0';
   var fleetDisp = document.getElementById('f-fleet-status');
   if (fleetDisp) fleetDisp.textContent = 'بدون مصاعد';
-  resetBuildingPhotoPreview('');
+  resetBuildingPhotoPreview('', { hasStoredPhoto: false });
   fillCitySelects('');
   fillPhoneCodeSelects('+966', '+966');
   document.getElementById('f-role').value = '';
@@ -1583,6 +1591,9 @@ function saveClient() {
   if (photoFile) {
     fd.append('building_photo', photoFile, photoFile.name || 'building.jpg');
   }
+  if (document.getElementById('f-delete-building-photo').value === '1') {
+    fd.append('delete_building_photo', '1');
+  }
 
   var saveBtn = document.querySelector('#modal-add .btn-primary');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'جاري الحفظ...'; }
@@ -1619,7 +1630,10 @@ function editClient(id) {
   document.getElementById('f-address').value    = c.address||'';
   document.getElementById('f-maps-url').value   = c.maps_url||'';
   pendingBuildingPhotoFile = null;
-  resetBuildingPhotoPreview('');
+  resetBuildingPhotoPreview(c.building_photo_url || '', {
+    hasStoredPhoto: !!c.building_photo_url,
+    downloadName: 'building-' + (c.code || c.id) + '.jpg',
+  });
   document.getElementById('f-contact').value    = c.contact||'';
   document.getElementById('f-role').value       = c.role||'';
   document.getElementById('f-entity-type').value = c.entity_type || 'فرد';
@@ -2236,44 +2250,117 @@ var months=['يناير','فبراير','مارس','أبريل','مايو','يو
 document.getElementById('h-date').textContent=days[now.getDay()]+'، '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear();
 
 var pendingBuildingPhotoFile = null;
+var buildingPhotoHasCustom = false;
+var buildingPhotoMarkedDelete = false;
+var buildingPhotoDownloadUrl = '';
+var buildingPhotoDownloadName = 'building.jpg';
+const LIFTCORE_DEFAULT_BUILDING_PHOTO = {{ liftcore_logo_url|tojson }};
 
-function resetBuildingPhotoPreview(url) {
+function triggerBuildingPhotoUpload(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('f-building-photo').click();
+}
+
+function updateBuildingPhotoActions() {
+  var dl = document.getElementById('btn-download-building-photo');
+  var del = document.getElementById('btn-delete-building-photo');
+  var canDownload = !!(buildingPhotoDownloadUrl && (buildingPhotoHasCustom || pendingBuildingPhotoFile) && !buildingPhotoMarkedDelete);
+  var canDelete = !!(buildingPhotoHasCustom || pendingBuildingPhotoFile) && !buildingPhotoMarkedDelete;
+  if (dl) dl.style.display = canDownload ? 'inline-flex' : 'none';
+  if (del) del.style.display = canDelete ? 'inline-flex' : 'none';
+}
+
+function resetBuildingPhotoPreview(url, opts) {
+  opts = opts || {};
   var img = document.getElementById('building-photo-preview');
   var ph = document.getElementById('building-photo-ph');
   var inp = document.getElementById('f-building-photo');
-  if (!url) {
+  var delFlag = document.getElementById('f-delete-building-photo');
+  buildingPhotoMarkedDelete = !!opts.markDeleted;
+  buildingPhotoHasCustom = !!opts.hasStoredPhoto;
+  buildingPhotoDownloadUrl = '';
+  buildingPhotoDownloadName = 'building.jpg';
+
+  if (opts.markDeleted) {
+    pendingBuildingPhotoFile = null;
+    if (inp) inp.value = '';
+    buildingPhotoHasCustom = false;
+  } else if (!url && !opts.hasStoredPhoto) {
     pendingBuildingPhotoFile = null;
     if (inp) inp.value = '';
   }
-  if (url) {
-    if (img) {
-      img.onerror = function() {
-        img.style.display = 'none';
-        if (ph) ph.style.display = 'flex';
-      };
-      img.onload = function() {
-        img.style.display = 'block';
-        if (ph) ph.style.display = 'none';
-      };
-      img.src = url;
-    }
-  } else {
-    if (img) { img.src = ''; img.onerror = null; img.onload = null; img.style.display = 'none'; }
-    if (ph) ph.style.display = 'flex';
+
+  var displayUrl = buildingPhotoMarkedDelete || !url
+    ? LIFTCORE_DEFAULT_BUILDING_PHOTO
+    : (url || LIFTCORE_DEFAULT_BUILDING_PHOTO);
+  var isDefault = displayUrl === LIFTCORE_DEFAULT_BUILDING_PHOTO;
+
+  if (img) {
+    img.onerror = function() {
+      img.src = LIFTCORE_DEFAULT_BUILDING_PHOTO;
+      img.classList.add('cloc-building-default-logo');
+    };
+    img.onload = function() {
+      img.style.display = 'block';
+      if (ph) ph.style.display = 'none';
+    };
+    img.src = displayUrl;
+    img.style.display = 'block';
+    img.classList.toggle('cloc-building-default-logo', isDefault);
   }
+  if (ph) ph.style.display = 'none';
+
+  if (!isDefault && !buildingPhotoMarkedDelete) {
+    buildingPhotoDownloadUrl = displayUrl;
+    if (opts.downloadName) buildingPhotoDownloadName = opts.downloadName;
+  }
+  if (delFlag) delFlag.value = buildingPhotoMarkedDelete ? '1' : '';
+  updateBuildingPhotoActions();
 }
 
 function previewBuildingPhoto(input) {
   if (!input.files || !input.files[0]) return;
   pendingBuildingPhotoFile = input.files[0];
-  resetBuildingPhotoPreview(URL.createObjectURL(input.files[0]));
+  buildingPhotoMarkedDelete = false;
+  buildingPhotoHasCustom = true;
+  var delFlag = document.getElementById('f-delete-building-photo');
+  if (delFlag) delFlag.value = '';
+  var objUrl = URL.createObjectURL(input.files[0]);
+  buildingPhotoDownloadUrl = objUrl;
+  buildingPhotoDownloadName = input.files[0].name || 'building.jpg';
+  var img = document.getElementById('building-photo-preview');
+  if (img) {
+    img.classList.remove('cloc-building-default-logo');
+    img.src = objUrl;
+    img.style.display = 'block';
+  }
+  updateBuildingPhotoActions();
+}
+
+function deleteBuildingPhoto() {
+  if (!confirm('حذف صورة المبنى؟')) return;
+  resetBuildingPhotoPreview('', { markDeleted: true, hasStoredPhoto: false });
+}
+
+function downloadBuildingPhoto() {
+  var url = buildingPhotoDownloadUrl;
+  if (!url) return;
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = buildingPhotoDownloadName;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 if (window.LiftCoreLocation) {
+  LiftCoreLocation.setDefaultBuildingPhoto(LIFTCORE_DEFAULT_BUILDING_PHOTO);
   LiftCoreLocation.setLookup(function(id) {
     return CUSTOMERS.find(function(x) { return x.id === id; });
   });
 }
+resetBuildingPhotoPreview('', { hasStoredPhoto: false });
 
 (function bindClientFormExtras() {
   var statusSel = document.getElementById('f-status-sel');

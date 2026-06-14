@@ -1102,6 +1102,28 @@ def _save_client_building_photo(customer, file_storage):
     return None
 
 
+def _delete_client_building_photo(customer):
+    if not customer.building_photo_path:
+        return
+    folder = _client_dir(customer.id)
+    if os.path.isdir(folder):
+        for old in os.listdir(folder):
+            if old.startswith('building.'):
+                try:
+                    os.remove(os.path.join(folder, old))
+                except OSError:
+                    pass
+    customer.building_photo_path = None
+
+
+def default_building_photo_url():
+    """شعار LiftCore الافتراضي عند عدم رفع صورة مبنى."""
+    for name in (LIFTCORE_PRODUCT_LOGO, 'logo.png'):
+        if os.path.isfile(os.path.join(app.static_folder, name)):
+            return url_for('static', filename=name)
+    return url_for('static', filename='logo.png')
+
+
 def _customer_location_payload(customer):
     return {
         'id': customer.id,
@@ -1114,6 +1136,8 @@ def _customer_location_payload(customer):
         'lng': customer.lng or '',
         'maps_url': customer.maps_url or '',
         'building_photo_url': _static_upload_url(customer.building_photo_path),
+        'has_building_photo': bool(customer.building_photo_path),
+        'default_building_photo_url': default_building_photo_url(),
         'phone': customer.phone or '',
     }
 
@@ -1565,7 +1589,14 @@ def client_edit(id):
     c.lng            = request.form.get('lng','')
     c.maps_url       = request.form.get('maps_url','')
     sync_customer_from_elevators(c)
-    photo_err = _save_client_building_photo(c, request.files.get('building_photo'))
+    upload = request.files.get('building_photo')
+    if upload and upload.filename:
+        photo_err = _save_client_building_photo(c, upload)
+    elif request.form.get('delete_building_photo') == '1':
+        _delete_client_building_photo(c)
+        photo_err = None
+    else:
+        photo_err = None
     db.session.commit()
     if photo_err:
         flash(photo_err, 'error')
