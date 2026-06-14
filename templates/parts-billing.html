@@ -332,23 +332,26 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>رقم العملية</label>
           <input id="m-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg4)">
         </div>
-        <div class="field">
-          <label>رقم الزيارة</label>
-          <input id="m-visit" placeholder="VI-00001" style="direction:ltr;font-family:var(--font-en)">
-        </div>
-        <div class="field">
-          <label>رقم العطل</label>
-          <input id="m-fault" placeholder="FA-00001" style="direction:ltr;font-family:var(--font-en)">
-        </div>
-        <p class="form-full" style="font-size:11px;color:var(--text3);grid-column:1/-1;margin:-4px 0 4px">اربط العملية برقم الزيارة أو العطل عند معالجة عطل أثناء الزيارة.</p>
-        <div class="field">
-          <label>رقم العقد</label>
-          <input id="m-cn" placeholder="CN-XXXXX" style="direction:ltr;font-family:var(--font-en)">
-        </div>
         <div class="field form-full">
           <label>العميل <span>*</span></label>
           <select id="m-client-sel"><option value="">اختر العميل</option></select>
         </div>
+        <div class="field form-full">
+          <label>العطل المرتبط</label>
+          <select id="m-fault-sel" onchange="onFaultSelected()" disabled>
+            <option value="">— اختر العميل أولاً —</option>
+          </select>
+          <p id="m-fault-hint" style="font-size:11px;color:var(--text3);margin-top:6px">يُعرض أعطال العميل المختار — اختر العطل الذي تُحسب عليه القطع.</p>
+        </div>
+        <div class="field">
+          <label>رقم الزيارة</label>
+          <input id="m-visit" placeholder="VI-00001" readonly style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg4)">
+        </div>
+        <div class="field">
+          <label>رقم العقد</label>
+          <input id="m-cn" placeholder="CN-XXXXX" style="direction:ltr;font-family:var(--font-en)">
+        </div>
+        <input type="hidden" id="m-fault">
         <div class="field">
           <label>التاريخ <span>*</span></label>
           <input type="date" lang="en-GB" id="m-date">
@@ -579,6 +582,119 @@ function clearFilters() {
   applyFilters();
 }
 
+let customerFaultsCache = [];
+
+function resetFaultSelect(message) {
+  const sel = document.getElementById('m-fault-sel');
+  const hint = document.getElementById('m-fault-hint');
+  customerFaultsCache = [];
+  if (sel) {
+    sel.innerHTML = '<option value="">' + (message || '— بدون ربط عطل —') + '</option>';
+    sel.disabled = true;
+    sel.value = '';
+  }
+  const hf = document.getElementById('m-fault');
+  if (hf) hf.value = '';
+  const visit = document.getElementById('m-visit');
+  const cn = document.getElementById('m-cn');
+  if (visit) { visit.value = ''; visit.readOnly = true; }
+  if (cn) { cn.readOnly = false; }
+  if (hint && !message) {
+    hint.textContent = 'يُعرض أعطال العميل المختار — اختر العطل الذي تُحسب عليه القطع.';
+  }
+}
+
+function faultOptionLabel(f) {
+  const parts = [f.code];
+  if (f.fault_type) parts.push(f.fault_type);
+  if (f.elevator) parts.push(f.elevator);
+  if (f.reported_at) parts.push(f.reported_at);
+  if (f.status) parts.push(f.status);
+  if (f.has_parts) parts.push('له بيان سابق');
+  return parts.join(' — ');
+}
+
+async function loadCustomerFaults(customerId, selectedCode) {
+  resetFaultSelect('جاري تحميل الأعطال...');
+  if (!customerId) {
+    resetFaultSelect('— اختر العميل أولاً —');
+    return;
+  }
+  const sel = document.getElementById('m-fault-sel');
+  const hint = document.getElementById('m-fault-hint');
+  try {
+    const res = await fetch('/api/customers/' + customerId + '/faults');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'تعذّر تحميل الأعطال');
+    customerFaultsCache = data.faults || [];
+    if (!sel) return;
+    if (!customerFaultsCache.length) {
+      sel.innerHTML = '<option value="">— لا توجد أعطال مسجّلة لهذا العميل —</option>';
+      sel.disabled = true;
+      if (hint) hint.textContent = 'لا توجد أعطال — يمكنك حفظ العملية بدون ربط عطل.';
+      return;
+    }
+    sel.innerHTML = '<option value="">— اختر العطل —</option>' +
+      customerFaultsCache.map(function (f) {
+        return '<option value="' + f.code + '">' + faultOptionLabel(f).replace(/</g, '&lt;') + '</option>';
+      }).join('');
+    sel.disabled = false;
+    if (hint) hint.textContent = 'وُجد ' + customerFaultsCache.length + ' عطل — اختر العطل المرتبط بقطع الغيار.';
+    if (selectedCode) {
+      sel.value = selectedCode;
+      onFaultSelected();
+    }
+  } catch (err) {
+    if (sel) {
+      sel.innerHTML = '<option value="">— تعذّر تحميل الأعطال —</option>';
+      sel.disabled = true;
+    }
+    if (hint) hint.textContent = err.message || 'تعذّر تحميل الأعطال';
+  }
+}
+
+function onFaultSelected() {
+  const sel = document.getElementById('m-fault-sel');
+  const code = sel ? sel.value : '';
+  const hf = document.getElementById('m-fault');
+  if (hf) hf.value = code;
+  const f = customerFaultsCache.find(function (x) { return x.code === code; });
+  const visit = document.getElementById('m-visit');
+  const cn = document.getElementById('m-cn');
+  const desc = document.getElementById('m-desc');
+  if (!f) {
+    if (visit) { visit.value = ''; visit.readOnly = true; }
+    if (cn) cn.readOnly = false;
+    return;
+  }
+  if (visit) {
+    visit.value = f.visit_code || '';
+    visit.readOnly = true;
+  }
+  if (cn) {
+    cn.value = f.contract_code || cn.value || '';
+    cn.readOnly = !!f.contract_code;
+  }
+  if (desc && !desc.value.trim() && f.description) desc.value = f.description;
+}
+
+function onPartsCustomerChange() {
+  const clientEl = document.getElementById('m-client-sel');
+  const customerId = clientEl ? clientEl.value : '';
+  loadCustomerFaults(customerId, '');
+  const cn = document.getElementById('m-cn');
+  if (cn && customerId) {
+    const customerContracts = CONTRACTS.filter(function (c) {
+      return String(c.customer_id) === String(customerId);
+    });
+    if (customerContracts.length) cn.value = customerContracts[0].code;
+    else cn.value = '';
+    cn.readOnly = false;
+  } else if (cn) {
+    cn.value = '';
+  }
+}
+
 function openModal(id) {
   if (id) { editPart(id); return; }
   document.getElementById('modal-title').textContent = 'إضافة عملية جديدة';
@@ -588,6 +704,7 @@ function openModal(id) {
   ['m-visit','m-fault','m-cn','m-desc','m-notes','m-pay-date'].forEach(i => {
     const el = document.getElementById(i); if (el) el.value = '';
   });
+  resetFaultSelect('— اختر العميل أولاً —');
   if (typeof LcClientSelect !== 'undefined') {
     LcClientSelect.clearSelection('m-client-sel');
   }
@@ -635,7 +752,8 @@ function saveRecord() {
   fd.append('status', document.getElementById('m-status').value);
   fd.append('notes', document.getElementById('m-notes').value);
   const visitCode = document.getElementById('m-visit')?.value.trim();
-  const faultCode = document.getElementById('m-fault')?.value.trim();
+  const faultSel = document.getElementById('m-fault-sel');
+  const faultCode = (faultSel && faultSel.value) || document.getElementById('m-fault')?.value.trim();
   if (visitCode) fd.append('visit_code', visitCode);
   if (faultCode) fd.append('fault_code', faultCode);
   fetch(editId ? `/parts-billing/edit/${editId}` : '/parts-billing/add', {method:'POST', body:fd})
@@ -658,6 +776,7 @@ function editPart(id) {
     const sel = document.getElementById('m-client-sel');
     if (sel) sel.value = p.customer_id ? String(p.customer_id) : '';
   }
+  loadCustomerFaults(p.customer_id || '', p.fault_code || '');
   document.getElementById('m-date').value = p.billing_date || '';
   document.getElementById('m-desc').value = p.description || '';
   document.getElementById('m-cost').value = p.cost_price || '';
@@ -816,15 +935,32 @@ document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.g
 updateStats();
 if (tableSort) tableSort.bindHeaders();
 if (typeof LcClientSelect !== 'undefined') {
-  LcClientSelect.upgradeSelect('m-client-sel', { customers: CUSTOMERS });
+  LcClientSelect.upgradeSelect('m-client-sel', {
+    customers: CUSTOMERS,
+    onChange: onPartsCustomerChange,
+  });
 }
 applyFilters();
 (function(){
   const fc = new URLSearchParams(window.location.search).get('fault');
   if (fc) {
     openModal();
-    const el = document.getElementById('m-fault');
-    if (el) el.value = fc;
+    fetch('/api/faults/lookup?code=' + encodeURIComponent(fc))
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          document.getElementById('m-fault').value = fc;
+          return;
+        }
+        const f = res.d;
+        if (typeof LcClientSelect !== 'undefined' && f.customer_id) {
+          LcClientSelect.setCustomers('m-client-sel', CUSTOMERS, f.customer_id);
+        }
+        loadCustomerFaults(f.customer_id, f.code);
+      })
+      .catch(function () {
+        document.getElementById('m-fault').value = fc;
+      });
   }
 })();
 window.__lcRefreshPage = function () {

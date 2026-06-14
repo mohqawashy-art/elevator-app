@@ -1477,6 +1477,53 @@ def api_fault(fault_id):
     return jsonify(_fault_json(f))
 
 
+@app.route('/api/faults/lookup')
+def api_fault_lookup():
+    from entity_links import lookup_fault
+
+    code = request.args.get('code', '').strip()
+    f = lookup_fault(code)
+    if not f:
+        return jsonify({'error': 'العطل غير موجود'}), 404
+    return jsonify(_fault_json(f))
+
+
+@app.route('/api/customers/<int:customer_id>/faults')
+def api_customer_faults(customer_id):
+    from entity_links import active_contract_for_elevator
+
+    Customer.query.get_or_404(customer_id)
+    faults = (
+        Fault.query.join(Elevator, Fault.elevator_id == Elevator.id)
+        .filter(Elevator.customer_id == customer_id)
+        .order_by(Fault.reported_at.desc(), Fault.id.desc())
+        .all()
+    )
+    rows = []
+    for f in faults:
+        elev = f.elevator
+        visit = MaintenanceVisit.query.get(f.visit_id) if f.visit_id else None
+        contract = active_contract_for_elevator(elev.id, f.reported_at.date() if f.reported_at else None) if elev else None
+        desc = (f.client_report or f.description or f.fault_type or '').strip()
+        if len(desc) > 100:
+            desc = desc[:97] + '...'
+        rows.append({
+            'id': f.id,
+            'code': f.code,
+            'fault_type': f.fault_type or '',
+            'description': desc,
+            'status': f.status or '',
+            'elevator': elev.code if elev else '',
+            'visit_code': visit.code if visit else '',
+            'contract_code': contract.code if contract else '',
+            'reported_at': f.reported_at.strftime('%Y-%m-%d') if f.reported_at else '',
+            'billed': bool(f.billed),
+            'has_parts': PartsBilling.query.filter_by(fault_id=f.id).count() > 0,
+            'needs_parts': bool(f.needs_parts),
+        })
+    return jsonify({'faults': rows})
+
+
 @app.route('/api/parts-billing/<int:part_id>')
 def api_parts_billing(part_id):
     p = PartsBilling.query.get_or_404(part_id)
