@@ -158,6 +158,14 @@ def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
         notes = _compose_notes(row)
         resolution = _compose_resolution(row)
         tech_notes = vx._str(row[20] if len(row) > 20 else '')
+        cn_code = vx._extract_code(row[3] if len(row) > 3 else '') or vx._extract_code(row[0] if len(row) > 0 else '')
+        meta = []
+        if visit_code:
+            meta.append(f'زيارة: {visit_code}')
+        if cn_code:
+            meta.append(f'عقد: {cn_code}')
+        if meta:
+            notes = '\n'.join([notes] + meta) if notes else '\n'.join(meta)
 
         if dry_run:
             stats['imported'] += 1

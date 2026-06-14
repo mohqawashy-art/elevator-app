@@ -653,32 +653,48 @@ async function loadCustomerFaults(customerId, selectedCode) {
   }
 }
 
-function onFaultSelected() {
-  const sel = document.getElementById('m-fault-sel');
-  const code = sel ? sel.value : '';
-  const hf = document.getElementById('m-fault');
-  if (hf) hf.value = code;
-  const f = customerFaultsCache.find(function (x) { return x.code === code; });
+function applyFaultLinkFields(f) {
+  if (!f) return;
   const visit = document.getElementById('m-visit');
   const cn = document.getElementById('m-cn');
   const dateEl = document.getElementById('m-date');
   const desc = document.getElementById('m-desc');
-  if (!f) {
-    if (visit) { visit.value = ''; visit.readOnly = true; }
-    if (cn) { cn.readOnly = false; }
-    return;
-  }
+  const hf = document.getElementById('m-fault');
+  if (hf && f.code) hf.value = f.code;
   if (visit) {
     visit.value = f.visit_code || '';
     visit.readOnly = true;
   }
   if (cn) {
     cn.value = f.contract_code || '';
-    cn.readOnly = !!f.contract_code;
+    cn.readOnly = !!(f.contract_code);
   }
   const opDate = f.billing_date || f.reported_at || '';
   if (dateEl && opDate) dateEl.value = opDate;
-  if (desc && !desc.value.trim() && f.description) desc.value = f.description;
+  if (desc && f.description && !desc.dataset.userEdited) {
+    if (!desc.value.trim()) desc.value = f.description;
+  }
+}
+
+async function onFaultSelected() {
+  const sel = document.getElementById('m-fault-sel');
+  const code = sel ? sel.value : '';
+  if (!code) {
+    const visit = document.getElementById('m-visit');
+    const hf = document.getElementById('m-fault');
+    if (visit) { visit.value = ''; visit.readOnly = true; }
+    if (hf) hf.value = '';
+    return;
+  }
+  const cached = customerFaultsCache.find(function (x) { return x.code === code; });
+  if (cached) applyFaultLinkFields(cached);
+  try {
+    const res = await fetch('/api/faults/lookup?code=' + encodeURIComponent(code));
+    const data = await res.json();
+    if (res.ok) applyFaultLinkFields(data);
+  } catch (e) {
+    /* keep cached values */
+  }
 }
 
 function onPartsCustomerChange() {

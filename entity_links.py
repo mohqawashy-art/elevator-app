@@ -221,6 +221,75 @@ def normalize_parts_status(status: str) -> str:
     return s
 
 
+def _code_from_text(text: str, prefix: str) -> str | None:
+    if not text:
+        return None
+    for pattern in (
+        rf'{prefix}-\s*(\d+)',
+        rf'{prefix}\s*:\s*(\d+)',
+        rf'رقم\s*{"الزيارة" if prefix == "VI" else "العقد"}\s*:\s*{prefix}-?\s*(\d+)',
+    ):
+        m = re.search(pattern, text, re.I)
+        if m:
+            n = int(m.group(1))
+            if prefix.upper() == 'CN':
+                return f'CN-{n:05d}'
+            if prefix.upper() == 'VI':
+                return f'VI-{n:05d}'
+    return None
+
+
+def fault_parts_link_fields(f: Fault) -> dict:
+    """حقول الربط لبيان قطع الغيار — زيارة، عقد، تاريخ (LiftCore + Jama)."""
+    combined = '\n'.join(
+        x for x in (f.notes or '', f.description or '', f.client_report or '', f.tech_notes or '') if x
+    )
+    visit_code = _code_from_text(combined, 'VI')
+    cn_code = _code_from_text(combined, 'CN')
+
+    visit = MaintenanceVisit.query.get(f.visit_id) if f.visit_id else None
+    if not visit:
+        visit = (
+            MaintenanceVisit.query.filter_by(fault_id=f.id)
+            .order_by(MaintenanceVisit.visit_date.desc(), MaintenanceVisit.id.desc())
+            .first()
+        )
+    if not visit and visit_code:
+        visit = lookup_visit(visit_code)
+
+    elev = f.elevator
+    ref_date = visit.visit_date if visit and visit.visit_date else (
+        f.reported_at.date() if f.reported_at else None
+    )
+
+    contract = Contract.query.get(visit.contract_id) if visit and visit.contract_id else None
+    if not contract and cn_code:
+        contract = contract_by_code(cn_code)
+    if not contract and elev:
+        contract = active_contract_for_elevator(elev.id, ref_date)
+    if not contract and elev:
+        link = ContractElevator.query.filter_by(elevator_id=elev.id).first()
+        if link:
+            contract = Contract.query.get(link.contract_id)
+
+    resolved_visit_code = visit.code if visit else (visit_code or '')
+    resolved_cn = contract.code if contract else (cn_code or '')
+
+    billing_date = ''
+    if visit and visit.visit_date:
+        billing_date = visit.visit_date.isoformat()
+    elif f.reported_at:
+        billing_date = f.reported_at.strftime('%Y-%m-%d')
+
+    return {
+        'visit_id': visit.id if visit else None,
+        'visit_code': resolved_visit_code,
+        'contract_code': resolved_cn,
+        'contract_id': contract.id if contract else None,
+        'billing_date': billing_date,
+    }
+
+
 def elevator_link_payload(elevator_id: int) -> dict:
     elev = Elevator.query.get_or_404(elevator_id)
     contract_ids = [

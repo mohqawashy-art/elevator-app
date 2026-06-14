@@ -1384,8 +1384,10 @@ def _visit_json(v):
 
 
 def _fault_json(f):
+    from entity_links import fault_parts_link_fields
+
     elev = f.elevator
-    link = _fault_parts_link_fields(f)
+    link = fault_parts_link_fields(f)
     reported = f.reported_at.strftime('%Y-%m-%d') if f.reported_at else ''
     return {
         'id': f.id,
@@ -1408,40 +1410,6 @@ def _fault_json(f):
         'resolution': f.resolution or '',
         'billed': bool(f.billed),
         'notes': f.notes or '',
-    }
-
-
-def _fault_parts_link_fields(f: Fault) -> dict:
-    """حقول الربط لبيان قطع الغيار: زيارة، عقد، تاريخ."""
-    from entity_links import active_contract_for_elevator
-
-    visit = MaintenanceVisit.query.get(f.visit_id) if f.visit_id else None
-    if not visit:
-        visit = (
-            MaintenanceVisit.query.filter_by(fault_id=f.id)
-            .order_by(MaintenanceVisit.visit_date.desc(), MaintenanceVisit.id.desc())
-            .first()
-        )
-
-    contract = Contract.query.get(visit.contract_id) if visit and visit.contract_id else None
-    elev = f.elevator
-    ref_date = visit.visit_date if visit and visit.visit_date else (
-        f.reported_at.date() if f.reported_at else None
-    )
-    if not contract and elev:
-        contract = active_contract_for_elevator(elev.id, ref_date)
-
-    billing_date = ''
-    if visit and visit.visit_date:
-        billing_date = visit.visit_date.isoformat()
-    elif f.reported_at:
-        billing_date = f.reported_at.strftime('%Y-%m-%d')
-
-    return {
-        'visit_id': visit.id if visit else None,
-        'visit_code': visit.code if visit else '',
-        'contract_code': contract.code if contract else '',
-        'billing_date': billing_date,
     }
 
 
@@ -1526,6 +1494,8 @@ def api_fault_lookup():
 
 @app.route('/api/customers/<int:customer_id>/faults')
 def api_customer_faults(customer_id):
+    from entity_links import fault_parts_link_fields
+
     Customer.query.get_or_404(customer_id)
     faults = (
         Fault.query.join(Elevator, Fault.elevator_id == Elevator.id)
@@ -1536,7 +1506,7 @@ def api_customer_faults(customer_id):
     rows = []
     for f in faults:
         elev = f.elevator
-        link = _fault_parts_link_fields(f)
+        link = fault_parts_link_fields(f)
         desc = (f.client_report or f.description or f.fault_type or '').strip()
         if len(desc) > 100:
             desc = desc[:97] + '...'
