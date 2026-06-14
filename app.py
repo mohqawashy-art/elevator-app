@@ -4463,6 +4463,59 @@ def stock_delete(id):
 # =============================================
 # بيان القطع
 # =============================================
+@app.route('/parts-billing/template')
+def parts_billing_import_template():
+    """تحميل نموذج استيراد قطع الغيار."""
+    path = os.path.join(app.root_path, 'static', 'templates', 'parts_billing_template.xlsx')
+    if not os.path.isfile(path):
+        script = os.path.join(app.root_path, 'scripts', 'build_parts_billing_template.py')
+        if os.path.isfile(script):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('build_parts_billing_template', script)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                mod.build_xlsx(path)
+        if not os.path.isfile(path):
+            abort(404)
+    return send_from_directory(
+        os.path.dirname(path),
+        os.path.basename(path),
+        as_attachment=True,
+        download_name='parts_billing_template.xlsx',
+    )
+
+
+@app.route('/parts-billing/import', methods=['POST'])
+def parts_billing_import():
+    """استيراد بيان تركيب قطع الغيار من Excel."""
+    upload = request.files.get('file')
+    if not upload or not upload.filename:
+        return jsonify({'error': 'لم يُرفَع ملف Excel'}), 400
+    if not upload.filename.lower().endswith(('.xlsx', '.xls')):
+        return jsonify({'error': 'الملف يجب أن يكون .xlsx'}), 400
+
+    dry_run = request.form.get('dry_run') == '1'
+    force = request.form.get('force') == '1'
+
+    try:
+        from parts_billing_import import import_parts_billing_file
+
+        result = import_parts_billing_file(
+            upload.read(),
+            dry_run=dry_run,
+            skip_existing=not force,
+            db_session=None if dry_run else db.session,
+            next_code_fn=next_code,
+        )
+        return jsonify(result)
+    except ImportError:
+        return jsonify({'error': 'مكتبة openpyxl غير مثبتة على السيرفر'}), 500
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({'error': f'فشل الاستيراد: {exc}'}), 500
+
+
 @app.route('/parts-billing')
 def parts_billing():
     from operations import parts_alerts, parts_stats

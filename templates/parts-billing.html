@@ -108,6 +108,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .profit-negative{color:var(--danger);font-weight:600;font-family:var(--font-en)}
 .table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
 .table-info{font-size:12px;color:var(--text3)}
+.import-area{border:2px dashed var(--border);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:var(--trans)}
+.import-area:hover{border-color:var(--accent);background:rgba(42,127,255,.04)}
+.import-area svg{width:32px;height:32px;color:var(--text3);margin-bottom:10px}
 .pagination{display:flex;gap:4px}
 .page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
 .page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -226,6 +229,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     <div class="page-header">
       <div class="page-title">بيان تركيب قطع الغيار <span id="bills-count" data-i18n-skip></span></div>
       <div class="page-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openPartsImportModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 9V2M4.5 4.5L7 2l2.5 2.5"/></svg>
+          استيراد Excel
+        </button>
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير Excel
@@ -403,6 +410,39 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-import">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <div class="modal-title">استيراد قطع الغيار من Excel</div>
+      <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="import-area" onclick="document.getElementById('parts-import-file').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
+        <p>اسحب ملف Excel هنا أو <span style="color:var(--accent)">اضغط للاختيار</span></p>
+        <p style="font-size:11px;margin-top:4px;color:var(--text3)">.xlsx — نفس تنسيق تصدير Notion / جما</p>
+        <input type="file" id="parts-import-file" accept=".xlsx,.xls" style="display:none" onchange="onPartsImportFile(this)">
+      </div>
+      <div id="parts-import-status" style="margin-top:12px;font-size:12px;color:var(--text2);display:none"></div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
+        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
+        <div style="color:var(--accent)">رقم العقد CN-xxxx + التاريخ + بيان قطع الغيار</div>
+        <div style="color:var(--text3);margin-top:4px">اختيارية: رقم العملية، التكلفة، سعر العميل، حالة التحصيل، طريقة الدفع، ملاحظات</div>
+        <div style="margin-top:8px">
+          <a href="{{ url_for('parts_billing_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-import')">إلغاء</button>
+      <button class="btn btn-primary" id="btn-parts-import" onclick="confirmPartsImport()" style="display:none">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
+        استيراد
+      </button>
     </div>
   </div>
 </div>
@@ -677,6 +717,76 @@ function deletePart(id) { currentDeleteId=id; document.getElementById('modal-del
 function confirmDelete() {
   if(!currentDeleteId) return;
   fetch(`/parts-billing/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
+}
+
+let partsImportFile = null;
+
+function openPartsImportModal() {
+  partsImportFile = null;
+  const inp = document.getElementById('parts-import-file');
+  if (inp) inp.value = '';
+  const status = document.getElementById('parts-import-status');
+  if (status) { status.style.display = 'none'; status.textContent = ''; }
+  const btn = document.getElementById('btn-parts-import');
+  if (btn) btn.style.display = 'none';
+  closeModal('modal');
+  closeModal('modal-view');
+  document.getElementById('modal-import')?.classList.add('open');
+}
+
+function onPartsImportFile(input) {
+  partsImportFile = input.files && input.files[0] ? input.files[0] : null;
+  const status = document.getElementById('parts-import-status');
+  const btn = document.getElementById('btn-parts-import');
+  if (!partsImportFile) {
+    if (status) status.style.display = 'none';
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+  if (status) {
+    status.style.display = 'block';
+    status.style.color = 'var(--text2)';
+    status.textContent = 'الملف: ' + partsImportFile.name;
+  }
+  if (btn) btn.style.display = 'inline-flex';
+}
+
+async function confirmPartsImport() {
+  if (!partsImportFile) {
+    alert('اختر ملف Excel أولاً');
+    return;
+  }
+  const btn = document.getElementById('btn-parts-import');
+  const status = document.getElementById('parts-import-status');
+  if (btn) { btn.disabled = true; btn.textContent = 'جاري الاستيراد...'; }
+  if (status) {
+    status.style.display = 'block';
+    status.style.color = 'var(--text2)';
+    status.textContent = 'جاري قراءة الملف واستيراد البيانات...';
+  }
+  const fd = new FormData();
+  fd.append('file', partsImportFile);
+  try {
+    const res = await fetch('/parts-billing/import', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل الاستيراد');
+    const msg = 'تم استيراد ' + (data.imported || 0) + ' عملية'
+      + (data.skipped_existing ? (' — تخطي ' + data.skipped_existing + ' مكرر') : '')
+      + (data.skipped_missing ? (' — ' + data.skipped_missing + ' عقد غير موجود') : '');
+    alert(msg);
+    window.location.reload();
+  } catch (err) {
+    if (status) {
+      status.style.color = 'var(--danger)';
+      status.textContent = err.message || 'فشل الاستيراد';
+    } else {
+      alert(err.message || 'فشل الاستيراد');
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> استيراد';
+    }
+  }
 }
 
 function exportCSV() {
