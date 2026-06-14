@@ -376,7 +376,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <input type="month" class="date-input" id="work-month" value="{{ plan_default_month }}" style="direction:ltr;min-width:130px" onchange="applyWorkMonth()">
           <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(1)" title="الشهر التالي">›</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="goWorkMonthToday()">هذا الشهر</button>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-show-all-visits" onclick="showAllVisits()" title="إزالة فلتر الشهر وعرض كل الزيارات">عرض الكل</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="filterTableByWorkMonth()" title="تطبيق شهر العرض على فلتر التاريخ">فلترة الشهر</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-show-all-visits" onclick="showAllVisits()" title="إزالة كل الفلاتر وعرض كل الزيارات">عرض الكل</button>
         </div>
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
@@ -1117,11 +1118,6 @@ function syncPlanMonthFromWork() {
 function applyWorkMonth() {
   const ym = document.getElementById('work-month')?.value;
   if (!ym) return;
-  const b = monthBounds(ym);
-  const ff = document.getElementById('f-date-from');
-  const ft = document.getElementById('f-date-to');
-  if (ff) ff.value = b.from;
-  if (ft) ft.value = b.to;
   const parts = ym.split('-').map(Number);
   OpsPage.setCalendarMonth(parts[0], parts[1] - 1);
   OpsPage.setCalendarItems(visitsInMonth(ym));
@@ -1131,6 +1127,17 @@ function applyWorkMonth() {
     if (window.LiftCoreFormat) ml.innerHTML = '— ' + LiftCoreFormat.monthLabel(ym);
     else ml.textContent = '— ' + formatMonthLabel(ym);
   }
+}
+
+function filterTableByWorkMonth() {
+  const ym = document.getElementById('work-month')?.value;
+  if (!ym) return;
+  const b = monthBounds(ym);
+  const ff = document.getElementById('f-date-from');
+  const ft = document.getElementById('f-date-to');
+  if (ff) ff.value = b.from;
+  if (ft) ft.value = b.to;
+  applyWorkMonth();
   filterTable();
 }
 
@@ -1668,6 +1675,7 @@ const mapLabel = document.getElementById('map-date-label');
 if (mapLabel) mapLabel.textContent = 'زيارات اليوم — ' + new Date().toISOString().slice(0, 10);
 applyWorkMonth();
 updatePlanMonthHint();
+renderTable(filtered);
 document.getElementById('cal-grid')?.addEventListener('click', function (e) {
   const cell = e.target.closest('.cal-day[data-date]');
   if (!cell || cell.classList.contains('empty')) return;
