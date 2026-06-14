@@ -354,7 +354,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <input type="hidden" id="m-fault">
         <div class="field">
           <label>التاريخ <span>*</span></label>
-          <input type="date" lang="en-GB" id="m-date">
+          <input type="date" lang="en-GB" id="m-date" title="يُعبّأ تلقائياً من تاريخ العطل/الزيارة عند اختيار العطل">
         </div>
         <div class="field">
           <label>طريقة الدفع</label>
@@ -661,10 +661,11 @@ function onFaultSelected() {
   const f = customerFaultsCache.find(function (x) { return x.code === code; });
   const visit = document.getElementById('m-visit');
   const cn = document.getElementById('m-cn');
+  const dateEl = document.getElementById('m-date');
   const desc = document.getElementById('m-desc');
   if (!f) {
     if (visit) { visit.value = ''; visit.readOnly = true; }
-    if (cn) cn.readOnly = false;
+    if (cn) { cn.readOnly = false; }
     return;
   }
   if (visit) {
@@ -672,9 +673,11 @@ function onFaultSelected() {
     visit.readOnly = true;
   }
   if (cn) {
-    cn.value = f.contract_code || cn.value || '';
+    cn.value = f.contract_code || '';
     cn.readOnly = !!f.contract_code;
   }
+  const opDate = f.billing_date || f.reported_at || '';
+  if (dateEl && opDate) dateEl.value = opDate;
   if (desc && !desc.value.trim() && f.description) desc.value = f.description;
 }
 
@@ -957,6 +960,9 @@ applyFilters();
           LcClientSelect.setCustomers('m-client-sel', CUSTOMERS, f.customer_id);
         }
         loadCustomerFaults(f.customer_id, f.code);
+        const dateEl = document.getElementById('m-date');
+        if (dateEl && f.billing_date) dateEl.value = f.billing_date;
+        else if (dateEl && f.reported_at) dateEl.value = f.reported_at;
       })
       .catch(function () {
         document.getElementById('m-fault').value = fc;
