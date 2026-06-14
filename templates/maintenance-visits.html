@@ -376,6 +376,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <input type="month" class="date-input" id="work-month" value="{{ plan_default_month }}" style="direction:ltr;min-width:130px" onchange="applyWorkMonth()">
           <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(1)" title="الشهر التالي">›</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="goWorkMonthToday()">هذا الشهر</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-show-all-visits" onclick="showAllVisits()" title="إزالة فلتر الشهر وعرض كل الزيارات">عرض الكل</button>
         </div>
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
@@ -1162,6 +1163,24 @@ function goWorkMonthToday() {
   const inp = document.getElementById('work-month');
   if (inp) inp.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
   applyWorkMonth();
+}
+
+function showAllVisits() {
+  activeVisitFilter = null;
+  document.querySelectorAll('[data-visit-filter]').forEach(el => el.classList.remove('active'));
+  updateVisitFilterHint();
+  ['f-date-from', 'f-date-to'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const search = document.getElementById('search-input');
+  if (search) search.value = '';
+  ['f-client', 'f-tech', 'f-type', 'f-status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  filtered = [...VISITS];
+  renderTable(filtered);
 }
 
 function fetchPlanApi(url, body) {
