@@ -1,0 +1,142 @@
+/* LiftCore — هيكل التطبيق: قائمة جانبية + محتوى (للصفحات بدون CSS مدمج) */
+:root {
+  --sidebar-w: 240px;
+  --header-h: 52px;
+}
+
+body.lc-app-shell {
+  background: var(--bg, #0b0f17);
+  color: var(--text1, #e4eaf5);
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+}
+
+body.lc-app-shell:not(.lc-layout-topbar) {
+  display: flex;
+}
+
+body.lc-app-shell .sidebar,
+body.lc-app-shell #sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--bg2, #111720);
+  border-left: 1px solid var(--border, rgba(100, 160, 255, 0.1));
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  overflow: hidden;
+}
+
+html[dir="ltr"] body.lc-app-shell .sidebar,
+html[dir="ltr"] body.lc-app-shell #sidebar {
+  border-left: none;
+  border-right: 1px solid var(--border, rgba(100, 160, 255, 0.1));
+}
+
+body.lc-app-shell .sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+body.lc-app-shell .nav-section {
+  padding: 14px 16px 4px;
+  font-size: 10px;
+  color: var(--text3, #4a5a72);
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+body.lc-app-shell .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  margin: 1px 8px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text2, #8a9bb8);
+  text-decoration: none;
+  position: relative;
+  transition: 0.18s ease;
+}
+
+body.lc-app-shell .nav-item:hover {
+  background: var(--bg3, #161e2b);
+  color: var(--text1, #e4eaf5);
+}
+
+body.lc-app-shell .nav-item.active {
+  background: rgba(42, 127, 255, 0.12);
+  color: var(--accent, #2a7fff);
+}
+
+body.lc-app-shell .nav-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+body.lc-app-shell .main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+body.lc-app-shell .content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+body.lc-app-shell .mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 95;
+}
+
+body.lc-app-shell .mobile-overlay.open {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  body.lc-app-shell:not(.lc-layout-topbar) .sidebar,
+  body.lc-app-shell:not(.lc-layout-topbar) #sidebar {
+    position: fixed;
+    right: calc(-1 * var(--sidebar-w));
+    top: 0;
+    height: 100vh;
+    transition: right 0.25s ease;
+  }
+
+  html[dir="ltr"] body.lc-app-shell:not(.lc-layout-topbar) .sidebar,
+  html[dir="ltr"] body.lc-app-shell:not(.lc-layout-topbar) #sidebar {
+    right: auto;
+    left: calc(-1 * var(--sidebar-w));
+    transition: left 0.25s ease;
+  }
+
+  body.lc-app-shell .sidebar.open,
+  body.lc-app-shell #sidebar.open {
+    right: 0;
+  }
+
+  html[dir="ltr"] body.lc-app-shell .sidebar.open,
+  html[dir="ltr"] body.lc-app-shell #sidebar.open {
+    left: 0;
+    right: auto;
+  }
+
+  body.lc-app-shell .content {
+    padding: 16px;
+  }
+}

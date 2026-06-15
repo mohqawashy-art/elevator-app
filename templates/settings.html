@@ -7,8 +7,10 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css?v=11') }}">
-<script src="{{ url_for('static', filename='liftcore-shell.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-app-layout.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css?v=12') }}">
+<script src="{{ url_for('static', filename='liftcore-dates.js') }}" defer></script>
+<script src="{{ url_for('static', filename='liftcore-shell.js?v=12') }}"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -17,8 +19,7 @@
   --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--success:#1fb87a;--danger:#e04848;
   --r:10px;--r-sm:7px;
 }
-body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;margin:0}
-.wrap{max-width:1040px;margin:0 auto;padding:20px 24px 40px}
+.wrap{max-width:1040px;margin:0 auto}
 .page-heading{font-size:22px;font-weight:600;margin-bottom:16px}
 .flash{padding:10px 14px;border-radius:var(--r-sm);margin-bottom:14px;font-size:13px;line-height:1.6}
 .flash-ok{background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.25);color:var(--success)}
@@ -70,12 +71,14 @@ html[data-theme="report"] .theme-card.selected{border-color:#002147;box-shadow:0
 @media(max-width:700px){.grid,.preview-row{grid-template-columns:1fr}}
 </style>
 </head>
-<body>
-{% set header_solo = true %}
-{% set page_title = 'الإعدادات' %}
-{% include 'partials/app_header.html' %}
+<body class="lc-app-shell">
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+{% include 'partials/app_sidebar.html' %}
+<div class="main">
+  {% set page_title = 'الإعدادات' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
 <div class="wrap">
-  <h1 class="page-heading">الإعدادات</h1>
 
   {% if request.args.get('saved') %}
   <div class="flash flash-ok">تم الحفظ بنجاح.</div>
@@ -520,6 +523,8 @@ html[data-theme="report"] .theme-card.selected{border-color:#002147;box-shadow:0
       <div class="section">الباقة والاشتراك</div>
       <p style="font-size:13px;color:var(--text2);line-height:1.8">قريباً — حدود العملاء والمصاعد والمستخدمين حسب باقة SaaS.<br>سيتضمن: الباقة الحالية، الاستخدام، تاريخ الانتهاء، وترقية الاشتراك.</p>
     </div>
+  </div>
+</div>
   </div>
 </div>
 
