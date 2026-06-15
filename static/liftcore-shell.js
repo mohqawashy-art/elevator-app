@@ -233,7 +233,39 @@
   document.addEventListener('fullscreenchange', onFullscreenChange);
   document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
-  document.addEventListener('DOMContentLoaded', function () {
+  function initAppLayout() {
+    if (document.body.classList.contains('lc-layout-topbar')) return;
+
+    var sidebar = document.getElementById('sidebar');
+    var main = document.querySelector('body > .main');
+    if (!sidebar || !main) return;
+
+    var header = main.querySelector(':scope > .lc-header, :scope > header.lc-header, :scope > header.header');
+    if (!header) return;
+
+    var overlay = document.getElementById('overlay');
+    var appBody = document.createElement('div');
+    appBody.className = 'lc-app-body';
+
+    sidebar.parentNode.insertBefore(appBody, sidebar);
+    appBody.appendChild(sidebar);
+    appBody.appendChild(main);
+
+    if (overlay) {
+      overlay.parentNode.insertBefore(header, overlay.nextSibling);
+    } else {
+      document.body.insertBefore(header, appBody);
+    }
+
+    document.body.classList.add('lc-layout-topbar');
+  }
+
+  var shellBooted = false;
+
+  function bootShell() {
+    if (shellBooted) return;
+    shellBooted = true;
+    initAppLayout();
     updateFullscreenIcon();
     bindSidebarNav();
     initSidebarToggle();
@@ -243,5 +275,10 @@
       LiftCoreFormat.initHeaderDates();
       LiftCoreFormat.applyWesternDigits(document.body);
     }
-  });
+  }
+
+  document.addEventListener('DOMContentLoaded', bootShell);
+  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    bootShell();
+  }
 })();

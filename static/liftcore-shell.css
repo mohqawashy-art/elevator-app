@@ -72,6 +72,79 @@ html.lc-fullscreen .main {
   min-width: 0;
 }
 
+/* ── هيدر بعرض الشاشة + القائمة تحته ── */
+body.lc-layout-topbar {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+body.lc-layout-topbar .lc-app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+body.lc-layout-topbar > .lc-header,
+body.lc-layout-topbar > .header.lc-header {
+  width: 100%;
+  flex-shrink: 0;
+  position: relative;
+  top: auto;
+  z-index: 200;
+}
+
+body.lc-layout-topbar #sidebar,
+body.lc-layout-topbar .sidebar {
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  position: relative !important;
+  top: auto !important;
+  flex-shrink: 0;
+}
+
+body.lc-layout-topbar .main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.lc-layout-topbar .main > .content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  body.lc-layout-topbar #sidebar,
+  body.lc-layout-topbar .sidebar {
+    position: fixed !important;
+    top: var(--header-h, 52px) !important;
+    height: calc(100vh - var(--header-h, 52px)) !important;
+    max-height: calc(100vh - var(--header-h, 52px)) !important;
+  }
+
+  html[dir="rtl"] body.lc-layout-topbar #sidebar.open,
+  html[dir="rtl"] body.lc-layout-topbar .sidebar.open {
+    right: 0 !important;
+  }
+
+  html[dir="ltr"] body.lc-layout-topbar #sidebar.open,
+  html[dir="ltr"] body.lc-layout-topbar .sidebar.open {
+    left: 0 !important;
+  }
+}
+
 @media (max-width: 1100px) {
   .hamburger {
     display: flex;
