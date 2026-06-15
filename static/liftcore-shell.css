@@ -67,12 +67,9 @@
   display: block;
 }
 
-html.lc-fullscreen .sidebar {
-  display: none;
-}
-
 html.lc-fullscreen .main {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 @media (max-width: 1100px) {
@@ -481,7 +478,7 @@ html.lc-sidebar-compact .sidebar .nav-item.active::before {
   }
 }
 
-/* ── شاشة ترحيب يومية ── */
+/* ── شاشة ترحيب يومية (ألوان المظهر النشط) ── */
 .lc-welcome-splash {
   position: fixed;
   inset: 0;
@@ -489,7 +486,8 @@ html.lc-sidebar-compact .sidebar .nav-item.active::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #060a12;
+  background: var(--bg, #0b0f17);
+  color: var(--text1, #e4eaf5);
   opacity: 1;
   visibility: visible;
   transition: opacity 0.55s ease, visibility 0.55s ease;
@@ -506,9 +504,9 @@ html.lc-sidebar-compact .sidebar .nav-item.active::before {
   inset: 0;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(42, 127, 255, 0.18), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 20% 80%, rgba(200, 160, 85, 0.12), transparent 55%),
-    linear-gradient(160deg, #060a12 0%, #0b1424 45%, #060a12 100%);
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(42, 127, 255, 0.16), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 20% 80%, rgba(200, 160, 85, 0.1), transparent 55%),
+    linear-gradient(160deg, var(--bg, #0b0f17) 0%, var(--bg2, #111720) 45%, var(--bg, #0b0f17) 100%);
 }
 
 .lc-welcome-bg::before,
@@ -601,14 +599,14 @@ html.lc-sidebar-compact .sidebar .nav-item.active::before {
 .lc-welcome-title {
   font-size: clamp(22px, 4vw, 30px);
   font-weight: 700;
-  color: #e4eaf5;
+  color: var(--text1, #e4eaf5);
   margin-bottom: 8px;
   letter-spacing: 0.01em;
 }
 
 .lc-welcome-sub {
   font-size: 14px;
-  color: #8a9bb8;
+  color: var(--text2, #8a9bb8);
   margin-bottom: 32px;
   line-height: 1.6;
 }
@@ -645,6 +643,18 @@ html.lc-sidebar-compact .sidebar .nav-item.active::before {
 
 .lc-welcome-start:active {
   transform: translateY(0);
+}
+
+html[data-theme="light"] .lc-welcome-bg::before {
+  background: rgba(42, 127, 255, 0.14);
+}
+
+html[data-theme="light"] .lc-welcome-bg::after {
+  background: rgba(200, 160, 85, 0.1);
+}
+
+html[data-theme="light"] .lc-welcome-logo {
+  filter: drop-shadow(0 8px 24px rgba(42, 127, 255, 0.2));
 }
 
 .lc-welcome-start svg {

@@ -3,6 +3,7 @@
 
   var WELCOME_KEY = 'lc_welcome_date';
   var SIDEBAR_KEY = 'lc_sidebar_compact';
+  var FS_SESSION_KEY = 'lc_session_fullscreen';
 
   function metaContent(name) {
     var el = document.querySelector('meta[name="' + name + '"]');
@@ -24,33 +25,52 @@
 
   function updateFullscreenIcon() {
     var btn = document.getElementById('btn-fullscreen');
-    if (!btn) return;
     var on = !!document.fullscreenElement;
-    var enter = btn.querySelector('.lc-fs-enter');
-    var exit = btn.querySelector('.lc-fs-exit');
-    if (enter) enter.style.display = on ? 'none' : '';
-    if (exit) exit.style.display = on ? '' : 'none';
-    var titleKey = on ? 'fullscreen_exit' : 'fullscreen';
-    btn.setAttribute('data-i18n-title', titleKey);
-    if (window.LiftCoreI18n && window.LiftCoreI18n.KEYS && window.LiftCoreI18n.KEYS[titleKey]) {
-      var lang = document.documentElement.getAttribute('lang') || 'ar';
-      btn.setAttribute('title', window.LiftCoreI18n.KEYS[titleKey][lang]);
+    if (btn) {
+      var enter = btn.querySelector('.lc-fs-enter');
+      var exit = btn.querySelector('.lc-fs-exit');
+      if (enter) enter.style.display = on ? 'none' : '';
+      if (exit) exit.style.display = on ? '' : 'none';
+      var titleKey = on ? 'fullscreen_exit' : 'fullscreen';
+      btn.setAttribute('data-i18n-title', titleKey);
+      if (window.LiftCoreI18n && window.LiftCoreI18n.KEYS && window.LiftCoreI18n.KEYS[titleKey]) {
+        var lang = document.documentElement.getAttribute('lang') || 'ar';
+        btn.setAttribute('title', window.LiftCoreI18n.KEYS[titleKey][lang]);
+      }
     }
     document.documentElement.classList.toggle('lc-fullscreen', on);
   }
 
-  window.toggleFullscreen = function () {
+  function enterFullscreen() {
     var el = document.documentElement;
+    if (document.fullscreenElement) return Promise.resolve();
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (!req) return Promise.resolve();
+    return Promise.resolve(req.call(el)).catch(function () { /* denied */ });
+  }
+
+  window.toggleFullscreen = function () {
     if (!document.fullscreenElement) {
-      var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-      if (req) {
-        Promise.resolve(req.call(el)).catch(function () { /* denied */ });
-      }
-    } else {
-      var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-      if (exit) exit.call(document);
+      try { sessionStorage.setItem(FS_SESSION_KEY, '1'); } catch (e) { /* ignore */ }
+      enterFullscreen();
+      return;
     }
+    try { sessionStorage.removeItem(FS_SESSION_KEY); } catch (e) { /* ignore */ }
+    var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    if (exit) exit.call(document);
   };
+
+  function restoreSessionFullscreen() {
+    try {
+      if (sessionStorage.getItem(FS_SESSION_KEY) !== '1') return;
+    } catch (e) { return; }
+    if (document.fullscreenElement) return;
+    enterFullscreen();
+  }
+
+  function onFullscreenChange() {
+    updateFullscreenIcon();
+  }
 
   window.toggleProfileMenu = function (e) {
     if (e) e.stopPropagation();
@@ -203,20 +223,22 @@
     var startBtn = document.getElementById('lc-welcome-start');
     if (startBtn) {
       startBtn.addEventListener('click', function () {
-        window.toggleFullscreen();
         dismissWelcome(splash);
+        try { sessionStorage.setItem(FS_SESSION_KEY, '1'); } catch (e) { /* ignore */ }
+        enterFullscreen();
       });
     }
   }
 
-  document.addEventListener('fullscreenchange', updateFullscreenIcon);
-  document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
   document.addEventListener('DOMContentLoaded', function () {
     updateFullscreenIcon();
     bindSidebarNav();
     initSidebarToggle();
     initWelcomeSplash();
+    restoreSessionFullscreen();
     if (window.LiftCoreFormat) {
       LiftCoreFormat.initHeaderDates();
       LiftCoreFormat.applyWesternDigits(document.body);
