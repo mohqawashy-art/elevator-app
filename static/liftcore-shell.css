@@ -122,9 +122,10 @@ html.lc-fullscreen .main {
 }
 
 /* شعار العميل في الهيدر — إخفاء نسخة القائمة الجانبية */
-.lc-header-client-logo ~ .header-page,
 .lc-header--solo .lc-header-client-logo {
   border-inline-end: none;
+  padding-inline-end: 0;
+  margin-inline-end: 4px;
 }
 
 #sidebar > .sidebar-logo,
