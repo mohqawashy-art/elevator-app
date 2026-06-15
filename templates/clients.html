@@ -385,10 +385,10 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
-<link rel="stylesheet" href="/static/liftcore-shell.css?v=5">
+<link rel="stylesheet" href="/static/liftcore-shell.css?v=6">
 
 <script src="/static/liftcore-format.js?v=15"></script>
-<script src="/static/liftcore-shell.js?v=5" defer></script>
+<script src="/static/liftcore-shell.js?v=6" defer defer></script>
 
 
 </head>
@@ -1310,6 +1310,9 @@ function renderTable(data) {
     '</div></td>' +
     '</tr>'
   ).join('');
+  if (window.lcSyncStickyListHead) {
+    requestAnimationFrame(function () { window.lcSyncStickyListHead(); });
+  }
 }
 
 function filterTable() {
@@ -2479,10 +2482,23 @@ window.__lcRefreshPage = function () {
 fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');
 bindPhoneInputs();
-try { if (tableSort) tableSort.bindHeaders(); updateStats(); renderTable(CUSTOMERS); syncModalA11y(); } catch (bootErr) { console.error('clients boot', bootErr); }
-if (new URLSearchParams(window.location.search).get('action') === 'add') {
-  openAddModal();
-  history.replaceState(null, '', window.location.pathname);
+function clientsPageBoot() {
+  try {
+    if (window.lcSyncStickyListHead) window.lcSyncStickyListHead();
+    if (tableSort) tableSort.bindHeaders();
+    updateStats();
+    renderTable(CUSTOMERS);
+    syncModalA11y();
+  } catch (bootErr) { console.error('clients boot', bootErr); }
+  if (new URLSearchParams(window.location.search).get('action') === 'add') {
+    openAddModal();
+    history.replaceState(null, '', window.location.pathname);
+  }
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', clientsPageBoot);
+} else {
+  clientsPageBoot();
 }
 </script>
 </body>
