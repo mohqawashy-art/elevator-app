@@ -363,7 +363,7 @@ tbody tr > td,
 .lc-sidebar-toggle {
   position: absolute;
   top: 50%;
-  inset-inline-start: -13px;
+  inset-inline-end: -13px;
   transform: translateY(-50%);
   z-index: 120;
   width: 26px;
@@ -393,16 +393,20 @@ tbody tr > td,
   transition: transform 0.2s ease;
 }
 
-html.lc-sidebar-compact .lc-sidebar-toggle svg {
-  transform: rotate(180deg);
-}
-
-html[dir="ltr"] .lc-sidebar-toggle svg {
+html[dir="rtl"] .lc-sidebar-toggle svg {
   transform: scaleX(-1);
 }
 
-html.lc-sidebar-compact[dir="ltr"] .lc-sidebar-toggle svg {
+html.lc-sidebar-compact[dir="rtl"] .lc-sidebar-toggle svg {
   transform: scaleX(-1) rotate(180deg);
+}
+
+html[dir="ltr"] .lc-sidebar-toggle svg {
+  transform: none;
+}
+
+html.lc-sidebar-compact[dir="ltr"] .lc-sidebar-toggle svg {
+  transform: rotate(180deg);
 }
 
 html.lc-sidebar-compact {
