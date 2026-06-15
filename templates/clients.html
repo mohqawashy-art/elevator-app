@@ -385,10 +385,10 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
-<link rel="stylesheet" href="/static/liftcore-shell.css">
+<link rel="stylesheet" href="/static/liftcore-shell.css?v=5">
 
 <script src="/static/liftcore-format.js?v=15"></script>
-<script src="/static/liftcore-shell.js"></script>
+<script src="/static/liftcore-shell.js?v=5" defer></script>
 
 
 </head>
@@ -458,29 +458,19 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <div id="drill-body" style="padding:12px 18px;font-size:13px;color:var(--text2)"></div>
     </div>
 
-    <!-- تاب الجدول والخريطة -->
-    <div class="tabs" style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg3);padding:4px;border-radius:var(--r-sm);width:fit-content;border:1px solid var(--border)">
-      <div class="tab active" id="tab-btn-table" onclick="switchTab('table')" style="padding:7px 16px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:var(--trans)">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="5" y1="5.5" x2="5" y2="12"/></svg>
-        جدول العملاء
+    <!-- تثبيت: تبويبات + أزرار + فلاتر + رأس الجدول -->
+    <div class="lc-sticky-list-head" id="clients-list-sticky" data-lc-sticky-manual="1">
+      <div class="tabs" style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg3);padding:4px;border-radius:var(--r-sm);width:fit-content;border:1px solid var(--border)">
+        <div class="tab active" id="tab-btn-table" onclick="switchTab('table')" style="padding:7px 16px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:var(--trans)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="5" y1="5.5" x2="5" y2="12"/></svg>
+          جدول العملاء
+        </div>
+        <div class="tab" id="tab-btn-map" onclick="switchTab('map')" style="padding:7px 16px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:var(--trans)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
+          خريطة مواقع العملاء
+        </div>
       </div>
-      <div class="tab" id="tab-btn-map" onclick="switchTab('map')" style="padding:7px 16px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:var(--trans)">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
-        خريطة مواقع العملاء
-      </div>
-    </div>
-
-    <!-- قسم الجدول -->
-    <div id="tab-table">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-      <div style="margin-bottom:14px">
-        {% for category, message in messages %}
-        <div style="padding:10px 14px;border-radius:var(--r-sm);margin-bottom:8px;font-size:13px;{% if category == 'error' %}background:rgba(220,60,60,.15);border:1px solid rgba(220,60,60,.35);color:#f88{% else %}background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.3);color:var(--success){% endif %}">{{ message }}</div>
-        {% endfor %}
-      </div>
-      {% endif %}
-      {% endwith %}
+      <div class="lc-sticky-list-toolbar" id="clients-table-toolbar">
       <!-- عنوان وأزرار -->
       <div class="page-header">
         <div class="page-title">العملاء <span id="clients-count" data-i18n-skip>({{ customers|length }} عميل)</span></div>
@@ -526,9 +516,23 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           <option>نشط</option><option>غير نشط</option>
         </select>
       </div>
+      </div>
+    </div>
+
+    <!-- قسم الجدول -->
+    <div id="tab-table">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div style="margin-bottom:14px">
+        {% for category, message in messages %}
+        <div style="padding:10px 14px;border-radius:var(--r-sm);margin-bottom:8px;font-size:13px;{% if category == 'error' %}background:rgba(220,60,60,.15);border:1px solid rgba(220,60,60,.35);color:#f88{% else %}background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.3);color:var(--success){% endif %}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
 
       <!-- الجدول -->
-      <div class="table-wrap">
+      <div class="table-wrap lc-sticky-table-wrap" id="clients-main-table" data-lc-sticky-done="1">
         <div class="table-scroll">
           <table>
             <thead>
@@ -2076,6 +2080,7 @@ function switchTab(tab){
   document.getElementById('tab-map').style.display   = tab==='map'   ? '' : 'none';
   document.getElementById('tab-btn-table').classList.toggle('active', tab==='table');
   document.getElementById('tab-btn-map').classList.toggle('active',   tab==='map');
+  if (window.lcSyncStickyListHead) window.lcSyncStickyListHead();
   if(tab==='map') {
     whenGoogleMapsReady(function () {
       setTimeout(function(){ refreshMainMap(true); }, 200);
