@@ -1,15 +1,9 @@
 <header class="header lc-header{% if header_solo %} lc-header--solo{% endif %}">
   <div class="header-left">
     {% if header_solo %}
-    <a class="lc-header-client-logo" href="{{ url_for('dashboard') }}" title="{{ brand_name }}" aria-label="{{ brand_name }}">
-      <img src="{{ brand_logo_url }}" alt="{{ brand_name }}">
-    </a>
     <a class="lc-back-link" href="{{ url_for('dashboard') }}" data-i18n="back_dashboard">← لوحة التحكم</a>
     {% else %}
     <button type="button" class="hamburger" onclick="openSidebar()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg></button>
-    <a class="lc-header-client-logo" href="{{ url_for('dashboard') }}" title="{{ brand_name }}" aria-label="{{ brand_name }}">
-      <img src="{{ brand_logo_url }}" alt="{{ brand_name }}">
-    </a>
     <div class="header-page">
       <span class="header-date" id="h-date"></span>
       <span class="header-page-title">{{ page_title|default('LiftCore') }}</span>
