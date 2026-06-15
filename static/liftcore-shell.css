@@ -103,6 +103,41 @@ html.lc-fullscreen .main {
   min-width: 0;
 }
 
+.lc-header-client-logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  padding-inline-end: 10px;
+  margin-inline-end: 2px;
+  border-inline-end: 1px solid var(--border, rgba(100, 160, 255, 0.1));
+}
+
+.lc-header-client-logo img {
+  height: 42px;
+  width: auto;
+  max-width: min(var(--logo-w-sidebar, 120px), 140px);
+  object-fit: contain;
+  display: block;
+}
+
+/* شعار العميل في الهيدر — إخفاء نسخة القائمة الجانبية */
+.lc-header-client-logo ~ .header-page,
+.lc-header--solo .lc-header-client-logo {
+  border-inline-end: none;
+}
+
+#sidebar > .sidebar-logo,
+.sidebar > .sidebar-logo:first-child {
+  display: none;
+}
+
+#sidebar .sidebar-nav,
+.sidebar > .sidebar-nav,
+.sidebar > nav.sidebar-nav {
+  padding-top: 12px;
+}
+
 .header-page {
   min-width: 0;
 }
@@ -474,6 +509,18 @@ html.lc-sidebar-compact .sidebar .nav-badge {
 html.lc-sidebar-compact #sidebar .nav-item.active::before,
 html.lc-sidebar-compact .sidebar .nav-item.active::before {
   display: none;
+}
+
+@media (max-width: 768px) {
+  .lc-header-client-logo img {
+    height: 34px;
+    max-width: min(100px, 28vw);
+  }
+
+  .lc-header-client-logo {
+    padding-inline-end: 8px;
+    margin-inline-end: 0;
+  }
 }
 
 @media (max-width: 768px) {
