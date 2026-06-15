@@ -357,3 +357,297 @@ tbody tr > td,
 .card-table tr > td {
   transition: none !important;
 }
+
+/* ── القائمة الجانبية: طي (أيقونات) / فتح (كامل) ── */
+#sidebar {
+  position: relative;
+}
+
+.lc-sidebar-toggle {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: -13px;
+  transform: translateY(-50%);
+  z-index: 120;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border2, rgba(100, 160, 255, 0.2));
+  background: var(--bg3, #161e2b);
+  color: var(--text2, #8a9bb8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: 0.18s ease;
+  padding: 0;
+}
+
+.lc-sidebar-toggle:hover {
+  color: var(--accent, #2a7fff);
+  border-color: rgba(42, 127, 255, 0.45);
+  background: var(--bg4, #1c2535);
+}
+
+.lc-sidebar-toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+}
+
+html.lc-sidebar-compact .lc-sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+html[dir="ltr"] .lc-sidebar-toggle svg {
+  transform: scaleX(-1);
+}
+
+html.lc-sidebar-compact[dir="ltr"] .lc-sidebar-toggle svg {
+  transform: scaleX(-1) rotate(180deg);
+}
+
+html.lc-sidebar-compact {
+  --sidebar-w: var(--sidebar-w-compact, 72px);
+}
+
+html.lc-sidebar-compact #sidebar,
+html.lc-sidebar-compact .sidebar {
+  width: var(--sidebar-w-compact, 72px);
+  min-width: var(--sidebar-w-compact, 72px);
+}
+
+html.lc-sidebar-compact #sidebar .sidebar-logo,
+html.lc-sidebar-compact .sidebar .sidebar-logo {
+  padding: 12px 8px;
+  justify-content: center;
+}
+
+html.lc-sidebar-compact #sidebar .sidebar-logo img,
+html.lc-sidebar-compact .sidebar .sidebar-logo img {
+  width: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+}
+
+html.lc-sidebar-compact #sidebar .nav-section,
+html.lc-sidebar-compact .sidebar .nav-section {
+  height: 0;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+html.lc-sidebar-compact #sidebar .nav-item,
+html.lc-sidebar-compact .sidebar .nav-item {
+  justify-content: center;
+  gap: 0;
+  padding: 10px 8px;
+  margin-inline: 4px;
+  font-size: 0;
+  line-height: 0;
+  position: relative;
+}
+
+html.lc-sidebar-compact #sidebar .nav-item svg,
+html.lc-sidebar-compact .sidebar .nav-item svg {
+  width: 20px;
+  height: 20px;
+  opacity: 1;
+}
+
+html.lc-sidebar-compact #sidebar .nav-badge,
+html.lc-sidebar-compact .sidebar .nav-badge {
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 4px;
+  font-size: 9px;
+  min-width: 14px;
+  padding: 0 4px;
+  line-height: 14px;
+}
+
+html.lc-sidebar-compact #sidebar .nav-item.active::before,
+html.lc-sidebar-compact .sidebar .nav-item.active::before {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .lc-sidebar-toggle {
+    display: none;
+  }
+}
+
+/* ── شاشة ترحيب يومية ── */
+.lc-welcome-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #060a12;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.55s ease, visibility 0.55s ease;
+}
+
+.lc-welcome-splash.lc-welcome-hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.lc-welcome-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(42, 127, 255, 0.18), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 20% 80%, rgba(200, 160, 85, 0.12), transparent 55%),
+    linear-gradient(160deg, #060a12 0%, #0b1424 45%, #060a12 100%);
+}
+
+.lc-welcome-bg::before,
+.lc-welcome-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  animation: lc-welcome-float 8s ease-in-out infinite alternate;
+}
+
+.lc-welcome-bg::before {
+  width: 280px;
+  height: 280px;
+  background: rgba(42, 127, 255, 0.25);
+  top: 15%;
+  left: 20%;
+}
+
+.lc-welcome-bg::after {
+  width: 220px;
+  height: 220px;
+  background: rgba(200, 160, 85, 0.18);
+  bottom: 18%;
+  right: 18%;
+  animation-delay: -3s;
+}
+
+@keyframes lc-welcome-float {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(24px, -18px) scale(1.08); }
+}
+
+.lc-welcome-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 32px 24px;
+  max-width: 480px;
+  animation: lc-welcome-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes lc-welcome-in {
+  from { opacity: 0; transform: translateY(28px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.lc-welcome-logo-wrap {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 28px;
+}
+
+.lc-welcome-logo-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(42, 127, 255, 0.35), transparent 70%);
+  animation: lc-welcome-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes lc-welcome-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.lc-welcome-logo {
+  position: relative;
+  width: min(200px, 52vw);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 32px rgba(42, 127, 255, 0.35));
+  animation: lc-welcome-logo-pop 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+}
+
+@keyframes lc-welcome-logo-pop {
+  from { opacity: 0; transform: scale(0.4) rotate(-8deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.lc-welcome-product {
+  display: block;
+  margin: 0 auto 20px;
+  height: 28px;
+  width: auto;
+  opacity: 0.85;
+}
+
+.lc-welcome-title {
+  font-size: clamp(22px, 4vw, 30px);
+  font-weight: 700;
+  color: #e4eaf5;
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+}
+
+.lc-welcome-sub {
+  font-size: 14px;
+  color: #8a9bb8;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+.lc-welcome-start {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 180px;
+  padding: 14px 36px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2a7fff, #1a5fcc);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 8px 28px rgba(42, 127, 255, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  animation: lc-welcome-btn 0.8s ease 0.5s both;
+}
+
+@keyframes lc-welcome-btn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lc-welcome-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(42, 127, 255, 0.5);
+}
+
+.lc-welcome-start:active {
+  transform: translateY(0);
+}
+
+.lc-welcome-start svg {
+  width: 18px;
+  height: 18px;
+}

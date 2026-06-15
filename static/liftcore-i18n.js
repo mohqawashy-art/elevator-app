@@ -303,6 +303,13 @@
     login_password: { ar: 'كلمة المرور', en: 'Password' },
     login_forgot: { ar: 'نسيت كلمة المرور؟', en: 'Forgot password?' },
     login_submit: { ar: 'دخول', en: 'Sign In' },
+    welcome_title: { ar: 'مرحباً بك في ', en: 'Welcome to ' },
+    welcome_title_user: { ar: 'مرحباً، ', en: 'Welcome, ' },
+    welcome_sub: { ar: 'نظام إدارة المصاعد — جاهز للعمل', en: 'Elevator management — ready to go' },
+    welcome_start: { ar: 'ابدأ', en: 'Start' },
+    sidebar_toggle: { ar: 'طي/فتح القائمة', en: 'Collapse/expand sidebar' },
+    sidebar_collapse: { ar: 'طي القائمة (أيقونات)', en: 'Collapse sidebar (icons)' },
+    sidebar_expand: { ar: 'فتح القائمة (كامل)', en: 'Expand sidebar (full)' },
   };
 
   var REVERSE = {};

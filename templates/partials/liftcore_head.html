@@ -46,5 +46,12 @@
   --logo-w-sidebar: {{ logo_width_sidebar }}px;
   --logo-w-report: {{ logo_width_report }}px;
   --logo-w-login: {{ logo_width_login }}px;
+  --sidebar-w-compact: 72px;
 }</style>
+{% if auth_user %}
+<meta name="lc-brand-logo" content="{{ brand_logo_url }}">
+<meta name="lc-product-logo" content="{{ liftcore_logo_url }}">
+<meta name="lc-brand-name" content="{{ brand_name }}">
+<meta name="lc-user-name" content="{{ user_display_name or '' }}">
+{% endif %}
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-no-hover.css') }}?v=2">
