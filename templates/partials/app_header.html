@@ -1,16 +1,5 @@
 <header class="header lc-header{% if header_solo %} lc-header--solo{% endif %}">
   <div class="header-actions">
-    <div class="lang-toggle" title="Language">
-      <button type="button" class="lang-opt{% if user_language == 'ar' %} active{% endif %}" id="btn-ar" onclick="LiftCoreI18n.setLang('ar')" aria-label="العربية">ع</button>
-      <button type="button" class="lang-opt{% if user_language == 'en' %} active{% endif %}" id="btn-en" onclick="LiftCoreI18n.setLang('en')" aria-label="English">EN</button>
-    </div>
-    <button type="button" class="icon-btn lc-fullscreen-btn" id="btn-fullscreen" onclick="toggleFullscreen()" data-i18n-title="fullscreen" title="شاشة كاملة" aria-label="Full screen">
-      <svg class="lc-fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
-      <svg class="lc-fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16" style="display:none"><path d="M9 9H5V5M15 9h4V5M9 15H5v4M15 15h4v4"/></svg>
-    </button>
-    <a href="{{ url_for('settings') }}" class="icon-btn lc-settings-btn{% if request.endpoint == 'settings' %} is-active{% endif %}" data-i18n-title="settings" title="الإعدادات">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-    </a>
     <div class="profile-menu-wrap" onclick="event.stopPropagation()">
       <button type="button" class="lc-profile-btn" onclick="toggleProfileMenu(event)" title="{{ user_display_name or 'الحساب' }}">
         {% if user_avatar_url %}
@@ -28,6 +17,17 @@
         <a href="{{ url_for('settings', tab='appearance') }}" data-i18n="appearance">المظهر</a>
         <a href="{{ url_for('logout') }}" class="logout" data-i18n="logout">تسجيل الخروج</a>
       </div>
+    </div>
+    <a href="{{ url_for('settings') }}" class="icon-btn lc-settings-btn{% if request.endpoint == 'settings' %} is-active{% endif %}" data-i18n-title="settings" title="الإعدادات">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </a>
+    <button type="button" class="icon-btn lc-fullscreen-btn" id="btn-fullscreen" onclick="toggleFullscreen()" data-i18n-title="fullscreen" title="شاشة كاملة" aria-label="Full screen">
+      <svg class="lc-fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
+      <svg class="lc-fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16" style="display:none"><path d="M9 9H5V5M15 9h4V5M9 15H5v4M15 15h4v4"/></svg>
+    </button>
+    <div class="lang-toggle" title="Language">
+      <button type="button" class="lang-opt{% if user_language == 'ar' %} active{% endif %}" id="btn-ar" onclick="LiftCoreI18n.setLang('ar')" aria-label="العربية">ع</button>
+      <button type="button" class="lang-opt{% if user_language == 'en' %} active{% endif %}" id="btn-en" onclick="LiftCoreI18n.setLang('en')" aria-label="English">EN</button>
     </div>
   </div>
 
