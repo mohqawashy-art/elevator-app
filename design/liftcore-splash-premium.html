@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070a10;          /* أسود مزرق عميق */
+  --bg-2:#0b1018;
+  --gold:#c9a14a;
+  --gold-light:#e8cd86;
+  --gold-dim:rgba(201,161,74,.5);
+  --text:#f2f5fa;
+  --muted:#5e6b7e;
+  --hair:rgba(201,161,74,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Tajawal',sans-serif;
+  background:radial-gradient(140% 100% at 50% 0%, var(--bg-2), var(--bg) 60%);
+  color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;position:relative;
+}
+
+/* حُبيبات خفيفة جداً (film grain) تعطي إحساساً سينمائياً */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.025;z-index:5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* أعمدة ضوئية رأسية شبه خفية في العمق — تلميح للأبراج */
+.pillars{position:fixed;inset:0;pointer-events:none;z-index:0;display:flex;justify-content:center;gap:13vw;opacity:.6}
+.pillars span{width:1px;height:100%;background:linear-gradient(180deg,transparent,var(--hair) 35%,var(--hair) 65%,transparent);
+  opacity:0;animation:pillarFade 2s ease forwards}
+.pillars span:nth-child(1){animation-delay:.1s}
+.pillars span:nth-child(2){animation-delay:.25s}
+.pillars span:nth-child(3){animation-delay:.4s}
+.pillars span:nth-child(4){animation-delay:.55s}
+.pillars span:nth-child(5){animation-delay:.7s}
+@keyframes pillarFade{to{opacity:1}}
+
+/* ====== المسرح ====== */
+.stage{position:relative;z-index:2;text-align:center;display:flex;flex-direction:column;align-items:center}
+
+/* خط الضوء الصاعد — التوقيع: كأنه مسار المصعد */
+.track{position:relative;width:1px;height:120px;margin-bottom:34px}
+.track .rail{position:absolute;inset:0;background:linear-gradient(180deg,transparent,var(--hair))}
+.track .pulse{position:absolute;left:50%;transform:translateX(-50%);bottom:0;
+  width:3px;height:3px;border-radius:50%;background:var(--gold-light);
+  box-shadow:0 0 14px 3px var(--gold-dim);
+  animation:rise 1.9s cubic-bezier(.5,0,.1,1) forwards}
+@keyframes rise{
+  0%{bottom:0;opacity:0}
+  12%{opacity:1}
+  88%{opacity:1}
+  100%{bottom:100%;opacity:1;width:5px;height:5px}
+}
+/* أثر الخط الذي يرسمه الضوء وهو يصعد */
+.track .trace{position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:1px;height:0;
+  background:linear-gradient(180deg,var(--gold-dim),transparent);
+  animation:trace 1.9s cubic-bezier(.5,0,.1,1) forwards}
+@keyframes trace{0%{height:0}100%{height:100%}}
+
+/* وميض عند وصول الضوء للأعلى */
+.flash{position:absolute;top:-6px;left:50%;transform:translate(-50%,-50%);
+  width:6px;height:6px;border-radius:50%;background:var(--gold-light);opacity:0;
+  animation:flash .9s ease 1.8s forwards}
+@keyframes flash{
+  0%{opacity:0;box-shadow:0 0 0 0 var(--gold-dim)}
+  30%{opacity:1;box-shadow:0 0 30px 10px rgba(201,161,74,.35)}
+  100%{opacity:0;box-shadow:0 0 60px 30px transparent}
+}
+
+/* ====== اسم العلامة ====== */
+.wordmark{overflow:hidden;display:flex;justify-content:center;direction:ltr!important;unicode-bidi:bidi-override}
+.wordmark .ch{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(46px,9vw,82px);font-weight:600;line-height:1;
+  letter-spacing:.04em;color:var(--text);display:inline-block;
+  opacity:0;transform:translateY(102%);
+}
+.wordmark.go .ch{animation:charUp .9s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes charUp{to{opacity:1;transform:none}}
+/* لمسة ذهبية على حرف الـ C */
+.wordmark .gold{color:var(--gold-light)}
+
+.tagline{margin-top:18px;font-size:clamp(11px,2.4vw,13px);font-weight:400;color:var(--muted);
+  letter-spacing:.42em;padding-right:.42em;text-transform:uppercase;direction:ltr;
+  opacity:0;animation:soft .9s ease 2.5s forwards}
+.arabic{margin-top:14px;font-size:clamp(14px,3vw,17px);font-weight:500;color:var(--gold);
+  letter-spacing:.06em;opacity:0;animation:soft .9s ease 2.7s forwards}
+
+/* الترحيب */
+.greet{margin-top:40px;font-size:clamp(15px,3.4vw,18px);font-weight:300;color:var(--text);
+  opacity:0;animation:soft 1s ease 3.1s forwards}
+.greet .name{font-weight:700;color:var(--gold-light)}
+@keyframes soft{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* خط تقدم رفيع جداً في الأسفل */
+.progress{position:fixed;bottom:0;left:0;height:1.5px;width:0;
+  background:linear-gradient(90deg,transparent,var(--gold-light),var(--gold));
+  animation:prog 4.6s cubic-bezier(.4,0,.2,1) .3s forwards;z-index:4}
+@keyframes prog{to{width:100%}}
+
+/* تلاشي المشهد كله للخروج */
+.stage,.pillars{transition:opacity .7s ease, transform .7s ease}
+body.exit .stage{opacity:0;transform:translateY(-10px)}
+body.exit .pillars{opacity:0}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none!important;transition:none!important}
+  .wordmark .ch{opacity:1;transform:none}
+  .tagline,.arabic,.greet,.pillars span{opacity:1}
+  .track{display:none}.progress{width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="pillars"><span></span><span></span><span></span><span></span><span></span></div>
+
+<div class="stage">
+  <div class="track">
+    <div class="rail"></div>
+    <div class="trace"></div>
+    <div class="pulse"></div>
+    <div class="flash"></div>
+  </div>
+
+  <div class="wordmark" id="wordmark" aria-label="LiftCore"></div>
+
+  <div class="tagline">Elevator Management System</div>
+  <div class="arabic">ليفت كور — منظومة إدارة المصاعد</div>
+
+  <div class="greet">أهلاً بك، <span class="name" id="userName">مهندس محمد</span></div>
+</div>
+
+<div class="progress"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+
+  /* بناء الاسم حرفاً حرفاً لحركة الصعود المتتابعة */
+  var word = 'LiftCore';
+  var goldSet = {4:true}; /* الحرف C ذهبي */
+  var wm = document.getElementById('wordmark');
+  var i, html='';
+  for(i=0;i<word.length;i++){
+    var cls = 'ch' + (goldSet[i] ? ' gold' : '');
+    /* تأخير تتابعي يبدأ بعد وصول خط الضوء (~1.9s) */
+    var delay = (1.9 + i*0.07).toFixed(2);
+    html += '<span class="'+cls+'" style="animation-delay:'+delay+'s">'+word[i]+'</span>';
+  }
+  wm.innerHTML = html;
+  /* تشغيل الحركة */
+  requestAnimationFrame(function(){ wm.classList.add('go'); });
+
+  /* اسم المستخدم — لاحقاً من جلسة Flask: {{ current_user.name }} */
+  // document.getElementById('userName').textContent = 'مهندس محمد';
+
+  /* الخروج والانتقال للداش بورد بعد اكتمال المشهد */
+  setTimeout(function(){
+    document.body.classList.add('exit');
+    setTimeout(function(){
+      /* window.location.href = '/dashboard'; */
+    }, 700);
+  }, 5000);
+});
+</script>
+</body>
+</html>

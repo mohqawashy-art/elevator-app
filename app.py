@@ -721,12 +721,22 @@ def login():
             session.permanent = True
             user.last_login = datetime.utcnow()
             db.session.commit()
-            next_url = request.args.get('next') or ''
-            if not next_url.startswith('/') or next_url.startswith('//'):
-                next_url = url_for('dashboard')
-            return redirect(next_url)
+            session['just_logged_in'] = True
+            return redirect(url_for('welcome'))
         error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
     return render_template('login.html', error=error)
+
+
+@app.route('/welcome')
+def welcome():
+    user = current_user()
+    if not user:
+        return redirect(url_for('login'))
+    if not session.pop('just_logged_in', False):
+        return redirect(url_for('dashboard'))
+    display_name = session.get('username') or user.full_name or user.username
+    return render_template('welcome.html', current_user_name=display_name)
+
 
 @app.route('/logout')
 def logout():
