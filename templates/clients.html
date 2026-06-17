@@ -1139,16 +1139,27 @@ function validateClientPhoneFields() {
   return true;
 }
 function whatsappDigits(phone) {
-  if(!phone) return '';
-  return String(phone).replace(/\D/g, '');
+  if (!phone) return '';
+  var d = String(phone).replace(/\D/g, '');
+  if (!d) return '';
+  if (d.indexOf('966') === 0) {
+    var rest = d.slice(3);
+    if (rest.charAt(0) === '0') rest = rest.slice(1);
+    return '966' + rest;
+  }
+  if (d.charAt(0) === '0') return '966' + d.slice(1);
+  if (d.length === 9 && d.charAt(0) === '5') return '966' + d;
+  return '966' + d;
 }
 function openWhatsApp(phone, name) {
   var digits = whatsappDigits(phone);
-  if(!digits) { alert('لا يوجد رقم واتساب مسجّل'); return; }
+  if (!digits) { alert('لا يوجد رقم واتساب مسجّل'); return; }
   var msg = name ? ('السلام عليكم ' + name + '،') : '';
   var url = 'https://wa.me/' + digits + (msg ? ('?text=' + encodeURIComponent(msg)) : '');
-  window.open(url, '_blank');
+  var w = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!w) window.location.href = url;
 }
+window.openWhatsApp = openWhatsApp;
 function testWhatsAppMobile() {
   var ph = document.getElementById('f-phone').value.trim();
   if(!ph) { alert('يرجى إدخال رقم الجوال'); return; }
@@ -1161,10 +1172,17 @@ function testWhatsAppContact() {
   openWhatsApp(document.getElementById('f-code-wa').value + wa, contact);
 }
 function waButtonHtml(phone, name) {
-  if(!whatsappDigits(phone)) return '';
-  return '<button type="button" class="btn-wa" onclick="openWhatsApp(' + JSON.stringify(phone) + ',' + JSON.stringify(name||'') + ')">' +
+  if (!whatsappDigits(phone)) return '';
+  return '<button type="button" class="btn-wa" data-wa-phone=' + JSON.stringify(String(phone)) + ' data-wa-name=' + JSON.stringify(String(name || '')) + '>' +
     '<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg> ' + lcDisp('واتساب') + '</button>';
 }
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.btn-wa[data-wa-phone]');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openWhatsApp(btn.getAttribute('data-wa-phone'), btn.getAttribute('data-wa-name') || '');
+});
 
 // ===== إحصائيات =====
 function hasExactGps(c) {
@@ -1820,7 +1838,7 @@ function mapInfoContent(c, exact) {
     '<div class="map-info-sub">' + c.code + '<br>' + (c.city || '—') + (c.district ? ' — ' + c.district : '') + '<br>' + (c.phone || '') + '<br><span style="color:' + statusColor + ';font-weight:600">' + clientAccountStatus(c) + '</span> · <span style="color:#888">' + locNote + '</span></div>' +
     '<div class="map-info-actions">' +
       '<button class="map-info-btn" onclick="openClientCard(' + c.id + ')">عرض العميل</button>' +
-      (c.phone ? '<button class="map-info-btn" onclick="openWhatsApp(' + JSON.stringify(c.phone) + ',' + JSON.stringify(c.name) + ')">واتساب</button>' : '') +
+      (c.phone ? '<button type="button" class="map-info-btn btn-wa" data-wa-phone=' + JSON.stringify(String(c.phone)) + ' data-wa-name=' + JSON.stringify(String(c.name || '')) + '>واتساب</button>' : '') +
     '</div></div>';
 }
 
