@@ -1213,7 +1213,15 @@ function buildClientLocationQuery(c) {
 
 function setContractMapSearchQuery(text) {
   var search = document.getElementById('contract-map-search');
-  if (search && text) search.value = text;
+  if (!search || !text) return;
+  if (typeof LiftCoreMapPicker !== 'undefined' && LiftCoreMapPicker.dismissPlacesAutocomplete) {
+    search.setAttribute('autocomplete', 'off');
+    search.value = text;
+    search.blur();
+    LiftCoreMapPicker.dismissPlacesAutocomplete();
+  } else {
+    search.value = text;
+  }
 }
 
 function copyContractAddressFromClient() {
@@ -1246,9 +1254,11 @@ function copyContractAddressFromClient() {
     if (c.maps_url) document.getElementById('f-contract-maps-url').value = c.maps_url;
     document.getElementById('f-contract-lat').value = c.lat;
     document.getElementById('f-contract-lng').value = c.lng;
+    if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
   } else if (mapQuery) {
     whenGoogleMapsReady(function () {
       LiftCoreMapPicker.geocodeAddress(mapQuery, function (ok) {
+        if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
         if (!ok) alert('تعذّر تحديد الموقع على الخريطة — تحقق من العنوان');
       });
     });

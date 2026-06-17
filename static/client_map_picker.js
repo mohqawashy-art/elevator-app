@@ -25,6 +25,21 @@
     return typeof id === 'string' ? document.getElementById(id) : id;
   }
 
+  function dismissPlacesAutocomplete() {
+    document.querySelectorAll('.pac-container').forEach(function (el) {
+      el.style.display = 'none';
+      el.style.visibility = 'hidden';
+    });
+  }
+
+  function setSearchQueryWithoutPac(searchEl, text) {
+    if (!searchEl || !text) return;
+    searchEl.setAttribute('autocomplete', 'off');
+    searchEl.value = text;
+    searchEl.blur();
+    dismissPlacesAutocomplete();
+  }
+
   function mapsReady() {
     return !!(global.google && google.maps);
   }
@@ -504,11 +519,11 @@
       reset();
       return false;
     }
-    setMarkerPosition(la, ln);
     var search = state.opts && $(state.opts.searchEl);
     if (search && (options.formatted_address || options.address)) {
-      search.value = options.formatted_address || options.address || '';
+      setSearchQueryWithoutPac(search, options.formatted_address || options.address || '');
     }
+    setMarkerPosition(la, ln);
     if (options.address || options.city || options.district) {
       emitUpdate({
         lat: String(la),
@@ -573,6 +588,7 @@
     reset: reset,
     hardReset: hardReset,
     setLocation: setLocation,
+    dismissPlacesAutocomplete: dismissPlacesAutocomplete,
     resize: resize,
     hasLocation: hasLocation,
     refreshMarkerIcon: refreshMarkerIcon,
