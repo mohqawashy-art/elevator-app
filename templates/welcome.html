@@ -101,7 +101,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.025;z
 /* خط تقدم رفيع جداً في الأسفل */
 .progress{position:fixed;bottom:0;left:0;height:1.5px;width:0;
   background:linear-gradient(90deg,transparent,var(--gold-light),var(--gold));
-  animation:prog 4.6s cubic-bezier(.4,0,.2,1) .3s forwards;z-index:4}
+  animation:prog 6.6s cubic-bezier(.4,0,.2,1) .3s forwards;z-index:4}
 @keyframes prog{to{width:100%}}
 
 /* تلاشي المشهد كله للخروج */
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function(){
     setTimeout(function(){
       window.location.href = {{ url_for('dashboard')|tojson }};
     }, 700);
-  }, 5000);
+  }, 7000);
 });
 </script>
 </body>
