@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var HEADER_H_MIN = 88;
+  var HEADER_H_MIN = 96;
 
   function measureHeaderHeight(header) {
     if (!header) return HEADER_H_MIN;
@@ -154,6 +154,7 @@
 
   window.syncTopNavLayout = syncTopNavLayout;
   window.applyTopNavShell = applyTopNavShell;
+  window.applyHeaderHeight = applyHeaderHeight;
 
   document.addEventListener('fullscreenchange', updateFullscreenIcon);
   document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);

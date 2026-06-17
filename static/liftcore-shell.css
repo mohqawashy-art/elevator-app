@@ -85,21 +85,83 @@ html[dir="rtl"] .lang-toggle {
 .lc-header {
   position: sticky;
   top: 0;
-  z-index: 200;
-  display: grid;
-  grid-template-columns: minmax(220px, 1.15fr) minmax(160px, max-content) minmax(220px, 1.15fr);
-  align-items: center;
-  gap: 12px;
-  min-height: var(--lc-header-h, 88px);
-  height: var(--lc-header-h, 88px);
-  max-height: var(--lc-header-h, 88px);
-  padding: 8px 20px;
+  z-index: 220;
+  display: block !important;
+  min-height: var(--lc-header-h, 96px);
+  height: var(--lc-header-h, 96px);
+  max-height: var(--lc-header-h, 96px);
+  padding: 0 !important;
   background: var(--bg2, #111720);
   border-bottom: 1px solid var(--border, rgba(100, 160, 255, 0.1));
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
-  direction: ltr;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.lc-header-bar {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: var(--lc-header-h, 96px) !important;
+  padding: 10px 24px !important;
+  gap: 16px !important;
+  box-sizing: border-box !important;
+  direction: ltr;
+}
+
+.lc-header-slot--tenant {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(480px, 46vw);
+  z-index: 4;
+  display: flex !important;
+  align-items: center !important;
+}
+
+html[dir="rtl"] .lc-header-bar {
+  flex-direction: row-reverse !important;
+}
+
+html[dir="rtl"] .lc-header-slot--tools {
+  margin-inline-start: 0 !important;
+  margin-inline-end: auto !important;
+}
+
+html[dir="rtl"] .lc-header-slot--tenant {
+  order: unset;
+  margin-inline-start: 0;
+}
+
+.lc-header-slot--center {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 3 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  max-width: min(360px, 36vw) !important;
+  text-decoration: none;
+  pointer-events: auto;
+}
+
+.lc-header-slot--tools {
+  flex: 0 0 auto;
+  margin-inline-start: auto !important;
+  z-index: 4;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+}
+
+.lc-header-slot--tools .hamburger {
+  display: none;
 }
 
 .lc-header-tenant-brand {
@@ -107,109 +169,59 @@ html[dir="rtl"] .lang-toggle {
   align-items: center;
   flex-shrink: 0;
   text-decoration: none;
+  max-width: 100%;
 }
 
 .lc-header-tenant-logo {
-  width: var(--logo-w-sidebar, 180px);
-  max-width: min(var(--logo-w-sidebar, 180px), 320px);
-  height: auto;
-  max-height: 58px;
+  height: 72px;
+  width: auto;
+  max-width: min(var(--logo-w-sidebar, 220px), 480px);
+  max-height: calc(var(--lc-header-h, 96px) - 18px);
   object-fit: contain;
   object-position: left center;
-  display: block;
+  display: block !important;
 }
 
 html[dir="rtl"] .lc-header-tenant-logo {
   object-position: right center;
 }
 
-.lc-header--solo {
-  grid-template-columns: minmax(100px, 1fr) minmax(160px, max-content) minmax(100px, 1fr);
+.lc-header--solo .lc-header-slot--tenant {
+  max-width: min(280px, 34vw);
 }
 
 .header-actions {
-  display: flex;
+  display: flex !important;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 10px;
-  grid-column: 1;
-  justify-self: start;
+  grid-column: unset;
+  justify-self: unset;
 }
 
 .header-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  grid-column: 3;
-  justify-self: end;
-  direction: rtl;
-}
-
-html[dir="ltr"] .header-brand {
-  grid-column: 1;
-  justify-self: start;
-  direction: ltr;
-}
-
-html[dir="ltr"] .header-actions {
-  grid-column: 3;
-  justify-self: end;
-}
-
-.header-left,
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.header-page {
-  min-width: 0;
-  text-align: start;
-}
-
-.header-date {
-  display: block;
-  font-size: 11px;
-  color: var(--text3, #4a5a72);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.header-page-title {
-  display: block;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text1, #e4eaf5);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none !important;
 }
 
 .header-center-brand {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: center;
-  align-self: center;
   display: flex !important;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  padding: 0 10px;
-  min-width: 160px;
-  max-width: min(420px, 52vw);
+  padding: 0;
+  min-width: 0;
+  max-width: 100%;
   flex-shrink: 0;
   overflow: visible;
-  z-index: 5;
   visibility: visible;
   opacity: 1;
+  grid-column: unset;
+  grid-row: unset;
+  justify-self: unset;
 }
 
 .lc-header-logo {
-  height: 44px;
+  height: 46px;
   width: auto;
   max-width: 100%;
   object-fit: contain;
@@ -450,7 +462,7 @@ html.lc-fullscreen .main {
   body:has(#sidebar):has(.main) {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    grid-template-rows: var(--lc-header-h, 88px) auto 1fr;
+    grid-template-rows: var(--lc-header-h, 96px) auto 1fr;
     min-height: 100vh;
     overflow-x: hidden;
   }
@@ -996,7 +1008,7 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
 /* ── هيدر: شعار وسط + صف قائمة منفصل (بدون تداخل) ── */
 @media (min-width: 1101px) {
   html.lc-layout-topnav {
-    --lc-header-h: 88px;
+    --lc-header-h: 96px;
   }
 
   html.lc-layout-topnav body:has(#sidebar):has(.main) {
@@ -1005,9 +1017,9 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
 
   html.lc-layout-topnav .lc-header {
     grid-template-columns: minmax(220px, 1.15fr) minmax(160px, max-content) minmax(220px, 1.15fr);
-    min-height: var(--lc-header-h, 88px);
-    max-height: var(--lc-header-h, 88px);
-    height: var(--lc-header-h, 88px);
+    min-height: var(--lc-header-h, 96px);
+    max-height: var(--lc-header-h, 96px);
+    height: var(--lc-header-h, 96px);
     padding: 8px 20px;
     overflow: hidden;
     box-sizing: border-box;
@@ -1092,7 +1104,7 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
 
   html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar,
   html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar {
-    top: var(--lc-header-h, 88px);
+    top: var(--lc-header-h, 96px);
   }
 }
 
@@ -1151,7 +1163,7 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
   html.lc-shell-ready body:has(#sidebar) {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    grid-template-rows: var(--lc-header-h, 88px) auto 1fr !important;
+    grid-template-rows: var(--lc-header-h, 96px) auto 1fr !important;
     min-height: 100vh !important;
     overflow-x: hidden !important;
     flex-direction: unset !important;
@@ -1165,9 +1177,9 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     display: grid !important;
     grid-template-columns: minmax(220px, 1.15fr) minmax(160px, max-content) minmax(220px, 1.15fr) !important;
     align-items: center !important;
-    height: var(--lc-header-h, 88px) !important;
-    min-height: var(--lc-header-h, 88px) !important;
-    max-height: var(--lc-header-h, 88px) !important;
+    height: var(--lc-header-h, 96px) !important;
+    min-height: var(--lc-header-h, 96px) !important;
+    max-height: var(--lc-header-h, 96px) !important;
     padding: 8px 20px !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
@@ -1188,7 +1200,7 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     min-height: unset !important;
     max-height: none !important;
     position: sticky !important;
-    top: var(--lc-header-h, 88px) !important;
+    top: var(--lc-header-h, 96px) !important;
     z-index: 180 !important;
     display: flex !important;
     flex-direction: row !important;
@@ -1267,10 +1279,10 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
   }
 
   html.lc-shell-ready body:has(#sidebar) .lc-header-tenant-logo {
-    width: var(--logo-w-sidebar, 180px) !important;
-    max-width: min(var(--logo-w-sidebar, 180px), 320px) !important;
-    max-height: 58px !important;
-    height: auto !important;
+    height: 72px !important;
+    width: auto !important;
+    max-width: min(var(--logo-w-sidebar, 220px), 480px) !important;
+    max-height: calc(var(--lc-header-h, 96px) - 18px) !important;
     object-fit: contain !important;
     display: block !important;
     visibility: visible !important;
@@ -1319,5 +1331,26 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     flex: none !important;
     width: 100% !important;
     min-width: 0 !important;
+  }
+}
+
+/* ── v19: تجاوز CSS المضمّن في القوالب (.header{display:flex}) ── */
+header.header.lc-header,
+header.lc-header {
+  display: block !important;
+  flex-direction: unset !important;
+  align-items: unset !important;
+  gap: unset !important;
+  height: var(--lc-header-h, 96px) !important;
+  min-height: var(--lc-header-h, 96px) !important;
+  max-height: var(--lc-header-h, 96px) !important;
+  padding: 0 !important;
+}
+
+@media (min-width: 1101px) {
+  #sidebar .sidebar-logo,
+  .sidebar .sidebar-logo,
+  aside#sidebar .sidebar-logo {
+    display: none !important;
   }
 }
