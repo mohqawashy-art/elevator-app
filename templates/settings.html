@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css?v=8') }}">
 <script src="{{ url_for('static', filename='liftcore-shell.js') }}"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -208,8 +208,9 @@ html[data-theme="report"] .theme-card.selected{border-color:#002147;box-shadow:0
         <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="previewLogo(this)">
         <p class="hint">PNG · JPG · WEBP · SVG — خلفية شفافة مفضّلة</p>
         <div style="margin-top:16px">
-          <label>عرض الشعار في القائمة الجانبية: <strong id="lbl-sidebar">{{ settings.logo_width_sidebar or logo_width_sidebar }}</strong> px</label>
+          <label>عرض الشعار في الهيدر: <strong id="lbl-sidebar">{{ settings.logo_width_sidebar or logo_width_sidebar }}</strong> px</label>
           <input type="range" name="logo_width_sidebar" min="60" max="280" value="{{ settings.logo_width_sidebar or logo_width_sidebar }}" oninput="syncLogoPreview();document.getElementById('lbl-sidebar').textContent=this.value">
+          <div class="hint">يُطبَّق على لوجو الشركة أعلى الصفحة</div>
         </div>
         <div style="margin-top:12px">
           <label>عرض الشعار في التقارير: <strong id="lbl-report">{{ settings.logo_width_report or logo_width_report }}</strong> px</label>
@@ -222,7 +223,7 @@ html[data-theme="report"] .theme-card.selected{border-color:#002147;box-shadow:0
       </div>
     </div>
     <div class="preview-row">
-      <div class="preview-box">معاينة القائمة<br><img id="prev-sidebar" src="{{ brand_logo_url }}" alt=""></div>
+      <div class="preview-box">معاينة الهيدر<br><img id="prev-sidebar" src="{{ brand_logo_url }}" alt=""></div>
       <div class="preview-box">معاينة التقرير<br><img id="prev-report" src="{{ brand_logo_url }}" alt=""></div>
     </div>
     <div class="actions">

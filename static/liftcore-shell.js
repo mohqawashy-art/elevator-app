@@ -78,7 +78,7 @@
     if (window.matchMedia('(max-width: 1100px)').matches) return;
 
     var header = main.querySelector('.lc-header, .header');
-    var headerH = header ? header.offsetHeight : 68;
+    var headerH = header ? header.offsetHeight : 75;
     document.documentElement.style.setProperty('--lc-header-h', headerH + 'px');
   }
 
