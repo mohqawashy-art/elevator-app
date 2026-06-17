@@ -448,6 +448,7 @@ html.lc-fullscreen .main {
     flex-direction: row !important;
     flex-wrap: nowrap;
     align-items: center;
+    justify-content: center;
     gap: 2px;
     overflow-x: auto;
     overflow-y: hidden;
@@ -493,6 +494,7 @@ html.lc-fullscreen .main {
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
+    justify-content: center;
     gap: 2px;
     flex: 1;
     min-width: 0;
