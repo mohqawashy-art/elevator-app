@@ -603,7 +603,7 @@ class User(db.Model):
     full_name       = db.Column(db.String(100))
     email           = db.Column(db.String(100))
     role            = db.Column(db.String(30), default='viewer')  # admin / manager / viewer
-    theme           = db.Column(db.String(10), default='dark')  # dark / light / report
+    theme           = db.Column(db.String(10), default='dark')  # dark / light / report / premium
     language        = db.Column(db.String(10), default='ar')  # ar / en
     photo_path      = db.Column(db.String(300))
     is_active       = db.Column(db.Boolean, default=True)
