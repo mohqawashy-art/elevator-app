@@ -58,3 +58,38 @@ bash deploy/gcp_update.sh
 sudo systemctl restart liftcore
 sudo systemctl status liftcore
 ```
+
+---
+
+## التحديث التلقائي (موصى به)
+
+بعد كل `git push` على `main`، السيرفر يسحب التحديث ويعيد تشغيل الخدمات **بدون SSH يدوي**.
+
+**تفعيل مرة واحدة** — من GCP Console SSH:
+
+```bash
+cd ~/liftcore/elevator-app
+git pull --ff-only origin main
+bash deploy/install_auto_update_cron.sh
+```
+
+يفحص كل **5 دقائق**: `liftcore` + `liftcore-jama`.
+
+**اختبار فوري:**
+
+```bash
+bash ~/liftcore/elevator-app/deploy/auto_update.sh
+tail -30 ~/liftcore/logs/auto_update.log
+```
+
+**تحديث إجباري** (حتى بدون commit جديد):
+
+```bash
+bash ~/liftcore/elevator-app/deploy/auto_update.sh --force
+```
+
+**إلغاء التحديث التلقائي:**
+
+```bash
+crontab -l | grep -v liftcore-auto-update | crontab -
+```
