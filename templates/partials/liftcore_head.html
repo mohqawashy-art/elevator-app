@@ -6,6 +6,7 @@
   document.documentElement.setAttribute('lang', lang);
   document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
   window.__LC_LANG = lang;
+  document.documentElement.classList.add('lc-layout-topnav');
 })();
 </script>
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-theme.css') }}?v=3">
@@ -48,4 +49,6 @@
   --logo-w-login: {{ logo_width_login }}px;
 }</style>
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-no-hover.css') }}?v=2">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css') }}?v=4">
 <script src="{{ url_for('static', filename='liftcore-live.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='liftcore-shell.js') }}?v=4"></script>

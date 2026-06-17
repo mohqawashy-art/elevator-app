@@ -80,11 +80,27 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 12px;
-  min-height: 52px;
-  padding: 0 16px 0 12px;
+  min-height: 68px;
+  padding: 8px 16px 8px 12px;
   background: var(--bg2, #111720);
   border-bottom: 1px solid var(--border, rgba(100, 160, 255, 0.1));
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+}
+
+.lc-header-tenant-brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  text-decoration: none;
+  margin-inline-end: 4px;
+}
+
+.lc-header-tenant-logo {
+  height: 52px;
+  width: auto;
+  max-width: var(--logo-w-sidebar, 150px);
+  object-fit: contain;
+  display: block;
 }
 
 .lc-header--solo {
@@ -362,26 +378,26 @@ html.lc-fullscreen .main {
 }
 
 @media (min-width: 1101px) {
-  html.lc-layout-topnav body:has(#sidebar):has(.main) {
-    display: grid;
-    grid-template-columns: 1fr;
+  body:has(#sidebar):has(.main) {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     grid-template-rows: auto auto 1fr;
     min-height: 100vh;
     overflow-x: hidden;
   }
 
-  html.lc-layout-topnav body:has(#sidebar):has(.main) .main {
+  body:has(#sidebar):has(.main) .main {
     display: contents;
   }
 
-  html.lc-layout-topnav body:has(#sidebar):has(.main) .main > .lc-header,
-  html.lc-layout-topnav body:has(#sidebar):has(.main) .main > .header {
+  body:has(#sidebar):has(.main) .main > .lc-header,
+  body:has(#sidebar):has(.main) .main > .header {
     grid-row: 1;
     grid-column: 1;
   }
 
-  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar,
-  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar {
+  body:has(#sidebar):has(.main) #sidebar,
+  body:has(#sidebar):has(.main) .sidebar {
     grid-row: 2;
     grid-column: 1;
     width: 100% !important;
@@ -389,11 +405,11 @@ html.lc-fullscreen .main {
     max-width: none !important;
     height: auto !important;
     max-height: none !important;
-    position: sticky;
-    top: var(--lc-header-h, 52px);
+    position: sticky !important;
+    top: var(--lc-header-h, 68px);
     z-index: 180;
-    display: flex;
-    flex-direction: row;
+    display: flex !important;
+    flex-direction: row !important;
     flex-wrap: nowrap;
     align-items: center;
     gap: 2px;
@@ -404,28 +420,39 @@ html.lc-fullscreen .main {
     border-bottom: 1px solid var(--border, rgba(100, 160, 255, 0.1));
     background: var(--bg2, #111720);
     scrollbar-width: thin;
+    inset-inline-end: auto !important;
+    inset-inline-start: auto !important;
+    right: auto !important;
+    left: auto !important;
+    box-shadow: none !important;
   }
 
-  html.lc-layout-topnav #sidebar::-webkit-scrollbar,
-  html.lc-layout-topnav .sidebar::-webkit-scrollbar {
+  body:has(#sidebar):has(.main) #sidebar.open,
+  body:has(#sidebar):has(.main) .sidebar.open {
+    right: auto !important;
+    left: auto !important;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar::-webkit-scrollbar,
+  body:has(#sidebar):has(.main) .sidebar::-webkit-scrollbar {
     height: 4px;
   }
 
-  html.lc-layout-topnav #sidebar::-webkit-scrollbar-thumb,
-  html.lc-layout-topnav .sidebar::-webkit-scrollbar-thumb {
+  body:has(#sidebar):has(.main) #sidebar::-webkit-scrollbar-thumb,
+  body:has(#sidebar):has(.main) .sidebar::-webkit-scrollbar-thumb {
     background: var(--border2, rgba(100, 160, 255, 0.2));
     border-radius: 4px;
   }
 
-  html.lc-layout-topnav #sidebar .sidebar-logo,
-  html.lc-layout-topnav .sidebar .sidebar-logo {
+  body:has(#sidebar):has(.main) #sidebar .sidebar-logo,
+  body:has(#sidebar):has(.main) .sidebar .sidebar-logo {
     display: none !important;
   }
 
-  html.lc-layout-topnav #sidebar .sidebar-nav,
-  html.lc-layout-topnav .sidebar .sidebar-nav,
-  html.lc-layout-topnav #sidebar:not(:has(.sidebar-nav)),
-  html.lc-layout-topnav .sidebar:not(:has(.sidebar-nav)) {
+  body:has(#sidebar):has(.main) #sidebar .sidebar-nav,
+  body:has(#sidebar):has(.main) .sidebar .sidebar-nav,
+  body:has(#sidebar):has(.main) #sidebar:not(:has(.sidebar-nav)),
+  body:has(#sidebar):has(.main) .sidebar:not(:has(.sidebar-nav)) {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -438,13 +465,13 @@ html.lc-fullscreen .main {
     padding: 0;
   }
 
-  html.lc-layout-topnav #sidebar .nav-section,
-  html.lc-layout-topnav .sidebar .nav-section {
+  body:has(#sidebar):has(.main) #sidebar .nav-section,
+  body:has(#sidebar):has(.main) .sidebar .nav-section {
     display: none;
   }
 
-  html.lc-layout-topnav #sidebar .nav-item,
-  html.lc-layout-topnav .sidebar .nav-item {
+  body:has(#sidebar):has(.main) #sidebar .nav-item,
+  body:has(#sidebar):has(.main) .sidebar .nav-item {
     flex-shrink: 0;
     white-space: nowrap;
     margin: 0 2px;
@@ -454,14 +481,14 @@ html.lc-fullscreen .main {
     gap: 7px;
   }
 
-  html.lc-layout-topnav #sidebar .nav-item svg,
-  html.lc-layout-topnav .sidebar .nav-item svg {
+  body:has(#sidebar):has(.main) #sidebar .nav-item svg,
+  body:has(#sidebar):has(.main) .sidebar .nav-item svg {
     width: 15px;
     height: 15px;
   }
 
-  html.lc-layout-topnav #sidebar .nav-item.active::before,
-  html.lc-layout-topnav .sidebar .nav-item.active::before {
+  body:has(#sidebar):has(.main) #sidebar .nav-item.active::before,
+  body:has(#sidebar):has(.main) .sidebar .nav-item.active::before {
     right: 10px;
     left: 10px;
     top: auto;
@@ -471,27 +498,37 @@ html.lc-fullscreen .main {
     transform: none;
   }
 
-  html.lc-layout-topnav[dir="ltr"] #sidebar .nav-item.active::before,
-  html.lc-layout-topnav[dir="ltr"] .sidebar .nav-item.active::before {
+  html[dir="ltr"] body:has(#sidebar):has(.main) #sidebar .nav-item.active::before,
+  html[dir="ltr"] body:has(#sidebar):has(.main) .sidebar .nav-item.active::before {
     left: 10px;
     right: 10px;
   }
 
-  html.lc-layout-topnav #sidebar .nav-badge,
-  html.lc-layout-topnav .sidebar .nav-badge {
+  body:has(#sidebar):has(.main) #sidebar .nav-badge,
+  body:has(#sidebar):has(.main) .sidebar .nav-badge {
     margin-inline-start: 4px;
     margin-inline-end: 0;
   }
 
-  html.lc-layout-topnav body:has(#sidebar):has(.main) .main > .content {
+  body:has(#sidebar):has(.main) .main > .content {
     grid-row: 3;
     grid-column: 1;
     min-width: 0;
     width: 100%;
   }
 
-  html.lc-layout-topnav .lc-sidebar-toggle {
+  .lc-sidebar-toggle {
     display: none !important;
+  }
+
+  .lc-header-tenant-brand {
+    display: flex;
+  }
+}
+
+@media (max-width: 1100px) {
+  .lc-header-tenant-brand {
+    display: none;
   }
 }
 
@@ -550,12 +587,12 @@ html.lc-sidebar-compact {
 }
 
 @media (min-width: 1101px) {
-  html.lc-layout-topnav.lc-sidebar-compact {
+  html.lc-sidebar-compact body:has(#sidebar):has(.main) {
     --sidebar-w: 240px;
   }
 
-  html.lc-layout-topnav.lc-sidebar-compact #sidebar,
-  html.lc-layout-topnav.lc-sidebar-compact .sidebar {
+  html.lc-sidebar-compact body:has(#sidebar):has(.main) #sidebar,
+  html.lc-sidebar-compact body:has(#sidebar):has(.main) .sidebar {
     width: 100% !important;
     min-width: 0 !important;
   }

@@ -44,6 +44,7 @@
   });
 
   window.openSidebar = function () {
+    if (window.matchMedia('(min-width: 1101px)').matches) return;
     var sidebar = document.getElementById('sidebar');
     var overlay = document.getElementById('overlay');
     if (sidebar) sidebar.classList.add('open');
@@ -77,7 +78,7 @@
     if (window.matchMedia('(max-width: 1100px)').matches) return;
 
     var header = main.querySelector('.lc-header, .header');
-    var headerH = header ? header.offsetHeight : 52;
+    var headerH = header ? header.offsetHeight : 68;
     document.documentElement.style.setProperty('--lc-header-h', headerH + 'px');
   }
 
