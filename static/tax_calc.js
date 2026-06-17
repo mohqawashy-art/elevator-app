@@ -98,9 +98,14 @@
       if (beforeBtn) beforeBtn.classList.toggle('active', mode === 'before');
       if (inclusiveBtn) inclusiveBtn.classList.toggle('active', mode === 'inclusive');
       if (labelEl) {
-        labelEl.textContent = mode === 'inclusive'
+        var labelText = mode === 'inclusive'
           ? (cfg.labelInclusive || 'الإجمالي شامل الضريبة (\u20C1)')
           : (cfg.labelBefore || 'المبلغ قبل الضريبة (\u20C1)');
+        if (labelText.indexOf('<') >= 0) {
+          labelEl.innerHTML = labelText;
+        } else {
+          labelEl.textContent = labelText;
+        }
       }
       updateBlock(cfg);
     };
