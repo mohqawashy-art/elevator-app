@@ -587,11 +587,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <script src="/static/ops-common.js"></script>
 
 <script>
-const FAULTS = {{ faults_js|tojson }};
-const CUSTOMERS = {{ customers_js|tojson }};
-const ELEVATORS = {{ elevators_js|tojson }};
-const TECHNICIANS = {{ technicians_js|tojson }};
-const INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
+var FAULTS = {{ faults_js|tojson }};
+var CUSTOMERS = {{ customers_js|tojson }};
+var ELEVATORS = {{ elevators_js|tojson }};
+var TECHNICIANS = {{ technicians_js|tojson }};
+var INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
 const NEXT_FAULT_CODE = {{ next_fault_code|tojson }};
 
 function fillClientSelect() {
@@ -811,7 +811,7 @@ const PRIORITY_BADGE = {
 };
 
 let currentDeleteId = null;
-let filtered = [...FAULTS];
+var filtered = [...FAULTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'reported_at',
   defaultDir: 'asc',
@@ -1131,6 +1131,7 @@ updateSidebarBadge();
 if (tableSort) tableSort.bindHeaders();
 renderTable(FAULTS);
 window.__lcRefreshPage = function () {
+  if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : FAULTS);
   if (typeof updateSidebarBadge === 'function') updateSidebarBadge();
 };

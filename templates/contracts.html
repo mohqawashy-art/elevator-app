@@ -808,7 +808,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <script>
 // ===== البيانات من Flask =====
-const CONTRACTS = [
+var CONTRACTS = [
   {% for c in contracts %}
   {
     id:            {{ c.id }},
@@ -846,7 +846,7 @@ const CONTRACTS = [
   {% endfor %}
 ];
 
-const CUSTOMERS = [
+var CUSTOMERS = [
   {% for c in customers %}
   {
     id: {{ c.id }},
@@ -863,7 +863,7 @@ const CUSTOMERS = [
   {% endfor %}
 ];
 
-const ELEVATOR_LOOKUP = {{ elev_lookup|tojson }};
+var ELEVATOR_LOOKUP = {{ elev_lookup|tojson }};
 const NEXT_CONTRACT_CODE = {{ next_contract_code|tojson }};
 
 function esc(s) {
@@ -1023,7 +1023,7 @@ var DRILL_TITLES = {
 
 let currentDeleteId = null;
 let currentViewId = null;
-let filtered = CONTRACTS.slice();
+var filtered = CONTRACTS.slice();
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'asc',
@@ -2068,6 +2068,7 @@ if (window.LiftCoreLocation) {
 
 try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); initContractClientSelect(); } catch (bootErr) { console.error('contracts boot', bootErr); }
 window.__lcRefreshPage = function () {
+  if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : CONTRACTS);
   if (typeof updateStats === 'function') updateStats();
 };

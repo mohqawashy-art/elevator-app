@@ -643,9 +643,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <script>
 const NEXT_TECH_CODE = {{ next_tech_code|tojson }};
-const UNASSIGNED_FAULTS = {{ unassigned_faults|default(0) }};
+var UNASSIGNED_FAULTS = {{ unassigned_faults|default(0) }};
 
-const TECHNICIANS = [
+var TECHNICIANS = [
   {% for t in technicians %}
   {
     id:             {{ t.id }},
@@ -1394,6 +1394,7 @@ updateStats();
 if (tableSort) tableSort.bindHeaders();
 renderTable(TECHNICIANS);
 window.__lcRefreshPage = function () {
+  if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : TECHNICIANS);
 };
 if (new URLSearchParams(window.location.search).get('action') === 'add') {

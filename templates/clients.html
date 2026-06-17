@@ -895,7 +895,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 
 <script>
 // ===== البيانات من Flask =====
-const CUSTOMERS = [
+var CUSTOMERS = [
   {% for c in customers %}
   {
     id:       {{ c.id }},
@@ -1242,7 +1242,7 @@ function clientStatusBarHtml(c) {
 }
 
 // ===== جدول =====
-let filtered = [...CUSTOMERS];
+var filtered = [...CUSTOMERS];
 let currentDeleteId = null;
 let currentCardId = null;
 let cardMapInstance = null;
@@ -2464,6 +2464,7 @@ document.addEventListener('liftcore:display-refresh', function () {
   renderTable(filtered);
 });
 window.__lcRefreshPage = function () {
+  if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : CUSTOMERS);
   if (typeof updateStats === 'function') updateStats();
   var cardModal = document.getElementById('modal-client-card');

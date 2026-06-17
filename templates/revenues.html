@@ -455,7 +455,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <script>
 // ===== البيانات من Flask =====
-const REVENUES = [
+var REVENUES = [
   {% for r in revenues %}
   {
     id:           {{ r.id }},
@@ -477,7 +477,7 @@ const REVENUES = [
   {% endfor %}
 ];
 
-const CUSTOMERS = [
+var CUSTOMERS = [
   {% for c in customers %}
   { id: {{ c.id }}, name: {{ c.name|tojson }}, code: {{ c.code|tojson }} },
   {% endfor %}
@@ -516,7 +516,7 @@ const STATUS_BADGE = {
 };
 
 let currentDeleteId = null;
-let filtered = [...REVENUES];
+var filtered = [...REVENUES];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'asc',

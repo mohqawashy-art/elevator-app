@@ -424,7 +424,7 @@ document.getElementById('doors_count').addEventListener('input', function () { t
 document.querySelectorAll('#lines-body .line-row:not(.empty-line)').forEach(bindLine);
 recalcTotals();
 
-const EST_CUSTOMERS = [
+var EST_CUSTOMERS = [
   {% for c in customers %}
   { id: {{ c.id }}, code: {{ c.code|tojson }}, name: {{ c.name|tojson }} },
   {% endfor %}

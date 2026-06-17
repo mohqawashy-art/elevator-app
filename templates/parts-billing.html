@@ -465,17 +465,17 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <script>
 // ===== البيانات من Flask =====
-const PARTS = {{ parts_js|tojson }};
-const NEXT_PART_CODE = {{ next_part_code|tojson }};
-const CUSTOMERS = {{ customers_js|tojson }};
-const CONTRACTS = {{ contracts_js|tojson }};
+var PARTS = {{ parts_js|tojson }};
+var NEXT_PART_CODE = {{ next_part_code|tojson }};
+var CUSTOMERS = {{ customers_js|tojson }};
+var CONTRACTS = {{ contracts_js|tojson }};
 
 const STATUS_BADGE = {
   'محصل':'badge-green','مكتملة':'badge-green','غير محصل':'badge-red','معلقة':'badge-gold'
 };
 
 let currentDeleteId = null;
-let filtered = [...PARTS];
+var filtered = [...PARTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'billing_date',
   defaultDir: 'asc',

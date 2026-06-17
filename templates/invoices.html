@@ -435,7 +435,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 </div>
 
 <script>
-const INVOICES = [
+var INVOICES = [
   {% for i in invoices %}
   {
     id: {{ i.id }},
@@ -459,7 +459,7 @@ const INVOICES = [
   {% endfor %}
 ];
 
-const CUSTOMERS = [
+var CUSTOMERS = [
   {% for c in customers %}
   { id: {{ c.id }}, name: {{ c.name|tojson }}, code: {{ c.code|tojson }} },
   {% endfor %}
@@ -488,7 +488,7 @@ function isPaidStatus(st) {
 
 let currentTab = 'all';
 let currentDeleteId = null;
-let filtered = [...INVOICES];
+var filtered = [...INVOICES];
 let billableOps = [];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'invoice_date',

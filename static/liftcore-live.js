@@ -7,6 +7,12 @@
   var syncing = false;
   var toastTimer = null;
 
+  var LIVE_ARRAY_KEYS = [
+    'CUSTOMERS', 'CONTRACTS', 'ELEVATORS', 'TECHNICIANS', 'VISITS', 'FAULTS',
+    'PARTS', 'ITEMS', 'MOVEMENTS', 'REVENUES', 'EXPENSES', 'INVOICES',
+    'INVENTORY_ITEMS', 'VISIT_MAP_POINTS', 'EST_CUSTOMERS',
+  ];
+
   var CLIENT_SELECT_WRAPS = [
     ['elev-client-select', 'f-client-sel'],
     ['contract-client-select', 'f-client-sel'],
@@ -49,35 +55,63 @@
   }
 
   function mergeArray(name, rows) {
+    if (!Array.isArray(rows)) return false;
     var arr = global[name];
-    if (!arr || !Array.isArray(arr) || !Array.isArray(rows)) return;
+    if (!arr || !Array.isArray(arr)) return false;
     arr.length = 0;
     rows.forEach(function (row) { arr.push(row); });
+    return true;
   }
 
   function mergeObject(name, obj) {
+    if (!obj || typeof obj !== 'object') return false;
     var target = global[name];
-    if (!target || !obj || typeof obj !== 'object') return;
+    if (!target || typeof target !== 'object' || Array.isArray(target)) return false;
     Object.keys(target).forEach(function (k) { delete target[k]; });
     Object.assign(target, obj);
+    return true;
   }
 
   function applyLiveData(data) {
-    if (!data) return;
+    if (!data) return 0;
+    var merged = 0;
     Object.keys(data).forEach(function (key) {
       if (key.charAt(0) === '_') return;
       var val = data[key];
-      if (key === 'STATS' && typeof global.STATS !== 'undefined' && val && typeof val === 'object') {
+      if (key === 'STATS' && global.STATS && val && typeof val === 'object') {
         Object.assign(global.STATS, val);
+        merged += 1;
         return;
       }
-      if (Array.isArray(global[key]) && Array.isArray(val)) mergeArray(key, val);
-      else if (key === 'ELEVATOR_LOOKUP') mergeObject(key, val);
+      if (key === 'UNASSIGNED_FAULTS' && typeof val === 'number') {
+        global.UNASSIGNED_FAULTS = val;
+        merged += 1;
+        return;
+      }
+      if (mergeArray(key, val)) merged += 1;
+      else if (key === 'ELEVATOR_LOOKUP') {
+        if (mergeObject(key, val)) merged += 1;
+      }
     });
+    return merged;
+  }
+
+  function resyncFilteredFromMaster() {
+    if (!global.filtered || !Array.isArray(global.filtered)) return;
+    var i;
+    for (i = 0; i < LIVE_ARRAY_KEYS.length; i++) {
+      var name = LIVE_ARRAY_KEYS[i];
+      if (Array.isArray(global[name]) && global[name].length >= 0) {
+        global.filtered.length = 0;
+        global[name].forEach(function (row) { global.filtered.push(row); });
+        return name;
+      }
+    }
+    return null;
   }
 
   function refreshClientSelects() {
-    if (typeof global.LcClientSelect === 'undefined' || typeof global.CUSTOMERS === 'undefined') return;
+    if (typeof global.LcClientSelect === 'undefined' || !Array.isArray(global.CUSTOMERS)) return;
     CLIENT_SELECT_WRAPS.forEach(function (pair) {
       if (!global.LcClientSelect.isUpgraded(pair[0])) return;
       var hid = global.document.getElementById(pair[1]);
@@ -86,8 +120,12 @@
   }
 
   function refreshUiAfterLive() {
-    if (typeof global.filterTable === 'function') global.filterTable();
-    else if (typeof global.__lcRefreshPage === 'function') global.__lcRefreshPage();
+    if (typeof global.filterTable === 'function') {
+      global.filterTable();
+    } else {
+      resyncFilteredFromMaster();
+      if (typeof global.__lcRefreshPage === 'function') global.__lcRefreshPage();
+    }
     if (typeof global.updateStats === 'function') global.updateStats();
     if (typeof global.updateDashboard === 'function') global.updateDashboard();
     if (typeof global.loadCharts === 'function') global.loadCharts();
@@ -117,7 +155,11 @@
           if (canSyncNow()) global.location.reload();
           return;
         }
-        applyLiveData(payload.data);
+        var merged = applyLiveData(payload.data);
+        if (!merged) {
+          if (canSyncNow()) global.location.reload();
+          return;
+        }
         refreshUiAfterLive();
         showToast(global.__LC_LANG === 'en' ? 'Data updated' : 'تم تحديث البيانات');
       })
@@ -180,5 +222,7 @@
   global.LiftCoreLive = {
     poll: pollRevision,
     pageKey: pageKey,
+    applyLiveData: applyLiveData,
+    refreshUiAfterLive: refreshUiAfterLive,
   };
 })(typeof window !== 'undefined' ? window : this);

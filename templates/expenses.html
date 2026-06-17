@@ -366,7 +366,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <script>
 // ===== البيانات من Flask =====
-const EXPENSES = [
+var EXPENSES = [
   {% for e in expenses %}
   {
     id:           {{ e.id }},
@@ -399,7 +399,7 @@ function updateStats() {
   set('s-other', other); setSub('s-other-sub', EXPENSES.filter(e => !['محروقات', 'قطع غيار', 'صيانة سيارات'].includes(e.expense_type)).length);
 }
 
-let filtered = [...EXPENSES];
+var filtered = [...EXPENSES];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'asc',

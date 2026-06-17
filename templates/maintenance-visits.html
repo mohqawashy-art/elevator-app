@@ -727,12 +727,12 @@ const VISIT_FILTER_LABELS = {
   critical: 'زيارات حرجة لم تُكتمل',
   tomorrow: 'زيارات مجدولة غداً',
 };
-const VISITS = {{ visits_js|tojson }};
-const CUSTOMERS = {{ customers_js|tojson }};
-const ELEVATORS = {{ elevators_js|tojson }};
-const CONTRACTS = {{ contracts_js|tojson }};
-const TECHNICIANS = {{ technicians_js|tojson }};
-const VISIT_MAP_POINTS = {{ visit_map_points|tojson }};
+var VISITS = {{ visits_js|tojson }};
+var CUSTOMERS = {{ customers_js|tojson }};
+var ELEVATORS = {{ elevators_js|tojson }};
+var CONTRACTS = {{ contracts_js|tojson }};
+var TECHNICIANS = {{ technicians_js|tojson }};
+var VISIT_MAP_POINTS = {{ visit_map_points|tojson }};
 const NEXT_VISIT_CODE = {{ next_visit_code|tojson }};
 const MAINT_TECHS = [{% for t in maint_technicians %}{ id: {{ t.id }}, name: {{ t.name|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}];
 const PLAN_DISTRICTS = {{ plan_districts|tojson }};
@@ -840,7 +840,7 @@ const PRIORITY_BADGE = {
 };
 
 let currentDeleteId = null;
-let filtered = [...VISITS];
+var filtered = [...VISITS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'visit_date',
   defaultDir: 'asc',
@@ -1693,6 +1693,7 @@ if (new URLSearchParams(window.location.search).get('action') === 'add') {
   history.replaceState(null, '', window.location.pathname);
 }
 window.__lcRefreshPage = function () {
+  if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : VISITS);
   if (typeof updateStats === 'function') updateStats();
   /* يعيد رسم تسمية الشهر (يونيو 2026 / June 2026) باللغة الحالية */

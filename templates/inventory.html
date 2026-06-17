@@ -416,11 +416,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 
 <script>
-const ITEMS = {{ items_json | tojson }};
+var ITEMS = {{ items_json | tojson }};
 const NEXT_CODE = {{ next_item_code | tojson }};
 
 const ORDER_BADGE = { 'كافي': 'badge-green', 'منخفض': 'badge-gold', 'نافد': 'badge-red' };
-let filtered = [...ITEMS];
+var filtered = [...ITEMS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'asc',
