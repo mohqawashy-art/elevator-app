@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var HEADER_H_MIN = 96;
+  var HEADER_H_MIN = 104;
 
   function measureHeaderHeight(header) {
     if (!header) return HEADER_H_MIN;
