@@ -67,15 +67,49 @@
     });
   }
 
+  function syncTopNavLayout() {
+    var sidebar = document.getElementById('sidebar');
+    var main = document.querySelector('.main');
+    if (!sidebar || !main) return;
+
+    document.documentElement.classList.add('lc-layout-topnav');
+
+    if (window.matchMedia('(max-width: 1100px)').matches) return;
+
+    var header = main.querySelector('.lc-header, .header');
+    var headerH = header ? header.offsetHeight : 52;
+    document.documentElement.style.setProperty('--lc-header-h', headerH + 'px');
+  }
+
+  function bindSidebarLayout() {
+    syncTopNavLayout();
+    requestAnimationFrame(function () {
+      requestAnimationFrame(syncTopNavLayout);
+    });
+    window.addEventListener('resize', syncTopNavLayout);
+    var main = document.querySelector('.main');
+    if (!main || !window.ResizeObserver) return;
+    var ro = new ResizeObserver(function () { syncTopNavLayout(); });
+    ro.observe(main);
+    var header = main.querySelector('.lc-header, .header');
+    if (header) ro.observe(header);
+  }
+
+  window.syncTopNavLayout = syncTopNavLayout;
+
   document.addEventListener('fullscreenchange', updateFullscreenIcon);
   document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
 
   document.addEventListener('DOMContentLoaded', function () {
     updateFullscreenIcon();
     bindSidebarNav();
+    bindSidebarLayout();
     if (window.LiftCoreFormat) {
       LiftCoreFormat.initHeaderDates();
       LiftCoreFormat.applyWesternDigits(document.body);
     }
   });
+
+  document.addEventListener('liftcore:live-sync', syncTopNavLayout);
+  document.addEventListener('liftcore:display-refresh', syncTopNavLayout);
 })();
