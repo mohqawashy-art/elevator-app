@@ -497,6 +497,11 @@ with app.app_context():
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Schema migration error: %s', exc)
+    from live_sync import ensure_live_state
+    ensure_live_state()
+
+from live_sync import register_live_sync
+register_live_sync()
 
 TECH_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'technicians')
 VISIT_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'visits')
@@ -654,6 +659,25 @@ def api_version():
             'google_maps_key_source': google_maps_key_source(),
         },
     )
+
+
+@app.route('/api/live/revision')
+def api_live_revision():
+    from live_sync import get_live_revision
+    return jsonify({'revision': get_live_revision()})
+
+
+@app.route('/api/live/sync')
+def api_live_sync():
+    from live_sync import build_sync_payload, get_live_revision, resolve_page_key
+
+    page_key = request.args.get('page') or resolve_page_key(request.referrer or '') or resolve_page_key(request.path)
+    if not page_key:
+        return jsonify({'revision': get_live_revision(), 'unsupported': True})
+    data = build_sync_payload(page_key)
+    if data is None:
+        return jsonify({'revision': get_live_revision(), 'page': page_key, 'unsupported': True})
+    return jsonify({'revision': get_live_revision(), 'page': page_key, 'data': data})
 
 
 @app.route('/')

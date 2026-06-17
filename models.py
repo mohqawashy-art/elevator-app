@@ -614,6 +614,14 @@ class User(db.Model):
         return f'<User {self.username}>'
 
 
+class AppLiveState(db.Model):
+    """عداد مركزي — يزيد عند أي تغيير في البيانات لمزامنة واجهات الموظفين."""
+    __tablename__ = 'app_live_state'
+
+    id = db.Column(db.Integer, primary_key=True, default=1)
+    revision = db.Column(db.Integer, default=0, nullable=False)
+
+
 MaintenanceVisit.linked_fault = db.relationship(
     'Fault', foreign_keys=[MaintenanceVisit.fault_id], uselist=False
 )
