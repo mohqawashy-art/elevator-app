@@ -32,12 +32,33 @@
     });
   }
 
+  function suspendPlacesAutocomplete() {
+    if (state.autocomplete) {
+      try { google.maps.event.clearInstanceListeners(state.autocomplete); } catch (e) { /* ignore */ }
+      state.autocomplete = null;
+    }
+    state.autocompleteSuspended = true;
+    dismissPlacesAutocomplete();
+  }
+
+  function ensurePlacesAutocomplete() {
+    if (state.provider !== 'google' || !state.map || state.autocomplete) return;
+    bindGoogleSearch();
+    state.autocompleteSuspended = false;
+  }
+
   function setSearchQueryWithoutPac(searchEl, text) {
     if (!searchEl || !text) return;
+    suspendPlacesAutocomplete();
     searchEl.setAttribute('autocomplete', 'off');
+    searchEl.readOnly = true;
     searchEl.value = text;
     searchEl.blur();
     dismissPlacesAutocomplete();
+    setTimeout(function () {
+      searchEl.readOnly = false;
+      dismissPlacesAutocomplete();
+    }, 400);
   }
 
   function mapsReady() {
@@ -209,10 +230,18 @@
     else reverseGeocodeGoogle(lat, lng);
   }
 
-  function setMarkerPosition(lat, lng, pan) {
+  function normalizeMarkerOpts(panOrOpts) {
+    if (typeof panOrOpts === 'object' && panOrOpts !== null) return panOrOpts;
+    return { pan: panOrOpts !== false };
+  }
+
+  function setMarkerPosition(lat, lng, panOrOpts) {
+    var opts = normalizeMarkerOpts(panOrOpts);
+    var pan = opts.pan !== false;
+    var skipReverseGeocode = !!opts.skipReverseGeocode;
     if (!state.map) return;
     if (state.provider === 'leaflet') {
-      setLeafletMarker(lat, lng, pan);
+      setLeafletMarker(lat, lng, pan, skipReverseGeocode);
       return;
     }
     var pos = { lat: lat, lng: lng };
@@ -236,10 +265,10 @@
       state.map.panTo(pos);
       if (state.map.getZoom() < 15) state.map.setZoom(16);
     }
-    reverseGeocode(lat, lng);
+    if (!skipReverseGeocode) reverseGeocode(lat, lng);
   }
 
-  function setLeafletMarker(lat, lng, pan) {
+  function setLeafletMarker(lat, lng, pan, skipReverseGeocode) {
     var color = pinColor();
     if (!state.marker) {
       state.marker = L.circleMarker([lat, lng], {
@@ -262,7 +291,7 @@
     if (pan !== false) {
       state.map.setView([lat, lng], Math.max(state.map.getZoom(), 15));
     }
-    reverseGeocode(lat, lng);
+    if (!skipReverseGeocode) reverseGeocode(lat, lng);
   }
 
   function onLeafletDrag(e) {
@@ -294,7 +323,7 @@
       state.map.setCenter({ lat: lat, lng: lng });
       state.map.setZoom(17);
     }
-    setMarkerPosition(lat, lng, false);
+    setMarkerPosition(lat, lng, { pan: false });
     if (place.address_components) {
       applyGeocodeResult({
         address_components: place.address_components,
@@ -342,6 +371,13 @@
     });
     state.autocomplete.bindTo('bounds', state.map);
     state.autocomplete.addListener('place_changed', onPlaceSelected);
+    state.autocompleteSuspended = false;
+    if (!input.dataset.lcPacFocus) {
+      input.dataset.lcPacFocus = '1';
+      input.addEventListener('focus', function () {
+        if (state.autocompleteSuspended) ensurePlacesAutocomplete();
+      });
+    }
   }
 
   function bindLeafletSearch() {
@@ -507,6 +543,7 @@
     state.initialized = false;
     state.hasPoint = false;
     state.searchBound = false;
+    state.autocompleteSuspended = false;
     state.opts = null;
   }
 
@@ -523,8 +560,8 @@
     if (search && (options.formatted_address || options.address)) {
       setSearchQueryWithoutPac(search, options.formatted_address || options.address || '');
     }
-    setMarkerPosition(la, ln);
-    if (options.address || options.city || options.district) {
+    setMarkerPosition(la, ln, { skipReverseGeocode: !!options.skipReverseGeocode });
+    if (options.address || options.city || options.district || options.skipReverseGeocode) {
       emitUpdate({
         lat: String(la),
         lng: String(ln),
@@ -563,7 +600,8 @@
     return state.hasPoint;
   }
 
-  function geocodeAddress(query, callback) {
+  function geocodeAddress(query, callback, options) {
+    options = options || {};
     if (!query) return;
     if (state.provider === 'leaflet' || preferLeaflet()) {
       geocodeAddressOsm(query, callback);
@@ -577,7 +615,16 @@
     g.geocode({ address: query, region: 'SA' }, function (results, status) {
       if (status === 'OK' && results && results[0]) {
         var loc = results[0].geometry.location;
-        setMarkerPosition(loc.lat(), loc.lng());
+        var lat = loc.lat();
+        var lng = loc.lng();
+        setMarkerPosition(lat, lng, { skipReverseGeocode: !!options.skipReverseGeocode });
+        if (options.skipReverseGeocode && options.clientUpdate) {
+          emitUpdate(Object.assign({}, options.clientUpdate, {
+            lat: String(lat),
+            lng: String(lng),
+            maps_url: options.clientUpdate.maps_url || buildMapsUrl(lat, lng),
+          }));
+        }
         if (callback) callback(true);
       } else if (callback) callback(false);
     });
@@ -589,6 +636,7 @@
     hardReset: hardReset,
     setLocation: setLocation,
     dismissPlacesAutocomplete: dismissPlacesAutocomplete,
+    suspendPlacesAutocomplete: suspendPlacesAutocomplete,
     resize: resize,
     hasLocation: hasLocation,
     refreshMarkerIcon: refreshMarkerIcon,

@@ -485,7 +485,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg>
       </button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" autocomplete="off">
 
       <div class="form-section">
         <div class="form-section-title">
@@ -516,7 +516,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-grid">
           <div class="field">
             <label>نوع المصعد</label>
-            <select id="f-type-sel">
+            <select id="f-type-sel" autocomplete="off">
               <option value="مصعد ركاب">مصعد ركاب</option>
               <option value="مصعد بضائع">مصعد بضائع</option>
               <option value="مصعد مستشفى">مصعد مستشفى</option>
@@ -527,7 +527,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
           <div class="field">
             <label>الماركة / Brand</label>
-            <input type="text" id="f-brand" placeholder="Otis, Kone, Schindler...">
+            <input type="text" id="f-brand" autocomplete="off" placeholder="Otis, Kone, Schindler...">
           </div>
           <div class="field">
             <label>الموديل</label>
@@ -671,7 +671,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <p class="map-picker-hint" style="margin-bottom:12px">اختر العميل أولاً ثم حدّد موقع المبنى من الخريطة داخل الصفحة — ابحث أو انقر أو اسحب الدبوس</p>
         <div class="map-picker-toolbar">
-          <input type="text" id="elev-map-search" class="map-picker-search" placeholder="ابحث عن المبنى أو الحي...">
+          <input type="text" id="elev-map-search" class="map-picker-search" placeholder="ابحث عن المبنى أو الحي..." autocomplete="off">
           <button type="button" class="btn btn-secondary btn-sm" id="elev-map-myloc">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14"><path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
             موقعي
@@ -879,6 +879,10 @@ if (typeof LcClientSelect !== 'undefined') {
   });
 }
 
+document.addEventListener('liftcore:lang', function () {
+  if (elevCoreFieldLock) restoreElevCoreFields(elevCoreFieldLock);
+});
+
 const MACHINE_LABELS = {
   MR: 'MR — بغرفة آلة',
   MRL: 'MRL — بدون غرفة آلة',
@@ -983,26 +987,42 @@ function buildClientLocationQuery(c) {
   return [c.address, c.district, c.city, 'Saudi Arabia'].filter(Boolean).join(', ');
 }
 
+function elevModalEl(id) {
+  var modal = document.getElementById('modal-add');
+  return modal ? modal.querySelector('#' + id) : null;
+}
+
+var elevCoreFieldLock = null;
+
 function setElevMapSearchQuery(text) {
   var search = document.getElementById('elev-map-search');
   if (!search || !text) return;
-  if (typeof LiftCoreMapPicker !== 'undefined' && LiftCoreMapPicker.dismissPlacesAutocomplete) {
-    search.setAttribute('autocomplete', 'off');
-    search.value = text;
-    search.blur();
-    LiftCoreMapPicker.dismissPlacesAutocomplete();
-  } else {
-    search.value = text;
+  if (typeof LiftCoreMapPicker !== 'undefined' && LiftCoreMapPicker.suspendPlacesAutocomplete) {
+    LiftCoreMapPicker.suspendPlacesAutocomplete();
   }
+  search.setAttribute('autocomplete', 'off');
+  search.readOnly = true;
+  search.value = text;
+  search.blur();
+  if (typeof LiftCoreMapPicker !== 'undefined' && LiftCoreMapPicker.dismissPlacesAutocomplete) {
+    LiftCoreMapPicker.dismissPlacesAutocomplete();
+  }
+  setTimeout(function () {
+    search.readOnly = false;
+    if (LiftCoreMapPicker && LiftCoreMapPicker.dismissPlacesAutocomplete) {
+      LiftCoreMapPicker.dismissPlacesAutocomplete();
+    }
+  }, 400);
 }
 
 function snapshotElevCoreFields() {
-  var typeEl = document.getElementById('f-type-sel');
-  var modelEl = document.getElementById('f-model');
-  var brandEl = document.getElementById('f-brand');
-  var serialEl = document.getElementById('f-serial');
+  var typeEl = elevModalEl('f-type-sel');
+  var modelEl = elevModalEl('f-model');
+  var brandEl = elevModalEl('f-brand');
+  var serialEl = elevModalEl('f-serial');
   return {
     type: typeEl ? typeEl.value : '',
+    typeIdx: typeEl ? typeEl.selectedIndex : 0,
     model: modelEl ? modelEl.value : '',
     brand: brandEl ? brandEl.value : '',
     serial: serialEl ? serialEl.value : '',
@@ -1011,14 +1031,34 @@ function snapshotElevCoreFields() {
 
 function restoreElevCoreFields(snapshot) {
   if (!snapshot) return;
-  var typeEl = document.getElementById('f-type-sel');
-  var modelEl = document.getElementById('f-model');
-  var brandEl = document.getElementById('f-brand');
-  var serialEl = document.getElementById('f-serial');
-  if (typeEl && snapshot.type) typeEl.value = snapshot.type;
+  var typeEl = elevModalEl('f-type-sel');
+  var modelEl = elevModalEl('f-model');
+  var brandEl = elevModalEl('f-brand');
+  var serialEl = elevModalEl('f-serial');
+  if (typeEl) {
+    if (snapshot.type) typeEl.value = snapshot.type;
+    if (snapshot.type && typeEl.value !== snapshot.type && snapshot.typeIdx >= 0) {
+      typeEl.selectedIndex = snapshot.typeIdx;
+    }
+  }
   if (modelEl) modelEl.value = snapshot.model || '';
   if (brandEl) brandEl.value = snapshot.brand || '';
   if (serialEl) serialEl.value = snapshot.serial || '';
+}
+
+function scheduleElevCoreFieldRestore(snapshot) {
+  elevCoreFieldLock = snapshot;
+  document.body.classList.add('lc-elev-lock-core');
+  function restore() { restoreElevCoreFields(elevCoreFieldLock); }
+  restore();
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(restore);
+  [0, 50, 120, 300, 600, 1200, 2000].forEach(function (ms) {
+    setTimeout(restore, ms);
+  });
+  setTimeout(function () {
+    elevCoreFieldLock = null;
+    document.body.classList.remove('lc-elev-lock-core');
+  }, 2500);
 }
 
 function copyElevAddressFromClient() {
@@ -1034,40 +1074,45 @@ function copyElevAddressFromClient() {
     return;
   }
   var coreFields = snapshotElevCoreFields();
+  scheduleElevCoreFieldRestore(coreFields);
   document.getElementById('f-elev-city').value = c.city || '';
   document.getElementById('f-elev-district').value = c.district || '';
   var addr = document.getElementById('f-elev-address');
   if (addr) addr.value = c.address || '';
   var mapQuery = buildClientLocationQuery(c);
   setElevMapSearchQuery(c.address || mapQuery);
+  var locationOpts = {
+    address: c.address || '',
+    city: c.city || '',
+    district: c.district || '',
+    maps_url: c.maps_url || '',
+    formatted_address: c.address || mapQuery,
+    skipReverseGeocode: true,
+  };
   if (typeof LiftCoreMapPicker === 'undefined') {
     restoreElevCoreFields(coreFields);
     return;
   }
   if (c.lat && c.lng) {
-    LiftCoreMapPicker.setLocation(c.lat, c.lng, {
-      address: c.address || '',
-      city: c.city || '',
-      district: c.district || '',
-      maps_url: c.maps_url || ('https://www.google.com/maps?q=' + c.lat + ',' + c.lng),
-      formatted_address: c.address || mapQuery,
-    });
+    locationOpts.maps_url = c.maps_url || ('https://www.google.com/maps?q=' + c.lat + ',' + c.lng);
+    LiftCoreMapPicker.setLocation(c.lat, c.lng, locationOpts);
     if (c.maps_url) document.getElementById('f-maps-url').value = c.maps_url;
     document.getElementById('f-lat').value = c.lat;
     document.getElementById('f-lng').value = c.lng;
-    restoreElevCoreFields(coreFields);
-    if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
   } else if (mapQuery) {
     whenGoogleMapsReady(function () {
       LiftCoreMapPicker.geocodeAddress(mapQuery, function (ok) {
         restoreElevCoreFields(coreFields);
         if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
         if (!ok) alert('تعذّر تحديد الموقع على الخريطة — تحقق من العنوان');
+      }, {
+        skipReverseGeocode: true,
+        clientUpdate: locationOpts,
       });
     });
-  } else {
-    restoreElevCoreFields(coreFields);
   }
+  restoreElevCoreFields(coreFields);
+  if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
 }
 
 function onElevMapPickerUpdate(data) {
@@ -1083,6 +1128,7 @@ function onElevMapPickerUpdate(data) {
   if (data.lat) document.getElementById('f-lat').value = data.lat;
   if (data.lng) document.getElementById('f-lng').value = data.lng;
   if (data.maps_url) document.getElementById('f-maps-url').value = data.maps_url;
+  if (elevCoreFieldLock) restoreElevCoreFields(elevCoreFieldLock);
 }
 
 function initElevMapPicker() {
