@@ -227,6 +227,19 @@ def brand_logo_url(settings=None):
     return url_for('static', filename='logo.png')
 
 
+def liftcore_header_logo_url(settings=None):
+    """شعار LiftCore في الهيدر — مع بدائل إذا ملف الهيدر غير موجود."""
+    candidates = (
+        LIFTCORE_PRODUCT_LOGO,
+        'images/liftcore-brand-logo.png',
+        'logo.png',
+    )
+    for name in candidates:
+        if os.path.isfile(os.path.join(app.static_folder, name.replace('/', os.sep))):
+            return url_for('static', filename=name)
+    return brand_logo_url(settings)
+
+
 ROLE_LABELS = {
     'admin': 'مدير النظام',
     'manager': 'مدير عمليات',
@@ -324,7 +337,7 @@ def inject_global_template_vars():
         'google_maps_api_key': resolve_google_maps_api_key(s),
         'google_maps_key_source': google_maps_key_source(s),
         'brand_logo_url': brand_logo_url(s),
-        'liftcore_logo_url': url_for('static', filename=LIFTCORE_PRODUCT_LOGO),
+        'liftcore_logo_url': liftcore_header_logo_url(s),
         'logo_width_sidebar': (getattr(s, 'logo_width_sidebar', None) or 150) if s else 150,
         'logo_width_report': (getattr(s, 'logo_width_report', None) or 150) if s else 150,
         'logo_width_login': (getattr(s, 'logo_width_login', None) or 180) if s else 180,

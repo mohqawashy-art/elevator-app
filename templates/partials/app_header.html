@@ -31,8 +31,9 @@
     </div>
   </div>
 
-  <a class="header-center-brand" href="{{ url_for('dashboard') }}" title="LiftCore" aria-label="LiftCore" dir="ltr">
-    <img src="{{ liftcore_logo_url }}?v=7" alt="LiftCore" class="lc-header-logo">
+  <a class="header-center-brand" href="{{ url_for('dashboard') }}" title="LiftCore" aria-label="LiftCore" dir="ltr" data-i18n-skip>
+    <img src="{{ liftcore_logo_url }}?v=8" alt="LiftCore" class="lc-header-logo" data-i18n-skip
+         onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=8';}else if(this.dataset.fb==='1'){this.dataset.fb='2';this.src='{{ brand_logo_url }}';}">
   </a>
 
   <div class="header-brand">
@@ -62,6 +63,6 @@
   sidebar.parentNode.insertBefore(header, sidebar);
   header.dataset.lcShellMounted = '1';
   document.documentElement.classList.add('lc-shell-ready');
-  document.documentElement.style.setProperty('--lc-header-h', '58px');
+  document.documentElement.style.setProperty('--lc-header-h', '64px');
 })();
 </script>

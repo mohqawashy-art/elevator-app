@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var HEADER_H = 58;
+  var HEADER_H = 64;
 
   function isDesktopTopNav() {
     return window.matchMedia('(min-width: 1101px)').matches;
