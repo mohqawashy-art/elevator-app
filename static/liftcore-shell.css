@@ -189,9 +189,9 @@ html[dir="ltr"] .header-actions {
 }
 
 .lc-header-logo {
-  height: 43px;
+  height: 52px;
   width: auto;
-  max-width: min(210px, 42vw);
+  max-width: min(380px, 58vw);
   object-fit: contain;
   display: block;
 }
@@ -323,8 +323,8 @@ html[dir="ltr"] .profile-dropdown {
   }
 
   .lc-header-logo {
-    height: 32px;
-    max-width: min(150px, 48vw);
+    height: 40px;
+    max-width: min(280px, 62vw);
   }
 }
 

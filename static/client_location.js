@@ -171,7 +171,7 @@
     });
   }
 
-  var _defaultBuildingPhoto = '/static/liftcore-header-logo.png';
+  var _defaultBuildingPhoto = '/static/images/liftcore-header-logo.png';
 
   function setDefaultBuildingPhoto(url) {
     if (url) _defaultBuildingPhoto = url;

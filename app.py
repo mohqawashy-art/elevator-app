@@ -268,7 +268,7 @@ def resolve_user_language(user=None):
         db.session.rollback()
     return 'ar'
 
-LIFTCORE_PRODUCT_LOGO = 'liftcore-header-logo.png'
+LIFTCORE_PRODUCT_LOGO = 'images/liftcore-header-logo.png'
 
 
 def user_initials(user):
