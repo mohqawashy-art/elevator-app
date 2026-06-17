@@ -87,16 +87,19 @@ html[dir="rtl"] .lang-toggle {
   top: 0;
   z-index: 200;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(160px, max-content) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 1.15fr) minmax(160px, max-content) minmax(220px, 1.15fr);
   align-items: center;
   gap: 12px;
-  min-height: 75px;
-  padding: 10px 16px 10px 12px;
+  min-height: var(--lc-header-h, 88px);
+  height: var(--lc-header-h, 88px);
+  max-height: var(--lc-header-h, 88px);
+  padding: 8px 20px;
   background: var(--bg2, #111720);
   border-bottom: 1px solid var(--border, rgba(100, 160, 255, 0.1));
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
   direction: ltr;
-  overflow: visible;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .lc-header-tenant-brand {
@@ -107,11 +110,17 @@ html[dir="rtl"] .lang-toggle {
 }
 
 .lc-header-tenant-logo {
-  width: var(--logo-w-sidebar, 150px);
+  width: var(--logo-w-sidebar, 180px);
+  max-width: min(var(--logo-w-sidebar, 180px), 320px);
   height: auto;
-  max-height: 62px;
+  max-height: 58px;
   object-fit: contain;
+  object-position: left center;
   display: block;
+}
+
+html[dir="rtl"] .lc-header-tenant-logo {
+  object-position: right center;
 }
 
 .lc-header--solo {
@@ -441,7 +450,7 @@ html.lc-fullscreen .main {
   body:has(#sidebar):has(.main) {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    grid-template-rows: var(--lc-header-h, 64px) auto 1fr;
+    grid-template-rows: var(--lc-header-h, 88px) auto 1fr;
     min-height: 100vh;
     overflow-x: hidden;
   }
@@ -987,7 +996,7 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
 /* ── هيدر: شعار وسط + صف قائمة منفصل (بدون تداخل) ── */
 @media (min-width: 1101px) {
   html.lc-layout-topnav {
-    --lc-header-h: 64px;
+    --lc-header-h: 88px;
   }
 
   html.lc-layout-topnav body:has(#sidebar):has(.main) {
@@ -995,43 +1004,55 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
   }
 
   html.lc-layout-topnav .lc-header {
-    grid-template-columns: minmax(0, 1fr) minmax(160px, max-content) minmax(0, 1fr);
-    min-height: var(--lc-header-h);
-    max-height: var(--lc-header-h);
-    height: var(--lc-header-h);
-    padding: 6px 16px;
-    overflow: visible;
+    grid-template-columns: minmax(220px, 1.15fr) minmax(160px, max-content) minmax(220px, 1.15fr);
+    min-height: var(--lc-header-h, 88px);
+    max-height: var(--lc-header-h, 88px);
+    height: var(--lc-header-h, 88px);
+    padding: 8px 20px;
+    overflow: hidden;
     box-sizing: border-box;
     isolation: isolate;
   }
 
   html.lc-layout-topnav .lc-header-logo {
-    height: 42px;
-    max-width: min(320px, 46vw);
+    height: 44px;
+    max-width: min(300px, 40vw);
   }
 
   html.lc-layout-topnav body:has(#sidebar) .header-brand {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
-    min-width: 0 !important;
-    max-width: min(200px, 24vw) !important;
+    min-width: min(220px, 28vw) !important;
+    max-width: min(340px, 36vw) !important;
     overflow: hidden !important;
+    z-index: 6 !important;
   }
 
   html.lc-layout-topnav body:has(#sidebar) .lc-header-tenant-brand {
     display: flex !important;
     align-items: center !important;
     flex-shrink: 0 !important;
+    max-width: 100% !important;
   }
 
   html.lc-layout-topnav .lc-header-tenant-logo {
-    width: auto !important;
-    max-width: min(var(--logo-w-sidebar, 120px), 20vw) !important;
-    max-height: 40px !important;
+    width: var(--logo-w-sidebar, 180px) !important;
+    max-width: min(var(--logo-w-sidebar, 180px), 320px) !important;
+    max-height: 58px !important;
     height: auto !important;
     object-fit: contain !important;
     display: block !important;
+  }
+
+  html.lc-layout-topnav[dir="ltr"] body:has(#sidebar) .header-brand {
+    grid-column: 1 !important;
+    justify-self: start !important;
+  }
+
+  html.lc-layout-topnav[dir="rtl"] body:has(#sidebar) .header-brand {
+    grid-column: 3 !important;
+    justify-self: end !important;
   }
 
   html.lc-layout-topnav .header-date,
@@ -1071,7 +1092,7 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
 
   html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar,
   html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar {
-    top: var(--lc-header-h, 64px);
+    top: var(--lc-header-h, 88px);
   }
 }
 
@@ -1130,7 +1151,7 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
   html.lc-shell-ready body:has(#sidebar) {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    grid-template-rows: 64px auto 1fr !important;
+    grid-template-rows: var(--lc-header-h, 88px) auto 1fr !important;
     min-height: 100vh !important;
     overflow-x: hidden !important;
     flex-direction: unset !important;
@@ -1142,13 +1163,13 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     grid-row: 1 !important;
     grid-column: 1 / -1 !important;
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) minmax(160px, max-content) minmax(0, 1fr) !important;
+    grid-template-columns: minmax(220px, 1.15fr) minmax(160px, max-content) minmax(220px, 1.15fr) !important;
     align-items: center !important;
-    height: 64px !important;
-    min-height: 64px !important;
-    max-height: 64px !important;
-    padding: 4px 16px !important;
-    overflow: visible !important;
+    height: var(--lc-header-h, 88px) !important;
+    min-height: var(--lc-header-h, 88px) !important;
+    max-height: var(--lc-header-h, 88px) !important;
+    padding: 8px 20px !important;
+    overflow: hidden !important;
     box-sizing: border-box !important;
     position: sticky !important;
     top: 0 !important;
@@ -1167,7 +1188,7 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     min-height: unset !important;
     max-height: none !important;
     position: sticky !important;
-    top: 64px !important;
+    top: var(--lc-header-h, 88px) !important;
     z-index: 180 !important;
     display: flex !important;
     flex-direction: row !important;
@@ -1222,21 +1243,33 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
-    min-width: 0 !important;
-    max-width: min(200px, 24vw) !important;
+    min-width: min(220px, 28vw) !important;
+    max-width: min(340px, 36vw) !important;
     overflow: hidden !important;
+    z-index: 6 !important;
+  }
+
+  html.lc-shell-ready[dir="ltr"] body:has(#sidebar) .header-brand {
+    grid-column: 1 !important;
+    justify-self: start !important;
+  }
+
+  html.lc-shell-ready[dir="rtl"] body:has(#sidebar) .header-brand {
+    grid-column: 3 !important;
+    justify-self: end !important;
   }
 
   html.lc-shell-ready body:has(#sidebar) .lc-header-tenant-brand {
     display: flex !important;
     align-items: center !important;
     flex-shrink: 0 !important;
+    max-width: 100% !important;
   }
 
   html.lc-shell-ready body:has(#sidebar) .lc-header-tenant-logo {
-    width: auto !important;
-    max-width: min(var(--logo-w-sidebar, 120px), 20vw) !important;
-    max-height: 40px !important;
+    width: var(--logo-w-sidebar, 180px) !important;
+    max-width: min(var(--logo-w-sidebar, 180px), 320px) !important;
+    max-height: 58px !important;
     height: auto !important;
     object-fit: contain !important;
     display: block !important;
