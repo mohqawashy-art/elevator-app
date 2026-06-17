@@ -49,16 +49,13 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.025;z
   background:var(--gold-light);box-shadow:0 0 14px 3px var(--gold-dim);animation:rise 1.5s cubic-bezier(.5,0,.1,1) .2s forwards}
 @keyframes rise{0%{bottom:0;opacity:0}15%{opacity:1}100%{bottom:100%;opacity:0}}
 
-/* اسم العلامة */
-.wordmark{overflow:hidden;display:flex;justify-content:center;direction:ltr!important;unicode-bidi:bidi-override}
-.wordmark .ch{font-family:'Cormorant Garamond',serif;font-size:clamp(38px,7vw,52px);font-weight:600;line-height:1;
-  letter-spacing:.03em;color:var(--text);display:inline-block;opacity:0;transform:translateY(102%)}
-.wordmark.go .ch{animation:charUp .85s cubic-bezier(.2,.8,.2,1) forwards}
-@keyframes charUp{to{opacity:1;transform:none}}
-.wordmark .gold{color:var(--gold-light)}
-.tagline{margin-top:12px;font-size:11px;font-weight:400;color:var(--muted);
-  letter-spacing:.4em;padding-right:.4em;text-transform:uppercase;direction:ltr;
-  opacity:0;animation:soft .8s ease 1.7s forwards}
+/* الشعار */
+.brand-logo{
+  width:min(260px,72vw);height:auto;display:block;margin:0 auto;
+  opacity:0;transform:translateY(14px) scale(.97);
+  animation:logoIn .95s cubic-bezier(.2,.8,.2,1) 1.15s forwards;
+}
+@keyframes logoIn{to{opacity:1;transform:none}}
 @keyframes soft{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 /* ====== الفورم ====== */
@@ -105,8 +102,8 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 
 @media (prefers-reduced-motion: reduce){
   *{animation:none!important;transition-duration:.001s!important}
-  .wordmark .ch{opacity:1;transform:none}
-  .tagline,form,.footer,.pillars span{opacity:1}
+  .brand-logo{opacity:1;transform:none}
+  form,.footer,.pillars span{opacity:1}
   .track{display:none}
 }
 </style>
@@ -117,8 +114,7 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 <div class="card">
   <div class="track"><div class="rail"></div><div class="trace"></div><div class="pulse"></div></div>
 
-  <div class="wordmark" id="wordmark" aria-label="LiftCore"></div>
-  <div class="tagline">Elevator Management System</div>
+  <img class="brand-logo" src="{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=1" alt="LiftCore">
 
   {% if error %}<div style="color:#e0794a;font-size:12.5px;text-align:center;margin-bottom:14px;letter-spacing:.02em">{{ error }}</div>{% endif %}
 
@@ -151,16 +147,6 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
-  /* بناء الاسم LTR لحركة الصعود الحرفية */
-  var word='LiftCore', gold={4:true}, wm=document.getElementById('wordmark'), html='', i;
-  for(i=0;i<word.length;i++){
-    var delay=(1.2+i*0.06).toFixed(2);
-    html+='<span class="ch'+(gold[i]?' gold':'')+'" style="animation-delay:'+delay+'s">'+word[i]+'</span>';
-  }
-  wm.innerHTML=html;
-  requestAnimationFrame(function(){ wm.classList.add('go'); });
-
-  /* تسجيل الدخول — مكان الربط بـ Flask */
   var form=document.getElementById('loginForm'), btn=document.getElementById('loginBtn'), sending=false;
   form.addEventListener('submit', function(e){
     if(sending) return;

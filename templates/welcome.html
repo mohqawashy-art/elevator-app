@@ -73,27 +73,16 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.025;z
   100%{opacity:0;box-shadow:0 0 60px 30px transparent}
 }
 
-/* ====== اسم العلامة ====== */
-.wordmark{overflow:hidden;display:flex;justify-content:center;direction:ltr!important;unicode-bidi:bidi-override}
-.wordmark .ch{
-  font-family:'Cormorant Garamond',serif;
-  font-size:clamp(46px,9vw,82px);font-weight:600;line-height:1;
-  letter-spacing:.04em;color:var(--text);display:inline-block;
-  opacity:0;transform:translateY(102%);
+/* الشعار */
+.brand-logo{
+  width:min(320px,82vw);height:auto;display:block;margin:0 auto;
+  opacity:0;transform:translateY(16px) scale(.97);
+  animation:logoIn .95s cubic-bezier(.2,.8,.2,1) 1.85s forwards;
 }
-.wordmark.go .ch{animation:charUp .9s cubic-bezier(.2,.8,.2,1) forwards}
-@keyframes charUp{to{opacity:1;transform:none}}
-/* لمسة ذهبية على حرف الـ C */
-.wordmark .gold{color:var(--gold-light)}
-
-.tagline{margin-top:18px;font-size:clamp(11px,2.4vw,13px);font-weight:400;color:var(--muted);
-  letter-spacing:.42em;padding-right:.42em;text-transform:uppercase;direction:ltr;
-  opacity:0;animation:soft .9s ease 2.5s forwards}
-.arabic{margin-top:14px;font-size:clamp(14px,3vw,17px);font-weight:500;color:var(--gold);
-  letter-spacing:.06em;opacity:0;animation:soft .9s ease 2.7s forwards}
+@keyframes logoIn{to{opacity:1;transform:none}}
 
 /* الترحيب */
-.greet{margin-top:40px;font-size:clamp(15px,3.4vw,18px);font-weight:300;color:var(--text);
+.greet{margin-top:32px;font-size:clamp(15px,3.4vw,18px);font-weight:300;color:var(--text);
   opacity:0;animation:soft 1s ease 3.1s forwards}
 .greet .name{font-weight:700;color:var(--gold-light)}
 @keyframes soft{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -111,8 +100,8 @@ body.exit .pillars{opacity:0}
 
 @media (prefers-reduced-motion: reduce){
   *{animation:none!important;transition:none!important}
-  .wordmark .ch{opacity:1;transform:none}
-  .tagline,.arabic,.greet,.pillars span{opacity:1}
+  .brand-logo{opacity:1;transform:none}
+  .greet,.pillars span{opacity:1}
   .track{display:none}.progress{width:100%}
 }
 </style>
@@ -129,10 +118,7 @@ body.exit .pillars{opacity:0}
     <div class="flash"></div>
   </div>
 
-  <div class="wordmark" id="wordmark" aria-label="LiftCore"></div>
-
-  <div class="tagline">Elevator Management System</div>
-  <div class="arabic">ليفت كور — منظومة إدارة المصاعد</div>
+  <img class="brand-logo" src="{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=1" alt="LiftCore">
 
   <div class="greet">أهلاً بك، <span class="name" id="userName">{{ current_user_name }}</span></div>
 </div>
@@ -141,23 +127,6 @@ body.exit .pillars{opacity:0}
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
-
-  /* بناء الاسم حرفاً حرفاً لحركة الصعود المتتابعة */
-  var word = 'LiftCore';
-  var goldSet = {4:true}; /* الحرف C ذهبي */
-  var wm = document.getElementById('wordmark');
-  var i, html='';
-  for(i=0;i<word.length;i++){
-    var cls = 'ch' + (goldSet[i] ? ' gold' : '');
-    /* تأخير تتابعي يبدأ بعد وصول خط الضوء (~1.9s) */
-    var delay = (1.9 + i*0.07).toFixed(2);
-    html += '<span class="'+cls+'" style="animation-delay:'+delay+'s">'+word[i]+'</span>';
-  }
-  wm.innerHTML = html;
-  /* تشغيل الحركة */
-  requestAnimationFrame(function(){ wm.classList.add('go'); });
-
-  /* الخروج والانتقال للداش بورد بعد اكتمال المشهد */
   setTimeout(function(){
     document.body.classList.add('exit');
     setTimeout(function(){
