@@ -1,6 +1,50 @@
 (function () {
   'use strict';
 
+  var HEADER_H = 58;
+
+  function isDesktopTopNav() {
+    return window.matchMedia('(min-width: 1101px)').matches;
+  }
+
+  function findAppHeader() {
+    return document.querySelector('body > header.lc-header, body > .lc-header') ||
+      document.querySelector('.main .lc-header, .main > header.header');
+  }
+
+  function mountTopNavShell() {
+    var sidebar = document.getElementById('sidebar');
+    var main = document.querySelector('.main');
+    var header = document.querySelector('.main .lc-header, .main > header.header');
+    if (!sidebar || !main || !header || header.dataset.lcShellMounted === '1') return;
+    sidebar.parentNode.insertBefore(header, sidebar);
+    header.dataset.lcShellMounted = '1';
+    document.documentElement.classList.add('lc-shell-ready');
+    document.documentElement.style.setProperty('--lc-header-h', HEADER_H + 'px');
+  }
+
+  function unmountTopNavShell() {
+    var header = document.querySelector('body > header.lc-header, body > .lc-header');
+    var main = document.querySelector('.main');
+    if (!header || !main || header.dataset.lcShellMounted !== '1') return;
+    main.insertBefore(header, main.firstChild);
+    header.dataset.lcShellMounted = '0';
+    document.documentElement.classList.remove('lc-shell-ready');
+  }
+
+  function applyTopNavShell() {
+    if (isDesktopTopNav()) {
+      if (!document.querySelector('body > header.lc-header, body > .lc-header')) {
+        mountTopNavShell();
+      } else {
+        document.documentElement.classList.add('lc-shell-ready');
+      }
+    } else {
+      unmountTopNavShell();
+    }
+    syncTopNavLayout();
+  }
+
   function updateFullscreenIcon() {
     var btn = document.getElementById('btn-fullscreen');
     if (!btn) return;
@@ -44,7 +88,7 @@
   });
 
   window.openSidebar = function () {
-    if (window.matchMedia('(min-width: 1101px)').matches) return;
+    if (isDesktopTopNav()) return;
     var sidebar = document.getElementById('sidebar');
     var overlay = document.getElementById('overlay');
     if (sidebar) sidebar.classList.add('open');
@@ -69,34 +113,37 @@
   }
 
   function syncTopNavLayout() {
-    var sidebar = document.getElementById('sidebar');
-    var main = document.querySelector('.main');
-    if (!sidebar || !main) return;
+    var header = findAppHeader();
+    if (!header) return;
 
     document.documentElement.classList.add('lc-layout-topnav');
 
-    if (window.matchMedia('(max-width: 1100px)').matches) return;
+    if (!isDesktopTopNav()) return;
 
-    var header = main.querySelector('.lc-header, .header');
-    var headerH = header ? header.offsetHeight : 75;
+    if (document.documentElement.classList.contains('lc-shell-ready')) {
+      document.documentElement.style.setProperty('--lc-header-h', HEADER_H + 'px');
+      return;
+    }
+
+    var headerH = Math.max(header.offsetHeight || 0, HEADER_H);
     document.documentElement.style.setProperty('--lc-header-h', headerH + 'px');
   }
 
   function bindSidebarLayout() {
-    syncTopNavLayout();
+    applyTopNavShell();
     requestAnimationFrame(function () {
-      requestAnimationFrame(syncTopNavLayout);
+      requestAnimationFrame(applyTopNavShell);
     });
-    window.addEventListener('resize', syncTopNavLayout);
-    var main = document.querySelector('.main');
-    if (!main || !window.ResizeObserver) return;
-    var ro = new ResizeObserver(function () { syncTopNavLayout(); });
-    ro.observe(main);
-    var header = main.querySelector('.lc-header, .header');
-    if (header) ro.observe(header);
+    window.addEventListener('resize', applyTopNavShell);
+    var header = findAppHeader();
+    if (header && window.ResizeObserver) {
+      var ro = new ResizeObserver(function () { syncTopNavLayout(); });
+      ro.observe(header);
+    }
   }
 
   window.syncTopNavLayout = syncTopNavLayout;
+  window.applyTopNavShell = applyTopNavShell;
 
   document.addEventListener('fullscreenchange', updateFullscreenIcon);
   document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);

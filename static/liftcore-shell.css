@@ -114,7 +114,7 @@ html[dir="rtl"] .lang-toggle {
 }
 
 .lc-header--solo {
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(100px, 1fr) auto minmax(100px, 1fr);
 }
 
 .header-actions {
@@ -180,12 +180,17 @@ html[dir="ltr"] .header-actions {
 }
 
 .header-center-brand {
+  grid-column: 2;
+  grid-row: 1;
   justify-self: center;
+  align-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  padding: 4px 8px;
+  padding: 0 8px;
+  min-width: 0;
+  z-index: 2;
 }
 
 .lc-header-logo {
@@ -193,6 +198,7 @@ html[dir="ltr"] .header-actions {
   width: auto;
   max-width: min(380px, 58vw);
   object-fit: contain;
+  object-position: center;
   display: block;
 }
 
@@ -427,7 +433,7 @@ html.lc-fullscreen .main {
   body:has(#sidebar):has(.main) {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: var(--lc-header-h, 58px) auto 1fr;
     min-height: 100vh;
     overflow-x: hidden;
   }
@@ -970,32 +976,233 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
   opacity: 0.92;
 }
 
-/* ── هيدر: منع التداخل (EN/LTR + شعار LiftCore في الوسط) ── */
+/* ── هيدر: شعار وسط + صف قائمة منفصل (بدون تداخل) ── */
 @media (min-width: 1101px) {
+  html.lc-layout-topnav {
+    --lc-header-h: 58px;
+  }
+
+  html.lc-layout-topnav body:has(#sidebar):has(.main) {
+    display: grid !important;
+  }
+
   html.lc-layout-topnav .lc-header {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  }
-
-  html.lc-layout-topnav .header-brand {
-    max-width: min(200px, 24vw);
+    min-height: var(--lc-header-h);
+    max-height: var(--lc-header-h);
+    height: var(--lc-header-h);
+    padding: 6px 16px;
     overflow: hidden;
-    gap: 8px;
-  }
-
-  html.lc-layout-topnav .lc-header-tenant-brand {
-    display: none;
-  }
-
-  html.lc-layout-topnav .header-date {
-    display: none;
-  }
-
-  html.lc-layout-topnav .header-page-title {
-    font-size: 14px;
-    max-width: 100%;
+    box-sizing: border-box;
+    isolation: isolate;
   }
 
   html.lc-layout-topnav .lc-header-logo {
-    max-width: min(340px, 46vw);
+    height: 34px;
+    max-width: min(220px, 36vw);
+  }
+
+  html.lc-layout-topnav body:has(#sidebar) .header-brand {
+    display: none !important;
+  }
+
+  html.lc-layout-topnav .lc-header-tenant-brand,
+  html.lc-layout-topnav .header-date,
+  html.lc-layout-topnav .header-page-title {
+    display: none !important;
+  }
+
+  html.lc-layout-topnav .lc-header--solo .header-brand {
+    display: flex !important;
+    align-items: center;
+    min-width: 0;
+    max-width: min(220px, 28vw);
+    overflow: hidden;
+  }
+
+  html.lc-layout-topnav .lc-header--solo .header-actions {
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  html.lc-layout-topnav[dir="rtl"] .lc-header--solo .header-actions {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  html.lc-layout-topnav .lc-header--solo .header-brand {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  html.lc-layout-topnav[dir="rtl"] .lc-header--solo .header-brand {
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar {
+    top: var(--lc-header-h, 58px);
+  }
+}
+
+/* صفحات بدون قائمة (الإعدادات) */
+body:not(:has(#sidebar)) .lc-header--solo {
+  grid-template-columns: minmax(100px, 1fr) auto minmax(100px, 1fr);
+}
+
+body:not(:has(#sidebar)) .lc-header--solo + .wrap,
+body:not(:has(#sidebar)) .lc-header--solo + main {
+  padding-top: 4px;
+}
+
+body:not(:has(#sidebar)) .page-heading {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text1, #e4eaf5);
+  margin: 0 0 16px;
+  padding-inline-start: 12px;
+  border-inline-start: 3px solid var(--gold, #c9a14a);
+}
+
+/* تبويبات الإعدادات — ذهبي */
+html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab {
+  color: #c9a14a !important;
+}
+
+html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab:hover {
+  color: #e8cd86 !important;
+  background: rgba(201, 161, 74, 0.08) !important;
+}
+
+html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
+  color: #e8cd86 !important;
+  border-color: rgba(201, 161, 74, 0.45) !important;
+  background: rgba(201, 161, 74, 0.12) !important;
+}
+
+/* ── v15: تخطيط مضمون — يتغلب على CSS المضمّن في القوالب ── */
+@media (min-width: 1101px) {
+  html.lc-shell-ready body:has(#sidebar) {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 58px auto 1fr !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    flex-direction: unset !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) > header.lc-header,
+  html.lc-shell-ready body:has(#sidebar) > .lc-header,
+  html.lc-shell-ready body:has(#sidebar) header.header.lc-header {
+    grid-row: 1 !important;
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    align-items: center !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    max-height: 58px !important;
+    padding: 4px 16px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 220 !important;
+    margin: 0 !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) > #sidebar,
+  html.lc-shell-ready body:has(#sidebar) > .sidebar {
+    grid-row: 2 !important;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: none !important;
+    position: sticky !important;
+    top: 58px !important;
+    z-index: 180 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 4px 12px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border, rgba(100, 160, 255, 0.1)) !important;
+    background: var(--bg2, #111720) !important;
+    inset: auto !important;
+    right: auto !important;
+    left: auto !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) > .main {
+    grid-row: 3 !important;
+    grid-column: 1 / -1 !important;
+    display: block !important;
+    flex: none !important;
+    flex-direction: unset !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) .sidebar-logo {
+    display: none !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) .sidebar-nav,
+  html.lc-shell-ready body:has(#sidebar) #sidebar:not(:has(.sidebar-nav)) {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 !important;
+    height: auto !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) .nav-section {
+    display: none !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) .header-brand {
+    display: none !important;
+  }
+
+  html.lc-shell-ready .lc-header-logo {
+    height: 30px !important;
+    max-width: min(180px, 32vw) !important;
+    width: auto !important;
+  }
+
+  html.lc-shell-ready .header-center-brand {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-self: center !important;
+  }
+
+  html.lc-shell-ready .header-actions {
+    grid-column: 3 !important;
+    justify-self: end !important;
+  }
+
+  html.lc-shell-ready[dir="rtl"] .header-actions {
+    grid-column: 1 !important;
+    justify-self: start !important;
+  }
+
+  html.lc-shell-ready .content {
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
   }
 }

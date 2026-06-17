@@ -50,3 +50,18 @@
     {% endif %}
   </div>
 </header>
+<script>
+(function () {
+  if (!window.matchMedia('(min-width: 1101px)').matches) return;
+  var header = document.currentScript && document.currentScript.previousElementSibling;
+  if (!header || !header.classList.contains('lc-header')) {
+    header = document.querySelector('.main .lc-header, .main > header.header');
+  }
+  var sidebar = document.getElementById('sidebar');
+  if (!header || !sidebar || header.dataset.lcShellMounted === '1') return;
+  sidebar.parentNode.insertBefore(header, sidebar);
+  header.dataset.lcShellMounted = '1';
+  document.documentElement.classList.add('lc-shell-ready');
+  document.documentElement.style.setProperty('--lc-header-h', '58px');
+})();
+</script>
