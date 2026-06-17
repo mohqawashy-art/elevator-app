@@ -92,7 +92,6 @@
   align-items: center;
   flex-shrink: 0;
   text-decoration: none;
-  margin-inline-end: 4px;
 }
 
 .lc-header-tenant-logo {
@@ -107,7 +106,41 @@
   grid-template-columns: auto 1fr auto;
 }
 
-.header-left {
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  grid-column: 1;
+  justify-self: start;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  grid-column: 3;
+  justify-self: end;
+}
+
+html[dir="rtl"] .header-brand {
+  flex-direction: row-reverse;
+}
+
+html[dir="ltr"] .header-brand {
+  flex-direction: row;
+  grid-column: 1;
+  justify-self: start;
+}
+
+html[dir="ltr"] .header-actions {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.header-left,
+.header-right {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -116,6 +149,7 @@
 
 .header-page {
   min-width: 0;
+  text-align: start;
 }
 
 .header-date {
@@ -159,6 +193,10 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+
+html[dir="ltr"] .header-page {
+  text-align: left;
 }
 
 .lc-back-link {
@@ -520,15 +558,12 @@ html.lc-fullscreen .main {
   .lc-sidebar-toggle {
     display: none !important;
   }
-
-  .lc-header-tenant-brand {
-    display: flex;
-  }
 }
 
 @media (max-width: 1100px) {
-  .lc-header-tenant-brand {
-    display: none;
+  .lc-header-tenant-logo {
+    height: 40px;
+    max-width: min(var(--logo-w-sidebar, 120px), 36vw);
   }
 }
 
