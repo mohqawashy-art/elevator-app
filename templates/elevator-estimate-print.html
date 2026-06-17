@@ -30,6 +30,9 @@ td.num{font-family:'DM Sans',sans-serif;direction:ltr;text-align:left}
 .totals .grand{font-size:14px;font-weight:700;color:#1a3a5c;border-bottom:none;border-top:2px solid #1a3a5c;margin-top:6px;padding-top:8px}
 .notes{margin-top:16px;font-size:11px;color:#5a7088}
 .foot{margin-top:20px;padding-top:10px;border-top:1px solid #c5d0dc;font-size:10px;color:#7a8a9c;text-align:center}
+.diagram-print{margin:16px 0;padding:12px;border:1px solid #c5d0dc;border-radius:8px;background:#f8fafc;text-align:center}
+.diagram-print h3{font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:10px}
+.diagram-print svg{max-width:320px;width:100%;height:auto;margin:0 auto;display:block}
 @media print{.toolbar{display:none!important}.doc{margin:0;box-shadow:none;width:auto;max-width:none}}
 </style>
 </head>
@@ -63,6 +66,11 @@ td.num{font-family:'DM Sans',sans-serif;direction:ltr;text-align:left}
     <div><b>المحطات:</b> {{ est.stops or '—' }}</div>
     <div><b>الحمولة:</b> {{ est.capacity_kg or '—' }} كجم</div>
     <div><b>السرعة:</b> {{ est.speed or '—' }}</div>
+  </div>
+
+  <div class="diagram-print">
+    <h3>المخطط التوضيحي للمصعد</h3>
+    <div id="elevatorDiagram"></div>
   </div>
 
   <table>
@@ -104,5 +112,17 @@ td.num{font-family:'DM Sans',sans-serif;direction:ltr;text-align:left}
     <br>هذا العرض استرشادي — الأسعار قابلة للتعديل حسب موقع المشروع والمواصفات النهائية.
   </div>
 </div>
+<script src="{{ url_for('static', filename='liftcore-elevator-diagram.js') }}?v=1"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (!window.LiftCoreElevatorDiagram) return;
+  LiftCoreElevatorDiagram.draw('elevatorDiagram', {
+    stops: {{ est.stops or 5 }},
+    machine_type: {{ est.machine_type|tojson }},
+    capacity_kg: {{ est.capacity_kg or 630 }},
+    doors_count: {{ est.doors_count or est.stops or 5 }},
+  }, { theme: 'light' });
+});
+</script>
 </body>
 </html>
