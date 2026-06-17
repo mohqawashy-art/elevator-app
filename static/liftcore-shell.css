@@ -931,49 +931,71 @@ html[data-theme="light"] .lc-welcome-logo {
   border-color: var(--border);
 }
 
-/* ── LiftCore: تبويبات ذهبية (تتجاوز CSS المدمج في الصفحات) ── */
+/* ── LiftCore: تبويبات ذهبية — القائمة فقط ── */
 html:not([data-theme="light"]) #sidebar .nav-item,
-html:not([data-theme="light"]) .sidebar .nav-item {
+html:not([data-theme="light"]) .sidebar .nav-item,
+html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-item,
+html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item {
   color: #c9a14a !important;
 }
 
 html:not([data-theme="light"]) #sidebar .nav-item:hover,
-html:not([data-theme="light"]) .sidebar .nav-item:hover {
+html:not([data-theme="light"]) .sidebar .nav-item:hover,
+html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-item:hover,
+html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item:hover {
   color: #e8cd86 !important;
   background: rgba(201, 161, 74, 0.08) !important;
 }
 
 html:not([data-theme="light"]) #sidebar .nav-item.active,
-html:not([data-theme="light"]) .sidebar .nav-item.active {
+html:not([data-theme="light"]) .sidebar .nav-item.active,
+html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-item.active,
+html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item.active {
   color: #e8cd86 !important;
   background: rgba(201, 161, 74, 0.14) !important;
 }
 
 html:not([data-theme="light"]) #sidebar .nav-item.active::before,
-html:not([data-theme="light"]) .sidebar .nav-item.active::before {
+html:not([data-theme="light"]) .sidebar .nav-item.active::before,
+html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-item.active::before,
+html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item.active::before {
   background: #e8cd86 !important;
 }
 
 html:not([data-theme="light"]) #sidebar .nav-item svg,
-html:not([data-theme="light"]) .sidebar .nav-item svg {
+html:not([data-theme="light"]) .sidebar .nav-item svg,
+html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg,
+html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
   color: inherit !important;
   opacity: 0.92;
 }
 
-html:not([data-theme="light"]) .tabs .tab,
-html:not([data-theme="light"]) .tab {
-  color: #c9a14a !important;
-}
+/* ── هيدر: منع التداخل (EN/LTR + شعار LiftCore في الوسط) ── */
+@media (min-width: 1101px) {
+  html.lc-layout-topnav .lc-header {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
 
-html:not([data-theme="light"]) .tabs .tab:hover,
-html:not([data-theme="light"]) .tab:hover:not(.active) {
-  color: #e8cd86 !important;
-  background: rgba(201, 161, 74, 0.08) !important;
-}
+  html.lc-layout-topnav .header-brand {
+    max-width: min(200px, 24vw);
+    overflow: hidden;
+    gap: 8px;
+  }
 
-html:not([data-theme="light"]) .tabs .tab.active,
-html:not([data-theme="light"]) .tab.active {
-  color: #e8cd86 !important;
-  border-color: rgba(201, 161, 74, 0.35) !important;
-  background: rgba(201, 161, 74, 0.14) !important;
+  html.lc-layout-topnav .lc-header-tenant-brand {
+    display: none;
+  }
+
+  html.lc-layout-topnav .header-date {
+    display: none;
+  }
+
+  html.lc-layout-topnav .header-page-title {
+    font-size: 14px;
+    max-width: 100%;
+  }
+
+  html.lc-layout-topnav .lc-header-logo {
+    max-width: min(340px, 46vw);
+  }
 }
