@@ -491,6 +491,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#page-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 }
@@ -522,11 +529,12 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, PARTS.length) : { rows: data };
   const tbody = document.getElementById('bills-tbody');
   if (!tbody) return;
   const D = window.lcDisp || (s => s);
   const LC = window.LiftCoreDisplay;
-  tbody.innerHTML = data.map(p => `
+  tbody.innerHTML = pg.rows.map(p => `
     <tr onclick="viewPart(${p.id})">
       <td class="td-code">${p.code}</td>
       <td style="font-family:var(--font-en);font-size:11px;color:var(--text2)">${[p.visit_code,p.fault_code].filter(Boolean).join(' / ')||'—'}</td>
@@ -553,8 +561,10 @@ function renderTable(data) {
         </div>
       </td>
     </tr>`).join('');
-  const info = document.getElementById('page-info');
-  if (info) info.textContent = LC ? LC.fmtShowing(data.length, PARTS.length) : ('عرض ' + data.length + ' من ' + PARTS.length);
+  if (!tablePager) {
+    const info = document.getElementById('page-info');
+    if (info) info.textContent = LC ? LC.fmtShowing(data.length, PARTS.length) : ('عرض ' + data.length + ' من ' + PARTS.length);
+  }
 }
 
 function applyFilters() {
@@ -571,6 +581,7 @@ function applyFilters() {
     (!fd || p.billing_date >= fd) &&
     (!td || p.billing_date <= td)
   );
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

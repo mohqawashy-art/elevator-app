@@ -501,13 +501,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
       <div class="table-footer">
         <div class="table-info" id="table-info">عرض {{ contracts|length }} من {{ contracts|length }}</div>
-        <div class="pagination">
-          <button class="page-btn">‹</button>
-          <button class="page-btn active">1</button>
-          <button class="page-btn">2</button>
-          <button class="page-btn">3</button>
-          <button class="page-btn">›</button>
-        </div>
+        <div class="pagination" id="page-btns"></div>
       </div>
     </div>
     </div>
@@ -1038,6 +1032,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#table-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 function getContractsByDrill(type) {
   if (type === 'all') return CONTRACTS.slice();
   if (type === 'active') return CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'نشط'; });
@@ -1104,18 +1105,19 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, CONTRACTS.length) : { rows: data };
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   var D = lcDisp;
   var LC = window.LiftCoreDisplay;
   if (LC) {
     LC.setCountEl('contracts-count', LC.fmtContractsCount(data.length));
-    LC.setCountEl('table-info', LC.fmtShowing(data.length, CONTRACTS.length));
+    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, CONTRACTS.length));
   } else {
     document.getElementById('contracts-count').textContent = data.length + ' عقد';
-    document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + CONTRACTS.length;
+    if (!tablePager) document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + CONTRACTS.length;
   }
-  tbody.innerHTML = data.map(function(c) {
+  tbody.innerHTML = pg.rows.map(function(c) {
     var disp = getContractDisplayStatus(c);
     return '<tr onclick="viewContract(' + c.id + ')">' +
       '<td class="td-code">' + esc(c.code) + '</td>' +
@@ -1151,6 +1153,7 @@ function filterTable() {
     (!st  || getContractDisplayStatus(c) === st) &&
     (!inv || c.inv_status === inv)
   );
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

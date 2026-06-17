@@ -573,6 +573,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         </div>
         <div class="table-footer">
           <span class="table-info" id="table-info">عرض {{ customers|length }} من {{ customers|length }}</span>
+          <div class="pagination" id="page-btns"></div>
         </div>
       </div>
     </div>
@@ -1289,23 +1290,39 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#table-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 function renderTable(data) {
   if (tableSort) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, CUSTOMERS.length) : {
+    rows: data,
+    start: data.length ? 1 : 0,
+    end: data.length,
+    filteredTotal: data.length,
+    masterTotal: CUSTOMERS.length,
+  };
   const tbody = document.getElementById('table-body');
   document.getElementById('clients-count').textContent = window.LiftCoreDisplay
     ? LiftCoreDisplay.fmtClientsCount(data.length)
     : (data.length + ' عميل');
-  document.getElementById('table-info').textContent = window.LiftCoreDisplay
-    ? LiftCoreDisplay.fmtShowing(data.length, CUSTOMERS.length)
-    : ('عرض ' + data.length + ' من ' + CUSTOMERS.length);
-  if(!data.length) {
+  if (!tablePager) {
+    document.getElementById('table-info').textContent = window.LiftCoreDisplay
+      ? LiftCoreDisplay.fmtShowing(data.length, CUSTOMERS.length)
+      : ('عرض ' + data.length + ' من ' + CUSTOMERS.length);
+  }
+  if(!pg.rows.length) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text3)">' + lcDisp('لا توجد بيانات — اضغط إضافة عميل للبدء') + '</td></tr>';
     return;
   }
-  tbody.innerHTML = data.map(c => '<tr>' +
+  tbody.innerHTML = pg.rows.map(c => '<tr>' +
     '<td class="td-code" style="cursor:pointer;color:var(--accent)" onclick="openClientCard(' + c.id + ')">' + c.code + '</td>' +
     '<td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="openClientCard(' + c.id + ')">' + lcClient(c) + '</td>' +
     '<td>' + lcDisp(c.city||'—') + '</td>' +
@@ -1337,6 +1354,7 @@ function filterTable() {
            (!cs || c.contract_status===cs) &&
            (!st || clientAccountStatus(c)===st);
   });
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

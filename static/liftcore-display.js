@@ -150,6 +150,20 @@
   function fmtTransactionsCount(n) { n = Number(n) || 0; return isEn() ? fmtEnCount(n, 'transaction', 'transactions') : n + ' \u0639\u0645\u0644\u064A\u0629'; }
   function fmtMargin(p) { return isEn() ? ('Margin ' + p + '%') : ('\u0647\u0627\u0645\u0634 ' + p + '%'); }
   function fmtShowing(a, b) { return isEn() ? ('Showing ' + a + ' of ' + b) : ('\u0639\u0631\u0636 ' + a + ' \u0645\u0646 ' + b); }
+  function fmtPageRange(start, end, filtered, master) {
+    master = master != null ? master : filtered;
+    if (!filtered) {
+      return isEn() ? ('Showing 0 of ' + master) : ('\u0639\u0631\u0636 0 \u0645\u0646 ' + master);
+    }
+    if (start === end) {
+      return isEn()
+        ? ('Showing ' + start + ' of ' + master + (filtered !== master ? ' (' + filtered + ' filtered)' : ''))
+        : ('\u0639\u0631\u0636 ' + start + ' \u0645\u0646 ' + master + (filtered !== master ? ' (\u0645\u0639\u0631\u0651\u064E\u0627\u0629 ' + filtered + ')' : ''));
+    }
+    return isEn()
+      ? ('Showing ' + start + '\u2013' + end + ' of ' + master + (filtered !== master ? ' (' + filtered + ' filtered)' : ''))
+      : ('\u0639\u0631\u0636 ' + start + '\u2013' + end + ' \u0645\u0646 ' + master + (filtered !== master ? ' (\u0645\u0639\u0631\u0651\u064E\u0627\u0629 ' + filtered + ')' : ''));
+  }
 
   function setCountEl(id, textVal) {
     var el = document.getElementById(id);
@@ -318,6 +332,7 @@
     fmtTransactionsCount: fmtTransactionsCount,
     fmtMargin: fmtMargin,
     fmtShowing: fmtShowing,
+    fmtPageRange: fmtPageRange,
     setCountEl: setCountEl,
     applyDom: applyDom,
     refreshPage: refreshPage,

@@ -423,6 +423,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <div class="table-footer">
           <div class="table-info" id="table-info"></div>
+          <div class="pagination" id="page-btns"></div>
         </div>
       </div>
     </div>
@@ -852,6 +853,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   },
   onChange: function () { renderTable(filtered); },
 }) : null;
+
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#table-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
 let activeVisitFilter = null;
 
 function isVisitDoneToday(v) {
@@ -925,19 +933,20 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, VISITS.length) : { rows: data };
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   const D = window.lcDisp || (s => s);
   const LC = window.LiftCoreDisplay;
   if (LC) {
     LC.setCountEl('visits-count', LC.fmtVisitsCount(data.length));
-    LC.setCountEl('table-info', LC.fmtShowing(data.length, VISITS.length));
+    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, VISITS.length));
   } else {
     document.getElementById('visits-count').textContent = data.length + ' زيارة';
     const info = document.getElementById('table-info');
-    if (info) info.textContent = 'عرض ' + data.length + ' من ' + VISITS.length;
+    if (info && !tablePager) info.textContent = 'عرض ' + data.length + ' من ' + VISITS.length;
   }
-  tbody.innerHTML = data.map(v=>`
+  tbody.innerHTML = pg.rows.map(v=>`
     <tr onclick="viewVisit(${v.id})">
       <td class="td-code lc-code">${v.code}</td>
       <td class="td-name">${D(LC ? LC.name(v.customer, v.customer_name_en) : v.customer)}</td>
@@ -993,6 +1002,7 @@ function filterTable() {
     (!fd || v.visit_date >= fd) &&
     (!td || v.visit_date <= td)
   );
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

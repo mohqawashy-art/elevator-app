@@ -419,11 +419,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <div class="table-footer">
           <div class="table-info" id="table-info">—</div>
-          <div class="pagination">
-            <button class="page-btn">‹</button>
-            <button class="page-btn active">1</button>
-            <button class="page-btn">›</button>
-          </div>
+          <div class="pagination" id="page-btns"></div>
         </div>
       </div>
     </div>
@@ -724,6 +720,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
     emergency: function (t) { return isTechEmergencyOn(t) ? 1 : 0; },
   },
   onChange: function () { renderTable(filtered); },
+}) : null;
+
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#table-info',
+  onPageChange: function () { renderTable(filtered); },
 }) : null;
 var docRowCounter = 0;
 
@@ -1045,18 +1048,19 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, TECHNICIANS.length) : { rows: data };
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   var D = window.lcDisp || function(s) { return s; };
   var LC = window.LiftCoreDisplay;
   if (LC) {
     LC.setCountEl('tech-count', LC.fmtTechniciansCount(data.length));
-    LC.setCountEl('table-info', LC.fmtShowing(data.length, TECHNICIANS.length));
+    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, TECHNICIANS.length));
   } else {
     document.getElementById('tech-count').textContent = data.length + ' فني';
-    document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + TECHNICIANS.length;
+    if (!tablePager) document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + TECHNICIANS.length;
   }
-  tbody.innerHTML = data.map(function(t) {
+  tbody.innerHTML = pg.rows.map(function(t) {
     return '<tr onclick="viewTech(' + t.id + ')">' +
       '<td class="td-code">' + esc(t.code) + '</td>' +
       techTableNameCell(t, true) +
@@ -1088,6 +1092,7 @@ function filterTable() {
       (!st || t.display_status === st) &&
       (!em || (em === 'نعم' ? isTechEmergencyOn(t) : !isTechEmergencyOn(t)));
   });
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

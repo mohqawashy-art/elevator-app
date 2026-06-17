@@ -444,23 +444,31 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#page-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 function renderTable(data) {
   if (tableSort) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, MOVEMENTS.length) : { rows: data };
   const tbody = document.getElementById('mov-tbody');
   if (!tbody) return;
   const D = window.lcDisp || (s => s);
   const LC = window.LiftCoreDisplay;
   if (LC) {
-    LC.setCountEl('page-info', LC.fmtShowing(data.length, MOVEMENTS.length));
     LC.setCountEl('mov-count', LC.fmtMovementsCount(data.length));
+    if (!tablePager) LC.setCountEl('page-info', LC.fmtShowing(data.length, MOVEMENTS.length));
   } else {
-    setText('page-info', 'عرض ' + data.length + ' من ' + MOVEMENTS.length);
+    if (!tablePager) setText('page-info', 'عرض ' + data.length + ' من ' + MOVEMENTS.length);
     setText('mov-count', data.length + ' حركة');
   }
-  tbody.innerHTML = data.map(m => `
+  tbody.innerHTML = pg.rows.map(m => `
     <tr onclick="viewMovement(${m.id})">
       <td class="td-code">${m.code}</td>
       <td class="lc-date">${window.fmtDateDMY ? fmtDateDMY(m.movement_date) : m.movement_date}</td>
@@ -500,6 +508,7 @@ function applyFilters() {
     (!fd || m.movement_date >= fd) &&
     (!td || m.movement_date <= td)
   );
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

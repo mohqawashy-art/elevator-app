@@ -1,9 +1,59 @@
 /**
  * LiftCore — ربط التقارير بالبيانات الحقيقية
  * reports_live.js
- * ضع هذا الملف في: static/reports_live.js
- * وأضف في كل صفحة تقرير: <script src="{{ url_for('static', filename='reports_live.js') }}"></script>
  */
+
+var __lcReportDomPager = null;
+
+function __lcLoadPagination(cb) {
+  if (window.LiftCorePagination) { cb(); return; }
+  var s = document.createElement('script');
+  s.src = '/static/liftcore-pagination.js?v=2';
+  s.onload = cb;
+  document.head.appendChild(s);
+}
+
+function hookReportPagination(reset) {
+  var tbody = document.getElementById('report-tbody');
+  if (!tbody || !window.LiftCorePagination) return;
+
+  var footer = tbody.closest('.table-wrap');
+  footer = footer ? footer.querySelector('.table-footer') : document.querySelector('.table-footer');
+  if (!footer) return;
+
+  var container = footer.querySelector('#page-btns');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'pagination';
+    container.id = 'page-btns';
+    footer.appendChild(container);
+  }
+
+  if (!__lcReportDomPager) {
+    __lcReportDomPager = LiftCorePagination.createDom({
+      tbody: tbody,
+      container: container,
+      infoEl: footer.querySelector('#table-info'),
+      pageSize: 10,
+    });
+
+    var origFilter = window.filterTable;
+    window.filterTable = function () {
+      if (typeof origFilter === 'function') origFilter();
+      Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function (tr) {
+        if (tr.querySelector('td[colspan]')) return;
+        tr.dataset.lcSearchHidden = tr.style.display === 'none' ? '1' : '0';
+      });
+      __lcReportDomPager.apply(true);
+    };
+  }
+
+  Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function (tr) {
+    if (tr.querySelector('td[colspan]')) return;
+    if (tr.dataset.lcSearchHidden == null) tr.dataset.lcSearchHidden = '0';
+  });
+  __lcReportDomPager.apply(reset !== false);
+}
 
 // خريطة الـ API لكل تقرير
 const REPORT_API = {
@@ -41,6 +91,7 @@ async function loadReportData(reportId, extraParams = '') {
         <tr><td colspan="20" style="text-align:center;padding:30px;color:var(--text3)">
           لا توجد بيانات
         </td></tr>`;
+      __lcLoadPagination(function () { hookReportPagination(true); });
       return;
     }
 
@@ -61,6 +112,8 @@ async function loadReportData(reportId, extraParams = '') {
     // تحديث تاريخ التقرير
     const dateEl = document.getElementById('rpt-date-range');
     if (dateEl) dateEl.textContent = 'تاريخ التقرير: ' + new Date().toLocaleDateString('ar-SA');
+
+    __lcLoadPagination(function () { hookReportPagination(true); });
 
   } catch(e) {
     console.log('Report API error:', e);
@@ -137,3 +190,8 @@ function exportReportExcel(reportId) {
       a.click();
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (!document.getElementById('report-tbody')) return;
+  __lcLoadPagination(function () { hookReportPagination(true); });
+});

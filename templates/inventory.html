@@ -428,6 +428,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#page-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 function fmt(n) { return Number(n || 0).toLocaleString('ar-SA'); }
 
 function updateStats() {
@@ -450,17 +457,20 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, ITEMS.length) : { rows: data };
   const tbody = document.getElementById('inv-tbody');
   if (!tbody) return;
   const D = window.lcDisp || (s => s);
   const LC = window.LiftCoreDisplay;
-  if (LC) LC.setCountEl('page-info', LC.fmtShowing(data.length, ITEMS.length));
-  else document.getElementById('page-info').textContent = 'عرض ' + data.length + ' من ' + ITEMS.length;
-  if (!data.length) {
+  if (!tablePager) {
+    if (LC) LC.setCountEl('page-info', LC.fmtShowing(data.length, ITEMS.length));
+    else document.getElementById('page-info').textContent = 'عرض ' + data.length + ' من ' + ITEMS.length;
+  }
+  if (!pg.rows.length) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">' + D('لا توجد أصناف') + '</td></tr>';
     return;
   }
-  tbody.innerHTML = data.map(i => `
+  tbody.innerHTML = pg.rows.map(i => `
     <tr>
       <td class="td-code">${i.code}</td>
       <td class="td-name">${D(i.name)}</td>
@@ -488,6 +498,7 @@ function applyFilters() {
     const matchStock = !stock || (stock === 'low' && (i.order_status === 'منخفض' || i.order_status === 'نافد')) || (stock === 'ok' && i.order_status === 'كافي');
     return matchSearch && matchCat && matchStock;
   });
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

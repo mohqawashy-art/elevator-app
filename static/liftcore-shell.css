@@ -891,3 +891,32 @@ html[data-theme="light"] .lc-welcome-logo {
   width: 18px;
   height: 18px;
 }
+
+/* ── ترقيم صفحات الجداول ── */
+.pagination.lc-pagination {
+  direction: rtl;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lc-page-nums {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  direction: ltr;
+}
+
+.page-btn:disabled,
+.page-btn[disabled] {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.page-btn:disabled:hover,
+.page-btn[disabled]:hover {
+  background: var(--bg3);
+  color: var(--text2);
+  border-color: var(--border);
+}

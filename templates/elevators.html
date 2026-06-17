@@ -437,13 +437,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <div class="table-footer">
           <div class="table-info" id="table-info">عرض {{ elevators|length }} من {{ elevators|length }}</div>
-          <div class="pagination">
-            <button class="page-btn">‹</button>
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <button class="page-btn">›</button>
-          </div>
+          <div class="pagination" id="page-btns"></div>
         </div>
       </div>
     </div>
@@ -840,6 +834,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#table-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 var CUSTOMERS = [
   {% for c in customers %}
   {
@@ -1103,15 +1104,18 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, ELEVATORS.length) : { rows: data };
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   document.getElementById('elev-count').textContent = window.LiftCoreDisplay
     ? LiftCoreDisplay.fmtElevatorsCount(data.length)
     : (data.length + ' مصعد');
-  document.getElementById('table-info').textContent = window.LiftCoreDisplay
-    ? LiftCoreDisplay.fmtShowing(data.length, ELEVATORS.length)
-    : ('عرض ' + data.length + ' من ' + ELEVATORS.length);
-  tbody.innerHTML = data.map(function(e) {
+  if (!tablePager) {
+    document.getElementById('table-info').textContent = window.LiftCoreDisplay
+      ? LiftCoreDisplay.fmtShowing(data.length, ELEVATORS.length)
+      : ('عرض ' + data.length + ' من ' + ELEVATORS.length);
+  }
+  tbody.innerHTML = pg.rows.map(function(e) {
     return '<tr onclick="viewElevator(' + e.id + ')">' +
       '<td class="td-code">' + esc(e.code) + '</td>' +
       '<td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="event.stopPropagation();window.location=\'/clients\'">' + esc(elevCustomer(e)) + '</td>' +
@@ -1143,6 +1147,7 @@ function filterTable() {
       (!st || e.status === st) &&
       (!cy || e.city === cy);
   });
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

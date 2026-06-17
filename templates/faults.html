@@ -397,6 +397,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <div class="table-footer">
           <div class="table-info" id="table-info"></div>
+          <div class="pagination" id="page-btns"></div>
         </div>
       </div>
 
@@ -825,6 +826,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#table-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 function formatResponseTimeCell(val) {
   if (!val || val === '—') return '—';
   const m = String(val).match(/^(-?\d+(?:\.\d+)?)\s*(.+)$/);
@@ -837,19 +845,20 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, FAULTS.length) : { rows: data };
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   const D = window.lcDisp || (s => s);
   const LC = window.LiftCoreDisplay;
   if (LC) {
     LC.setCountEl('faults-count', LC.fmtFaultsCount(data.length));
-    LC.setCountEl('table-info', LC.fmtShowing(data.length, FAULTS.length));
+    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, FAULTS.length));
   } else {
     document.getElementById('faults-count').innerHTML = '<span class="lc-num">' + data.length + '</span> عطل';
     const info = document.getElementById('table-info');
-    if (info) info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + FAULTS.length + '</span>';
+    if (info && !tablePager) info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + FAULTS.length + '</span>';
   }
-  tbody.innerHTML = data.map(f=>`
+  tbody.innerHTML = pg.rows.map(f=>`
     <tr data-fault-id="${f.id}">
       <td class="td-code lc-code">${f.code}</td>
       <td class="lc-date" style="direction:ltr;font-family:var(--font-en)">${f.reported_at || '—'}</td>
@@ -899,6 +908,7 @@ function filterTable() {
     (!cat || f.fault_type === cat) &&
     (!bl || (bl==='yes' ? f.needs_parts : !f.needs_parts))
   );
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

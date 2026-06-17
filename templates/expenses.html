@@ -408,11 +408,19 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#page-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 function renderTable(data) {
   if (tableSort) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, EXPENSES.length) : { rows: data };
   const tbody = document.getElementById('exp-tbody');
   if(!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -423,7 +431,7 @@ function renderTable(data) {
   } else {
     document.getElementById('exp-count').textContent = data.length + ' سجل';
   }
-  tbody.innerHTML = data.map(e=>`
+  tbody.innerHTML = pg.rows.map(e=>`
     <tr onclick="viewExpense(${e.id})">
       <td class="td-code">${e.code}</td>
       <td style="direction:ltr;font-family:var(--font-en)">${e.expense_date}</td>
@@ -462,6 +470,7 @@ function applyFilters() {
     (!fd || e.expense_date >= fd) &&
     (!td || e.expense_date <= td)
   );
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

@@ -528,6 +528,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#page-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 function revFmtDate(iso) {
   if (typeof window.fmtDateDMY === 'function') return window.fmtDateDMY(iso);
   if (!iso) return '—';
@@ -540,18 +547,19 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, REVENUES.length) : { rows: data };
   const tbody = document.getElementById('rev-tbody');
   if (!tbody) return;
   const D = window.lcDisp || (s => s);
   const LC = window.LiftCoreDisplay;
   if (LC) {
     LC.setCountEl('rev-count', LC.fmtRecordsCount(data.length));
-    LC.setCountEl('page-info', LC.fmtShowing(data.length, REVENUES.length));
+    if (!tablePager) LC.setCountEl('page-info', LC.fmtShowing(data.length, REVENUES.length));
   } else {
     setText('rev-count', data.length + ' سجل');
-    setText('page-info', 'عرض ' + data.length + ' من ' + REVENUES.length);
+    if (!tablePager) setText('page-info', 'عرض ' + data.length + ' من ' + REVENUES.length);
   }
-  tbody.innerHTML = data.map(r=>`
+  tbody.innerHTML = pg.rows.map(r=>`
     <tr onclick="viewRevenue(${r.id})">
       <td class="td-code">${escHtml(r.code)}</td>
       <td>${escHtml(D(r.customer))}${r.contract && r.contract !== '—' ? ' / ' + escHtml(r.contract) : ''}</td>
@@ -592,6 +600,7 @@ function applyFilters() {
     (!fd || r.revenue_date >= fd) &&
     (!td || r.revenue_date <= td)
   );
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 

@@ -504,6 +504,13 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   onChange: function () { renderTable(filtered); },
 }) : null;
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#page-info',
+  onPageChange: function () { renderTable(filtered); },
+}) : null;
+
 function updateStats() {
   const invs = INVOICES.filter(i => invoiceTabType(i) === 'invoice');
   const recs = INVOICES.filter(i => invoiceTabType(i) === 'receipt');
@@ -534,20 +541,25 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  var pg = tablePager ? tablePager.apply(data, INVOICES.length) : { rows: data };
   const tbody = document.getElementById('table-body');
   if (!tbody) return;
   const D = window.lcDisp || (s => s);
   const LC = window.LiftCoreDisplay;
   if (LC) {
     LC.setCountEl('invoices-count', LC.fmtRecordsCount(data.length));
-    const info = document.getElementById('page-info');
-    if (info) info.textContent = LC.fmtShowing(data.length, INVOICES.length);
+    if (!tablePager) {
+      const info = document.getElementById('page-info');
+      if (info) info.textContent = LC.fmtShowing(data.length, INVOICES.length);
+    }
   } else {
     document.getElementById('invoices-count').textContent = data.length + ' سجل';
-    const info = document.getElementById('page-info');
-    if (info) info.textContent = 'عرض ' + data.length + ' من ' + INVOICES.length;
+    if (!tablePager) {
+      const info = document.getElementById('page-info');
+      if (info) info.textContent = 'عرض ' + data.length + ' من ' + INVOICES.length;
+    }
   }
-  tbody.innerHTML = data.map(i => `
+  tbody.innerHTML = pg.rows.map(i => `
     <tr onclick="viewInvoice(${i.id})">
       <td class="td-code">${escHtml(i.code)}</td>
       <td><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${escHtml(D(i.invoice_type))}</span></td>
@@ -594,6 +606,7 @@ function applyFilters() {
       (!py || i.pay_method === py) && stMatch &&
       (!fr || i.invoice_date >= fr) && (!to || i.invoice_date <= to);
   });
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 
