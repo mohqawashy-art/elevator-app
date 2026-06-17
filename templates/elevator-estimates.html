@@ -220,6 +220,16 @@ tbody tr:hover{background:var(--bg3)}
               <textarea name="notes" rows="2">{{ edit_est.notes or '' if edit_est else '' }}</textarea>
             </div>
           </div>
+          <div class="diagram-panel">
+            <h3 class="diagram-title">المخطط التوضيحي للمصعد</h3>
+            <div id="elevatorDiagram" class="elevator-diagram-wrap" aria-live="polite"></div>
+            <div class="diagram-legend">
+              <span><i style="background:#1a2435;border:1px solid rgba(201,161,74,.35)"></i> البئر</span>
+              <span><i style="background:#2a7fff"></i> الكبينة</span>
+              <span><i style="background:#8a9bb8"></i> الثقل الموازن</span>
+              <span><i style="background:#0a2647"></i> الماكينة</span>
+            </div>
+          </div>
           <button type="button" class="btn btn-gold" id="btn-calc">⚡ احسب التكلفة</button>
         </div>
 
@@ -257,16 +267,6 @@ tbody tr:hover{background:var(--bg3)}
             <div class="totals-row"><span>قبل الضريبة</span><span id="t-sub">0.00</span></div>
             <div class="totals-row"><span>ضريبة VAT</span><span id="t-vat">0.00</span></div>
             <div class="totals-row grand"><span>الإجمالي شامل الضريبة</span><span id="t-total">0.00</span></div>
-          </div>
-          <div class="diagram-panel">
-            <h3 class="diagram-title">المخطط التوضيحي للمصعد</h3>
-            <div id="elevatorDiagram" class="elevator-diagram-wrap" aria-live="polite"></div>
-            <div class="diagram-legend">
-              <span><i style="background:#1a2435;border:1px solid rgba(201,161,74,.35)"></i> البئر</span>
-              <span><i style="background:#2a7fff"></i> الكبينة</span>
-              <span><i style="background:#8a9bb8"></i> الثقل الموازن</span>
-              <span><i style="background:#0a2647"></i> الماكينة</span>
-            </div>
           </div>
         </div>
       </div>
