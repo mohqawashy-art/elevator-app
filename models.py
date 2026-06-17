@@ -107,6 +107,9 @@ class Contract(db.Model):
     invoice_status  = db.Column(db.String(30), default='غير مدفوع')  # مدفوع / مدفوع جزئياً / غير مدفوع / متأخر
     status          = db.Column(db.String(30), default='نشط')        # نشط / على وشك الانتهاء / منتهي / ملغي
     reminder_date   = db.Column(db.Date)
+    city            = db.Column(db.String(100))
+    district        = db.Column(db.String(100))
+    address         = db.Column(db.Text)
     file_path       = db.Column(db.String(300))
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)

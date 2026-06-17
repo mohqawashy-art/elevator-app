@@ -16,6 +16,7 @@
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js"></script>
+<script src="/static/client_map_picker.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -88,6 +89,8 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .btn-danger{background:rgba(224,72,72,.12);color:var(--danger);border:1px solid rgba(224,72,72,.15)}
 .btn-danger:hover{background:rgba(224,72,72,.22)}
 .btn-sm{padding:5px 10px;font-size:12px}
+.label-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.label-row label{margin-bottom:0}
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
 .stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
 .stat-mini{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:var(--trans)}
@@ -615,6 +618,43 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div class="form-section">
+        <div class="form-section-title">
+          <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6.5 1C4.57 1 3 2.57 3 4.5S6.5 12 6.5 12 10 6.43 10 4.5 8.43 1 6.5 1z"/><circle cx="6.5" cy="4.5" r="1.3"/></svg>
+          موقع العقد على الخريطة
+        </div>
+        <p class="map-picker-hint" style="margin-bottom:12px">اختر العميل أولاً ثم اضغط «عنوان العميل» أو حدّد الموقع من الخريطة</p>
+        <div class="map-picker-toolbar">
+          <input type="text" id="contract-map-search" class="map-picker-search" placeholder="ابحث عن المبنى أو الحي...">
+          <button type="button" class="btn btn-secondary btn-sm" id="contract-map-myloc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14"><path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            موقعي
+          </button>
+        </div>
+        <div id="contract-map-picker" class="client-map-picker"></div>
+        <div class="map-picker-coords" id="contract-map-coords">اختر عميلاً أو حدّد الموقع على الخريطة</div>
+        <input type="hidden" id="f-contract-maps-url">
+        <input type="hidden" id="f-contract-lat">
+        <input type="hidden" id="f-contract-lng">
+        <div class="form-grid" style="margin-top:14px">
+          <div class="field">
+            <label>المدينة</label>
+            <input type="text" id="f-contract-city" placeholder="مكة">
+          </div>
+          <div class="field">
+            <label>الحي</label>
+            <input type="text" id="f-contract-district" placeholder="الحي">
+          </div>
+          <div class="field form-full">
+            <div class="label-row">
+              <label>العنوان التفصيلي</label>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="copyContractAddressFromClient()">عنوان العميل</button>
+            </div>
+            <input type="text" id="f-contract-address" placeholder="يُنسخ من بيانات العميل أو يُدخل يدوياً">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
         <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="11" height="9" rx="1.5"/><path d="M4 2V1M9 2V1M1 5h11"/></svg>التواريخ والمدة</div>
         <div class="form-grid">
           <div class="field">
@@ -796,6 +836,9 @@ const CONTRACTS = [
     inv_status:    {{ contract_invoice_status(c)|tojson }},
     status:        {{ c.status|tojson }},
     reminder_date: {{ (c.reminder_date.isoformat() if c.reminder_date else '')|tojson }},
+    city:          {{ (c.city or '')|tojson }},
+    district:      {{ (c.district or '')|tojson }},
+    address:       {{ (c.address or '')|tojson }},
     notes:         {{ (c.notes or '')|tojson }},
     file_url:      {{ upload_url(c.file_path)|tojson }},
     file_name:     {{ contract_file_display_name(c.file_path)|tojson }},
@@ -1128,10 +1171,12 @@ function initContractClientSelect() {
 
 function resetContractForm() {
   document.getElementById('f-code').value = NEXT_CONTRACT_CODE;
-  ['f-end','f-reminder','f-notes','f-visits-month'].forEach(function(id) {
+  ['f-end','f-reminder','f-notes','f-visits-month','f-contract-city','f-contract-district','f-contract-address','f-contract-maps-url','f-contract-lat','f-contract-lng'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
+  var mapSearch = document.getElementById('contract-map-search');
+  if (mapSearch) mapSearch.value = '';
   var startEl = document.getElementById('f-start');
   if (startEl) startEl.value = new Date().toISOString().split('T')[0];
   var durEl = document.getElementById('f-duration');
@@ -1157,7 +1202,106 @@ function openAddModal() {
   document.getElementById('modal-add').dataset.editId = '';
   resetContractForm();
   fillClientSelect(null);
+  openContractFormModal(function () {
+    if (window.LiftCoreMapPicker) LiftCoreMapPicker.reset();
+  });
+}
+
+function buildClientLocationQuery(c) {
+  return [c.address, c.district, c.city, 'Saudi Arabia'].filter(Boolean).join(', ');
+}
+
+function setContractMapSearchQuery(text) {
+  var search = document.getElementById('contract-map-search');
+  if (search && text) search.value = text;
+}
+
+function copyContractAddressFromClient() {
+  var clientSel = document.getElementById('f-client-sel');
+  var id = parseInt(clientSel && clientSel.value, 10);
+  if (!id) {
+    alert('اختر العميل أولاً');
+    return;
+  }
+  var c = CUSTOMERS.find(function(x) { return x.id === id; });
+  if (!c) return;
+  if (!c.address && !c.city && !c.district && !c.lat) {
+    alert('لا يوجد عنوان مسجّل لهذا العميل في صفحة العملاء');
+    return;
+  }
+  document.getElementById('f-contract-city').value = c.city || '';
+  document.getElementById('f-contract-district').value = c.district || '';
+  document.getElementById('f-contract-address').value = c.address || '';
+  var mapQuery = buildClientLocationQuery(c);
+  setContractMapSearchQuery(c.address || mapQuery);
+  if (typeof LiftCoreMapPicker === 'undefined') return;
+  if (c.lat && c.lng) {
+    LiftCoreMapPicker.setLocation(c.lat, c.lng, {
+      address: c.address || '',
+      city: c.city || '',
+      district: c.district || '',
+      maps_url: c.maps_url || ('https://www.google.com/maps?q=' + c.lat + ',' + c.lng),
+      formatted_address: c.address || mapQuery,
+    });
+    if (c.maps_url) document.getElementById('f-contract-maps-url').value = c.maps_url;
+    document.getElementById('f-contract-lat').value = c.lat;
+    document.getElementById('f-contract-lng').value = c.lng;
+  } else if (mapQuery) {
+    whenGoogleMapsReady(function () {
+      LiftCoreMapPicker.geocodeAddress(mapQuery, function (ok) {
+        if (!ok) alert('تعذّر تحديد الموقع على الخريطة — تحقق من العنوان');
+      });
+    });
+  }
+}
+
+function onContractMapPickerUpdate(data) {
+  if (!data) return;
+  if (data.city) document.getElementById('f-contract-city').value = data.city;
+  if (data.district) document.getElementById('f-contract-district').value = data.district;
+  if (data.address) {
+    var addr = document.getElementById('f-contract-address');
+    if (addr && !addr.value.trim()) addr.value = data.address;
+    var search = document.getElementById('contract-map-search');
+    if (search && !search.value.trim()) search.value = data.formatted_address || data.address;
+  }
+  if (data.lat) document.getElementById('f-contract-lat').value = data.lat;
+  if (data.lng) document.getElementById('f-contract-lng').value = data.lng;
+  if (data.maps_url) document.getElementById('f-contract-maps-url').value = data.maps_url;
+}
+
+function initContractMapPicker() {
+  if (typeof LiftCoreMapPicker === 'undefined') return false;
+  var coords = document.getElementById('contract-map-coords');
+  if (coords) coords.style.color = '';
+  LiftCoreMapPicker.hardReset();
+  var ok = LiftCoreMapPicker.init({
+    mapEl: 'contract-map-picker',
+    searchEl: 'contract-map-search',
+    myLocEl: 'contract-map-myloc',
+    coordsEl: 'contract-map-coords',
+    defaultCenter: { lat: 21.4225, lng: 39.8262 },
+    onUpdate: onContractMapPickerUpdate,
+  });
+  if (!ok && coords) {
+    coords.textContent = 'تعذّر تحميل الخريطة — تحقق من الاتصال أو مفتاح Google Maps';
+    coords.style.color = 'var(--danger)';
+  }
+  [120, 400, 800, 1400].forEach(function (ms) {
+    setTimeout(function () { LiftCoreMapPicker.resize(); }, ms);
+  });
+  return ok;
+}
+
+function openContractFormModal(afterOpen) {
   document.getElementById('modal-add').classList.add('open');
+  function bootMap() {
+    whenGoogleMapsReady(function () {
+      initContractMapPicker();
+      if (typeof afterOpen === 'function') afterOpen();
+    });
+  }
+  setTimeout(bootMap, 60);
 }
 
 function getSelectedElevatorIds() {
@@ -1196,6 +1340,9 @@ function saveContract() {
   fd.append('tax_pct', document.getElementById('f-tax-pct').value || '15');
   fd.append('payment_terms', document.getElementById('f-payment-terms').value);
   fd.append('status', document.getElementById('f-status-sel').value);
+  fd.append('city', document.getElementById('f-contract-city').value);
+  fd.append('district', document.getElementById('f-contract-district').value);
+  fd.append('address', document.getElementById('f-contract-address').value);
   fd.append('notes', document.getElementById('f-notes').value);
   getSelectedElevatorIds().forEach(function(id) { fd.append('elevator_ids', id); });
   var fileInput = document.getElementById('contract-file');
@@ -1230,12 +1377,40 @@ function editContract(id) {
   document.getElementById('f-visits-month').value = c.visits_month || 1;
   document.getElementById('f-payment-terms').value = c.pay_terms || 'دفعة واحدة';
   document.getElementById('f-notes').value = c.notes || '';
+  document.getElementById('f-contract-city').value = c.city || '';
+  document.getElementById('f-contract-district').value = c.district || '';
+  document.getElementById('f-contract-address').value = c.address || '';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, c.value, c.tax_pct || 15);
   loadClientElevators(c.elevator_ids || []);
   calcTotalVisits();
   setContractFileUi(c);
-  document.getElementById('modal-add').classList.add('open');
+  openContractFormModal(function () {
+    var loc = { address: c.address, district: c.district, city: c.city };
+    if (c.address || c.city || c.district) {
+      setContractMapSearchQuery(c.address || buildClientLocationQuery(loc));
+    }
+    var cust = CUSTOMERS.find(function(x) { return x.id === c.customer_id; });
+    if (typeof LiftCoreMapPicker === 'undefined') return;
+    if (cust && cust.lat && cust.lng) {
+      LiftCoreMapPicker.setLocation(cust.lat, cust.lng, {
+        address: c.address || cust.address || '',
+        city: c.city || cust.city || '',
+        district: c.district || cust.district || '',
+        maps_url: cust.maps_url || '',
+        formatted_address: c.address || cust.address || '',
+      });
+    } else {
+      var q = buildClientLocationQuery(loc);
+      if (q) {
+        whenGoogleMapsReady(function () {
+          LiftCoreMapPicker.geocodeAddress(q);
+        });
+      } else {
+        LiftCoreMapPicker.reset();
+      }
+    }
+  });
 }
 
 function viewContract(id) {

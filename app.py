@@ -411,6 +411,11 @@ with app.app_context():
                 ('control_detail', 'VARCHAR(200)'),
                 ('address', 'TEXT'),
             ],
+            'contracts': [
+                ('city', 'VARCHAR(100)'),
+                ('district', 'VARCHAR(100)'),
+                ('address', 'TEXT'),
+            ],
             'parts_billing': [
                 ('visit_id', 'INTEGER'), ('fault_id', 'INTEGER'), ('paid_amount', 'FLOAT'),
             ],
@@ -2155,6 +2160,9 @@ def _apply_contract_form(c, form):
     c.payment_terms = form.get('payment_terms', '')
     c.status = form.get('status', 'نشط')
     c.reminder_date = _parse_date(form.get('reminder_date'))
+    c.city = form.get('city', '')
+    c.district = form.get('district', '')
+    c.address = form.get('address', '')
     c.notes = form.get('notes', '')
     c.invoice_status = contract_invoice_status(c)
 

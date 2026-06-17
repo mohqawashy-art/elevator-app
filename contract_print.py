@@ -177,8 +177,20 @@ def company_info() -> dict:
     return info
 
 
-def customer_address_line(customer) -> str:
+def customer_address_line(customer, contract=None) -> str:
     """سطر العنوان كما في Word: وعنوانه / ..."""
+    if contract and ((contract.address or '').strip() or (contract.city or '').strip() or (contract.district or '').strip()):
+        city = (contract.city or '').strip()
+        if city in ('مكة', 'مكة المكرمة'):
+            return 'مكة المكرمــــة –'
+        parts = []
+        if contract.address:
+            parts.append(contract.address.strip())
+        if contract.district:
+            parts.append(contract.district)
+        if city and city not in str(parts):
+            parts.append(city)
+        return ' — '.join(parts) if parts else '—'
     if not customer:
         return '—'
     city = (customer.city or '').strip()
@@ -239,7 +251,7 @@ def contract_print_payload(contract_id: int) -> dict:
         'sign_gregorian': fmt_gregorian(sign_date),
         'start_gregorian': fmt_gregorian(contract.start_date),
         'end_gregorian': fmt_gregorian(contract.end_date),
-        'customer_address': customer_address_line(customer),
+        'customer_address': customer_address_line(customer, contract),
         'maint_phrase': MAINT_FREQ_PHRASE.get(maint, 'مرة شهريا'),
         'pay_phrase': PAY_TERMS_PHRASE.get(pay, 'مقدم'),
         'amount': amount,
