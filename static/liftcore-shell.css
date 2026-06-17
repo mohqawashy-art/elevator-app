@@ -85,6 +85,7 @@
   background: var(--bg2, #111720);
   border-bottom: 1px solid var(--border, rgba(100, 160, 255, 0.1));
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  direction: ltr;
 }
 
 .lc-header-tenant-brand {
@@ -122,16 +123,13 @@
   min-width: 0;
   grid-column: 3;
   justify-self: end;
-}
-
-html[dir="rtl"] .header-brand {
-  flex-direction: row-reverse;
+  direction: rtl;
 }
 
 html[dir="ltr"] .header-brand {
-  flex-direction: row;
   grid-column: 1;
   justify-self: start;
+  direction: ltr;
 }
 
 html[dir="ltr"] .header-actions {
