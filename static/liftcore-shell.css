@@ -930,3 +930,50 @@ html[data-theme="light"] .lc-welcome-logo {
   color: var(--text2);
   border-color: var(--border);
 }
+
+/* ── LiftCore: تبويبات ذهبية (تتجاوز CSS المدمج في الصفحات) ── */
+html:not([data-theme="light"]) #sidebar .nav-item,
+html:not([data-theme="light"]) .sidebar .nav-item {
+  color: #c9a14a !important;
+}
+
+html:not([data-theme="light"]) #sidebar .nav-item:hover,
+html:not([data-theme="light"]) .sidebar .nav-item:hover {
+  color: #e8cd86 !important;
+  background: rgba(201, 161, 74, 0.08) !important;
+}
+
+html:not([data-theme="light"]) #sidebar .nav-item.active,
+html:not([data-theme="light"]) .sidebar .nav-item.active {
+  color: #e8cd86 !important;
+  background: rgba(201, 161, 74, 0.14) !important;
+}
+
+html:not([data-theme="light"]) #sidebar .nav-item.active::before,
+html:not([data-theme="light"]) .sidebar .nav-item.active::before {
+  background: #e8cd86 !important;
+}
+
+html:not([data-theme="light"]) #sidebar .nav-item svg,
+html:not([data-theme="light"]) .sidebar .nav-item svg {
+  color: inherit !important;
+  opacity: 0.92;
+}
+
+html:not([data-theme="light"]) .tabs .tab,
+html:not([data-theme="light"]) .tab {
+  color: #c9a14a !important;
+}
+
+html:not([data-theme="light"]) .tabs .tab:hover,
+html:not([data-theme="light"]) .tab:hover:not(.active) {
+  color: #e8cd86 !important;
+  background: rgba(201, 161, 74, 0.08) !important;
+}
+
+html:not([data-theme="light"]) .tabs .tab.active,
+html:not([data-theme="light"]) .tab.active {
+  color: #e8cd86 !important;
+  border-color: rgba(201, 161, 74, 0.35) !important;
+  background: rgba(201, 161, 74, 0.14) !important;
+}
