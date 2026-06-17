@@ -1120,6 +1120,15 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
   html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar,
   html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar {
     top: var(--lc-header-h, 104px);
+    justify-content: center !important;
+  }
+
+  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .sidebar-nav,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .sidebar-nav,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar:not(:has(.sidebar-nav)),
+  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar:not(:has(.sidebar-nav)) {
+    justify-content: center !important;
+    width: 100% !important;
   }
 }
 
@@ -1261,13 +1270,13 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     min-height: unset !important;
     max-height: none !important;
     position: sticky !important;
-    top: var(--lc-header-h, 96px) !important;
+    top: var(--lc-header-h, 104px) !important;
     z-index: 180 !important;
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
-    justify-content: flex-start !important;
+    justify-content: center !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
     padding: 4px 12px !important;
@@ -1300,7 +1309,9 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
+    justify-content: center !important;
     flex: 1 1 auto !important;
+    width: 100% !important;
     min-width: 0 !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
