@@ -123,7 +123,9 @@
       return;
     }
     var prefix = state.provider === 'leaflet' ? 'OSM GPS' : 'GPS';
-    el.textContent = prefix + ': ' + Number(payload.lat).toFixed(6) + ', ' + Number(payload.lng).toFixed(6);
+    var gps = prefix + ': ' + Number(payload.lat).toFixed(6) + ', ' + Number(payload.lng).toFixed(6);
+    var place = payload.formatted_address || payload.address || '';
+    el.textContent = place ? place + ' · ' + gps : gps;
     el.classList.add('set');
     el.style.color = '';
   }
@@ -503,6 +505,10 @@
       return false;
     }
     setMarkerPosition(la, ln);
+    var search = state.opts && $(state.opts.searchEl);
+    if (search && (options.formatted_address || options.address)) {
+      search.value = options.formatted_address || options.address || '';
+    }
     if (options.address || options.city || options.district) {
       emitUpdate({
         lat: String(la),
@@ -511,6 +517,7 @@
         city: options.city || '',
         district: options.district || '',
         maps_url: options.maps_url || buildMapsUrl(la, ln),
+        formatted_address: options.formatted_address || options.address || '',
       });
     }
     return true;
