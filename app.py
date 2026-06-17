@@ -222,8 +222,14 @@ def get_app_settings():
 
 def brand_logo_url(settings=None):
     s = settings or get_app_settings()
-    if s.logo_path:
-        return url_for('static', filename=s.logo_path.replace('\\', '/'))
+    if s and s.logo_path:
+        rel = s.logo_path.replace('\\', '/')
+        full = os.path.join(app.static_folder, rel.replace('/', os.sep))
+        if os.path.isfile(full):
+            return url_for('static', filename=rel)
+    for name in ('logo.png', 'images/liftcore-brand-logo.png'):
+        if os.path.isfile(os.path.join(app.static_folder, name.replace('/', os.sep))):
+            return url_for('static', filename=name)
     return url_for('static', filename='logo.png')
 
 

@@ -1011,12 +1011,33 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
   }
 
   html.lc-layout-topnav body:has(#sidebar) .header-brand {
-    display: none !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    max-width: min(200px, 24vw) !important;
+    overflow: hidden !important;
   }
 
-  html.lc-layout-topnav .lc-header-tenant-brand,
+  html.lc-layout-topnav body:has(#sidebar) .lc-header-tenant-brand {
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  html.lc-layout-topnav .lc-header-tenant-logo {
+    width: auto !important;
+    max-width: min(var(--logo-w-sidebar, 120px), 20vw) !important;
+    max-height: 40px !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block !important;
+  }
+
   html.lc-layout-topnav .header-date,
-  html.lc-layout-topnav .header-page-title {
+  html.lc-layout-topnav .header-page-title,
+  html.lc-layout-topnav body:has(#sidebar) .header-brand .hamburger,
+  html.lc-layout-topnav body:has(#sidebar) .header-page {
     display: none !important;
   }
 
@@ -1198,6 +1219,35 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
   }
 
   html.lc-shell-ready body:has(#sidebar) .header-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    max-width: min(200px, 24vw) !important;
+    overflow: hidden !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) .lc-header-tenant-brand {
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) .lc-header-tenant-logo {
+    width: auto !important;
+    max-width: min(var(--logo-w-sidebar, 120px), 20vw) !important;
+    max-height: 40px !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) .header-page,
+  html.lc-shell-ready body:has(#sidebar) .header-page-title,
+  html.lc-shell-ready body:has(#sidebar) .header-date,
+  html.lc-shell-ready body:has(#sidebar) .header-brand .hamburger {
     display: none !important;
   }
 
