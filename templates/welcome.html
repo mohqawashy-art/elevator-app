@@ -157,9 +157,6 @@ document.addEventListener('DOMContentLoaded', function(){
   /* تشغيل الحركة */
   requestAnimationFrame(function(){ wm.classList.add('go'); });
 
-  /* اسم المستخدم — لاحقاً من جلسة Flask: {{ current_user.name }} */
-  // document.getElementById('userName').textContent = 'مهندس محمد';
-
   /* الخروج والانتقال للداش بورد بعد اكتمال المشهد */
   setTimeout(function(){
     document.body.classList.add('exit');
