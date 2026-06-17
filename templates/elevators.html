@@ -92,6 +92,8 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .btn-danger{background:rgba(224,72,72,.12);color:var(--danger);border:1px solid rgba(224,72,72,.15)}
 .btn-danger:hover{background:rgba(224,72,72,.22)}
 .btn-sm{padding:5px 10px;font-size:12px}
+.label-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.label-row label{margin-bottom:0}
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
 
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
@@ -690,6 +692,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <input type="text" id="f-elev-district" placeholder="الحي">
           </div>
           <div class="field form-full">
+            <div class="label-row">
+              <label>العنوان التفصيلي</label>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="copyElevAddressFromClient()">عنوان العميل</button>
+            </div>
+            <input type="text" id="f-elev-address" placeholder="يُنسخ من بيانات العميل أو يُدخل يدوياً">
+          </div>
+          <div class="field form-full">
             <label>اسم المبنى</label>
             <input type="text" id="f-building" placeholder="اسم المبنى">
           </div>
@@ -803,6 +812,7 @@ const ELEVATORS = [
     customer:     {{ (e.customer.name if e.customer else '')|tojson }},
     customer_name_en: {{ (e.customer.name_en if e.customer else '')|tojson }},
     building:     {{ (e.building_name or '')|tojson }},
+    address:      {{ (e.address or '')|tojson }},
     city:         {{ (e.city or '')|tojson }},
     district:     {{ (e.district or '')|tojson }},
     elev_type:    {{ (e.elev_type or '')|tojson }},
@@ -848,8 +858,10 @@ const CUSTOMERS = [
     name:     {{ c.name|tojson }},
     city:     {{ (c.city or '')|tojson }},
     district: {{ (c.district or '')|tojson }},
+    address:  {{ (c.address or '')|tojson }},
     lat:      {{ (c.lat or '')|tojson }},
     lng:      {{ (c.lng or '')|tojson }},
+    maps_url: {{ (c.maps_url or '')|tojson }},
   },
   {% endfor %}
 ];
@@ -965,13 +977,34 @@ function fillClientData() {
   document.getElementById('f-elev-district').value = c.district || '';
   var building = document.getElementById('f-building');
   if (building && !building.value.trim()) building.value = c.name || '';
+}
+
+function copyElevAddressFromClient() {
+  var id = parseInt(document.getElementById('f-client-sel').value, 10);
+  if (!id) {
+    alert('اختر العميل أولاً');
+    return;
+  }
+  var c = CUSTOMERS.find(function(x) { return x.id === id; });
+  if (!c) return;
+  if (!c.address && !c.city && !c.district && !c.lat) {
+    alert('لا يوجد عنوان مسجّل لهذا العميل في صفحة العملاء');
+    return;
+  }
+  document.getElementById('f-elev-city').value = c.city || '';
+  document.getElementById('f-elev-district').value = c.district || '';
+  var addr = document.getElementById('f-elev-address');
+  if (addr) addr.value = c.address || '';
   if (c.lat && c.lng && typeof LiftCoreMapPicker !== 'undefined') {
     LiftCoreMapPicker.setLocation(c.lat, c.lng, {
-      address: building ? building.value : '',
+      address: c.address || '',
       city: c.city || '',
       district: c.district || '',
-      maps_url: 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng,
+      maps_url: c.maps_url || ('https://www.google.com/maps?q=' + c.lat + ',' + c.lng),
     });
+    if (c.maps_url) document.getElementById('f-maps-url').value = c.maps_url;
+    document.getElementById('f-lat').value = c.lat;
+    document.getElementById('f-lng').value = c.lng;
   }
 }
 
@@ -979,6 +1012,10 @@ function onElevMapPickerUpdate(data) {
   if (!data) return;
   if (data.city) document.getElementById('f-elev-city').value = data.city;
   if (data.district) document.getElementById('f-elev-district').value = data.district;
+  if (data.address) {
+    var addr = document.getElementById('f-elev-address');
+    if (addr && !addr.value.trim()) addr.value = data.address;
+  }
   if (data.lat) document.getElementById('f-lat').value = data.lat;
   if (data.lng) document.getElementById('f-lng').value = data.lng;
   if (data.maps_url) document.getElementById('f-maps-url').value = data.maps_url;
@@ -1148,7 +1185,7 @@ function filterTable() {
 
 // ===== نماذج =====
 function resetElevatorForm() {
-  ['f-building','f-brand','f-model','f-serial','f-capacity-kg','f-floors','f-notes','f-maps-url','f-lat','f-lng'].forEach(function(id) {
+  ['f-building','f-elev-address','f-brand','f-model','f-serial','f-capacity-kg','f-floors','f-notes','f-maps-url','f-lat','f-lng'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1192,6 +1229,7 @@ function saveElevator() {
   var fd = new FormData();
   fd.append('customer_id', clientSel.value);
   fd.append('building_name', document.getElementById('f-building').value);
+  fd.append('address', document.getElementById('f-elev-address').value);
   fd.append('city', document.getElementById('f-elev-city').value);
   fd.append('district', document.getElementById('f-elev-district').value);
   fd.append('elev_type', document.getElementById('f-type-sel').value);
@@ -1229,6 +1267,7 @@ function editElevator(id) {
   fillClientSelect(e.customer_id);
   document.getElementById('f-elev-code').value = e.code;
   document.getElementById('f-building').value = e.building || '';
+  document.getElementById('f-elev-address').value = e.address || '';
   document.getElementById('f-elev-city').value = e.city || '';
   document.getElementById('f-elev-district').value = e.district || '';
   document.getElementById('f-type-sel').value = e.elev_type || 'مصعد ركاب';
@@ -1254,7 +1293,7 @@ function editElevator(id) {
       LiftCoreMapPicker.setLocation(c.lat, c.lng, {
         city: e.city || c.city || '',
         district: e.district || c.district || '',
-        address: e.building || '',
+        address: e.address || c.address || '',
       });
     } else if (window.LiftCoreMapPicker) {
       LiftCoreMapPicker.reset();
@@ -1281,6 +1320,7 @@ function viewElevator(id) {
       viewItem('الكود', esc(e.code), { style: 'font-family:var(--font-en);color:var(--accent)' }) +
       viewItem('العميل', esc(elevCustomer(e))) +
       viewItem('المبنى', esc(lcDisp(e.building || '—'))) +
+      viewItem('العنوان', esc(lcDisp(e.address || '—'))) +
       viewItem('المدينة', esc(lcDisp(e.city || '—'))) +
       viewItem('الحي', esc(lcDisp(e.district || '—'))) +
       '<div class="view-section">' + lcDisp('المواصفات الفنية') + '</div>' +

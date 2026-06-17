@@ -409,6 +409,7 @@ with app.app_context():
                 ('control_drive', 'VARCHAR(50)'),
                 ('control_operation', 'VARCHAR(50)'),
                 ('control_detail', 'VARCHAR(200)'),
+                ('address', 'TEXT'),
             ],
             'parts_billing': [
                 ('visit_id', 'INTEGER'), ('fault_id', 'INTEGER'), ('paid_amount', 'FLOAT'),
@@ -1728,6 +1729,7 @@ def elevator_add():
         building_name   = request.form.get('building_name', ''),
         city            = request.form.get('city', ''),
         district        = request.form.get('district', ''),
+        address         = request.form.get('address', ''),
         elev_type       = request.form.get('elev_type', ''),
         brand           = request.form.get('brand', ''),
         model           = request.form.get('model', ''),
@@ -1759,6 +1761,7 @@ def elevator_edit(id):
     e.building_name    = request.form.get('building_name', '')
     e.city             = request.form.get('city', '')
     e.district         = request.form.get('district', '')
+    e.address          = request.form.get('address', '')
     e.elev_type        = request.form.get('elev_type', '')
     e.brand            = request.form.get('brand', '')
     e.model            = request.form.get('model', '')

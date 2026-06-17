@@ -56,6 +56,7 @@ class Elevator(db.Model):
     building_name   = db.Column(db.String(200))
     city            = db.Column(db.String(100))
     district        = db.Column(db.String(100))
+    address         = db.Column(db.Text)
     elev_type       = db.Column(db.String(100))   # مصعد ركاب / بضائع / مستشفى
     brand           = db.Column(db.String(100))   # Otis / Kone / Schindler
     model           = db.Column(db.String(100))
