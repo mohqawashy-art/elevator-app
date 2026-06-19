@@ -154,16 +154,33 @@ def _resolve_field_technician_id():
 
 def _field_portal_context(tech_id: int) -> dict:
     from field_auth import technician_portal_kind, technician_portal_label
+    from operations import FAULT_OPEN
 
     tech = Technician.query.get_or_404(tech_id)
     kind = technician_portal_kind(tech)
+    has_faults = (
+        Fault.query.filter(
+            Fault.technician_id == tech_id,
+            Fault.status.in_(FAULT_OPEN),
+        ).count()
+        > 0
+    )
+    show_faults = kind in ('faults', 'both') or has_faults
+    show_visits = kind in ('maintenance', 'both')
+    if show_faults and not show_visits:
+        portal_label = technician_portal_label('faults')
+    elif show_visits and not show_faults:
+        portal_label = technician_portal_label('maintenance')
+    else:
+        portal_label = technician_portal_label(kind)
     return {
         'field_tech': tech,
         'tech_id': tech.id,
         'portal_kind': kind,
-        'portal_label': technician_portal_label(kind),
-        'show_visits_nav': kind in ('maintenance', 'both'),
-        'show_faults_nav': kind in ('faults', 'both'),
+        'portal_label': portal_label,
+        'show_visits_nav': show_visits,
+        'show_faults_nav': show_faults,
+        'has_assigned_faults': has_faults,
     }
 
 

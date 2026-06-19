@@ -11,11 +11,11 @@
   زيارات <strong>اليوم وغداً</strong> فقط — {{ payload.today }} / {{ payload.tomorrow }}
 </p>
 
-{% if portal_kind == 'both' %}
+{% if portal_kind == 'both' or (payload.show_visits and payload.show_faults) %}
 <div class="fp-tabs">
   <button type="button" class="fp-tab on" data-fp-tab="all">الكل</button>
-  <button type="button" class="fp-tab" data-fp-tab="visits">صيانة</button>
-  <button type="button" class="fp-tab" data-fp-tab="faults">أعطال</button>
+  {% if payload.show_visits %}<button type="button" class="fp-tab" data-fp-tab="visits">صيانة</button>{% endif %}
+  {% if payload.show_faults %}<button type="button" class="fp-tab" data-fp-tab="faults">أعطال</button>{% endif %}
 </div>
 {% endif %}
 
@@ -81,7 +81,7 @@
   {% endif %}
 </div>
 
-{% if portal_kind == 'both' %}
+{% if portal_kind == 'both' or (payload.show_visits and payload.show_faults) %}
 <div class="fp-panel" data-fp-panel="visits">
   {% if payload.visits_today or payload.visits_tomorrow %}
     {% for v in payload.visits %}

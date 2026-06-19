@@ -846,7 +846,14 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         tomorrow_visits = [v for v in visits if v.visit_date == tomorrow]
 
     faults: list = []
-    if show_faults:
+    has_assigned_faults = (
+        Fault.query.filter(
+            Fault.technician_id == tech_id,
+            Fault.status.in_(FAULT_OPEN),
+        ).count()
+        > 0
+    )
+    if show_faults or has_assigned_faults:
         faults = (
             Fault.query.filter(
                 Fault.technician_id == tech_id,
@@ -871,7 +878,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         'visits': [field_visit_summary(v, base_url) for v in visits],
         'faults': [field_fault_summary(f, base_url) for f in faults],
         'show_visits': show_visits,
-        'show_faults': show_faults,
+        'show_faults': show_faults or bool(faults),
     }
 
 

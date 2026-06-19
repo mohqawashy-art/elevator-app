@@ -418,7 +418,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             {% for t in technicians %}
             <tr onclick="viewTech({{ t.id }})">
               <td class="td-code">{{ t.code }}</td>
-              <td class="td-name"><span class="td-name-text">{{ t.name }}</span></td>
+              <td class="td-name td-name-photo">
+                {% if t.photo_path %}
+                <img class="tech-row-avatar" src="{{ upload_url(t.photo_path) }}" alt="">
+                {% else %}
+                <span class="tech-row-avatar tech-row-avatar-ph" aria-hidden="true">{{ (t.name or '?')[:1] }}</span>
+                {% endif %}
+                <span class="td-name-text">{{ t.name }}</span>
+              </td>
               <td style="direction:ltr;font-family:var(--font-en)">{{ t.phone or '—' }}</td>
               <td>{{ t.job_title or '—' }}</td>
               <td>{{ t.specialization or '—' }}</td>

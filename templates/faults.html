@@ -349,12 +349,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </select>
         <select class="filter-select" id="f-priority" onchange="filterTable()">
           <option value="">كل الأولويات</option>
-          <option>حرجة</option><option>عالية</option><option>متوسطة</option><option>منخفضة</option>
+          <option value="حرجة">حرجة</option>
+          <option value="عالية">عالية</option>
+          <option value="عاجلة">عاجلة</option>
+          <option value="متوسطة">متوسطة</option>
+          <option value="عادية">عادية</option>
+          <option value="منخفضة">منخفضة</option>
         </select>
         <select class="filter-select" id="f-status" onchange="filterTable()">
           <option value="">كل الحالات</option>
-          <option>مفتوح</option><option>مُسند</option><option>قيد المعالجة</option>
-          <option>انتظار قطع</option><option>تم الاصلاح</option><option>مغلق</option>
+          <option value="مفتوح">مفتوح</option>
+          <option value="قيد المعالجة">قيد المعالجة</option>
+          <option value="انتظار قطع">انتظار قطع</option>
+          <option value="تم الاصلاح">تم الاصلاح</option>
+          <option value="محلول">محلول</option>
+          <option value="مغلق">مغلق</option>
         </select>
         <select class="filter-select" id="f-category" onchange="filterTable()">
           <option value="">كل الأنواع</option>
@@ -363,11 +372,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <option>عطل إنذار طوارئ</option><option>عطل هيدروليك</option><option>أخرى</option>
         </select>
         <select class="filter-select" id="filter-billable" onchange="filterTable()">
-          <option value="">الكل</option>
+          <option value="">الكل (فوترة)</option>
           <option value="yes">قابل للفوترة</option>
           <option value="no">ضمن العقد</option>
         </select>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-fault-filters" onclick="clearAllFaultFilters()" style="display:none">مسح الفلاتر</button>
       </div>
+      <div id="fault-filter-hint" style="display:none;margin:-8px 0 12px;font-size:12px;color:var(--warning)"></div>
 
       <div class="table-wrap">
         <div class="table-scroll">
@@ -387,7 +398,29 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th>إجراءات</th>
               </tr>
             </thead>
-            <tbody id="table-body"></tbody>
+            <tbody id="table-body">
+            {% for f in faults %}
+            {% set elev = f.elevator %}
+            {% set cust = elev.customer if elev else none %}
+            <tr data-fault-id="{{ f.id }}">
+              <td class="td-code lc-code">{{ f.code }}</td>
+              <td class="lc-date" style="direction:ltr;font-family:var(--font-en)">{{ f.reported_at.strftime('%Y-%m-%d') if f.reported_at else '—' }}</td>
+              <td class="td-name">{{ cust.name if cust else '—' }}</td>
+              <td class="td-code">{{ elev.code if elev else '—' }}</td>
+              <td>{{ f.fault_type or '—' }}</td>
+              <td><span class="badge badge-active">{{ f.priority or '—' }}</span></td>
+              <td>{{ f.technician.name if f.technician else '—' }}</td>
+              <td>{{ f.response_time or '—' }}</td>
+              <td><span class="badge badge-expired">{{ f.status or '—' }}</span></td>
+              <td><span class="badge {{ 'badge-billable' if f.needs_parts else 'badge-cancelled' }}">{{ 'قابل للفوترة' if f.needs_parts else 'ضمن العقد' }}</span></td>
+              <td onclick="event.stopPropagation()">
+                <button class="btn btn-secondary btn-sm btn-icon" onclick="viewFault({{ f.id }})" title="عرض">👁</button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="11" style="text-align:center;padding:28px;color:var(--text3)">لا توجد أعطال مسجّلة</td></tr>
+            {% endfor %}
+            </tbody>
           </table>
         </div>
         <div class="table-footer">
@@ -803,14 +836,60 @@ const STATUS_BADGE = {
   'تم الاصلاح':'badge-active','محلول':'badge-active','مغلق':'badge-cancelled'
 };
 const PRIORITY_BADGE = {
-  'عادية':'badge-active','عاجلة':'badge-pending','حرجة':'badge-expired'
+  'حرجة':'badge-expired','عالية':'badge-pending','عاجلة':'badge-pending',
+  'متوسطة':'badge-active','عادية':'badge-active','منخفضة':'badge-active'
 };
+
+function faultMatchesPriority(f, pr) {
+  if (!pr) return true;
+  if (f.priority === pr) return true;
+  if (pr === 'متوسطة' && f.priority === 'عادية') return true;
+  if (pr === 'عادية' && f.priority === 'متوسطة') return true;
+  if (pr === 'عالية' && f.priority === 'عاجلة') return true;
+  if (pr === 'عاجلة' && f.priority === 'عالية') return true;
+  return false;
+}
+
+function clearAllFaultFilters() {
+  const search = document.getElementById('search-input');
+  if (search) search.value = '';
+  ['f-client', 'f-priority', 'f-status', 'f-category', 'filter-billable'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  if (tablePager) tablePager.resetPage();
+  filterTable();
+}
+
+function updateFaultFilterHint() {
+  const parts = [];
+  const s = (document.getElementById('search-input')?.value || '').trim();
+  const cl = document.getElementById('f-client')?.value || '';
+  const pr = document.getElementById('f-priority')?.value || '';
+  const st = document.getElementById('f-status')?.value || '';
+  const cat = document.getElementById('f-category')?.value || '';
+  const bl = document.getElementById('filter-billable')?.value || '';
+  if (s) parts.push('بحث: ' + s);
+  if (cl) parts.push('عميل: ' + cl);
+  if (pr) parts.push('أولوية: ' + pr);
+  if (st) parts.push('حالة: ' + st);
+  if (cat) parts.push('نوع: ' + cat);
+  if (bl) parts.push('فوترة: ' + bl);
+  const hint = document.getElementById('fault-filter-hint');
+  const btn = document.getElementById('btn-clear-fault-filters');
+  const active = parts.length > 0;
+  if (hint) {
+    hint.style.display = active ? 'block' : 'none';
+    hint.textContent = active ? 'فلتر نشط — ' + parts.join(' · ') + ' (قد يخفي أعطالاً من الجدول)' : '';
+  }
+  if (btn) btn.style.display = active ? 'inline-flex' : 'none';
+}
 
 let currentDeleteId = null;
 var filtered = [...FAULTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'reported_at',
-  defaultDir: 'asc',
+  defaultDir: 'desc',
   dateCols: ['reported_at'],
   getters: {
     customer: function (f) {
@@ -896,13 +975,14 @@ function filterTable() {
   const cat = document.getElementById('f-category')?.value||'';
   const bl = document.getElementById('filter-billable')?.value||'';
   filtered = FAULTS.filter(f=>
-    (!s  || f.code.toLowerCase().includes(s) || (f.customer||'').includes(s) || (f.fault_type||'').includes(s)) &&
+    (!s  || f.code.toLowerCase().includes(s) || (f.customer||'').includes(s) || (f.fault_type||'').includes(s) || (f.client_report||'').includes(s)) &&
     (!cl || f.customer === cl) &&
-    (!pr || f.priority === pr) &&
+    faultMatchesPriority(f, pr) &&
     (!st || f.status === st) &&
     (!cat || f.fault_type === cat) &&
     (!bl || (bl==='yes' ? f.needs_parts : !f.needs_parts))
   );
+  updateFaultFilterHint();
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
@@ -1134,7 +1214,7 @@ OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label:
 initFaultClientSelect();
 updateSidebarBadge();
 if (tableSort) tableSort.bindHeaders();
-renderTable(FAULTS);
+clearAllFaultFilters();
 window.__lcRefreshPage = function () {
   if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : FAULTS);
