@@ -631,7 +631,7 @@ def build_route_whatsapp(
             lines.append(f'   🗺 {link}')
         lines.append('')
     if base_url:
-        lines.append(f'🔗 مهامك على الجوال:\n{base_url.rstrip("/")}/field?tech_id={tech.id}')
+        lines.append(f'🔗 مهامك على الجوال:\n{base_url.rstrip("/")}/field/login')
     return whatsapp_url(tech_whatsapp_phone(tech), '\n'.join(lines))
 
 
@@ -658,7 +658,7 @@ def build_fault_whatsapp(fault: Fault, base_url: str = '') -> str:
     if link:
         lines.append(f'🗺 {link}')
     if base_url:
-        lines.append(f'\n🔗 نفّذ من الجوال:\n{base_url.rstrip("/")}/field/fault/{fault.id}?tech_id={fault.technician_id}')
+        lines.append(f'\n🔗 نفّذ من الجوال:\n{base_url.rstrip("/")}/field/fault/{fault.id}')
     return whatsapp_url(tech_whatsapp_phone(fault.technician), '\n'.join(lines))
 
 
@@ -821,38 +821,57 @@ def parts_alerts() -> list[dict]:
     return alerts
 
 
-def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | None = None) -> dict:
-    """مهام الفني على الجوال: اليوم وغداً فقط — لا يُعرض الشهر كاملاً."""
+def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | None = None, portal_kind: str = 'both') -> dict:
+    """مهام الفني على الجوال: اليوم وغداً فقط — حسب فريق الفني."""
     tech = Technician.query.get_or_404(tech_id)
     today = on_date or date.today()
     tomorrow = today + timedelta(days=1)
-    visits = (
-        MaintenanceVisit.query.filter(
-            MaintenanceVisit.technician_id == tech_id,
-            MaintenanceVisit.visit_date.in_([today, tomorrow]),
-            MaintenanceVisit.status.in_(VISIT_ACTIVE),
+    show_visits = portal_kind in ('maintenance', 'both')
+    show_faults = portal_kind in ('faults', 'both')
+
+    today_visits: list = []
+    tomorrow_visits: list = []
+    visits: list = []
+    if show_visits:
+        visits = (
+            MaintenanceVisit.query.filter(
+                MaintenanceVisit.technician_id == tech_id,
+                MaintenanceVisit.visit_date.in_([today, tomorrow]),
+                MaintenanceVisit.status.in_(VISIT_ACTIVE),
+            )
+            .order_by(MaintenanceVisit.visit_date, MaintenanceVisit.route_order)
+            .all()
         )
-        .order_by(MaintenanceVisit.visit_date, MaintenanceVisit.route_order)
-        .all()
-    )
-    today_visits = [v for v in visits if v.visit_date == today]
-    tomorrow_visits = [v for v in visits if v.visit_date == tomorrow]
-    faults = (
-        Fault.query.filter(
-            Fault.technician_id == tech_id,
-            Fault.status.in_(FAULT_OPEN),
+        today_visits = [v for v in visits if v.visit_date == today]
+        tomorrow_visits = [v for v in visits if v.visit_date == tomorrow]
+
+    faults: list = []
+    if show_faults:
+        faults = (
+            Fault.query.filter(
+                Fault.technician_id == tech_id,
+                Fault.status.in_(FAULT_OPEN),
+            )
+            .order_by(Fault.reported_at.desc())
+            .all()
         )
-        .order_by(Fault.reported_at.desc())
-        .all()
-    )
+
     return {
-        'technician': {'id': tech.id, 'name': tech.name, 'phone': tech_whatsapp_phone(tech)},
+        'technician': {
+            'id': tech.id,
+            'name': tech.name,
+            'phone': tech_whatsapp_phone(tech),
+            'team': tech.team or 'عام',
+            'portal_kind': portal_kind,
+        },
         'today': str(today),
         'tomorrow': str(tomorrow),
         'visits_today': [field_visit_summary(v, base_url) for v in today_visits],
         'visits_tomorrow': [field_visit_summary(v, base_url) for v in tomorrow_visits],
         'visits': [field_visit_summary(v, base_url) for v in visits],
         'faults': [field_fault_summary(f, base_url) for f in faults],
+        'show_visits': show_visits,
+        'show_faults': show_faults,
     }
 
 
@@ -872,7 +891,7 @@ def field_visit_summary(v: MaintenanceVisit, base_url: str = '') -> dict:
         'maps_url': customer_maps_link(cust) if cust else '',
         'building_photo': customer_photo_url(cust, base_url),
         'elevator': v.elevator.code if v.elevator else '',
-        'url': f'/field/visit/{v.id}?tech_id={v.technician_id}',
+        'url': f'/field/visit/{v.id}',
     }
 
 
@@ -894,7 +913,7 @@ def field_fault_summary(f: Fault, base_url: str = '') -> dict:
         'building_photo': customer_photo_url(cust, base_url),
         'elevator': elev.code if elev else '',
         'needs_parts': bool(f.needs_parts),
-        'url': f'/field/fault/{f.id}?tech_id={f.technician_id}',
+        'url': f'/field/fault/{f.id}',
     }
 
 
@@ -935,7 +954,6 @@ def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
     elev = f.elevator
     cust = elev.customer if elev else None
     tech = f.technician
-    report_qs = f'?tech_id={tech_id or f.technician_id}' if (tech_id or f.technician_id) else ''
     return {
         'id': f.id,
         'code': f.code,
@@ -955,7 +973,7 @@ def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
         'elevator': elev.code if elev else '',
         'technician_id': f.technician_id,
         'technician_name': tech.name if tech else '—',
-        'report_url': f'/field/fault/{f.id}/report{report_qs}',
+        'report_url': f'/field/fault/{f.id}/report',
         'has_report': bool(f.report_json),
     }
 

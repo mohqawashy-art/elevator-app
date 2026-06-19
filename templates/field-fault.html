@@ -1,93 +1,66 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>{{ fault.code }} — عطل</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0b0f17;--card:#161e2b;--border:rgba(100,160,255,.15);--accent:#2a7fff;--success:#1fb87a;--warning:#e09030;--danger:#e04848;--text:#e4eaf5;--muted:#8a9bb8}
-body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);padding:16px;padding-bottom:40px}
-a.back{color:var(--muted);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:14px}
-.hdr h1{font-size:17px;margin-bottom:4px}
-.hdr p{font-size:12px;color:var(--muted)}
-.alert{background:rgba(224,72,72,.12);border:1px solid rgba(224,72,72,.25);border-radius:10px;padding:12px;margin:12px 0}
-.alert-title{font-size:11px;color:var(--danger);margin-bottom:6px;font-weight:600}
-.alert-body{font-size:14px;line-height:1.6}
-.photo{width:100%;max-height:200px;object-fit:cover;border-radius:12px;margin:14px 0;border:1px solid var(--border)}
-.info{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:14px 0}
-.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
-.row:last-child{border:none}
-.maps{display:block;text-align:center;background:var(--accent);color:#fff;padding:14px;border-radius:10px;text-decoration:none;font-weight:600;margin:10px 0}
-label{display:block;font-size:12px;color:var(--muted);margin:12px 0 6px}
-textarea,input,select{width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:#111720;color:var(--text);font-family:inherit;font-size:14px}
-textarea{min-height:80px;resize:vertical}
-.btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:600;margin-top:12px;cursor:pointer;font-family:inherit}
-.btn-success{background:var(--success);color:#fff}
-.btn-warning{background:rgba(224,144,48,.2);color:var(--warning);border:1px solid rgba(224,144,48,.3)}
-.parts-box{background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:14px;margin-top:20px}
-</style>
-{% include 'partials/liftcore_head.html' %}
-<link rel="stylesheet" href="/static/liftcore-layout.css">
-<script src="/static/liftcore-dates.js" defer></script>
-<script src="/static/liftcore-format.js?v=15"></script>
+{% extends 'field_base.html' %}
+{% set fp_nav = 'faults' %}
+{% set show_bottom_nav = false %}
+{% block fp_title %}{{ fault.code }} — عطل{% endblock %}
 
-</head>
-<body>
-<a class="back" href="/field?tech_id={{ tech_id or fault.technician_id }}">← مهامي</a>
-<div class="hdr">
-  <h1>{{ fault.code }} — {{ fault.customer }}</h1>
-  <p>{{ fault.customer_code }} · {{ fault.district }} · أولوية: {{ fault.priority }}</p>
-</div>
+{% block fp_content %}
+<a class="fp-back" href="{{ url_for('field_home') }}">← مهامي</a>
 
-<div class="alert">
-  <div class="alert-title">بلاغ العميل (للقراءة)</div>
-  <div class="alert-body">{{ fault.client_report or '—' }}</div>
+<div class="fp-title" style="font-size:17px;margin-bottom:4px">{{ fault.code }} — {{ fault.customer }}</div>
+<p style="font-size:12px;color:var(--fp-muted);margin-bottom:14px">{{ fault.customer_code }} · {{ fault.district }} · أولوية: {{ fault.priority }}</p>
+
+<div style="background:rgba(224,72,72,.12);border:1px solid rgba(224,72,72,.25);border-radius:10px;padding:12px;margin-bottom:14px">
+  <div style="font-size:11px;color:var(--fp-danger);margin-bottom:6px;font-weight:600">بلاغ العميل</div>
+  <div style="font-size:14px;line-height:1.6">{{ fault.client_report or '—' }}</div>
 </div>
 
 {% if fault.building_photo %}
-<img class="photo" src="{{ fault.building_photo }}" alt="صورة المبنى">
+<img src="{{ fault.building_photo }}" alt="صورة المبنى" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px;margin-bottom:14px;border:1px solid var(--fp-border)">
 {% endif %}
 
-<div class="info">
-  <div class="row"><span>نوع العطل</span><span>{{ fault.fault_type or '—' }}</span></div>
-  <div class="row"><span>المصعد</span><span style="font-family:monospace">{{ fault.elevator }}</span></div>
-  <div class="row"><span>الحالة</span><span>{{ fault.status }}</span></div>
-  <div class="row"><span>العنوان</span><span style="max-width:60%;text-align:left">{{ fault.address or '—' }}</span></div>
+<div class="fp-info">
+  <div class="fp-row"><span>نوع العطل</span><span>{{ fault.fault_type or '—' }}</span></div>
+  <div class="fp-row"><span>المصعد</span><span style="font-family:monospace">{{ fault.elevator }}</span></div>
+  <div class="fp-row"><span>الحالة</span><span>{{ fault.status }}</span></div>
+  <div class="fp-row"><span>العنوان</span><span style="max-width:58%;text-align:left">{{ fault.address or '—' }}</span></div>
 </div>
 
 {% if fault.maps_url %}
-<a class="maps" href="{{ fault.maps_url }}" target="_blank" rel="noopener">🗺 فتح الموقع والتنقل</a>
+<a class="fp-maps" href="{{ fault.maps_url }}" target="_blank" rel="noopener">🗺 فتح الموقع والتنقل</a>
 {% endif %}
 
-<a class="maps" href="{{ fault.report_url }}" style="background:var(--success);margin-bottom:12px">📋 فتح تقرير العطل</a>
+<a class="fp-maps" href="{{ fault.report_url }}" style="background:var(--fp-success);margin-bottom:12px">📋 فتح تقرير العطل</a>
 
 <form method="post" action="/field/fault/{{ fault.id }}/complete">
   <input type="hidden" name="tech_id" value="{{ tech_id or fault.technician_id }}">
-  <label>تشخيص الفني / الملاحظات</label>
-  <textarea name="tech_notes" placeholder="ما وجدته في الموقع...">{{ fault.tech_notes }}</textarea>
-  <label>طريقة الحل</label>
-  <textarea name="resolution" placeholder="كيف تم الإصلاح...">{{ fault.resolution }}</textarea>
-  <label>الحالة</label>
-  <select name="status">
-    <option value="قيد المعالجة" {% if fault.status == 'قيد المعالجة' %}selected{% endif %}>قيد المعالجة</option>
-    <option value="تم الاصلاح" {% if fault.status in ['تم الاصلاح', 'محلول'] %}selected{% endif %}>تم الاصلاح</option>
-    <option value="انتظار قطع" {% if fault.status == 'انتظار قطع' %}selected{% endif %}>انتظار قطع</option>
-  </select>
-  <button class="btn btn-success" type="submit">حفظ التقرير</button>
+  <div class="fp-field" style="margin-top:16px">
+    <label>تشخيص الفني / الملاحظات</label>
+    <textarea name="tech_notes" style="width:100%;min-height:80px;padding:12px;border-radius:8px;border:1px solid var(--fp-border);background:#111720;color:var(--fp-text);font-family:inherit" placeholder="ما وجدته في الموقع...">{{ fault.tech_notes }}</textarea>
+  </div>
+  <div class="fp-field">
+    <label>طريقة الحل</label>
+    <textarea name="resolution" style="width:100%;min-height:80px;padding:12px;border-radius:8px;border:1px solid var(--fp-border);background:#111720;color:var(--fp-text);font-family:inherit" placeholder="كيف تم الإصلاح...">{{ fault.resolution }}</textarea>
+  </div>
+  <div class="fp-field">
+    <label>الحالة</label>
+    <select name="status" style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--fp-border);background:#111720;color:var(--fp-text);font-family:inherit">
+      <option value="قيد المعالجة" {% if fault.status == 'قيد المعالجة' %}selected{% endif %}>قيد المعالجة</option>
+      <option value="تم الاصلاح" {% if fault.status in ['تم الاصلاح', 'محلول'] %}selected{% endif %}>تم الاصلاح</option>
+      <option value="انتظار قطع" {% if fault.status == 'انتظار قطع' %}selected{% endif %}>انتظار قطع</option>
+    </select>
+  </div>
+  <button type="submit" class="fp-submit" style="margin-top:12px">حفظ التقرير</button>
 </form>
 
-<div class="parts-box">
-  <label>يحتاج قطع غيار؟</label>
-  <p style="font-size:11px;color:var(--muted);margin-bottom:10px">سيُبلّغ المكتب لتأكيد السعر مع العميل وتوفير القطع</p>
+<div style="background:var(--fp-card);border:1px dashed var(--fp-border);border-radius:12px;padding:14px;margin-top:20px">
+  <label style="display:block;font-size:12px;color:var(--fp-muted);margin-bottom:8px">يحتاج قطع غيار؟</label>
+  <p style="font-size:11px;color:var(--fp-muted);margin-bottom:10px">سيُبلّغ المكتب لتأكيد السعر مع العميل</p>
   <form method="post" action="/field/fault/{{ fault.id }}/request-parts">
     <input type="hidden" name="tech_id" value="{{ tech_id or fault.technician_id }}">
-    <textarea name="parts_description" placeholder="وصف القطع المطلوبة..." required></textarea>
-    <label>السعر المقترح للعميل (<span class="lc-sar" role="img" aria-label="ريال"></span>)</label>
-    <input type="number" name="sell_price" step="0.01" min="0" placeholder="0.00">
-    <button class="btn btn-warning" type="submit">طلب قطع غيار من المكتب</button>
+    <textarea name="parts_description" required style="width:100%;min-height:70px;padding:12px;border-radius:8px;border:1px solid var(--fp-border);background:#111720;color:var(--fp-text);font-family:inherit;margin-bottom:10px" placeholder="وصف القطع المطلوبة..."></textarea>
+    <label style="font-size:12px;color:var(--fp-muted)">السعر المقترح (⃁)</label>
+    <input type="number" name="sell_price" step="0.01" min="0" style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--fp-border);background:#111720;color:var(--fp-text);margin:6px 0 10px">
+    <button type="submit" class="fp-submit" style="background:rgba(224,144,48,.25);color:var(--fp-warning);border:1px solid rgba(224,144,48,.35)">طلب قطع غيار من المكتب</button>
   </form>
 </div>
-</body>
-</html>
+{% endblock %}

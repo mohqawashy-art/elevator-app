@@ -1,0 +1,87 @@
+/* LiftCore — بوابة الفني (جوال) */
+:root{
+  --fp-bg:#0b0f17;--fp-card:#161e2b;--fp-border:rgba(100,160,255,.15);
+  --fp-accent:#2a7fff;--fp-success:#1fb87a;--fp-danger:#e04848;--fp-warning:#e09030;
+  --fp-gold:#c9a14a;--fp-text:#e4eaf5;--fp-muted:#8a9bb8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body.fp-body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--fp-bg);color:var(--fp-text);min-height:100vh;padding-bottom:72px}
+.fp-top{
+  position:sticky;top:0;z-index:40;background:rgba(11,15,23,.96);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--fp-border);padding:12px 16px;
+}
+.fp-top-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.fp-brand{font-size:13px;font-weight:700;color:var(--fp-gold)}
+.fp-tech-name{font-size:15px;font-weight:600}
+.fp-team{font-size:10px;color:var(--fp-muted);margin-top:2px}
+.fp-badge-team{display:inline-block;font-size:10px;padding:3px 8px;border-radius:10px;margin-top:6px}
+.fp-badge-maint{background:rgba(42,127,255,.15);color:var(--fp-accent)}
+.fp-badge-faults{background:rgba(224,72,72,.12);color:#ff8a8a}
+.fp-badge-both{background:rgba(201,161,74,.12);color:var(--fp-gold)}
+.fp-status{font-size:10px;display:flex;align-items:center;gap:5px;color:var(--fp-muted)}
+.fp-status i{width:7px;height:7px;border-radius:50%;background:var(--fp-success)}
+.fp-status.offline i{background:var(--fp-warning)}
+.fp-status.sync i{background:var(--fp-accent);animation:fpPulse 1s infinite}
+@keyframes fpPulse{50%{opacity:.4}}
+.fp-actions{display:flex;gap:6px}
+.fp-btn-icon{
+  background:var(--fp-card);border:1px solid var(--fp-border);color:var(--fp-muted);
+  border-radius:8px;padding:7px 10px;font-size:11px;text-decoration:none;font-family:inherit;cursor:pointer;
+}
+.fp-content{padding:16px}
+.fp-section{font-size:12px;color:var(--fp-muted);margin:18px 0 10px;display:flex;align-items:center;gap:8px}
+.fp-count{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(42,127,255,.15);color:var(--fp-accent)}
+.fp-card{
+  background:var(--fp-card);border:1px solid var(--fp-border);border-radius:12px;padding:14px;
+  margin-bottom:10px;text-decoration:none;color:inherit;display:block;
+}
+.fp-card:active{opacity:.88}
+.fp-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.fp-code{font-family:monospace;font-size:12px;color:var(--fp-accent)}
+.fp-priority{font-size:10px;padding:2px 8px;border-radius:8px}
+.fp-p-critical{background:rgba(255,59,59,.15);color:#ff6b6b}
+.fp-p-high{background:rgba(224,72,72,.15);color:var(--fp-danger)}
+.fp-p-normal{background:rgba(42,127,255,.1);color:var(--fp-accent)}
+.fp-title{font-size:15px;font-weight:600;margin:6px 0 4px}
+.fp-meta{font-size:12px;color:var(--fp-muted);line-height:1.5}
+.fp-district{display:inline-block;margin-top:6px;font-size:11px;background:rgba(200,160,85,.12);color:#c8a055;padding:2px 8px;border-radius:6px}
+.fp-empty{text-align:center;padding:36px 20px;color:var(--fp-muted);font-size:14px;line-height:1.7}
+.fp-tabs{display:flex;gap:6px;margin-bottom:14px}
+.fp-tab{
+  flex:1;text-align:center;padding:10px;border-radius:10px;font-size:12px;font-weight:600;
+  background:var(--fp-card);border:1px solid var(--fp-border);color:var(--fp-muted);cursor:pointer;font-family:inherit;
+}
+.fp-tab.on{background:rgba(42,127,255,.15);border-color:rgba(42,127,255,.35);color:var(--fp-accent)}
+.fp-panel{display:none}
+.fp-panel.on{display:block}
+.fp-err{background:rgba(224,72,72,.1);border:1px solid rgba(224,72,72,.3);color:#ff8a8a;padding:12px;border-radius:10px;margin-bottom:16px;font-size:13px}
+.fp-back{display:inline-flex;align-items:center;gap:6px;color:var(--fp-muted);text-decoration:none;font-size:13px;margin-bottom:12px}
+.fp-info{background:var(--fp-card);border:1px solid var(--fp-border);border-radius:12px;padding:14px;margin:14px 0}
+.fp-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--fp-border);font-size:13px}
+.fp-row:last-child{border:none}
+.fp-row span:first-child{color:var(--fp-muted)}
+.fp-maps{display:block;text-align:center;background:var(--fp-accent);color:#fff;padding:14px;border-radius:10px;text-decoration:none;font-weight:600;margin:10px 0}
+.fp-btn-report{display:block;text-align:center;background:var(--fp-success);color:#fff;padding:16px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px;margin:16px 0}
+.fp-hint{font-size:12px;color:var(--fp-muted);line-height:1.6;margin:12px 0;padding:12px;background:rgba(224,144,48,.08);border-radius:10px;border:1px solid rgba(224,144,48,.2)}
+.fp-bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(19,27,39,.98);
+  border-top:1px solid var(--fp-border);display:flex;padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+}
+.fp-nav-item{flex:1;text-align:center;padding:8px 4px;font-size:10px;color:var(--fp-muted);text-decoration:none}
+.fp-nav-item.on{color:var(--fp-accent)}
+.fp-nav-item svg{display:block;margin:0 auto 4px;width:18px;height:18px}
+
+/* تسجيل الدخول */
+.fp-login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--fp-bg)}
+.fp-login{max-width:360px;width:100%}
+.fp-login h1{font-size:20px;color:var(--fp-gold);text-align:center;margin-bottom:6px}
+.fp-login .sub{text-align:center;font-size:13px;color:var(--fp-muted);margin-bottom:24px;line-height:1.6}
+.fp-field{margin-bottom:16px}
+.fp-field label{display:block;font-size:12px;color:var(--fp-muted);margin-bottom:6px}
+.fp-field input{
+  width:100%;padding:14px;border-radius:10px;border:1px solid var(--fp-border);
+  background:#111720;color:var(--fp-text);font-size:15px;font-family:inherit;
+}
+.fp-field input:focus{outline:none;border-color:var(--fp-gold)}
+.fp-submit{width:100%;padding:14px;border:none;border-radius:10px;background:var(--fp-gold);color:#0b0f17;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:8px}
+.fp-login-err{background:rgba(224,72,72,.1);border:1px solid rgba(224,72,72,.25);color:#ff8a8a;padding:12px;border-radius:10px;margin-bottom:16px;font-size:13px}

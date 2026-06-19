@@ -108,8 +108,8 @@ db.init_app(app)
 import installation.models  # noqa: F401, E402
 from installation.config import install_module_enabled
 
-PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version'})
-PUBLIC_PATH_PREFIXES = ('/field', '/static')
+PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'field_login', 'field_logout'})
+PUBLIC_PATH_PREFIXES = ('/static',)
 
 
 def current_user():
@@ -137,6 +137,36 @@ def require_admin():
     return user
 
 
+def _resolve_field_technician_id():
+    """جلسة الفني أو معاينة المشرف (?tech_id=)."""
+    from field_auth import field_session_technician_id
+
+    tid = field_session_technician_id()
+    if tid:
+        return tid
+    user = current_user()
+    if user and user.role in ('admin', 'manager'):
+        preview = request.args.get('tech_id', type=int)
+        if preview:
+            return preview
+    return None
+
+
+def _field_portal_context(tech_id: int) -> dict:
+    from field_auth import technician_portal_kind, technician_portal_label
+
+    tech = Technician.query.get_or_404(tech_id)
+    kind = technician_portal_kind(tech)
+    return {
+        'field_tech': tech,
+        'tech_id': tech.id,
+        'portal_kind': kind,
+        'portal_label': technician_portal_label(kind),
+        'show_visits_nav': kind in ('maintenance', 'both'),
+        'show_faults_nav': kind in ('faults', 'both'),
+    }
+
+
 @app.before_request
 def enforce_auth():
     if request.endpoint in PUBLIC_ENDPOINTS:
@@ -145,6 +175,14 @@ def enforce_auth():
     for prefix in PUBLIC_PATH_PREFIXES:
         if path.startswith(prefix):
             return None
+    if path.startswith('/field') or path.startswith('/api/field'):
+        tech_id = _resolve_field_technician_id()
+        if tech_id:
+            g.field_tech_id = tech_id
+            return None
+        if path.startswith('/api/field'):
+            return jsonify({'error': 'يجب تسجيل دخول الفني'}), 401
+        return redirect(url_for('field_login', next=request.path))
     user = current_user()
     if user:
         g.user = user
@@ -2388,6 +2426,7 @@ def _apply_technician_form(t, form):
     t.salary = float(salary) if salary not in (None, '') else None
     t.emergency = form.get('emergency') == 'on'
     t.status = form.get('status', 'متاح')
+    t.team = form.get('team', 'عام') or 'عام'
     t.notes = form.get('notes', '')
 
 
@@ -3174,52 +3213,109 @@ def api_dispatch_fault(fault_id):
 
 
 # =============================================
-# واجهة الفني — الجوال
+# واجهة الفني — بوابة الجوال (تسجيل دخول + فريق صيانة/أعطال)
 # =============================================
+@app.route('/field/login', methods=['GET', 'POST'])
+def field_login():
+    from field_auth import (
+        field_login_technician,
+        find_technician_by_login,
+        verify_technician_pin,
+    )
+
+    if _resolve_field_technician_id() and not request.args.get('tech_id'):
+        return redirect(url_for('field_home'))
+
+    error = None
+    login_id = ''
+    next_url = request.args.get('next') or request.form.get('next') or ''
+
+    if request.method == 'POST':
+        login_id = (request.form.get('login_id') or '').strip()
+        pin = (request.form.get('pin') or '').strip()
+        tech = find_technician_by_login(login_id)
+        if not tech:
+            error = 'لم يُعثر على فني بهذا الكود أو الجوال'
+        elif not tech.sign_pin_hash:
+            error = 'لم يُضبط رمز دخول لهذا الفني — راجع المشرف (رمز التوقيع في ملف الفني)'
+        elif not verify_technician_pin(tech, pin):
+            error = 'رمز الدخول غير صحيح'
+        else:
+            field_login_technician(tech)
+            dest = next_url if next_url.startswith('/field') else url_for('field_home')
+            return redirect(dest)
+
+    return render_template(
+        'field-login.html',
+        error=error,
+        login_id=login_id,
+        next_url=next_url,
+    )
+
+
+@app.route('/field/logout')
+def field_logout():
+    from field_auth import field_logout_technician
+
+    field_logout_technician()
+    return redirect(url_for('field_login'))
+
+
 @app.route('/field')
 def field_home():
-    tech_id = request.args.get('tech_id', type=int)
-    technicians = Technician.query.filter(
-        Technician.status.in_(['نشط', 'متاح', 'مشغول'])
-    ).order_by(Technician.name).all()
-    payload = None
-    if tech_id:
-        from operations import field_technician_payload
-        payload = field_technician_payload(tech_id, request.url_root)
-    return render_template(
-        'field.html',
-        technicians=technicians,
-        tech_id=tech_id,
-        payload=payload,
-    )
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    if not tech_id:
+        return redirect(url_for('field_login'))
+
+    from field_auth import technician_portal_kind
+    from operations import field_technician_payload
+
+    ctx = _field_portal_context(tech_id)
+    kind = technician_portal_kind(ctx['field_tech'])
+    payload = field_technician_payload(tech_id, request.url_root, portal_kind=kind)
+    return render_template('field.html', payload=payload, error=None, **ctx)
+
+
+@app.route('/api/field/me')
+def api_field_me():
+    tech_id = getattr(g, 'field_tech_id', None)
+    from field_auth import technician_portal_kind
+    from operations import field_technician_payload
+
+    tech = Technician.query.get_or_404(tech_id)
+    kind = technician_portal_kind(tech)
+    payload = field_technician_payload(tech_id, request.url_root, portal_kind=kind)
+    return jsonify({'ok': True, **payload})
 
 
 @app.route('/field/visit/<int:visit_id>')
 def field_visit(visit_id):
     from operations import field_visit_detail
 
-    tech_id = request.args.get('tech_id', type=int)
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     try:
         detail = field_visit_detail(visit_id, tech_id)
     except PermissionError as e:
-        return render_template('field.html', error=str(e), technicians=[]), 403
-    report_qs = f'?tech_id={tech_id}' if tech_id else ''
-    detail['report_url'] = f'/field/visit/{visit_id}/report{report_qs}'
-    return render_template('field-visit.html', visit=detail, tech_id=tech_id)
+        ctx = _field_portal_context(tech_id) if tech_id else {}
+        return render_template('field.html', error=str(e), payload=None, **ctx), 403
+    detail['report_url'] = url_for('field_visit_report', visit_id=visit_id)
+    ctx = _field_portal_context(tech_id)
+    return render_template('field-visit.html', visit=detail, **ctx)
 
 
 @app.route('/field/visit/<int:visit_id>/report')
 def field_visit_report(visit_id):
     from operations import visit_report_payload
 
-    tech_id = request.args.get('tech_id', type=int)
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     try:
         payload = visit_report_payload(
             visit_id, editable=True, tech_id=tech_id, base_url=request.url_root
         )
     except PermissionError as e:
-        return render_template('field.html', error=str(e), technicians=[]), 403
-    payload['back_url'] = url_for('field_visit', visit_id=visit_id, tech_id=tech_id)
+        ctx = _field_portal_context(tech_id) if tech_id else {}
+        return render_template('field.html', error=str(e), payload=None, **ctx), 403
+    payload['back_url'] = url_for('field_visit', visit_id=visit_id)
     return render_template('visit-report.html', **payload)
 
 
@@ -3246,26 +3342,29 @@ def maintenance_visit_report(visit_id):
 def field_fault(fault_id):
     from operations import field_fault_detail
 
-    tech_id = request.args.get('tech_id', type=int)
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     try:
         detail = field_fault_detail(fault_id, tech_id)
     except PermissionError as e:
-        return render_template('field.html', error=str(e), technicians=[]), 403
-    return render_template('field-fault.html', fault=detail, tech_id=tech_id)
+        ctx = _field_portal_context(tech_id) if tech_id else {}
+        return render_template('field.html', error=str(e), payload=None, **ctx), 403
+    ctx = _field_portal_context(tech_id)
+    return render_template('field-fault.html', fault=detail, **ctx)
 
 
 @app.route('/field/fault/<int:fault_id>/report')
 def field_fault_report(fault_id):
     from operations import fault_report_payload
 
-    tech_id = request.args.get('tech_id', type=int)
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     try:
         payload = fault_report_payload(
             fault_id, editable=True, tech_id=tech_id, base_url=request.url_root
         )
     except PermissionError as e:
-        return render_template('field.html', error=str(e), technicians=[]), 403
-    payload['back_url'] = url_for('field_fault', fault_id=fault_id, tech_id=tech_id)
+        ctx = _field_portal_context(tech_id) if tech_id else {}
+        return render_template('field.html', error=str(e), payload=None, **ctx), 403
+    payload['back_url'] = url_for('field_fault', fault_id=fault_id)
     return render_template('fault-report.html', **payload)
 
 
@@ -3375,8 +3474,7 @@ def field_visit_complete(visit_id):
         observations=request.form.get('observations', ''),
         status=request.form.get('status', 'مكتملة'),
     )
-    tech_id = request.form.get('tech_id')
-    return redirect(url_for('field_home', tech_id=tech_id))
+    return redirect(url_for('field_home'))
 
 
 @app.route('/field/fault/<int:fault_id>/complete', methods=['POST'])
@@ -3389,8 +3487,7 @@ def field_fault_complete(fault_id):
         resolution=request.form.get('resolution', ''),
         status=request.form.get('status', 'تم الاصلاح'),
     )
-    tech_id = request.form.get('tech_id')
-    return redirect(url_for('field_home', tech_id=tech_id))
+    return redirect(url_for('field_home'))
 
 
 @app.route('/field/fault/<int:fault_id>/request-parts', methods=['POST'])
@@ -3403,8 +3500,7 @@ def field_fault_request_parts(fault_id):
         description=request.form.get('parts_description', ''),
         sell_price=sell,
     )
-    tech_id = request.form.get('tech_id')
-    return redirect(url_for('field_home', tech_id=tech_id))
+    return redirect(url_for('field_home'))
 
 
 # =============================================

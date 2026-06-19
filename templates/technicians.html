@@ -460,6 +460,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>Name (English)</label><input type="text" id="f-name-en" placeholder="Technician Name" style="direction:ltr"></div>
           <div class="field"><label>المسمى الوظيفي</label><input type="text" id="f-job" placeholder="فني صيانة / مهندس..."></div>
           <div class="field"><label>التخصص</label><select id="f-spec"><option>مصاعد ركاب</option><option>كهرباء</option><option>ميكانيكا</option><option>أبواب</option><option>فحص</option></select></div>
+          <div class="field"><label>فريق العمل (بوابة الجوال)</label><select id="f-team" name="team"><option value="عام">عام — صيانة وأعطال</option><option value="صيانة">صيانة فقط</option><option value="أعطال">أعطال فقط</option></select></div>
           <div class="field"><label>سنوات الخبرة</label><input type="number" id="f-exp" placeholder="5" style="direction:ltr" min="0"></div>
           <div class="field"><label>متاح للطوارئ</label><select id="f-emergency"><option value="نعم">نعم</option><option value="لا">لا</option></select></div>
         </div>
@@ -647,6 +648,7 @@ var TECHNICIANS = [
     phone2:         {{ (t.phone2 or '')|tojson }},
     job_title:      {{ (t.job_title or '')|tojson }},
     specialization: {{ (t.specialization or '')|tojson }},
+    team:           {{ (t.team or 'عام')|tojson }},
     city:           {{ (t.city or '')|tojson }},
     national_id:    {{ (t.national_id or '')|tojson }},
     hire_date:      {{ (t.hire_date.isoformat() if t.hire_date else '')|tojson }},
@@ -1227,6 +1229,7 @@ function saveTech() {
   fd.append('phone2', fullPhone('f-code-wa', 'f-whatsapp'));
   fd.append('job_title', document.getElementById('f-job').value);
   fd.append('specialization', document.getElementById('f-spec').value);
+  fd.append('team', document.getElementById('f-team').value);
   fd.append('city', document.getElementById('f-city-sel').value);
   fd.append('national_id', document.getElementById('f-iqama').value);
   fd.append('hire_date', document.getElementById('f-hire').value);
@@ -1271,6 +1274,7 @@ function editTech(id) {
   document.getElementById('f-name-en').value = t.name_en || '';
   document.getElementById('f-job').value = t.job_title || '';
   document.getElementById('f-spec').value = t.specialization || 'مصاعد ركاب';
+  document.getElementById('f-team').value = t.team || 'عام';
   document.getElementById('f-city-sel').value = t.city || '';
   loadDistricts();
   document.getElementById('f-cur-status').value = t.status === 'نشط' ? 'متاح' : (t.status || 'متاح');

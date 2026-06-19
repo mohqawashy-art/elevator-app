@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0b0f17">
+<title>LiftCore — دخول الفني</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=1">
+</head>
+<body>
+<div class="fp-login-wrap">
+  <div class="fp-login">
+    <h1>بوابة الفني</h1>
+    <p class="sub">صيانة المصاعد والأعطال — مهام اليوم وغداً</p>
+
+    {% if error %}
+    <div class="fp-login-err">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('field_login') }}">
+      <input type="hidden" name="next" value="{{ next_url or '' }}">
+      <div class="fp-field">
+        <label>كود الفني أو رقم الجوال</label>
+        <input type="text" name="login_id" inputmode="text" autocomplete="username" placeholder="Tech-001 أو 05xxxxxxxx" required autofocus value="{{ login_id or '' }}">
+      </div>
+      <div class="fp-field">
+        <label>رمز الدخول (6 أرقام)</label>
+        <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="current-password" placeholder="••••••" required>
+      </div>
+      <button type="submit" class="fp-submit">دخول</button>
+    </form>
+
+    <p class="sub" style="margin-top:20px;font-size:11px">
+      نفس رمز التوقيع المسجّل في ملف الفني.<br>
+      للمكتب: <a href="{{ url_for('login') }}" style="color:#c9a14a">دخول الإدارة</a>
+    </p>
+  </div>
+</div>
+</body>
+</html>
