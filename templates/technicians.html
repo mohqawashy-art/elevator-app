@@ -302,7 +302,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <!-- STATS -->
     <div class="stats-row">
       <div class="stat-mini" style="--sm-color:var(--accent)" onclick="openTechDrill('all', this)">
-        <div class="stat-mini-val" id="stat-total">0</div>
+        <div class="stat-mini-val" id="stat-total">{{ technicians|length }}</div>
         <div class="stat-mini-label">إجمالي الفنيين</div>
       </div>
       <div class="stat-mini" style="--sm-color:var(--success)" onclick="openTechDrill('متاح', this)">
@@ -384,14 +384,19 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </select>
         <select class="filter-select" id="filter-status" onchange="filterTable()">
           <option value="">كل الحالات</option>
-          <option>متاح</option><option>مشغول</option><option>إجازة</option><option>غير نشط</option>
+          <option value="متاح">متاح</option>
+          <option value="مشغول">مشغول</option>
+          <option value="إجازة">إجازة</option>
+          <option value="غير نشط">غير نشط</option>
         </select>
         <select class="filter-select" id="filter-emergency" onchange="filterTable()">
-          <option value="">الطوارئ</option>
+          <option value="">كل الفنيين (طوارئ)</option>
           <option value="نعم">متاح للطوارئ</option>
-          <option value="لا">غير متاح</option>
+          <option value="لا">غير متاح للطوارئ</option>
         </select>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-filters" onclick="clearAllFilters()" style="display:none">مسح الفلاتر</button>
       </div>
+      <div id="filter-active-hint" style="display:none;margin:-8px 0 12px;font-size:12px;color:var(--warning)"></div>
 
       <div class="table-wrap">
         <div class="table-scroll">
@@ -409,7 +414,25 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th>إجراءات</th>
               </tr>
             </thead>
-            <tbody id="table-body"></tbody>
+            <tbody id="table-body">
+            {% for t in technicians %}
+            <tr onclick="viewTech({{ t.id }})">
+              <td class="td-code">{{ t.code }}</td>
+              <td class="td-name"><span class="td-name-text">{{ t.name }}</span></td>
+              <td style="direction:ltr;font-family:var(--font-en)">{{ t.phone or '—' }}</td>
+              <td>{{ t.job_title or '—' }}</td>
+              <td>{{ t.specialization or '—' }}</td>
+              <td>{{ t.city or '—' }}</td>
+              <td><span class="badge badge-available">{{ technician_display_status(t) }}</span></td>
+              <td><span class="badge {{ 'badge-yes' if t.emergency else 'badge-no' }}">{{ 'نعم' if t.emergency else 'لا' }}</span></td>
+              <td onclick="event.stopPropagation()"><div class="td-actions">
+                <button class="btn btn-secondary btn-sm btn-icon" onclick="editTech({{ t.id }})" title="تعديل">✎</button>
+              </div></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" style="text-align:center;padding:28px;color:var(--text3)">لا يوجد فنيون — اضغط «إضافة فني» أعلاه</td></tr>
+            {% endfor %}
+            </tbody>
           </table>
         </div>
         <div class="table-footer">
@@ -456,7 +479,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-grid">
           <div class="field"><label>كود الفني</label><input type="text" id="f-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.8"></div>
           <div class="field"><label>الجنسية</label><input type="text" id="f-nationality" placeholder="سعودي / مصري..."></div>
-          <div class="field"><label>الاسم (عربي)</label><input type="text" id="f-name-ar" placeholder="اسم الفني"></div>
+          <div class="field"><label>الاسم (عربي) <span style="color:var(--danger)">*</span></label><input type="text" id="f-name-ar" placeholder="اسم الفني" required></div>
           <div class="field"><label>Name (English)</label><input type="text" id="f-name-en" placeholder="Technician Name" style="direction:ltr"></div>
           <div class="field"><label>المسمى الوظيفي</label><input type="text" id="f-job" placeholder="فني صيانة / مهندس..."></div>
           <div class="field"><label>التخصص</label><select id="f-spec"><option>مصاعد ركاب</option><option>كهرباء</option><option>ميكانيكا</option><option>أبواب</option><option>فحص</option></select></div>
@@ -487,8 +510,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div class="form-section tech-tab-panel" data-tech-tab="signature" id="tech-section-signature">
-        <div class="form-section-title">التوقيع الرقمي (اختياري)</div>
-        <p class="upload-hint" style="margin-bottom:10px">ارفع صورة التوقيع وكلمة مرور من 6 أرقام — تُحفظ مشفّرة وتُستخدم عبر زر «إضافة توقيع» في المحاضر.</p>
+        <div class="form-section-title">التوقيع الرقمي ودخول الجوال</div>
+        <p class="upload-hint" style="margin-bottom:10px">
+          <strong>رمز 6 أرقام</strong> يُستخدم في محاضر الفحص <strong>ودخول بوابة الفني</strong> (<code dir="ltr">/field/login</code>).
+          صورة التوقيع اختيارية لدخول الجوال — الرمز وحده يكفي.
+        </p>
+        <p id="sign-pin-status" class="upload-hint" style="margin-bottom:10px;display:none"></p>
         <div class="form-grid">
           <div class="field full">
             <label>صورة التوقيع</label>
@@ -783,6 +810,20 @@ function resetSignaturePreview(url) {
   }
 }
 
+function updateSignPinStatus(hasPin) {
+  var el = document.getElementById('sign-pin-status');
+  if (!el) return;
+  if (hasPin) {
+    el.style.display = 'block';
+    el.style.color = 'var(--success)';
+    el.textContent = '✓ رمز دخول الجوال مضبوط — أدخل رمزاً جديداً فقط لتغييره';
+  } else {
+    el.style.display = 'block';
+    el.style.color = 'var(--danger)';
+    el.textContent = '⚠ لم يُضبط رمز دخول الجوال بعد — أدخل 6 أرقام واحفظ الفني';
+  }
+}
+
 function addDocRow() {
   docRowCounter += 1;
   var row = document.createElement('div');
@@ -937,10 +978,10 @@ function getTechEmergencySelect() {
 
 function updateStats() {
   var total = TECHNICIANS.length;
-  var available = TECHNICIANS.filter(function(t) { return t.display_status === 'متاح'; }).length;
-  var busy = TECHNICIANS.filter(function(t) { return t.display_status === 'مشغول'; }).length;
-  var leave = TECHNICIANS.filter(function(t) { return t.display_status === 'إجازة'; }).length;
-  var inactive = TECHNICIANS.filter(function(t) { return t.display_status === 'غير نشط'; }).length;
+  var available = TECHNICIANS.filter(function(t) { return techDisplayStatus(t) === 'متاح'; }).length;
+  var busy = TECHNICIANS.filter(function(t) { return techDisplayStatus(t) === 'مشغول'; }).length;
+  var leave = TECHNICIANS.filter(function(t) { return techDisplayStatus(t) === 'إجازة'; }).length;
+  var inactive = TECHNICIANS.filter(function(t) { return techDisplayStatus(t) === 'غير نشط'; }).length;
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-available').textContent = available;
   document.getElementById('stat-busy').textContent = busy;
@@ -953,9 +994,59 @@ function isTechEmergencyOn(t) {
   return t.emergency === true || t.emergency === 1 || t.emergency === 'true';
 }
 
+function techDisplayStatus(t) {
+  var ds = (t && (t.display_status || t.status)) || 'متاح';
+  if (ds === 'نشط') return 'متاح';
+  return ds;
+}
+
+function techMatchesStatus(t, st) {
+  if (!st) return true;
+  var ds = techDisplayStatus(t);
+  if (ds === st) return true;
+  if (st === 'متاح' && (t.status === 'نشط' || ds === 'نشط')) return true;
+  return false;
+}
+
+function clearAllFilters() {
+  var search = document.getElementById('search-input');
+  if (search) search.value = '';
+  ['f-city', 'filter-spec', 'filter-status', 'filter-emergency'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var drill = document.getElementById('drill-panel');
+  if (drill) drill.style.display = 'none';
+  document.querySelectorAll('.stat-mini').forEach(function(el) { el.classList.remove('active'); });
+  if (tablePager) tablePager.resetPage();
+  filterTable();
+}
+
+function updateFilterHint() {
+  var parts = [];
+  var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').trim();
+  var sp = document.getElementById('filter-spec') && document.getElementById('filter-spec').value || '';
+  var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
+  var st = document.getElementById('filter-status') && document.getElementById('filter-status').value || '';
+  var em = document.getElementById('filter-emergency') && document.getElementById('filter-emergency').value || '';
+  if (s) parts.push('بحث: ' + s);
+  if (ct) parts.push('مدينة: ' + ct);
+  if (sp) parts.push('تخصص: ' + sp);
+  if (st) parts.push('حالة: ' + st);
+  if (em) parts.push('طوارئ: ' + em);
+  var hint = document.getElementById('filter-active-hint');
+  var btn = document.getElementById('btn-clear-filters');
+  var active = parts.length > 0;
+  if (hint) {
+    hint.style.display = active ? 'block' : 'none';
+    hint.textContent = active ? 'فلتر نشط — ' + parts.join(' · ') + ' (قد يخفي فنيين من الجدول)' : '';
+  }
+  if (btn) btn.style.display = active ? 'inline-flex' : 'none';
+}
+
 function isTechUnavailable(t) {
-  var st = String(t.display_status || t.status || '').trim();
-  return st && st !== 'متاح' && st !== 'نشط';
+  var st = techDisplayStatus(t);
+  return st && st !== 'متاح';
 }
 
 function getEmergencyUnavailableTechs() {
@@ -993,7 +1084,7 @@ function getTechByDrill(type) {
   if (type === 'all') return TECHNICIANS.slice();
   if (type === 'emergency') return TECHNICIANS.filter(function(t) { return isTechEmergencyOn(t); });
   if (type === 'emergency_unavailable') return getEmergencyUnavailableTechs();
-  return TECHNICIANS.filter(function(t) { return t.display_status === type; });
+  return TECHNICIANS.filter(function(t) { return techDisplayStatus(t) === type; });
 }
 
 function renderDrillTable(rows) {
@@ -1086,9 +1177,10 @@ function filterTable() {
     return (!s || t.name.includes(s) || t.code.toLowerCase().includes(s) || (t.phone && t.phone.includes(s))) &&
       (!sp || t.specialization === sp) &&
       (!ct || t.city === ct) &&
-      (!st || t.display_status === st) &&
+      (!st || techMatchesStatus(t, st)) &&
       (!em || (em === 'نعم' ? isTechEmergencyOn(t) : !isTechEmergencyOn(t)));
   });
+  updateFilterHint();
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
@@ -1216,11 +1308,34 @@ function openAddModal() {
   clearTechForm();
   document.getElementById('modal-add').classList.add('open');
   switchTechTab('basic');
+  updateSignPinStatus(false);
 }
 
 function saveTech() {
-  var name = document.getElementById('f-name-ar').value.trim();
-  if (!name) { alert('يرجى إدخال اسم الفني'); return; }
+  var nameEl = document.getElementById('f-name-ar');
+  var name = nameEl ? nameEl.value.trim() : '';
+  if (!name) {
+    alert('يرجى إدخال اسم الفني (حقل إلزامي)');
+    if (nameEl) { nameEl.focus(); nameEl.style.borderColor = 'var(--danger)'; }
+    switchTechTab('basic');
+    return;
+  }
+  if (nameEl) nameEl.style.borderColor = '';
+  var signPin = document.getElementById('f-sign-pin');
+  var signPinVal = signPin && signPin.value.trim() ? signPin.value.trim() : '';
+  var signFile = document.getElementById('f-signature');
+  var hasSignFile = signFile && signFile.files && signFile.files[0];
+  var iqama = (document.getElementById('f-iqama') && document.getElementById('f-iqama').value || '').trim();
+  if (hasSignFile && !iqama) {
+    alert('عند رفع صورة التوقيع يجب إدخال رقم الإقامة في تبويب الوثائق');
+    switchTechTab('docs');
+    return;
+  }
+  if (signPinVal && signPinVal.length !== 6) {
+    alert('رمز دخول الجوال يجب أن يكون 6 أرقام');
+    switchTechTab('signature');
+    return;
+  }
   var editId = document.getElementById('modal-add').dataset.editId;
   var fd = new FormData();
   fd.append('name', name);
@@ -1229,7 +1344,8 @@ function saveTech() {
   fd.append('phone2', fullPhone('f-code-wa', 'f-whatsapp'));
   fd.append('job_title', document.getElementById('f-job').value);
   fd.append('specialization', document.getElementById('f-spec').value);
-  fd.append('team', document.getElementById('f-team').value);
+  var teamEl = document.getElementById('f-team');
+  fd.append('team', teamEl ? teamEl.value : 'عام');
   fd.append('city', document.getElementById('f-city-sel').value);
   fd.append('national_id', document.getElementById('f-iqama').value);
   fd.append('hire_date', document.getElementById('f-hire').value);
@@ -1242,8 +1358,7 @@ function saveTech() {
   if (photoInput && photoInput.files && photoInput.files[0]) {
     fd.append('photo', photoInput.files[0]);
   }
-  var signPin = document.getElementById('f-sign-pin');
-  if (signPin && signPin.value.trim()) fd.append('sign_pin', signPin.value.trim());
+  if (signPinVal) fd.append('sign_pin', signPinVal);
   var signInput = document.getElementById('f-signature');
   if (signInput && signInput.files && signInput.files[0]) {
     fd.append('signature', signInput.files[0]);
@@ -1258,8 +1373,19 @@ function saveTech() {
       fd.append('doc_titles', titleInp && titleInp.value ? titleInp.value : fileInp.files[0].name);
     }
   });
-  fetch(editId ? '/technicians/edit/' + editId : '/technicians/add', {method:'POST', body:fd})
-    .then(function() { window.location.reload(); });
+  fetch(editId ? '/technicians/edit/' + editId : '/technicians/add', {method:'POST', body:fd, redirect:'follow'})
+    .then(function(res) {
+      if (res.redirected) {
+        window.location.href = res.url;
+        return;
+      }
+      if (!res.ok) {
+        alert('تعذّر حفظ الفني — راجع البيانات وحاول مرة أخرى');
+        return;
+      }
+      window.location.reload();
+    })
+    .catch(function() { alert('تعذّر الاتصال بالسيرفر — تحقق من الإنترنت وحاول مرة أخرى'); });
 }
 
 function editTech(id) {
@@ -1288,6 +1414,7 @@ function editTech(id) {
   splitPhone(t.phone2, 'f-code-wa', 'f-whatsapp');
   resetPhotoPreview(t.photo_url || '');
   resetSignaturePreview(t.signature_url || '');
+  updateSignPinStatus(!!t.has_sign_pin);
   document.getElementById('new-docs-rows').innerHTML = '';
   renderExistingDocs(t.docs || [], t.id);
   document.getElementById('modal-add').classList.add('open');
@@ -1396,7 +1523,7 @@ document.getElementById('h-date').textContent = days[now.getDay()] + '، ' + now
 initFilters();
 updateStats();
 if (tableSort) tableSort.bindHeaders();
-renderTable(TECHNICIANS);
+clearAllFilters();
 window.__lcRefreshPage = function () {
   if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : TECHNICIANS);

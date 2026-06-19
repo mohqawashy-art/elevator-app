@@ -7,9 +7,10 @@ import re
 from flask import session
 from werkzeug.security import check_password_hash
 
-from models import Technician
+from models import Signatory, Technician
 
 FIELD_SESSION_KEY = 'field_tech_id'
+FIELD_ACTIVE_STATUSES = frozenset({'نشط', 'متاح', 'مشغول'})
 
 
 def normalize_phone(value: str | None) -> str:
@@ -21,22 +22,33 @@ def normalize_phone(value: str | None) -> str:
     return digits
 
 
+def _technician_signatory(tech: Technician) -> Signatory | None:
+    return Signatory.query.filter_by(technician_id=tech.id, is_active=True).first()
+
+
+def technician_has_field_pin(tech: Technician) -> bool:
+    if tech.sign_pin_hash:
+        return True
+    sig = _technician_signatory(tech)
+    return bool(sig and sig.sign_pin_hash)
+
+
 def find_technician_by_login(login_id: str | None) -> Technician | None:
     raw = (login_id or '').strip()
     if not raw:
         return None
-    by_code = Technician.query.filter(
-        Technician.code.ilike(raw),
-        Technician.status.in_(['نشط', 'متاح', 'مشغول']),
-    ).first()
+    by_code = Technician.query.filter(Technician.code.ilike(raw)).first()
     if by_code:
-        return by_code
+        if (by_code.status or 'متاح') in FIELD_ACTIVE_STATUSES:
+            return by_code
+        return None
     phone = normalize_phone(raw)
     if not phone:
         return None
-    for tech in Technician.query.filter(
-        Technician.status.in_(['نشط', 'متاح', 'مشغول']),
-    ).all():
+    for tech in Technician.query.all():
+        st = tech.status or 'متاح'
+        if st not in FIELD_ACTIVE_STATUSES:
+            continue
         if normalize_phone(tech.phone) == phone or normalize_phone(tech.phone2) == phone:
             return tech
     return None
@@ -44,9 +56,23 @@ def find_technician_by_login(login_id: str | None) -> Technician | None:
 
 def verify_technician_pin(tech: Technician, pin: str | None) -> bool:
     pin = str(pin or '').strip()
-    if not pin or not tech.sign_pin_hash:
+    if not pin:
         return False
-    return check_password_hash(tech.sign_pin_hash, pin)
+    if tech.sign_pin_hash and check_password_hash(tech.sign_pin_hash, pin):
+        return True
+    sig = _technician_signatory(tech)
+    if sig and sig.sign_pin_hash and check_password_hash(sig.sign_pin_hash, pin):
+        return True
+    return False
+
+
+def sync_technician_field_pin(tech: Technician) -> None:
+    """نسخ رمز الموقّع إلى ملف الفني إن وُجد ولم يُنسخ."""
+    if tech.sign_pin_hash:
+        return
+    sig = _technician_signatory(tech)
+    if sig and sig.sign_pin_hash:
+        tech.sign_pin_hash = sig.sign_pin_hash
 
 
 def field_login_technician(tech: Technician) -> None:

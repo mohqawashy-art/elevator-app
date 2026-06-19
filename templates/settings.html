@@ -95,6 +95,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
     <button type="button" class="tab {% if active_tab == 'company' %}active{% endif %}" data-tab="company">الشركة والهوية</button>
     {% if current_user.role == 'admin' %}
     <button type="button" class="tab {% if active_tab == 'users' %}active{% endif %}" data-tab="users">المستخدمون</button>
+    <button type="button" class="tab {% if active_tab == 'field-portal' %}active{% endif %}" data-tab="field-portal">دخول الفني (الجوال)</button>
     <button type="button" class="tab {% if active_tab == 'signatures' %}active{% endif %}" data-tab="signatures">التوقيعات</button>
     {% endif %}
     <button type="button" class="tab {% if active_tab == 'account' %}active{% endif %}" data-tab="account">حسابي</button>
@@ -426,6 +427,63 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
       </div>
     </form>
     {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- دخول الفني — بوابة الجوال -->
+  {% if current_user.role == 'admin' %}
+  <div class="panel {% if active_tab == 'field-portal' %}active{% endif %}" id="panel-field-portal">
+    <div class="card">
+      <div class="section">تفعيل دخول الفني على الجوال</div>
+      <p class="hint" style="margin-bottom:14px;line-height:1.8">
+        <strong>الخطوة 1:</strong> سجّل الفني من <a href="{{ url_for('technicians') }}">صفحة الفنيين</a> (الاسم، الجوال، الفريق).<br>
+        <strong>الخطوة 2:</strong> من هنا أو من ملف الفني — اضبط <strong>رمز دخول 6 أرقام</strong> للجوال.<br>
+        <strong>رابط الفني:</strong>
+        <a href="{{ url_for('field_login', _external=True) }}" dir="ltr" style="word-break:break-all">{{ url_for('field_login', _external=True) }}</a>
+      </p>
+      {% if not field_technicians %}
+      <p style="font-size:13px;color:var(--text3)">لا يوجد فنيون بعد — <a href="{{ url_for('technicians') }}?action=add">أضف فنيّاً أولاً</a>.</p>
+      {% else %}
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>الاسم</th>
+            <th>الجوال</th>
+            <th>الفريق</th>
+            <th>الحالة</th>
+            <th>رمز الجوال</th>
+            <th>تفعيل الرمز</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in field_technicians %}
+          <tr>
+            <td dir="ltr">{{ row.code }}</td>
+            <td>{{ row.name }}</td>
+            <td dir="ltr">{{ row.phone or '—' }}</td>
+            <td>{{ row.team }}</td>
+            <td>{{ row.status }}</td>
+            <td>
+              {% if row.has_field_pin %}
+              <span style="color:var(--success)">✓ مضبوط</span>
+              {% else %}
+              <span style="color:var(--danger)">غير مضبوط</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" action="{{ url_for('settings_field_portal_pin', tech_id=row.id) }}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <input name="pin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" dir="ltr" placeholder="6 أرقام" required style="width:88px;padding:6px 8px;font-size:12px">
+                <button type="submit" class="btn btn-primary btn-sm">حفظ</button>
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('technicians') }}" title="تعديل كامل">ملف الفني</a>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
   </div>
   {% endif %}
 

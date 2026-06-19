@@ -2476,11 +2476,20 @@ def _ext_ok(filename, allowed):
 
 def _save_technician_signature(tech, file_storage, pin_plain=''):
     from signatory_service import upsert_signatory
+    from signature_auth import validate_sign_pin
 
     pin = str(pin_plain or '').strip()
     has_file = file_storage and file_storage.filename and _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT)
     existing = Signatory.query.filter_by(technician_id=tech.id, is_active=True).first()
     if not has_file and not pin and not existing:
+        return
+    # رمز دخول الجوال — يُحفظ على الفني (وموقّعه إن وُجد)
+    if pin and not has_file:
+        if not validate_sign_pin(pin):
+            raise ValueError('رمز دخول الجوال يجب أن يكون 6 أرقام')
+        tech.sign_pin_hash = hash_password(pin)
+        if existing:
+            existing.sign_pin_hash = tech.sign_pin_hash
         return
     if not tech.national_id:
         raise ValueError('أدخل رقم الإقامة في الوثائق الرسمية قبل حفظ التوقيع')
@@ -2661,6 +2670,7 @@ def technician_add():
     try:
         _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
     except ValueError as exc:
+        db.session.rollback()
         flash(str(exc), 'error')
         return redirect(url_for('technicians'))
     _save_technician_documents(
@@ -2670,6 +2680,7 @@ def technician_add():
         request.form.getlist('doc_titles'),
     )
     db.session.commit()
+    flash('تم إضافة الفني بنجاح', 'success')
     return redirect(url_for('technicians'))
 
 
@@ -2716,6 +2727,7 @@ def technician_edit(id):
     try:
         _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
     except ValueError as exc:
+        db.session.rollback()
         flash(str(exc), 'error')
         return redirect(url_for('technicians'))
     _save_technician_documents(
@@ -2725,6 +2737,7 @@ def technician_edit(id):
         request.form.getlist('doc_titles'),
     )
     db.session.commit()
+    flash('تم تحديث بيانات الفني بنجاح', 'success')
     return redirect(url_for('technicians'))
 
 
@@ -3233,14 +3246,24 @@ def field_login():
     if request.method == 'POST':
         login_id = (request.form.get('login_id') or '').strip()
         pin = (request.form.get('pin') or '').strip()
+        from field_auth import sync_technician_field_pin, technician_has_field_pin
+
         tech = find_technician_by_login(login_id)
         if not tech:
-            error = 'لم يُعثر على فني بهذا الكود أو الجوال'
-        elif not tech.sign_pin_hash:
-            error = 'لم يُضبط رمز دخول لهذا الفني — راجع المشرف (رمز التوقيع في ملف الفني)'
+            raw = login_id.lower()
+            inactive = Technician.query.filter(Technician.code.ilike(raw)).first()
+            if inactive and (inactive.status or 'متاح') not in ('نشط', 'متاح', 'مشغول'):
+                error = f'حساب الفني غير مفعّل للجوال (الحالة: {inactive.status}) — راجع المشرف'
+            else:
+                error = 'لم يُعثر على فني بهذا الكود أو الجوال'
+        elif not technician_has_field_pin(tech):
+            error = 'لم يُضبط رمز دخول لهذا الفني — راجع المشرف (التوقيع الرقمي في ملف الفني)'
         elif not verify_technician_pin(tech, pin):
-            error = 'رمز الدخول غير صحيح'
+            error = 'رمز الدخول غير صحيح — تأكد من 6 أرقام بدون مسافات'
         else:
+            sync_technician_field_pin(tech)
+            from models import db
+            db.session.commit()
             field_login_technician(tech)
             dest = next_url if next_url.startswith('/field') else url_for('field_home')
             return redirect(dest)
@@ -5020,11 +5043,25 @@ def settings():
         db.session.rollback()
         app.logger.warning('signatories load failed: %s', exc)
         signatories = []
+    from field_auth import technician_has_field_pin
+
+    field_technicians = []
+    for t in Technician.query.order_by(Technician.name).all():
+        field_technicians.append({
+            'id': t.id,
+            'code': t.code,
+            'name': t.name,
+            'phone': t.phone or t.phone2 or '',
+            'team': t.team or 'عام',
+            'status': t.status or 'متاح',
+            'has_field_pin': technician_has_field_pin(t),
+        })
     return render_template(
         'settings.html',
         settings=s,
         users=users,
         signatories=signatories,
+        field_technicians=field_technicians,
         current_user=user,
         active_tab=request.args.get('tab', 'company'),
         edit_user=edit_user,
@@ -5032,6 +5069,27 @@ def settings():
         generated_username=session.pop('settings_generated_username', None),
         generated_password=session.pop('settings_generated_password', None),
     )
+
+
+@app.route('/settings/field-portal/<int:tech_id>/pin', methods=['POST'])
+def settings_field_portal_pin(tech_id):
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('field-portal')
+    from signature_auth import validate_sign_pin
+
+    tech = Technician.query.get_or_404(tech_id)
+    pin = (request.form.get('pin') or '').strip()
+    if not validate_sign_pin(pin):
+        session['settings_notice'] = 'رمز دخول الجوال يجب أن يكون 6 أرقام.'
+        return _settings_redirect('field-portal')
+    tech.sign_pin_hash = hash_password(pin)
+    sig = Signatory.query.filter_by(technician_id=tech.id, is_active=True).first()
+    if sig:
+        sig.sign_pin_hash = tech.sign_pin_hash
+    db.session.commit()
+    session['settings_notice'] = f'تم تفعيل رمز دخول الجوال للفني {tech.name} ({tech.code}).'
+    return _settings_redirect('field-portal')
 
 
 @app.route('/settings/signatories/add', methods=['POST'])

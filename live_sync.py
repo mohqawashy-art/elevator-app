@@ -288,6 +288,7 @@ def _sync_technicians():
             'phone2': t.phone2 or '',
             'job_title': t.job_title or '',
             'specialization': t.specialization or '',
+            'team': t.team or 'عام',
             'city': t.city or '',
             'national_id': t.national_id or '',
             'hire_date': t.hire_date.isoformat() if t.hire_date else '',
