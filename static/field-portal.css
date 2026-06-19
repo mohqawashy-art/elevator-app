@@ -5,13 +5,26 @@
   --fp-gold:#c9a14a;--fp-text:#e4eaf5;--fp-muted:#8a9bb8;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body.fp-body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--fp-bg);color:var(--fp-text);min-height:100vh;padding-bottom:72px}
+body.fp-body,body.fp-login-body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--fp-bg);color:var(--fp-text);min-height:100vh}
+body.fp-body{padding-bottom:72px}
+
+/* شريط الشعارات — عميل يسار / LiftCore يمين (RTL) */
+.fp-brand-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 16px;background:rgba(19,27,39,.98);border-bottom:1px solid var(--fp-border);
+  position:sticky;top:0;z-index:45;
+}
+.fp-brand-slot{display:flex;align-items:center;min-width:0;flex:1}
+.fp-brand-slot--tenant{justify-content:flex-start}
+.fp-brand-slot--liftcore{justify-content:flex-end}
+.fp-tenant-logo{max-height:40px;max-width:min(46vw,160px);width:auto;height:auto;object-fit:contain}
+.fp-liftcore-logo{max-height:32px;max-width:min(40vw,130px);width:auto;height:auto;object-fit:contain;opacity:.95}
+
 .fp-top{
   position:sticky;top:0;z-index:40;background:rgba(11,15,23,.96);backdrop-filter:blur(8px);
   border-bottom:1px solid var(--fp-border);padding:12px 16px;
 }
 .fp-top-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.fp-brand{font-size:13px;font-weight:700;color:var(--fp-gold)}
 .fp-tech-name{font-size:15px;font-weight:600}
 .fp-team{font-size:10px;color:var(--fp-muted);margin-top:2px}
 .fp-badge-team{display:inline-block;font-size:10px;padding:3px 8px;border-radius:10px;margin-top:6px}
@@ -72,7 +85,8 @@ body.fp-body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--fp-b
 .fp-nav-item svg{display:block;margin:0 auto 4px;width:18px;height:18px}
 
 /* تسجيل الدخول */
-.fp-login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--fp-bg)}
+body.fp-login-body .fp-brand-bar{position:relative}
+.fp-login-wrap{min-height:calc(100vh - 62px);display:flex;align-items:center;justify-content:center;padding:20px 24px 32px;background:var(--fp-bg)}
 .fp-login{max-width:360px;width:100%}
 .fp-login h1{font-size:20px;color:var(--fp-gold);text-align:center;margin-bottom:6px}
 .fp-login .sub{text-align:center;font-size:13px;color:var(--fp-muted);margin-bottom:24px;line-height:1.6}

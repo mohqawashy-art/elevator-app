@@ -7,15 +7,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>{% block fp_title %}LiftCore — بوابة الفني{% endblock %}</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=2">
 {% block fp_head %}{% endblock %}
 </head>
 <body class="fp-body">
+{% include 'partials/field_brand_bar.html' %}
 {% if field_tech %}
 <header class="fp-top">
   <div class="fp-top-row">
     <div>
-      <div class="fp-brand">LiftCore</div>
       <div class="fp-tech-name">{{ field_tech.name }}</div>
       <div class="fp-team">{{ field_tech.code }}</div>
       <span class="fp-badge-team {% if portal_kind == 'maintenance' %}fp-badge-maint{% elif portal_kind == 'faults' %}fp-badge-faults{% else %}fp-badge-both{% endif %}">{{ portal_label }}</span>
@@ -55,7 +55,7 @@
 </nav>
 {% endif %}
 
-<script src="{{ url_for('static', filename='field-portal.js') }}?v=1" defer></script>
+<script src="{{ url_for('static', filename='field-portal.js') }}?v=2" defer></script>
 {% block fp_scripts %}{% endblock %}
 </body>
 </html>

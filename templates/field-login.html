@@ -6,13 +6,14 @@
 <meta name="theme-color" content="#0b0f17">
 <title>LiftCore — دخول الفني</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=2">
 </head>
-<body>
+<body class="fp-login-body">
+{% include 'partials/field_brand_bar.html' %}
 <div class="fp-login-wrap">
   <div class="fp-login">
     <h1>بوابة الفني</h1>
-    <p class="sub">صيانة المصاعد والأعطال — مهام اليوم وغداً</p>
+    <p class="sub">{{ brand_name|default('LiftCore') }} — صيانة المصاعد والأعطال</p>
 
     {% if error %}
     <div class="fp-login-err">{{ error }}</div>
