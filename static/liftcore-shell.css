@@ -1403,3 +1403,21 @@ header.header.lc-header .lc-header-bar {
     display: none !important;
   }
 }
+
+/* ── النوافذ المنبثقة فوق الهيدر (كان z-index:200 في الصفحات، الهيدر 220) ── */
+.modal-overlay,
+.cloc-actions-overlay,
+.cloc-photo-overlay,
+#quoteOverlay {
+  z-index: 9000 !important;
+}
+
+.modal-overlay {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-overlay .modal {
+  margin: auto;
+  flex-shrink: 0;
+}
