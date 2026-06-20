@@ -94,7 +94,7 @@ html[dir="rtl"] .lang-toggle {
   background: var(--bg2, #111720);
   border-bottom: 1px solid var(--border, rgba(100, 160, 255, 0.1));
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
 }
 
@@ -160,6 +160,7 @@ html[dir="rtl"] .lc-header-slot--tenant {
   justify-content: flex-end !important;
   gap: 10px !important;
   margin: 0 !important;
+  overflow: visible;
 }
 
 html[dir="rtl"] .lc-header-slot--tools {
@@ -269,6 +270,7 @@ html[dir="ltr"] .header-page {
 
 .profile-menu-wrap {
   position: relative;
+  z-index: 50;
 }
 
 .lc-profile-btn {
@@ -305,7 +307,7 @@ html[dir="ltr"] .header-page {
   border-radius: 10px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   overflow: hidden;
-  z-index: 300;
+  z-index: 500;
 }
 
 html[dir="ltr"] .profile-dropdown {
@@ -1029,7 +1031,7 @@ html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
     max-height: var(--lc-header-h, 104px) !important;
     height: var(--lc-header-h, 104px) !important;
     padding: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     box-sizing: border-box !important;
   }
 
@@ -1203,7 +1205,7 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     min-height: var(--lc-header-h, 104px) !important;
     max-height: var(--lc-header-h, 104px) !important;
     padding: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     box-sizing: border-box !important;
     position: sticky !important;
     top: 0 !important;
