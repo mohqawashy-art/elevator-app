@@ -1423,3 +1423,10 @@ header.header.lc-header .lc-header-bar {
   margin: auto;
   flex-shrink: 0;
 }
+
+/* خيارات القوائم المنسدلة — نظام Windows يعرض خلفية فاتحة */
+select option,
+select optgroup {
+  background-color: #ffffff;
+  color: #1a2433;
+}

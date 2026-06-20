@@ -193,6 +193,7 @@
       'issues-found': meta.issues_found,
       'parts-used': meta.parts_used,
       'overall-status': meta.overall_status,
+      'visit-date': meta.visit_date,
       'arrival-time': meta.arrival_time,
       'end-time': meta.end_time,
       'next-visit': meta.next_visit,
@@ -286,6 +287,7 @@
       items,
       meta: {
         overall_status: val('overall-status'),
+        visit_date: val('visit-date'),
         arrival_time: val('arrival-time'),
         end_time: val('end-time'),
         tech_notes: val('tech-notes'),

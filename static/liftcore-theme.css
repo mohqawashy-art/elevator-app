@@ -432,10 +432,21 @@ html[data-theme="premium"] .btn-secondary:hover {
   border-color: var(--border2);
 }
 
+html[data-theme="premium"] .nav-item,
+html[data-theme="premium"] .lc-nav-item {
+  color: var(--gold);
+}
+
+html[data-theme="premium"] .nav-item svg,
+html[data-theme="premium"] .lc-nav-item svg {
+  color: inherit;
+  opacity: 0.9;
+}
+
 html[data-theme="premium"] .nav-item:hover,
 html[data-theme="premium"] .lc-nav-item:hover {
   background: rgba(201, 161, 74, 0.06);
-  color: var(--text1);
+  color: var(--gold-light);
 }
 
 html[data-theme="premium"] .nav-item.active,
@@ -515,6 +526,10 @@ html[data-theme="premium"] .card-section-title {
   color: var(--gold-light);
 }
 
+html[data-theme="premium"] .tab {
+  color: var(--gold);
+}
+
 html[data-theme="premium"] .tab.active {
   background: rgba(201, 161, 74, 0.15);
   color: var(--gold-light);
@@ -523,7 +538,7 @@ html[data-theme="premium"] .tab.active {
 
 html[data-theme="premium"] .tab:hover:not(.active) {
   background: rgba(201, 161, 74, 0.06);
-  color: var(--text1);
+  color: var(--gold-light);
 }
 
 html[data-theme="premium"] .badge-blue {

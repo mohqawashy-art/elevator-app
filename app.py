@@ -3375,16 +3375,20 @@ def field_visit(visit_id):
 
 @app.route('/field/visit/<int:visit_id>/report')
 def field_visit_report(visit_id):
-    from operations import visit_report_payload
+    from operations import stamp_field_visit_report_start, visit_report_payload
 
     tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     read_only = request.args.get('print') == '1' or request.args.get('readonly') == '1'
+    from_field = bool(getattr(g, 'field_tech_id', None))
     try:
+        if from_field and not read_only:
+            stamp_field_visit_report_start(visit_id, tech_id=tech_id)
         payload = visit_report_payload(
             visit_id,
             editable=not read_only,
             tech_id=tech_id,
             base_url=request.url_root,
+            field_times_locked=from_field and not read_only,
         )
     except PermissionError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}
@@ -3429,12 +3433,19 @@ def field_fault(fault_id):
 
 @app.route('/field/fault/<int:fault_id>/report')
 def field_fault_report(fault_id):
-    from operations import fault_report_payload
+    from operations import fault_report_payload, stamp_field_fault_report_start
 
     tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    from_field = bool(getattr(g, 'field_tech_id', None))
     try:
+        if from_field:
+            stamp_field_fault_report_start(fault_id, tech_id=tech_id)
         payload = fault_report_payload(
-            fault_id, editable=True, tech_id=tech_id, base_url=request.url_root
+            fault_id,
+            editable=True,
+            tech_id=tech_id,
+            base_url=request.url_root,
+            field_times_locked=from_field,
         )
     except PermissionError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}

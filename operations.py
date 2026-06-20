@@ -991,6 +991,7 @@ def fault_report_payload(
     editable: bool = False,
     tech_id: int | None = None,
     base_url: str = '',
+    field_times_locked: bool = False,
 ) -> dict:
     from fault_report import FAULT_TYPE_OPTIONS, merge_fault_report, parse_fault_report_json, report_stats
     from models import InventoryItem
@@ -1016,6 +1017,7 @@ def fault_report_payload(
         'fault_id': f.id,
         'editable': editable,
         'tech_id': tech_id or f.technician_id,
+        'field_times_locked': field_times_locked,
         'fault': {
             'code': f.code,
             'fault_type': f.fault_type or '',
@@ -1122,6 +1124,11 @@ def save_fault_report(
         if isinstance(payload.get('photos'), list):
             merged['photos'] = payload['photos']
 
+    _preserve_field_start_times(merged, existing)
+
+    if mark_resolved:
+        merged['meta'] = _apply_field_end_timestamp(merged.get('meta') or {})
+
     apply_report_to_fault(f, merged, mark_resolved=mark_resolved)
     if status:
         f.status = status
@@ -1156,12 +1163,91 @@ def _default_checklist_template_key() -> str:
     return template_for_settings(row)['key'] if row else DEFAULT_TEMPLATE_KEY
 
 
+def _field_stamp_now() -> dict:
+    """توقيت محلي للميدان (تاريخ + وقت)."""
+    now = datetime.now()
+    return {
+        'date': now.strftime('%Y-%m-%d'),
+        'time': now.strftime('%H:%M'),
+        'dt': now,
+    }
+
+
+def _apply_field_end_timestamp(meta: dict) -> dict:
+    parts = _field_stamp_now()
+    meta['end_time'] = parts['time']
+    if not (meta.get('visit_date') or '').strip():
+        meta['visit_date'] = parts['date']
+    return meta
+
+
+def _preserve_field_start_times(merged: dict, existing: dict | None) -> None:
+    """بعد الدمج — لا تسمح بتغيير وقت/تاريخ البدء إذا سُجّلا مسبقاً."""
+    em = (existing or {}).get('meta') or {}
+    meta = merged.setdefault('meta', {})
+    for key in ('visit_date', 'arrival_time'):
+        if (em.get(key) or '').strip():
+            meta[key] = em[key]
+
+
+def stamp_field_visit_report_start(visit_id: int, tech_id: int | None = None) -> None:
+    """عند فتح الفني لمحضر الصيانة — تسجيل تاريخ ووقت الوصول (مرة واحدة)."""
+    from checklist_templates import merge_report_data, parse_report_json
+
+    v = MaintenanceVisit.query.get_or_404(visit_id)
+    if tech_id and v.technician_id and v.technician_id != tech_id:
+        raise PermissionError('الزيارة غير مخصصة لهذا الفني')
+    template_key = v.checklist_template_key or _default_checklist_template_key()
+    saved = parse_report_json(v.checklist_json)
+    data = merge_report_data(saved, template_key)
+    meta = data.setdefault('meta', {})
+    if (meta.get('arrival_time') or '').strip():
+        return
+
+    parts = _field_stamp_now()
+    meta['visit_date'] = parts['date']
+    meta['arrival_time'] = parts['time']
+    v.checklist_json = json.dumps(data, ensure_ascii=False)
+    if not v.visit_time:
+        v.visit_time = parts['time']
+    if (v.status or '') in ('', 'مجدولة', 'مُجدولة', 'مجدول'):
+        v.status = 'جارية'
+    if not v.dispatched_at:
+        v.dispatched_at = parts['dt']
+    db.session.commit()
+
+
+def stamp_field_fault_report_start(fault_id: int, tech_id: int | None = None) -> None:
+    """عند فتح الفني لتقرير العطل — تسجيل تاريخ ووقت الوصول (مرة واحدة)."""
+    from fault_report import merge_fault_report, parse_fault_report_json
+
+    f = Fault.query.get_or_404(fault_id)
+    if tech_id and f.technician_id and f.technician_id != tech_id:
+        raise PermissionError('العطل غير مخصص لهذا الفني')
+    saved = parse_fault_report_json(f.report_json)
+    data = merge_fault_report(saved, f)
+    meta = data['meta']
+    if (meta.get('arrival_time') or '').strip():
+        return
+
+    parts = _field_stamp_now()
+    meta['visit_date'] = parts['date']
+    meta['arrival_time'] = parts['time']
+    f.report_json = json.dumps(data, ensure_ascii=False)
+    if not f.responded_at:
+        f.responded_at = parts['dt']
+    if (f.status or '') in ('', 'مفتوح', 'جديد'):
+        f.status = 'قيد المعالجة'
+    db.session.commit()
+
+
 def visit_report_payload(
     visit_id: int,
     *,
     editable: bool = False,
     tech_id: int | None = None,
     base_url: str = '',
+    field_times_locked: bool = False,
 ) -> dict:
     """بيانات محضر الفحص للعرض/الطباعة."""
     from checklist_templates import (
@@ -1184,11 +1270,15 @@ def visit_report_payload(
     report_data = merge_report_data(saved, template_key)
     stats = report_completion_stats(report_data, template_key)
     template = get_template(template_key)
+    meta = report_data.get('meta') or {}
+    visit_date_display = (meta.get('visit_date') or '').strip() or str(v.visit_date or '')
 
     return {
         'visit_id': v.id,
         'editable': editable,
         'tech_id': tech_id or v.technician_id,
+        'field_times_locked': field_times_locked,
+        'visit_date_display': visit_date_display,
         'visit': {
             'code': v.code,
             'visit_type': v.visit_type or 'صيانة دورية',
@@ -1288,6 +1378,11 @@ def save_visit_report(
                     merged['signatures'][key] = sig.get(key) or ''
         if isinstance(payload.get('photos'), list):
             merged['photos'] = payload['photos']
+
+    _preserve_field_start_times(merged, existing)
+
+    if mark_complete:
+        merged['meta'] = _apply_field_end_timestamp(merged.get('meta') or {})
 
     merged['template_key'] = template_key
     v.checklist_template_key = template_key
