@@ -152,6 +152,20 @@ def _resolve_field_technician_id():
     return None
 
 
+def _field_tech_api_allowed(path: str, method: str) -> bool:
+    """واجهات يستخدمها محضر الفني من الجوال (خارج /field و /api/field)."""
+    if method != 'POST':
+        return False
+    if path == '/api/signatures/verify':
+        return True
+    if path.endswith('/report'):
+        if path.startswith('/api/maintenance-visits/'):
+            return True
+        if path.startswith('/api/faults/'):
+            return True
+    return False
+
+
 def _field_portal_context(tech_id: int) -> dict:
     from field_auth import technician_portal_kind, technician_portal_label
     from operations import FAULT_OPEN
@@ -186,12 +200,17 @@ def _field_portal_context(tech_id: int) -> dict:
 
 @app.before_request
 def enforce_auth():
+    from field_auth import field_session_technician_id
+
     if request.endpoint in PUBLIC_ENDPOINTS:
         return None
     path = request.path or ''
     for prefix in PUBLIC_PATH_PREFIXES:
         if path.startswith(prefix):
             return None
+
+    field_tid = field_session_technician_id()
+
     if path.startswith('/field') or path.startswith('/api/field'):
         tech_id = _resolve_field_technician_id()
         if tech_id:
@@ -200,10 +219,21 @@ def enforce_auth():
         if path.startswith('/api/field'):
             return jsonify({'error': 'يجب تسجيل دخول الفني'}), 401
         return redirect(url_for('field_login', next=request.path))
+
+    if field_tid and _field_tech_api_allowed(path, request.method):
+        g.field_tech_id = field_tid
+        return None
+
     user = current_user()
     if user:
         g.user = user
         return None
+
+    if field_tid:
+        if path.startswith('/api/'):
+            return jsonify({'error': 'غير مصرح لهذا الحساب'}), 403
+        return redirect(url_for('field_login', next=request.path))
+
     session.clear()
     if request.path.startswith('/api/'):
         return jsonify({'error': 'يجب تسجيل الدخول'}), 401
@@ -3348,14 +3378,19 @@ def field_visit_report(visit_id):
     from operations import visit_report_payload
 
     tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    read_only = request.args.get('print') == '1' or request.args.get('readonly') == '1'
     try:
         payload = visit_report_payload(
-            visit_id, editable=True, tech_id=tech_id, base_url=request.url_root
+            visit_id,
+            editable=not read_only,
+            tech_id=tech_id,
+            base_url=request.url_root,
         )
     except PermissionError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}
         return render_template('field.html', error=str(e), payload=None, **ctx), 403
     payload['back_url'] = url_for('field_visit', visit_id=visit_id)
+    payload['read_only_mode'] = read_only
     return render_template('visit-report.html', **payload)
 
 
@@ -3430,6 +3465,12 @@ def office_fault_report(fault_id):
 def api_save_fault_report(fault_id):
     from operations import save_fault_report
 
+    tech_id = getattr(g, 'field_tech_id', None)
+    if tech_id:
+        f = Fault.query.get_or_404(fault_id)
+        if f.technician_id and f.technician_id != tech_id:
+            return jsonify({'ok': False, 'error': 'العطل غير مخصص لهذا الفني'}), 403
+
     data = request.get_json(silent=True) or {}
     mark_resolved = bool(data.pop('mark_resolved', False))
     try:
@@ -3494,6 +3535,12 @@ def _signature_data_url(relative_path: str) -> str:
 def api_save_visit_report(visit_id):
     from operations import save_visit_report
 
+    tech_id = getattr(g, 'field_tech_id', None)
+    if tech_id:
+        v = MaintenanceVisit.query.get_or_404(visit_id)
+        if v.technician_id and v.technician_id != tech_id:
+            return jsonify({'ok': False, 'error': 'الزيارة غير مخصصة لهذا الفني'}), 403
+
     data = request.get_json(silent=True) or {}
     mark_complete = bool(data.pop('mark_complete', False))
     status = data.pop('status', 'مكتملة')
@@ -3508,6 +3555,12 @@ def api_save_visit_report(visit_id):
 def field_visit_complete(visit_id):
     from operations import complete_field_visit
 
+    tech_id = getattr(g, 'field_tech_id', None)
+    if tech_id:
+        v = MaintenanceVisit.query.get_or_404(visit_id)
+        if v.technician_id and v.technician_id != tech_id:
+            abort(403)
+
     complete_field_visit(
         visit_id,
         works_done=request.form.get('works_done', ''),
@@ -3521,6 +3574,12 @@ def field_visit_complete(visit_id):
 def field_fault_complete(fault_id):
     from operations import complete_field_fault
 
+    tech_id = getattr(g, 'field_tech_id', None)
+    if tech_id:
+        f = Fault.query.get_or_404(fault_id)
+        if f.technician_id and f.technician_id != tech_id:
+            abort(403)
+
     complete_field_fault(
         fault_id,
         tech_notes=request.form.get('tech_notes', ''),
@@ -3533,6 +3592,12 @@ def field_fault_complete(fault_id):
 @app.route('/field/fault/<int:fault_id>/request-parts', methods=['POST'])
 def field_fault_request_parts(fault_id):
     from operations import request_fault_parts
+
+    tech_id = getattr(g, 'field_tech_id', None)
+    if tech_id:
+        f = Fault.query.get_or_404(fault_id)
+        if f.technician_id and f.technician_id != tech_id:
+            abort(403)
 
     sell = float(request.form.get('sell_price') or 0)
     request_fault_parts(

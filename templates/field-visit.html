@@ -35,6 +35,6 @@
 <a class="fp-btn-report" href="{{ visit.report_url }}">📋 فتح محضر الفحص</a>
 
 {% if visit.status == 'مكتملة' %}
-<a class="fp-btn-report" style="background:var(--fp-card);border:1px solid var(--fp-border);color:var(--fp-text);font-size:13px;padding:12px" href="/maintenance-visits/{{ visit.id }}/report?print=1">🖨️ معاينة التقرير</a>
+<a class="fp-btn-report" style="background:var(--fp-card);border:1px solid var(--fp-border);color:var(--fp-text);font-size:13px;padding:12px" href="{{ url_for('field_visit_report', visit_id=visit.id) }}?print=1">🖨️ معاينة التقرير</a>
 {% endif %}
 {% endblock %}
