@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiftCore — جرد صفحات البرنامج</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --bg2: #111720;
+      --bg3: #161e2b;
+      --card: #131b27;
+      --border: rgba(100, 160, 255, 0.12);
+      --border2: rgba(100, 160, 255, 0.22);
+      --accent: #2a7fff;
+      --gold: #c8a055;
+      --text1: #e4eaf5;
+      --text2: #8a9bb8;
+      --text3: #5a6a82;
+      --success: #1fb87a;
+      --warning: #e09030;
+      --danger: #e04848;
+      --sidebar-w: 280px;
+      --r: 10px;
+      --font: 'IBM Plex Sans Arabic', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text1);
+      line-height: 1.65;
+      font-size: 14px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, .mono {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--bg3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      direction: ltr;
+      unicode-bidi: isolate;
+      display: inline-block;
+    }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--bg2);
+      border-left: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 20px 0;
+    }
+    .sidebar-brand {
+      padding: 0 20px 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .sidebar-brand h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text1);
+      margin-bottom: 4px;
+    }
+    .sidebar-brand p { font-size: 11px; color: var(--text3); }
+    .toc-section {
+      padding: 8px 20px 4px;
+      font-size: 10px;
+      color: var(--text3);
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+    .toc a {
+      display: block;
+      padding: 7px 20px;
+      font-size: 12.5px;
+      color: var(--text2);
+      text-decoration: none;
+      border-right: 3px solid transparent;
+      transition: 0.15s;
+    }
+    .toc a:hover {
+      background: var(--bg3);
+      color: var(--text1);
+      text-decoration: none;
+    }
+    .toc a.active {
+      color: var(--accent);
+      border-right-color: var(--accent);
+      background: rgba(42, 127, 255, 0.08);
+    }
+    .main { flex: 1; min-width: 0; padding: 32px 40px 80px; max-width: 960px; }
+    .hero {
+      background: linear-gradient(135deg, rgba(42,127,255,0.12), rgba(200,160,85,0.08));
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 28px 32px;
+      margin-bottom: 32px;
+    }
+    .hero h1 { font-size: 26px; font-weight: 700; margin-bottom: 12px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--text2); }
+    .hero-meta span strong { color: var(--text1); }
+    section { margin-bottom: 40px; scroll-margin-top: 24px; }
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text1);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border2);
+    }
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--gold);
+      margin: 24px 0 10px;
+    }
+    h3 .route { color: var(--accent); font-family: var(--mono); font-size: 13px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 0;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td {
+      padding: 10px 14px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      background: var(--bg3);
+      color: var(--text3);
+      font-weight: 600;
+      font-size: 11px;
+      width: 140px;
+      white-space: nowrap;
+    }
+    tr:last-child td, tr:last-child th { border-bottom: none; }
+    .note {
+      background: rgba(42, 127, 255, 0.08);
+      border: 1px solid rgba(42, 127, 255, 0.2);
+      border-radius: var(--r);
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 13px;
+      color: var(--text2);
+    }
+    .note strong { color: var(--text1); }
+    .legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 20px; }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+    .legend-item .icon { font-size: 18px; flex-shrink: 0; }
+    .bullets { margin: 12px 0; padding-right: 20px; color: var(--text2); font-size: 13px; }
+    .bullets li { margin-bottom: 6px; }
+    .bullets strong { color: var(--text1); }
+    .status-ok { color: var(--success); }
+    .status-partial { color: var(--warning); }
+    .status-fix { color: var(--accent); }
+    .status-planned { color: var(--text3); }
+    .status-lock { color: var(--gold); }
+    .data-table th:first-child { width: auto; }
+    .data-table td code { font-size: 11px; }
+    .footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text3);
+      font-style: italic;
+    }
+    .print-btn {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      z-index: 100;
+    }
+    .print-btn:hover { background: #1e6fe8; }
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        min-width: 0;
+        height: auto;
+        position: relative;
+        border-left: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .main { padding: 24px 16px 60px; }
+    }
+    @media print {
+      body { background: #fff; color: #111; font-size: 11pt; }
+      .sidebar, .print-btn { display: none; }
+      .main { max-width: 100%; padding: 0; }
+      .hero { background: #f5f7fa; border-color: #ddd; }
+      h2 { color: #111; border-color: #ccc; }
+      h3 { color: #333; }
+      .card { border-color: #ddd; break-inside: avoid; }
+      th { background: #f0f0f0; color: #333; }
+      code { background: #f5f5f5; border-color: #ddd; color: #333; }
+      a { color: #111; }
+    }
+  </style>
+</head>
+<body>
+<button class="print-btn" type="button" onclick="window.print()">🖨️ طباعة / PDF</button>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>LiftCore</h1>
+      <p>جرد صفحات البرنامج</p>
+    </div>
+    <nav class="toc" id="toc">
+      <div class="toc-section">فهرس</div>
+      <a href="#legend">دليل الحالات</a>
+      <a href="#s1">1 — الدخول والهيكل</a>
+      <a href="#s2">2 — لوحة التحكم</a>
+      <a href="#s3">3 — البيانات الأساسية</a>
+      <a href="#s4">4 — العمليات الميدانية</a>
+      <a href="#s5">5 — بوابة الفني</a>
+      <a href="#s6">6 — المالية</a>
+      <a href="#s7">7 — المخزن والمشتريات</a>
+      <a href="#s8">8 — التقارير</a>
+      <a href="#s9">9 — الإعدادات</a>
+      <a href="#s10">10 — موديول التركيب</a>
+      <a href="#s11">11 — صفحات الطباعة</a>
+      <a href="#s12">12 — واجهات API</a>
+      <a href="#s13">13 — إصلاحات حديثة</a>
+      <a href="#s14">14 — عناصر مفتوحة</a>
+      <a href="#s15">15 — تحديث الوثيقة</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="hero">
+      <h1>جرد صفحات البرنامج (محتوى + حالة)</h1>
+      <div class="hero-meta">
+        <span><strong>آخر تحديث:</strong> 17 يونيو 2026</span>
+        <span><strong>المستودع:</strong> <code>main</code> — commit <code>92e35ba</code></span>
+        <span><strong>الغرض:</strong> مراجعة ما تم بناؤه في كل صفحة وحالتها</span>
+      </div>
+    </header>
+
+    <section id="legend">
+      <h2>دليل الحالات</h2>
+      <div class="legend">
+        <div class="legend-item"><span class="icon status-ok">✅</span> جاهز ويعمل في الكود المحلي</div>
+        <div class="legend-item"><span class="icon status-partial">🟡</span> جزئي أو يحتاج إعداد / نشر</div>
+        <div class="legend-item"><span class="icon status-fix">🔧</span> أُصلح مؤخراً — تأكد النشر على tenant</div>
+        <div class="legend-item"><span class="icon status-planned">⏳</span> مخطط أو غير مكتمل</div>
+        <div class="legend-item"><span class="icon status-lock">🔒</span> يعمل بشرط إعداد (PIN، خرائط، …)</div>
+      </div>
+      <div class="note">
+        <strong>ملاحظة النشر:</strong> الكود على GitHub قد يتقدّم على سيرفر العميل التجريبي
+        (<code>jama.liftcoreapp.com</code>). بعد أي تحديث:
+        <code>bash ~/liftcore/jama-elevator-app/deploy/tenant_update.sh liftcore-jama ~/liftcore/jama-elevator-app</code>
+      </div>
+    </section>
+
+    <section id="s1">
+      <h2>1) الدخول والهيكل العام</h2>
+
+      <h3><span class="route">/</span> → إعادة توجيه</h3>
+      <div class="card"><table><tr><th>القالب</th><td>— (redirect)</td></tr><tr><th>المحتوى</th><td>يوجّه إلى <code>/dashboard</code> أو <code>/login</code> حسب الجلسة</td></tr><tr><th>الحالة</th><td class="status-ok">✅</td></tr></table></div>
+
+      <h3><span class="route">/login</span> — تسجيل الدخول (المكتب)</h3>
+      <div class="card"><table><tr><th>القالب</th><td><code>templates/login.html</code></td></tr><tr><th>المحتوى</th><td>اسم مستخدم + كلمة مرور، شعار الشركة، مظهر داكن</td></tr><tr><th>الحالة</th><td class="status-ok">✅</td></tr></table></div>
+
+      <h3><span class="route">/welcome</span> — شاشة ترحيب يومية</h3>
+      <div class="card"><table><tr><th>القالب</th><td><code>templates/welcome.html</code></td></tr><tr><th>المحتوى</th><td>ترحيب بعد الدخول (يمكن تخطيه)</td></tr><tr><th>الحالة</th><td class="status-ok">✅</td></tr></table></div>
+
+      <h3><span class="route">/logout</span></h3>
+      <div class="card"><table><tr><th>المحتوى</th><td>إنهاء الجلسة</td></tr><tr><th>الحالة</th><td class="status-ok">✅</td></tr></table></div>
+
+      <h3>الهيدر والقائمة الجانبية (مشترك)</h3>
+      <div class="card"><table>
+        <tr><th>الملفات</th><td><code>partials/app_header.html</code>, <code>partials/liftcore_head.html</code>, <code>static/liftcore-shell.css</code></td></tr>
+        <tr><th>المحتوى</th><td>شعار العميل + LiftCore في الوسط، تبويبات علوية، ملف شخصي، لغة، تاريخ</td></tr>
+        <tr><th>إصلاحات حديثة</th><td>تخطيط 3 أعمدة للهيدر، تكبير شعار العميل، توسيط التبويبات</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td> (الهيدر) · <span class="status-fix">🔧</span> (النوافذ فوق الهيدر — <code>92e35ba</code>)</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s2">
+      <h2>2) الرئيسية</h2>
+      <h3><span class="route">/dashboard</span> — لوحة التحكم</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/dashboard.html</code></td></tr>
+        <tr><th>المحتوى</th><td>بطاقات إحصائية: عملاء، مصاعد، عقود، عقود منتهية، زيارات اليوم، أعطال مفتوحة، إيرادات الشهر، …</td></tr>
+        <tr><th>تفاعل</th><td>النقر على البطاقة يفتح تفاصيل (drill-down) عبر <code>/api/dashboard/drill/&lt;type&gt;</code></td></tr>
+        <tr><th>القائمة</th><td>كل أقسام النظام + رابط تقدير تكلفة مصعد + مشاريع التركيب (إن مُفعّل)</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s3">
+      <h2>3) البيانات الأساسية</h2>
+
+      <h3><span class="route">/clients</span> — العملاء</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/clients.html</code></td></tr>
+        <tr><th>المحتوى</th><td>جدول عملاء مع فلاتر وبحث · تبويب <strong>جدول</strong> و<strong>خريطة مواقع</strong> · نافذة إضافة/تعديل عميل</td></tr>
+        <tr><th>حقول العميل</th><td>كود، اسم، جوال، مدينة، حي، عنوان، موقع GPS، ملاحظات</td></tr>
+        <tr><th>خرائط</th><td>Google Maps أو OpenStreetMap تلقائياً · <code>client_location.js</code></td></tr>
+        <tr><th>استيراد</th><td>قالب Excel للعناوين <code>/clients/template</code> · استيراد عناوين</td></tr>
+        <tr><th>API</th><td>ملف العميل، كشف حساب، عمليات غير محصّلة، موقع، geocode</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td> · <span class="status-partial">🟡</span> (ترجمة i18n تجريبية غير مدمجة بالكامل)</td></tr>
+      </table></div>
+
+      <h3><span class="route">/elevators</span> — المصاعد</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/elevators.html</code></td></tr>
+        <tr><th>المحتوى</th><td>جدول مصاعد مرتبطة بالعملاء · إضافة/تعديل/حذف · فلاتر</td></tr>
+        <tr><th>حقول</th><td>كود، عميل، نوع، عدد توقفات، سعة، سنة تركيب، حالة، عقد مرتبط</td></tr>
+        <tr><th>استيراد</th><td>قالب Excel <code>/elevators/template</code></td></tr>
+        <tr><th>API</th><td>مصاعد حسب العميل، ملف مصعد، روابط</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+
+      <h3><span class="route">/elevator-estimates</span> — تقدير تكلفة مصعد</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/elevator-estimates.html</code></td></tr>
+        <tr><th>المحتوى</th><td>نموذج تقدير (مواصفات، بنود تكلفة، ضريبة) · <strong>مخطط SVG تفاعلي</strong> للبئر</td></tr>
+        <tr><th>طباعة</th><td><code>/elevator-estimates/print/&lt;id&gt;</code> — <code>elevator-estimate-print.html</code></td></tr>
+        <tr><th>إصلاحات حديثة</th><td>مخطط المصعد تحت مواصفات المشروع</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+
+      <h3><span class="route">/contracts</span> — العقود</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/contracts.html</code></td></tr>
+        <tr><th>المحتوى</th><td>عقود صيانة/خدمة · ربط عميل ومصعد · تواريخ · قيمة · حالة</td></tr>
+        <tr><th>طباعة</th><td><code>/contracts/&lt;id&gt;/print</code> — <code>contract-print.html</code></td></tr>
+        <tr><th>استيراد</th><td>قالب Excel</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+
+      <h3><span class="route">/technicians</span> — الفنيون</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/technicians.html</code></td></tr>
+        <tr><th>المحتوى</th><td>جدول فنيين · صورة · فريق (صيانة/أعطال/كلاهما) · حالة · جوال</td></tr>
+        <tr><th>نافذة</th><td>بيانات الفني، مستندات، توقيع رقمي</td></tr>
+        <tr><th>إصلاحات حديثة</th><td>مسح فلاتر تلقائي · عرض سيرفر احتياطي · صور في الجدول · «نشط» = «متاح»</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td> · <span class="status-fix">🔧</span> (تأكد النشر على جما)</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s4">
+      <h2>4) العمليات الميدانية</h2>
+
+      <h3><span class="route">/maintenance-visits</span> — زيارات الصيانة</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/maintenance-visits.html</code></td></tr>
+        <tr><th>المحتوى</th><td><strong>3 تبويبات:</strong> جدول الزيارات · خريطة اليوم · تقويم</td></tr>
+        <tr><th>تخطيط الصيانة</th><td>نافذة توليد خطة (تلقائي حسب الأحياء / يدوي) · إسناد فني · إرسال للفني</td></tr>
+        <tr><th>نافذة زيارة</th><td>عميل، مصعد، تاريخ، نوع، فني، حالة، ملاحظات</td></tr>
+        <tr><th>تقرير</th><td><code>/maintenance-visits/&lt;id&gt;/report</code> — تقرير زيارة مع توقيع</td></tr>
+        <tr><th>API</th><td>خطة، أحياء، dispatch، generate-plan</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td> · <span class="status-fix">🔧</span> (نوافذ فوق الهيدر بعد <code>92e35ba</code>)</td></tr>
+      </table></div>
+
+      <h3><span class="route">/faults</span> — الأعطال</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/faults.html</code></td></tr>
+        <tr><th>المحتوى</th><td>إحصائيات أعطال · تنبيهات · جدول · فلاتر (عميل، حالة، أولوية)</td></tr>
+        <tr><th>نافذة «بيانات العطل»</th><td>كود، تاريخ بلاغ، عميل، مصعد، مدينة، حي، نوع، أولوية، وصف، قطع غيار</td></tr>
+        <tr><th>إجراءات</th><td>حفظ وتعيين فني · تصدير Excel · رابط جوال الفني</td></tr>
+        <tr><th>تقرير</th><td><code>/faults/&lt;id&gt;/report</code></td></tr>
+        <tr><th>إصلاحات حديثة</th><td>ترتيب الأحدث أولاً · مسح فلاتر · عرض سيرفر · أرقام إنجليزية لأسعار القطع</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td> · <span class="status-fix">🔧</span></td></tr>
+      </table></div>
+
+      <h3><span class="route">/parts-billing</span> — تركيب قطع غيار (فوترة)</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/parts-billing.html</code></td></tr>
+        <tr><th>المحتوى</th><td>عمليات تركيب قطع مرتبطة بأعطال/عملاء · فوترة</td></tr>
+        <tr><th>استيراد</th><td>قالب واستيراد Excel</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s5">
+      <h2>5) بوابة الفني (جوال) — <code>/field/*</code></h2>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>المسار</th><th>القالب</th><th>المحتوى</th><th>الحالة</th></tr></thead>
+          <tbody>
+            <tr><td><code>/field/login</code></td><td><code>field-login.html</code></td><td>دخول بكود/جوال + PIN 6 أرقام</td><td class="status-ok">✅</td> <span class="status-lock">🔒</span></td></tr>
+            <tr><td><code>/field</code></td><td><code>field.html</code></td><td>مهام اليوم وغداً (صيانة + أعطال)</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/field/visit/&lt;id&gt;</code></td><td><code>field-visit.html</code></td><td>تفاصيل زيارة · بدء · إكمال</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/field/visit/&lt;id&gt;/report</code></td><td>—</td><td>تقرير زيارة من الجوال</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/field/fault/&lt;id&gt;</code></td><td><code>field-fault.html</code></td><td>تفاصيل عطل · تقرير · طلب قطع</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/field/fault/&lt;id&gt;/report</code></td><td>—</td><td>تقرير عطل</td><td class="status-ok">✅</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="bullets">
+        <li><strong>ملفات مشتركة:</strong> <code>field_base.html</code>, <code>field_brand_bar.html</code>, <code>static/field-portal.css</code>, <code>field_auth.py</code></li>
+        <li><strong>إعداد PIN:</strong> الإعدادات → تبويب <strong>دخول الفني (الجوال)</strong> أو توقيع الفني في ملف الفني</li>
+        <li><strong>إصلاحات حديثة:</strong> شعارات العميل + LiftCore · عرض الأعطال المُسندة لفريق صيانة أيضاً</li>
+        <li><strong>غير منفّذ:</strong> <span class="status-planned">⏳</span> وضع offline (Service Worker + IndexedDB + مزامنة)</li>
+        <li><strong>الحالة العامة:</strong> <span class="status-ok">✅</span> (يتطلب تفعيل PIN لكل فني)</li>
+      </ul>
+    </section>
+
+    <section id="s6">
+      <h2>6) المالية</h2>
+
+      <h3><span class="route">/revenues</span> — الإيرادات</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/revenues.html</code></td></tr>
+        <tr><th>المحتوى</th><td>تسجيل إيرادات · ربط بعمليات غير محصّلة للعميل</td></tr>
+        <tr><th>ميزات</th><td>أزرار <strong>إضافة كامل / جزئي</strong> للبنود · تجميع مبالغ متعددة · أرقام عربية/إنجليزية</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td> في الكود · <span class="status-partial">🟡</span> (قد لا يكون مرفوعاً على كل السيرفرات)</td></tr>
+      </table></div>
+
+      <h3><span class="route">/expenses</span> — المصروفات</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/expenses.html</code></td></tr>
+        <tr><th>المحتوى</th><td>مصروفات تشغيل · تصنيف · مبلغ · تاريخ</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+
+      <h3><span class="route">/invoices</span> — الفواتير</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/invoices.html</code></td></tr>
+        <tr><th>المحتوى</th><td>إنشاء فواتير · ربط بنود غير محصّلة · ضريبة</td></tr>
+        <tr><th>طباعة</th><td><code>/invoices/&lt;id&gt;/print</code> — <code>invoice-print.html</code></td></tr>
+        <tr><th>ميزات</th><td>فاتورة لكل بند عند اختيار متعدد · دفع جزئي</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td> في الكود · <span class="status-partial">🟡</span> (نشر السيرفر)</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s7">
+      <h2>7) المخزن والمشتريات</h2>
+
+      <h3><span class="route">/inventory</span> — الأصناف</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/inventory.html</code></td></tr>
+        <tr><th>المحتوى</th><td>كتالوج قطع · كميات · حد أدنى · أسعار شراء/بيع · مورد</td></tr>
+        <tr><th>استيراد</th><td><code>/inventory/template</code></td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+
+      <h3><span class="route">/stock-movements</span> — حركة المخزن</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/stock-movements.html</code></td></tr>
+        <tr><th>المحتوى</th><td>إدخال/إخراج مخزون · ربط بصنف</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+
+      <h3><span class="route">/purchase-orders</span> — طلبات الشراء</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/purchase-orders.html</code></td></tr>
+        <tr><th>المحتوى</th><td>إنشاء PO · بنود · مورد · حالات (مسودة/مرسل/مستلم)</td></tr>
+        <tr><th>طباعة</th><td><code>/purchase-orders/&lt;id&gt;/print</code> (+ نسخة EN) · PDF · واتساب · إيميل · توقيع</td></tr>
+        <tr><th>القالب طباعة</th><td><code>purchase-order-print.html</code></td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s8">
+      <h2>8) التقارير — <code>/reports/*</code></h2>
+
+      <h3><span class="route">/reports</span> — فهرس التقارير</h3>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/reports.html</code></td></tr>
+        <tr><th>المحتوى</th><td>بطاقات روابط لكل تقرير</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+
+      <h3>تقارير تفصيلية (قوالب <code>report-*.html</code>)</h3>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>المسار</th><th>القالب</th><th>الموضوع</th><th>الحالة</th></tr></thead>
+          <tbody>
+            <tr><td><code>/reports/dashboard</code></td><td><code>report-dashboard.html</code></td><td>ملخص عام</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/client-annual</code></td><td><code>report-annual.html</code></td><td>سنوي للعميل</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/clients</code></td><td><code>report-clients.html</code></td><td>عملاء</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/elevators</code></td><td><code>report-elevators.html</code></td><td>مصاعد</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/contracts</code></td><td><code>report-contracts.html</code></td><td>عقود</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/technicians</code></td><td><code>report-technicians.html</code></td><td>فنيون</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/maintenance-visits</code></td><td><code>report-maintenance.html</code></td><td>صيانة</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/faults</code></td><td><code>report-faults.html</code></td><td>أعطال</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/revenues</code></td><td><code>report-revenues.html</code></td><td>إيرادات</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/expenses</code></td><td><code>report-expenses.html</code></td><td>مصروفات</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/invoices</code></td><td><code>report-invoices.html</code></td><td>فواتير</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/inventory</code></td><td><code>report-inventory.html</code></td><td>مخزون</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/stock-movements</code></td><td><code>report-stock.html</code></td><td>حركة مخزن</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/reports/parts-billing</code></td><td><code>report-parts.html</code></td><td>قطع غيار</td><td class="status-ok">✅</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note">التقارير تعرض بيانات مع فلاتر وتصدير؛ لا تُعدّل البيانات.</div>
+    </section>
+
+    <section id="s9">
+      <h2>9) الإعدادات — <code>/settings</code></h2>
+      <div class="card"><table>
+        <tr><th>القالب</th><td><code>templates/settings.html</code></td></tr>
+        <tr><th>تبويب الشركة والهوية</th><td>اسم، شعار، عناوين، ضريبة، سجل تجاري، مقاسات شعار</td></tr>
+        <tr><th>المستخدمون</th><td>إضافة/تعديل/تعطيل مستخدمي المكتب</td></tr>
+        <tr><th>دخول الفني (الجوال)</th><td>تفعيل PIN لكل فني مسجّل — <span class="status-ok">✅ جديد</span></td></tr>
+        <tr><th>التوقيعات</th><td>معتمدو التوقيع الرقمي للتقارير</td></tr>
+        <tr><th>حسابي</th><td>كلمة المرور، بيانات المستخدم الحالي</td></tr>
+        <tr><th>المظهر</th><td>ثيمات (داكن، فاتح، premium، …)</td></tr>
+        <tr><th>الباقة</th><td><span class="status-planned">⏳</span> معطّل — «قريباً»</td></tr>
+        <tr><th>الحالة</th><td class="status-ok">✅</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s10">
+      <h2>10) موديول التركيب — <code>/installation/*</code></h2>
+      <div class="note">يظهر في القائمة فقط إذا <code>install_module_enabled = true</code></div>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>المسار</th><th>القالب</th><th>المحتوى</th><th>الحالة</th></tr></thead>
+          <tbody>
+            <tr><td><code>/installation/</code></td><td><code>installation/index.html</code></td><td>لوحة التركيب</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/installation/leads</code></td><td><code>installation/leads.html</code></td><td>عملاء محتملون</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/installation/projects</code></td><td><code>installation/projects.html</code></td><td>قائمة مشاريع</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/installation/projects/&lt;id&gt;</code></td><td><code>project_detail.html</code></td><td>تفاصيل مشروع</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/installation/projects/&lt;id&gt;/quote</code></td><td><code>installation/quote.html</code></td><td>عرض سعر</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/installation/projects/&lt;id&gt;/execution</code></td><td><code>project_execution.html</code></td><td>تنفيذ ومراحل</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/installation/projects/&lt;id&gt;/handover</code></td><td><code>delivery_handover.html</code></td><td>تسليم</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/installation/projects/&lt;id&gt;/report</code></td><td><code>project_report.html</code></td><td>تقرير مشروع</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/installation/quotes/&lt;id&gt;/print</code></td><td><code>quote_print.html</code></td><td>طباعة عرض</td><td class="status-ok">✅</td></tr>
+            <tr><td><code>/installation/.../timeline/.../edit</code></td><td><code>timeline_step_edit.html</code></td><td>تعديل خطوة زمنية</td><td class="status-ok">✅</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:12px;color:var(--text2);font-size:13px;"><strong>الحالة العامة:</strong> <span class="status-ok">✅</span> (موديول مستقل <code>installation/</code>)</p>
+    </section>
+
+    <section id="s11">
+      <h2>11) صفحات طباعة وتقارير ميدانية</h2>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>المسار</th><th>القالب</th><th>الاستخدام</th></tr></thead>
+          <tbody>
+            <tr><td><code>/contracts/&lt;id&gt;/print</code></td><td><code>contract-print.html</code></td><td>طباعة عقد</td></tr>
+            <tr><td><code>/invoices/&lt;id&gt;/print</code></td><td><code>invoice-print.html</code></td><td>طباعة فاتورة</td></tr>
+            <tr><td><code>/purchase-orders/&lt;id&gt;/print</code></td><td><code>purchase-order-print.html</code></td><td>طباعة PO</td></tr>
+            <tr><td><code>/elevator-estimates/print/&lt;id&gt;</code></td><td><code>elevator-estimate-print.html</code></td><td>تقدير مصعد</td></tr>
+            <tr><td><code>/maintenance-visits/&lt;id&gt;/report</code></td><td><code>visit-report.html</code></td><td>تقرير صيانة</td></tr>
+            <tr><td><code>/faults/&lt;id&gt;/report</code></td><td><code>fault-report.html</code></td><td>تقرير عطل</td></tr>
+            <tr><td><code>/installation/quotes/&lt;id&gt;/print</code></td><td><code>quote_print.html</code></td><td>عرض تركيب</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:12px;" class="status-ok">✅ جاهز</p>
+    </section>
+
+    <section id="s12">
+      <h2>12) واجهات API مهمة</h2>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>المجال</th><th>أمثلة مسارات</th></tr></thead>
+          <tbody>
+            <tr><td>مزامنة حية</td><td><code>/api/live/revision</code>, <code>/api/live/sync</code></td></tr>
+            <tr><td>لوحة التحكم</td><td><code>/api/dashboard/drill/&lt;type&gt;</code></td></tr>
+            <tr><td>عملاء</td><td><code>/api/customers/&lt;id&gt;/profile</code>, <code>.../statement</code>, <code>.../location</code></td></tr>
+            <tr><td>صيانة</td><td><code>/api/maintenance/plan</code>, <code>.../dispatch/&lt;tech&gt;</code></td></tr>
+            <tr><td>أعطال</td><td><code>/api/faults/&lt;id&gt;</code>, <code>.../dispatch</code>, <code>.../report</code></td></tr>
+            <tr><td>فني ميداني</td><td><code>/api/field/me</code></td></tr>
+            <tr><td>توقيع</td><td><code>/api/signatures/verify</code></td></tr>
+            <tr><td>ترجمة (تجريبي)</td><td><code>/api/translate</code> — في ملفات deploy منفصلة</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2>13) ملخص الإصلاحات الأخيرة (يونيو 2026)</h2>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>الموضوع</th><th>Commit</th><th>الحالة</th></tr></thead>
+          <tbody>
+            <tr><td>بوابة الفني <code>/field</code></td><td><code>b7015ba</code></td><td class="status-ok">✅</td></tr>
+            <tr><td>إعداد PIN الفني في الإعدادات</td><td><code>12fdb90</code></td><td class="status-ok">✅</td></tr>
+            <tr><td>شعارات بوابة الفني</td><td><code>0a0d841</code></td><td class="status-ok">✅</td></tr>
+            <tr><td>جدول الأعطال + أعطال مُسندة على الجوال</td><td><code>1af26ab</code></td><td class="status-ok">✅</td></tr>
+            <tr><td>فلاتر الفنيين + صور</td><td><code>12fdb90</code>, <code>1af26ab</code></td><td class="status-ok">✅</td></tr>
+            <tr><td>مخطط SVG لتقدير المصعد</td><td><code>7eab0f0</code>, <code>ef2cabb</code></td><td class="status-ok">✅</td></tr>
+            <tr><td>تخطيط الهيدر وشعار العميل</td><td><code>47c6f22</code> … <code>8450ce4</code></td><td class="status-ok">✅</td></tr>
+            <tr><td><strong>النوافذ فوق الهيدر (z-index)</strong></td><td><code>92e35ba</code></td><td class="status-fix">🔧 — يحتاج نشر على السيرفر</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="s14">
+      <h2>14) عناصر مفتوحة / مخططة</h2>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>العنصر</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
+          <tbody>
+            <tr><td>Offline PWA للفني</td><td class="status-planned">⏳</td><td>Service Worker + IndexedDB</td></tr>
+            <tr><td>ترجمة i18n كاملة</td><td class="status-partial">🟡</td><td>ملفات <code>liftcore-i18n-*</code> موجودة محلياً، غير مدمجة بالكامل</td></tr>
+            <tr><td>تبويب الباقة في الإعدادات</td><td class="status-planned">⏳</td><td>معطّل</td></tr>
+            <tr><td>ZATCA فوترة إلكترونية</td><td class="status-partial">🟡</td><td><code>zatca_invoice.py</code> محلي غير مدمج</td></tr>
+            <tr><td>توحيد CSS الصفحات</td><td class="status-partial">🟡</td><td>أنماط modal مكررة؛ الإصلاح المركزي في <code>liftcore-shell.css</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="s15">
+      <h2>15) كيف تُحدَّث هذه الوثيقة</h2>
+      <ol class="bullets" style="list-style: decimal;">
+        <li>عند إضافة صفحة: أضف سطراً في القسم المناسب (مسار، قالب، محتوى، حالة).</li>
+        <li>عند الإصلاح: حدّث القسم 13 وغيّر رمز الحالة.</li>
+        <li>بعد النشر على tenant: راجع أن السيرفر يطابق <code>main</code> على GitHub.</li>
+      </ol>
+    </section>
+
+    <footer class="footer">تم إنشاء هذا الملف للمراجعة الداخلية — LiftCore / elevator-app</footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  var links = document.querySelectorAll('.toc a');
+  var sections = [];
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) sections.push({ link: a, el: el });
+  });
+  function onScroll() {
+    var y = window.scrollY + 80;
+    var current = sections[0];
+    sections.forEach(function (s) {
+      if (s.el.offsetTop <= y) current = s;
+    });
+    links.forEach(function (l) { l.classList.remove('active'); });
+    if (current) current.link.classList.add('active');
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

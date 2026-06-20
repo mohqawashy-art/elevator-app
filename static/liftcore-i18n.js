@@ -725,7 +725,9 @@
   }
 
   function installSetLang() {
-    global.setLang = setLang;
+    try {
+      if (global.setLang !== setLang) global.setLang = setLang;
+    } catch (e) { /* ignore */ }
     global.LiftCoreI18n = {
       apply: applyLanguage,
       setLang: setLang,

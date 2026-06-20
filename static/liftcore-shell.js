@@ -165,7 +165,9 @@
     bindSidebarLayout();
     if (window.LiftCoreFormat) {
       LiftCoreFormat.initHeaderDates();
-      LiftCoreFormat.applyWesternDigits(document.body);
+      if (typeof LiftCoreFormat.applyWesternDigits === 'function') {
+        LiftCoreFormat.applyWesternDigits(document.body);
+      }
     }
   });
 

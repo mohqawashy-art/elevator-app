@@ -233,9 +233,11 @@
   });
 
   function lockGlobalSetLang() {
-    if (global.LiftCoreI18n && global.LiftCoreI18n.setLang) {
+    if (!global.LiftCoreI18n || !global.LiftCoreI18n.setLang) return;
+    if (global.setLang === global.LiftCoreI18n.setLang) return;
+    try {
       global.setLang = global.LiftCoreI18n.setLang;
-    }
+    } catch (e) { /* setLang قد يكون مقفولاً — استخدم LiftCoreI18n.setLang */ }
   }
 
   [0, 100, 400, 1000, 2500].forEach(function (ms) { setTimeout(lockGlobalSetLang, ms); });

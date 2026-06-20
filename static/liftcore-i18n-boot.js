@@ -11,14 +11,8 @@
     if (lang !== 'ar' && lang !== 'en') lang = 'ar';
     window.__LC_LANG = lang;
     if (window.LiftCoreI18n && window.LiftCoreI18n.setLang) {
-      try {
-        Object.defineProperty(window, 'setLang', {
-          value: window.LiftCoreI18n.setLang,
-          writable: false,
-          configurable: true,
-        });
-      } catch (e) {
-        window.setLang = window.LiftCoreI18n.setLang;
+      if (typeof window.setLang !== 'function') {
+        try { window.setLang = window.LiftCoreI18n.setLang; } catch (e) { /* ignore */ }
       }
       window.LiftCoreI18n.apply(lang);
     }

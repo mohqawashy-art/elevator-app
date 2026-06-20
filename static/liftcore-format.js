@@ -122,6 +122,25 @@
     });
   }
 
+  var EASTERN_DIGITS = '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹';
+  var WESTERN_DIGITS = '01234567890123456789';
+
+  function toWesternDigits(value) {
+    return String(value == null ? '' : value).replace(/[٠-٩۰-۹]/g, function (ch) {
+      var i = EASTERN_DIGITS.indexOf(ch);
+      return i >= 0 ? WESTERN_DIGITS[i] : ch;
+    });
+  }
+
+  function applyWesternDigits(root) {
+    root = root || document.body;
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('input, textarea').forEach(function (el) {
+      if (el.type === 'number' || el.readOnly || el.disabled) return;
+      if (el.value && /[٠-٩۰-۹]/.test(el.value)) el.value = toWesternDigits(el.value);
+    });
+  }
+
   global.LiftCoreFormat = {
     headerDateHTML: headerDateHTML,
     setHeaderDate: setHeaderDate,
@@ -132,6 +151,8 @@
     wrapCode: wrapCode,
     wrapDate: wrapDate,
     initHeaderDates: initHeaderDates,
+    toWesternDigits: toWesternDigits,
+    applyWesternDigits: applyWesternDigits,
     AR_MONTHS: AR_MONTHS,
     EN_MONTHS: EN_MONTHS,
     MONTHS: MONTHS,
