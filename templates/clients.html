@@ -9,16 +9,36 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script>
   window.LIFTCORE_GOOGLE_MAPS_KEY = {{ google_maps_api_key|tojson }};
-  window.whenGoogleMapsReady = function (fn) {
-    if (!window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed) { fn(); return; }
-    if (window.google && window.google.maps) { fn(); return; }
-    window.__gmapsQueue = window.__gmapsQueue || [];
-    window.__gmapsQueue.push(fn);
-  };
-  window.initGoogleMapsApi = function () {
+  window.__gmapsQueue = window.__gmapsQueue || [];
+  function flushGmapsQueue() {
     var q = window.__gmapsQueue || [];
     window.__gmapsQueue = [];
     q.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } });
+  }
+  window.loadGmapsMarkerLib = function () {
+    if (window.__gmapsMarkerReady) return Promise.resolve(window.__gmapsMarkerLib);
+    if (window.__gmapsMarkerLoading) return window.__gmapsMarkerLoading;
+    if (!window.google || !window.google.maps || !google.maps.importLibrary) {
+      return Promise.reject(new Error('google maps not ready'));
+    }
+    window.__gmapsMarkerLoading = google.maps.importLibrary('marker').then(function (lib) {
+      window.__gmapsMarkerLib = lib;
+      window.__gmapsMarkerReady = true;
+      if (window.LiftCoreMap && LiftCoreMap._setMarkerLib) LiftCoreMap._setMarkerLib(lib);
+      return lib;
+    });
+    return window.__gmapsMarkerLoading;
+  };
+  window.whenGoogleMapsReady = function (fn) {
+    if (!window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed) { fn(); return; }
+    if (!window.google || !window.google.maps) {
+      window.__gmapsQueue.push(fn);
+      return;
+    }
+    window.loadGmapsMarkerLib().then(fn).catch(function () { fn(); });
+  };
+  window.initGoogleMapsApi = function () {
+    window.loadGmapsMarkerLib().then(flushGmapsQueue).catch(flushGmapsQueue);
   };
   window.gm_authFailure = function () {
     window.__gmapsAuthFailed = true;
@@ -1943,6 +1963,10 @@ function refreshMainMapOsm() {
 function refreshMainMap(fitAgain) {
   if (useOsmMaps()) {
     refreshMainMapOsm();
+    return;
+  }
+  if (window.LiftCoreMap && LiftCoreMap.ensureMarkerLibReady && !LiftCoreMap.canUseAdvancedMarkers()) {
+    LiftCoreMap.ensureMarkerLibReady(function () { refreshMainMap(fitAgain); });
     return;
   }
 

@@ -750,6 +750,10 @@ function visitStatusColor(status) {
 
 function refreshVisitMap() {
   if (typeof google === 'undefined' || !google.maps) return;
+  if (window.LiftCoreMap && LiftCoreMap.ensureMarkerLibReady && !LiftCoreMap.canUseAdvancedMarkers()) {
+    LiftCoreMap.ensureMarkerLibReady(refreshVisitMap);
+    return;
+  }
   const mapEl = document.getElementById('map');
   if (!mapEl) return;
   if (!visitMap) {

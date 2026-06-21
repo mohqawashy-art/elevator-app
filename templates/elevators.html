@@ -1521,6 +1521,10 @@ function clearElevMapMarkers() {
 
 function refreshElevatorMap(fitAgain) {
   if (typeof google === 'undefined' || !google.maps) return;
+  if (window.LiftCoreMap && LiftCoreMap.ensureMarkerLibReady && !LiftCoreMap.canUseAdvancedMarkers()) {
+    LiftCoreMap.ensureMarkerLibReady(function () { refreshElevatorMap(fitAgain); });
+    return;
+  }
   var mapEl = document.getElementById('map');
   if (!mapEl) return;
 

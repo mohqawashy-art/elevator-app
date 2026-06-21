@@ -282,6 +282,10 @@
       setLeafletMarker(lat, lng, pan, skipReverseGeocode);
       return;
     }
+    if (global.LiftCoreMap && LiftCoreMap.ensureMarkerLibReady && !LiftCoreMap.canUseAdvancedMarkers()) {
+      LiftCoreMap.ensureMarkerLibReady(function () { setMarkerPosition(lat, lng, panOrOpts); });
+      return;
+    }
     var pos = { lat: lat, lng: lng };
     if (!state.marker) {
       if (global.LiftCoreMap && LiftCoreMap.createPinMarker) {

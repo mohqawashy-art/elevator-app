@@ -15,28 +15,38 @@
   ];
 
   var PIN_PATH = 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z';
+  var markerLib = null;
+
+  function _setMarkerLib(lib) {
+    markerLib = lib || null;
+  }
+
+  function getMarkerClasses() {
+    if (markerLib) return markerLib;
+    if (global.__gmapsMarkerLib) return global.__gmapsMarkerLib;
+    if (global.google && global.google.maps && global.google.maps.marker) {
+      return global.google.maps.marker;
+    }
+    return null;
+  }
 
   function getMapId() {
     return (global.LIFTCORE_GOOGLE_MAP_ID || DEFAULT_MAP_ID);
   }
 
   function canUseAdvancedMarkers() {
-    return !!(
-      global.google &&
-      global.google.maps &&
-      global.google.maps.marker &&
-      global.google.maps.marker.AdvancedMarkerElement
-    );
+    var mc = getMarkerClasses();
+    return !!(mc && mc.AdvancedMarkerElement);
   }
 
   function isAdvancedMarker(marker) {
     if (!marker || !canUseAdvancedMarkers()) return false;
-    return marker instanceof global.google.maps.marker.AdvancedMarkerElement;
+    var AdvancedMarkerElement = getMarkerClasses().AdvancedMarkerElement;
+    return marker instanceof AdvancedMarkerElement;
   }
 
   function mergeMapOptions(options) {
     options = options || {};
-    if (!canUseAdvancedMarkers()) return options;
     var merged = Object.assign({}, options);
     merged.mapId = merged.mapId || getMapId();
     return merged;
@@ -55,8 +65,9 @@
   }
 
   function makePinContent(color, scale) {
-    if (canUseAdvancedMarkers() && global.google.maps.marker.PinElement) {
-      var pin = new global.google.maps.marker.PinElement({
+    var mc = getMarkerClasses();
+    if (mc && mc.PinElement) {
+      var pin = new mc.PinElement({
         background: color || '#1fb87a',
         borderColor: '#ffffff',
         glyphColor: '#ffffff',
@@ -93,14 +104,15 @@
   function createClusterMarker(cluster, unitLabel) {
     var count = cluster.count;
     var title = count + ' ' + (unitLabel || 'موقع');
-    if (canUseAdvancedMarkers()) {
+    var mc = getMarkerClasses();
+    if (mc && mc.AdvancedMarkerElement) {
       var icon = makeClusterIcon(count);
       var img = document.createElement('img');
       img.src = icon.url;
       img.width = icon.scaledSize.width;
       img.height = icon.scaledSize.height;
       img.alt = title;
-      return new global.google.maps.marker.AdvancedMarkerElement({
+      return new mc.AdvancedMarkerElement({
         position: cluster.position,
         title: title,
         content: img,
@@ -129,8 +141,9 @@
     var position = opts.position;
     var color = opts.color || '#1fb87a';
     var scale = opts.scale || 1.2;
-    if (canUseAdvancedMarkers()) {
-      var advanced = new global.google.maps.marker.AdvancedMarkerElement({
+    var mc = getMarkerClasses();
+    if (mc && mc.AdvancedMarkerElement) {
+      return new mc.AdvancedMarkerElement({
         map: opts.map || null,
         position: position,
         title: opts.title || '',
@@ -138,7 +151,6 @@
         gmpDraggable: !!opts.draggable,
         zIndex: opts.zIndex
       });
-      return advanced;
     }
     var legacy = new global.google.maps.Marker({
       map: opts.map || null,
@@ -289,9 +301,40 @@
     return global.LiftCoreGeocode.geocodeAll(customers, onProgress);
   }
 
+  function ensureMarkerLibReady(fn) {
+    if (!global.google || !global.google.maps || global.__gmapsAuthFailed) {
+      if (fn) fn();
+      return Promise.resolve();
+    }
+    if (canUseAdvancedMarkers()) {
+      if (fn) fn();
+      return Promise.resolve();
+    }
+    if (global.loadGmapsMarkerLib) {
+      return global.loadGmapsMarkerLib().then(function () {
+        if (fn) fn();
+      }).catch(function () {
+        if (fn) fn();
+      });
+    }
+    if (global.google.maps.importLibrary) {
+      return global.google.maps.importLibrary('marker').then(function (lib) {
+        _setMarkerLib(lib);
+        global.__gmapsMarkerLib = lib;
+        global.__gmapsMarkerReady = true;
+        if (fn) fn();
+      }).catch(function () {
+        if (fn) fn();
+      });
+    }
+    if (fn) fn();
+    return Promise.resolve();
+  }
+
   global.LiftCoreMap = {
     DEFAULT_CENTER: DEFAULT_CENTER,
     POI_HIDDEN: POI_HIDDEN,
+    _setMarkerLib: _setMarkerLib,
     getMapId: getMapId,
     canUseAdvancedMarkers: canUseAdvancedMarkers,
     isAdvancedMarker: isAdvancedMarker,
@@ -312,6 +355,7 @@
     fitMapToMarkers: fitMapToMarkers,
     coordsForRecord: coordsForRecord,
     bindMarkerHover: bindMarkerHover,
-    geocodeMissing: geocodeMissing
+    geocodeMissing: geocodeMissing,
+    ensureMarkerLibReady: ensureMarkerLibReady
   };
 })(typeof window !== 'undefined' ? window : this);
