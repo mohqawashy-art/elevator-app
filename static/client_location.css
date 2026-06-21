@@ -44,3 +44,5 @@
 .map-picker-advanced summary{font-size:11px;color:var(--text3);cursor:pointer;user-select:none}
 .map-picker-advanced summary:hover{color:var(--accent)}
 .pac-container{z-index:10050!important;font-family:'IBM Plex Sans Arabic',sans-serif;direction:rtl}
+.lc-place-autocomplete-wrap{flex:1;min-width:0;display:flex}
+.lc-place-autocomplete-wrap .lc-gmp-autocomplete{width:100%;display:block}

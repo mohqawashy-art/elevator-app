@@ -8,6 +8,9 @@
     marker: null,
     geocoder: null,
     autocomplete: null,
+    placeAutocompleteEl: null,
+    placeSelectListener: null,
+    autocompleteWrap: null,
     opts: null,
     initialized: false,
     hasPoint: false,
@@ -30,21 +33,49 @@
       el.style.display = 'none';
       el.style.visibility = 'hidden';
     });
+    if (state.placeAutocompleteEl && state.placeAutocompleteEl.blur) {
+      try { state.placeAutocompleteEl.blur(); } catch (e) { /* ignore */ }
+    }
   }
 
-  function suspendPlacesAutocomplete() {
+  function teardownGoogleSearch() {
+    if (state.placeSelectListener && state.placeAutocompleteEl) {
+      try { state.placeAutocompleteEl.removeEventListener('gmp-select', state.placeSelectListener); } catch (e) { /* ignore */ }
+    }
+    state.placeSelectListener = null;
+    if (state.placeAutocompleteEl) {
+      try { state.placeAutocompleteEl.remove(); } catch (e) { /* ignore */ }
+      state.placeAutocompleteEl = null;
+    }
+    if (state.autocompleteWrap) {
+      try { state.autocompleteWrap.remove(); } catch (e) { /* ignore */ }
+      state.autocompleteWrap = null;
+    }
     if (state.autocomplete) {
       try { google.maps.event.clearInstanceListeners(state.autocomplete); } catch (e) { /* ignore */ }
       state.autocomplete = null;
     }
+    var input = state.opts && $(state.opts.searchEl);
+    if (input) input.style.display = '';
+  }
+
+  function suspendPlacesAutocomplete() {
+    teardownGoogleSearch();
     state.autocompleteSuspended = true;
     dismissPlacesAutocomplete();
   }
 
   function ensurePlacesAutocomplete() {
-    if (state.provider !== 'google' || !state.map || state.autocomplete) return;
+    if (state.provider !== 'google' || !state.map || state.autocomplete || state.placeAutocompleteEl) return;
     bindGoogleSearch();
     state.autocompleteSuspended = false;
+  }
+
+  function setSearchValue(text) {
+    var val = text || '';
+    var input = state.opts && $(state.opts.searchEl);
+    if (input) input.value = val;
+    if (state.placeAutocompleteEl) state.placeAutocompleteEl.value = val;
   }
 
   function setSearchQueryWithoutPac(searchEl, text) {
@@ -52,12 +83,15 @@
     suspendPlacesAutocomplete();
     searchEl.setAttribute('autocomplete', 'off');
     searchEl.readOnly = true;
-    searchEl.value = text;
+    setSearchValue(text);
     searchEl.blur();
     dismissPlacesAutocomplete();
     setTimeout(function () {
       searchEl.readOnly = false;
       dismissPlacesAutocomplete();
+      if (state.provider === 'google' && state.map && !state.autocompleteSuspended) {
+        bindGoogleSearch();
+      }
     }, 400);
   }
 
@@ -311,7 +345,30 @@
     setMarkerPosition(e.latLng.lat(), e.latLng.lng());
   }
 
-  function onPlaceSelected() {
+  function placeToGeocodeResult(place) {
+    return {
+      address_components: (place.addressComponents || []).map(function (c) {
+        return {
+          long_name: c.longText || '',
+          short_name: c.shortText || '',
+          types: c.types || [],
+        };
+      }),
+      formatted_address: place.formattedAddress || '',
+      url: place.googleMapsURI || '',
+    };
+  }
+
+  function placeLatLng(place) {
+    if (!place || !place.location) return null;
+    var loc = place.location;
+    var lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
+    var lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
+    if (lat == null || lng == null) return null;
+    return { lat: lat, lng: lng };
+  }
+
+  function onPlaceSelectedLegacy() {
     if (!state.autocomplete) return;
     var place = state.autocomplete.getPlace();
     if (!place || !place.geometry || !place.geometry.location) return;
@@ -331,6 +388,105 @@
         url: place.url,
       }, lat, lng);
     }
+  }
+
+  function onPlaceSelectedNew(place) {
+    if (!place || !state.map) return;
+    var coords = placeLatLng(place);
+    if (!coords) return;
+    if (place.viewport) state.map.fitBounds(place.viewport);
+    else {
+      state.map.setCenter(coords);
+      state.map.setZoom(17);
+    }
+    setMarkerPosition(coords.lat, coords.lng, { pan: false });
+    applyGeocodeResult(placeToGeocodeResult(place), coords.lat, coords.lng);
+  }
+
+  function updatePlaceAutocompleteBias() {
+    if (!state.placeAutocompleteEl || !state.map || !state.map.getBounds) return;
+    try {
+      var bounds = state.map.getBounds();
+      if (bounds) state.placeAutocompleteEl.locationBias = bounds;
+    } catch (e) { /* ignore */ }
+  }
+
+  function bindGoogleSearchLegacy(input) {
+    if (!input || !google.maps.places) return;
+    input.style.display = '';
+    state.autocomplete = new google.maps.places.Autocomplete(input, {
+      componentRestrictions: { country: 'sa' },
+      fields: ['address_components', 'formatted_address', 'geometry', 'name', 'url'],
+    });
+    state.autocomplete.bindTo('bounds', state.map);
+    state.autocomplete.addListener('place_changed', onPlaceSelectedLegacy);
+    state.autocompleteSuspended = false;
+  }
+
+  function bindGoogleSearchModern(input) {
+    var PlaceAutocompleteElement = google.maps.places.PlaceAutocompleteElement;
+    if (!PlaceAutocompleteElement) return false;
+
+    input.style.display = 'none';
+    var wrap = document.createElement('div');
+    wrap.className = 'lc-place-autocomplete-wrap';
+    input.insertAdjacentElement('afterend', wrap);
+    state.autocompleteWrap = wrap;
+
+    var pac = new PlaceAutocompleteElement({
+      includedRegionCodes: ['SA'],
+    });
+    pac.className = 'map-picker-search lc-gmp-autocomplete';
+    if (input.placeholder) pac.setAttribute('placeholder', input.placeholder);
+    wrap.appendChild(pac);
+    state.placeAutocompleteEl = pac;
+    updatePlaceAutocompleteBias();
+
+    state.placeSelectListener = function (event) {
+      var prediction = event.placePrediction;
+      if (!prediction || !prediction.toPlace) return;
+      var place = prediction.toPlace();
+      place.fetchFields({
+        fields: ['addressComponents', 'formattedAddress', 'location', 'viewport', 'googleMapsURI'],
+      }).then(function () {
+        onPlaceSelectedNew(place);
+      }).catch(function (err) { console.error('PlaceAutocomplete select', err); });
+    };
+    pac.addEventListener('gmp-select', state.placeSelectListener);
+
+    if (!state.boundsListener && state.map) {
+      state.boundsListener = function () { updatePlaceAutocompleteBias(); };
+      state.map.addListener('bounds_changed', state.boundsListener);
+    }
+
+    state.autocompleteSuspended = false;
+    return true;
+  }
+
+  function bindGoogleSearch() {
+    var input = state.opts && $(state.opts.searchEl);
+    if (!input || !mapsReady()) return;
+
+    teardownGoogleSearch();
+
+    var done = function () {
+      if (state.autocompleteSuspended) return;
+      if (!bindGoogleSearchModern(input)) bindGoogleSearchLegacy(input);
+      if (!input.dataset.lcPacFocus) {
+        input.dataset.lcPacFocus = '1';
+        input.addEventListener('focus', function () {
+          if (state.autocompleteSuspended) ensurePlacesAutocomplete();
+        });
+      }
+    };
+
+    if (google.maps.importLibrary) {
+      google.maps.importLibrary('places').then(done).catch(function () {
+        bindGoogleSearchLegacy(input);
+      });
+      return;
+    }
+    done();
   }
 
   function bindMyLocation() {
@@ -359,25 +515,6 @@
         { enableHighAccuracy: true, timeout: 12000 }
       );
     });
-  }
-
-  function bindGoogleSearch() {
-    var input = state.opts && $(state.opts.searchEl);
-    if (!input || !google.maps.places) return;
-    if (state.autocomplete) google.maps.event.clearInstanceListeners(state.autocomplete);
-    state.autocomplete = new google.maps.places.Autocomplete(input, {
-      componentRestrictions: { country: 'sa' },
-      fields: ['address_components', 'formatted_address', 'geometry', 'name', 'url'],
-    });
-    state.autocomplete.bindTo('bounds', state.map);
-    state.autocomplete.addListener('place_changed', onPlaceSelected);
-    state.autocompleteSuspended = false;
-    if (!input.dataset.lcPacFocus) {
-      input.dataset.lcPacFocus = '1';
-      input.addEventListener('focus', function () {
-        if (state.autocompleteSuspended) ensurePlacesAutocomplete();
-      });
-    }
   }
 
   function bindLeafletSearch() {
@@ -521,7 +658,7 @@
     }
     state.hasPoint = false;
     var search = state.opts && $(state.opts.searchEl);
-    if (search) search.value = '';
+    if (search) setSearchValue('');
     var center = (state.opts && state.opts.defaultCenter) || DEFAULT_CENTER;
     if (state.map) {
       if (state.provider === 'leaflet') state.map.setView([center.lat, center.lng], 12);
@@ -534,12 +671,17 @@
   }
 
   function hardReset() {
+    teardownGoogleSearch();
     clearMapContainer();
     state.provider = null;
     state.map = null;
     state.marker = null;
     state.geocoder = null;
     state.autocomplete = null;
+    state.placeAutocompleteEl = null;
+    state.placeSelectListener = null;
+    state.autocompleteWrap = null;
+    state.boundsListener = null;
     state.initialized = false;
     state.hasPoint = false;
     state.searchBound = false;
