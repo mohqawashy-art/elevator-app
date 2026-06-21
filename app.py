@@ -2275,6 +2275,21 @@ def _sync_contract_elevators(contract_id, elevator_ids):
             db.session.add(ContractElevator(contract_id=contract_id, elevator_id=int(eid)))
 
 
+def _purge_contract_dependencies(contract_id):
+    """إزالة الارتباطات التي تمنع حذف العقد."""
+    MaintenanceVisit.query.filter_by(contract_id=contract_id).delete(synchronize_session=False)
+    ContractElevator.query.filter_by(contract_id=contract_id).delete(synchronize_session=False)
+    Invoice.query.filter_by(contract_id=contract_id).update(
+        {Invoice.contract_id: None}, synchronize_session=False
+    )
+    Revenue.query.filter_by(contract_id=contract_id).update(
+        {Revenue.contract_id: None}, synchronize_session=False
+    )
+    PartsBilling.query.filter_by(contract_id=contract_id).update(
+        {PartsBilling.contract_id: None}, synchronize_session=False
+    )
+
+
 def _apply_contract_form(c, form):
     value = _money_round(form.get('value', 0))
     tax_pct = _money_round(form.get('tax_pct', 15) or 15)
@@ -2422,9 +2437,14 @@ def contract_add():
 @app.route('/contracts/delete/<int:id>', methods=['POST'])
 def contract_delete(id):
     c = Contract.query.get_or_404(id)
-    _remove_contract_file(c)
-    db.session.delete(c)
-    db.session.commit()
+    try:
+        _remove_contract_file(c)
+        _purge_contract_dependencies(id)
+        db.session.delete(c)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash('تعذّر حذف العقد — تحقق من السجلات المرتبطة', 'error')
     return redirect(url_for('contracts'))
 
 

@@ -205,6 +205,8 @@ def _sync_contracts():
         'city': c.city or '',
         'district': c.district or '',
         'address': c.address or '',
+        'phone': c.phone or '',
+        'contact_person': c.contact_person or '',
         'lat': c.lat or '',
         'lng': c.lng or '',
         'maps_url': c.maps_url or '',

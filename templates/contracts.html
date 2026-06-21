@@ -207,6 +207,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 #modal-add .field input,#modal-add .field select,#modal-add .field textarea{padding:14px 16px;line-height:1.75;font-size:14px}
 #modal-add .field textarea{min-height:110px;padding-top:14px;padding-bottom:14px}
 #modal-add .field-hint{font-size:12px;margin-top:8px;line-height:1.8;display:block}
+.contract-client-summary{display:none;margin-top:12px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm)}
+.contract-client-summary-title{font-size:12px;font-weight:600;color:var(--accent);margin-bottom:10px}
+.contract-client-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px}
+.contract-client-summary-item{display:flex;flex-direction:column;gap:2px;min-width:0}
+.contract-client-summary-item span{font-size:11px;color:var(--text3)}
+.contract-client-summary-item strong{font-size:12px;color:var(--text1);font-weight:500;word-break:break-word}
+.contract-client-summary-item.full{grid-column:1/-1}
+@media(max-width:640px){.contract-client-summary-grid{grid-template-columns:1fr}}
 #modal-add .field-calc{margin-top:14px;margin-bottom:10px;line-height:1.75;font-size:13px}
 #modal-add .elevators-select{padding:14px;margin-top:12px;gap:12px;display:flex;flex-direction:column;max-height:200px}
 #modal-add .elev-option{padding:14px 14px;line-height:1.75}
@@ -589,10 +597,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
           <div class="field">
             <label>العميل</label>
-            <select id="f-client-sel" onchange="loadClientElevators()">
+            <select id="f-client-sel" onchange="onContractClientSelected()">
               <option value="">اختر العميل</option>
             </select>
           </div>
+          <div class="form-full" id="contract-client-summary"></div>
           <div class="field">
             <label>حالة العقد</label>
             <select id="f-status-sel">
@@ -610,7 +619,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6.5 1C4.57 1 3 2.57 3 4.5S6.5 12 6.5 12 10 6.43 10 4.5 8.43 1 6.5 1z"/><circle cx="6.5" cy="4.5" r="1.3"/></svg>
           موقع العقد على الخريطة
         </div>
-        <p class="map-picker-hint" style="margin-bottom:12px">اختر العميل أولاً ثم اضغط «عنوان العميل» أو حدّد الموقع من الخريطة</p>
+        <p class="map-picker-hint" style="margin-bottom:12px">يُملأ الموقع تلقائياً عند اختيار العميل — أو اضغط «عنوان العميل» أو حدّد الموقع من الخريطة</p>
         <div class="map-picker-toolbar">
           <input type="text" id="contract-map-search" class="map-picker-search" placeholder="ابحث عن المبنى أو الحي...">
           <button type="button" class="btn btn-primary btn-sm" id="contract-map-search-btn">بحث</button>
@@ -740,8 +749,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
     </div>
     <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('modal-add')">إلغاء</button>
-      <button class="btn btn-primary" onclick="saveContract()">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add')">إلغاء</button>
+      <button type="button" class="btn btn-primary" id="btn-save-contract" onclick="saveContract()">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
         حفظ العقد
       </button>
@@ -784,7 +793,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
-      <button class="btn btn-danger" onclick="confirmDelete()">حذف نهائي</button>
+      <button type="button" class="btn btn-danger" id="btn-confirm-delete-contract" onclick="confirmDelete()">حذف نهائي</button>
     </div>
   </div>
 </div>
@@ -840,6 +849,8 @@ var CUSTOMERS = [
     city: {{ (c.city or '')|tojson }},
     district: {{ (c.district or '')|tojson }},
     address: {{ (c.address or '')|tojson }},
+    phone: {{ (c.phone or '')|tojson }},
+    contact_person: {{ (c.contact_person or '')|tojson }},
     lat: {{ (c.lat or '')|tojson }},
     lng: {{ (c.lng or '')|tojson }},
     maps_url: {{ (c.maps_url or '')|tojson }},
@@ -1012,6 +1023,7 @@ var DRILL_TITLES = {
 
 let currentDeleteId = null;
 let currentViewId = null;
+let contractSaving = false;
 var filtered = CONTRACTS.slice();
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
@@ -1163,7 +1175,7 @@ function initContractClientSelect() {
   if (typeof LcClientSelect === 'undefined') return;
   LcClientSelect.upgradeSelect('f-client-sel', {
     customers: CUSTOMERS,
-    onChange: loadClientElevators,
+    onChange: onContractClientSelected,
   });
 }
 
@@ -1191,6 +1203,7 @@ function resetContractForm() {
   document.getElementById('f-payment-terms').selectedIndex = 0;
   document.getElementById('elevators-select').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">اختر العميل أولاً لعرض مصاعده</div>';
   document.getElementById('selected-count').textContent = 'لم يتم اختيار مصاعد';
+  renderContractClientSummary(null);
   setContractFileUi(null);
   calcTotalVisits();
 }
@@ -1198,6 +1211,12 @@ function resetContractForm() {
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة عقد جديد';
   document.getElementById('modal-add').dataset.editId = '';
+  contractSaving = false;
+  var saveBtn = document.getElementById('btn-save-contract');
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> حفظ العقد';
+  }
   resetContractForm();
   fillClientSelect(null);
   openContractFormModal(function () {
@@ -1222,22 +1241,61 @@ function setContractMapSearchQuery(text) {
   }
 }
 
-function copyContractAddressFromClient() {
-  var clientSel = document.getElementById('f-client-sel');
-  var id = parseInt(clientSel && clientSel.value, 10);
-  if (!id) {
-    alert('اختر العميل أولاً');
+function getSelectedContractCustomer() {
+  var id = parseInt(document.getElementById('f-client-sel') && document.getElementById('f-client-sel').value, 10);
+  if (!id) return null;
+  return CUSTOMERS.find(function(x) { return x.id === id; }) || null;
+}
+
+function renderContractClientSummary(c) {
+  var box = document.getElementById('contract-client-summary');
+  if (!box) return;
+  if (!c) {
+    box.style.display = 'none';
+    box.innerHTML = '';
     return;
   }
-  var c = CUSTOMERS.find(function(x) { return x.id === id; });
-  if (!c) return;
-  if (!c.address && !c.city && !c.district && !c.lat) {
-    alert('لا يوجد عنوان مسجّل لهذا العميل في صفحة العملاء');
+  var rows = [
+    { label: 'كود العميل', value: c.code || '—', en: true },
+    { label: 'المدينة', value: c.city || '—' },
+    { label: 'الحي', value: c.district || '—' },
+    { label: 'الجوال', value: c.phone || '—', en: true },
+    { label: 'مسؤول التواصل', value: c.contact_person || '—' },
+    { label: 'العنوان', value: c.address || '—', full: true },
+  ];
+  box.style.display = 'block';
+  box.innerHTML =
+    '<div class="contract-client-summary-title">' + esc(lcDisp('بيانات العميل المختار')) + '</div>' +
+    '<div class="contract-client-summary-grid">' +
+    rows.map(function(row) {
+      var cls = 'contract-client-summary-item' + (row.full ? ' full' : '');
+      var valStyle = row.en ? ' style="font-family:var(--font-en)"' : '';
+      return '<div class="' + cls + '"><span>' + esc(lcDisp(row.label)) + '</span><strong' + valStyle + '>' + esc(lcDisp(row.value)) + '</strong></div>';
+    }).join('') +
+    '</div>';
+}
+
+function applyContractClientData(options) {
+  options = options || {};
+  var c = getSelectedContractCustomer();
+  renderContractClientSummary(c);
+  if (!c) {
+    ['f-contract-city', 'f-contract-district', 'f-contract-address', 'f-contract-maps-url', 'f-contract-lat', 'f-contract-lng'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    var mapSearch = document.getElementById('contract-map-search');
+    if (mapSearch) mapSearch.value = '';
+    if (typeof LiftCoreMapPicker !== 'undefined') LiftCoreMapPicker.reset();
     return;
   }
   document.getElementById('f-contract-city').value = c.city || '';
   document.getElementById('f-contract-district').value = c.district || '';
   document.getElementById('f-contract-address').value = c.address || '';
+  if (!c.address && !c.city && !c.district && !c.lat) {
+    if (!options.silent) alert('لا يوجد عنوان مسجّل لهذا العميل في صفحة العملاء');
+    return;
+  }
   var mapQuery = buildClientLocationQuery(c);
   setContractMapSearchQuery(c.address || mapQuery);
   if (typeof LiftCoreMapPicker === 'undefined') return;
@@ -1257,10 +1315,23 @@ function copyContractAddressFromClient() {
     whenGoogleMapsReady(function () {
       LiftCoreMapPicker.geocodeAddress(mapQuery, function (ok) {
         if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
-        if (!ok) alert('تعذّر تحديد الموقع على الخريطة — تحقق من العنوان');
+        if (!ok && !options.silent) alert('تعذّر تحديد الموقع على الخريطة — تحقق من العنوان');
       });
     });
   }
+}
+
+function onContractClientSelected() {
+  applyContractClientData({ silent: true });
+  loadClientElevators();
+}
+
+function copyContractAddressFromClient() {
+  if (!getSelectedContractCustomer()) {
+    alert('اختر العميل أولاً');
+    return;
+  }
+  applyContractClientData({ silent: false });
 }
 
 function onContractMapPickerUpdate(data) {
@@ -1325,6 +1396,7 @@ function updateElevatorCount() {
 }
 
 function saveContract() {
+  if (contractSaving) return;
   var clientSel = document.getElementById('f-client-sel');
   if (!clientSel || !clientSel.value) { alert('يرجى اختيار العميل'); return; }
   if (!document.getElementById('f-start').value || !document.getElementById('f-end').value) {
@@ -1357,15 +1429,29 @@ function saveContract() {
   if (fileInput && fileInput.files && fileInput.files.length) {
     fd.append('contract_file', fileInput.files[0]);
   }
+  contractSaving = true;
+  var saveBtn = document.getElementById('btn-save-contract');
+  var saveBtnHtml = saveBtn ? saveBtn.innerHTML : '';
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'جاري الحفظ...';
+  }
   fetch(editId ? '/contracts/edit/' + editId : '/contracts/add', {method: 'POST', body: fd, credentials: 'same-origin'})
     .then(function(res) {
       if (res.redirected || res.ok) {
         window.location.href = res.url || '/contracts';
         return;
       }
-      alert('فشل حفظ العقد — تحقق من البيانات وحاول مجدداً');
+      throw new Error('save failed');
     })
-    .catch(function() { alert('فشل الاتصال بالخادم'); });
+    .catch(function() {
+      contractSaving = false;
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = saveBtnHtml;
+      }
+      alert('فشل حفظ العقد — تحقق من البيانات وحاول مجدداً');
+    });
 }
 
 function editContract(id) {
@@ -1374,6 +1460,7 @@ function editContract(id) {
   document.getElementById('modal-title').textContent = 'تعديل العقد';
   document.getElementById('modal-add').dataset.editId = id;
   fillClientSelect(c.customer_id);
+  renderContractClientSummary(getCustomerById(c.customer_id));
   document.getElementById('f-code').value = c.code;
   document.getElementById('f-type-sel').value = c.contract_type || 'عقد صيانة';
   document.getElementById('f-status-sel').value = getContractDisplayStatus(c);
@@ -1470,10 +1557,28 @@ function printContractForm(id) {
 }
 
 // ===== حذف =====
-function deleteContract(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
+function deleteContract(id) {
+  currentDeleteId = id;
+  var btn = document.getElementById('btn-confirm-delete-contract');
+  if (btn) btn.disabled = false;
+  document.getElementById('modal-delete').classList.add('open');
+}
 function confirmDelete() {
-  if(!currentDeleteId) return;
-  fetch(`/contracts/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
+  if (!currentDeleteId) return;
+  var btn = document.getElementById('btn-confirm-delete-contract');
+  if (btn) btn.disabled = true;
+  fetch('/contracts/delete/' + currentDeleteId, { method: 'POST', credentials: 'same-origin' })
+    .then(function(res) {
+      if (res.ok || res.redirected) {
+        window.location.reload();
+        return;
+      }
+      throw new Error('delete failed');
+    })
+    .catch(function() {
+      if (btn) btn.disabled = false;
+      alert('تعذّر حذف العقد — حاول مرة أخرى أو تواصل مع الدعم.');
+    });
 }
 
 // ===== حساب الزيارات =====
