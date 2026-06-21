@@ -64,6 +64,7 @@ class Elevator(db.Model):
     floors          = db.Column(db.Integer)
     speed           = db.Column(db.String(50))
     machine_type    = db.Column(db.String(30))    # MR / MRL / Hydraulic
+    door_type       = db.Column(db.String(50))    # نصف أوتوماتيك / أوتوماتيك / سنتر أوتوماتيك / تلسكوبي
     control_type    = db.Column(db.String(50))    # Relay / PLC / VVVF
     control_drive   = db.Column(db.String(50))    # AC VVVF / Hydraulic / DC
     control_operation = db.Column(db.String(50))  # Simplex / Group / Destination

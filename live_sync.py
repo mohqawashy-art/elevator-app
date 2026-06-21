@@ -236,6 +236,7 @@ def _sync_elevators():
             'speed': e.speed or '',
             'serial': e.serial_number or '',
             'machine_type': e.machine_type or '',
+            'door_type': e.door_type or '',
             'control_type': e.control_type or '',
             'control_drive': e.control_drive or '',
             'control_operation': e.control_operation or '',

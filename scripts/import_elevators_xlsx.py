@@ -186,6 +186,7 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
             city=customer.city or '',
             district=customer.district or '',
             elev_type=_cell(row, 'نوع المصعد') or 'مصعد ركاب',
+            door_type=_cell(row, 'نوع الباب', 'door_type') or '',
             capacity_kg=_int(_cell(row, 'الحمولة (كجم)', 'الحمولة')) or None,
             floors=_int(_cell(row, 'عدد الوقفات', 'عدد الطوابق')) or None,
             status=_norm_status(_cell(row, 'حالة المصعد', 'الحالة')),

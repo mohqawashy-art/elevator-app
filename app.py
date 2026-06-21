@@ -510,6 +510,7 @@ with app.app_context():
             ],
             'elevators': [
                 ('machine_type', 'VARCHAR(30)'),
+                ('door_type', 'VARCHAR(50)'),
                 ('control_type', 'VARCHAR(50)'),
                 ('control_drive', 'VARCHAR(50)'),
                 ('control_operation', 'VARCHAR(50)'),
@@ -1881,6 +1882,7 @@ def elevator_add():
         floors          = request.form.get('floors') or None,
         serial_number   = request.form.get('serial_number', ''),
         machine_type    = request.form.get('machine_type', ''),
+        door_type       = request.form.get('door_type', ''),
         control_type    = request.form.get('control_type', ''),
         control_drive   = request.form.get('control_drive', ''),
         control_operation = request.form.get('control_operation', ''),
@@ -1913,6 +1915,7 @@ def elevator_edit(id):
     e.floors           = request.form.get('floors') or None
     e.serial_number    = request.form.get('serial_number', '')
     e.machine_type     = request.form.get('machine_type', '')
+    e.door_type        = request.form.get('door_type', '')
     e.control_type     = request.form.get('control_type', '')
     e.control_drive      = request.form.get('control_drive', '')
     e.control_operation = request.form.get('control_operation', '')

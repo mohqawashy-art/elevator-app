@@ -606,6 +606,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <input type="number" id="f-doors" placeholder="1" style="direction:ltr">
           </div>
           <div class="field">
+            <label>نوع الباب</label>
+            <select id="f-door-type">
+              <option value="">— اختر —</option>
+              <option>نصف أوتوماتيك</option>
+              <option>أوتوماتيك</option>
+              <option>سنتر أوتوماتيك</option>
+              <option>تلسكوبي</option>
+            </select>
+          </div>
+          <div class="field">
             <label>حالة المصعد</label>
             <select id="f-elev-status">
               <option>نشط</option>
@@ -800,6 +810,7 @@ var ELEVATORS = [
     speed:        {{ (e.speed or '')|tojson }},
     serial:       {{ (e.serial_number or '')|tojson }},
     machine_type: {{ (e.machine_type or '')|tojson }},
+    door_type:    {{ (e.door_type or '')|tojson }},
     control_type: {{ (e.control_type or '')|tojson }},
     control_drive: {{ (e.control_drive or '')|tojson }},
     control_operation: {{ (e.control_operation or '')|tojson }},
@@ -1152,6 +1163,8 @@ function resetElevatorForm() {
   });
   document.getElementById('f-type-sel').selectedIndex = 0;
   document.getElementById('f-elev-status').selectedIndex = 0;
+  var doorType = document.getElementById('f-door-type');
+  if (doorType) doorType.selectedIndex = 0;
   var machine = document.getElementById('f-machine');
   if (machine) machine.value = 'MR';
   ['f-control-type', 'f-control-drive', 'f-control-operation'].forEach(function(id) {
@@ -1199,6 +1212,7 @@ function saveElevator() {
   fd.append('floors', document.getElementById('f-floors').value);
   fd.append('serial_number', document.getElementById('f-serial').value);
   fd.append('machine_type', document.getElementById('f-machine').value);
+  fd.append('door_type', document.getElementById('f-door-type').value);
   fd.append('control_type', document.getElementById('f-control-type').value);
   fd.append('control_drive', document.getElementById('f-control-drive').value);
   fd.append('control_operation', document.getElementById('f-control-operation').value);
@@ -1236,6 +1250,7 @@ function editElevator(id) {
   document.getElementById('f-floors').value = e.floors || '';
   document.getElementById('f-serial').value = e.serial || '';
   document.getElementById('f-machine').value = e.machine_type || 'MR';
+  document.getElementById('f-door-type').value = e.door_type || '';
   document.getElementById('f-control-type').value = e.control_type || '';
   document.getElementById('f-control-drive').value = e.control_drive || '';
   document.getElementById('f-control-operation').value = e.control_operation || '';
@@ -1289,6 +1304,7 @@ function viewElevator(id) {
       viewItem('عدد الطوابق', e.floors ? '<span style="font-family:var(--font-en)">' + esc(String(e.floors)) + '</span>' : '—') +
       viewItem('السرعة', e.speed ? esc(lcDisp(e.speed)) : '—') +
       viewItem('الحمولة', e.capacity ? lcDisp(e.capacity + ' كجم') : '—') +
+      viewItem('نوع الباب', esc(lcDisp(e.door_type || '—'))) +
       viewItem('نوع الآلة', esc(lcDisp(MACHINE_LABELS[e.machine_type] || e.machine_type || '—'))) +
       '<div class="view-section">' + lcDisp('نظام التحكم') + '</div>' +
       viewItem('نوع النظام', esc(e.control_type || '—'), { style: 'font-family:var(--font-en)' }) +
@@ -1434,6 +1450,7 @@ async function confirmElevImport() {
     fd.append('floors', row['عدد الطوابق'] || row['floors'] || '');
     fd.append('serial_number', row['الرقم التسلسلي'] || row['serial'] || '');
     fd.append('machine_type', row['نوع الآلة'] || row['machine_type'] || 'MR');
+    fd.append('door_type', row['نوع الباب'] || row['door_type'] || '');
     fd.append('control_type', row['نوع النظام'] || row['control_type'] || '');
     fd.append('control_drive', row['نوع المحرك'] || row['control_drive'] || '');
     fd.append('control_operation', row['طريقة التشغيل'] || row['control_operation'] || '');
@@ -1452,9 +1469,9 @@ async function confirmElevImport() {
 }
 
 function exportExcel() {
-  var rows = [['الكود','العميل','المبنى','المدينة','النوع','الماركة','نوع الآلة','نظام التحكم','الحمولة','الحالة','الصيانة القادمة']];
+  var rows = [['الكود','العميل','المبنى','المدينة','النوع','الماركة','نوع الباب','نوع الآلة','نظام التحكم','الحمولة','الحالة','الصيانة القادمة']];
   filtered.forEach(function(e) {
-    rows.push([e.code, e.customer, e.building, e.city, e.elev_type, e.brand, (MACHINE_LABELS[e.machine_type] || e.machine_type || ''), formatControlSummary(e), (e.capacity ? e.capacity + ' كجم' : ''), e.status, e.next_maint]);
+    rows.push([e.code, e.customer, e.building, e.city, e.elev_type, e.brand, (e.door_type || ''), (MACHINE_LABELS[e.machine_type] || e.machine_type || ''), formatControlSummary(e), (e.capacity ? e.capacity + ' كجم' : ''), e.status, e.next_maint]);
   });
   var csv = rows.map(function(r) { return r.join(','); }).join('\n');
   var a = document.createElement('a');
