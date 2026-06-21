@@ -697,7 +697,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   </div>
 </div>
 
-<script src="/static/liftcore_map.js"></script>
+<script src="/static/liftcore_map.js?v=2"></script>
 <script src="/static/ops-common.js?v=3"></script>
 
 <script>
@@ -779,27 +779,13 @@ function refreshVisitMap() {
   (VISIT_MAP_POINTS || []).forEach(p => {
     if (!p.lat || !p.lng) return;
     const color = visitStatusColor(p.status);
-    const marker = (window.LiftCoreMap && LiftCoreMap.createPinMarker)
-      ? LiftCoreMap.createPinMarker({
-          position: { lat: p.lat, lng: p.lng },
-          title: p.label || '',
-          color: color,
-          scale: 1.2
-        })
-      : new google.maps.Marker({
-          position: { lat: p.lat, lng: p.lng },
-          title: p.label || '',
-          icon: window.LiftCoreMap
-            ? LiftCoreMap.makePinIcon(color, 1.2)
-            : {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 10,
-                fillColor: color,
-                fillOpacity: 1,
-                strokeColor: '#fff',
-                strokeWeight: 2,
-              },
-        });
+    const marker = LiftCoreMap.createPinMarker({
+      position: { lat: p.lat, lng: p.lng },
+      title: p.label || '',
+      color: color,
+      scale: 1.2
+    });
+    if (!marker) return;
     marker.addListener('click', () => {
       visitInfoWindow.setContent(
         '<div style="font-family:Tahoma,Arial;direction:rtl;text-align:right;min-width:160px">' +

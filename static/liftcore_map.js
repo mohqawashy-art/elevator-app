@@ -97,32 +97,32 @@
   }
 
   function clusterZIndex(count) {
-    var base = global.google.maps.Marker && global.google.maps.Marker.MAX_ZINDEX;
-    return (base ? Number(base) : 1000000) + count;
+    return 1000000 + count;
+  }
+
+  function requireMarkerClasses() {
+    var mc = getMarkerClasses();
+    if (!mc || !mc.AdvancedMarkerElement) {
+      return null;
+    }
+    return mc;
   }
 
   function createClusterMarker(cluster, unitLabel) {
     var count = cluster.count;
     var title = count + ' ' + (unitLabel || 'موقع');
-    var mc = getMarkerClasses();
-    if (mc && mc.AdvancedMarkerElement) {
-      var icon = makeClusterIcon(count);
-      var img = document.createElement('img');
-      img.src = icon.url;
-      img.width = icon.scaledSize.width;
-      img.height = icon.scaledSize.height;
-      img.alt = title;
-      return new mc.AdvancedMarkerElement({
-        position: cluster.position,
-        title: title,
-        content: img,
-        zIndex: clusterZIndex(count)
-      });
-    }
-    return new global.google.maps.Marker({
+    var mc = requireMarkerClasses();
+    if (!mc) return null;
+    var icon = makeClusterIcon(count);
+    var img = document.createElement('img');
+    img.src = icon.url;
+    img.width = icon.scaledSize.width;
+    img.height = icon.scaledSize.height;
+    img.alt = title;
+    return new mc.AdvancedMarkerElement({
       position: cluster.position,
       title: title,
-      icon: makeClusterIcon(count),
+      content: img,
       zIndex: clusterZIndex(count)
     });
   }
@@ -138,29 +138,16 @@
 
   function createPinMarker(opts) {
     opts = opts || {};
-    var position = opts.position;
-    var color = opts.color || '#1fb87a';
-    var scale = opts.scale || 1.2;
-    var mc = getMarkerClasses();
-    if (mc && mc.AdvancedMarkerElement) {
-      return new mc.AdvancedMarkerElement({
-        map: opts.map || null,
-        position: position,
-        title: opts.title || '',
-        content: makePinContent(color, scale),
-        gmpDraggable: !!opts.draggable,
-        zIndex: opts.zIndex
-      });
-    }
-    var legacy = new global.google.maps.Marker({
+    var mc = requireMarkerClasses();
+    if (!mc) return null;
+    return new mc.AdvancedMarkerElement({
       map: opts.map || null,
-      position: position,
+      position: opts.position,
       title: opts.title || '',
-      icon: opts.icon || makePinIcon(color, scale),
-      draggable: !!opts.draggable,
+      content: makePinContent(opts.color || '#1fb87a', opts.scale || 1.2),
+      gmpDraggable: !!opts.draggable,
       zIndex: opts.zIndex
     });
-    return legacy;
   }
 
   function setMarkerMap(marker, map) {
@@ -303,32 +290,34 @@
 
   function ensureMarkerLibReady(fn) {
     if (!global.google || !global.google.maps || global.__gmapsAuthFailed) {
-      if (fn) fn();
       return Promise.resolve();
     }
     if (canUseAdvancedMarkers()) {
       if (fn) fn();
       return Promise.resolve();
     }
+    var loader;
     if (global.loadGmapsMarkerLib) {
-      return global.loadGmapsMarkerLib().then(function () {
-        if (fn) fn();
-      }).catch(function () {
-        if (fn) fn();
-      });
-    }
-    if (global.google.maps.importLibrary) {
-      return global.google.maps.importLibrary('marker').then(function (lib) {
+      loader = global.loadGmapsMarkerLib();
+    } else if (global.google.maps.importLibrary) {
+      loader = global.google.maps.importLibrary('marker').then(function (lib) {
         _setMarkerLib(lib);
         global.__gmapsMarkerLib = lib;
         global.__gmapsMarkerReady = true;
-        if (fn) fn();
-      }).catch(function () {
-        if (fn) fn();
+        return lib;
       });
+    } else {
+      return Promise.resolve();
     }
-    if (fn) fn();
-    return Promise.resolve();
+    return loader.then(function () {
+      if (fn && canUseAdvancedMarkers()) fn();
+    }).catch(function (err) {
+      console.error('LiftCoreMap: failed to load marker library', err);
+    });
+  }
+
+  if (global.__gmapsMarkerLib) {
+    _setMarkerLib(global.__gmapsMarkerLib);
   }
 
   global.LiftCoreMap = {

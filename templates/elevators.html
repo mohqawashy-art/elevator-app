@@ -13,7 +13,9 @@
 <link rel="stylesheet" href="/static/client_location.css">
 <script src="/static/customer_profile.js"></script>
 <script src="/static/elevator_profile.js"></script>
-<script src="/static/client_map_picker.js?v=3"></script>
+<script src="/static/client_geocode.js"></script>
+<script src="/static/liftcore_map.js?v=2"></script>
+<script src="/static/client_map_picker.js?v=4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1494,21 +1496,11 @@ function elevMapInfo(e) {
     '<button class="map-info-btn" onclick="viewElevator(' + e.id + ')">عرض المصعد</button></div>';
 }
 
-var elevClusterRenderer = window.LiftCoreMap
-  ? LiftCoreMap.createClusterRenderer('مصعد')
-  : {
-    render: function(cluster) {
-      var count = cluster.count;
-      var scale = Math.min(12, 7 + Math.sqrt(count) * 1.1);
-      return new google.maps.Marker({
-        position: cluster.position,
-        title: count + ' مصعد',
-        icon: {path: google.maps.SymbolPath.CIRCLE, scale: scale, fillColor: '#2a7fff', fillOpacity: 0.9, strokeColor: '#fff', strokeWeight: 2},
-        label: {text: String(count), color: '#fff', fontSize: '10px', fontWeight: '700'},
-        zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
-      });
-    }
-  };
+var elevClusterRenderer = {
+  render: function (cluster) {
+    return LiftCoreMap.createClusterMarker(cluster, 'مصعد');
+  }
+};
 
 function clearElevMapMarkers() {
   if (elevCluster) { elevCluster.clearMarkers(); elevCluster = null; }
@@ -1552,18 +1544,13 @@ function refreshElevatorMap(fitAgain) {
     if (!pos) return;
     shown++;
     var color = ELEV_PIN_COLORS[e.status] || '#2a7fff';
-    var marker = (window.LiftCoreMap && LiftCoreMap.createPinMarker)
-      ? LiftCoreMap.createPinMarker({
-          position: {lat: pos.lat, lng: pos.lng},
-          color: color,
-          scale: 1.25,
-          zIndex: e.status === 'نشط' ? 2 : 1
-        })
-      : new google.maps.Marker({
-          position: {lat: pos.lat, lng: pos.lng},
-          icon: makeElevPin(color),
-          zIndex: e.status === 'نشط' ? 2 : 1
-        });
+    var marker = LiftCoreMap.createPinMarker({
+      position: {lat: pos.lat, lng: pos.lng},
+      color: color,
+      scale: 1.25,
+      zIndex: e.status === 'نشط' ? 2 : 1
+    });
+    if (!marker) return;
     marker.addListener('mouseover', function() {
       if (elevHoverTimer) clearTimeout(elevHoverTimer);
       elevInfoWindow.setContent(elevMapInfo(e));

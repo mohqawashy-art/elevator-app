@@ -35,10 +35,10 @@
       window.__gmapsQueue.push(fn);
       return;
     }
-    window.loadGmapsMarkerLib().then(fn).catch(function () { fn(); });
+    window.loadGmapsMarkerLib().then(fn).catch(function () {});
   };
   window.initGoogleMapsApi = function () {
-    window.loadGmapsMarkerLib().then(flushGmapsQueue).catch(flushGmapsQueue);
+    window.loadGmapsMarkerLib().then(flushGmapsQueue).catch(function () {});
   };
   window.gm_authFailure = function () {
     window.__gmapsAuthFailed = true;
@@ -69,8 +69,8 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js"></script>
-<script src="/static/client_map_picker.js?v=3"></script>
+<script src="/static/liftcore_map.js?v=2"></script>
+<script src="/static/client_map_picker.js?v=4"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1416,22 +1416,13 @@ function showClientCardMap(pos, c) {
       if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(cardMapMarker, null);
       else cardMapMarker.setMap(null);
     }
-    if (window.LiftCoreMap && LiftCoreMap.createPinMarker) {
-      cardMapMarker = LiftCoreMap.createPinMarker({
-        position: center,
-        map: cardMapInstance,
-        title: c.name,
-        color: getClientPinColor(c),
-        scale: 1.2
-      });
-    } else {
-      cardMapMarker = new google.maps.Marker({
-        position: center,
-        map: cardMapInstance,
-        title: c.name,
-        icon: makePinIcon(getClientPinColor(c), 1.2)
-      });
-    }
+    cardMapMarker = LiftCoreMap.createPinMarker({
+      position: center,
+      map: cardMapInstance,
+      title: c.name,
+      color: getClientPinColor(c),
+      scale: 1.2
+    });
     setTimeout(function () {
       if (!cardMapInstance) return;
       google.maps.event.trigger(cardMapInstance, 'resize');
@@ -2029,18 +2020,13 @@ function refreshMainMap(fitAgain) {
     if (clientAccountStatus(c) === 'نشط') activeCount++; else inactiveCount++;
 
     var pinColor = getClientPinColor(c);
-    var marker = (window.LiftCoreMap && LiftCoreMap.createPinMarker)
-      ? LiftCoreMap.createPinMarker({
-          position: {lat: pos.lat, lng: pos.lng},
-          color: pinColor,
-          scale: 1.35,
-          zIndex: clientAccountStatus(c) === 'نشط' ? 2 : 1
-        })
-      : new google.maps.Marker({
-          position: {lat: pos.lat, lng: pos.lng},
-          icon: makePinIcon(pinColor, 1.35),
-          zIndex: clientAccountStatus(c) === 'نشط' ? 2 : 1
-        });
+    var marker = LiftCoreMap.createPinMarker({
+      position: {lat: pos.lat, lng: pos.lng},
+      color: pinColor,
+      scale: 1.35,
+      zIndex: clientAccountStatus(c) === 'نشط' ? 2 : 1
+    });
+    if (!marker) return;
 
     marker.addListener('mouseover', function() {
       if (mapHoverTimer) clearTimeout(mapHoverTimer);

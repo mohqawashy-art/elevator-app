@@ -288,22 +288,14 @@
     }
     var pos = { lat: lat, lng: lng };
     if (!state.marker) {
-      if (global.LiftCoreMap && LiftCoreMap.createPinMarker) {
-        state.marker = LiftCoreMap.createPinMarker({
-          position: pos,
-          map: state.map,
-          draggable: true,
-          color: pinColor(),
-          scale: 1.2,
-        });
-      } else {
-        state.marker = new google.maps.Marker({
-          position: pos,
-          map: state.map,
-          draggable: true,
-          icon: defaultPinIcon(pinColor()),
-        });
-      }
+      state.marker = LiftCoreMap.createPinMarker({
+        position: pos,
+        map: state.map,
+        draggable: true,
+        color: pinColor(),
+        scale: 1.2,
+      });
+      if (!state.marker) return;
       state.marker.addListener('dragend', function () {
         var p = global.LiftCoreMap && LiftCoreMap.getMarkerPosition
           ? LiftCoreMap.getMarkerPosition(state.marker)

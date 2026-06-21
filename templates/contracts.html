@@ -15,8 +15,8 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js"></script>
-<script src="/static/client_map_picker.js?v=3"></script>
+<script src="/static/liftcore_map.js?v=2"></script>
+<script src="/static/client_map_picker.js?v=4"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1939,18 +1939,13 @@ function renderContractMapMarkers(fitAgain) {
   groups.forEach(function(group) {
     var pos = group.pos;
     var color = getGroupPinColor(group);
-    var marker = (window.LiftCoreMap && LiftCoreMap.createPinMarker)
-      ? LiftCoreMap.createPinMarker({
-          position: {lat: pos.lat, lng: pos.lng},
-          color: color,
-          scale: 1.25,
-          zIndex: color === '#1fb87a' ? 2 : 1
-        })
-      : new google.maps.Marker({
-          position: {lat: pos.lat, lng: pos.lng},
-          icon: makeContractPin(color),
-          zIndex: color === '#1fb87a' ? 2 : 1
-        });
+    var marker = LiftCoreMap.createPinMarker({
+      position: {lat: pos.lat, lng: pos.lng},
+      color: color,
+      scale: 1.25,
+      zIndex: color === '#1fb87a' ? 2 : 1
+    });
+    if (!marker) return;
     marker.addListener('mouseover', function() {
       if (contractHoverTimer) clearTimeout(contractHoverTimer);
       contractInfoWindow.setContent(contractGroupMapInfo(group));
