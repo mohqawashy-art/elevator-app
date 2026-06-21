@@ -15,8 +15,8 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=2"></script>
-<script src="/static/client_map_picker.js?v=4"></script>
+<script src="/static/liftcore_map.js?v=3"></script>
+<script src="/static/client_map_picker.js?v=7"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -613,10 +613,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <p class="map-picker-hint" style="margin-bottom:12px">اختر العميل أولاً ثم اضغط «عنوان العميل» أو حدّد الموقع من الخريطة</p>
         <div class="map-picker-toolbar">
           <input type="text" id="contract-map-search" class="map-picker-search" placeholder="ابحث عن المبنى أو الحي...">
-          <button type="button" class="btn btn-secondary btn-sm" id="contract-map-myloc">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14"><path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-            موقعي
-          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="contract-map-search-btn">بحث</button>
         </div>
         <div id="contract-map-picker" class="client-map-picker"></div>
         <div class="map-picker-coords" id="contract-map-coords">اختر عميلاً أو حدّد الموقع على الخريطة</div>
@@ -1289,7 +1286,7 @@ function initContractMapPicker() {
   var ok = LiftCoreMapPicker.init({
     mapEl: 'contract-map-picker',
     searchEl: 'contract-map-search',
-    myLocEl: 'contract-map-myloc',
+    searchBtnEl: 'contract-map-search-btn',
     coordsEl: 'contract-map-coords',
     defaultCenter: { lat: 21.4225, lng: 39.8262 },
     onUpdate: onContractMapPickerUpdate,

@@ -35,10 +35,11 @@
       window.__gmapsQueue.push(fn);
       return;
     }
-    window.loadGmapsMarkerLib().then(fn).catch(function () {});
+    fn();
   };
   window.initGoogleMapsApi = function () {
-    window.loadGmapsMarkerLib().then(flushGmapsQueue).catch(function () {});
+    flushGmapsQueue();
+    window.loadGmapsMarkerLib().catch(function () {});
   };
   window.gm_authFailure = function () {
     window.__gmapsAuthFailed = true;
@@ -69,8 +70,8 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=2"></script>
-<script src="/static/client_map_picker.js?v=4"></script>
+<script src="/static/liftcore_map.js?v=3"></script>
+<script src="/static/client_map_picker.js?v=7"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -746,13 +747,10 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         <!-- الموقع على الخريطة -->
         <div class="field form-full map-picker-section">
           <label>موقع العميل على الخريطة</label>
-          <p class="map-picker-hint">حدّد موقع المبنى — ابحث واضغط Enter، أو انقر على الخريطة. تُستخدم OpenStreetMap تلقائياً إذا لم يُضبط مفتاح Google.</p>
+          <p class="map-picker-hint">اكتب العنوان في خانة البحث واضغط «بحث»، أو انقر على الخريطة، أو استخدم «تطبيق على الخريطة» بعد إدخال المدينة والحي والعنوان.</p>
           <div class="map-picker-toolbar">
             <input type="text" id="client-map-search" class="map-picker-search" placeholder="ابحث: برج، شارع، حي، مكة...">
-            <button type="button" class="btn btn-secondary btn-sm" id="client-map-myloc">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14"><path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-              موقعي
-            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="client-map-search-btn" onclick="searchClientMap()">بحث</button>
           </div>
           <div id="client-map-picker" class="client-map-picker"></div>
           <div class="map-picker-coords" id="client-map-coords">لم يُحدَّد موقع بعد — ابحث أو اضغط على الخريطة لتحديد العنوان</div>
@@ -762,7 +760,10 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         </div>
         <div class="field form-full">
           <label>العنوان التفصيلي</label>
-          <input type="text" id="f-address" placeholder="يُعبَّأ من الخريطة — يمكنك تعديله يدوياً">
+          <input type="text" id="f-address" placeholder="يُعبَّأ من الخريطة — يمكنك تعديله يدوياً" onkeydown="if(event.key==='Enter'){event.preventDefault();applyClientFormAddressToMap();}">
+          <div class="contact-actions">
+            <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="applyClientFormAddressToMap()">← تطبيق العنوان على الخريطة</span>
+          </div>
         </div>
         <div class="field form-full">
           <label>صورة المبنى</label>
@@ -1615,7 +1616,7 @@ function initClientMapPicker() {
   var ok = LiftCoreMapPicker.init({
     mapEl: 'client-map-picker',
     searchEl: 'client-map-search',
-    myLocEl: 'client-map-myloc',
+    searchBtnEl: 'client-map-search-btn',
     coordsEl: 'client-map-coords',
     defaultCenter: { lat: 21.4225, lng: 39.8262 },
     poiStyles: MAP_POI_HIDDEN_STYLES,
@@ -1680,6 +1681,48 @@ function copyClientNameToContact() {
 function copyPhone() {
   document.getElementById('f-whatsapp').value = document.getElementById('f-phone').value;
   document.getElementById('f-code-wa').value  = document.getElementById('f-code-phone').value;
+}
+
+function buildClientFormLocationQuery() {
+  return [
+    document.getElementById('f-address').value.trim(),
+    document.getElementById('f-district').value.trim(),
+    document.getElementById('f-city-sel').value.trim(),
+    'Saudi Arabia'
+  ].filter(Boolean).join(', ');
+}
+
+function applyClientFormAddressToMap() {
+  var q = buildClientFormLocationQuery();
+  if (!q || q === 'Saudi Arabia') {
+    alert('أدخل المدينة أو الحي أو العنوان التفصيلي أولاً');
+    return;
+  }
+  if (typeof LiftCoreMapPicker !== 'undefined' && LiftCoreMapPicker.setSearchQuery) {
+    LiftCoreMapPicker.setSearchQuery(q);
+  } else {
+    var search = document.getElementById('client-map-search');
+    if (search) search.value = q;
+  }
+  searchClientMap(q);
+}
+
+function searchClientMap(forcedQuery) {
+  whenGoogleMapsReady(function () {
+    if (typeof LiftCoreMapPicker === 'undefined') {
+      alert('الخريطة غير جاهزة — أعد فتح النافذة');
+      return;
+    }
+    var mapEl = document.getElementById('client-map-picker');
+    if (!mapEl || !mapEl.innerHTML) initClientMapPicker();
+    setTimeout(function () {
+      if (forcedQuery && LiftCoreMapPicker.setSearchQuery) LiftCoreMapPicker.setSearchQuery(forcedQuery);
+      LiftCoreMapPicker.runMapSearch(function (ok) {
+        if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
+        if (!ok) alert('تعذّر تحديد الموقع — جرّب صياغة أخرى أو انقر على الخريطة');
+      });
+    }, 200);
+  });
 }
 
 function saveClient() {

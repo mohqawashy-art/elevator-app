@@ -94,5 +94,6 @@ echo "  admin / admin123"
 if [ "$SEED" = "0" ]; then
   echo "  القاعدة فارغة (بدون عملاء/مصاعد)"
   echo "  لبيانات تجريبية: SEED=1 bash deploy/reset_jama_db.sh"
+  echo "  لاستيراد بيانات Excel: bash deploy/import_jama_all.sh"
 fi
 echo "=============================================="

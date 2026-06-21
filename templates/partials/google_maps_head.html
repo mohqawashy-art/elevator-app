@@ -26,10 +26,11 @@
       window.__gmapsQueue.push(fn);
       return;
     }
-    window.loadGmapsMarkerLib().then(fn).catch(function () {});
+    fn();
   };
   window.initGoogleMapsApi = function () {
-    window.loadGmapsMarkerLib().then(flushGmapsQueue).catch(function () {});
+    flushGmapsQueue();
+    window.loadGmapsMarkerLib().catch(function () {});
   };
   window.gm_authFailure = function () {
     window.__gmapsAuthFailed = true;

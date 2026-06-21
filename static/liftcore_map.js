@@ -138,14 +138,27 @@
 
   function createPinMarker(opts) {
     opts = opts || {};
+    var position = opts.position;
+    var color = opts.color || '#1fb87a';
+    var scale = opts.scale || 1.2;
     var mc = requireMarkerClasses();
-    if (!mc) return null;
-    return new mc.AdvancedMarkerElement({
+    if (mc && mc.AdvancedMarkerElement) {
+      return new mc.AdvancedMarkerElement({
+        map: opts.map || null,
+        position: position,
+        title: opts.title || '',
+        content: makePinContent(color, scale),
+        gmpDraggable: !!opts.draggable,
+        zIndex: opts.zIndex
+      });
+    }
+    if (!global.google || !global.google.maps || !global.google.maps.Marker) return null;
+    return new global.google.maps.Marker({
       map: opts.map || null,
-      position: opts.position,
+      position: position,
       title: opts.title || '',
-      content: makePinContent(opts.color || '#1fb87a', opts.scale || 1.2),
-      gmpDraggable: !!opts.draggable,
+      icon: opts.icon || makePinIcon(color, scale),
+      draggable: !!opts.draggable,
       zIndex: opts.zIndex
     });
   }

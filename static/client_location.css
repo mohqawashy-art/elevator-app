@@ -34,7 +34,8 @@
 .map-picker-toolbar{display:flex;gap:8px;margin-bottom:10px;align-items:stretch}
 .map-picker-search{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-size:13px;color:var(--text1);font-family:inherit}
 .map-picker-search:focus{outline:none;border-color:var(--accent)}
-.map-picker-toolbar .btn{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.map-picker-toolbar .btn.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.map-picker-toolbar .btn.btn-primary:hover{filter:brightness(1.08)}
 .client-map-picker{height:260px;width:100%;border-radius:var(--r-sm);border:1px solid var(--border);overflow:hidden;background:var(--bg4);z-index:1}
 .client-map-picker .leaflet-container{height:100%;width:100%;font-family:inherit}
 #map .leaflet-container{height:100%;width:100%;min-height:480px}
