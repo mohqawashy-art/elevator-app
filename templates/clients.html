@@ -37,7 +37,7 @@
 </script>
 {% if google_maps_api_key %}
 <script async
-  src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async&language=ar&region=SA&libraries=places&callback=initGoogleMapsApi"
+  src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async&language=ar&region=SA&libraries=places,marker&callback=initGoogleMapsApi"
   onerror="window.__gmapsAuthFailed=true"></script>
 {% endif %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
@@ -50,7 +50,7 @@
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js"></script>
-<script src="/static/client_map_picker.js?v=2"></script>
+<script src="/static/client_map_picker.js?v=3"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1357,7 +1357,8 @@ function filterTable() {
 // ===== كارت العميل =====
 function destroyClientCardMap() {
   if (cardMapMarker) {
-    cardMapMarker.setMap(null);
+    if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(cardMapMarker, null);
+    else cardMapMarker.setMap(null);
     cardMapMarker = null;
   }
   cardMapInstance = null;
@@ -1372,7 +1373,7 @@ function showClientCardMap(pos, c) {
     if (!mapEl || typeof google === 'undefined') return;
     var center = { lat: pos.lat, lng: pos.lng };
     if (!cardMapInstance) {
-      cardMapInstance = new google.maps.Map(mapEl, {
+      var cardMapOpts = {
         center: center,
         zoom: 15,
         mapTypeId: 'satellite',
@@ -1383,17 +1384,34 @@ function showClientCardMap(pos, c) {
         zoomControl: true,
         gestureHandling: 'cooperative',
         styles: MAP_POI_HIDDEN_STYLES
-      });
+      };
+      if (window.LiftCoreMap && LiftCoreMap.mergeMapOptions) {
+        cardMapOpts = LiftCoreMap.mergeMapOptions(cardMapOpts);
+      }
+      cardMapInstance = new google.maps.Map(mapEl, cardMapOpts);
     } else {
       cardMapInstance.setCenter(center);
     }
-    if (cardMapMarker) cardMapMarker.setMap(null);
-    cardMapMarker = new google.maps.Marker({
-      position: center,
-      map: cardMapInstance,
-      title: c.name,
-      icon: makePinIcon(getClientPinColor(c), 1.2)
-    });
+    if (cardMapMarker) {
+      if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(cardMapMarker, null);
+      else cardMapMarker.setMap(null);
+    }
+    if (window.LiftCoreMap && LiftCoreMap.createPinMarker) {
+      cardMapMarker = LiftCoreMap.createPinMarker({
+        position: center,
+        map: cardMapInstance,
+        title: c.name,
+        color: getClientPinColor(c),
+        scale: 1.2
+      });
+    } else {
+      cardMapMarker = new google.maps.Marker({
+        position: center,
+        map: cardMapInstance,
+        title: c.name,
+        icon: makePinIcon(getClientPinColor(c), 1.2)
+      });
+    }
     setTimeout(function () {
       if (!cardMapInstance) return;
       google.maps.event.trigger(cardMapInstance, 'resize');
@@ -1861,7 +1879,10 @@ function clearMapMarkers() {
     markerCluster.clearMarkers();
     markerCluster = null;
   }
-  mapMarkers.forEach(function(m){ m.setMap(null); });
+  mapMarkers.forEach(function(m) {
+    if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(m, null);
+    else m.setMap(null);
+  });
   mapMarkers = [];
 }
 
@@ -1931,7 +1952,7 @@ function refreshMainMap(fitAgain) {
   if (!mapEl) return;
 
   if (!mainMap) {
-    mainMap = new google.maps.Map(mapEl, {
+    var mainMapOpts = {
       center: {lat: 21.4225, lng: 39.8262},
       zoom: 12,
       mapTypeId: 'satellite',
@@ -1945,7 +1966,11 @@ function refreshMainMap(fitAgain) {
       streetViewControl: false,
       fullscreenControl: true,
       zoomControl: true
-    });
+    };
+    if (window.LiftCoreMap && LiftCoreMap.mergeMapOptions) {
+      mainMapOpts = LiftCoreMap.mergeMapOptions(mainMapOpts);
+    }
+    mainMap = new google.maps.Map(mapEl, mainMapOpts);
     mainMap.addListener('maptypeid_changed', function() {
       if (mainMap.getMapTypeId() === 'roadmap') {
         mainMap.setOptions({styles: [
@@ -1980,16 +2005,24 @@ function refreshMainMap(fitAgain) {
     if (clientAccountStatus(c) === 'نشط') activeCount++; else inactiveCount++;
 
     var pinColor = getClientPinColor(c);
-    var marker = new google.maps.Marker({
-      position: {lat: pos.lat, lng: pos.lng},
-      icon: makePinIcon(pinColor, 1.35),
-      zIndex: clientAccountStatus(c) === 'نشط' ? 2 : 1
-    });
+    var marker = (window.LiftCoreMap && LiftCoreMap.createPinMarker)
+      ? LiftCoreMap.createPinMarker({
+          position: {lat: pos.lat, lng: pos.lng},
+          color: pinColor,
+          scale: 1.35,
+          zIndex: clientAccountStatus(c) === 'نشط' ? 2 : 1
+        })
+      : new google.maps.Marker({
+          position: {lat: pos.lat, lng: pos.lng},
+          icon: makePinIcon(pinColor, 1.35),
+          zIndex: clientAccountStatus(c) === 'نشط' ? 2 : 1
+        });
 
     marker.addListener('mouseover', function() {
       if (mapHoverTimer) clearTimeout(mapHoverTimer);
       mapInfoWindow.setContent(mapInfoContent(c, pos.exact));
-      mapInfoWindow.open(mainMap, marker);
+      if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(mapInfoWindow, mainMap, marker);
+      else mapInfoWindow.open(mainMap, marker);
     });
     marker.addListener('mouseout', function() {
       if (mapInfoPinned) return;
@@ -1999,7 +2032,8 @@ function refreshMainMap(fitAgain) {
       if (mapHoverTimer) clearTimeout(mapHoverTimer);
       mapInfoPinned = true;
       mapInfoWindow.setContent(mapInfoContent(c, pos.exact));
-      mapInfoWindow.open(mainMap, marker);
+      if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(mapInfoWindow, mainMap, marker);
+      else mapInfoWindow.open(mainMap, marker);
     });
 
     mapMarkers.push(marker);
@@ -2019,7 +2053,10 @@ function refreshMainMap(fitAgain) {
       }
     });
   } else {
-    mapMarkers.forEach(function(m) { m.setMap(mainMap); });
+    mapMarkers.forEach(function(m) {
+      if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(m, mainMap);
+      else m.setMap(mainMap);
+    });
   }
 
   var total = activeCount + inactiveCount;

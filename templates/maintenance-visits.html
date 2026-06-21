@@ -764,7 +764,10 @@ function refreshVisitMap() {
         });
     visitInfoWindow = new google.maps.InfoWindow();
   }
-  visitMarkers.forEach(m => m.setMap(null));
+  visitMarkers.forEach(m => {
+    if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(m, null);
+    else m.setMap(null);
+  });
   visitMarkers = [];
   if (visitCluster && visitCluster.clearMarkers) visitCluster.clearMarkers();
   visitCluster = null;
@@ -772,27 +775,35 @@ function refreshVisitMap() {
   (VISIT_MAP_POINTS || []).forEach(p => {
     if (!p.lat || !p.lng) return;
     const color = visitStatusColor(p.status);
-    const marker = new google.maps.Marker({
-      position: { lat: p.lat, lng: p.lng },
-      title: p.label || '',
-      icon: window.LiftCoreMap
-        ? LiftCoreMap.makePinIcon(color, 1.2)
-        : {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: color,
-            fillOpacity: 1,
-            strokeColor: '#fff',
-            strokeWeight: 2,
-          },
-    });
+    const marker = (window.LiftCoreMap && LiftCoreMap.createPinMarker)
+      ? LiftCoreMap.createPinMarker({
+          position: { lat: p.lat, lng: p.lng },
+          title: p.label || '',
+          color: color,
+          scale: 1.2
+        })
+      : new google.maps.Marker({
+          position: { lat: p.lat, lng: p.lng },
+          title: p.label || '',
+          icon: window.LiftCoreMap
+            ? LiftCoreMap.makePinIcon(color, 1.2)
+            : {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: color,
+                fillOpacity: 1,
+                strokeColor: '#fff',
+                strokeWeight: 2,
+              },
+        });
     marker.addListener('click', () => {
       visitInfoWindow.setContent(
         '<div style="font-family:Tahoma,Arial;direction:rtl;text-align:right;min-width:160px">' +
         '<b>' + (p.label || '') + '</b><br>' + (p.status || '—') +
         '</div>'
       );
-      visitInfoWindow.open(visitMap, marker);
+      if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(visitInfoWindow, visitMap, marker);
+      else visitInfoWindow.open(visitMap, marker);
     });
     visitMarkers.push(marker);
   });
@@ -802,7 +813,14 @@ function refreshVisitMap() {
     LiftCoreMap.fitMapToMarkers(visitMap, visitMarkers, true);
   } else if (visitMarkers.length) {
     const bounds = new google.maps.LatLngBounds();
-    visitMarkers.forEach(m => { m.setMap(visitMap); bounds.extend(m.getPosition()); });
+    visitMarkers.forEach(m => {
+      if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(m, visitMap);
+      else m.setMap(visitMap);
+      const pos = window.LiftCoreMap && LiftCoreMap.getMarkerPosition
+        ? LiftCoreMap.getMarkerPosition(m)
+        : (function () { const gp = m.getPosition(); return { lat: gp.lat(), lng: gp.lng() }; })();
+      if (pos) bounds.extend(pos);
+    });
     visitMap.fitBounds(bounds, 48);
     google.maps.event.trigger(visitMap, 'resize');
   } else {

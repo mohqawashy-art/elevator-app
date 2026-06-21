@@ -16,7 +16,7 @@
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js"></script>
-<script src="/static/client_map_picker.js?v=2"></script>
+<script src="/static/client_map_picker.js?v=3"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1923,7 +1923,10 @@ function contractMapInfo(c, exact) {
 
 function clearContractMapMarkers() {
   if (contractCluster) { contractCluster.clearMarkers(); contractCluster = null; }
-  contractMarkers.forEach(function(m) { m.setMap(null); });
+  contractMarkers.forEach(function(m) {
+    if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(m, null);
+    else m.setMap(null);
+  });
   contractMarkers = [];
 }
 
@@ -1936,15 +1939,23 @@ function renderContractMapMarkers(fitAgain) {
   groups.forEach(function(group) {
     var pos = group.pos;
     var color = getGroupPinColor(group);
-    var marker = new google.maps.Marker({
-      position: {lat: pos.lat, lng: pos.lng},
-      icon: makeContractPin(color),
-      zIndex: color === '#1fb87a' ? 2 : 1
-    });
+    var marker = (window.LiftCoreMap && LiftCoreMap.createPinMarker)
+      ? LiftCoreMap.createPinMarker({
+          position: {lat: pos.lat, lng: pos.lng},
+          color: color,
+          scale: 1.25,
+          zIndex: color === '#1fb87a' ? 2 : 1
+        })
+      : new google.maps.Marker({
+          position: {lat: pos.lat, lng: pos.lng},
+          icon: makeContractPin(color),
+          zIndex: color === '#1fb87a' ? 2 : 1
+        });
     marker.addListener('mouseover', function() {
       if (contractHoverTimer) clearTimeout(contractHoverTimer);
       contractInfoWindow.setContent(contractGroupMapInfo(group));
-      contractInfoWindow.open(contractMap, marker);
+      if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(contractInfoWindow, contractMap, marker);
+      else contractInfoWindow.open(contractMap, marker);
     });
     marker.addListener('mouseout', function() {
       if (contractInfoPinned) return;
@@ -1954,7 +1965,8 @@ function renderContractMapMarkers(fitAgain) {
       if (contractHoverTimer) clearTimeout(contractHoverTimer);
       contractInfoPinned = true;
       contractInfoWindow.setContent(contractGroupMapInfo(group));
-      contractInfoWindow.open(contractMap, marker);
+      if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(contractInfoWindow, contractMap, marker);
+      else contractInfoWindow.open(contractMap, marker);
     });
     contractMarkers.push(marker);
   });
@@ -1976,7 +1988,10 @@ function renderContractMapMarkers(fitAgain) {
       onClusterClick: function(_e, cluster, map) { map.fitBounds(cluster.bounds, 48); }
     });
   } else {
-    contractMarkers.forEach(function(m) { m.setMap(contractMap); });
+    contractMarkers.forEach(function(m) {
+      if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(m, contractMap);
+      else m.setMap(contractMap);
+    });
   }
 
   if (window.LiftCoreMap) {
@@ -1985,7 +2000,12 @@ function renderContractMapMarkers(fitAgain) {
     google.maps.event.trigger(contractMap, 'resize');
     if (contractMarkers.length && fitAgain) {
       var bounds = new google.maps.LatLngBounds();
-      contractMarkers.forEach(function(m) { bounds.extend(m.getPosition()); });
+      contractMarkers.forEach(function(m) {
+        var pos = window.LiftCoreMap && LiftCoreMap.getMarkerPosition
+          ? LiftCoreMap.getMarkerPosition(m)
+          : (function () { var p = m.getPosition(); return { lat: p.lat(), lng: p.lng() }; })();
+        if (pos) bounds.extend(pos);
+      });
       contractMap.fitBounds(bounds, 64);
     } else if (fitAgain) {
       contractMap.setCenter({lat: 21.4225, lng: 39.8262});

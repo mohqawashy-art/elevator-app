@@ -148,7 +148,11 @@
       return;
     }
     if (state.marker && state.provider === 'google') {
-      state.marker.setIcon(defaultPinIcon(pinColor()));
+      if (global.LiftCoreMap && LiftCoreMap.refreshPinMarkerIcon) {
+        LiftCoreMap.refreshPinMarkerIcon(state.marker, pinColor(), 1.2);
+      } else {
+        state.marker.setIcon(defaultPinIcon(pinColor()));
+      }
     }
   }
 
@@ -280,19 +284,39 @@
     }
     var pos = { lat: lat, lng: lng };
     if (!state.marker) {
-      state.marker = new google.maps.Marker({
-        position: pos,
-        map: state.map,
-        draggable: true,
-        icon: defaultPinIcon(pinColor()),
-      });
+      if (global.LiftCoreMap && LiftCoreMap.createPinMarker) {
+        state.marker = LiftCoreMap.createPinMarker({
+          position: pos,
+          map: state.map,
+          draggable: true,
+          color: pinColor(),
+          scale: 1.2,
+        });
+      } else {
+        state.marker = new google.maps.Marker({
+          position: pos,
+          map: state.map,
+          draggable: true,
+          icon: defaultPinIcon(pinColor()),
+        });
+      }
       state.marker.addListener('dragend', function () {
-        var p = state.marker.getPosition();
-        reverseGeocode(p.lat(), p.lng());
+        var p = global.LiftCoreMap && LiftCoreMap.getMarkerPosition
+          ? LiftCoreMap.getMarkerPosition(state.marker)
+          : (function () {
+            var gp = state.marker.getPosition();
+            return { lat: gp.lat(), lng: gp.lng() };
+          })();
+        if (p) reverseGeocode(p.lat, p.lng);
       });
     } else {
-      state.marker.setPosition(pos);
-      state.marker.setMap(state.map);
+      if (global.LiftCoreMap && LiftCoreMap.setMarkerPosition) {
+        LiftCoreMap.setMarkerPosition(state.marker, pos);
+        LiftCoreMap.setMarkerMap(state.marker, state.map);
+      } else {
+        state.marker.setPosition(pos);
+        state.marker.setMap(state.map);
+      }
       refreshMarkerIcon();
     }
     if (pan !== false) {
@@ -555,7 +579,7 @@
     state.provider = 'google';
     if (!state.map) {
       var center = (state.opts && state.opts.defaultCenter) || DEFAULT_CENTER;
-      state.map = new google.maps.Map(mapEl, {
+      var mapOpts = {
         center: center,
         zoom: 12,
         mapTypeId: 'roadmap',
@@ -570,7 +594,11 @@
         fullscreenControl: true,
         zoomControl: true,
         styles: (state.opts && state.opts.poiStyles) || POI_STYLES,
-      });
+      };
+      if (global.LiftCoreMap && LiftCoreMap.mergeMapOptions) {
+        mapOpts = LiftCoreMap.mergeMapOptions(mapOpts);
+      }
+      state.map = new google.maps.Map(mapEl, mapOpts);
       state.map.addListener('click', onMapClick);
       bindGoogleSearch();
       bindMyLocation();
@@ -653,6 +681,7 @@
   function reset() {
     if (state.marker) {
       if (state.provider === 'leaflet' && state.map) state.map.removeLayer(state.marker);
+      else if (global.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(state.marker, null);
       else if (state.marker.setMap) state.marker.setMap(null);
       state.marker = null;
     }

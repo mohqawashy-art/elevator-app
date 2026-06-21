@@ -7,6 +7,7 @@
 
   var DEFAULT_CENTER = { lat: 21.4225, lng: 39.8262 };
   var DEFAULT_ZOOM = 12;
+  var DEFAULT_MAP_ID = 'DEMO_MAP_ID';
 
   var POI_HIDDEN = [
     { featureType: 'poi', stylers: [{ visibility: 'off' }] },
@@ -14,6 +15,32 @@
   ];
 
   var PIN_PATH = 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z';
+
+  function getMapId() {
+    return (global.LIFTCORE_GOOGLE_MAP_ID || DEFAULT_MAP_ID);
+  }
+
+  function canUseAdvancedMarkers() {
+    return !!(
+      global.google &&
+      global.google.maps &&
+      global.google.maps.marker &&
+      global.google.maps.marker.AdvancedMarkerElement
+    );
+  }
+
+  function isAdvancedMarker(marker) {
+    if (!marker || !canUseAdvancedMarkers()) return false;
+    return marker instanceof global.google.maps.marker.AdvancedMarkerElement;
+  }
+
+  function mergeMapOptions(options) {
+    options = options || {};
+    if (!canUseAdvancedMarkers()) return options;
+    var merged = Object.assign({}, options);
+    merged.mapId = merged.mapId || getMapId();
+    return merged;
+  }
 
   function makePinIcon(color, scale) {
     return {
@@ -25,6 +52,19 @@
       scale: scale || 1.35,
       anchor: new global.google.maps.Point(12, 22)
     };
+  }
+
+  function makePinContent(color, scale) {
+    if (canUseAdvancedMarkers() && global.google.maps.marker.PinElement) {
+      var pin = new global.google.maps.marker.PinElement({
+        background: color || '#1fb87a',
+        borderColor: '#ffffff',
+        glyphColor: '#ffffff',
+        scale: scale || 1.2
+      });
+      return pin.element;
+    }
+    return null;
   }
 
   function makeClusterIcon(count) {
@@ -45,25 +85,114 @@
     };
   }
 
+  function clusterZIndex(count) {
+    var base = global.google.maps.Marker && global.google.maps.Marker.MAX_ZINDEX;
+    return (base ? Number(base) : 1000000) + count;
+  }
+
+  function createClusterMarker(cluster, unitLabel) {
+    var count = cluster.count;
+    var title = count + ' ' + (unitLabel || 'موقع');
+    if (canUseAdvancedMarkers()) {
+      var icon = makeClusterIcon(count);
+      var img = document.createElement('img');
+      img.src = icon.url;
+      img.width = icon.scaledSize.width;
+      img.height = icon.scaledSize.height;
+      img.alt = title;
+      return new global.google.maps.marker.AdvancedMarkerElement({
+        position: cluster.position,
+        title: title,
+        content: img,
+        zIndex: clusterZIndex(count)
+      });
+    }
+    return new global.google.maps.Marker({
+      position: cluster.position,
+      title: title,
+      icon: makeClusterIcon(count),
+      zIndex: clusterZIndex(count)
+    });
+  }
+
   function createClusterRenderer(unitLabel) {
     unitLabel = unitLabel || 'موقع';
     return {
       render: function (cluster) {
-        var count = cluster.count;
-        return new global.google.maps.Marker({
-          position: cluster.position,
-          title: count + ' ' + unitLabel,
-          icon: makeClusterIcon(count),
-          zIndex: Number(global.google.maps.Marker.MAX_ZINDEX) + count
-        });
+        return createClusterMarker(cluster, unitLabel);
       }
     };
+  }
+
+  function createPinMarker(opts) {
+    opts = opts || {};
+    var position = opts.position;
+    var color = opts.color || '#1fb87a';
+    var scale = opts.scale || 1.2;
+    if (canUseAdvancedMarkers()) {
+      var advanced = new global.google.maps.marker.AdvancedMarkerElement({
+        map: opts.map || null,
+        position: position,
+        title: opts.title || '',
+        content: makePinContent(color, scale),
+        gmpDraggable: !!opts.draggable,
+        zIndex: opts.zIndex
+      });
+      return advanced;
+    }
+    var legacy = new global.google.maps.Marker({
+      map: opts.map || null,
+      position: position,
+      title: opts.title || '',
+      icon: opts.icon || makePinIcon(color, scale),
+      draggable: !!opts.draggable,
+      zIndex: opts.zIndex
+    });
+    return legacy;
+  }
+
+  function setMarkerMap(marker, map) {
+    if (!marker) return;
+    if (isAdvancedMarker(marker)) marker.map = map || null;
+    else marker.setMap(map || null);
+  }
+
+  function getMarkerPosition(marker) {
+    if (!marker) return null;
+    var p = marker.position;
+    if (!p && marker.getPosition) p = marker.getPosition();
+    if (!p) return null;
+    if (typeof p.lat === 'function') return { lat: p.lat(), lng: p.lng() };
+    return { lat: p.lat, lng: p.lng };
+  }
+
+  function setMarkerPosition(marker, position) {
+    if (!marker || !position) return;
+    if (isAdvancedMarker(marker)) marker.position = position;
+    else marker.setPosition(position);
+  }
+
+  function refreshPinMarkerIcon(marker, color, scale) {
+    if (!marker) return;
+    color = color || '#1fb87a';
+    scale = scale || 1.2;
+    if (isAdvancedMarker(marker)) {
+      marker.content = makePinContent(color, scale);
+      return;
+    }
+    if (marker.setIcon) marker.setIcon(makePinIcon(color, scale));
+  }
+
+  function openInfoWindow(infoWindow, map, marker) {
+    if (!infoWindow || !map || !marker) return;
+    if (isAdvancedMarker(marker)) infoWindow.open({ map: map, anchor: marker });
+    else infoWindow.open(map, marker);
   }
 
   function initMap(el, existingMap) {
     if (existingMap) return existingMap;
     if (!el || typeof global.google === 'undefined' || !global.google.maps) return null;
-    return new global.google.maps.Map(el, {
+    return new global.google.maps.Map(el, mergeMapOptions({
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
       mapTypeId: 'satellite',
@@ -78,7 +207,7 @@
         mapTypeIds: ['satellite', 'hybrid', 'roadmap']
       },
       styles: POI_HIDDEN
-    });
+    }));
   }
 
   function attachCluster(map, markers, unitLabel) {
@@ -86,7 +215,7 @@
       return null;
     }
     if (typeof markerClusterer === 'undefined' || !markerClusterer.MarkerClusterer) {
-      markers.forEach(function (m) { m.setMap(map); });
+      markers.forEach(function (m) { setMarkerMap(m, map); });
       return null;
     }
     return new markerClusterer.MarkerClusterer({
@@ -113,7 +242,8 @@
     if (!fitAgain) return;
     var bounds = new global.google.maps.LatLngBounds();
     markers.forEach(function (m) {
-      bounds.extend(m.getPosition());
+      var pos = getMarkerPosition(m);
+      if (pos) bounds.extend(pos);
     });
     map.fitBounds(bounds, 64);
     global.google.maps.event.addListenerOnce(map, 'bounds_changed', function () {
@@ -137,7 +267,7 @@
     marker.addListener('mouseover', function () {
       if (pinState.timer) clearTimeout(pinState.timer);
       infoWindow.setContent(getContent());
-      infoWindow.open(map, marker);
+      openInfoWindow(infoWindow, map, marker);
     });
     marker.addListener('mouseout', function () {
       if (pinState.pinned) return;
@@ -147,7 +277,7 @@
       if (pinState.timer) clearTimeout(pinState.timer);
       pinState.pinned = true;
       infoWindow.setContent(getContent());
-      infoWindow.open(map, marker);
+      openInfoWindow(infoWindow, map, marker);
     });
     return pinState;
   }
@@ -162,9 +292,21 @@
   global.LiftCoreMap = {
     DEFAULT_CENTER: DEFAULT_CENTER,
     POI_HIDDEN: POI_HIDDEN,
+    getMapId: getMapId,
+    canUseAdvancedMarkers: canUseAdvancedMarkers,
+    isAdvancedMarker: isAdvancedMarker,
+    mergeMapOptions: mergeMapOptions,
     makePinIcon: makePinIcon,
+    makePinContent: makePinContent,
     makeClusterIcon: makeClusterIcon,
+    createClusterMarker: createClusterMarker,
     createClusterRenderer: createClusterRenderer,
+    createPinMarker: createPinMarker,
+    setMarkerMap: setMarkerMap,
+    getMarkerPosition: getMarkerPosition,
+    setMarkerPosition: setMarkerPosition,
+    refreshPinMarkerIcon: refreshPinMarkerIcon,
+    openInfoWindow: openInfoWindow,
     initMap: initMap,
     attachCluster: attachCluster,
     fitMapToMarkers: fitMapToMarkers,
