@@ -380,9 +380,6 @@ def _sync_parts_billing():
 
 
 def _sync_inventory():
-    from seed_inventory_parts import purge_inventory_catalog
-
-    purge_inventory_catalog()
     items = InventoryItem.query.order_by(InventoryItem.id.desc()).all()
     return {
         'ITEMS': [{
@@ -405,9 +402,6 @@ def _sync_inventory():
 
 
 def _sync_stock_movements():
-    from seed_inventory_parts import purge_inventory_catalog
-
-    purge_inventory_catalog()
     movements = StockMovement.query.order_by(StockMovement.movement_date.desc()).all()
     items = InventoryItem.query.all()
     technicians = Technician.query.filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).all()

@@ -40,7 +40,13 @@ def ensure_inventory_catalog():
 
 
 def purge_inventory_catalog():
-    """حذف أصناف الكاتالوج التلقائي (SP-xxx) وحركاتها المرتبطة."""
+    """حذف أصناف الكاتالوج التلقائي (SP-xxx) وحركاتها المرتبطة.
+
+    للتشغيل اليدوي فقط — مثال:
+        flask shell
+        >>> from seed_inventory_parts import purge_inventory_catalog
+        >>> purge_inventory_catalog()
+    """
     items = InventoryItem.query.filter(InventoryItem.code.like('SP-%')).all()
     if not items:
         return 0
