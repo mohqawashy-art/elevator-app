@@ -4758,6 +4758,18 @@ def elevator_estimate_print(estimate_id):
 # =============================================
 # حركة المخزن
 # =============================================
+
+def _adjust_inventory_qty(item, direction, qty, *, reverse=False):
+    """تطبيق أو عكس تأثير حركة مخزون على رصيد الصنف."""
+    if not item:
+        return
+    q = float(qty or 0)
+    delta = q if direction == 'وارد' else -q
+    if reverse:
+        delta = -delta
+    item.current_qty = (item.current_qty or 0) + delta
+
+
 @app.route('/stock-movements')
 def stock_movements():
     from seed_inventory_parts import purge_inventory_catalog
@@ -4790,12 +4802,8 @@ def stock_add():
     )
     db.session.add(m)
 
-    # تحديث الرصيد
     item = InventoryItem.query.get(item_id)
-    if direction == 'وارد':
-        item.current_qty += qty
-    else:
-        item.current_qty -= qty
+    _adjust_inventory_qty(item, direction, qty)
 
     db.session.commit()
     return redirect(url_for('stock_movements'))
@@ -4803,6 +4811,8 @@ def stock_add():
 @app.route('/stock-movements/delete/<int:id>', methods=['POST'])
 def stock_delete(id):
     m = StockMovement.query.get_or_404(id)
+    item = InventoryItem.query.get(m.item_id)
+    _adjust_inventory_qty(item, m.direction, m.quantity, reverse=True)
     db.session.delete(m)
     db.session.commit()
     return redirect(url_for('stock_movements'))
