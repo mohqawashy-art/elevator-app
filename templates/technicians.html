@@ -1524,7 +1524,8 @@ document.addEventListener('click', function(e) { if (!e.target.closest('.modal')
 var now = new Date();
 var days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 var months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-document.getElementById('h-date').textContent = days[now.getDay()] + '، ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+var hDateEl = document.getElementById('h-date');
+if (hDateEl) hDateEl.textContent = days[now.getDay()] + '، ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
 
 initFilters();
 updateStats();
@@ -1538,8 +1539,12 @@ if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.LiftCoreTranslit && LiftCoreTranslit.bindAutoLatin) {
+    LiftCoreTranslit.bindAutoLatin('f-name-ar', 'f-name-en');
+  }
+});
 </script>
-<script src="/static/name_translit.js"></script>
-<script>if (window.LiftCoreTranslit) LiftCoreTranslit.bind('f-name-ar', 'f-name-en');</script>
 </body>
 </html>
