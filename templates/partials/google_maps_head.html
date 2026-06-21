@@ -24,8 +24,8 @@
   };
 </script>
 {% if google_maps_api_key %}
-<script async defer
-  src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&language=ar&region=SA&libraries={{ gmaps_libraries|default('places') }}&callback=initGoogleMapsApi"
+<script async
+  src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async&language=ar&region=SA&libraries={{ gmaps_libraries|default('places') }}&callback=initGoogleMapsApi"
   onerror="window.__gmapsAuthFailed=true"></script>
 {% endif %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
