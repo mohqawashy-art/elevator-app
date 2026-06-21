@@ -858,6 +858,10 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function lcDisp(s) {
+  return (window.LiftCoreDisplay) ? LiftCoreDisplay.text(s == null ? '' : s) : (s || '—');
+}
+
 function contractAttachmentCell(c) {
   if (!c.file_url) return '<span class="contract-attach-empty">—</span>';
   return '<a class="contract-attach-link" href="' + esc(c.file_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + esc(c.file_name || 'PDF') + '">📄 PDF</a>';
