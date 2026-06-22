@@ -3202,9 +3202,30 @@ def visit_edit(id):
     db.session.commit()
     return redirect(url_for('maintenance_visits'))
 
+
+def _purge_visit_dependencies(visit_id: int) -> None:
+    """فك الارتباطات التي تمنع حذف الزيارة."""
+    v = MaintenanceVisit.query.get(visit_id)
+    if not v:
+        return
+    VisitTechnician.query.filter_by(visit_id=visit_id).delete(synchronize_session=False)
+    Fault.query.filter_by(visit_id=visit_id).update(
+        {Fault.visit_id: None}, synchronize_session=False
+    )
+    PartsBilling.query.filter_by(visit_id=visit_id).update(
+        {PartsBilling.visit_id: None}, synchronize_session=False
+    )
+    if v.fault_id:
+        fault = Fault.query.get(v.fault_id)
+        if fault and fault.visit_id == visit_id:
+            fault.visit_id = None
+        v.fault_id = None
+
+
 @app.route('/maintenance-visits/delete/<int:id>', methods=['POST'])
 def visit_delete(id):
     v = MaintenanceVisit.query.get_or_404(id)
+    _purge_visit_dependencies(id)
     db.session.delete(v)
     db.session.commit()
     return redirect(url_for('maintenance_visits'))
@@ -3900,6 +3921,13 @@ def fault_add():
 @app.route('/faults/delete/<int:id>', methods=['POST'])
 def fault_delete(id):
     f = Fault.query.get_or_404(id)
+    FaultTechnician.query.filter_by(fault_id=id).delete(synchronize_session=False)
+    MaintenanceVisit.query.filter_by(fault_id=id).update(
+        {MaintenanceVisit.fault_id: None}, synchronize_session=False
+    )
+    PartsBilling.query.filter_by(fault_id=id).update(
+        {PartsBilling.fault_id: None}, synchronize_session=False
+    )
     db.session.delete(f)
     db.session.commit()
     return redirect(url_for('faults'))

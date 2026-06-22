@@ -234,7 +234,10 @@ class VisitTechnician(db.Model):
     technician_id = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=False)
     role = db.Column(db.String(20), default='فني')  # فني / مساعد
 
-    visit = db.relationship('MaintenanceVisit', backref=db.backref('assigned_technicians', lazy=True))
+    visit = db.relationship(
+        'MaintenanceVisit',
+        backref=db.backref('assigned_technicians', lazy=True, cascade='all, delete-orphan'),
+    )
     technician = db.relationship('Technician', lazy=True)
 
     __table_args__ = (db.UniqueConstraint('visit_id', 'technician_id', name='uq_visit_technician'),)
@@ -285,7 +288,10 @@ class FaultTechnician(db.Model):
     technician_id = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=False)
     role = db.Column(db.String(20), default='فني')
 
-    fault = db.relationship('Fault', backref=db.backref('assigned_technicians', lazy=True))
+    fault = db.relationship(
+        'Fault',
+        backref=db.backref('assigned_technicians', lazy=True, cascade='all, delete-orphan'),
+    )
     technician = db.relationship('Technician', lazy=True)
 
     __table_args__ = (db.UniqueConstraint('fault_id', 'technician_id', name='uq_fault_technician'),)

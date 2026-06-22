@@ -700,7 +700,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
-      <button class="btn btn-danger" onclick="confirmDelete()">حذف نهائي</button>
+      <button type="button" class="btn btn-danger" id="btn-confirm-delete" onclick="confirmDelete()">حذف نهائي</button>
     </div>
   </div>
 </div>
@@ -743,6 +743,7 @@ const PLAN_DISTRICTS = {{ plan_districts|tojson }};
 let PLAN_VISITS = [];
 let PLAN_MODE = 'auto';
 let visitSaving = false;
+let visitDeleting = false;
 let visitMap = null;
 let visitMarkers = [];
 let visitCluster = null;
@@ -1717,10 +1718,35 @@ function viewVisit(id) {
 }
 
 // ===== حذف =====
-function deleteVisit(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
+function deleteVisit(id) { currentDeleteId=id; visitDeleting=false; document.getElementById('modal-delete').classList.add('open'); }
 function confirmDelete() {
-  if(!currentDeleteId) return;
-  fetch(`/maintenance-visits/delete/${currentDeleteId}`,{method:'POST'}).then(()=>window.location.reload());
+  if(!currentDeleteId || visitDeleting) return;
+  visitDeleting = true;
+  const btn = document.getElementById('btn-confirm-delete');
+  const btnHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'جاري الحذف...';
+  }
+  fetch(`/maintenance-visits/delete/${currentDeleteId}`, {
+    method: 'POST',
+    credentials: 'same-origin',
+  })
+    .then(res => {
+      if (res.redirected || res.ok) {
+        window.location.href = res.url || '/maintenance-visits';
+        return;
+      }
+      throw new Error('delete failed');
+    })
+    .catch(() => {
+      visitDeleting = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = btnHtml;
+      }
+      alert('تعذّر حذف الزيارة — قد تكون مرتبطة بسجلات أخرى');
+    });
 }
 
 function printVisit() {
