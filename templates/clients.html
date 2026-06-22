@@ -1422,7 +1422,7 @@ function showClientCardMap(pos, c) {
       map: cardMapInstance,
       title: c.name,
       color: getClientPinColor(c),
-      scale: 1.2
+      scale: CLIENT_MAP_PIN_SCALE_CARD
     });
     setTimeout(function () {
       if (!cardMapInstance) return;
@@ -1863,6 +1863,9 @@ function confirmDelete(){
 
 // ===== خريطة =====
 var mainMap = null, miniMap = null, miniMarker = null, mapMarkers = [], mapInfoWindow = null, markerCluster = null, mapInfoPinned = false, mapHoverTimer = null;
+var CLIENT_MAP_PIN_SCALE = 0.82;
+var CLIENT_MAP_PIN_SCALE_CARD = 0.78;
+var CLIENT_MAP_OSM_RADIUS = 6;
 
 var MAP_POI_HIDDEN_STYLES = [
   {featureType: 'poi', stylers: [{visibility: 'off'}]},
@@ -1912,7 +1915,7 @@ function makePinIcon(color, scale) {
   return {
     path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z',
     fillColor: color, fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2,
-    scale: scale || 1.35, anchor: new google.maps.Point(12, 22)
+    scale: scale || CLIENT_MAP_PIN_SCALE, anchor: new google.maps.Point(12, 22)
   };
 }
 
@@ -1969,7 +1972,7 @@ function refreshMainMapOsm() {
     if (!pos) return;
     if (clientAccountStatus(c) === 'نشط') activeCount++; else inactiveCount++;
     var marker = L.circleMarker([pos.lat, pos.lng], {
-      radius: 9,
+      radius: CLIENT_MAP_OSM_RADIUS,
       color: '#ffffff',
       weight: 2,
       fillColor: getClientPinColor(c),
@@ -2066,7 +2069,7 @@ function refreshMainMap(fitAgain) {
     var marker = LiftCoreMap.createPinMarker({
       position: {lat: pos.lat, lng: pos.lng},
       color: pinColor,
-      scale: 1.35,
+      scale: CLIENT_MAP_PIN_SCALE,
       zIndex: clientAccountStatus(c) === 'نشط' ? 2 : 1
     });
     if (!marker) return;
