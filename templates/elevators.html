@@ -806,7 +806,10 @@ var ELEVATORS = [
     brand:        {{ (e.brand or '')|tojson }},
     model:        {{ (e.model or '')|tojson }},
     capacity:     {{ e.capacity_kg or 0 }},
+    capacity_persons: {{ e.capacity_persons or 0 }},
     floors:       {{ e.floors or 0 }},
+    stops:        {{ e.stops or 0 }},
+    doors:        {{ e.doors_count or 0 }},
     speed:        {{ (e.speed or '')|tojson }},
     serial:       {{ (e.serial_number or '')|tojson }},
     machine_type: {{ (e.machine_type or '')|tojson }},
@@ -816,8 +819,11 @@ var ELEVATORS = [
     control_operation: {{ (e.control_operation or '')|tojson }},
     control_detail: {{ (e.control_detail or '')|tojson }},
     install_date: {{ (e.install_date.isoformat() if e.install_date else '')|tojson }},
+    warranty_end: {{ (e.warranty_end.isoformat() if e.warranty_end else '')|tojson }},
     last_maint:   {{ (e.last_maintenance.isoformat() if e.last_maintenance else '')|tojson }},
     next_maint:   {{ (e.next_maintenance.isoformat() if e.next_maintenance else '')|tojson }},
+    maint_freq:   {{ (e.maint_frequency or '')|tojson }},
+    address:      {{ (e.address or '')|tojson }},
     status:       {{ e.status|tojson }},
     notes:        {{ (e.notes or '')|tojson }},
     customer_lat: {{ (e.customer.lat if e.customer else '')|tojson }},
@@ -1157,7 +1163,7 @@ function filterTable() {
 
 // ===== نماذج =====
 function resetElevatorForm() {
-  ['f-building','f-brand','f-model','f-serial','f-capacity-kg','f-floors','f-notes','f-maps-url','f-lat','f-lng'].forEach(function(id) {
+  ['f-building','f-brand','f-model','f-serial','f-capacity-kg','f-capacity-p','f-floors','f-stops','f-doors','f-notes','f-maps-url','f-lat','f-lng'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1178,6 +1184,8 @@ function resetElevatorForm() {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
+  var maintFreq = document.getElementById('f-maint-freq');
+  if (maintFreq) maintFreq.selectedIndex = 0;
   document.getElementById('f-elev-city').value = '';
   document.getElementById('f-elev-district').value = '';
   document.getElementById('f-elev-code').value = NEXT_ELEV_CODE;
@@ -1209,7 +1217,10 @@ function saveElevator() {
   fd.append('brand', document.getElementById('f-brand').value);
   fd.append('model', document.getElementById('f-model').value);
   fd.append('capacity_kg', document.getElementById('f-capacity-kg').value);
+  fd.append('capacity_persons', document.getElementById('f-capacity-p').value);
   fd.append('floors', document.getElementById('f-floors').value);
+  fd.append('stops', document.getElementById('f-stops').value);
+  fd.append('doors_count', document.getElementById('f-doors').value);
   fd.append('serial_number', document.getElementById('f-serial').value);
   fd.append('machine_type', document.getElementById('f-machine').value);
   fd.append('door_type', document.getElementById('f-door-type').value);
@@ -1218,8 +1229,10 @@ function saveElevator() {
   fd.append('control_operation', document.getElementById('f-control-operation').value);
   fd.append('control_detail', document.getElementById('f-control-detail').value);
   fd.append('install_date', document.getElementById('f-install-date').value);
+  fd.append('warranty_end', document.getElementById('f-warranty').value);
   fd.append('last_maintenance', document.getElementById('f-last-maint').value);
   fd.append('next_maintenance', document.getElementById('f-next-maint').value);
+  fd.append('maint_frequency', document.getElementById('f-maint-freq').value);
   fd.append('status', document.getElementById('f-elev-status').value);
   fd.append('notes', document.getElementById('f-notes').value);
   fetch(editId ? '/elevators/edit/' + editId : '/elevators/add', {method: 'POST', body: fd, credentials: 'same-origin'})
@@ -1247,7 +1260,10 @@ function editElevator(id) {
   document.getElementById('f-brand').value = e.brand || '';
   document.getElementById('f-model').value = e.model || '';
   document.getElementById('f-capacity-kg').value = e.capacity || '';
+  document.getElementById('f-capacity-p').value = e.capacity_persons || '';
   document.getElementById('f-floors').value = e.floors || '';
+  document.getElementById('f-stops').value = e.stops || '';
+  document.getElementById('f-doors').value = e.doors || '';
   document.getElementById('f-serial').value = e.serial || '';
   document.getElementById('f-machine').value = e.machine_type || 'MR';
   document.getElementById('f-door-type').value = e.door_type || '';
@@ -1257,8 +1273,10 @@ function editElevator(id) {
   document.getElementById('f-control-detail').value = e.control_detail || '';
   updateMachineHint();
   document.getElementById('f-install-date').value = e.install_date || '';
+  document.getElementById('f-warranty').value = e.warranty_end || '';
   document.getElementById('f-last-maint').value = e.last_maint || '';
   document.getElementById('f-next-maint').value = e.next_maint || '';
+  document.getElementById('f-maint-freq').value = e.maint_freq || 'شهري';
   document.getElementById('f-elev-status').value = e.status || 'نشط';
   document.getElementById('f-notes').value = e.notes || '';
   openElevFormModal(function () {
@@ -1302,8 +1320,11 @@ function viewElevator(id) {
       viewItem('الموديل', esc(e.model || '—'), { style: 'font-family:var(--font-en)' }) +
       viewItem('الرقم التسلسلي', esc(e.serial || '—'), { style: 'font-family:var(--font-en)' }) +
       viewItem('عدد الطوابق', e.floors ? '<span style="font-family:var(--font-en)">' + esc(String(e.floors)) + '</span>' : '—') +
+      viewItem('عدد المحطات', e.stops ? '<span style="font-family:var(--font-en)">' + esc(String(e.stops)) + '</span>' : '—') +
+      viewItem('عدد الأبواب', e.doors ? '<span style="font-family:var(--font-en)">' + esc(String(e.doors)) + '</span>' : '—') +
       viewItem('السرعة', e.speed ? esc(lcDisp(e.speed)) : '—') +
       viewItem('الحمولة', e.capacity ? lcDisp(e.capacity + ' كجم') : '—') +
+      viewItem('عدد الأشخاص', e.capacity_persons ? '<span style="font-family:var(--font-en)">' + esc(String(e.capacity_persons)) + '</span>' : '—') +
       viewItem('نوع الباب', esc(lcDisp(e.door_type || '—'))) +
       viewItem('نوع الآلة', esc(lcDisp(MACHINE_LABELS[e.machine_type] || e.machine_type || '—'))) +
       '<div class="view-section">' + lcDisp('نظام التحكم') + '</div>' +
@@ -1313,8 +1334,10 @@ function viewElevator(id) {
       viewItem('تفاصيل إضافية', esc(e.control_detail || '—'), { full: true, style: 'font-family:var(--font-en)' }) +
       '<div class="view-section">' + lcDisp('الصيانة والحالة') + '</div>' +
       viewItem('تاريخ التركيب', esc(e.install_date || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
+      viewItem('انتهاء الضمان', esc(e.warranty_end || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
       viewItem('آخر صيانة', esc(e.last_maint || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
       viewItem('الصيانة القادمة', esc(e.next_maint || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
+      viewItem('تكرار الصيانة', esc(lcDisp(e.maint_freq || '—'))) +
       viewItem('الحالة', '<span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span>') +
       (e.notes ? viewItem('ملاحظات', esc(e.notes), { full: true }) : '') +
     '</div>' +

@@ -511,6 +511,11 @@ with app.app_context():
             'elevators': [
                 ('machine_type', 'VARCHAR(30)'),
                 ('door_type', 'VARCHAR(50)'),
+                ('capacity_persons', 'INTEGER'),
+                ('stops', 'INTEGER'),
+                ('doors_count', 'INTEGER'),
+                ('warranty_end', 'DATE'),
+                ('maint_frequency', 'VARCHAR(50)'),
                 ('control_type', 'VARCHAR(50)'),
                 ('control_drive', 'VARCHAR(50)'),
                 ('control_operation', 'VARCHAR(50)'),
@@ -1831,6 +1836,15 @@ def _parse_date(value):
     return datetime.strptime(value, '%Y-%m-%d').date()
 
 
+def _parse_int(value):
+    if value in (None, ''):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 @app.route('/elevators')
 def elevators():
     elevs = Elevator.query.order_by(Elevator.id.desc()).all()
@@ -1878,8 +1892,11 @@ def elevator_add():
         elev_type       = request.form.get('elev_type', ''),
         brand           = request.form.get('brand', ''),
         model           = request.form.get('model', ''),
-        capacity_kg     = request.form.get('capacity_kg') or None,
-        floors          = request.form.get('floors') or None,
+        capacity_kg     = _parse_int(request.form.get('capacity_kg')),
+        capacity_persons= _parse_int(request.form.get('capacity_persons')),
+        floors          = _parse_int(request.form.get('floors')),
+        stops           = _parse_int(request.form.get('stops')),
+        doors_count     = _parse_int(request.form.get('doors_count')),
         serial_number   = request.form.get('serial_number', ''),
         machine_type    = request.form.get('machine_type', ''),
         door_type       = request.form.get('door_type', ''),
@@ -1888,8 +1905,10 @@ def elevator_add():
         control_operation = request.form.get('control_operation', ''),
         control_detail  = request.form.get('control_detail', ''),
         install_date    = _parse_date(request.form.get('install_date')),
+        warranty_end    = _parse_date(request.form.get('warranty_end')),
         last_maintenance= _parse_date(request.form.get('last_maintenance')),
         next_maintenance= _parse_date(request.form.get('next_maintenance')),
+        maint_frequency = request.form.get('maint_frequency', ''),
         status          = request.form.get('status', 'نشط'),
         notes           = request.form.get('notes', ''),
     )
@@ -1911,8 +1930,11 @@ def elevator_edit(id):
     e.elev_type        = request.form.get('elev_type', '')
     e.brand            = request.form.get('brand', '')
     e.model            = request.form.get('model', '')
-    e.capacity_kg      = request.form.get('capacity_kg') or None
-    e.floors           = request.form.get('floors') or None
+    e.capacity_kg      = _parse_int(request.form.get('capacity_kg'))
+    e.capacity_persons = _parse_int(request.form.get('capacity_persons'))
+    e.floors           = _parse_int(request.form.get('floors'))
+    e.stops            = _parse_int(request.form.get('stops'))
+    e.doors_count      = _parse_int(request.form.get('doors_count'))
     e.serial_number    = request.form.get('serial_number', '')
     e.machine_type     = request.form.get('machine_type', '')
     e.door_type        = request.form.get('door_type', '')
@@ -1921,8 +1943,10 @@ def elevator_edit(id):
     e.control_operation = request.form.get('control_operation', '')
     e.control_detail   = request.form.get('control_detail', '')
     e.install_date     = _parse_date(request.form.get('install_date'))
+    e.warranty_end     = _parse_date(request.form.get('warranty_end'))
     e.last_maintenance = _parse_date(request.form.get('last_maintenance'))
     e.next_maintenance = _parse_date(request.form.get('next_maintenance'))
+    e.maint_frequency  = request.form.get('maint_frequency', '')
     e.status           = request.form.get('status', 'نشط')
     e.notes            = request.form.get('notes', '')
     sync_customer_from_elevators(e.customer)

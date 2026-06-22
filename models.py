@@ -61,7 +61,10 @@ class Elevator(db.Model):
     brand           = db.Column(db.String(100))   # Otis / Kone / Schindler
     model           = db.Column(db.String(100))
     capacity_kg     = db.Column(db.Integer)
+    capacity_persons= db.Column(db.Integer)
     floors          = db.Column(db.Integer)
+    stops           = db.Column(db.Integer)
+    doors_count     = db.Column(db.Integer)
     speed           = db.Column(db.String(50))
     machine_type    = db.Column(db.String(30))    # MR / MRL / Hydraulic
     door_type       = db.Column(db.String(50))    # نصف أوتوماتيك / أوتوماتيك / سنتر أوتوماتيك / تلسكوبي
@@ -71,8 +74,10 @@ class Elevator(db.Model):
     control_detail  = db.Column(db.String(200))   # Otis Gen2, Kone KCM...
     serial_number   = db.Column(db.String(100))
     install_date    = db.Column(db.Date)
+    warranty_end    = db.Column(db.Date)
     last_maintenance= db.Column(db.Date)
     next_maintenance= db.Column(db.Date)
+    maint_frequency = db.Column(db.String(50))
     status          = db.Column(db.String(30), default='نشط')  # نشط / متوقف / خارج الخدمة / تحت الصيانة
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
