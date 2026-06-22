@@ -345,6 +345,15 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
     <!-- TABLE TAB -->
     <div id="tab-table">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div style="margin-bottom:12px">
+        {% for category, message in messages %}
+        <div class="flash-msg" style="padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:8px;{% if category == 'success' %}background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.25);color:var(--success){% else %}background:rgba(42,127,255,.1);border:1px solid rgba(42,127,255,.2);color:var(--accent){% endif %}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
       <div class="page-header">
         <div class="page-title">زيارات الصيانة <span id="work-month-label" style="color:var(--accent);font-size:13px"></span> <span id="visits-count" data-i18n-skip></span></div>
         <div class="page-actions">
@@ -364,6 +373,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
             إضافة زيارة
           </button>
+          {% if auth_user and auth_user.role == 'admin' and duplicate_visit_ids %}
+          <form method="post" action="{{ url_for('maintenance_cleanup_duplicates') }}" style="display:inline" onsubmit="return confirm('حذف {{ duplicate_visit_ids|length }} زيارة مكررة؟ يُبقى الأقدم أو الأكثر اكتمالاً من كل مجموعة.')">
+            <button type="submit" class="btn btn-danger btn-sm">حذف المكررات ({{ duplicate_visit_ids|length }})</button>
+          </form>
+          {% endif %}
         </div>
       </div>
 

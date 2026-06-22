@@ -2936,6 +2936,8 @@ def maintenance_visits():
     plan_default = f'{today.year}-{today.month:02d}'
     month_end = today.replace(day=monthrange(today.year, today.month)[1])
     maint_techs = [t for t in technicians if (t.team or 'عام') in ('صيانة', 'عام')] or list(technicians)
+    from visit_cleanup import find_duplicate_visit_ids
+    duplicate_visit_ids = find_duplicate_visit_ids()
     return render_template(
         'maintenance-visits.html',
         visits=visits,
@@ -2965,6 +2967,7 @@ def maintenance_visits():
         ops_month_end=str(month_end),
         maint_technicians=maint_techs,
         plan_districts=list_districts(),
+        duplicate_visit_ids=duplicate_visit_ids,
     )
 
 def build_elevator_profile(elevator_id):
@@ -3220,6 +3223,16 @@ def _purge_visit_dependencies(visit_id: int) -> None:
         if fault and fault.visit_id == visit_id:
             fault.visit_id = None
         v.fault_id = None
+
+
+@app.route('/maintenance-visits/cleanup-duplicates', methods=['POST'])
+def maintenance_cleanup_duplicates():
+    if not require_admin():
+        abort(403)
+    from visit_cleanup import remove_duplicate_visits
+    result = remove_duplicate_visits()
+    flash(f'تم حذف {result["deleted"]} زيارة مكررة', 'success')
+    return redirect(url_for('maintenance_visits'))
 
 
 @app.route('/maintenance-visits/delete/<int:id>', methods=['POST'])
