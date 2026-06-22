@@ -6,6 +6,7 @@ app.py
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
+from models import VisitTechnician, FaultTechnician
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
 from models import ElevatorEstimate, ElevatorEstimateLine
@@ -169,12 +170,13 @@ def _field_tech_api_allowed(path: str, method: str) -> bool:
 def _field_portal_context(tech_id: int) -> dict:
     from field_auth import technician_portal_kind, technician_portal_label
     from operations import FAULT_OPEN
+    from technician_assignments import faults_for_technician_filter
 
     tech = Technician.query.get_or_404(tech_id)
     kind = technician_portal_kind(tech)
     has_faults = (
         Fault.query.filter(
-            Fault.technician_id == tech_id,
+            faults_for_technician_filter(tech_id),
             Fault.status.in_(FAULT_OPEN),
         ).count()
         > 0
@@ -608,6 +610,12 @@ with app.app_context():
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Schema migration error: %s', exc)
+    try:
+        from technician_assignments import backfill_technician_assignments
+        backfill_technician_assignments()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Technician assignments backfill skip: %s', exc)
     from live_sync import ensure_live_state
     ensure_live_state()
 
@@ -1389,6 +1397,7 @@ def _coords_from_customer(cust):
 
 def _visits_js_list(visits):
     from checklist_templates import parse_report_json, report_completion_stats, checklist_flagged_items, checklist_all_ok
+    from technician_assignments import visit_technicians_label, visit_technician_ids, visit_technicians_payload
 
     rows = []
     for v in visits:
@@ -1408,8 +1417,10 @@ def _visits_js_list(visits):
             'elevator': elev.code if elev else '',
             'customer': cust.name if cust else '',
             'customer_name_en': (cust.name_en or '') if cust else '',
-            'technician': v.technician.name if v.technician else '—',
+            'technician': visit_technicians_label(v),
             'tech_id': v.technician_id,
+            'tech_ids': visit_technician_ids(v) or ([v.technician_id] if v.technician_id else []),
+            'technicians': visit_technicians_payload(v),
             'visit_type': v.visit_type or '',
             'visit_date': str(v.visit_date or ''),
             'plan_month': v.plan_month or '',
@@ -1435,6 +1446,8 @@ def _fault_registration_parts_lines(fault_id: int):
 
 
 def _faults_js_list(faults):
+    from technician_assignments import fault_technicians_label, fault_technician_ids, fault_technicians_payload
+
     rows = []
     for f in faults:
         elev = f.elevator
@@ -1449,7 +1462,9 @@ def _faults_js_list(faults):
             'customer_name_en': (cust.name_en or '') if cust else '',
             'customer_id': cust.id if cust else None,
             'tech_id': f.technician_id,
-            'technician': f.technician.name if f.technician else '—',
+            'tech_ids': fault_technician_ids(f) or ([f.technician_id] if f.technician_id else []),
+            'technician': fault_technicians_label(f),
+            'technicians': fault_technicians_payload(f),
             'fault_type': f.fault_type or '',
             'description': f.description or '',
             'client_report': f.client_report or f.description or '',
@@ -1522,6 +1537,8 @@ def _parts_js_list(parts):
 
 
 def _visit_json(v):
+    from technician_assignments import visit_technicians_label, visit_technician_ids, visit_technicians_payload
+
     elev = v.elevator
     fault = Fault.query.get(v.fault_id) if v.fault_id else None
     return {
@@ -1534,7 +1551,9 @@ def _visit_json(v):
         'contract_id': v.contract_id,
         'elevator_id': v.elevator_id,
         'elevator': elev.code if elev else '',
-        'technician': v.technician.name if v.technician else '—',
+        'technician': visit_technicians_label(v),
+        'tech_ids': visit_technician_ids(v) or ([v.technician_id] if v.technician_id else []),
+        'technicians': visit_technicians_payload(v),
         'visit_type': v.visit_type or '',
         'visit_date': str(v.visit_date or ''),
         'visit_time': v.visit_time or '',
@@ -1548,6 +1567,7 @@ def _visit_json(v):
 
 def _fault_json(f):
     from entity_links import fault_parts_link_fields
+    from technician_assignments import fault_technicians_label, fault_technician_ids, fault_technicians_payload
 
     elev = f.elevator
     link = fault_parts_link_fields(f)
@@ -1563,7 +1583,9 @@ def _fault_json(f):
         'elevator': elev.code if elev else '',
         'customer': elev.customer.name if elev and elev.customer else '',
         'customer_id': elev.customer_id if elev else None,
-        'technician': f.technician.name if f.technician else '—',
+        'technician': fault_technicians_label(f),
+        'tech_ids': fault_technician_ids(f) or ([f.technician_id] if f.technician_id else []),
+        'technicians': fault_technicians_payload(f),
         'fault_type': f.fault_type or '',
         'description': f.description or '',
         'priority': f.priority or 'عادية',
@@ -2512,6 +2534,8 @@ def contract_print_page(contract_id):
 # الفنيون
 # =============================================
 def technician_display_status(tech, today=None):
+    from technician_assignments import visits_for_technician_filter, faults_for_technician_filter
+
     today = today or date.today()
     raw = tech.status or 'متاح'
     if raw == 'نشط':
@@ -2519,12 +2543,12 @@ def technician_display_status(tech, today=None):
     if raw in ('إجازة', 'غير نشط'):
         return raw
     busy_visit = MaintenanceVisit.query.filter(
-        MaintenanceVisit.technician_id == tech.id,
+        visits_for_technician_filter(tech.id),
         MaintenanceVisit.visit_date == today,
         MaintenanceVisit.status == 'جارٍ',
     ).count()
     open_fault = Fault.query.filter(
-        Fault.technician_id == tech.id,
+        faults_for_technician_filter(tech.id),
         Fault.status == 'قيد المعالجة',
     ).count()
     if busy_visit or open_fault:
@@ -2533,6 +2557,11 @@ def technician_display_status(tech, today=None):
 
 
 app.jinja_env.globals['technician_display_status'] = technician_display_status
+
+from technician_assignments import fault_technicians_label as _fault_technicians_label_jinja
+from technician_assignments import visit_technicians_label as _visit_technicians_label_jinja
+app.jinja_env.globals['fault_technicians_label'] = _fault_technicians_label_jinja
+app.jinja_env.globals['visit_technicians_label'] = _visit_technicians_label_jinja
 
 
 def _apply_technician_form(t, form):
@@ -3080,6 +3109,8 @@ def api_elevator_links(elevator_id):
 @app.route('/maintenance-visits/add', methods=['POST'])
 def visit_add():
     from entity_links import resolve_visit_links
+    from technician_assignments import parse_technician_ids, sync_visit_technicians, sync_fault_technicians
+
     links = resolve_visit_links(
         request.form['elevator_id'],
         request.form.get('contract_id'),
@@ -3090,11 +3121,12 @@ def visit_add():
     fault_id = request.form.get('fault_id') or None
     fault_code = request.form.get('fault_code', '').strip()
     visit_type = request.form.get('visit_type', 'دورية')
+    tech_ids = parse_technician_ids(request.form)
 
     v = MaintenanceVisit(
         code          = next_code(MaintenanceVisit, 'VI-', digits=5),
         elevator_id   = links['elevator_id'],
-        technician_id = request.form.get('technician_id') or None,
+        technician_id = tech_ids[0] if tech_ids else None,
         contract_id   = links['contract_id'],
         visit_type    = visit_type,
         visit_date    = datetime.strptime(request.form['visit_date'], '%Y-%m-%d').date(),
@@ -3107,6 +3139,7 @@ def visit_add():
     )
     db.session.add(v)
     db.session.flush()
+    sync_visit_technicians(v, tech_ids)
 
     fault = None
     if fault_id:
@@ -3127,6 +3160,7 @@ def visit_add():
         )
         db.session.add(fault)
         db.session.flush()
+        sync_fault_technicians(fault, tech_ids)
 
     if fault:
         link_fault_to_visit(fault, v)
@@ -3136,15 +3170,18 @@ def visit_add():
 @app.route('/maintenance-visits/edit/<int:id>', methods=['POST'])
 def visit_edit(id):
     from entity_links import resolve_visit_links
+    from technician_assignments import parse_technician_ids, sync_visit_technicians
+
     v = MaintenanceVisit.query.get_or_404(id)
     links = resolve_visit_links(
         request.form['elevator_id'],
         request.form.get('contract_id'),
         request.form.get('visit_date'),
     )
+    tech_ids = parse_technician_ids(request.form)
     v.elevator_id   = links['elevator_id']
     v.contract_id   = links['contract_id']
-    v.technician_id = request.form.get('technician_id') or None
+    v.technician_id = tech_ids[0] if tech_ids else None
     v.visit_type    = request.form.get('visit_type','')
     v.visit_date    = datetime.strptime(request.form['visit_date'], '%Y-%m-%d').date()
     v.visit_time    = request.form.get('visit_time','')
@@ -3161,6 +3198,7 @@ def visit_edit(id):
     if fault:
         link_fault_to_visit(fault, v)
 
+    sync_visit_technicians(v, tech_ids)
     db.session.commit()
     return redirect(url_for('maintenance_visits'))
 
@@ -3786,10 +3824,12 @@ def _apply_fault_billing_from_form(fault, form):
 @app.route('/faults/edit/<int:id>', methods=['POST'])
 def fault_edit(id):
     from entity_links import link_fault_to_visit, lookup_visit
+    from technician_assignments import parse_technician_ids, sync_fault_technicians
 
     f = Fault.query.get_or_404(id)
+    tech_ids = parse_technician_ids(request.form)
     f.elevator_id   = request.form['elevator_id']
-    f.technician_id = request.form.get('technician_id') or None
+    f.technician_id = tech_ids[0] if tech_ids else None
     f.fault_type    = request.form.get('fault_type','')
     f.description   = request.form.get('description','')
     f.client_report = request.form.get('client_report') or f.description or ''
@@ -3809,6 +3849,7 @@ def fault_edit(id):
         if visit:
             link_fault_to_visit(f, visit)
     _apply_fault_billing_from_form(f, request.form)
+    sync_fault_technicians(f, tech_ids)
     db.session.commit()
     return redirect(url_for('faults'))
 
@@ -3816,14 +3857,16 @@ def fault_edit(id):
 def fault_add():
     from entity_links import link_fault_to_visit, lookup_visit
     from operations import dispatch_fault
+    from technician_assignments import parse_technician_ids, sync_fault_technicians
 
     billable = request.form.get('billable', 'no')
     client_report = request.form.get('client_report') or request.form.get('description', '')
     reported = _parse_reported_at(request.form.get('reported_at'))
+    tech_ids = parse_technician_ids(request.form)
     f = Fault(
         code          = next_code(Fault, 'FA-', digits=5),
         elevator_id   = request.form['elevator_id'],
-        technician_id = request.form.get('technician_id') or None,
+        technician_id = tech_ids[0] if tech_ids else None,
         fault_type    = request.form.get('fault_type',''),
         description   = client_report,
         client_report = client_report,
@@ -3836,6 +3879,7 @@ def fault_add():
     )
     db.session.add(f)
     db.session.flush()
+    sync_fault_technicians(f, tech_ids)
 
     visit_code = request.form.get('visit_code', '').strip()
     if visit_code:

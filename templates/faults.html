@@ -197,6 +197,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
 .field input::placeholder,.field textarea::placeholder{color:var(--text3)}
 .field textarea{resize:vertical;min-height:70px}
+.tech-select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.tech-option{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;color:var(--text1)}
+.tech-option:hover{background:var(--bg4)}
+.tech-option input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent);flex-shrink:0}
 .field-hint{font-size:11px;color:var(--text3)}
 .fault-datetime-display{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-size:13px;color:var(--text1);min-height:38px;display:flex;align-items:center;line-height:1.5}
 .fault-parts-panel{margin-top:4px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm)}
@@ -391,7 +395,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th class="th-sort" data-sort-col="elevator">المصعد <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="fault_type">نوع العطل <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="priority">الأولوية <span class="sort-ind"></span></th>
-                <th class="th-sort" data-sort-col="technician">الفني <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="technician">الفنيون <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="response_time">الاستجابة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="billing">فوترة <span class="sort-ind"></span></th>
@@ -409,7 +413,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <td class="td-code">{{ elev.code if elev else '—' }}</td>
               <td>{{ f.fault_type or '—' }}</td>
               <td><span class="badge badge-active">{{ f.priority or '—' }}</span></td>
-              <td>{{ f.technician.name if f.technician else '—' }}</td>
+              <td>{{ fault_technicians_label(f) }}</td>
               <td>{{ f.response_time or '—' }}</td>
               <td><span class="badge badge-expired">{{ f.status or '—' }}</span></td>
               <td><span class="badge {{ 'badge-billable' if f.needs_parts else 'badge-cancelled' }}">{{ 'قابل للفوترة' if f.needs_parts else 'ضمن العقد' }}</span></td>
@@ -498,23 +502,19 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>رقم الزيارة المرتبطة</label>
             <input type="text" id="f-visit-code" placeholder="VI-00001 (اختياري)" style="direction:ltr;font-family:var(--font-en)">
           </div>
-          <div class="field"><label>فني الأعطال <span style="color:var(--danger)">*</span></label>
-            <select id="f-tech-sel">
-              <option value="">اختر الفني</option>
-              {% for t in fault_technicians %}
-              <option value="{{ t.id }}">{{ t.name }}</option>
-              {% endfor %}
-            </select>
+          <div class="field form-full"><label>فنيو الأعطال <span style="color:var(--danger)">*</span></label>
+            <div class="tech-select" id="tech-select"></div>
+            <span class="field-hint" style="margin-top:4px">يمكن اختيار أكثر من فني — الأول هو الفني الرئيسي والباقي مساعدون</span>
           </div>
         </div>
       </div>
 
       <div class="form-section">
         <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="4.5" r="2.5"/><path d="M1 12c0-2.485 2.462-4 5.5-4"/></svg>التعيين الذكي للفني</div>
-        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">يُقترح الفني الأنسب حسب المدينة والتخصص وعبء العمل</p>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">اضغط على البطاقة لإضافة/إزالة الفني من الفريق — يُقترح الفني الأنسب حسب المدينة والتخصص</p>
         <div class="tech-cards" id="tech-suggestions">
           {% for t in fault_technicians[:4] %}
-          <div class="tech-card{% if loop.first %} recommended{% endif %}" onclick="selectTech(this,{{ t.id }},{{ t.name|tojson }})">
+          <div class="tech-card{% if loop.first %} recommended{% endif %}" data-tech-id="{{ t.id }}" onclick="selectTech(this,{{ t.id }},{{ t.name|tojson }})">
             <div class="tc-avatar">{{ t.name[:1] }}</div>
             <div class="tc-info">
               <div class="tc-name">{{ t.name }}{% if loop.first %} <span class="tc-recommend">⭐</span>{% endif %}</div>
@@ -524,7 +524,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           {% endfor %}
         </div>
         <input type="hidden" id="selected-tech-id">
-        <input type="hidden" id="selected-tech-name">
       </div>
 
       <div class="form-section">
@@ -622,6 +621,30 @@ var ELEVATORS = {{ elevators_js|tojson }};
 var TECHNICIANS = {{ technicians_js|tojson }};
 var INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
 const NEXT_FAULT_CODE = {{ next_fault_code|tojson }};
+const FAULT_TECHS = [{% for t in fault_technicians %}{ id: {{ t.id }}, name: {{ t.name|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}];
+
+function renderFaultTechSelect(selectedIds) {
+  const box = document.getElementById('tech-select');
+  if (!box) return;
+  const sel = new Set((selectedIds || []).map(String));
+  const list = FAULT_TECHS.length ? FAULT_TECHS : TECHNICIANS;
+  box.innerHTML = list.map(t =>
+    `<label class="tech-option"><input type="checkbox" value="${t.id}"${sel.has(String(t.id)) ? ' checked' : ''} onchange="syncFaultTechCards()"><span>${t.name}</span></label>`
+  ).join('') || '<div style="padding:8px;color:var(--text3);font-size:12px">لا يوجد فنيون متاحون</div>';
+  syncFaultTechCards();
+}
+
+function getSelectedFaultTechIds() {
+  return Array.from(document.querySelectorAll('#tech-select input[type=checkbox]:checked')).map(cb => parseInt(cb.value, 10)).filter(Boolean);
+}
+
+function syncFaultTechCards() {
+  const ids = new Set(getSelectedFaultTechIds().map(String));
+  document.querySelectorAll('.tech-card').forEach(card => {
+    const id = card.dataset.techId;
+    card.classList.toggle('selected', ids.has(String(id)));
+  });
+}
 
 function fillClientSelect() {
   if (typeof LcClientSelect !== 'undefined') {
@@ -704,13 +727,14 @@ function loadClientElevators() {
 }
 
 function selectTech(el, id, name) {
+  const cb = document.querySelector(`#tech-select input[type=checkbox][value="${id}"]`);
+  if (cb) {
+    cb.checked = !cb.checked;
+    syncFaultTechCards();
+    return;
+  }
   document.querySelectorAll('.tech-card').forEach(c => c.classList.remove('recommended'));
   if (el) el.classList.add('recommended');
-  document.getElementById('selected-tech-id').value = id;
-  const nm = document.getElementById('selected-tech-name');
-  if (nm) nm.value = name;
-  const tsel = document.getElementById('f-tech-sel');
-  if (tsel) tsel.value = id;
 }
 
 function toggleBillableParts() {
@@ -1038,9 +1062,7 @@ function openAddModal() {
   resetFaultPartsPanel();
   const vc = document.getElementById('f-visit-code');
   if (vc) vc.value = '';
-  document.getElementById('selected-tech-id').value = '';
-  const tsel = document.getElementById('f-tech-sel');
-  if (tsel) tsel.value = '';
+  renderFaultTechSelect([]);
   openModal('modal-add');
 }
 
@@ -1052,10 +1074,10 @@ function saveFault() {
   const elev = document.getElementById('f-elevator-sel');
   if (!elev || !elev.value) { alert('اختر المصعد'); return; }
   fd.append('elevator_id', elev.value);
-  const techId = document.getElementById('selected-tech-id')?.value
-    || document.getElementById('f-tech-sel')?.value;
-  if (!techId) { alert('اختر فني الأعطال'); return; }
-  fd.append('technician_id', techId);
+  const techIds = getSelectedFaultTechIds();
+  if (!techIds.length) { alert('اختر فني واحد على الأقل'); return; }
+  techIds.forEach(id => fd.append('technician_ids', id));
+  fd.append('technician_id', techIds[0]);
   [['fault_type','f-category-sel'],['priority','f-priority-sel'],['notes','f-notes']
   ].forEach(([f,i])=>{ const el=document.getElementById(i); if(el) fd.append(f,el.value); });
   const cr = document.getElementById('f-client-report');
@@ -1129,11 +1151,7 @@ function editFault(id) {
   } else {
     resetFaultPartsPanel();
   }
-  if (f.tech_id) {
-    document.getElementById('selected-tech-id').value = f.tech_id;
-    const tsel = document.getElementById('f-tech-sel');
-    if (tsel) tsel.value = f.tech_id;
-  }
+  renderFaultTechSelect(f.tech_ids && f.tech_ids.length ? f.tech_ids : (f.tech_id ? [f.tech_id] : []));
   openModal('modal-add');
 }
 
@@ -1148,7 +1166,7 @@ function viewFault(id) {
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${f.code}</div></div>
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${f.customer}</div></div>
       <div class="view-item"><div class="view-label">المصعد</div><div class="view-val" style="font-family:var(--font-en)">${f.elevator}</div></div>
-      <div class="view-item"><div class="view-label">الفني</div><div class="view-val">${f.technician}</div></div>
+      <div class="view-item"><div class="view-label">الفنيون</div><div class="view-val">${f.technician}</div></div>
       <div class="view-item"><div class="view-label">نوع العطل</div><div class="view-val">${f.fault_type}</div></div>
       <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${PRIORITY_BADGE[f.priority]||'badge-active'}">${f.priority}</span></div></div>
       <div class="view-item"><div class="view-label">تاريخ البلاغ</div><div class="view-val" style="direction:ltr">${f.reported_at}</div></div>

@@ -496,6 +496,8 @@ def assign_visits_to_technician(
     visit_ids: list[int], technician_id: int, plan_month: str = ''
 ) -> int:
     """تعيين زيارات محددة لفني (يدعم عدة فرق في نفس المنطقة)."""
+    from technician_assignments import sync_visit_technicians
+
     updated = 0
     plan_months: set[str] = set()
     for vid in visit_ids:
@@ -503,6 +505,7 @@ def assign_visits_to_technician(
         if not v:
             continue
         v.technician_id = int(technician_id)
+        sync_visit_technicians(v, [int(technician_id)])
         if plan_month and not v.plan_month:
             v.plan_month = plan_month
         if v.plan_month:
@@ -518,6 +521,8 @@ def assign_district_technician(
     plan_month: str, district: str, technician_id: int, *, only_unassigned: bool = True
 ) -> int:
     """تعيين زيارات المنطقة — افتراضياً غير المكلفة فقط."""
+    from technician_assignments import sync_visit_technicians
+
     visits = _visits_for_plan_month(plan_month)
     updated = 0
     for v in visits:
@@ -526,6 +531,7 @@ def assign_district_technician(
         if only_unassigned and v.technician_id:
             continue
         v.technician_id = technician_id
+        sync_visit_technicians(v, [technician_id])
         updated += 1
     db.session.commit()
     _reorder_routes(plan_month)
@@ -533,8 +539,11 @@ def assign_district_technician(
 
 
 def assign_visit_technician(visit_id: int, technician_id: int) -> None:
+    from technician_assignments import sync_visit_technicians
+
     v = MaintenanceVisit.query.get_or_404(visit_id)
     v.technician_id = technician_id
+    sync_visit_technicians(v, [technician_id])
     db.session.commit()
 
 
@@ -823,6 +832,8 @@ def parts_alerts() -> list[dict]:
 
 def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | None = None, portal_kind: str = 'both') -> dict:
     """مهام الفني على الجوال: اليوم وغداً فقط — حسب فريق الفني."""
+    from technician_assignments import visits_for_technician_filter, faults_for_technician_filter
+
     tech = Technician.query.get_or_404(tech_id)
     today = on_date or date.today()
     tomorrow = today + timedelta(days=1)
@@ -835,7 +846,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
     if show_visits:
         visits = (
             MaintenanceVisit.query.filter(
-                MaintenanceVisit.technician_id == tech_id,
+                visits_for_technician_filter(tech_id),
                 MaintenanceVisit.visit_date.in_([today, tomorrow]),
                 MaintenanceVisit.status.in_(VISIT_ACTIVE),
             )
@@ -848,7 +859,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
     faults: list = []
     has_assigned_faults = (
         Fault.query.filter(
-            Fault.technician_id == tech_id,
+            faults_for_technician_filter(tech_id),
             Fault.status.in_(FAULT_OPEN),
         ).count()
         > 0
@@ -856,7 +867,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
     if show_faults or has_assigned_faults:
         faults = (
             Fault.query.filter(
-                Fault.technician_id == tech_id,
+                faults_for_technician_filter(tech_id),
                 Fault.status.in_(FAULT_OPEN),
             )
             .order_by(Fault.reported_at.desc())
@@ -926,9 +937,10 @@ def field_fault_summary(f: Fault, base_url: str = '') -> dict:
 
 def field_visit_detail(visit_id: int, tech_id: int | None = None) -> dict:
     from checklist_templates import parse_report_json, report_completion_stats
+    from technician_assignments import technician_assigned_to_visit, visit_technicians_label
 
     v = MaintenanceVisit.query.get_or_404(visit_id)
-    if tech_id and v.technician_id and v.technician_id != tech_id:
+    if tech_id and not technician_assigned_to_visit(v, tech_id):
         raise PermissionError('الزيارة غير مخصصة لهذا الفني')
     cust = v.elevator.customer if v.elevator else None
     saved = parse_report_json(v.checklist_json)
@@ -951,12 +963,15 @@ def field_visit_detail(visit_id: int, tech_id: int | None = None) -> dict:
         'building_photo': customer_photo_url(cust),
         'elevator': v.elevator.code if v.elevator else '',
         'technician_id': v.technician_id,
+        'technician': visit_technicians_label(v),
     }
 
 
 def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
+    from technician_assignments import technician_assigned_to_fault, fault_technicians_label
+
     f = Fault.query.get_or_404(fault_id)
-    if tech_id and f.technician_id and f.technician_id != tech_id:
+    if tech_id and not technician_assigned_to_fault(f, tech_id):
         raise PermissionError('العطل غير مخصص لهذا الفني')
     elev = f.elevator
     cust = elev.customer if elev else None
@@ -995,9 +1010,10 @@ def fault_report_payload(
 ) -> dict:
     from fault_report import FAULT_TYPE_OPTIONS, merge_fault_report, parse_fault_report_json, report_stats
     from models import InventoryItem
+    from technician_assignments import technician_assigned_to_fault
 
     f = Fault.query.get_or_404(fault_id)
-    if tech_id and f.technician_id and f.technician_id != tech_id:
+    if tech_id and not technician_assigned_to_fault(f, tech_id):
         raise PermissionError('العطل غير مخصص لهذا الفني')
     elev = f.elevator
     cust = elev.customer if elev else None
@@ -1193,9 +1209,10 @@ def _preserve_field_start_times(merged: dict, existing: dict | None) -> None:
 def stamp_field_visit_report_start(visit_id: int, tech_id: int | None = None) -> None:
     """عند فتح الفني لمحضر الصيانة — تسجيل تاريخ ووقت الوصول (مرة واحدة)."""
     from checklist_templates import merge_report_data, parse_report_json
+    from technician_assignments import technician_assigned_to_visit
 
     v = MaintenanceVisit.query.get_or_404(visit_id)
-    if tech_id and v.technician_id and v.technician_id != tech_id:
+    if tech_id and not technician_assigned_to_visit(v, tech_id):
         raise PermissionError('الزيارة غير مخصصة لهذا الفني')
     template_key = v.checklist_template_key or _default_checklist_template_key()
     saved = parse_report_json(v.checklist_json)
@@ -1220,9 +1237,10 @@ def stamp_field_visit_report_start(visit_id: int, tech_id: int | None = None) ->
 def stamp_field_fault_report_start(fault_id: int, tech_id: int | None = None) -> None:
     """عند فتح الفني لتقرير العطل — تسجيل تاريخ ووقت الوصول (مرة واحدة)."""
     from fault_report import merge_fault_report, parse_fault_report_json
+    from technician_assignments import technician_assigned_to_fault
 
     f = Fault.query.get_or_404(fault_id)
-    if tech_id and f.technician_id and f.technician_id != tech_id:
+    if tech_id and not technician_assigned_to_fault(f, tech_id):
         raise PermissionError('العطل غير مخصص لهذا الفني')
     saved = parse_fault_report_json(f.report_json)
     data = merge_fault_report(saved, f)
@@ -1256,9 +1274,10 @@ def visit_report_payload(
         parse_report_json,
         report_completion_stats,
     )
+    from technician_assignments import technician_assigned_to_visit, visit_technicians_label
 
     v = MaintenanceVisit.query.get_or_404(visit_id)
-    if tech_id and v.technician_id and v.technician_id != tech_id:
+    if tech_id and not technician_assigned_to_visit(v, tech_id):
         raise PermissionError('الزيارة غير مخصصة لهذا الفني')
 
     elev = v.elevator

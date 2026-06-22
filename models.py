@@ -226,6 +226,23 @@ class MaintenanceVisit(db.Model):
         return f'<Visit {self.code}>'
 
 
+class VisitTechnician(db.Model):
+    __tablename__ = 'visit_technicians'
+
+    id = db.Column(db.Integer, primary_key=True)
+    visit_id = db.Column(db.Integer, db.ForeignKey('maintenance_visits.id', ondelete='CASCADE'), nullable=False)
+    technician_id = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=False)
+    role = db.Column(db.String(20), default='فني')  # فني / مساعد
+
+    visit = db.relationship('MaintenanceVisit', backref=db.backref('assigned_technicians', lazy=True))
+    technician = db.relationship('Technician', lazy=True)
+
+    __table_args__ = (db.UniqueConstraint('visit_id', 'technician_id', name='uq_visit_technician'),)
+
+    def __repr__(self):
+        return f'<VisitTechnician {self.visit_id}:{self.technician_id}>'
+
+
 # =============================================
 # 6. الأعطال
 # =============================================
@@ -258,6 +275,23 @@ class Fault(db.Model):
 
     def __repr__(self):
         return f'<Fault {self.code}>'
+
+
+class FaultTechnician(db.Model):
+    __tablename__ = 'fault_technicians'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fault_id = db.Column(db.Integer, db.ForeignKey('faults.id', ondelete='CASCADE'), nullable=False)
+    technician_id = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=False)
+    role = db.Column(db.String(20), default='فني')
+
+    fault = db.relationship('Fault', backref=db.backref('assigned_technicians', lazy=True))
+    technician = db.relationship('Technician', lazy=True)
+
+    __table_args__ = (db.UniqueConstraint('fault_id', 'technician_id', name='uq_fault_technician'),)
+
+    def __repr__(self):
+        return f'<FaultTechnician {self.fault_id}:{self.technician_id}>'
 
 
 # =============================================
