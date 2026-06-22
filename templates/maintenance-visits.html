@@ -552,7 +552,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-add')">إلغاء</button>
-      <button class="btn btn-primary" onclick="saveVisit()">
+      <button type="button" class="btn btn-primary" id="btn-save-visit" onclick="saveVisit()">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
         حفظ الزيارة
       </button>
@@ -742,6 +742,7 @@ const MAINT_TECHS = [{% for t in maint_technicians %}{ id: {{ t.id }}, name: {{ 
 const PLAN_DISTRICTS = {{ plan_districts|tojson }};
 let PLAN_VISITS = [];
 let PLAN_MODE = 'auto';
+let visitSaving = false;
 let visitMap = null;
 let visitMarkers = [];
 let visitCluster = null;
@@ -1554,6 +1555,12 @@ function onTechSelectChange() {
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة زيارة جديدة';
   document.getElementById('modal-add').dataset.editId = '';
+  visitSaving = false;
+  const saveBtn = document.getElementById('btn-save-visit');
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> حفظ الزيارة';
+  }
   const codeEl = document.getElementById('f-code');
   if (codeEl) codeEl.value = NEXT_VISIT_CODE;
   const fc = document.getElementById('f-fault-code');
@@ -1565,6 +1572,7 @@ function openAddModal() {
 }
 
 function saveVisit() {
+  if (visitSaving) return;
   const editId = document.getElementById('modal-add').dataset.editId;
   const elev = document.getElementById('f-elevator-sel');
   if (!elev || !elev.value) { alert('اختر المصعد'); return; }
@@ -1587,14 +1595,46 @@ function saveVisit() {
   const fc = document.getElementById('f-fault-code');
   if (fc && fc.value.trim()) fd.append('fault_code', fc.value.trim());
 
-  fetch(editId ? `/maintenance-visits/edit/${editId}` : '/maintenance-visits/add', {method:'POST',body:fd})
-    .then(() => window.location.reload());
+  visitSaving = true;
+  const saveBtn = document.getElementById('btn-save-visit');
+  const saveBtnHtml = saveBtn ? saveBtn.innerHTML : '';
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'جاري الحفظ...';
+  }
+
+  fetch(editId ? `/maintenance-visits/edit/${editId}` : '/maintenance-visits/add', {
+    method: 'POST',
+    body: fd,
+    credentials: 'same-origin',
+  })
+    .then(res => {
+      if (res.redirected || res.ok) {
+        window.location.href = res.url || '/maintenance-visits';
+        return;
+      }
+      throw new Error('save failed');
+    })
+    .catch(() => {
+      visitSaving = false;
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = saveBtnHtml;
+      }
+      alert('فشل حفظ الزيارة — تحقق من البيانات وحاول مجدداً');
+    });
 }
 
 // ===== تعديل =====
 function editVisit(id) {
   const v = VISITS.find(x=>x.id===id);
   if(!v) return;
+  visitSaving = false;
+  const saveBtn = document.getElementById('btn-save-visit');
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> حفظ الزيارة';
+  }
   document.getElementById('modal-title').textContent = 'تعديل الزيارة';
   document.getElementById('modal-add').dataset.editId = id;
   fillClientSelect();
