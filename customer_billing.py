@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from sqlalchemy import or_
@@ -12,16 +13,133 @@ COLLECTED_REVENUE_STATUSES = ('محصّل', 'محصل')
 UNPAID_INVOICE_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً']
 PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل']
 UNPAID_PARTS_STATUSES = ('غير محصل', 'معلقة', 'بانتظار موافقة العميل', 'بانتظار التوريد')
+CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد')
+_CN_CODE_RE = re.compile(r'(CN-\d+)', re.I)
+
+
+def _round_money(v: float) -> float:
+    return round(float(v or 0), 2)
+
+
+def _extract_contract_code(*texts) -> str | None:
+    for text in texts:
+        if not text:
+            continue
+        match = _CN_CODE_RE.search(str(text))
+        if match:
+            return match.group(1).upper()
+    return None
+
+
+def _is_contract_revenue_type(revenue_type: str) -> bool:
+    t = (revenue_type or '').strip()
+    return any(keyword in t for keyword in CONTRACT_REVENUE_KEYWORDS)
+
+
+def _invoice_paid_total(inv: Invoice) -> float:
+    paid = _round_money(getattr(inv, 'paid_amount', 0) or 0)
+    if paid <= 0.01 and (inv.status or '').strip() in PAID_INVOICE_STATUSES:
+        paid = _round_money(inv.total or 0)
+    return paid
+
+
+def resolve_contract_id(
+    customer_id: int | None,
+    reference: str = '',
+    notes: str = '',
+    description: str = '',
+    revenue_type: str = '',
+    revenue_id: int | None = None,
+) -> int | None:
+    """ربط الإيراد/الفاتورة بالعقد من الكود أو السياق."""
+    if not customer_id:
+        return None
+
+    code = _extract_contract_code(reference, notes, description)
+    if code:
+        contract = Contract.query.filter_by(code=code, customer_id=customer_id).first()
+        if contract:
+            return contract.id
+
+    if revenue_id:
+        rev = Revenue.query.get(revenue_id)
+        if rev:
+            if rev.contract_id:
+                return rev.contract_id
+            if rev.invoice_id:
+                inv = Invoice.query.get(rev.invoice_id)
+                if inv and inv.contract_id:
+                    return inv.contract_id
+                if inv:
+                    inv_code = _extract_contract_code(inv.description, inv.notes)
+                    if inv_code:
+                        contract = Contract.query.filter_by(
+                            code=inv_code, customer_id=customer_id
+                        ).first()
+                        if contract:
+                            return contract.id
+
+    if _is_contract_revenue_type(revenue_type):
+        active = [
+            c for c in Contract.query.filter_by(customer_id=customer_id)
+            .order_by(Contract.start_date.desc())
+            .all()
+            if _contract_is_collectible(c)
+        ]
+        if len(active) == 1:
+            return active[0].id
+
+    return None
+
+
+def repair_contract_payment_links(commit: bool = True) -> int:
+    """إصلاح الربط الناقص بين الإيرادات/الفواتير والعقود."""
+    changed = 0
+
+    for rev in Revenue.query.filter(
+        Revenue.contract_id.is_(None),
+        Revenue.customer_id.isnot(None),
+    ).all():
+        cid = resolve_contract_id(
+            rev.customer_id,
+            rev.reference or '',
+            rev.notes or '',
+            '',
+            rev.revenue_type or '',
+            revenue_id=rev.id,
+        )
+        if cid:
+            rev.contract_id = cid
+            changed += 1
+
+    for inv in Invoice.query.filter(
+        Invoice.contract_id.is_(None),
+        Invoice.customer_id.isnot(None),
+    ).all():
+        cid = resolve_contract_id(
+            inv.customer_id,
+            '',
+            inv.notes or '',
+            inv.description or '',
+        )
+        if not cid:
+            rev = Revenue.query.filter_by(invoice_id=inv.id).first()
+            if rev and rev.contract_id:
+                cid = rev.contract_id
+        if cid:
+            inv.contract_id = cid
+            changed += 1
+
+    if changed and commit:
+        db.session.commit()
+    return changed
+
 
 SOURCE_REVENUE_TYPES = {
     'contract': 'تجديد عقد',
     'invoice': 'عقد جديد',
     'parts_billing': 'قطع غيار',
 }
-
-
-def _round_money(v: float) -> float:
-    return round(float(v or 0), 2)
 
 
 def invoice_remaining(inv: Invoice) -> float:
@@ -37,14 +155,80 @@ def parts_remaining(pb: PartsBilling) -> float:
 
 
 def contract_paid_amount(contract_id: int) -> float:
-    """مجموع الإيرادات المحصّلة المرتبطة بالعقد."""
+    """مجموع المحصّل على العقد — إيرادات + فواتير (مباشرة أو عبر كود العقد)."""
     if not contract_id:
         return 0.0
-    rev = db.session.query(db.func.coalesce(db.func.sum(Revenue.total), 0)).filter(
+
+    contract = Contract.query.get(contract_id)
+    if not contract:
+        return 0.0
+
+    rev_rows = Revenue.query.filter(
         Revenue.contract_id == contract_id,
         Revenue.status.in_(COLLECTED_REVENUE_STATUSES),
-    ).scalar() or 0
-    return _round_money(rev)
+    ).all()
+    rev_paid = _round_money(sum(_round_money(r.total or 0) for r in rev_rows))
+
+    linked_by_invoice: dict[int, float] = {}
+    for r in rev_rows:
+        if not r.invoice_id:
+            continue
+        inv_id = int(r.invoice_id)
+        linked_by_invoice[inv_id] = linked_by_invoice.get(inv_id, 0.0) + _round_money(r.total or 0)
+
+    inv_extra = 0.0
+    for inv in Invoice.query.filter_by(contract_id=contract_id).all():
+        inv_paid = _invoice_paid_total(inv)
+        linked = linked_by_invoice.get(inv.id, 0.0)
+        inv_extra += max(0.0, inv_paid - linked)
+
+    code = (contract.code or '').upper()
+    customer_id = contract.customer_id
+
+    orphan_revs = Revenue.query.filter(
+        Revenue.customer_id == customer_id,
+        Revenue.contract_id.is_(None),
+        Revenue.status.in_(COLLECTED_REVENUE_STATUSES),
+    ).all()
+    for rev in orphan_revs:
+        amount = _round_money(rev.total or 0)
+        if amount <= 0.01:
+            continue
+        matched = resolve_contract_id(
+            customer_id,
+            rev.reference or '',
+            rev.notes or '',
+            '',
+            rev.revenue_type or '',
+            revenue_id=rev.id,
+        )
+        if matched == contract_id:
+            rev_paid += amount
+            continue
+        if code and code in f'{rev.reference or ""} {rev.notes or ""}':
+            rev_paid += amount
+
+    orphan_invs = Invoice.query.filter(
+        Invoice.customer_id == customer_id,
+        Invoice.contract_id.is_(None),
+    ).all()
+    for inv in orphan_invs:
+        inv_paid = _invoice_paid_total(inv)
+        if inv_paid <= 0.01:
+            continue
+        matched = resolve_contract_id(
+            customer_id,
+            '',
+            inv.notes or '',
+            inv.description or '',
+        )
+        if matched == contract_id:
+            inv_extra += inv_paid
+            continue
+        if code and code in f'{inv.description or ""} {inv.notes or ""}':
+            inv_extra += inv_paid
+
+    return _round_money(rev_paid + inv_extra)
 
 
 def contract_remaining(contract: Contract) -> float:
@@ -387,9 +571,17 @@ def apply_payment_to_source(
             inv.status = 'مدفوعة'
         else:
             inv.status = 'مدفوع جزئياً'
+        contract_id = inv.contract_id or resolve_contract_id(
+            inv.customer_id,
+            '',
+            inv.notes or '',
+            inv.description or '',
+        )
+        if contract_id and not inv.contract_id:
+            inv.contract_id = contract_id
         return {
             'customer_id': inv.customer_id,
-            'contract_id': inv.contract_id,
+            'contract_id': contract_id,
             'invoice_id': inv.id,
             'parts_billing_id': None,
             'revenue_type': SOURCE_REVENUE_TYPES['invoice'],

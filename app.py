@@ -1965,16 +1965,34 @@ def contract_paid_total(contract_id):
     return contract_paid_amount(contract_id)
 
 
-def contract_invoice_status(contract):
-    total = contract.total or 0
-    paid = contract_paid_total(contract.id)
+def contract_invoice_status(contract, today=None):
+    from customer_billing import UNPAID_INVOICE_STATUSES, _invoice_paid_total
+
+    today = today or date.today()
+    total = _money_round(contract.total or 0)
+    paid = _money_round(contract_paid_total(contract.id))
+    remaining = max(total - paid, 0)
+
+    paid_invoices = Invoice.query.filter_by(contract_id=contract.id).all()
+    invoice_paid_sum = _money_round(sum(_invoice_paid_total(inv) for inv in paid_invoices))
+
     if total <= 0:
         return 'غير مدفوع'
-    if paid >= total - 0.01:
+    if remaining <= 0.01 or invoice_paid_sum >= total - 0.01:
         return 'مدفوع'
-    if paid > 0:
-        return 'مدفوع جزئياً'
-    return 'غير مدفوع'
+    if paid > 0 or invoice_paid_sum > 0:
+        status = 'مدفوع جزئياً'
+    else:
+        status = 'غير مدفوع'
+    overdue = Invoice.query.filter(
+        Invoice.contract_id == contract.id,
+        Invoice.due_date.isnot(None),
+        Invoice.due_date < today,
+        Invoice.status.in_(UNPAID_INVOICE_STATUSES),
+    ).first()
+    if overdue and remaining > 0.01 and invoice_paid_sum < total - 0.01:
+        return 'متأخر'
+    return status
 
 
 def sync_contract_invoice_status(contract_id):
@@ -2375,7 +2393,18 @@ def _save_contract_file(c, file_storage):
 # =============================================
 @app.route('/contracts')
 def contracts():
+    from customer_billing import repair_contract_payment_links
+
+    repair_contract_payment_links(commit=True)
     contracts_list = Contract.query.order_by(Contract.id.desc()).all()
+    dirty = False
+    for c in contracts_list:
+        inv = contract_invoice_status(c)
+        if (c.invoice_status or '') != inv:
+            c.invoice_status = inv
+            dirty = True
+    if dirty:
+        db.session.commit()
     customers = Customer.query.order_by(Customer.name).all()
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
@@ -3842,6 +3871,16 @@ def _revenue_from_form(form, existing: Revenue | None = None):
         if ref_note and ref_note not in (notes or ''):
             notes = (ref_note + (' — ' + notes if notes else '')).strip()
 
+    if not contract_id and customer_id:
+        from customer_billing import resolve_contract_id
+        contract_id = resolve_contract_id(
+            int(customer_id),
+            form.get('reference', ''),
+            notes,
+            '',
+            revenue_type or form.get('revenue_type', ''),
+        )
+
     data = {
         'customer_id': int(customer_id) if customer_id else None,
         'contract_id': int(contract_id) if contract_id else None,
@@ -3972,8 +4011,12 @@ def invoice_edit(id):
     i.tax_amount     = tax
     i.total          = amount + tax
     i.payment_method = request.form.get('payment_method','')
-    i.status         = request.form.get('status','غير مدفوعة')
-    i.notes          = request.form.get('notes','')
+    status = request.form.get('status', 'غير مدفوعة')
+    i.status = status
+    from customer_billing import PAID_INVOICE_STATUSES, _round_money
+    if status in PAID_INVOICE_STATUSES:
+        i.paid_amount = _round_money(i.total or 0)
+    i.notes = request.form.get('notes', '')
     sync_contract_invoice_status(i.contract_id)
     db.session.commit()
     return redirect(url_for('invoices'))
@@ -3989,6 +4032,7 @@ def invoice_add():
     contract_id = request.form.get('contract_id') or None
     parts_billing_id = None
     notes = request.form.get('notes', '')
+    description = (request.form.get('description') or '').strip()
 
     if source_type == 'parts_billing' and source_id:
         pb = PartsBilling.query.get_or_404(int(source_id))
@@ -4002,7 +4046,7 @@ def invoice_add():
         if ref not in (notes or ''):
             notes = (ref + (' — ' + notes if notes else '')).strip()
     elif source_type == 'revenue' and source_id:
-        from customer_billing import COLLECTED_REVENUE_STATUSES
+        from customer_billing import COLLECTED_REVENUE_STATUSES, resolve_contract_id
 
         rev = Revenue.query.get_or_404(int(source_id))
         if rev.invoice_id:
@@ -4012,7 +4056,14 @@ def invoice_add():
             flash('لا يمكن إصدار فاتورة لإيراد غير محصّل', 'error')
             return redirect(url_for('invoices'))
         customer_id = rev.customer_id
-        contract_id = rev.contract_id
+        contract_id = rev.contract_id or resolve_contract_id(
+            rev.customer_id,
+            rev.reference or '',
+            rev.notes or '',
+            '',
+            rev.revenue_type or '',
+            revenue_id=rev.id,
+        )
         parts_billing_id = rev.parts_billing_id
         ref = f'فاتورة إيراد {rev.code}'
         if ref not in (notes or ''):
@@ -4029,11 +4080,19 @@ def invoice_add():
         if ref not in (notes or ''):
             notes = (ref + (' — ' + notes if notes else '')).strip()
 
+    if not contract_id and customer_id:
+        from customer_billing import resolve_contract_id
+        contract_id = resolve_contract_id(
+            int(customer_id),
+            '',
+            notes,
+            description,
+        )
+
     due_raw = request.form.get('due_date', '').strip()
     invoice_status = request.form.get('status', 'غير مدفوعة')
     invoice_paid = 0.0
     linked_revenue = None
-    description = (request.form.get('description') or '').strip()
     if source_type == 'revenue' and source_id:
         from customer_billing import _round_money
 
@@ -4080,6 +4139,8 @@ def invoice_add():
     db.session.flush()
     if linked_revenue:
         linked_revenue.invoice_id = i.id
+        if contract_id and not linked_revenue.contract_id:
+            linked_revenue.contract_id = int(contract_id)
     sync_contract_invoice_status(i.contract_id)
     db.session.commit()
     return redirect(url_for('invoices'))
