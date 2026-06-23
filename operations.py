@@ -8,6 +8,9 @@ import urllib.parse
 from calendar import monthrange
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+RIYADH_TZ = ZoneInfo('Asia/Riyadh')
+
 
 from sqlalchemy import and_, func, or_
 
@@ -1180,8 +1183,8 @@ def _default_checklist_template_key() -> str:
 
 
 def _field_stamp_now() -> dict:
-    """توقيت محلي للميدان (تاريخ + وقت)."""
-    now = datetime.now()
+    """توقيت السعودية للميدان (تاريخ + وقت) بغض النظر عن توقيت السيرفر."""
+    now = datetime.now(RIYADH_TZ)
     return {
         'date': now.strftime('%Y-%m-%d'),
         'time': now.strftime('%H:%M'),
