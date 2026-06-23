@@ -11,14 +11,17 @@ seed_data.py
     python tools/db_snapshot.py restore
 """
 
+import json
 import sys
 from datetime import date, datetime, timedelta
 
-from app import app, db
+from app import app, db, hash_password
 from models import (
     Customer, Elevator, Contract, ContractElevator, Technician,
     MaintenanceVisit, Fault, Revenue, Expense, Invoice,
     InventoryItem, StockMovement, PartsBilling, User, Settings,
+    VisitTechnician, FaultTechnician, PurchaseOrder, PurchaseOrderLine,
+    ElevatorEstimate, ElevatorEstimateLine, TechnicianDocument, Signatory,
 )
 
 
@@ -32,21 +35,231 @@ def _dt(days_offset=0, hour=10, minute=0):
 
 def clear_business_data():
     """مسح البيانات التشغيلية مع الإبقاء على المستخدمين والإعدادات."""
+    MaintenanceVisit.query.filter(MaintenanceVisit.fault_id.isnot(None)).update(
+        {MaintenanceVisit.fault_id: None}, synchronize_session=False
+    )
+    Fault.query.filter(Fault.visit_id.isnot(None)).update(
+        {Fault.visit_id: None}, synchronize_session=False
+    )
+    db.session.commit()
     for model in (
-        StockMovement, PartsBilling, Fault, MaintenanceVisit,
-        ContractElevator, Invoice, Revenue, Expense, Contract,
-        Elevator, Technician, InventoryItem, Customer,
+        VisitTechnician, FaultTechnician,
+        StockMovement, PartsBilling,
+        PurchaseOrderLine, PurchaseOrder,
+        ElevatorEstimateLine, ElevatorEstimate,
+        Revenue, Expense, Invoice,
+        MaintenanceVisit, Fault,
+        ContractElevator, Contract,
+        Elevator,
+        TechnicianDocument, Signatory,
+        Technician, InventoryItem, Customer,
     ):
         model.query.delete()
     db.session.commit()
 
 
-def seed_all():
+def _ensure_jama_settings() -> None:
+    s = Settings.query.first()
+    if not s:
+        s = Settings(
+            company_name='شركة جما تقنية للمصاعد',
+            company_name_en='Jama Elevator Technology Co.',
+            phone='0500000000',
+            email='info@jama.liftcore.sa',
+            city='مكة المكرمة',
+            tax_pct=15,
+            currency='ر.س',
+            language='ar',
+            default_sign_method='both',
+        )
+        db.session.add(s)
+    else:
+        s.company_name = s.company_name or 'شركة جما تقنية للمصاعد'
+        s.company_name_en = s.company_name_en or 'Jama Elevator Technology Co.'
+        s.city = s.city or 'مكة المكرمة'
+        s.default_sign_method = s.default_sign_method or 'both'
+
+
+def _ensure_admin_user() -> None:
+    admin = User.query.filter_by(username='admin').first()
+    if not admin:
+        db.session.add(
+            User(
+                username='admin',
+                password_hash=hash_password('admin123'),
+                full_name='مدير جما (تجريبي)',
+                email='admin@jama.liftcore.sa',
+                role='admin',
+                is_active=True,
+            )
+        )
+    else:
+        admin.password_hash = hash_password('admin123')
+        admin.is_active = True
+
+
+def _sample_checklist_json() -> str:
+    from checklist_templates import empty_report_data
+
+    data = empty_report_data()
+    data['meta']['overall_status'] = 'جيدة'
+    data['meta']['visit_date'] = _d().isoformat()
+    data['meta']['arrival_time'] = '09:00'
+    data['meta']['end_time'] = '10:15'
+    data['meta']['tech_notes'] = 'فحص دوري — لا ملاحظات حرجة'
+    for item_id in ('1_0', '1_1', '2_0', '3_0', '4_0'):
+        if item_id in data['items']:
+            data['items'][item_id] = {'status': 'ok', 'note': ''}
+    return json.dumps(data, ensure_ascii=False)
+
+
+def _sample_fault_report_json(*, solved: bool = False) -> str:
+    from fault_report import empty_report
+
+    data = empty_report()
+    data['meta']['visit_date'] = _d().isoformat()
+    data['meta']['arrival_time'] = '11:00'
+    data['meta']['end_time'] = '12:30'
+    data['meta']['diagnosis'] = 'خلل في حساس الباب — يحتاج ضبط'
+    data['meta']['action_taken'] = 'ضبط المستشعر واختبار 5 دورات'
+    data['meta']['visit_outcome'] = 'solved' if solved else 'partial'
+    return json.dumps(data, ensure_ascii=False)
+
+
+def _seed_demo_extras() -> None:
+    """بيانات إضافية لتجربة كل وحدات البرنامج."""
+    from technician_assignments import sync_visit_technicians, sync_fault_technicians
+
+    techs = Technician.query.order_by(Technician.id).all()
+    if not techs:
+        return
+
+    demo_pin = hash_password('123456')
+    demo_ids = ('1012345678', '1023456789', '1034567890')
+    for i, tech in enumerate(techs[:3]):
+        tech.sign_pin_hash = demo_pin
+        tech.national_id = demo_ids[i]
+        tech.status = tech.status or 'متاح'
+
+    today_visits = (
+        MaintenanceVisit.query
+        .filter_by(visit_date=_d())
+        .order_by(MaintenanceVisit.id)
+        .limit(3)
+        .all()
+    )
+    for v in today_visits:
+        if len(techs) >= 2:
+            sync_visit_technicians(v, [techs[0].id, techs[1].id])
+        if v.status == 'مكتملة' and not v.checklist_json:
+            v.checklist_json = _sample_checklist_json()
+            v.completed_at = v.completed_at or _dt(0, 10, 30)
+
+    completed = (
+        MaintenanceVisit.query
+        .filter_by(status='مكتملة')
+        .filter(MaintenanceVisit.checklist_json.is_(None))
+        .limit(2)
+    )
+    for v in completed:
+        v.checklist_json = _sample_checklist_json()
+
+    open_fault = Fault.query.filter_by(code='FA-02041').first()
+    if open_fault and len(techs) >= 2:
+        sync_fault_technicians(open_fault, [techs[0].id, techs[2].id])
+        if not open_fault.report_json:
+            open_fault.report_json = _sample_fault_report_json(solved=False)
+
+    solved_fault = Fault.query.filter_by(code='FA-02010').first()
+    if solved_fault and not solved_fault.report_json:
+        solved_fault.report_json = _sample_fault_report_json(solved=True)
+
+    items = InventoryItem.query.order_by(InventoryItem.id).limit(4).all()
+    if items:
+        po = PurchaseOrder(
+            code='PO-00001',
+            supplier='مورد المصاعد المتحدة',
+            supplier_phone='0501234567',
+            order_date=_d(-5),
+            status='معتمد',
+            total_amount=sum(i.buy_price or 0 for i in items[:2]) * 2,
+            notes='طلب تجريبي — قطع غيار عاجلة',
+        )
+        db.session.add(po)
+        db.session.flush()
+        for item in items[:2]:
+            qty = 2
+            price = item.buy_price or 0
+            db.session.add(PurchaseOrderLine(
+                order_id=po.id,
+                item_id=item.id,
+                quantity=qty,
+                unit_price=price,
+                line_total=qty * price,
+            ))
+
+        po2 = PurchaseOrder(
+            code='PO-00002',
+            supplier='شركة الحبال الفولاذية',
+            order_date=_d(-1),
+            status='مسودة',
+            total_amount=(items[2].buy_price or 0) * 5,
+        )
+        db.session.add(po2)
+        db.session.flush()
+        db.session.add(PurchaseOrderLine(
+            order_id=po2.id,
+            item_id=items[2].id,
+            quantity=5,
+            unit_price=items[2].buy_price or 0,
+            line_total=5 * (items[2].buy_price or 0),
+        ))
+
+    client = Customer.query.filter_by(code='C-0010').first()
+    if client:
+        est = ElevatorEstimate(
+            code='EST-00001',
+            customer_id=client.id,
+            project_name='توسعة فندق مكة كلوك',
+            city='مكة',
+            machine_type='MR',
+            elev_type='مصعد ركاب',
+            floors=16,
+            stops=16,
+            capacity_kg=1000,
+            margin_pct=12,
+            vat_pct=15,
+            cost_subtotal=185000,
+            margin_amount=22200,
+            subtotal=207200,
+            vat_amount=31080,
+            total=238280,
+            status='مسودة',
+            estimate_date=_d(-7),
+            notes='تقدير تجريبي لعميل فندق',
+        )
+        db.session.add(est)
+        db.session.flush()
+        for desc, amt in (
+            ('محرك رئيسي + بكرة', 95000),
+            ('كابينة + أبواب', 62000),
+            ('تركيب وتشغيل', 28000),
+        ):
+            db.session.add(ElevatorEstimateLine(
+                estimate_id=est.id,
+                description=desc,
+                quantity=1,
+                unit_price=amt,
+                line_total=amt,
+            ))
+
+
+def seed_all(*, force: bool = False):
   with app.app_context():
     db.create_all()
 
-    if Customer.query.count() > 0:
-        print("[!] Database already has data. Use --reset to reseed.")
+    if not force and Customer.query.count() > 0:
+        print("[!] Database already has data. Use --reset or reset_jama_demo().")
         return False
 
     today = date.today()
@@ -335,22 +548,11 @@ def seed_all():
             payment_method='تحويل', status='مكتملة',
         ))
 
-    # ── مستخدم admin + إعدادات (إن لم يوجدا) ────────────────
-    if not User.query.filter_by(username='admin').first():
-        db.session.add(User(
-            username='admin', password_hash='admin123',
-            full_name='محمد القواشي', email='admin@liftcore.sa',
-            role='admin', is_active=True,
-        ))
+    _ensure_admin_user()
+    _ensure_jama_settings()
 
-    if not Settings.query.first():
-        db.session.add(Settings(
-            company_name='شركة جما تقنية للمصاعد',
-            company_name_en='Jama Elevator Technology Co.',
-            phone='0500000000', email='info@liftcore.sa',
-            city='مكة المكرمة', tax_pct=15, currency='ر.س', language='ar',
-        ))
-
+    db.session.commit()
+    _seed_demo_extras()
     db.session.commit()
 
     # ملخص
@@ -370,13 +572,46 @@ def seed_all():
     return True
 
 
+def reset_jama_demo() -> bool:
+    """مسح كامل لقاعدة جما وتحميل سيناريو 10 عملاء."""
+    with app.app_context():
+        db.create_all()
+        print('[1/4] مسح البيانات التشغيلية...')
+        clear_business_data()
+        print('[2/4] تحميل 10 عملاء + عقود + زيارات + أعطال + مالية + مخزن...')
+        if not seed_all(force=True):
+            return False
+        print('[3/4] إضافة طلبات شراء + تقديرات + فريق فني + محاضر...')
+        print('[4/4] تم')
+        _print_jama_credentials()
+        return True
+
+
+def _print_jama_credentials() -> None:
+    from app import get_dashboard_stats
+
+    stats, alerts = get_dashboard_stats()
+    print('')
+    print('=== بيئة جما التجريبية جاهزة ===')
+    print('  المكتب:  admin / admin123')
+    print('  الفني:   Tech-001 أو 0552001001 / 123456')
+    print('  السيناريو: docs/SCENARIO_10_CLIENTS.md')
+    print('')
+    print(f"  عملاء: {stats['customers']} | مصاعد: {stats['elevators']} | عقود: {stats['contracts']}")
+    print(f"  زيارات اليوم: {stats['visits_today']} | أعطال مفتوحة: {stats['faults_open']}")
+    print(f"  فواتير غير مدفوعة: {stats['unpaid_invoices']} | مخزون منخفض: {alerts['low_stock_count']}")
+
+
 if __name__ == '__main__':
-    reset = '--reset' in sys.argv
+    reset = '--reset' in sys.argv or '--jama' in sys.argv
     with app.app_context():
         db.create_all()
         if reset:
-            print("Clearing business data...")
-            clear_business_data()
-            seed_all()
+            if '--jama' in sys.argv:
+                reset_jama_demo()
+            else:
+                print('Clearing business data...')
+                clear_business_data()
+                seed_all(force=True)
         else:
             seed_all()
