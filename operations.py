@@ -1070,6 +1070,7 @@ def fault_report_payload(
         'technician': {
             'id': tech.id if tech else None,
             'name': tech.name if tech else '—',
+            'national_id': (tech.national_id if tech else '') or '',
         },
         'fault_type_options': FAULT_TYPE_OPTIONS,
         'fault_type_options_json': json.dumps(FAULT_TYPE_OPTIONS, ensure_ascii=False),
@@ -1091,6 +1092,7 @@ def fault_report_payload(
         'company_name': _report_company_name(),
         'company_name_en': _report_company_name_en(),
         'base_url': base_url,
+        'sign_config': _document_sign_config(),
     }
 
 
@@ -1138,8 +1140,8 @@ def save_fault_report(
             merged['parts'] = payload['parts']
         sig = payload.get('signatures') or {}
         if isinstance(sig, dict):
-            merged['signatures']['tech'] = sig.get('tech') or merged['signatures'].get('tech') or ''
-            merged['signatures']['client'] = sig.get('client') or merged['signatures'].get('client') or ''
+            for key in merged['signatures']:
+                merged['signatures'][key] = sig.get(key) or merged['signatures'].get(key) or ''
         if isinstance(payload.get('photos'), list):
             merged['photos'] = payload['photos']
 
@@ -1341,11 +1343,11 @@ def visit_report_payload(
         'template_json': json.dumps(template, ensure_ascii=False),
         'logo_url': _report_brand_logo_url(),
         'base_url': base_url,
-        'sign_config': _visit_sign_config(),
+        'sign_config': _document_sign_config(),
     }
 
 
-def _visit_sign_config() -> dict:
+def _document_sign_config() -> dict:
     from models import Settings
 
     s = Settings.query.first()

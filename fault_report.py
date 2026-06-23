@@ -50,7 +50,13 @@ def empty_report() -> dict:
             'labor_cost': 0,
         },
         'parts': [],
-        'signatures': {'tech': '', 'client': ''},
+        'signatures': {
+            'tech': '',
+            'client': '',
+            'tech_method': '',
+            'tech_signed_by': '',
+            'tech_signed_at': '',
+        },
         'photos': [],
     }
 
@@ -72,8 +78,8 @@ def parse_fault_report_json(raw: str | None) -> dict:
     if isinstance(data.get('parts'), list):
         base['parts'] = data['parts']
     sig = data.get('signatures') if isinstance(data.get('signatures'), dict) else {}
-    base['signatures']['tech'] = sig.get('tech') or ''
-    base['signatures']['client'] = sig.get('client') or ''
+    for key in base['signatures']:
+        base['signatures'][key] = sig.get(key) or base['signatures'].get(key) or ''
     if isinstance(data.get('photos'), list):
         base['photos'] = data['photos']
     return base

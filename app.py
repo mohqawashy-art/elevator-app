@@ -3660,11 +3660,16 @@ def api_verify_signature():
     pin = (data.get('pin') or '').strip()
     role = (data.get('role') or 'technician').strip()
     visit_id = data.get('visit_id')
+    fault_id = data.get('fault_id')
     visit_technician_id = None
     if visit_id:
         v = MaintenanceVisit.query.get(visit_id)
         if v:
             visit_technician_id = v.technician_id
+    elif fault_id:
+        f = Fault.query.get(fault_id)
+        if f:
+            visit_technician_id = f.technician_id
 
     result = verify_signature_credentials(
         national_id=national_id,

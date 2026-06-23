@@ -1,0 +1,24 @@
+{# توقيعات المستند — يتطلب: editable, technician (اختياري) #}
+<div class="section"><div class="sec-title"><span class="sec-dot"></span> التوقيعات</div></div>
+<div class="sig-area">
+  <div class="sig-box">
+    <div class="sig-label">توقيع الفني</div>
+    <canvas class="sig-canvas" id="sig-tech" width="300" height="80"></canvas>
+    {% if editable %}
+    <button type="button" class="sig-add-btn" id="sig-tech-add-btn">✍️ إضافة توقيع</button>
+    <button type="button" class="sig-draw-link" id="sig-tech-draw-link">أو رسم التوقيع يدوياً</button>
+    <button type="button" class="sig-clear" onclick="LiftCoreChecklist.clearSig('sig-tech'); if(window.LiftCoreDigitalSign) LiftCoreDigitalSign.clearTechSignMeta();">مسح</button>
+    {% endif %}
+    <div class="sig-pin-meta" id="sig-tech-pin-meta"></div>
+    {% if technician and technician.name %}
+    <div style="font-size:9px;color:var(--text3,#888);margin-top:4px">{{ technician.name }}</div>
+    {% endif %}
+  </div>
+  <div class="sig-box">
+    <div class="sig-label">توقيع العميل / المسؤول</div>
+    <canvas class="sig-canvas" id="sig-client" width="300" height="80"></canvas>
+    {% if editable %}
+    <button type="button" class="sig-clear" onclick="LiftCoreChecklist.clearSig('sig-client')">مسح</button>
+    {% endif %}
+  </div>
+</div>

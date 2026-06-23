@@ -205,8 +205,10 @@
     applyOutcome(meta.visit_outcome || '');
     if (meta.customer_rating) setRating(parseInt(meta.customer_rating, 10) || 0);
     if (global.LiftCoreChecklist) {
-      global.LiftCoreChecklist.applySignatures(data.signatures || {});
       global.LiftCoreChecklist.applyPhotos(data.photos || []);
+    }
+    if (global.LiftCoreDocSign) {
+      global.LiftCoreDocSign.applySaved(data);
     }
     calcTotals();
   }
@@ -240,10 +242,12 @@
         labor_cost: num('labor-cost'),
       },
       parts: collectParts(),
-      signatures: global.LiftCoreChecklist ? {
-        tech: global.LiftCoreChecklist.canvasDataUrl('sig-tech'),
-        client: global.LiftCoreChecklist.canvasDataUrl('sig-client'),
-      } : { tech: '', client: '' },
+      signatures: global.LiftCoreDocSign
+        ? global.LiftCoreDocSign.collectSignatures()
+        : (global.LiftCoreChecklist ? {
+          tech: global.LiftCoreChecklist.canvasDataUrl('sig-tech'),
+          client: global.LiftCoreChecklist.canvasDataUrl('sig-client'),
+        } : { tech: '', client: '' }),
       photos: global.LiftCoreChecklist ? global.LiftCoreChecklist.collectPhotos() : [],
     };
   }

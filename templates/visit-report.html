@@ -135,6 +135,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   .cl-table td.cell-en{display:none}
 }
 </style>
+<link rel="stylesheet" href="/static/document-signatures.css?v=1">
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
@@ -248,25 +249,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="section"><div class="sec-title"><span class="sec-dot"></span> صور الموقع</div></div>
   <div class="photos-grid" id="photos-grid"></div>
 
-  <div class="section"><div class="sec-title"><span class="sec-dot"></span> التوقيعات</div></div>
-  <div class="sig-area">
-    <div class="sig-box">
-      <div class="sig-label">توقيع الفني</div>
-      <canvas class="sig-canvas" id="sig-tech" width="300" height="80"></canvas>
-      {% if editable %}
-      <button type="button" class="sig-add-btn" id="sig-tech-add-btn">✍️ إضافة توقيع</button>
-      <button type="button" class="sig-draw-link" id="sig-tech-draw-link">أو رسم التوقيع يدوياً</button>
-      <button type="button" class="sig-clear" onclick="LiftCoreChecklist.clearSig('sig-tech'); if(window.LiftCoreDigitalSign) LiftCoreDigitalSign.clearTechSignMeta();">مسح</button>
-      {% endif %}
-      <div class="sig-pin-meta" id="sig-tech-pin-meta"></div>
-      <div style="font-size:9px;color:var(--text3);margin-top:4px">{{ technician.name }}</div>
-    </div>
-    <div class="sig-box">
-      <div class="sig-label">توقيع العميل / المسؤول</div>
-      <canvas class="sig-canvas" id="sig-client" width="300" height="80"></canvas>
-      {% if editable %}<button type="button" class="sig-clear" onclick="LiftCoreChecklist.clearSig('sig-client')">مسح</button>{% endif %}
-    </div>
-  </div>
+  {% include 'partials/document_signatures_section.html' %}
 
   <div class="doc-footer">
     <div>LiftCore — الإدارة الذكية للمصاعد</div>
@@ -282,7 +265,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 </div>
 
 <script src="/static/maintenance-checklist.js?v=8"></script>
-<script src="/static/digital-signature.js?v=2"></script>
+<script src="/static/digital-signature.js?v=3"></script>
+<script src="/static/document-signatures.js?v=1"></script>
 <script>
 const REPORT_CFG = {
   visitId: {{ visit_id }},
@@ -294,6 +278,7 @@ const REPORT_CFG = {
 const CHECKLIST_TEMPLATE = {{ template_json|safe }};
 const REPORT_DATA = {{ report_data_json|safe }};
 const SIGN_CONFIG = {{ sign_config|tojson }};
+const TECH_NATIONAL_ID = {{ (technician.national_id or '')|tojson }};
 const TECH_NATIONAL_ID = {{ (technician.national_id or '')|tojson }};
 
 function updateProgress() {
@@ -335,31 +320,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const checklistRoot = document.getElementById('checklist-root');
   if (REPORT_CFG.editable) {
     LiftCoreChecklist.initStatusGroups(checklistRoot, updateProgress);
-    LiftCoreChecklist.setupSignature('sig-tech', true);
-    LiftCoreChecklist.setupSignature('sig-client', true);
-    if (window.LiftCoreDigitalSign) {
-      LiftCoreDigitalSign.initTechSignSlot({
+    if (window.LiftCoreDocSign) {
+      LiftCoreDocSign.initEditable({
         editable: true,
         visitId: REPORT_CFG.visitId,
-        defaultMethod: SIGN_CONFIG.default_method || 'both',
-        prefillNationalId: TECH_NATIONAL_ID,
-        onSuccess: function (meta) {
-          var el = document.getElementById('sig-tech-pin-meta');
-          if (el && meta && meta.signed_by) {
-            el.textContent = 'وقّع رقمياً: ' + meta.signed_by;
-          }
-        },
+        signConfig: SIGN_CONFIG,
+        techNationalId: TECH_NATIONAL_ID,
       });
     }
   }
   LiftCoreChecklist.applyReportData(REPORT_DATA, CHECKLIST_TEMPLATE);
-  (function () {
-    var sig = (REPORT_DATA.signatures || {});
-    if (sig.tech_method === 'pin' && sig.tech_signed_by) {
-      var el = document.getElementById('sig-tech-pin-meta');
-      if (el) el.textContent = 'وقّع رقمياً: ' + sig.tech_signed_by;
-    }
-  })();
+  if (window.LiftCoreDocSign) LiftCoreDocSign.applySaved(REPORT_DATA);
   const os = document.getElementById('overall-status');
   if (os && REPORT_DATA.meta && REPORT_DATA.meta.overall_status) {
     os.value = REPORT_DATA.meta.overall_status;

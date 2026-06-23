@@ -83,6 +83,7 @@
           pin: pinEl.value.trim(),
           role: opts.role || 'technician',
           visit_id: opts.visitId || null,
+          fault_id: opts.faultId || null,
         }),
       })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
@@ -145,6 +146,7 @@
           canvasId: canvasId,
           role: config.role || 'technician',
           visitId: config.visitId,
+          faultId: config.faultId,
           prefillNationalId: config.prefillNationalId || '',
           onSuccess: config.onSuccess,
         });
@@ -198,6 +200,7 @@
       initSignSlot('sig-tech', {
         editable: config.editable,
         visitId: config.visitId,
+        faultId: config.faultId,
         defaultMethod: config.defaultMethod,
         prefillNationalId: config.prefillNationalId,
         onSuccess: config.onSuccess,
