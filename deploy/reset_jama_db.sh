@@ -76,8 +76,8 @@ python init_db.py
 python scripts/init_install_module.py
 
 if [ "$SEED" = "1" ]; then
-  echo "==> إضافة بيانات تجريبية"
-  python seed_data.py
+  echo "==> إضافة بيانات تجريبية (10 عملاء)"
+  python scripts/reset_jama_demo.py || python seed_data.py --jama
 fi
 
 sudo systemctl start "$SERVICE_NAME"

@@ -135,11 +135,16 @@ def _seed_demo_extras() -> None:
         return
 
     demo_pin = hash_password('123456')
-    demo_ids = ('1012345678', '1023456789', '1034567890')
-    for i, tech in enumerate(techs[:3]):
+    demo_ids = ('1012345678', '1023456789', '1034567890', '1045678901', '1056789012')
+    active_statuses = frozenset({'نشط', 'متاح', 'مشغول'})
+    pin_idx = 0
+    for tech in techs:
+        if (tech.status or 'متاح') not in active_statuses:
+            continue
         tech.sign_pin_hash = demo_pin
-        tech.national_id = demo_ids[i]
-        tech.status = tech.status or 'متاح'
+        if pin_idx < len(demo_ids):
+            tech.national_id = demo_ids[pin_idx]
+            pin_idx += 1
 
     today_visits = (
         MaintenanceVisit.query
@@ -218,7 +223,7 @@ def _seed_demo_extras() -> None:
     client = Customer.query.filter_by(code='C-0010').first()
     if client:
         est = ElevatorEstimate(
-            code='EST-00001',
+            code='ES-0001',
             customer_id=client.id,
             project_name='توسعة فندق مكة كلوك',
             city='مكة',
@@ -284,11 +289,11 @@ def seed_all(*, force: bool = False):
 
     # ── الفنيون ──────────────────────────────────────────────
     techs_data = [
-        dict(code='Tech-001', name='أحمد الزهراني',  phone='0552001001', job_title='فني أول',   specialization='مصاعد ركاب', city='مكة', status='متاح', emergency=True),
-        dict(code='Tech-002', name='خالد العمري',    phone='0552001002', job_title='فني أول',   specialization='كهرباء',      city='مكة', status='متاح', emergency=True),
-        dict(code='Tech-003', name='سعد القحطاني',   phone='0552001003', job_title='فني ثانٍ', specialization='ميكانيكا',    city='مكة', status='متاح'),
-        dict(code='Tech-004', name='فهد المالكي',    phone='0552001004', job_title='فني أول',   specialization='مصاعد ركاب', city='مكة', status='مشغول'),
-        dict(code='Tech-005', name='عمر الدوسري',    phone='0552001005', job_title='فني ثانٍ', specialization='ميكانيكا',    city='مكة', status='متاح'),
+        dict(code='Tech-001', name='أحمد الزهراني',  phone='0552001001', job_title='فني أول',   specialization='مصاعد ركاب', city='مكة', status='متاح', emergency=True, team='صيانة'),
+        dict(code='Tech-002', name='خالد العمري',    phone='0552001002', job_title='فني أول',   specialization='كهرباء',      city='مكة', status='متاح', emergency=True, team='أعطال'),
+        dict(code='Tech-003', name='سعد القحطاني',   phone='0552001003', job_title='فني ثانٍ', specialization='ميكانيكا',    city='مكة', status='متاح', team='صيانة'),
+        dict(code='Tech-004', name='فهد المالكي',    phone='0552001004', job_title='فني أول',   specialization='مصاعد ركاب', city='مكة', status='مشغول', team='أعطال'),
+        dict(code='Tech-005', name='عمر الدوسري',    phone='0552001005', job_title='فني ثانٍ', specialization='ميكانيكا',    city='مكة', status='متاح', team='صيانة'),
         dict(code='Tech-006', name='محمد الشهري',    phone='0552001006', job_title='مشرف',     specialization='مصاعد ركاب', city='مكة', status='إجازة'),
         dict(code='Tech-007', name='يوسف الغامدي',   phone='0552001007', job_title='فني أول',   specialization='كهرباء',      city='مكة', status='غير نشط'),
     ]

@@ -6,7 +6,7 @@ init_db.py
     python init_db.py
 """
 
-from app import app, db
+from app import app, db, hash_password
 from models import User, Settings
 
 with app.app_context():
@@ -18,7 +18,7 @@ with app.app_context():
     if not User.query.filter_by(username='admin').first():
         admin = User(
             username   = 'admin',
-            password_hash = 'admin123',   # غيّرها بعد أول تسجيل دخول
+            password_hash = hash_password('admin123'),
             full_name  = 'محمد القواشي',
             email      = 'admin@liftcore.sa',
             role       = 'admin',
