@@ -216,8 +216,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div class="sec-title"><span class="sec-dot"></span> بيانات الزيارة</div>
     <div class="row row-4">
       <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" value="{{ visit_date_display }}" readonly style="direction:ltr"></div>
-      <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" style="direction:ltr" {% if not editable or field_times_locked %}readonly{% endif %}></div>
-      <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" style="direction:ltr" {% if not editable or field_times_locked %}readonly{% endif %}></div>
+      <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" style="direction:ltr" readonly></div>
+      <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" style="direction:ltr" readonly></div>
       <div class="field"><label>الفني المنفذ</label><input type="text" value="{{ technician.name }}" readonly></div>
     </div>
     <div class="row row-3">
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (os && REPORT_DATA.meta && REPORT_DATA.meta.overall_status) {
     os.value = REPORT_DATA.meta.overall_status;
   }
-  if (REPORT_CFG.editable && !REPORT_CFG.fieldTimesLocked && !document.getElementById('arrival-time').value) {
+  if (REPORT_CFG.editable && !document.getElementById('arrival-time').value) {
     const now = new Date();
     document.getElementById('arrival-time').value = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
   }

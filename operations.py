@@ -1428,8 +1428,6 @@ def save_visit_report(
     if mark_complete:
         v.status = status or 'مكتملة'
         v.completed_at = datetime.utcnow()
-        if meta.get('end_time') and not v.visit_time:
-            v.visit_time = meta.get('arrival_time') or v.visit_time
 
     db.session.commit()
     return merged

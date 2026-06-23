@@ -3142,18 +3142,15 @@ def _find_recent_duplicate_visit(payload: dict, tech_ids: list[int]):
 @app.route('/maintenance-visits/add', methods=['POST'])
 def visit_add():
     from entity_links import resolve_visit_links
-    from technician_assignments import parse_technician_ids, sync_visit_technicians, sync_fault_technicians
+    from technician_assignments import parse_technician_ids, sync_visit_technicians
 
     links = resolve_visit_links(
         request.form['elevator_id'],
         request.form.get('contract_id'),
         request.form.get('visit_date'),
     )
-    from entity_links import link_fault_to_visit, lookup_fault
 
-    fault_id = request.form.get('fault_id') or None
-    fault_code = request.form.get('fault_code', '').strip()
-    visit_type = request.form.get('visit_type', 'دورية')
+    visit_type = request.form.get('visit_type', 'صيانة دورية')
     tech_ids = parse_technician_ids(request.form)
     visit_payload = {
         'elevator_id': links['elevator_id'],
@@ -3190,30 +3187,6 @@ def visit_add():
     db.session.flush()
     sync_visit_technicians(v, tech_ids)
 
-    fault = None
-    if fault_id:
-        fault = Fault.query.get(int(fault_id))
-    elif fault_code:
-        fault = lookup_fault(fault_code)
-    elif 'عطل' in (visit_type or ''):
-        fault = Fault(
-            code=next_code(Fault, 'FA-', digits=5),
-            elevator_id=v.elevator_id,
-            technician_id=v.technician_id,
-            fault_type=visit_type,
-            description=v.works_done or v.observations or 'عطل سُجّل أثناء الزيارة',
-            priority=v.priority or 'عادية',
-            reported_at=datetime.combine(v.visit_date, datetime.min.time()),
-            status='تم الاصلاح' if v.status == 'مكتملة' else 'قيد المعالجة',
-            resolution=v.works_done or '',
-        )
-        db.session.add(fault)
-        db.session.flush()
-        sync_fault_technicians(fault, tech_ids)
-
-    if fault:
-        link_fault_to_visit(fault, v)
-
     db.session.commit()
     return redirect(url_for('maintenance_visits'))
 @app.route('/maintenance-visits/edit/<int:id>', methods=['POST'])
@@ -3239,13 +3212,6 @@ def visit_edit(id):
     v.works_done    = request.form.get('works_done','')
     v.observations  = request.form.get('observations','')
     v.notes         = request.form.get('notes','')
-
-    from entity_links import link_fault_to_visit, lookup_fault
-    fault_id = request.form.get('fault_id') or None
-    fault_code = request.form.get('fault_code', '').strip()
-    fault = Fault.query.get(int(fault_id)) if fault_id else lookup_fault(fault_code)
-    if fault:
-        link_fault_to_visit(fault, v)
 
     sync_visit_technicians(v, tech_ids)
     db.session.commit()

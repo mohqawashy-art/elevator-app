@@ -427,7 +427,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th class="th-sort" data-sort-col="visit_type">النوع <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="visit_date">التاريخ <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="visit_time">الوقت <span class="sort-ind"></span></th>
-                <th class="th-sort" data-sort-col="priority">الأولوية <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
                 <th>إجراءات</th>
               </tr>
@@ -505,9 +504,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-section-title">بيانات الزيارة</div>
         <div class="form-grid">
           <div class="field"><label>كود الزيارة</label><input type="text" id="f-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg4)"></div>
-          <div class="field"><label>نوع الزيارة</label><select id="f-type-sel"><option>صيانة دورية</option><option>زيارة طارئة</option><option>زيارة متابعة</option><option>زيارة فحص</option></select></div>
-          <div class="field"><label>الأولوية</label><select id="f-priority-sel"><option>منخفضة</option><option>متوسطة</option><option>عادية</option><option selected>عالية</option><option>حرجة</option></select></div>
-          <div class="field"><label>الحالة</label><select id="f-status-sel"><option>مجدولة</option><option>جاري التنفيذ</option><option>مكتملة</option><option>ملغية</option><option>متأخرة</option></select></div>
+          <div class="field"><label>نوع الزيارة</label><input type="text" id="f-type-view" value="صيانة دورية" readonly style="background:var(--bg4)"></div>
+          <input type="hidden" id="f-type-sel" value="صيانة دورية">
+          <input type="hidden" id="f-priority-sel" value="عادية">
+          <div class="field"><label>الحالة</label><select id="f-status-sel"><option selected>مجدولة</option><option>جارية</option><option>مكتملة</option><option>ملغية</option><option>متأخرة</option></select></div>
         </div>
       </div>
 
@@ -521,9 +521,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <div class="tech-select" id="tech-select"></div>
             <span class="field-hint" style="font-size:11px;color:var(--text3);margin-top:4px">يمكن اختيار أكثر من فني — الأول هو الفني الرئيسي والباقي مساعدون</span>
           </div>
-          <div class="field"><label>رقم العطل المرتبط</label><input type="text" id="f-fault-code" placeholder="FA-00001 (اختياري)" style="direction:ltr;font-family:var(--font-en)"></div>
         </div>
-        <p style="font-size:11px;color:var(--text3);margin-top:6px">إذا كانت الزيارة لمعالجة عطل: أدخل رقم العطل، أو اختر نوع «عطل» لإنشاء عطل تلقائياً.</p>
         <div id="tech-warning" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(224,72,72,.08);border:1px solid rgba(224,72,72,.2);border-radius:var(--r-sm);font-size:12px;color:var(--danger)">⚠️ هذا الفني مشغول حالياً — قد يكون هناك تعارض في المواعيد</div>
       </div>
 
@@ -532,18 +530,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-grid">
           <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="f-date" style="direction:ltr"></div>
           <div class="field"><label>وقت الزيارة</label><input type="time" id="f-time" style="direction:ltr"></div>
-          <div class="field"><label>وقت البداية الفعلي</label><input type="time" id="f-actual-start" style="direction:ltr"></div>
-          <div class="field"><label>وقت الانتهاء الفعلي</label><input type="time" id="f-actual-end" style="direction:ltr"></div>
           <div class="field"><label>موعد الزيارة القادمة</label><input type="date" lang="en-GB" id="f-next-visit" style="direction:ltr"></div>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <div class="form-section-title">الموقع</div>
-        <div class="form-grid">
-          <div class="field"><label>المدينة</label><input type="text" id="f-city" placeholder="مكة"></div>
-          <div class="field"><label>الحي</label><input type="text" id="f-district" placeholder="الحي"></div>
-          <div class="field form-full"><label>العنوان</label><input type="text" id="f-address" placeholder="العنوان التفصيلي"></div>
         </div>
       </div>
 
@@ -982,7 +969,6 @@ function renderTable(data) {
       <td>${D(v.visit_type)}</td>
       <td class="lc-date">${v.visit_date}</td>
       <td class="lc-num">${v.visit_time||'—'}</td>
-      <td><span class="badge ${PRIORITY_BADGE[v.priority]||'badge-active'}">${D(v.priority)}</span></td>
       <td><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${D(v.status)}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
@@ -1578,8 +1564,12 @@ function openAddModal() {
   }
   const codeEl = document.getElementById('f-code');
   if (codeEl) codeEl.value = NEXT_VISIT_CODE;
-  const fc = document.getElementById('f-fault-code');
-  if (fc) fc.value = '';
+  const typeEl = document.getElementById('f-type-sel');
+  if (typeEl) typeEl.value = 'صيانة دورية';
+  const typeView = document.getElementById('f-type-view');
+  if (typeView) typeView.value = 'صيانة دورية';
+  const prioEl = document.getElementById('f-priority-sel');
+  if (prioEl) prioEl.value = 'عادية';
   fillClientSelect();
   loadClientElevators();
   renderTechSelect([]);
@@ -1607,8 +1597,6 @@ function saveVisit() {
   if (techIds.length) fd.append('technician_id', techIds[0]);
   if (works) fd.append('works_done', works.value);
   fd.append('observations', obs);
-  const fc = document.getElementById('f-fault-code');
-  if (fc && fc.value.trim()) fd.append('fault_code', fc.value.trim());
 
   visitSaving = true;
   const saveBtn = document.getElementById('btn-save-visit');
@@ -1664,11 +1652,13 @@ function editVisit(id) {
   renderTechSelect(v.tech_ids && v.tech_ids.length ? v.tech_ids : (v.tech_id ? [v.tech_id] : []));
   const codeEl = document.getElementById('f-code');
   if (codeEl) codeEl.value = v.code;
-  const fc = document.getElementById('f-fault-code');
-  if (fc) fc.value = v.fault_code || '';
+  const typeEl = document.getElementById('f-type-sel');
+  if (typeEl) typeEl.value = 'صيانة دورية';
+  const typeView = document.getElementById('f-type-view');
+  if (typeView) typeView.value = 'صيانة دورية';
   const map = {
-    'f-type-sel': v.visit_type, 'f-date': v.visit_date, 'f-time': v.visit_time,
-    'f-priority-sel': v.priority, 'f-status-sel': v.status, 'f-work-done': v.works_done,
+    'f-date': v.visit_date, 'f-time': v.visit_time,
+    'f-priority-sel': 'عادية', 'f-status-sel': v.status, 'f-work-done': v.works_done,
     'f-issues': v.observations,
   };
   Object.entries(map).forEach(([k,val]) => { const el = document.getElementById(k); if (el) el.value = val || ''; });
@@ -1715,9 +1705,7 @@ function viewVisit(id) {
       <div class="view-item"><div class="view-label">نوع الزيارة</div><div class="view-val">${v.visit_type}</div></div>
       <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val lc-date">${v.visit_date}</div></div>
       <div class="view-item"><div class="view-label">الوقت</div><div class="view-val lc-num">${v.visit_time||'—'}</div></div>
-      <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${PRIORITY_BADGE[v.priority]||'badge-active'}">${v.priority}</span></div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${v.status}</span></div></div>
-      ${v.fault_code?`<div class="view-item"><div class="view-label">رقم العطل</div><div class="view-val" style="font-family:var(--font-en)">${v.fault_code}</div></div>`:''}
       ${renderVisitFlaggedItems(v)}
       ${v.observations?`<div class="view-item view-full"><div class="view-label">الملاحظات</div><div class="view-val">${v.observations}</div></div>`:''}
       ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" class="lc-open-tab" style="color:var(--accent)">طباعة PDF</a></div></div>`:''}
@@ -1768,8 +1756,8 @@ function printVisit() {
 }
 
 function exportExcel() {
-  const rows=[['الكود','العميل','المصعد','الفني','النوع','التاريخ','الأولوية','الحالة']];
-  filtered.forEach(v=>rows.push([v.code,v.customer,v.elevator,v.technician,v.visit_type,v.visit_date,v.priority,v.status]));
+  const rows=[['الكود','العميل','المصعد','الفني','النوع','التاريخ','الحالة']];
+  filtered.forEach(v=>rows.push([v.code,v.customer,v.elevator,v.technician,v.visit_type,v.visit_date,v.status]));
   const csv=rows.map(r=>r.join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
