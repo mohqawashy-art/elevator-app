@@ -3109,6 +3109,36 @@ def api_elevator_links(elevator_id):
     return jsonify(elevator_link_payload(elevator_id))
 
 
+def _find_recent_duplicate_visit(payload: dict, tech_ids: list[int]):
+    """تجاهل إعادة إرسال نفس نموذج الزيارة خلال دقائق قليلة."""
+    from technician_assignments import visit_technician_ids
+
+    window_start = datetime.utcnow() - timedelta(minutes=5)
+    candidates = (
+        MaintenanceVisit.query.filter(
+            MaintenanceVisit.created_at >= window_start,
+            MaintenanceVisit.elevator_id == payload['elevator_id'],
+            MaintenanceVisit.contract_id == payload['contract_id'],
+            MaintenanceVisit.technician_id == payload['technician_id'],
+            MaintenanceVisit.visit_type == payload['visit_type'],
+            MaintenanceVisit.visit_date == payload['visit_date'],
+            MaintenanceVisit.visit_time == payload['visit_time'],
+            MaintenanceVisit.priority == payload['priority'],
+            MaintenanceVisit.status == payload['status'],
+            MaintenanceVisit.works_done == payload['works_done'],
+            MaintenanceVisit.observations == payload['observations'],
+            MaintenanceVisit.notes == payload['notes'],
+        )
+        .order_by(MaintenanceVisit.id.desc())
+        .all()
+    )
+    normalized_ids = list(tech_ids or [])
+    for visit in candidates:
+        if visit_technician_ids(visit) == normalized_ids:
+            return visit
+    return None
+
+
 @app.route('/maintenance-visits/add', methods=['POST'])
 def visit_add():
     from entity_links import resolve_visit_links
@@ -3125,20 +3155,36 @@ def visit_add():
     fault_code = request.form.get('fault_code', '').strip()
     visit_type = request.form.get('visit_type', 'دورية')
     tech_ids = parse_technician_ids(request.form)
+    visit_payload = {
+        'elevator_id': links['elevator_id'],
+        'technician_id': tech_ids[0] if tech_ids else None,
+        'contract_id': links['contract_id'],
+        'visit_type': visit_type,
+        'visit_date': datetime.strptime(request.form['visit_date'], '%Y-%m-%d').date(),
+        'visit_time': request.form.get('visit_time', ''),
+        'priority': request.form.get('priority', 'عادية'),
+        'status': request.form.get('status', 'مجدولة'),
+        'works_done': request.form.get('works_done', ''),
+        'observations': request.form.get('observations', ''),
+        'notes': request.form.get('notes', ''),
+    }
+    duplicate = _find_recent_duplicate_visit(visit_payload, tech_ids)
+    if duplicate:
+        return redirect(url_for('maintenance_visits'))
 
     v = MaintenanceVisit(
         code          = next_code(MaintenanceVisit, 'VI-', digits=5),
-        elevator_id   = links['elevator_id'],
-        technician_id = tech_ids[0] if tech_ids else None,
-        contract_id   = links['contract_id'],
-        visit_type    = visit_type,
-        visit_date    = datetime.strptime(request.form['visit_date'], '%Y-%m-%d').date(),
-        visit_time    = request.form.get('visit_time',''),
-        priority      = request.form.get('priority','عادية'),
-        status        = request.form.get('status','مجدولة'),
-        works_done    = request.form.get('works_done',''),
-        observations  = request.form.get('observations',''),
-        notes         = request.form.get('notes',''),
+        elevator_id   = visit_payload['elevator_id'],
+        technician_id = visit_payload['technician_id'],
+        contract_id   = visit_payload['contract_id'],
+        visit_type    = visit_payload['visit_type'],
+        visit_date    = visit_payload['visit_date'],
+        visit_time    = visit_payload['visit_time'],
+        priority      = visit_payload['priority'],
+        status        = visit_payload['status'],
+        works_done    = visit_payload['works_done'],
+        observations  = visit_payload['observations'],
+        notes         = visit_payload['notes'],
     )
     db.session.add(v)
     db.session.flush()
