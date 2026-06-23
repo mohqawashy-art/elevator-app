@@ -1,0 +1,133 @@
+/* LiftCore — تجميد الجزء العلوي + رأس الجدول (التمرير داخل الجدول فقط) */
+
+/* سلسلة الارتفاع: body → main → content → table-scroll */
+body:has(.content.lc-frozen-layout) {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+body:has(.content.lc-frozen-layout) .main {
+  min-height: 0;
+}
+
+body:has(.content.lc-frozen-layout) .content.lc-frozen-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden !important;
+}
+
+/* الجزء المجمّد — لا يتحرك أبداً */
+.lc-page-sticky-top {
+  flex: 0 0 auto;
+  z-index: 40;
+  background: var(--bg, #0a0e14);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+}
+
+html[data-theme="light"] .lc-page-sticky-top {
+  background: var(--bg, #f0f4fa);
+  box-shadow: 0 2px 10px rgba(30, 60, 120, 0.07);
+}
+
+/* حاوية الجدول تمتد وتمرّر داخلياً */
+.content.lc-frozen-layout .lc-table-scroll-host,
+.content.lc-frozen-layout > #tab-table,
+.content.lc-frozen-layout > #tab-map {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.content.lc-frozen-layout .lc-table-scroll-host {
+  overflow: hidden;
+}
+
+.content.lc-frozen-layout > #tab-map {
+  overflow: auto;
+}
+
+.content.lc-frozen-layout #tab-table .lc-table-scroll-host {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.content.lc-frozen-layout .lc-table-scroll-host > .table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.content.lc-frozen-layout .lc-table-scroll-host > .table-footer {
+  flex: 0 0 auto;
+}
+
+/* رأس الجدول ثابت داخل منطقة التمرير */
+.content.lc-frozen-layout .lc-table-scroll-host .table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bg3, #161e2b);
+  box-shadow: 0 1px 0 var(--border, rgba(100, 160, 255, 0.1));
+}
+
+html[data-theme="light"] .content.lc-frozen-layout .lc-table-scroll-host .table-scroll thead th {
+  background: var(--bg3, #e8eef6);
+}
+
+html[data-theme="report"] .content.lc-frozen-layout .lc-table-scroll-host .table-scroll thead th {
+  background: var(--bg3, #e8eef6);
+}
+
+/* صفحات بدون تجميد — fallback sticky */
+.content:not(.lc-frozen-layout) .table-wrap {
+  overflow: visible;
+}
+
+.content:not(.lc-frozen-layout) .lc-page-sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.content:not(.lc-frozen-layout) .table-wrap thead th {
+  position: sticky;
+  top: var(--lc-sticky-stack-h, 0px);
+  z-index: 35;
+  background: var(--bg3, #161e2b);
+  box-shadow: 0 1px 0 var(--border, rgba(100, 160, 255, 0.1));
+}
+
+@media print {
+  body:has(.content.lc-frozen-layout) {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .content.lc-frozen-layout {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .lc-page-sticky-top,
+  .content .table-wrap thead th,
+  .content.lc-frozen-layout .lc-table-scroll-host .table-scroll {
+    position: static;
+    overflow: visible;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .lc-page-sticky-top {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}

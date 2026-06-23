@@ -12,7 +12,22 @@
   function applyHeaderHeight(header) {
     var h = measureHeaderHeight(header);
     document.documentElement.style.setProperty('--lc-header-h', h + 'px');
+    applyNavHeight();
     return h;
+  }
+
+  function applyNavHeight() {
+    var sidebar = document.getElementById('sidebar');
+    if (!sidebar || !isDesktopTopNav()) {
+      document.documentElement.style.setProperty('--lc-nav-h', '0px');
+      document.documentElement.style.setProperty('--lc-top-stack-h', 'var(--lc-header-h, 104px)');
+      return 0;
+    }
+    var navH = Math.ceil(sidebar.getBoundingClientRect().height || sidebar.offsetHeight || 0);
+    document.documentElement.style.setProperty('--lc-nav-h', navH + 'px');
+    var headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--lc-header-h'), 10) || HEADER_H_MIN;
+    document.documentElement.style.setProperty('--lc-top-stack-h', (headerH + navH) + 'px');
+    return navH;
   }
 
   function isDesktopTopNav() {
@@ -146,6 +161,11 @@
       var ro = new ResizeObserver(function () { applyHeaderHeight(header); });
       ro.observe(header);
     }
+    var sidebar = document.getElementById('sidebar');
+    if (sidebar && window.ResizeObserver) {
+      var navRo = new ResizeObserver(function () { applyNavHeight(); });
+      navRo.observe(sidebar);
+    }
     document.querySelectorAll('.lc-header-tenant-logo, .lc-header-logo').forEach(function (img) {
       if (img.complete) return;
       img.addEventListener('load', function () { applyHeaderHeight(findAppHeader()); });
@@ -155,6 +175,7 @@
   window.syncTopNavLayout = syncTopNavLayout;
   window.applyTopNavShell = applyTopNavShell;
   window.applyHeaderHeight = applyHeaderHeight;
+  window.applyNavHeight = applyNavHeight;
 
   document.addEventListener('fullscreenchange', updateFullscreenIcon);
   document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
