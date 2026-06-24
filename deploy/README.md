@@ -31,6 +31,18 @@ find ~ /var/www -maxdepth 3 -name elevator-app -type d 2>/dev/null
 deploy\deploy_to_server.bat
 ```
 
+**مزامنة LiftCore مع جما** (نفس كود جما على app.liftcoreapp.com):
+
+```bat
+deploy\push_sync_liftcore.ps1
+```
+
+أو يدوياً على السيرفر:
+
+```bash
+bash ~/liftcore/elevator-app/deploy/sync_liftcore_with_jama.sh
+```
+
 أو يدوياً:
 
 ```bash
