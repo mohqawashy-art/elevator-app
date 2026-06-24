@@ -43,7 +43,9 @@ def _extract_code(text: str, prefix: str) -> str | None:
     m = re.search(rf'{prefix}-\s*(\d+)', _str(text), re.I)
     if not m:
         return None
-    return f'{prefix.upper()}-{int(m.group(1)):04d}'
+    digits = int(m.group(1))
+    width = 5 if prefix.upper() == 'CN' else 4
+    return f'{prefix.upper()}-{digits:0{width}d}'
 
 
 def _extract_all_codes(text: str, prefix: str) -> list[str]:
@@ -98,8 +100,30 @@ def _map_visit_type(raw: str) -> str:
     return s or 'صيانة دورية'
 
 
+def is_routine_maintenance_visit(raw: str) -> bool:
+    """صيانة دورية فقط → صفحة زيارات الصيانة."""
+    s = _str(raw)
+    return bool(s) and 'دورية' in s and 'عطل' not in s
+
+
+def is_fault_bucket_visit(raw: str) -> bool:
+    """عطل + زيارة متابعة (مرجعة) → صفحة الأعطال."""
+    s = _str(raw)
+    if not s:
+        return False
+    if 'عطل' in s:
+        return True
+    if 'متابعة' in s or 'مرجعة' in s:
+        return True
+    return False
+
+
+def _visit_type_cell(row: tuple) -> str:
+    return _str(row[6] if len(row) > 6 else '')
+
+
 def _is_fault_visit_row(row: tuple) -> bool:
-    return _str(row[6] if len(row) > 6 else '') == 'عطل'
+    return is_fault_bucket_visit(_visit_type_cell(row))
 
 
 def _pick_elevator_code(el_text: str, report_text: str) -> str | None:
@@ -121,6 +145,7 @@ def _pick_technician_code(tech_text: str) -> str | None:
 
 def _build_index(model, prefix: str) -> dict[str, object]:
     idx: dict[str, object] = {}
+    width = 5 if prefix.upper() == 'CN' else 4
     for row in model.query.all():
         code = getattr(row, 'code', None)
         if not code:
@@ -128,7 +153,7 @@ def _build_index(model, prefix: str) -> dict[str, object]:
         idx[str(code).upper()] = row
         m = re.match(rf'{prefix.upper()}-(\d+)$', str(code).upper())
         if m:
-            norm = f'{prefix.upper()}-{int(m.group(1)):04d}'
+            norm = f'{prefix.upper()}-{int(m.group(1)):0{width}d}'
             idx[norm] = row
     return idx
 
@@ -143,12 +168,12 @@ def _compose_notes(row: tuple) -> str:
     parts = []
     mapping = (
         (10, 'تقرير'),
-        (11, 'توصيات'),
-        (12, 'قطع الغيار'),
-        (13, 'وصف العطل'),
-        (15, 'التشخيص'),
-        (16, 'الإجراء'),
-        (17, 'ضمان'),
+        (16, 'توصيات'),
+        (17, 'قطع الغيار'),
+        (18, 'وصف العطل'),
+        (20, 'التشخيص'),
+        (21, 'الإجراء'),
+        (22, 'ضمان'),
     )
     for i, label in mapping:
         val = _str(row[i]) if i < len(row) else ''
@@ -198,7 +223,8 @@ def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
     existing_visits = {v.code.upper() for v in MaintenanceVisit.query.all() if v.code}
 
     for row in rows:
-        if _is_fault_visit_row(row):
+        visit_type_raw = _visit_type_cell(row)
+        if not is_routine_maintenance_visit(visit_type_raw):
             stats['skipped_fault'] += 1
             continue
 
@@ -247,7 +273,7 @@ def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
             status=status,
             plan_month=plan_month,
             works_done=_str(row[10] if len(row) > 10 else ''),
-            observations=_str(row[11] if len(row) > 11 else ''),
+            observations=_str(row[16] if len(row) > 16 else ''),
             notes=notes or None,
             completed_at=datetime.utcnow() if status == 'مكتملة' else None,
         )
@@ -286,7 +312,7 @@ def main() -> int:
             print(f"Imported: {result['imported']}")
         print(f"Skipped (existing): {result['skipped_existing']}")
         print(f"Skipped (missing elevator/contract): {result['skipped_missing']}")
-        print(f"Skipped (fault visits — use faults import): {result['skipped_fault']}")
+        print(f"Skipped (non-routine / faults bucket): {result['skipped_fault']}")
         print(f"Errors: {result['errors']}")
         if result.get('missing_samples'):
             print('Missing samples:')

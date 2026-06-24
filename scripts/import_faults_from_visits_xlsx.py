@@ -61,7 +61,7 @@ def _map_fault_status(raw: str) -> str:
 
 
 def _is_fault_row(row: tuple) -> bool:
-    return vx._str(row[6] if len(row) > 6 else '') == 'عطل'
+    return vx.is_fault_bucket_visit(vx._visit_type_cell(row))
 
 
 def _compose_notes(row: tuple) -> str:
@@ -158,7 +158,10 @@ def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
         notes = _compose_notes(row)
         resolution = _compose_resolution(row)
         tech_notes = vx._str(row[20] if len(row) > 20 else '')
-        cn_code = vx._extract_code(row[3] if len(row) > 3 else '') or vx._extract_code(row[0] if len(row) > 0 else '')
+        cn_code = (
+            vx._extract_code(row[3] if len(row) > 3 else '', 'CN')
+            or vx._extract_code(row[0] if len(row) > 0 else '', 'CN')
+        )
         meta = []
         if visit_code:
             meta.append(f'زيارة: {visit_code}')
