@@ -17,6 +17,66 @@
 
 /* ── عناصر الشاشة فقط ── */
 @media print {
+  /* هيدر التطبيق — يتغلب على liftcore-shell.css (هذا الملف يُحمَّل في التقارير فقط) */
+  body > header.lc-header,
+  body > header.header,
+  html.lc-shell-ready body:has(#sidebar) > header.lc-header,
+  html.lc-shell-ready body:has(#sidebar) > header.header.lc-header,
+  html.lc-printing body > header.lc-header,
+  html.lc-printing body > header.header,
+  html.lc-shell-ready.lc-printing body:has(#sidebar) > header.lc-header,
+  html.lc-shell-ready.lc-printing body:has(#sidebar) > header.header.lc-header {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    position: absolute !important;
+    left: -99999px !important;
+    top: 0 !important;
+  }
+
+  html.lc-printing body:has(#sidebar),
+  body[data-report-id]:has(#sidebar),
+  body[data-report-dashboard]:has(#sidebar),
+  body[data-report-annual]:has(#sidebar) {
+    display: block !important;
+    grid-template-rows: none !important;
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+  }
+
+  #sidebar,
+  aside.sidebar {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .main {
+    grid-row: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* التقرير السنوي: الفلاتر والتلميح فقط — يبقى #report-container */
+  body[data-report-annual] .content > *:not(#report-container) {
+    display: none !important;
+  }
+
+  body[data-report-annual] #report-container {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  body[data-report-annual] #report-container .print-toolbar {
+    display: none !important;
+  }
+
   .screen-only,
   .sidebar,
   .header,
