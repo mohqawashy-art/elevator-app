@@ -254,6 +254,7 @@ def geocode_customers_missing(
 ) -> dict:
     """تحديد مواقع الخريطة (lat/lng) للعملاء الذين لديهم عنوان/مدينة بدون GPS."""
     geocoded = geo_fail = skipped = 0
+    pending = []
     for customer in Customer.query.all():
         has_gps = False
         if customer.lat and customer.lng and not force:
@@ -268,6 +269,13 @@ def geocode_customers_missing(
         if not (customer.address or customer.city or customer.district):
             skipped += 1
             continue
+        pending.append(customer)
+
+    total = len(pending)
+    if total:
+        print(f'  geocoding {total} customers (may take several minutes)...', flush=True)
+
+    for idx, customer in enumerate(pending, start=1):
         if dry_run:
             geocoded += 1
             continue
@@ -275,6 +283,10 @@ def geocode_customers_missing(
             geocoded += 1
         else:
             geo_fail += 1
+        if idx == 1 or idx % 10 == 0 or idx == total:
+            print(f'  ... {idx}/{total} (ok={geocoded}, fail={geo_fail})', flush=True)
+        if db_session is not None and idx % 20 == 0:
+            db_session.commit()
 
     if not dry_run and db_session is not None:
         db_session.commit()

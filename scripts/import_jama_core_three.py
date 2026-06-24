@@ -196,20 +196,20 @@ def main() -> int:
         cstats = import_customers(args.clients, dry_run=args.dry_run)
         print(cstats)
 
-        if not args.skip_geocode:
-            print('\n==> [2/4] إحداثيات الخريطة')
-            gstats = geocode_all_clients(dry_run=args.dry_run)
-            print(gstats)
-        else:
-            print('\n==> [2/4] تخطي الخريطة')
-
-        print('\n==> [3/4] الفنيين')
+        print('\n==> [2/4] الفنيين')
         tstats = import_technicians(args.technicians, dry_run=args.dry_run)
         print(tstats)
 
-        print('\n==> [4/4] المصاعد')
+        print('\n==> [3/4] المصاعد')
         estats = import_elevators(args.elevators, dry_run=args.dry_run)
         print(estats)
+
+        if not args.skip_geocode:
+            print('\n==> [4/4] إحداثيات الخريطة (قد تستغرق 3–5 دقائق)')
+            gstats = geocode_all_clients(dry_run=args.dry_run)
+            print(gstats)
+        else:
+            print('\n==> [4/4] تخطي الخريطة — شغّل: bash deploy/geocode_jama_clients.sh')
 
         if not args.dry_run:
             print('\n=== الملخص ===')
