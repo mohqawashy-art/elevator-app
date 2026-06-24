@@ -1727,6 +1727,12 @@ def api_contract_detail(contract_id):
 
 @app.route('/clients/add', methods=['POST'])
 def client_add():
+    from form_validation import customer_name_error
+
+    name_err = customer_name_error(request.form.get('name'))
+    if name_err:
+        flash(name_err, 'error')
+        return redirect(url_for('clients'))
     phone_raw = request.form.get('phone', '')
     phone_err = client_phone_error(phone_raw)
     if phone_err:
@@ -1781,7 +1787,13 @@ def client_add():
 
 @app.route('/clients/edit/<int:id>', methods=['POST'])
 def client_edit(id):
+    from form_validation import customer_name_error
+
     c = Customer.query.get_or_404(id)
+    name_err = customer_name_error(request.form.get('name'), customer_id=c.id)
+    if name_err:
+        flash(name_err, 'error')
+        return redirect(url_for('clients'))
     phone_raw = request.form.get('phone', '')
     phone_err = client_phone_error(phone_raw)
     if phone_err:
@@ -1904,6 +1916,12 @@ def elevators_import_template():
 
 @app.route('/elevators/add', methods=['POST'])
 def elevator_add():
+    from form_validation import elevator_form_error
+
+    elev_err = elevator_form_error(request.form, parse_int=_parse_int)
+    if elev_err:
+        flash(elev_err, 'error')
+        return redirect(url_for('elevators'))
     e = Elevator(
         code            = next_code(Elevator, 'EL-', digits=4),
         customer_id     = request.form['customer_id'],
@@ -1943,6 +1961,12 @@ def elevator_add():
 
 @app.route('/elevators/edit/<int:id>', methods=['POST'])
 def elevator_edit(id):
+    from form_validation import elevator_form_error
+
+    elev_err = elevator_form_error(request.form, parse_int=_parse_int)
+    if elev_err:
+        flash(elev_err, 'error')
+        return redirect(url_for('elevators'))
     e = Elevator.query.get_or_404(id)
     e.customer_id      = request.form['customer_id']
     e.building_name    = request.form.get('building_name', '')
@@ -2490,6 +2514,12 @@ def contracts_import_template():
 
 @app.route('/contracts/edit/<int:id>', methods=['POST'])
 def contract_edit(id):
+    from form_validation import contract_form_error
+
+    err = contract_form_error(request.form, money_round=_money_round)
+    if err:
+        flash(err, 'error')
+        return redirect(url_for('contracts'))
     c = Contract.query.get_or_404(id)
     _apply_contract_form(c, request.form)
     _save_contract_file(c, request.files.get('contract_file'))
@@ -2500,6 +2530,12 @@ def contract_edit(id):
 
 @app.route('/contracts/add', methods=['POST'])
 def contract_add():
+    from form_validation import contract_form_error
+
+    err = contract_form_error(request.form, money_round=_money_round)
+    if err:
+        flash(err, 'error')
+        return redirect(url_for('contracts'))
     c = Contract(code=next_code(Contract, 'CN-', digits=5))
     _apply_contract_form(c, request.form)
     db.session.add(c)
@@ -3142,7 +3178,13 @@ def _find_recent_duplicate_visit(payload: dict, tech_ids: list[int]):
 @app.route('/maintenance-visits/add', methods=['POST'])
 def visit_add():
     from entity_links import resolve_visit_links
+    from form_validation import visit_form_error
     from technician_assignments import parse_technician_ids, sync_visit_technicians
+
+    err = visit_form_error(request.form, parse_technician_ids=parse_technician_ids)
+    if err:
+        flash(err, 'error')
+        return redirect(url_for('maintenance_visits'))
 
     links = resolve_visit_links(
         request.form['elevator_id'],
@@ -3192,7 +3234,13 @@ def visit_add():
 @app.route('/maintenance-visits/edit/<int:id>', methods=['POST'])
 def visit_edit(id):
     from entity_links import resolve_visit_links
+    from form_validation import visit_form_error
     from technician_assignments import parse_technician_ids, sync_visit_technicians
+
+    err = visit_form_error(request.form, parse_technician_ids=parse_technician_ids)
+    if err:
+        flash(err, 'error')
+        return redirect(url_for('maintenance_visits'))
 
     v = MaintenanceVisit.query.get_or_404(id)
     links = resolve_visit_links(
@@ -3756,12 +3804,16 @@ def field_fault_complete(fault_id):
         if f.technician_id and f.technician_id != tech_id:
             abort(403)
 
-    complete_field_fault(
-        fault_id,
-        tech_notes=request.form.get('tech_notes', ''),
-        resolution=request.form.get('resolution', ''),
-        status=request.form.get('status', 'تم الاصلاح'),
-    )
+    try:
+        complete_field_fault(
+            fault_id,
+            tech_notes=request.form.get('tech_notes', ''),
+            resolution=request.form.get('resolution', ''),
+            status=request.form.get('status', 'تم الاصلاح'),
+        )
+    except ValueError as e:
+        flash(str(e), 'error')
+        return redirect(url_for('field_fault_report', fault_id=fault_id))
     return redirect(url_for('field_home'))
 
 
@@ -3875,7 +3927,16 @@ def _apply_fault_billing_from_form(fault, form):
 @app.route('/faults/edit/<int:id>', methods=['POST'])
 def fault_edit(id):
     from entity_links import link_fault_to_visit, lookup_visit
+    from form_validation import fault_close_error
     from technician_assignments import parse_technician_ids, sync_fault_technicians
+
+    close_err = fault_close_error(
+        request.form.get('status'),
+        request.form.get('resolution'),
+    )
+    if close_err:
+        flash(close_err, 'error')
+        return redirect(url_for('faults'))
 
     f = Fault.query.get_or_404(id)
     tech_ids = parse_technician_ids(request.form)
@@ -3899,9 +3960,14 @@ def fault_edit(id):
         visit = lookup_visit(visit_code)
         if visit:
             link_fault_to_visit(f, visit)
-    _apply_fault_billing_from_form(f, request.form)
-    sync_fault_technicians(f, tech_ids)
-    db.session.commit()
+    try:
+        _apply_fault_billing_from_form(f, request.form)
+        sync_fault_technicians(f, tech_ids)
+        db.session.commit()
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+        return redirect(url_for('faults'))
     return redirect(url_for('faults'))
 
 @app.route('/faults/add', methods=['POST'])
@@ -3909,6 +3975,14 @@ def fault_add():
     from entity_links import link_fault_to_visit, lookup_visit
     from operations import dispatch_fault
     from technician_assignments import parse_technician_ids, sync_fault_technicians
+
+    tech_ids = parse_technician_ids(request.form)
+    if not tech_ids:
+        flash('اختر فني واحد على الأقل', 'error')
+        return redirect(url_for('faults'))
+    if not (request.form.get('elevator_id') or '').strip():
+        flash('اختر المصعد', 'error')
+        return redirect(url_for('faults'))
 
     billable = request.form.get('billable', 'no')
     client_report = request.form.get('client_report') or request.form.get('description', '')
@@ -3938,8 +4012,13 @@ def fault_add():
         if visit:
             link_fault_to_visit(f, visit)
 
-    _apply_fault_billing_from_form(f, request.form)
-    db.session.commit()
+    try:
+        _apply_fault_billing_from_form(f, request.form)
+        db.session.commit()
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+        return redirect(url_for('faults'))
 
     if f.technician_id:
         base = request.url_root
@@ -4125,9 +4204,16 @@ def invoices():
 
 @app.route('/invoices/edit/<int:id>', methods=['POST'])
 def invoice_edit(id):
+    from form_validation import invoice_amount_error
+
     i = Invoice.query.get_or_404(id)
-    amount = float(request.form.get('amount', 0))
+    amount = float(request.form.get('amount', 0) or 0)
     tax = amount * 0.15
+    total = amount + tax
+    amt_err = invoice_amount_error(amount)
+    if amt_err:
+        flash(amt_err, 'error')
+        return redirect(url_for('invoices'))
     i.invoice_type   = request.form.get('invoice_type', 'فاتورة ضريبية')
     i.customer_id    = request.form.get('customer_id') or None
     i.invoice_date   = datetime.strptime(request.form['invoice_date'], '%Y-%m-%d').date()
@@ -4149,9 +4235,15 @@ def invoice_edit(id):
 
 @app.route('/invoices/add', methods=['POST'])
 def invoice_add():
+    from form_validation import invoice_amount_error
+
     amount = float(request.form.get('amount', 0) or 0)
     tax = round(amount * 0.15, 2)
     total = round(amount + tax, 2)
+    amt_err = invoice_amount_error(amount)
+    if amt_err:
+        flash(amt_err, 'error')
+        return redirect(url_for('invoices'))
     source_type = (request.form.get('source_type') or '').strip()
     source_id = (request.form.get('source_id') or '').strip()
     customer_id = request.form.get('customer_id') or None
@@ -4322,6 +4414,12 @@ def inventory():
 
 @app.route('/inventory/edit/<int:id>', methods=['POST'])
 def inventory_edit(id):
+    from form_validation import inventory_form_error
+
+    err = inventory_form_error(request.form)
+    if err:
+        flash(err, 'error')
+        return redirect(url_for('inventory'))
     item = InventoryItem.query.get_or_404(id)
     name = (request.form.get('name') or '').strip()
     if not name:
@@ -4341,6 +4439,12 @@ def inventory_edit(id):
 
 @app.route('/inventory/add', methods=['POST'])
 def inventory_add():
+    from form_validation import inventory_form_error
+
+    err = inventory_form_error(request.form)
+    if err:
+        flash(err, 'error')
+        return redirect(url_for('inventory'))
     name = (request.form.get('name') or '').strip()
     if not name:
         return redirect(url_for('inventory'))
@@ -4968,13 +5072,9 @@ def elevator_estimate_print(estimate_id):
 
 def _adjust_inventory_qty(item, direction, qty, *, reverse=False):
     """تطبيق أو عكس تأثير حركة مخزون على رصيد الصنف."""
-    if not item:
-        return
-    q = float(qty or 0)
-    delta = q if direction == 'وارد' else -q
-    if reverse:
-        delta = -delta
-    item.current_qty = (item.current_qty or 0) + delta
+    from inventory_stock import adjust_inventory_qty
+
+    adjust_inventory_qty(item, direction, qty, reverse=reverse)
 
 
 @app.route('/stock-movements')
@@ -5196,62 +5296,99 @@ def parts_delete(id):
 def reports():
     return render_template('reports.html')
 
+def _report_ctx():
+    return {
+        'db': db,
+        'Customer': Customer,
+        'Elevator': Elevator,
+        'Contract': Contract,
+        'Technician': Technician,
+        'MaintenanceVisit': MaintenanceVisit,
+        'Fault': Fault,
+        'Revenue': Revenue,
+        'Expense': Expense,
+        'Invoice': Invoice,
+        'InventoryItem': InventoryItem,
+        'StockMovement': StockMovement,
+        'PartsBilling': PartsBilling,
+        'contract_display_status': contract_display_status,
+    }
+
+
+def _render_report_page(report_id, template):
+    from report_data import fetch_report_rows
+    return render_template(
+        template,
+        report_rows=fetch_report_rows(report_id, _report_ctx()),
+        report_id=report_id,
+    )
+
+
 @app.route('/reports/dashboard')
 def report_dashboard():
-    return render_template('report-dashboard.html')
+    return render_template('report-dashboard.html', current_year=date.today().year)
 
 @app.route('/reports/client-annual')
 def report_client_annual():
-    customers = Customer.query.all()
-    return render_template('report-annual.html', customers=customers)
+    customers = Customer.query.order_by(Customer.name).all()
+    customers_json = [{'id': c.id, 'name': c.name, 'code': c.code} for c in customers]
+    cur_year = date.today().year
+    report_years = list(range(cur_year, cur_year - 6, -1))
+    return render_template(
+        'report-annual.html',
+        customers=customers,
+        customers_json=customers_json,
+        report_years=report_years,
+        current_year=cur_year,
+    )
 
 @app.route('/reports/clients')
 def report_clients():
-    return render_template('report-clients.html')
+    return _render_report_page('report-clients', 'report-clients.html')
 
 @app.route('/reports/elevators')
 def report_elevators():
-    return render_template('report-elevators.html')
+    return _render_report_page('report-elevators', 'report-elevators.html')
 
 @app.route('/reports/contracts')
 def report_contracts():
-    return render_template('report-contracts.html')
+    return _render_report_page('report-contracts', 'report-contracts.html')
 
 @app.route('/reports/technicians')
 def report_technicians():
-    return render_template('report-technicians.html')
+    return _render_report_page('report-technicians', 'report-technicians.html')
 
 @app.route('/reports/maintenance-visits')
 def report_maintenance():
-    return render_template('report-maintenance.html')
+    return _render_report_page('report-maintenance', 'report-maintenance.html')
 
 @app.route('/reports/faults')
 def report_faults():
-    return render_template('report-faults.html')
+    return _render_report_page('report-faults', 'report-faults.html')
 
 @app.route('/reports/revenues')
 def report_revenues():
-    return render_template('report-revenues.html')
+    return _render_report_page('report-revenues', 'report-revenues.html')
 
 @app.route('/reports/expenses')
 def report_expenses():
-    return render_template('report-expenses.html')
+    return _render_report_page('report-expenses', 'report-expenses.html')
 
 @app.route('/reports/invoices')
 def report_invoices():
-    return render_template('report-invoices.html')
+    return _render_report_page('report-invoices', 'report-invoices.html')
 
 @app.route('/reports/inventory')
 def report_inventory():
-    return render_template('report-inventory.html')
+    return _render_report_page('report-inventory', 'report-inventory.html')
 
 @app.route('/reports/stock-movements')
 def report_stock():
-    return render_template('report-stock.html')
+    return _render_report_page('report-stock', 'report-stock.html')
 
 @app.route('/reports/parts-billing')
 def report_parts():
-    return render_template('report-parts.html')
+    return _render_report_page('report-parts', 'report-parts.html')
 
 # =============================================
 # المستخدمون — مساعدات
@@ -5723,12 +5860,16 @@ def settings_change_password():
 # =============================================
 @app.route('/api/dashboard')
 def api_dashboard():
-    from sqlalchemy import extract
+    from sqlalchemy import extract, case
     year = int(request.args.get('year', datetime.now().year))
+    today = date.today()
+    in_60_days = today + timedelta(days=60)
 
     # إيرادات شهرية
     monthly_rev = []
     monthly_exp = []
+    monthly_visits = []
+    monthly_faults = []
     for m in range(1, 13):
         rev = db.session.query(db.func.sum(Revenue.total)).filter(
             extract('year', Revenue.revenue_date) == year,
@@ -5740,8 +5881,137 @@ def api_dashboard():
         ).scalar() or 0
         monthly_rev.append(round(rev, 2))
         monthly_exp.append(round(exp, 2))
+        monthly_visits.append(MaintenanceVisit.query.filter(
+            extract('year', MaintenanceVisit.visit_date) == year,
+            extract('month', MaintenanceVisit.visit_date) == m,
+        ).count())
+        monthly_faults.append(Fault.query.filter(
+            extract('year', Fault.reported_at) == year,
+            extract('month', Fault.reported_at) == m,
+        ).count())
 
     stats, alerts = get_dashboard_stats()
+
+    revenue_by_type = {}
+    for row in db.session.query(
+        Revenue.revenue_type,
+        db.func.sum(Revenue.total),
+    ).filter(
+        extract('year', Revenue.revenue_date) == year,
+    ).group_by(Revenue.revenue_type).all():
+        label = row[0] or 'أخرى'
+        revenue_by_type[label] = round(row[1] or 0, 2)
+
+    expense_by_type = {}
+    for row in db.session.query(
+        Expense.expense_type,
+        db.func.sum(Expense.amount),
+    ).filter(
+        extract('year', Expense.expense_date) == year,
+    ).group_by(Expense.expense_type).all():
+        label = row[0] or 'أخرى'
+        expense_by_type[label] = round(row[1] or 0, 2)
+
+    top_clients_raw = db.session.query(
+        Customer.id,
+        db.func.coalesce(db.func.sum(Revenue.total), 0).label('total_rev'),
+    ).outerjoin(
+        Revenue,
+        db.and_(
+            Revenue.customer_id == Customer.id,
+            extract('year', Revenue.revenue_date) == year,
+        ),
+    ).group_by(Customer.id).order_by(db.desc('total_rev')).limit(5).all()
+
+    top_clients = []
+    for row in top_clients_raw:
+        cust = Customer.query.get(row.id)
+        if not cust:
+            continue
+        top_clients.append({
+            'name': cust.name,
+            'city': cust.city or '',
+            'elevators': len(cust.elevators),
+            'contracts': len(cust.contracts),
+            'revenue': round(row.total_rev or 0, 2),
+            'status': cust.status or '',
+        })
+
+    expiring_list = Contract.query.filter(
+        Contract.end_date >= today,
+        Contract.end_date <= in_60_days,
+    ).order_by(Contract.end_date).limit(15).all()
+
+    expiring_contracts_rows = []
+    for c in expiring_list:
+        days_left = (c.end_date - today).days if c.end_date else 0
+        expiring_contracts_rows.append({
+            'code': c.code,
+            'customer': c.customer.name if c.customer else '—',
+            'end_date': str(c.end_date or ''),
+            'days_left': days_left,
+            'value': c.total or c.value or 0,
+            'inv_status': c.invoice_status or '—',
+        })
+
+    down_elevators = Elevator.query.filter(
+        Elevator.status.in_(['متوقف', 'خارج الخدمة']),
+    ).order_by(Elevator.code).limit(20).all()
+
+    down_elevators_rows = []
+    for e in down_elevators:
+        last_visit = MaintenanceVisit.query.filter_by(
+            elevator_id=e.id,
+        ).order_by(MaintenanceVisit.visit_date.desc()).first()
+        tech_name = '—'
+        if last_visit and last_visit.technician:
+            tech_name = last_visit.technician.name
+        elif e.faults:
+            last_fault = sorted(e.faults, key=lambda f: f.reported_at or datetime.min, reverse=True)[0]
+            if last_fault.technician:
+                tech_name = last_fault.technician.name
+        down_elevators_rows.append({
+            'code': e.code,
+            'customer': e.customer.name if e.customer else '—',
+            'elev_type': e.elev_type or '—',
+            'status': e.status,
+            'last_maint': str(e.last_maintenance or '—'),
+            'technician': tech_name,
+        })
+
+    tech_visit_rows = db.session.query(
+        Technician.name,
+        db.func.count(MaintenanceVisit.id),
+    ).join(
+        MaintenanceVisit, MaintenanceVisit.technician_id == Technician.id,
+    ).filter(
+        extract('year', MaintenanceVisit.visit_date) == year,
+    ).group_by(Technician.id).order_by(db.desc(db.func.count(MaintenanceVisit.id))).limit(8).all()
+
+    tech_visits = [{'name': n, 'count': c} for n, c in tech_visit_rows]
+
+    tech_fault_rows = db.session.query(
+        Technician.name,
+        db.func.count(Fault.id),
+        db.func.sum(case(
+            (Fault.status.in_(['تم الاصلاح', 'مغلق']), 1),
+            else_=0,
+        )),
+    ).join(
+        Fault, Fault.technician_id == Technician.id,
+    ).filter(
+        extract('year', Fault.reported_at) == year,
+    ).group_by(Technician.id).order_by(db.desc(db.func.count(Fault.id))).limit(8).all()
+
+    tech_fault_rates = []
+    for name, total, resolved in tech_fault_rows:
+        total = total or 0
+        resolved = resolved or 0
+        tech_fault_rates.append({
+            'name': name,
+            'rate': round(resolved / total * 100) if total else 0,
+            'total': total,
+        })
 
     return jsonify({
         'customers':          stats['customers'],
@@ -5760,6 +6030,15 @@ def api_dashboard():
         'low_stock':          alerts['low_stock_count'],
         'monthly_revenue': monthly_rev,
         'monthly_expenses': monthly_exp,
+        'monthly_visits': monthly_visits,
+        'monthly_faults': monthly_faults,
+        'revenue_by_type': revenue_by_type,
+        'expense_by_type': expense_by_type,
+        'top_clients': top_clients,
+        'expiring_contracts_list': expiring_contracts_rows,
+        'down_elevators': down_elevators_rows,
+        'tech_visits': tech_visits,
+        'tech_fault_rates': tech_fault_rates,
         'elev_status': {
             'نشط':          Elevator.query.filter_by(status='نشط').count(),
             'تحت الصيانة':  Elevator.query.filter_by(status='تحت الصيانة').count(),
@@ -5778,211 +6057,78 @@ def api_dashboard():
 
 @app.route('/api/reports/clients')
 def api_report_clients():
-    customers = Customer.query.order_by(Customer.id).all()
-    return jsonify([{
-        'code':     c.code,
-        'name':     c.name,
-        'city':     c.city or '',
-        'district': c.district or '',
-        'phone':    c.phone or '',
-        'elevators':len(c.elevators),
-        'contracts':len(c.contracts),
-        'contract_status': contract_display_status(c.contracts[0]) if c.contracts else 'بدون عقد',
-        'status':   c.status,
-    } for c in customers])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-clients', _report_ctx()))
 
 
 @app.route('/api/reports/elevators')
 def api_report_elevators():
-    elevs = Elevator.query.order_by(Elevator.id).all()
-    return jsonify([{
-        'code':       e.code,
-        'customer':   e.customer.name,
-        'building':   e.building_name or '',
-        'city':       e.city or '',
-        'elev_type':  e.elev_type or '',
-        'brand':      e.brand or '',
-        'capacity':   str(e.capacity_kg or '') + ' كجم' if e.capacity_kg else '',
-        'status':     e.status,
-        'next_maint': str(e.next_maintenance or ''),
-    } for e in elevs])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-elevators', _report_ctx()))
 
 
 @app.route('/api/reports/contracts')
 def api_report_contracts():
-    contracts = Contract.query.order_by(Contract.id).all()
-    return jsonify([{
-        'code':          c.code,
-        'customer':      c.customer.name,
-        'contract_type': c.contract_type or '',
-        'start_date':    str(c.start_date or ''),
-        'end_date':      str(c.end_date or ''),
-        'elevators':     len(c.elevators),
-        'value':         c.value or 0,
-        'total':         c.total or 0,
-        'status':        c.status,
-        'inv_status':    c.invoice_status or '',
-    } for c in contracts])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-contracts', _report_ctx()))
 
 
 @app.route('/api/reports/technicians')
 def api_report_technicians():
-    techs = Technician.query.order_by(Technician.id).all()
-    return jsonify([{
-        'code':           t.code,
-        'name':           t.name,
-        'phone':          t.phone or '',
-        'job_title':      t.job_title or '',
-        'specialization': t.specialization or '',
-        'city':           t.city or '',
-        'status':         t.status,
-        'emergency':      'نعم' if t.emergency else 'لا',
-        'visits':         len(t.visits),
-    } for t in techs])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-technicians', _report_ctx()))
 
 
 @app.route('/api/reports/visits')
 def api_report_visits():
-    visits = MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc()).all()
-    return jsonify([{
-        'code':       v.code,
-        'customer':   v.elevator.customer.name,
-        'elevator':   v.elevator.code,
-        'technician': v.technician.name if v.technician else '—',
-        'visit_type': v.visit_type or '',
-        'visit_date': str(v.visit_date or ''),
-        'priority':   v.priority or '',
-        'status':     v.status,
-    } for v in visits])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-maintenance', _report_ctx()))
 
 
 @app.route('/api/reports/faults')
 def api_report_faults():
-    faults = Fault.query.order_by(Fault.reported_at.desc()).all()
-    return jsonify([{
-        'code':       f.code,
-        'customer':   f.elevator.customer.name,
-        'elevator':   f.elevator.code,
-        'fault_type': f.fault_type or '',
-        'priority':   f.priority or '',
-        'technician': f.technician.name if f.technician else '—',
-        'response':   f.response_time or '—',
-        'status':     f.status,
-        'billed':     'مفوتر' if f.billed else 'غير مفوتر',
-    } for f in faults])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-faults', _report_ctx()))
 
 
 @app.route('/api/reports/revenues')
 def api_report_revenues():
-    from sqlalchemy import extract
-    year  = request.args.get('year', datetime.now().year)
-    month = request.args.get('month', '')
-    q = Revenue.query
-    if year:  q = q.filter(extract('year',  Revenue.revenue_date) == int(year))
-    if month: q = q.filter(extract('month', Revenue.revenue_date) == int(month))
-    revs = q.order_by(Revenue.revenue_date.desc()).all()
-    return jsonify([{
-        'code':         r.code,
-        'customer':     r.customer.name if r.customer else '—',
-        'contract':     r.contract.code if r.contract else '—',
-        'date':         str(r.revenue_date or ''),
-        'revenue_type': r.revenue_type or '',
-        'pay_method':   r.payment_method or '',
-        'amount':       r.amount or 0,
-        'tax':          r.tax_amount or 0,
-        'total':        r.total or 0,
-        'status':       r.status or '',
-    } for r in revs])
+    from report_data import get_report_revenues
+    year = request.args.get('year', datetime.now().year)
+    month = request.args.get('month', '') or None
+    return jsonify(get_report_revenues(db, Revenue, year=year, month=month))
 
 
 @app.route('/api/reports/expenses')
 def api_report_expenses():
-    from sqlalchemy import extract
-    year  = request.args.get('year', datetime.now().year)
-    month = request.args.get('month', '')
-    q = Expense.query
-    if year:  q = q.filter(extract('year',  Expense.expense_date) == int(year))
-    if month: q = q.filter(extract('month', Expense.expense_date) == int(month))
-    exps = q.order_by(Expense.expense_date.desc()).all()
-    return jsonify([{
-        'code':         e.code,
-        'date':         str(e.expense_date or ''),
-        'expense_type': e.expense_type or '',
-        'description':  e.description or '',
-        'responsible':  e.responsible or '',
-        'pay_method':   e.payment_method or '',
-        'amount':       e.amount or 0,
-    } for e in exps])
+    from report_data import get_report_expenses
+    year = request.args.get('year', datetime.now().year)
+    month = request.args.get('month', '') or None
+    return jsonify(get_report_expenses(db, Expense, year=year, month=month))
 
 
 @app.route('/api/reports/invoices')
 def api_report_invoices():
-    invs = Invoice.query.order_by(Invoice.invoice_date.desc()).all()
-    return jsonify([{
-        'code':         i.code,
-        'invoice_type': i.invoice_type or '',
-        'customer':     i.customer.name if i.customer else '—',
-        'contract':     i.contract.code if i.contract else '—',
-        'date':         str(i.invoice_date or ''),
-        'description':  i.description or '',
-        'amount':       i.amount or 0,
-        'tax':          i.tax_amount or 0,
-        'total':        i.total or 0,
-        'pay_method':   i.payment_method or '',
-        'status':       i.status or '',
-    } for i in invs])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-invoices', _report_ctx()))
 
 
 @app.route('/api/reports/inventory')
 def api_report_inventory():
-    items = InventoryItem.query.order_by(InventoryItem.id).all()
-    return jsonify([{
-        'code':        i.code,
-        'name':        i.name,
-        'category':    i.category or '',
-        'current_qty': i.current_qty or 0,
-        'unit':        i.unit or '',
-        'min_qty':     i.min_qty or 0,
-        'buy_price':   i.buy_price or 0,
-        'stock_value': i.stock_value,
-        'supplier':    i.supplier or '',
-        'order_status':i.order_status,
-    } for i in items])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-inventory', _report_ctx()))
 
 
 @app.route('/api/reports/stock')
 def api_report_stock():
-    movements = StockMovement.query.order_by(StockMovement.movement_date.desc()).all()
-    return jsonify([{
-        'code':          m.code,
-        'date':          str(m.movement_date or ''),
-        'direction':     m.direction or '',
-        'movement_type': m.movement_type or '',
-        'item':          m.item.name,
-        'item_code':     m.item.code,
-        'quantity':      m.quantity or 0,
-        'unit_price':    m.unit_price or 0,
-        'total_value':   m.total_value or 0,
-        'technician':    m.technician.name if m.technician else '—',
-        'reason':        m.reason or '',
-    } for m in movements])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-stock', _report_ctx()))
 
 
 @app.route('/api/reports/parts')
 def api_report_parts():
-    parts = PartsBilling.query.order_by(PartsBilling.billing_date.desc()).all()
-    return jsonify([{
-        'code':       p.code,
-        'customer':   p.customer.name if p.customer else '—',
-        'contract':   p.contract.code if p.contract else '—',
-        'date':       str(p.billing_date or ''),
-        'description':p.description or '',
-        'cost_price': p.cost_price or 0,
-        'sell_price': p.sell_price or 0,
-        'profit':     p.profit or 0,
-        'pay_method': p.payment_method or '',
-        'status':     p.status or '',
-    } for p in parts])
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-parts', _report_ctx()))
 
 
 @app.route('/api/reports/client-annual/<int:customer_id>')

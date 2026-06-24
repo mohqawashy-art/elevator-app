@@ -219,19 +219,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .badge-gold{background:rgba(224,144,48,.12);color:#e09030}
 .badge-blue{background:rgba(42,127,255,.12);color:#2a7fff}
 .badge-gray{background:rgba(138,155,184,.1);color:#8a9bb8}
-@media print{
-  .sidebar,.header,.filter-card,.print-toolbar,.page-header,.mobile-overlay{display:none!important}
-  .main{display:block}
-  .content{padding:0}
-  .print-wrap{border:none;border-radius:0;margin:0}
-  .rpt-page{padding:16px 20px}
-}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='reports-print.css') }}?v=1">
+<script src="{{ url_for('static', filename='reports-print.js') }}?v=1"></script>
 <script src="/static/liftcore-dates.js" defer></script>
 </head>
-<body>
+<body data-report-id="report-revenues">
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
@@ -267,10 +262,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   {% set page_title = 'تقرير الإيرادات' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
-    <div class="page-header">
+    <div class="page-header screen-only">
       <div class="page-title">تقرير الإيرادات</div>
       <div class="page-actions">
-        <button class="btn btn-secondary btn-sm" onclick="window.print()">
+        <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
         </button>
         <button class="btn btn-success btn-sm" onclick="exportExcel()">
@@ -278,7 +273,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </button>
       </div>
     </div>
-    <div class="filter-card" style="margin-bottom:20px">
+    <div class="filter-card screen-only" style="margin-bottom:20px">
       <div class="filter-row">
         <div class="field" style="flex:2">
           <label>بحث</label>
@@ -310,7 +305,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="print-toolbar">
         <span class="print-toolbar-title">تقرير الإيرادات</span>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary btn-sm" onclick="window.print()">
+          <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
           </button>
           <button class="btn btn-success btn-sm" onclick="exportExcel()">
@@ -333,10 +328,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
       </div>
     </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">275,686 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي الإيرادات</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">248,000 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">محصّل</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">27,686 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">معلق</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">42,500 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">هذا الشهر</div></div></div>
+        <div id="rpt-print-stats" class="rpt-print-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي الإيرادات</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">محصّل</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">معلق</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">هذا الشهر</div></div></div>
         <table class="rpt-table">
         <thead><tr><th>رقم العملية</th><th>العميل / العقد</th><th>التاريخ</th><th>نوع الإيراد</th><th>طريقة الدفع</th><th>المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)</th><th>الحالة</th></tr></thead>
-        <tbody><tr><td class="num">REV-001</td><td class="num">برج الياسمين / CN-00001</td><td class="num">2025-01-15</td><td class="">عقد صيانة</td><td class="">تحويل بنكي</td><td class="num">13,800</td><td class=""><span class="badge badge-green">محصّل</span></td></tr><tr><td class="num">REV-002</td><td class="num">مستشفى السلام / CN-00004</td><td class="num">2025-01-20</td><td class="">عقد صيانة</td><td class="">شيك</td><td class="num">27,600</td><td class=""><span class="badge badge-green">محصّل</span></td></tr><tr><td class="num">REV-003</td><td class="num">برج المملكة / CN-00005</td><td class="num">2025-02-01</td><td class="">عقد صيانة</td><td class="">نقد</td><td class="num">11,040</td><td class=""><span class="badge badge-green">محصّل</span></td></tr><tr><td class="num">REV-004</td><td class="num">فندق الأندلس / CN-00003</td><td class="num">2025-02-10</td><td class="">قطع غيار</td><td class="">تحويل بنكي</td><td class="num">4,500</td><td class=""><span class="badge badge-gold">معلق</span></td></tr><tr><td class="num">REV-005</td><td class="num">مجمع النخيل / CN-00002</td><td class="num">2025-03-05</td><td class="">عقد صيانة</td><td class="">تحويل بنكي</td><td class="num">10,350</td><td class=""><span class="badge badge-green">محصّل</span></td></tr><tr><td class="num">REV-006</td><td class="num">أبراج الساعة / CN-00006</td><td class="num">2025-03-15</td><td class="">أعمال إضافية</td><td class="">نقد</td><td class="num">3,200</td><td class=""><span class="badge badge-green">محصّل</span></td></tr></tbody>
+        <tbody id="print-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
       </table>
         <div class="rpt-footer-line">
           <span>LiftCore — الإدارة الذكية للمصاعد</span>
@@ -345,12 +340,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </div>
     </div>
-    <div class="rpt-stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">275,686 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">إجمالي الإيرادات</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">248,000 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">محصّل</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">27,686 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">معلق</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">42,500 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">هذا الشهر</div></div></div>
-    <div class="table-wrap">
+    <div class="rpt-stat-row screen-only" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">إجمالي الإيرادات</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">محصّل</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">معلق</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">هذا الشهر</div></div></div>
+    <div class="table-wrap screen-only">
       <div class="table-scroll">
         <table>
           <thead><tr><th>رقم العملية</th><th>العميل / العقد</th><th>التاريخ</th><th>نوع الإيراد</th><th>طريقة الدفع</th><th>المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)</th><th>الحالة</th></tr></thead>
-          <tbody id="report-tbody"><tr><td class="num ltr">REV-001</td><td class="num ltr">برج الياسمين / CN-00001</td><td class="num ltr">2025-01-15</td><td class="">عقد صيانة</td><td class="">تحويل بنكي</td><td class="num ltr">13,800</td><td class=""><span class="badge badge-green">محصّل</span></td></tr><tr><td class="num ltr">REV-002</td><td class="num ltr">مستشفى السلام / CN-00004</td><td class="num ltr">2025-01-20</td><td class="">عقد صيانة</td><td class="">شيك</td><td class="num ltr">27,600</td><td class=""><span class="badge badge-green">محصّل</span></td></tr><tr><td class="num ltr">REV-003</td><td class="num ltr">برج المملكة / CN-00005</td><td class="num ltr">2025-02-01</td><td class="">عقد صيانة</td><td class="">نقد</td><td class="num ltr">11,040</td><td class=""><span class="badge badge-green">محصّل</span></td></tr><tr><td class="num ltr">REV-004</td><td class="num ltr">فندق الأندلس / CN-00003</td><td class="num ltr">2025-02-10</td><td class="">قطع غيار</td><td class="">تحويل بنكي</td><td class="num ltr">4,500</td><td class=""><span class="badge badge-gold">معلق</span></td></tr><tr><td class="num ltr">REV-005</td><td class="num ltr">مجمع النخيل / CN-00002</td><td class="num ltr">2025-03-05</td><td class="">عقد صيانة</td><td class="">تحويل بنكي</td><td class="num ltr">10,350</td><td class=""><span class="badge badge-green">محصّل</span></td></tr><tr><td class="num ltr">REV-006</td><td class="num ltr">أبراج الساعة / CN-00006</td><td class="num ltr">2025-03-15</td><td class="">أعمال إضافية</td><td class="">نقد</td><td class="num ltr">3,200</td><td class=""><span class="badge badge-green">محصّل</span></td></tr></tbody>
+          <tbody id="report-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
         </table>
       </div>
       <div class="table-footer">
@@ -399,9 +394,10 @@ document.getElementById('footer-date').textContent = (window.fmtDate ? fmtDate(n
 const el = document.getElementById('rpt-date-range');
 if(el) el.textContent = 'تاريخ التقرير: ' + (window.fmtDate ? fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
 </script>
+<script>
+window.__LC_REPORT_ROWS = {{ report_rows|tojson }};
+window.__LC_REPORT_ID = {{ report_id|tojson }};
+</script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=4"></script>
 </body>
 </html>
-<script src="{{ url_for('static', filename='reports_live.js') }}"></script>
-<script>
-  loadReportData('report-parts');  // غيّر الاسم حسب الصفحة
-</script>

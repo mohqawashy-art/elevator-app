@@ -140,28 +140,16 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
 .fin-row span:first-child{color:var(--text2)}
 .fin-row span:last-child{font-family:var(--font-en)}
 
-/* Print */
-.print-toolbar{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px;margin-bottom:20px}
-@media print{
-  .sidebar,.header,.mobile-overlay,.print-toolbar,.year-selector{display:none!important}
-  .main{display:block}
-  .content{padding:16px}
-  body{background:#fff;color:#111}
-  .kpi-card,.chart-card,.table-wrap,.fin-card{background:#fff!important;border:1px solid #ddd!important}
-  .kpi-val,.sec-title,.chart-title,.td-name,.fin-row{color:#111!important}
-  .kpi-label,.td-code,.fin-row span:first-child{color:#555!important}
-  .kpi-change.up{color:#1a8a4a!important}
-  .kpi-change.down{color:#cc3333!important}
-  .charts-2,.charts-3{grid-template-columns:1fr 1fr}
-}
 @media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.fin-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='reports-print.css') }}?v=1">
+<script src="{{ url_for('static', filename='reports-print.js') }}?v=1"></script>
 <script src="/static/liftcore-dates.js" defer></script>
 </head>
-<body>
+<body data-report-dashboard="1">
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
@@ -205,7 +193,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
     <div class="print-toolbar">
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:13px;color:var(--text2)">السنة:</span>
-        <select id="sel-year" onchange="loadData()" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);padding:5px 10px;font-size:13px;outline:none;font-family:var(--font-ar)">
+        <select id="sel-year" class="year-selector" onchange="loadData()" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);padding:5px 10px;font-size:13px;outline:none;font-family:var(--font-ar)">
           <option value="2025">2025</option>
           <option value="2024">2024</option>
           <option value="2023">2023</option>
@@ -213,7 +201,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
         <span style="font-size:12px;color:var(--text3)" id="report-subtitle">تقرير سنوي شامل — 2025</span>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-secondary btn-sm" onclick="window.print()">
+        <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
         </button>
         <button class="btn btn-success btn-sm" onclick="exportExcel()">
@@ -226,51 +214,51 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
     <div class="kpi-grid">
       <div class="kpi-card" style="--kc:var(--accent);--ki-bg:rgba(42,127,255,.1)">
         <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg></div>
-        <div class="kpi-val" id="kpi-clients">130</div>
+        <div class="kpi-val" id="kpi-clients">—</div>
         <div class="kpi-label">إجمالي العملاء</div>
-        <div class="kpi-change up">▲ 12 عميل جديد هذا العام</div>
+        <div class="kpi-change up"></div>
       </div>
       <div class="kpi-card" style="--kc:var(--info);--ki-bg:rgba(42,159,255,.1)">
         <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 10l3-3 3 3M9 14l3 3 3-3"/></svg></div>
-        <div class="kpi-val" id="kpi-elevators">284</div>
+        <div class="kpi-val" id="kpi-elevators">—</div>
         <div class="kpi-label">إجمالي المصاعد</div>
-        <div class="kpi-change up">▲ 18 مصعد جديد هذا العام</div>
+        <div class="kpi-change up"></div>
       </div>
       <div class="kpi-card" style="--kc:var(--success);--ki-bg:rgba(31,184,122,.1)">
         <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg></div>
-        <div class="kpi-val" id="kpi-contracts">130</div>
+        <div class="kpi-val" id="kpi-contracts">—</div>
         <div class="kpi-label">عقود نشطة</div>
-        <div class="kpi-change up">▲ 86.7% معدل التجديد</div>
+        <div class="kpi-change up"></div>
       </div>
       <div class="kpi-card" style="--kc:var(--gold);--ki-bg:rgba(200,160,85,.1)">
         <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
-        <div class="kpi-val" id="kpi-revenue">275K</div>
+        <div class="kpi-val" id="kpi-revenue">—</div>
         <div class="kpi-label">إجمالي الإيرادات (<span class="lc-sar" role="img" aria-label="ريال"></span>)</div>
-        <div class="kpi-change up">▲ 18% عن العام الماضي</div>
+        <div class="kpi-change up"></div>
       </div>
       <div class="kpi-card" style="--kc:var(--danger);--ki-bg:rgba(224,72,72,.1)">
         <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-        <div class="kpi-val" id="kpi-faults">89</div>
+        <div class="kpi-val" id="kpi-faults">—</div>
         <div class="kpi-label">إجمالي الأعطال</div>
-        <div class="kpi-change down">▼ 91% نسبة الحل</div>
+        <div class="kpi-change down"></div>
       </div>
       <div class="kpi-card" style="--kc:#7c6fff;--ki-bg:rgba(124,111,255,.1)">
         <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-        <div class="kpi-val" id="kpi-visits">247</div>
+        <div class="kpi-val" id="kpi-visits">—</div>
         <div class="kpi-label">زيارات الصيانة</div>
-        <div class="kpi-change up">▲ 89.5% نسبة الإنجاز</div>
+        <div class="kpi-change up"></div>
       </div>
       <div class="kpi-card" style="--kc:var(--warning);--ki-bg:rgba(224,144,48,.1)">
         <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
-        <div class="kpi-val" id="kpi-technicians">18</div>
+        <div class="kpi-val" id="kpi-technicians">—</div>
         <div class="kpi-label">إجمالي الفنيين</div>
-        <div class="kpi-change up">▲ 15 نشط حالياً</div>
+        <div class="kpi-change up"></div>
       </div>
       <div class="kpi-card" style="--kc:#00d4aa;--ki-bg:rgba(0,212,170,.1)">
         <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-        <div class="kpi-val" id="kpi-profit">40K</div>
+        <div class="kpi-val" id="kpi-profit">—</div>
         <div class="kpi-label">أرباح قطع الغيار (<span class="lc-sar" role="img" aria-label="ريال"></span>)</div>
-        <div class="kpi-change up">▲ 40.5% هامش ربح</div>
+        <div class="kpi-change up"></div>
       </div>
     </div>
 
@@ -279,27 +267,27 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
     <div class="fin-grid">
       <div class="fin-card">
         <div class="fin-card-title">الإيرادات</div>
-        <div class="fin-row"><span>عقود الصيانة</span><span style="color:var(--success)">198,450</span></div>
-        <div class="fin-row"><span>قطع الغيار</span><span style="color:var(--success)">100,286</span></div>
-        <div class="fin-row"><span>أعمال إضافية</span><span style="color:var(--success)">24,800</span></div>
-        <div class="fin-row"><span>أخرى</span><span style="color:var(--success)">12,150</span></div>
-        <div class="fin-row"><span>الإجمالي</span><span style="color:var(--success)">335,686 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
+        <div class="fin-row"><span>عقود الصيانة</span><span style="color:var(--success)">—</span></div>
+        <div class="fin-row"><span>قطع الغيار</span><span style="color:var(--success)">—</span></div>
+        <div class="fin-row"><span>أعمال إضافية</span><span style="color:var(--success)">—</span></div>
+        <div class="fin-row"><span>أخرى</span><span style="color:var(--success)">—</span></div>
+        <div class="fin-row"><span>الإجمالي</span><span id="fin-rev-total" style="color:var(--success)">—</span></div>
       </div>
       <div class="fin-card">
         <div class="fin-card-title">المصروفات</div>
-        <div class="fin-row"><span>رواتب الفنيين</span><span style="color:var(--danger)">68,000</span></div>
-        <div class="fin-row"><span>قطع غيار (تكلفة)</span><span style="color:var(--danger)">59,689</span></div>
-        <div class="fin-row"><span>وقود ومواصلات</span><span style="color:var(--danger)">8,400</span></div>
-        <div class="fin-row"><span>أدوات ومستلزمات</span><span style="color:var(--danger)">4,200</span></div>
-        <div class="fin-row"><span>الإجمالي</span><span style="color:var(--danger)">140,289 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
+        <div class="fin-row"><span>رواتب الفنيين</span><span style="color:var(--danger)">—</span></div>
+        <div class="fin-row"><span>قطع غيار (تكلفة)</span><span style="color:var(--danger)">—</span></div>
+        <div class="fin-row"><span>وقود ومواصلات</span><span style="color:var(--danger)">—</span></div>
+        <div class="fin-row"><span>أدوات ومستلزمات</span><span style="color:var(--danger)">—</span></div>
+        <div class="fin-row"><span>الإجمالي</span><span id="fin-exp-total" style="color:var(--danger)">—</span></div>
       </div>
       <div class="fin-card">
         <div class="fin-card-title">صافي الربح</div>
-        <div class="fin-row"><span>إجمالي الإيرادات</span><span>335,686</span></div>
-        <div class="fin-row"><span>إجمالي المصروفات</span><span>140,289</span></div>
-        <div class="fin-row"><span>صافي الربح</span><span style="color:var(--success)">195,397 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
-        <div class="fin-row"><span>هامش الربح</span><span style="color:var(--success)">58.2%</span></div>
-        <div class="fin-row"><span>المتأخرات</span><span style="color:var(--warning)">27,686 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
+        <div class="fin-row"><span>إجمالي الإيرادات</span><span id="fin-net-rev">—</span></div>
+        <div class="fin-row"><span>إجمالي المصروفات</span><span id="fin-net-exp">—</span></div>
+        <div class="fin-row"><span>صافي الربح</span><span id="fin-net-profit" style="color:var(--success)">—</span></div>
+        <div class="fin-row"><span>هامش الربح</span><span id="fin-net-margin" style="color:var(--success)">—</span></div>
+        <div class="fin-row"><span>المتأخرات</span><span id="fin-net-overdue" style="color:var(--warning)">—</span></div>
       </div>
     </div>
 
@@ -340,22 +328,14 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
     <div class="charts-2" style="margin-bottom:20px">
       <div class="chart-card">
         <div class="chart-title">عدد الزيارات لكل فني</div>
-        <div style="margin-top:8px">
-          <div class="prog-row"><span class="prog-label">أحمد محمد</span><div class="prog-bar"><div class="prog-fill" style="width:82%;--pf-color:var(--accent)"></div></div><span class="prog-val">82 زيارة</span></div>
-          <div class="prog-row"><span class="prog-label">خالد عبدالله</span><div class="prog-bar"><div class="prog-fill" style="width:68%;--pf-color:var(--success)"></div></div><span class="prog-val">68 زيارة</span></div>
-          <div class="prog-row"><span class="prog-label">سعد ناصر</span><div class="prog-bar"><div class="prog-fill" style="width:54%;--pf-color:var(--gold)"></div></div><span class="prog-val">54 زيارة</span></div>
-          <div class="prog-row"><span class="prog-label">عمر حسين</span><div class="prog-bar"><div class="prog-fill" style="width:43%;--pf-color:var(--warning)"></div></div><span class="prog-val">43 زيارة</span></div>
-          <div class="prog-row"><span class="prog-label">فيصل الأحمد</span><div class="prog-bar"><div class="prog-fill" style="width:35%;--pf-color:#7c6fff"></div></div><span class="prog-val">35 زيارة</span></div>
+        <div style="margin-top:8px" id="tech-visits-prog">
+          <div style="color:var(--text3);font-size:12px;padding:8px">جاري التحميل...</div>
         </div>
       </div>
       <div class="chart-card">
         <div class="chart-title">معدل إنجاز الأعطال لكل فني</div>
-        <div style="margin-top:8px">
-          <div class="prog-row"><span class="prog-label">أحمد محمد</span><div class="prog-bar"><div class="prog-fill" style="width:97%;--pf-color:var(--success)"></div></div><span class="prog-val">97%</span></div>
-          <div class="prog-row"><span class="prog-label">خالد عبدالله</span><div class="prog-bar"><div class="prog-fill" style="width:94%;--pf-color:var(--success)"></div></div><span class="prog-val">94%</span></div>
-          <div class="prog-row"><span class="prog-label">سعد ناصر</span><div class="prog-bar"><div class="prog-fill" style="width:88%;--pf-color:var(--accent)"></div></div><span class="prog-val">88%</span></div>
-          <div class="prog-row"><span class="prog-label">عمر حسين</span><div class="prog-bar"><div class="prog-fill" style="width:85%;--pf-color:var(--accent)"></div></div><span class="prog-val">85%</span></div>
-          <div class="prog-row"><span class="prog-label">فيصل الأحمد</span><div class="prog-bar"><div class="prog-fill" style="width:91%;--pf-color:var(--success)"></div></div><span class="prog-val">91%</span></div>
+        <div style="margin-top:8px" id="tech-faults-prog">
+          <div style="color:var(--text3);font-size:12px;padding:8px">جاري التحميل...</div>
         </div>
       </div>
     </div>
@@ -364,14 +344,10 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
     <div class="sec-header"><div class="sec-title">أفضل العملاء من حيث الإيرادات</div></div>
     <div class="table-wrap">
       <div class="table-scroll">
-        <table>
+        <table id="dash-top-clients">
           <thead><tr><th>#</th><th>العميل</th><th>المدينة</th><th>المصاعد</th><th>عدد العقود</th><th>إجمالي الإيرادات</th><th>الحالة</th></tr></thead>
           <tbody>
-            <tr><td class="td-num">1</td><td class="td-name">أبراج الساعة</td><td>مكة</td><td class="td-num">20</td><td class="td-num">3</td><td class="td-num" style="color:var(--success)">62,500 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td><td><span class="badge badge-green">نشط</span></td></tr>
-            <tr><td class="td-num">2</td><td class="td-name">مستشفى السلام</td><td>مكة</td><td class="td-num">12</td><td class="td-num">2</td><td class="td-num" style="color:var(--success)">48,300 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td><td><span class="badge badge-green">نشط</span></td></tr>
-            <tr><td class="td-num">3</td><td class="td-name">مجمع النخيل</td><td>جدة</td><td class="td-num">8</td><td class="td-num">2</td><td class="td-num" style="color:var(--success)">38,750 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td><td><span class="badge badge-green">نشط</span></td></tr>
-            <tr><td class="td-num">4</td><td class="td-name">مركز الملك عبدالله</td><td>مكة</td><td class="td-num">7</td><td class="td-num">1</td><td class="td-num" style="color:var(--success)">29,400 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td><td><span class="badge badge-green">نشط</span></td></tr>
-            <tr><td class="td-num">5</td><td class="td-name">فندق قصر مكة</td><td>مكة</td><td class="td-num">10</td><td class="td-num">1</td><td class="td-num" style="color:var(--success)">24,800 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td><td><span class="badge badge-green">نشط</span></td></tr>
+            <tr><td colspan="7" style="text-align:center;padding:16px;color:var(--text3)">جاري التحميل...</td></tr>
           </tbody>
         </table>
       </div>
@@ -381,12 +357,10 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
     <div class="sec-header"><div class="sec-title">عقود تنتهي خلال 60 يوماً</div></div>
     <div class="table-wrap">
       <div class="table-scroll">
-        <table>
+        <table id="dash-expiring">
           <thead><tr><th>رقم العقد</th><th>العميل</th><th>تاريخ الانتهاء</th><th>الأيام المتبقية</th><th>قيمة العقد</th><th>حالة الفاتورة</th></tr></thead>
           <tbody>
-            <tr><td class="td-code">CN-00002</td><td class="td-name">مجمع النخيل</td><td class="td-num">2025-06-28</td><td><span class="badge badge-red">25 يوم</span></td><td class="td-num">20,700 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td><td><span class="badge badge-blue">مدفوع جزئياً</span></td></tr>
-            <tr><td class="td-code">CN-00005</td><td class="td-name">برج المملكة</td><td class="td-num">2025-07-31</td><td><span class="badge badge-gold">58 يوم</span></td><td class="td-num">11,040 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td><td><span class="badge badge-green">مدفوع</span></td></tr>
-            <tr><td class="td-code">CN-00003</td><td class="td-name">فندق الأندلس</td><td class="td-num">2025-08-31</td><td><span class="badge badge-gold">89 يوم</span></td><td class="td-num">9,775 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td><td><span class="badge badge-gold">غير مدفوع</span></td></tr>
+            <tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">جاري التحميل...</td></tr>
           </tbody>
         </table>
       </div>
@@ -396,12 +370,10 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
     <div class="sec-header"><div class="sec-title">المصاعد المتوقفة وخارج الخدمة</div></div>
     <div class="table-wrap">
       <div class="table-scroll">
-        <table>
+        <table id="dash-down-elevators">
           <thead><tr><th>كود المصعد</th><th>العميل</th><th>النوع</th><th>الحالة</th><th>آخر صيانة</th><th>الفني المسؤول</th></tr></thead>
           <tbody>
-            <tr><td class="td-code">EL-0006</td><td class="td-name">مستشفى السلام</td><td>مصعد خدمة</td><td><span class="badge badge-gold">متوقف</span></td><td class="td-num">2025/5/1</td><td>خالد عبدالله</td></tr>
-            <tr><td class="td-code">EL-0015</td><td class="td-name">مجمع التجارة</td><td>مصعد ركاب</td><td><span class="badge badge-red">خارج الخدمة</span></td><td class="td-num">2025/4/15</td><td>سعد ناصر</td></tr>
-            <tr><td class="td-code">EL-0022</td><td class="td-name">برج الرياض</td><td>مصعد بضائع</td><td><span class="badge badge-red">خارج الخدمة</span></td><td class="td-num">2025/3/20</td><td>عمر حسين</td></tr>
+            <tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">جاري التحميل...</td></tr>
           </tbody>
         </table>
       </div>
@@ -426,10 +398,10 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
 <script>
 // بيانات
 const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-const REVENUE_DATA = [18500,22000,19800,24500,21000,28000,23500,26800,22000,30000,25500,34081];
-const EXPENSE_DATA = [10200,11500,10800,12000,11200,13500,12000,13800,11500,14500,12800,14989];
-const VISITS_DATA = [18,22,19,24,21,28,23,26,22,18,16,10];
-const FAULTS_DATA = [6,8,7,9,8,10,7,9,8,7,6,4];
+const REVENUE_DATA = [];
+const EXPENSE_DATA = [];
+const VISITS_DATA = [];
+const FAULTS_DATA = [];
 
 const CHART_DEFAULTS = {
   font:{family:'IBM Plex Sans Arabic'},
@@ -455,95 +427,9 @@ function makeChart(id, type, labels, datasets, opts={}) {
   });
 }
 
-// رسم الشارتات
-window.addEventListener('load', ()=>{
-  // الإيرادات الشهرية
-  makeChart('chart-revenue','bar', MONTHS, [{
-    label:'الإيرادات (<span class="lc-sar" role="img" aria-label="ريال"></span>)',
-    data: REVENUE_DATA,
-    backgroundColor:'rgba(42,127,255,.5)',
-    borderColor:'rgba(42,127,255,.9)',
-    borderWidth:1,
-    borderRadius:4,
-  },{
-    label:'المصروفات (<span class="lc-sar" role="img" aria-label="ريال"></span>)',
-    data: EXPENSE_DATA,
-    backgroundColor:'rgba(224,72,72,.35)',
-    borderColor:'rgba(224,72,72,.8)',
-    borderWidth:1,
-    borderRadius:4,
-  }]);
+// رسم الشارتات والتصدير — يُحمَّل من reports_live.js
 
-  // توزيع الإيرادات
-  makeChart('chart-rev-type','doughnut',
-    ['عقود صيانة','قطع غيار','أعمال إضافية','أخرى'],
-    [{data:[198450,100286,24800,12150], backgroundColor:['rgba(42,127,255,.8)','rgba(31,184,122,.8)','rgba(200,160,85,.8)','rgba(138,155,184,.6)'], borderWidth:0}]);
-
-  // حالة العقود
-  makeChart('chart-contracts','doughnut',
-    ['نشطة','منتهية','معلقة','ملغاة'],
-    [{data:[112,12,4,2], backgroundColor:['rgba(31,184,122,.8)','rgba(224,72,72,.8)','rgba(224,144,48,.8)','rgba(138,155,184,.6)'], borderWidth:0}]);
-
-  // الزيارات الشهرية
-  makeChart('chart-visits','line', MONTHS, [{
-    label:'الزيارات',
-    data: VISITS_DATA,
-    borderColor:'rgba(124,111,255,.9)',
-    backgroundColor:'rgba(124,111,255,.1)',
-    fill:true, tension:.4, pointRadius:3,
-  }]);
-
-  // حالة المصاعد
-  makeChart('chart-elevators','doughnut',
-    ['نشط','تحت الصيانة','متوقف','خارج الخدمة'],
-    [{data:[261,14,6,3], backgroundColor:['rgba(31,184,122,.8)','rgba(42,159,255,.8)','rgba(224,144,48,.8)','rgba(224,72,72,.8)'], borderWidth:0}]);
-
-  // الأعطال الشهرية
-  makeChart('chart-faults','bar', MONTHS, [{
-    label:'الأعطال',
-    data: FAULTS_DATA,
-    backgroundColor:'rgba(224,72,72,.5)',
-    borderColor:'rgba(224,72,72,.8)',
-    borderWidth:1, borderRadius:4,
-  }]);
-
-  // توزيع المصروفات
-  makeChart('chart-expenses','doughnut',
-    ['رواتب','قطع غيار','وقود','أدوات','أخرى'],
-    [{data:[68000,59689,8400,4200,0], backgroundColor:['rgba(42,127,255,.8)','rgba(224,72,72,.8)','rgba(224,144,48,.8)','rgba(31,184,122,.8)','rgba(138,155,184,.6)'], borderWidth:0}]);
-
-  // مقارنة شهرية
-  makeChart('chart-compare','line', MONTHS, [
-    {label:'الإيرادات',data:REVENUE_DATA,borderColor:'rgba(31,184,122,.9)',backgroundColor:'rgba(31,184,122,.1)',fill:true,tension:.4,pointRadius:2},
-    {label:'المصروفات',data:EXPENSE_DATA,borderColor:'rgba(224,72,72,.9)',backgroundColor:'rgba(224,72,72,.1)',fill:true,tension:.4,pointRadius:2},
-  ]);
-});
-
-function exportExcel() {
-  const data = [
-    ['مؤشرات الأداء الرئيسية',''],
-    ['إجمالي العملاء','130'],
-    ['إجمالي المصاعد','284'],
-    ['العقود النشطة','130'],
-    ['إجمالي الإيرادات','335,686 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>'],
-    ['إجمالي المصروفات','140,289 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>'],
-    ['صافي الربح','195,397 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>'],
-    [''],
-    ['الإيرادات الشهرية',''],
-    ['الشهر','الإيرادات','المصروفات'],
-    ...MONTHS.map((m,i)=>[m, REVENUE_DATA[i], EXPENSE_DATA[i]]),
-  ];
-  const csv = data.map(r=>r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download = 'تقرير_الداشبورد_2025.csv';
-  a.click();
-}
-
-function loadData() {
-  const y = document.getElementById('sel-year').value;
-  document.getElementById('report-subtitle').textContent = `تقرير سنوي شامل — ${y}`;
-}
+function loadData() { if (window.loadDashboardReport) loadDashboardReport(); }
 
 // JS مشترك
 const _now = new Date();
@@ -555,9 +441,7 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 function setLang(l){document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');document.getElementById('btn-ar').classList.toggle('active',l==='ar');document.getElementById('btn-en').classList.toggle('active',l==='en');}
 </script>
+<script>window.__LC_DASHBOARD_YEAR = {{ current_year|default(2026) }};</script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=4"></script>
 </body>
 </html>
-<script src="{{ url_for('static', filename='reports_live.js') }}"></script>
-<script>
-  loadReportData('report-clients');  // غيّر الاسم حسب الصفحة
-</script>

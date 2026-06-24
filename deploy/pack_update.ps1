@@ -10,6 +10,9 @@ $files = @(
     "models.py",
     "operations.py",
     "fault_report.py",
+    "form_validation.py",
+    "inventory_stock.py",
+    "report_data.py",
     "customer_billing.py",
     "invoice_print.py",
     "zatca_qr.py",
@@ -26,6 +29,9 @@ $files = @(
     "static/tax_calc.js",
     "static/liftcore-shell.css",
     "static/liftcore-shell.js",
+    "static/reports_live.js",
+    "static/reports-print.css",
+    "static/reports-print.js",
     "static/liftcore-i18n.js",
     "static/liftcore-table-hover.js",
     "static/liftcore-theme.css",
@@ -33,6 +39,9 @@ $files = @(
     "static/name_translit.js",
     "templates/partials/app_header.html",
     "templates/partials/liftcore_head.html",
+    "templates/partials/flash_messages.html",
+    "templates/partials/entity_report_btn.html",
+    "templates/partials/liftcore_i18n_scripts.html",
     "templates/settings.html",
     "templates/clients.html",
     "templates/technicians.html",
@@ -69,7 +78,8 @@ $files = @(
     "templates/report-revenues.html",
     "templates/report-stock.html",
     "templates/report-technicians.html",
-    "deploy/apply_update_zip.sh"
+    "deploy/apply_update_zip.sh",
+    "deploy/migrate_db.py"
 )
 
 $staging = Join-Path $env:TEMP ("liftcore-pack-" + [guid]::NewGuid().ToString("n"))

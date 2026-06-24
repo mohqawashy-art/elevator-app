@@ -219,19 +219,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .badge-gold{background:rgba(224,144,48,.12);color:#e09030}
 .badge-blue{background:rgba(42,127,255,.12);color:#2a7fff}
 .badge-gray{background:rgba(138,155,184,.1);color:#8a9bb8}
-@media print{
-  .sidebar,.header,.filter-card,.print-toolbar,.page-header,.mobile-overlay{display:none!important}
-  .main{display:block}
-  .content{padding:0}
-  .print-wrap{border:none;border-radius:0;margin:0}
-  .rpt-page{padding:16px 20px}
-}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='reports-print.css') }}?v=1">
+<script src="{{ url_for('static', filename='reports-print.js') }}?v=1"></script>
 <script src="/static/liftcore-dates.js" defer></script>
 </head>
-<body>
+<body data-report-id="report-parts">
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
@@ -267,10 +262,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   {% set page_title = 'تقرير بيان القطع' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
-    <div class="page-header">
+    <div class="page-header screen-only">
       <div class="page-title">تقرير بيان القطع</div>
       <div class="page-actions">
-        <button class="btn btn-secondary btn-sm" onclick="window.print()">
+        <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
         </button>
         <button class="btn btn-success btn-sm" onclick="exportExcel()">
@@ -278,7 +273,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </button>
       </div>
     </div>
-    <div class="filter-card" style="margin-bottom:20px">
+    <div class="filter-card screen-only" style="margin-bottom:20px">
       <div class="filter-row">
         <div class="field" style="flex:2">
           <label>بحث</label>
@@ -306,7 +301,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="print-toolbar">
         <span class="print-toolbar-title">تقرير بيان القطع</span>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary btn-sm" onclick="window.print()">
+          <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
           </button>
           <button class="btn btn-success btn-sm" onclick="exportExcel()">
@@ -329,10 +324,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
       </div>
     </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">64</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي العمليات</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">45,689 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي التكلفة</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">100,286 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي الإيراد</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">40,597 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي الربح</div></div></div>
+        <div id="rpt-print-stats" class="rpt-print-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي العمليات</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي التكلفة</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي الإيراد</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي الربح</div></div></div>
         <table class="rpt-table">
         <thead><tr><th>رقم العملية</th><th>العميل / العقد</th><th>التاريخ</th><th>بيان القطع</th><th>التكلفة</th><th>سعر العميل</th><th>الربح</th><th>طريقة الدفع</th><th>الحالة</th></tr></thead>
-        <tbody><tr><td class="num">PB-001</td><td class="num">برج الياسمين / CN-00001</td><td class="num">2025-05-10</td><td class="">بكرة باب + تركيب</td><td class="num">170</td><td class="num">350</td><td class="num">180</td><td class="">نقد</td><td class=""><span class="badge badge-green">مكتملة</span></td></tr><tr><td class="num">PB-002</td><td class="num">مستشفى السلام / CN-00004</td><td class="num">2025-05-15</td><td class="">حساس مستوى + تركيب</td><td class="num">120</td><td class="num">280</td><td class="num">160</td><td class="">تحويل</td><td class=""><span class="badge badge-green">مكتملة</span></td></tr><tr><td class="num">PB-003</td><td class="num">مجمع النخيل / CN-00002</td><td class="num">2025-05-20</td><td class="">كابل فولاذي + تركيب</td><td class="num">280</td><td class="num">600</td><td class="num">320</td><td class="">شيك</td><td class=""><span class="badge badge-green">مكتملة</span></td></tr><tr><td class="num">PB-004</td><td class="num">فندق الأندلس / CN-00003</td><td class="num">2025-05-25</td><td class="">لوح تحكم LCD</td><td class="num">950</td><td class="num">2,200</td><td class="num">1,250</td><td class="">تحويل</td><td class=""><span class="badge badge-gold">معلقة</span></td></tr><tr><td class="num">PB-005</td><td class="num">أبراج الساعة / CN-00006</td><td class="num">2025-06-01</td><td class="num">مفاتيح طوابق x3</td><td class="num">105</td><td class="num">300</td><td class="num">195</td><td class="">نقد</td><td class=""><span class="badge badge-green">مكتملة</span></td></tr></tbody>
+        <tbody id="print-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
       </table>
         <div class="rpt-footer-line">
           <span>LiftCore — الإدارة الذكية للمصاعد</span>
@@ -341,12 +336,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </div>
     </div>
-    <div class="rpt-stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">64</div><div class="rpt-stat-label">إجمالي العمليات</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">45,689 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">إجمالي التكلفة</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">100,286 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">إجمالي الإيراد</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">40,597 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div><div class="rpt-stat-label">إجمالي الربح</div></div></div>
-    <div class="table-wrap">
+    <div class="rpt-stat-row screen-only" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">إجمالي العمليات</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">إجمالي التكلفة</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">إجمالي الإيراد</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">إجمالي الربح</div></div></div>
+    <div class="table-wrap screen-only">
       <div class="table-scroll">
         <table>
           <thead><tr><th>رقم العملية</th><th>العميل / العقد</th><th>التاريخ</th><th>بيان القطع</th><th>التكلفة</th><th>سعر العميل</th><th>الربح</th><th>طريقة الدفع</th><th>الحالة</th></tr></thead>
-          <tbody id="report-tbody"><tr><td class="num ltr">PB-001</td><td class="num ltr">برج الياسمين / CN-00001</td><td class="num ltr">2025-05-10</td><td class="">بكرة باب + تركيب</td><td class="num ltr">170</td><td class="num ltr">350</td><td class="num ltr">180</td><td class="">نقد</td><td class=""><span class="badge badge-green">مكتملة</span></td></tr><tr><td class="num ltr">PB-002</td><td class="num ltr">مستشفى السلام / CN-00004</td><td class="num ltr">2025-05-15</td><td class="">حساس مستوى + تركيب</td><td class="num ltr">120</td><td class="num ltr">280</td><td class="num ltr">160</td><td class="">تحويل</td><td class=""><span class="badge badge-green">مكتملة</span></td></tr><tr><td class="num ltr">PB-003</td><td class="num ltr">مجمع النخيل / CN-00002</td><td class="num ltr">2025-05-20</td><td class="">كابل فولاذي + تركيب</td><td class="num ltr">280</td><td class="num ltr">600</td><td class="num ltr">320</td><td class="">شيك</td><td class=""><span class="badge badge-green">مكتملة</span></td></tr><tr><td class="num ltr">PB-004</td><td class="num ltr">فندق الأندلس / CN-00003</td><td class="num ltr">2025-05-25</td><td class="">لوح تحكم LCD</td><td class="num ltr">950</td><td class="num ltr">2,200</td><td class="num ltr">1,250</td><td class="">تحويل</td><td class=""><span class="badge badge-gold">معلقة</span></td></tr><tr><td class="num ltr">PB-005</td><td class="num ltr">أبراج الساعة / CN-00006</td><td class="num ltr">2025-06-01</td><td class="num ltr">مفاتيح طوابق x3</td><td class="num ltr">105</td><td class="num ltr">300</td><td class="num ltr">195</td><td class="">نقد</td><td class=""><span class="badge badge-green">مكتملة</span></td></tr></tbody>
+          <tbody id="report-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
         </table>
       </div>
       <div class="table-footer">
@@ -395,9 +390,10 @@ document.getElementById('footer-date').textContent = (window.fmtDate ? fmtDate(n
 const el = document.getElementById('rpt-date-range');
 if(el) el.textContent = 'تاريخ التقرير: ' + (window.fmtDate ? fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
 </script>
+<script>
+window.__LC_REPORT_ROWS = {{ report_rows|tojson }};
+window.__LC_REPORT_ID = {{ report_id|tojson }};
+</script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=4"></script>
 </body>
 </html>
-<script src="{{ url_for('static', filename='reports_live.js') }}"></script>
-<script>
-  loadReportData('report-parts');  // غيّر الاسم حسب الصفحة
-</script>

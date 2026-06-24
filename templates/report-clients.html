@@ -219,8 +219,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .badge-gold{background:rgba(224,144,48,.12);color:#e09030}
 .badge-blue{background:rgba(42,127,255,.12);color:#2a7fff}
 .badge-gray{background:rgba(138,155,184,.1);color:#8a9bb8}
-@media print{
-  .sidebar,.header,.filter-card,.print-toolbar,.page-header,.mobile-overlay{display:none!important}
+
   .main{display:block}
   .content{padding:0}
   .print-wrap{border:none;border-radius:0;margin:0}
@@ -229,9 +228,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='reports-print.css') }}?v=1">
+<script src="{{ url_for('static', filename='reports-print.js') }}?v=1"></script>
 <script src="/static/liftcore-dates.js" defer></script>
 </head>
-<body>
+<body data-report-id="report-clients">
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
@@ -267,10 +268,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   {% set page_title = 'تقرير العملاء' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
-    <div class="page-header">
+    <div class="page-header screen-only">
       <div class="page-title">تقرير العملاء</div>
       <div class="page-actions">
-        <button class="btn btn-secondary btn-sm" onclick="window.print()">
+        <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
         </button>
         <button class="btn btn-success btn-sm" onclick="exportExcel()">
@@ -278,7 +279,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </button>
       </div>
     </div>
-    <div class="filter-card" style="margin-bottom:20px">
+    <div class="filter-card screen-only" style="margin-bottom:20px">
       <div class="filter-row">
         <div class="field" style="flex:2">
           <label>بحث</label>
@@ -310,7 +311,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="print-toolbar">
         <span class="print-toolbar-title">تقرير العملاء</span>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary btn-sm" onclick="window.print()">
+          <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
           </button>
           <button class="btn btn-success btn-sm" onclick="exportExcel()">
@@ -333,10 +334,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
       </div>
     </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">130</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي العملاء</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">112</div><div style="font-size:9px;color:#555;margin-top:2px">عملاء نشطون</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">8</div><div style="font-size:9px;color:#555;margin-top:2px">بدون عقد</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">347</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي المصاعد</div></div></div>
+        <div id="rpt-print-stats" class="rpt-print-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي العملاء</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">عملاء نشطون</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">بدون عقد</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي المصاعد</div></div></div>
         <table class="rpt-table">
         <thead><tr><th>الكود</th><th>اسم العميل</th><th>المدينة</th><th>الحي</th><th>الهاتف</th><th>المصاعد</th><th>حالة العقد</th><th>الحالة</th></tr></thead>
-        <tbody><tr><td class="num">C-0001</td><td class="">برج الياسمين</td><td class="">مكة</td><td class="">العزيزية</td><td class="num">0551234567</td><td class="num">4</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num">C-0002</td><td class="">مجمع النخيل</td><td class="">جدة</td><td class="">الروضة</td><td class="num">0561234567</td><td class="num">8</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num">C-0003</td><td class="">فندق الأندلس</td><td class="">مكة</td><td class="">أجياد</td><td class="num">0571234567</td><td class="num">6</td><td class=""><span class="badge badge-red">منتهي</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num">C-0004</td><td class="">مستشفى السلام</td><td class="">مكة</td><td class="">البرهة</td><td class="num">0501234567</td><td class="num">12</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num">C-0005</td><td class="">برج المملكة</td><td class="">جدة</td><td class="">البرهة</td><td class="num">0531234567</td><td class="num">3</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num">C-0006</td><td class="">مجمع التجارة</td><td class="">مكة</td><td class="">الشوقية</td><td class="num">0541234567</td><td class="num">5</td><td class=""><span class="badge badge-gray">بدون عقد</span></td><td class=""><span class="badge badge-gray">غير نشط</span></td></tr><tr><td class="num">C-0007</td><td class="">أبراج الساعة</td><td class="">مكة</td><td class="">أجياد</td><td class="num">0591234567</td><td class="num">20</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num">C-0008</td><td class="">مركز الملك عبدالله</td><td class="">مكة</td><td class="">الشوقية</td><td class="num">0511234567</td><td class="num">7</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num">C-0009</td><td class="">مجمع طيبة</td><td class="">الطائف</td><td class="">الحوية</td><td class="num">0581234567</td><td class="num">2</td><td class=""><span class="badge badge-red">منتهي</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num">C-0010</td><td class="">فندق قصر مكة</td><td class="">مكة</td><td class="">العابدية</td><td class="num">0521234567</td><td class="num">10</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr></tbody>
+        <tbody id="print-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
       </table>
         <div class="rpt-footer-line">
           <span>LiftCore — الإدارة الذكية للمصاعد</span>
@@ -345,16 +346,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </div>
     </div>
-    <div class="rpt-stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">130</div><div class="rpt-stat-label">إجمالي العملاء</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">112</div><div class="rpt-stat-label">عملاء نشطون</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">8</div><div class="rpt-stat-label">بدون عقد</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">347</div><div class="rpt-stat-label">إجمالي المصاعد</div></div></div>
-    <div class="table-wrap">
+    <div class="rpt-stat-row screen-only" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">إجمالي العملاء</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">عملاء نشطون</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">بدون عقد</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">إجمالي المصاعد</div></div></div>
+    <div class="table-wrap screen-only">
       <div class="table-scroll">
         <table>
           <thead><tr><th>الكود</th><th>اسم العميل</th><th>المدينة</th><th>الحي</th><th>الهاتف</th><th>المصاعد</th><th>حالة العقد</th><th>الحالة</th></tr></thead>
-          <tbody id="report-tbody"><tr><td class="num ltr">C-0001</td><td class="">برج الياسمين</td><td class="">مكة</td><td class="">العزيزية</td><td class="num ltr">0551234567</td><td class="num ltr">4</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num ltr">C-0002</td><td class="">مجمع النخيل</td><td class="">جدة</td><td class="">الروضة</td><td class="num ltr">0561234567</td><td class="num ltr">8</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num ltr">C-0003</td><td class="">فندق الأندلس</td><td class="">مكة</td><td class="">أجياد</td><td class="num ltr">0571234567</td><td class="num ltr">6</td><td class=""><span class="badge badge-red">منتهي</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num ltr">C-0004</td><td class="">مستشفى السلام</td><td class="">مكة</td><td class="">البرهة</td><td class="num ltr">0501234567</td><td class="num ltr">12</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num ltr">C-0005</td><td class="">برج المملكة</td><td class="">جدة</td><td class="">البرهة</td><td class="num ltr">0531234567</td><td class="num ltr">3</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num ltr">C-0006</td><td class="">مجمع التجارة</td><td class="">مكة</td><td class="">الشوقية</td><td class="num ltr">0541234567</td><td class="num ltr">5</td><td class=""><span class="badge badge-gray">بدون عقد</span></td><td class=""><span class="badge badge-gray">غير نشط</span></td></tr><tr><td class="num ltr">C-0007</td><td class="">أبراج الساعة</td><td class="">مكة</td><td class="">أجياد</td><td class="num ltr">0591234567</td><td class="num ltr">20</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num ltr">C-0008</td><td class="">مركز الملك عبدالله</td><td class="">مكة</td><td class="">الشوقية</td><td class="num ltr">0511234567</td><td class="num ltr">7</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num ltr">C-0009</td><td class="">مجمع طيبة</td><td class="">الطائف</td><td class="">الحوية</td><td class="num ltr">0581234567</td><td class="num ltr">2</td><td class=""><span class="badge badge-red">منتهي</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr><tr><td class="num ltr">C-0010</td><td class="">فندق قصر مكة</td><td class="">مكة</td><td class="">العابدية</td><td class="num ltr">0521234567</td><td class="num ltr">10</td><td class=""><span class="badge badge-green">نشط</span></td><td class=""><span class="badge badge-green">نشط</span></td></tr></tbody>
+          <tbody id="report-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
         </table>
       </div>
       <div class="table-footer">
-        <span class="table-info" id="table-info">عرض 10 سجل</span>
+        <span class="table-info" id="table-info">—</span>
       </div>
     </div>
   </div>
@@ -399,6 +400,11 @@ document.getElementById('footer-date').textContent = (window.fmtDate ? fmtDate(n
 const el = document.getElementById('rpt-date-range');
 if(el) el.textContent = 'تاريخ التقرير: ' + (window.fmtDate ? fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
 </script>
+<script>
+window.__LC_REPORT_ROWS = {{ report_rows|tojson }};
+window.__LC_REPORT_ID = {{ report_id|tojson }};
+</script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=4"></script>
 </body>
 </html>
 <script src="{{ url_for('static', filename='reports_live.js') }}"></script>

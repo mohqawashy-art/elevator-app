@@ -1,0 +1,382 @@
+/**
+ * LiftCore — أنماط الطباعة وتصدير PDF للتقارير
+ */
+
+#rpt-print-title {
+  display: none;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 12mm 14mm 16mm;
+}
+
+@page :first {
+  margin-top: 10mm;
+}
+
+/* ── عناصر الشاشة فقط ── */
+@media print {
+  .screen-only,
+  .sidebar,
+  .header,
+  .mobile-overlay,
+  .filter-card,
+  .print-toolbar,
+  .page-header,
+  .table-footer,
+  .pagination,
+  .year-selector,
+  .page-actions,
+  .hamburger,
+  .nav-section,
+  .sidebar-footer {
+    display: none !important;
+  }
+
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    display: block !important;
+    min-height: 0 !important;
+  }
+
+  .main {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .content {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* ── منطقة الطباعة ── */
+  .print-wrap {
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  .rpt-page,
+  #report-page {
+    background: #fff !important;
+    color: #111 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    box-shadow: none !important;
+  }
+
+  /* ── الهيدر ── */
+  .rpt-header {
+    border-bottom: 3px solid #1a4fa0 !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 14px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .rpt-header-center h1 {
+    color: #1a4fa0 !important;
+    font-size: 17px !important;
+  }
+
+  .rpt-header-center h2 {
+    color: #555 !important;
+  }
+
+  .rpt-header-logo img {
+    height: 46px !important;
+    max-height: 46px !important;
+  }
+
+  /* ── إحصائيات الطباعة ── */
+  .rpt-print-stats,
+  .rpt-page [style*="grid-template-columns"] {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .rpt-print-stats > div,
+  .rpt-page [style*="grid-template-columns"] > div {
+    background: #f5f8ff !important;
+    border: 1px solid #c5d0e6 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── الجداول ── */
+  .rpt-table {
+    width: 100% !important;
+    font-size: 9.5px !important;
+    page-break-inside: auto;
+  }
+
+  .rpt-table thead {
+    display: table-header-group;
+  }
+
+  .rpt-table tfoot {
+    display: table-footer-group;
+  }
+
+  .rpt-table th {
+    background: #1a4fa0 !important;
+    color: #fff !important;
+    border: 1px solid #1a4fa0 !important;
+    padding: 5px 6px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .rpt-table td {
+    border: 1px solid #ccc !important;
+    color: #222 !important;
+    padding: 4px 6px !important;
+    background: #fff !important;
+  }
+
+  .rpt-table tr:nth-child(even) td {
+    background: #f8faff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .rpt-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .rpt-footer-line,
+  .rpt-footer {
+    border-top: 1px solid #bbb !important;
+    color: #666 !important;
+    font-size: 8.5px !important;
+    margin-top: 12px !important;
+    padding-top: 8px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* ── شارات الحالة للطباعة ── */
+  .rpt-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 8px;
+    font-size: 8.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .rpt-badge-ok {
+    background: #e6f7ef !important;
+    color: #157a52 !important;
+    border-color: #b8e6d0 !important;
+  }
+
+  .rpt-badge-warn {
+    background: #fff6e8 !important;
+    color: #a66a10 !important;
+    border-color: #f0d9a8 !important;
+  }
+
+  .rpt-badge-danger {
+    background: #fdeeee !important;
+    color: #b52e2e !important;
+    border-color: #f0bcbc !important;
+  }
+
+  .rpt-badge-muted {
+    background: #f0f2f6 !important;
+    color: #5a6578 !important;
+    border-color: #d8dde6 !important;
+  }
+
+  .rpt-badge-info {
+    background: #eaf2ff !important;
+    color: #1a5fbf !important;
+    border-color: #b8d4f5 !important;
+  }
+
+  /* ── التقرير السنوي ── */
+  .rpt-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 12px !important;
+  }
+
+  .rpt-section-title {
+    background: #1a4fa0 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .rpt-summary-box {
+    background: #f5f8ff !important;
+    border-color: #1a4fa0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .rpt-signatures {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-top: 16px !important;
+  }
+
+  #report-container {
+    display: block !important;
+  }
+
+  #annual-empty-hint {
+    display: none !important;
+  }
+
+  /* ── تقرير الداشبورد ── */
+  .kpi-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .kpi-card {
+    background: #fff !important;
+    border: 1px solid #d0d5de !important;
+    padding: 10px !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .kpi-val {
+    color: #1a4fa0 !important;
+    font-size: 18px !important;
+  }
+
+  .kpi-label {
+    color: #555 !important;
+    font-size: 9px !important;
+  }
+
+  .kpi-change {
+    display: none !important;
+  }
+
+  .fin-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .fin-card {
+    background: #fff !important;
+    border: 1px solid #d0d5de !important;
+    padding: 10px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fin-card-title {
+    color: #1a4fa0 !important;
+    font-weight: 700 !important;
+    margin-bottom: 6px !important;
+  }
+
+  .fin-row span:first-child {
+    color: #555 !important;
+  }
+
+  .fin-row span:last-child {
+    color: #111 !important;
+  }
+
+  .chart-card,
+  .table-wrap {
+    background: #fff !important;
+    border: 1px solid #d0d5de !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 10px !important;
+  }
+
+  .chart-title,
+  .sec-title {
+    color: #1a4fa0 !important;
+    font-size: 12px !important;
+  }
+
+  .chart-wrap,
+  .chart-wrap-sm {
+    height: 160px !important;
+    max-height: 160px !important;
+  }
+
+  canvas {
+    max-width: 100% !important;
+  }
+
+  .charts-2 {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .charts-3 {
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .sec-header {
+    margin: 12px 0 8px !important;
+    page-break-after: avoid;
+  }
+
+  .prog-row {
+    font-size: 10px !important;
+  }
+
+  thead th {
+    background: #e8eef8 !important;
+    color: #1a4fa0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  tbody td {
+    color: #222 !important;
+    font-size: 9.5px !important;
+  }
+
+  .badge {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #rpt-print-title {
+    display: block !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #1a4fa0 !important;
+    text-align: center !important;
+    margin: 0 0 14px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 2px solid #1a4fa0 !important;
+  }
+}

@@ -502,6 +502,8 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <div class="page-header">
         <div class="page-title">العملاء <span id="clients-count" data-i18n-skip>({{ customers|length }} عميل)</span></div>
         <div class="page-actions">
+          {% with report_url=url_for('report_clients'), report_label='تقرير العملاء' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
+          {% with report_url=url_for('report_client_annual'), report_label='تقرير سنوي' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
           <a class="btn btn-secondary btn-sm" href="{{ url_for('clients_import_template') }}" download>
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
             تحميل النموذج
@@ -819,6 +821,8 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <!-- يتعبى بالـ JS -->
     </div>
     <div class="modal-foot">
+      <a class="btn btn-secondary btn-sm" id="card-report-clients" href="/reports/clients" style="margin-left:auto">تقرير العملاء</a>
+      <a class="btn btn-primary btn-sm" id="card-report-annual" href="/reports/client-annual">تقرير سنوي</a>
       <button type="button" class="btn btn-secondary" onclick="closeClientCard()">إغلاق</button>
     </div>
   </div>
@@ -1539,6 +1543,10 @@ function openClientCard(id) {
     '<div id="card-dynamic-data"><div style="text-align:center;padding:16px;color:var(--text3);font-size:13px">⏳ ' + lcDisp('جاري تحميل البيانات...') + '</div></div>';
 
   openModal('modal-client-card');
+  var annualLink = document.getElementById('card-report-annual');
+  var clientsLink = document.getElementById('card-report-clients');
+  if (annualLink) annualLink.href = '/reports/client-annual?customer_id=' + encodeURIComponent(id);
+  if (clientsLink) clientsLink.href = '/reports/clients?q=' + encodeURIComponent(c.code || c.name || '');
   if (window.LiftCoreDisplay) LiftCoreDisplay.applyDom(document.getElementById('card-body'), LiftCoreDisplay.currentLang());
   loadClientData(id);
 
@@ -1728,6 +1736,15 @@ function searchClientMap(forcedQuery) {
 function saveClient() {
   var name  = document.getElementById('f-name').value.trim();
   if(!name) { alert('يرجى إدخال اسم العميل'); return; }
+  var editId = document.getElementById('modal-add').dataset.editId || '';
+  var dupMsg = (function () {
+    var n = name.toLowerCase();
+    var dup = (window.CUSTOMERS || []).find(function (c) {
+      return c.name && c.name.trim().toLowerCase() === n && String(c.id) !== String(editId);
+    });
+    return dup ? ('اسم العميل «' + dup.name + '» مستخدم مسبقاً (' + dup.code + ')') : '';
+  })();
+  if (dupMsg) { alert(dupMsg); return; }
   if (!validateClientPhoneFields()) return;
   var lat = document.getElementById('f-lat').value.trim();
   var lng = document.getElementById('f-lng').value.trim();
