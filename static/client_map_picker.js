@@ -805,7 +805,13 @@
     if (!google.maps) return;
     google.maps.event.trigger(state.map, 'resize');
     if (state.marker) {
-      var gp = state.marker.getPosition();
+      var gp = null;
+      if (global.LiftCoreMap && LiftCoreMap.getMarkerPosition) {
+        gp = LiftCoreMap.getMarkerPosition(state.marker);
+      } else if (state.marker.getPosition) {
+        var raw = state.marker.getPosition();
+        if (raw) gp = { lat: raw.lat(), lng: raw.lng() };
+      }
       if (gp) state.map.setCenter(gp);
     } else state.map.setCenter(center);
   }
