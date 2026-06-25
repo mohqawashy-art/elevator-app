@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Import parts billing (بيان تركيب قطع الغيار) for Jama
+# Import parts billing — غير محصل only (بيان تركيب قطع الغيار 25_6_2026)
 #
 #   bash deploy/import_jama_parts_billing.sh --dry-run
 #   bash deploy/import_jama_parts_billing.sh
@@ -12,14 +12,22 @@ DB_FILE="${DB_FILE:-$JAMA_DIR/instance/jama.db}"
 DATA_DIR="${DATA_DIR:-$JAMA_DIR/deploy/data/jama_import}"
 SERVICE_NAME="${SERVICE_NAME:-liftcore-jama}"
 DRY=0
+REPLACE=1
+UNCOLLECTED=1
 EXTRA=()
 
 for arg in "$@"; do
   case "$arg" in
-    --dry-run) DRY=1; EXTRA+=(--dry-run) ;;
+    --dry-run) DRY=1 ;;
     --force) EXTRA+=(--force) ;;
+    --keep-existing) REPLACE=0 ;;
+    --all-status) UNCOLLECTED=0 ;;
   esac
 done
+
+if [ "$REPLACE" = "1" ]; then EXTRA+=(--replace); fi
+if [ "$UNCOLLECTED" = "1" ]; then EXTRA+=(--uncollected-only); fi
+if [ "$DRY" = "1" ]; then EXTRA+=(--dry-run); fi
 
 if [ ! -d "$JAMA_DIR" ]; then
   echo "ERROR: Jama app dir not found: $JAMA_DIR"
@@ -45,7 +53,7 @@ import os, sys
 sys.path.insert(0, os.getcwd())
 from import_real_data import find_excel_files
 folder = os.environ.get("DATA_DIR", ".")
-found = find_excel_files(folder, prefer_date="24_6_2026")
+found = find_excel_files(folder, prefer_date="25_6_2026")
 path = found.get("spare_parts", "")
 if path and os.path.isfile(path):
     print(path)
@@ -53,9 +61,8 @@ PY
 }
 
 XLSX="${XLSX:-$(pick_file \
-  "$DATA_DIR/parts_billing_24_6_2026.xlsx" \
-  "$DATA_DIR/بيان تركيب قطع الغيار 24_6_2026.xlsx" \
-  "$JAMA_DIR/deploy/data/jama_parts_billing_14_6_2026.xlsx")}"
+  "$DATA_DIR/parts_billing_25_6_2026.xlsx" \
+  "$DATA_DIR/بيان تركيب قطع الغيار 25_6_2026.xlsx")}"
 
 if [ -z "$XLSX" ] || [ ! -f "$XLSX" ]; then
   echo "ERROR: parts billing Excel not found"
@@ -71,7 +78,7 @@ fi
 export DATABASE_URL="sqlite:///${DB_FILE}"
 
 echo "=============================================="
-echo "  Jama import: parts billing"
+echo "  Jama import: parts billing (غير محصل فقط)"
 echo "  DB:   $DB_FILE"
 echo "  File: $XLSX"
 echo "=============================================="

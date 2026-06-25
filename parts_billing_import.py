@@ -200,6 +200,7 @@ def import_parts_billing_rows(
     *,
     dry_run: bool = False,
     skip_existing: bool = True,
+    uncollected_only: bool = False,
     db_session=None,
     next_code_fn=None,
 ) -> dict:
@@ -208,6 +209,7 @@ def import_parts_billing_rows(
         'imported': 0,
         'skipped_existing': 0,
         'skipped_missing': 0,
+        'skipped_collected': 0,
         'errors': 0,
     }
     missing_samples: list[str] = []
@@ -243,6 +245,9 @@ def import_parts_billing_rows(
         cost = _float(rec.get('cost'))
         sell = _float(rec.get('sell'))
         status = normalize_parts_status(rec.get('status') or '')
+        if uncollected_only and status == 'محصل':
+            stats['skipped_collected'] += 1
+            continue
         payment_method = rec.get('pay_method') or ''
         notes = _compose_notes(rec)
         links = resolve_parts_links(contract_code=cn_code)
@@ -291,6 +296,7 @@ def import_parts_billing_file(
     *,
     dry_run: bool = False,
     skip_existing: bool = True,
+    uncollected_only: bool = False,
     db_session=None,
     next_code_fn=None,
 ) -> dict:
@@ -299,12 +305,19 @@ def import_parts_billing_file(
         rows,
         dry_run=dry_run,
         skip_existing=skip_existing,
+        uncollected_only=uncollected_only,
         db_session=db_session,
         next_code_fn=next_code_fn,
     )
 
 
-def import_parts(path: str, *, dry_run: bool = False, skip_existing: bool = True) -> dict:
+def import_parts(
+    path: str,
+    *,
+    dry_run: bool = False,
+    skip_existing: bool = True,
+    uncollected_only: bool = False,
+) -> dict:
     """CLI helper — requires Flask app context with db imported."""
     from app import db, next_code
 
@@ -313,6 +326,7 @@ def import_parts(path: str, *, dry_run: bool = False, skip_existing: bool = True
         rows,
         dry_run=dry_run,
         skip_existing=skip_existing,
+        uncollected_only=uncollected_only,
         db_session=None if dry_run else db.session,
         next_code_fn=next_code,
     )
