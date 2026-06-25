@@ -1578,6 +1578,7 @@ def _fault_json(f):
     elev = f.elevator
     link = fault_parts_link_fields(f)
     reported = f.reported_at.strftime('%Y-%m-%d') if f.reported_at else ''
+    tech_ids = fault_technician_ids(f) or ([f.technician_id] if f.technician_id else [])
     return {
         'id': f.id,
         'code': f.code,
@@ -1590,7 +1591,8 @@ def _fault_json(f):
         'customer': elev.customer.name if elev and elev.customer else '',
         'customer_id': elev.customer_id if elev else None,
         'technician': fault_technicians_label(f),
-        'tech_ids': fault_technician_ids(f) or ([f.technician_id] if f.technician_id else []),
+        'tech_id': tech_ids[0] if tech_ids else None,
+        'tech_ids': tech_ids,
         'technicians': fault_technicians_payload(f),
         'fault_type': f.fault_type or '',
         'description': f.description or '',
@@ -1687,6 +1689,7 @@ def api_fault_lookup():
 @app.route('/api/customers/<int:customer_id>/faults')
 def api_customer_faults(customer_id):
     from entity_links import fault_parts_link_fields
+    from technician_assignments import fault_technician_ids
 
     Customer.query.get_or_404(customer_id)
     faults = (
@@ -1702,6 +1705,7 @@ def api_customer_faults(customer_id):
         desc = (f.client_report or f.description or f.fault_type or '').strip()
         if len(desc) > 100:
             desc = desc[:97] + '...'
+        tech_ids = fault_technician_ids(f) or ([f.technician_id] if f.technician_id else [])
         rows.append({
             'id': f.id,
             'code': f.code,
@@ -1713,6 +1717,7 @@ def api_customer_faults(customer_id):
             'contract_code': link['contract_code'],
             'billing_date': link['billing_date'],
             'reported_at': f.reported_at.strftime('%Y-%m-%d') if f.reported_at else '',
+            'tech_id': tech_ids[0] if tech_ids else None,
             'billed': bool(f.billed),
             'has_parts': PartsBilling.query.filter_by(fault_id=f.id).count() > 0,
             'needs_parts': bool(f.needs_parts),
@@ -5192,6 +5197,9 @@ def parts_billing():
     customers = Customer.query.order_by(Customer.name).all()
     contracts = Contract.query.order_by(Contract.code).all()
     inventory_items = InventoryItem.query.order_by(InventoryItem.name).all()
+    technicians = Technician.query.filter(
+        Technician.status.in_(['نشط', 'متاح', 'مشغول'])
+    ).order_by(Technician.name).all()
     pending_faults = Fault.query.filter_by(status='انتظار قطع').order_by(
         Fault.reported_at.desc()
     ).all()
@@ -5214,6 +5222,7 @@ def parts_billing():
             }
             for i in inventory_items
         ],
+        technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],
         next_part_code=next_code(PartsBilling, 'PB-', digits=3),
         parts_workflow_stats=parts_stats(),
         parts_alerts=parts_alerts(),

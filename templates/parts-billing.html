@@ -361,6 +361,13 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>التاريخ <span>*</span></label>
           <input type="date" lang="en-GB" id="m-date" title="يُعبّأ تلقائياً من تاريخ العطل/الزيارة عند اختيار العطل">
         </div>
+        <div class="field form-full">
+          <label>الفني <span>*</span></label>
+          <select id="m-tech-sel">
+            <option value="">— اختر الفني —</option>
+          </select>
+          <p style="font-size:11px;color:var(--text3);margin-top:6px">يُسجَّل اسم الفني في حركة المخزون عند صرف القطع</p>
+        </div>
         <div class="field">
           <label>طريقة الدفع</label>
           <select id="m-pay">
@@ -499,7 +506,24 @@ var NEXT_PART_CODE = {{ next_part_code|tojson }};
 var CUSTOMERS = {{ customers_js|tojson }};
 var CONTRACTS = {{ contracts_js|tojson }};
 var INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
+var TECHNICIANS = {{ technicians_js|tojson }};
 
+function fillTechnicianSelect(selectedId) {
+  const sel = document.getElementById('m-tech-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— اختر الفني —</option>' +
+    TECHNICIANS.map(function (t) {
+      return '<option value="' + t.id + '">' + (t.name || '').replace(/</g, '&lt;') + '</option>';
+    }).join('');
+  if (selectedId) sel.value = String(selectedId);
+}
+
+function faultTechId(f) {
+  if (!f) return '';
+  if (f.tech_id) return f.tech_id;
+  if (f.tech_ids && f.tech_ids.length) return f.tech_ids[0];
+  return '';
+}
 const STATUS_BADGE = {
   'محصل':'badge-green','مكتملة':'badge-green','غير محصل':'badge-red','معلقة':'badge-gold'
 };
@@ -876,6 +900,9 @@ function applyFaultLinkFields(f) {
   } else if (desc && f.description && !desc.value.trim()) {
     desc.value = f.description;
   }
+  const tid = faultTechId(f);
+  const techSel = document.getElementById('m-tech-sel');
+  if (techSel && tid) techSel.value = String(tid);
 }
 
 async function onFaultSelected() {
@@ -936,6 +963,7 @@ function openModal(id) {
   });
   const d = document.getElementById('m-date');
   if (d) d.value = new Date().toISOString().slice(0, 10);
+  fillTechnicianSelect('');
   document.getElementById('modal').classList.add('open');
   updateProfit();
 }
@@ -962,6 +990,8 @@ function saveRecord() {
   if (!clientEl || !clientEl.value) { alert('اختر العميل'); return; }
   const lines = collectPbParts();
   if (!lines.length) { alert('أضف قطعة غيار واحدة على الأقل من ملف الأصناف'); return; }
+  const techId = document.getElementById('m-tech-sel')?.value;
+  if (!techId) { alert('اختر الفني — يظهر اسمه في حركة المخزون'); return; }
   const customer = CUSTOMERS.find(c => String(c.id) === String(clientEl.value));
   const contract = CONTRACTS.find(c => c.code.toUpperCase() === cn.toUpperCase());
   const fd = new FormData();
@@ -977,6 +1007,7 @@ function saveRecord() {
   fd.append('payment_method', document.getElementById('m-pay').value);
   fd.append('status', document.getElementById('m-status').value);
   fd.append('notes', document.getElementById('m-notes').value);
+  fd.append('technician_id', techId);
   const visitCode = document.getElementById('m-visit')?.value.trim();
   const faultSel = document.getElementById('m-fault-sel');
   const faultCode = (faultSel && faultSel.value) || document.getElementById('m-fault')?.value.trim();
@@ -1016,6 +1047,7 @@ function editPart(id) {
   document.getElementById('m-pay').value = p.pay_method || '';
   document.getElementById('m-status').value = (p.status === 'مكتملة' ? 'محصل' : p.status) || 'غير محصل';
   document.getElementById('m-notes').value = p.notes || '';
+  fillTechnicianSelect(p.tech_id || '');
   updateProfit();
   document.getElementById('modal').classList.add('open');
 }
@@ -1167,6 +1199,7 @@ if (hDateEl) hDateEl.textContent = `${days[now.getDay()]}، ${now.getDate()} ${m
 
 updateStats();
 if (tableSort) tableSort.bindHeaders();
+fillTechnicianSelect('');
 if (typeof LcClientSelect !== 'undefined') {
   LcClientSelect.upgradeSelect('m-client-sel', {
     customers: CUSTOMERS,
