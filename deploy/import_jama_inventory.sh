@@ -85,6 +85,24 @@ fi
 
 python import_inventory_csv.py "$XLSX" "${EXTRA[@]}"
 
+python - <<'PY'
+import os
+os.environ.setdefault("DATABASE_URL", os.environ.get("DATABASE_URL", ""))
+from app import app, db
+from models import InventoryItem
+with app.app_context():
+    n = 0
+    for item in InventoryItem.query.all():
+        buy = float(item.buy_price or 0)
+        sell = float(item.sell_price or 0)
+        if buy > 0 and sell <= 0:
+            item.sell_price = buy
+            n += 1
+    if n:
+        db.session.commit()
+        print(f"  synced sell_price from buy_price for {n} items")
+PY
+
 sudo systemctl restart "$SERVICE_NAME" 2>/dev/null || true
 sleep 2
 echo ""

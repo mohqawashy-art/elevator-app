@@ -118,6 +118,11 @@ def import_inventory_file(path: str, replace: bool = False) -> dict:
                 "supplier": _str(row.get("المورد الاساسي")),
             }
 
+            sell_price = _float(row.get("سعر البيع")) if "سعر البيع" in df.columns else 0.0
+            if sell_price <= 0:
+                sell_price = buy_price
+            payload["sell_price"] = sell_price
+
             notes_parts = []
             status = _str(row.get("حالة الصنف"))
             if status:
@@ -133,7 +138,7 @@ def import_inventory_file(path: str, replace: bool = False) -> dict:
                     setattr(item, key, val)
                 stats["updated"] += 1
             else:
-                item = InventoryItem(code=code, sell_price=0, **payload)
+                item = InventoryItem(code=code, **payload)
                 db.session.add(item)
                 stats["inserted"] += 1
 

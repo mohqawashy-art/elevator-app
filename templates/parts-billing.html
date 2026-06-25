@@ -376,12 +376,13 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             <table class="pb-parts-table">
               <thead>
                 <tr>
-                  <th style="width:30%">الصنف من المخزون</th>
-                  <th style="width:24%">اسم القطعة</th>
-                  <th style="width:10%">الكمية</th>
-                  <th style="width:14%">سعر العميل</th>
-                  <th style="width:14%">الإجمالي</th>
-                  <th style="width:6%"></th>
+                  <th style="width:26%">الصنف من المخزون</th>
+                  <th style="width:20%">اسم القطعة</th>
+                  <th style="width:8%">الكمية</th>
+                  <th style="width:12%">تكلفة الوحدة</th>
+                  <th style="width:12%">سعر العميل</th>
+                  <th style="width:12%">الإجمالي</th>
+                  <th style="width:5%"></th>
                 </tr>
               </thead>
               <tbody id="pb-parts-body"></tbody>
@@ -397,11 +398,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="field">
           <label>سعر التكلفة (<span class="lc-sar" role="img" aria-label="ريال"></span>)</label>
-          <input type="number" id="m-cost" placeholder="0.00" step="0.01" oninput="updateProfit()">
+          <input type="number" id="m-cost" placeholder="0.00" step="0.01" readonly style="opacity:.9;background:var(--bg4)" title="يُحسب تلقائياً من تكلفة القطع">
         </div>
         <div class="field">
           <label>سعر العميل (<span class="lc-sar" role="img" aria-label="ريال"></span>) <span>*</span></label>
-          <input type="number" id="m-price" placeholder="0.00" step="0.01" oninput="updateProfit()">
+          <input type="number" id="m-price" placeholder="0.00" step="0.01" readonly style="opacity:.9;background:var(--bg4)" title="يُحسب تلقائياً من أسعار القطع">
         </div>
         <div class="field">
           <label>حالة التحصيل</label>
@@ -623,6 +624,17 @@ function clearFilters() {
 
 var pbPartRowSeq = 0;
 
+function partUnitSellPrice(item) {
+  const sell = parseFloat(item.sell_price);
+  const buy = parseFloat(item.buy_price) || 0;
+  if (!isNaN(sell) && sell > 0) return sell;
+  return buy;
+}
+
+function partUnitCostPrice(item) {
+  return parseFloat(item.buy_price) || 0;
+}
+
 function inventorySelectOptions() {
   return INVENTORY_ITEMS.map(function (i) {
     return { id: String(i.id), code: i.code || '', name: i.name || '' };
@@ -665,6 +677,7 @@ function addPbPartRow(data) {
     '<td class="part-item-cell"></td>' +
     `<td><input type="text" class="part-name" placeholder="اسم القطعة" value="${(row.name || '').replace(/"/g, '&quot;')}"></td>` +
     `<td><input type="number" class="part-qty" min="1" step="1" value="${row.qty || 1}" style="direction:ltr"></td>` +
+    `<td><input type="text" class="part-cost" readonly placeholder="0.00" style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg3)"></td>` +
     `<td><input type="number" class="part-price" min="0" step="0.01" placeholder="0.00" value="${row.unit_price !== '' && row.unit_price != null ? row.unit_price : ''}" style="direction:ltr"></td>` +
     `<td><input type="text" class="part-row-total" readonly style="direction:ltr;font-family:var(--font-en)"></td>` +
     `<td><button type="button" class="btn btn-danger btn-sm btn-icon part-del" title="حذف">×</button></td>`;
@@ -684,20 +697,25 @@ function onPbPartItemChange(tr, keepPrice) {
   const hidden = tr.querySelector('.part-item-id');
   const nameEl = tr.querySelector('.part-name');
   const priceEl = tr.querySelector('.part-price');
+  const costEl = tr.querySelector('.part-cost');
   const itemId = hidden ? hidden.value : '';
   if (!itemId) {
     tr.dataset.itemId = '';
     tr.dataset.costPrice = 0;
     if (nameEl) { nameEl.readOnly = false; nameEl.placeholder = 'اكتب اسم القطعة يدوياً'; }
+    if (costEl) costEl.value = '';
     calcPbPartsTotals();
     return;
   }
   const item = INVENTORY_ITEMS.find(x => String(x.id) === String(itemId));
   if (!item) return;
+  const unitCost = partUnitCostPrice(item);
+  const unitSell = partUnitSellPrice(item);
   tr.dataset.itemId = item.id;
-  tr.dataset.costPrice = item.buy_price || 0;
+  tr.dataset.costPrice = unitCost;
   if (nameEl) { nameEl.value = item.name; nameEl.readOnly = true; }
-  if (priceEl && !keepPrice) priceEl.value = item.sell_price > 0 ? item.sell_price : '';
+  if (costEl) costEl.value = unitCost.toFixed(2);
+  if (priceEl && !keepPrice) priceEl.value = unitSell > 0 ? unitSell.toFixed(2) : '';
   calcPbPartsTotals();
 }
 
@@ -720,7 +738,7 @@ function calcPbPartsTotals() {
   if (costEl) costEl.textContent = costTotal.toFixed(2);
   const costInput = document.getElementById('m-cost');
   const priceInput = document.getElementById('m-price');
-  if (costInput) costInput.value = sellTotal > 0 || costTotal > 0 ? costTotal.toFixed(2) : '';
+  if (costInput) costInput.value = costTotal > 0 ? costTotal.toFixed(2) : '';
   if (priceInput) priceInput.value = sellTotal > 0 ? sellTotal.toFixed(2) : '';
   updateProfit();
 }
