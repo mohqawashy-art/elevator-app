@@ -7,7 +7,7 @@
   var syncing = false;
   var toastTimer = null;
 
-  var POLL_MS = 4000;
+  var CLIENT_SELECT_WRAPS = [
     ['elev-client-select', 'f-client-sel'],
     ['contract-client-select', 'f-client-sel'],
     ['client-select', 'f-client-sel'],
