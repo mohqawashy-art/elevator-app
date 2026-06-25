@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import or_
 
@@ -19,6 +20,38 @@ _CN_CODE_RE = re.compile(r'(CN-\d+)', re.I)
 
 def _round_money(v: float) -> float:
     return round(float(v or 0), 2)
+
+
+def _money_decimal(v) -> Decimal:
+    return Decimal(str(v or 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def split_vat_amounts(
+    *,
+    amount_ex_vat=None,
+    total_incl_vat=None,
+    tax_pct: float = 15,
+) -> tuple[float, float, float]:
+    """تقسيم المبلغ / الضريبة / الإجمالي دون انحراف 1599.99 عند الإدخال الشامل."""
+    rate = Decimal(str(float(tax_pct or 15) / 100))
+    has_total = total_incl_vat not in (None, '')
+
+    if has_total:
+        total_d = _money_decimal(total_incl_vat)
+        if amount_ex_vat not in (None, ''):
+            amount_d = _money_decimal(amount_ex_vat)
+        else:
+            amount_d = (total_d / (Decimal('1') + rate)).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP
+            )
+        tax_d = total_d - amount_d
+        total_d = amount_d + tax_d
+        return float(amount_d), float(tax_d), float(total_d)
+
+    amount_d = _money_decimal(amount_ex_vat)
+    tax_d = (amount_d * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    total_d = amount_d + tax_d
+    return float(amount_d), float(tax_d), float(total_d)
 
 
 def _extract_contract_code(*texts) -> str | None:

@@ -24,7 +24,7 @@
     total = parseFloat(total) || 0;
     var before = round2(total / (1 + pct / 100));
     var tax = round2(total - before);
-    return { before: before, tax: tax, total: round2(total), pct: pct };
+    return { before: before, tax: tax, total: round2(before + tax), pct: pct };
   }
 
   function formatMoney(n) {

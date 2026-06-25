@@ -4064,11 +4064,13 @@ def revenues():
     return render_template('revenues.html', revenues=revs, customers=customers)
 
 def _revenue_from_form(form, existing: Revenue | None = None):
-    from customer_billing import apply_payment_to_source
+    from customer_billing import apply_payment_to_source, split_vat_amounts
 
-    amount = float(form.get('amount', 0) or 0)
-    tax = round(amount * 0.15, 2)
-    total = round(amount + tax, 2)
+    amount, tax, total = split_vat_amounts(
+        amount_ex_vat=form.get('amount'),
+        total_incl_vat=form.get('total'),
+        tax_pct=form.get('tax_pct', 15),
+    )
     source_type = (form.get('source_type') or '').strip()
     source_id = (form.get('source_id') or '').strip()
     notes = form.get('notes', '')

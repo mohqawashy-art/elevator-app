@@ -384,7 +384,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             <option>زيارة</option>
           </select>
         </div>
-        {% with prefix='revtax', before_field_id='f-amount', pct_id='f-tax-pct' %}
+        {% with prefix='revtax', before_field_id='f-amount', total_field_id='f-total', pct_id='f-tax-pct' %}
         {% include '_tax_amount_block.html' %}
         {% endwith %}
         <div class="field">
@@ -880,7 +880,8 @@ function saveRevenue() {
   const fd = new FormData();
   [['customer_id', 'f-customer-sel'], ['revenue_date', 'f-date'],
     ['revenue_type', 'f-rev-type'], ['payment_method', 'f-pay-method'],
-    ['amount', 'f-amount'], ['status', 'f-status-sel'],
+    ['amount', 'f-amount'], ['total', 'f-total'], ['tax_pct', 'f-tax-pct'],
+    ['status', 'f-status-sel'],
     ['reference', 'f-reference'], ['notes', 'f-notes']
   ].forEach(([f, i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
   if (!editId) {
