@@ -4,7 +4,17 @@
 (function (global) {
   'use strict';
 
+  function isReportPage() {
+    var b = document.body;
+    if (!b) return false;
+    return !!(b.getAttribute('data-report-id')
+      || b.getAttribute('data-report-dashboard')
+      || b.getAttribute('data-report-annual'));
+  }
+
   function canFreezeLayout(content) {
+    if (isReportPage()) return false;
+    if (content.querySelector('.print-wrap')) return false;
     if (!content.querySelector('.table-wrap')) return false;
     if (content.querySelector('.kpi-grid')) return false;
     if (content.querySelector('.charts-2')) return false;
@@ -41,6 +51,7 @@
 
   function initContent(content) {
     if (!content || content.dataset.lcStickyInit) return;
+    if (isReportPage()) return;
 
     var tableWrap = getPrimaryTableWrap(content);
     if (!tableWrap) return;

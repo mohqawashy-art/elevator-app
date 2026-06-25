@@ -6,6 +6,53 @@
   display: none;
 }
 
+/* ── شاشة: تمرير كامل للتقرير (لا تجميد معاينة الطباعة) ── */
+body[data-report-id] .content,
+body[data-report-dashboard] .content,
+body[data-report-annual] .content {
+  overflow-y: auto !important;
+  min-height: 0;
+}
+
+body[data-report-id] .content.lc-frozen-layout,
+body[data-report-dashboard] .content.lc-frozen-layout,
+body[data-report-annual] .content.lc-frozen-layout {
+  display: block !important;
+  overflow-y: auto !important;
+  height: auto !important;
+}
+
+body[data-report-id] .lc-page-sticky-top,
+body[data-report-dashboard] .lc-page-sticky-top,
+body[data-report-annual] .lc-page-sticky-top {
+  position: static !important;
+  box-shadow: none !important;
+  margin-bottom: 12px;
+}
+
+body[data-report-id] .print-wrap,
+body[data-report-dashboard] .print-wrap,
+body[data-report-annual] .print-wrap {
+  overflow: visible;
+  margin-bottom: 20px;
+}
+
+body[data-report-id] .print-wrap .rpt-page,
+body[data-report-dashboard] .print-wrap .rpt-page,
+body[data-report-annual] .print-wrap .rpt-page {
+  overflow: visible;
+  max-height: none;
+}
+
+body[data-report-id] .table-wrap.screen-only .table-scroll,
+body[data-report-dashboard] .table-wrap.screen-only .table-scroll,
+body[data-report-annual] .table-wrap.screen-only .table-scroll {
+  max-height: min(65vh, 640px);
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 @page {
   size: A4 portrait;
   margin: 12mm 14mm 16mm;

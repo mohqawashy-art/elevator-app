@@ -170,14 +170,14 @@ body:has(.main > .content) .main > .content {
 }
 
 /* ===== جداول التقارير والصفحات — تمرير عند كثرة الصفوف ===== */
-.main > .content .table-wrap .table-scroll {
+body:not([data-report-id]):not([data-report-dashboard]):not([data-report-annual]) .main > .content .table-wrap .table-scroll {
   max-height: min(65vh, 640px);
   overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.main > .content .table-wrap .table-scroll thead th {
+body:not([data-report-id]):not([data-report-dashboard]):not([data-report-annual]) .main > .content .table-wrap .table-scroll thead th {
   position: sticky;
   top: 0;
   z-index: 2;
