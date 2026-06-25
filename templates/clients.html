@@ -1236,14 +1236,18 @@ function openClientDrill(type, cardEl) {
   else if (type === 'mapexp') { rows = rows.filter(hasExactGps); title = 'عملاء بموقع GPS دقيق'; }
 
   document.getElementById('drill-title').textContent = title + ' (' + rows.length + ')';
-  document.getElementById('drill-body').innerHTML = rows.length
-    ? '<div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto">' +
-      rows.slice(0, 40).map(function(c) {
+  var drillBody = document.getElementById('drill-body');
+  drillBody.className = 'lc-drill-scroll';
+  drillBody.style.padding = '12px 18px';
+  drillBody.style.fontSize = '13px';
+  drillBody.style.color = 'var(--text2)';
+  drillBody.innerHTML = rows.length
+    ? '<div style="display:flex;flex-direction:column;gap:6px">' +
+      rows.map(function(c) {
         return '<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">' +
           '<span style="cursor:pointer;color:var(--accent)" onclick="openClientCard(' + c.id + ')">' + c.name + '</span>' +
           '<span style="color:var(--text3);font-size:12px">' + c.code + '</span></div>';
       }).join('') +
-      (rows.length > 40 ? '<div style="padding:8px 0;color:var(--text3)">و ' + (rows.length - 40) + ' آخرين...</div>' : '') +
       '</div>'
     : '<div style="padding:8px 0">لا توجد نتائج</div>';
   document.getElementById('drill-panel').style.display = 'block';

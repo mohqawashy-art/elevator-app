@@ -134,3 +134,53 @@ td.lc-date,
   text-align: right;
   font-family: var(--font-en, 'DM Sans', sans-serif);
 }
+
+/* ===== تمرير المنطقة الرئيسية (إصلاح flex overflow) ===== */
+body:has(.main > .content) {
+  height: 100vh;
+  overflow: hidden;
+}
+
+body:has(.main > .content) .main {
+  min-height: 0;
+}
+
+body:has(.main > .content) .main > .content {
+  min-height: 0;
+}
+
+/* ===== لوحات التفاصيل (drill-down) — تمرير عمودي ===== */
+.drill-panel .table-scroll,
+#drill-panel .tbl-wrap,
+.drill-panel .lc-drill-scroll,
+.drill-panel #drill-body.lc-drill-scroll {
+  max-height: min(60vh, 520px);
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drill-panel .table-scroll thead th,
+#drill-panel .tbl-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg3, #1a2332);
+  box-shadow: 0 1px 0 var(--border, rgba(100, 160, 255, 0.15));
+}
+
+/* ===== جداول التقارير والصفحات — تمرير عند كثرة الصفوف ===== */
+.main > .content .table-wrap .table-scroll {
+  max-height: min(65vh, 640px);
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.main > .content .table-wrap .table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg3, #1a2332);
+  box-shadow: 0 1px 0 var(--border, rgba(100, 160, 255, 0.15));
+}
