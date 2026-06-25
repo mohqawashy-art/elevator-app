@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# استيراد بيان تركيب قطع الغيار لجما من Excel
-# Usage (GCP SSH):
-#   cd ~/liftcore/jama-elevator-app && git pull origin main
+# Import parts billing (بيان تركيب قطع الغيار) for Jama
+#
 #   bash deploy/import_jama_parts_billing.sh --dry-run
 #   bash deploy/import_jama_parts_billing.sh
 
@@ -10,12 +9,15 @@ set -euo pipefail
 JAMA_DIR="${JAMA_DIR:-$HOME/liftcore/jama-elevator-app}"
 VENV="${VENV:-$JAMA_DIR/.venv}"
 DB_FILE="${DB_FILE:-$JAMA_DIR/instance/jama.db}"
-XLSX="${XLSX:-$JAMA_DIR/deploy/data/jama_parts_billing_14_6_2026.xlsx}"
-DRY="${DRY:-0}"
+DATA_DIR="${DATA_DIR:-$JAMA_DIR/deploy/data/jama_import}"
+SERVICE_NAME="${SERVICE_NAME:-liftcore-jama}"
+DRY=0
+EXTRA=()
 
 for arg in "$@"; do
   case "$arg" in
-    --dry-run) DRY=1 ;;
+    --dry-run) DRY=1; EXTRA+=(--dry-run) ;;
+    --force) EXTRA+=(--force) ;;
   esac
 done
 
@@ -25,10 +27,39 @@ if [ ! -d "$JAMA_DIR" ]; then
 fi
 
 cd "$JAMA_DIR"
+# shellcheck disable=SC1091
+source "$VENV/bin/activate"
+pip install -q openpyxl
 
-if [ ! -f "$XLSX" ]; then
-  echo "ERROR: Excel file not found: $XLSX"
-  echo "Upload your file to: deploy/data/jama_parts_billing_14_6_2026.xlsx"
+pick_file() {
+  local candidate
+  for candidate in "$@"; do
+    if [ -f "$candidate" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  export DATA_DIR
+  python - spare_parts <<'PY'
+import os, sys
+sys.path.insert(0, os.getcwd())
+from import_real_data import find_excel_files
+folder = os.environ.get("DATA_DIR", ".")
+found = find_excel_files(folder, prefer_date="24_6_2026")
+path = found.get("spare_parts", "")
+if path and os.path.isfile(path):
+    print(path)
+PY
+}
+
+XLSX="${XLSX:-$(pick_file \
+  "$DATA_DIR/parts_billing_24_6_2026.xlsx" \
+  "$DATA_DIR/بيان تركيب قطع الغيار 24_6_2026.xlsx" \
+  "$JAMA_DIR/deploy/data/jama_parts_billing_14_6_2026.xlsx")}"
+
+if [ -z "$XLSX" ] || [ ! -f "$XLSX" ]; then
+  echo "ERROR: parts billing Excel not found"
+  echo "Run: git pull origin main"
   exit 1
 fi
 
@@ -37,23 +68,19 @@ if [ ! -f "$DB_FILE" ]; then
   exit 1
 fi
 
-# shellcheck disable=SC1091
-source "$VENV/bin/activate"
-pip install -q openpyxl
-
 export DATABASE_URL="sqlite:///${DB_FILE}"
 
-ARGS=("$XLSX")
-if [ "$DRY" = "1" ]; then
-  ARGS+=(--dry-run)
-fi
+echo "=============================================="
+echo "  Jama import: parts billing"
+echo "  DB:   $DB_FILE"
+echo "  File: $XLSX"
+echo "=============================================="
 
-echo "==> Import parts billing into Jama"
-echo "    DB:   $DB_FILE"
-echo "    File: $XLSX"
-python scripts/import_parts_billing_xlsx.py "${ARGS[@]}"
+python scripts/import_parts_billing_xlsx.py "$XLSX" "${EXTRA[@]}"
 
 if [ "$DRY" != "1" ]; then
-  sudo systemctl restart liftcore-jama 2>/dev/null || true
-  echo "==> Done. Refresh https://jama.liftcoreapp.com/parts-billing"
+  sudo systemctl restart "$SERVICE_NAME" 2>/dev/null || true
+  sleep 2
+  echo ""
+  echo "Done — https://jama.liftcoreapp.com/parts-billing"
 fi
