@@ -87,24 +87,42 @@ html[dir="rtl"] input[style*="font-family:var(--font-en)"]:not([type="date"]):no
   text-align: right !important;
 }
 
-/* حقول التاريخ — عرض dd/mm/yyyy بدون انعكاس RTL */
+/* حقول التاريخ — عرض dd/mm/yyyy بخط لاتيني (لا سس/رهس/موى) */
+.field input[type="date"],
+.field input[type="month"],
+.field input[type="datetime-local"],
+.filter-input[type="date"],
+.filter-input[type="month"],
+.date-input[type="date"],
 input[type="date"],
 input[type="month"],
+input[type="datetime-local"],
 input.lc-date-input {
-  direction: ltr;
-  text-align: right;
-  unicode-bidi: isolate;
-  font-family: var(--font-en, 'DM Sans', sans-serif);
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate !important;
+  font-family: var(--font-en, 'DM Sans', sans-serif) !important;
 }
 
 html[dir="rtl"] input[type="date"]::-webkit-datetime-edit,
-html[dir="rtl"] input[type="month"]::-webkit-datetime-edit {
-  direction: ltr;
-  unicode-bidi: isolate;
+html[dir="rtl"] input[type="month"]::-webkit-datetime-edit,
+html[dir="rtl"] input[type="datetime-local"]::-webkit-datetime-edit,
+html[dir="rtl"] input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+html[dir="rtl"] input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+html[dir="rtl"] input[type="date"]::-webkit-datetime-edit-day-field,
+html[dir="rtl"] input[type="date"]::-webkit-datetime-edit-month-field,
+html[dir="rtl"] input[type="date"]::-webkit-datetime-edit-year-field,
+html[dir="rtl"] input[type="date"]::-webkit-datetime-edit-text,
+html[dir="rtl"] input[type="month"]::-webkit-datetime-edit-month-field,
+html[dir="rtl"] input[type="month"]::-webkit-datetime-edit-year-field {
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+  font-family: var(--font-en, 'DM Sans', sans-serif) !important;
 }
 
 html[dir="rtl"] input[type="date"]::-webkit-calendar-picker-indicator,
-html[dir="rtl"] input[type="month"]::-webkit-calendar-picker-indicator {
+html[dir="rtl"] input[type="month"]::-webkit-calendar-picker-indicator,
+html[dir="rtl"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   margin-left: 0;
   margin-right: 4px;
 }

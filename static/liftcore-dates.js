@@ -12,11 +12,15 @@
   window.fmtDateDMY = isoToDMY;
 
   function initDateInputs(root) {
-    (root || document).querySelectorAll('input[type="date"], input[type="month"]').forEach(function (el) {
+    (root || document).querySelectorAll('input[type="date"], input[type="month"], input[type="datetime-local"]').forEach(function (el) {
       if (!el.getAttribute('lang')) el.setAttribute('lang', 'en-GB');
+      el.setAttribute('dir', 'ltr');
+      if (!el.getAttribute('title')) el.setAttribute('title', 'dd/mm/yyyy');
       el.classList.add('lc-date-input');
     });
   }
+
+  window.initLiftCoreDateInputs = initDateInputs;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { initDateInputs(); });
