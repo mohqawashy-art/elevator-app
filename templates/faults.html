@@ -326,11 +326,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="alert-chip {{ a.level }}"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>{{ a.text }}</div>
       {% endfor %}
       {% if not fault_alerts %}<div class="alert-chip info" style="animation:none;opacity:.7">لا تنبيهات عاجلة</div>{% endif %}
-    </div>
+      </div>
 
+      {% include 'partials/flash_messages.html' %}
       <div class="page-header">
         <div class="page-title">الأعطال <span id="faults-count" data-i18n-skip></span></div>
         <div class="page-actions">
+          {% with report_url=url_for('report_faults'), report_label='تقرير الأعطال' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
           <a class="btn btn-secondary btn-sm" href="/field/login" style="text-decoration:none">جوال الفني</a>
           <button class="btn btn-secondary btn-sm" type="button" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
@@ -561,6 +563,23 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <div class="form-grid" style="margin-top:12px">
           <div class="field form-full"><label>ملاحظات</label><textarea id="f-notes" placeholder="أي ملاحظات إضافية..."></textarea></div>
+        </div>
+      </div>
+
+      <div class="form-section" id="fault-close-fields" style="display:none">
+        <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>إغلاق العطل</div>
+        <div class="form-grid">
+          <div class="field"><label>الحالة</label>
+            <select id="f-status-sel">
+              <option value="مفتوح">مفتوح</option>
+              <option value="قيد المعالجة">قيد المعالجة</option>
+              <option value="انتظار قطع">انتظار قطع</option>
+              <option value="تم الاصلاح">تم الاصلاح</option>
+              <option value="محلول">محلول</option>
+              <option value="مغلق">مغلق</option>
+            </select>
+          </div>
+          <div class="field form-full"><label>طريقة الحل</label><textarea id="f-resolution" placeholder="اشرح كيف تم حل العطل..."></textarea></div>
         </div>
       </div>
 
@@ -1062,6 +1081,10 @@ function openAddModal() {
   resetFaultPartsPanel();
   const vc = document.getElementById('f-visit-code');
   if (vc) vc.value = '';
+  const closeFields = document.getElementById('fault-close-fields');
+  if (closeFields) closeFields.style.display = 'none';
+  const resEl = document.getElementById('f-resolution');
+  if (resEl) resEl.value = '';
   renderFaultTechSelect([]);
   openModal('modal-add');
 }
@@ -1108,6 +1131,19 @@ function saveFault() {
   const vc = document.getElementById('f-visit-code');
   if (vc && vc.value.trim()) fd.append('visit_code', vc.value.trim());
 
+  if (editId) {
+    const stEl = document.getElementById('f-status-sel');
+    const resEl = document.getElementById('f-resolution');
+    const st = stEl ? stEl.value : '';
+    const res = resEl ? resEl.value.trim() : '';
+    if (['مغلق', 'تم الاصلاح', 'محلول'].includes(st) && !res) {
+      alert('أدخل طريقة الحل قبل إغلاق العطل');
+      return;
+    }
+    if (st) fd.append('status', st);
+    if (res) fd.append('resolution', res);
+  }
+
   fetch(editId ? `/faults/edit/${editId}` : '/faults/add', {method:'POST',body:fd})
     .then(()=>window.location.reload());
 }
@@ -1151,6 +1187,12 @@ function editFault(id) {
   } else {
     resetFaultPartsPanel();
   }
+  const closeFields = document.getElementById('fault-close-fields');
+  if (closeFields) closeFields.style.display = '';
+  const stSel = document.getElementById('f-status-sel');
+  const resEl = document.getElementById('f-resolution');
+  if (stSel) stSel.value = f.status || 'مفتوح';
+  if (resEl) resEl.value = f.resolution || '';
   renderFaultTechSelect(f.tech_ids && f.tech_ids.length ? f.tech_ids : (f.tech_id ? [f.tech_id] : []));
   openModal('modal-add');
 }

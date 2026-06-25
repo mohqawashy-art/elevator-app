@@ -163,6 +163,10 @@ def apply_report_to_fault(fault, data: dict, *, mark_resolved: bool = False) -> 
         fault.needs_parts = False
 
     if mark_resolved or fault.status in FAULT_CLOSED:
+        from form_validation import fault_close_error
+        close_err = fault_close_error(fault.status, fault.resolution)
+        if close_err:
+            raise ValueError(close_err)
         fault.resolved_at = fault.resolved_at or datetime.utcnow()
 
     if not fault.responded_at and (meta.get('arrival_time') or fault.dispatched_at):

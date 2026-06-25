@@ -224,9 +224,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       </div>
     </div>
 
+    {% include 'partials/flash_messages.html' %}
     <div class="page-header">
       <div class="page-title">الأصناف <span id="inv-count" data-i18n-skip></span></div>
       <div class="page-actions">
+        {% with report_url=url_for('report_inventory'), report_label='تقرير الأصناف' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
         <button class="btn btn-warning btn-sm" onclick="filterLow()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1v8M4 6l3 3 3-3"/><path d="M1 11h12"/></svg>
           تحتاج طلب (<span id="low-count">0</span>)
@@ -565,6 +567,18 @@ function editItem(id) {
 function saveRecord() {
   const name = document.getElementById('m-name').value.trim();
   if (!name) { alert('اسم الصنف مطلوب'); return; }
+  const qty = parseFloat(document.getElementById('m-balance').value || 0);
+  const minQ = parseFloat(document.getElementById('m-min').value || 0);
+  const buy = parseFloat(document.getElementById('m-buy-price').value || 0);
+  const sell = parseFloat(document.getElementById('m-sell-price').value || 0);
+  if (isNaN(qty) || isNaN(minQ) || isNaN(buy) || isNaN(sell)) {
+    alert('الأرقام غير صالحة — تحقق من الكمية والأسعار');
+    return;
+  }
+  if (qty < 0 || minQ < 0 || buy < 0 || sell < 0) {
+    alert('الكمية والأسعار لا يمكن أن تكون سالبة');
+    return;
+  }
   const editId = document.getElementById('modal').dataset.editId;
   const fd = new FormData();
   fd.append('name', name);

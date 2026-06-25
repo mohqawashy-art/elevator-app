@@ -67,11 +67,18 @@ def _normalize_code(raw: str) -> str:
     return code
 
 
-def import_inventory_csv(path: str, replace: bool = False) -> dict:
+def _read_inventory_df(path: str) -> pd.DataFrame:
+    lower = path.lower()
+    if lower.endswith(('.xlsx', '.xls')):
+        return pd.read_excel(path)
+    return pd.read_csv(path, encoding="utf-8-sig")
+
+
+def import_inventory_file(path: str, replace: bool = False) -> dict:
     if not os.path.isfile(path):
         raise FileNotFoundError(f"الملف غير موجود: {path}")
 
-    df = pd.read_csv(path, encoding="utf-8-sig")
+    df = _read_inventory_df(path)
     missing = [col for col in COLUMN_MAP if col not in df.columns]
     if missing:
         raise ValueError(f"أعمدة ناقصة في الملف: {', '.join(missing)}")
@@ -136,8 +143,12 @@ def import_inventory_csv(path: str, replace: bool = False) -> dict:
     return stats
 
 
+def import_inventory_csv(path: str, replace: bool = False) -> dict:
+    return import_inventory_file(path, replace=replace)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="استيراد أصناف المخزن من CSV")
+    parser = argparse.ArgumentParser(description="استيراد أصناف المخزن من CSV أو Excel")
     parser.add_argument("csv_path", nargs="?", default=DEFAULT_CSV)
     parser.add_argument(
         "--replace",
@@ -147,7 +158,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        stats = import_inventory_csv(args.csv_path, replace=args.replace)
+        stats = import_inventory_file(args.csv_path, replace=args.replace)
     except Exception as exc:
         print(f"فشل الاستيراد: {exc}", file=sys.stderr)
         sys.exit(1)

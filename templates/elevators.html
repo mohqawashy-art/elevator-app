@@ -338,9 +338,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
     <!-- TABLE TAB -->
     <div id="tab-table">
+      {% include 'partials/flash_messages.html' %}
       <div class="page-header">
         <div class="page-title">المصاعد <span id="elev-count" data-i18n-skip>({{ elevators|length }} مصعد)</span></div>
         <div class="page-actions">
+          {% with report_url=url_for('report_elevators'), report_label='تقرير المصاعد' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
           <a class="btn btn-secondary btn-sm" href="{{ url_for('elevators_import_template') }}" download>
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
             تحميل النموذج
@@ -1205,6 +1207,17 @@ function saveElevator() {
   var clientSel = document.getElementById('f-client-sel');
   if (!clientSel || !clientSel.value) {
     alert('يرجى اختيار العميل');
+    return;
+  }
+  var floorsEl = document.getElementById('f-floors');
+  var floors = floorsEl ? parseInt(floorsEl.value, 10) : NaN;
+  if (!floorsEl || !floorsEl.value.trim() || isNaN(floors) || floors < 1) {
+    alert('عدد الأدوار مطلوب (1 على الأقل)');
+    return;
+  }
+  var capKg = document.getElementById('f-capacity-kg');
+  if (capKg && capKg.value !== '' && (isNaN(parseFloat(capKg.value)) || parseFloat(capKg.value) < 0)) {
+    alert('الحمولة بالكيلو غير صالحة');
     return;
   }
   var editId = document.getElementById('modal-add').dataset.editId;

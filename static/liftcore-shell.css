@@ -1393,6 +1393,19 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
     -webkit-overflow-scrolling: touch;
   }
 
+  html.lc-shell-ready body:has(#sidebar) .sidebar-nav .nav-item,
+  html.lc-shell-ready body:has(#sidebar) #sidebar > .nav-item,
+  html.lc-shell-ready body:has(#sidebar) .sidebar .nav-item {
+    flex-shrink: 0 !important;
+    scroll-margin-inline: 12px;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) > #sidebar,
+  html.lc-shell-ready body:has(#sidebar) > .sidebar {
+    scrollbar-width: thin;
+    scroll-behavior: smooth;
+  }
+
   /* v25: الهيدر + قائمة الصفحات ثابتان — التمرير داخل المحتوى فقط */
   html.lc-shell-ready body:has(#sidebar) {
     height: 100vh !important;

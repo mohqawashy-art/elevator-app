@@ -135,7 +135,30 @@
       a.dataset.lcNavBound = '1';
       a.addEventListener('click', function () {
         window.closeSidebar();
+        scrollNavItemIntoView(a);
       });
+    });
+    highlightActiveNav();
+  }
+
+  function scrollNavItemIntoView(link) {
+    if (!link || !isDesktopTopNav()) return;
+    var nav = link.closest('.sidebar-nav') || document.getElementById('sidebar');
+    if (!nav) return;
+    try {
+      link.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+    } catch (e) {
+      link.scrollIntoView(false);
+    }
+  }
+
+  function highlightActiveNav() {
+    var path = (location.pathname || '').replace(/\/+$/, '') || '/';
+    document.querySelectorAll('#sidebar .nav-item[href], .sidebar .nav-item[href]').forEach(function (a) {
+      var href = (a.getAttribute('href') || '').replace(/\/+$/, '') || '/';
+      var active = href === path || (href !== '/' && path.indexOf(href) === 0);
+      a.classList.toggle('active', active);
+      if (active) scrollNavItemIntoView(a);
     });
   }
 

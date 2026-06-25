@@ -232,6 +232,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     <div class="page-header">
       <div class="page-title">الإيرادات <span id="rev-count" data-i18n-skip></span></div>
       <div class="page-actions">
+        {% with report_url=url_for('report_revenues'), report_label='تقرير الإيرادات' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير Excel
