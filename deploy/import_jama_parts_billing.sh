@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Import parts billing — غير محصل only (بيان تركيب قطع الغيار 25_6_2026)
+# Import parts billing — treat imported rows as غير محصل
 #
 #   bash deploy/import_jama_parts_billing.sh --dry-run
 #   bash deploy/import_jama_parts_billing.sh
@@ -13,7 +13,8 @@ DATA_DIR="${DATA_DIR:-$JAMA_DIR/deploy/data/jama_import}"
 SERVICE_NAME="${SERVICE_NAME:-liftcore-jama}"
 DRY=0
 REPLACE=1
-UNCOLLECTED=1
+UNCOLLECTED=0
+FORCE_UNCOLLECTED=1
 EXTRA=()
 
 for arg in "$@"; do
@@ -21,12 +22,14 @@ for arg in "$@"; do
     --dry-run) DRY=1 ;;
     --force) EXTRA+=(--force) ;;
     --keep-existing) REPLACE=0 ;;
-    --all-status) UNCOLLECTED=0 ;;
+    --uncollected-only) UNCOLLECTED=1 ;;
+    --keep-status) FORCE_UNCOLLECTED=0 ;;
   esac
 done
 
 if [ "$REPLACE" = "1" ]; then EXTRA+=(--replace); fi
 if [ "$UNCOLLECTED" = "1" ]; then EXTRA+=(--uncollected-only); fi
+if [ "$FORCE_UNCOLLECTED" = "1" ]; then EXTRA+=(--force-uncollected); fi
 if [ "$DRY" = "1" ]; then EXTRA+=(--dry-run); fi
 
 if [ ! -d "$JAMA_DIR" ]; then
@@ -78,7 +81,7 @@ fi
 export DATABASE_URL="sqlite:///${DB_FILE}"
 
 echo "=============================================="
-echo "  Jama import: parts billing (غير محصل فقط)"
+echo "  Jama import: parts billing (كلها غير محصل)"
 echo "  DB:   $DB_FILE"
 echo "  File: $XLSX"
 echo "=============================================="

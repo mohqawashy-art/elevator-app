@@ -30,6 +30,11 @@ def main() -> int:
         action='store_true',
         help='Delete all existing parts billing records before import',
     )
+    parser.add_argument(
+        '--force-uncollected',
+        action='store_true',
+        help='Import all rows as غير محصل regardless of Excel status',
+    )
     args = parser.parse_args()
 
     if not os.path.isfile(args.xlsx):
@@ -47,6 +52,7 @@ def main() -> int:
             dry_run=args.dry_run,
             skip_existing=not args.force,
             uncollected_only=args.uncollected_only,
+            force_uncollected=args.force_uncollected,
         )
         print(f"Rows in file: {result['rows']}")
         if args.dry_run:

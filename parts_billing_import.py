@@ -201,6 +201,7 @@ def import_parts_billing_rows(
     dry_run: bool = False,
     skip_existing: bool = True,
     uncollected_only: bool = False,
+    force_uncollected: bool = False,
     db_session=None,
     next_code_fn=None,
 ) -> dict:
@@ -248,6 +249,8 @@ def import_parts_billing_rows(
         if uncollected_only and status == 'محصل':
             stats['skipped_collected'] += 1
             continue
+        if force_uncollected:
+            status = 'غير محصل'
         payment_method = rec.get('pay_method') or ''
         notes = _compose_notes(rec)
         links = resolve_parts_links(contract_code=cn_code)
@@ -297,6 +300,7 @@ def import_parts_billing_file(
     dry_run: bool = False,
     skip_existing: bool = True,
     uncollected_only: bool = False,
+    force_uncollected: bool = False,
     db_session=None,
     next_code_fn=None,
 ) -> dict:
@@ -306,6 +310,7 @@ def import_parts_billing_file(
         dry_run=dry_run,
         skip_existing=skip_existing,
         uncollected_only=uncollected_only,
+        force_uncollected=force_uncollected,
         db_session=db_session,
         next_code_fn=next_code_fn,
     )
@@ -317,6 +322,7 @@ def import_parts(
     dry_run: bool = False,
     skip_existing: bool = True,
     uncollected_only: bool = False,
+    force_uncollected: bool = False,
 ) -> dict:
     """CLI helper — requires Flask app context with db imported."""
     from app import db, next_code
@@ -327,6 +333,7 @@ def import_parts(
         dry_run=dry_run,
         skip_existing=skip_existing,
         uncollected_only=uncollected_only,
+        force_uncollected=force_uncollected,
         db_session=None if dry_run else db.session,
         next_code_fn=next_code,
     )
