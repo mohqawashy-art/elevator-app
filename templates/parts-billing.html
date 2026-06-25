@@ -680,6 +680,33 @@ function mountPbPartItemSelect(tr, selectedId) {
   });
 }
 
+function setPbPartCostEditable(tr, editable) {
+  const costEl = tr.querySelector('.part-cost');
+  if (!costEl) return;
+  if (editable) {
+    costEl.removeAttribute('readonly');
+    costEl.type = 'number';
+    costEl.min = '0';
+    costEl.step = '0.01';
+    costEl.style.opacity = '';
+    costEl.style.background = '';
+    costEl.placeholder = 'تكلفة الوحدة';
+    if (!costEl.dataset.costBound) {
+      costEl.dataset.costBound = '1';
+      costEl.addEventListener('input', function () {
+        tr.dataset.costPrice = parseFloat(costEl.value) || 0;
+        calcPbPartsTotals();
+      });
+    }
+  } else {
+    costEl.setAttribute('readonly', 'readonly');
+    costEl.type = 'text';
+    costEl.style.opacity = '.85';
+    costEl.style.background = 'var(--bg3)';
+    costEl.placeholder = '0.00';
+  }
+}
+
 function addPbPartRow(data) {
   const tbody = document.getElementById('pb-parts-body');
   if (!tbody) return;
@@ -697,11 +724,21 @@ function addPbPartRow(data) {
   tr.dataset.costPrice = row.cost_price || 0;
   tr.dataset.itemId = row.item_id || '';
   mountPbPartItemSelect(tr, row.item_id || '');
-  const nameEl = tr.querySelector('.part-name');
   tr.querySelectorAll('.part-qty,.part-price').forEach(inp => inp.addEventListener('input', calcPbPartsTotals));
   tr.querySelector('.part-del')?.addEventListener('click', () => { tr.remove(); calcPbPartsTotals(); });
-  if (row.item_id) onPbPartItemChange(tr, true);
-  else if (row.name) { if (nameEl) nameEl.readOnly = false; }
+  if (row.item_id) {
+    onPbPartItemChange(tr, true);
+  } else {
+    setPbPartCostEditable(tr, true);
+    const nameEl = tr.querySelector('.part-name');
+    if (nameEl) { nameEl.readOnly = false; nameEl.placeholder = 'اكتب اسم القطعة يدوياً'; }
+    if (row.cost_price) {
+      const costEl = tr.querySelector('.part-cost');
+      const cp = parseFloat(row.cost_price) || 0;
+      if (costEl) costEl.value = cp > 0 ? cp.toFixed(2) : '';
+      tr.dataset.costPrice = cp;
+    }
+  }
   calcPbPartsTotals();
 }
 
@@ -713,12 +750,13 @@ function onPbPartItemChange(tr, keepPrice) {
   const itemId = hidden ? hidden.value : '';
   if (!itemId) {
     tr.dataset.itemId = '';
-    tr.dataset.costPrice = 0;
+    tr.dataset.costPrice = parseFloat(costEl?.value) || 0;
     if (nameEl) { nameEl.readOnly = false; nameEl.placeholder = 'اكتب اسم القطعة يدوياً'; }
-    if (costEl) costEl.value = '';
+    setPbPartCostEditable(tr, true);
     calcPbPartsTotals();
     return;
   }
+  setPbPartCostEditable(tr, false);
   const item = INVENTORY_ITEMS.find(x => String(x.id) === String(itemId));
   if (!item) return;
   const unitCost = partUnitCostPrice(item);
@@ -737,7 +775,11 @@ function calcPbPartsTotals() {
   document.querySelectorAll('#pb-parts-body tr').forEach(tr => {
     const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
     const price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
-    const cost = parseFloat(tr.dataset.costPrice) || 0;
+    const itemId = tr.querySelector('.part-item-id')?.value;
+    const costInput = tr.querySelector('.part-cost');
+    const cost = itemId
+      ? (parseFloat(tr.dataset.costPrice) || 0)
+      : (parseFloat(costInput?.value) || 0);
     const rowTotal = qty * price;
     const rt = tr.querySelector('.part-row-total');
     if (rt) rt.value = rowTotal.toFixed(2);
@@ -764,9 +806,12 @@ function collectPbParts() {
     const unit_price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
     const item_id = hidden && hidden.value ? Number(hidden.value) : null;
     let cost_price = 0;
+    const costEl = tr.querySelector('.part-cost');
     if (item_id) {
       const item = INVENTORY_ITEMS.find(x => String(x.id) === String(item_id));
       cost_price = item ? (item.buy_price || 0) : (parseFloat(tr.dataset.costPrice) || 0);
+    } else {
+      cost_price = parseFloat(costEl?.value) || parseFloat(tr.dataset.costPrice) || 0;
     }
     if (name && qty > 0) {
       lines.push({ item_id, name, qty, unit_price, cost_price });
