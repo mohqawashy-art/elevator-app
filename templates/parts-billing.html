@@ -260,11 +260,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <option>محصل</option>
         <option>غير محصل</option>
       </select>
-      <select class="filter-select" id="f-pay" onchange="applyFilters()">
-        <option value="">طريقة الدفع</option>
-        <option>كاش</option>
-        <option>تحويل</option>
-      </select>
       <input class="filter-input" type="date" lang="en-GB" id="f-from" title="من" onchange="applyFilters()">
       <input class="filter-input" type="date" lang="en-GB" id="f-to" title="إلى" onchange="applyFilters()">
       <button class="btn btn-secondary btn-sm" onclick="clearFilters()">مسح</button>
@@ -304,8 +299,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th class="th-sort" data-sort-col="cost_price">التكلفة <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="sell_price">سعر العميل <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="profit">الربح <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="pay_method">طريقة الدفع <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="payment_note">بيان السداد <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="notes">ملاحظات <span class="sort-ind"></span></th>
               <th></th>
             </tr>
@@ -368,14 +363,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           </select>
           <p style="font-size:11px;color:var(--text3);margin-top:6px">يُسجَّل اسم الفني في حركة المخزون عند صرف القطع</p>
         </div>
-        <div class="field">
-          <label>طريقة الدفع</label>
-          <select id="m-pay">
-            <option value="">—</option>
-            <option>كاش</option>
-            <option>تحويل</option>
-          </select>
-        </div>
         <div class="field form-full">
           <label>بيان قطع الغيار <span>*</span></label>
           <div id="pb-parts-panel" class="pb-parts-panel">
@@ -411,16 +398,18 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>سعر العميل (<span class="lc-sar" role="img" aria-label="ريال"></span>) <span>*</span></label>
           <input type="number" id="m-price" placeholder="0.00" step="0.01" readonly style="opacity:.9;background:var(--bg4)" title="يُحسب تلقائياً من أسعار القطع">
         </div>
-        <div class="field">
-          <label>حالة التحصيل</label>
-          <select id="m-status">
-            <option>غير محصل</option>
-            <option>محصل</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>تاريخ السداد</label>
-          <input type="date" lang="en-GB" id="m-pay-date">
+        <div id="m-collection-block" style="display:none">
+          <div class="field">
+            <label>حالة التحصيل</label>
+            <div id="m-status-display" style="padding:8px 0"></div>
+            <input type="hidden" id="m-status" value="غير محصل">
+            <p style="font-size:11px;color:var(--text3);margin-top:4px">تُحدَّث تلقائياً عند تسجيل الإيراد</p>
+          </div>
+          <div class="field form-full">
+            <label>بيان السداد</label>
+            <input id="m-payment-note" placeholder="مثال: تم السداد بسند رقم 123 بتاريخ 2026-06-01">
+            <p style="font-size:11px;color:var(--text3);margin-top:6px">يُكتب بعد التحصيل — مرجع السند أو الفاتورة (الدفع الفعلي عبر تسجيل الإيراد)</p>
+          </div>
         </div>
         <div class="field form-full">
           <label>ملاحظات</label>
@@ -469,7 +458,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
         <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
         <div style="color:var(--accent)">رقم العقد CN-xxxx + التاريخ + بيان قطع الغيار</div>
-        <div style="color:var(--text3);margin-top:4px">اختيارية: رقم العملية، التكلفة، سعر العميل، حالة التحصيل، طريقة الدفع، ملاحظات</div>
+        <div style="color:var(--text3);margin-top:4px">اختيارية: رقم العملية، التكلفة، سعر العميل، حالة التحصيل، بيان السداد، ملاحظات</div>
         <div style="margin-top:8px">
           <a href="{{ url_for('parts_billing_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
         </div>
@@ -598,8 +587,8 @@ function renderTable(data) {
       <td style="font-family:var(--font-en);color:var(--danger)">${p.cost_price.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
       <td style="font-family:var(--font-en);color:var(--text1)">${p.sell_price.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
       <td style="font-family:var(--font-en);color:var(--success)">${p.profit.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
-      <td>${D(p.pay_method||'—')}</td>
       <td><span class="badge ${STATUS_BADGE[p.status]||'badge-active'}">${D(p.status)}</span></td>
+      <td style="color:var(--text2);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis">${p.payment_note ? escHtml(p.payment_note) : '—'}</td>
       <td style="color:var(--text3);font-size:11px">${p.notes ? escHtml(p.notes) : '—'}</td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
@@ -623,14 +612,13 @@ function renderTable(data) {
 
 function applyFilters() {
   const s  = (document.getElementById('f-search')?.value || '').toLowerCase();
-  const pm = document.getElementById('f-pay')?.value || '';
   const st = document.getElementById('f-status')?.value || '';
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = PARTS.filter(p =>
     (!s || p.code.toLowerCase().includes(s) || (p.customer||'').includes(s) ||
-      (p.contract||'').toLowerCase().includes(s) || (p.description||'').includes(s)) &&
-    (!pm || p.pay_method === pm) &&
+      (p.contract||'').toLowerCase().includes(s) || (p.description||'').includes(s) ||
+      (p.payment_note||'').includes(s)) &&
     (!st || p.status === st || (st === 'محصل' && p.status === 'مكتملة')) &&
     (!fd || p.billing_date >= fd) &&
     (!td || p.billing_date <= td)
@@ -640,7 +628,7 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  ['f-search','f-status','f-pay','f-from','f-to'].forEach(id => {
+  ['f-search','f-status','f-from','f-to'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   applyFilters();
@@ -943,13 +931,32 @@ function onPartsCustomerChange() {
   }
 }
 
+function setCollectionFieldsMode(isEdit, status) {
+  const block = document.getElementById('m-collection-block');
+  const stHidden = document.getElementById('m-status');
+  const stDisplay = document.getElementById('m-status-display');
+  if (!block) return;
+  if (!isEdit) {
+    block.style.display = 'none';
+    if (stHidden) stHidden.value = 'غير محصل';
+    return;
+  }
+  block.style.display = 'contents';
+  const st = (status === 'مكتملة' ? 'محصل' : status) || 'غير محصل';
+  if (stHidden) stHidden.value = st;
+  if (stDisplay) {
+    const badge = STATUS_BADGE[status] || STATUS_BADGE[st] || 'badge-active';
+    stDisplay.innerHTML = '<span class="badge ' + badge + '">' + st + '</span>';
+  }
+}
+
 function openModal(id) {
   if (id) { editPart(id); return; }
   document.getElementById('modal-title').textContent = 'إضافة عملية جديدة';
   document.getElementById('modal-box').dataset.editId = '';
   const codeEl = document.getElementById('m-code');
   if (codeEl) codeEl.value = NEXT_PART_CODE;
-  ['m-visit','m-fault','m-cn','m-desc','m-notes','m-pay-date'].forEach(i => {
+  ['m-visit','m-fault','m-cn','m-desc','m-notes','m-payment-note'].forEach(i => {
     const el = document.getElementById(i); if (el) el.value = '';
   });
   resetPbPartsPanel();
@@ -964,6 +971,7 @@ function openModal(id) {
   const d = document.getElementById('m-date');
   if (d) d.value = new Date().toISOString().slice(0, 10);
   fillTechnicianSelect('');
+  setCollectionFieldsMode(false);
   document.getElementById('modal').classList.add('open');
   updateProfit();
 }
@@ -1004,8 +1012,11 @@ function saveRecord() {
   fd.append('parts_lines', JSON.stringify(lines));
   fd.append('cost_price', document.getElementById('m-cost').value || 0);
   fd.append('sell_price', document.getElementById('m-price').value || 0);
-  fd.append('payment_method', document.getElementById('m-pay').value);
-  fd.append('status', document.getElementById('m-status').value);
+  if (editId) {
+    fd.append('payment_note', document.getElementById('m-payment-note').value);
+  } else {
+    fd.append('status', 'غير محصل');
+  }
   fd.append('notes', document.getElementById('m-notes').value);
   fd.append('technician_id', techId);
   const visitCode = document.getElementById('m-visit')?.value.trim();
@@ -1044,8 +1055,8 @@ function editPart(id) {
   document.getElementById('m-desc').value = p.description || '';
   document.getElementById('m-cost').value = p.cost_price || '';
   document.getElementById('m-price').value = p.sell_price || '';
-  document.getElementById('m-pay').value = p.pay_method || '';
-  document.getElementById('m-status').value = (p.status === 'مكتملة' ? 'محصل' : p.status) || 'غير محصل';
+  setCollectionFieldsMode(true, p.status);
+  document.getElementById('m-payment-note').value = p.payment_note || '';
   document.getElementById('m-notes').value = p.notes || '';
   fillTechnicianSelect(p.tech_id || '');
   updateProfit();
@@ -1086,8 +1097,8 @@ function viewPart(id) {
       <div class="view-item"><div class="view-label">المصعد</div><div class="view-val" style="font-family:var(--font-en)">${p.elevator}</div></div>
       <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val" style="direction:ltr">${p.billing_date}</div></div>
       <div class="view-item"><div class="view-label">الفني</div><div class="view-val">${p.technician}</div></div>
-      <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${p.pay_method||'—'}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[p.status]||'badge-active'}">${p.status}</span></div></div>
+      ${p.payment_note?`<div class="view-item view-full"><div class="view-label">بيان السداد</div><div class="view-val">${escHtml(p.payment_note)}</div></div>`:''}
       ${p.description?`<div class="view-item view-full"><div class="view-label">بيان القطع</div><div class="view-val">${p.description}</div></div>`:''}
       ${p.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${p.notes}</div></div>`:''}
     </div>`;
@@ -1173,8 +1184,8 @@ async function confirmPartsImport() {
 }
 
 function exportCSV() {
-  const rows = [['الكود','العميل','العقد','التاريخ','البيان','التكلفة','سعر البيع','الربح','طريقة الدفع','الحالة']];
-  filtered.forEach(p => rows.push([p.code,p.customer,p.contract,p.billing_date,p.description,p.cost_price,p.sell_price,p.profit,p.pay_method,p.status]));
+  const rows = [['الكود','العميل','العقد','التاريخ','البيان','التكلفة','سعر البيع','الربح','الحالة','بيان السداد']];
+  filtered.forEach(p => rows.push([p.code,p.customer,p.contract,p.billing_date,p.description,p.cost_price,p.sell_price,p.profit,p.status,p.payment_note||'']));
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(r => r.join(',')).join('\n')], {type:'text/csv;charset=utf-8'}));
   a.download = 'parts-billing.csv';

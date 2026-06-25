@@ -531,6 +531,7 @@ with app.app_context():
             ],
             'parts_billing': [
                 ('visit_id', 'INTEGER'), ('fault_id', 'INTEGER'), ('paid_amount', 'FLOAT'),
+                ('payment_note', 'TEXT'),
             ],
             'invoices': [('paid_amount', 'FLOAT'), ('parts_billing_id', 'INTEGER')],
             'revenues': [
@@ -1527,8 +1528,8 @@ def _parts_js_list(parts):
             'cost_price': p.cost_price or 0,
             'sell_price': p.sell_price or 0,
             'profit': p.profit or 0,
-            'pay_method': p.payment_method or '',
-            'status': p.status or 'مكتملة',
+            'payment_note': (getattr(p, 'payment_note', None) or p.payment_method or '').strip(),
+            'status': p.status or 'غير محصل',
             'visit_code': p.visit.code if p.visit else '',
             'fault_code': p.fault.code if p.fault else '',
             'notes': parts_billing_notes_display(p.notes),
@@ -1628,8 +1629,8 @@ def _part_json(p):
         'cost_price': p.cost_price or 0,
         'sell_price': p.sell_price or 0,
         'profit': p.profit or 0,
-        'pay_method': p.payment_method or '',
-        'status': p.status or 'مكتملة',
+        'payment_note': (getattr(p, 'payment_note', None) or p.payment_method or '').strip(),
+        'status': p.status or 'غير محصل',
         'notes': parts_billing_notes_display(p.notes),
     }
 
@@ -5231,7 +5232,7 @@ def parts_billing():
 
 @app.route('/parts-billing/edit/<int:id>', methods=['POST'])
 def parts_edit(id):
-    from entity_links import normalize_parts_status, resolve_parts_links
+    from entity_links import resolve_parts_links
     from inventory_stock import reverse_stock_by_reference, stock_reference
     from operations import apply_parts_billing_inventory, parse_fault_parts_lines
 
@@ -5259,8 +5260,8 @@ def parts_edit(id):
     p.visit_id       = links['visit_id']
     p.fault_id       = links['fault_id']
     p.billing_date = datetime.strptime(request.form['billing_date'], '%Y-%m-%d').date()
-    p.payment_method = request.form.get('payment_method', '')
-    p.status = normalize_parts_status(request.form.get('status', ''))
+    p.payment_note = (request.form.get('payment_note') or '').strip() or None
+    # الحالة تُحدَّث من تسجيل الإيراد — لا تُغيَّر من نموذج التعديل
     if lines:
         try:
             apply_parts_billing_inventory(p, lines, user_notes=user_notes)
@@ -5288,7 +5289,7 @@ def parts_edit(id):
 
 @app.route('/parts-billing/add', methods=['POST'])
 def parts_add():
-    from entity_links import normalize_parts_status, resolve_parts_links
+    from entity_links import resolve_parts_links
     from operations import apply_parts_billing_inventory, parse_fault_parts_lines
 
     lines = parse_fault_parts_lines(request.form.get('parts_lines'))
@@ -5320,8 +5321,8 @@ def parts_add():
         cost_price=cost,
         sell_price=sell,
         profit=sell - cost,
-        payment_method=request.form.get('payment_method', ''),
-        status=normalize_parts_status(request.form.get('status', '')),
+        payment_note=None,
+        status='غير محصل',
         notes=user_notes,
     )
     db.session.add(p)

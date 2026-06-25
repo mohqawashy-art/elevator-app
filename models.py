@@ -472,7 +472,8 @@ class PartsBilling(db.Model):
     paid_amount     = db.Column(db.Float, default=0)
     profit          = db.Column(db.Float, default=0)   # الربح
     payment_method  = db.Column(db.String(50))
-    status          = db.Column(db.String(30), default='مكتملة')
+    payment_note    = db.Column(db.Text)   # بيان السداد (سند/فاتورة) — الدفع عبر الإيرادات
+    status          = db.Column(db.String(30), default='غير محصل')
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 

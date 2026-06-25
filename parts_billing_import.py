@@ -28,6 +28,7 @@ COL_ALIASES = {
     'invoice': ('بيان فاتورة', 'invoice'),
     'status': ('حالة التحصيل', 'status', 'الحالة'),
     'paid_date': ('تاريخ السداد', 'paid_date'),
+    'payment_note': ('بيان السداد', 'payment_note'),
     'pay_method': ('طريقة الدفع', 'payment_method'),
     'notes': ('ملحوظات', 'ملاحظات', 'notes'),
 }
@@ -116,9 +117,26 @@ def _row_record(row: tuple, col_map: dict[str, int] | None) -> dict:
         'invoice': _str(_cell(row, col_map, 'invoice', 7)),
         'status': _str(_cell(row, col_map, 'status', 8)),
         'paid_date': _cell(row, col_map, 'paid_date', 9),
+        'payment_note': _str(_cell(row, col_map, 'payment_note', 12)),
         'pay_method': _str(_cell(row, col_map, 'pay_method', 10)),
         'notes': _str(_cell(row, col_map, 'notes', 11)),
     }
+
+
+def _compose_payment_note(rec: dict) -> str:
+    explicit = (rec.get('payment_note') or '').strip()
+    if explicit:
+        return explicit
+    parts = []
+    if rec.get('invoice'):
+        parts.append(f"فاتورة: {rec['invoice']}")
+    paid_on = _parse_date(rec.get('paid_date'))
+    if paid_on:
+        parts.append(f'بتاريخ {paid_on.isoformat()}')
+    legacy = (rec.get('pay_method') or '').strip()
+    if legacy and not parts:
+        parts.append(legacy)
+    return ' — '.join(parts) if parts else ''
 
 
 def _compose_notes(rec: dict) -> str:
@@ -126,11 +144,6 @@ def _compose_notes(rec: dict) -> str:
     op = _norm_op_number(rec.get('op'))
     if op:
         parts.append(f'{OP_NOTE_PREFIX} {op.zfill(3)}')
-    if rec.get('invoice'):
-        parts.append(f"فاتورة: {rec['invoice']}")
-    paid_on = _parse_date(rec.get('paid_date'))
-    if paid_on:
-        parts.append(f'تاريخ السداد: {paid_on.isoformat()}')
     if rec.get('notes'):
         parts.append(rec['notes'])
     return '\n'.join(parts)
@@ -251,7 +264,7 @@ def import_parts_billing_rows(
             continue
         if force_uncollected:
             status = 'غير محصل'
-        payment_method = rec.get('pay_method') or ''
+        payment_note = _compose_payment_note(rec) or None
         notes = _compose_notes(rec)
         links = resolve_parts_links(contract_code=cn_code)
 
@@ -278,7 +291,7 @@ def import_parts_billing_rows(
             sell_price=sell,
             profit=round(sell - cost, 2),
             paid_amount=sell if status == 'محصل' else 0,
-            payment_method=payment_method,
+            payment_note=payment_note,
             status=status,
             notes=notes or None,
         )
