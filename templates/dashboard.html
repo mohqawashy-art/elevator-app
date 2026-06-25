@@ -836,21 +836,6 @@ function quickAction(path) {
 }
 
 // ===== تفاصيل الكروت (Drill-down) =====
-const CARD_PAGES = {
-  customers: '/clients',
-  elevators: '/elevators',
-  contracts: '/contracts',
-  expired_contracts: '/contracts',
-  visits_today: '/maintenance-visits',
-  faults_open: '/faults',
-  unpaid_invoices: '/invoices',
-  technicians: '/technicians',
-  expiring_contracts: '/contracts',
-  low_stock: '/inventory',
-  all_invoices: '/invoices',
-  paid_invoices: '/invoices',
-  overdue_invoices: '/invoices'
-};
 let activeDrillEl = null;
 
 function clearDrillActive() {
@@ -859,10 +844,6 @@ function clearDrillActive() {
 }
 
 async function openDrill(type, cardEl) {
-  if (CARD_PAGES[type]) {
-    window.location.href = CARD_PAGES[type];
-    return;
-  }
   const panel = document.getElementById('drill-panel');
   const head  = document.getElementById('drill-head');
   const body  = document.getElementById('drill-body');
