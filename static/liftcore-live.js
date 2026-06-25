@@ -7,13 +7,7 @@
   var syncing = false;
   var toastTimer = null;
 
-  var LIVE_ARRAY_KEYS = [
-    'CUSTOMERS', 'CONTRACTS', 'ELEVATORS', 'TECHNICIANS', 'VISITS', 'FAULTS',
-    'PARTS', 'ITEMS', 'MOVEMENTS', 'REVENUES', 'EXPENSES', 'INVOICES',
-    'INVENTORY_ITEMS', 'VISIT_MAP_POINTS', 'EST_CUSTOMERS',
-  ];
-
-  var CLIENT_SELECT_WRAPS = [
+  var POLL_MS = 4000;
     ['elev-client-select', 'f-client-sel'],
     ['contract-client-select', 'f-client-sel'],
     ['client-select', 'f-client-sel'],
@@ -96,18 +90,28 @@
     return merged;
   }
 
+  var PAGE_FILTER_SOURCE = {
+    'clients': 'CUSTOMERS',
+    'contracts': 'CONTRACTS',
+    'elevators': 'ELEVATORS',
+    'technicians': 'TECHNICIANS',
+    'maintenance-visits': 'VISITS',
+    'faults': 'FAULTS',
+    'parts-billing': 'PARTS',
+    'inventory': 'ITEMS',
+    'stock-movements': 'MOVEMENTS',
+    'revenues': 'REVENUES',
+    'expenses': 'EXPENSES',
+    'invoices': 'INVOICES',
+  };
+
   function resyncFilteredFromMaster() {
-    if (!global.filtered || !Array.isArray(global.filtered)) return;
-    var i;
-    for (i = 0; i < LIVE_ARRAY_KEYS.length; i++) {
-      var name = LIVE_ARRAY_KEYS[i];
-      if (Array.isArray(global[name]) && global[name].length >= 0) {
-        global.filtered.length = 0;
-        global[name].forEach(function (row) { global.filtered.push(row); });
-        return name;
-      }
-    }
-    return null;
+    if (!global.filtered || !Array.isArray(global.filtered)) return null;
+    var masterName = global.__lcFilteredSource || PAGE_FILTER_SOURCE[pageKey()];
+    if (!masterName || !Array.isArray(global[masterName])) return null;
+    global.filtered.length = 0;
+    global[masterName].forEach(function (row) { global.filtered.push(row); });
+    return masterName;
   }
 
   function refreshClientSelects() {
@@ -122,6 +126,8 @@
   function refreshUiAfterLive() {
     if (typeof global.filterTable === 'function') {
       global.filterTable();
+    } else if (typeof global.applyFilters === 'function') {
+      global.applyFilters();
     } else {
       resyncFilteredFromMaster();
       if (typeof global.__lcRefreshPage === 'function') global.__lcRefreshPage();
