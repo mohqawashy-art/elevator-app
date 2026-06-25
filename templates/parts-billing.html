@@ -141,6 +141,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .pb-parts-table th,.pb-parts-table td{padding:6px 4px;border-bottom:1px solid var(--border);text-align:right;vertical-align:middle}
 .pb-parts-table th{color:var(--text3);font-weight:500;font-size:11px}
 .pb-parts-table input,.pb-parts-table select{width:100%;padding:6px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:12px}
+.pb-parts-table .lc-client-select{position:relative;min-width:150px}
+.pb-parts-table .lc-client-select-input{font-size:12px;padding:6px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm)}
+.pb-parts-table .lc-client-select-list{z-index:500;max-height:220px;overflow-y:auto}
 .pb-parts-total{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
 .pb-parts-total-val{font-size:15px;font-weight:600;color:var(--gold);font-family:var(--font-en)}
 .pb-parts-cost{font-size:11px;color:var(--text3);margin-top:4px}
@@ -369,7 +372,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="field form-full">
           <label>بيان قطع الغيار <span>*</span></label>
           <div id="pb-parts-panel" class="pb-parts-panel">
-            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">اختر القطع من ملف الأصناف (المخزون) أو أدخل قطعة يدوياً</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">ابحث عن الصنف بالكود أو الاسم من المخزون — أو اترك الحقل فارغاً للإدخال اليدوي</div>
             <table class="pb-parts-table">
               <thead>
                 <tr>
@@ -618,13 +621,39 @@ function clearFilters() {
   applyFilters();
 }
 
-function inventoryItemOptions(selectedId) {
-  const opts = ['<option value="">— أخرى (إدخال يدوي) —</option>'];
-  INVENTORY_ITEMS.forEach(it => {
-    const sel = String(it.id) === String(selectedId) ? ' selected' : '';
-    opts.push(`<option value="${it.id}"${sel}>${it.code} — ${it.name}</option>`);
+var pbPartRowSeq = 0;
+
+function inventorySelectOptions() {
+  return INVENTORY_ITEMS.map(function (i) {
+    return { id: String(i.id), code: i.code || '', name: i.name || '' };
   });
-  return opts.join('');
+}
+
+function mountPbPartItemSelect(tr, selectedId) {
+  const cell = tr.querySelector('.part-item-cell');
+  if (!cell) return;
+  pbPartRowSeq += 1;
+  const uid = 'pb-part-' + pbPartRowSeq;
+  const wrapId = uid + '-wrap';
+  const inputId = uid + '-input';
+  const listId = uid + '-list';
+  const hiddenId = uid + '-id';
+  cell.innerHTML =
+    '<div class="lc-client-select" id="' + wrapId + '">' +
+    '<input type="text" class="lc-client-select-input" id="' + inputId + '" placeholder="ابحث بالكود أو اسم الصنف..." autocomplete="off">' +
+    '<input type="hidden" class="part-item-id" id="' + hiddenId + '" value="' + (selectedId || '') + '">' +
+    '<ul class="lc-client-select-list" id="' + listId + '" hidden role="listbox"></ul>' +
+    '</div>';
+  if (typeof LcClientSelect === 'undefined') return;
+  LcClientSelect.mount({
+    wrapId: wrapId,
+    hiddenId: hiddenId,
+    inputId: inputId,
+    listId: listId,
+    customers: inventorySelectOptions(),
+    selectedId: selectedId || '',
+    onChange: function () { onPbPartItemChange(tr); },
+  });
 }
 
 function addPbPartRow(data) {
@@ -633,7 +662,7 @@ function addPbPartRow(data) {
   const row = data || { item_id: '', name: '', qty: 1, unit_price: '', cost_price: 0 };
   const tr = document.createElement('tr');
   tr.innerHTML =
-    `<td><select class="part-item-sel">${inventoryItemOptions(row.item_id)}</select></td>` +
+    '<td class="part-item-cell"></td>' +
     `<td><input type="text" class="part-name" placeholder="اسم القطعة" value="${(row.name || '').replace(/"/g, '&quot;')}"></td>` +
     `<td><input type="number" class="part-qty" min="1" step="1" value="${row.qty || 1}" style="direction:ltr"></td>` +
     `<td><input type="number" class="part-price" min="0" step="0.01" placeholder="0.00" value="${row.unit_price !== '' && row.unit_price != null ? row.unit_price : ''}" style="direction:ltr"></td>` +
@@ -642,21 +671,20 @@ function addPbPartRow(data) {
   tbody.appendChild(tr);
   tr.dataset.costPrice = row.cost_price || 0;
   tr.dataset.itemId = row.item_id || '';
-  const sel = tr.querySelector('.part-item-sel');
+  mountPbPartItemSelect(tr, row.item_id || '');
   const nameEl = tr.querySelector('.part-name');
-  if (sel) sel.addEventListener('change', () => onPbPartItemChange(tr));
   tr.querySelectorAll('.part-qty,.part-price').forEach(inp => inp.addEventListener('input', calcPbPartsTotals));
   tr.querySelector('.part-del')?.addEventListener('click', () => { tr.remove(); calcPbPartsTotals(); });
   if (row.item_id) onPbPartItemChange(tr, true);
-  else if (row.name) nameEl.readOnly = false;
+  else if (row.name) { if (nameEl) nameEl.readOnly = false; }
   calcPbPartsTotals();
 }
 
 function onPbPartItemChange(tr, keepPrice) {
-  const sel = tr.querySelector('.part-item-sel');
+  const hidden = tr.querySelector('.part-item-id');
   const nameEl = tr.querySelector('.part-name');
   const priceEl = tr.querySelector('.part-price');
-  const itemId = sel?.value;
+  const itemId = hidden ? hidden.value : '';
   if (!itemId) {
     tr.dataset.itemId = '';
     tr.dataset.costPrice = 0;
@@ -700,13 +728,18 @@ function calcPbPartsTotals() {
 function collectPbParts() {
   const lines = [];
   document.querySelectorAll('#pb-parts-body tr').forEach(tr => {
+    const hidden = tr.querySelector('.part-item-id');
     const name = (tr.querySelector('.part-name')?.value || '').trim();
     const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
     const unit_price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
-    const item_id = tr.dataset.itemId || null;
-    const cost_price = parseFloat(tr.dataset.costPrice) || 0;
+    const item_id = hidden && hidden.value ? Number(hidden.value) : null;
+    let cost_price = 0;
+    if (item_id) {
+      const item = INVENTORY_ITEMS.find(x => String(x.id) === String(item_id));
+      cost_price = item ? (item.buy_price || 0) : (parseFloat(tr.dataset.costPrice) || 0);
+    }
     if (name && qty > 0) {
-      lines.push({ item_id: item_id ? Number(item_id) : null, name, qty, unit_price, cost_price });
+      lines.push({ item_id, name, qty, unit_price, cost_price });
     }
   });
   return lines;
