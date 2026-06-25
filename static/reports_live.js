@@ -4,11 +4,12 @@
 (function (global) {
   'use strict';
 
-  var __lcReportDomPager = null;
+var __lcReportDomPager = null;
   var __lcDashboardCharts = [];
   var __lcReportData = [];
   var __lcReportId = null;
   var __lcDashboardCache = null;
+  var __lcReportLoaded = false;
 
   var REPORT_API = {
     'report-clients': '/api/reports/clients',
@@ -141,55 +142,55 @@
     }).join('');
   }
 
-  function __lcLoadPagination(cb) {
+function __lcLoadPagination(cb) {
     if (global.LiftCorePagination) { cb(); return; }
-    var s = document.createElement('script');
-    s.src = '/static/liftcore-pagination.js?v=2';
-    s.onload = cb;
-    document.head.appendChild(s);
-  }
+  var s = document.createElement('script');
+  s.src = '/static/liftcore-pagination.js?v=2';
+  s.onload = cb;
+  document.head.appendChild(s);
+}
 
-  function hookReportPagination(reset) {
-    var tbody = document.getElementById('report-tbody');
+function hookReportPagination(reset) {
+  var tbody = document.getElementById('report-tbody');
     if (!tbody || !global.LiftCorePagination) return;
 
-    var footer = tbody.closest('.table-wrap');
-    footer = footer ? footer.querySelector('.table-footer') : document.querySelector('.table-footer');
-    if (!footer) return;
+  var footer = tbody.closest('.table-wrap');
+  footer = footer ? footer.querySelector('.table-footer') : document.querySelector('.table-footer');
+  if (!footer) return;
 
-    var container = footer.querySelector('#page-btns');
-    if (!container) {
-      container = document.createElement('div');
-      container.className = 'pagination';
-      container.id = 'page-btns';
-      footer.appendChild(container);
-    }
+  var container = footer.querySelector('#page-btns');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'pagination';
+    container.id = 'page-btns';
+    footer.appendChild(container);
+  }
 
-    if (!__lcReportDomPager) {
+  if (!__lcReportDomPager) {
       __lcReportDomPager = global.LiftCorePagination.createDom({
-        tbody: tbody,
-        container: container,
-        infoEl: footer.querySelector('#table-info'),
-        pageSize: 10,
-      });
+      tbody: tbody,
+      container: container,
+      infoEl: footer.querySelector('#table-info'),
+      pageSize: 10,
+    });
 
       var origFilter = global.filterTable;
       global.filterTable = function () {
-        if (typeof origFilter === 'function') origFilter();
-        Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function (tr) {
-          if (tr.querySelector('td[colspan]')) return;
-          tr.dataset.lcSearchHidden = tr.style.display === 'none' ? '1' : '0';
-        });
-        __lcReportDomPager.apply(true);
-      };
-    }
-
-    Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function (tr) {
-      if (tr.querySelector('td[colspan]')) return;
-      if (tr.dataset.lcSearchHidden == null) tr.dataset.lcSearchHidden = '0';
-    });
-    __lcReportDomPager.apply(reset !== false);
+      if (typeof origFilter === 'function') origFilter();
+      Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function (tr) {
+        if (tr.querySelector('td[colspan]')) return;
+        tr.dataset.lcSearchHidden = tr.style.display === 'none' ? '1' : '0';
+      });
+      __lcReportDomPager.apply(true);
+    };
   }
+
+  Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function (tr) {
+    if (tr.querySelector('td[colspan]')) return;
+    if (tr.dataset.lcSearchHidden == null) tr.dataset.lcSearchHidden = '0';
+  });
+  __lcReportDomPager.apply(reset !== false);
+}
 
   function syncPrintTable(reportId, data) {
     var printBody = document.querySelector('.rpt-page .rpt-table tbody, #print-tbody');
@@ -470,7 +471,7 @@
 
       tbody.innerHTML = filtered.map(function (row) {
         return '<tr>' + buildRowHtml(reportId, row, false) + '</tr>';
-      }).join('');
+    }).join('');
 
     syncPrintTable(reportId, filtered);
     updateReportStats(reportId, filtered);
@@ -514,6 +515,7 @@
   function applyReportPayload(reportId, data) {
     __lcReportData = Array.isArray(data) ? data : [];
     __lcReportId = reportId;
+    __lcReportLoaded = true;
     populateFilterSelects(reportId, __lcReportData);
     installLiveFilterTable(reportId);
     renderReportTable(reportId, __lcReportData);
@@ -525,6 +527,7 @@
   async function loadReportData(reportId, extraParams) {
     var apiUrl = REPORT_API[reportId];
     if (!apiUrl) return;
+    if (__lcReportLoaded && __lcReportId === reportId) return;
 
     try {
       var qs = extraParams || '';
@@ -538,15 +541,17 @@
         qs = bits.join('&');
       }
 
-      var res = await fetch(apiUrl + (qs ? '?' + qs : ''));
+      var res = await fetch(apiUrl + (qs ? '?' + qs : ''), { credentials: 'same-origin' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
 
       applyReportPayload(reportId, data);
+      __lcReportLoaded = true;
     } catch (e) {
+      if (e && (e.name === 'AbortError' || (global.document && global.document.visibilityState === 'hidden'))) return;
       console.error('Report API error:', e);
       var errBody = document.getElementById('report-tbody');
-      if (errBody) {
+      if (errBody && !__lcReportLoaded) {
         errBody.innerHTML = '<tr><td colspan="20" style="text-align:center;padding:30px;color:var(--danger)">تعذّر تحميل البيانات — حدّث الصفحة</td></tr>';
       }
     }
@@ -969,6 +974,9 @@
   global.loadData = function () { loadDashboardReport(); };
 
   function initReportsLive() {
+    if (global.__lcReportsLiveReady) return;
+    global.__lcReportsLiveReady = true;
+
     hookExportExcel();
 
     var bootId = global.__LC_REPORT_ID;

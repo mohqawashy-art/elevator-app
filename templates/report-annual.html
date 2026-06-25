@@ -522,6 +522,6 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 function setLang(l){document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');document.getElementById('btn-ar').classList.toggle('active',l==='ar');document.getElementById('btn-en').classList.toggle('active',l==='en');}
 </script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=4"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=5"></script>
 </body>
 </html>
