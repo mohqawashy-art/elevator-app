@@ -1528,11 +1528,6 @@ function viewContract(id) {
   var locHtml = cust ? LiftCoreLocation.renderLocationBlock(cust) : '';
   document.getElementById('view-body').innerHTML =
     locHtml +
-    '<div class="financial-summary">' +
-      '<div class="fin-row"><span>قيمة العقد (قبل الضريبة)</span><span>' + fmtMoneyAmt(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
-      '<div class="fin-row"><span>الضريبة (' + c.tax_pct + '%)</span><span>' + fmtMoneyAmt(c.tax_amount) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
-      '<div class="fin-row"><span>الإجمالي</span><span>' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
-    '</div>' +
     '<div class="view-grid">' +
       '<div class="view-section">البيانات الأساسية</div>' +
       '<div class="view-item"><div class="view-label">كود العقد</div><div class="view-val" style="font-family:var(--font-en)">' + esc(c.code) + '</div></div>' +
@@ -1552,7 +1547,12 @@ function viewContract(id) {
       contractAttachmentBlock(c) +
     '</div>';
   document.getElementById('modal-view').classList.add('open');
-  LiftCoreProfile.appendToView(document.getElementById('view-body'), c.customer_id, c.id, { timelineLimit: 15 });
+  LiftCoreProfile.appendToView(document.getElementById('view-body'), c.customer_id, c.id, {
+    showSections: true,
+    showFinancial: true,
+    showContractSelect: false,
+    activeTab: 'contracts',
+  });
 }
 
 function editFromView() {

@@ -233,8 +233,12 @@
   function appendToView(viewBodyEl, customerId, contractId, options) {
     if (!viewBodyEl || !customerId) return Promise.resolve();
     options = options || {};
-    options.showSections = false;
-    options.timelineLimit = options.timelineLimit || 15;
+    if (options.showSections === true) {
+      options.showTimeline = false;
+    } else {
+      options.showSections = false;
+      options.timelineLimit = options.timelineLimit || 15;
+    }
     var mount = document.createElement('div');
     mount.className = 'customer-profile-append';
     mount.style.marginTop = '16px';

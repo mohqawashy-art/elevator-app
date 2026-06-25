@@ -32,6 +32,19 @@
 .cp-tab-count{font-size:10px;opacity:.85;font-family:var(--font-en)}
 .cp-tab-panel{display:none}
 .cp-tab-panel.active{display:block}
+.modal-body .cp-tab-panel.active,
+.customer-profile-append .cp-tab-panel.active{
+  max-height:min(45vh,360px);
+  overflow-x:auto;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.modal-body .cp-tab-panel.active .cp-table thead th,
+.customer-profile-append .cp-tab-panel.active .cp-table thead th{
+  position:sticky;
+  top:0;
+  z-index:1;
+}
 .cp-table-clickable tbody tr.cp-click-row{cursor:pointer;transition:background .15s}
 .cp-table-clickable tbody tr.cp-click-row:hover{background:inherit}
 .cp-table-clickable tbody tr.cp-click-row:hover td{color:inherit}
