@@ -1532,8 +1532,14 @@ def _parts_js_list(parts):
             'visit_code': p.visit.code if p.visit else '',
             'fault_code': p.fault.code if p.fault else '',
             'notes': parts_billing_notes_display(p.notes),
+            'parts_lines': _parts_billing_record_lines(p),
         })
     return rows
+
+
+def _parts_billing_record_lines(pb):
+    from operations import parts_billing_record_lines
+    return parts_billing_record_lines(pb)
 
 
 def _visit_json(v):
@@ -1595,6 +1601,7 @@ def _fault_json(f):
         'resolution': f.resolution or '',
         'billed': bool(f.billed),
         'notes': f.notes or '',
+        'parts_lines': _fault_registration_parts_lines(f.id),
     }
 
 
@@ -5184,6 +5191,7 @@ def parts_billing():
     parts = PartsBilling.query.order_by(PartsBilling.billing_date.desc()).all()
     customers = Customer.query.order_by(Customer.name).all()
     contracts = Contract.query.order_by(Contract.code).all()
+    inventory_items = InventoryItem.query.order_by(InventoryItem.name).all()
     pending_faults = Fault.query.filter_by(status='انتظار قطع').order_by(
         Fault.reported_at.desc()
     ).all()
@@ -5195,6 +5203,17 @@ def parts_billing():
         contracts=contracts,
         customers_js=[{'id': c.id, 'code': c.code, 'name': c.name} for c in customers],
         contracts_js=[{'id': c.id, 'code': c.code, 'customer_id': c.customer_id} for c in contracts],
+        inventory_items_js=[
+            {
+                'id': i.id,
+                'code': i.code,
+                'name': i.name,
+                'unit': i.unit or 'قطعة',
+                'buy_price': i.buy_price or 0,
+                'sell_price': i.sell_price or 0,
+            }
+            for i in inventory_items
+        ],
         next_part_code=next_code(PartsBilling, 'PB-', digits=3),
         parts_workflow_stats=parts_stats(),
         parts_alerts=parts_alerts(),
@@ -5204,9 +5223,14 @@ def parts_billing():
 @app.route('/parts-billing/edit/<int:id>', methods=['POST'])
 def parts_edit(id):
     from entity_links import normalize_parts_status, resolve_parts_links
+    from inventory_stock import reverse_stock_by_reference, stock_reference
+    from operations import apply_parts_billing_inventory, parse_fault_parts_lines
+
     p = PartsBilling.query.get_or_404(id)
-    cost  = float(request.form.get('cost_price', 0))
-    sell  = float(request.form.get('sell_price', 0))
+    lines = parse_fault_parts_lines(request.form.get('parts_lines'))
+    user_notes = request.form.get('notes', '')
+    cost = float(request.form.get('cost_price', 0))
+    sell = float(request.form.get('sell_price', 0))
     links = resolve_parts_links(
         customer_id=request.form.get('customer_id'),
         contract_id=request.form.get('contract_id'),
@@ -5225,26 +5249,43 @@ def parts_edit(id):
     p.technician_id  = links['technician_id']
     p.visit_id       = links['visit_id']
     p.fault_id       = links['fault_id']
-    p.billing_date   = datetime.strptime(request.form['billing_date'], '%Y-%m-%d').date()
-    p.description    = request.form.get('description','')
-    p.cost_price     = cost
-    p.sell_price     = sell
-    p.profit         = sell - cost
-    p.payment_method = request.form.get('payment_method','')
-    p.status         = normalize_parts_status(request.form.get('status', ''))
-    p.notes          = request.form.get('notes','')
+    p.billing_date = datetime.strptime(request.form['billing_date'], '%Y-%m-%d').date()
+    p.payment_method = request.form.get('payment_method', '')
+    p.status = normalize_parts_status(request.form.get('status', ''))
+    if lines:
+        try:
+            apply_parts_billing_inventory(p, lines, user_notes=user_notes)
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
+            return redirect(url_for('parts_billing'))
+    else:
+        reverse_stock_by_reference(stock_reference('parts_billing', p.id))
+        p.description = request.form.get('description', '')
+        p.cost_price = cost
+        p.sell_price = sell
+        p.profit = sell - cost
+        p.notes = user_notes
     if links['fault_id']:
         fault = Fault.query.get(links['fault_id'])
         if fault:
             fault.billed = True
-    db.session.commit()
+    try:
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
     return redirect(url_for('parts_billing'))
 
 @app.route('/parts-billing/add', methods=['POST'])
 def parts_add():
     from entity_links import normalize_parts_status, resolve_parts_links
-    cost  = float(request.form.get('cost_price', 0))
-    sell  = float(request.form.get('sell_price', 0))
+    from operations import apply_parts_billing_inventory, parse_fault_parts_lines
+
+    lines = parse_fault_parts_lines(request.form.get('parts_lines'))
+    user_notes = request.form.get('notes', '')
+    cost = float(request.form.get('cost_price', 0))
+    sell = float(request.form.get('sell_price', 0))
     links = resolve_parts_links(
         customer_id=request.form.get('customer_id'),
         contract_id=request.form.get('contract_id'),
@@ -5265,26 +5306,41 @@ def parts_add():
         technician_id = links['technician_id'],
         visit_id      = links['visit_id'],
         fault_id      = links['fault_id'],
-        billing_date  = datetime.strptime(request.form['billing_date'], '%Y-%m-%d').date(),
-        description   = request.form.get('description',''),
-        cost_price    = cost,
-        sell_price    = sell,
-        profit        = sell - cost,
-        payment_method= request.form.get('payment_method',''),
-        status        = normalize_parts_status(request.form.get('status', '')),
-        notes         = request.form.get('notes',''),
+        billing_date=datetime.strptime(request.form['billing_date'], '%Y-%m-%d').date(),
+        description=request.form.get('description', ''),
+        cost_price=cost,
+        sell_price=sell,
+        profit=sell - cost,
+        payment_method=request.form.get('payment_method', ''),
+        status=normalize_parts_status(request.form.get('status', '')),
+        notes=user_notes,
     )
     db.session.add(p)
+    db.session.flush()
+    if lines:
+        try:
+            apply_parts_billing_inventory(p, lines, user_notes=user_notes)
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
+            return redirect(url_for('parts_billing'))
     if links['fault_id']:
         fault = Fault.query.get(links['fault_id'])
         if fault:
             fault.billed = True
-    db.session.commit()
+    try:
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
     return redirect(url_for('parts_billing'))
 
 @app.route('/parts-billing/delete/<int:id>', methods=['POST'])
 def parts_delete(id):
+    from inventory_stock import reverse_stock_by_reference, stock_reference
+
     p = PartsBilling.query.get_or_404(id)
+    reverse_stock_by_reference(stock_reference('parts_billing', p.id))
     db.session.delete(p)
     db.session.commit()
     return redirect(url_for('parts_billing'))

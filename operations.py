@@ -1153,6 +1153,21 @@ def save_fault_report(
     apply_report_to_fault(f, merged, mark_resolved=mark_resolved)
     if status:
         f.status = status
+    parts = merged.get('parts') if isinstance(merged.get('parts'), list) else []
+    from inventory_stock import lines_with_inventory_ids, sync_entity_parts_stock
+
+    stock_parts = lines_with_inventory_ids(parts)
+    if stock_parts:
+        elev = f.elevator
+        sync_entity_parts_stock(
+            'fault',
+            f.id,
+            stock_parts,
+            technician_id=f.technician_id,
+            elevator_id=elev.id if elev else None,
+            movement_type='استخدام في محضر عطل',
+            notes=f'محضر عطل {f.code}',
+        )
     f.report_json = json.dumps(merged, ensure_ascii=False)
     db.session.commit()
     return merged
@@ -1445,6 +1460,11 @@ def complete_field_fault(
     resolution: str,
     status: str = FAULT_STATUS_FIXED,
 ) -> None:
+    from form_validation import fault_close_error
+
+    close_err = fault_close_error(status, resolution)
+    if close_err:
+        raise ValueError(close_err)
     f = Fault.query.get_or_404(fault_id)
     f.tech_notes = tech_notes
     f.resolution = resolution
@@ -1577,22 +1597,61 @@ def parts_billing_invoice_lines(pb: PartsBilling | None) -> list[dict]:
     return []
 
 
+def parts_billing_record_lines(pb: PartsBilling | None) -> list[dict]:
+    if not pb or not pb.notes or not str(pb.notes).startswith(PARTS_JSON_PREFIX):
+        return []
+    try:
+        payload = json.loads(str(pb.notes)[len(PARTS_JSON_PREFIX):])
+        lines = payload.get('lines') or []
+        return lines if isinstance(lines, list) else []
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return []
+
+
 def fault_registration_parts_lines(fault_id: int) -> list[dict]:
     pb = (
         PartsBilling.query.filter_by(fault_id=fault_id)
         .order_by(PartsBilling.id.desc())
         .first()
     )
-    if not pb or not pb.notes or not pb.notes.startswith(PARTS_JSON_PREFIX):
-        return []
-    try:
-        payload = json.loads(pb.notes[len(PARTS_JSON_PREFIX):])
-        return payload.get('lines') or []
-    except (json.JSONDecodeError, TypeError, ValueError):
-        return []
+    return parts_billing_record_lines(pb)
+
+
+def apply_parts_billing_inventory(
+    pb: PartsBilling,
+    lines: list[dict],
+    *,
+    user_notes: str = '',
+) -> None:
+    sell = round(sum(ln['qty'] * ln['unit_price'] for ln in lines), 2)
+    cost = round(sum(ln['qty'] * ln['cost_price'] for ln in lines), 2)
+    pb.description = format_fault_parts_description(lines)
+    pb.cost_price = cost
+    pb.sell_price = sell
+    pb.profit = round(sell - cost, 2)
+    label = (user_notes or '').strip()
+    pb.notes = PARTS_JSON_PREFIX + json.dumps(
+        {'lines': lines, 'label': label},
+        ensure_ascii=False,
+    )
+    db.session.flush()
+    from inventory_stock import sync_entity_parts_stock
+
+    sync_entity_parts_stock(
+        'parts_billing',
+        pb.id,
+        lines,
+        technician_id=pb.technician_id,
+        elevator_id=pb.elevator_id,
+        movement_type='استخدام في تركيب قطع',
+        notes=f'عملية {pb.code}',
+    )
 
 
 def clear_fault_parts_billing(fault_id: int) -> None:
+    from inventory_stock import reverse_stock_by_reference, stock_reference
+
+    reverse_stock_by_reference(stock_reference('fault', fault_id))
     PartsBilling.query.filter_by(fault_id=fault_id).delete()
 
 
@@ -1625,6 +1684,18 @@ def apply_fault_parts_billing(
     pb.notes = PARTS_JSON_PREFIX + json.dumps(
         {'lines': lines, 'label': 'جاهز للفوترة'},
         ensure_ascii=False,
+    )
+    from inventory_stock import sync_entity_parts_stock
+
+    elev = fault.elevator
+    sync_entity_parts_stock(
+        'fault',
+        fault.id,
+        lines,
+        technician_id=technician_id or fault.technician_id,
+        elevator_id=elev.id if elev else None,
+        movement_type='استخدام في عطل',
+        notes=f'عطل {fault.code}',
     )
     return pb
 

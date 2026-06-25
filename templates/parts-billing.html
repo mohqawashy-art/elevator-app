@@ -115,7 +115,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:640px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:720px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
 .modal-overlay.open .modal{transform:translateY(0)}
 .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-title{font-size:15px;font-weight:600;color:var(--text1)}
@@ -136,6 +136,14 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .profit-preview{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 14px;margin-top:12px;display:flex;justify-content:space-between;align-items:center}
 .profit-preview-label{font-size:12px;color:var(--text3)}
 .profit-preview-val{font-size:15px;font-weight:600;font-family:var(--font-en)}
+.pb-parts-panel{margin-top:4px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm)}
+.pb-parts-table{width:100%;border-collapse:collapse;font-size:12px}
+.pb-parts-table th,.pb-parts-table td{padding:6px 4px;border-bottom:1px solid var(--border);text-align:right;vertical-align:middle}
+.pb-parts-table th{color:var(--text3);font-weight:500;font-size:11px}
+.pb-parts-table input,.pb-parts-table select{width:100%;padding:6px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:12px}
+.pb-parts-total{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
+.pb-parts-total-val{font-size:15px;font-weight:600;color:var(--gold);font-family:var(--font-en)}
+.pb-parts-cost{font-size:11px;color:var(--text3);margin-top:4px}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:768px){
   .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
@@ -222,6 +230,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     <div class="page-header">
       <div class="page-title">بيان تركيب قطع الغيار <span id="bills-count" data-i18n-skip></span></div>
       <div class="page-actions">
+        {% with report_url=url_for('report_parts'), report_label='تقرير القطع' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
         <button class="btn btn-secondary btn-sm" onclick="openPartsImportModal()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 9V2M4.5 4.5L7 2l2.5 2.5"/></svg>
           استيراد Excel
@@ -358,8 +367,30 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           </select>
         </div>
         <div class="field form-full">
-          <label>بيان القطع <span>*</span></label>
-          <textarea id="m-desc" placeholder="وصف القطع والأعمال المنفذة..."></textarea>
+          <label>بيان قطع الغيار <span>*</span></label>
+          <div id="pb-parts-panel" class="pb-parts-panel">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">اختر القطع من ملف الأصناف (المخزون) أو أدخل قطعة يدوياً</div>
+            <table class="pb-parts-table">
+              <thead>
+                <tr>
+                  <th style="width:30%">الصنف من المخزون</th>
+                  <th style="width:24%">اسم القطعة</th>
+                  <th style="width:10%">الكمية</th>
+                  <th style="width:14%">سعر العميل</th>
+                  <th style="width:14%">الإجمالي</th>
+                  <th style="width:6%"></th>
+                </tr>
+              </thead>
+              <tbody id="pb-parts-body"></tbody>
+            </table>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addPbPartRow()">+ إضافة قطعة</button>
+            <div class="pb-parts-total">
+              <span>إجمالي سعر العميل</span>
+              <span class="pb-parts-total-val" id="pb-parts-sell-total">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
+            </div>
+            <div class="pb-parts-cost">إجمالي التكلفة: <span id="pb-parts-cost-total" style="font-family:var(--font-en)">0.00</span> <span class="lc-sar" role="img" aria-label="ريال"></span></div>
+          </div>
+          <input type="hidden" id="m-desc">
         </div>
         <div class="field">
           <label>سعر التكلفة (<span class="lc-sar" role="img" aria-label="ريال"></span>)</label>
@@ -463,6 +494,7 @@ var PARTS = {{ parts_js|tojson }};
 var NEXT_PART_CODE = {{ next_part_code|tojson }};
 var CUSTOMERS = {{ customers_js|tojson }};
 var CONTRACTS = {{ contracts_js|tojson }};
+var INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
 
 const STATUS_BADGE = {
   'محصل':'badge-green','مكتملة':'badge-green','غير محصل':'badge-red','معلقة':'badge-gold'
@@ -586,6 +618,119 @@ function clearFilters() {
   applyFilters();
 }
 
+function inventoryItemOptions(selectedId) {
+  const opts = ['<option value="">— أخرى (إدخال يدوي) —</option>'];
+  INVENTORY_ITEMS.forEach(it => {
+    const sel = String(it.id) === String(selectedId) ? ' selected' : '';
+    opts.push(`<option value="${it.id}"${sel}>${it.code} — ${it.name}</option>`);
+  });
+  return opts.join('');
+}
+
+function addPbPartRow(data) {
+  const tbody = document.getElementById('pb-parts-body');
+  if (!tbody) return;
+  const row = data || { item_id: '', name: '', qty: 1, unit_price: '', cost_price: 0 };
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td><select class="part-item-sel">${inventoryItemOptions(row.item_id)}</select></td>` +
+    `<td><input type="text" class="part-name" placeholder="اسم القطعة" value="${(row.name || '').replace(/"/g, '&quot;')}"></td>` +
+    `<td><input type="number" class="part-qty" min="1" step="1" value="${row.qty || 1}" style="direction:ltr"></td>` +
+    `<td><input type="number" class="part-price" min="0" step="0.01" placeholder="0.00" value="${row.unit_price !== '' && row.unit_price != null ? row.unit_price : ''}" style="direction:ltr"></td>` +
+    `<td><input type="text" class="part-row-total" readonly style="direction:ltr;font-family:var(--font-en)"></td>` +
+    `<td><button type="button" class="btn btn-danger btn-sm btn-icon part-del" title="حذف">×</button></td>`;
+  tbody.appendChild(tr);
+  tr.dataset.costPrice = row.cost_price || 0;
+  tr.dataset.itemId = row.item_id || '';
+  const sel = tr.querySelector('.part-item-sel');
+  const nameEl = tr.querySelector('.part-name');
+  if (sel) sel.addEventListener('change', () => onPbPartItemChange(tr));
+  tr.querySelectorAll('.part-qty,.part-price').forEach(inp => inp.addEventListener('input', calcPbPartsTotals));
+  tr.querySelector('.part-del')?.addEventListener('click', () => { tr.remove(); calcPbPartsTotals(); });
+  if (row.item_id) onPbPartItemChange(tr, true);
+  else if (row.name) nameEl.readOnly = false;
+  calcPbPartsTotals();
+}
+
+function onPbPartItemChange(tr, keepPrice) {
+  const sel = tr.querySelector('.part-item-sel');
+  const nameEl = tr.querySelector('.part-name');
+  const priceEl = tr.querySelector('.part-price');
+  const itemId = sel?.value;
+  if (!itemId) {
+    tr.dataset.itemId = '';
+    tr.dataset.costPrice = 0;
+    if (nameEl) { nameEl.readOnly = false; nameEl.placeholder = 'اكتب اسم القطعة يدوياً'; }
+    calcPbPartsTotals();
+    return;
+  }
+  const item = INVENTORY_ITEMS.find(x => String(x.id) === String(itemId));
+  if (!item) return;
+  tr.dataset.itemId = item.id;
+  tr.dataset.costPrice = item.buy_price || 0;
+  if (nameEl) { nameEl.value = item.name; nameEl.readOnly = true; }
+  if (priceEl && !keepPrice) priceEl.value = item.sell_price > 0 ? item.sell_price : '';
+  calcPbPartsTotals();
+}
+
+function calcPbPartsTotals() {
+  let sellTotal = 0;
+  let costTotal = 0;
+  document.querySelectorAll('#pb-parts-body tr').forEach(tr => {
+    const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
+    const price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
+    const cost = parseFloat(tr.dataset.costPrice) || 0;
+    const rowTotal = qty * price;
+    const rt = tr.querySelector('.part-row-total');
+    if (rt) rt.value = rowTotal.toFixed(2);
+    sellTotal += rowTotal;
+    costTotal += qty * cost;
+  });
+  const sellEl = document.getElementById('pb-parts-sell-total');
+  const costEl = document.getElementById('pb-parts-cost-total');
+  if (sellEl) setMoneyEl(sellEl, sellTotal, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (costEl) costEl.textContent = costTotal.toFixed(2);
+  const costInput = document.getElementById('m-cost');
+  const priceInput = document.getElementById('m-price');
+  if (costInput) costInput.value = sellTotal > 0 || costTotal > 0 ? costTotal.toFixed(2) : '';
+  if (priceInput) priceInput.value = sellTotal > 0 ? sellTotal.toFixed(2) : '';
+  updateProfit();
+}
+
+function collectPbParts() {
+  const lines = [];
+  document.querySelectorAll('#pb-parts-body tr').forEach(tr => {
+    const name = (tr.querySelector('.part-name')?.value || '').trim();
+    const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
+    const unit_price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
+    const item_id = tr.dataset.itemId || null;
+    const cost_price = parseFloat(tr.dataset.costPrice) || 0;
+    if (name && qty > 0) {
+      lines.push({ item_id: item_id ? Number(item_id) : null, name, qty, unit_price, cost_price });
+    }
+  });
+  return lines;
+}
+
+function buildPbDescription(lines) {
+  return lines.map(ln => `${ln.qty}× ${ln.name} — ${Number(ln.unit_price).toFixed(2)}`).join('\n');
+}
+
+function resetPbPartsPanel() {
+  const tbody = document.getElementById('pb-parts-body');
+  if (tbody) tbody.innerHTML = '';
+  calcPbPartsTotals();
+}
+
+function loadPbPartsPanel(lines) {
+  resetPbPartsPanel();
+  if (!lines || !lines.length) {
+    addPbPartRow();
+    return;
+  }
+  lines.forEach(row => addPbPartRow(row));
+}
+
 let customerFaultsCache = [];
 
 function resetFaultSelect(message) {
@@ -675,8 +820,10 @@ function applyFaultLinkFields(f) {
   }
   const opDate = f.billing_date || f.reported_at || '';
   if (dateEl && opDate) dateEl.value = opDate;
-  if (desc && f.description && !desc.dataset.userEdited) {
-    if (!desc.value.trim()) desc.value = f.description;
+  if (f.parts_lines && f.parts_lines.length) {
+    loadPbPartsPanel(f.parts_lines);
+  } else if (desc && f.description && !desc.value.trim()) {
+    desc.value = f.description;
   }
 }
 
@@ -727,6 +874,8 @@ function openModal(id) {
   ['m-visit','m-fault','m-cn','m-desc','m-notes','m-pay-date'].forEach(i => {
     const el = document.getElementById(i); if (el) el.value = '';
   });
+  resetPbPartsPanel();
+  addPbPartRow();
   resetFaultSelect('— اختر العميل أولاً —');
   if (typeof LcClientSelect !== 'undefined') {
     LcClientSelect.clearSelection('m-client-sel');
@@ -760,6 +909,8 @@ function saveRecord() {
   const cn = document.getElementById('m-cn').value.trim();
   const clientEl = document.getElementById('m-client-sel');
   if (!clientEl || !clientEl.value) { alert('اختر العميل'); return; }
+  const lines = collectPbParts();
+  if (!lines.length) { alert('أضف قطعة غيار واحدة على الأقل من ملف الأصناف'); return; }
   const customer = CUSTOMERS.find(c => String(c.id) === String(clientEl.value));
   const contract = CONTRACTS.find(c => c.code.toUpperCase() === cn.toUpperCase());
   const fd = new FormData();
@@ -768,7 +919,8 @@ function saveRecord() {
   if (customer) fd.append('customer_id', customer.id);
   fd.append('customer_name', customer ? customer.name : '');
   fd.append('billing_date', document.getElementById('m-date').value);
-  fd.append('description', document.getElementById('m-desc').value);
+  fd.append('description', buildPbDescription(lines));
+  fd.append('parts_lines', JSON.stringify(lines));
   fd.append('cost_price', document.getElementById('m-cost').value || 0);
   fd.append('sell_price', document.getElementById('m-price').value || 0);
   fd.append('payment_method', document.getElementById('m-pay').value);
@@ -801,6 +953,12 @@ function editPart(id) {
   }
   loadCustomerFaults(p.customer_id || '', p.fault_code || '');
   document.getElementById('m-date').value = p.billing_date || '';
+  if (p.parts_lines && p.parts_lines.length) {
+    loadPbPartsPanel(p.parts_lines);
+  } else {
+    resetPbPartsPanel();
+    addPbPartRow({ name: p.description || '', qty: 1, unit_price: p.sell_price || '', cost_price: p.cost_price || 0 });
+  }
   document.getElementById('m-desc').value = p.description || '';
   document.getElementById('m-cost').value = p.cost_price || '';
   document.getElementById('m-price').value = p.sell_price || '';
