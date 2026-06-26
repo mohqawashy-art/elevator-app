@@ -5791,6 +5791,20 @@ def api_user_language():
     return jsonify({'ok': True, 'lang': lang})
 
 
+@app.route('/api/session/unlock', methods=['POST'])
+def api_session_unlock():
+    user = require_login()
+    if not user:
+        return jsonify({'ok': False, 'error': 'auth'}), 401
+    if not user.is_active:
+        return jsonify({'ok': False, 'error': 'inactive'}), 403
+    data = request.get_json(silent=True) or {}
+    password = data.get('password') or request.form.get('password') or ''
+    if not verify_password(user.password_hash, password):
+        return jsonify({'ok': False, 'error': 'wrong_password'}), 401
+    return jsonify({'ok': True})
+
+
 @app.route('/api/user/theme', methods=['POST'])
 def api_user_theme():
     user = require_login()
