@@ -27,6 +27,11 @@ body.lc-idle-locked {
   overflow: hidden !important;
 }
 
+html.lc-session-locked body > *:not(#lc-idle-screensaver) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 #lc-idle-screensaver video {
   width: 100%;
   height: 100%;

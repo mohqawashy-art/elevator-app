@@ -109,6 +109,14 @@
     if (unlockBtn) unlockBtn.classList.toggle('loading', !!on);
   }
 
+  function lockSession() {
+    fetch('/api/session/lock', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+    }).catch(function () {});
+  }
+
   function showUnlock() {
     if (!active || unlockVisible) return;
     unlockVisible = true;
@@ -131,6 +139,7 @@
     unlockVisible = false;
     unlockArmed = false;
     document.body.classList.add('lc-idle-locked');
+    document.documentElement.classList.add('lc-session-locked');
     overlay.classList.remove('unlock');
     if (unlockPanel) unlockPanel.hidden = true;
     overlay.classList.add('open');
@@ -142,6 +151,7 @@
     setTimeout(function () {
       if (active && !unlockVisible) unlockArmed = true;
     }, 350);
+    lockSession();
   }
 
   function hide() {
@@ -152,6 +162,8 @@
     unlocking = false;
     setUnlockLoading(false);
     document.body.classList.remove('lc-idle-locked');
+    document.documentElement.classList.remove('lc-session-locked');
+    global.__LC_SESSION_LOCKED = false;
     overlay.classList.remove('open', 'unlock');
     if (unlockPanel) unlockPanel.hidden = true;
     if (passwordInput) passwordInput.value = '';
@@ -234,6 +246,11 @@
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden && !active) schedule();
     });
+
+    if (global.__LC_SESSION_LOCKED) {
+      show();
+      return;
+    }
 
     schedule();
   }

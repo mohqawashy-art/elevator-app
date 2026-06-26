@@ -138,6 +138,33 @@ def require_admin():
     return user
 
 
+def session_is_locked():
+    return bool(session.get('session_locked'))
+
+
+def set_session_locked(locked=True):
+    if locked:
+        session['session_locked'] = True
+    else:
+        session.pop('session_locked', None)
+
+
+def _session_lock_response():
+    """منع الوصول للواجهات البرمجية أثناء قفل الجلسة (ما عدا فتح/قفل الجلسة)."""
+    if not session_is_locked():
+        return None
+    if not current_user():
+        return None
+    path = request.path or ''
+    if path.startswith('/static/'):
+        return None
+    if request.endpoint in ('api_session_lock', 'api_session_unlock'):
+        return None
+    if path.startswith('/api/'):
+        return jsonify({'ok': False, 'error': 'session_locked'}), 423
+    return None
+
+
 def _resolve_field_technician_id():
     """جلسة الفني أو معاينة المشرف (?tech_id=)."""
     from field_auth import field_session_technician_id
@@ -229,6 +256,9 @@ def enforce_auth():
     user = current_user()
     if user:
         g.user = user
+        lock_resp = _session_lock_response()
+        if lock_resp:
+            return lock_resp
         return None
 
     if field_tid:
@@ -446,6 +476,7 @@ def inject_global_template_vars():
         'user_display_name': (user.full_name or user.username) if user else '',
         'user_role_label': role_label,
         'install_module_enabled': install_module_enabled(),
+        'session_locked': session_is_locked(),
     }
 
 
@@ -5791,6 +5822,15 @@ def api_user_language():
     return jsonify({'ok': True, 'lang': lang})
 
 
+@app.route('/api/session/lock', methods=['POST'])
+def api_session_lock():
+    user = require_login()
+    if not user:
+        return jsonify({'ok': False, 'error': 'auth'}), 401
+    set_session_locked(True)
+    return jsonify({'ok': True, 'locked': True})
+
+
 @app.route('/api/session/unlock', methods=['POST'])
 def api_session_unlock():
     user = require_login()
@@ -5802,7 +5842,8 @@ def api_session_unlock():
     password = data.get('password') or request.form.get('password') or ''
     if not verify_password(user.password_hash, password):
         return jsonify({'ok': False, 'error': 'wrong_password'}), 401
-    return jsonify({'ok': True})
+    set_session_locked(False)
+    return jsonify({'ok': True, 'locked': False})
 
 
 @app.route('/api/user/theme', methods=['POST'])
