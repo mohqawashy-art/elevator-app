@@ -61,7 +61,7 @@ html[dir="ltr"] #lc-idle-screensaver .lc-idle-hint {
 #lc-idle-screensaver .lc-idle-unlock {
   position: absolute;
   inset: 0;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 24px;
@@ -69,6 +69,10 @@ html[dir="ltr"] #lc-idle-screensaver .lc-idle-hint {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   pointer-events: none;
+}
+
+#lc-idle-screensaver.unlock .lc-idle-unlock {
+  display: flex;
 }
 
 #lc-idle-screensaver .lc-idle-unlock-card {

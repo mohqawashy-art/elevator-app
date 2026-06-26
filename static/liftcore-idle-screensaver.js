@@ -15,6 +15,7 @@
   var active = false;
   var unlockVisible = false;
   var unlocking = false;
+  var unlockArmed = false;
 
   function L(ar, en) {
     if (global.LiftCoreDisplay && global.LiftCoreDisplay.isEn()) return en;
@@ -79,14 +80,19 @@
     overlay.addEventListener('keydown', onOverlayKey);
   }
 
+  function isUnlockTrigger(e) {
+    if (!e || !e.type) return false;
+    return e.type === 'mousedown' || e.type === 'keydown' || e.type === 'touchstart' || e.type === 'click';
+  }
+
   function onOverlayInteract(e) {
-    if (!active) return;
+    if (!active || !unlockArmed) return;
     if (unlockPanel && unlockPanel.contains(e.target)) return;
     if (!unlockVisible) showUnlock();
   }
 
   function onOverlayKey(e) {
-    if (!active) return;
+    if (!active || !unlockArmed) return;
     if (unlockVisible && unlockPanel && unlockPanel.contains(e.target)) return;
     if (!unlockVisible) {
       e.preventDefault();
@@ -123,6 +129,7 @@
     ensureOverlay();
     active = true;
     unlockVisible = false;
+    unlockArmed = false;
     document.body.classList.add('lc-idle-locked');
     overlay.classList.remove('unlock');
     if (unlockPanel) unlockPanel.hidden = true;
@@ -132,12 +139,16 @@
     if (playPromise && typeof playPromise.catch === 'function') {
       playPromise.catch(function () {});
     }
+    setTimeout(function () {
+      if (active && !unlockVisible) unlockArmed = true;
+    }, 350);
   }
 
   function hide() {
     if (!active) return;
     active = false;
     unlockVisible = false;
+    unlockArmed = false;
     unlocking = false;
     setUnlockLoading(false);
     document.body.classList.remove('lc-idle-locked');
@@ -200,8 +211,8 @@
 
   function onActivity(e) {
     if (active) {
-      if (e && e.type === 'keydown' && unlockVisible) return;
-      if (!unlockVisible) showUnlock();
+      if (!unlockArmed || unlockVisible) return;
+      if (isUnlockTrigger(e)) showUnlock();
       return;
     }
     schedule();
