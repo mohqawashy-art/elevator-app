@@ -9,7 +9,9 @@
   var video = null;
   var unlockPanel = null;
   var passwordInput = null;
+  var unlockBtn = null;
   var errorEl = null;
+  var LOGO_SRC = '/static/images/liftcore-brand-logo.png?v=3';
   var active = false;
   var unlockVisible = false;
   var unlocking = false;
@@ -35,15 +37,22 @@
       + '<div class="lc-idle-hint">' + L('حرّك الماوس أو اضغط أي مفتاح لإدخال كلمة المرور', 'Move mouse or press a key to unlock') + '</div>'
       + '<div class="lc-idle-unlock" hidden>'
       + '  <div class="lc-idle-unlock-card">'
-      + '    <div class="lc-idle-unlock-icon" aria-hidden="true">'
-      + '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 118 0v3"/></svg>'
-      + '    </div>'
+      + '    <div class="lc-idle-track" aria-hidden="true"><div class="rail"></div><div class="trace"></div><div class="pulse"></div></div>'
+      + '    <img class="lc-idle-logo" src="' + (global.__LC_BRAND_LOGO || LOGO_SRC) + '" alt="LiftCore">'
       + '    <div class="lc-idle-unlock-title">' + L('الجلسة مقفلة', 'Session locked') + '</div>'
       + '    <div class="lc-idle-unlock-user" id="lc-idle-unlock-user"></div>'
-      + '    <label class="lc-idle-unlock-label" for="lc-idle-unlock-pw">' + L('كلمة المرور', 'Password') + '</label>'
-      + '    <input type="password" id="lc-idle-unlock-pw" class="lc-idle-unlock-input" autocomplete="current-password" />'
-      + '    <button type="button" id="lc-idle-unlock-btn" class="lc-idle-unlock-btn">' + L('فتح البرنامج', 'Unlock') + '</button>'
+      + '    <div class="lc-idle-field">'
+      + '      <label for="lc-idle-unlock-pw">' + L('كلمة المرور', 'Password') + '</label>'
+      + '      <div class="lc-idle-input-wrap">'
+      + '        <input type="password" id="lc-idle-unlock-pw" class="lc-idle-unlock-input" autocomplete="current-password" placeholder="••••••••" />'
+      + '        <span class="lc-idle-ic" aria-hidden="true">⚿</span>'
+      + '      </div>'
+      + '    </div>'
+      + '    <button type="button" id="lc-idle-unlock-btn" class="lc-idle-unlock-btn">'
+      + '      <span class="lc-idle-spin" aria-hidden="true"></span><span>' + L('فتح البرنامج', 'Unlock') + '</span>'
+      + '    </button>'
       + '    <div class="lc-idle-unlock-err" id="lc-idle-unlock-err" role="alert"></div>'
+      + '    <div class="lc-idle-footer">LIFTCORE · 2026</div>'
       + '  </div>'
       + '</div>';
     document.body.appendChild(overlay);
@@ -52,12 +61,12 @@
     video.src = VIDEO_SRC;
     unlockPanel = overlay.querySelector('.lc-idle-unlock');
     passwordInput = overlay.querySelector('#lc-idle-unlock-pw');
+    unlockBtn = overlay.querySelector('#lc-idle-unlock-btn');
     errorEl = overlay.querySelector('#lc-idle-unlock-err');
 
-    var userEl = overlay.querySelector('#lc-idle-unlock-user');
-    if (userEl) userEl.textContent = userLabel();
+    refreshUnlockUser();
 
-    overlay.querySelector('#lc-idle-unlock-btn').addEventListener('click', tryUnlock);
+    unlockBtn.addEventListener('click', tryUnlock);
     passwordInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -85,12 +94,23 @@
     }
   }
 
+  function refreshUnlockUser() {
+    var userEl = overlay && overlay.querySelector('#lc-idle-unlock-user');
+    if (userEl) userEl.textContent = userLabel();
+  }
+
+  function setUnlockLoading(on) {
+    if (unlockBtn) unlockBtn.classList.toggle('loading', !!on);
+  }
+
   function showUnlock() {
     if (!active || unlockVisible) return;
     unlockVisible = true;
     overlay.classList.add('unlock');
     if (unlockPanel) unlockPanel.hidden = false;
+    refreshUnlockUser();
     if (errorEl) errorEl.textContent = '';
+    setUnlockLoading(false);
     if (passwordInput) {
       passwordInput.value = '';
       setTimeout(function () { passwordInput.focus(); }, 50);
@@ -119,6 +139,7 @@
     active = false;
     unlockVisible = false;
     unlocking = false;
+    setUnlockLoading(false);
     document.body.classList.remove('lc-idle-locked');
     overlay.classList.remove('open', 'unlock');
     if (unlockPanel) unlockPanel.hidden = true;
@@ -137,6 +158,7 @@
       return;
     }
     unlocking = true;
+    setUnlockLoading(true);
     if (errorEl) errorEl.textContent = '';
     fetch('/api/session/unlock', {
       method: 'POST',
@@ -151,6 +173,7 @@
       })
       .then(function (result) {
         unlocking = false;
+        setUnlockLoading(false);
         if (result.ok && result.data && result.data.ok) {
           hide();
           return;
@@ -170,6 +193,7 @@
       })
       .catch(function () {
         unlocking = false;
+        setUnlockLoading(false);
         if (errorEl) errorEl.textContent = L('تعذّر التحقق — حاول مرة أخرى', 'Unlock failed — try again');
       });
   }

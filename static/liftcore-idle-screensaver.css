@@ -1,4 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+
 #lc-idle-screensaver {
+  --lc-gold: #c9a14a;
+  --lc-gold-light: #e8cd86;
+  --lc-gold-dim: rgba(201, 161, 74, 0.5);
+  --lc-bg: #070a10;
+  --lc-text: #f2f5fa;
+  --lc-muted: #5e6b7e;
+  --lc-hair: rgba(201, 161, 74, 0.14);
   position: fixed;
   inset: 0;
   z-index: 99999;
@@ -7,6 +16,7 @@
   align-items: center;
   justify-content: center;
   cursor: default;
+  font-family: 'Tajawal', 'IBM Plex Sans Arabic', sans-serif;
 }
 
 #lc-idle-screensaver.open {
@@ -31,13 +41,13 @@ body.lc-idle-locked {
   bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 13px;
-  font-family: var(--font-ar, 'IBM Plex Sans Arabic', sans-serif);
   pointer-events: none;
   text-align: center;
   padding: 0 16px;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.25s ease;
+  letter-spacing: 0.02em;
 }
 
 #lc-idle-screensaver.unlock .lc-idle-hint {
@@ -45,7 +55,7 @@ body.lc-idle-locked {
 }
 
 html[dir="ltr"] #lc-idle-screensaver .lc-idle-hint {
-  font-family: var(--font-en, 'DM Sans', sans-serif);
+  font-family: 'DM Sans', sans-serif;
 }
 
 #lc-idle-screensaver .lc-idle-unlock {
@@ -55,18 +65,23 @@ html[dir="ltr"] #lc-idle-screensaver .lc-idle-hint {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(6px);
+  background:
+    radial-gradient(120% 90% at 50% 20%, rgba(11, 16, 24, 0.82), rgba(7, 10, 16, 0.92)),
+    rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
 }
 
 #lc-idle-screensaver .lc-idle-unlock-card {
-  width: min(100%, 360px);
-  background: var(--bg2, #111720);
-  border: 1px solid var(--border, rgba(100, 160, 255, 0.15));
-  border-radius: var(--r, 10px);
-  padding: 24px 22px 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  position: relative;
+  width: min(100%, 380px);
   text-align: center;
+  animation: lc-idle-card-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes lc-idle-card-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
 
 #lc-idle-screensaver .lc-idle-unlock-card.shake {
@@ -81,92 +96,256 @@ html[dir="ltr"] #lc-idle-screensaver .lc-idle-hint {
   80% { transform: translateX(6px); }
 }
 
-#lc-idle-screensaver .lc-idle-unlock-icon {
-  width: 52px;
+#lc-idle-screensaver .lc-idle-track {
+  position: relative;
+  width: 1px;
   height: 52px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  background: rgba(42, 127, 255, 0.12);
-  color: var(--accent, #2a7fff);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 0 auto 18px;
 }
 
-#lc-idle-screensaver .lc-idle-unlock-icon svg {
-  width: 26px;
-  height: 26px;
+#lc-idle-screensaver .lc-idle-track .rail {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent, var(--lc-hair));
+}
+
+#lc-idle-screensaver .lc-idle-track .trace {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--lc-gold-dim), transparent);
+}
+
+#lc-idle-screensaver .lc-idle-track .pulse {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--lc-gold-light);
+  box-shadow: 0 0 14px 3px var(--lc-gold-dim);
+  animation: lc-idle-rise 1.4s cubic-bezier(0.5, 0, 0.1, 1) infinite;
+}
+
+@keyframes lc-idle-rise {
+  0% { bottom: 0; opacity: 0; }
+  15% { opacity: 1; }
+  100% { bottom: 100%; opacity: 0; }
+}
+
+#lc-idle-screensaver .lc-idle-logo {
+  width: min(220px, 62vw);
+  height: auto;
+  display: block;
+  margin: 0 auto 10px;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.35));
 }
 
 #lc-idle-screensaver .lc-idle-unlock-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text1, #e4eaf5);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--lc-text);
   margin-bottom: 4px;
+  letter-spacing: 0.04em;
 }
 
 #lc-idle-screensaver .lc-idle-unlock-user {
   font-size: 13px;
-  color: var(--text3, #8a9bb8);
-  margin-bottom: 16px;
+  color: var(--lc-muted);
+  margin-bottom: 22px;
 }
 
-#lc-idle-screensaver .lc-idle-unlock-label {
-  display: block;
+#lc-idle-screensaver .lc-idle-field {
+  margin-bottom: 22px;
   text-align: right;
-  font-size: 12px;
-  color: var(--text2, #8a9bb8);
-  margin-bottom: 6px;
 }
 
-html[dir="ltr"] #lc-idle-screensaver .lc-idle-unlock-label {
+html[dir="ltr"] #lc-idle-screensaver .lc-idle-field {
   text-align: left;
+}
+
+#lc-idle-screensaver .lc-idle-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lc-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+}
+
+#lc-idle-screensaver .lc-idle-input-wrap {
+  position: relative;
+}
+
+#lc-idle-screensaver .lc-idle-input-wrap .lc-idle-ic {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 0;
+  color: var(--lc-muted);
+  font-size: 15px;
+  width: 34px;
+  text-align: center;
+  pointer-events: none;
+  transition: color 0.2s;
+}
+
+html[dir="ltr"] #lc-idle-screensaver .lc-idle-input-wrap .lc-idle-ic {
+  right: auto;
+  left: 0;
 }
 
 #lc-idle-screensaver .lc-idle-unlock-input {
   width: 100%;
-  padding: 11px 12px;
-  border-radius: var(--r-sm, 7px);
-  border: 1px solid var(--border, rgba(100, 160, 255, 0.15));
-  background: var(--bg3, #161e2b);
-  color: var(--text1, #e4eaf5);
-  font-size: 14px;
-  font-family: var(--font-en, 'DM Sans', sans-serif);
+  padding: 12px 34px 12px 6px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--lc-hair);
+  color: var(--lc-text);
+  font-family: inherit;
+  font-size: 15px;
+  transition: 0.25s;
+  outline: none;
   direction: ltr;
   text-align: left;
-  margin-bottom: 12px;
-  outline: none;
+}
+
+html[dir="ltr"] #lc-idle-screensaver .lc-idle-unlock-input {
+  padding: 12px 6px 12px 34px;
+}
+
+#lc-idle-screensaver .lc-idle-unlock-input::placeholder {
+  color: #3f4a5c;
 }
 
 #lc-idle-screensaver .lc-idle-unlock-input:focus {
-  border-color: var(--accent, #2a7fff);
-  box-shadow: 0 0 0 3px rgba(42, 127, 255, 0.15);
+  border-bottom-color: var(--lc-gold);
+}
+
+#lc-idle-screensaver .lc-idle-input-wrap:focus-within .lc-idle-ic {
+  color: var(--lc-gold-light);
+}
+
+#lc-idle-screensaver .lc-idle-input-wrap::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 1px;
+  background: var(--lc-gold-light);
+  transition: width 0.35s ease;
+}
+
+html[dir="ltr"] #lc-idle-screensaver .lc-idle-input-wrap::after {
+  right: auto;
+  left: 0;
+}
+
+#lc-idle-screensaver .lc-idle-input-wrap:focus-within::after {
+  width: 100%;
 }
 
 #lc-idle-screensaver .lc-idle-unlock-btn {
   width: 100%;
-  padding: 10px 14px;
-  border: none;
-  border-radius: var(--r-sm, 7px);
-  background: var(--accent, #2a7fff);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 13px;
+  border: 1px solid var(--lc-gold-dim);
+  border-radius: 2px;
   cursor: pointer;
-  font-family: var(--font-ar, 'IBM Plex Sans Arabic', sans-serif);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--lc-gold-light);
+  background: transparent;
+  transition: 0.3s;
+  position: relative;
+  overflow: hidden;
 }
 
-html[dir="ltr"] #lc-idle-screensaver .lc-idle-unlock-btn {
-  font-family: var(--font-en, 'DM Sans', sans-serif);
+#lc-idle-screensaver .lc-idle-unlock-btn > span {
+  position: relative;
+  z-index: 2;
+}
+
+#lc-idle-screensaver .lc-idle-unlock-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--lc-gold), var(--lc-gold-light));
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s ease;
+  z-index: 1;
+}
+
+html[dir="ltr"] #lc-idle-screensaver .lc-idle-unlock-btn::before {
+  transform-origin: left;
 }
 
 #lc-idle-screensaver .lc-idle-unlock-btn:hover {
-  background: #1e6fe8;
+  color: var(--lc-bg);
+  border-color: var(--lc-gold-light);
+}
+
+#lc-idle-screensaver .lc-idle-unlock-btn:hover::before {
+  transform: scaleX(1);
+}
+
+#lc-idle-screensaver .lc-idle-unlock-btn .lc-idle-spin {
+  display: none;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(232, 205, 134, 0.3);
+  border-top-color: var(--lc-gold-light);
+  border-radius: 50%;
+  animation: lc-idle-spin 0.7s linear infinite;
+  vertical-align: -2px;
+  margin-left: 8px;
+  position: relative;
+  z-index: 2;
+}
+
+html[dir="ltr"] #lc-idle-screensaver .lc-idle-unlock-btn .lc-idle-spin {
+  margin-left: 0;
+  margin-right: 8px;
+}
+
+#lc-idle-screensaver .lc-idle-unlock-btn.loading {
+  pointer-events: none;
+}
+
+#lc-idle-screensaver .lc-idle-unlock-btn.loading .lc-idle-spin {
+  display: inline-block;
+}
+
+@keyframes lc-idle-spin {
+  to { transform: rotate(360deg); }
 }
 
 #lc-idle-screensaver .lc-idle-unlock-err {
   min-height: 18px;
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--danger, #e04848);
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #e0794a;
+  letter-spacing: 0.02em;
+}
+
+#lc-idle-screensaver .lc-idle-footer {
+  margin-top: 22px;
+  font-size: 10.5px;
+  color: #3f4a5c;
+  letter-spacing: 0.05em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #lc-idle-screensaver .lc-idle-unlock-card,
+  #lc-idle-screensaver .lc-idle-track .pulse {
+    animation: none !important;
+  }
 }
