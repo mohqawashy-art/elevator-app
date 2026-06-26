@@ -21,8 +21,9 @@ if (-not $Browser) {
 }
 
 $IconCandidates = @(
-    (Join-Path $env:USERPROFILE 'Downloads\Liftcore-icon.ico'),
-    (Join-Path $Root 'static\images\liftcore.ico')
+    (Join-Path $Root 'static\images\liftcore.ico'),
+    'E:\04-تنزيلات\Liftcore-icon.ico',
+    (Join-Path $env:USERPROFILE 'Downloads\Liftcore-icon.ico')
 )
 $Icon = $IconCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 

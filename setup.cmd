@@ -27,11 +27,11 @@ if "%CH%"=="0" exit /b 0
 goto MENU
 
 :JAMA
-cscript //nologo "%~dp0desktop\Create-Shortcut.vbs" "JAMA" "https://jama.liftcoreapp.com/login" "" 1
+cscript //nologo "%~dp0desktop\Create-Shortcut.vbs" "JAMA" "https://jama.liftcoreapp.com/login" "%~dp0static\images\liftcore.ico" 1
 goto DONE
 
 :MAIN
-cscript //nologo "%~dp0desktop\Create-Shortcut.vbs" "LiftCore" "https://app.liftcoreapp.com/login" "" 1
+cscript //nologo "%~dp0desktop\Create-Shortcut.vbs" "LiftCore" "https://app.liftcoreapp.com/login" "%~dp0static\images\liftcore.ico" 1
 goto DONE
 
 :CUSTOM
@@ -49,8 +49,10 @@ goto DONE
 echo.
 echo   ----------------------------------------
 echo   تم انشاء الاختصار على سطح المكتب.
-echo   للتثبيت على شريط المهام:
-echo   كليك يمين على الاختصار - تثبيت على شريط المهام
+echo   للتثبيت على شريط المهام بأيقونة LiftCore:
+echo   1) افتح الموقع من الاختصار
+echo   2) في Chrome: القائمة (⋮) - تثبيت JAMA / LiftCore
+echo   3) ثبّت التطبيق على شريط المهام من ايقونة التطبيق
 echo   ----------------------------------------
 echo.
 pause

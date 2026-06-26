@@ -23,7 +23,25 @@
     return path.replace(/^\//, '').split('/')[0];
   }
 
+  function sessionLockedUi() {
+    var root = global.document.documentElement;
+    if (root && root.classList.contains('lc-session-locked')) return true;
+    return !!global.document.getElementById('lc-idle-screensaver.open');
+  }
+
+  function onSessionLocked() {
+    try { global.sessionStorage.setItem('lc_idle_locked', '1'); } catch (e) { /* ignore */ }
+    global.__LC_SESSION_LOCKED = true;
+    if (global.document.documentElement) {
+      global.document.documentElement.classList.add('lc-session-locked');
+    }
+    if (global.LiftCoreIdleScreensaver && typeof global.LiftCoreIdleScreensaver.show === 'function') {
+      global.LiftCoreIdleScreensaver.show();
+    }
+  }
+
   function canSyncNow() {
+    if (sessionLockedUi()) return false;
     if (global.document.querySelector('.modal-overlay.open')) return false;
     var ae = global.document.activeElement;
     if (ae && ae.closest && ae.closest('.modal-overlay.open')) return false;
@@ -152,6 +170,10 @@
     global.fetch('/api/live/sync?page=' + encodeURIComponent(key), { credentials: 'same-origin' })
       .then(function (r) {
         if (r.status === 401) return null;
+        if (r.status === 423) {
+          onSessionLocked();
+          return null;
+        }
         return r.json();
       })
       .then(function (payload) {
@@ -195,6 +217,10 @@
     global.fetch('/api/live/revision', { credentials: 'same-origin' })
       .then(function (r) {
         if (r.status === 401) return null;
+        if (r.status === 423) {
+          onSessionLocked();
+          return null;
+        }
         return r.json();
       })
       .then(function (payload) {

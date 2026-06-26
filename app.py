@@ -147,6 +147,7 @@ def set_session_locked(locked=True):
         session['session_locked'] = True
     else:
         session.pop('session_locked', None)
+    session.modified = True
 
 
 def _session_lock_response():

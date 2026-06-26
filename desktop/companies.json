@@ -1,14 +1,16 @@
 {
+  "icon_default": "static/images/liftcore.ico",
+  "icon_fallback": "E:\\04-تنزيلات\\Liftcore-icon.ico",
   "companies": [
     {
       "name": "JAMA",
       "url": "https://jama.liftcoreapp.com/login",
-      "icon": ""
+      "icon": "static/images/liftcore.ico"
     },
     {
       "name": "LiftCore",
       "url": "https://app.liftcoreapp.com/login",
-      "icon": ""
+      "icon": "static/images/liftcore.ico"
     }
   ]
 }

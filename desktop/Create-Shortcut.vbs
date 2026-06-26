@@ -90,8 +90,9 @@ Function ResolveIcon(custom, wsh, fso, rootDir)
     If fso.FileExists(custom) Then ResolveIcon = custom: Exit Function
   End If
   cands = Array( _
-    wsh.ExpandEnvironmentStrings("%USERPROFILE%") & "\Downloads\Liftcore-icon.ico", _
-    rootDir & "\static\images\liftcore.ico" _
+    rootDir & "\static\images\liftcore.ico", _
+    "E:\04-تنزيلات\Liftcore-icon.ico", _
+    wsh.ExpandEnvironmentStrings("%USERPROFILE%") & "\Downloads\Liftcore-icon.ico" _
   )
   For i = 0 To UBound(cands)
     p = cands(i)

@@ -16,6 +16,34 @@
   var unlockVisible = false;
   var unlocking = false;
   var unlockArmed = false;
+  var STORAGE_LOCKED = 'lc_idle_locked';
+  var STORAGE_UNLOCK = 'lc_idle_unlock_panel';
+
+  function storageGet(key) {
+    try { return global.sessionStorage.getItem(key); } catch (e) { return null; }
+  }
+
+  function storageSet(key, val) {
+    try { global.sessionStorage.setItem(key, val); } catch (e) { /* ignore */ }
+  }
+
+  function storageRemove(key) {
+    try { global.sessionStorage.removeItem(key); } catch (e) { /* ignore */ }
+  }
+
+  function isClientLocked() {
+    return storageGet(STORAGE_LOCKED) === '1';
+  }
+
+  function persistClientLock() {
+    storageSet(STORAGE_LOCKED, '1');
+    global.__LC_SESSION_LOCKED = true;
+  }
+
+  function clearClientLock() {
+    storageRemove(STORAGE_LOCKED);
+    storageRemove(STORAGE_UNLOCK);
+  }
 
   function L(ar, en) {
     if (global.LiftCoreDisplay && global.LiftCoreDisplay.isEn()) return en;
@@ -110,16 +138,30 @@
   }
 
   function lockSession() {
-    fetch('/api/session/lock', {
+    return fetch('/api/session/lock', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: '{}',
     }).catch(function () {});
+  }
+
+  function beaconLockSession() {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(
+        '/api/session/lock',
+        new Blob(['{}'], { type: 'application/json' })
+      );
+      return;
+    }
+    lockSession();
   }
 
   function showUnlock() {
     if (!active || unlockVisible) return;
     unlockVisible = true;
+    storageSet(STORAGE_UNLOCK, '1');
     overlay.classList.add('unlock');
     if (unlockPanel) unlockPanel.hidden = false;
     refreshUnlockUser();
@@ -131,10 +173,13 @@
     }
   }
 
-  function show() {
+  function show(opts) {
+    opts = opts || {};
     if (active) return;
     if (document.body.getAttribute('data-lc-idle-screensaver') === 'off') return;
     ensureOverlay();
+    persistClientLock();
+    lockSession();
     active = true;
     unlockVisible = false;
     unlockArmed = false;
@@ -150,8 +195,8 @@
     }
     setTimeout(function () {
       if (active && !unlockVisible) unlockArmed = true;
+      if (opts.showUnlock || storageGet(STORAGE_UNLOCK) === '1') showUnlock();
     }, 350);
-    lockSession();
   }
 
   function hide() {
@@ -164,6 +209,7 @@
     document.body.classList.remove('lc-idle-locked');
     document.documentElement.classList.remove('lc-session-locked');
     global.__LC_SESSION_LOCKED = false;
+    clearClientLock();
     overlay.classList.remove('open', 'unlock');
     if (unlockPanel) unlockPanel.hidden = true;
     if (passwordInput) passwordInput.value = '';
@@ -247,8 +293,13 @@
       if (!document.hidden && !active) schedule();
     });
 
-    if (global.__LC_SESSION_LOCKED) {
-      show();
+    global.addEventListener('pagehide', function () {
+      if (active) beaconLockSession();
+    });
+
+    if (global.__LC_SESSION_LOCKED || isClientLocked()) {
+      if (isClientLocked()) global.__LC_SESSION_LOCKED = true;
+      show({ showUnlock: storageGet(STORAGE_UNLOCK) === '1' });
       return;
     }
 

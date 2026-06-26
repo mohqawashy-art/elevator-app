@@ -9,7 +9,10 @@
   window.__LC_USER_NAME = {{ user_display_name|tojson }};
   window.__LC_BRAND_LOGO = {{ liftcore_logo_url|tojson }};
   window.__LC_SESSION_LOCKED = {{ session_locked|default(false)|tojson }};
-  if (window.__LC_SESSION_LOCKED) document.documentElement.classList.add('lc-session-locked');
+  if (window.__LC_SESSION_LOCKED) {
+    document.documentElement.classList.add('lc-session-locked');
+    try { sessionStorage.setItem('lc_idle_locked', '1'); } catch (e) {}
+  }
   document.documentElement.classList.add('lc-layout-topnav');
 })();
 </script>
@@ -56,8 +59,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-no-hover.css') }}?v=2">
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css') }}?v=26">
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-sticky-top.css') }}?v=3">
-<script src="{{ url_for('static', filename='liftcore-live.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='liftcore-live.js') }}?v=3"></script>
 <script src="{{ url_for('static', filename='liftcore-shell.js') }}?v=13"></script>
 <script src="{{ url_for('static', filename='liftcore-sticky-top.js') }}?v=4" defer></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-idle-screensaver.css') }}?v=8">
-<script src="{{ url_for('static', filename='liftcore-idle-screensaver.js') }}?v=6" defer></script>
+<script src="{{ url_for('static', filename='liftcore-idle-screensaver.js') }}?v=7" defer></script>
