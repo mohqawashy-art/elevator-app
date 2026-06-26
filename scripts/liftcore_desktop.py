@@ -129,10 +129,11 @@ def main() -> int:
 
     try:
         run_webview()
-    except ImportError:
+    except ImportError as exc:
         _win_message(
-            'مكوّن سطح المكتب غير مثبت.\n'
-            'شغّل: pip install -r requirements-desktop.txt'
+            'مكوّن سطح المكتب غير مثبت في هذه البيئة.\n'
+            f'Python: {sys.executable}\n'
+            'شغّل: run_jama_desktop.bat أو pip install -r requirements-desktop.txt داخل .venv'
         )
         return 1
     except Exception as exc:
