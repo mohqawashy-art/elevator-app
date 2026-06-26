@@ -1,0 +1,14 @@
+{
+  "companies": [
+    {
+      "name": "JAMA",
+      "url": "https://jama.liftcoreapp.com/login",
+      "icon": ""
+    },
+    {
+      "name": "LiftCore",
+      "url": "https://app.liftcoreapp.com/login",
+      "icon": ""
+    }
+  ]
+}
