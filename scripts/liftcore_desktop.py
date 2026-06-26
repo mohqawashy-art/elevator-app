@@ -9,14 +9,21 @@ import sys
 import threading
 import time
 from pathlib import Path
+from urllib.parse import urlparse
+from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
 PORT = int(os.environ.get('LIFTCORE_PORT', '5000'))
 HOST = '127.0.0.1'
 START_URL = os.environ.get('LIFTCORE_URL', f'http://{HOST}:{PORT}/login')
-TITLE = 'LiftCore'
-ICON = ROOT / 'static' / 'images' / 'liftcore.ico'
-MUTEX_NAME = 'Global\\LiftCoreDesktopSingleton_v1'
+TITLE = os.environ.get('LIFTCORE_TITLE', 'LiftCore')
+ICON = Path(os.environ.get('LIFTCORE_ICON', str(ROOT / 'static' / 'images' / 'liftcore.ico')))
+MUTEX_NAME = os.environ.get('LIFTCORE_MUTEX', 'Global\\LiftCoreDesktopSingleton_v1')
+
+
+def _is_local_url(url: str) -> bool:
+    host = (urlparse(url).hostname or '').lower()
+    return host in ('127.0.0.1', 'localhost', '::1')
 
 
 def _win_message(text: str, title: str = TITLE) -> None:
@@ -33,7 +40,7 @@ def ensure_single_instance() -> bool:
         return True
     import ctypes
     kernel32 = ctypes.windll.kernel32
-    mutex = kernel32.CreateMutexW(None, False, MUTEX_NAME)
+    kernel32.CreateMutexW(None, False, MUTEX_NAME)
     if kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
         _win_message('البرنامج يعمل بالفعل.\nتحقق من شريط المهام.')
         return False
@@ -46,12 +53,23 @@ def port_open(port: int) -> bool:
         return sock.connect_ex((HOST, port)) == 0
 
 
-def wait_for_server(timeout: float = 90.0) -> bool:
+def wait_for_local_server(timeout: float = 90.0) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
         if port_open(PORT):
             return True
         time.sleep(0.25)
+    return False
+
+
+def wait_for_remote_server(url: str, timeout: float = 90.0) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with urlopen(url, timeout=5):
+                return True
+        except Exception:
+            time.sleep(1.0)
     return False
 
 
@@ -70,7 +88,7 @@ def run_webview() -> None:
     webview.settings.OPEN_EXTERNAL_LINKS_IN_BROWSER = False
     webview.settings.ALLOW_DOWNLOADS = False
 
-    window = webview.create_window(
+    webview.create_window(
         TITLE,
         START_URL,
         width=1366,
@@ -90,20 +108,24 @@ def main() -> int:
     if not ensure_single_instance():
         return 0
 
-    if not ICON.exists():
+    local_mode = _is_local_url(START_URL)
+
+    if local_mode and not ICON.exists():
         try:
             import subprocess
             subprocess.run([sys.executable, str(ROOT / 'scripts' / 'build_desktop_icon.py')], check=False)
         except Exception:
             pass
 
-    server_thread = None
-    if not port_open(PORT):
-        server_thread = threading.Thread(target=start_flask_server, daemon=True)
-        server_thread.start()
-        if not wait_for_server():
-            _win_message('تعذّر تشغيل الخادم المحلي.\nجرّب إغلاق أي نسخة أخرى ثم أعد المحاولة.')
-            return 1
+    if local_mode:
+        if not port_open(PORT):
+            threading.Thread(target=start_flask_server, daemon=True).start()
+            if not wait_for_local_server():
+                _win_message('تعذّر تشغيل الخادم المحلي.\nجرّب إغلاق أي نسخة أخرى ثم أعد المحاولة.')
+                return 1
+    elif not wait_for_remote_server(START_URL):
+        _win_message('تعذّر الاتصال بالسيرفر.\nتحقق من الإنترنت ثم أعد المحاولة.')
+        return 1
 
     try:
         run_webview()
