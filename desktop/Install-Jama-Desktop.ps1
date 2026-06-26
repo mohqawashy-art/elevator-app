@@ -1,11 +1,24 @@
-# Replace JAMA.url with a real desktop app shortcut (single window, taskbar icon)
+# JAMA — اختصار سطح المكتب (نافذة متصفح واحدة بدون تبويبات)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
-
-$Bat = Join-Path $Root 'run_jama_desktop.bat'
+$Url = 'https://jama.liftcoreapp.com/login'
 $Desktop = [Environment]::GetFolderPath('Desktop')
 $ShortcutPath = Join-Path $Desktop 'JAMA.lnk'
-$OldUrl = Join-Path $Desktop 'JAMA.url'
+
+$Browsers = @(
+    "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+    "${env:ProgramFiles}\Microsoft\Edge\Application\msedge.exe",
+    "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
+    "${env:LocalAppData}\Google\Chrome\Application\chrome.exe"
+)
+$Browser = $Browsers | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $Browser) {
+    Write-Host 'Edge/Chrome not found — using run_jama_desktop.bat' -ForegroundColor Yellow
+    $Browser = Join-Path $Root 'run_jama_desktop.bat'
+    $Arguments = ''
+} else {
+    $Arguments = "--app=$Url --start-maximized"
+}
 
 $IconCandidates = @(
     (Join-Path $env:USERPROFILE 'Downloads\Liftcore-icon.ico'),
@@ -13,29 +26,15 @@ $IconCandidates = @(
 )
 $Icon = $IconCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
-$Py = Join-Path $Root '.venv\Scripts\python.exe'
-if (-not (Test-Path (Join-Path $Root 'static\images\liftcore.ico')) -and (Test-Path $Py)) {
-    & $Py (Join-Path $Root 'scripts\build_desktop_icon.py') | Out-Null
-}
-
-if (Test-Path $OldUrl) {
-    $Backup = Join-Path $Desktop 'JAMA.url.bak'
-    if (-not (Test-Path $Backup)) {
-        Move-Item -LiteralPath $OldUrl -Destination $Backup -Force
-        Write-Host "Backed up old shortcut:" $Backup
-    } else {
-        Remove-Item -LiteralPath $OldUrl -Force -ErrorAction SilentlyContinue
-    }
-}
-
 $Wsh = New-Object -ComObject WScript.Shell
 $Sc = $Wsh.CreateShortcut($ShortcutPath)
-$Sc.TargetPath = $Bat
+$Sc.TargetPath = $Browser
+if ($Arguments) { $Sc.Arguments = $Arguments }
 $Sc.WorkingDirectory = $Root
-$Sc.WindowStyle = 7
-$Sc.Description = 'JAMA - LiftCore (jama.liftcoreapp.com)'
+$Sc.WindowStyle = 1
+$Sc.Description = 'JAMA — LiftCore (نافذة واحدة)'
 if ($Icon) { $Sc.IconLocation = "$Icon,0" }
 $Sc.Save()
 
-Write-Host "JAMA desktop app shortcut:" $ShortcutPath -ForegroundColor Green
-Write-Host "First-time setup: pip install -r requirements-desktop.txt"
+Write-Host "تم تحديث اختصار JAMA:" $ShortcutPath -ForegroundColor Green
+Write-Host "يفتح نافذة Edge/Chrome منفصلة — بدون تبويبات — بحجم الشاشة"

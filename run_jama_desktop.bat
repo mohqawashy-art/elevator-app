@@ -1,28 +1,18 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+set "URL=https://jama.liftcoreapp.com/login"
 
-call "%~dp0scripts\ensure_desktop_env.bat"
-if errorlevel 1 (
-  echo.
-  echo تعذّر تجهيز بيئة سطح المكتب.
-  echo راجع: %TEMP%\liftcore-desktop-setup.log
-  pause
+set "BROWSER="
+if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" set "BROWSER=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
+if not defined BROWSER if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "BROWSER=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
+if not defined BROWSER if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "BROWSER=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
+if not defined BROWSER if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "BROWSER=%LocalAppData%\Google\Chrome\Application\chrome.exe"
+
+if not defined BROWSER (
+  echo لم يُعثر على Edge أو Chrome.
+  start "" "%URL%"
   exit /b 1
 )
 
-set "LIFTCORE_URL=https://jama.liftcoreapp.com/login"
-set "LIFTCORE_TITLE=JAMA"
-set "LIFTCORE_MUTEX=Global\LiftCoreJamaDesktopSingleton_v1"
-if exist "%USERPROFILE%\Downloads\Liftcore-icon.ico" (
-  set "LIFTCORE_ICON=%USERPROFILE%\Downloads\Liftcore-icon.ico"
-)
-
-"%LIFTCORE_DESKTOP_PY%" "%~dp0scripts\liftcore_desktop.py" 2>>"%TEMP%\liftcore-jama-desktop.log"
-if errorlevel 1 (
-  echo.
-  echo JAMA Desktop - خطأ في التشغيل.
-  echo راجع: %TEMP%\liftcore-jama-desktop.log
-  pause
-)
+start "" "%BROWSER%" --app="%URL%" --start-maximized
 endlocal
