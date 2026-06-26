@@ -848,6 +848,15 @@ def _find_login_user(login_id):
     ).first()
 
 
+@app.route('/manifest.webmanifest')
+def web_manifest():
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'manifest.webmanifest',
+        mimetype='application/manifest+json',
+    )
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
