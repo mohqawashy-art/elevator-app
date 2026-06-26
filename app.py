@@ -897,6 +897,112 @@ def logout():
 # =============================================
 # الداشبورد — إحصائيات وتنبيهات ذكية
 # =============================================
+_DASH_UNPAID_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً']
+
+
+def _count_created_between(model, start, end, date_field='created_at', **filters):
+    col = getattr(model, date_field)
+    q = model.query.filter(col >= start, col < end)
+    for key, val in filters.items():
+        q = q.filter(getattr(model, key) == val)
+    return q.count()
+
+
+def _period_created_delta(model, date_field='created_at', **filters):
+    now = datetime.utcnow()
+    cur_start = now - timedelta(days=30)
+    prev_start = now - timedelta(days=60)
+    current = _count_created_between(model, cur_start, now, date_field, **filters)
+    previous = _count_created_between(model, prev_start, cur_start, date_field, **filters)
+    return current - previous
+
+
+def _trend_badge(delta, higher_is_good=True, title_ar=None, title_en=None):
+    if delta == 0:
+        text, css = '0', 'trend-neu'
+    elif delta > 0:
+        text = f'+{delta}'
+        css = 'trend-up' if higher_is_good else 'trend-down'
+    else:
+        text = str(delta)
+        css = 'trend-down' if higher_is_good else 'trend-up'
+    default_ar = 'مقارنة آخر 30 يوماً بالـ 30 يوم السابقة'
+    default_en = 'Last 30 days vs prior 30 days'
+    return {
+        'text': text,
+        'class': css,
+        'delta': delta,
+        'title_ar': title_ar or default_ar,
+        'title_en': title_en or default_en,
+    }
+
+
+def get_dashboard_trends(today=None):
+    """مؤشرات التغيّر على كروت الداشبورد (حقيقية من قاعدة البيانات)."""
+    today = today or date.today()
+    now = datetime.utcnow()
+    cur_start = now - timedelta(days=30)
+    prev_start = now - timedelta(days=60)
+    yesterday = today - timedelta(days=1)
+
+    def expired_between(d1, d2):
+        return Contract.query.filter(
+            Contract.end_date >= d1,
+            Contract.end_date < d2,
+        ).count()
+
+    exp_this = expired_between(cur_start.date(), today + timedelta(days=1))
+    exp_prev = expired_between(prev_start.date(), cur_start.date())
+
+    def unpaid_created(start, end):
+        return Invoice.query.filter(
+            Invoice.created_at >= start,
+            Invoice.created_at < end,
+            Invoice.status.in_(_DASH_UNPAID_STATUSES),
+        ).count()
+
+    visits_today = MaintenanceVisit.query.filter_by(visit_date=today).count()
+    visits_yesterday = MaintenanceVisit.query.filter_by(visit_date=yesterday).count()
+
+    return {
+        'customers': _trend_badge(_period_created_delta(Customer)),
+        'elevators': _trend_badge(_period_created_delta(Elevator)),
+        'contracts': _trend_badge(
+            _period_created_delta(Contract, status='نشط'),
+            title_ar='عقود نشطة جديدة — آخر 30 يوماً مقارنة بالسابقة',
+            title_en='New active contracts vs prior 30 days',
+        ),
+        'expired_contracts': _trend_badge(
+            exp_this - exp_prev,
+            higher_is_good=False,
+            title_ar='عقود انتهت خلال آخر 30 يوماً مقارنة بالفترة السابقة',
+            title_en='Contracts expired in last 30 days vs prior period',
+        ),
+        'visits_today': _trend_badge(
+            visits_today - visits_yesterday,
+            title_ar='مقارنة بزيارات أمس',
+            title_en='Compared to yesterday\'s visits',
+        ),
+        'faults_open': _trend_badge(
+            _period_created_delta(Fault, date_field='reported_at'),
+            higher_is_good=False,
+            title_ar='أعطال مُبلَّغ عنها — آخر 30 يوماً مقارنة بالسابقة',
+            title_en='New fault reports vs prior 30 days',
+        ),
+        'unpaid_invoices': _trend_badge(
+            unpaid_created(cur_start, now) - unpaid_created(prev_start, cur_start),
+            higher_is_good=False,
+            title_ar='فواتير غير مدفوعة جديدة — آخر 30 يوماً مقارنة بالسابقة',
+            title_en='New unpaid invoices vs prior 30 days',
+        ),
+        'technicians': _trend_badge(
+            _period_created_delta(Technician),
+            title_ar='فنيون جدد — آخر 30 يوماً مقارنة بالسابقة',
+            title_en='New technicians vs prior 30 days',
+        ),
+    }
+
+
 def get_dashboard_stats():
     """تجميع كل أرقام لوحة التحكم والتنبيهات من قاعدة البيانات."""
     today = date.today()
@@ -975,10 +1081,12 @@ def get_dashboard_stats():
 @app.route('/dashboard')
 def dashboard():
     stats, alerts = get_dashboard_stats()
+    trends = get_dashboard_trends()
     return render_template(
         'dashboard.html',
         stats=stats,
         alerts=alerts,
+        trends=trends,
     )
 
 
@@ -6014,6 +6122,7 @@ def api_dashboard():
         ).count())
 
     stats, alerts = get_dashboard_stats()
+    trends = get_dashboard_trends()
 
     revenue_by_type = {}
     for row in db.session.query(
@@ -6149,6 +6258,7 @@ def api_dashboard():
         'visits_done':        stats['visits_done'],
         'unpaid_invoices':    stats['unpaid_invoices'],
         'parts_profit':       stats['parts_profit'],
+        'trends':             trends,
         'expiring_contracts': alerts['expiring_contracts_count'],
         'low_stock':          alerts['low_stock_count'],
         'monthly_revenue': monthly_rev,

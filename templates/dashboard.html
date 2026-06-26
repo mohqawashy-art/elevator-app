@@ -434,7 +434,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
       <div class="stat-card c-blue" style="animation-delay:.05s" data-drill="customers" onclick="openDrill('customers',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg></div>
-          <span class="stat-trend trend-up" id="tr1">+3</span>
+          <span class="stat-trend {{ trends.customers.class }}" id="tr1" title="{{ trends.customers.title_ar }}" data-title-en="{{ trends.customers.title_en }}">{{ trends.customers.text }}</span>
         </div>
         <div class="stat-val">{{ stats.customers }}</div>
         <div class="stat-label" id="sl1">Total Clients</div>
@@ -443,7 +443,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
       <div class="stat-card c-gold" style="animation-delay:.1s" data-drill="elevators" onclick="openDrill('elevators',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="1" width="6" height="14" rx="1.5"/><line x1="7" y1="4" x2="9" y2="4"/><circle cx="8" cy="11" r="1"/></svg></div>
-          <span class="stat-trend trend-up" id="tr2">+8</span>
+          <span class="stat-trend {{ trends.elevators.class }}" id="tr2" title="{{ trends.elevators.title_ar }}" data-title-en="{{ trends.elevators.title_en }}">{{ trends.elevators.text }}</span>
         </div>
         <div class="stat-val">{{ stats.elevators }}</div>
         <div class="stat-label" id="sl2">Total Elevators</div>
@@ -452,7 +452,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
       <div class="stat-card c-green" style="animation-delay:.15s" data-drill="contracts" onclick="openDrill('contracts',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/></svg></div>
-          <span class="stat-trend trend-neu" id="tr3">{{ stats.contracts }}</span>
+          <span class="stat-trend {{ trends.contracts.class }}" id="tr3" title="{{ trends.contracts.title_ar }}" data-title-en="{{ trends.contracts.title_en }}">{{ trends.contracts.text }}</span>
         </div>
         <div class="stat-val">{{ stats.contracts }}</div>
         <div class="stat-label" id="sl3">Active Contracts</div>
@@ -461,7 +461,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
       <div class="stat-card c-red" style="animation-delay:.2s" data-drill="expired_contracts" onclick="openDrill('expired_contracts',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg></div>
-          <span class="stat-trend trend-down" id="tr4">-2</span>
+          <span class="stat-trend {{ trends.expired_contracts.class }}" id="tr4" title="{{ trends.expired_contracts.title_ar }}" data-title-en="{{ trends.expired_contracts.title_en }}">{{ trends.expired_contracts.text }}</span>
         </div>
         <div class="stat-val">{{ stats.expired_contracts }}</div>
         <div class="stat-label" id="sl4">Expired Contracts</div>
@@ -470,7 +470,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
       <div class="stat-card c-info" style="animation-delay:.25s" data-drill="visits_today" onclick="openDrill('visits_today',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg></div>
-          <span class="stat-trend trend-neu" id="tr5">اليوم</span>
+          <span class="stat-trend {{ trends.visits_today.class }}" id="tr5" title="{{ trends.visits_today.title_ar }}" data-title-en="{{ trends.visits_today.title_en }}">{{ trends.visits_today.text }}</span>
         </div>
         <div class="stat-val">{{ stats.visits_today }}</div>
         <div class="stat-label" id="sl5">Today's Visits</div>
@@ -479,7 +479,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
       <div class="stat-card c-red" style="animation-delay:.3s" data-drill="faults_open" onclick="openDrill('faults_open',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1L1 14h14L8 1z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="12" r=".6" fill="currentColor"/></svg></div>
-          <span class="stat-trend trend-down">عاجل</span>
+          <span class="stat-trend {{ trends.faults_open.class }}" id="tr6" title="{{ trends.faults_open.title_ar }}" data-title-en="{{ trends.faults_open.title_en }}">{{ trends.faults_open.text }}</span>
         </div>
         <div class="stat-val">{{ stats.faults_open }}</div>
         <div class="stat-label" id="sl6">Open Faults</div>
@@ -488,7 +488,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
       <div class="stat-card c-warn" style="animation-delay:.35s" data-drill="unpaid_invoices" onclick="openDrill('unpaid_invoices',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/></svg></div>
-          <span class="stat-trend trend-down">متأخرة</span>
+          <span class="stat-trend {{ trends.unpaid_invoices.class }}" id="tr7" title="{{ trends.unpaid_invoices.title_ar }}" data-title-en="{{ trends.unpaid_invoices.title_en }}">{{ trends.unpaid_invoices.text }}</span>
         </div>
         <div class="stat-val">{{ stats.unpaid_invoices }}</div>
         <div class="stat-label" id="sl7">Unpaid Invoices</div>
@@ -497,7 +497,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
       <div class="stat-card c-green" style="animation-delay:.4s" data-drill="technicians" onclick="openDrill('technicians',this)">
         <div class="stat-top">
           <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M1 14c0-2.761 3.134-5 7-5s7 2.239 7 5"/></svg></div>
-          <span class="stat-trend trend-up">متاح</span>
+          <span class="stat-trend {{ trends.technicians.class }}" id="tr8" title="{{ trends.technicians.title_ar }}" data-title-en="{{ trends.technicians.title_en }}">{{ trends.technicians.text }}</span>
         </div>
         <div class="stat-val">{{ stats.technicians }}</div>
         <div class="stat-label" id="sl8">Available Technicians</div>
@@ -690,6 +690,22 @@ var STATS = {
   parts_profit:      {{ stats.parts_profit }},
 };
 
+const TRENDS = {{ trends|tojson }};
+const TREND_KEYS = ['customers', 'elevators', 'contracts', 'expired_contracts', 'visits_today', 'faults_open', 'unpaid_invoices', 'technicians'];
+
+function applyTrends(tr) {
+  if (!tr) return;
+  TREND_KEYS.forEach(function (key, i) {
+    const el = document.getElementById('tr' + (i + 1));
+    const t = tr[key];
+    if (!el || !t) return;
+    el.textContent = t.text;
+    el.className = 'stat-trend ' + t.class;
+    const en = window.LiftCoreDisplay && LiftCoreDisplay.isEn();
+    el.title = en ? (t.title_en || t.title_ar) : (t.title_ar || t.title_en);
+  });
+}
+
 // تحديث الأرقام فور التحميل (من API عند التحديث)
 function updateDashboard() {
   const vals = document.querySelectorAll('.stat-val');
@@ -708,6 +724,8 @@ function updateDashboard() {
 
   const profitEl = document.getElementById('total-profit');
   if(profitEl) setMoneyEl(profitEl, STATS.parts_profit, {minimumFractionDigits:0});
+
+  applyTrends(TRENDS);
 }
 
 // تحميل البيانات الشهرية من API
@@ -822,6 +840,7 @@ async function loadCharts() {
     if(vals[5]) vals[5].textContent = data.faults_open;
     if(vals[6]) vals[6].textContent = data.unpaid_invoices;
     if(vals[7]) vals[7].textContent = data.technicians;
+    if (data.trends) applyTrends(data.trends);
 
   } catch(e) {
     console.log('API not ready yet:', e);
