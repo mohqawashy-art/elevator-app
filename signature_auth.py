@@ -152,9 +152,12 @@ def verify_signature_credentials(
 
     signatory = _find_signatory(nid)
     if signatory and _role_matches(role_key, signatory):
-        if not signatory.sign_pin_hash or not signatory.signature_path:
+        if not signatory.sign_pin_hash:
             _sign_fail()
             return {'ok': False, 'error': 'رقم الهوية أو كلمة المرور غير صحيحة'}
+        if not signatory.signature_path:
+            _sign_fail()
+            return {'ok': False, 'error': 'لا توجد صورة توقيع مسجّلة — ارفعها من الإعدادات → التوقيعات'}
         if visit_technician_id and signatory.technician_id and signatory.technician_id != visit_technician_id:
             _sign_fail()
             return {'ok': False, 'error': 'هذا الموقّع غير مخصص لهذه الزيارة'}

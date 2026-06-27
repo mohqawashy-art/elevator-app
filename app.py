@@ -3194,7 +3194,7 @@ def _ext_ok(filename, allowed):
 
 def _save_technician_signature(tech, file_storage, pin_plain=''):
     from signatory_service import upsert_signatory
-    from signature_auth import validate_sign_pin
+    from signature_auth import normalize_national_id, validate_sign_pin
 
     pin = str(pin_plain or '').strip()
     has_file = file_storage and file_storage.filename and _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT)
@@ -4277,33 +4277,74 @@ def api_verify_signature():
 
     sig_path = result.pop('signature_path', '')
     result['signature_data'] = _signature_data_url(sig_path)
+    if not result['signature_data'] and sig_path and not str(sig_path).endswith('.enc'):
+        result['signature_url'] = upload_url(sig_path)
+    if not result['signature_data'] and not result.get('signature_url'):
+        app.logger.warning('signature image missing for path=%r', sig_path)
+        return jsonify({'ok': False, 'error': 'تعذّر تحميل صورة التوقيع — أعد رفعها من الإعدادات → التوقيعات'}), 500
     result['signed_at'] = datetime.utcnow().isoformat() + 'Z'
     return jsonify(result)
 
 
-def _signature_data_url(relative_path: str) -> str:
-    from signature_crypto import image_data_url, load_encrypted_signature
-
-    if not relative_path:
-        return ''
+def _signature_rel_paths(relative_path: str) -> list[str]:
+    """Normalize a stored signature path and return relative candidates."""
     rel = relative_path.replace('\\', '/').lstrip('/')
     if rel.startswith('static/'):
         rel = rel[len('static/') :]
-
-    if rel.endswith('.enc'):
-        try:
-            raw = load_encrypted_signature(app.root_path, app.config['SECRET_KEY'], rel)
-            return image_data_url(raw)
-        except (FileNotFoundError, ValueError):
-            return ''
-
     candidates = [rel]
     if not rel.startswith('uploads/'):
         candidates.append(f'uploads/{rel}')
+    out: list[str] = []
+    seen: set[str] = set()
     for candidate in candidates:
-        static_path = os.path.join(app.root_path, 'static', candidate.replace('/', os.sep))
-        if os.path.isfile(static_path):
-            with open(static_path, 'rb') as fh:
+        if candidate not in seen:
+            seen.add(candidate)
+            out.append(candidate)
+    return out
+
+
+def _signature_abs_paths(relative_path: str) -> list[str]:
+    """Absolute file paths to probe for a stored signature image."""
+    rel_paths = _signature_rel_paths(relative_path)
+    abs_paths: list[str] = []
+    seen: set[str] = set()
+    for rel in rel_paths:
+        for base in (app.root_path, os.path.join(app.root_path, 'static')):
+            abs_path = os.path.join(base, rel.replace('/', os.sep))
+            if abs_path not in seen:
+                seen.add(abs_path)
+                abs_paths.append(abs_path)
+    return abs_paths
+
+
+def _signature_data_url(relative_path: str) -> str:
+    from signature_crypto import decrypt_bytes, image_data_url, load_encrypted_signature
+
+    if not relative_path:
+        return ''
+    rel_paths = _signature_rel_paths(relative_path)
+
+    if rel_paths[0].endswith('.enc'):
+        for rel in rel_paths:
+            try:
+                raw = load_encrypted_signature(app.root_path, app.config['SECRET_KEY'], rel)
+                return image_data_url(raw)
+            except (FileNotFoundError, ValueError):
+                pass
+        for abs_path in _signature_abs_paths(relative_path):
+            if not abs_path.endswith('.enc') or not os.path.isfile(abs_path):
+                continue
+            try:
+                with open(abs_path, 'rb') as fh:
+                    raw = decrypt_bytes(fh.read(), app.config['SECRET_KEY'])
+                return image_data_url(raw)
+            except (ValueError, OSError):
+                continue
+        return ''
+
+    for abs_path in _signature_abs_paths(relative_path):
+        if os.path.isfile(abs_path):
+            with open(abs_path, 'rb') as fh:
                 return image_data_url(fh.read())
     return ''
 
@@ -6226,7 +6267,7 @@ def settings_signatory_add():
     try:
         if not has_file:
             raise ValueError('صورة التوقيع مطلوبة')
-        upsert_signatory(
+        row = upsert_signatory(
             name=name,
             national_id=national_id,
             role=role,
@@ -6236,6 +6277,13 @@ def settings_signatory_add():
             app_root=app.root_path,
             secret=app.config['SECRET_KEY'],
         )
+        nid_norm = normalize_national_id(national_id)
+        for candidate in Technician.query.filter(Technician.national_id.isnot(None)):
+            if normalize_national_id(candidate.national_id) == nid_norm:
+                row.technician_id = candidate.id
+                candidate.signature_path = row.signature_path
+                candidate.sign_pin_hash = row.sign_pin_hash
+                break
         db.session.commit()
         session['settings_notice'] = 'تم حفظ التوقيع بنجاح.'
     except ValueError as exc:

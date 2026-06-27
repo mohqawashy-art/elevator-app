@@ -90,7 +90,7 @@
         .then(function (res) {
           if (!res.ok || !res.data.ok) throw new Error(res.data.error || 'تعذّر التحقق');
           const src = res.data.signature_data || res.data.signature_url || '';
-          if (!src) throw new Error('لا توجد صورة توقيع');
+          if (!src) throw new Error('لا توجد صورة توقيع مسجّلة');
           return paintImageOnCanvas(opts.canvasId, src).then(function () {
             const slot = slots[opts.canvasId] || {};
             slot.meta = {
