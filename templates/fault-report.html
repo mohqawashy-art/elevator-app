@@ -89,12 +89,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 }
 @media(max-width:600px){.row-3,.row-4{grid-template-columns:1fr 1fr}.photos-grid{grid-template-columns:repeat(2,1fr)}.sig-area{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="/static/document-signatures.css?v=1">
+<link rel="stylesheet" href="/static/document-signatures.css?v=2">
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
 </head>
-<body{% if not editable or request.args.get('popup') == '1' %} data-lc-popup="1"{% endif %}>
+<body{% if not editable or request.args.get('popup') == '1' %} data-lc-popup="1"{% endif %} data-lc-idle-screensaver="off">
 
 {% if not editable %}
 <div class="readonly-banner">
@@ -268,7 +268,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 <script src="/static/digital-signature.js?v=4"></script>
 <script src="/static/document-signatures.js?v=2"></script>
 <script src="/static/tax_calc.js"></script>
-<script src="/static/fault-report.js?v=2"></script>
+<script src="/static/fault-report.js?v=3"></script>
 <script>
 const REPORT_CFG = {
   faultId: {{ fault_id }},

@@ -135,7 +135,7 @@
       setCanvasDrawing(canvasId, false);
       if (drawLink) drawLink.style.display = 'none';
     } else if (method === 'both') {
-      setCanvasDrawing(canvasId, false);
+      setCanvasDrawing(canvasId, true);
     } else {
       setCanvasDrawing(canvasId, true);
     }
@@ -185,7 +185,7 @@
     if (slots['sig-tech']) {
       slots['sig-tech'].meta = { method: 'draw', signed_by: '', signed_at: '' };
     }
-    setCanvasDrawing('sig-tech', false);
+    setCanvasDrawing('sig-tech', true);
   }
 
   global.LiftCoreDigitalSign = {

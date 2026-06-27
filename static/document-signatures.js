@@ -35,15 +35,18 @@
   function initEditable(opts) {
     opts = opts || {};
     if (!opts.editable || !global.LiftCoreChecklist) return;
-    global.LiftCoreChecklist.setupSignature('sig-tech', true);
     global.LiftCoreChecklist.setupSignature('sig-client', true);
-    if (!global.LiftCoreDigitalSign) return;
     const signConfig = opts.signConfig || {};
+    const method = signConfig.default_method || 'both';
+    if (!global.LiftCoreDigitalSign) {
+      global.LiftCoreChecklist.setupSignature('sig-tech', true);
+      return;
+    }
     global.LiftCoreDigitalSign.initTechSignSlot({
       editable: true,
       visitId: opts.visitId || null,
       faultId: opts.faultId || null,
-      defaultMethod: signConfig.default_method || 'both',
+      defaultMethod: method,
       prefillNationalId: opts.techNationalId || '',
       onSuccess: function (meta) {
         const el = document.getElementById('sig-tech-pin-meta');
@@ -52,6 +55,9 @@
         }
       },
     });
+    if (method !== 'pin') {
+      global.LiftCoreChecklist.setupSignature('sig-tech', true);
+    }
   }
 
   global.LiftCoreDocSign = {

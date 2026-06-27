@@ -170,7 +170,7 @@ def _session_lock_response():
     path = request.path or ''
     if path.startswith('/static/'):
         return None
-    if request.endpoint in ('api_session_lock', 'api_session_unlock'):
+    if request.endpoint in ('api_session_lock', 'api_session_unlock', 'api_verify_signature'):
         return None
     if path.startswith('/api/'):
         return jsonify({'ok': False, 'error': 'session_locked'}), 423
@@ -4228,11 +4228,12 @@ def office_fault_report(fault_id):
 @app.route('/api/faults/<int:fault_id>/report', methods=['POST'])
 def api_save_fault_report(fault_id):
     from operations import save_fault_report
+    from technician_assignments import technician_assigned_to_fault
 
     tech_id = getattr(g, 'field_tech_id', None)
     if tech_id:
         f = Fault.query.get_or_404(fault_id)
-        if f.technician_id and f.technician_id != tech_id:
+        if not technician_assigned_to_fault(f, tech_id):
             return jsonify({'ok': False, 'error': 'العطل غير مخصص لهذا الفني'}), 403
 
     data = request.get_json(silent=True) or {}
@@ -4247,6 +4248,7 @@ def api_save_fault_report(fault_id):
 @app.route('/api/signatures/verify', methods=['POST'])
 def api_verify_signature():
     from signature_auth import verify_signature_credentials
+    from technician_assignments import technician_assigned_to_fault, technician_assigned_to_visit
 
     data = request.get_json(silent=True) or {}
     national_id = (data.get('national_id') or '').strip()
@@ -4258,11 +4260,21 @@ def api_verify_signature():
     if visit_id:
         v = MaintenanceVisit.query.get(visit_id)
         if v:
-            visit_technician_id = v.technician_id
+            field_tid = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+            if field_tid and technician_assigned_to_visit(v, field_tid):
+                visit_technician_id = field_tid
+            else:
+                visit_technician_id = v.technician_id
     elif fault_id:
         f = Fault.query.get(fault_id)
         if f:
-            visit_technician_id = f.technician_id
+            field_tid = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+            if field_tid and technician_assigned_to_fault(f, field_tid):
+                visit_technician_id = field_tid
+            elif current_user():
+                visit_technician_id = None
+            else:
+                visit_technician_id = f.technician_id
 
     result = verify_signature_credentials(
         national_id=national_id,
@@ -4281,7 +4293,10 @@ def api_verify_signature():
         result['signature_url'] = upload_url(sig_path)
     if not result['signature_data'] and not result.get('signature_url'):
         app.logger.warning('signature image missing for path=%r', sig_path)
-        return jsonify({'ok': False, 'error': 'تعذّر تحميل صورة التوقيع — أعد رفعها من الإعدادات → التوقيعات'}), 500
+        return jsonify({
+            'ok': False,
+            'error': 'لا توجد صورة توقيع مسجّلة — ارسم التوقيع يدوياً أو أضفه من الإعدادات → التوقيعات',
+        }), 400
     result['signed_at'] = datetime.utcnow().isoformat() + 'Z'
     return jsonify(result)
 

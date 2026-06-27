@@ -135,12 +135,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   .cl-table td.cell-en{display:none}
 }
 </style>
-<link rel="stylesheet" href="/static/document-signatures.css?v=1">
+<link rel="stylesheet" href="/static/document-signatures.css?v=2">
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
 </head>
-<body{% if not editable or request.args.get('popup') == '1' %} data-lc-popup="1"{% endif %}>
+<body{% if not editable or request.args.get('popup') == '1' %} data-lc-popup="1"{% endif %} data-lc-idle-screensaver="off">
 
 {% if not editable %}
 <div class="readonly-banner">
