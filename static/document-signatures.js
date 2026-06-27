@@ -42,6 +42,9 @@
       global.LiftCoreChecklist.setupSignature('sig-tech', true);
       return;
     }
+    if (method !== 'pin') {
+      global.LiftCoreChecklist.setupSignature('sig-tech', true);
+    }
     global.LiftCoreDigitalSign.initTechSignSlot({
       editable: true,
       visitId: opts.visitId || null,
@@ -55,9 +58,6 @@
         }
       },
     });
-    if (method !== 'pin') {
-      global.LiftCoreChecklist.setupSignature('sig-tech', true);
-    }
   }
 
   global.LiftCoreDocSign = {

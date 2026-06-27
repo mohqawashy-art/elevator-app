@@ -94,7 +94,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <script src="/static/liftcore-dates.js" defer></script>
 </head>
-<body{% if not editable or request.args.get('popup') == '1' %} data-lc-popup="1"{% endif %} data-lc-idle-screensaver="off">
+<body data-lc-popup="1" data-lc-idle-screensaver="off">
 
 {% if not editable %}
 <div class="readonly-banner">
@@ -265,8 +265,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 </div>
 
 <script src="/static/maintenance-checklist.js?v=8"></script>
-<script src="/static/digital-signature.js?v=4"></script>
-<script src="/static/document-signatures.js?v=2"></script>
+<script src="/static/digital-signature.js?v=5"></script>
+<script src="/static/document-signatures.js?v=3"></script>
 <script src="/static/tax_calc.js"></script>
 <script src="/static/fault-report.js?v=3"></script>
 <script>
@@ -279,7 +279,6 @@ const REPORT_CFG = {
 };
 const FAULT_TYPE_OPTIONS = {{ fault_type_options_json|safe }};
 const REPORT_DATA = {{ report_data_json|safe }};
-const INVENTORY_ITEMS = {{ inventory_items_json|safe }};
 const SIGN_CONFIG = {{ sign_config|tojson }};
 const TECH_NATIONAL_ID = {{ (technician.national_id or '')|tojson }};
 
@@ -317,7 +316,14 @@ function saveReport(markResolved) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  LiftCoreFaultReport.setInventoryItems(INVENTORY_ITEMS);
+  if (REPORT_CFG.editable && window.LiftCoreDocSign) {
+    LiftCoreDocSign.initEditable({
+      editable: true,
+      faultId: REPORT_CFG.faultId,
+      signConfig: SIGN_CONFIG,
+      techNationalId: TECH_NATIONAL_ID,
+    });
+  }
   LiftCoreFaultReport.buildFaultTypes(FAULT_TYPE_OPTIONS, REPORT_DATA.meta.fault_types || [], REPORT_CFG.editable);
   LiftCoreFaultReport.buildPartsTable(REPORT_DATA.parts || [], REPORT_CFG.editable);
   if (REPORT_CFG.editable) {
@@ -328,19 +334,10 @@ document.addEventListener('DOMContentLoaded', function () {
     LiftCoreFaultReport.initOutcomeButtons(true);
     LiftCoreFaultReport.initRating(true);
     LiftCoreChecklist.buildPhotosGrid(6, true, REPORT_DATA.photos);
-    if (window.LiftCoreDocSign) {
-      LiftCoreDocSign.initEditable({
-        editable: true,
-        faultId: REPORT_CFG.faultId,
-        signConfig: SIGN_CONFIG,
-        techNationalId: TECH_NATIONAL_ID,
-      });
-    }
   } else {
     LiftCoreChecklist.buildPhotosGrid(6, false, REPORT_DATA.photos);
   }
   LiftCoreFaultReport.applyReportData(REPORT_DATA);
-  if (window.LiftCoreDocSign) LiftCoreDocSign.applySaved(REPORT_DATA);
   if (REPORT_CFG.editable && !REPORT_CFG.fieldTimesLocked && !document.getElementById('visit-date').value) {
     const now = new Date();
     const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0'), d = String(now.getDate()).padStart(2,'0');

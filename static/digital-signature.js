@@ -77,6 +77,7 @@
       okBtn.disabled = true;
       fetch('/api/signatures/verify', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           national_id: nidEl.value.trim(),
