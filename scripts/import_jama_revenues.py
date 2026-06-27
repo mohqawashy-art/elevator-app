@@ -23,10 +23,13 @@ from customer_billing import (
 )
 from entity_links import contract_by_code, customer_by_name
 from import_real_data import _cell, _extract_cn, _f, _i, _parse_date, _str
-from models import Contract, Invoice, PartsBilling, Revenue
+from models import Contract, Customer, Invoice, PartsBilling, Revenue
 
 PARTS_REVENUE_TYPES = frozenset({'قطع غيار', 'بيع قطع غيار', 'زيارة'})
 CONTRACT_REVENUE_TYPES = frozenset({'تجديد عقد', 'عقد صيانة', 'عقد جديد', 'ضمان'})
+
+# ملف إيرادات جما: عمود «المبلغ» = الإجمالي المحصّل (شامل الضريبة)
+JAMA_EXCEL_AMOUNT_IS_INCLUSIVE = True
 
 
 def _normalize_cn(code: str | None) -> str | None:
@@ -73,6 +76,33 @@ def _normalize_revenue_type(raw: str) -> str:
     if 'قطع' in s:
         return 'قطع غيار'
     return s
+
+
+def _amounts_from_excel(raw_amount: float) -> tuple[float, float, float]:
+    """تحويل مبلغ Excel إلى (قبل الضريبة، الضريبة، الإجمالي)."""
+    val = _f(raw_amount)
+    if val <= 0:
+        return 0.0, 0.0, 0.0
+    if JAMA_EXCEL_AMOUNT_IS_INCLUSIVE:
+        return split_vat_amounts(total_incl_vat=val)
+    return split_vat_amounts(amount_ex_vat=val)
+
+
+def _find_customer_by_title(title: str) -> Customer | None:
+    name = _customer_name_from_title(title)
+    if not name:
+        return None
+    exact = customer_by_name(name)
+    if exact:
+        return exact
+    compact = ' '.join(name.split())
+    for cust in Customer.query.all():
+        cn = (cust.name or '').strip()
+        if not cn:
+            continue
+        if cn == compact or compact in cn or cn in compact:
+            return cust
+    return Customer.query.filter(Customer.name.ilike(f'%{compact[:24]}%')).first()
 
 
 def _money_close(a: float, b: float, tol: float = 1.0) -> bool:
@@ -164,6 +194,8 @@ def _resolve_customer_contract(row: dict) -> tuple:
         name = _customer_name_from_title(title)
         if name:
             customer = customer_by_name(name)
+        if not customer:
+            customer = _find_customer_by_title(title)
 
     if not contract and customer and cn:
         contract = Contract.query.filter_by(code=cn, customer_id=customer.id).first()
@@ -180,17 +212,25 @@ def _resolve_customer_contract(row: dict) -> tuple:
     return contract, customer, cn
 
 
-def import_revenues(path: str, *, dry_run: bool = False, skip_existing: bool = True) -> dict:
+def import_revenues(
+    path: str,
+    *,
+    dry_run: bool = False,
+    skip_existing: bool = True,
+    sync_existing: bool = False,
+) -> dict:
     df = pd.read_excel(path)
     stats = {
         'rows': len(df),
         'imported': 0,
+        'updated': 0,
         'skipped_existing': 0,
         'skipped_missing': 0,
         'errors': 0,
         'linked_contract': 0,
         'linked_parts': 0,
         'linked_invoice': 0,
+        'excel_total': 0.0,
         'types': {},
     }
     missing_samples: list[str] = []
@@ -205,15 +245,19 @@ def import_revenues(path: str, *, dry_run: bool = False, skip_existing: bool = T
         num = _i(_cell(r, 'رقم العملية'))
         code = f'REV-{num:04d}' if num else ''
         rdate = _parse_date(_cell(r, 'التاريخ'))
-        amount_ex = _f(_cell(r, 'المبلغ'))
-        amount_ex, tax, total_incl = split_vat_amounts(amount_ex_vat=amount_ex)
+        raw_amount = _f(_cell(r, 'المبلغ'))
+        amount_ex, tax, total_incl = _amounts_from_excel(raw_amount)
+        stats['excel_total'] = round(stats['excel_total'] + raw_amount, 2)
         rev_type = _normalize_revenue_type(_cell(r, 'نوع الايراد'))
 
-        if not code or not rdate or amount_ex <= 0:
+        if not code or not rdate or total_incl <= 0:
             stats['errors'] += 1
             continue
 
-        if skip_existing and code.upper() in existing_codes:
+        existing_rev = Revenue.query.filter_by(code=code).first()
+        if existing_rev and sync_existing:
+            pass
+        elif skip_existing and code.upper() in existing_codes:
             stats['skipped_existing'] += 1
             continue
 
@@ -277,8 +321,7 @@ def import_revenues(path: str, *, dry_run: bool = False, skip_existing: bool = T
 
         stats['types'][rev_type] = stats['types'].get(rev_type, 0) + 1
 
-        revenue = Revenue(
-            code=code,
+        fields = dict(
             customer_id=customer_id,
             contract_id=contract_id,
             invoice_id=invoice_id,
@@ -294,8 +337,18 @@ def import_revenues(path: str, *, dry_run: bool = False, skip_existing: bool = T
             notes=_str(_cell(r, 'ملاحظات')),
         )
 
+        if existing_rev and sync_existing:
+            revenue = existing_rev
+            for key, val in fields.items():
+                setattr(revenue, key, val)
+            action = 'updated'
+        else:
+            revenue = Revenue(code=code, **fields)
+            action = 'imported'
+
         if not dry_run:
-            db.session.add(revenue)
+            if action == 'imported':
+                db.session.add(revenue)
             db.session.flush()
 
             if parts_billing_id and revenue.status in ('محصّل', 'محصل'):
@@ -318,7 +371,7 @@ def import_revenues(path: str, *, dry_run: bool = False, skip_existing: bool = T
 
             existing_codes.add(code.upper())
 
-        stats['imported'] += 1
+        stats[action] += 1
 
     if not dry_run:
         repair_contract_payment_links(commit=False)
@@ -327,7 +380,10 @@ def import_revenues(path: str, *, dry_run: bool = False, skip_existing: bool = T
         db.session.commit()
 
     stats['missing_samples'] = missing_samples
-    stats['total_in_db'] = Revenue.query.count() if not dry_run else None
+    stats['db_total'] = round(
+        sum(_f(r.total) for r in Revenue.query.all()),
+        2,
+    ) if not dry_run else None
     return stats
 
 
@@ -336,6 +392,11 @@ def main() -> int:
     parser.add_argument('xlsx', help='Path to revenues .xlsx')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--force', action='store_true', help='Import even if revenue code exists')
+    parser.add_argument(
+        '--sync',
+        action='store_true',
+        help='Update existing revenues from Excel and import missing rows',
+    )
     args = parser.parse_args()
 
     if not os.path.isfile(args.xlsx):
@@ -349,7 +410,8 @@ def main() -> int:
         result = import_revenues(
             args.xlsx,
             dry_run=args.dry_run,
-            skip_existing=not args.force,
+            skip_existing=not (args.force or args.sync),
+            sync_existing=args.sync,
         )
         print(result)
         if result.get('missing_samples'):

@@ -16,6 +16,7 @@ from typing import Any
 import pandas as pd
 
 from app import app, db
+from customer_billing import split_vat_amounts
 from models import (
     Contract,
     ContractElevator,
@@ -377,7 +378,7 @@ def import_all(folder: str, reset: bool = True) -> dict[str, int]:
             if not rdate:
                 continue
             amount = _f(_cell(r, "المبلغ"))
-            tax = round(amount * 0.15, 2)
+            amount_ex, tax, total_incl = split_vat_amounts(total_incl_vat=amount)
             db.session.add(Revenue(
                 code=f"REV-{num:04d}" if num else f"REV-{Revenue.query.count()+1:04d}",
                 customer_id=contract.customer_id if contract else None,
@@ -385,9 +386,9 @@ def import_all(folder: str, reset: bool = True) -> dict[str, int]:
                 revenue_date=rdate,
                 revenue_type=_str(_cell(r, "نوع الايراد")) or "أخرى",
                 payment_method=_str(_cell(r, "طريقة الدفع")) or "كاش",
-                amount=amount,
+                amount=amount_ex,
                 tax_amount=tax,
-                total=round(amount + tax, 2),
+                total=total_incl,
                 status="محصّل" if _str(_cell(r, "Status")) in ("محصل", "محصّل") else _str(_cell(r, "Status")) or "محصّل",
                 reference=_str(_cell(r, "مرفقات")),
                 notes=_str(_cell(r, "ملاحظات")),

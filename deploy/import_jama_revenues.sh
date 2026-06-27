@@ -18,6 +18,7 @@ for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY=1; EXTRA+=(--dry-run) ;;
     --force) EXTRA+=(--force) ;;
+    --sync) EXTRA+=(--sync) ;;
   esac
 done
 
