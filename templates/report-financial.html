@@ -14,7 +14,7 @@
   --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
   --accent:#2a7fff;--gold:#c8a055;
   --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
-  --success:#1fb87a;--danger:#e04848;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
   --sidebar-w:240px;--header-h:60px;
   --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
   --r:10px;--r-sm:7px;--trans:.18s ease;
@@ -38,67 +38,66 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 .btn-secondary:hover{background:var(--bg4);color:var(--text1)}
 .btn-sm{padding:5px 10px;font-size:12px}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
-.page-title{font-size:18px;font-weight:600}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
 .page-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.filter-select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);padding:7px 12px;font-size:13px;outline:none;font-family:var(--font-ar)}
+.filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;font-family:var(--font-ar)}
+.filter-select:focus{border-color:var(--border2)}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+.hamburger{display:none}
+
+.print-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;margin-bottom:20px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);flex-wrap:wrap;gap:10px}
+.print-toolbar-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.print-toolbar label{font-size:12px;color:var(--text2)}
+
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px}
+.sec-header:first-child{margin-top:0}
+.sec-title{font-size:14px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
+.sec-title::before{content:'';width:3px;height:16px;background:var(--accent);border-radius:2px}
+
+.stats-row{display:grid;gap:12px;margin-bottom:12px}
+.stats-row-2{grid-template-columns:1fr 1fr}
+.stats-row-3{grid-template-columns:repeat(3,1fr)}
+.stats-row-4{grid-template-columns:repeat(4,1fr)}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.stat-card--hero{padding:20px 18px}
+.stat-label{font-size:12px;color:var(--text3);margin-bottom:8px;line-height:1.45}
+.stat-value{font-size:24px;font-weight:700;color:var(--text1);font-family:var(--font-en)}
+.stat-card--hero .stat-value{font-size:28px}
+.stat-value.green{color:var(--success)}
+.stat-value.red{color:var(--danger)}
+.stat-value.blue{color:var(--accent)}
+.stat-value.gold{color:var(--gold)}
+
+.fin-report-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:8px}
+
+@media(max-width:1100px){.stats-row-4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){
   .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
   .sidebar.open{right:0}
   .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .stats-row-2,.stats-row-3,.stats-row-4{grid-template-columns:1fr 1fr}
 }
-
-/* ===== التقرير المالي (مطابق للتصميم) ===== */
-.fin-report{background:#fff;color:#222;border-radius:var(--r);padding:28px 24px 32px}
-.fin-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.fin-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
-.fin-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
-@media(max-width:900px){.fin-row-3,.fin-row-4{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.fin-row-2,.fin-row-3,.fin-row-4{grid-template-columns:1fr}}
-
-.fin-card-hero{border-radius:10px;padding:28px 20px;text-align:center;color:#fff}
-.fin-card-hero .fin-label{font-size:15px;font-weight:500;margin-bottom:10px;opacity:.95}
-.fin-card-hero .fin-value{font-size:34px;font-weight:700;font-family:var(--font-en);letter-spacing:-.02em;line-height:1.15}
-.fin-card-hero.rev{background:linear-gradient(135deg,#2ecc71,#27ae60)}
-.fin-card-hero.exp{background:linear-gradient(135deg,#ff6b6b,#e74c3c)}
-
-.fin-card-lite{border-radius:10px;padding:22px 16px;text-align:center;min-height:110px;display:flex;flex-direction:column;justify-content:center}
-.fin-card-lite .fin-label{font-size:13px;color:#444;margin-bottom:10px;line-height:1.45}
-.fin-card-lite .fin-value{font-size:26px;font-weight:700;color:#222;font-family:var(--font-en)}
-.fin-card-lite.rev-lite{background:#edf9f1}
-.fin-card-lite.exp-lite{background:#fdeeee}
-
-.fin-card-month{border-radius:10px;padding:20px 14px;text-align:center;min-height:100px;display:flex;flex-direction:column;justify-content:center}
-.fin-card-month .fin-label{font-size:12px;margin-bottom:8px;line-height:1.4}
-.fin-card-month .fin-value{font-size:22px;font-weight:700;font-family:var(--font-en)}
-.fin-card-month.rev-total{background:#5a6d82;color:#fff}
-.fin-card-month.rev-total .fin-label,.fin-card-month.exp-total .fin-label{opacity:.92}
-.fin-card-month.rev-detail{background:#e8f0f8;color:#222}
-.fin-card-month.exp-total{background:#e74c3c;color:#fff}
-.fin-card-month.exp-detail{background:#fdeeee;color:#222}
-
-.fin-section-title{text-align:center;margin:8px 0 20px;position:relative;font-size:15px;font-weight:600;color:#333}
-.fin-section-title::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:#c5d5ea;z-index:0}
-.fin-section-title span{background:#fff;padding:0 16px;position:relative;z-index:1}
-
-.fin-currency{font-size:.72em;font-weight:500;font-family:var(--font-ar);margin-right:4px}
-
-.print-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg2);border-radius:var(--r) var(--r) 0 0;margin-bottom:0}
-.print-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+@media(max-width:480px){
+  .stats-row-2,.stats-row-3,.stats-row-4{grid-template-columns:1fr}
+}
 
 @media print{
   .sidebar,.page-header,.print-toolbar,.screen-only{display:none!important}
-  body{background:#fff}
+  body{background:#fff;color:#111}
   .content{padding:0}
-  .print-wrap{border:none}
-  .fin-report{border-radius:0;padding:16px}
+  .stat-card,.fin-report-panel{background:#fff;border-color:#ddd}
+  .stat-label,.sec-title{color:#444}
+  .stat-value{color:#111}
+  .stat-value.green{color:#1a7a52}
+  .stat-value.red{color:#b33}
 }
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='reports-print.css') }}?v=4">
 <script src="{{ url_for('static', filename='reports-print.js') }}?v=1"></script>
-<script src="/static/liftcore-display.js" defer></script>
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -109,9 +108,9 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
     <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
     <div class="nav-section">التقارير</div>
     <a href="/reports" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg>كل التقارير</a>
-    <a href="/reports/financial" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>التقرير المالي</a>
-    <a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
-    <a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
+    <a href="{{ url_for('report_financial') }}" class="nav-item active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>التقرير المالي</a>
+    <a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
+    <a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
   </nav>
 </aside>
 
@@ -119,126 +118,131 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
   {% set page_title = 'التقرير المالي' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
-    <div class="page-header screen-only">
-      <div class="page-title">التقرير المالي</div>
-      <div class="page-actions">
-        <label style="font-size:12px;color:var(--text2)">السنة</label>
+
+    <div class="print-toolbar screen-only" id="fin-print-area">
+      <div class="print-toolbar-filters">
+        <label>السنة</label>
         <select id="sel-year" class="filter-select" onchange="loadFinancial()">
           {% for y in report_years %}
           <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
           {% endfor %}
         </select>
-        <label style="font-size:12px;color:var(--text2)">الشهر</label>
+        <label>الشهر</label>
         <select id="sel-month" class="filter-select" onchange="loadFinancial()">
           {% for m in range(1, 13) %}
           <option value="{{ m }}" {% if m == current_month %}selected{% endif %}>{{ ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][m] }}</option>
           {% endfor %}
         </select>
-        <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
-        </button>
       </div>
+      <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
+      </button>
     </div>
 
-    <div class="print-wrap" id="fin-print-area">
-      <div class="print-toolbar screen-only">
-        <span style="font-size:13px;color:var(--text2)">معاينة التقرير</span>
-        <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">طباعة</button>
+    <div id="fin-report">
+
+      <div class="sec-header">
+        <div class="sec-title">ملخص سنوي <span id="annual-year-label" style="font-weight:400;color:var(--text3);font-size:13px"></span></div>
       </div>
-
-      <div class="fin-report" id="fin-report">
-        <!-- ملخص سنوي -->
-        <div class="fin-row-2">
-          <div class="fin-card-hero rev">
-            <div class="fin-label">إجمالي الإيرادات</div>
-            <div class="fin-value" id="annual-rev-total">—</div>
+      <div class="fin-report-panel">
+        <div class="stats-row stats-row-2">
+          <div class="stat-card stat-card--hero">
+            <div class="stat-label">إجمالي الإيرادات</div>
+            <div class="stat-value green" id="annual-rev-total">—</div>
           </div>
-          <div class="fin-card-hero exp">
-            <div class="fin-label">إجمالي المصروفات</div>
-            <div class="fin-value" id="annual-exp-total">—</div>
+          <div class="stat-card stat-card--hero">
+            <div class="stat-label">إجمالي المصروفات</div>
+            <div class="stat-value red" id="annual-exp-total">—</div>
           </div>
         </div>
-        <div class="fin-row-3">
-          <div class="fin-card-lite rev-lite">
-            <div class="fin-label">اجمالي قيمة العقود المجددة</div>
-            <div class="fin-value" id="annual-rev-renewed">—</div>
+        <div class="stats-row stats-row-3">
+          <div class="stat-card">
+            <div class="stat-label">اجمالي قيمة العقود المجددة</div>
+            <div class="stat-value" id="annual-rev-renewed">—</div>
           </div>
-          <div class="fin-card-lite rev-lite">
-            <div class="fin-label">اجمالي ايرادات قطع الغيار والصيانة الخارجية</div>
-            <div class="fin-value" id="annual-rev-parts">—</div>
+          <div class="stat-card">
+            <div class="stat-label">اجمالي ايرادات قطع الغيار والصيانة الخارجية</div>
+            <div class="stat-value blue" id="annual-rev-parts">—</div>
           </div>
-          <div class="fin-card-lite rev-lite">
-            <div class="fin-label">اجمالي قيمة العقود الجديدة</div>
-            <div class="fin-value" id="annual-rev-new">—</div>
-          </div>
-        </div>
-        <div class="fin-row-3">
-          <div class="fin-card-lite exp-lite">
-            <div class="fin-label">اجمالي المصروف الاساسية</div>
-            <div class="fin-value" id="annual-exp-basic">—</div>
-          </div>
-          <div class="fin-card-lite exp-lite">
-            <div class="fin-label">إجمالي مصروفات الصيانة وقطع الغيار</div>
-            <div class="fin-value" id="annual-exp-parts">—</div>
-          </div>
-          <div class="fin-card-lite exp-lite">
-            <div class="fin-label">اجمالي المصروفات النثرية والتأثيث والتجهيزات</div>
-            <div class="fin-value" id="annual-exp-other">—</div>
+          <div class="stat-card">
+            <div class="stat-label">اجمالي قيمة العقود الجديدة</div>
+            <div class="stat-value gold" id="annual-rev-new">—</div>
           </div>
         </div>
-
-        <!-- اليوم -->
-        <div class="fin-section-title"><span>ايرادات ومصروفات اليوم</span></div>
-        <div class="fin-row-2">
-          <div class="fin-card-lite rev-lite">
-            <div class="fin-label">ايرادات اليوم</div>
-            <div class="fin-value" id="today-rev">—</div>
+        <div class="stats-row stats-row-3">
+          <div class="stat-card">
+            <div class="stat-label">اجمالي المصروف الاساسية</div>
+            <div class="stat-value" id="annual-exp-basic">—</div>
           </div>
-          <div class="fin-card-lite exp-lite">
-            <div class="fin-label">مصروفات اليوم</div>
-            <div class="fin-value" id="today-exp">—</div>
+          <div class="stat-card">
+            <div class="stat-label">إجمالي مصروفات الصيانة وقطع الغيار</div>
+            <div class="stat-value" id="annual-exp-parts">—</div>
           </div>
-        </div>
-
-        <!-- شهري -->
-        <div class="fin-section-title"><span id="monthly-title">تقرير شهر —</span></div>
-        <div class="fin-row-4">
-          <div class="fin-card-month rev-total">
-            <div class="fin-label" id="monthly-rev-total-label">اجمالي ايرادات الشهر</div>
-            <div class="fin-value" id="monthly-rev-total">—</div>
-          </div>
-          <div class="fin-card-month rev-detail">
-            <div class="fin-label" id="monthly-rev-renewed-label">اجمالي قيمة العقود المجددة</div>
-            <div class="fin-value" id="monthly-rev-renewed">—</div>
-          </div>
-          <div class="fin-card-month rev-detail">
-            <div class="fin-label">اجمالي ايرادات قطع الغيار والصيانة</div>
-            <div class="fin-value" id="monthly-rev-parts">—</div>
-          </div>
-          <div class="fin-card-month rev-detail">
-            <div class="fin-label">اجمالي قيمة العقود الجديدة</div>
-            <div class="fin-value" id="monthly-rev-new">—</div>
-          </div>
-        </div>
-        <div class="fin-row-4">
-          <div class="fin-card-month exp-total">
-            <div class="fin-label" id="monthly-exp-total-label">اجمالي مصروفات الشهر</div>
-            <div class="fin-value" id="monthly-exp-total">—</div>
-          </div>
-          <div class="fin-card-month exp-detail">
-            <div class="fin-label">مصروفات اساسية</div>
-            <div class="fin-value" id="monthly-exp-basic">—</div>
-          </div>
-          <div class="fin-card-month exp-detail">
-            <div class="fin-label">مصروفات قطع الغيار والصيانة</div>
-            <div class="fin-value" id="monthly-exp-parts">—</div>
-          </div>
-          <div class="fin-card-month exp-detail">
-            <div class="fin-label">مصروفات اخرى</div>
-            <div class="fin-value" id="monthly-exp-other">—</div>
+          <div class="stat-card">
+            <div class="stat-label">اجمالي المصروفات النثرية والتأثيث والتجهيزات</div>
+            <div class="stat-value" id="annual-exp-other">—</div>
           </div>
         </div>
       </div>
+
+      <div class="sec-header">
+        <div class="sec-title">ايرادات ومصروفات اليوم</div>
+      </div>
+      <div class="fin-report-panel">
+        <div class="stats-row stats-row-2">
+          <div class="stat-card">
+            <div class="stat-label">ايرادات اليوم</div>
+            <div class="stat-value green" id="today-rev">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">مصروفات اليوم</div>
+            <div class="stat-value red" id="today-exp">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-header">
+        <div class="sec-title" id="monthly-title">تقرير شهر —</div>
+      </div>
+      <div class="fin-report-panel">
+        <div class="stats-row stats-row-4">
+          <div class="stat-card stat-card--hero">
+            <div class="stat-label" id="monthly-rev-total-label">اجمالي ايرادات الشهر</div>
+            <div class="stat-value green" id="monthly-rev-total">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" id="monthly-rev-renewed-label">اجمالي قيمة العقود المجددة</div>
+            <div class="stat-value" id="monthly-rev-renewed">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">اجمالي ايرادات قطع الغيار والصيانة</div>
+            <div class="stat-value blue" id="monthly-rev-parts">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">اجمالي قيمة العقود الجديدة</div>
+            <div class="stat-value gold" id="monthly-rev-new">—</div>
+          </div>
+        </div>
+        <div class="stats-row stats-row-4">
+          <div class="stat-card stat-card--hero">
+            <div class="stat-label" id="monthly-exp-total-label">اجمالي مصروفات الشهر</div>
+            <div class="stat-value red" id="monthly-exp-total">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">مصروفات اساسية</div>
+            <div class="stat-value" id="monthly-exp-basic">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">مصروفات قطع الغيار والصيانة</div>
+            <div class="stat-value" id="monthly-exp-parts">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">مصروفات اخرى</div>
+            <div class="stat-value" id="monthly-exp-other">—</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -246,15 +250,15 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 <script>
 const AR_MONTHS = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
-function fmtRiyal(n) {
-  const v = Number(n) || 0;
-  return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
-    ' <span class="fin-currency">ريال</span>';
-}
-
 function setMoney(id, n) {
   const el = document.getElementById(id);
-  if (el) el.innerHTML = fmtRiyal(n);
+  if (!el) return;
+  if (window.setMoneyEl) {
+    setMoneyEl(el, n, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return;
+  }
+  const v = Number(n) || 0;
+  el.textContent = v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function loadFinancial() {
@@ -272,6 +276,13 @@ function loadFinancial() {
       const expM = monthly.expenses || {};
       const monthLabel = data.month_label || AR_MONTHS[data.month] || '';
 
+      document.getElementById('annual-year-label').textContent = '— ' + data.year;
+      document.getElementById('monthly-title').textContent = 'تقرير شهر ' + monthLabel + ' ' + data.year;
+      document.getElementById('monthly-rev-total-label').textContent = 'اجمالي ايرادات شهر ' + monthLabel;
+      document.getElementById('monthly-exp-total-label').textContent = 'اجمالي مصروفات شهر ' + monthLabel;
+      document.getElementById('monthly-rev-renewed-label').textContent =
+        'اجمالي قيمة العقود المجددة خلال شهر ' + monthLabel;
+
       setMoney('annual-rev-total', revA.total);
       setMoney('annual-exp-total', expA.total);
       setMoney('annual-rev-renewed', revA.renewed);
@@ -280,16 +291,8 @@ function loadFinancial() {
       setMoney('annual-exp-basic', expA.basic);
       setMoney('annual-exp-parts', expA.parts);
       setMoney('annual-exp-other', expA.other);
-
       setMoney('today-rev', today.revenues);
       setMoney('today-exp', today.expenses);
-
-      document.getElementById('monthly-title').textContent = 'تقرير شهر ' + monthLabel + ' ' + data.year;
-      document.getElementById('monthly-rev-total-label').textContent = 'اجمالي ايرادات شهر ' + monthLabel;
-      document.getElementById('monthly-exp-total-label').textContent = 'اجمالي مصروفات شهر ' + monthLabel;
-      document.getElementById('monthly-rev-renewed-label').textContent =
-        'اجمالي قيمة العقود المجددة خلال شهر ' + monthLabel;
-
       setMoney('monthly-rev-total', revM.total);
       setMoney('monthly-rev-renewed', revM.renewed);
       setMoney('monthly-rev-parts', revM.parts);
@@ -301,7 +304,7 @@ function loadFinancial() {
     })
     .catch(() => {
       document.getElementById('fin-report').innerHTML =
-        '<p style="text-align:center;padding:40px;color:#888">تعذّر تحميل التقرير المالي</p>';
+        '<p style="text-align:center;padding:40px;color:var(--text3)">تعذّر تحميل التقرير المالي</p>';
     });
 }
 
