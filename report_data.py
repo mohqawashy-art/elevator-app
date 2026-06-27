@@ -273,7 +273,7 @@ def _sum_expenses(expenses):
     }
 
 
-def _filter_revenues(Revenue, *, year=None, month=None, on_date=None):
+def _filter_revenues(Revenue, *, year=None, month=None, on_date=None, date_from=None, date_to=None):
     q = Revenue.query
     if year is not None:
         q = q.filter(extract('year', Revenue.revenue_date) == int(year))
@@ -281,10 +281,14 @@ def _filter_revenues(Revenue, *, year=None, month=None, on_date=None):
         q = q.filter(extract('month', Revenue.revenue_date) == int(month))
     if on_date is not None:
         q = q.filter(Revenue.revenue_date == on_date)
+    if date_from is not None:
+        q = q.filter(Revenue.revenue_date >= date_from)
+    if date_to is not None:
+        q = q.filter(Revenue.revenue_date <= date_to)
     return q.all()
 
 
-def _filter_expenses(Expense, *, year=None, month=None, on_date=None):
+def _filter_expenses(Expense, *, year=None, month=None, on_date=None, date_from=None, date_to=None):
     q = Expense.query
     if year is not None:
         q = q.filter(extract('year', Expense.expense_date) == int(year))
@@ -292,55 +296,47 @@ def _filter_expenses(Expense, *, year=None, month=None, on_date=None):
         q = q.filter(extract('month', Expense.expense_date) == int(month))
     if on_date is not None:
         q = q.filter(Expense.expense_date == on_date)
+    if date_from is not None:
+        q = q.filter(Expense.expense_date >= date_from)
+    if date_to is not None:
+        q = q.filter(Expense.expense_date <= date_to)
     return q.all()
 
 
-def get_financial_report(db, Revenue, Expense, year=None, month=None, today=None):
-    """ملخص مالي سنوي + يومي + شهري حسب التصنيفات المعتمدة في النظام."""
+def _parse_report_date(value):
+    if not value:
+        return None
+    if isinstance(value, date):
+        return value
+    try:
+        return datetime.strptime(str(value).strip()[:10], '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
+
+
+def get_financial_report(db, Revenue, Expense, date_from=None, date_to=None, today=None):
+    """ملخص مالي لفترة محددة (من — إلى)."""
     if today is None:
         today = date.today()
-    if year is None:
-        year = today.year
-    if month is None:
-        month = today.month
+    if date_to is None:
+        date_to = today
+    if date_from is None:
+        date_from = date(today.year, 1, 1)
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
 
-    year = int(year)
-    month = int(month)
+    revenues = _filter_revenues(Revenue, date_from=date_from, date_to=date_to)
+    expenses = _filter_expenses(Expense, date_from=date_from, date_to=date_to)
 
-    annual_revenues = _filter_revenues(Revenue, year=year)
-    annual_expenses = _filter_expenses(Expense, year=year)
-    monthly_revenues = _filter_revenues(Revenue, year=year, month=month)
-    monthly_expenses = _filter_expenses(Expense, year=year, month=month)
-    today_revenues = _filter_revenues(Revenue, on_date=today)
-    today_expenses = _filter_expenses(Expense, on_date=today)
-
-    annual_rev = _sum_revenues(annual_revenues)
-    annual_exp = _sum_expenses(annual_expenses)
-    monthly_rev = _sum_revenues(monthly_revenues)
-    monthly_exp = _sum_expenses(monthly_expenses)
-    today_rev_total = _round_money(sum(_revenue_total(r) for r in today_revenues))
-    today_exp_total = _round_money(sum(float(e.amount or 0) for e in today_expenses))
+    rev = _sum_revenues(revenues)
+    exp = _sum_expenses(expenses)
 
     return {
-        'year': year,
-        'month': month,
-        'month_label': AR_MONTHS[month] if 1 <= month <= 12 else str(month),
-        'today': str(today),
-        'annual': {
-            'revenues': annual_rev,
-            'expenses': annual_exp,
-            'net': _round_money(annual_rev['total'] - annual_exp['total']),
-        },
-        'monthly': {
-            'revenues': monthly_rev,
-            'expenses': monthly_exp,
-            'net': _round_money(monthly_rev['total'] - monthly_exp['total']),
-        },
-        'today_summary': {
-            'revenues': today_rev_total,
-            'expenses': today_exp_total,
-            'net': _round_money(today_rev_total - today_exp_total),
-        },
+        'date_from': str(date_from),
+        'date_to': str(date_to),
+        'revenues': rev,
+        'expenses': exp,
+        'net': _round_money(rev['total'] - exp['total']),
     }
 
 

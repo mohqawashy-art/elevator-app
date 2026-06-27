@@ -6144,13 +6144,11 @@ def report_parts():
 
 @app.route('/reports/financial')
 def report_financial():
-    cur_year = date.today().year
-    report_years = list(range(cur_year, cur_year - 8, -1))
+    today = date.today()
     return render_template(
         'report-financial.html',
-        current_year=cur_year,
-        current_month=date.today().month,
-        report_years=report_years,
+        default_date_from=date(today.year, 1, 1).isoformat(),
+        default_date_to=today.isoformat(),
     )
 
 # =============================================
@@ -6936,10 +6934,11 @@ def api_report_parts():
 
 @app.route('/api/reports/financial')
 def api_report_financial():
-    from report_data import get_financial_report
-    year = request.args.get('year', date.today().year)
-    month = request.args.get('month', date.today().month)
-    return jsonify(get_financial_report(db, Revenue, Expense, year=year, month=month))
+    from report_data import get_financial_report, _parse_report_date
+    today = date.today()
+    date_from = _parse_report_date(request.args.get('date_from')) or date(today.year, 1, 1)
+    date_to = _parse_report_date(request.args.get('date_to')) or today
+    return jsonify(get_financial_report(db, Revenue, Expense, date_from=date_from, date_to=date_to))
 
 
 @app.route('/api/reports/client-annual/<int:customer_id>')
