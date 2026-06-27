@@ -315,6 +315,28 @@ html[data-theme="report"] .modal-title {
   padding-inline-start: 10px;
 }
 
+html[data-theme="report"] .pricing-item,
+html[data-theme="report"] .chart-card,
+html[data-theme="report"] .health-banner,
+html[data-theme="report"] .rec-card {
+  background: var(--card);
+  color: var(--text1);
+  border-color: var(--border);
+}
+
+html[data-theme="report"] .pricing-item .pv {
+  color: var(--text1);
+}
+
+html[data-theme="report"] .pricing-item.highlight {
+  background: rgba(0, 33, 71, 0.06);
+  border-color: rgba(0, 33, 71, 0.2);
+}
+
+html[data-theme="report"] .pricing-item.highlight .pv {
+  color: var(--accent);
+}
+
 /* LiftCore — Premium theme (html[data-theme="premium"]) — مستوحى من شاشة الدخول */
 html[data-theme="premium"] {
   --bg: #070a10;

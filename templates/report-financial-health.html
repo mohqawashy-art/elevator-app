@@ -66,10 +66,10 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 .rec-card h4{font-size:14px;margin-bottom:6px;color:var(--text1)}
 .rec-card p{font-size:12px;color:var(--text2);line-height:1.55}
 .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.pricing-item{background:#161e2b;border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
+.pricing-item{background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
 .pricing-item .pl{font-size:11px;color:var(--text3);margin-bottom:4px}
 .pricing-item .pv{font-size:16px;font-weight:600;font-family:var(--font-en);color:var(--text1)}
-.pricing-item.highlight{border-color:rgba(42,127,255,.3);background:rgba(42,127,255,.06)}
+.pricing-item.highlight{border-color:rgba(42,127,255,.3);background:rgba(42,127,255,.08)}
 .pricing-item.highlight .pv{color:var(--accent)}
 .note{font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6}
 @media(max-width:768px){
@@ -167,8 +167,8 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
       <div class="rec-grid" id="rec-grid"></div>
     </div>
 
-    <div class="sec-title">تسعير عقود الصيانة (تقديري)</div>
-    <p class="note">يُحسب بناءً على مصروفات التشغيل الفعلية (محروقات، قطع غيار، رواتب، صيانة سيارات...) وعدد المصاعد والزيارات تحت العقود النشطة، مع هامش ربح مستهدف 20%.</p>
+    <div class="sec-title">تسعير صيانة المصاعد (تقديري)</div>
+    <p class="note">يُحسب لكل مصعد بناءً على مصروفات التشغيل الفعلية وعدد الزيارات السنوية المخططة، مع هامش ربح مستهدف 20%. العقود التي تضم أكثر من مصعد تُوزَّع قيمتها على عدد المصاعد.</p>
     <div class="pricing-grid" id="pricing-grid"></div>
 
   </div>
@@ -214,29 +214,42 @@ function makeChart(id, type, labels, datasets, opts) {
   });
 }
 
-function renderPricing(p) {
+function renderPricing(p, summaryExpenses) {
+  var variable = Number(p.variable_cost) || 0;
+  var fixed = Number(p.fixed_cost) || 0;
+  var annual = Number(p.annual_operating_cost);
+  if (!annual && (variable || fixed)) annual = variable + fixed;
+  if (!annual && summaryExpenses) annual = Number(summaryExpenses) || 0;
+
   var items = [
-    ['تكلفة التشغيل السنوية', p.annual_operating_cost],
-    ['تكاليف مباشرة (وقود + قطع غيار)', p.variable_cost],
-    ['تكاليف ثابتة (رواتب + أخرى)', p.fixed_cost],
+    ['تكلفة التشغيل السنوية', annual],
+    ['تكاليف مباشرة (وقود + قطع غيار)', variable],
+    ['تكاليف ثابتة (رواتب + أخرى)', fixed],
     ['عقود نشطة', p.active_contracts, true],
     ['مصاعد تحت العقد', p.elevators_under_contract, true],
     ['زيارات سنوية مخططة', p.annual_visits_planned, true],
     ['زيارات مكتملة (فعلي)', p.visits_completed, true],
     ['متوسط تكلفة الزيارة', p.cost_per_visit],
-    ['تكلفة المصعد سنوياً', p.cost_per_elevator_year],
-    ['متوسط قيمة العقد الحالي', p.avg_contract_value],
-    ['تكلفة العقد التقديرية', p.estimated_cost_per_contract],
-    ['السعر المقترح للعقد', p.suggested_contract_price, false, true],
+    ['تكلفة المصعد سنوياً (تشغيل فعلي)', p.cost_per_elevator_year],
+    ['متوسط قيمة المصعد الحالية', p.avg_elevator_value],
+    ['تكلفة المصعد التقديرية', p.estimated_cost_per_elevator],
+    ['السعر المقترح للمصعد', p.suggested_elevator_price, false, true],
   ];
   document.getElementById('pricing-grid').innerHTML = items.map(function (row) {
     var isCount = row[2];
     var highlight = row[3];
-    var val = isCount ? String(row[1]) : fmt(row[1]);
+    var val = isCount ? String(row[1] ?? '—') : fmt(row[1]);
     return '<div class="pricing-item' + (highlight ? ' highlight' : '') + '">' +
       '<div class="pl">' + row[0] + '</div>' +
-      '<div class="pv">' + val + (isCount ? '' : ' <span style="font-size:11px;font-family:var(--font-ar)">ريال</span>') + '</div></div>';
+      '<div class="pv" data-money="' + (isCount ? '' : (Number(row[1]) || 0)) + '">' +
+      val + (isCount ? '' : ' <span class="pv-cur" style="font-size:11px;font-family:var(--font-ar)">ريال</span>') +
+      '</div></div>';
   }).join('');
+  if (window.setMoneyEl) {
+    document.querySelectorAll('#pricing-grid .pv[data-money]').forEach(function (el) {
+      setMoneyEl(el, el.getAttribute('data-money'), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    });
+  }
 }
 
 function renderRecommendations(recs) {
@@ -295,7 +308,7 @@ function loadHealth() {
       ]);
 
       renderRecommendations(d.recommendations);
-      renderPricing(d.pricing || {});
+      renderPricing(d.pricing || {}, s.expenses);
     })
     .catch(function () {
       document.getElementById('health-title').textContent = 'تعذّر تحميل التقرير';

@@ -564,6 +564,13 @@ def get_financial_health_report(
 
     annual_visits_planned = sum((c.visits_per_month or 1) * 12 for c in active_contracts)
     contract_values = [_contract_forecast_amount(c) for c in active_contracts]
+    elevator_values = []
+    for c in active_contracts:
+        n = len(c.elevators) or 1
+        elevator_values.append(_contract_forecast_amount(c) / n)
+    avg_elevator_value = _round_money(
+        sum(elevator_values) / len(elevator_values) if elevator_values else 0
+    )
     avg_contract_value = _round_money(
         sum(contract_values) / len(contract_values) if contract_values else 0
     )
@@ -576,28 +583,41 @@ def get_financial_health_report(
         extract('year', MaintenanceVisit.visit_date) == year,
         MaintenanceVisit.status == 'مكتملة',
     ).scalar() or 0)
-    visits_base = visits_done or annual_visits_planned or 1
+    visits_for_pricing = annual_visits_planned or visits_done or 1
 
     variable_cost = exp_buckets['fuel'] + exp_buckets['parts']
     fixed_cost = exp_buckets['salaries'] + exp_buckets['vehicles'] + exp_buckets['other']
-    cost_per_visit = _round_money(variable_cost / visits_base) if visits_base else 0.0
+    operating_cost = _round_money(max(total_expenses, variable_cost + fixed_cost))
+    cost_per_visit = _round_money(variable_cost / visits_for_pricing) if visits_for_pricing else 0.0
     cost_per_elevator_year = _round_money(
-        total_expenses / elevators_under_contract
+        operating_cost / elevators_under_contract
     ) if elevators_under_contract else 0.0
 
-    avg_visits_per_contract = (
-        round(annual_visits_planned / len(active_contracts), 1) if active_contracts else 0
+    elevator_cost_estimates = []
+    fixed_per_contract = (
+        fixed_cost / len(active_contracts) if active_contracts else 0
     )
-    estimated_cost_per_contract = _round_money(
-        cost_per_visit * avg_visits_per_contract * avg_elevators_per_contract
-        + (fixed_cost / len(active_contracts) if active_contracts else 0)
+    visits_per_elevator = []
+    for c in active_contracts:
+        n_elev = len(c.elevators) or 1
+        visits_y = (c.visits_per_month or 1) * 12
+        visits_per_elevator.append(round(visits_y / n_elev, 1))
+        contract_cost = cost_per_visit * visits_y + fixed_per_contract
+        elevator_cost_estimates.append(contract_cost / n_elev)
+    avg_visits_per_elevator = (
+        round(sum(visits_per_elevator) / len(visits_per_elevator), 1)
+        if visits_per_elevator else 0
     )
-    suggested_contract_price = _round_money(
-        estimated_cost_per_contract * (1 + target_margin)
-    ) if estimated_cost_per_contract else cost_per_elevator_year * (1 + target_margin)
+    estimated_cost_per_elevator = _round_money(
+        sum(elevator_cost_estimates) / len(elevator_cost_estimates)
+        if elevator_cost_estimates else cost_per_elevator_year
+    )
+    suggested_elevator_price = _round_money(
+        (estimated_cost_per_elevator or cost_per_elevator_year) * (1 + target_margin)
+    )
 
     pricing = {
-        'annual_operating_cost': total_expenses,
+        'annual_operating_cost': operating_cost,
         'variable_cost': _round_money(variable_cost),
         'fixed_cost': _round_money(fixed_cost),
         'active_contracts': len(active_contracts),
@@ -606,12 +626,14 @@ def get_financial_health_report(
         'visits_completed': visits_done,
         'cost_per_visit': cost_per_visit,
         'cost_per_elevator_year': cost_per_elevator_year,
+        'avg_elevator_value': avg_elevator_value,
         'avg_contract_value': avg_contract_value,
         'avg_elevators_per_contract': avg_elevators_per_contract,
-        'estimated_cost_per_contract': estimated_cost_per_contract,
-        'suggested_contract_price': _round_money(suggested_contract_price),
+        'avg_visits_per_elevator': avg_visits_per_elevator,
+        'estimated_cost_per_elevator': estimated_cost_per_elevator,
+        'suggested_elevator_price': suggested_elevator_price,
         'target_margin_pct': round(target_margin * 100, 1),
-        'price_gap': _round_money(suggested_contract_price - avg_contract_value),
+        'price_gap': _round_money(suggested_elevator_price - avg_elevator_value),
     }
 
     recommendations = []
@@ -647,8 +669,8 @@ def get_financial_health_report(
                 'icon': 'pricing',
                 'title': 'مراجعة تسعير الصيانة',
                 'text': (
-                    f'متوسط العقد الحالي ({avg_contract_value:,.2f} ريال) أقل من التكلفة المقترحة '
-                    f'({suggested_contract_price:,.2f} ريال) — راجع أسعار العقود.'
+                    f'متوسط قيمة المصعد الحالية ({avg_elevator_value:,.2f} ريال) أقل من التكلفة المقترحة '
+                    f'({suggested_elevator_price:,.2f} ريال للمصعد) — راجع أسعار العقود.'
                 ),
                 'value': pricing['price_gap'],
             })
