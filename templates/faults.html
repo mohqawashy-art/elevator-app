@@ -405,27 +405,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               </tr>
             </thead>
             <tbody id="table-body">
-            {% for f in faults %}
-            {% set elev = f.elevator %}
-            {% set cust = elev.customer if elev else none %}
-            <tr data-fault-id="{{ f.id }}">
-              <td class="td-code lc-code">{{ f.code }}</td>
-              <td class="lc-date" style="direction:ltr;font-family:var(--font-en)">{{ f.reported_at.strftime('%Y-%m-%d') if f.reported_at else '—' }}</td>
-              <td class="td-name">{{ cust.name if cust else '—' }}</td>
-              <td class="td-code">{{ elev.code if elev else '—' }}</td>
-              <td>{{ f.fault_type or '—' }}</td>
-              <td><span class="badge badge-active">{{ f.priority or '—' }}</span></td>
-              <td>{{ fault_technicians_label(f) }}</td>
-              <td>{{ f.response_time or '—' }}</td>
-              <td><span class="badge badge-expired">{{ f.status or '—' }}</span></td>
-              <td><span class="badge {{ 'badge-billable' if f.needs_parts else 'badge-cancelled' }}">{{ 'قابل للفوترة' if f.needs_parts else 'ضمن العقد' }}</span></td>
-              <td onclick="event.stopPropagation()">
-                <button class="btn btn-secondary btn-sm btn-icon" onclick="viewFault({{ f.id }})" title="عرض">👁</button>
-              </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="11" style="text-align:center;padding:28px;color:var(--text3)">لا توجد أعطال مسجّلة</td></tr>
-            {% endfor %}
             </tbody>
           </table>
         </div>
@@ -640,7 +619,7 @@ var ELEVATORS = {{ elevators_js|tojson }};
 var TECHNICIANS = {{ technicians_js|tojson }};
 var INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
 const NEXT_FAULT_CODE = {{ next_fault_code|tojson }};
-const FAULT_TECHS = [{% for t in fault_technicians %}{ id: {{ t.id }}, name: {{ t.name|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}];
+const FAULT_TECHS = {{ fault_technicians_js|tojson }};
 
 function renderFaultTechSelect(selectedIds) {
   const box = document.getElementById('tech-select');

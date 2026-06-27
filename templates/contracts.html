@@ -473,38 +473,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             </tr>
           </thead>
           <tbody id="table-body">
-          {% set ctr_badges = {'نشط': 'badge-active', 'على وشك الانتهاء': 'badge-expiring', 'منتهي': 'badge-expired', 'ملغي': 'badge-cancelled'} %}
-          {% set inv_badges = {'مدفوع': 'badge-paid', 'مدفوع جزئياً': 'badge-partial', 'غير مدفوع': 'badge-unpaid', 'متأخر': 'badge-overdue'} %}
-          {% for c in contracts %}
-          {% set disp = contract_display_status(c) %}
-          {% set inv = contract_invoice_status(c) %}
-          <tr onclick="viewContract({{ c.id }})">
-            <td class="td-code">{{ c.code }}</td>
-            <td class="td-name">{{ c.customer.name if c.customer else '—' }}</td>
-            <td>{{ c.contract_type or '—' }}</td>
-            <td style="direction:ltr;font-family:var(--font-en)">{{ c.start_date.isoformat() if c.start_date else '—' }}</td>
-            <td style="direction:ltr;font-family:var(--font-en)">{{ c.end_date.isoformat() if c.end_date else '—' }}</td>
-            <td style="text-align:center">{{ c.elevators|length }}</td>
-            <td class="td-amount">{{ format_money_amount(c.value) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
-            <td class="td-amount">{{ format_money_amount(c.total) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
-            <td><span class="badge {{ ctr_badges.get(disp, 'badge-active') }}">{{ disp }}</span></td>
-            <td><span class="badge {{ inv_badges.get(inv, 'badge-unpaid') }}">{{ inv }}</span></td>
-            <td>{% if c.file_path %}<a class="contract-attach-link" href="{{ upload_url(c.file_path) }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 PDF</a>{% else %}<span class="contract-attach-empty">—</span>{% endif %}</td>
-            <td onclick="event.stopPropagation()"><div class="td-actions">
-              <button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();printContractForm({{ c.id }})" title="طباعة العقد" style="color:var(--gold)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg></button>
-              <button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();viewContract({{ c.id }})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
-              <button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();editContract({{ c.id }})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>
-              <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deleteContract({{ c.id }})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>
-            </div></td>
-          </tr>
-          {% else %}
-          <tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text3)">لا توجد عقود — اضغط «إضافة عقد» للبدء</td></tr>
-          {% endfor %}
           </tbody>
         </table>
       </div>
       <div class="table-footer">
-        <div class="table-info" id="table-info">عرض {{ contracts|length }} من {{ contracts|length }}</div>
+        <div class="table-info" id="table-info">جاري التحميل...</div>
         <div class="pagination" id="page-btns"></div>
       </div>
     </div>
@@ -804,62 +777,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <script>
 // ===== البيانات من Flask =====
-var CONTRACTS = [
-  {% for c in contracts %}
-  {
-    id:            {{ c.id }},
-    code:          {{ c.code|tojson }},
-    customer_id:   {{ c.customer_id }},
-    customer:      {{ (c.customer.name if c.customer else '')|tojson }},
-    customer_name_en: {{ (c.customer.name_en if c.customer else '')|tojson }},
-    customer_city: {{ (c.customer.city or '')|tojson }},
-    customer_lat:  {{ (c.customer.lat or '')|tojson }},
-    customer_lng:  {{ (c.customer.lng or '')|tojson }},
-    contract_type: {{ (c.contract_type or '')|tojson }},
-    start_date:    {{ (c.start_date.isoformat() if c.start_date else '')|tojson }},
-    end_date:      {{ (c.end_date.isoformat() if c.end_date else '')|tojson }},
-    duration:      {{ c.duration_months or 0 }},
-    elevator_ids:  {{ c.elevators | map(attribute='elevator_id') | list | tojson }},
-    elevators:     {{ c.elevators|length }},
-    maint_freq:    {{ (c.maint_frequency or '')|tojson }},
-    visits_month:  {{ c.visits_per_month or 1 }},
-    value:         {{ money_round(c.value or 0) }},
-    tax_pct:       {{ c.tax_pct or 15 }},
-    tax_amount:    {{ money_round(c.tax_amount or 0) }},
-    total:         {{ money_round(c.total or 0) }},
-    pay_terms:     {{ (c.payment_terms or '')|tojson }},
-    paid_amount:   {{ money_round(contract_paid_total(c.id)) }},
-    inv_status:    {{ contract_invoice_status(c)|tojson }},
-    status:        {{ c.status|tojson }},
-    reminder_date: {{ (c.reminder_date.isoformat() if c.reminder_date else '')|tojson }},
-    city:          {{ (c.city or '')|tojson }},
-    district:      {{ (c.district or '')|tojson }},
-    address:       {{ (c.address or '')|tojson }},
-    notes:         {{ (c.notes or '')|tojson }},
-    file_url:      {{ upload_url(c.file_path)|tojson }},
-    file_name:     {{ contract_file_display_name(c.file_path)|tojson }},
-  },
-  {% endfor %}
-];
+var CONTRACTS = {{ contracts_js|tojson }};
 
-var CUSTOMERS = [
-  {% for c in customers %}
-  {
-    id: {{ c.id }},
-    name: {{ c.name|tojson }},
-    code: {{ c.code|tojson }},
-    city: {{ (c.city or '')|tojson }},
-    district: {{ (c.district or '')|tojson }},
-    address: {{ (c.address or '')|tojson }},
-    phone: {{ (c.phone or '')|tojson }},
-    contact_person: {{ (c.contact_person or '')|tojson }},
-    lat: {{ (c.lat or '')|tojson }},
-    lng: {{ (c.lng or '')|tojson }},
-    maps_url: {{ (c.maps_url or '')|tojson }},
-    building_photo_url: {{ upload_url(c.building_photo_path)|tojson }},
-  },
-  {% endfor %}
-];
+var CUSTOMERS = {{ customers_js|tojson }};
 
 var ELEVATOR_LOOKUP = {{ elev_lookup|tojson }};
 const NEXT_CONTRACT_CODE = {{ next_contract_code|tojson }};

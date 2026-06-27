@@ -361,22 +361,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <script>
 // ===== البيانات من Flask =====
-var EXPENSES = [
-  {% for e in expenses %}
-  {
-    id:           {{ e.id }},
-    code:         {{ (e.code or '')|tojson }},
-    expense_date: {{ ((e.expense_date|string) if e.expense_date else '')|tojson }},
-    expense_type: {{ (e.expense_type or '')|tojson }},
-    description:  {{ (e.description or '')|tojson }},
-    responsible:  {{ (e.responsible or '')|tojson }},
-    pay_method:   {{ (e.payment_method or '')|tojson }},
-    amount:       {{ e.amount or 0 }},
-    reference:    {{ (e.reference or '')|tojson }},
-    notes:        {{ (e.notes or '')|tojson }},
-  },
-  {% endfor %}
-];
+var EXPENSES = {{ expenses_js|tojson }};
 
 // ===== إحصائيات =====
 function updateStats() {

@@ -415,30 +415,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               </tr>
             </thead>
             <tbody id="table-body">
-            {% for t in technicians %}
-            <tr onclick="viewTech({{ t.id }})">
-              <td class="td-code">{{ t.code }}</td>
-              <td class="td-name td-name-photo">
-                {% if t.photo_path %}
-                <img class="tech-row-avatar" src="{{ upload_url(t.photo_path) }}" alt="">
-                {% else %}
-                <span class="tech-row-avatar tech-row-avatar-ph" aria-hidden="true">{{ (t.name or '?')[:1] }}</span>
-                {% endif %}
-                <span class="td-name-text">{{ t.name }}</span>
-              </td>
-              <td style="direction:ltr;font-family:var(--font-en)">{{ t.phone or '—' }}</td>
-              <td>{{ t.job_title or '—' }}</td>
-              <td>{{ t.specialization or '—' }}</td>
-              <td>{{ t.city or '—' }}</td>
-              <td><span class="badge badge-available">{{ technician_display_status(t) }}</span></td>
-              <td><span class="badge {{ 'badge-yes' if t.emergency else 'badge-no' }}">{{ 'نعم' if t.emergency else 'لا' }}</span></td>
-              <td onclick="event.stopPropagation()"><div class="td-actions">
-                <button class="btn btn-secondary btn-sm btn-icon" onclick="editTech({{ t.id }})" title="تعديل">✎</button>
-              </div></td>
-            </tr>
-            {% else %}
-            <tr><td colspan="9" style="text-align:center;padding:28px;color:var(--text3)">لا يوجد فنيون — اضغط «إضافة فني» أعلاه</td></tr>
-            {% endfor %}
             </tbody>
           </table>
         </div>
@@ -671,49 +647,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 const NEXT_TECH_CODE = {{ next_tech_code|tojson }};
 var UNASSIGNED_FAULTS = {{ unassigned_faults|default(0) }};
 
-var TECHNICIANS = [
-  {% for t in technicians %}
-  {
-    id:             {{ t.id }},
-    code:           {{ t.code|tojson }},
-    name:           {{ t.name|tojson }},
-    name_en:        {{ (t.name_en or '')|tojson }},
-    phone:          {{ (t.phone or '')|tojson }},
-    phone2:         {{ (t.phone2 or '')|tojson }},
-    job_title:      {{ (t.job_title or '')|tojson }},
-    specialization: {{ (t.specialization or '')|tojson }},
-    team:           {{ (t.team or 'عام')|tojson }},
-    city:           {{ (t.city or '')|tojson }},
-    national_id:    {{ (t.national_id or '')|tojson }},
-    hire_date:      {{ (t.hire_date.isoformat() if t.hire_date else '')|tojson }},
-    salary:         {{ t.salary or 0 }},
-    emergency:      {{ t.emergency|tojson }},
-    status:         {{ (t.status or 'متاح')|tojson }},
-    display_status: {{ technician_display_status(t)|tojson }},
-    visits:         {{ t.visits|length }},
-    faults:         {{ t.faults|length }},
-    notes:          {{ (t.notes or '')|tojson }},
-    photo_url:      {{ (upload_url(t.photo_path) if t.photo_path else '')|tojson }},
-    signature_url:  {{ (upload_url(t.signature_path) if t.signature_path else '')|tojson }},
-    has_sign_pin:   {{ (t.sign_pin_hash is not none and t.sign_pin_hash != '')|tojson }},
-    documents:      {{ t.documents | map(attribute='id') | list | length }},
-    docs: [
-      {% for d in t.documents %}
-      {
-        id: {{ d.id }},
-        doc_type: {{ (d.doc_type or '')|tojson }},
-        title: {{ (d.title or d.file_name or '')|tojson }},
-        file_name: {{ (d.file_name or '')|tojson }},
-        url: {{ url_for('static', filename=d.file_path)|tojson }},
-        is_image: {{ (d.file_name or '').lower().endswith(('.png','.jpg','.jpeg','.webp')) }},
-        is_pdf: {{ (d.file_name or '').lower().endswith('.pdf') }},
-        uploaded_at: {{ (d.uploaded_at.strftime('%Y-%m-%d') if d.uploaded_at else '')|tojson }}
-      },
-      {% endfor %}
-    ],
-  },
-  {% endfor %}
-];
+var TECHNICIANS = {{ technicians_js|tojson }};
 
 const STATUS_BADGE = {
   'متاح': 'badge-available',

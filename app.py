@@ -111,6 +111,17 @@ from installation.config import install_module_enabled
 
 PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'field_login', 'field_logout'})
 PUBLIC_PATH_PREFIXES = ('/static',)
+STATIC_UPLOADS_PREFIX = '/static/uploads'
+
+
+def _is_public_static_path(path: str) -> bool:
+    """أصول ثابتة عامة — uploads مستثناة (تُحمى في serve_upload_file)."""
+    for prefix in PUBLIC_PATH_PREFIXES:
+        if path.startswith(prefix):
+            if path.startswith(STATIC_UPLOADS_PREFIX):
+                return False
+            return True
+    return False
 
 
 def current_user():
@@ -235,9 +246,10 @@ def enforce_auth():
     if request.endpoint in PUBLIC_ENDPOINTS:
         return None
     path = request.path or ''
-    for prefix in PUBLIC_PATH_PREFIXES:
-        if path.startswith(prefix):
-            return None
+    if _is_public_static_path(path):
+        return None
+    if path.startswith(STATIC_UPLOADS_PREFIX):
+        return None
 
     field_tid = field_session_technician_id()
 
@@ -481,6 +493,291 @@ def inject_global_template_vars():
     }
 
 
+def _money_round(n):
+    return round(float(n or 0), 2)
+
+
+def _invoice_status_from_paid(contract, paid, today=None):
+    """حالة الفاتورة من المبلغ المحصّل المخزّن (بدون إعادة حساب كامل)."""
+    from customer_billing import UNPAID_INVOICE_STATUSES
+
+    today = today or date.today()
+    total = _money_round(contract.total or 0)
+    paid = _money_round(paid)
+    remaining = max(total - paid, 0)
+    if total <= 0:
+        return 'غير مدفوع'
+    if remaining <= 0.01:
+        return 'مدفوع'
+    status = 'مدفوع جزئياً' if paid > 0 else 'غير مدفوع'
+    overdue = Invoice.query.filter(
+        Invoice.contract_id == contract.id,
+        Invoice.due_date.isnot(None),
+        Invoice.due_date < today,
+        Invoice.status.in_(UNPAID_INVOICE_STATUSES),
+    ).first()
+    if overdue and remaining > 0.01:
+        return 'متأخر'
+    return status
+
+
+def _refresh_contract_billing_cache(contract):
+    """تحديث paid_amount و invoice_status لعقد واحد."""
+    from customer_billing import contract_paid_amount
+
+    paid = _money_round(contract_paid_amount(contract.id))
+    contract.paid_amount = paid
+    contract.invoice_status = _invoice_status_from_paid(contract, paid)
+
+
+def _backfill_contract_billing_cache():
+    """ملء كاش الفوترة لجميع العقود (عند إضافة العمود أو الترقية)."""
+    contracts = Contract.query.all()
+    if not contracts:
+        return
+    app.logger.info('Backfilling contract billing cache (%d contracts)...', len(contracts))
+    for c in contracts:
+        _refresh_contract_billing_cache(c)
+    db.session.commit()
+    app.logger.info('Contract billing cache backfill complete.')
+
+
+def contract_to_js_dict(c):
+    """تسلسل عقد لـ JSON في الصفحة (بدون استعلامات إضافية)."""
+    return {
+        'id': c.id,
+        'code': c.code,
+        'customer_id': c.customer_id,
+        'customer': c.customer.name if c.customer else '',
+        'customer_name_en': (c.customer.name_en or '') if c.customer else '',
+        'customer_city': (c.customer.city or '') if c.customer else '',
+        'customer_lat': (c.customer.lat or '') if c.customer else '',
+        'customer_lng': (c.customer.lng or '') if c.customer else '',
+        'contract_type': c.contract_type or '',
+        'start_date': c.start_date.isoformat() if c.start_date else '',
+        'end_date': c.end_date.isoformat() if c.end_date else '',
+        'duration': c.duration_months or 0,
+        'elevator_ids': [ce.elevator_id for ce in c.elevators],
+        'elevators': len(c.elevators),
+        'maint_freq': c.maint_frequency or '',
+        'visits_month': c.visits_per_month or 1,
+        'value': _money_round(c.value or 0),
+        'tax_pct': c.tax_pct or 15,
+        'tax_amount': _money_round(c.tax_amount or 0),
+        'total': _money_round(c.total or 0),
+        'pay_terms': c.payment_terms or '',
+        'paid_amount': _money_round(c.paid_amount or 0),
+        'inv_status': c.invoice_status or 'غير مدفوع',
+        'status': c.status or 'نشط',
+        'reminder_date': c.reminder_date.isoformat() if c.reminder_date else '',
+        'city': c.city or '',
+        'district': c.district or '',
+        'address': c.address or '',
+        'notes': c.notes or '',
+        'file_url': upload_url(c.file_path),
+        'file_name': contract_file_display_name(c.file_path),
+    }
+
+
+def contract_customer_js_dict(c):
+    return {
+        'id': c.id,
+        'name': c.name,
+        'code': c.code,
+        'city': c.city or '',
+        'district': c.district or '',
+        'address': c.address or '',
+        'phone': c.phone or '',
+        'contact_person': c.contact_person or '',
+        'lat': c.lat or '',
+        'lng': c.lng or '',
+        'maps_url': c.maps_url or '',
+        'building_photo_url': upload_url(c.building_photo_path),
+    }
+
+
+def client_to_js_dict(c):
+    """تسلسل عميل لـ JSON (مع علاقات محمّلة مسبقاً)."""
+    first_contract = c.contracts[0] if c.contracts else None
+    return {
+        'id': c.id,
+        'code': c.code,
+        'name': c.name,
+        'name_en': c.name_en or '',
+        'city': c.city or '',
+        'district': c.district or '',
+        'phone': c.phone or '',
+        'phone2': c.phone2 or '',
+        'email': c.email or '',
+        'contact': c.contact_person or '',
+        'role': c.contact_role or '',
+        'entity_type': c.entity_type or 'فرد',
+        'national_id': c.national_id or '',
+        'cr_number': c.cr_number or '',
+        'elevators': len(c.elevators),
+        'fleet_status': customer_fleet_status(c),
+        'contracts': len(c.contracts),
+        'contract_status': contract_display_status(first_contract) if first_contract else 'بدون عقد',
+        'status': c.status,
+        'notes': c.notes or '',
+        'address': c.address or '',
+        'lat': c.lat or '',
+        'lng': c.lng or '',
+        'maps_url': c.maps_url or '',
+        'building_photo_url': upload_url(c.building_photo_path),
+    }
+
+
+def elevator_to_js_dict(e):
+    """تسلسل مصعد لـ JSON (مع علاقة العميل)."""
+    return {
+        'id': e.id,
+        'code': e.code,
+        'customer_id': e.customer_id,
+        'customer': e.customer.name if e.customer else '',
+        'customer_name_en': (e.customer.name_en or '') if e.customer else '',
+        'building': e.building_name or '',
+        'city': e.city or '',
+        'district': e.district or '',
+        'elev_type': e.elev_type or '',
+        'brand': e.brand or '',
+        'model': e.model or '',
+        'capacity': e.capacity_kg or 0,
+        'capacity_persons': e.capacity_persons or 0,
+        'floors': e.floors or 0,
+        'stops': e.stops or 0,
+        'doors': e.doors_count or 0,
+        'speed': e.speed or '',
+        'serial': e.serial_number or '',
+        'machine_type': e.machine_type or '',
+        'door_type': e.door_type or '',
+        'control_type': e.control_type or '',
+        'control_drive': e.control_drive or '',
+        'control_operation': e.control_operation or '',
+        'control_detail': e.control_detail or '',
+        'install_date': e.install_date.isoformat() if e.install_date else '',
+        'warranty_end': e.warranty_end.isoformat() if e.warranty_end else '',
+        'last_maint': e.last_maintenance.isoformat() if e.last_maintenance else '',
+        'next_maint': e.next_maintenance.isoformat() if e.next_maintenance else '',
+        'maint_freq': e.maint_frequency or '',
+        'address': e.address or '',
+        'status': e.status,
+        'notes': e.notes or '',
+        'customer_lat': (e.customer.lat if e.customer else '') or '',
+        'customer_lng': (e.customer.lng if e.customer else '') or '',
+    }
+
+
+def expense_to_js_dict(e):
+    return {
+        'id': e.id,
+        'code': e.code or '',
+        'expense_date': str(e.expense_date or ''),
+        'expense_type': e.expense_type or '',
+        'description': e.description or '',
+        'responsible': e.responsible or '',
+        'pay_method': e.payment_method or '',
+        'amount': e.amount or 0,
+        'reference': e.reference or '',
+        'notes': e.notes or '',
+    }
+
+
+def revenue_to_js_dict(r):
+    return {
+        'id': r.id,
+        'code': r.code,
+        'customer_id': r.customer_id,
+        'contract_id': r.contract_id,
+        'customer': r.customer.name if r.customer else '—',
+        'contract': r.contract.code if r.contract else '—',
+        'revenue_date': str(r.revenue_date or ''),
+        'revenue_type': r.revenue_type or '',
+        'pay_method': r.payment_method or '',
+        'amount': r.amount or 0,
+        'tax_amount': r.tax_amount or 0,
+        'total': r.total or 0,
+        'status': r.status or 'محصّل',
+        'reference': r.reference or '',
+        'notes': r.notes or '',
+    }
+
+
+def invoice_to_js_dict(i):
+    return {
+        'id': i.id,
+        'code': i.code,
+        'invoice_type': i.invoice_type or 'فاتورة',
+        'customer_id': i.customer_id,
+        'contract_id': i.contract_id,
+        'customer': i.customer.name if i.customer else '—',
+        'customer_name_en': (i.customer.name_en or '') if i.customer else '',
+        'contract': i.contract.code if i.contract else '—',
+        'invoice_date': str(i.invoice_date or ''),
+        'due_date': str(i.due_date or ''),
+        'description': i.description or '',
+        'amount': i.amount or 0,
+        'tax_amount': i.tax_amount or 0,
+        'total': i.total or 0,
+        'pay_method': i.payment_method or '',
+        'status': i.status or 'غير مدفوعة',
+        'notes': i.notes or '',
+    }
+
+
+def stock_movement_to_js_dict(m, tech_names=None):
+    tech_names = tech_names or {}
+    return {
+        'id': m.id,
+        'code': m.code,
+        'item_id': m.item_id,
+        'item_name': m.item.name if m.item else '—',
+        'item_code': m.item.code if m.item else '—',
+        'movement_date': str(m.movement_date or ''),
+        'direction': m.direction or '',
+        'movement_type': m.movement_type or '',
+        'quantity': m.quantity or 0,
+        'unit_price': m.unit_price or 0,
+        'total_value': m.total_value or 0,
+        'technician': tech_names.get(m.technician_id, '—') if m.technician_id else '—',
+        'tech_id': m.technician_id,
+        'reason': m.reason or '',
+        'notes': m.notes or '',
+    }
+
+
+def inventory_item_js_dict(i):
+    return {
+        'id': i.id,
+        'code': i.code,
+        'name': i.name,
+        'unit': i.unit or 'قطعة',
+        'buy_price': i.buy_price or 0,
+    }
+
+
+def _monthly_aggregate(year, date_col, value_col=None):
+    """مجموع أو عدد شهري في 12 استعلاماً مجمّعاً بدل 48."""
+    from sqlalchemy import extract, func
+
+    result = [0] * 12
+    if value_col is not None:
+        rows = db.session.query(
+            extract('month', date_col).label('m'),
+            func.sum(value_col),
+        ).filter(extract('year', date_col) == year).group_by('m').all()
+        for m, val in rows:
+            result[int(m) - 1] = round(float(val or 0), 2)
+    else:
+        rows = db.session.query(
+            extract('month', date_col).label('m'),
+            func.count(),
+        ).filter(extract('year', date_col) == year).group_by('m').all()
+        for m, val in rows:
+            result[int(m) - 1] = int(val or 0)
+    return result
+
+
 # إنشاء الجداول عند التشغيل الأول
 with app.app_context():
     db.create_all()
@@ -560,6 +857,7 @@ with app.app_context():
                 ('city', 'VARCHAR(100)'),
                 ('district', 'VARCHAR(100)'),
                 ('address', 'TEXT'),
+                ('paid_amount', 'FLOAT'),
             ],
             'parts_billing': [
                 ('visit_id', 'INTEGER'), ('fault_id', 'INTEGER'), ('paid_amount', 'FLOAT'),
@@ -651,6 +949,20 @@ with app.app_context():
         app.logger.warning('Technician assignments backfill skip: %s', exc)
     from live_sync import ensure_live_state
     ensure_live_state()
+    try:
+        insp2 = inspect(db.engine)
+        if 'contracts' in insp2.get_table_names():
+            cols = {c['name'] for c in insp2.get_columns('contracts')}
+            if 'paid_amount' in cols:
+                marker = os.path.join(app.instance_path, '.contract_billing_cache_v1')
+                if not os.path.isfile(marker):
+                    _backfill_contract_billing_cache()
+                    os.makedirs(app.instance_path, exist_ok=True)
+                    with open(marker, 'w', encoding='utf-8') as mf:
+                        mf.write('ok')
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Contract billing cache backfill skip: %s', exc)
 
 from live_sync import register_live_sync
 register_live_sync()
@@ -1338,10 +1650,18 @@ def api_dashboard_drill(card_type):
 # =============================================
 @app.route('/clients')
 def clients():
-    customers = Customer.query.order_by(Customer.id.desc()).all()
+    from sqlalchemy.orm import joinedload
+
+    customers = (
+        Customer.query
+        .options(joinedload(Customer.elevators), joinedload(Customer.contracts))
+        .order_by(Customer.id.desc())
+        .all()
+    )
     return render_template(
         'clients.html',
         customers=customers,
+        customers_js=[client_to_js_dict(c) for c in customers],
         next_client_code=next_code(Customer, 'C-', digits=4),
     )
 
@@ -2043,12 +2363,32 @@ def _parse_int(value):
 
 @app.route('/elevators')
 def elevators():
-    elevs = Elevator.query.order_by(Elevator.id.desc()).all()
+    from sqlalchemy.orm import joinedload
+
+    elevs = (
+        Elevator.query
+        .options(joinedload(Elevator.customer))
+        .order_by(Elevator.id.desc())
+        .all()
+    )
     customers = Customer.query.order_by(Customer.name).all()
     return render_template(
         'elevators.html',
         elevators=elevs,
+        elevators_js=[elevator_to_js_dict(e) for e in elevs],
         customers=customers,
+        customers_js=[
+            {
+                'id': c.id,
+                'code': c.code,
+                'name': c.name,
+                'city': c.city or '',
+                'district': c.district or '',
+                'lat': c.lat or '',
+                'lng': c.lng or '',
+            }
+            for c in customers
+        ],
         next_elevator_code=next_code(Elevator, 'EL-', digits=4),
     )
 
@@ -2198,33 +2538,11 @@ def contract_paid_total(contract_id):
 
 
 def contract_invoice_status(contract, today=None):
-    from customer_billing import UNPAID_INVOICE_STATUSES, _invoice_paid_total
-
-    today = today or date.today()
-    total = _money_round(contract.total or 0)
+    paid = getattr(contract, 'paid_amount', None)
+    if paid is not None:
+        return _invoice_status_from_paid(contract, paid, today)
     paid = _money_round(contract_paid_total(contract.id))
-    remaining = max(total - paid, 0)
-
-    paid_invoices = Invoice.query.filter_by(contract_id=contract.id).all()
-    invoice_paid_sum = _money_round(sum(_invoice_paid_total(inv) for inv in paid_invoices))
-
-    if total <= 0:
-        return 'غير مدفوع'
-    if remaining <= 0.01 or invoice_paid_sum >= total - 0.01:
-        return 'مدفوع'
-    if paid > 0 or invoice_paid_sum > 0:
-        status = 'مدفوع جزئياً'
-    else:
-        status = 'غير مدفوع'
-    overdue = Invoice.query.filter(
-        Invoice.contract_id == contract.id,
-        Invoice.due_date.isnot(None),
-        Invoice.due_date < today,
-        Invoice.status.in_(UNPAID_INVOICE_STATUSES),
-    ).first()
-    if overdue and remaining > 0.01 and invoice_paid_sum < total - 0.01:
-        return 'متأخر'
-    return status
+    return _invoice_status_from_paid(contract, paid, today)
 
 
 def sync_contract_invoice_status(contract_id):
@@ -2232,11 +2550,7 @@ def sync_contract_invoice_status(contract_id):
         return
     c = Contract.query.get(contract_id)
     if c:
-        c.invoice_status = contract_invoice_status(c)
-
-
-def _money_round(n):
-    return round(float(n or 0), 2)
+        _refresh_contract_billing_cache(c)
 
 
 def format_money_amount(n):
@@ -2625,18 +2939,14 @@ def _save_contract_file(c, file_storage):
 # =============================================
 @app.route('/contracts')
 def contracts():
-    from customer_billing import repair_contract_payment_links
+    from sqlalchemy.orm import joinedload
 
-    repair_contract_payment_links(commit=True)
-    contracts_list = Contract.query.order_by(Contract.id.desc()).all()
-    dirty = False
-    for c in contracts_list:
-        inv = contract_invoice_status(c)
-        if (c.invoice_status or '') != inv:
-            c.invoice_status = inv
-            dirty = True
-    if dirty:
-        db.session.commit()
+    contracts_list = (
+        Contract.query
+        .options(joinedload(Contract.customer), joinedload(Contract.elevators))
+        .order_by(Contract.id.desc())
+        .all()
+    )
     customers = Customer.query.order_by(Customer.name).all()
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
@@ -2645,7 +2955,8 @@ def contracts():
     return render_template(
         'contracts.html',
         contracts=contracts_list,
-        customers=customers,
+        contracts_js=[contract_to_js_dict(c) for c in contracts_list],
+        customers_js=[contract_customer_js_dict(c) for c in customers],
         elev_lookup=elev_lookup,
         next_contract_code=next_code(Contract, 'CN-', digits=5),
     )
@@ -2756,6 +3067,50 @@ def technician_display_status(tech, today=None):
 
 app.jinja_env.globals['technician_display_status'] = technician_display_status
 
+
+def technician_to_js_dict(t):
+  """تسلسل فني لـ JSON (حالة العرض تُحسب مرة واحدة في السيرفر)."""
+  docs = []
+  for d in sorted(t.documents, key=lambda x: x.uploaded_at or datetime.min, reverse=True):
+    fname = d.file_name or ''
+    docs.append({
+      'id': d.id,
+      'doc_type': d.doc_type or '',
+      'title': d.title or d.file_name or '',
+      'file_name': fname,
+      'url': url_for('static', filename=d.file_path) if d.file_path else '',
+      'is_image': fname.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')),
+      'is_pdf': fname.lower().endswith('.pdf'),
+      'uploaded_at': d.uploaded_at.strftime('%Y-%m-%d') if d.uploaded_at else '',
+    })
+  return {
+    'id': t.id,
+    'code': t.code,
+    'name': t.name,
+    'name_en': t.name_en or '',
+    'phone': t.phone or '',
+    'phone2': t.phone2 or '',
+    'job_title': t.job_title or '',
+    'specialization': t.specialization or '',
+    'team': t.team or 'عام',
+    'city': t.city or '',
+    'national_id': t.national_id or '',
+    'hire_date': t.hire_date.isoformat() if t.hire_date else '',
+    'salary': t.salary or 0,
+    'emergency': bool(t.emergency),
+    'status': t.status or 'متاح',
+    'display_status': technician_display_status(t),
+    'visits': len(t.visits),
+    'faults': len(t.faults),
+    'notes': t.notes or '',
+    'photo_url': upload_url(t.photo_path) if t.photo_path else '',
+    'signature_url': upload_url(t.signature_path) if t.signature_path else '',
+    'has_sign_pin': bool(t.sign_pin_hash),
+    'documents': len(t.documents),
+    'docs': docs,
+  }
+
+
 from technician_assignments import fault_technicians_label as _fault_technicians_label_jinja
 from technician_assignments import visit_technicians_label as _visit_technicians_label_jinja
 app.jinja_env.globals['fault_technicians_label'] = _fault_technicians_label_jinja
@@ -2807,6 +3162,19 @@ def _static_upload_url(relative_path):
 @app.route('/static/uploads/<path:subpath>')
 def serve_upload_file(subpath):
     """تأكيد تقديم الملفات المرفوعة (صور المباني، مستندات الفنيين...)."""
+    from field_auth import field_session_technician_id
+
+    if not current_user() and not field_session_technician_id():
+        if request.path.startswith('/api/') or (
+            request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html
+        ):
+            abort(401)
+        ref = request.referrer or ''
+        base = request.url_root.rstrip('/')
+        if ref.startswith(base + '/field') or '/field/' in ref:
+            return redirect(url_for('field_login', next=request.path))
+        return redirect(url_for('login', next=request.path))
+
     directory = os.path.join(app.root_path, 'static', 'uploads')
     full = os.path.normpath(os.path.join(directory, subpath))
     if not full.startswith(os.path.normpath(directory)) or not os.path.isfile(full):
@@ -2928,7 +3296,18 @@ def _technician_documents_json(tech):
 
 @app.route('/technicians')
 def technicians():
-    techs = Technician.query.order_by(Technician.id.desc()).all()
+    from sqlalchemy.orm import joinedload
+
+    techs = (
+        Technician.query
+        .options(
+            joinedload(Technician.documents),
+            joinedload(Technician.visits),
+            joinedload(Technician.faults),
+        )
+        .order_by(Technician.id.desc())
+        .all()
+    )
     unassigned_faults = Fault.query.filter(
         Fault.technician_id.is_(None),
         Fault.status.in_(['مفتوح', 'قيد المعالجة']),
@@ -2936,6 +3315,7 @@ def technicians():
     return render_template(
         'technicians.html',
         technicians=techs,
+        technicians_js=[technician_to_js_dict(t) for t in techs],
         next_tech_code=next_code(Technician, 'Tech-', digits=3),
         unassigned_faults=unassigned_faults,
     )
@@ -3118,13 +3498,15 @@ def technician_delete(id):
 # =============================================
 @app.route('/maintenance-visits')
 def maintenance_visits():
-    from operations import is_fault_visit_type, list_districts, visit_alerts, visit_stats
+    from operations import exclude_fault_visits, list_districts, visit_alerts, visit_stats
+    from sqlalchemy.orm import joinedload
 
-    visits = [
-        v for v in MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc()).all()
-        if not is_fault_visit_type(v.visit_type)
-    ]
-    elevators = Elevator.query.all()
+    visits = exclude_fault_visits(
+        MaintenanceVisit.query.options(
+            joinedload(MaintenanceVisit.elevator).joinedload(Elevator.customer),
+        )
+    ).order_by(MaintenanceVisit.visit_date.desc()).all()
+    elevators = Elevator.query.options(joinedload(Elevator.customer)).all()
     customers = Customer.query.order_by(Customer.name).all()
     contracts = Contract.query.order_by(Contract.start_date.desc()).all()
     technicians = Technician.query.filter(
@@ -3154,6 +3536,7 @@ def maintenance_visits():
             {'id': c.id, 'code': c.code, 'customer_id': c.customer_id} for c in contracts
         ],
         technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],
+        maint_technicians_js=[{'id': t.id, 'name': t.name} for t in maint_techs],
         visit_map_points=_visit_map_points(visits),
         next_visit_code=next_code(MaintenanceVisit, 'VI-', digits=5),
         visit_stats=visit_stats(),
@@ -4004,9 +4387,15 @@ def field_fault_request_parts(fault_id):
 @app.route('/faults')
 def faults():
     from operations import fault_alerts, fault_stats
+    from sqlalchemy.orm import joinedload
 
-    faults = Fault.query.order_by(Fault.reported_at.desc()).all()
-    elevators = Elevator.query.all()
+    faults_list = (
+        Fault.query
+        .options(joinedload(Fault.elevator).joinedload(Elevator.customer))
+        .order_by(Fault.reported_at.desc())
+        .all()
+    )
+    elevators = Elevator.query.options(joinedload(Elevator.customer)).all()
     customers = Customer.query.order_by(Customer.name).all()
     inventory_items = InventoryItem.query.order_by(InventoryItem.name).all()
     technicians = Technician.query.filter(
@@ -4016,11 +4405,11 @@ def faults():
     fault_techs = [t for t in technicians if (t.team or 'عام') in ('أعطال', 'عام')] or list(technicians)
     return render_template(
         'faults.html',
-        faults=faults,
+        faults=faults_list,
         elevators=elevators,
         customers=customers,
         technicians=technicians,
-        faults_js=_faults_js_list(faults),
+        faults_js=_faults_js_list(faults_list),
         customers_js=[
             {'id': c.id, 'code': c.code, 'name': c.name,
              'city': c.city or '', 'district': c.district or '',
@@ -4036,6 +4425,7 @@ def faults():
             for e in elevators
         ],
         technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],
+        fault_technicians_js=[{'id': t.id, 'name': t.name} for t in fault_techs],
         inventory_items_js=[
             {'id': i.id, 'code': i.code, 'name': i.name,
              'unit': i.unit or 'قطعة', 'buy_price': i.buy_price or 0,
@@ -4208,9 +4598,22 @@ def fault_delete(id):
 # =============================================
 @app.route('/revenues')
 def revenues():
-    revs = Revenue.query.order_by(Revenue.revenue_date.desc()).all()
-    customers = Customer.query.all()
-    return render_template('revenues.html', revenues=revs, customers=customers)
+    from sqlalchemy.orm import joinedload
+
+    revs = (
+        Revenue.query
+        .options(joinedload(Revenue.customer), joinedload(Revenue.contract))
+        .order_by(Revenue.revenue_date.desc())
+        .all()
+    )
+    customers = Customer.query.order_by(Customer.name).all()
+    return render_template(
+        'revenues.html',
+        revenues=revs,
+        customers=customers,
+        revenues_js=[revenue_to_js_dict(r) for r in revs],
+        customers_js=[{'id': c.id, 'name': c.name, 'code': c.code} for c in customers],
+    )
 
 def _revenue_from_form(form, existing: Revenue | None = None):
     from customer_billing import apply_payment_to_source, split_vat_amounts
@@ -4318,7 +4721,11 @@ def revenue_delete(id):
 @app.route('/expenses')
 def expenses():
     exps = Expense.query.order_by(Expense.expense_date.desc()).all()
-    return render_template('expenses.html', expenses=exps)
+    return render_template(
+        'expenses.html',
+        expenses=exps,
+        expenses_js=[expense_to_js_dict(e) for e in exps],
+    )
 @app.route('/expenses/edit/<int:id>', methods=['POST'])
 def expense_edit(id):
     e = Expense.query.get_or_404(id)
@@ -4362,9 +4769,22 @@ def expense_delete(id):
 # =============================================
 @app.route('/invoices')
 def invoices():
-    invs = Invoice.query.order_by(Invoice.invoice_date.desc()).all()
-    customers = Customer.query.all()
-    return render_template('invoices.html', invoices=invs, customers=customers)
+    from sqlalchemy.orm import joinedload
+
+    invs = (
+        Invoice.query
+        .options(joinedload(Invoice.customer), joinedload(Invoice.contract))
+        .order_by(Invoice.invoice_date.desc())
+        .all()
+    )
+    customers = Customer.query.order_by(Customer.name).all()
+    return render_template(
+        'invoices.html',
+        invoices=invs,
+        customers=customers,
+        invoices_js=[invoice_to_js_dict(i) for i in invs],
+        customers_js=[{'id': c.id, 'name': c.name, 'code': c.code} for c in customers],
+    )
 
 @app.route('/invoices/edit/<int:id>', methods=['POST'])
 def invoice_edit(id):
@@ -5243,10 +5663,26 @@ def _adjust_inventory_qty(item, direction, qty, *, reverse=False):
 
 @app.route('/stock-movements')
 def stock_movements():
-    movements = StockMovement.query.order_by(StockMovement.movement_date.desc()).all()
-    items = InventoryItem.query.all()
+    from sqlalchemy.orm import joinedload
+
+    movements = (
+        StockMovement.query
+        .options(joinedload(StockMovement.item))
+        .order_by(StockMovement.movement_date.desc())
+        .all()
+    )
+    items = InventoryItem.query.order_by(InventoryItem.name).all()
     technicians = Technician.query.filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).all()
-    return render_template('stock-movements.html', movements=movements, items=items, technicians=technicians)
+    tech_names = {t.id: t.name for t in technicians}
+    return render_template(
+        'stock-movements.html',
+        movements=movements,
+        items=items,
+        technicians=technicians,
+        movements_js=[stock_movement_to_js_dict(m, tech_names) for m in movements],
+        items_js=[inventory_item_js_dict(i) for i in items],
+        technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],
+    )
 
 @app.route('/stock-movements/add', methods=['POST'])
 def stock_add():
@@ -5344,8 +5780,21 @@ def parts_billing_import():
 @app.route('/parts-billing')
 def parts_billing():
     from operations import parts_alerts, parts_stats
+    from sqlalchemy.orm import joinedload
 
-    parts = PartsBilling.query.order_by(PartsBilling.billing_date.desc()).all()
+    parts = (
+        PartsBilling.query
+        .options(
+            joinedload(PartsBilling.customer),
+            joinedload(PartsBilling.contract),
+            joinedload(PartsBilling.elevator),
+            joinedload(PartsBilling.technician),
+            joinedload(PartsBilling.visit),
+            joinedload(PartsBilling.fault),
+        )
+        .order_by(PartsBilling.billing_date.desc())
+        .all()
+    )
     customers = Customer.query.order_by(Customer.name).all()
     contracts = Contract.query.order_by(Contract.code).all()
     inventory_items = InventoryItem.query.order_by(InventoryItem.name).all()
@@ -6101,35 +6550,15 @@ def settings_change_password():
 # =============================================
 @app.route('/api/dashboard')
 def api_dashboard():
-    from sqlalchemy import extract, case
+    from sqlalchemy import extract, case, func
     year = int(request.args.get('year', datetime.now().year))
     today = date.today()
     in_60_days = today + timedelta(days=60)
 
-    # إيرادات شهرية
-    monthly_rev = []
-    monthly_exp = []
-    monthly_visits = []
-    monthly_faults = []
-    for m in range(1, 13):
-        rev = db.session.query(db.func.sum(Revenue.total)).filter(
-            extract('year', Revenue.revenue_date) == year,
-            extract('month', Revenue.revenue_date) == m
-        ).scalar() or 0
-        exp = db.session.query(db.func.sum(Expense.amount)).filter(
-            extract('year', Expense.expense_date) == year,
-            extract('month', Expense.expense_date) == m
-        ).scalar() or 0
-        monthly_rev.append(round(rev, 2))
-        monthly_exp.append(round(exp, 2))
-        monthly_visits.append(MaintenanceVisit.query.filter(
-            extract('year', MaintenanceVisit.visit_date) == year,
-            extract('month', MaintenanceVisit.visit_date) == m,
-        ).count())
-        monthly_faults.append(Fault.query.filter(
-            extract('year', Fault.reported_at) == year,
-            extract('month', Fault.reported_at) == m,
-        ).count())
+    monthly_rev = _monthly_aggregate(year, Revenue.revenue_date, Revenue.total)
+    monthly_exp = _monthly_aggregate(year, Expense.expense_date, Expense.amount)
+    monthly_visits = _monthly_aggregate(year, MaintenanceVisit.visit_date)
+    monthly_faults = _monthly_aggregate(year, Fault.reported_at)
 
     stats, alerts = get_dashboard_stats()
     trends = get_dashboard_trends()
@@ -6155,8 +6584,8 @@ def api_dashboard():
         expense_by_type[label] = round(row[1] or 0, 2)
 
     top_clients_raw = db.session.query(
-        Customer.id,
-        db.func.coalesce(db.func.sum(Revenue.total), 0).label('total_rev'),
+        Customer,
+        func.coalesce(func.sum(Revenue.total), 0).label('total_rev'),
     ).outerjoin(
         Revenue,
         db.and_(
@@ -6166,16 +6595,13 @@ def api_dashboard():
     ).group_by(Customer.id).order_by(db.desc('total_rev')).limit(5).all()
 
     top_clients = []
-    for row in top_clients_raw:
-        cust = Customer.query.get(row.id)
-        if not cust:
-            continue
+    for cust, total_rev in top_clients_raw:
         top_clients.append({
             'name': cust.name,
             'city': cust.city or '',
             'elevators': len(cust.elevators),
             'contracts': len(cust.contracts),
-            'revenue': round(row.total_rev or 0, 2),
+            'revenue': round(total_rev or 0, 2),
             'status': cust.status or '',
         })
 
@@ -6255,6 +6681,27 @@ def api_dashboard():
             'total': total,
         })
 
+    elev_status = {label: 0 for label in ('نشط', 'تحت الصيانة', 'متوقف', 'خارج الخدمة')}
+    for status, cnt in db.session.query(
+        Elevator.status, func.count(Elevator.id),
+    ).group_by(Elevator.status).all():
+        if status in elev_status:
+            elev_status[status] = int(cnt or 0)
+
+    contract_status = {label: 0 for label in ('نشط', 'على وشك الانتهاء', 'منتهي', 'ملغي')}
+
+    class _ContractStatusRow:
+        __slots__ = ('status', 'end_date')
+
+        def __init__(self, status, end_date):
+            self.status = status
+            self.end_date = end_date
+
+    for status, end_date in Contract.query.with_entities(Contract.status, Contract.end_date):
+        label = contract_display_status(_ContractStatusRow(status, end_date))
+        if label in contract_status:
+            contract_status[label] += 1
+
     return jsonify({
         'customers':          stats['customers'],
         'elevators':          stats['elevators'],
@@ -6282,16 +6729,8 @@ def api_dashboard():
         'down_elevators': down_elevators_rows,
         'tech_visits': tech_visits,
         'tech_fault_rates': tech_fault_rates,
-        'elev_status': {
-            'نشط':          Elevator.query.filter_by(status='نشط').count(),
-            'تحت الصيانة':  Elevator.query.filter_by(status='تحت الصيانة').count(),
-            'متوقف':        Elevator.query.filter_by(status='متوقف').count(),
-            'خارج الخدمة':  Elevator.query.filter_by(status='خارج الخدمة').count(),
-        },
-        'contract_status': {
-            label: sum(1 for c in Contract.query.all() if contract_display_status(c) == label)
-            for label in ('نشط', 'على وشك الانتهاء', 'منتهي', 'ملغي')
-        },
+        'elev_status': elev_status,
+        'contract_status': contract_status,
     })
 # =============================================
 # أضف هذه الـ routes في app.py

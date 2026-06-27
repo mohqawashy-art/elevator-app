@@ -373,39 +373,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <script>
 // ===== البيانات من Flask =====
-var MOVEMENTS = [
-  {% for m in movements %}
-  {
-    id:             {{ m.id }},
-    code:           "{{ m.code }}",
-    item_id:        {{ m.item_id }},
-    item_name:      "{{ m.item.name }}",
-    item_code:      "{{ m.item.code }}",
-    movement_date:  "{{ m.movement_date or '' }}",
-    direction:      "{{ m.direction }}",
-    movement_type:  "{{ m.movement_type or '' }}",
-    quantity:       {{ m.quantity or 0 }},
-    unit_price:     {{ m.unit_price or 0 }},
-    total_value:    {{ m.total_value or 0 }},
-    technician:     "{{ m.technician.name if m.technician else '—' }}",
-    tech_id:        {{ m.technician_id or 'null' }},
-    reason:         "{{ m.reason or '' }}",
-    notes:          "{{ m.notes or '' }}",
-  },
-  {% endfor %}
-];
+var MOVEMENTS = {{ movements_js|tojson }};
 
-var ITEMS = [
-  {% for i in items %}
-  { id: {{ i.id }}, code: "{{ i.code }}", name: "{{ i.name }}", unit: "{{ i.unit or 'قطعة' }}", buy_price: {{ i.buy_price or 0 }} },
-  {% endfor %}
-];
+var ITEMS = {{ items_js|tojson }};
 
-var TECHNICIANS = [
-  {% for t in technicians %}
-  { id: {{ t.id }}, name: "{{ t.name }}" },
-  {% endfor %}
-];
+var TECHNICIANS = {{ technicians_js|tojson }};
 
 // ===== إحصائيات =====
 function setText(id, val) {

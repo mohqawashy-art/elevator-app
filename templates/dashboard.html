@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="prefetch" href="/clients">
+<link rel="prefetch" href="/contracts">
+<link rel="prefetch" href="/elevators">
+<link rel="prefetch" href="/maintenance-visits">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" defer></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -939,7 +943,14 @@ if (window.LiftCoreFormat) {
 
 // تشغيل عند التحميل
 updateDashboard();
-loadCharts();
+function bootDashboardCharts() {
+  if (typeof Chart === 'undefined') {
+    setTimeout(bootDashboardCharts, 40);
+    return;
+  }
+  loadCharts();
+}
+bootDashboardCharts();
 </script>
 </body>
 </html>

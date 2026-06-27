@@ -431,35 +431,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 </div>
 
 <script>
-var INVOICES = [
-  {% for i in invoices %}
-  {
-    id: {{ i.id }},
-    code: {{ i.code|tojson }},
-    invoice_type: {{ (i.invoice_type or 'فاتورة')|tojson }},
-    customer_id: {{ i.customer_id or 'null' }},
-    contract_id: {{ i.contract_id or 'null' }},
-    customer: {{ (i.customer.name if i.customer else '—')|tojson }},
-    customer_name_en: {{ (i.customer.name_en if i.customer else '')|tojson }},
-    contract: {{ (i.contract.code if i.contract else '—')|tojson }},
-    invoice_date: {{ (i.invoice_date|string if i.invoice_date else '')|tojson }},
-    due_date: {{ (i.due_date|string if i.due_date else '')|tojson }},
-    description: {{ (i.description or '')|tojson }},
-    amount: {{ i.amount or 0 }},
-    tax_amount: {{ i.tax_amount or 0 }},
-    total: {{ i.total or 0 }},
-    pay_method: {{ (i.payment_method or '')|tojson }},
-    status: {{ (i.status or 'غير مدفوعة')|tojson }},
-    notes: {{ (i.notes or '')|tojson }},
-  },
-  {% endfor %}
-];
+var INVOICES = {{ invoices_js|tojson }};
 
-var CUSTOMERS = [
-  {% for c in customers %}
-  { id: {{ c.id }}, name: {{ c.name|tojson }}, code: {{ c.code|tojson }} },
-  {% endfor %}
-];
+var CUSTOMERS = {{ customers_js|tojson }};
 
 const PAID_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل', 'محصل'];
 const UNPAID_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخرة', 'متأخر', 'مدفوع جزئياً'];

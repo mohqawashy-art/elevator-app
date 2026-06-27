@@ -111,6 +111,7 @@ class Contract(db.Model):
     total           = db.Column(db.Float, default=0)
     payment_terms   = db.Column(db.String(50))   # دفعة واحدة / ربع سنوي / نصف سنوي / سنوي
     invoice_status  = db.Column(db.String(30), default='غير مدفوع')  # مدفوع / مدفوع جزئياً / غير مدفوع / متأخر
+    paid_amount     = db.Column(db.Float, default=0)                 # محصّل العقد (مخزّن — يُحدَّث عند الدفع)
     status          = db.Column(db.String(30), default='نشط')        # نشط / على وشك الانتهاء / منتهي / ملغي
     reminder_date   = db.Column(db.Date)
     city            = db.Column(db.String(100))

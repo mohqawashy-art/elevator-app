@@ -452,33 +452,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <script>
 // ===== البيانات من Flask =====
-var REVENUES = [
-  {% for r in revenues %}
-  {
-    id:           {{ r.id }},
-    code:         {{ r.code|tojson }},
-    customer_id:  {{ r.customer_id or 'null' }},
-    contract_id:  {{ r.contract_id or 'null' }},
-    customer:     {{ (r.customer.name if r.customer else '—')|tojson }},
-    contract:     {{ (r.contract.code if r.contract else '—')|tojson }},
-    revenue_date: {{ (r.revenue_date|string if r.revenue_date else '')|tojson }},
-    revenue_type: {{ (r.revenue_type or '')|tojson }},
-    pay_method:   {{ (r.payment_method or '')|tojson }},
-    amount:       {{ r.amount or 0 }},
-    tax_amount:   {{ r.tax_amount or 0 }},
-    total:        {{ r.total or 0 }},
-    status:       {{ (r.status or 'محصّل')|tojson }},
-    reference:    {{ (r.reference or '')|tojson }},
-    notes:        {{ (r.notes or '')|tojson }},
-  },
-  {% endfor %}
-];
+var REVENUES = {{ revenues_js|tojson }};
 
-var CUSTOMERS = [
-  {% for c in customers %}
-  { id: {{ c.id }}, name: {{ c.name|tojson }}, code: {{ c.code|tojson }} },
-  {% endfor %}
-];
+var CUSTOMERS = {{ customers_js|tojson }};
 
 function setText(id, val) {
   const el = document.getElementById(id);
