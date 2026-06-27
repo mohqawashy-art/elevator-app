@@ -13,10 +13,14 @@ DB_FILE="${DB_FILE:-$JAMA_DIR/instance/jama.db}"
 DATA_DIR="${DATA_DIR:-$JAMA_DIR/deploy/data/jama_import}"
 SERVICE_NAME="${SERVICE_NAME:-liftcore-jama}"
 DRY=0
-REPLACE=0
+REPLACE=1
 UNCOLLECTED=0
 FORCE_UNCOLLECTED=0
 EXTRA=()
+
+if [ $# -eq 0 ]; then
+  set -- --sync
+fi
 
 for arg in "$@"; do
   case "$arg" in

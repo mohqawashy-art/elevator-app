@@ -50,7 +50,7 @@ def main() -> int:
         result = import_parts(
             args.xlsx,
             dry_run=args.dry_run,
-            skip_existing=not args.force,
+            skip_existing=not args.force and not args.replace,
             uncollected_only=args.uncollected_only,
             force_uncollected=args.force_uncollected,
         )

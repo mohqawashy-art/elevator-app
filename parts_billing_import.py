@@ -57,6 +57,67 @@ def _extract_cn(text: str) -> str | None:
     return f'CN-{int(m.group(1)):05d}'
 
 
+def _customer_name_from_title(title: str) -> str:
+    text = _str(title)
+    text = re.sub(r'CN-\s*\d+\s*', '', text, flags=re.I).strip(' -|،,')
+    text = re.sub(r'\([^)]*\)', '', text).strip()
+    return text
+
+
+def _normalize_ar_name(name: str) -> str:
+    s = ' '.join((name or '').strip().split())
+    for src, dst in (('أ', 'ا'), ('إ', 'ا'), ('آ', 'ا'), ('ى', 'ي'), ('ة', 'ه')):
+        s = s.replace(src, dst)
+    return s
+
+
+def _find_customer_by_title(title: str):
+    from entity_links import customer_by_name
+    from models import Customer
+
+    name = _customer_name_from_title(title)
+    if not name:
+        return None
+    exact = customer_by_name(name)
+    if exact:
+        return exact
+    compact = _normalize_ar_name(name)
+    for cust in Customer.query.all():
+        cn = _normalize_ar_name(cust.name or '')
+        if not cn:
+            continue
+        if cn == compact or compact in cn or cn in compact:
+            return cust
+    return Customer.query.filter(Customer.name.ilike(f'%{name[:20]}%')).first()
+
+
+def _resolve_parts_row(rec: dict) -> tuple[object | None, object | None, dict]:
+    """يربط الصف بالعقد/العميل — يبحث بالكود ثم بالاسم."""
+    cn_code = _extract_cn(rec.get('contract')) or _extract_cn(rec.get('title'))
+    contract = contract_by_code(cn_code) if cn_code else None
+    customer = contract.customer if contract else None
+    if not customer:
+        for src in (rec.get('contract'), rec.get('title')):
+            if not src:
+                continue
+            customer = _find_customer_by_title(_str(src))
+            if customer:
+                break
+    customer_name = _customer_name_from_title(rec.get('title') or rec.get('contract') or '')
+    links = resolve_parts_links(
+        contract_code=cn_code,
+        customer_id=customer.id if customer else None,
+        customer_name=customer_name or None,
+    )
+    if not contract and links.get('contract_id'):
+        from models import Contract
+        contract = Contract.query.get(links['contract_id'])
+    if not customer and links.get('customer_id'):
+        from models import Customer
+        customer = Customer.query.get(links['customer_id'])
+    return contract, customer, links
+
+
 def _parse_date(val) -> date | None:
     if val is None or val == '':
         return None
@@ -209,7 +270,10 @@ def clear_parts_billing(db_session) -> int:
     rows = PartsBilling.query.order_by(PartsBilling.id).all()
     count = len(rows)
     for p in rows:
-        reverse_stock_by_reference(stock_reference('parts_billing', p.id))
+        try:
+            reverse_stock_by_reference(stock_reference('parts_billing', p.id))
+        except Exception:
+            pass
         db_session.delete(p)
     db_session.commit()
     return count
@@ -254,7 +318,7 @@ def import_parts_billing_rows(
         description = rec.get('description') or ''
         op_num = _norm_op_number(rec.get('op'))
 
-        if not cn_code or not billing_date or not description:
+        if not billing_date or not description:
             stats['errors'] += 1
             continue
 
@@ -262,11 +326,13 @@ def import_parts_billing_rows(
             stats['skipped_existing'] += 1
             continue
 
-        contract = contract_by_code(cn_code)
-        if not contract:
+        contract, customer, links = _resolve_parts_row(rec)
+        if not contract and not customer and not links.get('customer_id'):
             stats['skipped_missing'] += 1
             if len(missing_samples) < 15:
-                missing_samples.append(f'عملية {op_num or "?"}: عقد {cn_code} غير موجود')
+                missing_samples.append(
+                    f'عملية {op_num or "?"}: عقد {cn_code or "?"} / عميل غير موجود'
+                )
             continue
 
         cost = _float(rec.get('cost'))
@@ -279,7 +345,7 @@ def import_parts_billing_rows(
             status = 'غير محصل'
         payment_note = _compose_payment_note(rec) or None
         notes = _compose_notes(rec)
-        links = resolve_parts_links(contract_code=cn_code)
+        pay_method = _str(rec.get('pay_method')) or None
 
         if dry_run:
             stats['imported'] += 1
@@ -292,18 +358,19 @@ def import_parts_billing_rows(
 
         part = PartsBilling(
             code=next_code_fn(PartsBilling, 'PB-', digits=3),
-            customer_id=links['customer_id'],
-            contract_id=links['contract_id'],
-            elevator_id=links['elevator_id'],
-            technician_id=links['technician_id'],
-            visit_id=links['visit_id'],
-            fault_id=links['fault_id'],
+            customer_id=links.get('customer_id'),
+            contract_id=links.get('contract_id'),
+            elevator_id=links.get('elevator_id'),
+            technician_id=links.get('technician_id'),
+            visit_id=links.get('visit_id'),
+            fault_id=links.get('fault_id'),
             billing_date=billing_date,
             description=description,
             cost_price=cost,
             sell_price=sell,
             profit=round(sell - cost, 2),
             paid_amount=sell if status == 'محصل' else 0,
+            payment_method=pay_method,
             payment_note=payment_note,
             status=status,
             notes=notes or None,
