@@ -80,14 +80,31 @@ def resolve_visit_links(elevator_id, contract_id=None, visit_date=None) -> dict:
 
 
 def contract_by_code(code: str) -> Contract | None:
-    code = (code or '').strip().upper()
+    code = (code or '').strip().upper().replace(' ', '')
     if not code:
         return None
-    if not code.startswith('CN-'):
-        if code.isdigit():
-            code = f'CN-{code.zfill(5)}'
-        elif code.startswith('CN'):
-            code = 'CN-' + code[2:].lstrip('-')
+    m = re.match(r'CN-?(\d+)$', code)
+    if m:
+        num = int(m.group(1))
+        variants = (
+            f'CN-{num:05d}',
+            f'CN-{num}',
+            f'CN-{num:04d}',
+            f'CN-{num:03d}',
+        )
+        seen: set[str] = set()
+        for variant in variants:
+            if variant in seen:
+                continue
+            seen.add(variant)
+            found = Contract.query.filter_by(code=variant).first()
+            if found:
+                return found
+        return None
+    if code.isdigit():
+        return contract_by_code(f'CN-{code}')
+    if code.startswith('CN') and not code.startswith('CN-'):
+        return contract_by_code('CN-' + code[2:].lstrip('-'))
     return Contract.query.filter_by(code=code).first()
 
 

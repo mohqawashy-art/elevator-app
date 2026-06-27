@@ -88,6 +88,13 @@ def _amounts_from_excel(raw_amount: float) -> tuple[float, float, float]:
     return split_vat_amounts(amount_ex_vat=val)
 
 
+def _normalize_ar_name(name: str) -> str:
+    s = ' '.join((name or '').strip().split())
+    for src, dst in (('أ', 'ا'), ('إ', 'ا'), ('آ', 'ا'), ('ى', 'ي'), ('ة', 'ه')):
+        s = s.replace(src, dst)
+    return s
+
+
 def _find_customer_by_title(title: str) -> Customer | None:
     name = _customer_name_from_title(title)
     if not name:
@@ -95,14 +102,14 @@ def _find_customer_by_title(title: str) -> Customer | None:
     exact = customer_by_name(name)
     if exact:
         return exact
-    compact = ' '.join(name.split())
+    compact = _normalize_ar_name(name)
     for cust in Customer.query.all():
-        cn = (cust.name or '').strip()
+        cn = _normalize_ar_name(cust.name or '')
         if not cn:
             continue
         if cn == compact or compact in cn or cn in compact:
             return cust
-    return Customer.query.filter(Customer.name.ilike(f'%{compact[:24]}%')).first()
+    return Customer.query.filter(Customer.name.ilike(f'%{name[:20]}%')).first()
 
 
 def _money_close(a: float, b: float, tol: float = 1.0) -> bool:
@@ -185,24 +192,25 @@ def _find_invoice(
 
 
 def _resolve_customer_contract(row: dict) -> tuple:
-    cn = _normalize_cn(_cell(row, 'العقود', 'Title'))
-    title = _str(_cell(row, 'Title', 'العقود'))
+    title = _str(_cell(row, 'Title'))
+    contracts_col = _str(_cell(row, 'العقود'))
+    cn = _normalize_cn(contracts_col) or _normalize_cn(title)
     contract = contract_by_code(cn) if cn else None
     customer = contract.customer if contract else None
 
     if not customer:
-        name = _customer_name_from_title(title)
-        if name:
-            customer = customer_by_name(name)
-        if not customer:
-            customer = _find_customer_by_title(title)
+        for src in (contracts_col, title):
+            if not src:
+                continue
+            name = _customer_name_from_title(src)
+            if not name:
+                continue
+            customer = customer_by_name(name) or _find_customer_by_title(src)
+            if customer:
+                break
 
-    if not contract and customer and cn:
-        contract = Contract.query.filter_by(code=cn, customer_id=customer.id).first()
-        if not contract:
-            contract = contract_by_code(cn)
-
-    if not contract and customer:
+    # لا نربط بعقد آخر للعميل إذا كان رقم عقد محدداً في الملف ولم يُوجد
+    if not contract and customer and not cn:
         contract = (
             Contract.query.filter_by(customer_id=customer.id)
             .order_by(Contract.end_date.desc())
@@ -210,6 +218,15 @@ def _resolve_customer_contract(row: dict) -> tuple:
         )
 
     return contract, customer, cn
+
+
+def _append_note(notes: str, extra: str) -> str:
+    extra = (extra or '').strip()
+    if not extra:
+        return notes or ''
+    if extra in (notes or ''):
+        return notes or extra
+    return f'{extra} — {notes}'.strip(' —') if notes else extra
 
 
 def import_revenues(
@@ -226,6 +243,7 @@ def import_revenues(
         'updated': 0,
         'skipped_existing': 0,
         'skipped_missing': 0,
+        'imported_no_contract': 0,
         'errors': 0,
         'linked_contract': 0,
         'linked_parts': 0,
@@ -262,14 +280,18 @@ def import_revenues(
             continue
 
         contract, customer, cn = _resolve_customer_contract(r)
+        title = _str(_cell(r, 'Title'))
+        contracts_col = _str(_cell(r, 'العقود'))
         if not contract and not customer:
             stats['skipped_missing'] += 1
-            if len(missing_samples) < 20:
-                missing_samples.append(f'{code}: لا عقد/عميل لـ {cn or _str(_cell(r, "Title"))}')
+            if len(missing_samples) < 25:
+                missing_samples.append(f'{code}: لا عقد/عميل لـ {cn or title or contracts_col}')
             continue
 
         customer_id = customer.id if customer else (contract.customer_id if contract else None)
         contract_id = contract.id if contract else None
+        note_extra = f'عقد Excel: {cn}' if cn and not contract_id else ''
+        row_notes = _append_note(_str(_cell(r, 'ملاحظات')), note_extra)
 
         if not contract_id and customer_id:
             contract_id = resolve_contract_id(
@@ -315,11 +337,13 @@ def import_revenues(
                 if not dry_run:
                     used_invoices.add(inv.id)
 
+        stats['types'][rev_type] = stats['types'].get(rev_type, 0) + 1
+
         if contract_id:
             stats['linked_contract'] += 1
             contract_ids.add(contract_id)
-
-        stats['types'][rev_type] = stats['types'].get(rev_type, 0) + 1
+        elif customer_id and cn:
+            stats['imported_no_contract'] += 1
 
         fields = dict(
             customer_id=customer_id,
@@ -334,7 +358,7 @@ def import_revenues(
             total=total_incl,
             status=_map_status(_cell(r, 'Status', 'الحالة')),
             reference=_str(_cell(r, 'مرفقات')),
-            notes=_str(_cell(r, 'ملاحظات')),
+            notes=row_notes,
         )
 
         if existing_rev and sync_existing:
@@ -384,6 +408,21 @@ def import_revenues(
         sum(_f(r.total) for r in Revenue.query.all()),
         2,
     ) if not dry_run else None
+    if dry_run or not dry_run:
+        missing_cn_amount = 0.0
+        missing_cn_codes: list[str] = []
+        for _, row in df.iterrows():
+            r = row.to_dict()
+            raw_amount = _f(_cell(r, 'المبلغ'))
+            if raw_amount <= 0:
+                continue
+            contract, customer, cn = _resolve_customer_contract(r)
+            if not contract and not customer:
+                missing_cn_amount = round(missing_cn_amount + raw_amount, 2)
+                if cn and cn not in missing_cn_codes:
+                    missing_cn_codes.append(cn)
+        stats['missing_amount'] = missing_cn_amount
+        stats['missing_cn_count'] = len(missing_cn_codes)
     return stats
 
 
