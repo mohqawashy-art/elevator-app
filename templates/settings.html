@@ -97,6 +97,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
     <button type="button" class="tab {% if active_tab == 'users' %}active{% endif %}" data-tab="users">المستخدمون</button>
     <button type="button" class="tab {% if active_tab == 'field-portal' %}active{% endif %}" data-tab="field-portal">دخول الفني (الجوال)</button>
     <button type="button" class="tab {% if active_tab == 'signatures' %}active{% endif %}" data-tab="signatures">التوقيعات</button>
+    <button type="button" class="tab {% if active_tab == 'screensaver' %}active{% endif %}" data-tab="screensaver">شاشة الحفظ</button>
     {% endif %}
     <button type="button" class="tab {% if active_tab == 'account' %}active{% endif %}" data-tab="account">حسابي</button>
     <button type="button" class="tab {% if active_tab == 'appearance' %}active{% endif %}" data-tab="appearance">المظهر</button>
@@ -314,6 +315,43 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
       </div>
       <div class="actions">
         <button type="submit" class="btn btn-primary">حفظ التوقيع</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- شاشة الحفظ -->
+  {% if current_user.role == 'admin' %}
+  <div class="panel {% if active_tab == 'screensaver' %}active{% endif %}" id="panel-screensaver">
+    <form class="card" method="post" action="{{ url_for('settings_screensaver_save') }}">
+      <div class="section">شاشة الحفظ وقفل الجلسة</div>
+      <p class="hint" style="margin-bottom:14px">تظهر فيديو الحفظ تلقائياً بعد فترة خمول، ثم يُطلب إدخال كلمة المرور للعودة للبرنامج. الإعداد يطبّق على جميع مستخدمي المكتب.</p>
+      <div class="grid">
+        <div class="full">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">
+            <input type="checkbox" name="idle_screensaver_enabled" value="1" {% if idle_screensaver_enabled %}checked{% endif %}>
+            تفعيل شاشة الحفظ
+          </label>
+          <p class="hint" style="margin-top:6px">عند التعطيل لن تظهر شاشة الحفظ ولن يُقفل البرنامج تلقائياً بعد الخمول.</p>
+        </div>
+        <div>
+          <label>مدة الخمول قبل شاشة الحفظ</label>
+          {% set idle_sec = idle_screensaver_seconds %}
+          <select name="idle_screensaver_seconds">
+            <option value="30" {% if idle_sec == 30 %}selected{% endif %}>30 ثانية</option>
+            <option value="60" {% if idle_sec == 60 %}selected{% endif %}>دقيقة واحدة</option>
+            <option value="120" {% if idle_sec == 120 %}selected{% endif %}>دقيقتان</option>
+            <option value="180" {% if idle_sec == 180 %}selected{% endif %}>3 دقائق</option>
+            <option value="300" {% if idle_sec == 300 %}selected{% endif %}>5 دقائق</option>
+            <option value="600" {% if idle_sec == 600 %}selected{% endif %}>10 دقائق</option>
+            <option value="900" {% if idle_sec == 900 %}selected{% endif %}>15 دقيقة</option>
+            <option value="1800" {% if idle_sec == 1800 %}selected{% endif %}>30 دقيقة</option>
+            <option value="3600" {% if idle_sec == 3600 %}selected{% endif %}>ساعة واحدة</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:14px">
+        <button type="submit" class="btn btn-primary">حفظ إعدادات شاشة الحفظ</button>
       </div>
     </form>
   </div>

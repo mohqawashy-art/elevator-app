@@ -2,7 +2,6 @@
 (function (global) {
   'use strict';
 
-  var IDLE_MS = 60 * 1000;
   var VIDEO_SRC = '/static/videos/idle-screensaver.mp4';
   var timer = null;
   var overlay = null;
@@ -18,6 +17,16 @@
   var unlockArmed = false;
   var STORAGE_LOCKED = 'lc_idle_locked';
   var STORAGE_UNLOCK = 'lc_idle_unlock_panel';
+
+  function saverConfig() {
+    var cfg = global.__LC_IDLE_SAVER || {};
+    var idleMs = Number(cfg.idleMs);
+    if (!idleMs || idleMs < 15000) idleMs = 60000;
+    return {
+      enabled: cfg.enabled !== false,
+      idleMs: idleMs,
+    };
+  }
 
   function storageGet(key) {
     try { return global.sessionStorage.getItem(key); } catch (e) { return null; }
@@ -278,11 +287,15 @@
 
   function schedule() {
     clearTimeout(timer);
-    timer = setTimeout(show, IDLE_MS);
+    if (!saverConfig().enabled) return;
+    timer = setTimeout(show, saverConfig().idleMs);
   }
 
   function init() {
     if (!document.body || document.body.getAttribute('data-lc-idle-screensaver') === 'off') return;
+    var cfg = saverConfig();
+    var resumeLocked = global.__LC_SESSION_LOCKED || isClientLocked();
+    if (!cfg.enabled && !resumeLocked) return;
 
     var events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel', 'click'];
     events.forEach(function (name) {
@@ -290,14 +303,14 @@
     });
 
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden && !active) schedule();
+      if (!document.hidden && !active && (cfg.enabled || resumeLocked)) schedule();
     });
 
     global.addEventListener('pagehide', function () {
       if (active) beaconLockSession();
     });
 
-    if (global.__LC_SESSION_LOCKED || isClientLocked()) {
+    if (resumeLocked) {
       if (isClientLocked()) global.__LC_SESSION_LOCKED = true;
       show({ showUnlock: storageGet(STORAGE_UNLOCK) === '1' });
       return;
@@ -316,6 +329,6 @@
     show: show,
     hide: hide,
     reset: schedule,
-    IDLE_MS: IDLE_MS,
+    getConfig: saverConfig,
   };
 })(typeof window !== 'undefined' ? window : this);

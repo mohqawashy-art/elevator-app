@@ -350,6 +350,23 @@ def get_app_settings():
     return s
 
 
+def idle_screensaver_enabled(settings=None):
+    s = settings if settings is not None else get_app_settings()
+    val = getattr(s, 'idle_screensaver_enabled', None)
+    if val is None:
+        return True
+    return bool(val)
+
+
+def idle_screensaver_seconds(settings=None):
+    s = settings if settings is not None else get_app_settings()
+    try:
+        sec = int(getattr(s, 'idle_screensaver_seconds', None) or 60)
+    except (TypeError, ValueError):
+        sec = 60
+    return max(15, min(sec, 3600))
+
+
 def brand_logo_url(settings=None):
     s = settings or get_app_settings()
     if s and s.logo_path:
@@ -490,6 +507,8 @@ def inject_global_template_vars():
         'user_role_label': role_label,
         'install_module_enabled': install_module_enabled(),
         'session_locked': session_is_locked(),
+        'idle_screensaver_enabled': idle_screensaver_enabled(s),
+        'idle_screensaver_seconds': idle_screensaver_seconds(s),
     }
 
 
@@ -814,6 +833,8 @@ with app.app_context():
                 ('rep_signature_path', 'VARCHAR(300)'),
                 ('rep_sign_pin_hash', 'VARCHAR(200)'),
                 ('default_sign_method', 'VARCHAR(20)'),
+                ('idle_screensaver_enabled', 'BOOLEAN'),
+                ('idle_screensaver_seconds', 'INTEGER'),
                 ('logo_width_sidebar', 'INTEGER'),
                 ('logo_width_report', 'INTEGER'),
                 ('logo_width_login', 'INTEGER'),
@@ -6341,6 +6362,23 @@ def settings_signatures_prefs():
     db.session.commit()
     session['settings_notice'] = 'تم حفظ إعدادات التوقيع.'
     return _settings_redirect('signatures')
+
+
+@app.route('/settings/screensaver/save', methods=['POST'])
+def settings_screensaver_save():
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('screensaver')
+    s = get_app_settings()
+    s.idle_screensaver_enabled = request.form.get('idle_screensaver_enabled') == '1'
+    try:
+        sec = int(request.form.get('idle_screensaver_seconds') or 60)
+    except (TypeError, ValueError):
+        sec = 60
+    s.idle_screensaver_seconds = max(15, min(sec, 3600))
+    db.session.commit()
+    session['settings_notice'] = 'تم حفظ إعدادات شاشة الحفظ.'
+    return _settings_redirect('screensaver')
 
 
 @app.route('/settings/save', methods=['POST'])
