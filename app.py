@@ -4286,18 +4286,26 @@ def _signature_data_url(relative_path: str) -> str:
 
     if not relative_path:
         return ''
-    rel = relative_path.replace('\\', '/')
+    rel = relative_path.replace('\\', '/').lstrip('/')
+    if rel.startswith('static/'):
+        rel = rel[len('static/') :]
+
     if rel.endswith('.enc'):
         try:
             raw = load_encrypted_signature(app.root_path, app.config['SECRET_KEY'], rel)
             return image_data_url(raw)
         except (FileNotFoundError, ValueError):
             return ''
-    static_path = os.path.join(app.root_path, 'static', rel.replace('/', os.sep))
-    if os.path.isfile(static_path):
-        with open(static_path, 'rb') as fh:
-            return image_data_url(fh.read())
-    return upload_url(rel)
+
+    candidates = [rel]
+    if not rel.startswith('uploads/'):
+        candidates.append(f'uploads/{rel}')
+    for candidate in candidates:
+        static_path = os.path.join(app.root_path, 'static', candidate.replace('/', os.sep))
+        if os.path.isfile(static_path):
+            with open(static_path, 'rb') as fh:
+                return image_data_url(fh.read())
+    return ''
 
 
 @app.route('/api/maintenance-visits/<int:visit_id>/report', methods=['POST'])

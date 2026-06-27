@@ -279,7 +279,6 @@ const CHECKLIST_TEMPLATE = {{ template_json|safe }};
 const REPORT_DATA = {{ report_data_json|safe }};
 const SIGN_CONFIG = {{ sign_config|tojson }};
 const TECH_NATIONAL_ID = {{ (technician.national_id or '')|tojson }};
-const TECH_NATIONAL_ID = {{ (technician.national_id or '')|tojson }};
 
 function updateProgress() {
   const data = LiftCoreChecklist.collectReportData(CHECKLIST_TEMPLATE);
