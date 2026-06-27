@@ -110,6 +110,8 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
     <div class="nav-section">التقارير</div>
     <a href="/reports" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg>كل التقارير</a>
     <a href="{{ url_for('report_financial') }}" class="nav-item active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>التقرير المالي</a>
+    <a href="{{ url_for('report_contract_forecast') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>توقعات تحصيل العقود</a>
+    <a href="{{ url_for('report_financial_health') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>الصحة المالية</a>
     <a href="/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الإيرادات</a>
     <a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>
   </nav>
@@ -119,6 +121,17 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
   {% set page_title = 'التقرير المالي' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
+
+    <div class="page-header screen-only">
+      <div>
+        <div class="page-title">التقرير المالي</div>
+        <div class="page-subtitle" style="font-size:13px;color:var(--text3);margin-top:4px">ملخص الإيرادات والمصروفات لفترة محددة</div>
+      </div>
+      <div class="page-actions">
+        <a href="/reports" class="btn btn-secondary btn-sm">← كل التقارير</a>
+        <a href="{{ url_for('report_contract_forecast') }}" class="btn btn-secondary btn-sm">توقعات التحصيل</a>
+      </div>
+    </div>
 
     <div class="print-toolbar screen-only" id="fin-print-area">
       <div class="print-toolbar-filters">
