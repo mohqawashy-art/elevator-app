@@ -53,6 +53,8 @@ PY
 }
 
 XLSX="${XLSX:-$(pick_file \
+  "$DATA_DIR/revenues_27_6_2026.xlsx" \
+  "$DATA_DIR/إيرادات 27_6_2026.xlsx" \
   "$DATA_DIR/revenues_24_6_2026.xlsx" \
   "$DATA_DIR/إيرادات 24_6_2026.xlsx")}"
 

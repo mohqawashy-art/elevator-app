@@ -52,7 +52,7 @@ def _score_excel_file(key: str, path: str) -> int:
         score -= 200
     if key == "customers" and lowered.startswith("عملاء_"):
         score -= 250
-    for token, pts in (("25_6_2026", 50), ("24_6_2026", 45), ("5_6_2026", 40), ("30_5_2026", 25), ("27_5_2026", 15)):
+    for token, pts in (("27_6_2026", 55), ("25_6_2026", 50), ("24_6_2026", 45), ("5_6_2026", 40), ("30_5_2026", 25), ("27_5_2026", 15)):
         if token in filename:
             score += pts
             break
