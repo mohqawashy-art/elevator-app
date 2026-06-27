@@ -207,6 +207,143 @@ def get_report_parts(db, PartsBilling):
     } for p in parts]
 
 
+AR_MONTHS = [
+    '', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+]
+
+
+def _round_money(value):
+    return round(float(value or 0), 2)
+
+
+def _revenue_total(revenue):
+    if (revenue.status or '').strip() == 'ملغي':
+        return 0.0
+    return float(revenue.total or 0)
+
+
+def _classify_revenue(revenue_type):
+    rt = (revenue_type or '').strip()
+    if rt in ('عقد جديد', 'عقد تركيب') or ('جديد' in rt and 'عقد' in rt):
+        return 'new'
+    if 'قطع غيار' in rt or rt in ('زيارة', 'أعمال إضافية', 'بيع قطع غيار'):
+        return 'parts'
+    if rt in (
+        'تجديد عقد', 'عقد صيانة', 'عقد ضمان', 'صيانة',
+    ) or ('عقد' in rt and 'جديد' not in rt):
+        return 'renewed'
+    return 'renewed'
+
+
+def _classify_expense(expense_type):
+    et = (expense_type or '').strip()
+    if et == 'قطع غيار':
+        return 'parts'
+    if et in ('محروقات', 'صيانة سيارات', 'رواتب', 'وقود', 'أدوات'):
+        return 'basic'
+    return 'other'
+
+
+def _sum_revenues(revenues):
+    buckets = {'renewed': 0.0, 'parts': 0.0, 'new': 0.0}
+    for r in revenues:
+        key = _classify_revenue(r.revenue_type)
+        buckets[key] += _revenue_total(r)
+    total = sum(buckets.values())
+    return {
+        'total': _round_money(total),
+        'renewed': _round_money(buckets['renewed']),
+        'parts': _round_money(buckets['parts']),
+        'new': _round_money(buckets['new']),
+    }
+
+
+def _sum_expenses(expenses):
+    buckets = {'basic': 0.0, 'parts': 0.0, 'other': 0.0}
+    for e in expenses:
+        key = _classify_expense(e.expense_type)
+        buckets[key] += float(e.amount or 0)
+    total = sum(buckets.values())
+    return {
+        'total': _round_money(total),
+        'basic': _round_money(buckets['basic']),
+        'parts': _round_money(buckets['parts']),
+        'other': _round_money(buckets['other']),
+    }
+
+
+def _filter_revenues(Revenue, *, year=None, month=None, on_date=None):
+    q = Revenue.query
+    if year is not None:
+        q = q.filter(extract('year', Revenue.revenue_date) == int(year))
+    if month is not None:
+        q = q.filter(extract('month', Revenue.revenue_date) == int(month))
+    if on_date is not None:
+        q = q.filter(Revenue.revenue_date == on_date)
+    return q.all()
+
+
+def _filter_expenses(Expense, *, year=None, month=None, on_date=None):
+    q = Expense.query
+    if year is not None:
+        q = q.filter(extract('year', Expense.expense_date) == int(year))
+    if month is not None:
+        q = q.filter(extract('month', Expense.expense_date) == int(month))
+    if on_date is not None:
+        q = q.filter(Expense.expense_date == on_date)
+    return q.all()
+
+
+def get_financial_report(db, Revenue, Expense, year=None, month=None, today=None):
+    """ملخص مالي سنوي + يومي + شهري حسب التصنيفات المعتمدة في النظام."""
+    if today is None:
+        today = date.today()
+    if year is None:
+        year = today.year
+    if month is None:
+        month = today.month
+
+    year = int(year)
+    month = int(month)
+
+    annual_revenues = _filter_revenues(Revenue, year=year)
+    annual_expenses = _filter_expenses(Expense, year=year)
+    monthly_revenues = _filter_revenues(Revenue, year=year, month=month)
+    monthly_expenses = _filter_expenses(Expense, year=year, month=month)
+    today_revenues = _filter_revenues(Revenue, on_date=today)
+    today_expenses = _filter_expenses(Expense, on_date=today)
+
+    annual_rev = _sum_revenues(annual_revenues)
+    annual_exp = _sum_expenses(annual_expenses)
+    monthly_rev = _sum_revenues(monthly_revenues)
+    monthly_exp = _sum_expenses(monthly_expenses)
+    today_rev_total = _round_money(sum(_revenue_total(r) for r in today_revenues))
+    today_exp_total = _round_money(sum(float(e.amount or 0) for e in today_expenses))
+
+    return {
+        'year': year,
+        'month': month,
+        'month_label': AR_MONTHS[month] if 1 <= month <= 12 else str(month),
+        'today': str(today),
+        'annual': {
+            'revenues': annual_rev,
+            'expenses': annual_exp,
+            'net': _round_money(annual_rev['total'] - annual_exp['total']),
+        },
+        'monthly': {
+            'revenues': monthly_rev,
+            'expenses': monthly_exp,
+            'net': _round_money(monthly_rev['total'] - monthly_exp['total']),
+        },
+        'today_summary': {
+            'revenues': today_rev_total,
+            'expenses': today_exp_total,
+            'net': _round_money(today_rev_total - today_exp_total),
+        },
+    }
+
+
 REPORT_FETCHERS = {
     'report-clients': lambda ctx: get_report_clients(ctx['db'], ctx['Customer'], ctx['contract_display_status']),
     'report-elevators': lambda ctx: get_report_elevators(ctx['db'], ctx['Elevator']),

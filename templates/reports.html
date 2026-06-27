@@ -352,6 +352,18 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="section-title">تقارير مالية</div>
     <div class="reports-grid">
 
+      <a href="{{ url_for('report_financial') }}" class="report-card" style="--rc-color:var(--accent)">
+        <div class="report-card-icon" style="background:rgba(42,127,255,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        </div>
+        <div class="report-card-title">التقرير المالي</div>
+        <div class="report-card-desc">ملخص الإيرادات والمصروفات السنوي واليومي والشهري</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(42,127,255,.1);color:var(--accent)">مالي</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
       <a href="/reports/revenues" class="report-card" style="--rc-color:var(--success)">
         <div class="report-card-icon" style="background:rgba(31,184,122,.1)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>

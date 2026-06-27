@@ -6141,6 +6141,18 @@ def report_stock():
 def report_parts():
     return _render_report_page('report-parts', 'report-parts.html')
 
+
+@app.route('/reports/financial')
+def report_financial():
+    cur_year = date.today().year
+    report_years = list(range(cur_year, cur_year - 8, -1))
+    return render_template(
+        'report-financial.html',
+        current_year=cur_year,
+        current_month=date.today().month,
+        report_years=report_years,
+    )
+
 # =============================================
 # المستخدمون — مساعدات
 # =============================================
@@ -6920,6 +6932,14 @@ def api_report_stock():
 def api_report_parts():
     from report_data import fetch_report_rows
     return jsonify(fetch_report_rows('report-parts', _report_ctx()))
+
+
+@app.route('/api/reports/financial')
+def api_report_financial():
+    from report_data import get_financial_report
+    year = request.args.get('year', date.today().year)
+    month = request.args.get('month', date.today().month)
+    return jsonify(get_financial_report(db, Revenue, Expense, year=year, month=month))
 
 
 @app.route('/api/reports/client-annual/<int:customer_id>')
