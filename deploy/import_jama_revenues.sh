@@ -19,6 +19,7 @@ for arg in "$@"; do
     --dry-run) DRY=1; EXTRA+=(--dry-run) ;;
     --force) EXTRA+=(--force) ;;
     --sync) EXTRA+=(--sync) ;;
+    --import-all) EXTRA+=(--import-all) ;;
   esac
 done
 

@@ -235,6 +235,7 @@ def import_revenues(
     dry_run: bool = False,
     skip_existing: bool = True,
     sync_existing: bool = False,
+    import_orphans: bool = False,
 ) -> dict:
     df = pd.read_excel(path)
     stats = {
@@ -244,6 +245,7 @@ def import_revenues(
         'skipped_existing': 0,
         'skipped_missing': 0,
         'imported_no_contract': 0,
+        'imported_orphan': 0,
         'errors': 0,
         'linked_contract': 0,
         'linked_parts': 0,
@@ -283,14 +285,23 @@ def import_revenues(
         title = _str(_cell(r, 'Title'))
         contracts_col = _str(_cell(r, 'العقود'))
         if not contract and not customer:
-            stats['skipped_missing'] += 1
-            if len(missing_samples) < 25:
-                missing_samples.append(f'{code}: لا عقد/عميل لـ {cn or title or contracts_col}')
-            continue
+            if not import_orphans:
+                stats['skipped_missing'] += 1
+                if len(missing_samples) < 25:
+                    missing_samples.append(f'{code}: لا عقد/عميل لـ {cn or title or contracts_col}')
+                continue
+            stats['imported_orphan'] += 1
 
         customer_id = customer.id if customer else (contract.customer_id if contract else None)
         contract_id = contract.id if contract else None
-        note_extra = f'عقد Excel: {cn}' if cn and not contract_id else ''
+        note_bits = []
+        if cn and not contract_id:
+            note_bits.append(f'عقد Excel: {cn}')
+        if import_orphans and not customer_id:
+            label = title or contracts_col
+            if label:
+                note_bits.append(f'عميل Excel: {label}')
+        note_extra = ' | '.join(note_bits)
         row_notes = _append_note(_str(_cell(r, 'ملاحظات')), note_extra)
 
         if not contract_id and customer_id:
@@ -436,6 +447,11 @@ def main() -> int:
         action='store_true',
         help='Update existing revenues from Excel and import missing rows',
     )
+    parser.add_argument(
+        '--import-all',
+        action='store_true',
+        help='Import every Excel row even if contract/customer not found in DB',
+    )
     args = parser.parse_args()
 
     if not os.path.isfile(args.xlsx):
@@ -451,6 +467,7 @@ def main() -> int:
             dry_run=args.dry_run,
             skip_existing=not (args.force or args.sync),
             sync_existing=args.sync,
+            import_orphans=args.import_all,
         )
         print(result)
         if result.get('missing_samples'):
