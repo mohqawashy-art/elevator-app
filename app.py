@@ -6151,6 +6151,22 @@ def report_financial():
         default_date_to=today.isoformat(),
     )
 
+
+@app.route('/reports/contract-forecast')
+def report_contract_forecast():
+    today = date.today()
+    next_month = today.month + 1
+    next_year = today.year
+    if next_month > 12:
+        next_month = 1
+        next_year += 1
+    return render_template(
+        'report-contract-forecast.html',
+        default_year=next_year,
+        default_month=next_month,
+        current_year=today.year,
+    )
+
 # =============================================
 # المستخدمون — مساعدات
 # =============================================
@@ -6939,6 +6955,23 @@ def api_report_financial():
     date_from = _parse_report_date(request.args.get('date_from')) or date(today.year, 1, 1)
     date_to = _parse_report_date(request.args.get('date_to')) or today
     return jsonify(get_financial_report(db, Revenue, Expense, date_from=date_from, date_to=date_to))
+
+
+@app.route('/api/reports/contract-forecast')
+def api_report_contract_forecast():
+    from report_data import get_contract_renewal_forecast, get_contract_renewal_overview
+    today = date.today()
+    year = int(request.args.get('year', today.year))
+    month = int(request.args.get('month', today.month))
+    months_ahead = int(request.args.get('months_ahead', 12))
+    forecast = get_contract_renewal_forecast(
+        Contract, Revenue, year, month, contract_status_fn=contract_display_status,
+    )
+    forecast['overview'] = get_contract_renewal_overview(
+        Contract, Revenue, months_ahead=months_ahead,
+        contract_status_fn=contract_display_status,
+    )
+    return jsonify(forecast)
 
 
 @app.route('/api/reports/client-annual/<int:customer_id>')

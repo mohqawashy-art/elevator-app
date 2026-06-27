@@ -340,6 +340,114 @@ def get_financial_report(db, Revenue, Expense, date_from=None, date_to=None, tod
     }
 
 
+def _month_bounds(year, month):
+    from calendar import monthrange
+    year, month = int(year), int(month)
+    return date(year, month, 1), date(year, month, monthrange(year, month)[1])
+
+
+def _contract_forecast_amount(contract):
+    return float(contract.total or contract.value or 0)
+
+
+def _collected_for_contract_in_period(Revenue, contract_id, date_from, date_to):
+    revs = Revenue.query.filter(
+        Revenue.contract_id == contract_id,
+        Revenue.revenue_date >= date_from,
+        Revenue.revenue_date <= date_to,
+    ).all()
+    return _round_money(sum(_revenue_total(r) for r in revs))
+
+
+def _renewal_collection_status(expected, collected):
+    if expected <= 0.01:
+        return '—'
+    if collected >= expected - 0.01:
+        return 'محصّل'
+    if collected > 0:
+        return 'محصّل جزئياً'
+    return 'متوقع'
+
+
+def get_contract_renewal_forecast(Contract, Revenue, year, month, contract_status_fn=None):
+    """توقع تحصيل تجديد العقود — العقود المنتهية في الشهر المحدد."""
+    year, month = int(year), int(month)
+    first, last = _month_bounds(year, month)
+
+    contracts = Contract.query.filter(
+        Contract.end_date >= first,
+        Contract.end_date <= last,
+        Contract.status != 'ملغي',
+    ).order_by(Contract.end_date).all()
+
+    rows = []
+    total_expected = 0.0
+    total_collected = 0.0
+
+    for c in contracts:
+        expected = _contract_forecast_amount(c)
+        collected = _collected_for_contract_in_period(Revenue, c.id, first, last)
+        pending = _round_money(max(expected - collected, 0))
+        total_expected += expected
+        total_collected += collected
+        rows.append({
+            'code': c.code,
+            'customer': c.customer.name if c.customer else '—',
+            'customer_id': c.customer_id,
+            'contract_type': c.contract_type or '',
+            'end_date': str(c.end_date or ''),
+            'status': contract_status_fn(c) if contract_status_fn else (c.status or ''),
+            'elevators': len(c.elevators),
+            'expected': _round_money(expected),
+            'collected': collected,
+            'pending': pending,
+            'collection_status': _renewal_collection_status(expected, collected),
+        })
+
+    return {
+        'year': year,
+        'month': month,
+        'month_label': AR_MONTHS[month] if 1 <= month <= 12 else str(month),
+        'date_from': str(first),
+        'date_to': str(last),
+        'contracts': rows,
+        'summary': {
+            'count': len(rows),
+            'expected': _round_money(total_expected),
+            'collected': _round_money(total_collected),
+            'pending': _round_money(max(total_expected - total_collected, 0)),
+        },
+    }
+
+
+def get_contract_renewal_overview(Contract, Revenue, months_ahead=12, today=None, contract_status_fn=None):
+    """ملخص شهري لتحصيلات التجديد للأشهر القادمة."""
+    if today is None:
+        today = date.today()
+    months_ahead = max(1, min(int(months_ahead or 12), 24))
+
+    y, m = today.year, today.month
+    overview = []
+    for _ in range(months_ahead):
+        block = get_contract_renewal_forecast(
+            Contract, Revenue, y, m, contract_status_fn=contract_status_fn,
+        )
+        overview.append({
+            'year': y,
+            'month': m,
+            'month_label': block['month_label'],
+            'count': block['summary']['count'],
+            'expected': block['summary']['expected'],
+            'collected': block['summary']['collected'],
+            'pending': block['summary']['pending'],
+        })
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    return overview
+
+
 REPORT_FETCHERS = {
     'report-clients': lambda ctx: get_report_clients(ctx['db'], ctx['Customer'], ctx['contract_display_status']),
     'report-elevators': lambda ctx: get_report_elevators(ctx['db'], ctx['Elevator']),

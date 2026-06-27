@@ -364,6 +364,18 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </a>
 
+      <a href="{{ url_for('report_contract_forecast') }}" class="report-card" style="--rc-color:var(--gold)">
+        <div class="report-card-icon" style="background:rgba(200,160,85,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h8"/></svg>
+        </div>
+        <div class="report-card-title">توقعات تحصيل العقود</div>
+        <div class="report-card-desc">تقدير إيرادات تجديد العقود شهرياً حسب تواريخ الانتهاء</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(200,160,85,.1);color:var(--gold)">مالي</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
       <a href="/reports/revenues" class="report-card" style="--rc-color:var(--success)">
         <div class="report-card-icon" style="background:rgba(31,184,122,.1)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
