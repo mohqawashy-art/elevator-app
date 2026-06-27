@@ -18,6 +18,7 @@ for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY=1; EXTRA+=(--dry-run) ;;
     --force) EXTRA+=(--force) ;;
+    --sync) EXTRA+=(--sync) ;;
   esac
 done
 
@@ -53,6 +54,8 @@ PY
 }
 
 XLSX="${XLSX:-$(pick_file \
+  "$DATA_DIR/expenses_27_6_2026.xlsx" \
+  "$DATA_DIR/المصروفات 27_6_2026.xlsx" \
   "$DATA_DIR/expenses_24_6_2026.xlsx" \
   "$DATA_DIR/المصروفات 24_6_2026.xlsx")}"
 

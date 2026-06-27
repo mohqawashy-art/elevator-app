@@ -404,14 +404,33 @@ def import_all(folder: str, reset: bool = True) -> dict[str, int]:
             edate = _parse_date(_cell(r, "التاريخ"))
             if not edate:
                 continue
+            amount = _f(_cell(r, "المبلغ"))
+            raw_type = _str(_cell(r, "نوع المصروف"))
+            notes = _str(_cell(r, "ملاحظات"))
+            from scripts.import_jama_expenses import _is_lump_salary, _normalize_expense_type, _split_salary_total
+            if _is_lump_salary(notes, raw_type):
+                for idx, (label, part_amount) in enumerate(_split_salary_total(amount)):
+                    db.session.add(Expense(
+                        code=f"EXP-{num:04d}-{idx+1:02d}" if num else f"EXP-{Expense.query.count()+1:04d}",
+                        expense_date=edate,
+                        expense_type='رواتب',
+                        description=label,
+                        responsible=_str(_cell(r, "مسئول الصرف")),
+                        payment_method=_str(_cell(r, "طريقة الدفع")) or "كاش",
+                        amount=part_amount,
+                        reference=_str(_cell(r, "مرفقات")),
+                        notes=_str(_cell(r, "المورد")),
+                    ))
+                continue
+            exp_type = _normalize_expense_type(raw_type, notes)
             db.session.add(Expense(
                 code=f"EXP-{num:04d}" if num else f"EXP-{Expense.query.count()+1:04d}",
                 expense_date=edate,
-                expense_type=_str(_cell(r, "نوع المصروف")) or "أخرى",
-                description=_str(_cell(r, "ملاحظات")) or _str(_cell(r, "نوع المصروف")),
+                expense_type=exp_type,
+                description=notes or raw_type or exp_type,
                 responsible=_str(_cell(r, "مسئول الصرف")),
                 payment_method=_str(_cell(r, "طريقة الدفع")) or "كاش",
-                amount=_f(_cell(r, "المبلغ")),
+                amount=amount,
                 reference=_str(_cell(r, "مرفقات")),
                 notes=_str(_cell(r, "المورد")),
             ))

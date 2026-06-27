@@ -238,9 +238,12 @@ def _classify_revenue(revenue_type):
 
 def _classify_expense(expense_type):
     et = (expense_type or '').strip()
-    if et == 'قطع غيار':
+    if et == 'قطع غيار' or 'قطع غيار' in et:
         return 'parts'
-    if et in ('محروقات', 'صيانة سيارات', 'رواتب', 'وقود', 'أدوات'):
+    if et in (
+        'محروقات', 'صيانة سيارات', 'صيانه سيارات', 'رواتب', 'وقود', 'أدوات',
+        'مصروفات أساسية', 'مصروفات اساسية',
+    ):
         return 'basic'
     return 'other'
 
@@ -475,8 +478,10 @@ def _expense_buckets(expenses):
             buckets['fuel'] += amt
         elif et == 'قطع غيار':
             buckets['parts'] += amt
-        elif et in ('رواتب', 'أدوات'):
+        elif et in ('رواتب',) or 'راتب' in (e.description or ''):
             buckets['salaries'] += amt
+        elif et in ('مصروفات أساسية', 'مصروفات اساسية'):
+            buckets['other'] += amt
         elif et == 'صيانة سيارات':
             buckets['vehicles'] += amt
         else:
