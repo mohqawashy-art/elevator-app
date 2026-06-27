@@ -74,7 +74,6 @@ $files = @(
     "templates/report-inventory.html",
     "templates/report-invoices.html",
     "templates/report-maintenance.html",
-    "templates/report-parts.html",
     "templates/report-revenues.html",
     "templates/report-stock.html",
     "templates/report-technicians.html",

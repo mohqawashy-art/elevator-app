@@ -191,21 +191,6 @@ def get_report_stock(db, StockMovement):
     } for m in movements]
 
 
-def get_report_parts(db, PartsBilling):
-    parts = PartsBilling.query.order_by(PartsBilling.billing_date.desc()).all()
-    return [{
-        'code': p.code,
-        'customer': p.customer.name if p.customer else '—',
-        'contract': p.contract.code if p.contract else '—',
-        'date': str(p.billing_date or ''),
-        'description': p.description or '',
-        'cost_price': p.cost_price or 0,
-        'sell_price': p.sell_price or 0,
-        'profit': p.profit or 0,
-        'pay_method': p.payment_method or '',
-        'status': p.status or '',
-    } for p in parts]
-
 
 AR_MONTHS = [
     '', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
@@ -717,7 +702,6 @@ REPORT_FETCHERS = {
     'report-invoices': lambda ctx: get_report_invoices(ctx['db'], ctx['Invoice']),
     'report-inventory': lambda ctx: get_report_inventory(ctx['db'], ctx['InventoryItem']),
     'report-stock': lambda ctx: get_report_stock(ctx['db'], ctx['StockMovement']),
-    'report-parts': lambda ctx: get_report_parts(ctx['db'], ctx['PartsBilling']),
 }
 
 

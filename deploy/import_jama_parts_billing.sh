@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Import parts billing — treat imported rows as غير محصل
+# Import parts billing — مسح ثم استيراد من Excel
 #
 #   bash deploy/import_jama_parts_billing.sh --dry-run
-#   bash deploy/import_jama_parts_billing.sh
+#   bash deploy/import_jama_parts_billing.sh --sync
+#   XLSX=deploy/data/jama_import/parts_billing_27_6_2026.xlsx bash deploy/import_jama_parts_billing.sh --sync
 
 set -euo pipefail
 
@@ -12,17 +13,19 @@ DB_FILE="${DB_FILE:-$JAMA_DIR/instance/jama.db}"
 DATA_DIR="${DATA_DIR:-$JAMA_DIR/deploy/data/jama_import}"
 SERVICE_NAME="${SERVICE_NAME:-liftcore-jama}"
 DRY=0
-REPLACE=1
+REPLACE=0
 UNCOLLECTED=0
-FORCE_UNCOLLECTED=1
+FORCE_UNCOLLECTED=0
 EXTRA=()
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY=1 ;;
+    --sync) REPLACE=1 ;;
     --force) EXTRA+=(--force) ;;
     --keep-existing) REPLACE=0 ;;
     --uncollected-only) UNCOLLECTED=1 ;;
+    --force-uncollected) FORCE_UNCOLLECTED=1 ;;
     --keep-status) FORCE_UNCOLLECTED=0 ;;
   esac
 done
@@ -56,14 +59,19 @@ import os, sys
 sys.path.insert(0, os.getcwd())
 from import_real_data import find_excel_files
 folder = os.environ.get("DATA_DIR", ".")
-found = find_excel_files(folder, prefer_date="25_6_2026")
+found = find_excel_files(folder, prefer_date="27_6_2026")
 path = found.get("spare_parts", "")
+if not path or not os.path.isfile(path):
+    found = find_excel_files(folder, prefer_date="25_6_2026")
+    path = found.get("spare_parts", "")
 if path and os.path.isfile(path):
     print(path)
 PY
 }
 
 XLSX="${XLSX:-$(pick_file \
+  "$DATA_DIR/parts_billing_27_6_2026.xlsx" \
+  "$DATA_DIR/بيان تركيب قطع الغيار 27_6_2026.xlsx" \
   "$DATA_DIR/parts_billing_25_6_2026.xlsx" \
   "$DATA_DIR/بيان تركيب قطع الغيار 25_6_2026.xlsx")}"
 
@@ -81,7 +89,7 @@ fi
 export DATABASE_URL="sqlite:///${DB_FILE}"
 
 echo "=============================================="
-echo "  Jama import: parts billing (كلها غير محصل)"
+echo "  Jama import: parts billing (مسح + استيراد)"
 echo "  DB:   $DB_FILE"
 echo "  File: $XLSX"
 echo "=============================================="

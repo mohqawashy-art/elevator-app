@@ -34,7 +34,7 @@
     '/reports/invoices': { ar: 'تقرير الفواتير', en: 'Invoices Report' },
     '/reports/inventory': { ar: 'تقرير المخزون', en: 'Inventory Report' },
     '/reports/stock': { ar: 'تقرير حركة المخزن', en: 'Stock Report' },
-    '/reports/parts': { ar: 'تقرير قطع الغيار', en: 'Parts Report' },
+    '/reports/stock-movements': { ar: 'تقرير حركة المخزن', en: 'Stock Movements Report' },
     '/settings': { ar: 'الإعدادات', en: 'Settings' },
     '/installation/': { ar: 'لوحة المشاريع', en: 'Projects Home' },
     '/installation/leads': { ar: 'فرص البيع', en: 'Sales Leads' },

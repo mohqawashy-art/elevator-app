@@ -23,7 +23,6 @@ var __lcReportDomPager = null;
     'report-invoices': '/api/reports/invoices',
     'report-inventory': '/api/reports/inventory',
     'report-stock': '/api/reports/stock',
-    'report-parts': '/api/reports/parts',
   };
 
   var REPORT_DATE_FIELD = {
@@ -33,7 +32,6 @@ var __lcReportDomPager = null;
     'report-expenses': 'date',
     'report-invoices': 'date',
     'report-stock': 'date',
-    'report-parts': 'date',
   };
 
   var MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -82,8 +80,6 @@ var __lcReportDomPager = null;
         return [row.code, row.name, row.category, row.current_qty, row.min_qty, row.buy_price, row.stock_value, row.supplier, row.order_status];
       case 'report-stock':
         return [row.code, row.date, row.direction, row.movement_type, row.item, row.quantity, row.unit_price, row.total_value, row.technician, row.reason];
-      case 'report-parts':
-        return [row.code, joinClientContract(row), row.date, row.description, row.cost_price, row.sell_price, row.profit, row.pay_method, row.status];
       default:
         return Object.values(row);
     }
@@ -100,7 +96,6 @@ var __lcReportDomPager = null;
     'report-invoices': [7],
     'report-inventory': [8],
     'report-stock': [2, 3],
-    'report-parts': [7],
   };
 
   function badgeClassFor(val) {
@@ -343,12 +338,6 @@ function hookReportPagination(reset) {
         var outward = data.filter(function (r) { return r.direction === 'صادر'; }).length;
         var outVal = data.filter(function (r) { return r.direction === 'صادر'; }).reduce(function (s, r) { return s + (r.total_value || 0); }, 0);
         return [fmtNum(data.length), fmtNum(inward), fmtNum(outward), fmtNum(outVal) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>'];
-      }
-      case 'report-parts': {
-        var totalCost = sumField('cost_price');
-        var totalSell = sumField('sell_price');
-        var totalProfit = sumField('profit');
-        return [fmtNum(data.length), fmtNum(totalCost) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>', fmtNum(totalSell) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>', fmtNum(totalProfit) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>'];
       }
       default:
         return [fmtNum(data.length)];

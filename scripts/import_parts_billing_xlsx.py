@@ -11,8 +11,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from app import app, db  # noqa: E402
-from models import PartsBilling  # noqa: E402
-from parts_billing_import import import_parts  # noqa: E402
+from parts_billing_import import clear_parts_billing, import_parts  # noqa: E402
 
 
 def main() -> int:
@@ -27,7 +26,9 @@ def main() -> int:
     )
     parser.add_argument(
         '--replace',
+        '--sync',
         action='store_true',
+        dest='replace',
         help='Delete all existing parts billing records before import',
     )
     parser.add_argument(
@@ -43,9 +44,8 @@ def main() -> int:
 
     with app.app_context():
         if args.replace and not args.dry_run:
-            deleted = PartsBilling.query.delete()
-            db.session.commit()
-            print(f'Cleared existing parts billing records: {deleted}')
+            cleared = clear_parts_billing(db.session)
+            print(f'Cleared existing parts billing records: {cleared}')
 
         result = import_parts(
             args.xlsx,

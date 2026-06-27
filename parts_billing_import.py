@@ -12,8 +12,8 @@ try:
 except ImportError as exc:
     raise ImportError('pip install openpyxl') from exc
 
-from entity_links import normalize_parts_status, resolve_parts_links
-from models import Contract, PartsBilling
+from entity_links import contract_by_code, normalize_parts_status, resolve_parts_links
+from models import PartsBilling
 
 OP_NOTE_PREFIX = 'رقم العملية:'
 
@@ -171,8 +171,13 @@ def load_rows_from_workbook(wb) -> list[dict]:
         if not any(_str(v) for v in row):
             continue
         rec = _row_record(row, col_map)
-        if not _parse_date(rec.get('date')) or not rec.get('description'):
+        billing_date = _parse_date(rec.get('date'))
+        description = (rec.get('description') or '').strip()
+        if not description and (_float(rec.get('sell')) or _float(rec.get('cost'))):
+            description = 'قطع غيار'
+        if not billing_date or not description:
             continue
+        rec['description'] = description
         out.append(rec)
     return out
 
@@ -195,6 +200,19 @@ def load_rows(path: str) -> list[dict]:
         return load_rows_from_workbook(wb)
     finally:
         wb.close()
+
+
+def clear_parts_billing(db_session) -> int:
+    """مسح كل سجلات قطع الغيار مع عكس حركات المخزن المرتبطة."""
+    from inventory_stock import reverse_stock_by_reference, stock_reference
+
+    rows = PartsBilling.query.order_by(PartsBilling.id).all()
+    count = len(rows)
+    for p in rows:
+        reverse_stock_by_reference(stock_reference('parts_billing', p.id))
+        db_session.delete(p)
+    db_session.commit()
+    return count
 
 
 def _existing_op_numbers() -> set[str]:
@@ -228,11 +246,6 @@ def import_parts_billing_rows(
     }
     missing_samples: list[str] = []
 
-    contracts = {
-        c.code.upper(): c
-        for c in Contract.query.all()
-        if c.code
-    }
     existing_ops = _existing_op_numbers() if skip_existing else set()
 
     for rec in rows:
@@ -249,7 +262,7 @@ def import_parts_billing_rows(
             stats['skipped_existing'] += 1
             continue
 
-        contract = contracts.get(cn_code.upper())
+        contract = contract_by_code(cn_code)
         if not contract:
             stats['skipped_missing'] += 1
             if len(missing_samples) < 15:

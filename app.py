@@ -6137,10 +6137,6 @@ def report_inventory():
 def report_stock():
     return _render_report_page('report-stock', 'report-stock.html')
 
-@app.route('/reports/parts-billing')
-def report_parts():
-    return _render_report_page('report-parts', 'report-parts.html')
-
 
 @app.route('/reports/financial')
 def report_financial():
@@ -6949,11 +6945,6 @@ def api_report_stock():
     from report_data import fetch_report_rows
     return jsonify(fetch_report_rows('report-stock', _report_ctx()))
 
-
-@app.route('/api/reports/parts')
-def api_report_parts():
-    from report_data import fetch_report_rows
-    return jsonify(fetch_report_rows('report-parts', _report_ctx()))
 
 
 @app.route('/api/reports/financial')
