@@ -376,6 +376,18 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </a>
 
+      <a href="{{ url_for('report_financial_health') }}" class="report-card" style="--rc-color:#7c6fff">
+        <div class="report-card-icon" style="background:rgba(124,111,255,.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+        </div>
+        <div class="report-card-title">الصحة المالية</div>
+        <div class="report-card-desc">رسوم بيانية للإيرادات والمصروفات والأرباح وتوصيات التعافي وتسعير العقود</div>
+        <div class="report-card-footer">
+          <span class="report-card-tag" style="background:rgba(124,111,255,.1);color:#7c6fff">تحليل</span>
+          <span class="report-card-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6H2M5 3l-3 3 3 3"/></svg></span>
+        </div>
+      </a>
+
       <a href="/reports/revenues" class="report-card" style="--rc-color:var(--success)">
         <div class="report-card-icon" style="background:rgba(31,184,122,.1)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>

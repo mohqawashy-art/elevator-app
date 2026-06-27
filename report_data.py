@@ -448,6 +448,236 @@ def get_contract_renewal_overview(Contract, Revenue, months_ahead=12, today=None
     return overview
 
 
+def _monthly_totals(db, extract, func, year, date_col, value_col, exclude_cancelled=False, status_col=None):
+    """مجاميع شهرية (12 شهراً) لعمود قيمة."""
+    result = [0.0] * 12
+    q = db.session.query(
+        extract('month', date_col).label('m'),
+        func.sum(value_col),
+    ).filter(extract('year', date_col) == int(year))
+    if exclude_cancelled and status_col is not None:
+        q = q.filter(status_col != 'ملغي')
+    rows = q.group_by('m').all()
+    for m, val in rows:
+        result[int(m) - 1] = round(float(val or 0), 2)
+    return result
+
+
+def _expense_buckets(expenses):
+    buckets = {
+        'fuel': 0.0, 'parts': 0.0, 'salaries': 0.0,
+        'vehicles': 0.0, 'other': 0.0,
+    }
+    for e in expenses:
+        et = (e.expense_type or '').strip()
+        amt = float(e.amount or 0)
+        if et in ('محروقات', 'وقود'):
+            buckets['fuel'] += amt
+        elif et == 'قطع غيار':
+            buckets['parts'] += amt
+        elif et in ('رواتب', 'أدوات'):
+            buckets['salaries'] += amt
+        elif et == 'صيانة سيارات':
+            buckets['vehicles'] += amt
+        else:
+            buckets['other'] += amt
+    return {k: _round_money(v) for k, v in buckets.items()}
+
+
+def _health_label(margin_pct, net):
+    if net < -0.01:
+        return 'خسارة', 'danger'
+    if margin_pct >= 15:
+        return 'ممتاز', 'success'
+    if margin_pct >= 5:
+        return 'جيد', 'success'
+    if margin_pct >= 0:
+        return 'متوازن', 'warning'
+    return 'ضعيف', 'danger'
+
+
+def get_financial_health_report(
+    db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit,
+    year=None, today=None, contract_status_fn=None, target_margin=0.20,
+):
+    """تقرير الصحة المالية: رسوم، ربحية، توصيات التعافي، وتسعير العقود."""
+    from sqlalchemy import extract, func
+
+    if today is None:
+        today = date.today()
+    if year is None:
+        year = today.year
+    year = int(year)
+
+    monthly_revenue = _monthly_totals(
+        db, extract, func, year, Revenue.revenue_date, Revenue.total,
+        exclude_cancelled=True, status_col=Revenue.status,
+    )
+    monthly_expenses = _monthly_totals(
+        db, extract, func, year, Expense.expense_date, Expense.amount,
+    )
+    monthly_profit = [
+        _round_money(monthly_revenue[i] - monthly_expenses[i]) for i in range(12)
+    ]
+
+    total_revenue = _round_money(sum(monthly_revenue))
+    total_expenses = _round_money(sum(monthly_expenses))
+    net_profit = _round_money(total_revenue - total_expenses)
+    margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
+    health_text, health_level = _health_label(margin_pct, net_profit)
+
+    year_expenses = Expense.query.filter(extract('year', Expense.expense_date) == year).all()
+    exp_buckets = _expense_buckets(year_expenses)
+
+    tech_salaries = _round_money(sum(
+        float(t.salary or 0) for t in Technician.query.filter(
+            Technician.status.in_(['نشط', 'متاح', 'مشغول'])
+        ).all()
+    ))
+    if tech_salaries > 0:
+        exp_buckets['salaries'] = _round_money(exp_buckets['salaries'] + tech_salaries)
+
+    expense_breakdown = {
+        'محروقات ووقود': exp_buckets['fuel'],
+        'قطع غيار وزيوت': exp_buckets['parts'],
+        'رواتب وأجور': exp_buckets['salaries'],
+        'صيانة سيارات': exp_buckets['vehicles'],
+        'مصروفات أخرى': exp_buckets['other'],
+    }
+
+    active_contracts = []
+    for c in Contract.query.filter(Contract.status != 'ملغي').all():
+        st = contract_status_fn(c) if contract_status_fn else (c.status or '')
+        if st in ('نشط', 'على وشك الانتهاء'):
+            active_contracts.append(c)
+
+    elevators_under_contract = sum(len(c.elevators) for c in active_contracts)
+    if elevators_under_contract == 0:
+        elevators_under_contract = Elevator.query.filter(
+            Elevator.status.in_(['نشط', 'تحت الصيانة'])
+        ).count()
+
+    annual_visits_planned = sum((c.visits_per_month or 1) * 12 for c in active_contracts)
+    contract_values = [_contract_forecast_amount(c) for c in active_contracts]
+    avg_contract_value = _round_money(
+        sum(contract_values) / len(contract_values) if contract_values else 0
+    )
+    avg_elevators_per_contract = (
+        round(elevators_under_contract / len(active_contracts), 2)
+        if active_contracts else 0
+    )
+
+    visits_done = int(db.session.query(func.count(MaintenanceVisit.id)).filter(
+        extract('year', MaintenanceVisit.visit_date) == year,
+        MaintenanceVisit.status == 'مكتملة',
+    ).scalar() or 0)
+    visits_base = visits_done or annual_visits_planned or 1
+
+    variable_cost = exp_buckets['fuel'] + exp_buckets['parts']
+    fixed_cost = exp_buckets['salaries'] + exp_buckets['vehicles'] + exp_buckets['other']
+    cost_per_visit = _round_money(variable_cost / visits_base) if visits_base else 0.0
+    cost_per_elevator_year = _round_money(
+        total_expenses / elevators_under_contract
+    ) if elevators_under_contract else 0.0
+
+    avg_visits_per_contract = (
+        round(annual_visits_planned / len(active_contracts), 1) if active_contracts else 0
+    )
+    estimated_cost_per_contract = _round_money(
+        cost_per_visit * avg_visits_per_contract * avg_elevators_per_contract
+        + (fixed_cost / len(active_contracts) if active_contracts else 0)
+    )
+    suggested_contract_price = _round_money(
+        estimated_cost_per_contract * (1 + target_margin)
+    ) if estimated_cost_per_contract else cost_per_elevator_year * (1 + target_margin)
+
+    pricing = {
+        'annual_operating_cost': total_expenses,
+        'variable_cost': _round_money(variable_cost),
+        'fixed_cost': _round_money(fixed_cost),
+        'active_contracts': len(active_contracts),
+        'elevators_under_contract': elevators_under_contract,
+        'annual_visits_planned': annual_visits_planned,
+        'visits_completed': visits_done,
+        'cost_per_visit': cost_per_visit,
+        'cost_per_elevator_year': cost_per_elevator_year,
+        'avg_contract_value': avg_contract_value,
+        'avg_elevators_per_contract': avg_elevators_per_contract,
+        'estimated_cost_per_contract': estimated_cost_per_contract,
+        'suggested_contract_price': _round_money(suggested_contract_price),
+        'target_margin_pct': round(target_margin * 100, 1),
+        'price_gap': _round_money(suggested_contract_price - avg_contract_value),
+    }
+
+    recommendations = []
+    if net_profit < -0.01:
+        gap = abs(net_profit)
+        if avg_contract_value > 0:
+            import math
+            need = math.ceil(gap / avg_contract_value)
+            recommendations.append({
+                'icon': 'contracts',
+                'title': 'زيادة عدد العقود',
+                'text': f'تحتاج نحو {need} عقداً جديداً بمتوسط قيمة {avg_contract_value:,.2f} ريال لتغطية الخسارة.',
+                'value': need,
+            })
+        if active_contracts:
+            inc = _round_money(gap / len(active_contracts))
+            recommendations.append({
+                'icon': 'price',
+                'title': 'رفع أسعار العقود',
+                'text': f'رفع قيمة كل عقد نشط ({len(active_contracts)} عقد) بمقدار {inc:,.2f} ريال سنوياً.',
+                'value': inc,
+            })
+        if total_expenses > 0:
+            pct = _round_money(gap / total_expenses * 100)
+            recommendations.append({
+                'icon': 'cost',
+                'title': 'خفض المصروفات',
+                'text': f'خفض إجمالي المصروفات بنسبة {pct:.1f}% للوصول لنقطة التعادل.',
+                'value': pct,
+            })
+        if pricing['price_gap'] > 0:
+            recommendations.append({
+                'icon': 'pricing',
+                'title': 'مراجعة تسعير الصيانة',
+                'text': (
+                    f'متوسط العقد الحالي ({avg_contract_value:,.2f} ريال) أقل من التكلفة المقترحة '
+                    f'({suggested_contract_price:,.2f} ريال) — راجع أسعار العقود.'
+                ),
+                'value': pricing['price_gap'],
+            })
+    elif margin_pct < 5 and active_contracts:
+        recommendations.append({
+            'icon': 'pricing',
+            'title': 'تحسين الهامش',
+            'text': 'الهامش منخفض — راجع تكاليف المحروقات وقطع الغيار أو ارفع قيمة العقود تدريجياً.',
+            'value': margin_pct,
+        })
+
+    return {
+        'year': year,
+        'summary': {
+            'revenue': total_revenue,
+            'expenses': total_expenses,
+            'profit': net_profit,
+            'margin_pct': margin_pct,
+            'health': health_text,
+            'health_level': health_level,
+            'parts_profit_note': None,
+        },
+        'monthly': {
+            'revenue': monthly_revenue,
+            'expenses': monthly_expenses,
+            'profit': monthly_profit,
+        },
+        'expense_breakdown': expense_breakdown,
+        'pricing': pricing,
+        'recommendations': recommendations,
+        'is_loss': net_profit < -0.01,
+    }
+
+
 REPORT_FETCHERS = {
     'report-clients': lambda ctx: get_report_clients(ctx['db'], ctx['Customer'], ctx['contract_display_status']),
     'report-elevators': lambda ctx: get_report_elevators(ctx['db'], ctx['Elevator']),

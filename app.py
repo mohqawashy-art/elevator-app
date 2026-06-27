@@ -6167,6 +6167,14 @@ def report_contract_forecast():
         current_year=today.year,
     )
 
+
+@app.route('/reports/financial-health')
+def report_financial_health():
+    return render_template(
+        'report-financial-health.html',
+        current_year=date.today().year,
+    )
+
 # =============================================
 # المستخدمون — مساعدات
 # =============================================
@@ -6972,6 +6980,16 @@ def api_report_contract_forecast():
         contract_status_fn=contract_display_status,
     )
     return jsonify(forecast)
+
+
+@app.route('/api/reports/financial-health')
+def api_report_financial_health():
+    from report_data import get_financial_health_report
+    year = int(request.args.get('year', date.today().year))
+    return jsonify(get_financial_health_report(
+        db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit,
+        year=year, contract_status_fn=contract_display_status,
+    ))
 
 
 @app.route('/api/reports/client-annual/<int:customer_id>')
