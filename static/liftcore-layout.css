@@ -15,6 +15,17 @@
   display: block;
 }
 
+/* أقسام القائمة الجانبية */
+.sidebar-nav .nav-section:not(:first-child) {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border, rgba(100, 160, 255, .12));
+}
+.sidebar-nav .nav-section {
+  font-weight: 600;
+  color: var(--text3, #4a5a72);
+}
+
 .rpt-header-logo img {
   width: var(--logo-w-report, 150px) !important;
   height: auto !important;

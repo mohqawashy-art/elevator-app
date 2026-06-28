@@ -43,12 +43,16 @@
 
   var SECTIONS = {
     'الرئيسية': 'Main',
-    'البيانات': 'Data',
+    'العملاء والعقود': 'Clients & Contracts',
+    'الفريق الفني': 'Field Team',
     'العمليات': 'Operations',
     'المالية': 'Finance',
+    'إدارة المخازن': 'Warehouse',
     'المخزن': 'Inventory',
     'التقارير': 'Reports',
+    'التركيب': 'Installation',
     'تركيب جديد': 'New Installation',
+    'البيانات': 'Data',
   };
 
   var ROLES = {
@@ -69,11 +73,15 @@
     'شاشة كاملة': 'Full Screen',
     'خروج من الشاشة الكاملة': 'Exit Full Screen',
     'الرئيسية': 'Main',
+    'العملاء والعقود': 'Clients & Contracts',
+    'الفريق الفني': 'Field Team',
     'البيانات': 'Data',
     'العمليات': 'Operations',
     'المالية': 'Finance',
+    'إدارة المخازن': 'Warehouse',
     'المخزن': 'Inventory',
     'التقارير': 'Reports',
+    'التركيب': 'Installation',
     'العملاء': 'Clients',
     'المصاعد': 'Elevators',
     'العقود': 'Contracts',

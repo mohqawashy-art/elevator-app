@@ -84,13 +84,8 @@ th{color:var(--text3);font-size:11px;font-weight:500}
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
   <nav class="sidebar-nav">
-    <div class="nav-section" id="ns1">الرئيسية</div>
-    <a href="/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
-    <div class="nav-section" id="ns4">المخزن</div>
-    <a href="/inventory" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>الأصناف</a>
-    <a href="/purchase-orders" class="nav-item active"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>طلبات الشراء</a>
-    <a href="/stock-movements" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>حركة المخزن</a>
-  </nav>
+{% include 'partials/app_sidebar_nav.html' %}
+</nav>
 </aside>
 <div class="main">
   {% set page_title = 'طلبات الشراء' %}
