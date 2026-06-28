@@ -449,9 +449,9 @@
   }
 
   function setNavItemLabel(link, lang) {
-    var path = (link.getAttribute('href') || '').split('?')[0];
-    var pair = NAV_HREF[path];
-  if (!pair) return;
+    var href = (link.getAttribute('href') || '').replace(/\/+$/, '') || '/';
+    var pair = NAV_HREF[href] || NAV_HREF[href.split('?')[0]];
+    if (!pair) return;
     var label = lang === 'en' ? pair.en : pair.ar;
     var span = link.querySelector('span');
     if (span) {

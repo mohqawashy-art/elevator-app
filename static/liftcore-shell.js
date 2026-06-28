@@ -234,14 +234,24 @@
     }
   }
 
-  function highlightActiveNav() {
+  function matchNavHref(linkHref) {
+    var raw = (linkHref || '').split('#')[0];
+    var q = raw.indexOf('?');
+    var hrefPath = (q >= 0 ? raw.slice(0, q) : raw).replace(/\/+$/, '') || '/';
+    var hrefQuery = q >= 0 ? raw.slice(q) : '';
     var path = (location.pathname || '').replace(/\/+$/, '') || '/';
+    var search = location.search || '';
+    if (hrefQuery) return hrefPath === path && hrefQuery === search;
+    if (hrefPath === path) return !search;
+    return hrefPath !== '/' && path.indexOf(hrefPath) === 0;
+  }
+
+  function highlightActiveNav() {
     document.querySelectorAll('[data-nav-group]').forEach(function (group) {
       group.classList.remove('has-active');
     });
     document.querySelectorAll('#sidebar .nav-item[href], .sidebar .nav-item[href]').forEach(function (a) {
-      var href = (a.getAttribute('href') || '').replace(/\/+$/, '') || '/';
-      var active = href === path || (href !== '/' && path.indexOf(href) === 0);
+      var active = matchNavHref(a.getAttribute('href'));
       a.classList.toggle('active', active);
       if (active) {
         var group = a.closest('[data-nav-group]');
@@ -253,8 +263,7 @@
       }
     });
     document.querySelectorAll('#sidebar .nav-item-single[href], .sidebar .nav-item-single[href]').forEach(function (a) {
-      var href = (a.getAttribute('href') || '').replace(/\/+$/, '') || '/';
-      var active = href === path;
+      var active = matchNavHref(a.getAttribute('href'));
       a.classList.toggle('active', active);
       if (active) scrollNavItemIntoView(a);
     });
