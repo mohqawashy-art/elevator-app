@@ -46,9 +46,16 @@
         <button type="button" class="lang-opt{% if user_language == 'ar' %} active{% endif %}" id="btn-ar" onclick="LiftCoreI18n.setLang('ar')" aria-label="العربية">ع</button>
         <button type="button" class="lang-opt{% if user_language == 'en' %} active{% endif %}" id="btn-en" onclick="LiftCoreI18n.setLang('en')" aria-label="English">EN</button>
       </div>
-      <div class="lc-header-clock" id="lc-header-clock" aria-live="polite" data-i18n-skip>
-        <time id="lc-header-time" class="lc-header-time" dir="ltr">00:00:00</time>
-        <span id="h-date" class="lc-header-date" data-suffix=""></span>
+      <div class="lc-header-clock lc-digital-clock" id="lc-header-clock" aria-live="polite" data-i18n-skip>
+        <div class="lc-digital-day" id="lc-header-weekday">—</div>
+        <div class="lc-digital-main">
+          <time class="lc-digital-time" id="lc-header-time-main" dir="ltr">00:00</time>
+          <div class="lc-digital-side">
+            <span class="lc-digital-ampm" id="lc-header-ampm">AM</span>
+            <span class="lc-digital-secs" id="lc-header-seconds" dir="ltr">00</span>
+          </div>
+        </div>
+        <div class="lc-digital-date" id="h-date" data-suffix=""></div>
       </div>
     </div>
   </div>

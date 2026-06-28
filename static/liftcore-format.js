@@ -101,8 +101,59 @@
     }
   }
 
+  function headerDigitalParts(date) {
+    date = date || new Date();
+    var h = date.getHours();
+    var m = date.getMinutes();
+    var s = date.getSeconds();
+    var isPm = h >= 12;
+    var h12 = h % 12 || 12;
+    var main = String(h12).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    var ampm = isEn() ? (isPm ? 'PM' : 'AM') : (isPm ? 'م' : 'ص');
+    var secs = String(s).padStart(2, '0');
+    var weekday;
+    if (isEn()) {
+      weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(date).toUpperCase();
+    } else {
+      weekday = new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(date);
+    }
+    var day = String(date.getDate()).padStart(2, '0');
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var year = date.getFullYear();
+    return {
+      weekday: weekday,
+      main: main,
+      ampm: ampm,
+      secs: secs,
+      dateLine: day + '/' + month + '/' + year,
+    };
+  }
+
+  function applyDigitalClock(date) {
+    var parts = headerDigitalParts(date);
+    document.querySelectorAll('#lc-header-time-main').forEach(function (el) {
+      el.textContent = parts.main;
+    });
+    document.querySelectorAll('#lc-header-ampm').forEach(function (el) {
+      el.textContent = parts.ampm;
+    });
+    document.querySelectorAll('#lc-header-seconds').forEach(function (el) {
+      el.textContent = parts.secs;
+    });
+    document.querySelectorAll('#lc-header-weekday').forEach(function (el) {
+      el.textContent = parts.weekday;
+    });
+    document.querySelectorAll('.lc-digital-clock #h-date').forEach(function (el) {
+      el.textContent = parts.dateLine;
+    });
+  }
+
   function setHeaderDate(el, date, suffix) {
     if (!el) return;
+    if (el.closest && el.closest('.lc-digital-clock')) {
+      el.textContent = headerDigitalParts(date).dateLine;
+      return;
+    }
     if (el.closest && el.closest('.lc-header-clock')) {
       el.innerHTML = headerDateCompactHTML(date);
       return;
@@ -123,11 +174,15 @@
 
   function updateHeaderClock() {
     var now = new Date();
+    if (document.getElementById('lc-header-clock')) {
+      applyDigitalClock(now);
+    }
     document.querySelectorAll('#lc-header-time').forEach(function (el) {
       el.textContent = headerTimeText(now);
     });
     var langKey = isEn() ? 'en' : 'ar';
     document.querySelectorAll('#h-date').forEach(function (el) {
+      if (el.closest && el.closest('.lc-digital-clock')) return;
       var suffix = el.getAttribute('data-suffix');
       if (suffix == null) suffix = ' — ';
       var stamp = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate() + '-' + langKey;
@@ -216,6 +271,8 @@
     initHeaderDates: initHeaderDates,
     initHeaderClock: initHeaderClock,
     updateHeaderClock: updateHeaderClock,
+    headerDigitalParts: headerDigitalParts,
+    applyDigitalClock: applyDigitalClock,
     headerTimeText: headerTimeText,
     toWesternDigits: toWesternDigits,
     applyWesternDigits: applyWesternDigits,
