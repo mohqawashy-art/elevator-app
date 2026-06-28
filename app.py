@@ -1934,6 +1934,7 @@ def _visits_js_list(visits):
             'fault_code': linked.code if linked else '',
             'customer_id': cust.id if cust else None,
             'elevator': elev.code if elev else '',
+            'building': (elev.building_name if elev else '') or '',
             'customer': cust.name if cust else '',
             'customer_name_en': (cust.name_en or '') if cust else '',
             'technician': visit_technicians_label(v),

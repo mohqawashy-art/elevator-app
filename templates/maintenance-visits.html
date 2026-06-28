@@ -400,6 +400,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="elevator">المصعد <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="building">المبنى / الوحدة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="technician">الفريق <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="visit_type">النوع <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="visit_date">التاريخ <span class="sort-ind"></span></th>
@@ -987,6 +988,7 @@ function renderTable(data) {
       <td class="td-code lc-code">${v.code}</td>
       <td class="td-name">${D(LC ? LC.name(v.customer, v.customer_name_en) : v.customer)}</td>
       <td class="lc-elev">${v.elevator}</td>
+      <td style="font-size:12px;color:var(--text2)">${D(v.building || '—')}</td>
       <td>${D(v.technician)}</td>
       <td>${D(v.visit_type)}</td>
       <td class="lc-date">${v.visit_date}</td>
@@ -1683,6 +1685,15 @@ function onManualDistrictChange() {
   filterPlanDistrict(district);
 }
 
+function planVisitBuildingLabel(v) {
+  const b = (v.building || '').trim();
+  const el = (v.elevator || '').trim();
+  const cust = (v.customer || '').trim();
+  if (b) return b;
+  if (el && cust) return cust + ' — ' + el;
+  return (v.district || cust || '—');
+}
+
 function formatPlanDayLabel(dateStr) {
   if (!dateStr) return '—';
   if (window.LiftCoreFormat && LiftCoreFormat.dateLabel) return LiftCoreFormat.dateLabel(dateStr);
@@ -1735,14 +1746,22 @@ function renderPlanDistricts() {
       return String(a.elevator || '').localeCompare(String(b.elevator || ''), 'ar');
     });
     const districts = [...new Set(visits.map(v => v.district || 'غير محدد'))].join('، ');
+    const planRowHead = `<div class="plan-visit-head" style="display:flex;align-items:center;gap:8px;padding:0 0 6px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);margin-bottom:4px">
+        <span style="width:16px;flex-shrink:0"></span>
+        <span style="font-family:var(--font-en);min-width:58px">المصعد</span>
+        <span style="flex:1;min-width:120px">المبنى / الوحدة</span>
+        <span style="min-width:88px">العميل</span>
+        <span style="font-family:var(--font-en);min-width:64px">الزيارة</span>
+        <span style="margin-right:auto">الفريق</span>
+      </div>`;
     const rows = visits.map(v => `
-      <label data-district="${escHtml(v.district || 'غير محدد')}" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
+      <label data-district="${escHtml(v.district || 'غير محدد')}" style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;border-bottom:1px solid var(--border)">
         <input type="checkbox" class="plan-visit-cb" data-visit-date="${escHtml(v.visit_date)}" value="${v.id}">
-        <span style="font-family:var(--font-en);color:var(--accent);font-weight:600;min-width:52px">${escHtml(v.elevator || '—')}</span>
-        <span style="color:var(--text2)">${escHtml(v.customer)}</span>
-        <span style="color:var(--text3);font-size:11px" title="المبنى/الوحدة">${escHtml(v.building || v.district || '—')}</span>
-        <span style="font-family:var(--font-en);color:var(--text3);font-size:11px">${escHtml(v.code)}</span>
-        <span style="margin-right:auto;color:var(--text3)">${escHtml(v.team || v.technician)}</span>
+        <span style="font-family:var(--font-en);color:var(--accent);font-weight:700;min-width:58px;direction:ltr">${escHtml(v.elevator || '—')}</span>
+        <span style="flex:1;min-width:120px;color:var(--text);font-weight:500" title="المبنى/الوحدة">${escHtml(planVisitBuildingLabel(v))}</span>
+        <span style="min-width:88px;color:var(--text3);font-size:11px">${escHtml(v.customer)}</span>
+        <span style="font-family:var(--font-en);color:var(--text3);font-size:11px;min-width:64px;direction:ltr">${escHtml(v.code)}</span>
+        <span style="margin-right:auto;color:var(--text3);font-size:11px">${escHtml(v.team || v.technician)}</span>
       </label>`).join('');
     return `<div class="plan-day-block" data-visit-date="${escHtml(day)}" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;flex-wrap:wrap">
@@ -1752,7 +1771,7 @@ function renderPlanDistricts() {
         </div>
         <span style="font-size:11px;color:var(--text3);white-space:nowrap">${visits.length} زيارة</span>
       </div>
-      <div class="plan-visit-list" style="max-height:200px;overflow-y:auto;margin-bottom:10px">${rows}</div>
+      <div class="plan-visit-list" style="max-height:240px;overflow-y:auto;margin-bottom:10px">${planRowHead}${rows}</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
         <select class="filter-select plan-team-sel" style="min-width:180px">
           <option value="">اختر الفريق</option>${techOpts}

@@ -39,6 +39,11 @@ echo "==> Fix elevator building labels (Jama)"
 echo "    DB: $DB_FILE"
 python scripts/fix_elevator_building_labels.py "${ARGS[@]}"
 
+echo ""
+echo "==> تحقق (عينة)"
+export DATABASE_URL="sqlite:///${DB_FILE}"
+python scripts/verify_elevator_buildings.py --customer "حمدي" --limit 12 2>/dev/null || true
+
 if printf '%s\n' "${ARGS[@]}" | grep -qx -- '--dry-run'; then
   exit 0
 fi
