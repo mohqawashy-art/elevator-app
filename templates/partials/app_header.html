@@ -42,13 +42,13 @@
         <svg class="lc-fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
         <svg class="lc-fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16" style="display:none"><path d="M9 9H5V5M15 9h4V5M9 15H5v4M15 15h4v4"/></svg>
       </button>
-      <div class="lc-header-clock" id="lc-header-clock" aria-live="polite" data-i18n-skip>
-        <time id="lc-header-time" class="lc-header-time" dir="ltr">00:00:00</time>
-        <span id="h-date" class="lc-header-date" data-suffix=""></span>
-      </div>
       <div class="lang-toggle" title="Language">
         <button type="button" class="lang-opt{% if user_language == 'ar' %} active{% endif %}" id="btn-ar" onclick="LiftCoreI18n.setLang('ar')" aria-label="العربية">ع</button>
         <button type="button" class="lang-opt{% if user_language == 'en' %} active{% endif %}" id="btn-en" onclick="LiftCoreI18n.setLang('en')" aria-label="English">EN</button>
+      </div>
+      <div class="lc-header-clock" id="lc-header-clock" aria-live="polite" data-i18n-skip>
+        <time id="lc-header-time" class="lc-header-time" dir="ltr">00:00:00</time>
+        <span id="h-date" class="lc-header-date" data-suffix=""></span>
       </div>
     </div>
   </div>

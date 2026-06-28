@@ -78,8 +78,35 @@
     return html;
   }
 
+  /** تاريخ مختصر للهيدر — أوضح في صندوق الساعة */
+  function headerDateCompactHTML(date) {
+    date = date || new Date();
+    var day = String(date.getDate()).padStart(2, '0');
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var year = date.getFullYear();
+    var numeric = day + '/' + month + '/' + year;
+    if (isEn()) {
+      try {
+        var wdEn = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+        return '<span class="ar-header-date" dir="ltr">' + esc(wdEn) + ', ' + esc(numeric) + '</span>';
+      } catch (eEn) {
+        return '<span class="ar-header-date" dir="ltr">' + esc(numeric) + '</span>';
+      }
+    }
+    try {
+      var wdAr = new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(date);
+      return '<span class="ar-header-date"><bdi dir="rtl">' + esc(wdAr) + '</bdi>، <bdi dir="ltr" class="lc-num">' + esc(numeric) + '</bdi></span>';
+    } catch (eAr) {
+      return '<span class="ar-header-date"><bdi dir="ltr" class="lc-num">' + esc(numeric) + '</bdi></span>';
+    }
+  }
+
   function setHeaderDate(el, date, suffix) {
     if (!el) return;
+    if (el.closest && el.closest('.lc-header-clock')) {
+      el.innerHTML = headerDateCompactHTML(date);
+      return;
+    }
     el.innerHTML = headerDateHTML(date, suffix);
   }
 
