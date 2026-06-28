@@ -83,6 +83,7 @@
 }
 
 .nav-group-menu .nav-item {
+  display: flex;
   margin: 0;
   padding: 8px 12px 8px 10px;
   font-size: 12px;

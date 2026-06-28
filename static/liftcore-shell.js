@@ -129,12 +129,49 @@
     if (overlay) overlay.classList.remove('open');
   };
 
+  function resetNavGroupMenuPosition(group) {
+    var menu = group.querySelector('.nav-group-menu');
+    if (!menu) return;
+    menu.classList.remove('nav-group-menu-fixed');
+    menu.style.top = '';
+    menu.style.left = '';
+    menu.style.right = '';
+    menu.style.minWidth = '';
+  }
+
+  function positionNavGroupMenu(group) {
+    if (!isDesktopTopNav() || !group.classList.contains('open')) {
+      resetNavGroupMenuPosition(group);
+      return;
+    }
+    var menu = group.querySelector('.nav-group-menu');
+    var btn = group.querySelector('.nav-group-btn');
+    if (!menu || !btn) return;
+    var rect = btn.getBoundingClientRect();
+    menu.classList.add('nav-group-menu-fixed');
+    menu.style.top = Math.round(rect.bottom + 4) + 'px';
+    menu.style.minWidth = Math.max(210, Math.round(rect.width)) + 'px';
+    var dir = document.documentElement.getAttribute('dir') || 'rtl';
+    if (dir === 'ltr') {
+      menu.style.left = Math.round(rect.left) + 'px';
+      menu.style.right = 'auto';
+    } else {
+      menu.style.right = Math.round(window.innerWidth - rect.right) + 'px';
+      menu.style.left = 'auto';
+    }
+  }
+
+  function repositionOpenNavGroups() {
+    document.querySelectorAll('[data-nav-group].open').forEach(positionNavGroupMenu);
+  }
+
   function closeAllNavGroups(except) {
-    document.querySelectorAll('[data-nav-group].open').forEach(function (g) {
+    document.querySelectorAll('[data-nav-group]').forEach(function (g) {
       if (except && g === except) return;
       g.classList.remove('open');
       var btn = g.querySelector('.nav-group-btn');
       if (btn) btn.setAttribute('aria-expanded', 'false');
+      resetNavGroupMenuPosition(g);
     });
   }
 
@@ -151,16 +188,24 @@
         closeAllNavGroups(willOpen ? group : null);
         group.classList.toggle('open', willOpen);
         btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        if (willOpen) {
+          requestAnimationFrame(function () { positionNavGroupMenu(group); });
+        } else {
+          resetNavGroupMenuPosition(group);
+        }
       });
     });
     if (!document.documentElement.dataset.lcNavGroupDocBound) {
       document.documentElement.dataset.lcNavGroupDocBound = '1';
-      document.addEventListener('click', function () {
+      document.addEventListener('click', function (e) {
+        if (e.target.closest('[data-nav-group]')) return;
         closeAllNavGroups();
       });
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') closeAllNavGroups();
       });
+      window.addEventListener('resize', repositionOpenNavGroups);
+      window.addEventListener('scroll', repositionOpenNavGroups, true);
     }
   }
 

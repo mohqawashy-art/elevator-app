@@ -751,8 +751,25 @@ html.lc-fullscreen .main {
     display: flex;
   }
 
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu.nav-group-menu-fixed,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu.nav-group-menu-fixed {
+    position: fixed !important;
+    z-index: 350 !important;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar:has(.nav-group.open),
+  body:has(#sidebar):has(.main) .sidebar:has(.nav-group.open) {
+    overflow: visible !important;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar:has(.nav-group.open) .sidebar-nav,
+  body:has(#sidebar):has(.main) .sidebar:has(.nav-group.open) .sidebar-nav {
+    overflow: visible !important;
+  }
+
   body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item,
   body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item {
+    display: flex !important;
     width: 100%;
     margin: 0;
     justify-content: flex-start;
@@ -1536,6 +1553,22 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
 
   html.lc-shell-ready body:has(#sidebar) .nav-group-menu {
     z-index: 300 !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu.nav-group-menu-fixed {
+    z-index: 350 !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar):has(.nav-group.open) > #sidebar,
+  html.lc-shell-ready body:has(#sidebar):has(.nav-group.open) > .sidebar,
+  html.lc-shell-ready body:has(#sidebar) #sidebar:has(.nav-group.open),
+  html.lc-shell-ready body:has(#sidebar) .sidebar:has(.nav-group.open) {
+    overflow: visible !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) #sidebar:has(.nav-group.open) .sidebar-nav,
+  html.lc-shell-ready body:has(#sidebar) .sidebar:has(.nav-group.open) .sidebar-nav {
+    overflow: visible !important;
   }
 
   html.lc-shell-ready body:has(#sidebar) .header-brand {
