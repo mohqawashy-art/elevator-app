@@ -10,6 +10,7 @@
     '/elevators': { ar: 'المصاعد', en: 'Elevators' },
     '/contracts': { ar: 'العقود', en: 'Contracts' },
     '/technicians': { ar: 'الفنيون', en: 'Technicians' },
+    '/technicians?tab=teams': { ar: 'فرق الصيانة', en: 'Maintenance Teams' },
     '/maintenance-visits': { ar: 'الصيانة', en: 'Maintenance' },
     '/faults': { ar: 'الأعطال', en: 'Faults' },
     '/parts-billing': { ar: 'تركيب قطع غيار', en: 'Parts Installation' },

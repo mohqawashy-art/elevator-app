@@ -22,9 +22,31 @@
     return true;
   }
 
+  function isHiddenTabPanel(el) {
+    if (!el || !el.style) return false;
+    return el.style.display === 'none';
+  }
+
+  function isTableWrapCandidate(wrap) {
+    if (!wrap || wrap.classList.contains('lc-sticky-skip')) return false;
+    var node = wrap.parentElement;
+    while (node) {
+      if (node.id === 'tab-teams' || node.id === 'tab-table') {
+        if (isHiddenTabPanel(node)) return false;
+      }
+      if (node.classList && node.classList.contains('content')) break;
+      node = node.parentElement;
+    }
+    return true;
+  }
+
   function getPrimaryTableWrap(content) {
     var wraps = content.querySelectorAll('.table-wrap');
-    return wraps.length ? wraps[wraps.length - 1] : null;
+    var candidate = null;
+    for (var i = 0; i < wraps.length; i++) {
+      if (isTableWrapCandidate(wraps[i])) candidate = wraps[i];
+    }
+    return candidate;
   }
 
   function collectAboveTable(tableWrap, content) {
