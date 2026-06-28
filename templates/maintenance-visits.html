@@ -674,6 +674,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <button type="button" class="btn btn-primary btn-sm" id="btn-confirm-distribute" disabled onclick="confirmDistributeTeams()">تأكيد إعادة التوزيع</button>
         </div>
       </details>
+      <div class="form-section-title">جدول الخطة — حسب التاريخ</div>
       <div id="plan-districts" style="margin-bottom:14px"></div>
 
       <div class="form-section-title">إرسال خط السير على واتساب (رئيس الفريق)</div>
@@ -1682,20 +1683,32 @@ function onManualDistrictChange() {
   filterPlanDistrict(district);
 }
 
+function formatPlanDayLabel(dateStr) {
+  if (!dateStr) return '—';
+  if (window.LiftCoreFormat && LiftCoreFormat.dateLabel) return LiftCoreFormat.dateLabel(dateStr);
+  const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const d = new Date(dateStr + 'T12:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  return days[d.getDay()] + ' — ' + dateStr;
+}
+
 function filterPlanDistrict(district) {
-  document.querySelectorAll('.plan-district-block').forEach(block => {
-    if (!district) {
-      block.style.display = '';
-      block.style.borderColor = '';
-    } else {
-      const match = block.dataset.district === district;
-      block.style.display = match ? '' : 'none';
-      block.style.borderColor = match ? 'var(--accent)' : '';
-    }
+  document.querySelectorAll('.plan-day-block').forEach(block => {
+    const rows = block.querySelectorAll('label[data-district]');
+    let anyVisible = !district;
+    rows.forEach(row => {
+      const match = !district || row.dataset.district === district;
+      row.style.display = match ? '' : 'none';
+      row.style.background = match && district ? 'rgba(42,127,255,.06)' : '';
+      if (match) anyVisible = true;
+    });
+    block.style.display = anyVisible ? '' : 'none';
+    block.style.borderColor = '';
   });
   if (district) {
-    const block = Array.from(document.querySelectorAll('.plan-district-block'))
-      .find(b => b.dataset.district === district);
+    const block = Array.from(document.querySelectorAll('.plan-day-block'))
+      .find(b => Array.from(b.querySelectorAll('label[data-district]'))
+        .some(row => row.dataset.district === district && row.style.display !== 'none'));
     if (block) block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
@@ -1703,41 +1716,50 @@ function filterPlanDistrict(district) {
 function renderPlanDistricts() {
   const el = document.getElementById('plan-districts');
   if (!el) return;
-  const by = {};
+  const byDate = {};
   PLAN_VISITS.forEach(v => {
-    const d = v.district || 'غير محدد';
-    if (!by[d]) by[d] = [];
-    by[d].push(v);
+    const day = v.visit_date || 'غير محدد';
+    if (!byDate[day]) byDate[day] = [];
+    byDate[day].push(v);
   });
   if (!PLAN_VISITS.length) {
-    el.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:12px">لا توجد زيارات في هذه الخطة بعد — اضغط «توليد كل المناطق» أو أضف يدوياً من تبويب الإعداد اليدوي.</p>';
+    el.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:12px">لا توجد زيارات في هذه الخطة بعد — شغّل «تشغيل الخطة» أو أضف يدوياً من تبويب الإعداد اليدوي.</p>';
     return;
   }
   const techOpts = MAINT_TEAMS.map(t => `<option value="${t.id}">${escHtml(t.label)}</option>`).join('');
-  el.innerHTML = Object.keys(by).sort().map(district => {
-    const visits = by[district];
+  const sortedDays = Object.keys(byDate).sort();
+  el.innerHTML = sortedDays.map(day => {
+    const visits = byDate[day].slice().sort((a, b) => {
+      const ro = (a.route_order || 0) - (b.route_order || 0);
+      if (ro) return ro;
+      return String(a.elevator || '').localeCompare(String(b.elevator || ''), 'ar');
+    });
+    const districts = [...new Set(visits.map(v => v.district || 'غير محدد'))].join('، ');
     const rows = visits.map(v => `
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
+      <label data-district="${escHtml(v.district || 'غير محدد')}" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
         <input type="checkbox" class="plan-visit-cb" data-visit-date="${escHtml(v.visit_date)}" value="${v.id}">
-        <span style="font-family:var(--font-en);color:var(--accent);font-weight:600">${escHtml(v.elevator || '—')}</span>
-        <span style="color:var(--text3)">${escHtml(v.customer)}</span>
-        <span style="font-family:var(--font-en);color:var(--text3)">${escHtml(v.code)}</span>
-        <span style="color:var(--text3);direction:ltr">${escHtml(v.visit_date)}</span>
+        <span style="font-family:var(--font-en);color:var(--accent);font-weight:600;min-width:52px">${escHtml(v.elevator || '—')}</span>
+        <span style="color:var(--text2)">${escHtml(v.customer)}</span>
+        <span style="color:var(--text3);font-size:11px">${escHtml(v.district || '—')}</span>
+        <span style="font-family:var(--font-en);color:var(--text3);font-size:11px">${escHtml(v.code)}</span>
         <span style="margin-right:auto;color:var(--text3)">${escHtml(v.team || v.technician)}</span>
       </label>`).join('');
-    return `<div class="plan-district-block" data-district="${escHtml(district)}" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <strong>${escHtml(district)}</strong>
-        <span style="font-size:11px;color:var(--text3)">${visits.length} زيارة</span>
+    return `<div class="plan-day-block" data-visit-date="${escHtml(day)}" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;flex-wrap:wrap">
+        <div>
+          <strong style="direction:ltr;display:inline-block">${escHtml(formatPlanDayLabel(day))}</strong>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">${escHtml(districts)}</div>
+        </div>
+        <span style="font-size:11px;color:var(--text3);white-space:nowrap">${visits.length} زيارة</span>
       </div>
-      <div class="plan-visit-list" style="max-height:160px;overflow-y:auto;margin-bottom:10px">${rows}</div>
+      <div class="plan-visit-list" style="max-height:200px;overflow-y:auto;margin-bottom:10px">${rows}</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
         <select class="filter-select plan-team-sel" style="min-width:180px">
           <option value="">اختر الفريق</option>${techOpts}
         </select>
         <button type="button" class="btn btn-primary btn-sm plan-assign-sel">تعيين المحدد</button>
         <button type="button" class="btn btn-success btn-sm plan-assign-dispatch">تعيين وإرسال واتساب</button>
-        <button type="button" class="btn btn-secondary btn-sm plan-assign-free">تعيين غير الموزّع فقط</button>
+        <button type="button" class="btn btn-secondary btn-sm plan-assign-free">تعيين غير الموزّع في هذا اليوم</button>
         <button type="button" class="btn btn-secondary btn-sm plan-select-all">تحديد الكل</button>
       </div>
     </div>`;
@@ -1750,11 +1772,11 @@ function renderPlanDistricts() {
     btn.onclick = () => assignSelectedVisits(btn, true);
   });
   el.querySelectorAll('.plan-assign-free').forEach(btn => {
-    btn.onclick = () => assignDistrictFree(btn);
+    btn.onclick = () => assignDayUnassigned(btn);
   });
   el.querySelectorAll('.plan-select-all').forEach(btn => {
     btn.onclick = () => {
-      const block = btn.closest('.plan-district-block');
+      const block = btn.closest('.plan-day-block');
       if (block) block.querySelectorAll('.plan-visit-cb').forEach(cb => { cb.checked = true; });
     };
   });
@@ -1763,7 +1785,7 @@ function renderPlanDistricts() {
 }
 
 function assignSelectedVisits(btn, andDispatch) {
-  const block = btn.closest('.plan-district-block');
+  const block = btn.closest('.plan-day-block');
   if (!block) return;
   const teamSel = block.querySelector('.plan-team-sel');
   const teamId = teamSel && teamSel.value;
@@ -1797,20 +1819,30 @@ function assignSelectedVisits(btn, andDispatch) {
     .catch(err => alert(err.message || err));
 }
 
-function assignDistrictFree(btn) {
-  const block = btn.closest('.plan-district-block');
+function assignDayUnassigned(btn) {
+  const block = btn.closest('.plan-day-block');
   if (!block) return;
-  const district = block.dataset.district;
+  const visitDate = block.dataset.visitDate;
   const teamSel = block.querySelector('.plan-team-sel');
   const teamId = teamSel && teamSel.value;
   if (!teamId) { alert('اختر الفريق'); return; }
-  fetchPlanApi('/api/maintenance/assign-district', {
-    plan_month: planMonth(), district, team_id: teamId, only_unassigned: true
+  const ids = PLAN_VISITS
+    .filter(v => v.visit_date === visitDate && !v.team_id)
+    .map(v => String(v.id));
+  if (!ids.length) { alert('لا توجد زيارات غير موزّعة في هذا اليوم'); return; }
+  fetchPlanApi('/api/maintenance/assign-visits', {
+    plan_month: planMonth(), visit_ids: ids, team_id: teamId,
   }).then(data => {
     applyPlanData(data);
     document.getElementById('dispatch-team').value = teamId;
     onDispatchTeamChange();
-    if (data.updated > 0) alert('تم تعيين ' + data.updated + ' زيارة غير موزّعة لفريق «' + teamSel.options[teamSel.selectedIndex].text + '»');
+    if (visitDate) {
+      document.getElementById('dispatch-date').value = visitDate;
+      document.getElementById('dispatch-day').value = 'custom';
+    }
+    if (data.updated > 0) {
+      alert('تم تعيين ' + data.updated + ' زيارة غير موزّعة ليوم ' + visitDate);
+    }
   }).catch(err => alert(err.message || err));
 }
 
