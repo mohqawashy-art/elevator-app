@@ -6,6 +6,7 @@ app.py
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
+from models import MaintenanceTeam
 from models import VisitTechnician, FaultTechnician
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
@@ -102,6 +103,25 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 if os.environ.get('LIFTCORE_HTTPS', '').strip().lower() in ('1', 'true', 'yes'):
     app.config['SESSION_COOKIE_SECURE'] = True
     app.config['PREFERRED_URL_SCHEME'] = 'https'
+
+from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
+
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+
+@app.after_request
+def _security_headers(response):
+    if os.environ.get('LIFTCORE_HTTPS', '').strip().lower() not in ('1', 'true', 'yes'):
+        return response
+    proto = (request.headers.get('X-Forwarded-Proto') or request.scheme or '').lower()
+    if proto == 'https' or request.is_secure:
+        response.headers.setdefault(
+            'Strict-Transport-Security', 'max-age=63072000; includeSubDomains'
+        )
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    return response
 
 db.init_app(app)
 
@@ -823,6 +843,7 @@ with app.app_context():
                 ('checklist_json', 'TEXT'),
                 ('checklist_template_key', 'VARCHAR(50)'),
                 ('completed_at', 'DATETIME'),
+                ('maintenance_team_id', 'INTEGER'),
             ],
             'settings': [
                 ('google_maps_api_key', 'VARCHAR(200)'),
@@ -3537,6 +3558,9 @@ def maintenance_visits():
     plan_default = f'{today.year}-{today.month:02d}'
     month_end = today.replace(day=monthrange(today.year, today.month)[1])
     maint_techs = [t for t in technicians if (t.team or 'عام') in ('صيانة', 'عام')] or list(technicians)
+    from maintenance_teams import list_all_teams, team_to_dict
+    maint_teams = [team_to_dict(t) for t in list_all_teams() if t.active]
+    all_teams = [team_to_dict(t) for t in list_all_teams()]
     from visit_cleanup import find_duplicate_visit_ids
     duplicate_visit_ids = find_duplicate_visit_ids()
     return render_template(
@@ -3558,6 +3582,8 @@ def maintenance_visits():
         ],
         technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],
         maint_technicians_js=[{'id': t.id, 'name': t.name} for t in maint_techs],
+        maint_teams_js=maint_teams,
+        all_teams_js=all_teams,
         visit_map_points=_visit_map_points(visits),
         next_visit_code=next_code(MaintenanceVisit, 'VI-', digits=5),
         visit_stats=visit_stats(),
@@ -3954,22 +3980,36 @@ def api_generate_district_plan():
     else:
         today = date.today()
         year, month = today.year, today.month
-    return jsonify(generate_district_plan(year, month, district))
+    preview = str(data.get('preview', '')).lower() in ('1', 'true', 'yes')
+    confirmed = str(data.get('confirmed', '')).lower() in ('1', 'true', 'yes')
+    if preview:
+        return jsonify(generate_district_plan(year, month, district, preview_only=True))
+    if not confirmed:
+        return jsonify({'error': 'يجب عرض المعاينة ثم الضغط على «تأكيد التفعيل»'}), 400
+    return jsonify(generate_district_plan(year, month, district, preview_only=False))
 
 
 @app.route('/api/maintenance/assign-visits', methods=['POST'])
 def api_assign_visits():
     from operations import assign_visits_to_technician, get_plan
+    from maintenance_teams import assign_visits_to_team
 
     data = request.get_json(silent=True) or request.form
     visit_ids = data.get('visit_ids') or []
     if isinstance(visit_ids, str):
         visit_ids = [x for x in visit_ids.split(',') if x.strip()]
+    team_id = data.get('team_id')
     tech_id = data.get('technician_id')
     plan_month = data.get('plan_month', '').strip()
-    if not visit_ids or not tech_id:
-        return jsonify({'error': 'اختر الزيارات والفني'}), 400
-    n = assign_visits_to_technician([int(x) for x in visit_ids], int(tech_id), plan_month)
+    if not visit_ids or (not team_id and not tech_id):
+        return jsonify({'error': 'اختر الزيارات والفريق'}), 400
+    try:
+        if team_id:
+            n = assign_visits_to_team([int(x) for x in visit_ids], int(team_id), plan_month)
+        else:
+            n = assign_visits_to_technician([int(x) for x in visit_ids], int(tech_id), plan_month)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     if not plan_month and visit_ids:
         first = MaintenanceVisit.query.get(int(visit_ids[0]))
         if first and first.plan_month:
@@ -3996,7 +4036,17 @@ def api_generate_plan():
             year, month = today.year + 1, 1
         else:
             year, month = today.year, today.month + 1
-    result = generate_monthly_plan(year, month, replace_draft=bool(data.get('replace')))
+    preview = str(data.get('preview', '')).lower() in ('1', 'true', 'yes')
+    confirmed = str(data.get('confirmed', '')).lower() in ('1', 'true', 'yes')
+    if preview:
+        return jsonify(generate_monthly_plan(
+            year, month, replace_draft=bool(data.get('replace')), preview_only=True,
+        ))
+    if not confirmed:
+        return jsonify({'error': 'يجب عرض المعاينة ثم الضغط على «تأكيد التفعيل»'}), 400
+    result = generate_monthly_plan(
+        year, month, replace_draft=bool(data.get('replace')), preview_only=False,
+    )
     return jsonify(result)
 
 
@@ -4017,22 +4067,95 @@ def api_cancel_plan():
 
 @app.route('/api/maintenance/assign-district', methods=['POST'])
 def api_assign_district():
-    from operations import assign_district_technician
+    from operations import get_plan
+    from maintenance_teams import assign_district_team
 
     data = request.get_json(silent=True) or request.form
-    from operations import assign_district_technician, get_plan
-
     plan_month = (data.get('plan_month') or '').strip()
     district = (data.get('district') or '').strip()
-    n = assign_district_technician(
-        plan_month,
-        district,
-        int(data.get('technician_id')),
-        only_unassigned=bool(data.get('only_unassigned', True)),
-    )
+    team_id = data.get('team_id')
+    if not team_id:
+        return jsonify({'error': 'اختر الفريق'}), 400
+    try:
+        n = assign_district_team(
+            plan_month,
+            district,
+            int(team_id),
+            only_unassigned=bool(data.get('only_unassigned', True)),
+        )
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     result = {'updated': n}
     if plan_month:
         result.update(get_plan(plan_month))
+    return jsonify(result)
+
+
+@app.route('/api/maintenance/teams', methods=['GET'])
+def api_list_maintenance_teams():
+    from maintenance_teams import list_all_teams, team_to_dict
+    return jsonify({'teams': [team_to_dict(t) for t in list_all_teams()]})
+
+
+@app.route('/api/maintenance/teams', methods=['POST'])
+def api_save_maintenance_team():
+    from operations import next_code
+    from maintenance_teams import team_to_dict
+
+    data = request.get_json(silent=True) or request.form
+    team_id = data.get('id')
+    name = (data.get('name') or '').strip()
+    leader_id = data.get('leader_id')
+    assistant_id = data.get('assistant_id') or None
+    if assistant_id in ('', '0', 0):
+        assistant_id = None
+    if not name or not leader_id:
+        return jsonify({'error': 'اسم الفريق ورئيس الفريق مطلوبان'}), 400
+    if assistant_id and int(assistant_id) == int(leader_id):
+        return jsonify({'error': 'المساعد يجب أن يختلف عن رئيس الفريق'}), 400
+    if team_id:
+        team = MaintenanceTeam.query.get_or_404(int(team_id))
+    else:
+        team = MaintenanceTeam(code=next_code(MaintenanceTeam, 'MT-', digits=3))
+        db.session.add(team)
+    team.name = name
+    team.leader_id = int(leader_id)
+    team.assistant_id = int(assistant_id) if assistant_id else None
+    team.active = str(data.get('active', '1')).lower() not in ('0', 'false', 'no')
+    team.sort_order = int(data.get('sort_order') or team.sort_order or 0)
+    team.notes = (data.get('notes') or '').strip() or None
+    db.session.commit()
+    return jsonify({'team': team_to_dict(team)})
+
+
+@app.route('/api/maintenance/teams/<int:team_id>/delete', methods=['POST'])
+def api_delete_maintenance_team(team_id):
+    team = MaintenanceTeam.query.get_or_404(team_id)
+    assigned = MaintenanceVisit.query.filter_by(maintenance_team_id=team.id).count()
+    if assigned:
+        return jsonify({'error': f'لا يمكن الحذف — {assigned} زيارة مرتبطة بهذا الفريق'}), 400
+    db.session.delete(team)
+    db.session.commit()
+    return jsonify({'deleted': team_id})
+
+
+@app.route('/api/maintenance/distribute-teams', methods=['POST'])
+def api_distribute_teams():
+    from maintenance_teams import distribute_plan_to_teams
+
+    data = request.get_json(silent=True) or request.form
+    plan_month = (data.get('plan_month') or '').strip()
+    if not plan_month or '-' not in plan_month:
+        return jsonify({'error': 'حدد شهر الخطة (YYYY-MM)'}), 400
+    preview = str(data.get('preview', '')).lower() in ('1', 'true', 'yes')
+    confirmed = str(data.get('confirmed', '')).lower() in ('1', 'true', 'yes')
+    if preview:
+        return jsonify(distribute_plan_to_teams(plan_month, preview_only=True))
+    if not confirmed:
+        return jsonify({'error': 'اعرض معاينة التوزيع ثم اضغط «تأكيد التوزيع»'}), 400
+    result = distribute_plan_to_teams(plan_month, preview_only=False)
+    if result.get('error'):
+        return jsonify(result), 400
     return jsonify(result)
 
 

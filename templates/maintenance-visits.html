@@ -424,7 +424,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="elevator">المصعد <span class="sort-ind"></span></th>
-                <th class="th-sort" data-sort-col="technician">الفنيون <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="technician">الفريق <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="visit_type">النوع <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="visit_date">التاريخ <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="visit_time">الوقت <span class="sort-ind"></span></th>
@@ -608,21 +608,24 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div id="plan-panel-auto">
-        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">توليد زيارات <strong>للشهر المحدد أعلاه فقط</strong> — من العقود النشطة (كل المناطق أو منطقة واحدة).</p>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">توليد زيارات <strong>للشهر المحدد أعلاه فقط</strong> — من العقود النشطة. <strong>لن تُفعَّل الزيارات إلا بعد المعاينة ثم التأكيد.</strong></p>
+        <div id="plan-preview-box" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(224,144,48,.35);background:rgba(224,144,48,.08);font-size:12px;line-height:1.6"></div>
         <div class="form-grid" style="margin-bottom:10px">
-          <div class="field" style="display:flex;align-items:flex-end">
-            <button class="btn btn-primary btn-sm" type="button" onclick="generatePlan()">توليد كل المناطق</button>
+          <div class="field" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="previewPlan('all')">① معاينة التوليد</button>
+            <button class="btn btn-primary btn-sm" type="button" id="btn-confirm-plan-all" disabled onclick="confirmPlan('all')">② تأكيد وتفعيل الكل</button>
           </div>
           <div class="field"><label>منطقة محددة</label>
-            <select id="plan-auto-district">
+            <select id="plan-auto-district" onchange="PLAN_PREVIEW.district=null; document.getElementById('btn-confirm-plan-district').disabled=true;">
               <option value="">— اختر المنطقة —</option>
               {% for d in plan_districts %}
               <option value="{{ d }}">{{ d }}</option>
               {% endfor %}
             </select>
           </div>
-          <div class="field" style="display:flex;align-items:flex-end">
-            <button class="btn btn-warning btn-sm" type="button" onclick="generateDistrictPlan()">توليد هذه المنطقة فقط</button>
+          <div class="field" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="previewPlan('district')">① معاينة المنطقة</button>
+            <button class="btn btn-warning btn-sm" type="button" id="btn-confirm-plan-district" disabled onclick="confirmPlan('district')">② تأكيد المنطقة</button>
           </div>
         </div>
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
@@ -655,22 +658,43 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div id="plan-summary" style="font-size:12px;color:var(--text3);margin:14px 0 8px"></div>
       <div id="plan-tech-summary" style="font-size:12px;margin-bottom:12px"></div>
 
-      <div class="form-section-title">توزيع الفنيين (يمكن أكثر من فريق في نفس المنطقة)</div>
-      <p style="font-size:11px;color:var(--text3);margin-bottom:8px">هنا تُخطَّط زيارات <strong>الشهر كاملاً</strong>. الفني يرى على جواله <strong>اليوم وغداً فقط</strong> — والإرسال يومياً من الأسفل.</p>
+      <div class="form-section-title">إدارة فرق الصيانة</div>
+      <p style="font-size:11px;color:var(--text3);margin-bottom:8px">كل فريق = <strong>فني + مساعد فني</strong>. التسمية: «اسم الفريق — رئيس الفريق».</p>
+      <div id="teams-panel" style="margin-bottom:14px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px">
+        <div id="teams-list" style="margin-bottom:10px"></div>
+        <div class="form-grid" style="margin-bottom:8px">
+          <div class="field"><label>اسم الفريق</label><input type="text" id="team-form-name" placeholder="مثال: فريق الشمال"></div>
+          <div class="field"><label>رئيس الفريق (فني)</label>
+            <select id="team-form-leader"><option value="">—</option>{% for t in maint_technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+          </div>
+          <div class="field"><label>مساعد فني</label>
+            <select id="team-form-assistant"><option value="">— اختياري —</option>{% for t in maint_technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end;gap:8px">
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveMaintenanceTeam()">حفظ الفريق</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="resetTeamForm()">جديد</button>
+          </div>
+        </div>
+        <input type="hidden" id="team-form-id" value="">
+      </div>
+
+      <div class="form-section-title">توزيع الزيارات على الفرق</div>
+      <p style="font-size:11px;color:var(--text3);margin-bottom:8px">توزيع تلقائي <strong>جغرافي</strong> — بحد أقصى <strong>6 مصاعد لكل فريق في اليوم</strong>. أو عيّن يدوياً من بطاقات المناطق.</p>
+      <div id="distribute-preview-box" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(42,127,255,.35);background:rgba(42,127,255,.08);font-size:12px;line-height:1.6"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="previewDistributeTeams()">① معاينة التوزيع على الفرق</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-confirm-distribute" disabled onclick="confirmDistributeTeams()">② تأكيد التوزيع</button>
+      </div>
       <div id="plan-districts" style="margin-bottom:14px"></div>
 
-      <div class="form-section-title">إرسال خط السير على واتساب</div>
+      <div class="form-section-title">إرسال خط السير على واتساب (رئيس الفريق)</div>
       <p style="font-size:11px;color:var(--warning);margin-bottom:10px;padding:8px 10px;background:rgba(224,144,48,.08);border-radius:8px;border:1px solid rgba(224,144,48,.2)">
-        <strong>مهم:</strong> «تعيين المحدد» يُسند الزيارات للفني فقط — <strong>لا يرسل واتساب</strong>.
-        بعد التعيين اضغط «إرسال واتساب» أدناه (أو «تعيين وإرسال» من بطاقة المنطقة).
+        <strong>مهم:</strong> التعيين لا يرسل واتساب — اختر الفريق ثم اضغط «إرسال واتساب» (يُرسل لرئيس الفريق).
       </p>
       <div class="form-grid">
-        <div class="field"><label>الفني</label>
-          <select id="dispatch-tech">
-            <option value="">اختر الفني</option>
-            {% for t in maint_technicians %}
-            <option value="{{ t.id }}">{{ t.name }}</option>
-            {% endfor %}
+        <div class="field"><label>الفريق</label>
+          <select id="dispatch-team" onchange="onDispatchTeamChange()">
+            <option value="">اختر الفريق</option>
           </select>
         </div>
         <div class="field"><label>تاريخ الزيارات المراد إرسالها</label>
@@ -687,6 +711,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <button class="btn btn-success btn-sm" type="button" onclick="dispatchRoute()">إرسال واتساب</button>
         </div>
       </div>
+      <input type="hidden" id="dispatch-tech" value="">
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-plan')">إغلاق</button>
@@ -745,7 +770,9 @@ var TECHNICIANS = {{ technicians_js|tojson }};
 var VISIT_MAP_POINTS = {{ visit_map_points|tojson }};
 const NEXT_VISIT_CODE = {{ next_visit_code|tojson }};
 const MAINT_TECHS = {{ maint_technicians_js|tojson }};
+let MAINT_TEAMS = {{ maint_teams_js|tojson }};
 const PLAN_DISTRICTS = {{ plan_districts|tojson }};
+let DISTRIBUTE_PREVIEW = null;
 let PLAN_VISITS = [];
 let PLAN_MODE = 'auto';
 let visitSaving = false;
@@ -1079,6 +1106,20 @@ function openPlanModal() {
   modal.classList.add('open');
   updatePlanMonthHint();
   initDispatchDate();
+  refreshMaintenanceTeams();
+  renderTeamsPanel();
+  renderDispatchTeamSelect();
+}
+
+function refreshMaintenanceTeams() {
+  return fetch('/api/maintenance/teams')
+    .then(r => r.json())
+    .then(data => {
+      MAINT_TEAMS = (data.teams || []).filter(t => t.active);
+      renderTeamsPanel();
+      renderDispatchTeamSelect();
+    })
+    .catch(() => {});
 }
 
 function setPlanMode(mode) {
@@ -1130,6 +1171,12 @@ function updatePlanMonthHint() {
 }
 
 function onPlanMonthChange() {
+  resetPlanPreview();
+  DISTRIBUTE_PREVIEW = null;
+  const dbox = document.getElementById('distribute-preview-box');
+  if (dbox) dbox.style.display = 'none';
+  const db = document.getElementById('btn-confirm-distribute');
+  if (db) db.disabled = true;
   updatePlanMonthHint();
   loadPlan();
 }
@@ -1274,13 +1321,16 @@ function applyPlanData(data) {
   const sum = document.getElementById('plan-summary');
   if (sum) sum.textContent = msg;
   const ts = document.getElementById('plan-tech-summary');
-  if (ts && data.tech_summary && data.tech_summary.length) {
+  const summary = data.team_summary || data.tech_summary || [];
+  if (ts && summary.length) {
     ts.innerHTML = '<strong style="font-size:12px">توزيع الفرق:</strong> ' +
-      data.tech_summary.map(t =>
+      summary.map(t =>
         `<span style="display:inline-block;margin:4px 6px;padding:4px 10px;background:var(--bg3);border-radius:8px;font-size:11px">` +
-        `${t.technician}: <b>${t.count}</b> (${(t.districts||[]).join('، ')})</span>`
+        `${t.team || t.technician}: <b>${t.count}</b> (${(t.districts||[]).join('، ')})</span>`
       ).join('');
   } else if (ts) ts.innerHTML = '';
+  renderTeamsPanel();
+  renderDispatchTeamSelect();
   renderPlanDistricts();
   if (pm) refreshVisitsFromServer(pm).catch(() => {});
 }
@@ -1312,18 +1362,93 @@ function loadPlan() {
     });
 }
 
-function generatePlan() {
-  fetchPlanApi('/api/maintenance/generate-plan', {plan_month: planMonth()})
-    .then(applyPlanData)
+let PLAN_PREVIEW = { all: null, district: null };
+
+function resetPlanPreview() {
+  PLAN_PREVIEW = { all: null, district: null };
+  const box = document.getElementById('plan-preview-box');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+  const bAll = document.getElementById('btn-confirm-plan-all');
+  const bDist = document.getElementById('btn-confirm-plan-district');
+  if (bAll) bAll.disabled = true;
+  if (bDist) bDist.disabled = true;
+}
+
+function renderPlanPreview(data, scope) {
+  const box = document.getElementById('plan-preview-box');
+  if (!box) return;
+  const ym = data.plan_month || planMonth();
+  let html = '<strong>معاينة — لم يُفعَّل شيء بعد</strong><br>';
+  html += 'شهر ' + ym;
+  if (data.district) html += ' — منطقة «' + data.district + '»';
+  html += '<br>سيُنشأ: <b>' + (data.would_create ?? data.created ?? 0) + '</b> زيارة';
+  if (data.would_link) html += ' — يُربط: ' + data.would_link;
+  if (data.would_skip) html += ' — يُتخطى: ' + data.would_skip;
+  if (data.districts != null) html += ' — ' + data.districts + ' منطقة';
+  if (data.current_total != null) html += '<br>موجود حالياً في الخطة: ' + data.current_total;
+  if (data.hint) html += '<br><span style="color:var(--warning)">' + data.hint + '</span>';
+  if (data.samples && data.samples.length) {
+    html += '<br><span style="color:var(--text3)">عينة:</span> ' +
+      data.samples.slice(0, 5).map(s => s.elevator + ' ' + s.visit_date).join(' · ');
+  }
+  html += '<br><span style="color:var(--text3)">اضغط «تأكيد وتفعيل» لتطبيق الخطة.</span>';
+  box.innerHTML = html;
+  box.style.display = 'block';
+  PLAN_PREVIEW[scope] = { month: ym, district: data.district || '', data: data };
+  const btn = document.getElementById(scope === 'all' ? 'btn-confirm-plan-all' : 'btn-confirm-plan-district');
+  if (btn) btn.disabled = !(data.would_create > 0 || data.would_link > 0);
+}
+
+function previewPlan(scope) {
+  const ym = planMonth();
+  if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
+  const body = { plan_month: ym, preview: true };
+  if (scope === 'district') {
+    const district = document.getElementById('plan-auto-district').value;
+    if (!district) { alert('اختر المنطقة من القائمة'); return; }
+    body.district = district;
+    fetchPlanApi('/api/maintenance/generate-district-plan', body)
+      .then(data => renderPlanPreview(data, 'district'))
+      .catch(err => alert(err.message || err));
+    return;
+  }
+  fetchPlanApi('/api/maintenance/generate-plan', body)
+    .then(data => renderPlanPreview(data, 'all'))
     .catch(err => alert(err.message || err));
 }
 
-function generateDistrictPlan() {
-  const district = document.getElementById('plan-auto-district').value;
-  if (!district) { alert('اختر المنطقة من القائمة'); return; }
-  fetchPlanApi('/api/maintenance/generate-district-plan', {plan_month: planMonth(), district})
-    .then(applyPlanData)
+function confirmPlan(scope) {
+  const ym = planMonth();
+  if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
+  const pending = PLAN_PREVIEW[scope];
+  if (!pending || pending.month !== ym) {
+    alert('اعرض المعاينة أولاً (زر ①) قبل التأكيد');
+    return;
+  }
+  const d = pending.data || {};
+  const n = d.would_create ?? d.created ?? 0;
+  const label = scope === 'district' ? ('منطقة «' + (pending.district || '') + '»') : 'كل المناطق';
+  if (!confirm('تأكيد تفعيل خطة ' + ym + ' — ' + label + '؟\n\nسيُنشأ ' + n + ' زيارة مجدولة.')) return;
+  const body = { plan_month: ym, confirmed: true };
+  if (scope === 'district') {
+    body.district = pending.district || document.getElementById('plan-auto-district').value;
+    if (!body.district) { alert('اختر المنطقة'); return; }
+    fetchPlanApi('/api/maintenance/generate-district-plan', body)
+      .then(data => { resetPlanPreview(); applyPlanData(data); alert('تم تفعيل الخطة — أُنشئ ' + (data.created || 0) + ' زيارة'); })
+      .catch(err => alert(err.message || err));
+    return;
+  }
+  fetchPlanApi('/api/maintenance/generate-plan', body)
+    .then(data => { resetPlanPreview(); applyPlanData(data); alert('تم تفعيل الخطة — أُنشئ ' + (data.created || 0) + ' زيارة'); })
     .catch(err => alert(err.message || err));
+}
+
+function generatePlan() {
+  previewPlan('all');
+}
+
+function generateDistrictPlan() {
+  previewPlan('district');
 }
 
 function cancelPlan() {
@@ -1430,7 +1555,7 @@ function renderPlanDistricts() {
     el.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:12px">لا توجد زيارات في هذه الخطة بعد — اضغط «توليد كل المناطق» أو أضف يدوياً من تبويب الإعداد اليدوي.</p>';
     return;
   }
-  const techOpts = MAINT_TECHS.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');
+  const techOpts = MAINT_TEAMS.map(t => `<option value="${t.id}">${escHtml(t.label)}</option>`).join('');
   el.innerHTML = Object.keys(by).sort().map(district => {
     const visits = by[district];
     const rows = visits.map(v => `
@@ -1439,7 +1564,7 @@ function renderPlanDistricts() {
         <span style="font-family:var(--font-en);color:var(--accent)">${escHtml(v.code)}</span>
         <span>${escHtml(v.customer)}</span>
         <span style="color:var(--text3);direction:ltr">${escHtml(v.visit_date)}</span>
-        <span style="margin-right:auto;color:var(--text3)">${escHtml(v.technician)}</span>
+        <span style="margin-right:auto;color:var(--text3)">${escHtml(v.team || v.technician)}</span>
       </label>`).join('');
     return `<div class="plan-district-block" data-district="${escHtml(district)}" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;margin-bottom:8px">
@@ -1448,12 +1573,12 @@ function renderPlanDistricts() {
       </div>
       <div class="plan-visit-list" style="max-height:160px;overflow-y:auto;margin-bottom:10px">${rows}</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-        <select class="filter-select plan-tech-sel" style="min-width:140px">
-          <option value="">اختر الفني</option>${techOpts}
+        <select class="filter-select plan-team-sel" style="min-width:180px">
+          <option value="">اختر الفريق</option>${techOpts}
         </select>
         <button type="button" class="btn btn-primary btn-sm plan-assign-sel">تعيين المحدد</button>
         <button type="button" class="btn btn-success btn-sm plan-assign-dispatch">تعيين وإرسال واتساب</button>
-        <button type="button" class="btn btn-secondary btn-sm plan-assign-free">تعيين غير المكلف فقط</button>
+        <button type="button" class="btn btn-secondary btn-sm plan-assign-free">تعيين غير الموزّع فقط</button>
         <button type="button" class="btn btn-secondary btn-sm plan-select-all">تحديد الكل</button>
       </div>
     </div>`;
@@ -1481,29 +1606,33 @@ function renderPlanDistricts() {
 function assignSelectedVisits(btn, andDispatch) {
   const block = btn.closest('.plan-district-block');
   if (!block) return;
-  const techSel = block.querySelector('.plan-tech-sel');
-  const techId = techSel && techSel.value;
-  if (!techId) { alert('اختر الفني من القائمة'); return; }
+  const teamSel = block.querySelector('.plan-team-sel');
+  const teamId = teamSel && teamSel.value;
+  if (!teamId) { alert('اختر الفريق من القائمة'); return; }
   const ids = Array.from(block.querySelectorAll('.plan-visit-cb:checked')).map(cb => cb.value);
   if (!ids.length) { alert('حدّد زيارة واحدة على الأقل (أو اضغط تحديد الكل)'); return; }
   const ym = planMonth();
   if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
   const checkedDates = Array.from(block.querySelectorAll('.plan-visit-cb:checked'))
     .map(cb => cb.dataset.visitDate).filter(Boolean);
-  fetchPlanApi('/api/maintenance/assign-visits', {plan_month: ym, visit_ids: ids, technician_id: techId})
+  const team = MAINT_TEAMS.find(t => String(t.id) === String(teamId));
+  fetchPlanApi('/api/maintenance/assign-visits', {plan_month: ym, visit_ids: ids, team_id: teamId})
     .then(data => {
       applyPlanData(data);
-      document.getElementById('dispatch-tech').value = techId;
+      if (team) {
+        document.getElementById('dispatch-team').value = teamId;
+        onDispatchTeamChange();
+      }
       if (checkedDates[0]) {
         document.getElementById('dispatch-date').value = checkedDates[0];
         document.getElementById('dispatch-day').value = 'custom';
       }
-      const techName = techSel.options[techSel.selectedIndex].text;
+      const teamName = teamSel.options[teamSel.selectedIndex].text;
       if (data.updated > 0) {
-        alert('تم تعيين ' + data.updated + ' زيارة لـ ' + techName + (andDispatch ? '' : '\n\nلإرسال واتساب: اختر تاريخ الزيارة ثم اضغط «إرسال واتساب»'));
+        alert('تم تعيين ' + data.updated + ' زيارة لفريق «' + teamName + '»' + (andDispatch ? '' : '\n\nلإرسال واتساب: اختر التاريخ ثم اضغط «إرسال واتساب»'));
         if (andDispatch) dispatchRoute();
       } else {
-        alert('لم يتم تعيين أي زيارة — تأكد من تحديد الزيارات والفني');
+        alert('لم يتم تعيين أي زيارة — تأكد من تحديد الزيارات والفريق');
       }
     })
     .catch(err => alert(err.message || err));
@@ -1513,23 +1642,160 @@ function assignDistrictFree(btn) {
   const block = btn.closest('.plan-district-block');
   if (!block) return;
   const district = block.dataset.district;
-  const techSel = block.querySelector('.plan-tech-sel');
-  const techId = techSel && techSel.value;
-  if (!techId) { alert('اختر الفني'); return; }
+  const teamSel = block.querySelector('.plan-team-sel');
+  const teamId = teamSel && teamSel.value;
+  if (!teamId) { alert('اختر الفريق'); return; }
   fetchPlanApi('/api/maintenance/assign-district', {
-    plan_month: planMonth(), district, technician_id: techId, only_unassigned: true
+    plan_month: planMonth(), district, team_id: teamId, only_unassigned: true
   }).then(data => {
     applyPlanData(data);
-    document.getElementById('dispatch-tech').value = techId;
-    if (data.updated > 0) alert('تم تعيين ' + data.updated + ' زيارة غير مكلفة لـ ' + techSel.options[techSel.selectedIndex].text);
+    document.getElementById('dispatch-team').value = teamId;
+    onDispatchTeamChange();
+    if (data.updated > 0) alert('تم تعيين ' + data.updated + ' زيارة غير موزّعة لفريق «' + teamSel.options[teamSel.selectedIndex].text + '»');
   }).catch(err => alert(err.message || err));
 }
 
+function renderTeamsPanel() {
+  const el = document.getElementById('teams-list');
+  if (!el) return;
+  if (!MAINT_TEAMS.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--warning)">لا توجد فرق — أضف فريقاً أدناه (فني + مساعد).</p>';
+    return;
+  }
+  el.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
+    '<tr style="color:var(--text3)"><th style="text-align:right;padding:4px">الفريق</th><th style="text-align:right;padding:4px">رئيس</th><th style="text-align:right;padding:4px">مساعد</th><th></th></tr>' +
+    MAINT_TEAMS.map(t => `<tr>
+      <td style="padding:6px 4px"><strong>${escHtml(t.label)}</strong></td>
+      <td style="padding:6px 4px">${escHtml(t.leader_name)}</td>
+      <td style="padding:6px 4px">${escHtml(t.assistant_name || '—')}</td>
+      <td style="padding:6px 4px;white-space:nowrap">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="editMaintenanceTeam(${t.id})">تعديل</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="deleteMaintenanceTeam(${t.id})">حذف</button>
+      </td>
+    </tr>`).join('') + '</table>';
+}
+
+function renderDispatchTeamSelect() {
+  const sel = document.getElementById('dispatch-team');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">اختر الفريق</option>' +
+    MAINT_TEAMS.map(t => `<option value="${t.id}">${escHtml(t.label)}</option>`).join('');
+  if (cur) sel.value = cur;
+  onDispatchTeamChange();
+}
+
+function onDispatchTeamChange() {
+  const teamId = document.getElementById('dispatch-team')?.value;
+  const team = MAINT_TEAMS.find(t => String(t.id) === String(teamId));
+  const hidden = document.getElementById('dispatch-tech');
+  if (hidden) hidden.value = team ? team.leader_id : '';
+}
+
+function resetTeamForm() {
+  document.getElementById('team-form-id').value = '';
+  document.getElementById('team-form-name').value = '';
+  document.getElementById('team-form-leader').value = '';
+  document.getElementById('team-form-assistant').value = '';
+}
+
+function editMaintenanceTeam(id) {
+  const t = MAINT_TEAMS.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('team-form-id').value = t.id;
+  document.getElementById('team-form-name').value = t.name;
+  document.getElementById('team-form-leader').value = t.leader_id;
+  document.getElementById('team-form-assistant').value = t.assistant_id || '';
+}
+
+function saveMaintenanceTeam() {
+  const body = {
+    id: document.getElementById('team-form-id').value || undefined,
+    name: document.getElementById('team-form-name').value.trim(),
+    leader_id: document.getElementById('team-form-leader').value,
+    assistant_id: document.getElementById('team-form-assistant').value,
+  };
+  if (!body.name || !body.leader_id) { alert('اسم الفريق ورئيس الفريق مطلوبان'); return; }
+  fetchPlanApi('/api/maintenance/teams', body)
+    .then(data => {
+      const team = data.team;
+      const idx = MAINT_TEAMS.findIndex(x => x.id === team.id);
+      if (idx >= 0) MAINT_TEAMS[idx] = team;
+      else MAINT_TEAMS.push(team);
+      MAINT_TEAMS.sort((a, b) => (a.sort_order - b.sort_order) || a.name.localeCompare(b.name, 'ar'));
+      resetTeamForm();
+      renderTeamsPanel();
+      renderDispatchTeamSelect();
+      renderPlanDistricts();
+      alert('تم حفظ الفريق «' + team.label + '»');
+    })
+    .catch(err => alert(err.message || err));
+}
+
+function deleteMaintenanceTeam(id) {
+  if (!confirm('حذف هذا الفريق؟')) return;
+  fetchPlanApi('/api/maintenance/teams/' + id + '/delete', {})
+    .then(() => {
+      MAINT_TEAMS = MAINT_TEAMS.filter(t => t.id !== id);
+      renderTeamsPanel();
+      renderDispatchTeamSelect();
+      renderPlanDistricts();
+    })
+    .catch(err => alert(err.message || err));
+}
+
+function previewDistributeTeams() {
+  const ym = planMonth();
+  if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
+  if (!MAINT_TEAMS.length) { alert('أنشئ فرقاً أولاً'); return; }
+  fetchPlanApi('/api/maintenance/distribute-teams', {plan_month: ym, preview: true})
+    .then(data => {
+      DISTRIBUTE_PREVIEW = { month: ym, data };
+      const box = document.getElementById('distribute-preview-box');
+      const btn = document.getElementById('btn-confirm-distribute');
+      let html = '<strong>معاينة التوزيع — لم يُطبَّق بعد</strong><br>';
+      html += 'سيُوزَّع: <b>' + (data.would_assign || 0) + '</b> زيارة على ' + (data.teams_used || 0) + ' فريق';
+      html += ' (حد أقصى ' + (data.max_per_team_day || 6) + ' مصعد/فريق/يوم)<br>';
+      if (data.by_team && data.by_team.length) {
+        html += data.by_team.map(t => `${escHtml(t.team)}: ${t.count}`).join(' · ') + '<br>';
+      }
+      if (data.hint) html += '<span style="color:var(--warning)">' + escHtml(data.hint) + '</span><br>';
+      if (data.samples && data.samples.length) {
+        html += '<span style="color:var(--text3)">عينة:</span> ' +
+          data.samples.slice(0, 5).map(s => s.team + ' / ' + s.elevator).join(' · ');
+      }
+      if (box) { box.innerHTML = html; box.style.display = 'block'; }
+      if (btn) btn.disabled = !(data.would_assign > 0);
+    })
+    .catch(err => alert(err.message || err));
+}
+
+function confirmDistributeTeams() {
+  const ym = planMonth();
+  if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
+  if (!DISTRIBUTE_PREVIEW || DISTRIBUTE_PREVIEW.month !== ym) {
+    alert('اعرض المعاينة أولاً (زر ①)'); return;
+  }
+  const n = DISTRIBUTE_PREVIEW.data.would_assign || 0;
+  if (!confirm('تأكيد توزيع ' + n + ' زيارة على الفرق لشهر ' + ym + '؟')) return;
+  fetchPlanApi('/api/maintenance/distribute-teams', {plan_month: ym, confirmed: true})
+    .then(data => {
+      DISTRIBUTE_PREVIEW = null;
+      const box = document.getElementById('distribute-preview-box');
+      if (box) box.style.display = 'none';
+      document.getElementById('btn-confirm-distribute').disabled = true;
+      applyPlanData(data);
+      alert('تم التوزيع — ' + (data.assigned || 0) + ' زيارة');
+    })
+    .catch(err => alert(err.message || err));
+}
+
 function dispatchRoute() {
+  onDispatchTeamChange();
   const techId = document.getElementById('dispatch-tech').value;
   const dispatchDate = document.getElementById('dispatch-date')?.value;
   const dispatchDay = dispatchDate || document.getElementById('dispatch-day')?.value || 'today';
-  if (!techId) { alert('اختر الفني'); return; }
+  if (!techId) { alert('اختر الفريق (يُرسل لرئيس الفريق)'); return; }
   fetch('/api/maintenance/dispatch/' + techId, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},

@@ -193,6 +193,29 @@ class TechnicianDocument(db.Model):
 
 
 # =============================================
+# 4ب. فرق الصيانة الدورية (فني + مساعد)
+# =============================================
+class MaintenanceTeam(db.Model):
+    __tablename__ = 'maintenance_teams'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    code            = db.Column(db.String(20), unique=True, nullable=False)  # MT-001
+    name            = db.Column(db.String(100), nullable=False)
+    leader_id       = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=False)
+    assistant_id    = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    active          = db.Column(db.Boolean, default=True)
+    sort_order      = db.Column(db.Integer, default=0)
+    notes           = db.Column(db.Text)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    leader = db.relationship('Technician', foreign_keys=[leader_id])
+    assistant = db.relationship('Technician', foreign_keys=[assistant_id])
+
+    def __repr__(self):
+        return f'<MaintenanceTeam {self.code} {self.name}>'
+
+
+# =============================================
 # 5. زيارات الصيانة
 # =============================================
 class MaintenanceVisit(db.Model):
@@ -203,6 +226,7 @@ class MaintenanceVisit(db.Model):
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
     elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
     technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    maintenance_team_id = db.Column(db.Integer, db.ForeignKey('maintenance_teams.id'))
     fault_id        = db.Column(db.Integer, db.ForeignKey('faults.id'))
     visit_type      = db.Column(db.String(50))   # دورية / طارئة / متابعة
     visit_date      = db.Column(db.Date, nullable=False)
@@ -222,6 +246,8 @@ class MaintenanceVisit(db.Model):
     customer_signature = db.Column(db.Boolean, default=False)
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    maintenance_team = db.relationship('MaintenanceTeam', backref='visits', lazy=True)
 
     def __repr__(self):
         return f'<Visit {self.code}>'

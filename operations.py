@@ -203,17 +203,24 @@ def _existing_plan_codes(plan_month: str) -> set[str]:
     return keys
 
 
-def generate_monthly_plan(year: int, month: int, *, replace_draft: bool = False) -> dict:
+def generate_monthly_plan(
+    year: int, month: int, *, replace_draft: bool = False, preview_only: bool = False,
+) -> dict:
     """توليد زيارات دورية لشهر محدد من العقود النشطة."""
     start, end = _month_bounds(year, month)
     plan_month = f'{year}-{month:02d}'
-    today = date.today()
 
+    drafts_to_replace = 0
     if replace_draft:
-        MaintenanceVisit.query.filter(
+        drafts_to_replace = MaintenanceVisit.query.filter(
             MaintenanceVisit.plan_month == plan_month,
             MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
-        ).delete(synchronize_session=False)
+        ).count()
+        if not preview_only and drafts_to_replace:
+            MaintenanceVisit.query.filter(
+                MaintenanceVisit.plan_month == plan_month,
+                MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
+            ).delete(synchronize_session=False)
 
     contracts = Contract.query.filter(
         Contract.start_date <= end,
@@ -244,17 +251,20 @@ def generate_monthly_plan(year: int, month: int, *, replace_draft: bool = False)
 
     next_code_num = int(next_code(MaintenanceVisit, 'VI-', digits=5).replace('VI-', ''))
     day_idx = 0
+    preview_samples: list[dict] = []
     for district in sorted(district_groups.keys()):
         items = district_groups[district]
         for item in items:
             elev = item['elevator']
             contract = item['contract']
+            customer = item['customer']
             visit_day = work_days[day_idx % len(work_days)] if work_days else start
             day_idx += 1
             existing_v = _periodic_visit_in_month(elev.id, year, month)
             if existing_v:
                 if not existing_v.plan_month:
-                    existing_v.plan_month = plan_month
+                    if not preview_only:
+                        existing_v.plan_month = plan_month
                     linked += 1
                 else:
                     skipped += 1
@@ -264,24 +274,55 @@ def generate_monthly_plan(year: int, month: int, *, replace_draft: bool = False)
                 skipped += 1
                 continue
 
-            visit_code = f'VI-{str(next_code_num).zfill(5)}'
-            next_code_num += 1
-            v = MaintenanceVisit(
-                code=visit_code,
-                contract_id=contract.id,
-                elevator_id=elev.id,
-                visit_type='دورية',
-                visit_date=visit_day,
-                priority='عادية',
-                status='مجدولة',
-                plan_month=plan_month,
-                route_order=0,
-                observations=f'خطة شهر {plan_month} — {district}',
-            )
-            db.session.add(v)
-            db.session.flush()
-            existing.add(key)
+            if preview_only and len(preview_samples) < 12:
+                preview_samples.append({
+                    'elevator': elev.code,
+                    'customer': customer.name if customer else '—',
+                    'district': district,
+                    'visit_date': str(visit_day),
+                })
+
+            if not preview_only:
+                visit_code = f'VI-{str(next_code_num).zfill(5)}'
+                next_code_num += 1
+                v = MaintenanceVisit(
+                    code=visit_code,
+                    contract_id=contract.id,
+                    elevator_id=elev.id,
+                    visit_type='دورية',
+                    visit_date=visit_day,
+                    priority='عادية',
+                    status='مجدولة',
+                    plan_month=plan_month,
+                    route_order=0,
+                    observations=f'خطة شهر {plan_month} — {district}',
+                )
+                db.session.add(v)
+                db.session.flush()
             created += 1
+            existing.add(key)
+
+    if preview_only:
+        current = get_plan(plan_month)
+        payload = {
+            'preview': True,
+            'plan_month': plan_month,
+            'would_create': created,
+            'would_link': linked,
+            'would_skip': skipped,
+            'districts': len(district_groups),
+            'drafts_to_replace': drafts_to_replace if replace_draft else 0,
+            'current_total': current.get('total', 0),
+            'samples': preview_samples,
+        }
+        if not district_groups:
+            payload['hint'] = (
+                'لا توجد عقود صيانة نشطة تغطي هذا الشهر — '
+                'تأكد من العقود (نوع صيانة/ضمان)، الحالة «نشط»، وربط المصاعد.'
+            )
+        elif created == 0 and linked == 0:
+            payload['hint'] = 'لا زيارات جديدة — قد تكون موجودة مسبقاً.'
+        return payload
 
     db.session.commit()
     result = get_plan(plan_month)
@@ -291,6 +332,7 @@ def generate_monthly_plan(year: int, month: int, *, replace_draft: bool = False)
         'linked': linked,
         'skipped': skipped,
         'districts': len(district_groups),
+        'confirmed': True,
     }
     if not district_groups:
         payload['hint'] = (
@@ -398,6 +440,19 @@ def get_plan(plan_month: str) -> dict:
     by_district: dict[str, list] = defaultdict(list)
     for r in rows:
         by_district[r['district'] or 'غير محدد'].append(r)
+    team_groups: dict[int | None, list] = defaultdict(list)
+    for r in rows:
+        team_groups[r.get('team_id')].append(r)
+    team_summary = []
+    for tid, items in team_groups.items():
+        dists = sorted({i['district'] for i in items if i.get('district')})
+        team_summary.append({
+            'team_id': tid,
+            'team': items[0]['team'] if items else '— بدون فريق —',
+            'count': len(items),
+            'districts': dists,
+        })
+    team_summary.sort(key=lambda x: (-x['count'], x['team'] or ''))
     tech_groups: dict[int | None, list] = defaultdict(list)
     for r in rows:
         tech_groups[r.get('technician_id')].append(r)
@@ -417,12 +472,17 @@ def get_plan(plan_month: str) -> dict:
         'districts': len(by_district),
         'visits': rows,
         'by_district': {k: len(v) for k, v in by_district.items()},
+        'team_summary': team_summary,
         'tech_summary': tech_summary,
     }
 
 
 def _visit_plan_row(v: MaintenanceVisit) -> dict:
+    from maintenance_teams import team_display_label
+
     cust = v.elevator.customer if v.elevator else None
+    team = v.maintenance_team
+    team_label = team_display_label(team) if team else '— بدون فريق —'
     return {
         'id': v.id,
         'code': v.code,
@@ -431,14 +491,18 @@ def _visit_plan_row(v: MaintenanceVisit) -> dict:
         'customer': cust.name if cust else '—',
         'customer_code': cust.code if cust else '',
         'elevator': v.elevator.code if v.elevator else '',
+        'team_id': v.maintenance_team_id or None,
+        'team': team_label,
         'technician_id': v.technician_id or None,
-        'technician': v.technician.name if v.technician else '— بدون فني —',
+        'technician': team_label,
         'status': v.status,
         'route_order': v.route_order or 0,
     }
 
 
-def generate_district_plan(year: int, month: int, district: str) -> dict:
+def generate_district_plan(
+    year: int, month: int, district: str, *, preview_only: bool = False,
+) -> dict:
     """توليد زيارات شهرية لمنطقة واحدة فقط."""
     start, end = _month_bounds(year, month)
     plan_month = f'{year}-{month:02d}'
@@ -455,6 +519,7 @@ def generate_district_plan(year: int, month: int, district: str) -> dict:
     skipped = 0
     linked = 0
     day_idx = 0
+    preview_samples: list[dict] = []
     for contract in contracts:
         if not _is_maintenance_contract(contract):
             continue
@@ -465,7 +530,8 @@ def generate_district_plan(year: int, month: int, district: str) -> dict:
             existing_v = _periodic_visit_in_month(elev.id, year, month)
             if existing_v:
                 if not existing_v.plan_month:
-                    existing_v.plan_month = plan_month
+                    if not preview_only:
+                        existing_v.plan_month = plan_month
                     linked += 1
                 else:
                     skipped += 1
@@ -476,27 +542,48 @@ def generate_district_plan(year: int, month: int, district: str) -> dict:
             if key in existing:
                 skipped += 1
                 continue
-            visit_code = f'VI-{str(next_code_num).zfill(5)}'
-            next_code_num += 1
-            v = MaintenanceVisit(
-                code=visit_code,
-                contract_id=contract.id,
-                elevator_id=elev.id,
-                visit_type='دورية',
-                visit_date=visit_day,
-                priority='عادية',
-                status='مجدولة',
-                plan_month=plan_month,
-                route_order=0,
-                observations=f'خطة شهر {plan_month} — {district}',
-            )
-            db.session.add(v)
-            db.session.flush()
+            if preview_only and len(preview_samples) < 12:
+                preview_samples.append({
+                    'elevator': elev.code,
+                    'customer': customer.name if customer else '—',
+                    'district': district,
+                    'visit_date': str(visit_day),
+                })
+            if not preview_only:
+                visit_code = f'VI-{str(next_code_num).zfill(5)}'
+                next_code_num += 1
+                v = MaintenanceVisit(
+                    code=visit_code,
+                    contract_id=contract.id,
+                    elevator_id=elev.id,
+                    visit_type='دورية',
+                    visit_date=visit_day,
+                    priority='عادية',
+                    status='مجدولة',
+                    plan_month=plan_month,
+                    route_order=0,
+                    observations=f'خطة شهر {plan_month} — {district}',
+                )
+                db.session.add(v)
+                db.session.flush()
             existing.add(key)
             created += 1
+
+    if preview_only:
+        return {
+            'preview': True,
+            'plan_month': plan_month,
+            'district': district,
+            'would_create': created,
+            'would_link': linked,
+            'would_skip': skipped,
+            'samples': preview_samples,
+        }
+
     db.session.commit()
     return get_plan(plan_month) | {
         'created': created, 'linked': linked, 'skipped': skipped, 'district': district,
+        'confirmed': True,
     }
 
 
@@ -546,6 +633,7 @@ def assign_visits_to_technician(
         if not v:
             continue
         v.technician_id = int(technician_id)
+        v.maintenance_team_id = None
         sync_visit_technicians(v, [int(technician_id)])
         if plan_month and not v.plan_month:
             v.plan_month = plan_month
@@ -561,17 +649,24 @@ def assign_visits_to_technician(
 def assign_district_technician(
     plan_month: str, district: str, technician_id: int, *, only_unassigned: bool = True
 ) -> int:
-    """تعيين زيارات المنطقة — افتراضياً غير المكلفة فقط."""
+    """تعيين زيارات المنطقة لفريق عبر معرّف رئيس الفريق (للتوافق مع الواجهة القديمة)."""
+    from maintenance_teams import assign_district_team
+    from models import MaintenanceTeam
     from technician_assignments import sync_visit_technicians
+
+    team = MaintenanceTeam.query.filter_by(leader_id=int(technician_id), active=True).first()
+    if team:
+        return assign_district_team(plan_month, district, team.id, only_unassigned=only_unassigned)
 
     visits = _visits_for_plan_month(plan_month)
     updated = 0
     for v in visits:
         if visit_district_name(v) != district:
             continue
-        if only_unassigned and v.technician_id:
+        if only_unassigned and (v.maintenance_team_id or v.technician_id):
             continue
         v.technician_id = technician_id
+        v.maintenance_team_id = None
         sync_visit_technicians(v, [technician_id])
         updated += 1
     db.session.commit()
