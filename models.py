@@ -665,6 +665,13 @@ class Settings(db.Model):
     bank_account_name = db.Column(db.String(200))
     bank_iban         = db.Column(db.String(50))
     bank_account_no   = db.Column(db.String(50))
+    work_country      = db.Column(db.String(2), default='SA')
+    work_weekdays_json = db.Column(db.Text)
+    work_hours_start  = db.Column(db.String(5), default='08:00')
+    work_hours_end    = db.Column(db.String(5), default='17:00')
+    respect_public_holidays = db.Column(db.Boolean, default=True)
+    custom_holidays_json = db.Column(db.Text)
+    extra_work_days_json = db.Column(db.Text)
 
 
 # =============================================

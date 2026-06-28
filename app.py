@@ -865,6 +865,13 @@ with app.app_context():
                 ('bank_account_name', 'VARCHAR(200)'),
                 ('bank_iban', 'VARCHAR(50)'),
                 ('bank_account_no', 'VARCHAR(50)'),
+                ('work_country', 'VARCHAR(2)'),
+                ('work_weekdays_json', 'TEXT'),
+                ('work_hours_start', 'VARCHAR(5)'),
+                ('work_hours_end', 'VARCHAR(5)'),
+                ('respect_public_holidays', 'BOOLEAN'),
+                ('custom_holidays_json', 'TEXT'),
+                ('extra_work_days_json', 'TEXT'),
             ],
             'users': [
                 ('theme', 'VARCHAR(10)'),
@@ -3792,12 +3799,19 @@ def visit_add():
 
     visit_type = request.form.get('visit_type', 'صيانة دورية')
     tech_ids = parse_technician_ids(request.form)
+    visit_date = datetime.strptime(request.form['visit_date'], '%Y-%m-%d').date()
+    from work_calendar import work_day_validation_error
+    werr = work_day_validation_error(visit_date)
+    if werr:
+        flash(werr, 'error')
+        return redirect(url_for('maintenance_visits'))
+
     visit_payload = {
         'elevator_id': links['elevator_id'],
         'technician_id': tech_ids[0] if tech_ids else None,
         'contract_id': links['contract_id'],
         'visit_type': visit_type,
-        'visit_date': datetime.strptime(request.form['visit_date'], '%Y-%m-%d').date(),
+        'visit_date': visit_date,
         'visit_time': request.form.get('visit_time', ''),
         'priority': request.form.get('priority', 'عادية'),
         'status': request.form.get('status', 'مجدولة'),
@@ -3847,11 +3861,17 @@ def visit_edit(id):
         request.form.get('visit_date'),
     )
     tech_ids = parse_technician_ids(request.form)
+    visit_date = datetime.strptime(request.form['visit_date'], '%Y-%m-%d').date()
+    from work_calendar import work_day_validation_error
+    werr = work_day_validation_error(visit_date)
+    if werr:
+        flash(werr, 'error')
+        return redirect(url_for('maintenance_visits'))
     v.elevator_id   = links['elevator_id']
     v.contract_id   = links['contract_id']
     v.technician_id = tech_ids[0] if tech_ids else None
     v.visit_type    = request.form.get('visit_type','')
-    v.visit_date    = datetime.strptime(request.form['visit_date'], '%Y-%m-%d').date()
+    v.visit_date    = visit_date
     v.visit_time    = request.form.get('visit_time','')
     v.priority      = request.form.get('priority','عادية')
     v.status        = request.form.get('status','مجدولة')
@@ -4064,6 +4084,44 @@ def api_generate_plan():
             result['teams_assigned'] = dist.get('assigned', 0)
             result['teams_skipped'] = dist.get('skipped', 0)
     return jsonify(result)
+
+
+@app.route('/api/work-calendar')
+def api_work_calendar():
+    from work_calendar import month_calendar, work_calendar_summary
+
+    if not require_login():
+        return jsonify({'error': 'يجب تسجيل الدخول'}), 401
+    ym = (request.args.get('month') or '').strip()
+    if ym and '-' in ym:
+        return jsonify(month_calendar(ym))
+    return jsonify({'summary': work_calendar_summary()})
+
+
+@app.route('/api/work-calendar/check')
+def api_work_calendar_check():
+    from work_calendar import is_working_day, non_working_reason, next_working_day
+
+    if not require_login():
+        return jsonify({'error': 'يجب تسجيل الدخول'}), 401
+    raw = (request.args.get('date') or '').strip()[:10]
+    if not raw:
+        return jsonify({'error': 'حدد التاريخ YYYY-MM-DD'}), 400
+    try:
+        d = datetime.strptime(raw, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'تاريخ غير صالح'}), 400
+    working = is_working_day(d)
+    payload = {
+        'date': raw,
+        'working': working,
+        'reason': None if working else non_working_reason(d),
+    }
+    if not working:
+        nxt = next_working_day(d)
+        if nxt != d:
+            payload['next_work_day'] = nxt.isoformat()
+    return jsonify(payload)
 
 
 @app.route('/api/maintenance/plan-readiness')
@@ -6455,6 +6513,14 @@ def settings():
         app.logger.warning('signatories load failed: %s', exc)
         signatories = []
     from field_auth import technician_has_field_pin
+    from work_calendar import (
+        COUNTRY_OPTIONS,
+        WEEKDAY_LABELS_AR,
+        WEEKDAY_ORDER_AR,
+        custom_holidays,
+        extra_work_days,
+        work_weekdays,
+    )
 
     field_technicians = []
     for t in Technician.query.order_by(Technician.name).all():
@@ -6479,6 +6545,12 @@ def settings():
         settings_notice=session.pop('settings_notice', None),
         generated_username=session.pop('settings_generated_username', None),
         generated_password=session.pop('settings_generated_password', None),
+        country_options=COUNTRY_OPTIONS,
+        weekday_order=WEEKDAY_ORDER_AR,
+        weekday_labels=WEEKDAY_LABELS_AR,
+        work_days_selected=work_weekdays(s),
+        custom_holidays_text='\n'.join(sorted(d.isoformat() for d in custom_holidays(s))),
+        extra_work_days_text='\n'.join(sorted(d.isoformat() for d in extra_work_days(s))),
     )
 
 
@@ -6625,6 +6697,36 @@ def settings_save():
         s.tax_pct = 15
     s.currency        = request.form.get('currency', 'SAR')
     s.language        = request.form.get('language', 'ar')
+    from work_calendar import COUNTRY_OPTIONS, DEFAULT_WEEKDAYS_BY_COUNTRY
+    import json as _json
+    import re as _re
+
+    country = (request.form.get('work_country') or 'SA').strip().upper()[:2]
+    if country not in dict(COUNTRY_OPTIONS):
+        country = 'SA'
+    s.work_country = country
+    selected_weekdays = []
+    for w in range(7):
+        if request.form.get(f'work_weekday_{w}'):
+            selected_weekdays.append(w)
+    if not selected_weekdays:
+        selected_weekdays = list(DEFAULT_WEEKDAYS_BY_COUNTRY.get(country, DEFAULT_WEEKDAYS_BY_COUNTRY['SA']))
+    s.work_weekdays_json = _json.dumps(sorted(set(selected_weekdays)))
+    s.work_hours_start = (request.form.get('work_hours_start') or '08:00')[:5]
+    s.work_hours_end = (request.form.get('work_hours_end') or '17:00')[:5]
+    s.respect_public_holidays = request.form.get('respect_public_holidays') == '1'
+
+    def _dates_from_textarea(name: str) -> list[str]:
+        raw = request.form.get(name, '') or ''
+        out: list[str] = []
+        for line in raw.replace(',', '\n').splitlines():
+            line = line.strip()
+            if _re.fullmatch(r'\d{4}-\d{2}-\d{2}', line):
+                out.append(line)
+        return sorted(set(out))
+
+    s.custom_holidays_json = _json.dumps(_dates_from_textarea('custom_holidays'))
+    s.extra_work_days_json = _json.dumps(_dates_from_textarea('extra_work_days'))
     s.logo_width_sidebar = _clamp_logo_width(request.form.get('logo_width_sidebar'), 150)
     s.logo_width_report  = _clamp_logo_width(request.form.get('logo_width_report'), 150)
     s.logo_width_login   = _clamp_logo_width(request.form.get('logo_width_login'), 180, min_w=80, max_w=500)

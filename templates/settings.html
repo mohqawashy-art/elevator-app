@@ -167,6 +167,53 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
         <label>العملة</label>
         <input name="currency" value="{{ settings.currency or 'SAR' }}">
       </div>
+
+      <div class="full section" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">أيام العمل والإجازات</div>
+      <p class="hint full" style="margin-bottom:10px">تُستخدم عند توليد خطة الصيانة وجدولة الزيارات — وتستبعد الإجازات الأسبوعية والعطل الرسمية للدولة المختارة.</p>
+      <div>
+        <label>دولة العطل الرسمية</label>
+        <select name="work_country">
+          {% for code, label in country_options %}
+          <option value="{{ code }}" {% if (settings.work_country or 'SA') == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>ساعات العمل (مرجعية)</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input name="work_hours_start" type="time" value="{{ settings.work_hours_start or '08:00' }}" style="direction:ltr">
+          <span style="color:var(--text3)">إلى</span>
+          <input name="work_hours_end" type="time" value="{{ settings.work_hours_end or '17:00' }}" style="direction:ltr">
+        </div>
+      </div>
+      <div class="full">
+        <label>أيام العمل في الأسبوع</label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:6px">
+          {% for wd in weekday_order %}
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+            <input type="checkbox" name="work_weekday_{{ wd }}" value="1" {% if wd in work_days_selected %}checked{% endif %}>
+            {{ weekday_labels[wd] }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="full">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" name="respect_public_holidays" value="1" {% if settings.respect_public_holidays is not defined or settings.respect_public_holidays %}checked{% endif %}>
+          مراعاة العطل الرسمية للدولة (عيد الفطر، عيد الأضحى، اليوم الوطني، …)
+        </label>
+      </div>
+      <div class="full">
+        <label>إجازات إضافية للشركة (تاريخ لكل سطر)</label>
+        <textarea name="custom_holidays" rows="3" placeholder="2026-09-23&#10;2026-12-31" dir="ltr">{{ custom_holidays_text }}</textarea>
+        <p class="hint">صيغة: YYYY-MM-DD — إجازة داخلية أو يوم إغلاق خاص بالشركة</p>
+      </div>
+      <div class="full">
+        <label>أيام عمل استثنائية (تاريخ لكل سطر)</label>
+        <textarea name="extra_work_days" rows="2" placeholder="2026-06-06" dir="ltr">{{ extra_work_days_text }}</textarea>
+        <p class="hint">للعمل في يوم عطلة أسبوعية أو رسمية عند الحاجة</p>
+      </div>
+
       <div class="full section" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">بيانات التحويل البنكي (تظهر في الفاتورة)</div>
       <div>
         <label>اسم البنك</label>

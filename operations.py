@@ -248,7 +248,8 @@ def generate_monthly_plan(
     existing = _existing_plan_codes(plan_month)
 
     work_days = [start + timedelta(days=i) for i in range((end - start).days + 1)]
-    work_days = [d for d in work_days if d.weekday() != 4]  # استبعاد الجمعة
+    from work_calendar import work_days_between
+    work_days = work_days_between(start, end)
 
     flat_items: list[dict] = []
     seen_elevator_ids: set[int] = set()
@@ -547,8 +548,8 @@ def generate_district_plan(
         or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
     ).all()
     existing = _existing_plan_codes(plan_month)
-    work_days = [start + timedelta(days=i) for i in range((end - start).days + 1)]
-    work_days = [d for d in work_days if d.weekday() != 4]
+    from work_calendar import work_days_between
+    work_days = work_days_between(start, end)
     next_code_num = int(next_code(MaintenanceVisit, 'VI-', digits=5).replace('VI-', ''))
     created = 0
     skipped = 0
@@ -657,6 +658,10 @@ def add_manual_plan_visit(plan_month: str, elevator_id: int, visit_date: str) ->
     cust = elev.customer
     district = _customer_district(cust, elev)
     vdate = datetime.strptime(visit_date[:10], '%Y-%m-%d').date()
+    from work_calendar import work_day_validation_error
+    werr = work_day_validation_error(vdate)
+    if werr:
+        raise ValueError(werr)
     if not _visit_in_plan_month(vdate, plan_month):
         raise ValueError(f'تاريخ الزيارة يجب أن يكون داخل شهر {plan_month}')
     year, month = _parse_plan_month(plan_month)
@@ -766,7 +771,8 @@ def _resolve_dispatch_day(day: str | None = None, on_date: date | None = None) -
     if key in ('today', 'اليوم'):
         return today
     if key in ('tomorrow', 'غدا', 'غداً'):
-        return today + timedelta(days=1)
+        from work_calendar import next_working_day_after
+        return next_working_day_after(today)
     if key and len(key) >= 10:
         return datetime.strptime(key[:10], '%Y-%m-%d').date()
     return today

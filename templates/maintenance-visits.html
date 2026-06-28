@@ -505,7 +505,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="form-section">
         <div class="form-section-title">التوقيت</div>
         <div class="form-grid">
-          <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="f-date" style="direction:ltr"></div>
+          <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="f-date" style="direction:ltr" onchange="onVisitDateChange()"></div>
+          <p id="f-date-hint" style="font-size:11px;color:var(--warning);display:none;margin:-4px 0 0"></p>
           <div class="field"><label>وقت الزيارة</label><input type="time" id="f-time" style="direction:ltr"></div>
           <div class="field"><label>موعد الزيارة القادمة</label><input type="date" lang="en-GB" id="f-next-visit" style="direction:ltr"></div>
         </div>
@@ -592,7 +593,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <li>تُجمَّع المصاعد القريبة جغرافياً (موقع كل مصعد/مبنى) — حتى <strong>6</strong> في يوم واحد.</li>
             <li><strong>زيارة لكل مصعد</strong> — عميل عنده 6 مصاعد = 6 زيارات، وليس زيارة واحدة.</li>
             <li>بعد التأكيد تُوزَّع الزيارات على فرق الصيانة — كل فريق بحد أقصى <strong>6</strong> زيارات/يوم.</li>
-            <li>زر واحد: <strong>معاينة</strong> ثم <strong>تشغيل</strong> (توليد + توزيع معاً).</li>
+            <li>تُجدول الزيارات في <strong>أيام العمل فقط</strong> حسب إعدادات الشركة (الإعدادات ← بيانات الشركة).</li>
           </ol>
         </div>
 
@@ -647,7 +648,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>المصعد / العميل</label>
             <select id="plan-manual-elevator"><option value="">اختر المنطقة أولاً</option></select>
           </div>
-          <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="plan-manual-date" style="direction:ltr"></div>
+          <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="plan-manual-date" style="direction:ltr" onchange="onPlanManualDateChange()"></div>
+          <p id="plan-manual-date-hint" style="font-size:11px;color:var(--warning);display:none;margin:-4px 0 8px;grid-column:1/-1"></p>
           <div class="field" style="display:flex;align-items:flex-end">
             <button class="btn btn-primary btn-sm" type="button" onclick="addManualVisit()">+ إضافة للخطة</button>
           </div>
@@ -1595,6 +1597,42 @@ function loadDistrictElevators() {
     });
 }
 
+function checkWorkDay(dateStr) {
+  if (!dateStr) return Promise.resolve(null);
+  return fetch('/api/work-calendar/check?date=' + encodeURIComponent(dateStr))
+    .then(async r => {
+      const text = await r.text();
+      try { return text ? JSON.parse(text) : {}; } catch (e) { return {}; }
+    })
+    .then(data => {
+      if (data.error) return data.error;
+      if (data.working) return null;
+      let msg = data.reason || 'يوم غير عمل';
+      if (data.next_work_day) msg += ' — أقرب يوم عمل: ' + data.next_work_day;
+      return msg;
+    })
+    .catch(() => null);
+}
+
+function showWorkDayHint(elId, dateStr) {
+  const hint = document.getElementById(elId);
+  if (!hint) return;
+  if (!dateStr) { hint.style.display = 'none'; hint.textContent = ''; return; }
+  checkWorkDay(dateStr).then(msg => {
+    if (!msg) { hint.style.display = 'none'; hint.textContent = ''; return; }
+    hint.textContent = msg;
+    hint.style.display = 'block';
+  });
+}
+
+function onPlanManualDateChange() {
+  showWorkDayHint('plan-manual-date-hint', document.getElementById('plan-manual-date')?.value);
+}
+
+function onVisitDateChange() {
+  showWorkDayHint('f-date-hint', document.getElementById('f-date')?.value);
+}
+
 function addManualVisit() {
   const elevator_id = document.getElementById('plan-manual-elevator').value;
   const visit_date = document.getElementById('plan-manual-date').value;
@@ -1605,9 +1643,12 @@ function addManualVisit() {
     alert('تاريخ الزيارة يجب أن يكون داخل ' + formatMonthLabel(ym));
     return;
   }
-  fetchPlanApi('/api/maintenance/plan/add-visit', {plan_month: ym, elevator_id, visit_date})
-    .then(applyPlanData)
-    .catch(err => alert(err.message || err));
+  checkWorkDay(visit_date).then(msg => {
+    if (msg && !confirm(msg + '\n\nهل تريد المتابعة على أي حال؟')) return;
+    fetchPlanApi('/api/maintenance/plan/add-visit', {plan_month: ym, elevator_id, visit_date})
+      .then(applyPlanData)
+      .catch(err => alert(err.message || err));
+  });
 }
 
 function escHtml(s) {
@@ -1939,48 +1980,54 @@ function saveVisit() {
   if (visitDay < yearAgo) {
     if (!confirm('تاريخ الزيارة قديم جداً (أكثر من سنة) — هل تريد المتابعة؟')) return;
   }
-  const fd = new FormData();
-  const works = document.getElementById('f-work-done');
-  const issues = document.getElementById('f-issues');
-  const parts = document.getElementById('f-parts');
-  const obs = [issues && issues.value, parts && parts.value].filter(Boolean).join('\n');
-  [['elevator_id','f-elevator-sel'],['contract_id','f-contract-sel'],
-   ['visit_type','f-type-sel'],['visit_date','f-date'],['visit_time','f-time'],
-   ['priority','f-priority-sel'],['status','f-status-sel']
-  ].forEach(([f,i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
-  techIds.forEach(id => fd.append('technician_ids', id));
-  if (techIds.length) fd.append('technician_id', techIds[0]);
-  if (works) fd.append('works_done', works.value);
-  fd.append('observations', obs);
+  const proceedSave = () => {
+    const fd = new FormData();
+    const works = document.getElementById('f-work-done');
+    const issues = document.getElementById('f-issues');
+    const parts = document.getElementById('f-parts');
+    const obs = [issues && issues.value, parts && parts.value].filter(Boolean).join('\n');
+    [['elevator_id','f-elevator-sel'],['contract_id','f-contract-sel'],
+     ['visit_type','f-type-sel'],['visit_date','f-date'],['visit_time','f-time'],
+     ['priority','f-priority-sel'],['status','f-status-sel']
+    ].forEach(([f,i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
+    techIds.forEach(id => fd.append('technician_ids', id));
+    if (techIds.length) fd.append('technician_id', techIds[0]);
+    if (works) fd.append('works_done', works.value);
+    fd.append('observations', obs);
 
-  visitSaving = true;
-  const saveBtn = document.getElementById('btn-save-visit');
-  const saveBtnHtml = saveBtn ? saveBtn.innerHTML : '';
-  if (saveBtn) {
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'جاري الحفظ...';
-  }
+    visitSaving = true;
+    const saveBtn = document.getElementById('btn-save-visit');
+    const saveBtnHtml = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'جاري الحفظ...';
+    }
 
-  fetch(editId ? `/maintenance-visits/edit/${editId}` : '/maintenance-visits/add', {
-    method: 'POST',
-    body: fd,
-    credentials: 'same-origin',
-  })
-    .then(res => {
-      if (res.redirected || res.ok) {
-        window.location.href = res.url || '/maintenance-visits';
-        return;
-      }
-      throw new Error('save failed');
+    fetch(editId ? `/maintenance-visits/edit/${editId}` : '/maintenance-visits/add', {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin',
     })
-    .catch(() => {
-      visitSaving = false;
-      if (saveBtn) {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = saveBtnHtml;
-      }
-      alert('فشل حفظ الزيارة — تحقق من البيانات وحاول مجدداً');
-    });
+      .then(res => {
+        if (res.redirected || res.ok) {
+          window.location.href = res.url || '/maintenance-visits';
+          return;
+        }
+        throw new Error('save failed');
+      })
+      .catch(() => {
+        visitSaving = false;
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = saveBtnHtml;
+        }
+        alert('فشل حفظ الزيارة — تحقق من البيانات وحاول مجدداً');
+      });
+  };
+  checkWorkDay(vdate.value).then(msg => {
+    if (msg && !confirm(msg + '\n\nهل تريد المتابعة على أي حال؟')) return;
+    proceedSave();
+  });
 }
 
 // ===== تعديل =====
