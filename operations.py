@@ -237,29 +237,42 @@ def generate_monthly_plan(
     work_days = [start + timedelta(days=i) for i in range((end - start).days + 1)]
     work_days = [d for d in work_days if d.weekday() != 4]  # استبعاد الجمعة
 
+    flat_items: list[dict] = []
     for contract in contracts:
         if not _is_maintenance_contract(contract):
             continue
         customer = contract.customer
         for elev in _elevators_for_contract(contract):
             district = _customer_district(customer, elev)
-            district_groups[district].append({
+            flat_items.append({
                 'contract': contract,
                 'elevator': elev,
                 'customer': customer,
+                'district': district,
             })
+
+    from maintenance_teams import cluster_by_geography, item_coordinates, MAX_VISITS_PER_TEAM_DAY
+
+    geo_clusters = cluster_by_geography(
+        flat_items,
+        max_size=MAX_VISITS_PER_TEAM_DAY,
+        coords_fn=item_coordinates,
+        district_fn=lambda it: it.get('district') or 'غير محدد',
+    )
 
     next_code_num = int(next_code(MaintenanceVisit, 'VI-', digits=5).replace('VI-', ''))
     day_idx = 0
     preview_samples: list[dict] = []
-    for district in sorted(district_groups.keys()):
-        items = district_groups[district]
-        for item in items:
+    for cluster in geo_clusters:
+        visit_day = work_days[day_idx % len(work_days)] if work_days else start
+        day_idx += 1
+        districts_in_cluster = sorted({it.get('district') or 'غير محدد' for it in cluster})
+        districts_in_cluster = sorted({it.get('district') or 'غير محدد' for it in cluster})
+        for item in cluster:
             elev = item['elevator']
             contract = item['contract']
             customer = item['customer']
-            visit_day = work_days[day_idx % len(work_days)] if work_days else start
-            day_idx += 1
+            district = item.get('district') or 'غير محدد'
             existing_v = _periodic_visit_in_month(elev.id, year, month)
             if existing_v:
                 if not existing_v.plan_month:
@@ -279,6 +292,7 @@ def generate_monthly_plan(
                     'elevator': elev.code,
                     'customer': customer.name if customer else '—',
                     'district': district,
+                    'districts_group': districts_in_cluster,
                     'visit_date': str(visit_day),
                 })
 
@@ -302,6 +316,10 @@ def generate_monthly_plan(
             created += 1
             existing.add(key)
 
+    district_groups = defaultdict(list)
+    for it in flat_items:
+        district_groups[it.get('district') or 'غير محدد'].append(it)
+
     if preview_only:
         current = get_plan(plan_month)
         payload = {
@@ -311,6 +329,8 @@ def generate_monthly_plan(
             'would_link': linked,
             'would_skip': skipped,
             'districts': len(district_groups),
+            'geo_clusters': len(geo_clusters),
+            'max_per_cluster': MAX_VISITS_PER_TEAM_DAY,
             'drafts_to_replace': drafts_to_replace if replace_draft else 0,
             'current_total': current.get('total', 0),
             'samples': preview_samples,
@@ -332,6 +352,8 @@ def generate_monthly_plan(
         'linked': linked,
         'skipped': skipped,
         'districts': len(district_groups),
+        'geo_clusters': len(geo_clusters),
+        'max_per_cluster': MAX_VISITS_PER_TEAM_DAY,
         'confirmed': True,
     }
     if not district_groups:
@@ -518,8 +540,7 @@ def generate_district_plan(
     created = 0
     skipped = 0
     linked = 0
-    day_idx = 0
-    preview_samples: list[dict] = []
+    flat_items: list[dict] = []
     for contract in contracts:
         if not _is_maintenance_contract(contract):
             continue
@@ -527,6 +548,30 @@ def generate_district_plan(
         for elev in _elevators_for_contract(contract):
             if _customer_district(customer, elev) != district:
                 continue
+            flat_items.append({
+                'contract': contract,
+                'elevator': elev,
+                'customer': customer,
+                'district': district,
+            })
+
+    from maintenance_teams import cluster_by_geography, item_coordinates, MAX_VISITS_PER_TEAM_DAY
+
+    geo_clusters = cluster_by_geography(
+        flat_items,
+        max_size=MAX_VISITS_PER_TEAM_DAY,
+        coords_fn=item_coordinates,
+        district_fn=lambda it: district,
+    )
+    day_idx = 0
+    preview_samples: list[dict] = []
+    for cluster in geo_clusters:
+        visit_day = work_days[day_idx % len(work_days)] if work_days else start
+        day_idx += 1
+        for item in cluster:
+            elev = item['elevator']
+            contract = item['contract']
+            customer = item['customer']
             existing_v = _periodic_visit_in_month(elev.id, year, month)
             if existing_v:
                 if not existing_v.plan_month:
@@ -536,8 +581,6 @@ def generate_district_plan(
                 else:
                     skipped += 1
                 continue
-            visit_day = work_days[day_idx % len(work_days)] if work_days else start
-            day_idx += 1
             key = f'{elev.id}:{visit_day}'
             if key in existing:
                 skipped += 1

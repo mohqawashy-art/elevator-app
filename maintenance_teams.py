@@ -2,12 +2,95 @@
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from datetime import date
 
 from models import MaintenanceTeam, MaintenanceVisit, Technician, db
 
 MAX_VISITS_PER_TEAM_DAY = 6
+DEFAULT_CLUSTER_RADIUS_KM = 5.0
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlon / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(min(1.0, a)))
+
+
+def visit_coordinates(v: MaintenanceVisit) -> tuple[float, float] | None:
+    elev = v.elevator
+    cust = elev.customer if elev else None
+    if cust and cust.lat and cust.lng:
+        return float(cust.lat), float(cust.lng)
+    return None
+
+
+def item_coordinates(item: dict) -> tuple[float, float] | None:
+    cust = item.get('customer')
+    elev = item.get('elevator')
+    if cust and cust.lat and cust.lng:
+        return float(cust.lat), float(cust.lng)
+    if elev and getattr(elev, 'lat', None) and getattr(elev, 'lng', None):
+        return float(elev.lat), float(elev.lng)
+    return None
+
+
+def cluster_by_geography(
+    items: list,
+    *,
+    max_size: int = MAX_VISITS_PER_TEAM_DAY,
+    max_radius_km: float = DEFAULT_CLUSTER_RADIUS_KM,
+    coords_fn,
+    district_fn=None,
+) -> list[list]:
+    """مجموعات متجاورة جغرافياً — مناطق قريبة (مثل الخضراء والشرائع) في مجموعة واحدة."""
+    if not items:
+        return []
+
+    with_coords: list[tuple[object, float, float]] = []
+    by_district: dict[str, list] = defaultdict(list)
+
+    for it in items:
+        c = coords_fn(it)
+        if c:
+            with_coords.append((it, c[0], c[1]))
+        else:
+            d = (district_fn(it) if district_fn else 'غير محدد') or 'غير محدد'
+            by_district[str(d).strip() or 'غير محدد'].append(it)
+
+    chunks: list[list] = []
+    unassigned = sorted(with_coords, key=lambda row: (row[1], row[2]))
+    while unassigned:
+        seed_it, slat, slng = unassigned.pop(0)
+        cluster_items = [seed_it]
+        cluster_coords = [(slat, slng)]
+        while len(cluster_items) < max_size and unassigned:
+            clat = sum(c[0] for c in cluster_coords) / len(cluster_coords)
+            clng = sum(c[1] for c in cluster_coords) / len(cluster_coords)
+            best_i = None
+            best_d = max_radius_km + 1
+            for i, (_, lat, lng) in enumerate(unassigned):
+                d = haversine_km(clat, clng, lat, lng)
+                if d < best_d:
+                    best_d = d
+                    best_i = i
+            if best_i is None or best_d > max_radius_km:
+                break
+            it, lat, lng = unassigned.pop(best_i)
+            cluster_items.append(it)
+            cluster_coords.append((lat, lng))
+        chunks.append(cluster_items)
+
+    for d in sorted(by_district.keys()):
+        batch = by_district[d]
+        for i in range(0, len(batch), max_size):
+            chunks.append(batch[i:i + max_size])
+
+    return chunks
 
 
 def team_display_label(team: MaintenanceTeam | None) -> str:
@@ -118,37 +201,17 @@ def assign_district_team(
     return updated
 
 
-def _visit_geo_key(v: MaintenanceVisit) -> tuple:
+def _chunk_geographic(visits: list[MaintenanceVisit], max_size: int = MAX_VISITS_PER_TEAM_DAY) -> list[list[MaintenanceVisit]]:
+    """تقسيم زيارات اليوم إلى مجموعات جغرافية متجاورة بحد أقصى max_size."""
     from operations import visit_district_name
 
-    district = visit_district_name(v)
-    elev = v.elevator
-    cust = elev.customer if elev else None
-    if cust and cust.lat and cust.lng:
-        return (district, float(cust.lat), float(cust.lng))
-    if cust and cust.address:
-        return (district, hash(cust.address.strip()) % 10000, 0.0)
-    return (district, 0.0, float(v.elevator_id or 0))
-
-
-def _chunk_geographic(visits: list[MaintenanceVisit], max_size: int = MAX_VISITS_PER_TEAM_DAY) -> list[list[MaintenanceVisit]]:
-    """تقسيم زيارات اليوم إلى مجموعات جغرافية (منطقة + إحداثيات) بحد أقصى max_size."""
-    if not visits:
-        return []
-    sorted_visits = sorted(visits, key=_visit_geo_key)
-    chunks: list[list[MaintenanceVisit]] = []
-    current: list[MaintenanceVisit] = []
-    current_district = None
-    for v in sorted_visits:
-        d = _visit_geo_key(v)[0]
-        if current and (len(current) >= max_size or d != current_district):
-            chunks.append(current)
-            current = []
-        current.append(v)
-        current_district = d
-    if current:
-        chunks.append(current)
-    return chunks
+    return cluster_by_geography(
+        visits,
+        max_size=max_size,
+        max_radius_km=DEFAULT_CLUSTER_RADIUS_KM,
+        coords_fn=visit_coordinates,
+        district_fn=visit_district_name,
+    )
 
 
 def _team_day_load(team_day_count: dict[tuple[int, date], int], team_id: int, day: date) -> int:
@@ -246,6 +309,7 @@ def distribute_plan_to_teams(plan_month: str, *, preview_only: bool = False) -> 
             'by_team': by_team_list,
             'samples': samples,
             'max_per_team_day': MAX_VISITS_PER_TEAM_DAY,
+            'geo_radius_km': DEFAULT_CLUSTER_RADIUS_KM,
         }
         if unassigned:
             payload['hint'] = (
@@ -266,4 +330,5 @@ def distribute_plan_to_teams(plan_month: str, *, preview_only: bool = False) -> 
         'assigned': len(assignments),
         'skipped': len(visits) - len(assignments),
         'max_per_team_day': MAX_VISITS_PER_TEAM_DAY,
+        'geo_radius_km': DEFAULT_CLUSTER_RADIUS_KM,
     }

@@ -4050,9 +4050,19 @@ def api_generate_plan():
         ))
     if not confirmed:
         return jsonify({'error': 'يجب عرض المعاينة ثم الضغط على «تأكيد التفعيل»'}), 400
+    plan_month = f'{year}-{month:02d}'
     result = generate_monthly_plan(
         year, month, replace_draft=bool(data.get('replace')), preview_only=False,
     )
+    auto_dist = str(data.get('auto_distribute_teams', 'true')).lower() in ('1', 'true', 'yes')
+    if auto_dist:
+        from maintenance_teams import distribute_plan_to_teams
+        dist = distribute_plan_to_teams(plan_month, preview_only=False)
+        if dist.get('error'):
+            result['team_distribution_error'] = dist['error']
+        else:
+            result['teams_assigned'] = dist.get('assigned', 0)
+            result['teams_skipped'] = dist.get('skipped', 0)
     return jsonify(result)
 
 

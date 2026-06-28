@@ -584,7 +584,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div id="plan-panel-auto">
-        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">توليد زيارات <strong>للشهر المحدد أعلاه فقط</strong> — من العقود النشطة. <strong>لن تُفعَّل الزيارات إلا بعد المعاينة ثم التأكيد.</strong></p>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.65">
+          <strong>آلية التوليد التلقائي:</strong><br>
+          ① تُجمَّع المصاعد <strong>جغرافياً</strong> (إحداثيات العميل — مناطق قريبة مثل الخضراء والشرائع في مجموعة واحدة، بحد أقصى <strong>6</strong> لكل مجموعة/يوم).<br>
+          ② بعد التأكيد يمكن <strong>توزيع الزيارات على الفرق</strong> — كل فريق بحد أقصى 6 زيارات/يوم مع تجميع جغرافي.<br>
+          <strong>لن تُفعَّل الزيارات إلا بعد المعاينة ثم التأكيد.</strong>
+        </p>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);margin-bottom:10px;cursor:pointer">
+          <input type="checkbox" id="plan-auto-distribute" checked style="width:16px;height:16px">
+          توزيع تلقائي على فرق الصيانة بعد تأكيد التوليد
+        </label>
         <div id="plan-preview-box" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(224,144,48,.35);background:rgba(224,144,48,.08);font-size:12px;line-height:1.6"></div>
         <div class="form-grid" style="margin-bottom:10px">
           <div class="field" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
@@ -641,7 +650,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div class="form-section-title">توزيع الزيارات على الفرق</div>
-      <p style="font-size:11px;color:var(--text3);margin-bottom:8px">توزيع تلقائي <strong>جغرافي</strong> — بحد أقصى <strong>6 مصاعد لكل فريق في اليوم</strong>. أو عيّن يدوياً من بطاقات المناطق.</p>
+      <p style="font-size:11px;color:var(--text3);margin-bottom:8px">توزيع تلقائي <strong>جغرافي</strong> (نطاق ~5 كم بين المصاعد) — بحد أقصى <strong>6 مصاعد لكل فريق في اليوم</strong>. المناطق المتجاورة تُوزَّع معاً حتى لو اختلف اسم الحي.</p>
       <div id="distribute-preview-box" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(42,127,255,.35);background:rgba(42,127,255,.08);font-size:12px;line-height:1.6"></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
         <button type="button" class="btn btn-secondary btn-sm" onclick="previewDistributeTeams()">① معاينة التوزيع على الفرق</button>
@@ -1347,11 +1356,17 @@ function renderPlanPreview(data, scope) {
   if (data.would_link) html += ' — يُربط: ' + data.would_link;
   if (data.would_skip) html += ' — يُتخطى: ' + data.would_skip;
   if (data.districts != null) html += ' — ' + data.districts + ' منطقة';
+  if (data.geo_clusters != null) html += '<br>مجموعات جغرافية: <b>' + data.geo_clusters + '</b> (حد ' + (data.max_per_cluster || 6) + ' مصعد/مجموعة/يوم)';
   if (data.current_total != null) html += '<br>موجود حالياً في الخطة: ' + data.current_total;
   if (data.hint) html += '<br><span style="color:var(--warning)">' + data.hint + '</span>';
   if (data.samples && data.samples.length) {
     html += '<br><span style="color:var(--text3)">عينة:</span> ' +
-      data.samples.slice(0, 5).map(s => s.elevator + ' ' + s.visit_date).join(' · ');
+      data.samples.slice(0, 5).map(function (s) {
+        var g = (s.districts_group && s.districts_group.length > 1)
+          ? ' [' + s.districts_group.join('+') + ']'
+          : '';
+        return s.elevator + ' ' + s.visit_date + g;
+      }).join(' · ');
   }
   html += '<br><span style="color:var(--text3)">اضغط «تأكيد وتفعيل» لتطبيق الخطة.</span>';
   box.innerHTML = html;
@@ -1392,6 +1407,8 @@ function confirmPlan(scope) {
   const label = scope === 'district' ? ('منطقة «' + (pending.district || '') + '»') : 'كل المناطق';
   if (!confirm('تأكيد تفعيل خطة ' + ym + ' — ' + label + '؟\n\nسيُنشأ ' + n + ' زيارة مجدولة.')) return;
   const body = { plan_month: ym, confirmed: true };
+  const autoDist = document.getElementById('plan-auto-distribute');
+  if (autoDist && autoDist.checked) body.auto_distribute_teams = true;
   if (scope === 'district') {
     body.district = pending.district || document.getElementById('plan-auto-district').value;
     if (!body.district) { alert('اختر المنطقة'); return; }
@@ -1401,7 +1418,14 @@ function confirmPlan(scope) {
     return;
   }
   fetchPlanApi('/api/maintenance/generate-plan', body)
-    .then(data => { resetPlanPreview(); applyPlanData(data); alert('تم تفعيل الخطة — أُنشئ ' + (data.created || 0) + ' زيارة'); })
+    .then(function (data) {
+      resetPlanPreview();
+      applyPlanData(data);
+      var msg = 'تم تفعيل الخطة — أُنشئ ' + (data.created || 0) + ' زيارة';
+      if (data.teams_assigned != null) msg += '\nوُزِّع ' + data.teams_assigned + ' زيارة على الفرق';
+      if (data.team_distribution_error) msg += '\nتنبيه التوزيع: ' + data.team_distribution_error;
+      alert(msg);
+    })
     .catch(err => alert(err.message || err));
 }
 
@@ -1661,7 +1685,9 @@ function previewDistributeTeams() {
       const btn = document.getElementById('btn-confirm-distribute');
       let html = '<strong>معاينة التوزيع — لم يُطبَّق بعد</strong><br>';
       html += 'سيُوزَّع: <b>' + (data.would_assign || 0) + '</b> زيارة على ' + (data.teams_used || 0) + ' فريق';
-      html += ' (حد أقصى ' + (data.max_per_team_day || 6) + ' مصعد/فريق/يوم)<br>';
+      html += ' (حد أقصى ' + (data.max_per_team_day || 6) + ' مصعد/فريق/يوم';
+      if (data.geo_radius_km) html += ' — تجميع جغرافي ~' + data.geo_radius_km + ' كم';
+      html += ')<br>';
       if (data.by_team && data.by_team.length) {
         html += data.by_team.map(t => `${escHtml(t.team)}: ${t.count}`).join(' · ') + '<br>';
       }
