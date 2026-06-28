@@ -15,11 +15,13 @@
   display: block;
 }
 
-/* أقسام القائمة الجانبية */
-.sidebar-nav .nav-section:not(:first-child) {
-  margin-top: 6px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border, rgba(100, 160, 255, .12));
+/* أقسام القائمة الجانبية (موبايل / قائمة عمودية) */
+@media (max-width: 1100px) {
+  .sidebar-nav .nav-section:not(:first-child) {
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border, rgba(100, 160, 255, .12));
+  }
 }
 .sidebar-nav .nav-section {
   font-weight: 600;
