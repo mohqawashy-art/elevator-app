@@ -15,17 +15,90 @@
   display: block;
 }
 
-/* أقسام القائمة الجانبية (موبايل / قائمة عمودية) */
-@media (max-width: 1100px) {
-  .sidebar-nav .nav-section:not(:first-child) {
-    margin-top: 6px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border, rgba(100, 160, 255, .12));
-  }
+/* أقسام القائمة — قوائم منسدلة */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.sidebar-nav .nav-section {
-  font-weight: 600;
-  color: var(--text3, #4a5a72);
+
+.nav-item-single {
+  margin: 1px 8px;
+}
+
+.nav-group {
+  margin: 0 8px 4px;
+  border-radius: var(--r-sm, 7px);
+}
+
+.nav-group-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm, 7px);
+  background: transparent;
+  color: var(--text2, #8a9bb8);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  text-align: start;
+}
+
+.nav-group-btn:hover,
+.nav-group.open .nav-group-btn {
+  background: var(--bg3, #161e2b);
+  color: var(--text1, #e4eaf5);
+  border-color: var(--border, rgba(100, 160, 255, 0.1));
+}
+
+.nav-group.has-active > .nav-group-btn {
+  color: var(--accent, #2a7fff);
+}
+
+.nav-group-chevron {
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: transform 0.2s ease;
+}
+
+.nav-group.open .nav-group-chevron {
+  transform: rotate(180deg);
+}
+
+.nav-group-menu {
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 0 6px 8px;
+}
+
+.nav-group.open .nav-group-menu {
+  display: flex;
+}
+
+.nav-group-menu .nav-item {
+  margin: 0;
+  padding: 8px 12px 8px 10px;
+  font-size: 12px;
+}
+
+.nav-group-menu .nav-item svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 1100px) {
+  .sidebar-nav .nav-group:not(:first-of-type) {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border, rgba(100, 160, 255, 0.1));
+  }
 }
 
 .rpt-header-logo img {

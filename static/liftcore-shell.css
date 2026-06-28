@@ -685,27 +685,83 @@ html.lc-fullscreen .main {
 
   body:has(#sidebar):has(.main) #sidebar .nav-section,
   body:has(#sidebar):has(.main) .sidebar .nav-section {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text3, #6a7a92);
-    padding: 6px 10px 6px 14px;
-    margin-inline-start: 10px;
-    border-inline-start: 2px solid rgba(42, 127, 255, 0.45);
-    letter-spacing: 0.03em;
-    white-space: nowrap;
-    pointer-events: none;
-    user-select: none;
-    line-height: 1.2;
+    display: none;
   }
 
-  body:has(#sidebar):has(.main) #sidebar .nav-section:first-child,
-  body:has(#sidebar):has(.main) .sidebar .nav-section:first-child {
-    margin-inline-start: 0;
-    padding-inline-start: 6px;
-    border-inline-start: none;
+  body:has(#sidebar):has(.main) #sidebar .nav-group,
+  body:has(#sidebar):has(.main) .sidebar .nav-group {
+    position: relative;
+    flex-shrink: 0;
+    margin: 0 2px;
+    border: none;
+    padding: 0;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group-btn,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text2, #8a9bb8);
+    cursor: pointer;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group-btn:hover,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-btn:hover,
+  body:has(#sidebar):has(.main) #sidebar .nav-group.open > .nav-group-btn,
+  body:has(#sidebar):has(.main) .sidebar .nav-group.open > .nav-group-btn {
+    background: var(--bg3, #161e2b);
+    color: var(--text1, #e4eaf5);
+    border-color: var(--border, rgba(100, 160, 255, 0.15));
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group.has-active > .nav-group-btn,
+  body:has(#sidebar):has(.main) .sidebar .nav-group.has-active > .nav-group-btn {
+    color: var(--accent, #2a7fff);
+    background: rgba(42, 127, 255, 0.1);
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    inset-inline-end: 0;
+    min-width: 210px;
+    max-height: min(70vh, 420px);
+    overflow-y: auto;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+    background: var(--bg2, #111720);
+    border: 1px solid var(--border, rgba(100, 160, 255, 0.15));
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    z-index: 250;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group.open .nav-group-menu,
+  body:has(#sidebar):has(.main) .sidebar .nav-group.open .nav-group-menu {
+    display: flex;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item {
+    width: 100%;
+    margin: 0;
+    justify-content: flex-start;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-item-single,
+  body:has(#sidebar):has(.main) .sidebar .nav-item-single {
+    flex-shrink: 0;
+    margin: 0 2px;
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-item,
@@ -1471,26 +1527,15 @@ html:not([data-theme="light"]) body:not(:has(#sidebar)) .tabs .tab.active {
   }
 
   html.lc-shell-ready body:has(#sidebar) .nav-section {
-    display: flex !important;
-    flex-shrink: 0 !important;
-    align-items: center !important;
-    font-size: 10px !important;
-    font-weight: 600 !important;
-    color: var(--text3, #6a7a92) !important;
-    padding: 6px 10px 6px 14px !important;
-    margin-inline-start: 10px !important;
-    border-inline-start: 2px solid rgba(42, 127, 255, 0.45) !important;
-    letter-spacing: 0.03em !important;
-    white-space: nowrap !important;
-    pointer-events: none !important;
-    user-select: none !important;
-    line-height: 1.2 !important;
+    display: none !important;
   }
 
-  html.lc-shell-ready body:has(#sidebar) .nav-section:first-child {
-    margin-inline-start: 0 !important;
-    padding-inline-start: 6px !important;
-    border-inline-start: none !important;
+  html.lc-shell-ready body:has(#sidebar) .nav-group {
+    position: relative !important;
+  }
+
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu {
+    z-index: 300 !important;
   }
 
   html.lc-shell-ready body:has(#sidebar) .header-brand {

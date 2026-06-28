@@ -129,11 +129,48 @@
     if (overlay) overlay.classList.remove('open');
   };
 
+  function closeAllNavGroups(except) {
+    document.querySelectorAll('[data-nav-group].open').forEach(function (g) {
+      if (except && g === except) return;
+      g.classList.remove('open');
+      var btn = g.querySelector('.nav-group-btn');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function bindNavGroups() {
+    document.querySelectorAll('[data-nav-group]').forEach(function (group) {
+      if (group.dataset.lcNavGroupBound) return;
+      group.dataset.lcNavGroupBound = '1';
+      var btn = group.querySelector('.nav-group-btn');
+      if (!btn) return;
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var willOpen = !group.classList.contains('open');
+        closeAllNavGroups(willOpen ? group : null);
+        group.classList.toggle('open', willOpen);
+        btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      });
+    });
+    if (!document.documentElement.dataset.lcNavGroupDocBound) {
+      document.documentElement.dataset.lcNavGroupDocBound = '1';
+      document.addEventListener('click', function () {
+        closeAllNavGroups();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeAllNavGroups();
+      });
+    }
+  }
+
   function bindSidebarNav() {
+    bindNavGroups();
     document.querySelectorAll('#sidebar .nav-item[href], .sidebar .nav-item[href]').forEach(function (a) {
       if (a.dataset.lcNavBound) return;
       a.dataset.lcNavBound = '1';
       a.addEventListener('click', function () {
+        closeAllNavGroups();
         window.closeSidebar();
         scrollNavItemIntoView(a);
       });
@@ -154,9 +191,25 @@
 
   function highlightActiveNav() {
     var path = (location.pathname || '').replace(/\/+$/, '') || '/';
+    document.querySelectorAll('[data-nav-group]').forEach(function (group) {
+      group.classList.remove('has-active');
+    });
     document.querySelectorAll('#sidebar .nav-item[href], .sidebar .nav-item[href]').forEach(function (a) {
       var href = (a.getAttribute('href') || '').replace(/\/+$/, '') || '/';
       var active = href === path || (href !== '/' && path.indexOf(href) === 0);
+      a.classList.toggle('active', active);
+      if (active) {
+        var group = a.closest('[data-nav-group]');
+        if (group) {
+          group.classList.add('has-active');
+          if (!isDesktopTopNav()) group.classList.add('open');
+        }
+        scrollNavItemIntoView(a);
+      }
+    });
+    document.querySelectorAll('#sidebar .nav-item-single[href], .sidebar .nav-item-single[href]').forEach(function (a) {
+      var href = (a.getAttribute('href') || '').replace(/\/+$/, '') || '/';
+      var active = href === path;
       a.classList.toggle('active', active);
       if (active) scrollNavItemIntoView(a);
     });

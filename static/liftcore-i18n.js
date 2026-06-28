@@ -600,6 +600,8 @@
   function applySelectors(root, lang) {
     var selectors = [
       '.nav-section',
+      '.nav-group-label',
+      '.nav-group-btn',
       '.nav-item',
       '.lc-back-link',
       '.header-page-title',
