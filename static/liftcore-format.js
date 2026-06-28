@@ -83,6 +83,50 @@
     el.innerHTML = headerDateHTML(date, suffix);
   }
 
+  function headerTimeText(date) {
+    date = date || new Date();
+    return [
+      String(date.getHours()).padStart(2, '0'),
+      String(date.getMinutes()).padStart(2, '0'),
+      String(date.getSeconds()).padStart(2, '0'),
+    ].join(':');
+  }
+
+  var clockTimer = null;
+
+  function updateHeaderClock() {
+    var now = new Date();
+    document.querySelectorAll('#lc-header-time').forEach(function (el) {
+      el.textContent = headerTimeText(now);
+    });
+    var langKey = isEn() ? 'en' : 'ar';
+    document.querySelectorAll('#h-date').forEach(function (el) {
+      var suffix = el.getAttribute('data-suffix');
+      if (suffix == null) suffix = ' — ';
+      var stamp = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate() + '-' + langKey;
+      if (el.getAttribute('data-lc-clock-stamp') !== stamp || !el.innerHTML.trim()) {
+        setHeaderDate(el, now, suffix);
+        el.setAttribute('data-lc-clock-stamp', stamp);
+      }
+    });
+  }
+
+  function initHeaderClock() {
+    if (!document.getElementById('lc-header-clock')) return;
+    updateHeaderClock();
+    if (clockTimer) clearInterval(clockTimer);
+    clockTimer = setInterval(updateHeaderClock, 1000);
+  }
+
+  function initHeaderDates() {
+    document.querySelectorAll('#h-date').forEach(function (el) {
+      var suffix = el.getAttribute('data-suffix');
+      if (suffix == null) suffix = ' — ';
+      setHeaderDate(el, new Date(), suffix);
+    });
+    initHeaderClock();
+  }
+
   function monthLabel(ym) {
     if (!ym) return '';
     var p = String(ym).split('-').map(Number);
@@ -114,14 +158,6 @@
     return '<span class="lc-date">' + esc(text) + '</span>';
   }
 
-  function initHeaderDates() {
-    document.querySelectorAll('#h-date').forEach(function (el) {
-      var suffix = el.getAttribute('data-suffix');
-      if (suffix == null) suffix = ' — ';
-      setHeaderDate(el, new Date(), suffix);
-    });
-  }
-
   var EASTERN_DIGITS = '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹';
   var WESTERN_DIGITS = '01234567890123456789';
 
@@ -151,6 +187,9 @@
     wrapCode: wrapCode,
     wrapDate: wrapDate,
     initHeaderDates: initHeaderDates,
+    initHeaderClock: initHeaderClock,
+    updateHeaderClock: updateHeaderClock,
+    headerTimeText: headerTimeText,
     toWesternDigits: toWesternDigits,
     applyWesternDigits: applyWesternDigits,
     AR_MONTHS: AR_MONTHS,
@@ -165,5 +204,10 @@
   }
 
   /* عند تبديل اللغة: إعادة رسم تاريخ الهيدر باللغة الجديدة */
-  document.addEventListener('liftcore:lang', initHeaderDates);
+  document.addEventListener('liftcore:lang', function () {
+    document.querySelectorAll('#h-date').forEach(function (el) {
+      el.removeAttribute('data-lc-clock-stamp');
+    });
+    initHeaderDates();
+  });
 })(window);
