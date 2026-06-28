@@ -94,6 +94,25 @@
   height: 15px;
 }
 
+.nav-menu-section {
+  padding: 10px 12px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3, #4a5a72);
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.nav-menu-section:not(:first-child) {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, rgba(100, 160, 255, 0.1));
+}
+
+.nav-group-menu--reports {
+  min-width: 240px;
+}
+
 @media (max-width: 1100px) {
   .sidebar-nav .nav-group:not(:first-of-type) {
     margin-top: 4px;

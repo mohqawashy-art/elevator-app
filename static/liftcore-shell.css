@@ -775,6 +775,29 @@ html.lc-fullscreen .main {
     justify-content: flex-start;
   }
 
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-menu-section,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-menu-section {
+    width: 100%;
+    padding: 10px 12px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text3, #4a5a72);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-menu-section:not(:first-child),
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-menu-section:not(:first-child) {
+    margin-top: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border, rgba(100, 160, 255, 0.15));
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu--reports,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu--reports {
+    min-width: 240px;
+  }
+
   body:has(#sidebar):has(.main) #sidebar .nav-item-single,
   body:has(#sidebar):has(.main) .sidebar .nav-item-single {
     flex-shrink: 0;
