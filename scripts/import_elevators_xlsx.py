@@ -175,7 +175,12 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
             continue
 
         title = _cell(row, 'Title', 'Link to Contracts / العقود')
-        building = _normalize_name(re.sub(r'^CN-\d+\s*', '', title)) or customer.name
+        base_name = _normalize_name(re.sub(r'^CN-\d+\s*', '', title)) or customer.name
+        unit = _str(_cell(row, 'الوحدة', 'المبنى', 'رقم الوحدة', 'ملاحظات المصعد')).strip()
+        if unit and unit != base_name:
+            building = unit
+        else:
+            building = f'{base_name} — {el_code}'
         warranty = _cell(row, 'حالة الضمان')
         notes = f'حالة الضمان: {warranty}' if warranty else ''
 

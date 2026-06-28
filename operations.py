@@ -527,6 +527,7 @@ def _visit_plan_row(v: MaintenanceVisit) -> dict:
         'customer': cust.name if cust else '—',
         'customer_code': cust.code if cust else '',
         'elevator': v.elevator.code if v.elevator else '',
+        'building': (v.elevator.building_name if v.elevator else '') or '',
         'team_id': v.maintenance_team_id or None,
         'team': team_label,
         'technician_id': v.technician_id or None,

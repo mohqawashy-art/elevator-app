@@ -1740,7 +1740,7 @@ function renderPlanDistricts() {
         <input type="checkbox" class="plan-visit-cb" data-visit-date="${escHtml(v.visit_date)}" value="${v.id}">
         <span style="font-family:var(--font-en);color:var(--accent);font-weight:600;min-width:52px">${escHtml(v.elevator || '—')}</span>
         <span style="color:var(--text2)">${escHtml(v.customer)}</span>
-        <span style="color:var(--text3);font-size:11px">${escHtml(v.district || '—')}</span>
+        <span style="color:var(--text3);font-size:11px" title="المبنى/الوحدة">${escHtml(v.building || v.district || '—')}</span>
         <span style="font-family:var(--font-en);color:var(--text3);font-size:11px">${escHtml(v.code)}</span>
         <span style="margin-right:auto;color:var(--text3)">${escHtml(v.team || v.technician)}</span>
       </label>`).join('');

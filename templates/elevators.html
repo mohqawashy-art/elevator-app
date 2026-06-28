@@ -881,7 +881,11 @@ function fillClientData() {
   document.getElementById('f-elev-city').value = c.city || '';
   document.getElementById('f-elev-district').value = c.district || '';
   var building = document.getElementById('f-building');
-  if (building && !building.value.trim()) building.value = c.name || '';
+  var elevCode = document.getElementById('f-elev-code');
+  if (building && !building.value.trim()) {
+    var suffix = (elevCode && elevCode.value) ? (' — ' + elevCode.value) : '';
+    building.value = (c.name || '') + suffix;
+  }
   if (c.lat && c.lng && typeof LiftCoreMapPicker !== 'undefined') {
     LiftCoreMapPicker.setLocation(c.lat, c.lng, {
       address: building ? building.value : '',
