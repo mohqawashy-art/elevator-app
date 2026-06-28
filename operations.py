@@ -302,6 +302,44 @@ def generate_monthly_plan(year: int, month: int, *, replace_draft: bool = False)
     return payload
 
 
+def cancel_monthly_plan(plan_month: str, *, dry_run: bool = False) -> dict:
+    """إلغاء خطة شهر — حذف الزيارات المجدولة/المُرسلة للفني فقط."""
+    visits = MaintenanceVisit.query.filter(
+        MaintenanceVisit.plan_month == plan_month,
+        MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
+    ).order_by(MaintenanceVisit.id).all()
+
+    kept = MaintenanceVisit.query.filter(
+        MaintenanceVisit.plan_month == plan_month,
+        MaintenanceVisit.status.notin_(('مجدولة', 'مُرسلة للفني', 'ملغية')),
+    ).count()
+
+    if dry_run:
+        return {
+            'plan_month': plan_month,
+            'deleted': len(visits),
+            'kept_completed': kept,
+            'dry_run': True,
+        }
+
+    from app import _purge_visit_dependencies
+
+    deleted = 0
+    for v in visits:
+        _purge_visit_dependencies(v.id)
+        db.session.delete(v)
+        deleted += 1
+    db.session.commit()
+
+    result = get_plan(plan_month)
+    return {
+        'plan_month': plan_month,
+        'deleted': deleted,
+        'kept_completed': kept,
+        **result,
+    }
+
+
 def _customer_district(cust: Customer | None, elev: Elevator | None = None) -> str:
     if cust and (cust.district or '').strip():
         return cust.district.strip()

@@ -625,6 +625,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <button class="btn btn-warning btn-sm" type="button" onclick="generateDistrictPlan()">توليد هذه المنطقة فقط</button>
           </div>
         </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <button class="btn btn-danger btn-sm" type="button" onclick="cancelPlan()">إلغاء خطة هذا الشهر</button>
+          <span style="font-size:11px;color:var(--text3);margin-right:8px">يحذف الزيارات المجدولة/المُرسلة فقط — المكتملة تبقى</span>
+        </div>
       </div>
 
       <div id="plan-panel-manual" style="display:none">
@@ -1319,6 +1323,19 @@ function generateDistrictPlan() {
   if (!district) { alert('اختر المنطقة من القائمة'); return; }
   fetchPlanApi('/api/maintenance/generate-district-plan', {plan_month: planMonth(), district})
     .then(applyPlanData)
+    .catch(err => alert(err.message || err));
+}
+
+function cancelPlan() {
+  const ym = planMonth();
+  if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
+  if (!confirm('إلغاء خطة ' + ym + '؟\nسيتم حذف الزيارات المجدولة والمُرسلة للفني فقط.')) return;
+  fetchPlanApi('/api/maintenance/cancel-plan', {plan_month: ym})
+    .then(data => {
+      applyPlanData(data);
+      alert('تم إلغاء الخطة — حُذفت ' + (data.deleted || 0) + ' زيارة');
+      refreshVisitsFromServer(ym);
+    })
     .catch(err => alert(err.message || err));
 }
 

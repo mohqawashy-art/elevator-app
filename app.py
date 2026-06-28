@@ -4000,6 +4000,21 @@ def api_generate_plan():
     return jsonify(result)
 
 
+@app.route('/api/maintenance/cancel-plan', methods=['POST'])
+def api_cancel_plan():
+    from operations import cancel_monthly_plan
+
+    data = request.get_json(silent=True) or request.form
+    plan_month = (data.get('plan_month') or '').strip()
+    if not plan_month or '-' not in plan_month:
+        return jsonify({'error': 'حدد شهر الخطة (YYYY-MM)'}), 400
+    try:
+        return jsonify(cancel_monthly_plan(plan_month))
+    except Exception as exc:
+        app.logger.exception('cancel_plan failed for %s', plan_month)
+        return jsonify({'error': f'تعذّر إلغاء الخطة: {exc}'}), 500
+
+
 @app.route('/api/maintenance/assign-district', methods=['POST'])
 def api_assign_district():
     from operations import assign_district_technician
