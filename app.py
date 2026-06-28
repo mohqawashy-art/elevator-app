@@ -4066,6 +4066,38 @@ def api_generate_plan():
     return jsonify(result)
 
 
+@app.route('/api/maintenance/plan-readiness')
+def api_plan_readiness():
+    from plan_pipeline import get_plan_readiness
+
+    plan_month = (request.args.get('plan_month') or '').strip()
+    if not plan_month or '-' not in plan_month:
+        return jsonify({'error': 'حدد شهر الخطة (YYYY-MM)'}), 400
+    return jsonify(get_plan_readiness(plan_month))
+
+
+@app.route('/api/maintenance/run-plan', methods=['POST'])
+def api_run_plan():
+    from plan_pipeline import preview_full_plan, run_full_plan
+
+    data = request.get_json(silent=True) or request.form
+    ym = (data.get('plan_month') or '').strip()
+    if not ym or '-' not in ym:
+        return jsonify({'error': 'حدد شهر الخطة (YYYY-MM)'}), 400
+    year, month = map(int, ym.split('-', 1))
+    preview = str(data.get('preview', '')).lower() in ('1', 'true', 'yes')
+    confirmed = str(data.get('confirmed', '')).lower() in ('1', 'true', 'yes')
+    replace = bool(data.get('replace'))
+    if preview:
+        return jsonify(preview_full_plan(year, month, replace_draft=replace))
+    if not confirmed:
+        return jsonify({'error': 'اعرض معاينة الخطة ثم اضغط «تشغيل الخطة»'}), 400
+    result = run_full_plan(year, month, replace_draft=replace)
+    if result.get('error'):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
 @app.route('/api/maintenance/cancel-plan', methods=['POST'])
 def api_cancel_plan():
     from operations import cancel_monthly_plan

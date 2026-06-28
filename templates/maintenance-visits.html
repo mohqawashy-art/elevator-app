@@ -584,39 +584,53 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div id="plan-panel-auto">
-        <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.65">
-          <strong>آلية التوليد التلقائي:</strong><br>
-          ① تُجمَّع المصاعد <strong>جغرافياً</strong> (إحداثيات العميل — مناطق قريبة مثل الخضراء والشرائع في مجموعة واحدة، بحد أقصى <strong>6</strong> لكل مجموعة/يوم).<br>
-          ② بعد التأكيد يمكن <strong>توزيع الزيارات على الفرق</strong> — كل فريق بحد أقصى 6 زيارات/يوم مع تجميع جغرافي.<br>
-          <strong>لن تُفعَّل الزيارات إلا بعد المعاينة ثم التأكيد.</strong>
-        </p>
-        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);margin-bottom:10px;cursor:pointer">
-          <input type="checkbox" id="plan-auto-distribute" checked style="width:16px;height:16px">
-          توزيع تلقائي على فرق الصيانة بعد تأكيد التوليد
-        </label>
-        <div id="plan-preview-box" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(224,144,48,.35);background:rgba(224,144,48,.08);font-size:12px;line-height:1.6"></div>
-        <div class="form-grid" style="margin-bottom:10px">
-          <div class="field" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" type="button" onclick="previewPlan('all')">① معاينة التوليد</button>
-            <button class="btn btn-primary btn-sm" type="button" id="btn-confirm-plan-all" disabled onclick="confirmPlan('all')">② تأكيد وتفعيل الكل</button>
-          </div>
-          <div class="field"><label>منطقة محددة</label>
-            <select id="plan-auto-district" onchange="PLAN_PREVIEW.district=null; document.getElementById('btn-confirm-plan-district').disabled=true;">
-              <option value="">— اختر المنطقة —</option>
-              {% for d in plan_districts %}
-              <option value="{{ d }}">{{ d }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="field" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" type="button" onclick="previewPlan('district')">① معاينة المنطقة</button>
-            <button class="btn btn-warning btn-sm" type="button" id="btn-confirm-plan-district" disabled onclick="confirmPlan('district')">② تأكيد المنطقة</button>
-          </div>
+        <div id="plan-readiness-box" style="margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);font-size:12px;line-height:1.65"></div>
+
+        <div style="margin-bottom:12px;padding:10px 12px;border-radius:var(--r-sm);background:rgba(42,127,255,.06);border:1px solid rgba(42,127,255,.2);font-size:12px;line-height:1.7">
+          <strong>كيف تعمل الخطة؟</strong>
+          <ol style="margin:8px 0 0;padding-right:18px;color:var(--text2)">
+            <li>تُجمَّع المصاعد القريبة جغرافياً (موقع كل مصعد/مبنى) — حتى <strong>6</strong> في يوم واحد.</li>
+            <li><strong>زيارة لكل مصعد</strong> — عميل عنده 6 مصاعد = 6 زيارات، وليس زيارة واحدة.</li>
+            <li>بعد التأكيد تُوزَّع الزيارات على فرق الصيانة — كل فريق بحد أقصى <strong>6</strong> زيارات/يوم.</li>
+            <li>زر واحد: <strong>معاينة</strong> ثم <strong>تشغيل</strong> (توليد + توزيع معاً).</li>
+          </ol>
         </div>
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-          <button class="btn btn-danger btn-sm" type="button" onclick="cancelPlan()">إلغاء خطة هذا الشهر</button>
-          <span style="font-size:11px;color:var(--text3);margin-right:8px">يحذف الزيارات المجدولة/المُرسلة فقط — المكتملة تبقى</span>
+
+        <div id="plan-full-preview-box" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(224,144,48,.35);background:rgba(224,144,48,.08);font-size:12px;line-height:1.7"></div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center">
+          <button class="btn btn-secondary btn-sm" type="button" onclick="previewFullPlan()">① معاينة الخطة</button>
+          <button class="btn btn-primary btn-sm" type="button" id="btn-confirm-full-plan" disabled onclick="confirmFullPlan()">② تشغيل الخطة (توليد + توزيع)</button>
         </div>
+
+        <details style="margin-top:8px;font-size:12px">
+          <summary style="cursor:pointer;color:var(--text2);padding:6px 0">خيارات متقدمة — منطقة واحدة / إلغاء الخطة</summary>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <div id="plan-preview-box" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(224,144,48,.35);background:rgba(224,144,48,.08);font-size:12px;line-height:1.6"></div>
+            <div class="form-grid" style="margin-bottom:10px">
+              <div class="field" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm" type="button" onclick="previewPlan('all')">معاينة توليد الكل</button>
+                <button class="btn btn-primary btn-sm" type="button" id="btn-confirm-plan-all" disabled onclick="confirmPlan('all')">تأكيد توليد الكل</button>
+              </div>
+              <div class="field"><label>منطقة محددة</label>
+                <select id="plan-auto-district" onchange="PLAN_PREVIEW.district=null; document.getElementById('btn-confirm-plan-district').disabled=true;">
+                  <option value="">— اختر المنطقة —</option>
+                  {% for d in plan_districts %}
+                  <option value="{{ d }}">{{ d }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm" type="button" onclick="previewPlan('district')">معاينة المنطقة</button>
+                <button class="btn btn-warning btn-sm" type="button" id="btn-confirm-plan-district" disabled onclick="confirmPlan('district')">تأكيد المنطقة</button>
+              </div>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+              <button class="btn btn-danger btn-sm" type="button" onclick="cancelPlan()">إلغاء خطة هذا الشهر</button>
+              <span style="font-size:11px;color:var(--text3);margin-right:8px">يحذف الزيارات المجدولة/المُرسلة فقط — المكتملة تبقى</span>
+            </div>
+          </div>
+        </details>
       </div>
 
       <div id="plan-panel-manual" style="display:none">
@@ -649,13 +663,15 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div id="teams-list" style="margin-bottom:4px"></div>
       </div>
 
-      <div class="form-section-title">توزيع الزيارات على الفرق</div>
-      <p style="font-size:11px;color:var(--text3);margin-bottom:8px">توزيع تلقائي <strong>جغرافي</strong> (نطاق ~5 كم بين المصاعد) — بحد أقصى <strong>6 مصاعد لكل فريق في اليوم</strong>. المناطق المتجاورة تُوزَّع معاً حتى لو اختلف اسم الحي.</p>
-      <div id="distribute-preview-box" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(42,127,255,.35);background:rgba(42,127,255,.08);font-size:12px;line-height:1.6"></div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="previewDistributeTeams()">① معاينة التوزيع على الفرق</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-confirm-distribute" disabled onclick="confirmDistributeTeams()">② تأكيد التوزيع</button>
-      </div>
+      <details style="margin-bottom:14px;font-size:12px">
+        <summary style="cursor:pointer;color:var(--text2);padding:4px 0">إعادة توزيع يدوي (إن لزم)</summary>
+        <p style="font-size:11px;color:var(--text3);margin:10px 0 8px">استخدم هذا فقط إذا أردت إعادة توزيع زيارات موجودة دون توليد جديد.</p>
+        <div id="distribute-preview-box" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(42,127,255,.35);background:rgba(42,127,255,.08);font-size:12px;line-height:1.6"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="previewDistributeTeams()">معاينة إعادة التوزيع</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-confirm-distribute" disabled onclick="confirmDistributeTeams()">تأكيد إعادة التوزيع</button>
+        </div>
+      </details>
       <div id="plan-districts" style="margin-bottom:14px"></div>
 
       <div class="form-section-title">إرسال خط السير على واتساب (رئيس الفريق)</div>
@@ -1080,6 +1096,8 @@ function openPlanModal() {
   refreshMaintenanceTeams();
   renderTeamsPanel();
   renderDispatchTeamSelect();
+  loadPlanReadiness();
+  loadPlan();
 }
 
 function refreshMaintenanceTeams() {
@@ -1149,6 +1167,7 @@ function onPlanMonthChange() {
   const db = document.getElementById('btn-confirm-distribute');
   if (db) db.disabled = true;
   updatePlanMonthHint();
+  loadPlanReadiness();
   loadPlan();
 }
 
@@ -1283,12 +1302,19 @@ function refreshVisitsFromServer(monthYm) {
 function applyPlanData(data) {
   PLAN_VISITS = data.visits || [];
   const pm = data.plan_month || planMonth();
-  let msg = `الخطة ${pm}: ${data.total || 0} زيارة`;
-  if (data.districts != null) msg += ` — ${data.districts} منطقة`;
-  if (data.created != null) msg += ` (أُنشئ ${data.created} جديد)`;
-  if (data.linked != null && data.linked > 0) msg += ` (رُبط ${data.linked} موجود)`;
-  if (data.updated != null && data.updated > 0) msg += ` — عُيِّنت ${data.updated} زيارة`;
-  if (data.hint) msg += ' — ' + data.hint;
+  let msg = '';
+  if (data.summary_lines && data.summary_lines.length) {
+    msg = data.summary_lines.join(' — ');
+  } else {
+    msg = `الخطة ${pm}: ${data.total || 0} زيارة`;
+    if (data.districts != null) msg += ` — ${data.districts} منطقة`;
+    if (data.created != null) msg += ` (أُنشئ ${data.created} جديد)`;
+    if (data.linked != null && data.linked > 0) msg += ` (رُبط ${data.linked} موجود)`;
+    if (data.updated != null && data.updated > 0) msg += ` — عُيِّنت ${data.updated} زيارة`;
+    if (data.teams_assigned != null) msg += ` — وُزِّع ${data.teams_assigned} على الفرق`;
+    if (data.hint) msg += ' — ' + data.hint;
+    if (data.team_distribution_error) msg += ' — تنبيه: ' + data.team_distribution_error;
+  }
   const sum = document.getElementById('plan-summary');
   if (sum) sum.textContent = msg;
   const ts = document.getElementById('plan-tech-summary');
@@ -1334,9 +1360,116 @@ function loadPlan() {
 }
 
 let PLAN_PREVIEW = { all: null, district: null };
+let FULL_PLAN_PREVIEW = null;
+
+function resetFullPlanPreview() {
+  FULL_PLAN_PREVIEW = null;
+  const box = document.getElementById('plan-full-preview-box');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+  const btn = document.getElementById('btn-confirm-full-plan');
+  if (btn) btn.disabled = true;
+}
+
+function renderPlanReadiness(r) {
+  const box = document.getElementById('plan-readiness-box');
+  if (!box || !r) return;
+  let html = '<strong>جاهزية الشهر</strong><br>';
+  if (r.teams_count) {
+    html += '✓ ' + r.teams_count + ' فريق نشط';
+    if (r.teams && r.teams.length) {
+      html += ' — ' + r.teams.map(t => escHtml(t.label || t.name)).join('، ');
+    }
+    html += '<br>';
+  } else {
+    html += '<span style="color:var(--warning)">⚠ لا توجد فرق — <a href="/technicians?tab=teams" style="color:var(--accent)">أنشئ فرقاً أولاً</a></span><br>';
+  }
+  html += 'زيارات في الخطة: <b>' + (r.plan_visits_total || 0) + '</b>';
+  if (r.unassigned_visits) html += ' — بدون فريق: <b>' + r.unassigned_visits + '</b>';
+  if (r.coords_missing) {
+    html += '<br><span style="color:var(--text3)">إحداثيات: ' + r.visits_with_coords + ' بخريطة، ' + r.coords_missing + ' بدون (يُجمَّعون بحسب موقع المصعد/المبنى)</span>';
+  }
+  box.innerHTML = html;
+}
+
+function loadPlanReadiness() {
+  const ym = planMonth();
+  const box = document.getElementById('plan-readiness-box');
+  if (!ym || !box) return Promise.resolve();
+  box.innerHTML = 'جاري التحقق من الجاهزية...';
+  return fetch('/api/maintenance/plan-readiness?plan_month=' + encodeURIComponent(ym))
+    .then(async r => {
+      const text = await r.text();
+      let data;
+      try { data = text ? JSON.parse(text) : {}; } catch (e) { throw new Error('تعذّر قراءة الجاهزية'); }
+      if (!r.ok || data.error) throw new Error(data.error || 'تعذّر تحميل الجاهزية');
+      return data;
+    })
+    .then(renderPlanReadiness)
+    .catch(err => {
+      if (box) box.innerHTML = '<span style="color:var(--danger)">' + escHtml(err.message || 'خطأ') + '</span>';
+    });
+}
+
+function renderFullPlanPreview(data) {
+  const box = document.getElementById('plan-full-preview-box');
+  const btn = document.getElementById('btn-confirm-full-plan');
+  if (!box) return;
+  let html = '<strong>معاينة الخطة — لم يُفعَّل شيء بعد</strong><br>';
+  (data.summary_lines || []).forEach(line => { html += escHtml(line) + '<br>'; });
+  const gen = data.generate || {};
+  if (gen.samples && gen.samples.length) {
+    html += '<br><span style="color:var(--text3)">عينة زيارات:</span> ' +
+      gen.samples.slice(0, 6).map(s => {
+        const g = (s.districts_group && s.districts_group.length > 1) ? ' [' + s.districts_group.join('+') + ']' : '';
+        return escHtml((s.elevator || '') + ' ' + (s.visit_date || '') + g);
+      }).join(' · ') + '<br>';
+  }
+  html += '<span style="color:var(--text3)">اضغط «تشغيل الخطة» لتطبيق التوليد والتوزيع معاً.</span>';
+  box.innerHTML = html;
+  box.style.display = 'block';
+  FULL_PLAN_PREVIEW = { month: data.plan_month || planMonth(), data: data };
+  if (btn) btn.disabled = !data.can_confirm;
+}
+
+function previewFullPlan() {
+  const ym = planMonth();
+  if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
+  fetchPlanApi('/api/maintenance/run-plan', { plan_month: ym, preview: true })
+    .then(renderFullPlanPreview)
+    .catch(err => alert(err.message || err));
+}
+
+function confirmFullPlan() {
+  const ym = planMonth();
+  if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
+  if (!FULL_PLAN_PREVIEW || FULL_PLAN_PREVIEW.month !== ym) {
+    alert('اعرض معاينة الخطة أولاً (زر ①)');
+    return;
+  }
+  const d = FULL_PLAN_PREVIEW.data || {};
+  const gen = d.generate || {};
+  const n = gen.would_create ?? 0;
+  const distN = d.would_distribute_total ?? n;
+  if (!confirm(
+    'تشغيل خطة ' + ym + '؟\n\n' +
+    '• سيُنشأ ' + n + ' زيارة جديدة\n' +
+    '• سيُوزَّع نحو ' + distN + ' زيارة على الفرق\n\n' +
+    'لن يُرسل واتساب تلقائياً.'
+  )) return;
+  fetchPlanApi('/api/maintenance/run-plan', { plan_month: ym, confirmed: true })
+    .then(data => {
+      resetFullPlanPreview();
+      applyPlanData(data);
+      loadPlanReadiness();
+      const lines = (data.summary_lines || []).join('\n');
+      alert(lines || ('تم — أُنشئ ' + (data.created || 0) + ' ووُزِّع ' + (data.teams_assigned || 0)));
+    })
+    .catch(err => alert(err.message || err));
+}
 
 function resetPlanPreview() {
   PLAN_PREVIEW = { all: null, district: null };
+  resetFullPlanPreview();
   const box = document.getElementById('plan-preview-box');
   if (box) { box.style.display = 'none'; box.innerHTML = ''; }
   const bAll = document.getElementById('btn-confirm-plan-all');
@@ -1353,6 +1486,7 @@ function renderPlanPreview(data, scope) {
   html += 'شهر ' + ym;
   if (data.district) html += ' — منطقة «' + data.district + '»';
   html += '<br>سيُنشأ: <b>' + (data.would_create ?? data.created ?? 0) + '</b> زيارة';
+  if (data.elevators_in_scope != null) html += ' — <b>' + data.elevators_in_scope + '</b> مصعد في النطاق';
   if (data.would_link) html += ' — يُربط: ' + data.would_link;
   if (data.would_skip) html += ' — يُتخطى: ' + data.would_skip;
   if (data.districts != null) html += ' — ' + data.districts + ' منطقة';
@@ -1407,8 +1541,6 @@ function confirmPlan(scope) {
   const label = scope === 'district' ? ('منطقة «' + (pending.district || '') + '»') : 'كل المناطق';
   if (!confirm('تأكيد تفعيل خطة ' + ym + ' — ' + label + '؟\n\nسيُنشأ ' + n + ' زيارة مجدولة.')) return;
   const body = { plan_month: ym, confirmed: true };
-  const autoDist = document.getElementById('plan-auto-distribute');
-  if (autoDist && autoDist.checked) body.auto_distribute_teams = true;
   if (scope === 'district') {
     body.district = pending.district || document.getElementById('plan-auto-district').value;
     if (!body.district) { alert('اختر المنطقة'); return; }
@@ -1421,10 +1553,9 @@ function confirmPlan(scope) {
     .then(function (data) {
       resetPlanPreview();
       applyPlanData(data);
-      var msg = 'تم تفعيل الخطة — أُنشئ ' + (data.created || 0) + ' زيارة';
-      if (data.teams_assigned != null) msg += '\nوُزِّع ' + data.teams_assigned + ' زيارة على الفرق';
-      if (data.team_distribution_error) msg += '\nتنبيه التوزيع: ' + data.team_distribution_error;
-      alert(msg);
+      var msg = 'تم تفعيل التوليد — أُنشئ ' + (data.created || 0) + ' زيارة';
+      if (data.hint) msg += '\n' + data.hint;
+      alert(msg + '\n\nللتوزيع على الفرق استخدم «تشغيل الخطة» أو إعادة التوزيع اليدوي.');
     })
     .catch(err => alert(err.message || err));
 }
@@ -1547,8 +1678,9 @@ function renderPlanDistricts() {
     const rows = visits.map(v => `
       <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
         <input type="checkbox" class="plan-visit-cb" data-visit-date="${escHtml(v.visit_date)}" value="${v.id}">
-        <span style="font-family:var(--font-en);color:var(--accent)">${escHtml(v.code)}</span>
-        <span>${escHtml(v.customer)}</span>
+        <span style="font-family:var(--font-en);color:var(--accent);font-weight:600">${escHtml(v.elevator || '—')}</span>
+        <span style="color:var(--text3)">${escHtml(v.customer)}</span>
+        <span style="font-family:var(--font-en);color:var(--text3)">${escHtml(v.code)}</span>
         <span style="color:var(--text3);direction:ltr">${escHtml(v.visit_date)}</span>
         <span style="margin-right:auto;color:var(--text3)">${escHtml(v.team || v.technician)}</span>
       </label>`).join('');

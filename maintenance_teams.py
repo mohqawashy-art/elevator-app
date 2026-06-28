@@ -21,21 +21,57 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * r * math.asin(math.sqrt(min(1.0, a)))
 
 
+def location_district(elev, cust=None) -> str:
+    """منطقة/موقع الزيارة — أساسها المصعد ثم العميل."""
+    if elev and (getattr(elev, 'district', None) or '').strip():
+        return elev.district.strip()
+    if elev and (getattr(elev, 'building_name', None) or '').strip():
+        return elev.building_name.strip()
+    if elev and (getattr(elev, 'city', None) or '').strip():
+        return elev.city.strip()
+    if cust and (getattr(cust, 'district', None) or '').strip():
+        return cust.district.strip()
+    if cust and (getattr(cust, 'city', None) or '').strip():
+        return cust.city.strip()
+    return 'غير محدد'
+
+
+def item_cluster_key(item: dict) -> str:
+    """مفتاح تجميع بدون إحداثيات — مبني على موقع المصعد، مع تجميع مصاعد نفس المبنى."""
+    elev = item.get('elevator')
+    cust = item.get('customer') or (elev.customer if elev else None)
+    base = location_district(elev, cust)
+    if elev:
+        building = (elev.building_name or '').strip()
+        address = (elev.address or '').strip()
+        if building:
+            return f'{base}|{building}'
+        if address:
+            return f'{base}|{address[:48]}'
+    if cust and cust.lat and cust.lng:
+        return f'{base}|@{cust.lat},{cust.lng}'
+    if elev:
+        return f'{base}|elev:{elev.id}'
+    return base
+
+
 def visit_coordinates(v: MaintenanceVisit) -> tuple[float, float] | None:
     elev = v.elevator
     cust = elev.customer if elev else None
+    if elev and getattr(elev, 'lat', None) and getattr(elev, 'lng', None):
+        return float(elev.lat), float(elev.lng)
     if cust and cust.lat and cust.lng:
         return float(cust.lat), float(cust.lng)
     return None
 
 
 def item_coordinates(item: dict) -> tuple[float, float] | None:
-    cust = item.get('customer')
     elev = item.get('elevator')
-    if cust and cust.lat and cust.lng:
-        return float(cust.lat), float(cust.lng)
+    cust = item.get('customer') or (elev.customer if elev else None)
     if elev and getattr(elev, 'lat', None) and getattr(elev, 'lng', None):
         return float(elev.lat), float(elev.lng)
+    if cust and cust.lat and cust.lng:
+        return float(cust.lat), float(cust.lng)
     return None
 
 
