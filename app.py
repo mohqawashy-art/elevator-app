@@ -3354,12 +3354,18 @@ def technicians():
         Fault.technician_id.is_(None),
         Fault.status.in_(['مفتوح', 'قيد المعالجة']),
     ).count()
+    maint_techs = [t for t in techs if (t.team or 'عام') in ('صيانة', 'عام')] or list(techs)
+    from maintenance_teams import list_all_teams, team_to_dict
+    maint_teams = [team_to_dict(t) for t in list_all_teams() if t.active]
     return render_template(
         'technicians.html',
         technicians=techs,
         technicians_js=[technician_to_js_dict(t) for t in techs],
         next_tech_code=next_code(Technician, 'Tech-', digits=3),
         unassigned_faults=unassigned_faults,
+        maint_technicians=maint_techs,
+        maint_technicians_js=[{'id': t.id, 'name': t.name} for t in maint_techs],
+        maint_teams_js=maint_teams,
     )
 
 

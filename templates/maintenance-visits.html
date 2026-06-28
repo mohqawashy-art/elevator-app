@@ -634,24 +634,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div id="plan-summary" style="font-size:12px;color:var(--text3);margin:14px 0 8px"></div>
       <div id="plan-tech-summary" style="font-size:12px;margin-bottom:12px"></div>
 
-      <div class="form-section-title">إدارة فرق الصيانة</div>
-      <p style="font-size:11px;color:var(--text3);margin-bottom:8px">كل فريق = <strong>فني + مساعد فني</strong>. التسمية: «اسم الفريق — رئيس الفريق».</p>
+      <div class="form-section-title">فرق الصيانة</div>
+      <p style="font-size:11px;color:var(--text3);margin-bottom:8px">عرّف الفرق من <a href="/technicians?tab=teams" style="color:var(--accent)">الفنيين ← فرق الصيانة</a>. كل فريق = فني + مساعد — بحد أقصى <strong>6 مصاعد/فريق/يوم</strong>.</p>
       <div id="teams-panel" style="margin-bottom:14px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px">
-        <div id="teams-list" style="margin-bottom:10px"></div>
-        <div class="form-grid" style="margin-bottom:8px">
-          <div class="field"><label>اسم الفريق</label><input type="text" id="team-form-name" placeholder="مثال: فريق الشمال"></div>
-          <div class="field"><label>رئيس الفريق (فني)</label>
-            <select id="team-form-leader"><option value="">—</option>{% for t in maint_technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
-          </div>
-          <div class="field"><label>مساعد فني</label>
-            <select id="team-form-assistant"><option value="">— اختياري —</option>{% for t in maint_technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
-          </div>
-          <div class="field" style="display:flex;align-items:flex-end;gap:8px">
-            <button type="button" class="btn btn-primary btn-sm" onclick="saveMaintenanceTeam()">حفظ الفريق</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="resetTeamForm()">جديد</button>
-          </div>
-        </div>
-        <input type="hidden" id="team-form-id" value="">
+        <div id="teams-list" style="margin-bottom:4px"></div>
       </div>
 
       <div class="form-section-title">توزيع الزيارات على الفرق</div>
@@ -1635,19 +1621,15 @@ function renderTeamsPanel() {
   const el = document.getElementById('teams-list');
   if (!el) return;
   if (!MAINT_TEAMS.length) {
-    el.innerHTML = '<p style="font-size:12px;color:var(--warning)">لا توجد فرق — أضف فريقاً أدناه (فني + مساعد).</p>';
+    el.innerHTML = '<p style="font-size:12px;color:var(--warning)">لا توجد فرق — <a href="/technicians?tab=teams" style="color:var(--accent)">أنشئ فرقاً من صفحة الفنيين</a>.</p>';
     return;
   }
   el.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
-    '<tr style="color:var(--text3)"><th style="text-align:right;padding:4px">الفريق</th><th style="text-align:right;padding:4px">رئيس</th><th style="text-align:right;padding:4px">مساعد</th><th></th></tr>' +
+    '<tr style="color:var(--text3)"><th style="text-align:right;padding:4px">الفريق</th><th style="text-align:right;padding:4px">رئيس</th><th style="text-align:right;padding:4px">مساعد</th></tr>' +
     MAINT_TEAMS.map(t => `<tr>
       <td style="padding:6px 4px"><strong>${escHtml(t.label)}</strong></td>
       <td style="padding:6px 4px">${escHtml(t.leader_name)}</td>
       <td style="padding:6px 4px">${escHtml(t.assistant_name || '—')}</td>
-      <td style="padding:6px 4px;white-space:nowrap">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="editMaintenanceTeam(${t.id})">تعديل</button>
-        <button type="button" class="btn btn-danger btn-sm" onclick="deleteMaintenanceTeam(${t.id})">حذف</button>
-      </td>
     </tr>`).join('') + '</table>';
 }
 
@@ -1668,62 +1650,10 @@ function onDispatchTeamChange() {
   if (hidden) hidden.value = team ? team.leader_id : '';
 }
 
-function resetTeamForm() {
-  document.getElementById('team-form-id').value = '';
-  document.getElementById('team-form-name').value = '';
-  document.getElementById('team-form-leader').value = '';
-  document.getElementById('team-form-assistant').value = '';
-}
-
-function editMaintenanceTeam(id) {
-  const t = MAINT_TEAMS.find(x => x.id === id);
-  if (!t) return;
-  document.getElementById('team-form-id').value = t.id;
-  document.getElementById('team-form-name').value = t.name;
-  document.getElementById('team-form-leader').value = t.leader_id;
-  document.getElementById('team-form-assistant').value = t.assistant_id || '';
-}
-
-function saveMaintenanceTeam() {
-  const body = {
-    id: document.getElementById('team-form-id').value || undefined,
-    name: document.getElementById('team-form-name').value.trim(),
-    leader_id: document.getElementById('team-form-leader').value,
-    assistant_id: document.getElementById('team-form-assistant').value,
-  };
-  if (!body.name || !body.leader_id) { alert('اسم الفريق ورئيس الفريق مطلوبان'); return; }
-  fetchPlanApi('/api/maintenance/teams', body)
-    .then(data => {
-      const team = data.team;
-      const idx = MAINT_TEAMS.findIndex(x => x.id === team.id);
-      if (idx >= 0) MAINT_TEAMS[idx] = team;
-      else MAINT_TEAMS.push(team);
-      MAINT_TEAMS.sort((a, b) => (a.sort_order - b.sort_order) || a.name.localeCompare(b.name, 'ar'));
-      resetTeamForm();
-      renderTeamsPanel();
-      renderDispatchTeamSelect();
-      renderPlanDistricts();
-      alert('تم حفظ الفريق «' + team.label + '»');
-    })
-    .catch(err => alert(err.message || err));
-}
-
-function deleteMaintenanceTeam(id) {
-  if (!confirm('حذف هذا الفريق؟')) return;
-  fetchPlanApi('/api/maintenance/teams/' + id + '/delete', {})
-    .then(() => {
-      MAINT_TEAMS = MAINT_TEAMS.filter(t => t.id !== id);
-      renderTeamsPanel();
-      renderDispatchTeamSelect();
-      renderPlanDistricts();
-    })
-    .catch(err => alert(err.message || err));
-}
-
 function previewDistributeTeams() {
   const ym = planMonth();
   if (!ym) { alert('اختر شهر الخطة أولاً'); return; }
-  if (!MAINT_TEAMS.length) { alert('أنشئ فرقاً أولاً'); return; }
+  if (!MAINT_TEAMS.length) { alert('أنشئ فرقاً أولاً من صفحة الفنيين ← فرق الصيانة'); return; }
   fetchPlanApi('/api/maintenance/distribute-teams', {plan_month: ym, preview: true})
     .then(data => {
       DISTRIBUTE_PREVIEW = { month: ym, data };

@@ -302,6 +302,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <!-- ALERTS -->
     <div class="alerts-bar" id="alerts-bar"></div>
 
+    <div class="tabs">
+      <div class="tab active" id="tab-btn-list" onclick="switchTechPageTab('list')">قائمة الفنيين</div>
+      <div class="tab" id="tab-btn-teams" onclick="switchTechPageTab('teams')">فرق الصيانة</div>
+    </div>
+
     <!-- تفاصيل الكارت -->
     <div class="drill-panel" id="drill-panel">
       <div class="drill-head">
@@ -399,6 +404,35 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="table-info" id="table-info">—</div>
           <div class="pagination" id="page-btns"></div>
         </div>
+      </div>
+    </div>
+
+    <div id="tab-teams" style="display:none">
+      <div class="page-header">
+        <div class="page-title">فرق الصيانة <span id="teams-count" data-i18n-skip></span></div>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.6">كل فريق = <strong>فني (رئيس)</strong> + <strong>مساعد فني</strong> اختياري. التسمية في النظام: «اسم الفريق — رئيس الفريق». تُستخدم الفرق لتوزيع زيارات الصيانة (حد 6 مصاعد/فريق/يوم).</p>
+      <div class="table-wrap" style="margin-bottom:16px">
+        <div class="table-scroll" style="padding:12px 16px">
+          <div id="teams-list"></div>
+        </div>
+      </div>
+      <div class="form-section-title">إضافة / تعديل فريق</div>
+      <div style="padding:14px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)">
+        <div class="form-grid" style="margin-bottom:8px">
+          <div class="field"><label>اسم الفريق</label><input type="text" id="team-form-name" placeholder="مثال: فريق الشمال"></div>
+          <div class="field"><label>رئيس الفريق (فني)</label>
+            <select id="team-form-leader"><option value="">—</option>{% for t in maint_technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+          </div>
+          <div class="field"><label>مساعد فني</label>
+            <select id="team-form-assistant"><option value="">— اختياري —</option>{% for t in maint_technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end;gap:8px">
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveMaintenanceTeam()">حفظ الفريق</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="resetTeamForm()">فريق جديد</button>
+          </div>
+        </div>
+        <input type="hidden" id="team-form-id" value="">
       </div>
     </div>
 
@@ -625,6 +659,7 @@ const NEXT_TECH_CODE = {{ next_tech_code|tojson }};
 var UNASSIGNED_FAULTS = {{ unassigned_faults|default(0) }};
 
 var TECHNICIANS = {{ technicians_js|tojson }};
+let MAINT_TEAMS = {{ maint_teams_js|tojson }};
 
 const STATUS_BADGE = {
   'متاح': 'badge-available',
@@ -1450,6 +1485,119 @@ window.__lcRefreshPage = function () {
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);
+}
+
+function fetchTeamsApi(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body || {}),
+  }).then(function (r) {
+    return r.text().then(function (text) {
+      var data;
+      try { data = text ? JSON.parse(text) : {}; } catch (e) { throw new Error('استجابة غير متوقعة من الخادم'); }
+      if (!r.ok || data.error) throw new Error(data.error || 'خطأ من الخادم');
+      return data;
+    });
+  });
+}
+
+function switchTechPageTab(tab) {
+  var isTeams = tab === 'teams';
+  document.getElementById('tab-table').style.display = isTeams ? 'none' : '';
+  document.getElementById('tab-teams').style.display = isTeams ? '' : 'none';
+  document.getElementById('drill-panel').style.display = isTeams ? 'none' : '';
+  document.getElementById('tab-btn-list').classList.toggle('active', !isTeams);
+  document.getElementById('tab-btn-teams').classList.toggle('active', isTeams);
+  if (isTeams) renderTeamsPanel();
+}
+
+function renderTeamsPanel() {
+  var el = document.getElementById('teams-list');
+  var countEl = document.getElementById('teams-count');
+  if (!el) return;
+  if (countEl) countEl.textContent = '(' + MAINT_TEAMS.length + ')';
+  if (!MAINT_TEAMS.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text3)">لا توجد فرق بعد — أضف أول فريق بالنموذج أدناه.</p>';
+    return;
+  }
+  el.innerHTML = '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
+    '<thead><tr style="color:var(--text3)"><th style="text-align:right;padding:8px 6px">الفريق</th><th style="text-align:right;padding:8px 6px">رئيس</th><th style="text-align:right;padding:8px 6px">مساعد</th><th></th></tr></thead><tbody>' +
+    MAINT_TEAMS.map(function (t) {
+      return '<tr><td style="padding:8px 6px"><strong>' + esc(t.label) + '</strong></td>' +
+        '<td style="padding:8px 6px">' + esc(t.leader_name) + '</td>' +
+        '<td style="padding:8px 6px">' + esc(t.assistant_name || '—') + '</td>' +
+        '<td style="padding:8px 6px;white-space:nowrap">' +
+        '<button type="button" class="btn btn-secondary btn-sm" onclick="editMaintenanceTeam(' + t.id + ')">تعديل</button> ' +
+        '<button type="button" class="btn btn-danger btn-sm" onclick="deleteMaintenanceTeam(' + t.id + ')">حذف</button>' +
+        '</td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+function resetTeamForm() {
+  document.getElementById('team-form-id').value = '';
+  document.getElementById('team-form-name').value = '';
+  document.getElementById('team-form-leader').value = '';
+  document.getElementById('team-form-assistant').value = '';
+}
+
+function editMaintenanceTeam(id) {
+  var t = MAINT_TEAMS.find(function (x) { return x.id === id; });
+  if (!t) return;
+  document.getElementById('team-form-id').value = t.id;
+  document.getElementById('team-form-name').value = t.name;
+  document.getElementById('team-form-leader').value = t.leader_id;
+  document.getElementById('team-form-assistant').value = t.assistant_id || '';
+  document.getElementById('team-form-name').focus();
+}
+
+function saveMaintenanceTeam() {
+  var body = {
+    id: document.getElementById('team-form-id').value || undefined,
+    name: document.getElementById('team-form-name').value.trim(),
+    leader_id: document.getElementById('team-form-leader').value,
+    assistant_id: document.getElementById('team-form-assistant').value,
+  };
+  if (!body.name || !body.leader_id) { alert('اسم الفريق ورئيس الفريق مطلوبان'); return; }
+  fetchTeamsApi('/api/maintenance/teams', body)
+    .then(function (data) {
+      var team = data.team;
+      var idx = MAINT_TEAMS.findIndex(function (x) { return x.id === team.id; });
+      if (idx >= 0) MAINT_TEAMS[idx] = team;
+      else MAINT_TEAMS.push(team);
+      MAINT_TEAMS.sort(function (a, b) {
+        return (a.sort_order - b.sort_order) || String(a.name).localeCompare(String(b.name), 'ar');
+      });
+      resetTeamForm();
+      renderTeamsPanel();
+      alert('تم حفظ الفريق «' + team.label + '»');
+    })
+    .catch(function (err) { alert(err.message || err); });
+}
+
+function deleteMaintenanceTeam(id) {
+  if (!confirm('حذف هذا الفريق؟')) return;
+  fetchTeamsApi('/api/maintenance/teams/' + id + '/delete', {})
+    .then(function () {
+      MAINT_TEAMS = MAINT_TEAMS.filter(function (t) { return t.id !== id; });
+      renderTeamsPanel();
+    })
+    .catch(function (err) { alert(err.message || err); });
+}
+
+function refreshMaintenanceTeams() {
+  return fetch('/api/maintenance/teams')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      MAINT_TEAMS = (data.teams || []).filter(function (t) { return t.active; });
+      renderTeamsPanel();
+    })
+    .catch(function () {});
+}
+
+if (new URLSearchParams(window.location.search).get('tab') === 'teams') {
+  switchTechPageTab('teams');
+  history.replaceState(null, '', window.location.pathname + '?tab=teams');
 }
 
 document.addEventListener('DOMContentLoaded', function () {
