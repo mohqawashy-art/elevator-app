@@ -145,6 +145,20 @@ def _periodic_visit_in_month(elevator_id: int, year: int, month: int) -> Mainten
     return None
 
 
+def _link_existing_to_plan_month(
+    existing_v: MaintenanceVisit, plan_month: str, *, preview_only: bool,
+) -> str:
+    """ربط زيارة دورية بشهر الخطة الحالي إن وُجدت في نفس الشهر."""
+    pm = (existing_v.plan_month or '').strip()
+    if pm == plan_month:
+        return 'skipped'
+    if not existing_v.visit_date or not _visit_in_plan_month(existing_v.visit_date, plan_month):
+        return 'skipped'
+    if not preview_only:
+        existing_v.plan_month = plan_month
+    return 'linked'
+
+
 def _elevator_has_periodic_in_month(elevator_id: int, year: int, month: int) -> bool:
     return _periodic_visit_in_month(elevator_id, year, month) is not None
 
@@ -295,9 +309,8 @@ def generate_monthly_plan(
             district = item.get('district') or 'غير محدد'
             existing_v = _periodic_visit_in_month(elev.id, year, month)
             if existing_v:
-                if not existing_v.plan_month:
-                    if not preview_only:
-                        existing_v.plan_month = plan_month
+                action = _link_existing_to_plan_month(existing_v, plan_month, preview_only=preview_only)
+                if action == 'linked':
                     linked += 1
                 else:
                     skipped += 1
@@ -595,9 +608,8 @@ def generate_district_plan(
             customer = item['customer']
             existing_v = _periodic_visit_in_month(elev.id, year, month)
             if existing_v:
-                if not existing_v.plan_month:
-                    if not preview_only:
-                        existing_v.plan_month = plan_month
+                action = _link_existing_to_plan_month(existing_v, plan_month, preview_only=preview_only)
+                if action == 'linked':
                     linked += 1
                 else:
                     skipped += 1
