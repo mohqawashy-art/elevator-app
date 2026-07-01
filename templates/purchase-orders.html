@@ -184,9 +184,7 @@ th{color:var(--text3);font-size:11px;font-weight:500}
               <a href="{{ url_for('purchase_order_print', order_id=o.id) }}" class="btn btn-primary btn-sm lc-open-tab">🖨️ طباعة / إرسال</a>
               <a href="{{ url_for('purchase_order_print_en', order_id=o.id) }}" class="btn btn-secondary btn-sm lc-open-tab" title="English only">EN</a>
               {% if o.status != 'مستلم' %}
-              <form method="post" action="/purchase-orders/delete/{{ o.id }}" style="display:inline" onsubmit="return confirmDelete()">
-                <button type="submit" class="btn btn-secondary btn-sm">حذف</button>
-              </form>
+              <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="LiftCoreAdminDelete.post('/purchase-orders/delete/{{ o.id }}', {message: 'حذف الطلب؟'})">حذف</button>
               {% endif %}
             </td>
           </tr>
@@ -238,8 +236,7 @@ function removeLine(btn) {
   if (body.querySelectorAll('.line-row').length > 1) btn.closest('tr').remove();
 }
 function confirmDelete() {
-  var msg = (window.__LC_LANG === 'en') ? 'Delete this order?' : 'حذف الطلب؟';
-  return confirm(msg);
+  return false;
 }
 function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }

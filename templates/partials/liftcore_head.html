@@ -13,6 +13,7 @@
     enabled: {{ idle_screensaver_enabled|default(true)|tojson }},
     idleMs: {{ (idle_screensaver_seconds|default(60) * 1000)|tojson }}
   };
+  window.__LC_IS_ADMIN = {{ (auth_user and auth_user.role == 'admin')|tojson }};
   if (window.__LC_SESSION_LOCKED) {
     document.documentElement.classList.add('lc-session-locked');
     try { sessionStorage.setItem('lc_idle_locked', '1'); } catch (e) {}
@@ -68,3 +69,7 @@
 <script src="{{ url_for('static', filename='liftcore-sticky-top.js') }}?v=5" defer></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-idle-screensaver.css') }}?v=8">
 <script src="{{ url_for('static', filename='liftcore-idle-screensaver.js') }}?v=8" defer></script>
+<script src="{{ url_for('static', filename='liftcore-admin-delete.js') }}?v=2"></script>
+{% if auth_user and auth_user.role == 'admin' %}
+{% include 'partials/admin_delete_modal.html' %}
+{% endif %}

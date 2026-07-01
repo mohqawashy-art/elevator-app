@@ -1,0 +1,8 @@
+{# حقول تأكيد الحذف — أضفها داخل modal-delete قبل أزرار التأكيد #}
+{% if auth_user and auth_user.role == 'admin' %}
+<div class="lc-admin-delete-fields" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+  <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:6px">كلمة مرور المسؤول للتأكيد</label>
+  <input type="password" class="lc-admin-delete-password filter-input" style="width:100%;max-width:320px" autocomplete="current-password" placeholder="••••••••">
+  <p style="font-size:11px;color:var(--text3);margin-top:6px">الحذف متاح للمسؤول فقط — أدخل كلمة مرور حسابك.</p>
+</div>
+{% endif %}

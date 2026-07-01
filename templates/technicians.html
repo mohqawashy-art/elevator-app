@@ -646,10 +646,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="modal-body">
       <p style="font-size:14px;color:var(--text2);line-height:1.7">هل أنت متأكد من حذف هذا الفني؟</p>
       <p style="font-size:13px;color:var(--danger);margin-top:10px;background:rgba(224,72,72,.08);padding:10px 12px;border-radius:var(--r-sm);border:1px solid rgba(224,72,72,.15)">لا يمكن التراجع عن هذا الإجراء.</p>
+      {% include 'partials/admin_delete_fields.html' %}
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
-      <button class="btn btn-danger" onclick="confirmDelete()">حذف نهائي</button>
+      <button class="btn btn-danger lc-admin-delete" onclick="confirmDelete()">حذف نهائي</button>
     </div>
   </div>
 </div>
@@ -807,21 +808,21 @@ function renderExistingDocs(docs, techId) {
     return '<div class="existing-doc-item">' +
       '<div><span style="color:var(--accent)">' + esc(d.doc_type) + '</span> — ' + esc(d.title) +
       ' <a href="' + esc(d.url) + '" target="_blank" rel="noopener">عرض</a></div>' +
-      '<button type="button" class="btn btn-danger btn-sm" onclick="deleteTechDocument(' + d.id + ',' + techId + ')">حذف</button>' +
+      '<button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="deleteTechDocument(' + d.id + ',' + techId + ')">حذف</button>' +
     '</div>';
   }).join('');
 }
 
 function deleteTechDocument(docId, techId) {
-  if (!confirm('حذف هذا المستند؟')) return;
-  fetch('/technicians/documents/delete/' + docId, {method: 'POST'})
-    .then(function(r) { return r.json(); })
-    .then(function() {
+  LiftCoreAdminDelete.post('/technicians/documents/delete/' + docId, {
+    message: 'حذف هذا المستند؟',
+    onSuccess: function () {
       var t = TECHNICIANS.find(function(x) { return x.id === techId; });
       if (t && t.docs) t.docs = t.docs.filter(function(d) { return d.id !== docId; });
       renderExistingDocs(t ? t.docs : [], techId);
       if (currentViewId === techId) viewTech(techId);
-    });
+    }
+  });
 }
 
 function renderDocumentsGrid(docs, techId) {
@@ -1115,7 +1116,7 @@ function renderTable(data) {
         '<button class="btn btn-primary btn-sm btn-icon" onclick="editTechPhone(' + t.id + ')" title="تسجيل الجوال"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2h3l1.5 3.5L6 7c1.2 2.4 3.6 4.8 6 6l1.5-1.5L17 13v3l-2 2C7 16 2 11 1 5l2-3z" transform="scale(0.75) translate(1,1)"/></svg></button>' +
         '<button class="btn btn-secondary btn-sm btn-icon" onclick="viewTech(' + t.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
         '<button class="btn btn-secondary btn-sm btn-icon" onclick="editTech(' + t.id + ')" title="تعديل كامل"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>' +
-        '<button class="btn btn-danger btn-sm btn-icon" onclick="deleteTech(' + t.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>' +
+        '<button class="btn btn-danger btn-sm btn-icon lc-admin-delete" onclick="deleteTech(' + t.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>' +
       '</div></td></tr>';
   }).join('');
 }
@@ -1446,7 +1447,7 @@ function editFromView() {
 function deleteTech(id) { currentDeleteId = id; document.getElementById('modal-delete').classList.add('open'); }
 function confirmDelete() {
   if (!currentDeleteId) return;
-  fetch('/technicians/delete/' + currentDeleteId, {method:'POST'}).then(function() { window.location.reload(); });
+  LiftCoreAdminDelete.confirmFromOpenModal('/technicians/delete/' + currentDeleteId);
 }
 
 function exportExcel() {
@@ -1532,7 +1533,7 @@ function renderTeamsPanel() {
         '<td style="padding:8px 6px">' + esc(t.assistant_name || '—') + '</td>' +
         '<td style="padding:8px 6px;white-space:nowrap">' +
         '<button type="button" class="btn btn-secondary btn-sm" onclick="editMaintenanceTeam(' + t.id + ')">تعديل</button> ' +
-        '<button type="button" class="btn btn-danger btn-sm" onclick="deleteMaintenanceTeam(' + t.id + ')">حذف</button>' +
+        '<button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="deleteMaintenanceTeam(' + t.id + ')">حذف</button>' +
         '</td></tr>';
     }).join('') + '</tbody></table>';
 }
@@ -1579,13 +1580,13 @@ function saveMaintenanceTeam() {
 }
 
 function deleteMaintenanceTeam(id) {
-  if (!confirm('حذف هذا الفريق؟')) return;
-  fetchTeamsApi('/api/maintenance/teams/' + id + '/delete', {})
-    .then(function () {
+  LiftCoreAdminDelete.post('/api/maintenance/teams/' + id + '/delete', {
+    message: 'حذف هذا الفريق؟',
+    onSuccess: function () {
       MAINT_TEAMS = MAINT_TEAMS.filter(function (t) { return t.id !== id; });
       renderTeamsPanel();
-    })
-    .catch(function (err) { alert(err.message || err); });
+    }
+  }).catch(function (err) { alert(err.message || err); });
 }
 
 function refreshMaintenanceTeams() {

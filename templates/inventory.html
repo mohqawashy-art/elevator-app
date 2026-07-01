@@ -455,7 +455,7 @@ function renderTable(data) {
       <td><span class="badge ${ORDER_BADGE[i.order_status] || 'badge-gray'}">${D(i.order_status)}</span></td>
       <td class="td-actions">
         <button class="btn btn-secondary btn-sm" onclick="editItem(${i.id})">تعديل</button>
-        <button class="btn btn-secondary btn-sm" onclick="askDelete(${i.id})">حذف</button>
+        <button class="btn btn-secondary btn-sm lc-admin-delete" onclick="askDelete(${i.id})">حذف</button>
       </td>
     </tr>`).join('');
 }
@@ -575,9 +575,7 @@ function saveRecord() {
 }
 
 function askDelete(id) {
-  if (confirm('حذف هذا الصنف؟')) {
-    fetch(`/inventory/delete/${id}`, { method: 'POST' }).then(() => window.location.reload());
-  }
+  LiftCoreAdminDelete.post('/inventory/delete/' + id, { message: 'حذف هذا الصنف؟' });
 }
 
 function exportCSV() {

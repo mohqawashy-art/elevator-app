@@ -320,9 +320,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
             <td>{% if sg.role == 'manager' %}مدير{% else %}فني{% endif %}</td>
             <td>{% if sg.technician_id %}نعم{% else %}—{% endif %}</td>
             <td>
-              <form method="post" action="{{ url_for('settings_signatory_delete', sig_id=sg.id) }}" onsubmit="return confirm('حذف هذا التوقيع؟')">
-                <button type="submit" class="btn btn-secondary btn-sm">حذف</button>
-              </form>
+              <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="LiftCoreAdminDelete.post('{{ url_for('settings_signatory_delete', sig_id=sg.id) }}', {message: 'حذف هذا التوقيع؟'})">حذف</button>
             </td>
           </tr>
           {% endfor %}

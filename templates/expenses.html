@@ -406,7 +406,7 @@ function renderTable(data) {
           <button class="btn btn-secondary btn-sm btn-icon" onclick="editExpense(${e.id})">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
           </button>
-          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteExpense(${e.id})">
+          <button class="btn btn-danger btn-sm btn-icon lc-admin-delete" onclick="deleteExpense(${e.id})">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg>
           </button>
         </div>
@@ -504,10 +504,7 @@ function viewExpense(id) {
 }
 
 function deleteExpense(id) {
-  if (!confirm('حذف هذا المصروف؟')) return;
-  fetch(`/expenses/delete/${id}`, { method: 'POST' })
-    .then(() => window.location.reload())
-    .catch(() => alert('تعذّر حذف المصروف'));
+  LiftCoreAdminDelete.post('/expenses/delete/' + id, { message: 'حذف هذا المصروف؟' });
 }
 
 function exportCSV() {

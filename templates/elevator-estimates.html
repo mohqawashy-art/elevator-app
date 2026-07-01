@@ -285,9 +285,7 @@ tbody tr:hover{background:var(--bg3)}
             <td style="white-space:nowrap">
               <a href="{{ url_for('elevator_estimate_print', estimate_id=e.id) }}" class="btn btn-primary btn-sm lc-open-tab">🖨️ طباعة</a>
               <a href="/elevator-estimates?edit={{ e.id }}" class="btn btn-secondary btn-sm">تعديل</a>
-              <form method="post" action="/elevator-estimates/delete/{{ e.id }}" style="display:inline" onsubmit="return confirmDelete()">
-                <button type="submit" class="btn btn-secondary btn-sm">حذف</button>
-              </form>
+              <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="LiftCoreAdminDelete.post('/elevator-estimates/delete/{{ e.id }}', {message: 'حذف التقدير؟'})">حذف</button>
             </td>
           </tr>
           {% endfor %}

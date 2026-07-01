@@ -169,6 +169,55 @@ def require_admin():
     return user
 
 
+ADMIN_DELETE_PASSWORD_FIELD = 'admin_password'
+
+
+def _admin_delete_password_from_request():
+    data = request.get_json(silent=True) if request.is_json else None
+    if not isinstance(data, dict):
+        data = {}
+    return (
+        (request.form.get(ADMIN_DELETE_PASSWORD_FIELD) or '')
+        or (data.get(ADMIN_DELETE_PASSWORD_FIELD) or '')
+    ).strip()
+
+
+def _admin_delete_wants_json(*, json_response=False):
+    if json_response:
+        return True
+    if request.is_json:
+        return True
+    if request.headers.get('X-LC-Admin-Delete') == '1':
+        return True
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return True
+    return False
+
+
+def enforce_admin_delete(*, json_response=False):
+    """يتطلب دور admin + كلمة مرور المستخدم الحالي لتأكيد الحذف."""
+    as_json = _admin_delete_wants_json(json_response=json_response)
+    user = current_user()
+    if not user:
+        if as_json:
+            return jsonify({'ok': False, 'error': 'login_required', 'message': 'يجب تسجيل الدخول'}), 401
+        return redirect(url_for('login'))
+    if user.role != 'admin':
+        msg = 'الحذف متاح للمسؤول فقط.'
+        if as_json:
+            return jsonify({'ok': False, 'error': 'admin_required', 'message': msg}), 403
+        flash(msg, 'error')
+        abort(403)
+    pwd = _admin_delete_password_from_request()
+    if not pwd or not verify_password(user.password_hash, pwd):
+        msg = 'كلمة المرور غير صحيحة — لم يتم الحذف.'
+        if as_json:
+            return jsonify({'ok': False, 'error': 'invalid_password', 'message': msg}), 403
+        flash(msg, 'error')
+        return redirect(request.referrer or url_for('dashboard'))
+    return None
+
+
 def session_is_locked():
     return bool(session.get('session_locked'))
 
@@ -2383,6 +2432,9 @@ def client_edit(id):
 
 @app.route('/clients/delete/<int:id>', methods=['POST'])
 def client_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     c = Customer.query.get_or_404(id)
     db.session.delete(c)
     db.session.commit()
@@ -2553,6 +2605,9 @@ def elevator_edit(id):
 
 @app.route('/elevators/delete/<int:id>', methods=['POST'])
 def elevator_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     e = Elevator.query.get_or_404(id)
     customer = e.customer
     db.session.delete(e)
@@ -3070,6 +3125,9 @@ def contract_add():
 
 @app.route('/contracts/delete/<int:id>', methods=['POST'])
 def contract_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     c = Contract.query.get_or_404(id)
     try:
         _remove_contract_file(c)
@@ -3529,6 +3587,9 @@ def technician_edit(id):
 
 @app.route('/technicians/documents/delete/<int:doc_id>', methods=['POST'])
 def technician_document_delete(doc_id):
+    err = enforce_admin_delete(json_response=True)
+    if err:
+        return err
     doc = TechnicianDocument.query.get_or_404(doc_id)
     abs_path = os.path.join(app.root_path, 'static', doc.file_path.replace('/', os.sep))
     if os.path.isfile(abs_path):
@@ -3543,6 +3604,9 @@ def technician_document_delete(doc_id):
 
 @app.route('/technicians/delete/<int:id>', methods=['POST'])
 def technician_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     t = Technician.query.get_or_404(id)
     _remove_technician_files(t)
     db.session.delete(t)
@@ -3906,8 +3970,9 @@ def _purge_visit_dependencies(visit_id: int) -> None:
 
 @app.route('/maintenance-visits/cleanup-duplicates', methods=['POST'])
 def maintenance_cleanup_duplicates():
-    if not require_admin():
-        abort(403)
+    err = enforce_admin_delete()
+    if err:
+        return err
     from visit_cleanup import remove_duplicate_visits
     result = remove_duplicate_visits()
     flash(f'تم حذف {result["deleted"]} زيارة مكررة', 'success')
@@ -3916,6 +3981,9 @@ def maintenance_cleanup_duplicates():
 
 @app.route('/maintenance-visits/delete/<int:id>', methods=['POST'])
 def visit_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     v = MaintenanceVisit.query.get_or_404(id)
     _purge_visit_dependencies(id)
     db.session.delete(v)
@@ -4237,6 +4305,9 @@ def api_save_maintenance_team():
 
 @app.route('/api/maintenance/teams/<int:team_id>/delete', methods=['POST'])
 def api_delete_maintenance_team(team_id):
+    err = enforce_admin_delete(json_response=True)
+    if err:
+        return err
     team = MaintenanceTeam.query.get_or_404(team_id)
     assigned = MaintenanceVisit.query.filter_by(maintenance_team_id=team.id).count()
     if assigned:
@@ -4911,6 +4982,9 @@ def fault_add():
 
 @app.route('/faults/delete/<int:id>', methods=['POST'])
 def fault_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     f = Fault.query.get_or_404(id)
     FaultTechnician.query.filter_by(fault_id=id).delete(synchronize_session=False)
     MaintenanceVisit.query.filter_by(fault_id=id).update(
@@ -5038,6 +5112,9 @@ def revenue_add():
 
 @app.route('/revenues/delete/<int:id>', methods=['POST'])
 def revenue_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     r = Revenue.query.get_or_404(id)
     contract_id = r.contract_id
     db.session.delete(r)
@@ -5089,6 +5166,9 @@ def expense_add():
 
 @app.route('/expenses/delete/<int:id>', methods=['POST'])
 def expense_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     e = Expense.query.get_or_404(id)
     db.session.delete(e)
     db.session.commit()
@@ -5287,6 +5367,9 @@ def invoice_print_page(invoice_id):
 
 @app.route('/invoices/delete/<int:id>', methods=['POST'])
 def invoice_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     i = Invoice.query.get_or_404(id)
     contract_id = i.contract_id
     db.session.delete(i)
@@ -5384,6 +5467,9 @@ def inventory_add():
 
 @app.route('/inventory/delete/<int:id>', methods=['POST'])
 def inventory_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     item = InventoryItem.query.get_or_404(id)
     db.session.delete(item)
     db.session.commit()
@@ -5805,6 +5891,9 @@ def purchase_order_upload_pdf(order_id):
 
 @app.route('/purchase-orders/delete/<int:order_id>', methods=['POST'])
 def purchase_orders_delete(order_id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     order = PurchaseOrder.query.get_or_404(order_id)
     if order.status == 'مستلم':
         return redirect(url_for('purchase_orders'))
@@ -5962,6 +6051,9 @@ def elevator_estimates_save():
 
 @app.route('/elevator-estimates/delete/<int:estimate_id>', methods=['POST'])
 def elevator_estimates_delete(estimate_id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     est = ElevatorEstimate.query.get_or_404(estimate_id)
     db.session.delete(est)
     db.session.commit()
@@ -6044,6 +6136,9 @@ def stock_add():
 
 @app.route('/stock-movements/delete/<int:id>', methods=['POST'])
 def stock_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     m = StockMovement.query.get_or_404(id)
     item = InventoryItem.query.get(m.item_id)
     _adjust_inventory_qty(item, m.direction, m.quantity, reverse=True)
@@ -6277,6 +6372,9 @@ def parts_add():
 
 @app.route('/parts-billing/delete/<int:id>', methods=['POST'])
 def parts_delete(id):
+    err = enforce_admin_delete()
+    if err:
+        return err
     from inventory_stock import reverse_stock_by_reference, stock_reference
 
     p = PartsBilling.query.get_or_404(id)
@@ -6624,9 +6722,9 @@ def settings_signatory_add():
 
 @app.route('/settings/signatories/<int:sig_id>/delete', methods=['POST'])
 def settings_signatory_delete(sig_id):
-    if not require_admin():
-        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
-        return _settings_redirect('signatures')
+    err = enforce_admin_delete()
+    if err:
+        return err
     from signatory_service import delete_signatory_files
 
     row = Signatory.query.get_or_404(sig_id)
