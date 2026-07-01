@@ -5373,20 +5373,21 @@ def invoice_print_page(invoice_id):
 
 @app.route('/api/invoices/<int:invoice_id>/payment-whatsapp')
 def api_invoice_payment_whatsapp(invoice_id):
-    from operations import build_invoice_payment_whatsapp, invoice_collectible_for_whatsapp
+    from operations import financial_whatsapp_url
 
-    invo = Invoice.query.get_or_404(invoice_id)
-    if not invoice_collectible_for_whatsapp(invo):
-        return jsonify({
-            'error': 'هذا المستند مدفوع أو غير قابل لطلب السداد',
-            'whatsapp_url': '',
-        }), 400
-    url = build_invoice_payment_whatsapp(invo, base_url=request.url_root)
+    url, err = financial_whatsapp_url('invoice', invoice_id, request.url_root)
     if not url:
-        return jsonify({
-            'error': 'لا يوجد رقم واتساب مسجّل للعميل — أضفه من بيانات العميل',
-            'whatsapp_url': '',
-        }), 400
+        return jsonify({'error': err or 'تعذّر تجهيز رسالة واتساب', 'whatsapp_url': ''}), 400
+    return jsonify({'whatsapp_url': url})
+
+
+@app.route('/api/financial/whatsapp/<doc_type>/<int:doc_id>')
+def api_financial_whatsapp(doc_type, doc_id):
+    from operations import financial_whatsapp_url
+
+    url, err = financial_whatsapp_url(doc_type, doc_id, request.url_root)
+    if not url:
+        return jsonify({'error': err or 'تعذّر تجهيز رسالة واتساب', 'whatsapp_url': ''}), 400
     return jsonify({'whatsapp_url': url})
 
 

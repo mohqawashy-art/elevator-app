@@ -1,0 +1,31 @@
+.lc-wa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: var(--r-sm, 6px);
+  background: rgba(37, 211, 102, 0.14);
+  color: #25d366;
+  border: 1px solid rgba(37, 211, 102, 0.35);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  vertical-align: middle;
+}
+.lc-wa-btn:hover { background: rgba(37, 211, 102, 0.26); }
+.lc-wa-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.lc-wa-btn.lc-wa-btn-text { min-width: auto; height: auto; padding: 7px 12px; }
+.toolbar .lc-wa-btn,
+.toolbar .btn-wa {
+  background: #25d366;
+  color: #fff;
+  border: none;
+  min-height: 34px;
+  padding: 8px 14px;
+}
+.toolbar .lc-wa-btn:hover,
+.toolbar .btn-wa:hover { background: #1da851; }

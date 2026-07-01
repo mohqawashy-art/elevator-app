@@ -182,6 +182,7 @@ th{color:var(--text3);font-size:11px;font-weight:500}
             <td style="font-family:var(--font-en)">{{ '%.2f'|format(o.total_amount or 0) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
             <td style="white-space:nowrap">
               <a href="{{ url_for('purchase_order_print', order_id=o.id) }}" class="btn btn-primary btn-sm lc-open-tab">🖨️ طباعة / إرسال</a>
+              <a href="{{ url_for('purchase_order_print', order_id=o.id) }}" class="btn btn-secondary btn-sm lc-open-tab lc-wa-btn lc-wa-btn-text" title="إرسال واتساب للمورد">📱 واتساب</a>
               <a href="{{ url_for('purchase_order_print_en', order_id=o.id) }}" class="btn btn-secondary btn-sm lc-open-tab" title="English only">EN</a>
               {% if o.status != 'مستلم' %}
               <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="LiftCoreAdminDelete.post('/purchase-orders/delete/{{ o.id }}', {message: 'حذف الطلب؟'})">حذف</button>

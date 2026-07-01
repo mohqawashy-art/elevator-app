@@ -88,7 +88,25 @@ def tech_whatsapp_phone(tech: Technician) -> str:
     return (tech.phone2 or tech.phone or '').strip()
 
 
-PAID_INVOICE_STATUSES = frozenset({'مدفوعة', 'مدفوع', 'محصّل', 'محصل'})
+PAID_INVOICE_STATUSES = frozenset({'مدفوعة', 'مدفوع', 'محصّل', 'محصل', 'مسددة', 'Paid', 'paid'})
+COLLECTED_STATUSES = frozenset({
+    'محصّل', 'محصل', 'مدفوعة', 'مدفوع', 'مسددة', 'مكتملة', 'Paid', 'paid',
+})
+CANCELLED_MARKERS = ('ملغ', 'cancel')
+
+
+def _is_cancelled_status(status: str | None) -> bool:
+    s = (status or '').strip().lower()
+    return any(m in s for m in CANCELLED_MARKERS)
+
+
+def _is_collected_status(status: str | None) -> bool:
+    s = (status or '').strip()
+    if not s:
+        return False
+    if s in COLLECTED_STATUSES:
+        return True
+    return s in PAID_INVOICE_STATUSES
 
 
 def customer_whatsapp_phone(customer: Customer | None) -> str:
@@ -97,26 +115,43 @@ def customer_whatsapp_phone(customer: Customer | None) -> str:
     return (customer.phone2 or customer.phone or '').strip()
 
 
-def invoice_collectible_for_whatsapp(invoice) -> bool:
-    """فاتورة غير مدفوعة (ليست سند قبض) — مناسبة لطلب السداد."""
+def _payment_greeting(customer: Customer | None) -> str:
+    contact = (customer.contact_person or customer.name or '').strip() if customer else ''
+    return f'السلام عليكم أ. {contact}،' if contact else 'السلام عليكم،'
+
+
+def _append_bank_details(lines: list[str], settings: Settings | None) -> None:
+    if not settings or not (settings.bank_iban or settings.bank_account_no or settings.bank_name):
+        return
+    lines.append('')
+    lines.append('بيانات التحويل البنكي:')
+    if settings.bank_name:
+        lines.append(f'البنك: {settings.bank_name}')
+    if settings.bank_iban:
+        lines.append(f'الآيبان: {settings.bank_iban}')
+    elif settings.bank_account_no:
+        lines.append(f'رقم الحساب: {settings.bank_account_no}')
+
+
+def invoice_whatsapp_eligible(invoice) -> bool:
+    """أي فاتورة/مستند ضريبي (ليس سند قبض) — يمكن إرساله واتساب."""
     if not invoice:
         return False
-    inv_type = (invoice.invoice_type or '').strip()
-    if 'سند' in inv_type:
+    if 'سند' in (invoice.invoice_type or ''):
         return False
-    status = (invoice.status or '').strip()
-    if status in PAID_INVOICE_STATUSES:
+    return not _is_cancelled_status(invoice.status)
+
+
+def invoice_collectible_for_whatsapp(invoice) -> bool:
+    """فاتورة غير مدفوعة — مناسبة لطلب السداد."""
+    if not invoice_whatsapp_eligible(invoice):
         return False
-    if 'ملغ' in status:
-        return False
-    return True
+    return not _is_collected_status(invoice.status)
 
 
 def build_invoice_payment_whatsapp(invoice, base_url: str = '') -> str:
-    """رسالة طلب سداد + رابط الفاتورة — تُفتح عبر wa.me."""
-    if not isinstance(invoice, Invoice):
-        return ''
-    if not invoice_collectible_for_whatsapp(invoice):
+    """رسالة فاتورة / طلب سداد + رابط الطباعة."""
+    if not isinstance(invoice, Invoice) or not invoice_whatsapp_eligible(invoice):
         return ''
     cust = invoice.customer
     phone = customer_whatsapp_phone(cust)
@@ -124,17 +159,17 @@ def build_invoice_payment_whatsapp(invoice, base_url: str = '') -> str:
         return ''
     settings = Settings.query.first()
     company_name = (settings.company_name if settings else '') or 'LiftCore'
-    contact = (cust.contact_person or cust.name or '').strip() if cust else ''
-    greeting = f'السلام عليكم أ. {contact}،' if contact else 'السلام عليكم،'
+    greeting = _payment_greeting(cust)
     total = float(invoice.total or 0)
     inv_type = (invoice.invoice_type or 'فاتورة').strip()
-    lines = [
-        greeting,
-        '',
-        f'نذكّركم بطلب سداد {inv_type} رقم {invoice.code}',
-        f'المبلغ: {total:,.2f} ر.س',
-    ]
-    if invoice.due_date:
+    paid = _is_collected_status(invoice.status)
+    lines = [greeting, '']
+    if paid:
+        lines.append(f'نرسل لكم {inv_type} رقم {invoice.code}')
+    else:
+        lines.append(f'نذكّركم بطلب سداد {inv_type} رقم {invoice.code}')
+    lines.append(f'المبلغ: {total:,.2f} ر.س')
+    if invoice.due_date and not paid:
         lines.append(f'تاريخ الاستحقاق: {invoice.due_date.strftime("%d/%m/%Y")}')
     desc = (invoice.description or '').strip()
     if desc:
@@ -142,18 +177,153 @@ def build_invoice_payment_whatsapp(invoice, base_url: str = '') -> str:
     if base_url:
         lines.append('')
         lines.append(f'🔗 عرض الفاتورة:\n{base_url.rstrip("/")}/invoices/{invoice.id}/print')
-    if settings and (settings.bank_iban or settings.bank_account_no or settings.bank_name):
-        lines.append('')
-        lines.append('بيانات التحويل البنكي:')
-        if settings.bank_name:
-            lines.append(f'البنك: {settings.bank_name}')
-        if settings.bank_iban:
-            lines.append(f'الآيبان: {settings.bank_iban}')
-        elif settings.bank_account_no:
-            lines.append(f'رقم الحساب: {settings.bank_account_no}')
+    if not paid:
+        _append_bank_details(lines, settings)
     lines.append('')
     lines.append(f'مع التحية،\n{company_name}')
     return whatsapp_url(phone, '\n'.join(lines))
+
+
+def build_revenue_payment_whatsapp(revenue, base_url: str = '') -> str:
+    from models import Revenue
+
+    if not isinstance(revenue, Revenue):
+        return ''
+    if _is_cancelled_status(revenue.status):
+        return ''
+    cust = revenue.customer
+    phone = customer_whatsapp_phone(cust)
+    if not phone:
+        return ''
+    settings = Settings.query.first()
+    company_name = (settings.company_name if settings else '') or 'LiftCore'
+    total = float(revenue.total or revenue.amount or 0)
+    lines = [
+        _payment_greeting(cust),
+        '',
+        f'نذكّركم بمستحق مالي رقم {revenue.code}',
+        f'النوع: {(revenue.revenue_type or "إيراد").strip()}',
+        f'المبلغ: {total:,.2f} ر.س',
+    ]
+    if revenue.revenue_date:
+        lines.append(f'التاريخ: {revenue.revenue_date.strftime("%d/%m/%Y")}')
+    if revenue.contract and revenue.contract.code:
+        lines.append(f'العقد: {revenue.contract.code}')
+    ref = (revenue.reference or revenue.notes or '').strip()
+    if ref:
+        lines.append(f'مرجع: {ref[:120]}')
+    if not _is_collected_status(revenue.status):
+        _append_bank_details(lines, settings)
+    lines.append('')
+    lines.append(f'مع التحية،\n{company_name}')
+    return whatsapp_url(phone, '\n'.join(lines))
+
+
+def build_parts_payment_whatsapp(parts, base_url: str = '') -> str:
+    from models import PartsBilling
+
+    if not isinstance(parts, PartsBilling):
+        return ''
+    if _is_cancelled_status(parts.status):
+        return ''
+    cust = parts.customer
+    phone = customer_whatsapp_phone(cust)
+    if not phone:
+        return ''
+    settings = Settings.query.first()
+    company_name = (settings.company_name if settings else '') or 'LiftCore'
+    amount = float(parts.sell_price or 0)
+    lines = [
+        _payment_greeting(cust),
+        '',
+        f'نذكّركم بفاتورة قطع غيار رقم {parts.code}',
+        f'المبلغ: {amount:,.2f} ر.س',
+    ]
+    if parts.billing_date:
+        lines.append(f'التاريخ: {parts.billing_date.strftime("%d/%m/%Y")}')
+    if parts.contract and parts.contract.code:
+        lines.append(f'العقد: {parts.contract.code}')
+    desc = (parts.description or '').strip()
+    if desc:
+        short = desc if len(desc) <= 160 else desc[:157] + '...'
+        lines.append(f'البيان: {short}')
+    if not _is_collected_status(parts.status):
+        _append_bank_details(lines, settings)
+    lines.append('')
+    lines.append(f'مع التحية،\n{company_name}')
+    return whatsapp_url(phone, '\n'.join(lines))
+
+
+def build_contract_payment_whatsapp(contract, base_url: str = '') -> str:
+    from customer_billing import contract_remaining
+
+    if not contract or not contract.customer:
+        return ''
+    if _is_cancelled_status(contract.status):
+        return ''
+    remaining = contract_remaining(contract)
+    if remaining <= 0.01:
+        return ''
+    cust = contract.customer
+    phone = customer_whatsapp_phone(cust)
+    if not phone:
+        return ''
+    settings = Settings.query.first()
+    company_name = (settings.company_name if settings else '') or 'LiftCore'
+    lines = [
+        _payment_greeting(cust),
+        '',
+        f'نذكّركم بمستحقات العقد رقم {contract.code}',
+        f'المبلغ المتبقي: {remaining:,.2f} ر.س',
+    ]
+    if contract.end_date:
+        lines.append(f'نهاية العقد: {contract.end_date.strftime("%d/%m/%Y")}')
+    _append_bank_details(lines, settings)
+    lines.append('')
+    lines.append(f'مع التحية،\n{company_name}')
+    return whatsapp_url(phone, '\n'.join(lines))
+
+
+def financial_whatsapp_url(doc_type: str, doc_id: int, base_url: str = '') -> tuple[str, str]:
+    """يرجع (whatsapp_url, error_message)."""
+    doc_type = (doc_type or '').strip().lower()
+    if doc_type == 'invoice':
+        row = Invoice.query.get(doc_id)
+        if not row:
+            return '', 'المستند غير موجود'
+        url = build_invoice_payment_whatsapp(row, base_url)
+        if not url:
+            if not invoice_whatsapp_eligible(row):
+                return '', 'هذا المستند غير مناسب للإرسال عبر واتساب'
+            return '', 'لا يوجد رقم واتساب مسجّل للعميل — أضفه من بيانات العميل'
+        return url, ''
+    if doc_type == 'revenue':
+        from models import Revenue
+        row = Revenue.query.get(doc_id)
+        if not row:
+            return '', 'المستند غير موجود'
+        url = build_revenue_payment_whatsapp(row, base_url)
+        if not url:
+            return '', 'لا يوجد رقم واتساب مسجّل للعميل — أضفه من بيانات العميل'
+        return url, ''
+    if doc_type in ('parts', 'parts-billing', 'parts_billing'):
+        from models import PartsBilling
+        row = PartsBilling.query.get(doc_id)
+        if not row:
+            return '', 'المستند غير موجود'
+        url = build_parts_payment_whatsapp(row, base_url)
+        if not url:
+            return '', 'لا يوجد رقم واتساب مسجّل للعميل — أضفه من بيانات العميل'
+        return url, ''
+    if doc_type == 'contract':
+        row = Contract.query.get(doc_id)
+        if not row:
+            return '', 'العقد غير موجود'
+        url = build_contract_payment_whatsapp(row, base_url)
+        if not url:
+            return '', 'لا يوجد رقم واتساب أو لا توجد مستحقات على العقد'
+        return url, ''
+    return '', 'نوع المستند غير مدعوم'
 
 
 def customer_maps_link(customer: Customer) -> str:

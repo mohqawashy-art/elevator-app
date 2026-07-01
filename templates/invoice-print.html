@@ -194,8 +194,8 @@ body.page-a5 .qr-side img{width:85px;height:85px}
 <div class="toolbar">
   <span>{{ doc_title }} — {{ irn }}</span>
   <div>
-    {% if whatsapp_payment_url %}
-    <button type="button" class="btn-wa" onclick="window.open({{ whatsapp_payment_url|tojson }}, '_blank')">طلب سداد واتساب</button>
+    {% if show_whatsapp_payment %}
+    <button type="button" class="btn-wa lc-wa-btn lc-wa-btn-text" onclick="LiftCoreFinancialWa.request('invoice', {{ invoice_id }})">طلب سداد واتساب</button>
     {% endif %}
     <button type="button" class="print" onclick="window.print()">طباعة</button>
     <a class="back" href="/invoices">إغلاق</a>
@@ -403,6 +403,8 @@ body.page-a5 .qr-side img{width:85px;height:85px}
 {% if request.args.get('print') == '1' %}
 <script>window.addEventListener('load',function(){window.print();});</script>
 {% endif %}
+<link rel="stylesheet" href="/static/liftcore-financial-wa.css?v=2">
+<script src="/static/liftcore-financial-wa.js?v=2"></script>
 <script src="/static/liftcore-nav.js?v=2"></script>
 </body>
 </html>

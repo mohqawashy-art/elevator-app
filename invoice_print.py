@@ -213,9 +213,14 @@ def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
     company_website = (getattr(settings, 'company_website', None) or '').strip()
     show_bank = bool(bank_name or bank_iban or bank_account_no)
 
-    from operations import build_invoice_payment_whatsapp
+    from operations import build_invoice_payment_whatsapp, invoice_whatsapp_eligible
 
-    whatsapp_payment_url = build_invoice_payment_whatsapp(invo, base_url) if base_url else ''
+    show_whatsapp_payment = invoice_whatsapp_eligible(invo)
+    whatsapp_payment_url = (
+        build_invoice_payment_whatsapp(invo, base_url)
+        if base_url and show_whatsapp_payment
+        else ''
+    )
 
     return {
         'doc_title': doc_title,
@@ -287,5 +292,6 @@ def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
             line_items=line_items,
         ),
         'whatsapp_payment_url': whatsapp_payment_url,
+        'show_whatsapp_payment': show_whatsapp_payment,
         'invoice_id': invo.id,
     }
