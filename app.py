@@ -1521,6 +1521,20 @@ PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل']
 OPEN_FAULT_STATUSES = ['مفتوح', 'قيد المعالجة']
 
 
+def _drill_row(cells, *, wa_type=None, wa_id=None):
+    row = {'cells': cells}
+    if wa_type and wa_id:
+        row['wa'] = {'type': wa_type, 'id': wa_id}
+    return row
+
+
+def _invoice_drill_wa(i):
+    from operations import invoice_whatsapp_eligible
+    if invoice_whatsapp_eligible(i):
+        return 'invoice', i.id
+    return None, None
+
+
 @app.route('/api/dashboard/drill/<card_type>')
 def api_dashboard_drill(card_type):
     """بيانات تفصيلية لكل كارت في لوحة التحكم."""
@@ -1605,15 +1619,18 @@ def api_dashboard_drill(card_type):
             .order_by(Invoice.due_date)
             .all()
         )
-        rows = [
-            [i.code, (cust.name if cust else '—'),
-             str(i.invoice_date), str(i.due_date or '—'),
-             f'{i.total:,.0f} \u20c1' if i.total else '—', i.status]
-            for i, cust in invs
-        ]
+        rows = []
+        for i, cust in invs:
+            wa_type, wa_id = _invoice_drill_wa(i)
+            rows.append(_drill_row(
+                [i.code, (cust.name if cust else '—'),
+                 str(i.invoice_date), str(i.due_date or '—'),
+                 f'{i.total:,.0f} \u20c1' if i.total else '—', i.status],
+                wa_type=wa_type, wa_id=wa_id,
+            ))
         payload = {
             'title': 'الفواتير غير المدفوعة', 'link': '/invoices',
-            'columns': ['الكود', 'العميل', 'التاريخ', 'الاستحقاق', 'الإجمالي', 'الحالة'],
+            'columns': ['الكود', 'العميل', 'التاريخ', 'الاستحقاق', 'الإجمالي', 'الحالة', 'واتساب'],
             'rows': rows,
         }
     elif card_type == 'technicians':
@@ -1664,14 +1681,17 @@ def api_dashboard_drill(card_type):
             .order_by(Invoice.invoice_date.desc())
             .all()
         )
-        rows = [
-            [i.code, cust.name if cust else '—', str(i.invoice_date),
-             f'{i.total:,.0f} \u20c1' if i.total else '—', i.status]
-            for i, cust in invs
-        ]
+        rows = []
+        for i, cust in invs:
+            wa_type, wa_id = _invoice_drill_wa(i)
+            rows.append(_drill_row(
+                [i.code, cust.name if cust else '—', str(i.invoice_date),
+                 f'{i.total:,.0f} \u20c1' if i.total else '—', i.status],
+                wa_type=wa_type, wa_id=wa_id,
+            ))
         payload = {
             'title': 'إجمالي الفواتير', 'link': '/invoices',
-            'columns': ['الكود', 'العميل', 'التاريخ', 'الإجمالي', 'الحالة'],
+            'columns': ['الكود', 'العميل', 'التاريخ', 'الإجمالي', 'الحالة', 'واتساب'],
             'rows': rows,
         }
     elif card_type == 'paid_invoices':
@@ -1703,14 +1723,17 @@ def api_dashboard_drill(card_type):
             .order_by(Invoice.due_date)
             .all()
         )
-        rows = [
-            [i.code, cust.name if cust else '—', str(i.due_date or '—'),
-             f'{i.total:,.0f} \u20c1' if i.total else '—', i.status]
-            for i, cust in invs
-        ]
+        rows = []
+        for i, cust in invs:
+            wa_type, wa_id = _invoice_drill_wa(i)
+            rows.append(_drill_row(
+                [i.code, cust.name if cust else '—', str(i.due_date or '—'),
+                 f'{i.total:,.0f} \u20c1' if i.total else '—', i.status],
+                wa_type=wa_type, wa_id=wa_id,
+            ))
         payload = {
             'title': 'الفواتير المتأخرة', 'link': '/invoices',
-            'columns': ['الكود', 'العميل', 'تاريخ الاستحقاق', 'الإجمالي', 'الحالة'],
+            'columns': ['الكود', 'العميل', 'تاريخ الاستحقاق', 'الإجمالي', 'الحالة', 'واتساب'],
             'rows': rows,
         }
     elif card_type == 'all_visits':

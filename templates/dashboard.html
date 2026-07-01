@@ -594,6 +594,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
             </div>
           </div>
           <div class="panel-body" style="padding-top:12px">
+            <p style="font-size:11px;color:var(--text3);margin-bottom:10px">اضغط «فواتير متأخرة» أو «إجمالي الفواتير» ثم زر <span style="color:#25d366;font-weight:600">واتساب</span> في الجدول لطلب السداد.</p>
             <div class="finance-grid">
               <div class="finance-card" onclick="openDrill('all_invoices',this)">
                 <div class="finance-label" id="fl1">إجمالي الفواتير</div>
@@ -838,6 +839,14 @@ function clearDrillActive() {
     .forEach(function(el) { el.classList.remove('active'); });
 }
 
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 async function openDrill(type, cardEl) {
   const panel = document.getElementById('drill-panel');
   const head  = document.getElementById('drill-head');
@@ -874,10 +883,18 @@ async function openDrill(type, cardEl) {
       body.innerHTML = '<tr><td colspan="' + data.columns.length + '" style="text-align:center;color:var(--text3);padding:20px">لا توجد بيانات</td></tr>';
     } else {
       body.innerHTML = data.rows.map(function(row) {
-        return '<tr>' + row.map(function(cell, i) {
-          const cls = i === 1 ? ' class="td-name"' : '';
-          const sty = (i === 0) ? ' style="font-family:var(--font-en);color:var(--accent)"' : '';
-          return '<td' + cls + sty + '>' + cell + '</td>';
+        var cells = Array.isArray(row) ? row.slice() : (row.cells || []).slice();
+        var wa = row && row.wa;
+        if (wa && window.LiftCoreFinancialWa) {
+          cells.push(LiftCoreFinancialWa.buttonHtml(wa.type, wa.id));
+        } else if (data.columns[data.columns.length - 1] === 'واتساب') {
+          cells.push('—');
+        }
+        return '<tr>' + cells.map(function(cell, i) {
+          var cls = i === 1 ? ' class="td-name"' : '';
+          var sty = (i === 0) ? ' style="font-family:var(--font-en);color:var(--accent)"' : '';
+          var html = (typeof cell === 'string' && cell.indexOf('<button') >= 0) ? cell : escHtml(String(cell == null ? '—' : cell));
+          return '<td' + cls + sty + '>' + html + '</td>';
         }).join('') + '</tr>';
       }).join('');
     }

@@ -62,7 +62,7 @@
   --logo-w-login: {{ logo_width_login }}px;
 }</style>
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-no-hover.css') }}?v=2">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css') }}?v=34">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-shell.css') }}?v=35">
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-sticky-top.css') }}?v=3">
 <script src="{{ url_for('static', filename='liftcore-live.js') }}?v=3"></script>
 <script src="{{ url_for('static', filename='liftcore-shell.js') }}?v=16"></script>
@@ -70,8 +70,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-idle-screensaver.css') }}?v=8">
 <script src="{{ url_for('static', filename='liftcore-idle-screensaver.js') }}?v=8" defer></script>
 <script src="{{ url_for('static', filename='liftcore-admin-delete.js') }}?v=2"></script>
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-financial-wa.css') }}?v=2">
-<script src="{{ url_for('static', filename='liftcore-financial-wa.js') }}?v=2"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-financial-wa.css') }}?v=3">
+<script src="{{ url_for('static', filename='liftcore-financial-wa.js') }}?v=3"></script>
 {% if auth_user and auth_user.role == 'admin' %}
 {% include 'partials/admin_delete_modal.html' %}
 {% endif %}
