@@ -314,6 +314,11 @@ def main() -> int:
         print(f"Skipped (missing elevator/contract): {result['skipped_missing']}")
         print(f"Skipped (non-routine / faults bucket): {result['skipped_fault']}")
         print(f"Errors: {result['errors']}")
+        print('\n=== النتيجة — زيارات الصيانة ===')
+        print(f"  مستوردة: {result['imported']}")
+        print(f"  موجودة مسبقاً: {result['skipped_existing']}")
+        print(f"  مصعد/عقد ناقص: {result['skipped_missing']}")
+        print(f"  صفوف أعطال (تُستورد لاحقاً): {result['skipped_fault']}")
         if result.get('missing_samples'):
             print('Missing samples:')
             for line in result['missing_samples']:

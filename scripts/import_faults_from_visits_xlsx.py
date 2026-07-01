@@ -232,6 +232,10 @@ def main() -> int:
         print(f"Skipped (existing): {result['skipped_existing']}")
         print(f"Skipped (missing elevator): {result['skipped_missing']}")
         print(f"Errors: {result['errors']}")
+        print('\n=== النتيجة — الأعطال ===')
+        print(f"  مستوردة: {result['imported']}")
+        print(f"  موجودة مسبقاً: {result['skipped_existing']}")
+        print(f"  مصعد ناقص: {result['skipped_missing']}")
         if result.get('missing_samples'):
             print('Missing samples:')
             for line in result['missing_samples']:
