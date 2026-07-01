@@ -170,6 +170,11 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 
 <script>
 const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const CHART_COLORS = {
+  revenue: { fill: '#1fb87a', border: '#3dd68f', hover: '#4ae89a' },
+  expense: { fill: '#e04848', border: '#ff6b6b', hover: '#ff8585' },
+  profit:  { fill: '#2a7fff', border: '#5c9dff', hover: '#78b0ff' },
+};
 let charts = {};
 
 function destroyCharts() {
@@ -281,24 +286,63 @@ function loadHealth() {
       destroyCharts();
 
       makeChart('chart-monthly', 'bar', MONTHS, [
-        { label: 'الإيرادات', data: m.revenue || [], backgroundColor: 'rgba(31,184,122,.55)', borderRadius: 4 },
-        { label: 'المصروفات', data: m.expenses || [], backgroundColor: 'rgba(224,72,72,.55)', borderRadius: 4 },
-        { label: 'الأرباح', data: m.profit || [], backgroundColor: 'rgba(42,127,255,.55)', borderRadius: 4 },
-      ]);
+        {
+          label: 'الإيرادات',
+          data: m.revenue || [],
+          backgroundColor: CHART_COLORS.revenue.fill,
+          borderColor: CHART_COLORS.revenue.border,
+          borderWidth: 1,
+          borderRadius: 6,
+          hoverBackgroundColor: CHART_COLORS.revenue.hover,
+        },
+        {
+          label: 'المصروفات',
+          data: m.expenses || [],
+          backgroundColor: CHART_COLORS.expense.fill,
+          borderColor: CHART_COLORS.expense.border,
+          borderWidth: 1,
+          borderRadius: 6,
+          hoverBackgroundColor: CHART_COLORS.expense.hover,
+        },
+        {
+          label: 'الأرباح',
+          data: m.profit || [],
+          backgroundColor: CHART_COLORS.profit.fill,
+          borderColor: CHART_COLORS.profit.border,
+          borderWidth: 1,
+          borderRadius: 6,
+          hoverBackgroundColor: CHART_COLORS.profit.hover,
+        },
+      ], {
+        datasets: { bar: { maxBarThickness: 32 } },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#c8d4e8',
+              font: { family: 'IBM Plex Sans Arabic', size: 12, weight: '600' },
+              usePointStyle: true,
+              pointStyle: 'rectRounded',
+              padding: 14,
+            },
+          },
+        },
+      });
 
       var exp = d.expense_breakdown || {};
       makeChart('chart-expenses', 'doughnut', Object.keys(exp), [{
         data: Object.values(exp),
-        backgroundColor: ['rgba(224,72,72,.8)','rgba(224,144,48,.8)','rgba(42,127,255,.8)','rgba(200,160,85,.8)','rgba(138,155,184,.6)'],
-        borderWidth: 0,
+        backgroundColor: ['#e04848', '#e09030', '#2a7fff', '#c8a055', '#8a9bb8'],
+        borderColor: '#131b27',
+        borderWidth: 2,
+        hoverOffset: 6,
       }]);
 
       var cumRev = [], cumExp = [], cr = 0, ce = 0;
       (m.revenue || []).forEach(function (v, i) { cr += v; cumRev.push(cr); });
       (m.expenses || []).forEach(function (v, i) { ce += v; cumExp.push(ce); });
       makeChart('chart-compare', 'line', MONTHS, [
-        { label: 'إيرادات تراكمية', data: cumRev, borderColor: 'rgba(31,184,122,.9)', backgroundColor: 'rgba(31,184,122,.1)', fill: true, tension: 0.3, pointRadius: 2 },
-        { label: 'مصروفات تراكمية', data: cumExp, borderColor: 'rgba(224,72,72,.9)', backgroundColor: 'rgba(224,72,72,.1)', fill: true, tension: 0.3, pointRadius: 2 },
+        { label: 'إيرادات تراكمية', data: cumRev, borderColor: CHART_COLORS.revenue.border, backgroundColor: 'rgba(31,184,122,.22)', fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: CHART_COLORS.revenue.fill, borderWidth: 2.5 },
+        { label: 'مصروفات تراكمية', data: cumExp, borderColor: CHART_COLORS.expense.border, backgroundColor: 'rgba(224,72,72,.18)', fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: CHART_COLORS.expense.fill, borderWidth: 2.5 },
       ]);
 
       renderRecommendations(d.recommendations);
