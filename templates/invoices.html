@@ -150,6 +150,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .lc-ops-pick-table tr.lc-op-row:hover,.lc-ops-pick-table tr.lc-op-row.selected{background:rgba(42,127,255,.12)}
 .lc-ops-pick-table td.lc-num{font-family:var(--font-en);direction:ltr;text-align:left;white-space:nowrap}
 .lc-ops-pick-table td.lc-code{font-family:var(--font-en);color:var(--accent)}
+.btn-wa{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:5px 8px;border-radius:var(--r-sm);background:rgba(37,211,102,.12);color:#25d366;border:1px solid rgba(37,211,102,.25);font-size:11px;font-weight:600;cursor:pointer;transition:var(--trans)}
+.btn-wa:hover{background:rgba(37,211,102,.22)}
+.td-actions .btn-wa{min-width:28px;height:28px;padding:0}
 /* PRINT */
 @media print{
   .sidebar,.header,.page-header,.filters-bar,.doc-tabs,.table-footer,
@@ -387,6 +390,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     </div>
     <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
+      <button type="button" class="btn btn-wa" id="view-wa-btn" style="display:none" onclick="requestPaymentWhatsApp(currentViewId)">طلب سداد واتساب</button>
       <button type="button" class="btn btn-secondary" id="view-print-btn" style="display:none" onclick="printInvoice(currentViewId)">طباعة</button>
       <button type="button" class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
     </div>
@@ -433,6 +437,32 @@ function invoiceTabType(row) {
 
 function isPaidStatus(st) {
   return PAID_STATUSES.includes(st) || st === 'محصل';
+}
+
+function invoiceNeedsPayment(i) {
+  if (!i) return false;
+  if ((i.invoice_type || '').indexOf('سند') >= 0) return false;
+  if (isPaidStatus(i.status)) return false;
+  if ((i.status || '').indexOf('ملغ') >= 0) return false;
+  return true;
+}
+
+const WA_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>';
+
+function requestPaymentWhatsApp(id) {
+  if (!id) return;
+  fetch('/api/invoices/' + id + '/payment-whatsapp', { credentials: 'same-origin' })
+    .then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+    })
+    .then(function (res) {
+      if (!res.ok || !res.data.whatsapp_url) {
+        alert(res.data.error || 'تعذّر تجهيز رسالة واتساب');
+        return;
+      }
+      window.open(res.data.whatsapp_url, '_blank');
+    })
+    .catch(function () { alert('تعذّر الاتصال بالخادم'); });
 }
 
 let currentTab = 'all';
@@ -524,6 +554,7 @@ function renderTable(data) {
           <a class="btn btn-secondary btn-sm btn-icon lc-open-tab" href="/invoices/${i.id}/print?print=1" title="طباعة" onclick="event.stopPropagation()" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg>
           </a>
+          ${invoiceNeedsPayment(i) ? `<button class="btn-wa btn-sm btn-icon" title="طلب سداد واتساب" onclick="event.stopPropagation();requestPaymentWhatsApp(${i.id})">${WA_ICON}</button>` : ''}
           <button class="btn btn-secondary btn-sm btn-icon" onclick="viewInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
           <button class="btn btn-secondary btn-sm btn-icon" onclick="editInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>
           <button class="btn btn-danger btn-sm btn-icon lc-admin-delete" onclick="deleteInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>
@@ -813,6 +844,8 @@ function viewInvoice(id) {
   currentViewId = id;
   const printBtn = document.getElementById('view-print-btn');
   if (printBtn) printBtn.style.display = '';
+  const waBtn = document.getElementById('view-wa-btn');
+  if (waBtn) waBtn.style.display = invoiceNeedsPayment(i) ? '' : 'none';
   document.getElementById('view-title').textContent = i.code + ' — ' + i.invoice_type;
   document.getElementById('view-body').innerHTML = `
     <div class="fin-summary" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px">

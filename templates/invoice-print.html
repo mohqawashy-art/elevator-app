@@ -22,6 +22,8 @@ body{
 .toolbar button,.toolbar a{border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:600;text-decoration:none}
 .toolbar .print{background:#f0a500;color:#000}
 .toolbar .back{background:#555;color:#fff}
+.toolbar .btn-wa{background:#25D366;color:#fff;margin-left:8px}
+.toolbar .btn-wa:hover{background:#1da851}
 
 {% if is_receipt %}@page{size:A5 portrait;margin:8mm}
 {% else %}@page{size:A4 portrait;margin:10mm}{% endif %}
@@ -192,6 +194,9 @@ body.page-a5 .qr-side img{width:85px;height:85px}
 <div class="toolbar">
   <span>{{ doc_title }} — {{ irn }}</span>
   <div>
+    {% if whatsapp_payment_url %}
+    <button type="button" class="btn-wa" onclick="window.open({{ whatsapp_payment_url|tojson }}, '_blank')">طلب سداد واتساب</button>
+    {% endif %}
     <button type="button" class="print" onclick="window.print()">طباعة</button>
     <a class="back" href="/invoices">إغلاق</a>
   </div>

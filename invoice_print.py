@@ -132,7 +132,7 @@ def _amount_in_words_sar(total: float) -> str:
     return f'{core} ريال سعودي فقط لا غير'
 
 
-def invoice_print_payload(invo: Invoice) -> dict:
+def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
     settings = Settings.query.first()
     if not settings:
         raise RuntimeError('إعدادات النظام غير موجودة')
@@ -213,6 +213,10 @@ def invoice_print_payload(invo: Invoice) -> dict:
     company_website = (getattr(settings, 'company_website', None) or '').strip()
     show_bank = bool(bank_name or bank_iban or bank_account_no)
 
+    from operations import build_invoice_payment_whatsapp
+
+    whatsapp_payment_url = build_invoice_payment_whatsapp(invo, base_url) if base_url else ''
+
     return {
         'doc_title': doc_title,
         'doc_title_en': doc_title_en,
@@ -282,4 +286,6 @@ def invoice_print_payload(invo: Invoice) -> dict:
             vat_number=vat_number,
             line_items=line_items,
         ),
+        'whatsapp_payment_url': whatsapp_payment_url,
+        'invoice_id': invo.id,
     }

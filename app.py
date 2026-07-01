@@ -810,6 +810,12 @@ def invoice_to_js_dict(i):
         'pay_method': i.payment_method or '',
         'status': i.status or 'غير مدفوعة',
         'notes': i.notes or '',
+        'customer_whatsapp': (
+            (i.customer.phone2 or i.customer.phone or '') if i.customer else ''
+        ),
+        'customer_contact': (
+            (i.customer.contact_person or i.customer.name or '') if i.customer else ''
+        ),
     }
 
 
@@ -5362,7 +5368,26 @@ def invoice_print_page(invoice_id):
     from invoice_print import invoice_print_payload
 
     invo = Invoice.query.get_or_404(invoice_id)
-    return render_template('invoice-print.html', **invoice_print_payload(invo))
+    return render_template('invoice-print.html', **invoice_print_payload(invo, base_url=request.url_root))
+
+
+@app.route('/api/invoices/<int:invoice_id>/payment-whatsapp')
+def api_invoice_payment_whatsapp(invoice_id):
+    from operations import build_invoice_payment_whatsapp, invoice_collectible_for_whatsapp
+
+    invo = Invoice.query.get_or_404(invoice_id)
+    if not invoice_collectible_for_whatsapp(invo):
+        return jsonify({
+            'error': 'هذا المستند مدفوع أو غير قابل لطلب السداد',
+            'whatsapp_url': '',
+        }), 400
+    url = build_invoice_payment_whatsapp(invo, base_url=request.url_root)
+    if not url:
+        return jsonify({
+            'error': 'لا يوجد رقم واتساب مسجّل للعميل — أضفه من بيانات العميل',
+            'whatsapp_url': '',
+        }), 400
+    return jsonify({'whatsapp_url': url})
 
 
 @app.route('/invoices/delete/<int:id>', methods=['POST'])

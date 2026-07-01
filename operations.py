@@ -21,6 +21,7 @@ from models import (
     Elevator,
     Fault,
     InventoryItem,
+    Invoice,
     MaintenanceVisit,
     PartsBilling,
     Settings,
@@ -85,6 +86,74 @@ def whatsapp_url(phone: str, message: str) -> str:
 
 def tech_whatsapp_phone(tech: Technician) -> str:
     return (tech.phone2 or tech.phone or '').strip()
+
+
+PAID_INVOICE_STATUSES = frozenset({'مدفوعة', 'مدفوع', 'محصّل', 'محصل'})
+
+
+def customer_whatsapp_phone(customer: Customer | None) -> str:
+    if not customer:
+        return ''
+    return (customer.phone2 or customer.phone or '').strip()
+
+
+def invoice_collectible_for_whatsapp(invoice) -> bool:
+    """فاتورة غير مدفوعة (ليست سند قبض) — مناسبة لطلب السداد."""
+    if not invoice:
+        return False
+    inv_type = (invoice.invoice_type or '').strip()
+    if 'سند' in inv_type:
+        return False
+    status = (invoice.status or '').strip()
+    if status in PAID_INVOICE_STATUSES:
+        return False
+    if 'ملغ' in status:
+        return False
+    return True
+
+
+def build_invoice_payment_whatsapp(invoice, base_url: str = '') -> str:
+    """رسالة طلب سداد + رابط الفاتورة — تُفتح عبر wa.me."""
+    if not isinstance(invoice, Invoice):
+        return ''
+    if not invoice_collectible_for_whatsapp(invoice):
+        return ''
+    cust = invoice.customer
+    phone = customer_whatsapp_phone(cust)
+    if not phone:
+        return ''
+    settings = Settings.query.first()
+    company_name = (settings.company_name if settings else '') or 'LiftCore'
+    contact = (cust.contact_person or cust.name or '').strip() if cust else ''
+    greeting = f'السلام عليكم أ. {contact}،' if contact else 'السلام عليكم،'
+    total = float(invoice.total or 0)
+    inv_type = (invoice.invoice_type or 'فاتورة').strip()
+    lines = [
+        greeting,
+        '',
+        f'نذكّركم بطلب سداد {inv_type} رقم {invoice.code}',
+        f'المبلغ: {total:,.2f} ر.س',
+    ]
+    if invoice.due_date:
+        lines.append(f'تاريخ الاستحقاق: {invoice.due_date.strftime("%d/%m/%Y")}')
+    desc = (invoice.description or '').strip()
+    if desc:
+        lines.append(f'البيان: {desc}')
+    if base_url:
+        lines.append('')
+        lines.append(f'🔗 عرض الفاتورة:\n{base_url.rstrip("/")}/invoices/{invoice.id}/print')
+    if settings and (settings.bank_iban or settings.bank_account_no or settings.bank_name):
+        lines.append('')
+        lines.append('بيانات التحويل البنكي:')
+        if settings.bank_name:
+            lines.append(f'البنك: {settings.bank_name}')
+        if settings.bank_iban:
+            lines.append(f'الآيبان: {settings.bank_iban}')
+        elif settings.bank_account_no:
+            lines.append(f'رقم الحساب: {settings.bank_account_no}')
+    lines.append('')
+    lines.append(f'مع التحية،\n{company_name}')
+    return whatsapp_url(phone, '\n'.join(lines))
 
 
 def customer_maps_link(customer: Customer) -> str:
