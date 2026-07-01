@@ -23,8 +23,8 @@ import pandas as pd
 from app import app, db
 from import_real_data import (
     _cell,
+    _extract_all_el,
     _extract_cn,
-    _extract_el,
     _f,
     _invoice_status,
     _norm_contract_status,
@@ -64,21 +64,29 @@ def _find_customer(name: str, cn_code: str | None) -> Customer | None:
     return None
 
 
-def _link_elevator(contract: Contract, el_code: str | None, *, dry_run: bool) -> bool:
-    if not el_code:
-        return False
-    elev = Elevator.query.filter_by(code=el_code).first()
-    if not elev:
-        return False
-    exists = ContractElevator.query.filter_by(
-        contract_id=contract.id, elevator_id=elev.id
-    ).first()
-    if exists:
-        return False
-    if dry_run:
-        return True
-    db.session.add(ContractElevator(contract_id=contract.id, elevator_id=elev.id))
-    return True
+def _count_linkable_elevators(el_codes: list[str]) -> int:
+    return sum(1 for code in el_codes if code and Elevator.query.filter_by(code=code).first())
+
+
+def _link_elevators(contract: Contract, el_codes: list[str], *, dry_run: bool) -> int:
+    linked = 0
+    for el_code in el_codes:
+        if not el_code:
+            continue
+        elev = Elevator.query.filter_by(code=el_code).first()
+        if not elev:
+            continue
+        exists = ContractElevator.query.filter_by(
+            contract_id=contract.id, elevator_id=elev.id
+        ).first()
+        if exists:
+            continue
+        if dry_run:
+            linked += 1
+            continue
+        db.session.add(ContractElevator(contract_id=contract.id, elevator_id=elev.id))
+        linked += 1
+    return linked
 
 
 def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
@@ -101,7 +109,7 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
         annual = _f(_cell(r, 'قيمة العقد'))
         start = _parse_date(_cell(r, 'تاريخ بداية العقد'))
         end = _parse_date(_cell(r, 'تاريخ انتهاء العقد'))
-        el_code = _extract_el(_cell(r, 'رقم المصعد', 'اسم العميل ورقم العقد'))
+        el_codes = _extract_all_el(_cell(r, 'رقم المصعد', 'اسم العميل ورقم العقد'))
 
         if not code or not start or not end:
             stats['skipped'] += 1
@@ -154,6 +162,7 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
         else:
             if dry_run:
                 stats['added'] += 1
+                stats['linked_elevators'] += _count_linkable_elevators(el_codes)
                 continue
             c = Contract(code=code, **payload)
             db.session.add(c)
@@ -162,11 +171,8 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
             contract = c
             stats['added'] += 1
 
-        if not dry_run and contract.id:
-            if _link_elevator(contract, el_code, dry_run=False):
-                stats['linked_elevators'] += 1
-        elif dry_run and el_code and Elevator.query.filter_by(code=el_code).first():
-            stats['linked_elevators'] += 1
+        if contract.id:
+            stats['linked_elevators'] += _link_elevators(contract, el_codes, dry_run=dry_run)
 
     if not dry_run:
         db.session.commit()
@@ -188,7 +194,9 @@ def main() -> int:
         print('Database:', app.config.get('SQLALCHEMY_DATABASE_URI', ''))
         print('File:', args.xlsx)
         stats = import_contracts(args.xlsx, dry_run=args.dry_run)
-        print(stats)
+        print('\n=== النتيجة ===')
+        for key, val in stats.items():
+            print(f'  {key}: {val}')
         if not args.dry_run:
             print('  contracts in DB:', Contract.query.count())
     return 0

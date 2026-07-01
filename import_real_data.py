@@ -142,8 +142,19 @@ def _extract_cn(text: str) -> str | None:
 
 
 def _extract_el(text: str) -> str | None:
-    m = re.search(r"EL-\d+", _str(text).split("|")[0])
-    return m.group(0) if m else None
+    codes = _extract_all_el(text)
+    return codes[0] if codes else None
+
+
+def _extract_all_el(text: str) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for m in re.finditer(r'EL-(\d+)', _str(text), re.I):
+        code = f'EL-{int(m.group(1)):04d}'
+        if code not in seen:
+            seen.add(code)
+            out.append(code)
+    return out
 
 
 def _extract_tech(text: str) -> str | None:
@@ -164,8 +175,20 @@ def _norm_city(val) -> str:
 
 
 def _norm_contract_status(val) -> str:
-    m = {"ساري": "نشط", "أوشك على الانتهاء": "على وشك الانتهاء", "منتهي": "منتهي", "ملغي": "ملغي"}
-    return m.get(_str(val), "نشط")
+    s = _str(val).strip()
+    if not s:
+        return 'نشط'
+    m = {
+        'ساري': 'نشط',
+        'أوشك على الانتهاء': 'على وشك الانتهاء',
+        'على وشك': 'على وشك الانتهاء',
+        'منتهي': 'منتهي',
+        'ملغي': 'ملغي',
+    }
+    for key, status in m.items():
+        if key in s:
+            return status
+    return m.get(s, 'نشط')
 
 
 def _norm_visit_status(val) -> str:
