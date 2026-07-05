@@ -1,0 +1,24 @@
+LiftCore — Regression Checklist (قبل كل نشر على السيرفر)
+=========================================================
+
+محلياً (إلزامي):
+[ ] run_local.bat  أو  bash deploy/install.sh test
+[ ] py scripts/security_audit.py  → OK
+[ ] pytest tests/  → all passed
+
+يدوياً (5 دقائق):
+[ ] /login — دخول admin
+[ ] /dashboard — بطاقات تفتح drill-down
+[ ] /clients — إضافة عميل + حفظ
+[ ] /invoices — فتح الصفحة + طباعة فاتورة
+[ ] /maintenance-visits — الصفحة تفتح
+[ ] /field/login — صفحة دخول الفني
+[ ] حساب viewer — لا أزرار إضافة + POST مرفوض
+
+بعد النشر:
+[ ] curl BASE/api/health  → database:true
+[ ] bash deploy/verify_deploy.sh BASE_URL
+[ ] Ctrl+F5 في المتصفح
+
+Rollback:
+[ ] استعادة instance/liftcore.db.bak.TIMESTAMP

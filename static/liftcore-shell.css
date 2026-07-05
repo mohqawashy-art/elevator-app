@@ -1753,3 +1753,9 @@ select optgroup {
   background-color: #ffffff;
   color: #1a2433;
 }
+
+/* ── وضع عرض فقط (viewer) ── */
+html[data-lc-can-write="0"] .lc-viewer-hidden,
+html[data-lc-can-write="0"] .lc-write-only {
+  display: none !important;
+}

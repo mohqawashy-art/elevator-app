@@ -158,6 +158,25 @@ def get_report_invoices(db, Invoice):
     } for i in invs]
 
 
+def get_report_parts_billing(db, PartsBilling):
+    rows = PartsBilling.query.order_by(PartsBilling.billing_date.desc()).all()
+    return [{
+        'code': p.code,
+        'customer': p.customer.name if p.customer else '—',
+        'contract': p.contract.code if p.contract else '—',
+        'elevator': p.elevator.code if p.elevator else '—',
+        'technician': p.technician.name if p.technician else '—',
+        'date': str(p.billing_date or ''),
+        'description': (p.description or '')[:120],
+        'cost_price': p.cost_price or 0,
+        'sell_price': p.sell_price or 0,
+        'paid_amount': p.paid_amount or 0,
+        'profit': p.profit or 0,
+        'pay_method': p.payment_method or '',
+        'status': p.status or '',
+    } for p in rows]
+
+
 def get_report_inventory(db, InventoryItem):
     items = InventoryItem.query.order_by(InventoryItem.id).all()
     return [{
@@ -700,6 +719,7 @@ REPORT_FETCHERS = {
     'report-revenues': lambda ctx: get_report_revenues(ctx['db'], ctx['Revenue']),
     'report-expenses': lambda ctx: get_report_expenses(ctx['db'], ctx['Expense']),
     'report-invoices': lambda ctx: get_report_invoices(ctx['db'], ctx['Invoice']),
+    'report-parts': lambda ctx: get_report_parts_billing(ctx['db'], ctx['PartsBilling']),
     'report-inventory': lambda ctx: get_report_inventory(ctx['db'], ctx['InventoryItem']),
     'report-stock': lambda ctx: get_report_stock(ctx['db'], ctx['StockMovement']),
 }
