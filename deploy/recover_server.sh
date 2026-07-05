@@ -115,12 +115,15 @@ if [ "$OK" -eq 0 ]; then
   exit 1
 fi
 
+echo ""
+echo "==> 5) pip install + platform env"
 if [ -d "$VENV" ]; then
-  echo ""
-  echo "==> 5) pip install"
   # shellcheck disable=SC1091
   source "$VENV/bin/activate"
-  pip install -q -r requirements.txt 2>/dev/null || pip install -q flask flask-sqlalchemy gunicorn werkzeug
+  pip install -q -r requirements.txt 2>/dev/null || pip install -q flask flask-sqlalchemy gunicorn werkzeug cryptography
+fi
+if [ -f "$APP_DIR/deploy/ensure_platform_env.sh" ]; then
+  bash "$APP_DIR/deploy/ensure_platform_env.sh"
 fi
 
 echo ""
@@ -130,6 +133,9 @@ if command -v systemctl >/dev/null 2>&1; then
   sudo mkdir -p "$DROP_IN"
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_HTTPS=1' | sudo tee "$DROP_IN/https.conf" >/dev/null
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_INSTALL_MODULE=1' | sudo tee "$DROP_IN/install-module.conf" >/dev/null
+  if [ -f /etc/liftcore/platform.env ]; then
+    printf '%s\n' '[Service]' 'EnvironmentFile=/etc/liftcore/platform.env' | sudo tee "$DROP_IN/platform-env.conf" >/dev/null
+  fi
   sudo systemctl daemon-reload
   if [ -f "$APP_DIR/scripts/init_install_module.py" ] && [ -d "$VENV" ]; then
     # shellcheck disable=SC1091
