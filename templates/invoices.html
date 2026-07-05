@@ -328,7 +328,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <input type="hidden" id="f-source-id" value="">
         <input type="hidden" id="f-contract-id" value="">
         <div class="form-full" id="inv-billable-wrap" style="display:none;margin-bottom:12px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">إيرادات محصّلة — اختر من الجدول لإصدار فاتورة</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">عمليات جاهزة للفوترة — فاتورة بالمبلغ الكامل</div>
           <div id="inv-billable-hint" style="font-size:11px;color:var(--warning);margin-bottom:8px"></div>
           <div id="inv-billable-list" style="max-height:240px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
         </div>
@@ -615,7 +615,7 @@ function onInvoiceCustomerChange() {
   if (!cid) { if (wrap) wrap.style.display = 'none'; return; }
   if (wrap) wrap.style.display = 'block';
   if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
-  fetch('/api/customers/' + cid + '/invoicable-revenues', { credentials: 'same-origin' })
+  fetch('/api/customers/' + cid + '/billable-ops', { credentials: 'same-origin' })
     .then(r => {
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
@@ -623,8 +623,8 @@ function onInvoiceCustomerChange() {
     .then(data => {
       billableOps = data.operations || [];
       if (hint) hint.textContent = billableOps.length
-        ? ('يوجد ' + billableOps.length + ' إيراد محصّل بدون فاتورة — اختر صفاً من الجدول')
-        : 'لا توجد إيرادات محصّلة بدون فاتورة — سجّل التحصيل من صفحة الإيرادات أولاً';
+        ? ('يوجد ' + billableOps.length + ' عملية — اختر صفاً لإصدار فاتورة بالمبلغ الكامل')
+        : 'لا توجد عمليات بدون فاتورة — أنشئ عقداً أو عملية قطع أولاً';
       renderBillableOps();
     })
     .catch(() => {
@@ -636,18 +636,19 @@ function renderBillableOps() {
   const list = document.getElementById('inv-billable-list');
   if (!list) return;
   if (!billableOps.length) {
-    list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد إيرادات محصّلة جاهزة للفوترة.</p>';
+    list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد عمليات جاهزة للفوترة.</p>';
     return;
   }
   list.innerHTML = `
     <table class="lc-ops-pick-table">
       <thead>
         <tr>
-          <th>كود الإيراد</th>
+          <th>الكود</th>
           <th>التاريخ</th>
           <th>النوع / البيان</th>
-          <th>المبلغ</th>
+          <th>المبلغ (قبل الضريبة)</th>
           <th>الإجمالي</th>
+          <th>محصّل</th>
         </tr>
       </thead>
       <tbody>
@@ -655,9 +656,10 @@ function renderBillableOps() {
           <tr class="lc-op-row" data-op-idx="${idx}" onclick="selectBillableOp(${idx})">
             <td class="lc-code">${escHtml(op.code)}</td>
             <td class="lc-num">${escHtml(op.date)}</td>
-            <td>${escHtml(op.title)} — ${escHtml(op.description)}</td>
+            <td>${escHtml(op.title)} — ${escHtml(op.description)}<div style="font-size:10px;color:var(--text3);margin-top:2px">${escHtml(op.hint || '')}</div></td>
             <td class="lc-num">${Number(op.amount_before_tax || 0).toLocaleString('en-US')}</td>
             <td class="lc-num" style="color:var(--success);font-weight:600">${Number(op.total || 0).toLocaleString('en-US')}</td>
+            <td class="lc-num">${Number(op.paid || 0).toLocaleString('en-US')}</td>
           </tr>`).join('')}
       </tbody>
     </table>`;
@@ -683,60 +685,24 @@ function selectBillableOp(idx) {
     calcTotal();
   }
   const st = document.getElementById('f-status-sel');
-  if (st) st.value = op.collected ? 'مدفوعة' : 'غير مدفوعة';
+  if (st) {
+    if (op.collected || (op.paid || 0) >= (op.total || 0) - 0.01) st.value = 'مدفوعة';
+    else if ((op.paid || 0) > 0.01) st.value = 'مدفوع جزئياً';
+    else st.value = 'غير مدفوعة';
+  }
   const pay = document.getElementById('f-pay-method');
   if (pay && op.payment_method) pay.value = op.payment_method;
   const notes = document.getElementById('f-notes');
   if (notes && !notes.value.trim() && op.code) {
-    notes.value = 'مرتبط بإيراد ' + op.code;
+    notes.value = 'مرتبط بـ ' + op.code;
   }
   const hintEl = document.getElementById('inv-billable-hint');
   if (hintEl) {
-    hintEl.textContent = op.collected
-      ? 'تم اختيار إيراد ' + (op.code || '') + ' — تم تعبئة البيان والمبلغ تلقائياً.'
-      : 'العملية غير محصّلة — يُفضّل التحصيل من صفحة الإيرادات أولاً.';
+    hintEl.textContent = op.hint || ('تم اختيار ' + (op.code || '') + ' — فاتورة بالمبلغ الكامل');
   }
   document.querySelectorAll('#inv-billable-list tr.lc-op-row').forEach(row => {
     row.classList.toggle('selected', String(row.dataset.opIdx) === String(idx));
   });
-}
-
-function prefillInvoiceFromRevenue(customerId, revenueId) {
-  if (!customerId || !revenueId) {
-    openAddModal();
-    return;
-  }
-  openAddModal();
-  const wrap = document.getElementById('inv-billable-wrap');
-  const list = document.getElementById('inv-billable-list');
-  const hint = document.getElementById('inv-billable-hint');
-  if (typeof LcClientSelect !== 'undefined') {
-    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, customerId);
-  }
-  if (wrap) wrap.style.display = 'block';
-  if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري تحميل الإيراد...</p>';
-  fetch('/api/customers/' + customerId + '/invoicable-revenues', { credentials: 'same-origin' })
-    .then(r => {
-      if (!r.ok) throw new Error(String(r.status));
-      return r.json();
-    })
-    .then(data => {
-      billableOps = data.operations || [];
-      if (hint) {
-        hint.textContent = billableOps.length
-          ? ('تم تحميل ' + billableOps.length + ' إيراد — تم اختيار الإيراد المحصّل تلقائياً')
-          : 'لا توجد إيرادات محصّلة بدون فاتورة';
-      }
-      renderBillableOps();
-      const idx = billableOps.findIndex(op =>
-        op.source_type === 'revenue' && String(op.source_id) === String(revenueId)
-      );
-      if (idx >= 0) selectBillableOp(idx);
-      else if (hint) hint.textContent = 'تعذّر العثور على الإيراد — اختره يدوياً من الجدول';
-    })
-    .catch(() => {
-      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل الإيراد</p>';
-    });
 }
 
 function closeAddModal() { closeModal('modal-add'); }
@@ -890,13 +856,7 @@ window.__lcRefreshPage = function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : INVOICES);
 };
 const urlParams = new URLSearchParams(window.location.search);
-const actionAdd = urlParams.get('action') === 'add';
-const prefillRevenueId = urlParams.get('revenue_id');
-const prefillCustomerId = urlParams.get('customer_id');
-if (actionAdd && prefillRevenueId && prefillCustomerId) {
-  prefillInvoiceFromRevenue(prefillCustomerId, prefillRevenueId);
-  history.replaceState(null, '', window.location.pathname);
-} else if (actionAdd) {
+if (urlParams.get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);
 }

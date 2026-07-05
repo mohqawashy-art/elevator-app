@@ -572,6 +572,12 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
 
   <!-- حسابي -->
   <div class="panel {% if active_tab == 'account' %}active{% endif %}" id="panel-account">
+    {% if must_change_password %}
+    <div class="card" style="border-color:var(--warning);margin-bottom:14px;background:rgba(224,144,48,.08)">
+      <strong style="color:var(--warning)">⚠ يجب تغيير كلمة المرور</strong>
+      <p class="hint" style="margin-top:6px">لا يمكنك استخدام النظام قبل تعيين كلمة مرور جديدة (8 أحرف على الأقل، غير شائعة).</p>
+    </div>
+    {% endif %}
     <form class="card" method="post" action="{{ url_for('settings_profile_save') }}" enctype="multipart/form-data">
       <div class="section">بيانات حسابي</div>
       <div class="grid">
@@ -621,7 +627,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
         </div>
         <div>
           <label>كلمة المرور الجديدة *</label>
-          <input id="new_password" name="new_password" type="password" required minlength="6" autocomplete="new-password">
+          <input id="new_password" name="new_password" type="password" required minlength="8" autocomplete="new-password">
         </div>
         <div>
           <label>تأكيد كلمة المرور *</label>

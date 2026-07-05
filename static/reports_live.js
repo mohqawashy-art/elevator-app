@@ -21,6 +21,7 @@ var __lcReportDomPager = null;
     'report-revenues': '/api/reports/revenues',
     'report-expenses': '/api/reports/expenses',
     'report-invoices': '/api/reports/invoices',
+    'report-parts': '/api/reports/parts-billing',
     'report-inventory': '/api/reports/inventory',
     'report-stock': '/api/reports/stock',
   };
@@ -31,6 +32,7 @@ var __lcReportDomPager = null;
     'report-revenues': 'date',
     'report-expenses': 'date',
     'report-invoices': 'date',
+    'report-parts': 'date',
     'report-stock': 'date',
   };
 
@@ -76,6 +78,11 @@ var __lcReportDomPager = null;
         return [row.code, row.date, row.expense_type, row.description, row.responsible, row.pay_method, row.amount];
       case 'report-invoices':
         return [row.code, row.invoice_type, joinClientContract(row), row.date, row.description, row.total, row.pay_method, row.status];
+      case 'report-parts':
+        return [
+          row.code, row.customer, row.contract, row.elevator, row.technician,
+          row.date, row.description, row.sell_price, row.paid_amount, row.profit, row.pay_method, row.status,
+        ];
       case 'report-inventory':
         return [row.code, row.name, row.category, row.current_qty, row.min_qty, row.buy_price, row.stock_value, row.supplier, row.order_status];
       case 'report-stock':
@@ -94,6 +101,7 @@ var __lcReportDomPager = null;
     'report-faults': [4, 7, 8],
     'report-revenues': [6],
     'report-invoices': [7],
+    'report-parts': [11],
     'report-inventory': [8],
     'report-stock': [2, 3],
   };
@@ -325,6 +333,22 @@ function hookReportPagination(reset) {
           fmtNum(paid),
           fmtNum(unpaid),
           fmtNum(invTotal) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>',
+        ];
+      }
+      case 'report-parts': {
+        var sellTotal = sumField('sell_price');
+        var profitTotal = sumField('profit');
+        var collected = data.filter(function (r) {
+          return r.status === 'محصّل' || r.status === 'مدفوع';
+        }).length;
+        var uncollected = data.filter(function (r) {
+          return r.status === 'غير محصل' || r.status === 'غير مدفوع';
+        }).length;
+        return [
+          fmtNum(data.length),
+          fmtNum(sellTotal) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>',
+          fmtNum(profitTotal) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>',
+          fmtNum(collected) + ' / ' + fmtNum(uncollected),
         ];
       }
       case 'report-inventory': {

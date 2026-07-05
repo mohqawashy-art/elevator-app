@@ -176,6 +176,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
   {% include 'partials/app_header.html' %}
 
   <div class="content">
+    {% include 'partials/flash_messages.html' %}
 
     <!-- STATS -->
     <div class="stats-row">
@@ -844,8 +845,15 @@ function saveRevenue() {
     [['source_type', 'f-source-type'], ['source_id', 'f-source-id'], ['contract_id', 'f-contract-id']]
       .forEach(([f, i]) => { const el = document.getElementById(i); if (el && el.value) fd.append(f, el.value); });
   }
-  fetch(editId ? `/revenues/edit/${editId}` : '/revenues/add', { method: 'POST', body: fd })
-    .then(r => { if (!r.ok) throw new Error('fail'); window.location.reload(); })
+  fetch(editId ? `/revenues/edit/${editId}` : '/revenues/add', { method: 'POST', body: fd, credentials: 'same-origin' })
+    .then(r => {
+      if (r.redirected && r.url) {
+        window.location.href = r.url;
+        return;
+      }
+      if (!r.ok) throw new Error('fail');
+      window.location.reload();
+    })
     .catch(() => alert('تعذر حفظ الإيراد — تحقق من البيانات'));
 }
 
