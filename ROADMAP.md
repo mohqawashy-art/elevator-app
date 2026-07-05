@@ -97,7 +97,7 @@
 - [ ] I2 — responsive 768/480 كل الصفحات
 - [ ] I3 — empty states + loading + toast موحّد
 - [ ] I4 — Google Maps deprecated APIs
-- [ ] I5 — QA طباعة كل المستندات
+- [x] I5 — QA طباعة كل المستندات (`tests/test_print_documents.py`)
 - [ ] I6 — إخفاء أزرار الإضافة/التعديل لـ viewer في الواجهة
 
 ### J. i18n
