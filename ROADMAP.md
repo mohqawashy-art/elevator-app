@@ -59,7 +59,7 @@
 
 ### E. الاختبارات
 - [x] E1 — pytest: login, CRUD عميل, فاتورة, زيارة, حذف admin + smoke + whatsapp
-- [ ] E2 — Playwright: 5–8 سيناريوهات
+- [x] E2 — Playwright: 5–8 سيناريوهات
 - [x] E3 — GitHub Actions CI
 - [x] E4 — Checklist regression قبل كل نشر
 - [x] E5 — اختبار restore من backup

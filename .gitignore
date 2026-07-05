@@ -6,3 +6,6 @@ instance/
 static/uploads/
 node_modules/
 .pytest_cache/
+test-results/
+playwright-report/
+blob-report/
