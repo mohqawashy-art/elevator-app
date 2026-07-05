@@ -13,12 +13,19 @@
     '.lc-admin-delete',
     '.page-actions .btn-primary',
     '.page-actions .btn-success',
+    '.page-actions .btn-warning',
     'button[onclick*="openModal"]',
     'button[onclick*="delete"]',
     'button[onclick*="Delete"]',
     'button[onclick*="confirmDelete"]',
     'button[onclick*="addManual"]',
+    'button[onclick*="edit"]',
+    'button[onclick*="Edit"]',
+    'a[onclick*="edit"]',
     'a.btn-primary[href*="import"]',
+    '.td-actions .btn-secondary',
+    '.td-actions .btn-primary',
+    '.td-actions .btn-danger',
   ].join(',');
 
   function apply() {
@@ -40,10 +47,24 @@
     });
   }
 
+  var debounceTimer;
+  function applyDebounced() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(apply, 80);
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', apply);
+    document.addEventListener('DOMContentLoaded', function () {
+      apply();
+      if (document.body && global.MutationObserver) {
+        new MutationObserver(applyDebounced).observe(document.body, { childList: true, subtree: true });
+      }
+    });
   } else {
     apply();
+    if (document.body && global.MutationObserver) {
+      new MutationObserver(applyDebounced).observe(document.body, { childList: true, subtree: true });
+    }
   }
   global.addEventListener('lc-live-sync', apply);
 })(window);

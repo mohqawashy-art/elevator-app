@@ -128,11 +128,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   .section:has(+ .photos-grid:not(:has(.has-img))){display:none!important}
   .photos-grid:not(:has(.has-img)){display:none!important}
 }
-@media(max-width:600px){
+@media(max-width:768px){
   .row-3,.row-4{grid-template-columns:1fr 1fr}
   .photos-grid{grid-template-columns:repeat(2,1fr)}
   .sig-area{grid-template-columns:1fr}
   .cl-table td.cell-en{display:none}
+}
+@media(max-width:480px){
+  .row-3,.row-4{grid-template-columns:1fr}
+  .photos-grid{grid-template-columns:1fr}
 }
 </style>
 <link rel="stylesheet" href="/static/document-signatures.css?v=2">

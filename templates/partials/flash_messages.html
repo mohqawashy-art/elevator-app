@@ -1,8 +1,8 @@
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
-<div class="lc-flash-wrap" style="margin-bottom:14px">
+<div class="lc-flash-wrap">
   {% for category, message in messages %}
-  <div class="lc-flash lc-flash-{{ category }}" style="padding:10px 14px;border-radius:var(--r-sm,8px);margin-bottom:8px;font-size:13px;{% if category == 'error' %}background:rgba(220,60,60,.15);border:1px solid rgba(220,60,60,.35);color:#f88{% else %}background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.3);color:var(--success,#1fb87a){% endif %}">{{ message }}</div>
+  <div class="lc-flash lc-flash-{{ category }}">{{ message }}</div>
   {% endfor %}
 </div>
 {% endif %}

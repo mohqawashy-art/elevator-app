@@ -215,19 +215,22 @@ def enforce_admin_delete(*, json_response=False):
     user = current_user()
     if not user:
         if as_json:
-            return jsonify({'ok': False, 'error': 'login_required', 'message': 'يجب تسجيل الدخول'}), 401
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('login_required', 401)
         return redirect(url_for('login'))
     if user.role != 'admin':
         msg = 'الحذف متاح للمسؤول فقط.'
         if as_json:
-            return jsonify({'ok': False, 'error': 'admin_required', 'message': msg}), 403
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('admin_required', 403, message_ar=msg, message_en='Delete is admin-only.')
         flash(msg, 'error')
         abort(403)
     pwd = _admin_delete_password_from_request()
     if not pwd or not verify_password(user.password_hash, pwd):
         msg = 'كلمة المرور غير صحيحة — لم يتم الحذف.'
         if as_json:
-            return jsonify({'ok': False, 'error': 'invalid_password', 'message': msg}), 403
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('invalid_password', 403, message_ar=msg, message_en='Incorrect password — delete cancelled.')
         flash(msg, 'error')
         return redirect(request.referrer or url_for('dashboard'))
     from audit_log import log_audit
@@ -264,8 +267,8 @@ def _must_change_password_response(user):
     if path.startswith('/static/'):
         return None
     if path.startswith('/api/'):
-        return jsonify({'ok': False, 'error': 'password_change_required',
-                        'message': 'يجب تغيير كلمة المرور أولاً'}), 403
+        from liftcore_api_i18n import api_json_error
+        return api_json_error('password_change_required', 403)
     session['settings_notice'] = 'يجب تغيير كلمة المرور قبل متابعة العمل.'
     return redirect(url_for('settings', tab='account', force_password=1))
 
@@ -282,7 +285,8 @@ def _session_lock_response():
     if request.endpoint in ('api_session_lock', 'api_session_unlock', 'api_verify_signature'):
         return None
     if path.startswith('/api/'):
-        return jsonify({'ok': False, 'error': 'session_locked'}), 423
+        from liftcore_api_i18n import api_json_error
+        return api_json_error('session_locked', 423)
     return None
 
 

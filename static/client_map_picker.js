@@ -534,10 +534,9 @@
     var input = state.opts && $(state.opts.searchEl);
     if (!input || !mapsReady()) return;
     teardownGoogleSearch();
-    input.style.display = '';
     input.setAttribute('autocomplete', 'off');
-    bindSearchEnterKey(input);
-    state.autocompleteSuspended = false;
+    if (bindGoogleSearchModern(input)) return;
+    bindGoogleSearchLegacy(input);
   }
 
   function getSearchQuery() {

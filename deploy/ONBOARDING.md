@@ -79,3 +79,4 @@ bash deploy/verify_deploy.sh https://client.liftcoreapp.com
 | ZATCA | QR Phase 1 فقط على الطباعة |
 | WhatsApp | روابط wa.me يدوية |
 | موديول التركيب | `LIFTCORE_INSTALL_MODULE=1` على السيرفر |
+| PIN بوابة الفني | `deploy/FIELD-PIN.md` |

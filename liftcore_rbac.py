@@ -77,11 +77,12 @@ def mutation_denied_response(*, as_json: bool, message_ar: str, message_en: str,
 
     msg = message_en if lang == 'en' else message_ar
     if as_json or (request.path or '').startswith('/api/'):
-        return jsonify({
-            'ok': False,
-            'error': 'forbidden',
-            'message': msg,
-        }), 403
+        from liftcore_api_i18n import api_error_payload
+        return jsonify(api_error_payload(
+            'forbidden',
+            message_ar=message_ar,
+            message_en=message_en,
+        )), 403
     flash(msg, 'error')
     return redirect(request.referrer or url_for('dashboard')), 403
 

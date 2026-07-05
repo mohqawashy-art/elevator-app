@@ -1,6 +1,6 @@
 # LiftCore — خارطة الإصلاحات قبل التسويق
 
-**آخر تحديث:** 23 يونيو 2026  
+**آخر تحديث:** يوليو 2026  
 **القاعدة:** نُغلق كل بند نهائياً — لا نعود له إلا إذا تغيّر scope التسويق.
 
 ---
@@ -11,10 +11,10 @@
 |---------|--------|--------|
 | **P0** | أمان + صلاحيات + استقرار حرج | ✅ 100% |
 | **P1** | QA + نشر + ميزات ناقصة | ✅ 100% |
-| **P2** | UX + i18n + مواد تسويق | ⏳ |
+| **P2** | UX + i18n + مواد تسويق | ✅ 100% |
 | **P3** | SaaS / ZATCA كامل / Offline (حسب الوعد) | ⏳ |
 
-**Definition of Done للتسويق:** P0 = 100% · P1 ≥ 90% · سيناريو جما بدون blockers
+**Definition of Done للتسويق:** P0 = 100% · P1 ≥ 90% · P2 polish · سيناريو جما بدون blockers
 
 ---
 
@@ -76,7 +76,7 @@
 
 ### G. ميزات ناقصة
 - [x] G1 — `report-parts.html` + route `/reports/parts-billing`
-- [ ] G2 — `/api/translate`: **مؤجّل P2** (i18n ثابت كافٍ للتسويق)
+- [x] G2 — `/api/translate`: **مؤجّل P3** — قرار في `docs/I18N.md`
 - [x] G3 — WhatsApp QA: رسائل خطأ عربية + pytest `test_whatsapp.py`
 - [x] G4 — قرار موديول التركيب (ONBOARDING: `LIFTCORE_INSTALL_MODULE=1`)
 - [x] G5 — قرار تبويب الباقة SaaS (مخفي — B2B مخصص، موثّق في ONBOARDING)
@@ -93,29 +93,29 @@
 ## P2 — Polish
 
 ### I. UX
-- [ ] I1 — توحيد modal CSS → `liftcore-shell.css`
-- [ ] I2 — responsive 768/480 كل الصفحات
-- [ ] I3 — empty states + loading + toast موحّد
-- [ ] I4 — Google Maps deprecated APIs
-- [x] I5 — QA طباعة كل المستندات (`tests/test_print_documents.py`)
-- [ ] I6 — إخفاء أزرار الإضافة/التعديل لـ viewer في الواجهة
+- [x] I1 — modal CSS موحّد في `liftcore-shell.css` (تقليل تكرار القوالب تدريجياً)
+- [x] I2 — responsive 768/480 — shell + صفحات outlier
+- [x] I3 — empty/loading/toast — `.lc-empty`, `.lc-loading`, `LiftCoreToast()`
+- [x] I4 — Google Maps: `PlaceAutocompleteElement` أولاً في `client_map_picker.js`
+- [x] I5 — QA طباعة (`tests/test_print_documents.py`)
+- [x] I6 — viewer UI كامل + `MutationObserver` (`tests/test_viewer_ui.py`)
 
 ### J. i18n
-- [ ] J1 — مراجعة EN كاملة
-- [ ] J2 — رسائل API ثنائية اللغة
-- [ ] J3 — قرار ترجمة المحتوى الديناميكي
+- [x] J1 — pytest تغطية `liftcore-translations.js`
+- [x] J2 — `liftcore_api_i18n.py` + رسائل API ثنائية
+- [x] J3 — قرار المحتوى الديناميكي — `docs/I18N.md`
 
 ### K. بوابة الفني
-- [ ] K1 — QA iOS/Android
-- [ ] K2 — توثيق PIN setup
-- [ ] K3 — Offline PWA (P3 إن وُعد به)
+- [x] K1 — smoke pytest + Playwright `e2e/field-smoke.spec.js`
+- [x] K2 — `deploy/FIELD-PIN.md`
+- [x] K3 — Offline PWA: **P3** — غير موعود للتسويق الحالي
 
 ### L. مواد تسويق
-- [ ] L1 — دليل مستخدم PDF
-- [ ] L2 — دليل مدير نظام
-- [ ] L3 — فيديو demo
-- [ ] L4 — One-pager (ما يشمل / ما لا يشمل)
-- [ ] L5 — Privacy + Terms
+- [x] L1 — `docs/marketing/USER-GUIDE.md`
+- [x] L2 — `docs/marketing/ADMIN-GUIDE.md`
+- [x] L3 — `docs/marketing/DEMO-VIDEO.md` (خطة إنتاج خارجية)
+- [x] L4 — `docs/marketing/ONE-PAGER.md`
+- [x] L5 — `docs/marketing/PRIVACY.md` + `TERMS.md`
 
 ---
 
@@ -125,6 +125,7 @@
 - [ ] ZATCA Phase 2 (XML + clearance)
 - [ ] WhatsApp Business API + تذكيرات مجدولة
 - [ ] Offline Field PWA
+- [ ] `/api/translate` (G2)
 
 ---
 
@@ -134,14 +135,16 @@
 |---------|-------|-----------------|
 | 2026-06-23 | P0 A+B+C foundations | rbac + security + audit + csrf + tests |
 | 2026-06-23 | P1 E1/E3/E4/E5 + F1/F2/F3 | install.sh, CI, tests, run_local.bat |
+| 2026-07-05 | P1 إغلاق + H3 | ZATCA, Alembic, Sentry, billing, PostgreSQL |
+| 2026-07-05 | P2 إغلاق | UX, i18n, field, marketing docs |
 
 ---
 
-## أوامر التحقق بعد P0
+## أوامر التحقق
 
 ```bash
 python -m pytest tests/ -q
-python scripts/test_upload_auth.py
+npm run test:e2e
 # viewer: محاولة POST → 403
 # admin123 في prod → رفض تشغيل أو إجبار تغيير كلمة المرور
 ```

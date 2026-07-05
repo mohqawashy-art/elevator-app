@@ -324,4 +324,31 @@
 
   document.addEventListener('liftcore:live-sync', syncTopNavLayout);
   document.addEventListener('liftcore:display-refresh', syncTopNavLayout);
+
+  function ensureToastHost() {
+    var host = document.getElementById('lc-toast-host');
+    if (host) return host;
+    host = document.createElement('div');
+    host.id = 'lc-toast-host';
+    host.setAttribute('aria-live', 'polite');
+    document.body.appendChild(host);
+    return host;
+  }
+
+  function toast(message, opts) {
+    opts = opts || {};
+    var host = ensureToastHost();
+    var el = document.createElement('div');
+    el.className = 'lc-toast' + (opts.type ? ' lc-toast-' + opts.type : '');
+    el.textContent = message || '';
+    host.appendChild(el);
+    var ms = opts.duration || 3200;
+    setTimeout(function () {
+      el.style.opacity = '0';
+      setTimeout(function () { el.remove(); }, 250);
+    }, ms);
+    return el;
+  }
+
+  window.LiftCoreToast = toast;
 })();
