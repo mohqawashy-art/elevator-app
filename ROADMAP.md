@@ -48,7 +48,7 @@
 ### D. UI حرج
 - [x] D1 — modal-overlay مخفي حتى `.open`
 - [x] D2 — تدقيق z-index (مركزي في `liftcore-shell.css` z-index:9000)
-- [ ] D3 — صفر أخطاء Console (صفحات رئيسية) — smoke tests + فحص يدوي
+- [x] D3 — صفر أخطاء Console (صفحات رئيسية) — smoke tests + فحص يدوي
 
 ### I. UX (بدأنا مبكراً)
 - [x] I6 — إخفاء أزرار الإضافة/التعديل لـ viewer (`liftcore-viewer-ui.js`)
