@@ -23,6 +23,7 @@ with app.app_context():
             email      = 'admin@liftcore.sa',
             role       = 'admin',
             is_active  = True,
+            must_change_password = True,
         )
         db.session.add(admin)
         print("[OK] Admin user created: admin / admin123")

@@ -4,3 +4,5 @@ __pycache__/
 instance/
 .env
 static/uploads/
+node_modules/
+.pytest_cache/

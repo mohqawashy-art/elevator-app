@@ -277,12 +277,22 @@ def _contract_is_collectible(contract: Contract, today: date | None = None) -> b
     return True
 
 
+def _tax_invoice_q():
+    return Invoice.query.filter(
+        or_(
+            Invoice.invoice_type.is_(None),
+            Invoice.invoice_type == '',
+            ~Invoice.invoice_type.contains('سند'),
+        )
+    )
+
+
 def _invoice_exists_for_parts(parts_id: int) -> bool:
-    return Invoice.query.filter_by(parts_billing_id=parts_id).first() is not None
+    return _tax_invoice_q().filter_by(parts_billing_id=parts_id).first() is not None
 
 
 def _invoice_exists_for_contract(contract_id: int) -> bool:
-    return Invoice.query.filter_by(contract_id=contract_id).first() is not None
+    return _tax_invoice_q().filter_by(contract_id=contract_id).first() is not None
 
 
 def customer_billable_ops(customer_id: int) -> list[dict]:
@@ -336,25 +346,15 @@ def customer_billable_ops(customer_id: int) -> list[dict]:
         remaining = contract_remaining(c)
         collected = remaining <= 0.01 and paid >= total - 0.01
 
-        if Invoice.query.filter(
-            Invoice.contract_id == c.id,
-            Invoice.status.in_(UNPAID_INVOICE_STATUSES),
-        ).first():
-            continue
-
-        if not collected and remaining <= 0.01:
-            continue
-
-        bill_total = total if collected else remaining
         rows.append({
             'source_type': 'contract',
             'source_id': c.id,
             'code': c.code,
             'date': str(c.start_date or ''),
             'title': c.contract_type or 'عقد',
-            'description': f'فاتورة عقد {c.code} — {c.contract_type or "صيانة"}',
-            'amount_before_tax': round(bill_total / 1.15, 2),
-            'total': bill_total,
+            'description': f'فاتورة عقد {c.code} — {c.contract_type or "صيانة"} (المبلغ الكامل)',
+            'amount_before_tax': round(total / 1.15, 2),
+            'total': total,
             'paid': paid,
             'remaining': max(remaining, 0),
             'contract_id': c.id,
@@ -364,9 +364,9 @@ def customer_billable_ops(customer_id: int) -> list[dict]:
             'status': c.invoice_status or 'غير مدفوع',
             'collected': collected,
             'hint': (
-                'تم تحصيل العقد — إصدار فاتورة للتوثيق'
+                'تم التحصيل — إصدار فاتورة للتوثيق'
                 if collected
-                else 'غير محصّل بالكامل — فاتورة ثم تحصيل'
+                else f'فاتورة بالمبلغ الكامل ({total:,.2f}) — الدفعات بسندات قبض'
             ),
         })
 
@@ -643,6 +643,111 @@ def apply_payment_to_source(
     raise ValueError('نوع العملية غير معروف')
 
 
+def is_receipt_voucher(invoice_type: str | None) -> bool:
+    return 'سند' in (invoice_type or '')
+
+
+def validate_tax_invoice_full_amount(
+    invoice_type: str | None,
+    total_incl_vat: float,
+    source_type: str | None,
+    source_id: int | None,
+) -> str | None:
+    """يرفض فاتورة ضريبية بمبلغ جزئي — مطابق للمعايير السعودية."""
+    from zatca_qr import is_tax_invoice
+
+    if not is_tax_invoice(invoice_type):
+        return None
+    st = (source_type or '').strip()
+    if st == 'revenue':
+        return (
+            'محاسبياً: لا تُصدر فاتورة ضريبية من الإيراد — '
+            'أصدر الفاتورة بالمبلغ الكامل من العقد أو العملية، ثم سجّل التحصيل كإيراد.'
+        )
+    expected = expected_source_total(st, source_id)
+    if expected is None:
+        return None
+    total = _round_money(total_incl_vat)
+    if abs(total - expected) > 0.02:
+        return (
+            f'الفاتورة الضريبية يجب أن تكون بالمبلغ الكامل ({expected:,.2f} ر.س شامل الضريبة) — '
+            'الدفعات الجزئية تُسجّل بسندات قبض.'
+        )
+    return None
+
+
+def expected_source_total(source_type: str | None, source_id: int | None) -> float | None:
+    st = (source_type or '').strip()
+    if not st or not source_id:
+        return None
+    sid = int(source_id)
+    if st == 'contract':
+        c = Contract.query.get(sid)
+        return _round_money(c.total) if c else None
+    if st == 'parts_billing':
+        pb = PartsBilling.query.get(sid)
+        return _round_money(pb.sell_price) if pb else None
+    return None
+
+
+def receipt_for_revenue(revenue_id: int) -> Invoice | None:
+    return Invoice.query.filter_by(revenue_id=revenue_id).first()
+
+
+def create_receipt_voucher_for_revenue(revenue: Revenue) -> Invoice | None:
+    """إنشاء سند قبض تلقائي عند تسجيل إيراد محصّل."""
+    if (revenue.status or '') not in COLLECTED_REVENUE_STATUSES:
+        return None
+    existing = receipt_for_revenue(revenue.id)
+    if existing:
+        return existing
+
+    from operations import next_code
+
+    payment_total = _round_money(revenue.total)
+    if payment_total <= 0.01:
+        return None
+
+    parent_inv = Invoice.query.get(revenue.invoice_id) if revenue.invoice_id else None
+    description = (revenue.revenue_type or 'تحصيل').strip()
+    notes_parts = [f'إيراد {revenue.code}']
+    if parent_inv:
+        notes_parts.append(f'مقابل فاتورة {parent_inv.code}')
+        description = f'سند قبض — {parent_inv.description or parent_inv.invoice_type or "فاتورة"}'[:300]
+    elif revenue.contract_id:
+        c = Contract.query.get(revenue.contract_id)
+        if c:
+            notes_parts.append(f'عقد {c.code}')
+            description = f'سند قبض — عقد {c.code}'[:300]
+    elif revenue.parts_billing_id:
+        pb = PartsBilling.query.get(revenue.parts_billing_id)
+        if pb:
+            notes_parts.append(f'قطع {pb.code}')
+            description = f'سند قبض — {pb.description or pb.code}'[:300]
+
+    receipt = Invoice(
+        code=next_code(Invoice, 'RCP-', digits=4),
+        invoice_type='سند قبض',
+        customer_id=revenue.customer_id,
+        contract_id=revenue.contract_id,
+        parts_billing_id=revenue.parts_billing_id,
+        parent_invoice_id=parent_inv.id if parent_inv else None,
+        revenue_id=revenue.id,
+        invoice_date=revenue.revenue_date or date.today(),
+        due_date=None,
+        description=description,
+        amount=payment_total,
+        tax_amount=0.0,
+        total=payment_total,
+        paid_amount=payment_total,
+        payment_method=revenue.payment_method or '',
+        status='مدفوعة',
+        notes=' — '.join(notes_parts),
+    )
+    db.session.add(receipt)
+    return receipt
+
+
 def customer_financial_totals(revenues, parts, invoices) -> dict:
     """مجاميع المدفوعات دون احتساب العملية مرتين (إيراد + قطع غيار)."""
     revenue_linked_parts = {
@@ -692,62 +797,82 @@ def customer_financial_totals(revenues, parts, invoices) -> dict:
 
 
 def build_customer_statement(customer_id: int) -> dict:
-    """كشف حساب: مستحقات + دفعات + رصيد."""
+    """كشف حساب: فواتير ضريبية (مدين) + سندات قبض/إيرادات (دائن) + رصيد."""
     customer = Customer.query.get_or_404(customer_id)
+
+    tax_invoices = (
+        Invoice.query.filter_by(customer_id=customer_id)
+        .order_by(Invoice.invoice_date.desc(), Invoice.id.desc())
+        .all()
+    )
+
     debits: list[dict] = []
-    for op in customer_uncollected_ops(customer_id):
+    for inv in tax_invoices:
+        if is_receipt_voucher(inv.invoice_type):
+            continue
+        remaining = invoice_remaining(inv)
         debits.append({
-            'date': op['date'],
-            'code': op['code'],
-            'type': op['title'],
-            'description': op['description'],
-            'debit': op['remaining'],
+            'date': str(inv.invoice_date or ''),
+            'code': inv.code,
+            'type': inv.invoice_type or 'فاتورة',
+            'description': (inv.description or '')[:200],
+            'debit': _round_money(inv.total),
             'credit': 0,
-            'status': op['status'],
-            'source_type': op['source_type'],
-            'source_id': op['source_id'],
+            'paid': _round_money(getattr(inv, 'paid_amount', 0) or 0),
+            'remaining': remaining,
+            'status': inv.status or '',
+            'source_type': 'invoice',
+            'source_id': inv.id,
         })
 
-    credits: list[dict] = []
     revenues = (
         Revenue.query.filter_by(customer_id=customer_id)
         .filter(Revenue.status.in_(COLLECTED_REVENUE_STATUSES))
-        .order_by(Revenue.revenue_date.desc())
+        .order_by(Revenue.revenue_date.desc(), Revenue.id.desc())
         .all()
     )
+
+    credits: list[dict] = []
     for r in revenues:
-        ref = ''
+        receipt = receipt_for_revenue(r.id)
+        parent_ref = ''
         if r.invoice_id:
             inv = Invoice.query.get(r.invoice_id)
-            ref = f'فاتورة {inv.code}' if inv else ''
-        elif r.parts_billing_id:
-            pb = PartsBilling.query.get(r.parts_billing_id)
-            ref = f'قطع {pb.code}' if pb else ''
+            if inv and not is_receipt_voucher(inv.invoice_type):
+                parent_ref = f'فاتورة {inv.code}'
         elif r.contract_id:
             c = Contract.query.get(r.contract_id)
-            ref = f'عقد {c.code}' if c else ''
+            parent_ref = f'عقد {c.code}' if c else ''
+        elif r.parts_billing_id:
+            pb = PartsBilling.query.get(r.parts_billing_id)
+            parent_ref = f'قطع {pb.code}' if pb else ''
+
         credits.append({
             'date': str(r.revenue_date or ''),
             'code': r.code,
+            'receipt_code': receipt.code if receipt else '',
             'type': r.revenue_type or 'إيراد',
-            'description': ref or (r.notes or ''),
+            'description': parent_ref or (r.notes or '')[:200],
             'debit': 0,
             'credit': _round_money(r.total),
             'status': r.status or '',
             'source_type': 'revenue',
             'source_id': r.id,
+            'receipt_id': receipt.id if receipt else None,
+            'invoice_id': r.invoice_id,
         })
 
-    total_debit = _round_money(sum(d['debit'] for d in debits))
-    total_credit = _round_money(sum(c['credit'] for c in credits))
-    balance = _round_money(total_debit)
+    total_invoiced = _round_money(sum(d['debit'] for d in debits))
+    total_paid = _round_money(sum(c['credit'] for c in credits))
+    total_outstanding = _round_money(sum(d['remaining'] for d in debits))
 
     return {
         'customer_id': customer_id,
         'customer_name': customer.name,
-        'total_outstanding': total_debit,
-        'total_paid': total_credit,
-        'balance_due': balance,
+        'total_invoiced': total_invoiced,
+        'total_outstanding': total_outstanding,
+        'total_paid': total_paid,
+        'balance_due': total_outstanding,
         'debits': debits,
         'credits': credits,
         'uncollected_ops': customer_uncollected_ops(customer_id),

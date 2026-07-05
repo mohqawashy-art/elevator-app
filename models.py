@@ -403,11 +403,15 @@ class Invoice(db.Model):
     payment_method  = db.Column(db.String(50))
     status          = db.Column(db.String(30), default='غير مدفوعة')
     notes           = db.Column(db.Text)
+    parent_invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'))
+    revenue_id      = db.Column(db.Integer, db.ForeignKey('revenues.id'))
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
     customer        = db.relationship('Customer', foreign_keys=[customer_id])
     contract        = db.relationship('Contract', foreign_keys=[contract_id])
     parts_billing   = db.relationship('PartsBilling', foreign_keys=[parts_billing_id])
+    parent_invoice  = db.relationship('Invoice', remote_side=[id], foreign_keys=[parent_invoice_id])
+    linked_revenue  = db.relationship('Revenue', foreign_keys=[revenue_id], uselist=False)
 
     def __repr__(self):
         return f'<Invoice {self.code}>'
@@ -690,11 +694,27 @@ class User(db.Model):
     language        = db.Column(db.String(10), default='ar')  # ar / en
     photo_path      = db.Column(db.String(300))
     is_active       = db.Column(db.Boolean, default=True)
+    must_change_password = db.Column(db.Boolean, default=False)
     last_login      = db.Column(db.DateTime)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+
+class AuditLog(db.Model):
+    """سجل تدقيق — حذف، إعدادات، تغيير كلمة مرور."""
+    __tablename__ = 'audit_logs'
+
+    id           = db.Column(db.Integer, primary_key=True)
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    user_id      = db.Column(db.Integer, index=True)
+    username     = db.Column(db.String(80))
+    action       = db.Column(db.String(80), nullable=False)
+    entity_type  = db.Column(db.String(60))
+    entity_id    = db.Column(db.String(40))
+    details_json = db.Column(db.Text)
+    ip_address   = db.Column(db.String(45))
 
 
 class AppLiveState(db.Model):

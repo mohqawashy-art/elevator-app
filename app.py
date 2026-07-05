@@ -15,7 +15,6 @@ from elevator_estimate_calc import (
     calculate_lines, summarize_lines, MACHINE_TYPES, ELEV_TYPES,
     ESTIMATE_STATUSES, DEFAULT_VAT_PCT, DEFAULT_MARGIN_PCT,
 )
-from geocode import DEFAULT_KEY as GOOGLE_MAPS_DEFAULT_KEY
 from calendar import monthrange
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, and_, text, inspect
@@ -45,7 +44,7 @@ def _load_env_file():
                     if not line or line.startswith('#') or '=' not in line:
                         continue
                     key, _, val = line.partition('=')
-                    key = key.strip()
+                    key = key.strip().lstrip('\ufeff')
                     val = val.strip().strip('"').strip("'")
                     if key and key not in os.environ:
                         os.environ[key] = val
@@ -57,19 +56,21 @@ _load_env_file()
 
 
 def resolve_google_maps_api_key(settings=None):
-    """مفتاح Google Maps على مستوى المنصة — مش لكل عميل."""
+    """مفتاح Google Maps على مستوى المنصة — من متغير البيئة فقط."""
     key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
     if key:
         return key
-    return GOOGLE_MAPS_DEFAULT_KEY
+    if settings and (getattr(settings, 'google_maps_api_key', None) or '').strip():
+        return settings.google_maps_api_key.strip()
+    return ''
 
 
 def google_maps_key_source(settings=None):
     """مصدر المفتاح (للتشخيص — بدون كشف القيمة)."""
     if os.environ.get('GOOGLE_MAPS_API_KEY', '').strip():
         return 'platform'
-    if GOOGLE_MAPS_DEFAULT_KEY:
-        return 'default'
+    if settings and (getattr(settings, 'google_maps_api_key', None) or '').strip():
+        return 'settings'
     return 'none'
 
 
@@ -108,6 +109,10 @@ from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
+from liftcore_security import validate_production_config  # noqa: E402
+
+validate_production_config(app)
+
 
 @app.after_request
 def _security_headers(response):
@@ -129,7 +134,7 @@ db.init_app(app)
 import installation.models  # noqa: F401, E402
 from installation.config import install_module_enabled
 
-PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'field_login', 'field_logout'})
+PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'api_health', 'field_login', 'field_logout'})
 PUBLIC_PATH_PREFIXES = ('/static',)
 STATIC_UPLOADS_PREFIX = '/static/uploads'
 
@@ -215,6 +220,12 @@ def enforce_admin_delete(*, json_response=False):
             return jsonify({'ok': False, 'error': 'invalid_password', 'message': msg}), 403
         flash(msg, 'error')
         return redirect(request.referrer or url_for('dashboard'))
+    from audit_log import log_audit
+    log_audit(
+        'admin_delete_confirmed',
+        user=user,
+        details={'path': request.path, 'endpoint': request.endpoint},
+    )
     return None
 
 
@@ -228,6 +239,25 @@ def set_session_locked(locked=True):
     else:
         session.pop('session_locked', None)
     session.modified = True
+
+
+def _must_change_password_response(user):
+    """إجبار تغيير كلمة المرور قبل أي عمل آخر."""
+    if not getattr(user, 'must_change_password', False):
+        return None
+    from liftcore_rbac import PASSWORD_CHANGE_ALLOWED_ENDPOINTS
+
+    ep = request.endpoint or ''
+    if ep in PASSWORD_CHANGE_ALLOWED_ENDPOINTS:
+        return None
+    path = request.path or ''
+    if path.startswith('/static/'):
+        return None
+    if path.startswith('/api/'):
+        return jsonify({'ok': False, 'error': 'password_change_required',
+                        'message': 'يجب تغيير كلمة المرور أولاً'}), 403
+    session['settings_notice'] = 'يجب تغيير كلمة المرور قبل متابعة العمل.'
+    return redirect(url_for('settings', tab='account', force_password=1))
 
 
 def _session_lock_response():
@@ -341,6 +371,27 @@ def enforce_auth():
         lock_resp = _session_lock_response()
         if lock_resp:
             return lock_resp
+        pwd_resp = _must_change_password_response(user)
+        if pwd_resp:
+            return pwd_resp
+        from liftcore_rbac import check_rbac
+        lang = resolve_user_language(user)
+        rbac_resp = check_rbac(
+            user,
+            method=request.method,
+            endpoint=request.endpoint,
+            path=request.path or '',
+            lang=lang,
+        )
+        if rbac_resp:
+            return rbac_resp
+        from liftcore_security import validate_csrf
+        if not app.config.get('TESTING'):
+            validate_csrf(
+                method=request.method,
+                endpoint=request.endpoint,
+                path=request.path or '',
+            )
         return None
 
     if field_tid:
@@ -578,7 +629,16 @@ def inject_global_template_vars():
         'session_locked': session_is_locked(),
         'idle_screensaver_enabled': idle_screensaver_enabled(s),
         'idle_screensaver_seconds': idle_screensaver_seconds(s),
+        'can_write': bool(user and user.role in ('admin', 'manager')),
+        'is_viewer': bool(user and user.role == 'viewer'),
+        'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
     }
+
+
+@app.template_global()
+def csrf_token():
+    from liftcore_security import ensure_csrf_token
+    return ensure_csrf_token()
 
 
 def _money_round(n):
@@ -810,6 +870,9 @@ def invoice_to_js_dict(i):
         'pay_method': i.payment_method or '',
         'status': i.status or 'غير مدفوعة',
         'notes': i.notes or '',
+        'parent_invoice_id': getattr(i, 'parent_invoice_id', None),
+        'revenue_id': getattr(i, 'revenue_id', None),
+        'is_receipt': 'سند' in (i.invoice_type or ''),
         'customer_whatsapp': (
             (i.customer.phone2 or i.customer.phone or '') if i.customer else ''
         ),
@@ -932,6 +995,7 @@ with app.app_context():
                 ('theme', 'VARCHAR(10)'),
                 ('language', 'VARCHAR(10)'),
                 ('photo_path', 'VARCHAR(300)'),
+                ('must_change_password', 'BOOLEAN'),
             ],
             'faults': [
                 ('visit_id', 'INTEGER'),
@@ -967,7 +1031,12 @@ with app.app_context():
                 ('visit_id', 'INTEGER'), ('fault_id', 'INTEGER'), ('paid_amount', 'FLOAT'),
                 ('payment_note', 'TEXT'),
             ],
-            'invoices': [('paid_amount', 'FLOAT'), ('parts_billing_id', 'INTEGER')],
+            'invoices': [
+                ('paid_amount', 'FLOAT'),
+                ('parts_billing_id', 'INTEGER'),
+                ('parent_invoice_id', 'INTEGER'),
+                ('revenue_id', 'INTEGER'),
+            ],
             'revenues': [
                 ('invoice_id', 'INTEGER'),
                 ('parts_billing_id', 'INTEGER'),
@@ -1229,6 +1298,46 @@ def api_version():
     )
 
 
+@app.route('/api/health')
+def api_health():
+    """فحص صحة الخادم — DB + قرص + إصدار."""
+    import shutil as _shutil
+    ok = True
+    db_ok = False
+    try:
+        db.session.execute(text('SELECT 1'))
+        db_ok = True
+    except Exception:
+        ok = False
+        db.session.rollback()
+    disk = {}
+    try:
+        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        db_path = db_uri.replace('sqlite:///', '') if db_uri.startswith('sqlite:///') else app.instance_path
+        usage = _shutil.disk_usage(os.path.dirname(db_path) or app.root_path)
+        disk = {
+            'free_mb': round(usage.free / (1024 * 1024)),
+            'total_mb': round(usage.total / (1024 * 1024)),
+        }
+        if usage.free < 50 * 1024 * 1024:
+            ok = False
+    except Exception:
+        pass
+    from liftcore_security import is_production_env, DEFAULT_SECRET_KEYS
+    secret_ok = (app.config.get('SECRET_KEY') or '') not in DEFAULT_SECRET_KEYS
+    if is_production_env() and not secret_ok:
+        ok = False
+    status = 200 if ok and db_ok else 503
+    return jsonify({
+        'ok': ok and db_ok,
+        'version': APP_VERSION,
+        'database': db_ok,
+        'disk': disk,
+        'secret_key_ok': secret_ok,
+        'production': is_production_env(),
+    }), status
+
+
 @app.route('/api/live/revision')
 def api_live_revision():
     from live_sync import get_live_revision
@@ -1276,31 +1385,56 @@ def web_manifest():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    from liftcore_security import (
+        check_login_rate_limit,
+        clear_login_attempts,
+        ensure_csrf_token,
+        is_weak_password,
+        record_login_failure,
+    )
+
     error = None
     if current_user():
         return redirect(url_for('dashboard'))
+    if request.method == 'GET':
+        ensure_csrf_token()
     if request.method == 'POST':
-        login_id = request.form.get('email') or request.form.get('username')
-        password = request.form.get('password') or ''
-        user = _find_login_user(login_id)
-        if user and verify_password(user.password_hash, password):
-            if not password_is_hashed(user.password_hash):
-                user.password_hash = hash_password(password)
-            session.clear()
-            session['user_id'] = user.id
-            session['username'] = user.full_name or user.username
-            form_lang = (request.form.get('lang') or '').strip()
-            if form_lang in ('ar', 'en'):
-                user.language = form_lang
-                session['lang'] = form_lang
-            else:
-                session['lang'] = resolve_user_language(user)
-            session.permanent = True
-            user.last_login = datetime.utcnow()
-            db.session.commit()
-            session['just_logged_in'] = True
-            return redirect(url_for('welcome'))
-        error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
+        allowed, retry_sec = check_login_rate_limit()
+        if not allowed:
+            error = f'محاولات كثيرة — انتظر {retry_sec} ثانية ثم حاول مجدداً.'
+        else:
+            login_id = request.form.get('email') or request.form.get('username')
+            password = request.form.get('password') or ''
+            user = _find_login_user(login_id)
+            if user and verify_password(user.password_hash, password):
+                if not password_is_hashed(user.password_hash):
+                    user.password_hash = hash_password(password)
+                if is_weak_password(password):
+                    user.must_change_password = True
+                session.clear()
+                session['user_id'] = user.id
+                session['username'] = user.full_name or user.username
+                form_lang = (request.form.get('lang') or '').strip()
+                if form_lang in ('ar', 'en'):
+                    user.language = form_lang
+                    session['lang'] = form_lang
+                else:
+                    session['lang'] = resolve_user_language(user)
+                session.permanent = True
+                user.last_login = datetime.utcnow()
+                db.session.commit()
+                clear_login_attempts()
+                from audit_log import log_audit
+                log_audit('login_success', user=user)
+                session['just_logged_in'] = True
+                if getattr(user, 'must_change_password', False):
+                    session['settings_notice'] = 'يجب تغيير كلمة المرور قبل متابعة العمل.'
+                    return redirect(url_for('settings', tab='account', force_password=1))
+                return redirect(url_for('welcome'))
+            record_login_failure()
+            from audit_log import log_audit
+            log_audit('login_failed', details={'login_id': (login_id or '')[:80]})
+            error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
     return render_template('login.html', error=error)
 
 
@@ -3329,6 +3463,16 @@ def _ext_ok(filename, allowed):
     return filename.rsplit('.', 1)[1].lower() in allowed
 
 
+def _upload_ok(file_storage, allowed_ext):
+    """امتداد + حجم + MIME — يرجع (ok, error_ar)."""
+    from liftcore_security import validate_upload_file
+    if not file_storage or not file_storage.filename:
+        return True, ''
+    if not _ext_ok(file_storage.filename, allowed_ext):
+        return False, 'نوع الملف غير مسموح'
+    return validate_upload_file(file_storage, allowed_ext=allowed_ext)
+
+
 def _save_technician_signature(tech, file_storage, pin_plain=''):
     from signatory_service import upsert_signatory
     from signature_auth import normalize_national_id, validate_sign_pin
@@ -4413,26 +4557,37 @@ def field_login():
         login_id = (request.form.get('login_id') or '').strip()
         pin = (request.form.get('pin') or '').strip()
         from field_auth import sync_technician_field_pin, technician_has_field_pin
+        from liftcore_security import (
+            check_field_pin_rate_limit,
+            clear_field_pin_attempts,
+            record_field_pin_failure,
+        )
 
-        tech = find_technician_by_login(login_id)
-        if not tech:
-            raw = login_id.lower()
-            inactive = Technician.query.filter(Technician.code.ilike(raw)).first()
-            if inactive and (inactive.status or 'متاح') not in ('نشط', 'متاح', 'مشغول'):
-                error = f'حساب الفني غير مفعّل للجوال (الحالة: {inactive.status}) — راجع المشرف'
-            else:
-                error = 'لم يُعثر على فني بهذا الكود أو الجوال'
-        elif not technician_has_field_pin(tech):
-            error = 'لم يُضبط رمز دخول لهذا الفني — راجع المشرف (التوقيع الرقمي في ملف الفني)'
-        elif not verify_technician_pin(tech, pin):
-            error = 'رمز الدخول غير صحيح — تأكد من 6 أرقام بدون مسافات'
+        allowed, retry_sec = check_field_pin_rate_limit(login_id)
+        if not allowed:
+            error = f'محاولات كثيرة — انتظر {retry_sec} ثانية ثم حاول مجدداً.'
         else:
-            sync_technician_field_pin(tech)
-            from models import db
-            db.session.commit()
-            field_login_technician(tech)
-            dest = next_url if next_url.startswith('/field') else url_for('field_home')
-            return redirect(dest)
+            tech = find_technician_by_login(login_id)
+            if not tech:
+                raw = login_id.lower()
+                inactive = Technician.query.filter(Technician.code.ilike(raw)).first()
+                if inactive and (inactive.status or 'متاح') not in ('نشط', 'متاح', 'مشغول'):
+                    error = f'حساب الفني غير مفعّل للجوال (الحالة: {inactive.status}) — راجع المشرف'
+                else:
+                    error = 'لم يُعثر على فني بهذا الكود أو الجوال'
+                record_field_pin_failure(login_id)
+            elif not technician_has_field_pin(tech):
+                error = 'لم يُضبط رمز دخول لهذا الفني — راجع المشرف (التوقيع الرقمي في ملف الفني)'
+            elif not verify_technician_pin(tech, pin):
+                error = 'رمز الدخول غير صحيح — تأكد من 6 أرقام بدون مسافات'
+                record_field_pin_failure(login_id)
+            else:
+                sync_technician_field_pin(tech)
+                db.session.commit()
+                clear_field_pin_attempts(login_id)
+                field_login_technician(tech)
+                dest = next_url if next_url.startswith('/field') else url_for('field_home')
+                return redirect(dest)
 
     return render_template(
         'field-login.html',
@@ -5112,31 +5267,35 @@ def _revenue_from_form(form, existing: Revenue | None = None):
 
 @app.route('/revenues/edit/<int:id>', methods=['POST'])
 def revenue_edit(id):
+    from customer_billing import COLLECTED_REVENUE_STATUSES, create_receipt_voucher_for_revenue
+
     r = Revenue.query.get_or_404(id)
     old_contract_id = r.contract_id
     _revenue_from_form(request.form, existing=r)
+    receipt = None
+    if (r.status or '') in COLLECTED_REVENUE_STATUSES:
+        receipt = create_receipt_voucher_for_revenue(r)
     sync_contract_invoice_status(r.contract_id)
     if old_contract_id and old_contract_id != r.contract_id:
         sync_contract_invoice_status(old_contract_id)
     db.session.commit()
+    if receipt:
+        flash(f'تم إنشاء سند قبض {receipt.code} تلقائياً', 'success')
     return redirect(url_for('revenues'))
 
 @app.route('/revenues/add', methods=['POST'])
 def revenue_add():
-    from customer_billing import COLLECTED_REVENUE_STATUSES
+    from customer_billing import COLLECTED_REVENUE_STATUSES, create_receipt_voucher_for_revenue
 
     r = _revenue_from_form(request.form)
     db.session.flush()
+    receipt = None
+    if (r.status or '') in COLLECTED_REVENUE_STATUSES:
+        receipt = create_receipt_voucher_for_revenue(r)
     sync_contract_invoice_status(r.contract_id)
     db.session.commit()
-    if (
-        r.customer_id
-        and not r.invoice_id
-        and (r.status or '') in COLLECTED_REVENUE_STATUSES
-    ):
-        return redirect(
-            f"{url_for('invoices')}?action=add&revenue_id={r.id}&customer_id={r.customer_id}"
-        )
+    if receipt:
+        flash(f'تم إنشاء سند قبض {receipt.code} تلقائياً', 'success')
     return redirect(url_for('revenues'))
 
 @app.route('/revenues/delete/<int:id>', methods=['POST'])
@@ -5259,16 +5418,29 @@ def invoice_edit(id):
 @app.route('/invoices/add', methods=['POST'])
 def invoice_add():
     from form_validation import invoice_amount_error
+    from customer_billing import (
+        contract_paid_amount,
+        validate_tax_invoice_full_amount,
+    )
 
     amount = float(request.form.get('amount', 0) or 0)
     tax = round(amount * 0.15, 2)
     total = round(amount + tax, 2)
+    invoice_type = request.form.get('invoice_type', 'فاتورة ضريبية')
     amt_err = invoice_amount_error(amount)
     if amt_err:
         flash(amt_err, 'error')
         return redirect(url_for('invoices'))
     source_type = (request.form.get('source_type') or '').strip()
     source_id = (request.form.get('source_id') or '').strip()
+    source_id_int = int(source_id) if source_id.isdigit() else None
+
+    tax_err = validate_tax_invoice_full_amount(
+        invoice_type, total, source_type or None, source_id_int,
+    )
+    if tax_err:
+        flash(tax_err, 'error')
+        return redirect(url_for('invoices'))
     customer_id = request.form.get('customer_id') or None
     contract_id = request.form.get('contract_id') or None
     parts_billing_id = None
@@ -5277,36 +5449,14 @@ def invoice_add():
 
     if source_type == 'parts_billing' and source_id:
         pb = PartsBilling.query.get_or_404(int(source_id))
-        if Invoice.query.filter_by(parts_billing_id=pb.id).first():
+        from customer_billing import _invoice_exists_for_parts
+        if _invoice_exists_for_parts(pb.id):
             flash('يوجد فاتورة لهذه العملية مسبقاً', 'error')
             return redirect(url_for('invoices'))
         customer_id = pb.customer_id
         contract_id = pb.contract_id
         parts_billing_id = pb.id
         ref = f'فاتورة عملية {pb.code}'
-        if ref not in (notes or ''):
-            notes = (ref + (' — ' + notes if notes else '')).strip()
-    elif source_type == 'revenue' and source_id:
-        from customer_billing import COLLECTED_REVENUE_STATUSES, resolve_contract_id
-
-        rev = Revenue.query.get_or_404(int(source_id))
-        if rev.invoice_id:
-            flash('يوجد فاتورة مرتبطة بهذا الإيراد مسبقاً', 'error')
-            return redirect(url_for('invoices'))
-        if (rev.status or '') not in COLLECTED_REVENUE_STATUSES:
-            flash('لا يمكن إصدار فاتورة لإيراد غير محصّل', 'error')
-            return redirect(url_for('invoices'))
-        customer_id = rev.customer_id
-        contract_id = rev.contract_id or resolve_contract_id(
-            rev.customer_id,
-            rev.reference or '',
-            rev.notes or '',
-            '',
-            rev.revenue_type or '',
-            revenue_id=rev.id,
-        )
-        parts_billing_id = rev.parts_billing_id
-        ref = f'فاتورة إيراد {rev.code}'
         if ref not in (notes or ''):
             notes = (ref + (' — ' + notes if notes else '')).strip()
     elif source_type == 'contract' and source_id:
@@ -5333,35 +5483,34 @@ def invoice_add():
     due_raw = request.form.get('due_date', '').strip()
     invoice_status = request.form.get('status', 'غير مدفوعة')
     invoice_paid = 0.0
-    linked_revenue = None
-    if source_type == 'revenue' and source_id:
-        from customer_billing import _round_money
-
-        linked_revenue = Revenue.query.get(int(source_id))
-        if linked_revenue:
-            invoice_paid = _round_money(linked_revenue.total)
-            if invoice_status in ('', 'غير مدفوعة'):
-                invoice_status = 'مدفوعة'
-            if not description:
-                from customer_billing import invoice_description_for_revenue
-                description = invoice_description_for_revenue(linked_revenue)
-    elif source_type == 'parts_billing' and source_id:
+    if source_type == 'parts_billing' and source_id:
         pb = PartsBilling.query.get(int(source_id))
-        if pb and (pb.paid_amount or 0) >= (pb.sell_price or 0) - 0.01:
-            invoice_paid = total
-            if invoice_status in ('', 'غير مدفوعة'):
+        if pb:
+            from customer_billing import _round_money
+            paid_on_parts = _round_money(getattr(pb, 'paid_amount', 0) or 0)
+            invoice_paid = min(paid_on_parts, total)
+            if invoice_paid >= total - 0.01:
                 invoice_status = 'مدفوعة'
+            elif invoice_paid > 0.01:
+                invoice_status = 'مدفوع جزئياً'
+            else:
+                invoice_status = 'غير مدفوعة'
     elif source_type == 'contract' and source_id:
-        from customer_billing import contract_paid_amount
         c = Contract.query.get(int(source_id))
-        if c and contract_paid_amount(c.id) >= (c.total or 0) - 0.01:
-            invoice_paid = total
-            if invoice_status in ('', 'غير مدفوعة'):
+        if c:
+            from customer_billing import _round_money
+            paid_on_contract = contract_paid_amount(c.id)
+            invoice_paid = min(_round_money(paid_on_contract), total)
+            if invoice_paid >= total - 0.01:
                 invoice_status = 'مدفوعة'
+            elif invoice_paid > 0.01:
+                invoice_status = 'مدفوع جزئياً'
+            else:
+                invoice_status = 'غير مدفوعة'
 
     i = Invoice(
         code=next_code(Invoice, 'INV-', digits=4),
-        invoice_type=request.form.get('invoice_type', 'فاتورة ضريبية'),
+        invoice_type=invoice_type,
         customer_id=int(customer_id) if customer_id else None,
         contract_id=int(contract_id) if contract_id else None,
         parts_billing_id=parts_billing_id,
@@ -5378,10 +5527,12 @@ def invoice_add():
     )
     db.session.add(i)
     db.session.flush()
-    if linked_revenue:
-        linked_revenue.invoice_id = i.id
-        if contract_id and not linked_revenue.contract_id:
-            linked_revenue.contract_id = int(contract_id)
+    if source_type == 'contract' and source_id and contract_id:
+        for rev in Revenue.query.filter_by(
+            contract_id=int(contract_id),
+            customer_id=i.customer_id,
+        ).filter(Revenue.invoice_id.is_(None)):
+            rev.invoice_id = i.id
     sync_contract_invoice_status(i.contract_id)
     db.session.commit()
     return redirect(url_for('invoices'))
@@ -6521,6 +6672,10 @@ def report_expenses():
 def report_invoices():
     return _render_report_page('report-invoices', 'report-invoices.html')
 
+@app.route('/reports/parts-billing')
+def report_parts_billing():
+    return _render_report_page('report-parts', 'report-parts.html')
+
 @app.route('/reports/inventory')
 def report_inventory():
     return _render_report_page('report-inventory', 'report-inventory.html')
@@ -6593,9 +6748,26 @@ def _migrate_plain_text_passwords():
         db.session.commit()
 
 
+def _flag_weak_default_passwords():
+    """يُعلِم المستخدمين بكلمات مرور افتراضية معروفة."""
+    from liftcore_security import BANNED_PASSWORDS
+    changed = False
+    for u in User.query.all():
+        if getattr(u, 'must_change_password', False):
+            continue
+        for weak in BANNED_PASSWORDS:
+            if verify_password(u.password_hash, weak):
+                u.must_change_password = True
+                changed = True
+                break
+    if changed:
+        db.session.commit()
+
+
 with app.app_context():
     try:
         _migrate_plain_text_passwords()
+        _flag_weak_default_passwords()
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Password migration error: %s', exc)
@@ -7095,6 +7267,8 @@ def settings_user_toggle(user_id):
 
 @app.route('/settings/password', methods=['POST'])
 def settings_change_password():
+    from liftcore_security import password_policy_error
+
     user = require_login()
     if not user:
         return redirect(url_for('login'))
@@ -7102,13 +7276,15 @@ def settings_change_password():
     current = request.form.get('current_password') or ''
     new_pass = (request.form.get('new_password') or '').strip()
     confirm = (request.form.get('confirm_password') or '').strip()
+    lang = resolve_user_language(user)
 
     if not verify_password(user.password_hash, current):
         session['settings_notice'] = 'كلمة المرور الحالية غير صحيحة.'
         return _settings_redirect('account')
 
-    if len(new_pass) < 6:
-        session['settings_notice'] = 'كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل.'
+    policy_err = password_policy_error(new_pass, lang=lang)
+    if policy_err:
+        session['settings_notice'] = policy_err
         return _settings_redirect('account')
 
     if new_pass != confirm:
@@ -7116,7 +7292,10 @@ def settings_change_password():
         return _settings_redirect('account')
 
     user.password_hash = hash_password(new_pass)
+    user.must_change_password = False
     db.session.commit()
+    from audit_log import log_audit
+    log_audit('password_changed', user=user)
     session['settings_notice'] = 'تم تغيير كلمة المرور بنجاح.'
     return _settings_redirect('account')
 
@@ -7368,6 +7547,12 @@ def api_report_expenses():
 def api_report_invoices():
     from report_data import fetch_report_rows
     return jsonify(fetch_report_rows('report-invoices', _report_ctx()))
+
+
+@app.route('/api/reports/parts-billing')
+def api_report_parts_billing():
+    from report_data import fetch_report_rows
+    return jsonify(fetch_report_rows('report-parts', _report_ctx()))
 
 
 @app.route('/api/reports/inventory')

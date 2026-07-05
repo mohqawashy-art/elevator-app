@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — تسجيل الدخول</title>
 {% include 'partials/liftcore_pwa_head.html' %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -120,6 +121,7 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
   {% if error %}<div style="color:#e0794a;font-size:12.5px;text-align:center;margin-bottom:14px;letter-spacing:.02em">{{ error }}</div>{% endif %}
 
   <form id="loginForm" action="{{ url_for('login') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field">
       <label for="user">اسم المستخدم</label>
       <div class="input-wrap">

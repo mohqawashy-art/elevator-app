@@ -8,8 +8,6 @@ import time
 import urllib.parse
 import urllib.request
 
-# نفس مفتاح الخرائط المستخدم في الواجهة
-DEFAULT_KEY = "AIzaSyC1kS8u0kFILegZQ1KZRX9mfAKAOsjxdNA"
 NOMINATIM_UA = "LiftCoreElevatorApp/1.0"
 
 
@@ -71,7 +69,7 @@ def geocode_address(
     if not district_parts:
         return None
 
-    key = api_key or os.environ.get("GOOGLE_MAPS_API_KEY", DEFAULT_KEY)
+    key = (api_key or os.environ.get("GOOGLE_MAPS_API_KEY", "")).strip()
     queries = []
     if full_parts:
         queries.append(", ".join(full_parts))
@@ -79,7 +77,7 @@ def geocode_address(
     if district_query not in queries:
         queries.append(district_query)
 
-    if not prefer_nominatim:
+    if not prefer_nominatim and key:
         for query in queries:
             result = _geocode_google(query, api_key=key)
             if result:
