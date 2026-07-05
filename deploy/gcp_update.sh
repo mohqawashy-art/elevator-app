@@ -6,6 +6,9 @@
 set -euo pipefail
 
 SCRIPT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=_common.sh
+source "$SCRIPT_DIR/_common.sh"
 
 if [ -n "${APP_DIR:-}" ] && [ -d "$APP_DIR/.git" ]; then
   :
@@ -21,9 +24,9 @@ else
 fi
 
 SERVICE_NAME="${SERVICE_NAME:-liftcore}"
-VENV="${VENV:-$APP_DIR/.venv}"
+VENV="$(lc_resolve_venv "$APP_DIR" "$SERVICE_NAME")"
 
-echo "==> LiftCore update in $APP_DIR (service: $SERVICE_NAME)"
+echo "==> LiftCore update in $APP_DIR (service: $SERVICE_NAME, venv: $VENV)"
 cd "$APP_DIR"
 
 echo "==> backup database"
@@ -39,18 +42,12 @@ echo "==> git pull (never reset --hard)"
 git fetch origin main
 git pull --ff-only origin main
 
-if [ -d "$VENV" ]; then
-  echo "==> pip install"
-  # shellcheck disable=SC1091
-  source "$VENV/bin/activate"
-  if [ -f requirements.txt ]; then
-    pip install -q -r requirements.txt
-  else
-    pip install -q flask flask-sqlalchemy gunicorn werkzeug cryptography
-  fi
-  python -c "import cryptography; print('  cryptography OK')" 2>/dev/null || echo "  WARN: cryptography missing — pip install cryptography"
+if [ -x "$VENV/bin/python" ]; then
+  echo "==> pip install ($VENV)"
+  lc_pip_install_requirements "$VENV" "$APP_DIR"
 else
-  echo "==> no venv at $VENV — skipping pip"
+  echo "ERROR: لا يوجد venv صالح — توقّع: $APP_DIR/.venv أو $HOME/liftcore/venv"
+  exit 1
 fi
 
 echo "==> ensure platform env + HTTPS + install module (systemd drop-in)"
@@ -67,6 +64,7 @@ if command -v systemctl >/dev/null 2>&1; then
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_HTTPS=1' | sudo tee "$DROP_IN/https.conf" >/dev/null
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_INSTALL_MODULE=1' | sudo tee "$DROP_IN/install-module.conf" >/dev/null
   if [ -f "$PLATFORM_ENV" ]; then
+    lc_fix_platform_env_perms "$PLATFORM_ENV"
     printf '%s\n' '[Service]' "EnvironmentFile=$PLATFORM_ENV" | sudo tee "$DROP_IN/platform-env.conf" >/dev/null
     echo "  platform env: $PLATFORM_ENV"
   elif [ -f "$APP_DIR/.env" ] && grep -q GOOGLE_MAPS_API_KEY "$APP_DIR/.env" 2>/dev/null; then
@@ -81,17 +79,21 @@ if command -v systemctl >/dev/null 2>&1; then
   sudo systemctl daemon-reload
 fi
 
-if [ -d "$VENV" ] && [ -f "$APP_DIR/deploy/migrate_db.py" ]; then
+if [ -x "$VENV/bin/python" ] && [ -f "$APP_DIR/deploy/migrate_db.py" ]; then
   echo "==> database migrations (Alembic)"
+  # shellcheck disable=SC1091
+  source "$VENV/bin/activate"
   python "$APP_DIR/deploy/migrate_db.py" || echo "  WARN: migrate_db failed"
 fi
 
-if [ -d "$VENV" ] && [ -f "$APP_DIR/scripts/init_install_module.py" ]; then
+if [ -x "$VENV/bin/python" ] && [ -f "$APP_DIR/scripts/init_install_module.py" ]; then
   echo "==> installation module DB tables"
+  # shellcheck disable=SC1091
+  source "$VENV/bin/activate"
   python "$APP_DIR/scripts/init_install_module.py" || echo "  WARN: init_install_module failed"
 fi
 
-if [ -d "$VENV" ]; then
+if [ -x "$VENV/bin/python" ]; then
   echo "==> test app import (production env)"
   # shellcheck disable=SC1091
   source "$VENV/bin/activate"
@@ -128,7 +130,7 @@ echo "==> verify"
 test -d "$APP_DIR/installation" && echo "  installation module OK"
 grep -q "register_install_module" "$APP_DIR/app.py" && echo "  install routes OK"
 test -f "$APP_DIR/static/liftcore-dates.js" && echo "  liftcore-dates.js OK"
-if [ -d "$VENV" ]; then
+if [ -x "$VENV/bin/python" ]; then
   python "$APP_DIR/scripts/build_clients_template.py" 2>/dev/null && echo "  clients import template OK" || true
   python "$APP_DIR/scripts/build_elevators_template.py" 2>/dev/null && echo "  elevators import template OK" || true
 fi

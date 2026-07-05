@@ -2,16 +2,23 @@
 # يضمن وجود SECRET_KEY في /etc/liftcore/platform.env (لا يغيّر مفتاحاً موجوداً)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=_common.sh
+source "$SCRIPT_DIR/_common.sh"
+
 PLATFORM_ENV="${PLATFORM_ENV:-/etc/liftcore/platform.env}"
 
 sudo mkdir -p /etc/liftcore
 if [ ! -f "$PLATFORM_ENV" ]; then
   sudo touch "$PLATFORM_ENV"
-  sudo chmod 640 "$PLATFORM_ENV"
 fi
 
 _env_has() {
-  grep -qE "^${1}=" "$PLATFORM_ENV" 2>/dev/null
+  if [ -r "$PLATFORM_ENV" ]; then
+    grep -qE "^${1}=" "$PLATFORM_ENV" 2>/dev/null
+  else
+    sudo grep -qE "^${1}=" "$PLATFORM_ENV" 2>/dev/null
+  fi
 }
 
 if ! _env_has SECRET_KEY; then
@@ -27,4 +34,6 @@ if ! _env_has LIFTCORE_HTTPS; then
   echo "==> أُضيف LIFTCORE_HTTPS=1"
 fi
 
-bash "$(dirname "$0")/check_platform_env.sh"
+lc_fix_platform_env_perms "$PLATFORM_ENV"
+
+bash "$SCRIPT_DIR/check_platform_env.sh"

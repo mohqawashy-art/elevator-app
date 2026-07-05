@@ -14,7 +14,13 @@ fi
 
 _env_val() {
   local key="$1"
-  grep -E "^${key}=" "$PLATFORM_ENV" 2>/dev/null | tail -n1 | cut -d= -f2- | sed 's/^["'\'']//;s/["'\'']$//' | tr -d '\r' || true
+  local line=""
+  if [ -r "$PLATFORM_ENV" ]; then
+    line="$(grep -E "^${key}=" "$PLATFORM_ENV" 2>/dev/null | tail -n1 || true)"
+  else
+    line="$(sudo grep -E "^${key}=" "$PLATFORM_ENV" 2>/dev/null | tail -n1 || true)"
+  fi
+  printf '%s' "$line" | cut -d= -f2- | sed 's/^["'\'']//;s/["'\'']$//' | tr -d '\r'
 }
 
 SECRET_KEY="$(_env_val SECRET_KEY)"

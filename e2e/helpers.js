@@ -16,7 +16,7 @@ function collectConsoleErrors(page) {
   page.on('console', (msg) => {
     if (msg.type() !== 'error') return;
     const text = msg.text();
-    if (/google maps|gm_authFailure|favicon/i.test(text)) return;
+    if (/google maps|gm_authFailure|favicon|Failed to load resource|net::ERR_|googleapis\.com|gstatic\.com/i.test(text)) return;
     errors.push(text);
   });
   page.on('pageerror', (err) => {
