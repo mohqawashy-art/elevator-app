@@ -9,8 +9,8 @@
 
 | المرحلة | الوصف | الحالة |
 |---------|--------|--------|
-| **P0** | أمان + صلاحيات + استقرار حرج | 🔄 ~90% |
-| **P1** | QA + نشر + ميزات ناقصة | 🔄 ~65% |
+| **P0** | أمان + صلاحيات + استقرار حرج | ✅ 100% |
+| **P1** | QA + نشر + ميزات ناقصة | ✅ ~95% |
 | **P2** | UX + i18n + مواد تسويق | ⏳ |
 | **P3** | SaaS / ZATCA كامل / Offline (حسب الوعد) | ⏳ |
 
@@ -69,9 +69,9 @@
 - [x] F2 — Runbook onboarding عميل جديد
 - [x] F3 — cron backup يومي + retention 30 يوم
 - [x] F4 — `/api/health` (DB + disk + version)
-- [ ] F5 — Sentry أو تنبيه أخطاء
+- [x] F5 — Sentry أو تنبيه أخطاء (`liftcore_monitoring.py`, `SENTRY_DSN`)
 - [x] F6 — `.env.example` كامل
-- [ ] F7 — PostgreSQL path للإنتاج
+- [x] F7 — PostgreSQL path للإنتاج (`liftcore_database.py`, `deploy/POSTGRES.md`, ترحيل SQLite)
 - [x] F8 — verify tenant (`deploy/verify_deploy.sh`)
 
 ### G. ميزات ناقصة
@@ -80,11 +80,11 @@
 - [x] G3 — WhatsApp QA: رسائل خطأ عربية + pytest `test_whatsapp.py`
 - [x] G4 — قرار موديول التركيب (ONBOARDING: `LIFTCORE_INSTALL_MODULE=1`)
 - [x] G5 — قرار تبويب الباقة SaaS (مخفي — B2B مخصص، موثّق في ONBOARDING)
-- [ ] G6 — Alembic migrations
-- [ ] G7 — consistency cache عقود/فواتير
+- [x] G6 — Alembic migrations (`migrations/`, `deploy/migrate_db.py`)
+- [x] G7 — consistency cache عقود/فواتير (`billing_consistency.py`, `scripts/repair_billing_cache.py`)
 
 ### H. المالية
-- [ ] H1 — ZATCA QR QA كل أنواع الفواتير
+- [x] H1 — ZATCA QR QA كل أنواع الفواتير (`tests/test_zatca_qr.py`)
 - [x] H2 — كشف حساب عميل QA (فواتير + سندات + إيرادات)
 - [ ] H3 — تقرير فروقات مالية (اختياري)
 

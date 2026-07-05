@@ -54,8 +54,14 @@ sudo systemctl reload nginx
 if command -v certbot >/dev/null 2>&1; then
   echo ""
   echo "==> HTTPS"
-  sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --redirect 2>/dev/null || \
+  sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --redirect \
+    -m "${CERTBOT_EMAIL:-admin@liftcoreapp.com}" 2>/dev/null || \
   sudo certbot --nginx -d "$DOMAIN" || true
+  if [ -f /etc/nginx/snippets/liftcore-security.conf ]; then
+    sudo grep -q 'liftcore-security.conf' "$NGINX_SITE" || \
+      sudo sed -i '/listen 443 ssl/a\    include snippets/liftcore-security.conf;' "$NGINX_SITE" 2>/dev/null || true
+    sudo nginx -t && sudo systemctl reload nginx
+  fi
 fi
 
 echo ""

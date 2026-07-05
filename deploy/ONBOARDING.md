@@ -21,6 +21,7 @@ bash deploy/install.sh local
 - nginx + systemd
 - `SECRET_KEY` في `/etc/liftcore/platform.env`
 - `GOOGLE_MAPS_API_KEY` (اختياري للخرائط)
+- `SENTRY_DSN` (اختياري — تنبيه أخطاء الإنتاج عبر Sentry)
 
 ### خطوات
 
@@ -52,7 +53,10 @@ bash deploy/install.sh backup ~/liftcore/CLIENT-app
 bash deploy/install.sh backup-cron ~/liftcore/CLIENT-app
 ```
 
-### تحقق
+### نسخ احتياطي و PostgreSQL
+- SQLite: `bash deploy/backup_daily.sh`
+- PostgreSQL: `DATABASE_URL=postgresql://... python scripts/backup_database.py`
+- ترحيل من SQLite: `deploy/POSTGRES.md`
 
 ```bash
 bash deploy/verify_deploy.sh https://client.liftcoreapp.com

@@ -339,7 +339,7 @@
 | أعطال | `/api/faults/<id>`, `.../dispatch`, `.../report` |
 | فني ميداني | `/api/field/me` |
 | توقيع | `/api/signatures/verify` |
-| ترجمة (تجريبي) | `/api/translate` — ⏳ **غير مربوط في `app.py`** (موجود في `auto_translate.py` + `deploy/patch_server_i18n_api.py`) |
+| ترجمة API | `/api/translate` — **مؤجّل (P2)** — i18n الحالي عبر `liftcore-translations.js` + `liftcore-i18n.js` بدون API |
 
 ---
 
@@ -376,7 +376,7 @@
 | مخزون | ⭐⭐⭐⭐ | أُصلح خطأ الرصيد |
 | بوابة الفني | ⭐⭐⭐⭐ | جديد + توقيت تلقائي |
 | تقارير | ⭐⭐⭐⭐ | 13 تقريراً |
-| i18n كامل | ⭐⭐⭐ | API translate غير مربوط |
+| i18n كامل | ⭐⭐⭐ | ملفات ثابتة — API translate مؤجّل لـ P2 |
 | ZATCA كامل | ⭐⭐ | QR فقط |
 | استقرار Console | ⭐⭐⭐⭐ | أُصلح معظم الأخطاء الحرجة |
 
@@ -386,7 +386,7 @@
 
 | العنصر | الحالة | ملاحظة |
 |--------|--------|--------|
-| **ربط `/api/translate` في `app.py`** | ⏳ | أولوية متوسطة — `auto_translate.py` جاهز |
+| **ربط `/api/translate` في `app.py`** | ⏸ P2 | غير مطلوب للتسويق B2B — ترجمة ثابتة كافية |
 | **نشر السيرفر** | 🔧 | GitHub عند `c85bc7b` — تحقق `/api/version` |
 | Offline PWA للفني | ⏳ | Service Worker + IndexedDB |
 | ترجمة i18n كاملة | 🟡 | واجهة ثابتة جيدة؛ ديناميكي ناقص |

@@ -110,8 +110,14 @@ from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 from liftcore_security import validate_production_config  # noqa: E402
+from liftcore_database import apply_database_config, database_backend, database_info, is_sqlite  # noqa: E402
 
+apply_database_config(app)
 validate_production_config(app)
+
+from liftcore_monitoring import init_error_monitoring, monitoring_status  # noqa: E402
+
+init_error_monitoring(app)
 
 
 @app.after_request
@@ -133,6 +139,10 @@ db.init_app(app)
 # موديول تركيب المصاعد (جداول منفصلة)
 import installation.models  # noqa: F401, E402
 from installation.config import install_module_enabled
+
+from flask_migrate import Migrate  # noqa: E402
+
+migrate = Migrate(app, db)
 
 PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'api_health', 'field_login', 'field_logout'})
 PUBLIC_PATH_PREFIXES = ('/static',)
@@ -671,11 +681,9 @@ def _invoice_status_from_paid(contract, paid, today=None):
 
 def _refresh_contract_billing_cache(contract):
     """تحديث paid_amount و invoice_status لعقد واحد."""
-    from customer_billing import contract_paid_amount
+    from billing_consistency import refresh_contract_cache
 
-    paid = _money_round(contract_paid_amount(contract.id))
-    contract.paid_amount = paid
-    contract.invoice_status = _invoice_status_from_paid(contract, paid)
+    refresh_contract_cache(contract)
 
 
 def _backfill_contract_billing_cache():
@@ -935,9 +943,9 @@ def _monthly_aggregate(year, date_col, value_col=None):
     return result
 
 
-# إنشاء الجداول عند التشغيل الأول
-with app.app_context():
-    db.create_all()
+# إنشاء الجداول عند التشغيل الأول (يُتخطى عند أوامر Alembic: LIFTCORE_ALEMBIC=1)
+def _sqlite_legacy_schema_patches():
+    """ترقيات أعمدة يدوية — SQLite فقط (PostgreSQL يستخدم Alembic)."""
     try:
         insp = inspect(db.engine)
         if 'technicians' in insp.get_table_names():
@@ -1114,6 +1122,17 @@ with app.app_context():
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Schema migration error: %s', exc)
+
+
+def _startup_schema_and_data_sync():
+    db.create_all()
+    if is_sqlite(app.config.get('SQLALCHEMY_DATABASE_URI')):
+        _sqlite_legacy_schema_patches()
+    else:
+        app.logger.info(
+            'LiftCore DB backend=%s — Alembic migrations; skip SQLite legacy ALTER',
+            database_backend(app.config.get('SQLALCHEMY_DATABASE_URI')),
+        )
     try:
         from technician_assignments import backfill_technician_assignments
         backfill_technician_assignments()
@@ -1137,7 +1156,13 @@ with app.app_context():
         db.session.rollback()
         app.logger.warning('Contract billing cache backfill skip: %s', exc)
 
+
+if os.environ.get('LIFTCORE_ALEMBIC', '').strip().lower() not in ('1', 'true', 'yes'):
+    with app.app_context():
+        _startup_schema_and_data_sync()
+
 from live_sync import register_live_sync
+
 register_live_sync()
 
 TECH_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'technicians')
@@ -1266,19 +1291,17 @@ def next_code(model, prefix, field='code', digits=4):
 def api_version():
     """تحقق سريع من إصدار الكود على السيرفر (بدون تسجيل دخول)."""
     root = app.root_path
-    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-    db_path = db_uri.replace('sqlite:///', '').replace('/', os.sep) if db_uri.startswith('sqlite:///') else ''
-    db_info = {}
-    if db_path and os.path.isfile(db_path):
-        db_info = {
-            'file': os.path.basename(os.path.dirname(db_path)) + '/' + os.path.basename(db_path),
-            'bytes': os.path.getsize(db_path),
-        }
-        try:
-            db_info['customers'] = Customer.query.count()
-            db_info['elevators'] = Elevator.query.count()
-        except Exception:
-            pass
+    db_info = dict(database_info(app))
+    try:
+        db_info['customers'] = Customer.query.count()
+        db_info['elevators'] = Elevator.query.count()
+    except Exception:
+        pass
+    if db_info.get('backend') == 'sqlite':
+        db_path = (db_info.get('path') or '').replace('/', os.sep)
+        if db_path and os.path.isfile(db_path):
+            db_info['file'] = os.path.basename(os.path.dirname(db_path)) + '/' + os.path.basename(db_path)
+            db_info['bytes'] = os.path.getsize(db_path)
     return jsonify(
         version=APP_VERSION,
         db=db_info,
@@ -1313,8 +1336,12 @@ def api_health():
     disk = {}
     try:
         db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        db_path = db_uri.replace('sqlite:///', '') if db_uri.startswith('sqlite:///') else app.instance_path
-        usage = _shutil.disk_usage(os.path.dirname(db_path) or app.root_path)
+        if is_sqlite(db_uri):
+            db_path = db_uri.replace('sqlite:///', '') if db_uri.startswith('sqlite:///') else app.instance_path
+            usage_root = os.path.dirname(db_path) or app.root_path
+        else:
+            usage_root = app.instance_path or app.root_path
+        usage = _shutil.disk_usage(usage_root)
         disk = {
             'free_mb': round(usage.free / (1024 * 1024)),
             'total_mb': round(usage.total / (1024 * 1024)),
@@ -1332,10 +1359,31 @@ def api_health():
         'ok': ok and db_ok,
         'version': APP_VERSION,
         'database': db_ok,
+        'database_backend': database_backend(app.config.get('SQLALCHEMY_DATABASE_URI')),
         'disk': disk,
         'secret_key_ok': secret_ok,
         'production': is_production_env(),
+        'monitoring': monitoring_status(),
     }), status
+
+
+@app.route('/api/admin/billing/consistency')
+def api_admin_billing_consistency():
+    if not require_admin():
+        return jsonify({'error': 'صلاحية المدير مطلوبة'}), 403
+    from billing_consistency import audit_billing_consistency
+
+    return jsonify(audit_billing_consistency())
+
+
+@app.route('/api/admin/billing/consistency/repair', methods=['POST'])
+def api_admin_billing_consistency_repair():
+    if not require_admin():
+        return jsonify({'error': 'صلاحية المدير مطلوبة'}), 403
+    from billing_consistency import repair_billing_consistency
+
+    result = repair_billing_consistency(commit=True)
+    return jsonify(result)
 
 
 @app.route('/api/live/revision')
@@ -6764,13 +6812,14 @@ def _flag_weak_default_passwords():
         db.session.commit()
 
 
-with app.app_context():
-    try:
-        _migrate_plain_text_passwords()
-        _flag_weak_default_passwords()
-    except Exception as exc:
-        db.session.rollback()
-        app.logger.warning('Password migration error: %s', exc)
+if os.environ.get('LIFTCORE_ALEMBIC', '').strip().lower() not in ('1', 'true', 'yes'):
+    with app.app_context():
+        try:
+            _migrate_plain_text_passwords()
+            _flag_weak_default_passwords()
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.warning('Password migration error: %s', exc)
 
 
 def generate_password(length=12):

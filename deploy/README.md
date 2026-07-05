@@ -1,5 +1,9 @@
 # رفع LiftCore على السيرفر
 
+> **نقطة الدخول الموحّدة:** `bash deploy/install.sh help`  
+> **محلياً (Windows):** `run_local.bat`  
+> **Onboarding:** `deploy/ONBOARDING.md`
+
 السيرفر: **https://app.liftcoreapp.com**  
 IP: `34.18.56.21`  
 الكود على: **https://github.com/mohqawashy-art/elevator-app**
@@ -14,7 +18,7 @@ IP: `34.18.56.21`
 
 ```bash
 cd ~/liftcore/elevator-app 2>/dev/null || cd /var/www/elevator-app
-bash deploy/gcp_update.sh
+bash deploy/install.sh update
 ```
 
 إذا ظهر خطأ في المسار، جرّب:

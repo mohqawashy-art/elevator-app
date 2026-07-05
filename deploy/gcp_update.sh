@@ -75,6 +75,11 @@ if command -v systemctl >/dev/null 2>&1; then
   sudo systemctl daemon-reload
 fi
 
+if [ -d "$VENV" ] && [ -f "$APP_DIR/deploy/migrate_db.py" ]; then
+  echo "==> database migrations (Alembic)"
+  python "$APP_DIR/deploy/migrate_db.py" || echo "  WARN: migrate_db failed"
+fi
+
 if [ -d "$VENV" ] && [ -f "$APP_DIR/scripts/init_install_module.py" ]; then
   echo "==> installation module DB tables"
   python "$APP_DIR/scripts/init_install_module.py" || echo "  WARN: init_install_module failed"
