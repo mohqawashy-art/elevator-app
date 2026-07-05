@@ -14,6 +14,16 @@ VENV="${VENV:-$APP_DIR/.venv}"
 cd "$APP_DIR"
 echo "==> LiftCore fix 502 — $APP_DIR"
 
+PLATFORM_ENV="/etc/liftcore/platform.env"
+if [ -f "$APP_DIR/deploy/check_platform_env.sh" ]; then
+  echo ""
+  if ! bash "$APP_DIR/deploy/check_platform_env.sh"; then
+    echo ""
+    echo "أصلح $PLATFORM_ENV ثم أعد تشغيل هذا السكربت."
+    exit 1
+  fi
+fi
+
 echo ""
 echo "==> آخر أخطاء الخدمة:"
 sudo journalctl -u "$SERVICE_NAME" -n 40 --no-pager 2>/dev/null || echo "(لا journalctl)"
@@ -23,6 +33,13 @@ if [ -d "$VENV" ]; then
   source "$VENV/bin/activate"
   echo ""
   echo "==> اختبار تحميل التطبيق:"
+  export LIFTCORE_HTTPS=1
+  if [ -f "$PLATFORM_ENV" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$PLATFORM_ENV"
+    set +a
+  fi
   if python -c "from app import app; print('IMPORT OK')" 2>&1; then
     echo "  الكود سليم — إعادة تشغيل الخدمة فقط"
   else
@@ -41,6 +58,9 @@ DROP_IN="/etc/systemd/system/${SERVICE_NAME}.service.d"
 sudo mkdir -p "$DROP_IN"
 printf '%s\n' '[Service]' 'Environment=LIFTCORE_HTTPS=1' | sudo tee "$DROP_IN/https.conf" >/dev/null
 printf '%s\n' '[Service]' 'Environment=LIFTCORE_INSTALL_MODULE=1' | sudo tee "$DROP_IN/install-module.conf" >/dev/null
+if [ -f "$PLATFORM_ENV" ]; then
+  printf '%s\n' '[Service]' "EnvironmentFile=$PLATFORM_ENV" | sudo tee "$DROP_IN/platform-env.conf" >/dev/null
+fi
 sudo systemctl daemon-reload
 sudo systemctl restart "$SERVICE_NAME"
 sleep 3

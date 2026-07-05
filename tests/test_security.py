@@ -13,6 +13,7 @@ from liftcore_security import (
     is_weak_password,
     password_policy_error,
     record_login_failure,
+    validate_production_config,
     validate_upload_file,
 )
 
@@ -73,3 +74,19 @@ def test_upload_rejects_oversize():
     f = _FakeFile('big.png', size=50 * 1024 * 1024)
     ok, err = validate_upload_file(f, allowed_ext={'png'})
     assert ok is False
+
+
+def test_production_rejects_missing_or_weak_secret_key(monkeypatch):
+    import pytest
+
+    monkeypatch.setenv('LIFTCORE_HTTPS', '1')
+
+    class _App:
+        config = {'SECRET_KEY': 'liftcore-secret-2025'}
+
+    with pytest.raises(RuntimeError):
+        validate_production_config(_App())
+
+    _App.config = {'SECRET_KEY': ''}
+    with pytest.raises(RuntimeError):
+        validate_production_config(_App())

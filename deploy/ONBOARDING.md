@@ -19,8 +19,14 @@ bash deploy/install.sh local
 ### المتطلبات
 - Ubuntu VM + Python 3.11+
 - nginx + systemd
-- `SECRET_KEY` في `/etc/liftcore/platform.env`
-- `GOOGLE_MAPS_API_KEY` (اختياري للخرائط)
+- **`/etc/liftcore/platform.env`** — على الأقل:
+  ```env
+  SECRET_KEY=<مولّد عشوائي 32+ حرف>
+  LIFTCORE_HTTPS=1
+  GOOGLE_MAPS_API_KEY=<اختياري>
+  ```
+  توليد: `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`
+  تحقق: `bash deploy/check_platform_env.sh`
 - `SENTRY_DSN` (اختياري — تنبيه أخطاء الإنتاج عبر Sentry)
 
 ### خطوات

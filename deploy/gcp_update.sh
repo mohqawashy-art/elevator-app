@@ -56,6 +56,12 @@ fi
 echo "==> ensure platform env + HTTPS + install module (systemd drop-in)"
 DROP_IN="/etc/systemd/system/${SERVICE_NAME}.service.d"
 PLATFORM_ENV="/etc/liftcore/platform.env"
+if [ -f "$APP_DIR/deploy/check_platform_env.sh" ]; then
+  if ! bash "$APP_DIR/deploy/check_platform_env.sh"; then
+    echo "ERROR: أصلح $PLATFORM_ENV قبل إعادة التشغيل (SECRET_KEY مطلوب مع LIFTCORE_HTTPS=1)"
+    exit 1
+  fi
+fi
 if command -v systemctl >/dev/null 2>&1; then
   sudo mkdir -p "$DROP_IN"
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_HTTPS=1' | sudo tee "$DROP_IN/https.conf" >/dev/null
@@ -86,9 +92,16 @@ if [ -d "$VENV" ] && [ -f "$APP_DIR/scripts/init_install_module.py" ]; then
 fi
 
 if [ -d "$VENV" ]; then
-  echo "==> test app import"
+  echo "==> test app import (production env)"
   # shellcheck disable=SC1091
   source "$VENV/bin/activate"
+  export LIFTCORE_HTTPS=1
+  if [ -f "$PLATFORM_ENV" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$PLATFORM_ENV"
+    set +a
+  fi
   if ! python -c "from app import app; print('  app import OK')" 2>&1; then
     echo "ERROR: التطبيق لا يشتغل — راجع: sudo journalctl -u $SERVICE_NAME -n 40 --no-pager"
     exit 1
