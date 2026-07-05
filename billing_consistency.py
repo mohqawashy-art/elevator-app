@@ -193,3 +193,79 @@ def repair_billing_consistency(*, commit: bool = True) -> dict:
         'remaining_issues': audit['issue_count'],
         'ok': audit['ok'],
     }
+
+
+_ENTITY_LABELS = {
+    'contract': 'عقد',
+    'invoice': 'فاتورة',
+    'parts_billing': 'قطع غيار',
+}
+
+
+def billing_discrepancies_report() -> dict:
+    """تقرير H3 — فروقات كاش الفوترة مع سياق للواجهة."""
+    audit = audit_billing_consistency()
+    rows: list[dict] = []
+    total_delta = 0.0
+
+    for issue in audit.get('issues', []):
+        entity = issue.get('entity', '')
+        row_id = issue.get('id')
+        customer_name = ''
+        detail = ''
+
+        if entity == 'contract':
+            c = Contract.query.get(row_id)
+            if c:
+                customer_name = (c.customer.name if c.customer else '') or ''
+                detail = c.contract_type or ''
+        elif entity == 'invoice':
+            inv = Invoice.query.get(row_id)
+            if inv:
+                customer_name = (inv.customer.name if inv.customer else '') or ''
+                detail = (inv.invoice_type or inv.description or '')[:80]
+        elif entity == 'parts_billing':
+            pb = PartsBilling.query.get(row_id)
+            if pb:
+                customer_name = (pb.customer.name if pb.customer else '') or ''
+                detail = (pb.description or '')[:80]
+
+        delta = float(issue.get('delta') or 0)
+        total_delta += abs(delta)
+        rows.append({
+            'entity': entity,
+            'entity_label': _ENTITY_LABELS.get(entity, entity),
+            'id': row_id,
+            'code': issue.get('code') or '',
+            'customer': customer_name,
+            'detail': detail,
+            'stored': issue.get('stored', 0),
+            'computed': issue.get('computed', 0),
+            'from_revenues': issue.get('from_revenues'),
+            'delta': delta,
+            'link': _entity_link(entity, row_id),
+        })
+
+    by_entity = audit.get('by_entity') or {}
+    return {
+        'ok': audit.get('ok', True),
+        'issue_count': audit.get('issue_count', 0),
+        'total_abs_delta': _round_money(total_delta),
+        'contracts': by_entity.get('contract', 0),
+        'invoices': by_entity.get('invoice', 0),
+        'parts': by_entity.get('parts_billing', 0),
+        'rows': rows,
+        'generated_at': date.today().isoformat(),
+    }
+
+
+def _entity_link(entity: str, row_id: int | None) -> str:
+    if not row_id:
+        return ''
+    if entity == 'contract':
+        return f'/contracts?highlight={row_id}'
+    if entity == 'invoice':
+        return f'/invoices/{row_id}/print'
+    if entity == 'parts_billing':
+        return f'/parts-billing?highlight={row_id}'
+    return ''

@@ -6766,6 +6766,29 @@ def report_financial_health():
         current_year=date.today().year,
     )
 
+
+def _require_manager_or_admin():
+    user = require_login()
+    if not user or user.role not in ('admin', 'manager'):
+        return None
+    return user
+
+
+@app.route('/reports/billing-discrepancies')
+def report_billing_discrepancies():
+    if not _require_manager_or_admin():
+        return redirect(url_for('login'))
+    return render_template('report-billing-discrepancies.html')
+
+
+@app.route('/api/reports/billing-discrepancies')
+def api_report_billing_discrepancies():
+    if not _require_manager_or_admin():
+        return jsonify({'error': 'صلاحية المدير أو مدير العمليات مطلوبة'}), 403
+    from billing_consistency import billing_discrepancies_report
+
+    return jsonify(billing_discrepancies_report())
+
 # =============================================
 # المستخدمون — مساعدات
 # =============================================

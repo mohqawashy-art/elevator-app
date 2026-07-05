@@ -34,6 +34,7 @@
     '/reports/financial': { ar: 'التقرير المالي', en: 'Financial Report' },
     '/reports/contract-forecast': { ar: 'توقعات تحصيل العقود', en: 'Contract Collection Forecast' },
     '/reports/financial-health': { ar: 'الصحة المالية', en: 'Financial Health' },
+    '/reports/billing-discrepancies': { ar: 'فروقات الفوترة', en: 'Billing Discrepancies' },
     '/reports/revenues': { ar: 'تقرير الإيرادات', en: 'Revenues Report' },
     '/reports/expenses': { ar: 'تقرير المصروفات', en: 'Expenses Report' },
     '/reports/invoices': { ar: 'تقرير الفواتير', en: 'Invoices Report' },
