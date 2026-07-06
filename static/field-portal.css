@@ -38,6 +38,12 @@ body.fp-body{padding-bottom:72px}
 .fp-status i{width:7px;height:7px;border-radius:50%;background:var(--fp-success)}
 .fp-status.offline i{background:var(--fp-warning)}
 .fp-status.sync i{background:var(--fp-accent);animation:fpPulse 1s infinite}
+.fp-offline-banner{
+  background:rgba(224,144,48,.12);border:1px solid rgba(224,144,48,.35);color:#f0c878;
+  border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px;
+}
+.fp-pending-sync{font-size:11px;color:var(--fp-warning);margin-top:4px}
+.fp-cache-tag{font-size:10px;color:var(--fp-muted);font-weight:400;margin-right:6px}
 @keyframes fpPulse{50%{opacity:.4}}
 .fp-actions{display:flex;gap:6px}
 .fp-btn-icon{

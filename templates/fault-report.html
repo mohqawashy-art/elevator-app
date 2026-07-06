@@ -265,6 +265,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   </div>
 </div>
 
+<script src="/static/field-offline.js?v=1"></script>
 <script src="/static/maintenance-checklist.js?v=8"></script>
 <script src="/static/digital-signature.js?v=5"></script>
 <script src="/static/document-signatures.js?v=3"></script>
@@ -297,14 +298,23 @@ function saveReport(markResolved) {
   if (!REPORT_CFG.editable) return;
   const payload = LiftCoreFaultReport.collectReportData();
   payload.mark_resolved = markResolved;
-  fetch('/api/faults/' + REPORT_CFG.faultId + '/report', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload),
-  })
-    .then(r => r.json())
+  const url = '/api/faults/' + REPORT_CFG.faultId + '/report';
+  const draftKey = 'fault:' + REPORT_CFG.faultId;
+  const saver = window.LiftCoreFieldOffline
+    ? LiftCoreFieldOffline.postJson(url, payload, { draftKey: draftKey, label: 'تقرير عطل ' + REPORT_CFG.faultId })
+    : fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      }).then(r => r.json());
+  saver
     .then(data => {
       if (!data.ok) throw new Error(data.error || 'تعذّر الحفظ');
+      if (data.queued) {
+        LiftCoreFieldOffline.notifyQueued(true);
+        updateProgress();
+        return;
+      }
       updateProgress();
       if (markResolved) {
         alert('✅ تم حفظ التقرير وإغلاق العطل');

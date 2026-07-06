@@ -108,7 +108,7 @@
 ### K. بوابة الفني
 - [x] K1 — smoke pytest + Playwright `e2e/field-smoke.spec.js`
 - [x] K2 — `deploy/FIELD-PIN.md`
-- [x] K3 — Offline PWA: **P3** — غير موعود للتسويق الحالي
+- [x] K3 — Offline PWA: Service Worker + IndexedDB + مزامنة محاضر (`field-offline.js`, `field-sw.js`)
 
 ### L. مواد تسويق
 - [x] L1 — `docs/marketing/USER-GUIDE.md`
@@ -124,7 +124,7 @@
 - [ ] SaaS multi-tenant + billing
 - [ ] ZATCA Phase 2 (XML + clearance)
 - [ ] WhatsApp Business API + تذكيرات مجدولة
-- [ ] Offline Field PWA
+- [x] Offline Field PWA
 - [ ] `/api/translate` (G2)
 
 ---
@@ -137,7 +137,7 @@
 | 2026-06-23 | P1 E1/E3/E4/E5 + F1/F2/F3 | install.sh, CI, tests, run_local.bat |
 | 2026-07-05 | P1 إغلاق + H3 | ZATCA, Alembic, Sentry, billing, PostgreSQL |
 | 2026-07-05 | P2 إغلاق | UX, i18n, field, marketing docs |
-| 2026-07-06 | QA gate | `scripts/qa_preflight.py`, production boot + deploy script tests |
+| 2026-07-06 | Offline Field PWA | SW + IndexedDB queue + field manifest |
 
 ---
 

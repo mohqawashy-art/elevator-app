@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0b0f17">
+<link rel="manifest" href="{{ url_for('field_manifest') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='images/icon-192.png') }}">
 <title>LiftCore — دخول الفني</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=3">
+<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=4">
 </head>
 <body class="fp-login-body">
 {% include 'partials/field_brand_bar.html' %}
@@ -38,5 +40,10 @@
     </p>
   </div>
 </div>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/field/sw.js', { scope: '/field/' }).catch(function () {});
+}
+</script>
 </body>
 </html>

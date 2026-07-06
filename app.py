@@ -144,7 +144,7 @@ from flask_migrate import Migrate  # noqa: E402
 
 migrate = Migrate(app, db)
 
-PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'api_health', 'field_login', 'field_logout'})
+PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'api_health', 'field_login', 'field_logout', 'field_manifest', 'field_service_worker'})
 PUBLIC_PATH_PREFIXES = ('/static',)
 STATIC_UPLOADS_PREFIX = '/static/uploads'
 
@@ -4590,6 +4590,27 @@ def api_dispatch_fault(fault_id):
 # =============================================
 # واجهة الفني — بوابة الجوال (تسجيل دخول + فريق صيانة/أعطال)
 # =============================================
+@app.route('/field/manifest.webmanifest')
+def field_manifest():
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'field-manifest.webmanifest',
+        mimetype='application/manifest+json',
+    )
+
+
+@app.route('/field/sw.js')
+def field_service_worker():
+    resp = send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'field-sw.js',
+        mimetype='application/javascript',
+    )
+    resp.headers['Service-Worker-Allowed'] = '/field/'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
+
 @app.route('/field/login', methods=['GET', 'POST'])
 def field_login():
     from field_auth import (

@@ -7,6 +7,10 @@
 <div class="fp-err">{{ error }}</div>
 {% endif %}
 
+<div id="fp-offline-banner" class="fp-offline-banner" hidden>
+  📴 وضع بدون إنترنت — تُعرض آخر مهام محفوظة. المحاضر المعلّقة تُرفع تلقائياً عند الاتصال.
+</div>
+
 <p style="font-size:12px;color:var(--fp-muted);margin-bottom:12px">
   زيارات <strong>اليوم وغداً</strong> فقط — {{ payload.today }} / {{ payload.tomorrow }}
 </p>

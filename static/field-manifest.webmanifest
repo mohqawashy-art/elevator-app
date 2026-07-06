@@ -1,0 +1,27 @@
+{
+  "name": "LiftCore — بوابة الفني",
+  "short_name": "LiftCore Field",
+  "description": "زيارات الصيانة والأعطال للفني — يعمل بدون إنترنت للمحاضر",
+  "start_url": "/field/login",
+  "scope": "/field/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0f17",
+  "theme_color": "#0b0f17",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/static/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

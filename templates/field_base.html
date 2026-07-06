@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0b0f17">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="{{ url_for('field_manifest') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='images/icon-192.png') }}">
 <title>{% block fp_title %}LiftCore — بوابة الفني{% endblock %}</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=3">
+<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=4">
 {% block fp_head %}{% endblock %}
 </head>
 <body class="fp-body">
@@ -29,6 +31,7 @@
     </div>
     <div>
       <div class="fp-status" id="fp-connection-status"><i></i> متصل</div>
+      <div class="fp-pending-sync" id="fp-pending-sync" hidden></div>
       <div class="fp-actions" style="margin-top:8px">
         <a class="fp-btn-icon" href="{{ url_for('field_logout') }}">خروج</a>
       </div>
@@ -62,7 +65,8 @@
 </nav>
 {% endif %}
 
-<script src="{{ url_for('static', filename='field-portal.js') }}?v=2" defer></script>
+<script src="{{ url_for('static', filename='field-offline.js') }}?v=1" defer></script>
+<script src="{{ url_for('static', filename='field-portal.js') }}?v=3" defer></script>
 {% block fp_scripts %}{% endblock %}
 </body>
 </html>

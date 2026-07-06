@@ -268,6 +268,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   {% endif %}
 </div>
 
+<script src="/static/field-offline.js?v=1"></script>
 <script src="/static/maintenance-checklist.js?v=8"></script>
 <script src="/static/digital-signature.js?v=4"></script>
 <script src="/static/document-signatures.js?v=2"></script>
@@ -298,14 +299,23 @@ function saveReport(markComplete) {
   const payload = LiftCoreChecklist.collectReportData(CHECKLIST_TEMPLATE);
   payload.mark_complete = markComplete;
   payload.status = markComplete ? 'مكتملة' : undefined;
-  fetch('/api/maintenance-visits/' + REPORT_CFG.visitId + '/report', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload),
-  })
-    .then(r => r.json())
+  const url = '/api/maintenance-visits/' + REPORT_CFG.visitId + '/report';
+  const draftKey = 'visit:' + REPORT_CFG.visitId;
+  const saver = window.LiftCoreFieldOffline
+    ? LiftCoreFieldOffline.postJson(url, payload, { draftKey: draftKey, label: 'محضر زيارة ' + REPORT_CFG.visitId })
+    : fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      }).then(r => r.json());
+  saver
     .then(data => {
       if (!data.ok) throw new Error(data.error || 'تعذّر الحفظ');
+      if (data.queued) {
+        LiftCoreFieldOffline.notifyQueued(true);
+        updateProgress();
+        return;
+      }
       updateProgress();
       if (markComplete) {
         alert('✅ تم حفظ المحضر وإنهاء الزيارة');

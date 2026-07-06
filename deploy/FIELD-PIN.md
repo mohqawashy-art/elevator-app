@@ -39,6 +39,13 @@ curl -s -o /dev/null -w "%{http_code}" https://YOUR-DOMAIN/field/login
 | RBAC مكتبي | الفني لا يرى لوحة الإدارة |
 | PIN | hash فقط في قاعدة البيانات |
 
+## Offline PWA (K3)
+
+- تثبيت من المتصفح: `/field/login` → «إضافة إلى الشاشة الرئيسية»
+- **بدون إنترنت:** عرض آخر مهام محفوظة + حفظ محاضر الصيانة/الأعطال محلياً
+- **عند الاتصال:** رفع تلقائي للمحاضر المعلّقة (عداد في شريط الحالة)
+- الملفات: `static/field-offline.js`, `static/field-sw.js`, `/field/manifest.webmanifest`
+
 ## استكشاف الأخطاء
 
 | المشكلة | الحل |
