@@ -868,8 +868,118 @@ html.lc-fullscreen .main {
 }
 
 /* ── القائمة الجانبية: طي (أيقونات) / فتح (كامل) — موبايل فقط ── */
-#sidebar {
-  position: relative;
+@media (min-width: 1101px) {
+  #sidebar {
+    position: relative;
+  }
+}
+
+/* موبايل/تابلت: القائمة خارج الشاشة — المحتوى بعرض كامل (إصلاح PWA) */
+@media (max-width: 1100px) {
+  body:has(#sidebar):has(.main) {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar,
+  body:has(#sidebar):has(.main) .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    inset-inline-end: 0 !important;
+    inset-inline-start: auto !important;
+    right: auto !important;
+    left: auto !important;
+    width: min(280px, 88vw) !important;
+    min-width: 0 !important;
+    max-width: min(280px, 88vw) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    z-index: 120 !important;
+    transform: translate3d(100%, 0, 0) !important;
+    transition: transform 0.25s ease !important;
+    box-shadow: none !important;
+    border-inline-start: 1px solid var(--border, rgba(100, 160, 255, 0.1)) !important;
+    border-inline-end: none !important;
+  }
+
+  html[dir="ltr"] body:has(#sidebar):has(.main) #sidebar,
+  html[dir="ltr"] body:has(#sidebar):has(.main) .sidebar {
+    inset-inline-start: 0 !important;
+    inset-inline-end: auto !important;
+    transform: translate3d(-100%, 0, 0) !important;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar.open,
+  body:has(#sidebar):has(.main) .sidebar.open {
+    transform: translate3d(0, 0, 0) !important;
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  html[dir="ltr"] body:has(#sidebar):has(.main) #sidebar.open,
+  html[dir="ltr"] body:has(#sidebar):has(.main) .sidebar.open {
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  body:has(#sidebar):has(.main) > .main {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+
+  body:has(#sidebar):has(.main) .main > .content,
+  body:has(#sidebar):has(.main) .content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
+  }
+
+  body:has(#sidebar):has(.main) .stats-grid,
+  body:has(#sidebar):has(.main) .content .stats-grid,
+  body:has(#sidebar):has(.main) .content .stats-row,
+  body:has(#sidebar):has(.main) .kpi-grid {
+    width: 100% !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  body:has(#sidebar):has(.main) .two-col,
+  body:has(#sidebar):has(.main) .three-col,
+  body:has(#sidebar):has(.main) .charts-2 {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  body:has(#sidebar):has(.main) .mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 110;
+  }
+
+  body:has(#sidebar):has(.main) .mobile-overlay.open {
+    display: block;
+  }
+
+  html.lc-sidebar-compact #sidebar,
+  html.lc-sidebar-compact .sidebar {
+    width: min(280px, 88vw) !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 400px) {
+  body:has(#sidebar):has(.main) .stats-grid,
+  body:has(#sidebar):has(.main) .content .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 .lc-sidebar-toggle {
