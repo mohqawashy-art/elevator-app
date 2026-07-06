@@ -386,15 +386,16 @@
 
 | العنصر | الحالة | ملاحظة |
 |--------|--------|--------|
-| **ربط `/api/translate` في `app.py`** | ⏸ P2 | غير مطلوب للتسويق B2B — ترجمة ثابتة كافية |
-| **نشر السيرفر** | 🔧 | GitHub عند `c85bc7b` — تحقق `/api/version` |
-| Offline PWA للفني | ⏳ | Service Worker + IndexedDB |
-| ترجمة i18n كاملة | 🟡 | واجهة ثابتة جيدة؛ ديناميكي ناقص |
-| تبويب الباقة في الإعدادات | ⏳ | معطّل |
-| ZATCA فوترة إلكترونية | 🟡 | `zatca_invoice.py` محلي غير مدمج |
-| Google Maps Marker/Autocomplete | 🟡 | تحذيرات deprecation — غير عاجل |
-| توحيد CSS الصفحات | 🟡 | modal مكرر؛ المركزي في `liftcore-shell.css` |
-| `app.py` monolith (~100 route) | 🟡 | صيانة أصعب على المدى البعيد |
+| **ربط `/api/translate` في `app.py`** | ⏸ P3 | ترجمة ثابتة كافية للتسويق B2B |
+| **Sentry على الإنتاج** | 🟡 | الكود جاهز — يحتاج `SENTRY_DSN` في `platform.env` |
+| **backup / auto-update cron** | 🟡 | السكربتات جاهزة — `bash deploy/setup_production_ops.sh` |
+| Offline PWA للفني | ✅ | `field-offline.js` + مزامنة محاضر |
+| تطبيق إدارة جوال/تابلت | ✅ | `liftcore-admin-mobile.css` + manifest LiftCore |
+| ترجمة i18n ديناميكية | 🟡 | واجهة ثابتة جيدة؛ `/api/translate` P3 |
+| تبويب الباقة في الإعدادات | ⏸ P3 | معطّل — B2B مخصص |
+| ZATCA فوترة إلكترونية Phase 2 | ⏸ P3 | QR Phase 1 على الطباعة فقط |
+| Google Maps deprecation | 🟡 | PlaceAutocompleteElement — تحذيرات غير عاجلة |
+| `app.py` monolith | 🟡 | صيانة أصعب على المدى البعيد |
 
 ---
 

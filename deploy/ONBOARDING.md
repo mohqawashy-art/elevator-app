@@ -59,6 +59,18 @@ bash deploy/install.sh backup ~/liftcore/CLIENT-app
 bash deploy/install.sh backup-cron ~/liftcore/CLIENT-app
 ```
 
+### إعداد تشغيلي كامل (مرة واحدة على السيرفر)
+
+```bash
+cd ~/liftcore/elevator-app
+bash deploy/setup_production_ops.sh
+# أو: bash deploy/install.sh ops
+bash deploy/check_production_ops.sh
+python scripts/verify_production_ops.py --url https://client.liftcoreapp.com
+```
+
+أضف `SENTRY_DSN` في `/etc/liftcore/platform.env` ثم `sudo systemctl restart liftcore`.
+
 ### نسخ احتياطي و PostgreSQL
 - SQLite: `bash deploy/backup_daily.sh`
 - PostgreSQL: `DATABASE_URL=postgresql://... python scripts/backup_database.py`

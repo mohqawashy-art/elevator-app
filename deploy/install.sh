@@ -24,6 +24,8 @@ LiftCore install.sh — أوامر:
   tenant      تحديث tenant: install.sh tenant liftcore-jama ~/liftcore/jama-elevator-app
   backup      نسخة احتياطية لقاعدة البيانات
   backup-cron تفعيل cron يومي للنسخ الاحتياطي
+  ops         إعداد تشغيلي كامل (backup + auto-update + فحص)
+  ops-check   فحص النواقص التشغيلية على السيرفر
   verify      تحقق من نشر: install.sh verify https://jama.liftcoreapp.com
   help        هذه الرسالة
 
@@ -81,6 +83,13 @@ case "$CMD" in
   backup-cron)
     APP_DIR="${2:-$HOME/liftcore/elevator-app}"
     bash "$SCRIPT_DIR/install_backup_cron.sh" "$APP_DIR"
+    ;;
+  ops)
+    APP_DIR="${2:-$HOME/liftcore/elevator-app}"
+    APP_DIR="$APP_DIR" bash "$SCRIPT_DIR/setup_production_ops.sh"
+    ;;
+  ops-check)
+    bash "$SCRIPT_DIR/check_production_ops.sh" "${2:-$HOME/liftcore/elevator-app}"
     ;;
   verify)
     bash "$SCRIPT_DIR/verify_deploy.sh" "${2:?BASE_URL}"

@@ -60,4 +60,11 @@ else
   echo "  WARN: GOOGLE_MAPS_API_KEY فارغ — الخرائط ستستخدم OSM"
 fi
 
+SENTRY_DSN="$(_env_val SENTRY_DSN)"
+if [ -n "$SENTRY_DSN" ] && [ "$SENTRY_DSN" != "https://examplePublicKey@o0.ingest.sentry.io/0" ]; then
+  echo "  SENTRY_DSN: OK"
+else
+  echo "  WARN: SENTRY_DSN غير مضبوط — تنبيهات الأخطاء معطّلة"
+fi
+
 echo "==> platform env OK"

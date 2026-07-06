@@ -17,9 +17,15 @@ LiftCore — Regression Checklist (قبل كل نشر على السيرفر)
 [ ] حساب viewer — لا أزرار إضافة + POST مرفوض
 
 بعد النشر:
-[ ] curl BASE/api/health  → database:true
+[ ] curl BASE/api/health  → database:true, sentry_configured (اختياري)
 [ ] bash deploy/verify_deploy.sh BASE_URL
+[ ] python scripts/verify_production_ops.py --url BASE_URL
 [ ] Ctrl+F5 في المتصفح
+
+تشغيلي (مرة على السيرفر — إن لم يُفعَّل):
+[ ] bash deploy/setup_production_ops.sh
+[ ] أضف SENTRY_DSN إلى /etc/liftcore/platform.env + restart
+[ ] bash deploy/REGRESSION_CHECKLIST.txt — سيناريو جما يدوي
 
 Rollback:
 [ ] استعادة instance/liftcore.db.bak.TIMESTAMP

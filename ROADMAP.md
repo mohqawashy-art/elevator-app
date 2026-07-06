@@ -12,9 +12,17 @@
 | **P0** | أمان + صلاحيات + استقرار حرج | ✅ 100% |
 | **P1** | QA + نشر + ميزات ناقصة | ✅ 100% |
 | **P2** | UX + i18n + مواد تسويق | ✅ 100% |
-| **P3** | SaaS / ZATCA كامل / Offline (حسب الوعد) | ⏳ |
+| **P3** | SaaS / ZATCA كامل / Offline (حسب الوعد) | ⏳ جزئي (Offline ✅) |
 
-**Definition of Done للتسويق:** P0 = 100% · P1 ≥ 90% · P2 polish · سيناريو جما بدون blockers
+**Definition of Done للتسويق:** P0 = 100% · P1 ≥ 90% · P2 polish · سيناريو جما بدون blockers · **ops على السيرفر**
+
+### تشغيلي — إغلاق النواقص (قبل أول عميل مدفوع)
+
+- [x] سكربت موحّد: `deploy/setup_production_ops.sh` (backup cron + auto-update + فحص)
+- [x] فحص: `deploy/check_production_ops.sh` + `scripts/verify_production_ops.py`
+- [ ] **SENTRY_DSN** في `/etc/liftcore/platform.env` على الإنتاج
+- [ ] **سيناريو جما يدوي** — `deploy/REGRESSION_CHECKLIST.txt`
+- [ ] **PostgreSQL** (اختياري — `deploy/POSTGRES.md`)
 
 ---
 
@@ -138,6 +146,8 @@
 | 2026-07-05 | P1 إغلاق + H3 | ZATCA, Alembic, Sentry, billing, PostgreSQL |
 | 2026-07-05 | P2 إغلاق | UX, i18n, field, marketing docs |
 | 2026-07-06 | Offline Field PWA | SW + IndexedDB queue + field manifest |
+| 2026-07-06 | Admin PWA جوال/تابلت | manifest + liftcore-admin-mobile.css |
+| 2026-07-06 | ops scripts | setup_production_ops + check + verify |
 
 ---
 
@@ -145,6 +155,8 @@
 
 ```bash
 python scripts/qa_preflight.py --e2e --url https://app.liftcoreapp.com
+python scripts/verify_production_ops.py --url https://app.liftcoreapp.com
+bash deploy/setup_production_ops.sh    # على السيرفر — مرة واحدة
 python -m pytest tests/ -q
 npm run test:e2e
 # viewer: محاولة POST → 403
