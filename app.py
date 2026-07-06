@@ -144,7 +144,7 @@ from flask_migrate import Migrate  # noqa: E402
 
 migrate = Migrate(app, db)
 
-PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'api_health', 'field_login', 'field_logout', 'field_manifest', 'field_service_worker'})
+PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'api_health', 'field_login', 'field_logout', 'field_manifest', 'field_service_worker', 'web_manifest', 'admin_service_worker'})
 PUBLIC_PATH_PREFIXES = ('/static',)
 STATIC_UPLOADS_PREFIX = '/static/uploads'
 
@@ -1433,6 +1433,18 @@ def web_manifest():
         'manifest.webmanifest',
         mimetype='application/manifest+json',
     )
+
+
+@app.route('/sw.js')
+def admin_service_worker():
+    resp = send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'admin-sw.js',
+        mimetype='application/javascript',
+    )
+    resp.headers['Service-Worker-Allowed'] = '/'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
 
 
 @app.route('/login', methods=['GET', 'POST'])

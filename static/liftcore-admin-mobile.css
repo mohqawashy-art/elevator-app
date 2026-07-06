@@ -1,0 +1,129 @@
+/* LiftCore — إعدادات تطبيق الإدارة: جوال + تابلت (PWA) */
+
+/* ── جوال: عرض كامل + قائمة منزلقة ── */
+@media (max-width: 1100px) {
+  .lc-header-slot--tools .hamburger {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: 8px;
+    border: 1px solid var(--border, rgba(100, 160, 255, 0.15));
+    background: var(--bg3, #161e2b);
+    color: var(--text1, #e4eaf5);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .lc-header-bar {
+    padding: max(6px, env(safe-area-inset-top, 0px)) 12px 8px !important;
+    column-gap: 8px !important;
+    min-height: 72px !important;
+  }
+
+  .lc-header {
+    min-height: 72px !important;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .lc-header-tenant-logo {
+    max-width: min(var(--logo-w-sidebar, 160px), 38vw) !important;
+    min-height: 40px !important;
+    max-height: 52px !important;
+  }
+
+  .lc-header-logo {
+    height: 36px !important;
+    max-width: min(200px, 36vw) !important;
+  }
+
+  .lc-header-slot--tools {
+    gap: 6px !important;
+    flex-wrap: nowrap;
+  }
+
+  .icon-btn,
+  .lc-profile-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  body:has(#sidebar):has(.main) .stat-card {
+    padding: 14px 12px !important;
+  }
+
+  body:has(#sidebar):has(.main) .stat-val {
+    font-size: 22px !important;
+  }
+}
+
+/* ── تابلت: 3 أعمدة للبطاقات + ساعة ── */
+@media (min-width: 768px) and (max-width: 1100px) {
+  body:has(#sidebar):has(.main) .stats-grid,
+  body:has(#sidebar):has(.main) .content .stats-grid,
+  body:has(#sidebar):has(.main) .content .stats-row,
+  body:has(#sidebar):has(.main) .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  body:has(#sidebar):has(.main) .main > .content,
+  body:has(#sidebar):has(.main) .content {
+    padding-left: max(16px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(16px, env(safe-area-inset-right, 0px)) !important;
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar,
+  body:has(#sidebar):has(.main) .sidebar {
+    width: min(320px, 52vw) !important;
+    max-width: min(320px, 52vw) !important;
+  }
+
+  .lc-header-clock {
+    display: flex !important;
+    transform: scale(0.88);
+    transform-origin: center;
+  }
+
+  .content .stats-row,
+  .content .stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ── جوال صغير: عمود واحد + إخفاء عناصر ثانوية ── */
+@media (max-width: 767px) {
+  .lc-fullscreen-btn,
+  .lang-toggle {
+    display: none !important;
+  }
+
+  .lc-header-slot--center {
+    max-width: min(180px, 32vw) !important;
+  }
+
+  body:has(#sidebar):has(.main) .stats-grid,
+  body:has(#sidebar):has(.main) .content .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 400px) {
+  body:has(#sidebar):has(.main) .stats-grid,
+  body:has(#sidebar):has(.main) .content .stats-grid,
+  body:has(#sidebar):has(.main) .content .stats-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* PWA standalone — مساحة أسفل الشاشة */
+@media (display-mode: standalone) {
+  body:has(#sidebar):has(.main) .main > .content,
+  body:has(#sidebar):has(.main) .content {
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+}

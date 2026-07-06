@@ -310,7 +310,20 @@
   document.addEventListener('fullscreenchange', updateFullscreenIcon);
   document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
 
+  function syncDeviceClass() {
+    var w = window.innerWidth || document.documentElement.clientWidth || 0;
+    var root = document.documentElement;
+    root.classList.remove('lc-device-phone', 'lc-device-tablet', 'lc-device-desktop');
+    if (w <= 767) root.classList.add('lc-device-phone');
+    else if (w <= 1100) root.classList.add('lc-device-tablet');
+    else root.classList.add('lc-device-desktop');
+  }
+
+  window.syncDeviceClass = syncDeviceClass;
+
   document.addEventListener('DOMContentLoaded', function () {
+    syncDeviceClass();
+    window.addEventListener('resize', syncDeviceClass);
     updateFullscreenIcon();
     bindSidebarNav();
     bindSidebarLayout();
