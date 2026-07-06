@@ -23,6 +23,12 @@ jobs:
       - name: Security audit
         run: python scripts/security_audit.py
 
+      - name: Production boot smoke
+        run: python -m pytest tests/test_production_boot.py tests/test_deploy_scripts.py -q --tb=short
+        env:
+          LIFTCORE_HTTPS: '1'
+          SECRET_KEY: ci-test-secret-key-not-default-48chars
+
       - name: Pytest
         run: python -m pytest tests/ -q --tb=short
 

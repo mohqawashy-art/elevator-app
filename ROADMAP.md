@@ -137,12 +137,14 @@
 | 2026-06-23 | P1 E1/E3/E4/E5 + F1/F2/F3 | install.sh, CI, tests, run_local.bat |
 | 2026-07-05 | P1 إغلاق + H3 | ZATCA, Alembic, Sentry, billing, PostgreSQL |
 | 2026-07-05 | P2 إغلاق | UX, i18n, field, marketing docs |
+| 2026-07-06 | QA gate | `scripts/qa_preflight.py`, production boot + deploy script tests |
 
 ---
 
 ## أوامر التحقق
 
 ```bash
+python scripts/qa_preflight.py --e2e --url https://app.liftcoreapp.com
 python -m pytest tests/ -q
 npm run test:e2e
 # viewer: محاولة POST → 403
