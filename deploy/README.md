@@ -8,6 +8,20 @@
 IP: `34.18.56.21`  
 الكود على: **https://github.com/mohqawashy-art/elevator-app**
 
+### بعد كل `git push` على `main`
+
+الإنتاج **لا يتحدّث تلقائياً** إلا إذا فُعِّل cron التحديث (أسفل). وإلا من **GCP Console → SSH**:
+
+```bash
+cd ~/liftcore/elevator-app && bash deploy/gcp_update.sh
+```
+
+تحقق محلياً قبل الرفع:
+
+```bash
+python scripts/qa_preflight.py --e2e --url https://app.liftcoreapp.com
+```
+
 ---
 
 ## الطريقة 1 — من Google Cloud (الأسهل)

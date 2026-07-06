@@ -25,6 +25,7 @@ def test_common_sh_defines_venv_resolver():
     text = (DEPLOY / '_common.sh').read_text(encoding='utf-8')
     assert 'lc_resolve_venv' in text
     assert 'lc_pip_install_requirements' in text
+    assert 'lc_write_version_dropin' in text
     assert 'flask_migrate' in text
 
 
@@ -33,6 +34,8 @@ def test_gcp_update_uses_common_and_venv_resolver():
     assert '_common.sh' in text
     assert 'lc_resolve_venv' in text
     assert 'lc_pip_install_requirements' in text
+    assert 'lc_write_version_dropin' in text
+    assert 'verify_deploy.sh' in text
 
 
 def test_requirements_has_production_deps():

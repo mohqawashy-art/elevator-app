@@ -76,6 +76,7 @@ if command -v systemctl >/dev/null 2>&1; then
     sudo rm -f "$DROP_IN/maps-key.conf.tmp"
     echo "  maps key from $APP_DIR/.env (consider /etc/liftcore/platform.env for all tenants)"
   fi
+  lc_write_version_dropin "$DROP_IN" "$APP_DIR"
   sudo systemctl daemon-reload
 fi
 
@@ -145,6 +146,18 @@ grep -q "f-entity-type" "$APP_DIR/templates/clients.html" && echo "  client enti
 grep -q "address_en" "$APP_DIR/app.py" && echo "  PO bilingual address OK"
 test -f "$APP_DIR/static/js/html2pdf.bundle.min.js" && echo "  html2pdf.js OK"
 
+VERIFY_BASE="${VERIFY_BASE_URL:-}"
+if [ -z "$VERIFY_BASE" ]; then
+  case "$SERVICE_NAME" in
+    liftcore-jama) VERIFY_BASE="https://jama.liftcoreapp.com" ;;
+    *) VERIFY_BASE="https://app.liftcoreapp.com" ;;
+  esac
+fi
+if [ -f "$APP_DIR/deploy/verify_deploy.sh" ]; then
+  echo "==> HTTP verify ($VERIFY_BASE)"
+  bash "$APP_DIR/deploy/verify_deploy.sh" "$VERIFY_BASE" || echo "  WARN: verify_deploy failed"
+fi
+
 echo ""
-echo "==> Done — https://app.liftcoreapp.com"
+echo "==> Done — $VERIFY_BASE"
 echo "    تحقق: /settings (تبويبات الشركة/المستخدمين/حسابي/المظهر)"

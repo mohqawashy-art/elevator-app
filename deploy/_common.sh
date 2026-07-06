@@ -73,3 +73,25 @@ lc_pip_install_requirements() {
   fi
   python -c "import flask_migrate; import sentry_sdk; print('  deps OK: flask_migrate, sentry_sdk')"
 }
+
+lc_git_version() {
+  local app_dir="${1:-.}"
+  if git -C "$app_dir" rev-parse --short HEAD >/dev/null 2>&1; then
+    git -C "$app_dir" rev-parse --short HEAD
+  else
+    echo "unknown"
+  fi
+}
+
+lc_write_version_dropin() {
+  local drop_in="$1"
+  local app_dir="$2"
+  local ver
+  ver="$(lc_git_version "$app_dir")"
+  if [ "$ver" = "unknown" ]; then
+    return 0
+  fi
+  sudo mkdir -p "$drop_in"
+  printf '%s\n' '[Service]' "Environment=LIFTCORE_VERSION=$ver" | sudo tee "$drop_in/version.conf" >/dev/null
+  echo "  version drop-in: $ver"
+}
