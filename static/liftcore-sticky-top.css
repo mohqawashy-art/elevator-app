@@ -126,7 +126,29 @@ html[data-theme="report"] .content.lc-frozen-layout .lc-table-scroll-host .table
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1100px) {
+  body:has(.content.lc-frozen-layout) {
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .content.lc-frozen-layout {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .content.lc-frozen-layout .lc-table-scroll-host,
+  .content.lc-frozen-layout .lc-table-scroll-host > .table-scroll {
+    overflow: visible !important;
+    max-height: none !important;
+    flex: none !important;
+  }
+
   .lc-page-sticky-top {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }

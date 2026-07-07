@@ -290,3 +290,138 @@ body:not([data-report-id]):not([data-report-dashboard]):not([data-report-annual]
   background: var(--bg3, #1a2332);
   box-shadow: 0 1px 0 var(--border, rgba(100, 160, 255, 0.15));
 }
+
+/* ===== جوال/تابلت: تمرير طبيعي للصفحة (الأكثر موثوقية على iOS/PWA) ===== */
+@media (max-width: 1100px) {
+  body:has(.main > .content) {
+    height: auto !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  html.lc-mobile-scroll,
+  html.lc-mobile-native {
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  html.lc-mobile-scroll body:has(.main > .content),
+  html.lc-mobile-native body:has(.main > .content),
+  html.lc-mobile-scroll body:has(#sidebar):has(.main),
+  html.lc-mobile-native body:has(#sidebar):has(.main) {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    min-height: -webkit-fill-available !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+
+  html.lc-mobile-scroll body:has(.main > .content) > .main,
+  html.lc-mobile-native body:has(.main > .content) > .main,
+  html.lc-mobile-scroll body:has(#sidebar):has(.main) > .main,
+  html.lc-mobile-native body:has(#sidebar):has(.main) > .main {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+
+  html.lc-mobile-scroll body:has(.main > .content) .main > .content,
+  html.lc-mobile-native .main > .content,
+  html.lc-mobile-native .content {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    flex: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+
+  html.lc-mobile-scroll header.header.lc-header,
+  html.lc-mobile-scroll header.lc-header,
+  html.lc-mobile-native header.lc-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 220 !important;
+    height: auto !important;
+    min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    max-height: none !important;
+  }
+
+  html.lc-mobile-scroll header.lc-header .lc-header-bar,
+  html.lc-mobile-native .lc-header-bar {
+    height: auto !important;
+    min-height: 52px !important;
+    max-height: none !important;
+  }
+
+  html.lc-mobile-native .content.lc-frozen-layout,
+  html.lc-mobile-scroll .content.lc-frozen-layout {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  html.lc-mobile-native .lc-table-scroll-host,
+  html.lc-mobile-native .lc-table-scroll-host > .table-scroll,
+  html.lc-mobile-scroll .content.lc-frozen-layout .lc-table-scroll-host,
+  html.lc-mobile-scroll .content.lc-frozen-layout .lc-table-scroll-host > .table-scroll {
+    flex: none !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body:not([data-report-id]):not([data-report-dashboard]):not([data-report-annual]) .main > .content .table-wrap .table-scroll {
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.lc-mobile-native body:not(:has(#sidebar)),
+  html.lc-mobile-scroll body:not(:has(#sidebar)) {
+    display: block !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  html.lc-mobile-native body:not(:has(#sidebar)) > header.lc-header,
+  html.lc-mobile-scroll body:not(:has(#sidebar)) > header.lc-header {
+    position: sticky !important;
+    top: 0 !important;
+    height: auto !important;
+    min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    max-height: none !important;
+  }
+
+  html.lc-mobile-native body:not(:has(#sidebar)) > .wrap,
+  html.lc-mobile-scroll body:not(:has(#sidebar)) > .wrap {
+    overflow: visible !important;
+    height: auto !important;
+  }
+}

@@ -1,4 +1,4 @@
-<meta charset="UTF-8">
+﻿<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — {{ page_title|default('مشاريع التركيب') }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,4 +75,5 @@ tbody tr:hover{background:var(--bg3)}
 }
 </style>
 {% include 'partials/liftcore_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}?v=5">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-mobile-touch.css') }}?v=1">

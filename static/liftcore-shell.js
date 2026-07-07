@@ -59,6 +59,45 @@
     document.documentElement.classList.remove('lc-shell-ready');
   }
 
+  function isMobileViewport() {
+    return !isDesktopTopNav();
+  }
+
+  function unfreezeMobileContent() {
+    document.querySelectorAll('.content.lc-frozen-layout').forEach(function (el) {
+      el.classList.remove('lc-frozen-layout');
+    });
+  }
+
+  function syncMobileHeaderHeight() {
+    if (!isMobileViewport()) {
+      document.documentElement.style.removeProperty('--lc-header-h');
+      return;
+    }
+    var header = findAppHeader();
+    if (!header) return;
+    var h = Math.max(52, Math.ceil(header.getBoundingClientRect().height || header.offsetHeight || 0));
+    document.documentElement.style.setProperty('--lc-header-h', h + 'px');
+  }
+
+  function syncMobileScroll() {
+    var mobile = isMobileViewport();
+    document.documentElement.classList.toggle('lc-mobile-scroll', mobile);
+    document.documentElement.classList.toggle('lc-mobile-native', mobile);
+    if (document.body) document.body.classList.toggle('lc-mobile-native', mobile);
+    if (mobile) {
+      unfreezeMobileContent();
+      requestAnimationFrame(function () {
+        syncMobileHeaderHeight();
+        if (window.LiftCoreMobileTouch && window.LiftCoreMobileTouch.refresh) {
+          window.LiftCoreMobileTouch.refresh();
+        }
+      });
+    } else {
+      document.documentElement.style.removeProperty('--lc-header-h');
+    }
+  }
+
   function applyTopNavShell() {
     if (isDesktopTopNav()) {
       if (!document.querySelector('body > header.lc-header, body > .lc-header')) {
@@ -69,6 +108,7 @@
     } else {
       unmountTopNavShell();
     }
+    syncMobileScroll();
     syncTopNavLayout();
   }
 
@@ -302,6 +342,7 @@
     });
   }
 
+  window.syncMobileScroll = syncMobileScroll;
   window.syncTopNavLayout = syncTopNavLayout;
   window.applyTopNavShell = applyTopNavShell;
   window.applyHeaderHeight = applyHeaderHeight;
@@ -323,6 +364,8 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     syncDeviceClass();
+    syncMobileScroll();
+    window.addEventListener('resize', syncMobileScroll);
     window.addEventListener('resize', syncDeviceClass);
     updateFullscreenIcon();
     bindSidebarNav();

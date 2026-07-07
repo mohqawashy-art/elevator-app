@@ -26,3 +26,17 @@ def test_admin_mobile_css_exists():
     text = css.read_text(encoding='utf-8')
     assert '1100px' in text
     assert 'hamburger' in text
+    assert 'pointer-events: none' in text
+
+
+def test_mobile_scroll_layout_overrides():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / 'static'
+    layout = (root / 'liftcore-layout.css').read_text(encoding='utf-8')
+    touch_js = (root / 'liftcore-mobile-touch.js').read_text(encoding='utf-8')
+    touch_css = (root / 'liftcore-mobile-touch.css').read_text(encoding='utf-8')
+    assert 'lc-mobile-native' in layout
+    assert 'overflow-y: auto !important' in layout
+    assert 'LiftCoreMobileTouch' in touch_js
+    assert 'lc-mobile-native' in touch_css

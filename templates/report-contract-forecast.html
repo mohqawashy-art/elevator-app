@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -83,7 +83,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 @media print{.sidebar,.page-header,.toolbar,.screen-only{display:none!important}body{background:#fff;color:#111}}
 </style>
 {% include 'partials/liftcore_head.html' %}
-<link rel="stylesheet" href="/static/liftcore-layout.css">
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
 <link rel="stylesheet" href="{{ url_for('static', filename='reports-print.css') }}?v=4">
 <script src="{{ url_for('static', filename='reports-print.js') }}?v=1"></script>
 </head>

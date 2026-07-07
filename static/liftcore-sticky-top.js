@@ -12,7 +12,12 @@
       || b.getAttribute('data-report-annual'));
   }
 
+  function isMobileViewport() {
+    return !!(global.matchMedia && global.matchMedia('(max-width: 1100px)').matches);
+  }
+
   function canFreezeLayout(content) {
+    if (isMobileViewport()) return false;
     if (isReportPage()) return false;
     if (content.querySelector('.print-wrap')) return false;
     if (!content.querySelector('.table-wrap')) return false;
@@ -74,6 +79,9 @@
   function initContent(content) {
     if (!content || content.dataset.lcStickyInit) return;
     if (isReportPage()) return;
+    if (isMobileViewport()) {
+      content.classList.remove('lc-frozen-layout');
+    }
 
     var tableWrap = getPrimaryTableWrap(content);
     if (!tableWrap) return;
@@ -123,7 +131,14 @@
     initAll();
   }
 
-  global.addEventListener('resize', refreshHeights);
+  global.addEventListener('resize', function () {
+    if (isMobileViewport()) {
+      document.querySelectorAll('.content.lc-frozen-layout').forEach(function (content) {
+        content.classList.remove('lc-frozen-layout');
+      });
+    }
+    refreshHeights();
+  });
   document.addEventListener('liftcore:lang', function () {
     setTimeout(refreshHeights, 80);
   });

@@ -1,0 +1,122 @@
+/* LiftCore — تمرير طبيعي للصفحة على الجوال/التابلت (أعلى أولوية مع .lc-mobile-native) */
+
+@media (max-width: 1100px) {
+  html.lc-mobile-native,
+  html.lc-mobile-scroll.lc-mobile-native {
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  html.lc-mobile-native body,
+  html.lc-mobile-scroll body.lc-mobile-native,
+  html.lc-mobile-native body:has(.main > .content),
+  html.lc-mobile-native body:has(#sidebar):has(.main) {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    min-height: -webkit-fill-available !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    overscroll-behavior-y: auto !important;
+  }
+
+  html.lc-mobile-native body:has(.main > .content) > .main,
+  html.lc-mobile-native body:has(#sidebar):has(.main) > .main,
+  html.lc-mobile-native .main {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+
+  html.lc-mobile-native .main > .content,
+  html.lc-mobile-native .content {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    flex: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+
+  html.lc-mobile-native header.header.lc-header,
+  html.lc-mobile-native header.lc-header,
+  html.lc-mobile-native .lc-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 220 !important;
+    height: auto !important;
+    min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    max-height: none !important;
+    flex: none !important;
+  }
+
+  html.lc-mobile-native header.lc-header .lc-header-bar,
+  html.lc-mobile-native .lc-header-bar {
+    height: auto !important;
+    min-height: 52px !important;
+    max-height: none !important;
+  }
+
+  /* إلغاء تجميد الجداول */
+  html.lc-mobile-native body:has(.content.lc-frozen-layout),
+  html.lc-mobile-native .content.lc-frozen-layout {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  html.lc-mobile-native .lc-table-scroll-host,
+  html.lc-mobile-native .lc-table-scroll-host > .table-scroll,
+  html.lc-mobile-native .table-wrap .table-scroll {
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* الإعدادات */
+  html.lc-mobile-native body:not(:has(#sidebar)) {
+    display: block !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow-y: auto !important;
+  }
+
+  html.lc-mobile-native body:not(:has(#sidebar)) > .wrap {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* القائمة الجانبية لا تحجب اللمس */
+  html.lc-mobile-native #sidebar:not(.open),
+  html.lc-mobile-native .sidebar:not(.open) {
+    pointer-events: none !important;
+  }
+
+  html.lc-mobile-native .mobile-overlay:not(.open) {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  /* متصفح الجوال (ليس PWA): مساحة فوق شريط Safari/Chrome السفلي */
+  html.lc-mobile-native:not(.lc-pwa-standalone) body {
+    padding-bottom: max(80px, calc(env(safe-area-inset-bottom, 0px) + 56px)) !important;
+  }
+}

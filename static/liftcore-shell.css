@@ -874,13 +874,42 @@ html.lc-fullscreen .main {
   }
 }
 
-/* موبايل/تابلت: القائمة خارج الشاشة — المحتوى بعرض كامل (إصلاح PWA) */
+/* موبايل/تابلت: تمرير طبيعي للصفحة */
 @media (max-width: 1100px) {
-  body:has(#sidebar):has(.main) {
+  html.lc-mobile-scroll body:has(#sidebar):has(.main),
+  html.lc-mobile-native body:has(#sidebar):has(.main) {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
     overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+
+  html.lc-mobile-scroll body:has(#sidebar):has(.main) > .main,
+  html.lc-mobile-native body:has(#sidebar):has(.main) > .main {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+
+  html.lc-mobile-scroll body:has(#sidebar):has(.main) .main > .content,
+  html.lc-mobile-scroll body:has(#sidebar):has(.main) .content,
+  html.lc-mobile-native body:has(#sidebar):has(.main) .content {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    height: auto !important;
+    flex: none !important;
+    touch-action: pan-y !important;
   }
 
   body:has(#sidebar):has(.main) #sidebar,
@@ -927,7 +956,8 @@ html.lc-fullscreen .main {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    flex: none !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
   }
 
   body:has(#sidebar):has(.main) .main > .content,
@@ -1812,6 +1842,23 @@ header.lc-header {
 header.header.lc-header .lc-header-bar {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+}
+
+@media (max-width: 1100px) {
+  html.lc-mobile-scroll header.header.lc-header,
+  html.lc-mobile-scroll header.lc-header {
+    height: auto !important;
+    min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    max-height: none !important;
+  }
+
+  html.lc-mobile-scroll header.header.lc-header .lc-header-bar,
+  html.lc-mobile-scroll header.lc-header .lc-header-bar {
+    height: auto !important;
+    min-height: 52px !important;
+    max-height: none !important;
+    padding: max(6px, env(safe-area-inset-top, 0px)) 10px 6px !important;
+  }
 }
 
 @media (min-width: 1101px) {

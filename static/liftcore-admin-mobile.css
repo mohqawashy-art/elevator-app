@@ -1,5 +1,80 @@
 /* LiftCore — إعدادات تطبيق الإدارة: جوال + تابلت (PWA) */
 
+/* ── تمرير ولمس: صفحات الإدارة على الجوال والتابلت ── */
+@media (max-width: 1100px) {
+  html.lc-mobile-scroll {
+    height: 100%;
+    height: 100dvh;
+    height: -webkit-fill-available;
+  }
+
+  html.lc-mobile-scroll {
+    --lc-header-h: auto;
+  }
+
+  html.lc-mobile-scroll header.header.lc-header,
+  html.lc-mobile-scroll header.lc-header {
+    height: auto !important;
+    min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    max-height: none !important;
+    flex: 0 0 auto !important;
+  }
+
+  html.lc-mobile-scroll header.lc-header .lc-header-bar,
+  html.lc-mobile-scroll .lc-header-bar {
+    height: auto !important;
+    min-height: 52px !important;
+    max-height: none !important;
+    padding: max(6px, env(safe-area-inset-top, 0px)) 10px 6px !important;
+    column-gap: 6px !important;
+  }
+
+  html.lc-mobile-scroll body:has(#sidebar):has(.main) .main > .content,
+  html.lc-mobile-scroll body:has(#sidebar):has(.main) .content {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html.lc-mobile-scroll .table-wrap {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.lc-mobile-scroll .table-scroll {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html.lc-mobile-scroll .modal,
+  html.lc-mobile-scroll .modal-body {
+    max-width: 100% !important;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar:not(.open),
+  body:has(#sidebar):has(.main) .sidebar:not(.open) {
+    pointer-events: none !important;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar.open,
+  body:has(#sidebar):has(.main) .sidebar.open {
+    pointer-events: auto !important;
+  }
+
+  body:has(#sidebar):has(.main) .mobile-overlay:not(.open) {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  html.lc-mobile-scroll body:has(#sidebar):has(.main) .mobile-overlay.open {
+    display: block !important;
+    pointer-events: auto !important;
+  }
+}
+
 /* ── جوال: عرض كامل + قائمة منزلقة ── */
 @media (max-width: 1100px) {
   .lc-header-slot--tools .hamburger {
@@ -18,15 +93,23 @@
     flex-shrink: 0;
   }
 
+  .lc-header {
+    min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    height: auto !important;
+    max-height: none !important;
+    padding-top: 0 !important;
+  }
+
   .lc-header-bar {
     padding: max(6px, env(safe-area-inset-top, 0px)) 12px 8px !important;
     column-gap: 8px !important;
-    min-height: 72px !important;
+    min-height: 52px !important;
+    height: auto !important;
+    max-height: none !important;
   }
 
-  .lc-header {
-    min-height: 72px !important;
-    padding-top: env(safe-area-inset-top, 0px);
+  .lc-header-clock {
+    display: none !important;
   }
 
   .lc-header-tenant-logo {
@@ -100,6 +183,20 @@
   .lc-fullscreen-btn,
   .lang-toggle {
     display: none !important;
+  }
+
+  /* شعار واحد فقط — توفير ارتفاع الهيدر */
+  .lc-header-slot--center {
+    display: none !important;
+  }
+
+  .lc-header-slot--tenant {
+    max-width: min(46vw, 180px) !important;
+  }
+
+  .lc-header-tenant-logo {
+    max-width: min(42vw, 150px) !important;
+    max-height: 44px !important;
   }
 
   .lc-header-slot--center {

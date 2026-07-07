@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
 <head>
 <meta charset="UTF-8">
@@ -6,7 +6,8 @@
 <title>LiftCore — الإعدادات</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
 {% include 'partials/liftcore_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}?v=5">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-mobile-touch.css') }}?v=2">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
