@@ -87,16 +87,46 @@ def mutation_denied_response(*, as_json: bool, message_ar: str, message_en: str,
     return redirect(request.referrer or url_for('dashboard')), 403
 
 
-def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str = 'ar'):
+def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str = 'ar', settings=None):
     """
     يتحقق من صلاحية الطلب.
     يرجع None إذا مسموح، أو (response, status) إذا مرفوض.
     """
     if is_exempt_path(path):
         return None
-    if method not in MUTATING_METHODS:
-        return None
     if not user:
+        return None
+
+    from liftcore_permissions import (
+        ADMIN_ONLY_ENDPOINTS_PERMISSION,
+        check_path_permission,
+        custom_permissions_enabled,
+        permissions_for_path,
+        user_has_permission,
+    )
+
+    custom_on = custom_permissions_enabled(settings)
+
+    if custom_on:
+        missing = check_path_permission(user, path=path, method=method, settings=settings)
+        if missing:
+            return mutation_denied_response(
+                as_json=False,
+                message_ar='ليس لديك صلاحية لهذا القسم.',
+                message_en='You do not have permission for this area.',
+                lang=lang,
+            )
+        if method in MUTATING_METHODS and endpoint in ADMIN_ONLY_ENDPOINTS:
+            if not user_has_permission(user, ADMIN_ONLY_ENDPOINTS_PERMISSION, settings):
+                return mutation_denied_response(
+                    as_json=False,
+                    message_ar='هذا الإجراء متاح للمسؤول فقط.',
+                    message_en='This action is restricted to administrators.',
+                    lang=lang,
+                )
+        if method not in MUTATING_METHODS:
+            return None
+    elif method not in MUTATING_METHODS:
         return None
 
     role = user.role or ROLE_VIEWER
@@ -104,6 +134,10 @@ def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str 
 
     if role == ROLE_VIEWER:
         if ep not in SELF_SERVICE_POST_ENDPOINTS:
+            if custom_on:
+                _, write_p = permissions_for_path(path, method)
+                if write_p and user_has_permission(user, write_p, settings):
+                    return None
             return mutation_denied_response(
                 as_json=False,
                 message_ar='حساب «عرض فقط» — لا يمكنك تعديل البيانات.',

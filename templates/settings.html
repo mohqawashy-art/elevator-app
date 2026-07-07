@@ -407,6 +407,26 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
   {% if current_user.role == 'admin' %}
   <div class="panel {% if active_tab == 'users' %}active{% endif %}" id="panel-users">
     <div class="card">
+      <div class="section">نظام الصلاحيات الاختيارية</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:12px">
+        عند التعطيل (الافتراضي): الأدوار الثلاثة فقط كما هو الآن.<br>
+        عند التفعيل: يمكن منح أو حجب صلاحيات لكل مستخدم من القائمة أدناه.
+      </p>
+      <form method="post" action="{{ url_for('settings_custom_permissions_toggle') }}" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+          <input type="checkbox" name="custom_permissions_enabled" value="1" style="width:auto"
+            {% if settings.custom_permissions_enabled %}checked{% endif %}
+            onchange="this.form.submit()">
+          تفعيل الصلاحيات الاختيارية
+        </label>
+        {% if settings.custom_permissions_enabled %}
+        <span class="badge badge-ok">مفعّل</span>
+        {% else %}
+        <span class="badge">معطّل — أدوار فقط</span>
+        {% endif %}
+      </form>
+    </div>
+    <div class="card">
       <div class="section">قائمة المستخدمين</div>
       <table class="users-table">
         <thead>
@@ -465,6 +485,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
           <input name="new_password" type="text" dir="ltr" placeholder="اتركها فارغة للإبقاء على الحالية" autocomplete="new-password">
         </div>
       </div>
+      {% include 'partials/user_permissions_fields.html' %}
       <div class="actions">
         <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
         <a class="btn btn-secondary" href="{{ url_for('settings', tab='users') }}">إلغاء</a>
@@ -505,6 +526,8 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
           </label>
         </div>
       </div>
+      {% set edit_user_perms = {'grants': [], 'denies': []} %}
+      {% include 'partials/user_permissions_fields.html' %}
       <div class="actions">
         <button type="submit" class="btn btn-primary">إنشاء المستخدم</button>
         <button type="button" class="btn btn-secondary" onclick="document.getElementById('new_user_password').value=randomPassword()">توليد كلمة مرور</button>

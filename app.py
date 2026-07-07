@@ -390,12 +390,18 @@ def enforce_auth():
             return pwd_resp
         from liftcore_rbac import check_rbac
         lang = resolve_user_language(user)
+        s = None
+        try:
+            s = Settings.query.first()
+        except Exception:
+            db.session.rollback()
         rbac_resp = check_rbac(
             user,
             method=request.method,
             endpoint=request.endpoint,
             path=request.path or '',
             lang=lang,
+            settings=s,
         )
         if rbac_resp:
             return rbac_resp
@@ -620,6 +626,15 @@ def inject_global_template_vars():
         role_label = ROLE_LABELS.get(user.role, user.role)
         if lang == 'en':
             role_label = ROLE_LABELS_EN.get(user.role, role_label)
+    from liftcore_permissions import (
+        custom_permissions_enabled,
+        effective_permissions,
+        permission_groups_for_ui,
+        user_can_write_module,
+        user_has_permission,
+    )
+    custom_perms_on = custom_permissions_enabled(s)
+    user_perms = effective_permissions(user, s) if user else frozenset()
     return {
         'google_maps_api_key': resolve_google_maps_api_key(s),
         'google_maps_key_source': google_maps_key_source(s),
@@ -643,10 +658,27 @@ def inject_global_template_vars():
         'session_locked': session_is_locked(),
         'idle_screensaver_enabled': idle_screensaver_enabled(s),
         'idle_screensaver_seconds': idle_screensaver_seconds(s),
-        'can_write': bool(user and user.role in ('admin', 'manager')),
-        'is_viewer': bool(user and user.role == 'viewer'),
+        'can_write': user_can_write_module(user, s) if user else False,
+        'is_viewer': bool(user and user.role == 'viewer' and not user_can_write_module(user, s)),
+        'custom_permissions_enabled': custom_perms_on,
+        'user_permissions': user_perms,
+        'permission_groups': permission_groups_for_ui(),
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
     }
+
+
+@app.template_global()
+def has_perm(perm: str) -> bool:
+    user = current_user()
+    if not user:
+        return False
+    try:
+        s = Settings.query.first()
+    except Exception:
+        db.session.rollback()
+        s = None
+    from liftcore_permissions import user_has_permission
+    return user_has_permission(user, perm, s)
 
 
 @app.template_global()
@@ -1002,12 +1034,14 @@ def _sqlite_legacy_schema_patches():
                 ('respect_public_holidays', 'BOOLEAN'),
                 ('custom_holidays_json', 'TEXT'),
                 ('extra_work_days_json', 'TEXT'),
+                ('custom_permissions_enabled', 'BOOLEAN'),
             ],
             'users': [
                 ('theme', 'VARCHAR(10)'),
                 ('language', 'VARCHAR(10)'),
                 ('photo_path', 'VARCHAR(300)'),
                 ('must_change_password', 'BOOLEAN'),
+                ('permissions_extra', 'TEXT'),
             ],
             'faults': [
                 ('visit_id', 'INTEGER'),
@@ -6962,6 +6996,11 @@ def settings():
             'status': t.status or 'متاح',
             'has_field_pin': technician_has_field_pin(t),
         })
+    from liftcore_permissions import parse_permissions_extra
+    edit_user_perms = (
+        parse_permissions_extra(edit_user.permissions_extra)
+        if edit_user else {'grants': [], 'denies': []}
+    )
     return render_template(
         'settings.html',
         settings=s,
@@ -6971,6 +7010,7 @@ def settings():
         current_user=user,
         active_tab=request.args.get('tab', 'company'),
         edit_user=edit_user,
+        edit_user_perms=edit_user_perms,
         settings_notice=session.pop('settings_notice', None),
         generated_username=session.pop('settings_generated_username', None),
         generated_password=session.pop('settings_generated_password', None),
@@ -7318,6 +7358,10 @@ def settings_user_add():
         role=role,
         is_active=True,
     )
+    from liftcore_permissions import dump_permissions_extra, permissions_from_form
+
+    grants, denies = permissions_from_form(request.form)
+    user.permissions_extra = dump_permissions_extra(grants, denies)
     db.session.add(user)
     db.session.commit()
     session['settings_notice'] = f'تم إنشاء المستخدم «{username}» بنجاح.'
@@ -7353,8 +7397,25 @@ def settings_user_edit(user_id):
         target.password_hash = hash_password(new_pass)
         session['settings_generated_username'] = target.username
         session['settings_generated_password'] = new_pass
+    from liftcore_permissions import dump_permissions_extra, permissions_from_form
+
+    grants, denies = permissions_from_form(request.form)
+    target.permissions_extra = dump_permissions_extra(grants, denies)
     db.session.commit()
     session['settings_notice'] = f'تم تحديث المستخدم «{target.username}».'
+    return _settings_redirect('users')
+
+
+@app.route('/settings/custom-permissions', methods=['POST'])
+def settings_custom_permissions_toggle():
+    admin = require_admin()
+    if not admin:
+        return redirect(url_for('login'))
+    s = get_app_settings()
+    s.custom_permissions_enabled = request.form.get('custom_permissions_enabled') == '1'
+    db.session.commit()
+    state = 'تفعيل' if s.custom_permissions_enabled else 'تعطيل'
+    session['settings_notice'] = f'تم {state} نظام الصلاحيات الاختيارية.'
     return _settings_redirect('users')
 
 

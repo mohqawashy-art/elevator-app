@@ -676,6 +676,7 @@ class Settings(db.Model):
     respect_public_holidays = db.Column(db.Boolean, default=True)
     custom_holidays_json = db.Column(db.Text)
     extra_work_days_json = db.Column(db.Text)
+    custom_permissions_enabled = db.Column(db.Boolean, default=False)  # صلاحيات اختيارية per-user
 
 
 # =============================================
@@ -695,6 +696,7 @@ class User(db.Model):
     photo_path      = db.Column(db.String(300))
     is_active       = db.Column(db.Boolean, default=True)
     must_change_password = db.Column(db.Boolean, default=False)
+    permissions_extra = db.Column(db.Text)  # JSON: {"grants":[],"denies":[]} — اختياري
     last_login      = db.Column(db.DateTime)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 

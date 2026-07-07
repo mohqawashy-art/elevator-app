@@ -1,0 +1,32 @@
+{# صلاحيات اختيارية — تظهر عند تفعيل النظام من الإعدادات #}
+{% if custom_permissions_enabled %}
+<div class="card" style="margin-top:14px;border:1px dashed var(--border)">
+  <div class="section">صلاحيات اختيارية (فوق الدور)</div>
+  <p class="hint" style="margin-bottom:12px;line-height:1.7">
+    الدور يحدد الصلاحيات الأساسية. يمكنك <strong>منح</strong> صلاحيات إضافية أو <strong>حجب</strong> صلاحيات من الدور.
+    مدير النظام يبقى بصلاحيات كاملة دائماً.
+  </p>
+  {% for group in permission_groups %}
+  <div style="margin-bottom:14px">
+    <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px">{{ group.group_ar }}</div>
+    <div class="grid" style="gap:8px">
+      {% for item in group.items %}
+      <div class="full" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:8px 10px;background:var(--surface2);border-radius:8px">
+        <span style="flex:1;min-width:180px;font-size:13px">{{ item.label_ar }}</span>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text2)">
+          <input type="checkbox" name="perm_grant" value="{{ item.key }}" style="width:auto"
+            {% if edit_user_perms is defined and item.key in edit_user_perms.grants %}checked{% endif %}>
+          منح
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text2)">
+          <input type="checkbox" name="perm_deny" value="{{ item.key }}" style="width:auto"
+            {% if edit_user_perms is defined and item.key in edit_user_perms.denies %}checked{% endif %}>
+          حجب
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
