@@ -10,7 +10,7 @@
   <div style="margin-bottom:14px">
     <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px">{{ group.group_ar }}</div>
     <div class="grid" style="gap:8px">
-      {% for item in group.items %}
+      {% for item in group.permissions %}
       <div class="full" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:8px 10px;background:var(--surface2);border-radius:8px">
         <span style="flex:1;min-width:180px;font-size:13px">{{ item.label_ar }}</span>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text2)">

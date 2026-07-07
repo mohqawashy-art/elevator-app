@@ -202,7 +202,7 @@ def permission_groups_for_ui() -> list[dict[str, Any]]:
             groups[g] = []
             order.append(g)
         groups[g].append(p)
-    return [{'group_ar': g, 'items': groups[g]} for g in order]
+    return [{'group_ar': g, 'permissions': groups[g]} for g in order]
 
 
 def permissions_from_form(form) -> tuple[list[str], list[str]]:
