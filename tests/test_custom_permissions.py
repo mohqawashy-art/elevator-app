@@ -86,7 +86,19 @@ def test_settings_toggle_custom_permissions(client):
         assert Settings.query.first().custom_permissions_enabled is True
 
 
-def test_has_perm_template_global(client):
+def test_ensure_permissions_schema_adds_columns(client):
+    from app import db
+    from liftcore_permissions import ensure_permissions_schema
+    from sqlalchemy import inspect
+
+    with client.application.app_context():
+        insp = inspect(db.engine)
+        ensure_permissions_schema(db.session, db.engine)
+        settings_cols = {c['name'] for c in insp.get_columns('settings')}
+        users_cols = {c['name'] for c in insp.get_columns('users')}
+        assert 'custom_permissions_enabled' in settings_cols
+        assert 'permissions_extra' in users_cols
+
     login_as(client, 'admin')
     r = client.get('/dashboard')
     assert r.status_code == 200

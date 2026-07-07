@@ -352,8 +352,25 @@ def _field_portal_context(tech_id: int) -> dict:
     }
 
 
+_permissions_schema_bootstrapped = False
+
+
+def _bootstrap_permissions_schema_once():
+    global _permissions_schema_bootstrapped
+    if _permissions_schema_bootstrapped:
+        return
+    try:
+        from liftcore_permissions import ensure_permissions_schema
+        ensure_permissions_schema(db.session, db.engine)
+        _permissions_schema_bootstrapped = True
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('permissions schema bootstrap: %s', exc)
+
+
 @app.before_request
 def enforce_auth():
+    _bootstrap_permissions_schema_once()
     from field_auth import field_session_technician_id
 
     if request.endpoint in PUBLIC_ENDPOINTS:
@@ -1171,6 +1188,12 @@ def _startup_schema_and_data_sync():
             'LiftCore DB backend=%s — Alembic migrations; skip SQLite legacy ALTER',
             database_backend(app.config.get('SQLALCHEMY_DATABASE_URI')),
         )
+    try:
+        from liftcore_permissions import ensure_permissions_schema
+        ensure_permissions_schema(db.session, db.engine)
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Permissions schema ensure skip: %s', exc)
     try:
         from technician_assignments import backfill_technician_assignments
         backfill_technician_assignments()
@@ -6963,7 +6986,14 @@ def settings():
     user = require_login()
     if not user:
         return redirect(url_for('login'))
+    try:
+        from liftcore_permissions import ensure_permissions_schema
+        ensure_permissions_schema(db.session, db.engine)
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('settings permissions schema: %s', exc)
     s = get_app_settings()
+    custom_perms_feature = bool(getattr(s, 'custom_permissions_enabled', False))
     users = User.query.order_by(User.id).all()
     edit_user = None
     edit_id = request.args.get('edit_user', type=int)
@@ -7011,6 +7041,7 @@ def settings():
         active_tab=request.args.get('tab', 'company'),
         edit_user=edit_user,
         edit_user_perms=edit_user_perms,
+        custom_perms_feature=custom_perms_feature,
         settings_notice=session.pop('settings_notice', None),
         generated_username=session.pop('settings_generated_username', None),
         generated_password=session.pop('settings_generated_password', None),

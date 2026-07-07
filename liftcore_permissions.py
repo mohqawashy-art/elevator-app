@@ -191,3 +191,32 @@ def permissions_from_form(form) -> tuple[list[str], list[str]]:
         [g for g in grants if g in ALL_PERMISSION_KEYS],
         [d for d in denies if d in ALL_PERMISSION_KEYS],
     )
+
+
+PERMISSION_SCHEMA_COLUMNS: dict[str, tuple[tuple[str, str], ...]] = {
+    'settings': (('custom_permissions_enabled', 'BOOLEAN'),),
+    'users': (('permissions_extra', 'TEXT'),),
+}
+
+
+def ensure_permissions_schema(db_session, engine) -> bool:
+    """يضيف أعمدة الصلاحيات الاختيارية إن نُقصت (SQLite / PostgreSQL)."""
+    from sqlalchemy import inspect, text
+
+    changed = False
+    insp = inspect(engine)
+    tables = set(insp.get_table_names())
+    for table, cols in PERMISSION_SCHEMA_COLUMNS.items():
+        if table not in tables:
+            continue
+        existing = {c['name'] for c in insp.get_columns(table)}
+        for col_name, col_type in cols:
+            if col_name in existing:
+                continue
+            db_session.execute(text(
+                f'ALTER TABLE {table} ADD COLUMN {col_name} {col_type}'
+            ))
+            changed = True
+    if changed:
+        db_session.commit()
+    return changed

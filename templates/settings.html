@@ -415,11 +415,11 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
       <form method="post" action="{{ url_for('settings_custom_permissions_toggle') }}" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
           <input type="checkbox" name="custom_permissions_enabled" value="1" style="width:auto"
-            {% if settings.custom_permissions_enabled %}checked{% endif %}
+            {% if custom_perms_feature %}checked{% endif %}
             onchange="this.form.submit()">
           تفعيل الصلاحيات الاختيارية
         </label>
-        {% if settings.custom_permissions_enabled %}
+        {% if custom_perms_feature %}
         <span class="badge badge-ok">مفعّل</span>
         {% else %}
         <span class="badge">معطّل — أدوار فقط</span>
