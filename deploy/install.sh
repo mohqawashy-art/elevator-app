@@ -28,6 +28,7 @@ LiftCore install.sh — أوامر:
   ops-check   فحص النواقص التشغيلية على السيرفر
   verify      تحقق من نشر: install.sh verify https://jama.liftcoreapp.com
   checkpoint  حفظ نقطة رجوع قبل Multi-Tenant (قواعد + uploads + nginx)
+  week1       أسبوع 1 Multi-Tenant: checkpoint + postgres + فحوصات
   help        هذه الرسالة
 
 محلياً على Windows: run_local.bat
@@ -97,6 +98,9 @@ case "$CMD" in
     ;;
   checkpoint)
     bash "$SCRIPT_DIR/checkpoint_pre_multitenant.sh"
+    ;;
+  week1)
+    bash "$SCRIPT_DIR/week1_multitenant.sh"
     ;;
   *)
     echo "أمر غير معروف: $CMD"

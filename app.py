@@ -7912,4 +7912,6 @@ _ensure_installation_project_routes(app)
 # تشغيل التطبيق
 # =============================================
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    _port = int(os.environ.get('PORT', '5000'))
+    _debug = os.environ.get('FLASK_DEBUG', '').strip().lower() in ('1', 'true', 'yes')
+    app.run(debug=_debug, port=_port)
