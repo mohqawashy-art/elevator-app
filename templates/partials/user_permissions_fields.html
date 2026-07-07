@@ -1,32 +1,39 @@
-{# صلاحيات اختيارية — تظهر عند تفعيل النظام من الإعدادات #}
-{% if custom_permissions_enabled %}
-<div class="card" style="margin-top:14px;border:1px dashed var(--border)">
-  <div class="section">صلاحيات اختيارية (فوق الدور)</div>
-  <p class="hint" style="margin-bottom:12px;line-height:1.7">
-    الدور يحدد الصلاحيات الأساسية. يمكنك <strong>منح</strong> صلاحيات إضافية أو <strong>حجب</strong> صلاحيات من الدور.
-    مدير النظام يبقى بصلاحيات كاملة دائماً.
-  </p>
-  {% for group in permission_groups %}
-  <div style="margin-bottom:14px">
-    <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px">{{ group.group_ar }}</div>
-    <div class="grid" style="gap:8px">
-      {% for item in group.permissions %}
-      <div class="full" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:8px 10px;background:var(--surface2);border-radius:8px">
-        <span style="flex:1;min-width:180px;font-size:13px">{{ item.label_ar }}</span>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text2)">
+{# صلاحيات الدور «مخصص» — تظهر فقط عند اختيار هذا الدور #}
+<div id="lc-custom-perms-panel" class="lc-custom-perms-panel" style="display:none;margin-top:14px">
+  <div class="card" style="border:1px dashed var(--border)">
+    <div class="section">صلاحيات الدور المخصص</div>
+    <p class="hint" style="margin-bottom:12px;line-height:1.7">
+      اختر ما يمكن لهذا المستخدم <strong>عرضه</strong> و<strong>تعديله</strong>.
+      (حذف السجلات وإعدادات النظام للمسؤول فقط.)
+    </p>
+    {% for group in permission_groups %}
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px">{{ group.group_ar }}</div>
+      <div class="grid" style="gap:8px">
+        {% for item in group.permissions %}
+        <label class="full" style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border-radius:8px;cursor:pointer;font-size:13px">
           <input type="checkbox" name="perm_grant" value="{{ item.key }}" style="width:auto"
             {% if edit_user_perms is defined and item.key in edit_user_perms.grants %}checked{% endif %}>
-          منح
+          {{ item.label_ar }}
         </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text2)">
-          <input type="checkbox" name="perm_deny" value="{{ item.key }}" style="width:auto"
-            {% if edit_user_perms is defined and item.key in edit_user_perms.denies %}checked{% endif %}>
-          حجب
-        </label>
+        {% endfor %}
       </div>
-      {% endfor %}
     </div>
+    {% endfor %}
   </div>
-  {% endfor %}
 </div>
-{% endif %}
+<script>
+(function () {
+  function syncCustomPermsPanel() {
+    var sel = document.querySelector('#panel-users select[name="role"]');
+    var panel = document.getElementById('lc-custom-perms-panel');
+    if (!sel || !panel) return;
+    panel.style.display = sel.value === 'custom' ? 'block' : 'none';
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    var sel = document.querySelector('#panel-users select[name="role"]');
+    if (sel) sel.addEventListener('change', syncCustomPermsPanel);
+    syncCustomPermsPanel();
+  });
+})();
+</script>

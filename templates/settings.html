@@ -407,28 +407,11 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
   {% if current_user.role == 'admin' %}
   <div class="panel {% if active_tab == 'users' %}active{% endif %}" id="panel-users">
     <div class="card">
-      <div class="section">نظام الصلاحيات الاختيارية</div>
-      <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:12px">
-        عند التعطيل (الافتراضي): الأدوار الثلاثة فقط كما هو الآن.<br>
-        عند التفعيل: يمكن منح أو حجب صلاحيات لكل مستخدم من القائمة أدناه.
-      </p>
-      <form method="post" action="{{ url_for('settings_custom_permissions_toggle') }}" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
-          <input type="checkbox" name="custom_permissions_enabled" value="1" style="width:auto"
-            {% if custom_perms_feature %}checked{% endif %}
-            onchange="this.form.submit()">
-          تفعيل الصلاحيات الاختيارية
-        </label>
-        {% if custom_perms_feature %}
-        <span class="badge badge-ok">مفعّل</span>
-        {% else %}
-        <span class="badge">معطّل — أدوار فقط</span>
-        {% endif %}
-      </form>
-    </div>
-    <div class="card">
       <div class="section">قائمة المستخدمين</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.7">
+        الأدوار: <strong>مدير النظام</strong> · <strong>مدير عمليات</strong> · <strong>عرض فقط</strong> ·
+        <strong>مخصص</strong> (تختار الصلاحيات من قائمة).
+      </p>
       <table class="users-table">
         <thead>
           <tr><th>المستخدم</th><th>الاسم</th><th>الدور</th><th>آخر دخول</th><th>الحالة</th><th>إجراءات</th></tr>
@@ -475,10 +458,11 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
         </div>
         <div>
           <label>الدور</label>
-          <select name="role">
+          <select name="role" id="edit_user_role">
             <option value="viewer" {% if edit_user.role == 'viewer' %}selected{% endif %}>عرض فقط</option>
             <option value="manager" {% if edit_user.role == 'manager' %}selected{% endif %}>مدير عمليات</option>
             <option value="admin" {% if edit_user.role == 'admin' %}selected{% endif %}>مدير النظام</option>
+            <option value="custom" {% if edit_user.role == 'custom' %}selected{% endif %}>مخصص</option>
           </select>
         </div>
         <div>
@@ -510,10 +494,11 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
         </div>
         <div>
           <label>الدور</label>
-          <select name="role">
+          <select name="role" id="new_user_role">
             <option value="viewer">عرض فقط</option>
             <option value="manager">مدير عمليات</option>
             <option value="admin">مدير النظام</option>
+            <option value="custom">مخصص</option>
           </select>
         </div>
         <div class="full">

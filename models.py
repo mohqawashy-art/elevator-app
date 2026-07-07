@@ -690,7 +690,7 @@ class User(db.Model):
     password_hash   = db.Column(db.String(200), nullable=False)
     full_name       = db.Column(db.String(100))
     email           = db.Column(db.String(100))
-    role            = db.Column(db.String(30), default='viewer')  # admin / manager / viewer
+    role            = db.Column(db.String(30), default='viewer')  # admin / manager / viewer / custom
     theme           = db.Column(db.String(10), default='dark')  # dark / light / report / premium
     language        = db.Column(db.String(10), default='ar')  # ar / en
     photo_path      = db.Column(db.String(300))

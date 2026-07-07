@@ -1,119 +1,106 @@
-"""اختبارات الصلاحيات الاختيارية."""
+"""اختبارات الدور «مخصص»."""
 from tests.conftest import login_as
 
 
-def _enable_custom_permissions(client):
-    from app import db
-    from models import Settings
-
-    with client.application.app_context():
-        s = Settings.query.first()
-        s.custom_permissions_enabled = True
-        db.session.commit()
-
-
-def test_custom_permissions_disabled_uses_roles(client):
-    login_as(client, 'viewer')
-    r = client.post('/clients/add', data={'name': 'X', 'phone': '512345678'}, follow_redirects=False)
-    assert r.status_code in (403, 302)
-
-
-def test_viewer_grant_finance_read_blocks_finance_path(client):
-    _enable_custom_permissions(client)
-    from app import db
+def test_custom_role_user_gets_finance_only(client):
+    from app import db, hash_password
     from models import User
     from liftcore_permissions import dump_permissions_extra
 
     with client.application.app_context():
-        u = User.query.filter_by(username='test_viewer').first()
-        u.permissions_extra = dump_permissions_extra([], ['finance.read'])
+        u = User(
+            username='acct_user',
+            password_hash=hash_password('TestPass123!'),
+            role='custom',
+            is_active=True,
+            permissions_extra=dump_permissions_extra(['finance.read', 'finance.write']),
+        )
+        db.session.add(u)
         db.session.commit()
+        uid = u.id
 
-    login_as(client, 'viewer')
-    r = client.get('/invoices', follow_redirects=False)
-    assert r.status_code == 403
+    with client.session_transaction() as sess:
+        sess['user_id'] = uid
+        sess['lang'] = 'ar'
+
+    assert client.get('/invoices', follow_redirects=False).status_code == 200
+    assert client.get('/clients', follow_redirects=False).status_code == 403
 
 
-def test_viewer_grant_clients_write_can_post(client):
-    _enable_custom_permissions(client)
-    from app import db
+def test_custom_role_can_write_when_granted(client):
+    from app import db, hash_password
     from models import User
     from liftcore_permissions import dump_permissions_extra
 
     with client.application.app_context():
-        u = User.query.filter_by(username='test_viewer').first()
-        u.permissions_extra = dump_permissions_extra(['clients.write'], [])
+        u = User(
+            username='sales_user',
+            password_hash=hash_password('TestPass123!'),
+            role='custom',
+            is_active=True,
+            permissions_extra=dump_permissions_extra(['clients.read', 'clients.write']),
+        )
+        db.session.add(u)
         db.session.commit()
+        uid = u.id
 
-    login_as(client, 'viewer')
+    with client.session_transaction() as sess:
+        sess['user_id'] = uid
+        sess['lang'] = 'ar'
+
     r = client.post(
         '/clients/add',
-        data={'name': 'عميل صلاحيات', 'phone': '512345678', 'city': 'مكة'},
+        data={'name': 'عميل مخصص', 'phone': '512345678', 'city': 'مكة'},
         follow_redirects=False,
     )
     assert r.status_code in (200, 302)
     assert r.status_code != 403
 
 
-def test_manager_deny_operations_read(client):
-    _enable_custom_permissions(client)
-    from app import db
-    from models import User
-    from liftcore_permissions import dump_permissions_extra
-
-    with client.application.app_context():
-        u = User.query.filter_by(username='test_manager').first()
-        u.permissions_extra = dump_permissions_extra([], ['operations.read'])
-        db.session.commit()
-
+def test_manager_unchanged_without_custom_role(client):
     login_as(client, 'manager')
-    r = client.get('/maintenance-visits', follow_redirects=False)
-    assert r.status_code == 403
+    r = client.get('/invoices', follow_redirects=False)
+    assert r.status_code == 200
+    r2 = client.post(
+        '/settings/profile',
+        data={'full_name': 'مدير'},
+        follow_redirects=False,
+    )
+    assert r2.status_code in (200, 302)
+    assert r2.status_code != 403
 
 
-def test_settings_toggle_custom_permissions(client):
+def test_admin_can_add_custom_user(client):
     login_as(client, 'admin')
     r = client.post(
-        '/settings/custom-permissions',
-        data={'custom_permissions_enabled': '1'},
+        '/settings/users/add',
+        data={
+            'username': 'user_custom1',
+            'password': 'TestPass123!',
+            'role': 'custom',
+            'perm_grant': ['operations.read', 'operations.write'],
+        },
         follow_redirects=False,
     )
     assert r.status_code == 302
     from app import db
-    from models import Settings
+    from models import User
+    from liftcore_permissions import parse_permissions_extra
 
     with client.application.app_context():
-        assert Settings.query.first().custom_permissions_enabled is True
+        u = User.query.filter_by(username='user_custom1').first()
+        assert u is not None
+        assert u.role == 'custom'
+        perms = parse_permissions_extra(u.permissions_extra)
+        assert 'operations.read' in perms['grants']
 
 
-def test_ensure_permissions_schema_adds_columns(client):
+def test_ensure_permissions_schema_adds_users_column(client):
     from app import db
     from liftcore_permissions import ensure_permissions_schema
     from sqlalchemy import inspect
 
     with client.application.app_context():
-        insp = inspect(db.engine)
         ensure_permissions_schema(db.session, db.engine)
-        settings_cols = {c['name'] for c in insp.get_columns('settings')}
-        users_cols = {c['name'] for c in insp.get_columns('users')}
-        assert 'custom_permissions_enabled' in settings_cols
+        users_cols = {c['name'] for c in inspect(db.engine).get_columns('users')}
         assert 'permissions_extra' in users_cols
-
-
-def test_manager_self_settings_with_custom_permissions(client):
-    _enable_custom_permissions(client)
-    login_as(client, 'manager')
-    r = client.post(
-        '/settings/profile',
-        data={'full_name': 'مدير محدّث'},
-        follow_redirects=False,
-    )
-    assert r.status_code in (200, 302)
-    assert r.status_code != 403
-
-
-def test_has_perm_template_global(client):
-    login_as(client, 'admin')
-    r = client.get('/dashboard')
-    assert r.status_code == 200
-    assert b'/clients' in r.data

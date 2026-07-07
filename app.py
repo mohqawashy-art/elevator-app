@@ -554,12 +554,14 @@ ROLE_LABELS = {
     'admin': 'مدير النظام',
     'manager': 'مدير عمليات',
     'viewer': 'عرض فقط',
+    'custom': 'مخصص',
 }
 
 ROLE_LABELS_EN = {
     'admin': 'System Admin',
     'manager': 'Operations Manager',
     'viewer': 'View Only',
+    'custom': 'Custom',
 }
 
 USER_THEMES = frozenset({'dark', 'light', 'report', 'premium'})
@@ -644,13 +646,11 @@ def inject_global_template_vars():
         if lang == 'en':
             role_label = ROLE_LABELS_EN.get(user.role, role_label)
     from liftcore_permissions import (
-        custom_permissions_enabled,
         effective_permissions,
         permission_groups_for_ui,
         user_can_write_module,
         user_has_permission,
     )
-    custom_perms_on = custom_permissions_enabled(s)
     user_perms = effective_permissions(user, s) if user else frozenset()
     return {
         'google_maps_api_key': resolve_google_maps_api_key(s),
@@ -676,8 +676,7 @@ def inject_global_template_vars():
         'idle_screensaver_enabled': idle_screensaver_enabled(s),
         'idle_screensaver_seconds': idle_screensaver_seconds(s),
         'can_write': user_can_write_module(user, s) if user else False,
-        'is_viewer': bool(user and user.role == 'viewer' and not user_can_write_module(user, s)),
-        'custom_permissions_enabled': custom_perms_on,
+        'is_viewer': bool(user and user.role == 'viewer'),
         'user_permissions': user_perms,
         'permission_groups': permission_groups_for_ui(),
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
@@ -6993,7 +6992,6 @@ def settings():
         db.session.rollback()
         app.logger.warning('settings permissions schema: %s', exc)
     s = get_app_settings()
-    custom_perms_feature = bool(getattr(s, 'custom_permissions_enabled', False))
     users = User.query.order_by(User.id).all()
     edit_user = None
     edit_id = request.args.get('edit_user', type=int)
@@ -7041,7 +7039,6 @@ def settings():
         active_tab=request.args.get('tab', 'company'),
         edit_user=edit_user,
         edit_user_perms=edit_user_perms,
-        custom_perms_feature=custom_perms_feature,
         settings_notice=session.pop('settings_notice', None),
         generated_username=session.pop('settings_generated_username', None),
         generated_password=session.pop('settings_generated_password', None),
@@ -7373,7 +7370,7 @@ def settings_user_add():
         session['settings_notice'] = f'اسم المستخدم «{username}» مستخدم مسبقاً.'
         return _settings_redirect('users')
 
-    if role not in ('admin', 'manager', 'viewer'):
+    if role not in ('admin', 'manager', 'viewer', 'custom'):
         role = 'viewer'
 
     if auto_generate or not password:
@@ -7389,10 +7386,12 @@ def settings_user_add():
         role=role,
         is_active=True,
     )
-    from liftcore_permissions import dump_permissions_extra, permissions_from_form
+    from liftcore_permissions import dump_permissions_extra, permissions_grants_from_form
 
-    grants, denies = permissions_from_form(request.form)
-    user.permissions_extra = dump_permissions_extra(grants, denies)
+    if role == 'custom':
+        user.permissions_extra = dump_permissions_extra(permissions_grants_from_form(request.form))
+    else:
+        user.permissions_extra = None
     db.session.add(user)
     db.session.commit()
     session['settings_notice'] = f'تم إنشاء المستخدم «{username}» بنجاح.'
@@ -7412,7 +7411,7 @@ def settings_user_edit(user_id):
     full_name = (request.form.get('full_name') or '').strip()
     email = (request.form.get('email') or '').strip()
     role = (request.form.get('role') or target.role).strip()
-    if role not in ('admin', 'manager', 'viewer'):
+    if role not in ('admin', 'manager', 'viewer', 'custom'):
         role = target.role
     if target.id == admin.id and role != 'admin':
         session['settings_notice'] = 'لا يمكنك تغيير دورك من مدير النظام.'
@@ -7428,25 +7427,14 @@ def settings_user_edit(user_id):
         target.password_hash = hash_password(new_pass)
         session['settings_generated_username'] = target.username
         session['settings_generated_password'] = new_pass
-    from liftcore_permissions import dump_permissions_extra, permissions_from_form
+    from liftcore_permissions import dump_permissions_extra, permissions_grants_from_form
 
-    grants, denies = permissions_from_form(request.form)
-    target.permissions_extra = dump_permissions_extra(grants, denies)
+    if role == 'custom':
+        target.permissions_extra = dump_permissions_extra(permissions_grants_from_form(request.form))
+    else:
+        target.permissions_extra = None
     db.session.commit()
     session['settings_notice'] = f'تم تحديث المستخدم «{target.username}».'
-    return _settings_redirect('users')
-
-
-@app.route('/settings/custom-permissions', methods=['POST'])
-def settings_custom_permissions_toggle():
-    admin = require_admin()
-    if not admin:
-        return redirect(url_for('login'))
-    s = get_app_settings()
-    s.custom_permissions_enabled = request.form.get('custom_permissions_enabled') == '1'
-    db.session.commit()
-    state = 'تفعيل' if s.custom_permissions_enabled else 'تعطيل'
-    session['settings_notice'] = f'تم {state} نظام الصلاحيات الاختيارية.'
     return _settings_redirect('users')
 
 
