@@ -99,6 +99,20 @@ def test_ensure_permissions_schema_adds_columns(client):
         assert 'custom_permissions_enabled' in settings_cols
         assert 'permissions_extra' in users_cols
 
+
+def test_manager_self_settings_with_custom_permissions(client):
+    _enable_custom_permissions(client)
+    login_as(client, 'manager')
+    r = client.post(
+        '/settings/profile',
+        data={'full_name': 'مدير محدّث'},
+        follow_redirects=False,
+    )
+    assert r.status_code in (200, 302)
+    assert r.status_code != 403
+
+
+def test_has_perm_template_global(client):
     login_as(client, 'admin')
     r = client.get('/dashboard')
     assert r.status_code == 200

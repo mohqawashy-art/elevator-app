@@ -27,16 +27,6 @@ SELF_SERVICE_POST_ENDPOINTS = frozenset({
     'api_session_unlock',
 })
 
-# GET مسموح عند إجبار تغيير كلمة المرور
-PASSWORD_CHANGE_ALLOWED_ENDPOINTS = frozenset({
-    'login',
-    'logout',
-    'static',
-    'settings',
-    'settings_change_password',
-    'web_manifest',
-})
-
 # admin فقط — إعدادات النظام والمستخدمين
 ADMIN_ONLY_ENDPOINTS = frozenset({
     'settings_save',
@@ -48,6 +38,17 @@ ADMIN_ONLY_ENDPOINTS = frozenset({
     'settings_user_add',
     'settings_user_edit',
     'settings_user_toggle',
+    'settings_custom_permissions_toggle',
+})
+
+# GET مسموح عند إجبار تغيير كلمة المرور
+PASSWORD_CHANGE_ALLOWED_ENDPOINTS = frozenset({
+    'login',
+    'logout',
+    'static',
+    'settings',
+    'settings_change_password',
+    'web_manifest',
 })
 
 # مسارات CSRF / RBAC معفاة (بوابة الفني منفصلة)
@@ -97,6 +98,12 @@ def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str 
     if not user:
         return None
 
+    ep = endpoint or ''
+
+    # حسابي / مظهر / كلمة مرور — دائماً مسموح لصاحب الحساب
+    if method in MUTATING_METHODS and ep in SELF_SERVICE_POST_ENDPOINTS:
+        return None
+
     from liftcore_permissions import (
         ADMIN_ONLY_ENDPOINTS_PERMISSION,
         check_path_permission,
@@ -130,7 +137,6 @@ def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str 
         return None
 
     role = user.role or ROLE_VIEWER
-    ep = endpoint or ''
 
     if role == ROLE_VIEWER:
         if ep not in SELF_SERVICE_POST_ENDPOINTS:

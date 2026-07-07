@@ -53,7 +53,17 @@ ROLE_DEFAULT_PERMISSIONS: dict[str, frozenset[str]] = {
     ROLE_VIEWER: frozenset(k for k in ALL_PERMISSION_KEYS if k.endswith('.read')),
 }
 
-# مسار → (صلاحية قراءة GET, صلاحية كتابة mutating)
+ADMIN_ONLY_ENDPOINTS_PERMISSION = 'settings.admin'
+DELETE_PERMISSION = 'data.delete'
+
+# حسابي — لا يحتاج settings.admin عند تفعيل الصلاحيات الاختيارية
+SELF_SERVICE_SETTINGS_PREFIXES = (
+    '/settings/profile',
+    '/settings/theme',
+    '/settings/password',
+)
+
+# مسار → (صلاحية قراءة GET, صلاحية كتابة mutating) — الأخصّ أولاً
 PATH_RULES: tuple[tuple[str, str, str], ...] = (
     ('/dashboard', 'dashboard.read', 'dashboard.read'),
     ('/clients', 'clients.read', 'clients.write'),
@@ -72,13 +82,20 @@ PATH_RULES: tuple[tuple[str, str, str], ...] = (
     ('/stock-movements', 'inventory.read', 'inventory.write'),
     ('/purchase-orders', 'inventory.read', 'inventory.write'),
     ('/reports', 'reports.read', 'reports.read'),
-    ('/settings', 'dashboard.read', 'settings.admin'),
+    ('/settings/save', 'settings.admin', 'settings.admin'),
+    ('/settings/users', 'settings.admin', 'settings.admin'),
+    ('/settings/signatories', 'settings.admin', 'settings.admin'),
+    ('/settings/signatures', 'settings.admin', 'settings.admin'),
+    ('/settings/screensaver', 'settings.admin', 'settings.admin'),
+    ('/settings/field-portal', 'settings.admin', 'settings.admin'),
+    ('/settings/custom-permissions', 'settings.admin', 'settings.admin'),
+    ('/settings/profile', 'dashboard.read', 'dashboard.read'),
+    ('/settings/theme', 'dashboard.read', 'dashboard.read'),
+    ('/settings/password', 'dashboard.read', 'dashboard.read'),
+    ('/settings', 'dashboard.read', 'dashboard.read'),
     ('/api/admin/billing', 'billing.repair', 'billing.repair'),
     ('/api/reports/billing-discrepancies', 'finance.read', 'finance.read'),
 )
-
-ADMIN_ONLY_ENDPOINTS_PERMISSION = 'settings.admin'
-DELETE_PERMISSION = 'data.delete'
 
 
 def custom_permissions_enabled(settings=None) -> bool:
@@ -163,6 +180,10 @@ def check_path_permission(user, *, path: str, method: str, settings=None) -> str
         return None
     if user.role == ROLE_ADMIN:
         return None
+    path = path or ''
+    for prefix in SELF_SERVICE_SETTINGS_PREFIXES:
+        if path == prefix or path.startswith(prefix + '/'):
+            return None
     read_p, write_p = permissions_for_path(path, method)
     if not read_p:
         return None

@@ -13,6 +13,12 @@ with app.app_context():
         print('==> added missing permission columns')
     else:
         print('==> permission columns already present')
+    from models import Settings
+    s = Settings.query.first()
+    if s and getattr(s, 'custom_permissions_enabled', False):
+        print('==> disabling custom_permissions_enabled (safe default)')
+        s.custom_permissions_enabled = False
+        db.session.commit()
 PY
 sudo systemctl restart liftcore
 echo "==> done — open /settings?tab=users"
