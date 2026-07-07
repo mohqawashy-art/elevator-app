@@ -27,6 +27,7 @@ LiftCore install.sh — أوامر:
   ops         إعداد تشغيلي كامل (backup + auto-update + فحص)
   ops-check   فحص النواقص التشغيلية على السيرفر
   verify      تحقق من نشر: install.sh verify https://jama.liftcoreapp.com
+  checkpoint  حفظ نقطة رجوع قبل Multi-Tenant (قواعد + uploads + nginx)
   help        هذه الرسالة
 
 محلياً على Windows: run_local.bat
@@ -93,6 +94,9 @@ case "$CMD" in
     ;;
   verify)
     bash "$SCRIPT_DIR/verify_deploy.sh" "${2:?BASE_URL}"
+    ;;
+  checkpoint)
+    bash "$SCRIPT_DIR/checkpoint_pre_multitenant.sh"
     ;;
   *)
     echo "أمر غير معروف: $CMD"
