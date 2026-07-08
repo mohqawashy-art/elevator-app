@@ -108,7 +108,12 @@ def _table_columns(engine, table: str) -> list[str]:
 
 def _ensure_target_schema(target_url: str) -> None:
     """تشغيل Alembic على target_url في عملية منفصلة لتجنب تلوث db.engine."""
-    env = {**os.environ, 'DATABASE_URL': target_url, 'LIFTCORE_ALEMBIC': '1'}
+    env = {
+        **os.environ,
+        'DATABASE_URL': target_url,
+        'LIFTCORE_ALEMBIC': '1',
+        'LIFTCORE_FORCE_UPGRADE': '1',
+    }
     proc = subprocess.run(
         [sys.executable, str(ROOT / 'deploy' / 'migrate_db.py')],
         cwd=str(ROOT),

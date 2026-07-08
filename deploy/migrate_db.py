@@ -23,14 +23,26 @@ def main() -> int:
     from flask_migrate import current, stamp, upgrade
 
     from app import app, db
+    from liftcore_database import is_postgresql, normalize_database_url
 
     with app.app_context():
+        uri = normalize_database_url(app.config.get('SQLALCHEMY_DATABASE_URI', ''))
         tables = set(inspect(db.engine).get_table_names())
         has_app_tables = bool(tables & {'users', 'customers', 'settings'})
         has_alembic = 'alembic_version' in tables
+        pg = is_postgresql(uri)
+        force = os.environ.get('LIFTCORE_FORCE_UPGRADE', '').strip().lower() in (
+            '1', 'true', 'yes',
+        )
+
+        if force or pg:
+            print('[migrate] running flask db upgrade (postgresql)')
+            upgrade()
+            print(f'[migrate] revision: {current() or "head"}')
+            return 0
 
         if not has_alembic and has_app_tables:
-            print('[migrate] existing database — stamping Alembic head')
+            print('[migrate] existing sqlite database — stamping Alembic head')
             stamp(revision='head')
             print(f'[migrate] revision: {current() or "head"}')
             return 0
