@@ -50,7 +50,7 @@ def upgrade():
             'SELECT s.organization_id, TRIM(s.vat_number), TRIM(s.cr_number), '
             "'active', 'sandbox' "
             'FROM settings s '
-            'WHERE s.vat_number IS NOT NULL AND TRIM(s.vat_number) != "" '
+            'WHERE s.vat_number IS NOT NULL AND TRIM(s.vat_number) != \'\' '
             'AND NOT EXISTS ('
             '  SELECT 1 FROM zatca_credentials z WHERE z.organization_id = s.organization_id'
             ')'
