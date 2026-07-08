@@ -22,7 +22,7 @@ echo "==> Verify $BASE"
 
 HEALTH=$(curl -sS "$BASE/api/health" || echo '{}')
 echo "  health: $HEALTH"
-echo "$HEALTH" | grep -q '"database": true' || { echo "  FAIL database"; FAIL=1; }
+echo "$HEALTH" | grep -qE '"database"[[:space:]]*:[[:space:]]*true' || { echo "  FAIL database"; FAIL=1; }
 
 VERSION=$(curl -sS "$BASE/api/version" || echo '{}')
 echo "  version: $(echo "$VERSION" | head -c 200)"

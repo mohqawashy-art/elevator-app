@@ -19,6 +19,20 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$APP_DIR"
 
+# shellcheck source=deploy/_common.sh
+source "$SCRIPT_DIR/_common.sh"
+VENV="$(lc_resolve_venv "$APP_DIR" liftcore)"
+if [ -x "$VENV/bin/python" ]; then
+  # shellcheck disable=SC1091
+  source "$VENV/bin/activate"
+  PYTHON="$VENV/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON="python3"
+else
+  echo "ERROR: python3 not found (tried venv: $VENV)" >&2
+  exit 1
+fi
+
 DRY_RUN=0
 FORCE=0
 for arg in "$@"; do
@@ -42,13 +56,11 @@ fi
 
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "ERROR: set DATABASE_URL (PostgreSQL) before cutover" >&2
+  echo "  export DATABASE_URL=postgresql://liftcore:PASS@127.0.0.1:5432/liftcore" >&2
   exit 1
 fi
 
-if [ -d "$APP_DIR/.venv" ]; then
-  # shellcheck disable=SC1091
-  source "$APP_DIR/.venv/bin/activate"
-fi
+_log "Python: $PYTHON"
 
 _log "Week 8 staging cutover — slug=$TENANT_SLUG"
 _log "Source SQLite: $SQLITE_SOURCE"
@@ -63,7 +75,7 @@ MIGRATE_ARGS=(
 [ "$DRY_RUN" -eq 1 ] && MIGRATE_ARGS+=(--dry-run)
 [ "$FORCE" -eq 1 ] && MIGRATE_ARGS+=(--force)
 
-python scripts/migrate_instance_to_tenant.py "${MIGRATE_ARGS[@]}"
+"$PYTHON" scripts/migrate_instance_to_tenant.py "${MIGRATE_ARGS[@]}"
 
 if [ "$DRY_RUN" -eq 1 ]; then
   _log "Dry-run complete — re-run without --dry-run to apply"
@@ -71,13 +83,13 @@ if [ "$DRY_RUN" -eq 1 ]; then
 fi
 
 _log "Verify migration counts"
-python scripts/verify_tenant_migration.py --slug "$TENANT_SLUG"
+"$PYTHON" scripts/verify_tenant_migration.py --slug "$TENANT_SLUG"
 
 _log "Alembic revision"
-python deploy/migrate_db.py
+"$PYTHON" deploy/migrate_db.py
 
 _log "Smoke tests (tenant isolation)"
-python -m pytest tests/test_tenant_isolation.py -q --tb=line || true
+"$PYTHON" -m pytest tests/test_tenant_isolation.py -q --tb=line || true
 
 _log "Next steps (manual):"
 echo "  1) Uncomment/set DATABASE_URL in /etc/liftcore/platform.env"
