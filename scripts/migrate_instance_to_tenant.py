@@ -91,6 +91,8 @@ SLUG_ALIASES = {'app': 'default', 'liftcore': 'default'}
 # أعمدة FK تُؤجَّل — تُملأ بعد إدراج الصفوف المرتبطة (بدون صلاحيات superuser)
 DEFER_NULL_ON_INSERT: dict[str, frozenset[str]] = {
     'invoices': frozenset({'revenue_id', 'parent_invoice_id'}),
+    'installation_projects': frozenset({'accepted_quotation_id'}),
+    'maintenance_visits': frozenset({'fault_id'}),
 }
 
 
