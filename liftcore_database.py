@@ -8,12 +8,15 @@ from urllib.parse import urlparse, urlunparse
 
 
 def normalize_database_url(url: str | None) -> str:
-    """توحيد رابط SQLAlchemy — postgres:// → postgresql://."""
+    """توحيد رابط SQLAlchemy — postgres:// → postgresql+psycopg:// (psycopg v3)."""
     raw = (url or '').strip()
     if not raw:
         return raw
     if raw.startswith('postgres://'):
-        return 'postgresql://' + raw[len('postgres://') :]
+        raw = 'postgresql://' + raw[len('postgres://') :]
+    # SQLAlchemy يختار psycopg2 افتراضياً لـ postgresql:// — نثبت psycopg v3 في requirements
+    if raw.startswith('postgresql://'):
+        return 'postgresql+psycopg://' + raw[len('postgresql://') :]
     return raw
 
 

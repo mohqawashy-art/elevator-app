@@ -30,7 +30,8 @@ fi
 
 echo "==> 2) Create role and database (idempotent)"
 if sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${PG_USER}'" | grep -q 1; then
-  echo "  role $PG_USER exists"
+  echo "  role $PG_USER exists — updating password"
+  sudo -u postgres psql -v ON_ERROR_STOP=1 -c "ALTER USER ${PG_USER} WITH PASSWORD '${PG_PASSWORD}';"
 else
   sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL
 CREATE USER ${PG_USER} WITH PASSWORD '${PG_PASSWORD}';
@@ -50,7 +51,7 @@ echo "=============================================="
 echo "  PostgreSQL ready"
 echo ""
 echo "  Add to /etc/liftcore/platform.env (DO NOT enable on live app yet):"
-echo "  DATABASE_URL=postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:5432/${PG_DB}"
+echo "  DATABASE_URL=postgresql+psycopg://${PG_USER}:${PG_PASSWORD}@127.0.0.1:5432/${PG_DB}"
 echo ""
 echo "  Test connection:"
 echo "    PGPASSWORD='...' psql -h 127.0.0.1 -U ${PG_USER} -d ${PG_DB} -c 'SELECT 1'"

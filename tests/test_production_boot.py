@@ -29,6 +29,7 @@ print('BODY', r.get_json())
         capture_output=True,
         text=True,
         timeout=180,
+        stdin=subprocess.DEVNULL,
     )
 
 

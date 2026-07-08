@@ -324,19 +324,17 @@ def migrate_instance(
     if not target_url:
         raise ValueError('DATABASE_URL or --target-url required')
 
-    from liftcore_database import normalize_database_url, reset_postgres_sequences
+    from liftcore_database import is_postgresql, normalize_database_url, reset_postgres_sequences
 
     target_url = normalize_database_url(target_url)
     target_url = _normalize_target_url(target_url)
-    is_pg = target_url.startswith('postgresql://')
+    is_pg = is_postgresql(target_url)
 
     if not dry_run:
         _ensure_target_schema(target_url)
 
     src_engine = create_engine(_sqlite_url(str(sqlite_file)))
-    dst_engine = create_engine(target_url)
     Src = sessionmaker(bind=src_engine)
-    Dst = sessionmaker(bind=dst_engine)
 
     if dry_run:
         counts: dict[str, int] = {}
@@ -352,6 +350,7 @@ def migrate_instance(
             Path(uploads_dest or ROOT / 'static' / 'uploads'),
             dry_run=True,
         )
+        src_engine.dispose()
         return {
             'slug': slug,
             'organization_id': 0,
@@ -361,6 +360,9 @@ def migrate_instance(
             'uploads_files': uploads_n,
             'target': 'postgresql' if is_pg else 'sqlite',
         }
+
+    dst_engine = create_engine(target_url)
+    Dst = sessionmaker(bind=dst_engine)
 
     counts: dict[str, int] = {}
     org_id = 0

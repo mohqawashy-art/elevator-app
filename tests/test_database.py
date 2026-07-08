@@ -20,9 +20,14 @@ from liftcore_database import (
 
 def test_normalize_postgres_url():
     assert normalize_database_url('postgres://u:p@localhost/db') == (
-        'postgresql://u:p@localhost/db'
+        'postgresql+psycopg://u:p@localhost/db'
     )
-    assert normalize_database_url('postgresql://localhost/x') == 'postgresql://localhost/x'
+    assert normalize_database_url('postgresql://localhost/x') == (
+        'postgresql+psycopg://localhost/x'
+    )
+    assert normalize_database_url('postgresql+psycopg://localhost/x') == (
+        'postgresql+psycopg://localhost/x'
+    )
 
 
 def test_database_backend_detection():
