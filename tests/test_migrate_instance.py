@@ -77,6 +77,18 @@ def legacy_and_target(tmp_path, monkeypatch):
     return report, target_url
 
 
+def test_coerce_sqlite_integers_to_postgres_booleans():
+    from scripts.migrate_instance_to_tenant import _coerce_row_for_dst
+
+    out = _coerce_row_for_dst(
+        {'is_active': 1, 'must_change_password': 0, 'username': 'admin'},
+        {'is_active', 'must_change_password'},
+    )
+    assert out['is_active'] is True
+    assert out['must_change_password'] is False
+    assert out['username'] == 'admin'
+
+
 def test_migrate_legacy_sqlite_creates_org_and_rows(legacy_and_target):
     report, target_url = legacy_and_target
     assert report['slug'] == 'default'

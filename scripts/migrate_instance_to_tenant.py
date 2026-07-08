@@ -106,6 +106,31 @@ def _table_columns(engine, table: str) -> list[str]:
     return [c['name'] for c in inspect(engine).get_columns(table)]
 
 
+def _boolean_columns(engine, table: str) -> set[str]:
+    cols: set[str] = set()
+    if table not in inspect(engine).get_table_names():
+        return cols
+    for col in inspect(engine).get_columns(table):
+        if 'BOOL' in str(col['type']).upper():
+            cols.add(col['name'])
+    return cols
+
+
+def _coerce_row_for_dst(payload: dict, bool_cols: set[str]) -> dict:
+    """SQLite يخزّن Boolean كـ 0/1 — PostgreSQL يتطلب true/false."""
+    for col in bool_cols:
+        if col not in payload:
+            continue
+        val = payload[col]
+        if val is None or isinstance(val, bool):
+            continue
+        if isinstance(val, int):
+            payload[col] = bool(val)
+        elif isinstance(val, str) and val.strip().lower() in ('0', '1', 'true', 'false'):
+            payload[col] = val.strip().lower() in ('1', 'true')
+    return payload
+
+
 def _ensure_target_schema(target_url: str) -> None:
     """تشغيل Alembic على target_url في عملية منفصلة لتجنب تلوث db.engine."""
     env = {
@@ -229,11 +254,13 @@ def _copy_table(
     col_list = ', '.join(use_cols)
     placeholders = ', '.join(f':{c}' for c in use_cols)
     insert_sql = text(f'INSERT INTO {table} ({col_list}) VALUES ({placeholders})')
+    bool_cols = _boolean_columns(dst_sess.bind, table)
 
     for raw in rows:
         payload = {c: raw.get(c) for c in use_cols if c in raw}
         if 'organization_id' in dst_cols:
             payload['organization_id'] = org_id
+        _coerce_row_for_dst(payload, bool_cols)
         dst_sess.execute(insert_sql, payload)
 
     return len(rows)
