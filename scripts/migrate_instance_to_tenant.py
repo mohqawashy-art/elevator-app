@@ -54,11 +54,11 @@ COPY_ORDER: tuple[str, ...] = (
     'visit_technicians',
     'faults',
     'fault_technicians',
+    'parts_billing',
     'revenues',
     'expenses',
     'invoices',
     'stock_movements',
-    'parts_billing',
     'purchase_orders',
     'purchase_order_lines',
     'elevator_estimates',
@@ -419,10 +419,16 @@ def migrate_instance(
                 dst_sess, slug=slug, name=name, admin_email=admin_email,
             )
 
-        for table in COPY_ORDER:
-            n = _copy_table(src_sess, dst_sess, table, org_id, dry_run=False)
-            if n:
-                counts[table] = n
+        if is_pg:
+            dst_sess.execute(text("SET session_replication_role = 'replica'"))
+        try:
+            for table in COPY_ORDER:
+                n = _copy_table(src_sess, dst_sess, table, org_id, dry_run=False)
+                if n:
+                    counts[table] = n
+        finally:
+            if is_pg:
+                dst_sess.execute(text("SET session_replication_role = 'origin'"))
 
         if 'app_live_state' in inspect(src_engine).get_table_names():
             rows = src_sess.execute(text('SELECT id, revision FROM app_live_state')).mappings().all()

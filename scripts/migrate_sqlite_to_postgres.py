@@ -39,11 +39,11 @@ COPY_ORDER = [
     'visit_technicians',
     'faults',
     'fault_technicians',
+    'parts_billing',
     'revenues',
     'expenses',
     'invoices',
     'stock_movements',
-    'parts_billing',
     'purchase_orders',
     'purchase_order_lines',
     'elevator_estimates',
@@ -81,6 +81,35 @@ def _copy_table(src_sess, dst_sess, table: str) -> int:
 
 
 def main() -> int:
+    print('Note: prefer scripts/migrate_instance_to_tenant.py for multi-tenant cutover (week 8).')
+    slug = os.environ.get('MIGRATE_TENANT_SLUG', 'default')
+    name = os.environ.get('MIGRATE_TENANT_NAME', 'LiftCore')
+    sqlite_path = (os.environ.get('SQLITE_SOURCE') or os.environ.get('SQLITE_PATH') or '').strip()
+    pg_url = (os.environ.get('DATABASE_URL') or '').strip()
+    if not sqlite_path or not Path(sqlite_path).is_file():
+        print('ERROR: SQLITE_SOURCE must point to an existing .db file', file=sys.stderr)
+        return 1
+    if not pg_url.startswith(('postgresql://', 'postgres://')):
+        print('ERROR: DATABASE_URL must be PostgreSQL', file=sys.stderr)
+        return 1
+
+    from scripts.migrate_instance_to_tenant import migrate_instance
+
+    uploads = os.environ.get('UPLOADS_SOURCE', '').strip() or None
+    report = migrate_instance(
+        sqlite_path=sqlite_path,
+        slug=slug,
+        name=name,
+        target_url=pg_url,
+        uploads_source=uploads,
+        dry_run=False,
+        force=os.environ.get('MIGRATE_FORCE', '').strip().lower() in ('1', 'true', 'yes'),
+    )
+    print('Done.', report['total_rows'], 'rows, slug=', report['slug'])
+    return 0
+
+
+def _main_legacy() -> int:
     sqlite_path = (os.environ.get('SQLITE_SOURCE') or os.environ.get('SQLITE_PATH') or '').strip()
     pg_url = (os.environ.get('DATABASE_URL') or '').strip()
     if not sqlite_path or not Path(sqlite_path).is_file():
