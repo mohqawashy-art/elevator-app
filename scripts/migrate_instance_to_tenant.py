@@ -55,9 +55,9 @@ COPY_ORDER: tuple[str, ...] = (
     'faults',
     'fault_technicians',
     'parts_billing',
+    'invoices',
     'revenues',
     'expenses',
-    'invoices',
     'stock_movements',
     'purchase_orders',
     'purchase_order_lines',
@@ -87,6 +87,11 @@ PATH_COLUMNS: tuple[tuple[str, str], ...] = (
 )
 
 SLUG_ALIASES = {'app': 'default', 'liftcore': 'default'}
+
+# أعمدة FK تُؤجَّل — تُملأ بعد إدراج الصفوف المرتبطة (بدون صلاحيات superuser)
+DEFER_NULL_ON_INSERT: dict[str, frozenset[str]] = {
+    'invoices': frozenset({'revenue_id', 'parent_invoice_id'}),
+}
 
 
 def _sqlite_url(path: str) -> str:
@@ -224,6 +229,28 @@ def _delete_org_data(sess, org_id: int) -> None:
         )
 
 
+def _restore_deferred_fks(src_sess, dst_sess, org_id: int) -> None:
+    for table, cols in DEFER_NULL_ON_INSERT.items():
+        if table not in inspect(src_sess.bind).get_table_names():
+            continue
+        if table not in inspect(dst_sess.bind).get_table_names():
+            continue
+        col_list = ', '.join(sorted(cols))
+        rows = src_sess.execute(text(f'SELECT id, {col_list} FROM {table}')).mappings().all()
+        for raw in rows:
+            updates = {c: raw[c] for c in cols if raw.get(c) is not None}
+            if not updates:
+                continue
+            set_clause = ', '.join(f'{c} = :{c}' for c in updates)
+            dst_sess.execute(
+                text(
+                    f'UPDATE {table} SET {set_clause} '
+                    f'WHERE id = :id AND organization_id = :oid'
+                ),
+                {**updates, 'id': raw['id'], 'oid': org_id},
+            )
+
+
 def _copy_table(
     src_sess,
     dst_sess,
@@ -255,11 +282,15 @@ def _copy_table(
     placeholders = ', '.join(f':{c}' for c in use_cols)
     insert_sql = text(f'INSERT INTO {table} ({col_list}) VALUES ({placeholders})')
     bool_cols = _boolean_columns(dst_sess.bind, table)
+    defer_null = DEFER_NULL_ON_INSERT.get(table, frozenset())
 
     for raw in rows:
         payload = {c: raw.get(c) for c in use_cols if c in raw}
         if 'organization_id' in dst_cols:
             payload['organization_id'] = org_id
+        for col in defer_null:
+            if col in payload:
+                payload[col] = None
         _coerce_row_for_dst(payload, bool_cols)
         dst_sess.execute(insert_sql, payload)
 
@@ -419,16 +450,12 @@ def migrate_instance(
                 dst_sess, slug=slug, name=name, admin_email=admin_email,
             )
 
-        if is_pg:
-            dst_sess.execute(text("SET session_replication_role = 'replica'"))
-        try:
-            for table in COPY_ORDER:
-                n = _copy_table(src_sess, dst_sess, table, org_id, dry_run=False)
-                if n:
-                    counts[table] = n
-        finally:
-            if is_pg:
-                dst_sess.execute(text("SET session_replication_role = 'origin'"))
+        for table in COPY_ORDER:
+            n = _copy_table(src_sess, dst_sess, table, org_id, dry_run=False)
+            if n:
+                counts[table] = n
+
+        _restore_deferred_fks(src_sess, dst_sess, org_id)
 
         if 'app_live_state' in inspect(src_engine).get_table_names():
             rows = src_sess.execute(text('SELECT id, revision FROM app_live_state')).mappings().all()
