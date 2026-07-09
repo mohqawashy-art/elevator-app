@@ -2105,11 +2105,38 @@ def operator_onboarding_resend(invite_id):
     notice, ntype = mail_result_message(mail_result, to_email=to_email)
     session['op_notice'] = notice
     session['op_notice_type'] = ntype
-    return redirect(url_for('operator_onboarding'))
+    return redirect(url_for('operator_onboarding_detail', invite_id=invite_id))
+
+
+@app.route('/operator/onboarding/<int:invite_id>')
+def operator_onboarding_detail(invite_id):
+    from models import OnboardingInvite
+    from operator_onboarding import PLANS, invite_public_url, is_platform_operator
+
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+    if not is_platform_operator(user):
+        abort(404)
+    inv = db.session.get(OnboardingInvite, invite_id)
+    if not inv:
+        abort(404)
+    return render_template(
+        'operator_onboarding_detail.html',
+        inv=inv,
+        plans=PLANS,
+        invite_url=invite_public_url(inv.token),
+        notice=session.pop('op_notice', None),
+        notice_type=session.pop('op_notice_type', None),
+        issued_password=session.pop('op_issued_password', None),
+        issued_to=session.pop('op_issued_to', None),
+        current_user=user,
+    )
 
 
 @app.route('/operator/onboarding/<int:invite_id>/activate', methods=['POST'])
 def operator_onboarding_activate(invite_id):
+    from liftcore_mail import mail_result_message, send_onboarding_activated_email
     from liftcore_security import password_policy_error
     from models import OnboardingInvite
     from operator_onboarding import activate_invite
@@ -2128,7 +2155,7 @@ def operator_onboarding_activate(invite_id):
     if pwd_err:
         session['op_notice'] = pwd_err
         session['op_notice_type'] = 'warn'
-        return redirect(url_for('operator_onboarding'))
+        return redirect(url_for('operator_onboarding_detail', invite_id=invite_id))
 
     result = activate_invite(
         inv,
@@ -2137,45 +2164,107 @@ def operator_onboarding_activate(invite_id):
         password=password,
         password_hash=hash_password(password),
     )
-    if result.get('ok'):
-        session['op_activated'] = {
-            'login_url': result['login_url'],
-            'username': result['username'],
-            'password': result['password'],
-            'plan': result['plan'],
-        }
-        session['op_notice'] = f"تم تفعيل {result['slug']}."
-        session['op_notice_type'] = 'ok'
-        try:
-            from audit_log import log_audit
-            from liftcore_mail import mail_result_message, send_onboarding_activated_email
-
-            log_audit(
-                'onboarding_invite_activated',
-                organization_id=result['organization_id'],
-                details={'slug': result['slug'], 'plan': result['plan']},
-            )
-            to_email = inv.admin_email or inv.contact_email
-            if to_email:
-                mail_result = send_onboarding_activated_email(
-                    to_email=to_email,
-                    company_name=inv.company_name or result['slug'],
-                    admin_name=inv.admin_name or inv.contact_name or '',
-                    slug=result['slug'],
-                    username=result['username'],
-                    password=result['password'],
-                    login_url=result['login_url'],
-                    plan=result['plan'],
-                )
-                notice, ntype = mail_result_message(mail_result, to_email=to_email)
-                session['op_notice'] = f"تم تفعيل {result['slug']}. {notice}"
-                session['op_notice_type'] = ntype
-        except Exception:
-            app.logger.exception('activate invite follow-up failed')
-    else:
+    if not result.get('ok'):
         session['op_notice'] = ' — '.join(result.get('errors') or ['فشل التفعيل.'])
         session['op_notice_type'] = 'warn'
-    return redirect(url_for('operator_onboarding'))
+        return redirect(url_for('operator_onboarding_detail', invite_id=invite_id))
+
+    inv = db.session.get(OnboardingInvite, invite_id)
+    session['op_activated'] = {
+        'login_url': result['login_url'],
+        'username': result['username'],
+        'password': result['password'],
+        'plan': result['plan'],
+    }
+    session['op_issued_password'] = result['password']
+    to_email = (inv.admin_email or inv.contact_email or '').strip() if inv else ''
+    session['op_issued_to'] = to_email
+    session['op_notice'] = f"تم تفعيل {result['slug']}."
+    session['op_notice_type'] = 'ok'
+
+    try:
+        from audit_log import log_audit
+
+        log_audit(
+            'onboarding_invite_activated',
+            organization_id=result['organization_id'],
+            details={'slug': result['slug'], 'plan': result['plan']},
+        )
+    except Exception:
+        app.logger.exception('activate invite audit failed')
+
+    if to_email and inv:
+        try:
+            mail_result = send_onboarding_activated_email(
+                to_email=to_email,
+                company_name=inv.company_name or result['slug'],
+                admin_name=inv.admin_name or inv.contact_name or '',
+                slug=result['slug'],
+                username=result['username'],
+                password=result['password'],
+                login_url=result['login_url'],
+                plan=result['plan'],
+            )
+            if mail_result.get('ok'):
+                inv.credentials_email_sent_at = datetime.utcnow()
+                inv.credentials_email_error = None
+            else:
+                inv.credentials_email_error = (
+                    mail_result.get('detail') or mail_result.get('reason') or 'failed'
+                )[:300]
+            db.session.commit()
+            notice, ntype = mail_result_message(mail_result, to_email=to_email)
+            session['op_notice'] = f"تم تفعيل {result['slug']}. {notice}"
+            session['op_notice_type'] = ntype
+        except Exception:
+            app.logger.exception('activate invite email failed')
+            session['op_notice'] = (
+                f"تم تفعيل {result['slug']}، لكن تعذّر إرسال البريد. "
+                'افتح التفاصيل وأعد إرسال بيانات الدخول.'
+            )
+            session['op_notice_type'] = 'warn'
+    return redirect(url_for('operator_onboarding_detail', invite_id=invite_id))
+
+
+@app.route('/operator/onboarding/<int:invite_id>/resend-credentials', methods=['POST'])
+def operator_onboarding_resend_credentials(invite_id):
+    from liftcore_mail import mail_result_message
+    from liftcore_security import password_policy_error
+    from models import OnboardingInvite
+    from operator_onboarding import reset_and_email_credentials
+
+    user = _require_platform_operator()
+    if not user:
+        abort(404)
+    inv = db.session.get(OnboardingInvite, invite_id)
+    if not inv:
+        abort(404)
+
+    password = (request.form.get('password') or '').strip()
+    if not password:
+        password = generate_password(14)
+    pwd_err = password_policy_error(password)
+    if pwd_err:
+        session['op_notice'] = pwd_err
+        session['op_notice_type'] = 'warn'
+        return redirect(url_for('operator_onboarding_detail', invite_id=invite_id))
+
+    result = reset_and_email_credentials(
+        inv,
+        password=password,
+        password_hash=hash_password(password),
+    )
+    if not result.get('ok'):
+        session['op_notice'] = ' — '.join(result.get('errors') or ['فشل إرسال بيانات الدخول.'])
+        session['op_notice_type'] = 'warn'
+        return redirect(url_for('operator_onboarding_detail', invite_id=invite_id))
+
+    session['op_issued_password'] = result['password']
+    session['op_issued_to'] = result.get('to_email')
+    notice, ntype = mail_result_message(result.get('mail') or {}, to_email=result.get('to_email') or '')
+    session['op_notice'] = notice
+    session['op_notice_type'] = ntype
+    return redirect(url_for('operator_onboarding_detail', invite_id=invite_id))
 
 
 @app.route('/operator/onboarding/<int:invite_id>/cancel', methods=['POST'])

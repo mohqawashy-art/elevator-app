@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 from flask import g
 
-from models import OnboardingInvite, Organization, Settings, ZatcaCredentials, db
+from models import OnboardingInvite, Organization, Settings, User, ZatcaCredentials, db
 from tenant_signup import (
     normalize_slug,
     validate_admin_name,
@@ -242,6 +242,8 @@ def activate_invite(
     inv.organization_id = oid
     inv.plan = use_plan
     inv.preferred_slug = use_slug
+    inv.admin_username = result['username']
+    inv.login_url = result['login_url']
     try:
         db.session.commit()
     except IntegrityError:
@@ -256,6 +258,72 @@ def activate_invite(
         'login_url': result['login_url'],
         'plan': use_plan,
         'password': password,
+        'invite_id': inv.id,
+    }
+
+
+def reset_and_email_credentials(inv: OnboardingInvite, *, password: str, password_hash: str) -> dict:
+    """يولّد/يضبط كلمة مرور جديدة ويرسل بيانات الدخول للعميل."""
+    from liftcore_mail import send_onboarding_activated_email
+
+    if inv.status != 'activated' or not inv.organization_id:
+        return {'ok': False, 'errors': ['الدعوة غير مفعّلة.']}
+    to_email = (inv.admin_email or inv.contact_email or '').strip()
+    if not to_email:
+        return {'ok': False, 'errors': ['لا يوجد بريد لإرسال بيانات الدخول.']}
+    if not password_hash:
+        return {'ok': False, 'errors': ['كلمة المرور مطلوبة.']}
+
+    username = (inv.admin_username or inv.preferred_slug or '').strip()
+    prev = getattr(g, '_resolving_default_org', False)
+    g._resolving_default_org = True
+    try:
+        user = User.query.filter_by(
+            organization_id=inv.organization_id,
+            role='admin',
+        ).order_by(User.id.asc()).first()
+        if username:
+            by_name = User.query.filter_by(
+                organization_id=inv.organization_id,
+                username=username,
+            ).first()
+            if by_name:
+                user = by_name
+        if not user:
+            return {'ok': False, 'errors': ['لم يُعثر على مستخدم المسؤول.']}
+        user.password_hash = password_hash
+        inv.admin_username = user.username
+        if not inv.login_url:
+            slug = inv.preferred_slug or ''
+            inv.login_url = f'https://{slug}.liftcoreapp.com/login' if slug else None
+        db.session.commit()
+    finally:
+        g._resolving_default_org = prev
+
+    mail_result = send_onboarding_activated_email(
+        to_email=to_email,
+        company_name=inv.company_name or inv.preferred_slug or '',
+        admin_name=inv.admin_name or inv.contact_name or '',
+        slug=inv.preferred_slug or '',
+        username=inv.admin_username or user.username,
+        password=password,
+        login_url=inv.login_url or '',
+        plan=inv.plan or 'basic',
+    )
+    if mail_result.get('ok'):
+        inv.credentials_email_sent_at = datetime.utcnow()
+        inv.credentials_email_error = None
+    else:
+        detail = mail_result.get('detail') or mail_result.get('reason') or 'failed'
+        inv.credentials_email_error = str(detail)[:300]
+    db.session.commit()
+    return {
+        'ok': True,
+        'mail': mail_result,
+        'username': inv.admin_username,
+        'password': password,
+        'login_url': inv.login_url,
+        'to_email': to_email,
     }
 
 

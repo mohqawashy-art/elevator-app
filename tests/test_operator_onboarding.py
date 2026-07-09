@@ -187,3 +187,20 @@ def test_invite_email_reports_missing_api_key(ob_client, monkeypatch):
     )
     assert result['ok'] is False
     assert result['reason'] == 'mail_not_configured'
+
+
+def test_operator_detail_page(ob_client):
+    with app.app_context():
+        inv = create_invite(
+            plan='pro',
+            contact_email='d@test.com',
+            contact_name='تفاصيل',
+            suggested_slug='detailco',
+        )['invite']
+        invite_id = inv.id
+    _login_ops(ob_client)
+    r = ob_client.get(f'/operator/onboarding/{invite_id}', base_url=APP_URL)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'تفاصيل' in body or 'detailco' in body
+    assert 'ملخص الحساب' in body

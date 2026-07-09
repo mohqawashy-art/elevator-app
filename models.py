@@ -77,6 +77,11 @@ class OnboardingInvite(db.Model):
     admin_email = db.Column(db.String(100))
     admin_phone = db.Column(db.String(30))
     preferred_slug = db.Column(db.String(63))
+    # بعد التفعيل — مرجع دائم للمشغّل
+    admin_username = db.Column(db.String(50))
+    login_url = db.Column(db.String(300))
+    credentials_email_sent_at = db.Column(db.DateTime)
+    credentials_email_error = db.Column(db.String(300))
 
     def __repr__(self):
         return f'<OnboardingInvite {self.token[:8]}… {self.status}>'

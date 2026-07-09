@@ -132,60 +132,42 @@ input,textarea,select{width:100%;padding:10px 12px;background:var(--bg3);border:
           <th>الحالة</th>
           <th>الباقة</th>
           <th>الشركة / المسؤول</th>
-          <th>الرابط</th>
+          <th>التواريخ</th>
           <th>إجراء</th>
         </tr>
       </thead>
       <tbody>
         {% for inv in invites %}
         <tr>
-          <td>{{ inv.id }}</td>
+          <td><a class="link" href="{{ url_for('operator_onboarding_detail', invite_id=inv.id) }}">#{{ inv.id }}</a></td>
           <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
           <td>{{ inv.plan }}</td>
           <td>
-            <strong>{{ inv.company_name or inv.contact_name or '—' }}</strong>
+            <strong><a class="link" href="{{ url_for('operator_onboarding_detail', invite_id=inv.id) }}">{{ inv.company_name or inv.contact_name or '—' }}</a></strong>
             <div class="detail">
               {% if inv.admin_email or inv.contact_email %}{{ inv.admin_email or inv.contact_email }}<br>{% endif %}
-              {% if inv.cr_number %}س.ت: {{ inv.cr_number }} · {% endif %}
-              {% if inv.vat_number %}ضريبي: {{ inv.vat_number }}{% endif %}
-              {% if inv.preferred_slug or inv.suggested_slug %}<br>slug: {{ inv.preferred_slug or inv.suggested_slug }}{% endif %}
-              {% if inv.notes %}<br>{{ inv.notes }}{% endif %}
+              {% if inv.preferred_slug or inv.suggested_slug %}slug: {{ inv.preferred_slug or inv.suggested_slug }}{% endif %}
+              {% if inv.admin_username %}<br>user: {{ inv.admin_username }}{% endif %}
             </div>
           </td>
-          <td>
-            {% if inv.status in ('pending', 'submitted') %}
-            <a class="link" href="{{ invite_url(inv.token) }}" target="_blank" rel="noopener">{{ invite_url(inv.token) }}</a>
-            {% else %}—{% endif %}
+          <td class="detail">
+            دعوة: {{ inv.created_at }}<br>
+            {% if inv.submitted_at %}تعبئة: {{ inv.submitted_at }}<br>{% endif %}
+            {% if inv.activated_at %}تفعيل: {{ inv.activated_at }}{% endif %}
           </td>
           <td>
-            {% if inv.status == 'submitted' or (inv.status == 'pending' and inv.company_name) %}
-            <form method="post" action="{{ url_for('operator_onboarding_activate', invite_id=inv.id) }}" style="margin-bottom:8px">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <label>المعرّف النهائي</label>
-              <input name="slug" value="{{ inv.preferred_slug or inv.suggested_slug or '' }}" required maxlength="63" style="margin-bottom:6px">
-              <label>الباقة</label>
-              <select name="plan" style="margin-bottom:6px">
-                {% for p in plans %}
-                <option value="{{ p }}" {% if p == inv.plan %}selected{% endif %}>{{ p }}</option>
-                {% endfor %}
-              </select>
-              <label>كلمة مرور المسؤول (اتركها فارغة للتوليد)</label>
-              <input name="password" type="text" maxlength="64" style="margin-bottom:6px" autocomplete="off">
-              <button type="submit" class="btn btn-primary btn-sm">تفعيل الحساب</button>
-            </form>
-            {% endif %}
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('operator_onboarding_detail', invite_id=inv.id) }}">التفاصيل</a>
             {% if inv.status in ('pending', 'submitted') %}
-            <form method="post" action="{{ url_for('operator_onboarding_resend', invite_id=inv.id) }}" style="margin-bottom:8px">
+            <form method="post" action="{{ url_for('operator_onboarding_resend', invite_id=inv.id) }}" style="display:inline-block;margin-top:6px">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-secondary btn-sm">إعادة إرسال البريد</button>
-            </form>
-            <form method="post" action="{{ url_for('operator_onboarding_cancel', invite_id=inv.id) }}" onsubmit="return confirm('إلغاء هذه الدعوة؟')">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-danger btn-sm">إلغاء</button>
+              <button type="submit" class="btn btn-secondary btn-sm">إعادة إرسال الرابط</button>
             </form>
             {% endif %}
-            {% if inv.status == 'activated' and inv.organization_id %}
-            <div class="detail">org #{{ inv.organization_id }}</div>
+            {% if inv.status == 'activated' %}
+            <form method="post" action="{{ url_for('operator_onboarding_resend_credentials', invite_id=inv.id) }}" style="margin-top:6px" onsubmit="return confirm('توليد كلمة مرور جديدة وإرسالها للعميل؟')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-primary btn-sm">إرسال بيانات الدخول</button>
+            </form>
             {% endif %}
           </td>
         </tr>
