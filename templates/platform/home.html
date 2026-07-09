@@ -1,0 +1,80 @@
+{% extends 'platform/base.html' %}
+{% block title %}لوحة المنصة — LiftCore{% endblock %}
+{% block content %}
+<div class="h1">لوحة إدارة المنصة</div>
+<p class="sub">إدارة عملاء LiftCore بشكل منفصل عن برنامج التشغيل اليومي للشركات.</p>
+
+<div class="stats">
+  <div class="stat"><div class="n">{{ stats.total }}</div><div class="l">إجمالي المؤسسات</div></div>
+  <div class="stat"><div class="n">{{ stats.active }}</div><div class="l">نشطة</div></div>
+  <div class="stat"><div class="n">{{ stats.trial }}</div><div class="l">تجريبية</div></div>
+  <div class="stat"><div class="n">{{ stats.suspended }}</div><div class="l">موقوفة</div></div>
+  <div class="stat"><div class="n">{{ stats.invites_open }}</div><div class="l">دعوات مفتوحة</div></div>
+</div>
+
+<div class="card">
+  <div class="section">أحدث المؤسسات</div>
+  {% if not orgs %}
+  <p class="muted">لا توجد مؤسسات بعد.</p>
+  {% else %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>المؤسسة</th>
+        <th>الحالة</th>
+        <th>الباقة</th>
+        <th>البريد</th>
+        <th>تاريخ الإنشاء</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orgs %}
+      <tr>
+        <td>{{ o.id }}</td>
+        <td>
+          <strong>{{ o.name }}</strong><br>
+          <span class="muted"><code>{{ o.slug }}</code></span>
+        </td>
+        <td><span class="badge badge-{{ o.status }}">{{ o.status }}</span></td>
+        <td>{{ o.plan }}</td>
+        <td>{{ o.admin_email or '—' }}</td>
+        <td class="muted">{{ o.created_at }}</td>
+        <td><a class="btn btn-secondary btn-sm" href="{{ url_for('platform_org_detail', org_id=o.id) }}">إدارة</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <div class="actions">
+    <a class="btn btn-primary" href="{{ url_for('platform_orgs') }}">كل المؤسسات</a>
+    <a class="btn btn-secondary" href="{{ url_for('operator_onboarding') }}">إنشاء دعوة عميل</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section">أحدث الدعوات</div>
+  {% if not invites %}
+  <p class="muted">لا توجد دعوات.</p>
+  {% else %}
+  <table class="table">
+    <thead>
+      <tr><th>#</th><th>الحالة</th><th>الشركة</th><th>الباقة</th><th>البريد</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for inv in invites[:10] %}
+      <tr>
+        <td>{{ inv.id }}</td>
+        <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
+        <td>{{ inv.company_name or inv.contact_name or '—' }}</td>
+        <td>{{ inv.plan }}</td>
+        <td>{{ inv.admin_email or inv.contact_email or '—' }}</td>
+        <td><a class="btn btn-secondary btn-sm" href="{{ url_for('operator_onboarding_detail', invite_id=inv.id) }}">تفاصيل</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

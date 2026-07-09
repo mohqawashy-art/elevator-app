@@ -1,0 +1,139 @@
+{% extends 'platform/base.html' %}
+{% block title %}{{ org.name }} — إدارة{% endblock %}
+{% block content %}
+<div class="h1">{{ org.name }}</div>
+<p class="sub">
+  <code>{{ org.slug }}</code>
+  · <span class="badge badge-{{ org.status }}">{{ org.status }}</span>
+  · الباقة: <strong>{{ org.plan }}</strong>
+</p>
+
+{% if issued_password %}
+<div class="flash flash-ok">
+  كلمة المرور الجديدة: <code>{{ issued_password }}</code>
+  {% if issued_to %}<br>أُرسلت إلى: {{ issued_to }}{% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="section">ملخص</div>
+  <div class="grid">
+    <div class="kv"><div class="k">رابط الدخول</div><div class="v"><a href="{{ login_url }}" target="_blank" rel="noopener">{{ login_url }}</a></div></div>
+    <div class="kv"><div class="k">بريد المسؤول</div><div class="v">{{ org.admin_email or '—' }}</div></div>
+    <div class="kv"><div class="k">تاريخ الإنشاء</div><div class="v">{{ org.created_at }}</div></div>
+    <div class="kv"><div class="k">نهاية التجربة</div><div class="v">{{ org.trial_ends_at or '—' }}</div></div>
+    <div class="kv"><div class="k">تاريخ الإيقاف</div><div class="v">{{ org.suspended_at or '—' }}</div></div>
+    <div class="kv"><div class="k">ملاحظات</div><div class="v">{{ org.notes or '—' }}</div></div>
+  </div>
+</div>
+
+{% if settings %}
+<div class="card">
+  <div class="section">بيانات الشركة (من الإعدادات)</div>
+  <div class="grid">
+    <div class="kv"><div class="k">الاسم</div><div class="v">{{ settings.company_name or '—' }}</div></div>
+    <div class="kv"><div class="k">الاسم إنجليزي</div><div class="v">{{ settings.company_name_en or '—' }}</div></div>
+    <div class="kv"><div class="k">س.ت</div><div class="v">{{ settings.cr_number or '—' }}</div></div>
+    <div class="kv"><div class="k">ضريبي</div><div class="v">{{ settings.vat_number or '—' }}</div></div>
+    <div class="kv"><div class="k">هاتف</div><div class="v">{{ settings.phone or '—' }}</div></div>
+    <div class="kv"><div class="k">مدينة</div><div class="v">{{ settings.city or '—' }}</div></div>
+    <div class="kv full"><div class="k">عنوان</div><div class="v">{{ settings.address or '—' }}</div></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="section">التحكم</div>
+  <form method="post" action="{{ url_for('platform_org_update', org_id=org.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid">
+      <div>
+        <label>اسم المؤسسة</label>
+        <input name="name" value="{{ org.name }}">
+      </div>
+      <div>
+        <label>بريد المسؤول</label>
+        <input name="admin_email" value="{{ org.admin_email or '' }}">
+      </div>
+      <div>
+        <label>الباقة</label>
+        <select name="plan">
+          {% for p in plans %}
+          <option value="{{ p }}" {% if p == org.plan %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>الحالة</label>
+        <select name="status">
+          {% for s in ['active','trial','suspended'] %}
+          <option value="{{ s }}" {% if s == org.status %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="full">
+        <label>ملاحظات داخلية</label>
+        <textarea name="notes" rows="3">{{ org.notes or '' }}</textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">حفظ التغييرات</button>
+      {% if org.status != 'suspended' %}
+      <button class="btn btn-danger" type="submit" name="status" value="suspended" onclick="return confirm('إيقاف هذه المؤسسة؟')">إيقاف الحساب</button>
+      {% else %}
+      <button class="btn btn-secondary" type="submit" name="status" value="active">إعادة التفعيل</button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="section">المستخدمون</div>
+  <table class="table">
+    <thead><tr><th>#</th><th>المستخدم</th><th>الدور</th><th>البريد</th><th>نشط</th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td><code>{{ u.username }}</code> · {{ u.full_name or '' }}</td>
+        <td>{{ u.role }}</td>
+        <td>{{ u.email or '—' }}</td>
+        <td>{{ 'نعم' if u.is_active else 'لا' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">لا مستخدمين.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if admin %}
+  <form method="post" action="{{ url_for('platform_org_reset_password', org_id=org.id) }}" class="actions" onsubmit="return confirm('توليد كلمة مرور جديدة وإرسالها؟')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit">توليد وإرسال بيانات الدخول للمسؤول</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if invites %}
+<div class="card">
+  <div class="section">دعوات مرتبطة</div>
+  <table class="table">
+    <thead><tr><th>#</th><th>الحالة</th><th>الباقة</th><th>تفعيل</th><th></th></tr></thead>
+    <tbody>
+      {% for inv in invites %}
+      <tr>
+        <td>{{ inv.id }}</td>
+        <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
+        <td>{{ inv.plan }}</td>
+        <td class="muted">{{ inv.activated_at or '—' }}</td>
+        <td><a class="btn btn-secondary btn-sm" href="{{ url_for('operator_onboarding_detail', invite_id=inv.id) }}">تفاصيل الدعوة</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="actions">
+  <a class="btn btn-secondary" href="{{ url_for('platform_orgs') }}">رجوع</a>
+</div>
+{% endblock %}

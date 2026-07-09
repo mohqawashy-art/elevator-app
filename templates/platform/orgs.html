@@ -1,0 +1,54 @@
+{% extends 'platform/base.html' %}
+{% block title %}المؤسسات — LiftCore Platform{% endblock %}
+{% block content %}
+<div class="h1">المؤسسات</div>
+<p class="sub">كل عملاء المنصة — بحث، فلترة، وإدارة كاملة.</p>
+
+<form class="toolbar" method="get">
+  <div>
+    <label>بحث</label>
+    <input name="q" value="{{ q }}" placeholder="اسم / slug / بريد">
+  </div>
+  <div>
+    <label>الحالة</label>
+    <select name="status">
+      <option value="">الكل</option>
+      {% for s in ['active','trial','suspended'] %}
+      <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn btn-primary" type="submit">تصفية</button>
+</form>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>المؤسسة</th>
+        <th>الحالة</th>
+        <th>الباقة</th>
+        <th>البريد</th>
+        <th>إنشاء</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orgs %}
+      <tr>
+        <td>{{ o.id }}</td>
+        <td><strong>{{ o.name }}</strong><br><code>{{ o.slug }}</code></td>
+        <td><span class="badge badge-{{ o.status }}">{{ o.status }}</span></td>
+        <td>{{ o.plan }}</td>
+        <td>{{ o.admin_email or '—' }}</td>
+        <td class="muted">{{ o.created_at }}</td>
+        <td><a class="btn btn-secondary btn-sm" href="{{ url_for('platform_org_detail', org_id=o.id) }}">إدارة</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">لا نتائج.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

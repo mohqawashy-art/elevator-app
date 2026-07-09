@@ -28,13 +28,9 @@ def operator_org_slugs() -> set[str]:
 
 def is_platform_operator(user) -> bool:
     """مشغّل المنصة = admin على مؤسسة default (أو قائمة LIFTCORE_OPERATOR_ORGS)."""
-    if not user or getattr(user, 'role', None) != 'admin':
-        return False
-    org = getattr(g, 'organization', None)
-    slug = getattr(org, 'slug', None) if org else None
-    if not slug:
-        return False
-    return slug.lower() in operator_org_slugs()
+    from platform_admin import is_platform_operator as _op
+
+    return _op(user)
 
 
 def _new_token() -> str:

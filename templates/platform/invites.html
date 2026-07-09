@@ -1,0 +1,35 @@
+{% extends 'platform/base.html' %}
+{% block title %}الدعوات — LiftCore Platform{% endblock %}
+{% block content %}
+<div class="h1">دعوات الانضمام</div>
+<p class="sub">متابعة طلبات العملاء قبل وبعد التفعيل.</p>
+<div class="actions" style="margin-bottom:14px">
+  <a class="btn btn-primary" href="{{ url_for('operator_onboarding') }}">إنشاء دعوة جديدة</a>
+</div>
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr><th>#</th><th>الحالة</th><th>الشركة</th><th>الباقة</th><th>البريد</th><th>تواريخ</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for inv in invites %}
+      <tr>
+        <td>{{ inv.id }}</td>
+        <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
+        <td>{{ inv.company_name or inv.contact_name or '—' }}<br><span class="muted">{{ inv.preferred_slug or inv.suggested_slug or '' }}</span></td>
+        <td>{{ inv.plan }}</td>
+        <td>{{ inv.admin_email or inv.contact_email or '—' }}</td>
+        <td class="muted">
+          دعوة: {{ inv.created_at }}<br>
+          {% if inv.submitted_at %}تعبئة: {{ inv.submitted_at }}<br>{% endif %}
+          {% if inv.activated_at %}تفعيل: {{ inv.activated_at }}{% endif %}
+        </td>
+        <td><a class="btn btn-secondary btn-sm" href="{{ url_for('operator_onboarding_detail', invite_id=inv.id) }}">تفاصيل</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">لا دعوات.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

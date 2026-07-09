@@ -426,7 +426,8 @@ def enforce_auth():
         g.user = user
         oid = getattr(g, 'organization_id', None)
         user_oid = getattr(user, 'organization_id', None)
-        if oid and user_oid is not None and user_oid != oid:
+        # لوحة المنصة (admin.*) بدون tenant — لا تفرض تطابق organization_id
+        if oid and user_oid is not None and user_oid != oid and not getattr(g, 'platform_admin_host', False):
             session.clear()
             if request.path.startswith('/api/'):
                 return jsonify({'error': 'غير مصرح لهذا الحساب'}), 403
@@ -437,6 +438,16 @@ def enforce_auth():
         pwd_resp = _must_change_password_response(user)
         if pwd_resp:
             return pwd_resp
+        # مسارات لوحة المنصة — تخطّي RBAC الخاص بتطبيق العميل
+        if getattr(g, 'platform_admin_host', False) and (path.startswith('/platform') or path.startswith('/operator')):
+            from liftcore_security import validate_csrf
+            if not app.config.get('TESTING'):
+                validate_csrf(
+                    method=request.method,
+                    endpoint=request.endpoint,
+                    path=request.path or '',
+                )
+            return None
         from liftcore_rbac import check_rbac
         lang = resolve_user_language(user)
         s = None
@@ -1526,6 +1537,13 @@ def api_live_sync():
 
 @app.route('/')
 def index():
+    from platform_admin import is_admin_host, is_platform_operator
+
+    if is_admin_host():
+        user = current_user()
+        if user and is_platform_operator(user):
+            return redirect(url_for('platform_home'))
+        return redirect(url_for('login'))
     if current_user():
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
@@ -1542,9 +1560,19 @@ def _find_login_user(login_id):
 
 
 def _is_platform_login_host() -> bool:
+    from platform_admin import is_admin_host
     from tenant_signup import is_signup_host
 
-    return is_signup_host()
+    return is_signup_host() or is_admin_host()
+
+
+def _require_platform_console_user():
+    from platform_admin import is_platform_operator
+
+    user = require_login()
+    if not user or not is_platform_operator(user):
+        return None
+    return user
 
 
 def _find_org_for_portal(org_key: str):
@@ -1607,7 +1635,7 @@ def _load_login_handoff_token(token: str, *, max_age: int = 180) -> dict | None:
     return data
 
 
-def _complete_user_login(user):
+def _complete_user_login(user, *, next_url: str | None = None):
     """ضبط الجلسة بعد تحقق كلمة المرور."""
     session.clear()
     session['user_id'] = user.id
@@ -1627,6 +1655,8 @@ def _complete_user_login(user):
     if getattr(user, 'must_change_password', False):
         session['settings_notice'] = 'يجب تغيير كلمة المرور قبل متابعة العمل.'
         return redirect(url_for('settings', tab='account', force_password=1))
+    if next_url and str(next_url).startswith('/'):
+        return redirect(next_url)
     return redirect(url_for('welcome'))
 
 
@@ -1661,11 +1691,16 @@ def login():
         record_login_failure,
     )
     from models import Organization
+    from platform_admin import find_operator_user, is_admin_host, is_platform_operator
 
-    platform = _is_platform_login_host()
+    admin_console = is_admin_host()
+    platform = (not admin_console) and _is_platform_login_host()
     error = None
-    if current_user() and not platform:
-        return redirect(url_for('dashboard'))
+    if current_user():
+        if admin_console and is_platform_operator(current_user()):
+            return redirect(url_for('platform_home'))
+        if not platform and not admin_console:
+            return redirect(url_for('dashboard'))
     if request.method == 'GET':
         ensure_csrf_token()
     if request.method == 'POST':
@@ -1679,7 +1714,11 @@ def login():
 
             user = None
             org = None
-            if platform:
+            if admin_console:
+                user = find_operator_user(login_id)
+                if user and user.organization_id:
+                    org = db.session.get(Organization, user.organization_id)
+            elif platform:
                 if not org_key:
                     error = 'أدخل اسم المنشأة أو المعرّف'
                 else:
@@ -1700,8 +1739,19 @@ def login():
                     user.must_change_password = True
                 clear_login_attempts()
 
-                # من نطاق المنصة → تحويل آمن إلى subdomain المؤسسة
-                if platform and org is not None:
+                if admin_console:
+                    if not is_platform_operator(user):
+                        error = 'هذا الحساب غير مخوّل للوحة المنصة'
+                    else:
+                        from audit_log import log_audit
+                        log_audit(
+                            'login_platform_admin',
+                            user=user,
+                            organization_id=user.organization_id,
+                        )
+                        return _complete_user_login(user, next_url=url_for('platform_home'))
+
+                if not error and platform and org is not None:
                     token = _make_login_handoff_token(
                         user_id=user.id,
                         organization_id=org.id,
@@ -1716,7 +1766,8 @@ def login():
                     )
                     return redirect(dest)
 
-                return _complete_user_login(user)
+                if not error:
+                    return _complete_user_login(user)
 
             if not error:
                 record_login_failure()
@@ -1727,19 +1778,25 @@ def login():
                         'login_id': login_id[:80],
                         'org': org_key[:80] if platform else '',
                         'platform': platform,
+                        'admin_console': admin_console,
                     },
                 )
-                error = (
-                    'بيانات الدخول غير صحيحة — تحقق من المنشأة واسم المستخدم وكلمة المرور'
-                    if platform
-                    else 'اسم المستخدم أو كلمة المرور غير صحيحة'
-                )
+                if admin_console:
+                    error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
+                elif platform:
+                    error = 'بيانات الدخول غير صحيحة — تحقق من المنشأة واسم المستخدم وكلمة المرور'
+                else:
+                    error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
     return render_template(
         'login.html',
         error=error,
         platform_login=platform,
-        signup_enabled=os.environ.get('LIFTCORE_SIGNUP_ENABLED', '').strip().lower() in (
-            '1', 'true', 'yes', 'on',
+        admin_console_login=admin_console,
+        signup_enabled=(
+            False if admin_console else
+            os.environ.get('LIFTCORE_SIGNUP_ENABLED', '').strip().lower() in (
+                '1', 'true', 'yes', 'on',
+            )
         ),
     )
 
@@ -2281,6 +2338,203 @@ def operator_onboarding_cancel(invite_id):
         session['op_notice'] = 'تم إلغاء الدعوة.'
         session['op_notice_type'] = 'info'
     return redirect(url_for('operator_onboarding'))
+
+
+# =============================================
+# لوحة إدارة المنصة (admin.liftcoreapp.com)
+# =============================================
+@app.route('/platform')
+@app.route('/platform/')
+def platform_home():
+    from platform_admin import is_admin_host, list_organizations, org_stats, recent_invites
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+    return render_template(
+        'platform/home.html',
+        nav='home',
+        stats=org_stats(),
+        orgs=list_organizations(limit=12),
+        invites=recent_invites(12),
+        notice=session.pop('plat_notice', None),
+        notice_type=session.pop('plat_notice_type', None),
+    )
+
+
+@app.route('/platform/orgs')
+def platform_orgs():
+    from platform_admin import is_admin_host, list_organizations
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+    q = (request.args.get('q') or '').strip()
+    status = (request.args.get('status') or '').strip()
+    return render_template(
+        'platform/orgs.html',
+        nav='orgs',
+        orgs=list_organizations(q=q, status=status, limit=300),
+        q=q,
+        status=status,
+        notice=session.pop('plat_notice', None),
+        notice_type=session.pop('plat_notice_type', None),
+    )
+
+
+@app.route('/platform/orgs/<int:org_id>')
+def platform_org_detail(org_id):
+    from platform_admin import get_org_detail, is_admin_host
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+    detail = get_org_detail(org_id)
+    if not detail:
+        abort(404)
+    return render_template(
+        'platform/org_detail.html',
+        nav='orgs',
+        org=detail['org'],
+        settings=detail['settings'],
+        users=detail['users'],
+        admin=detail['admin'],
+        invites=detail['invites'],
+        login_url=detail['login_url'],
+        plans=detail['plans'],
+        notice=session.pop('plat_notice', None),
+        notice_type=session.pop('plat_notice_type', None),
+        issued_password=session.pop('plat_issued_password', None),
+        issued_to=session.pop('plat_issued_to', None),
+    )
+
+
+@app.route('/platform/orgs/<int:org_id>/update', methods=['POST'])
+def platform_org_update(org_id):
+    from models import Organization
+    from platform_admin import is_admin_host, update_org
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    # زر الإيقاف يرسل status=suspended كقيمة الزر
+    status = request.form.get('status')
+    result = update_org(
+        org,
+        plan=request.form.get('plan'),
+        status=status,
+        notes=request.form.get('notes'),
+        name=request.form.get('name'),
+        admin_email=request.form.get('admin_email'),
+    )
+    if result.get('ok'):
+        session['plat_notice'] = 'تم حفظ تغييرات المؤسسة.'
+        session['plat_notice_type'] = 'ok'
+        try:
+            from audit_log import log_audit
+            log_audit(
+                'platform_org_updated',
+                organization_id=org.id,
+                details={'status': org.status, 'plan': org.plan},
+            )
+        except Exception:
+            app.logger.exception('platform org audit failed')
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل الحفظ.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/reset-password', methods=['POST'])
+def platform_org_reset_password(org_id):
+    from liftcore_mail import mail_result_message, send_onboarding_activated_email
+    from liftcore_security import password_policy_error
+    from models import Organization, User
+    from platform_admin import is_admin_host, tenant_login_url
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    password = generate_password(14)
+    pwd_err = password_policy_error(password)
+    if pwd_err:
+        session['plat_notice'] = pwd_err
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+
+    prev = getattr(g, '_resolving_default_org', False)
+    g._resolving_default_org = True
+    try:
+        admin = (
+            User.query.filter_by(organization_id=org.id, role='admin', is_active=True)
+            .order_by(User.id.asc())
+            .first()
+        )
+        if not admin:
+            session['plat_notice'] = 'لا يوجد مستخدم admin لهذه المؤسسة.'
+            session['plat_notice_type'] = 'warn'
+            return redirect(url_for('platform_org_detail', org_id=org_id))
+        admin.password_hash = hash_password(password)
+        db.session.commit()
+    finally:
+        g._resolving_default_org = prev
+
+    to_email = (admin.email or org.admin_email or '').strip()
+    login_url = tenant_login_url(org.slug)
+    session['plat_issued_password'] = password
+    session['plat_issued_to'] = to_email
+    if to_email:
+        mail_result = send_onboarding_activated_email(
+            to_email=to_email,
+            company_name=org.name,
+            admin_name=admin.full_name or admin.username,
+            slug=org.slug,
+            username=admin.username,
+            password=password,
+            login_url=login_url,
+            plan=org.plan or 'basic',
+        )
+        notice, ntype = mail_result_message(mail_result, to_email=to_email)
+        session['plat_notice'] = notice
+        session['plat_notice_type'] = ntype
+    else:
+        session['plat_notice'] = 'تم توليد كلمة المرور، لكن لا يوجد بريد للإرسال.'
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/invites')
+def platform_invites():
+    from platform_admin import is_admin_host, recent_invites
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+    return render_template(
+        'platform/invites.html',
+        nav='invites',
+        invites=recent_invites(100),
+        notice=session.pop('plat_notice', None),
+        notice_type=session.pop('plat_notice_type', None),
+    )
 
 
 @app.route('/welcome')

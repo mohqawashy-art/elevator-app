@@ -10,6 +10,7 @@ from models import TenantMixin, db
 
 PLATFORM_HOSTS = frozenset({'liftcoreapp.com', 'www.liftcoreapp.com'})
 MARKETING_SLUGS = frozenset({'www', 'app', 'api', 'admin', 'staging', 'mail'})
+ADMIN_HOSTS = frozenset({'admin.liftcoreapp.com'})
 TENANT_EXEMPT_PATHS = frozenset({
     '/api/health',
     '/api/version',
@@ -168,12 +169,31 @@ def _bind_local_default_org() -> bool:
     return True
 
 
+def _bind_admin_host() -> bool:
+    """admin.liftcoreapp.com — لوحة المنصة بدون tenant."""
+    host = (request.host or '').split(':')[0].lower().rstrip('.')
+    if host not in ADMIN_HOSTS and not host.startswith('admin.'):
+        return False
+    if host.startswith('admin.') and host not in ADMIN_HOSTS:
+        # admin.localhost للاختبارات
+        if host not in ('admin.localhost', 'admin.127.0.0.1') and not host.endswith('.liftcoreapp.com'):
+            return False
+    g.organization = None
+    g.organization_id = None
+    g.platform_admin_host = True
+    return True
+
+
 def resolve_tenant():
     """يُستدعى before_request — يحدّد g.organization من الـ subdomain."""
     path = request.path or ''
+    g.platform_admin_host = False
     if path in TENANT_EXEMPT_PATHS or any(path.startswith(p) for p in TENANT_EXEMPT_PREFIXES):
         g.organization = None
         g.organization_id = None
+        return None
+
+    if _bind_admin_host():
         return None
 
     slug = _tenant_slug_from_host(request.host or '')
