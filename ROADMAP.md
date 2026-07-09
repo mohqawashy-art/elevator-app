@@ -129,7 +129,8 @@
 
 ## P3 — حسب الوعد التسويقي فقط
 
-- [ ] SaaS multi-tenant + billing
+- [x] SaaS multi-tenant + **فوترة يدوية للمنصة** (`platform_billing.py`, `/platform/billing`)
+- [ ] بوابة دفع تلقائية (Moyasar / Tap) — لاحقاً
 - [ ] ZATCA Phase 2 (XML + clearance)
 - [ ] WhatsApp Business API + تذكيرات مجدولة
 - [x] Offline Field PWA

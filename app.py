@@ -1199,6 +1199,23 @@ def _sqlite_legacy_schema_patches():
             'installation_timeline_steps': [
                 ('started_at', 'DATETIME'),
             ],
+            'organizations': [
+                ('billing_cycle', 'VARCHAR(20)'),
+                ('billing_amount', 'FLOAT'),
+                ('billing_status', 'VARCHAR(20)'),
+                ('current_period_start', 'DATETIME'),
+                ('current_period_end', 'DATETIME'),
+                ('last_payment_at', 'DATETIME'),
+                ('last_payment_amount', 'FLOAT'),
+                ('last_payment_ref', 'VARCHAR(100)'),
+                ('billing_notes', 'TEXT'),
+            ],
+            'onboarding_invites': [
+                ('admin_username', 'VARCHAR(50)'),
+                ('login_url', 'VARCHAR(300)'),
+                ('credentials_email_sent_at', 'DATETIME'),
+                ('credentials_email_error', 'VARCHAR(300)'),
+            ],
         }
         for table, cols in _migrate_cols.items():
             if table not in insp.get_table_names():
@@ -2421,6 +2438,8 @@ def platform_org_detail(org_id):
         users=detail['users'],
         admin=detail['admin'],
         invites=detail['invites'],
+        payments=detail.get('payments') or [],
+        billing_amount=detail.get('billing_amount') or 0,
         login_url=detail['login_url'],
         plans=detail['plans'],
         notice=session.pop('plat_notice', None),
@@ -2530,6 +2549,162 @@ def platform_org_reset_password(org_id):
         session['plat_notice_type'] = ntype
     else:
         session['plat_notice'] = 'تم توليد كلمة المرور، لكن لا يوجد بريد للإرسال.'
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/billing')
+def platform_billing():
+    from platform_admin import is_admin_host
+    from platform_billing import billing_overview
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+    overview = billing_overview(300)
+    return render_template(
+        'platform/billing.html',
+        nav='billing',
+        rows=overview['rows'],
+        stats=overview['stats'],
+        plan_prices=overview['plan_prices'],
+        notice=session.pop('plat_notice', None),
+        notice_type=session.pop('plat_notice_type', None),
+    )
+
+
+@app.route('/platform/orgs/<int:org_id>/subscription', methods=['POST'])
+def platform_org_subscription(org_id):
+    from datetime import datetime as dt
+
+    from models import Organization
+    from platform_admin import is_admin_host
+    from platform_billing import set_subscription
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+
+    amount_raw = (request.form.get('billing_amount') or '').strip()
+    clear_amount = amount_raw == ''
+    amount = None
+    if not clear_amount:
+        try:
+            amount = float(amount_raw)
+        except ValueError:
+            session['plat_notice'] = 'مبلغ الاشتراك غير صالح.'
+            session['plat_notice_type'] = 'warn'
+            return redirect(url_for('platform_org_detail', org_id=org_id))
+
+    period_end = None
+    period_raw = (request.form.get('period_end') or '').strip()
+    if period_raw:
+        try:
+            period_end = dt.strptime(period_raw[:10], '%Y-%m-%d')
+        except ValueError:
+            session['plat_notice'] = 'تاريخ نهاية الفترة غير صالح.'
+            session['plat_notice_type'] = 'warn'
+            return redirect(url_for('platform_org_detail', org_id=org_id))
+
+    result = set_subscription(
+        org,
+        cycle=request.form.get('billing_cycle'),
+        amount=amount,
+        clear_amount=clear_amount,
+        period_end=period_end,
+        billing_status=request.form.get('billing_status'),
+        billing_notes=request.form.get('billing_notes'),
+    )
+    if result.get('ok'):
+        session['plat_notice'] = 'تم حفظ إعدادات الاشتراك.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل الحفظ.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/payment', methods=['POST'])
+def platform_org_payment(org_id):
+    from models import Organization
+    from platform_admin import is_admin_host
+    from platform_billing import record_payment
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+
+    try:
+        months = int(request.form.get('months') or 1)
+    except (TypeError, ValueError):
+        months = 1
+    result = record_payment(
+        org,
+        amount=request.form.get('amount'),
+        method=request.form.get('method') or 'transfer',
+        reference=request.form.get('reference') or '',
+        note=request.form.get('note') or '',
+        months=months,
+        recorded_by_user_id=user.id,
+    )
+    if result.get('ok'):
+        session['plat_notice'] = 'تم تسجيل الدفعة وتجديد فترة الاشتراك.'
+        session['plat_notice_type'] = 'ok'
+        try:
+            from audit_log import log_audit
+            log_audit(
+                'platform_payment_recorded',
+                organization_id=org.id,
+                details={
+                    'amount': result['payment'].amount,
+                    'months': months,
+                    'method': result['payment'].method,
+                },
+            )
+        except Exception:
+            app.logger.exception('platform payment audit failed')
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل تسجيل الدفعة.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/extend-trial', methods=['POST'])
+def platform_org_extend_trial(org_id):
+    from models import Organization
+    from platform_admin import is_admin_host
+    from platform_billing import extend_trial
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    try:
+        days = int(request.form.get('days') or 14)
+    except (TypeError, ValueError):
+        days = 14
+    result = extend_trial(org, days=days)
+    if result.get('ok'):
+        session['plat_notice'] = f"تم تمديد التجربة حتى {result['trial_ends_at']}."
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = 'فشل تمديد التجربة.'
         session['plat_notice_type'] = 'warn'
     return redirect(url_for('platform_org_detail', org_id=org_id))
 

@@ -27,8 +27,41 @@ class Organization(db.Model):
     suspended_at = db.Column(db.DateTime)
     notes = db.Column(db.Text)
 
+    # اشتراك المنصة (يدوي — بدون بوابة دفع بعد)
+    billing_cycle = db.Column(db.String(20), default='monthly')  # monthly | yearly
+    billing_amount = db.Column(db.Float)  # ر.س للفترة — فارغ = سعر الباقة الافتراضي
+    billing_status = db.Column(db.String(20), default='ok')  # ok | due | overdue | complimentary
+    current_period_start = db.Column(db.DateTime)
+    current_period_end = db.Column(db.DateTime)
+    last_payment_at = db.Column(db.DateTime)
+    last_payment_amount = db.Column(db.Float)
+    last_payment_ref = db.Column(db.String(100))
+    billing_notes = db.Column(db.Text)
+
     def __repr__(self):
         return f'<Organization {self.slug}>'
+
+
+class PlatformPayment(db.Model):
+    """سجل دفعات اشتراك العملاء لـ LiftCore (يدوي من لوحة المنصة)."""
+    __tablename__ = 'platform_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False, index=True)
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(10), default='SAR')
+    method = db.Column(db.String(40), default='transfer')  # transfer | cash | card | complimentary | other
+    reference = db.Column(db.String(100))
+    note = db.Column(db.Text)
+    period_start = db.Column(db.DateTime)
+    period_end = db.Column(db.DateTime)
+    plan = db.Column(db.String(30))
+    recorded_by_user_id = db.Column(db.Integer)
+    paid_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<PlatformPayment org={self.organization_id} {self.amount}>'
 
 
 class TenantMixin:

@@ -208,6 +208,11 @@ def activate_invite(
         org.status = 'active'
         org.plan = use_plan
         org.trial_ends_at = None
+        try:
+            from platform_billing import ensure_subscription_defaults
+            ensure_subscription_defaults(org)
+        except Exception:
+            pass
 
     # تخطّي فلتر المستأجر (المشغّل على default / أو بدون request)
     prev_resolving = getattr(g, '_resolving_default_org', False)

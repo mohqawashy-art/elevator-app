@@ -1,0 +1,50 @@
+{% extends 'platform/base.html' %}
+{% block title %}الاشتراكات — LiftCore Platform{% endblock %}
+{% block content %}
+<div class="h1">اشتراكات العملاء</div>
+<p class="sub">متابعة التجارب والمدفوعات يدوياً — بدون بوابة دفع بعد. الأسعار الافتراضية: basic {{ plan_prices.basic }} · pro {{ plan_prices.pro }} · enterprise {{ plan_prices.enterprise }} ر.س/شهر.</p>
+
+<div class="stats">
+  <div class="stat"><div class="n">{{ stats.ok or 0 }}</div><div class="l">سارية</div></div>
+  <div class="stat"><div class="n">{{ stats.due or 0 }}</div><div class="l">مستحقة قريباً</div></div>
+  <div class="stat"><div class="n">{{ stats.overdue or 0 }}</div><div class="l">متأخرة</div></div>
+  <div class="stat"><div class="n">{{ stats.trial or 0 }}</div><div class="l">تجريبية</div></div>
+  <div class="stat"><div class="n">{{ stats.complimentary or 0 }}</div><div class="l">مجانية / هدية</div></div>
+</div>
+
+<div class="card">
+  <div class="section">كل المؤسسات</div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>المؤسسة</th>
+        <th>الباقة</th>
+        <th>الحالة</th>
+        <th>الفوترة</th>
+        <th>المبلغ</th>
+        <th>ينتهي</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set o = row.org %}
+      <tr>
+        <td><strong>{{ o.name }}</strong><br><code>{{ o.slug }}</code></td>
+        <td>{{ o.plan }} · {{ o.billing_cycle or 'monthly' }}</td>
+        <td><span class="badge badge-{{ o.status }}">{{ o.status }}</span></td>
+        <td><span class="badge badge-{{ row.billing_status }}">{{ row.billing_status }}</span></td>
+        <td>{{ '%.0f'|format(row.amount) }} ر.س</td>
+        <td class="muted">
+          {% if row.period_end %}{{ row.period_end }}{% else %}—{% endif %}
+          {% if row.days_left is not none %}<br>{% if row.days_left >= 0 %}متبقي {{ row.days_left }} يوم{% else %}متأخر {{ -row.days_left }} يوم{% endif %}{% endif %}
+        </td>
+        <td><a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ o.id }}">إدارة</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">لا مؤسسات.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

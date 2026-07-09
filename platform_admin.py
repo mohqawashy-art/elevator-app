@@ -6,7 +6,7 @@ from datetime import datetime
 
 from flask import g, has_request_context, request
 
-from models import OnboardingInvite, Organization, Settings, User, db
+from models import OnboardingInvite, Organization, PlatformPayment, Settings, User, db
 
 
 PLANS = ('basic', 'pro', 'enterprise')
@@ -126,12 +126,22 @@ def get_org_detail(org_id: int) -> dict | None:
     finally:
         g._resolving_default_org = prev
     admin = next((u for u in users if u.role == 'admin'), users[0] if users else None)
+    payments = (
+        PlatformPayment.query.filter_by(organization_id=org.id)
+        .order_by(PlatformPayment.id.desc())
+        .limit(30)
+        .all()
+    )
+    from platform_billing import effective_amount, refresh_billing_status
+    refresh_billing_status(org)
     return {
         'org': org,
         'settings': settings,
         'users': users,
         'admin': admin,
         'invites': invites,
+        'payments': payments,
+        'billing_amount': effective_amount(org),
         'login_url': tenant_login_url(org.slug),
         'plans': PLANS,
     }
