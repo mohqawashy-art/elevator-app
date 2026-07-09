@@ -15,6 +15,7 @@ TENANT_EXEMPT_PATHS = frozenset({
     '/api/version',
     '/signup',
     '/api/signup',
+    '/auth/handoff',
 })
 
 

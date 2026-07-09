@@ -154,7 +154,12 @@ from flask_migrate import Migrate  # noqa: E402
 
 migrate = Migrate(app, db)
 
-PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'api_health', 'signup', 'api_signup', 'field_login', 'field_logout', 'field_manifest', 'field_service_worker', 'web_manifest', 'admin_service_worker'})
+PUBLIC_ENDPOINTS = frozenset({
+    'login', 'logout', 'static', 'index', 'api_version', 'api_health',
+    'signup', 'api_signup', 'auth_handoff',
+    'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
+    'web_manifest', 'admin_service_worker',
+})
 PUBLIC_PATH_PREFIXES = ('/static',)
 STATIC_UPLOADS_PREFIX = '/static/uploads'
 
@@ -1525,6 +1530,95 @@ def _find_login_user(login_id):
     ).first()
 
 
+def _is_platform_login_host() -> bool:
+    from tenant_signup import is_signup_host
+
+    return is_signup_host()
+
+
+def _find_org_for_portal(org_key: str):
+    """بحث مؤسسة بالمعرّف (slug) أو اسم المنشأة."""
+    from models import Organization
+
+    key = (org_key or '').strip()
+    if not key:
+        return None
+    org = Organization.query.filter(db.func.lower(Organization.slug) == key.lower()).first()
+    if org:
+        return org
+    org = Organization.query.filter(db.func.lower(Organization.name) == key.lower()).first()
+    if org:
+        return org
+    # اسم الشركة من الإعدادات
+    settings_row = Settings.query.filter(db.func.lower(Settings.company_name) == key.lower()).first()
+    if settings_row and settings_row.organization_id:
+        return db.session.get(Organization, settings_row.organization_id)
+    return None
+
+
+def _find_user_in_org(org_id: int, login_id: str):
+    login_id = (login_id or '').strip()
+    if not login_id or not org_id:
+        return None
+    return User.query.filter(
+        User.organization_id == org_id,
+        User.is_active.is_(True),
+        or_(User.username == login_id, db.func.lower(User.email) == login_id.lower()),
+    ).first()
+
+
+def _tenant_login_base_url(slug: str) -> str:
+    slug = (slug or '').strip().lower()
+    if slug in ('', 'default', 'app', 'liftcore'):
+        return 'https://app.liftcoreapp.com'
+    return f'https://{slug}.liftcoreapp.com'
+
+
+def _make_login_handoff_token(*, user_id: int, organization_id: int) -> str:
+    from itsdangerous import URLSafeTimedSerializer
+
+    ser = URLSafeTimedSerializer(app.config['SECRET_KEY'], salt='liftcore-login-handoff')
+    return ser.dumps({'uid': int(user_id), 'oid': int(organization_id)})
+
+
+def _load_login_handoff_token(token: str, *, max_age: int = 180) -> dict | None:
+    from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+
+    if not token:
+        return None
+    ser = URLSafeTimedSerializer(app.config['SECRET_KEY'], salt='liftcore-login-handoff')
+    try:
+        data = ser.loads(token, max_age=max_age)
+    except (BadSignature, SignatureExpired):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def _complete_user_login(user):
+    """ضبط الجلسة بعد تحقق كلمة المرور."""
+    session.clear()
+    session['user_id'] = user.id
+    session['username'] = user.full_name or user.username
+    form_lang = (request.form.get('lang') or '').strip()
+    if form_lang in ('ar', 'en'):
+        user.language = form_lang
+        session['lang'] = form_lang
+    else:
+        session['lang'] = resolve_user_language(user)
+    session.permanent = True
+    user.last_login = datetime.utcnow()
+    db.session.commit()
+    from audit_log import log_audit
+    log_audit('login_success', user=user)
+    session['just_logged_in'] = True
+    if getattr(user, 'must_change_password', False):
+        session['settings_notice'] = 'يجب تغيير كلمة المرور قبل متابعة العمل.'
+        return redirect(url_for('settings', tab='account', force_password=1))
+    return redirect(url_for('welcome'))
+
+
 @app.route('/manifest.webmanifest')
 def web_manifest():
     return send_from_directory(
@@ -1555,9 +1649,11 @@ def login():
         is_weak_password,
         record_login_failure,
     )
+    from models import Organization
 
+    platform = _is_platform_login_host()
     error = None
-    if current_user():
+    if current_user() and not platform:
         return redirect(url_for('dashboard'))
     if request.method == 'GET':
         ensure_csrf_token()
@@ -1566,39 +1662,107 @@ def login():
         if not allowed:
             error = f'محاولات كثيرة — انتظر {retry_sec} ثانية ثم حاول مجدداً.'
         else:
-            login_id = request.form.get('email') or request.form.get('username')
+            org_key = (request.form.get('organization') or request.form.get('org') or '').strip()
+            login_id = (request.form.get('email') or request.form.get('username') or '').strip()
             password = request.form.get('password') or ''
-            user = _find_login_user(login_id)
-            if user and verify_password(user.password_hash, password):
+
+            user = None
+            org = None
+            if platform:
+                if not org_key:
+                    error = 'أدخل اسم المنشأة أو المعرّف'
+                else:
+                    org = _find_org_for_portal(org_key)
+                    if not org or org.status == 'suspended':
+                        error = 'المنشأة غير موجودة أو موقوفة'
+                    else:
+                        user = _find_user_in_org(org.id, login_id)
+            else:
+                user = _find_login_user(login_id)
+                if user and user.organization_id:
+                    org = db.session.get(Organization, user.organization_id)
+
+            if not error and user and verify_password(user.password_hash, password):
                 if not password_is_hashed(user.password_hash):
                     user.password_hash = hash_password(password)
                 if is_weak_password(password):
                     user.must_change_password = True
-                session.clear()
-                session['user_id'] = user.id
-                session['username'] = user.full_name or user.username
-                form_lang = (request.form.get('lang') or '').strip()
-                if form_lang in ('ar', 'en'):
-                    user.language = form_lang
-                    session['lang'] = form_lang
-                else:
-                    session['lang'] = resolve_user_language(user)
-                session.permanent = True
-                user.last_login = datetime.utcnow()
-                db.session.commit()
                 clear_login_attempts()
+
+                # من نطاق المنصة → تحويل آمن إلى subdomain المؤسسة
+                if platform and org is not None:
+                    token = _make_login_handoff_token(
+                        user_id=user.id,
+                        organization_id=org.id,
+                    )
+                    dest = _tenant_login_base_url(org.slug) + '/auth/handoff?t=' + token
+                    from audit_log import log_audit
+                    log_audit(
+                        'login_portal',
+                        user=user,
+                        organization_id=org.id,
+                        details={'slug': org.slug},
+                    )
+                    return redirect(dest)
+
+                return _complete_user_login(user)
+
+            if not error:
+                record_login_failure()
                 from audit_log import log_audit
-                log_audit('login_success', user=user)
-                session['just_logged_in'] = True
-                if getattr(user, 'must_change_password', False):
-                    session['settings_notice'] = 'يجب تغيير كلمة المرور قبل متابعة العمل.'
-                    return redirect(url_for('settings', tab='account', force_password=1))
-                return redirect(url_for('welcome'))
-            record_login_failure()
-            from audit_log import log_audit
-            log_audit('login_failed', details={'login_id': (login_id or '')[:80]})
-            error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
-    return render_template('login.html', error=error)
+                log_audit(
+                    'login_failed',
+                    details={
+                        'login_id': login_id[:80],
+                        'org': org_key[:80] if platform else '',
+                        'platform': platform,
+                    },
+                )
+                error = (
+                    'بيانات الدخول غير صحيحة — تحقق من المنشأة واسم المستخدم وكلمة المرور'
+                    if platform
+                    else 'اسم المستخدم أو كلمة المرور غير صحيحة'
+                )
+    return render_template(
+        'login.html',
+        error=error,
+        platform_login=platform,
+        signup_enabled=os.environ.get('LIFTCORE_SIGNUP_ENABLED', '').strip().lower() in (
+            '1', 'true', 'yes', 'on',
+        ),
+    )
+
+
+@app.route('/auth/handoff')
+def auth_handoff():
+    """استلام جلسة بعد دخول موحّد من liftcoreapp.com."""
+    from models import Organization
+
+    token = (request.args.get('t') or '').strip()
+    data = _load_login_handoff_token(token)
+    if not data:
+        flash('انتهت صلاحية رابط الدخول — سجّل مجدداً.', 'error')
+        return redirect(url_for('login'))
+
+    user = db.session.get(User, int(data.get('uid') or 0))
+    org = db.session.get(Organization, int(data.get('oid') or 0))
+    if not user or not user.is_active or not org or org.status == 'suspended':
+        flash('تعذّر إكمال الدخول.', 'error')
+        return redirect(url_for('login'))
+    if user.organization_id != org.id:
+        flash('تعذّر إكمال الدخول.', 'error')
+        return redirect(url_for('login'))
+
+    # تأكد أننا على subdomain الصحيح
+    host = (request.host or '').split(':')[0].lower()
+    expected = _tenant_login_base_url(org.slug).replace('https://', '').replace('http://', '')
+    if host != expected and host not in ('localhost', '127.0.0.1'):
+        # أعد التوجيه للنطاق الصحيح بنفس الرمز (مرة واحدة)
+        return redirect(f'https://{expected}/auth/handoff?t={token}')
+
+    g.organization = org
+    g.organization_id = org.id
+    return _complete_user_login(user)
 
 
 @app.route('/signup', methods=['GET', 'POST'])

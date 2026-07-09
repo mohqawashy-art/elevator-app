@@ -122,10 +122,19 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 
   <form id="loginForm" action="{{ url_for('login') }}" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if platform_login %}
+    <div class="field">
+      <label for="org">اسم المنشأة / المعرّف</label>
+      <div class="input-wrap">
+        <input type="text" id="org" name="organization" placeholder="مثال: ahmed أو اسم الشركة" autocomplete="organization" required>
+        <span class="ic">⌂</span>
+      </div>
+    </div>
+    {% endif %}
     <div class="field">
       <label for="user">اسم المستخدم</label>
       <div class="input-wrap">
-        <input type="text" id="user" name="username" placeholder="أدخل اسم المستخدم" autocomplete="username" required>
+        <input type="text" id="user" name="username" placeholder="{% if platform_login %}غالباً نفس المعرّف{% else %}أدخل اسم المستخدم{% endif %}" autocomplete="username" required>
         <span class="ic">⌁</span>
       </div>
     </div>
@@ -139,7 +148,11 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 
     <div class="row">
       <label class="remember"><input type="checkbox"> تذكّرني</label>
+      {% if platform_login and signup_enabled %}
+      <a class="forgot" href="{{ url_for('signup') }}">إنشاء حساب جديد</a>
+      {% else %}
       <a class="forgot" href="#" onclick="alert('تواصل مع مدير النظام لإعادة تعيين كلمة المرور'); return false;">نسيت كلمة المرور؟</a>
+      {% endif %}
     </div>
 
     <button type="submit" class="btn" id="loginBtn"><span class="spin"></span><span>تسجيل الدخول</span></button>

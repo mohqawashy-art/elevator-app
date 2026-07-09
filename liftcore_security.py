@@ -104,6 +104,7 @@ CSRF_EXEMPT_ENDPOINTS = frozenset({
     'field_login',
     'signup',
     'api_signup',
+    'auth_handoff',
     'static',
     'web_manifest',
     'api_version',
