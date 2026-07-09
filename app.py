@@ -32,11 +32,14 @@ def _load_env_file():
     """تحميل إعدادات المنصة — مرة واحدة لكل العملاء (LiftCore + جما + أي subdomain)."""
     paths = [
         os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'),
+        '/home/info/liftcore/.env',
         '/etc/liftcore/platform.env',
     ]
     for path in paths:
         if not os.path.isfile(path):
             continue
+        # platform.env دائماً يغلب (أسرار الإنتاج)
+        override = path.rstrip('/').endswith('platform.env')
         try:
             with open(path, encoding='utf-8') as fh:
                 for raw in fh:
@@ -46,7 +49,9 @@ def _load_env_file():
                     key, _, val = line.partition('=')
                     key = key.strip().lstrip('\ufeff')
                     val = val.strip().strip('"').strip("'")
-                    if key and key not in os.environ:
+                    if not key:
+                        continue
+                    if override or key not in os.environ:
                         os.environ[key] = val
         except OSError as exc:
             print(f'Warning: could not read {path}: {exc}')

@@ -21,12 +21,51 @@ def _mail_from() -> str:
     return raw
 
 
+def _ensure_mail_env() -> None:
+    """أعد قراءة MAIL_* من platform.env قبل الإرسال (يتجاوز بيئة قديمة في Gunicorn)."""
+    path = '/etc/liftcore/platform.env'
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, encoding='utf-8') as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, _, val = line.partition('=')
+                key = key.strip().lstrip('\ufeff')
+                if key not in ('MAIL_API_KEY', 'MAIL_FROM'):
+                    continue
+                os.environ[key] = val.strip().strip('"').strip("'")
+    except OSError as exc:
+        logger.warning('could not refresh mail env from %s: %s', path, exc)
+
+
 def mail_configured() -> bool:
+    _ensure_mail_env()
     return bool(os.environ.get('MAIL_API_KEY', '').strip())
 
 
+def _parse_resend_error(body: bytes | str) -> str:
+    text = body.decode('utf-8', errors='replace') if isinstance(body, (bytes, bytearray)) else str(body or '')
+    text = text.strip()
+    if not text:
+        return ''
+    try:
+        data = json.loads(text)
+    except Exception:
+        return text[:180]
+    if isinstance(data, dict):
+        msg = data.get('message') or data.get('error') or data.get('name') or ''
+        if isinstance(msg, dict):
+            msg = msg.get('message') or str(msg)
+        return str(msg)[:180]
+    return text[:180]
+
+
 def _send_email(*, to_email: str, subject: str, body_text: str, log_tag: str) -> dict:
-    """يرجع {ok, reason} — ok=True فقط عند إرسال فعلي ناجح."""
+    """يرجع {ok, reason, detail?} — ok=True فقط عند إرسال فعلي ناجح."""
+    _ensure_mail_env()
     to_email = (to_email or '').strip()
     if not to_email:
         logger.warning('%s skipped — empty recipient', log_tag)
@@ -59,14 +98,16 @@ def _send_email(*, to_email: str, subject: str, body_text: str, log_tag: str) ->
         with urllib.request.urlopen(req, timeout=15) as resp:
             if 200 <= resp.status < 300:
                 return {'ok': True, 'reason': 'sent'}
-            return {'ok': False, 'reason': f'http_{resp.status}'}
+            detail = _parse_resend_error(resp.read()[:500])
+            return {'ok': False, 'reason': f'http_{resp.status}', 'detail': detail}
     except urllib.error.HTTPError as exc:
-        body = exc.read()[:500]
-        logger.warning('Resend HTTP %s (%s): %s', exc.code, log_tag, body)
-        return {'ok': False, 'reason': f'http_{exc.code}'}
+        raw = exc.read()[:500]
+        detail = _parse_resend_error(raw)
+        logger.warning('Resend HTTP %s (%s): %s', exc.code, log_tag, raw)
+        return {'ok': False, 'reason': f'http_{exc.code}', 'detail': detail}
     except OSError as exc:
         logger.warning('Resend send failed (%s): %s', log_tag, exc)
-        return {'ok': False, 'reason': 'network_error'}
+        return {'ok': False, 'reason': 'network_error', 'detail': str(exc)[:120]}
 
 
 def _as_bool(result: dict | bool) -> bool:
@@ -180,4 +221,7 @@ def mail_result_message(result: dict | bool, *, to_email: str) -> tuple[str, str
         )
     if reason == 'empty_recipient':
         return 'لم يُرسل البريد: لا يوجد عنوان مستلم.', 'warn'
+    detail = (result.get('detail') or '').strip()
+    if detail:
+        return f'تعذّر إرسال البريد إلى {to_email} ({reason}): {detail}', 'warn'
     return f'تعذّر إرسال البريد إلى {to_email} ({reason}). انسخ الرابط يدوياً.', 'warn'
