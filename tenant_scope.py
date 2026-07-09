@@ -10,7 +10,12 @@ from models import TenantMixin, db
 
 PLATFORM_HOSTS = frozenset({'liftcoreapp.com', 'www.liftcoreapp.com'})
 MARKETING_SLUGS = frozenset({'www', 'app', 'api', 'admin', 'staging', 'mail'})
-TENANT_EXEMPT_PATHS = frozenset({'/api/health', '/api/version'})
+TENANT_EXEMPT_PATHS = frozenset({
+    '/api/health',
+    '/api/version',
+    '/signup',
+    '/api/signup',
+})
 
 
 def init_tenant_scope(database):

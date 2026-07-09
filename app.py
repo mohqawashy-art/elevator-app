@@ -672,13 +672,20 @@ def inject_global_template_vars():
         role_label = ROLE_LABELS.get(user.role, user.role)
         if lang == 'en':
             role_label = ROLE_LABELS_EN.get(user.role, role_label)
-    from liftcore_permissions import (
-        effective_permissions,
-        permission_groups_for_ui,
-        user_can_write_module,
-        user_has_permission,
-    )
-    user_perms = effective_permissions(user, s) if user else frozenset()
+    try:
+        from liftcore_permissions import (
+            effective_permissions,
+            permission_groups_for_ui,
+            user_can_write_module,
+        )
+        user_perms = effective_permissions(user, s) if user else frozenset()
+        perm_groups = permission_groups_for_ui()
+        can_write = user_can_write_module(user, s) if user else False
+    except Exception:
+        db.session.rollback()
+        user_perms = frozenset()
+        perm_groups = []
+        can_write = False
     return {
         'google_maps_api_key': resolve_google_maps_api_key(s),
         'google_maps_key_source': google_maps_key_source(s),
@@ -702,10 +709,10 @@ def inject_global_template_vars():
         'session_locked': session_is_locked(),
         'idle_screensaver_enabled': idle_screensaver_enabled(s),
         'idle_screensaver_seconds': idle_screensaver_seconds(s),
-        'can_write': user_can_write_module(user, s) if user else False,
+        'can_write': can_write,
         'is_viewer': bool(user and user.role == 'viewer'),
         'user_permissions': user_perms,
-        'permission_groups': permission_groups_for_ui(),
+        'permission_groups': perm_groups,
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
     }
 
@@ -1609,8 +1616,10 @@ def signup():
     require_signup_host()
     if not signup_enabled():
         abort(404)
-    if current_user():
-        return redirect(url_for('dashboard'))
+
+    # جلسة من subdomain آخر على .liftcoreapp.com قد تكسر الصفحة — امسحها على نطاق المنصة
+    if session.get('user_id'):
+        session.clear()
 
     error = None
     success = None
@@ -1644,19 +1653,25 @@ def signup():
             if not result.get('ok'):
                 error = ' — '.join(result.get('errors') or ['تعذّر إنشاء الحساب.'])
             else:
-                send_welcome_email(
-                    to_email=admin_email,
-                    company_name=company_name.strip(),
-                    slug=result['slug'],
-                    admin_name=admin_name.strip(),
-                    login_url=result['login_url'],
-                )
+                try:
+                    send_welcome_email(
+                        to_email=admin_email,
+                        company_name=company_name.strip(),
+                        slug=result['slug'],
+                        admin_name=admin_name.strip(),
+                        login_url=result['login_url'],
+                    )
+                except Exception:
+                    app.logger.exception('signup welcome email failed')
                 success = result
-                log_audit(
-                    'tenant_signup',
-                    organization_id=result['organization_id'],
-                    details={'slug': result['slug'], 'organization_id': result['organization_id']},
-                )
+                try:
+                    log_audit(
+                        'tenant_signup',
+                        organization_id=result['organization_id'],
+                        details={'slug': result['slug'], 'organization_id': result['organization_id']},
+                    )
+                except Exception:
+                    app.logger.exception('signup audit failed')
 
     return render_template(
         'signup.html',
