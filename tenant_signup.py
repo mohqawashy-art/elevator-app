@@ -92,31 +92,6 @@ def validate_admin_name(name: str) -> str | None:
     return None
 
 
-def _username_for_signup(slug: str, email: str) -> str:
-    local = (email.split('@', 1)[0] or '').strip().lower()
-    local = re.sub(r'[^a-z0-9_]+', '_', local).strip('_')[:30]
-    if local and local not in ('admin', 'root', 'user', 'test'):
-        candidate = local
-    else:
-        candidate = f'{slug}_admin'
-    return candidate[:50]
-
-
-def _allocate_unique_username(preferred: str, slug: str) -> str:
-    """يتجنب تعارض UniqueConstraint(username) القديم على القاعدة."""
-    base = (preferred or f'{slug}_admin').strip().lower()[:40] or f'{slug}_admin'
-    base = re.sub(r'[^a-z0-9_]+', '_', base).strip('_') or f'{slug}_admin'
-    candidates = [base, f'{base}_{slug}'[:50], f'{slug}_admin', f'{slug}_owner']
-    for i in range(2, 50):
-        candidates.append(f'{base}{i}'[:50])
-    for name in candidates:
-        if not name:
-            continue
-        if not User.query.filter_by(username=name).first():
-            return name
-    return f'{slug}_{os.getpid()}'[:50]
-
-
 def create_tenant_signup(
     *,
     company_name: str,
@@ -146,10 +121,15 @@ def create_tenant_signup(
     if errors:
         return {'ok': False, 'errors': errors}
 
-    preferred = (username or _username_for_signup(slug, admin_email)).strip().lower()[:50]
-    if not preferred:
+    # اسم المستخدم = المعرّف (slug)
+    uname = (username or slug).strip().lower()[:50]
+    if not uname:
         return {'ok': False, 'errors': ['اسم المستخدم غير صالح.']}
-    uname = _allocate_unique_username(preferred, slug)
+    if User.query.filter_by(username=uname).first():
+        return {
+            'ok': False,
+            'errors': ['هذا المعرّف مستخدم كاسم مستخدم مسبقاً — اختر معرّفاً آخر.'],
+        }
 
     trial_days = int(os.environ.get('LIFTCORE_TRIAL_DAYS', '14') or 14)
     trial_ends = datetime.utcnow() + timedelta(days=max(1, trial_days))
@@ -192,7 +172,7 @@ def create_tenant_signup(
         db.session.rollback()
         return {
             'ok': False,
-            'errors': ['تعذّر إنشاء الحساب — المعرّف أو اسم المستخدم مستخدم مسبقاً. جرّب معرّفاً آخر.'],
+            'errors': ['تعذّر إنشاء الحساب — المعرّف مستخدم مسبقاً. جرّب معرّفاً آخر.'],
         }
     except Exception:
         db.session.rollback()
