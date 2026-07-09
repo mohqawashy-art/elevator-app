@@ -91,6 +91,9 @@ def _send_email(*, to_email: str, subject: str, body_text: str, log_tag: str) ->
         headers={
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
+            # Resend/Cloudflare يرفض الطلبات بدون User-Agent (error 1010)
+            'User-Agent': 'LiftCore/1.0 (+https://liftcoreapp.com)',
+            'Accept': 'application/json',
         },
         method='POST',
     )
