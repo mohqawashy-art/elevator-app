@@ -50,7 +50,12 @@ def _login_ops(client):
 
 def test_create_invite_and_public_form(ob_client):
     with app.app_context():
-        result = create_invite(plan='pro', suggested_slug='acmeco', contact_email='a@acme.test')
+        result = create_invite(
+            plan='pro',
+            suggested_slug='acmeco',
+            contact_email='a@acme.test',
+            contact_name='أحمد',
+        )
         assert result['ok']
         token = result['invite'].token
 
@@ -84,14 +89,18 @@ def test_create_invite_and_public_form(ob_client):
 
 def test_onboard_on_tenant_host_404(ob_client):
     with app.app_context():
-        token = create_invite()['invite'].token
+        token = create_invite(contact_email='x@test.com')['invite'].token
     r = ob_client.get(f'/onboard/{token}', base_url='https://alpha.liftcoreapp.com')
     assert r.status_code == 404
 
 
 def test_activate_creates_active_org(ob_client):
     with app.app_context():
-        inv = create_invite(plan='basic', suggested_slug='betaorg')['invite']
+        inv = create_invite(
+            plan='basic',
+            suggested_slug='betaorg',
+            contact_email='s@beta.test',
+        )['invite']
         submit_invite_form(inv, {
             'company_name': 'بيتا',
             'preferred_slug': 'betaorg',
@@ -149,8 +158,17 @@ def test_operator_create_via_post(ob_client):
         follow_redirects=True,
     )
     assert r.status_code == 200
-    assert 'رابط الدعوة' in r.get_data(as_text=True)
+    body = r.get_data(as_text=True)
+    assert 'إرسال' in body or 'رابط الدعوة' in body
     with app.app_context():
         inv = OnboardingInvite.query.filter_by(suggested_slug='gamma').first()
         assert inv is not None
         assert inv.plan == 'enterprise'
+        assert inv.contact_email == 'ali@gamma.test'
+
+
+def test_create_invite_requires_email(ob_client):
+    with app.app_context():
+        result = create_invite(plan='basic', contact_name='بدون بريد')
+        assert not result['ok']
+        assert any('بريد' in e for e in result['errors'])

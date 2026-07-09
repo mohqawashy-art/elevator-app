@@ -2003,6 +2003,7 @@ def operator_onboarding():
 
 @app.route('/operator/onboarding/create', methods=['POST'])
 def operator_onboarding_create():
+    from liftcore_mail import send_onboarding_invite_email
     from operator_onboarding import create_invite
 
     user = _require_platform_operator()
@@ -2012,30 +2013,95 @@ def operator_onboarding_create():
         days = int(request.form.get('days') or 14)
     except (TypeError, ValueError):
         days = 14
+    contact_email = (request.form.get('contact_email') or '').strip()
+    contact_name = (request.form.get('contact_name') or '').strip()
     result = create_invite(
         plan=request.form.get('plan') or 'basic',
         suggested_slug=request.form.get('suggested_slug') or '',
-        contact_email=request.form.get('contact_email') or '',
-        contact_name=request.form.get('contact_name') or '',
+        contact_email=contact_email,
+        contact_name=contact_name,
         notes=request.form.get('notes') or '',
         created_by_user_id=user.id,
         days=days,
     )
     if result.get('ok'):
+        inv = result['invite']
         session['op_created_url'] = result['url']
-        session['op_notice'] = 'تم إنشاء رابط الدعوة.'
-        session['op_notice_type'] = 'ok'
+        mailed = False
+        try:
+            mailed = send_onboarding_invite_email(
+                to_email=inv.contact_email,
+                contact_name=inv.contact_name or '',
+                invite_url=result['url'],
+                plan=inv.plan or 'basic',
+                days=result.get('ttl_days'),
+            )
+        except Exception:
+            app.logger.exception('invite email failed')
+        if mailed:
+            session['op_notice'] = f'تم إنشاء الدعوة وإرسال الرابط إلى {inv.contact_email}.'
+            session['op_notice_type'] = 'ok'
+        else:
+            session['op_notice'] = (
+                f'تم إنشاء الدعوة، لكن تعذّر إرسال البريد إلى {inv.contact_email}. '
+                'انسخ الرابط يدوياً أو أعد الإرسال.'
+            )
+            session['op_notice_type'] = 'warn'
         try:
             from audit_log import log_audit
 
             log_audit(
                 'onboarding_invite_created',
-                details={'invite_id': result['invite'].id, 'plan': result['invite'].plan},
+                details={
+                    'invite_id': inv.id,
+                    'plan': inv.plan,
+                    'email_sent': mailed,
+                    'contact_email': inv.contact_email,
+                },
             )
         except Exception:
             app.logger.exception('invite audit failed')
     else:
         session['op_notice'] = ' — '.join(result.get('errors') or ['فشل إنشاء الدعوة.'])
+        session['op_notice_type'] = 'warn'
+    return redirect(url_for('operator_onboarding'))
+
+
+@app.route('/operator/onboarding/<int:invite_id>/resend', methods=['POST'])
+def operator_onboarding_resend(invite_id):
+    from liftcore_mail import send_onboarding_invite_email
+    from models import OnboardingInvite
+    from operator_onboarding import invite_public_url
+
+    user = _require_platform_operator()
+    if not user:
+        abort(404)
+    inv = db.session.get(OnboardingInvite, invite_id)
+    if not inv or inv.status not in ('pending', 'submitted'):
+        session['op_notice'] = 'لا يمكن إعادة إرسال هذه الدعوة.'
+        session['op_notice_type'] = 'warn'
+        return redirect(url_for('operator_onboarding'))
+    if not inv.contact_email and not inv.admin_email:
+        session['op_notice'] = 'لا يوجد بريد على الدعوة.'
+        session['op_notice_type'] = 'warn'
+        return redirect(url_for('operator_onboarding'))
+
+    to_email = inv.contact_email or inv.admin_email
+    ttl = None
+    if inv.expires_at:
+        ttl = max(1, (inv.expires_at - datetime.utcnow()).days)
+    mailed = send_onboarding_invite_email(
+        to_email=to_email,
+        contact_name=inv.contact_name or inv.admin_name or '',
+        invite_url=invite_public_url(inv.token),
+        plan=inv.plan or 'basic',
+        days=ttl,
+    )
+    if mailed:
+        session['op_notice'] = f'أُعيد إرسال رابط الدعوة إلى {to_email}.'
+        session['op_notice_type'] = 'ok'
+    else:
+        session['op_notice'] = f'تعذّر إرسال البريد إلى {to_email}.'
         session['op_notice_type'] = 'warn'
     return redirect(url_for('operator_onboarding'))
 
@@ -2080,21 +2146,34 @@ def operator_onboarding_activate(invite_id):
         session['op_notice_type'] = 'ok'
         try:
             from audit_log import log_audit
-            from liftcore_mail import send_welcome_email
+            from liftcore_mail import send_onboarding_activated_email
 
             log_audit(
                 'onboarding_invite_activated',
                 organization_id=result['organization_id'],
                 details={'slug': result['slug'], 'plan': result['plan']},
             )
-            if inv.admin_email:
-                send_welcome_email(
-                    to_email=inv.admin_email,
+            to_email = inv.admin_email or inv.contact_email
+            if to_email:
+                mailed = send_onboarding_activated_email(
+                    to_email=to_email,
                     company_name=inv.company_name or result['slug'],
+                    admin_name=inv.admin_name or inv.contact_name or '',
                     slug=result['slug'],
-                    admin_name=inv.admin_name or '',
+                    username=result['username'],
+                    password=result['password'],
                     login_url=result['login_url'],
+                    plan=result['plan'],
                 )
+                if mailed:
+                    session['op_notice'] = (
+                        f"تم تفعيل {result['slug']} وإرسال بيانات الدخول إلى {to_email}."
+                    )
+                else:
+                    session['op_notice'] = (
+                        f"تم تفعيل {result['slug']}، لكن تعذّر إرسال البريد — انسخ بيانات الدخول أدناه."
+                    )
+                    session['op_notice_type'] = 'warn'
         except Exception:
             app.logger.exception('activate invite follow-up failed')
     else:

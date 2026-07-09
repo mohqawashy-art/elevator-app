@@ -59,10 +59,10 @@ def create_invite(
         err = validate_slug(slug)
         if err:
             return {'ok': False, 'errors': [err]}
-    if contact_email:
-        err = validate_email(contact_email)
-        if err:
-            return {'ok': False, 'errors': [err]}
+    email = (contact_email or '').strip()
+    err = validate_email(email)
+    if err:
+        return {'ok': False, 'errors': [err or 'بريد العميل مطلوب لإرسال رابط الدعوة.']}
 
     ttl = max(1, int(days if days is not None else INVITE_TTL_DAYS))
     inv = OnboardingInvite(
@@ -70,7 +70,7 @@ def create_invite(
         status='pending',
         plan=plan,
         suggested_slug=slug or None,
-        contact_email=(contact_email or '').strip() or None,
+        contact_email=email,
         contact_name=(contact_name or '').strip() or None,
         notes=(notes or '').strip() or None,
         expires_at=datetime.utcnow() + timedelta(days=ttl),
@@ -78,10 +78,12 @@ def create_invite(
     )
     db.session.add(inv)
     db.session.commit()
+    url = invite_public_url(inv.token)
     return {
         'ok': True,
         'invite': inv,
-        'url': invite_public_url(inv.token),
+        'url': url,
+        'ttl_days': ttl,
     }
 
 

@@ -93,11 +93,12 @@ input,textarea,select{width:100%;padding:10px 12px;background:var(--bg3);border:
         </div>
         <div>
           <label>اسم جهة الاتصال</label>
-          <input name="contact_name" maxlength="100">
+          <input name="contact_name" maxlength="100" placeholder="أحمد">
         </div>
         <div>
-          <label>بريد جهة الاتصال</label>
-          <input name="contact_email" type="email" maxlength="100">
+          <label>بريد العميل *</label>
+          <input name="contact_email" type="email" required maxlength="100" placeholder="client@company.com">
+          <div class="hint" style="font-size:11px;color:var(--text3);margin-top:4px">يُرسل رابط تعبئة البيانات تلقائياً إلى هذا البريد</div>
         </div>
         <div class="full">
           <label>ملاحظات داخلية</label>
@@ -105,7 +106,7 @@ input,textarea,select{width:100%;padding:10px 12px;background:var(--bg3);border:
         </div>
       </div>
       <div class="actions">
-        <button type="submit" class="btn btn-primary">إنشاء رابط الدعوة</button>
+        <button type="submit" class="btn btn-primary">إنشاء وإرسال الدعوة</button>
         <a class="btn btn-secondary" href="{{ url_for('dashboard') }}">العودة للوحة</a>
       </div>
     </form>
@@ -166,6 +167,10 @@ input,textarea,select{width:100%;padding:10px 12px;background:var(--bg3);border:
             </form>
             {% endif %}
             {% if inv.status in ('pending', 'submitted') %}
+            <form method="post" action="{{ url_for('operator_onboarding_resend', invite_id=inv.id) }}" style="margin-bottom:8px">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-secondary btn-sm">إعادة إرسال البريد</button>
+            </form>
             <form method="post" action="{{ url_for('operator_onboarding_cancel', invite_id=inv.id) }}" onsubmit="return confirm('إلغاء هذه الدعوة؟')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-danger btn-sm">إلغاء</button>
