@@ -3,6 +3,10 @@
 <a href="/dashboard" class="nav-item nav-item-single"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
 {% endif %}
 
+{% if is_platform_operator %}
+<a href="/operator/onboarding" class="nav-item nav-item-single"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-6M19 8v6"/></svg>دعوات العملاء</a>
+{% endif %}
+
 {% if has_perm('clients.read') or has_perm('elevators.read') %}
 <div class="nav-group" data-nav-group>
   <button type="button" class="nav-group-btn" aria-expanded="false" aria-haspopup="true">

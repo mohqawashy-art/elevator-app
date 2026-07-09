@@ -156,7 +156,7 @@ migrate = Migrate(app, db)
 
 PUBLIC_ENDPOINTS = frozenset({
     'login', 'logout', 'static', 'index', 'api_version', 'api_health',
-    'signup', 'api_signup', 'auth_handoff',
+    'signup', 'api_signup', 'onboard_form', 'auth_handoff',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
 })
@@ -691,6 +691,11 @@ def inject_global_template_vars():
         user_perms = frozenset()
         perm_groups = []
         can_write = False
+    try:
+        from operator_onboarding import is_platform_operator as _is_op
+        platform_op = bool(user and _is_op(user))
+    except Exception:
+        platform_op = False
     return {
         'google_maps_api_key': resolve_google_maps_api_key(s),
         'google_maps_key_source': google_maps_key_source(s),
@@ -719,6 +724,7 @@ def inject_global_template_vars():
         'user_permissions': user_perms,
         'permission_groups': perm_groups,
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
+        'is_platform_operator': platform_op,
     }
 
 
@@ -1908,6 +1914,201 @@ def api_signup():
         'login_url': result['login_url'],
         'username': result['username'],
     }), 201
+
+
+@app.route('/onboard/<token>', methods=['GET', 'POST'])
+def onboard_form(token):
+    """فورم العميل عبر رابط دعوة لمرة واحدة — على نطاق المنصة فقط."""
+    from liftcore_security import ensure_csrf_token
+    from operator_onboarding import get_invite, invite_is_open, submit_invite_form
+    from tenant_signup import is_signup_host, require_signup_host
+
+    require_signup_host()
+    if session.get('user_id'):
+        session.clear()
+    ensure_csrf_token()
+
+    inv = get_invite(token)
+    if not inv:
+        abort(404)
+
+    error = None
+    success = False
+    closed = None
+    form = {}
+
+    if request.method == 'POST':
+        form = request.form.to_dict()
+        result = submit_invite_form(inv, form)
+        if result.get('ok'):
+            success = True
+            inv = result['invite']
+        else:
+            error = ' — '.join(result.get('errors') or ['تعذّر حفظ البيانات.'])
+    else:
+        ok, msg = invite_is_open(inv)
+        if not ok:
+            closed = msg
+
+    return render_template(
+        'onboard.html',
+        invite=inv,
+        error=error,
+        success=success,
+        closed=closed,
+        form=form,
+        signup_host=is_signup_host(),
+    )
+
+
+def _require_platform_operator():
+    from operator_onboarding import is_platform_operator
+
+    user = require_admin()
+    if not user or not is_platform_operator(user):
+        return None
+    return user
+
+
+@app.route('/operator/onboarding')
+def operator_onboarding():
+    from operator_onboarding import PLANS, invite_public_url, is_platform_operator, list_invites
+
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+    if not is_platform_operator(user):
+        abort(404)
+
+    return render_template(
+        'operator_onboarding.html',
+        invites=list_invites(100),
+        plans=PLANS,
+        invite_url=invite_public_url,
+        notice=session.pop('op_notice', None),
+        notice_type=session.pop('op_notice_type', None),
+        created_url=session.pop('op_created_url', None),
+        activated=session.pop('op_activated', None),
+        current_user=user,
+    )
+
+
+@app.route('/operator/onboarding/create', methods=['POST'])
+def operator_onboarding_create():
+    from operator_onboarding import create_invite
+
+    user = _require_platform_operator()
+    if not user:
+        abort(404)
+    try:
+        days = int(request.form.get('days') or 14)
+    except (TypeError, ValueError):
+        days = 14
+    result = create_invite(
+        plan=request.form.get('plan') or 'basic',
+        suggested_slug=request.form.get('suggested_slug') or '',
+        contact_email=request.form.get('contact_email') or '',
+        contact_name=request.form.get('contact_name') or '',
+        notes=request.form.get('notes') or '',
+        created_by_user_id=user.id,
+        days=days,
+    )
+    if result.get('ok'):
+        session['op_created_url'] = result['url']
+        session['op_notice'] = 'تم إنشاء رابط الدعوة.'
+        session['op_notice_type'] = 'ok'
+        try:
+            from audit_log import log_audit
+
+            log_audit(
+                'onboarding_invite_created',
+                details={'invite_id': result['invite'].id, 'plan': result['invite'].plan},
+            )
+        except Exception:
+            app.logger.exception('invite audit failed')
+    else:
+        session['op_notice'] = ' — '.join(result.get('errors') or ['فشل إنشاء الدعوة.'])
+        session['op_notice_type'] = 'warn'
+    return redirect(url_for('operator_onboarding'))
+
+
+@app.route('/operator/onboarding/<int:invite_id>/activate', methods=['POST'])
+def operator_onboarding_activate(invite_id):
+    from liftcore_security import password_policy_error
+    from models import OnboardingInvite
+    from operator_onboarding import activate_invite
+
+    user = _require_platform_operator()
+    if not user:
+        abort(404)
+    inv = db.session.get(OnboardingInvite, invite_id)
+    if not inv:
+        abort(404)
+
+    password = (request.form.get('password') or '').strip()
+    if not password:
+        password = generate_password(14)
+    pwd_err = password_policy_error(password)
+    if pwd_err:
+        session['op_notice'] = pwd_err
+        session['op_notice_type'] = 'warn'
+        return redirect(url_for('operator_onboarding'))
+
+    result = activate_invite(
+        inv,
+        slug=request.form.get('slug'),
+        plan=request.form.get('plan'),
+        password=password,
+        password_hash=hash_password(password),
+    )
+    if result.get('ok'):
+        session['op_activated'] = {
+            'login_url': result['login_url'],
+            'username': result['username'],
+            'password': result['password'],
+            'plan': result['plan'],
+        }
+        session['op_notice'] = f"تم تفعيل {result['slug']}."
+        session['op_notice_type'] = 'ok'
+        try:
+            from audit_log import log_audit
+            from liftcore_mail import send_welcome_email
+
+            log_audit(
+                'onboarding_invite_activated',
+                organization_id=result['organization_id'],
+                details={'slug': result['slug'], 'plan': result['plan']},
+            )
+            if inv.admin_email:
+                send_welcome_email(
+                    to_email=inv.admin_email,
+                    company_name=inv.company_name or result['slug'],
+                    slug=result['slug'],
+                    admin_name=inv.admin_name or '',
+                    login_url=result['login_url'],
+                )
+        except Exception:
+            app.logger.exception('activate invite follow-up failed')
+    else:
+        session['op_notice'] = ' — '.join(result.get('errors') or ['فشل التفعيل.'])
+        session['op_notice_type'] = 'warn'
+    return redirect(url_for('operator_onboarding'))
+
+
+@app.route('/operator/onboarding/<int:invite_id>/cancel', methods=['POST'])
+def operator_onboarding_cancel(invite_id):
+    from models import OnboardingInvite
+
+    user = _require_platform_operator()
+    if not user:
+        abort(404)
+    inv = db.session.get(OnboardingInvite, invite_id)
+    if inv and inv.status in ('pending', 'submitted'):
+        inv.status = 'cancelled'
+        db.session.commit()
+        session['op_notice'] = 'تم إلغاء الدعوة.'
+        session['op_notice_type'] = 'info'
+    return redirect(url_for('operator_onboarding'))
 
 
 @app.route('/welcome')

@@ -17,6 +17,7 @@ TENANT_EXEMPT_PATHS = frozenset({
     '/api/signup',
     '/auth/handoff',
 })
+TENANT_EXEMPT_PREFIXES = ('/onboard/',)
 
 
 def init_tenant_scope(database):
@@ -170,7 +171,7 @@ def _bind_local_default_org() -> bool:
 def resolve_tenant():
     """يُستدعى before_request — يحدّد g.organization من الـ subdomain."""
     path = request.path or ''
-    if path in TENANT_EXEMPT_PATHS:
+    if path in TENANT_EXEMPT_PATHS or any(path.startswith(p) for p in TENANT_EXEMPT_PREFIXES):
         g.organization = None
         g.organization_id = None
         return None

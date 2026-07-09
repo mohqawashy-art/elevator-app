@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — دعوات العملاء</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-layout.css') }}?v=5">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--gold:#c8a055;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--success:#1fb87a;--danger:#e04848;--r:10px;--r-sm:7px}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;margin:0}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 24px 48px}
+.page-heading{font-size:22px;font-weight:600;margin-bottom:6px}
+.sub{color:var(--text2);font-size:13px;margin-bottom:18px}
+.flash{padding:10px 14px;border-radius:var(--r-sm);margin-bottom:14px;font-size:13px;line-height:1.6}
+.flash-ok{background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.25);color:var(--success)}
+.flash-warn{background:rgba(224,72,72,.1);border:1px solid rgba(224,72,72,.25);color:var(--danger)}
+.flash-info{background:rgba(42,127,255,.1);border:1px solid rgba(42,127,255,.2);color:#7eb8ff}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.section{font-size:13px;font-weight:600;color:var(--gold);margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid .full{grid-column:1/-1}
+label{display:block;font-size:11px;color:var(--text3);margin-bottom:6px}
+input,textarea,select{width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:inherit;font-size:13px}
+.btn{border:none;border-radius:var(--r-sm);padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-danger{background:rgba(224,72,72,.15);color:var(--danger);border:1px solid rgba(224,72,72,.3)}
+.btn-sm{padding:6px 10px;font-size:12px}
+.table{width:100%;border-collapse:collapse;font-size:12px}
+.table th,.table td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:right;vertical-align:top}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px}
+.badge-pending{background:rgba(42,127,255,.15);color:#7eb8ff}
+.badge-submitted{background:rgba(200,160,85,.15);color:var(--gold)}
+.badge-activated{background:rgba(31,184,122,.15);color:var(--success)}
+.badge-expired,.badge-cancelled{background:rgba(224,72,72,.12);color:var(--danger)}
+.link{color:var(--accent);word-break:break-all;font-size:11px;direction:ltr;display:inline-block}
+.creds{background:rgba(200,160,85,.1);border:1px solid rgba(200,160,85,.25);border-radius:var(--r-sm);padding:12px;margin-bottom:14px;font-size:13px;line-height:1.8}
+.creds code{background:var(--bg3);padding:2px 8px;border-radius:4px;direction:ltr;display:inline-block}
+.detail{font-size:12px;color:var(--text2);line-height:1.7;margin-top:6px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-heading">دعوات انضمام العملاء</div>
+  <p class="sub">أنشئ رابط دعوة بعد الاتفاق التجاري، راجع بيانات العميل، ثم فعّل الحساب بالباقة المناسبة.</p>
+
+  {% if notice %}
+  <div class="flash flash-{{ notice_type or 'info' }}">{{ notice }}</div>
+  {% endif %}
+
+  {% if activated %}
+  <div class="creds">
+    تم التفعيل بنجاح.<br>
+    الرابط: <code>{{ activated.login_url }}</code><br>
+    اسم المستخدم: <code>{{ activated.username }}</code><br>
+    كلمة المرور: <code>{{ activated.password }}</code><br>
+    الباقة: <strong>{{ activated.plan }}</strong>
+  </div>
+  {% endif %}
+
+  {% if created_url %}
+  <div class="creds">
+    رابط الدعوة (أرسله للعميل):<br>
+    <code class="link">{{ created_url }}</code>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="section">إنشاء دعوة جديدة</div>
+    <form method="post" action="{{ url_for('operator_onboarding_create') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="grid">
+        <div>
+          <label>الباقة</label>
+          <select name="plan">
+            {% for p in plans %}
+            <option value="{{ p }}" {% if p == 'basic' %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>معرّف مقترح (اختياري)</label>
+          <input name="suggested_slug" maxlength="63" placeholder="acme">
+        </div>
+        <div>
+          <label>صلاحية الرابط (أيام)</label>
+          <input name="days" type="number" min="1" max="60" value="14">
+        </div>
+        <div>
+          <label>اسم جهة الاتصال</label>
+          <input name="contact_name" maxlength="100">
+        </div>
+        <div>
+          <label>بريد جهة الاتصال</label>
+          <input name="contact_email" type="email" maxlength="100">
+        </div>
+        <div class="full">
+          <label>ملاحظات داخلية</label>
+          <input name="notes" maxlength="500">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">إنشاء رابط الدعوة</button>
+        <a class="btn btn-secondary" href="{{ url_for('dashboard') }}">العودة للوحة</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="section">الدعوات</div>
+    {% if not invites %}
+    <p class="sub">لا توجد دعوات بعد.</p>
+    {% else %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>الحالة</th>
+          <th>الباقة</th>
+          <th>الشركة / المسؤول</th>
+          <th>الرابط</th>
+          <th>إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invites %}
+        <tr>
+          <td>{{ inv.id }}</td>
+          <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
+          <td>{{ inv.plan }}</td>
+          <td>
+            <strong>{{ inv.company_name or inv.contact_name or '—' }}</strong>
+            <div class="detail">
+              {% if inv.admin_email or inv.contact_email %}{{ inv.admin_email or inv.contact_email }}<br>{% endif %}
+              {% if inv.cr_number %}س.ت: {{ inv.cr_number }} · {% endif %}
+              {% if inv.vat_number %}ضريبي: {{ inv.vat_number }}{% endif %}
+              {% if inv.preferred_slug or inv.suggested_slug %}<br>slug: {{ inv.preferred_slug or inv.suggested_slug }}{% endif %}
+              {% if inv.notes %}<br>{{ inv.notes }}{% endif %}
+            </div>
+          </td>
+          <td>
+            {% if inv.status in ('pending', 'submitted') %}
+            <a class="link" href="{{ invite_url(inv.token) }}" target="_blank" rel="noopener">{{ invite_url(inv.token) }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if inv.status == 'submitted' or (inv.status == 'pending' and inv.company_name) %}
+            <form method="post" action="{{ url_for('operator_onboarding_activate', invite_id=inv.id) }}" style="margin-bottom:8px">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label>المعرّف النهائي</label>
+              <input name="slug" value="{{ inv.preferred_slug or inv.suggested_slug or '' }}" required maxlength="63" style="margin-bottom:6px">
+              <label>الباقة</label>
+              <select name="plan" style="margin-bottom:6px">
+                {% for p in plans %}
+                <option value="{{ p }}" {% if p == inv.plan %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+              </select>
+              <label>كلمة مرور المسؤول (اتركها فارغة للتوليد)</label>
+              <input name="password" type="text" maxlength="64" style="margin-bottom:6px" autocomplete="off">
+              <button type="submit" class="btn btn-primary btn-sm">تفعيل الحساب</button>
+            </form>
+            {% endif %}
+            {% if inv.status in ('pending', 'submitted') %}
+            <form method="post" action="{{ url_for('operator_onboarding_cancel', invite_id=inv.id) }}" onsubmit="return confirm('إلغاء هذه الدعوة؟')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-danger btn-sm">إلغاء</button>
+            </form>
+            {% endif %}
+            {% if inv.status == 'activated' and inv.organization_id %}
+            <div class="detail">org #{{ inv.organization_id }}</div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

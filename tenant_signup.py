@@ -121,15 +121,10 @@ def create_tenant_signup(
     if errors:
         return {'ok': False, 'errors': errors}
 
-    # اسم المستخدم = المعرّف (slug)
+    # اسم المستخدم = المعرّف (slug) — فريد داخل المؤسسة فقط
     uname = (username or slug).strip().lower()[:50]
     if not uname:
         return {'ok': False, 'errors': ['اسم المستخدم غير صالح.']}
-    if User.query.filter_by(username=uname).first():
-        return {
-            'ok': False,
-            'errors': ['هذا المعرّف مستخدم كاسم مستخدم مسبقاً — اختر معرّفاً آخر.'],
-        }
 
     trial_days = int(os.environ.get('LIFTCORE_TRIAL_DAYS', '14') or 14)
     trial_ends = datetime.utcnow() + timedelta(days=max(1, trial_days))

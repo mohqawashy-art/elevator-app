@@ -43,6 +43,46 @@ class TenantMixin:
 
 
 # =============================================
+# 0b. دعوات الانضمام (منصة المشغّل)
+# =============================================
+class OnboardingInvite(db.Model):
+    """دعوة يرسلها المشغّل للعميل لملء بيانات الشركة قبل التفعيل."""
+    __tablename__ = 'onboarding_invites'
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    status = db.Column(db.String(20), default='pending')  # pending | submitted | activated | expired | cancelled
+    plan = db.Column(db.String(30), default='basic')
+    suggested_slug = db.Column(db.String(63))
+    contact_email = db.Column(db.String(100))
+    contact_name = db.Column(db.String(100))
+    notes = db.Column(db.Text)
+    expires_at = db.Column(db.DateTime)
+    created_by_user_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    submitted_at = db.Column(db.DateTime)
+    activated_at = db.Column(db.DateTime)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'))
+
+    # بيانات يملأها العميل
+    company_name = db.Column(db.String(200))
+    company_name_en = db.Column(db.String(200))
+    cr_number = db.Column(db.String(50))
+    vat_number = db.Column(db.String(50))
+    phone = db.Column(db.String(30))
+    email = db.Column(db.String(100))
+    city = db.Column(db.String(100))
+    address = db.Column(db.Text)
+    admin_name = db.Column(db.String(100))
+    admin_email = db.Column(db.String(100))
+    admin_phone = db.Column(db.String(30))
+    preferred_slug = db.Column(db.String(63))
+
+    def __repr__(self):
+        return f'<OnboardingInvite {self.token[:8]}… {self.status}>'
+
+
+# =============================================
 # 1. العملاء
 # =============================================
 class Customer(TenantMixin, db.Model):

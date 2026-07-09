@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — بيانات الشركة</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#070a10;--gold:#c9a14a;--text:#f2f5fa;--muted:#5e6b7e;--err:#f87171;--ok:#4ade80}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:560px;background:rgba(255,255,255,.03);border:1px solid rgba(201,161,74,.15);border-radius:16px;padding:28px 24px}
+.brand-logo{width:min(220px,60vw);height:auto;display:block;margin:0 auto 16px}
+h1{font-size:1.3rem;margin-bottom:6px;text-align:center}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:20px;text-align:center;line-height:1.6}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{margin-bottom:12px}
+.field.full{grid-column:1/-1}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+input,textarea{width:100%;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.25);color:var(--text);font-family:inherit}
+textarea{min-height:72px;resize:vertical}
+input:focus,textarea:focus{outline:none;border-color:var(--gold)}
+.hint{font-size:.75rem;color:var(--muted);margin-top:4px}
+.btn{width:100%;margin-top:8px;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#c9a14a,#a8842f);color:#111;font-weight:700;cursor:pointer;font-family:inherit}
+.err{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);color:var(--err);padding:10px 12px;border-radius:10px;margin-bottom:14px;font-size:.9rem}
+.ok{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:var(--ok);padding:12px;border-radius:10px;margin-bottom:14px;font-size:.9rem;line-height:1.7;text-align:center}
+.sec{font-size:.8rem;color:var(--gold);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid rgba(201,161,74,.2)}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card">
+  <img class="brand-logo" src="{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=3" alt="LiftCore">
+  <h1>بيانات الشركة</h1>
+  <p class="sub">أكمل النموذج أدناه. بعد المراجعة من فريق LiftCore سيتم تفعيل حسابك وإرسال بيانات الدخول.</p>
+
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+
+  {% if success %}
+  <div class="ok">
+    تم استلام بياناتكم بنجاح.<br>
+    سنراجع الطلب ونفعّل الحساب قريباً.<br>
+    {% if invite.admin_email %}سيتم التواصل عبر: <strong>{{ invite.admin_email }}</strong>{% endif %}
+  </div>
+  {% elif closed %}
+  <div class="err">{{ closed }}</div>
+  {% else %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="sec">بيانات المنشأة</div>
+    <div class="grid">
+      <div class="field full">
+        <label for="company_name">اسم الشركة (عربي) *</label>
+        <input id="company_name" name="company_name" required maxlength="200" value="{{ form.company_name or '' }}">
+      </div>
+      <div class="field full">
+        <label for="company_name_en">اسم الشركة (إنجليزي)</label>
+        <input id="company_name_en" name="company_name_en" maxlength="200" value="{{ form.company_name_en or '' }}">
+      </div>
+      <div class="field">
+        <label for="cr_number">السجل التجاري</label>
+        <input id="cr_number" name="cr_number" maxlength="50" value="{{ form.cr_number or '' }}">
+      </div>
+      <div class="field">
+        <label for="vat_number">الرقم الضريبي</label>
+        <input id="vat_number" name="vat_number" maxlength="50" value="{{ form.vat_number or '' }}">
+      </div>
+      <div class="field">
+        <label for="phone">هاتف الشركة</label>
+        <input id="phone" name="phone" maxlength="30" value="{{ form.phone or '' }}">
+      </div>
+      <div class="field">
+        <label for="email">بريد الشركة</label>
+        <input id="email" name="email" type="email" maxlength="100" value="{{ form.email or '' }}">
+      </div>
+      <div class="field">
+        <label for="city">المدينة</label>
+        <input id="city" name="city" maxlength="100" value="{{ form.city or '' }}">
+      </div>
+      <div class="field">
+        <label for="preferred_slug">معرّف الرابط المفضّل</label>
+        <input id="preferred_slug" name="preferred_slug" maxlength="63" pattern="[a-z0-9-]*" placeholder="{{ invite.suggested_slug or 'mycompany' }}" value="{{ form.preferred_slug or invite.suggested_slug or '' }}">
+        <div class="hint">سيصبح: slug.liftcoreapp.com</div>
+      </div>
+      <div class="field full">
+        <label for="address">العنوان</label>
+        <textarea id="address" name="address" maxlength="500">{{ form.address or '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="sec">مسؤول الحساب</div>
+    <div class="grid">
+      <div class="field">
+        <label for="admin_name">الاسم *</label>
+        <input id="admin_name" name="admin_name" required maxlength="100" value="{{ form.admin_name or invite.contact_name or '' }}">
+      </div>
+      <div class="field">
+        <label for="admin_phone">الجوال</label>
+        <input id="admin_phone" name="admin_phone" maxlength="30" value="{{ form.admin_phone or '' }}">
+      </div>
+      <div class="field full">
+        <label for="admin_email">البريد الإلكتروني *</label>
+        <input id="admin_email" name="admin_email" type="email" required maxlength="100" value="{{ form.admin_email or invite.contact_email or '' }}">
+      </div>
+    </div>
+
+    <button type="submit" class="btn">إرسال البيانات للمراجعة</button>
+  </form>
+  {% endif %}
+</div>
+</body>
+</html>
