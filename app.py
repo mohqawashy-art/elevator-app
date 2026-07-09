@@ -136,6 +136,16 @@ def _security_headers(response):
 
 db.init_app(app)
 
+from tenant_scope import (  # noqa: E402
+    assign_organization,
+    init_tenant_scope,
+    resolve_tenant,
+    tenant_get_or_404,
+    tenant_query,
+)
+
+init_tenant_scope(db)
+
 # موديول تركيب المصاعد (جداول منفصلة)
 import installation.models  # noqa: F401, E402
 from installation.config import install_module_enabled
@@ -144,7 +154,7 @@ from flask_migrate import Migrate  # noqa: E402
 
 migrate = Migrate(app, db)
 
-PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'api_health', 'field_login', 'field_logout', 'field_manifest', 'field_service_worker', 'web_manifest', 'admin_service_worker'})
+PUBLIC_ENDPOINTS = frozenset({'login', 'logout', 'static', 'index', 'api_version', 'api_health', 'signup', 'api_signup', 'field_login', 'field_logout', 'field_manifest', 'field_service_worker', 'web_manifest', 'admin_service_worker'})
 PUBLIC_PATH_PREFIXES = ('/static',)
 STATIC_UPLOADS_PREFIX = '/static/uploads'
 
@@ -324,10 +334,10 @@ def _field_portal_context(tech_id: int) -> dict:
     from operations import FAULT_OPEN
     from technician_assignments import faults_for_technician_filter
 
-    tech = Technician.query.get_or_404(tech_id)
+    tech = tenant_get_or_404(Technician, tech_id)
     kind = technician_portal_kind(tech)
     has_faults = (
-        Fault.query.filter(
+        tenant_query(Fault).filter(
             faults_for_technician_filter(tech_id),
             Fault.status.in_(FAULT_OPEN),
         ).count()
@@ -369,6 +379,11 @@ def _bootstrap_permissions_schema_once():
 
 
 @app.before_request
+def _resolve_tenant_before_auth():
+    return resolve_tenant()
+
+
+@app.before_request
 def enforce_auth():
     _bootstrap_permissions_schema_once()
     from field_auth import field_session_technician_id
@@ -399,6 +414,13 @@ def enforce_auth():
     user = current_user()
     if user:
         g.user = user
+        oid = getattr(g, 'organization_id', None)
+        user_oid = getattr(user, 'organization_id', None)
+        if oid and user_oid is not None and user_oid != oid:
+            session.clear()
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'غير مصرح لهذا الحساب'}), 403
+            abort(403)
         lock_resp = _session_lock_response()
         if lock_resp:
             return lock_resp
@@ -409,7 +431,7 @@ def enforce_auth():
         lang = resolve_user_language(user)
         s = None
         try:
-            s = Settings.query.first()
+            s = tenant_query(Settings).first()
         except Exception:
             db.session.rollback()
         rbac_resp = check_rbac(
@@ -496,12 +518,17 @@ def en_datetime_filter(value):
 
 def get_app_settings():
     try:
-        s = Settings.query.first()
+        s = tenant_query(Settings).first()
     except Exception:
         db.session.rollback()
         s = None
     if not s:
+        from tenant_scope import effective_organization_id
+
+        if not effective_organization_id():
+            return None
         s = Settings()
+        assign_organization(s)
         db.session.add(s)
         db.session.commit()
     return s
@@ -586,7 +613,7 @@ def resolve_user_language(user=None):
     if user and getattr(user, 'language', None) in ('ar', 'en'):
         return user.language
     try:
-        s = Settings.query.first()
+        s = tenant_query(Settings).first()
         if s and getattr(s, 'language', None) in ('ar', 'en'):
             return s.language
     except Exception:
@@ -625,7 +652,7 @@ def format_date_dmy(value):
 @app.context_processor
 def inject_global_template_vars():
     try:
-        s = Settings.query.first()
+        s = tenant_query(Settings).first()
     except Exception:
         db.session.rollback()
         s = None
@@ -689,7 +716,7 @@ def has_perm(perm: str) -> bool:
     if not user:
         return False
     try:
-        s = Settings.query.first()
+        s = tenant_query(Settings).first()
     except Exception:
         db.session.rollback()
         s = None
@@ -720,7 +747,7 @@ def _invoice_status_from_paid(contract, paid, today=None):
     if remaining <= 0.01:
         return 'مدفوع'
     status = 'مدفوع جزئياً' if paid > 0 else 'غير مدفوع'
-    overdue = Invoice.query.filter(
+    overdue = tenant_query(Invoice).filter(
         Invoice.contract_id == contract.id,
         Invoice.due_date.isnot(None),
         Invoice.due_date < today,
@@ -740,7 +767,7 @@ def _refresh_contract_billing_cache(contract):
 
 def _backfill_contract_billing_cache():
     """ملء كاش الفوترة لجميع العقود (عند إضافة العمود أو الترقية)."""
-    contracts = Contract.query.all()
+    contracts = tenant_query(Contract).all()
     if not contracts:
         return
     app.logger.info('Backfilling contract billing cache (%d contracts)...', len(contracts))
@@ -1182,6 +1209,12 @@ def _startup_schema_and_data_sync():
     db.create_all()
     if is_sqlite(app.config.get('SQLALCHEMY_DATABASE_URI')):
         _sqlite_legacy_schema_patches()
+        try:
+            from multitenant_schema import ensure_multitenant_schema
+            ensure_multitenant_schema(db.session, db.engine)
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.warning('multitenant schema bootstrap: %s', exc)
     else:
         app.logger.info(
             'LiftCore DB backend=%s — Alembic migrations; skip SQLite legacy ALTER',
@@ -1289,13 +1322,13 @@ def phone_taken(phone, *, customer_id=None, technician_id=None):
     key = phone_key(phone)
     if not key or len(key) < 9:
         return False, None
-    for c in Customer.query.all():
+    for c in tenant_query(Customer).all():
         if customer_id and c.id == customer_id:
             continue
         for p in (c.phone, c.phone2):
             if p and phone_key(p) == key:
                 return True, f'رقم الجوال مستخدم للعميل «{c.name}» ({c.code})'
-    for t in Technician.query.all():
+    for t in tenant_query(Technician).all():
         if technician_id and t.id == technician_id:
             continue
         for p in (t.phone, t.phone2):
@@ -1333,9 +1366,12 @@ app.jinja_env.globals['customer_fleet_status'] = customer_fleet_status
 def next_code(model, prefix, field='code', digits=4):
     import re
 
+    from models import TenantMixin
+
     max_num = 0
     pattern = re.compile(r'^' + re.escape(prefix) + r'(\d+)$')
-    for row in model.query.with_entities(getattr(model, field)).all():
+    q = tenant_query(model) if issubclass(model, TenantMixin) else model.query
+    for row in q.with_entities(getattr(model, field)).all():
         code = row[0]
         if not code:
             continue
@@ -1353,8 +1389,8 @@ def api_version():
     root = app.root_path
     db_info = dict(database_info(app))
     try:
-        db_info['customers'] = Customer.query.count()
-        db_info['elevators'] = Elevator.query.count()
+        db_info['customers'] = tenant_query(Customer).count()
+        db_info['elevators'] = tenant_query(Elevator).count()
     except Exception:
         pass
     if db_info.get('backend') == 'sqlite':
@@ -1476,7 +1512,7 @@ def _find_login_user(login_id):
     login_id = (login_id or '').strip()
     if not login_id:
         return None
-    return User.query.filter(
+    return tenant_query(User).filter(
         User.is_active.is_(True),
         or_(User.username == login_id, db.func.lower(User.email) == login_id.lower()),
     ).first()
@@ -1558,6 +1594,129 @@ def login():
     return render_template('login.html', error=error)
 
 
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    from liftcore_security import ensure_csrf_token, password_policy_error
+    from liftcore_mail import send_welcome_email
+    from tenant_signup import (
+        create_tenant_signup,
+        is_signup_host,
+        require_signup_host,
+        signup_enabled,
+        validate_slug,
+    )
+
+    require_signup_host()
+    if not signup_enabled():
+        abort(404)
+    if current_user():
+        return redirect(url_for('dashboard'))
+
+    error = None
+    success = None
+    if request.method == 'GET':
+        ensure_csrf_token()
+
+    if request.method == 'POST':
+        company_name = request.form.get('company_name', '')
+        slug = request.form.get('slug', '')
+        admin_email = request.form.get('admin_email', '')
+        admin_name = request.form.get('admin_name', '')
+        password = request.form.get('password', '')
+        password2 = request.form.get('password_confirm', '')
+
+        slug_err = validate_slug(slug)
+        pwd_err = password_policy_error(password)
+        if slug_err:
+            error = slug_err
+        elif pwd_err:
+            error = pwd_err
+        elif password != password2:
+            error = 'تأكيد كلمة المرور غير متطابق.'
+        else:
+            result = create_tenant_signup(
+                company_name=company_name,
+                slug=slug,
+                admin_email=admin_email,
+                admin_name=admin_name,
+                password_hash=hash_password(password),
+            )
+            if not result.get('ok'):
+                error = ' — '.join(result.get('errors') or ['تعذّر إنشاء الحساب.'])
+            else:
+                send_welcome_email(
+                    to_email=admin_email,
+                    company_name=company_name.strip(),
+                    slug=result['slug'],
+                    admin_name=admin_name.strip(),
+                    login_url=result['login_url'],
+                )
+                success = result
+                log_audit(
+                    'tenant_signup',
+                    organization_id=result['organization_id'],
+                    details={'slug': result['slug'], 'organization_id': result['organization_id']},
+                )
+
+    return render_template(
+        'signup.html',
+        error=error,
+        success=success,
+        signup_enabled=signup_enabled(),
+    )
+
+
+@app.route('/api/signup', methods=['POST'])
+def api_signup():
+    from liftcore_security import password_policy_error
+    from liftcore_mail import send_welcome_email
+    from tenant_signup import create_tenant_signup, require_signup_host, signup_enabled
+
+    require_signup_host()
+    if not signup_enabled():
+        return jsonify({'ok': False, 'error': 'signup_disabled'}), 404
+
+    data = request.get_json(silent=True) if request.is_json else None
+    if not isinstance(data, dict):
+        data = request.form
+
+    password = (data.get('password') or '').strip()
+    pwd_err = password_policy_error(password, lang='en')
+    if pwd_err:
+        return jsonify({'ok': False, 'errors': [pwd_err]}), 400
+
+    result = create_tenant_signup(
+        company_name=data.get('company_name', ''),
+        slug=data.get('slug', ''),
+        admin_email=data.get('admin_email', ''),
+        admin_name=data.get('admin_name', ''),
+        password_hash=hash_password(password),
+        username=(data.get('username') or '').strip() or None,
+    )
+    if not result.get('ok'):
+        return jsonify({'ok': False, 'errors': result.get('errors', [])}), 400
+
+    send_welcome_email(
+        to_email=(data.get('admin_email') or '').strip(),
+        company_name=(data.get('company_name') or '').strip(),
+        slug=result['slug'],
+        admin_name=(data.get('admin_name') or '').strip(),
+        login_url=result['login_url'],
+    )
+    from audit_log import log_audit
+    log_audit(
+        'tenant_signup',
+        organization_id=result['organization_id'],
+        details={'slug': result['slug'], 'organization_id': result['organization_id']},
+    )
+    return jsonify({
+        'ok': True,
+        'slug': result['slug'],
+        'login_url': result['login_url'],
+        'username': result['username'],
+    }), 201
+
+
 @app.route('/welcome')
 def welcome():
     user = current_user()
@@ -1582,7 +1741,7 @@ _DASH_UNPAID_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخر
 
 def _count_created_between(model, start, end, date_field='created_at', **filters):
     col = getattr(model, date_field)
-    q = model.query.filter(col >= start, col < end)
+    q = tenant_query(model).filter(col >= start, col < end)
     for key, val in filters.items():
         q = q.filter(getattr(model, key) == val)
     return q.count()
@@ -1626,7 +1785,7 @@ def get_dashboard_trends(today=None):
     yesterday = today - timedelta(days=1)
 
     def expired_between(d1, d2):
-        return Contract.query.filter(
+        return tenant_query(Contract).filter(
             Contract.end_date >= d1,
             Contract.end_date < d2,
         ).count()
@@ -1635,14 +1794,14 @@ def get_dashboard_trends(today=None):
     exp_prev = expired_between(prev_start.date(), cur_start.date())
 
     def unpaid_created(start, end):
-        return Invoice.query.filter(
+        return tenant_query(Invoice).filter(
             Invoice.created_at >= start,
             Invoice.created_at < end,
             Invoice.status.in_(_DASH_UNPAID_STATUSES),
         ).count()
 
-    visits_today = MaintenanceVisit.query.filter_by(visit_date=today).count()
-    visits_yesterday = MaintenanceVisit.query.filter_by(visit_date=yesterday).count()
+    visits_today = tenant_query(MaintenanceVisit).filter_by(visit_date=today).count()
+    visits_yesterday = tenant_query(MaintenanceVisit).filter_by(visit_date=yesterday).count()
 
     return {
         'customers': _trend_badge(_period_created_delta(Customer)),
@@ -1699,38 +1858,38 @@ def get_dashboard_stats():
         Invoice.due_date < today,
         Invoice.status.in_(['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً'])
     ).scalar() or 0
-    overdue_count = Invoice.query.filter(
+    overdue_count = tenant_query(Invoice).filter(
         Invoice.due_date < today,
         Invoice.status.in_(['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً'])
     ).count()
 
-    expiring_contracts = Contract.query.filter(
+    expiring_contracts = tenant_query(Contract).filter(
         Contract.status == 'نشط',
         Contract.end_date >= today,
         Contract.end_date <= in_30_days,
     ).order_by(Contract.end_date).all()
 
-    low_stock_items = InventoryItem.query.filter(
+    low_stock_items = tenant_query(InventoryItem).filter(
         InventoryItem.min_qty > 0,
         InventoryItem.current_qty < InventoryItem.min_qty,
     ).order_by(InventoryItem.current_qty).all()
 
     stats = {
-        'customers':        Customer.query.count(),
-        'elevators':        Elevator.query.count(),
-        'contracts':        Contract.query.filter_by(status='نشط').count(),
-        'expired_contracts': Contract.query.filter(
+        'customers':        tenant_query(Customer).count(),
+        'elevators':        tenant_query(Elevator).count(),
+        'contracts':        tenant_query(Contract).filter_by(status='نشط').count(),
+        'expired_contracts': tenant_query(Contract).filter(
             db.or_(Contract.status == 'منتهي', Contract.end_date < today)
         ).count(),
-        'visits_today':     MaintenanceVisit.query.filter_by(visit_date=today).count(),
-        'visits_done':      MaintenanceVisit.query.filter_by(status='مكتملة').count(),
-        'faults_open':      Fault.query.filter(
+        'visits_today':     tenant_query(MaintenanceVisit).filter_by(visit_date=today).count(),
+        'visits_done':      tenant_query(MaintenanceVisit).filter_by(status='مكتملة').count(),
+        'faults_open':      tenant_query(Fault).filter(
             Fault.status.in_(['مفتوح', 'قيد المعالجة'])
         ).count(),
-        'unpaid_invoices':  Invoice.query.filter(
+        'unpaid_invoices':  tenant_query(Invoice).filter(
             Invoice.status.in_(['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً'])
         ).count(),
-        'technicians':      Technician.query.filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).count(),
+        'technicians':      tenant_query(Technician).filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).count(),
         'revenue':          round(db.session.query(db.func.sum(Revenue.total)).scalar() or 0, 2),
         'parts_profit':     round(db.session.query(db.func.sum(PartsBilling.profit)).scalar() or 0, 2),
         'total_invoices':   round(total_invoices, 2),
@@ -1797,7 +1956,7 @@ def api_dashboard_drill(card_type):
     if card_type == 'customers':
         rows = [
             [c.code, c.name, c.city or '—', c.district or '—', c.phone or '—', c.status]
-            for c in Customer.query.order_by(Customer.name).all()
+            for c in tenant_query(Customer).order_by(Customer.name).all()
         ]
         payload = {
             'title': 'إجمالي العملاء', 'link': '/clients',
@@ -1807,7 +1966,7 @@ def api_dashboard_drill(card_type):
     elif card_type == 'elevators':
         rows = [
             [e.code, e.customer.name, e.building_name or '—', e.elev_type or '—', e.brand or '—', e.status]
-            for e in Elevator.query.join(Customer).order_by(Elevator.code).all()
+            for e in tenant_query(Elevator).join(Customer).order_by(Elevator.code).all()
         ]
         payload = {
             'title': 'إجمالي المصاعد', 'link': '/elevators',
@@ -1819,7 +1978,7 @@ def api_dashboard_drill(card_type):
             [c.code, c.customer.name, c.contract_type or '—',
              str(c.start_date), str(c.end_date),
              f'{c.total:,.0f} \u20c1' if c.total else '—', c.status]
-            for c in Contract.query.filter_by(status='نشط').order_by(Contract.end_date).all()
+            for c in tenant_query(Contract).filter_by(status='نشط').order_by(Contract.end_date).all()
         ]
         payload = {
             'title': 'العقود الفعّالة', 'link': '/contracts',
@@ -1830,7 +1989,7 @@ def api_dashboard_drill(card_type):
         rows = [
             [c.code, c.customer.name, c.contract_type or '—',
              str(c.start_date), str(c.end_date), c.status]
-            for c in Contract.query.filter(
+            for c in tenant_query(Contract).filter(
                 db.or_(Contract.status == 'منتهي', Contract.end_date < today)
             ).order_by(Contract.end_date.desc()).all()
         ]
@@ -1844,7 +2003,7 @@ def api_dashboard_drill(card_type):
             [v.code, v.elevator.customer.name, v.elevator.code,
              v.visit_type or '—', v.visit_time or '—',
              v.technician.name if v.technician else '—', v.status]
-            for v in MaintenanceVisit.query.filter_by(visit_date=today)
+            for v in tenant_query(MaintenanceVisit).filter_by(visit_date=today)
             .order_by(MaintenanceVisit.visit_time).all()
         ]
         payload = {
@@ -1857,7 +2016,7 @@ def api_dashboard_drill(card_type):
             [f.code, f.elevator.customer.name, f.elevator.code,
              f.fault_type or '—', f.priority or '—',
              f.technician.name if f.technician else 'غير مكلف', f.status]
-            for f in Fault.query.filter(Fault.status.in_(OPEN_FAULT_STATUSES))
+            for f in tenant_query(Fault).filter(Fault.status.in_(OPEN_FAULT_STATUSES))
             .order_by(Fault.reported_at.desc()).all()
         ]
         payload = {
@@ -1891,7 +2050,7 @@ def api_dashboard_drill(card_type):
         rows = [
             [t.code, t.name, t.phone or '—', t.job_title or '—',
              t.specialization or '—', t.city or '—', t.status]
-            for t in Technician.query.filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).order_by(Technician.name).all()
+            for t in tenant_query(Technician).filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).order_by(Technician.name).all()
         ]
         payload = {
             'title': 'الفنيون المتاحون', 'link': '/technicians',
@@ -1903,7 +2062,7 @@ def api_dashboard_drill(card_type):
         rows = [
             [c.code, c.customer.name, c.contract_type or '—',
              str(c.end_date), f'{(c.end_date - today).days} يوم', c.status]
-            for c in Contract.query.filter(
+            for c in tenant_query(Contract).filter(
                 Contract.status == 'نشط',
                 Contract.end_date >= today,
                 Contract.end_date <= in_30_days,
@@ -1918,7 +2077,7 @@ def api_dashboard_drill(card_type):
         rows = [
             [i.code, i.name, i.category or '—',
              f'{i.current_qty:g}', f'{i.min_qty:g}', i.unit or '—', i.order_status]
-            for i in InventoryItem.query.filter(
+            for i in tenant_query(InventoryItem).filter(
                 InventoryItem.min_qty > 0,
                 InventoryItem.current_qty < InventoryItem.min_qty,
             ).order_by(InventoryItem.current_qty).all()
@@ -1995,7 +2154,7 @@ def api_dashboard_drill(card_type):
             [v.code, v.elevator.customer.name, v.elevator.code,
              str(v.visit_date), v.visit_type or '—',
              v.technician.name if v.technician else '—', v.status]
-            for v in MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc()).limit(50).all()
+            for v in tenant_query(MaintenanceVisit).order_by(MaintenanceVisit.visit_date.desc()).limit(50).all()
         ]
         payload = {
             'title': 'زيارات الصيانة', 'link': '/maintenance-visits',
@@ -2007,7 +2166,7 @@ def api_dashboard_drill(card_type):
             [f.code, f.elevator.customer.name, f.elevator.code,
              f.fault_type or '—', f.priority or '—',
              f.technician.name if f.technician else '—', f.status]
-            for f in Fault.query.order_by(Fault.reported_at.desc()).limit(50).all()
+            for f in tenant_query(Fault).order_by(Fault.reported_at.desc()).limit(50).all()
         ]
         payload = {
             'title': 'سجل الأعطال', 'link': '/faults',
@@ -2034,7 +2193,7 @@ def clients():
     from sqlalchemy.orm import joinedload
 
     customers = (
-        Customer.query
+        tenant_query(Customer)
         .options(joinedload(Customer.elevators), joinedload(Customer.contracts))
         .order_by(Customer.id.desc())
         .all()
@@ -2166,7 +2325,7 @@ def _customer_location_payload(customer):
 
 @app.route('/api/customers/<int:customer_id>/location', methods=['GET', 'POST'])
 def api_customer_location(customer_id):
-    customer = Customer.query.get_or_404(customer_id)
+    customer = tenant_get_or_404(Customer, customer_id)
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         lat = data.get('lat')
@@ -2185,7 +2344,7 @@ def api_customer_location(customer_id):
 def api_customer_geocode(customer_id):
     from geocode import geocode_customer
 
-    customer = Customer.query.get_or_404(customer_id)
+    customer = tenant_get_or_404(Customer, customer_id)
     ok = geocode_customer(customer, delay=0)
     db.session.commit()
     return jsonify({'ok': ok, **_customer_location_payload(customer)})
@@ -2201,7 +2360,7 @@ def api_customer_profile(customer_id):
 def api_customer_invoicable_revenues(customer_id):
     from customer_billing import customer_invoicable_revenues
 
-    Customer.query.get_or_404(customer_id)
+    tenant_get_or_404(Customer, customer_id)
     return jsonify({
         'customer_id': customer_id,
         'operations': customer_invoicable_revenues(customer_id),
@@ -2212,7 +2371,7 @@ def api_customer_invoicable_revenues(customer_id):
 def api_customer_uncollected_ops(customer_id):
     from customer_billing import customer_uncollected_ops
 
-    Customer.query.get_or_404(customer_id)
+    tenant_get_or_404(Customer, customer_id)
     return jsonify({
         'customer_id': customer_id,
         'operations': customer_uncollected_ops(customer_id),
@@ -2223,7 +2382,7 @@ def api_customer_uncollected_ops(customer_id):
 def api_customer_billable_ops(customer_id):
     from customer_billing import customer_billable_ops
 
-    Customer.query.get_or_404(customer_id)
+    tenant_get_or_404(Customer, customer_id)
     return jsonify({
         'customer_id': customer_id,
         'operations': customer_billable_ops(customer_id),
@@ -2398,7 +2557,7 @@ def _visit_json(v):
     from technician_assignments import visit_technicians_label, visit_technician_ids, visit_technicians_payload
 
     elev = v.elevator
-    fault = Fault.query.get(v.fault_id) if v.fault_id else None
+    fault = tenant_query(Fault).filter_by(id=v.fault_id).first() if v.fault_id else None
     return {
         'id': v.id,
         'code': v.code,
@@ -2489,7 +2648,7 @@ def _part_json(p):
 def _contract_json(c):
     elev_ids = [ce.elevator_id for ce in c.elevators]
     elev_codes = [
-        e.code for e in Elevator.query.filter(Elevator.id.in_(elev_ids)).all()
+        e.code for e in tenant_query(Elevator).filter(Elevator.id.in_(elev_ids)).all()
     ] if elev_ids else []
     return {
         'id': c.id,
@@ -2517,13 +2676,13 @@ def _contract_json(c):
 
 @app.route('/api/maintenance-visits/<int:visit_id>')
 def api_maintenance_visit(visit_id):
-    v = MaintenanceVisit.query.get_or_404(visit_id)
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
     return jsonify(_visit_json(v))
 
 
 @app.route('/api/faults/<int:fault_id>')
 def api_fault(fault_id):
-    f = Fault.query.get_or_404(fault_id)
+    f = tenant_get_or_404(Fault, fault_id)
     return jsonify(_fault_json(f))
 
 
@@ -2543,9 +2702,9 @@ def api_customer_faults(customer_id):
     from entity_links import fault_parts_link_fields
     from technician_assignments import fault_technician_ids
 
-    Customer.query.get_or_404(customer_id)
+    tenant_get_or_404(Customer, customer_id)
     faults = (
-        Fault.query.join(Elevator, Fault.elevator_id == Elevator.id)
+        tenant_query(Fault).join(Elevator, Fault.elevator_id == Elevator.id)
         .filter(Elevator.customer_id == customer_id)
         .order_by(Fault.reported_at.desc(), Fault.id.desc())
         .all()
@@ -2571,7 +2730,7 @@ def api_customer_faults(customer_id):
             'reported_at': f.reported_at.strftime('%Y-%m-%d') if f.reported_at else '',
             'tech_id': tech_ids[0] if tech_ids else None,
             'billed': bool(f.billed),
-            'has_parts': PartsBilling.query.filter_by(fault_id=f.id).count() > 0,
+            'has_parts': tenant_query(PartsBilling).filter_by(fault_id=f.id).count() > 0,
             'needs_parts': bool(f.needs_parts),
         })
     return jsonify({'faults': rows})
@@ -2579,13 +2738,13 @@ def api_customer_faults(customer_id):
 
 @app.route('/api/parts-billing/<int:part_id>')
 def api_parts_billing(part_id):
-    p = PartsBilling.query.get_or_404(part_id)
+    p = tenant_get_or_404(PartsBilling, part_id)
     return jsonify(_part_json(p))
 
 
 @app.route('/api/contracts/<int:contract_id>')
 def api_contract_detail(contract_id):
-    c = Contract.query.get_or_404(contract_id)
+    c = tenant_get_or_404(Contract, contract_id)
     return jsonify(_contract_json(c))
 
 
@@ -2641,6 +2800,7 @@ def client_add():
         lng          = request.form.get('lng',''),
         maps_url     = request.form.get('maps_url',''),
     )
+    assign_organization(c)
     db.session.add(c)
     db.session.flush()
     photo_err = _save_client_building_photo(c, request.files.get('building_photo'))
@@ -2653,7 +2813,7 @@ def client_add():
 def client_edit(id):
     from form_validation import customer_name_error
 
-    c = Customer.query.get_or_404(id)
+    c = tenant_get_or_404(Customer, id)
     name_err = customer_name_error(request.form.get('name'), customer_id=c.id)
     if name_err:
         flash(name_err, 'error')
@@ -2718,14 +2878,14 @@ def client_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    c = Customer.query.get_or_404(id)
+    c = tenant_get_or_404(Customer, id)
     db.session.delete(c)
     db.session.commit()
     return redirect(url_for('clients'))
 
 @app.route('/api/clients')
 def api_clients():
-    customers = Customer.query.all()
+    customers = tenant_query(Customer).all()
     return jsonify([{'id':c.id,'code':c.code,'name':c.name,'city':c.city} for c in customers])
 
 # =============================================
@@ -2751,12 +2911,12 @@ def elevators():
     from sqlalchemy.orm import joinedload
 
     elevs = (
-        Elevator.query
+        tenant_query(Elevator)
         .options(joinedload(Elevator.customer))
         .order_by(Elevator.id.desc())
         .all()
     )
-    customers = Customer.query.order_by(Customer.name).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
     return render_template(
         'elevators.html',
         elevators=elevs,
@@ -2839,6 +2999,7 @@ def elevator_add():
         status          = request.form.get('status', 'نشط'),
         notes           = request.form.get('notes', ''),
     )
+    assign_organization(e)
     db.session.add(e)
     db.session.flush()
     sync_customer_from_elevators(e.customer)
@@ -2854,7 +3015,7 @@ def elevator_edit(id):
     if elev_err:
         flash(elev_err, 'error')
         return redirect(url_for('elevators'))
-    e = Elevator.query.get_or_404(id)
+    e = tenant_get_or_404(Elevator, id)
     e.customer_id      = request.form['customer_id']
     e.building_name    = request.form.get('building_name', '')
     e.city             = request.form.get('city', '')
@@ -2891,7 +3052,7 @@ def elevator_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    e = Elevator.query.get_or_404(id)
+    e = tenant_get_or_404(Elevator, id)
     customer = e.customer
     db.session.delete(e)
     db.session.flush()
@@ -2901,7 +3062,7 @@ def elevator_delete(id):
 
 @app.route('/api/elevators/<int:customer_id>')
 def api_elevators_by_customer(customer_id):
-    elevs = Elevator.query.filter_by(customer_id=customer_id).all()
+    elevs = tenant_query(Elevator).filter_by(customer_id=customer_id).all()
     return jsonify([{'id':e.id,'code':e.code,'building':e.building_name} for e in elevs])
 
 def contract_display_status(contract, today=None):
@@ -2936,7 +3097,7 @@ def contract_invoice_status(contract, today=None):
 def sync_contract_invoice_status(contract_id):
     if not contract_id:
         return
-    c = Contract.query.get(contract_id)
+    c = tenant_query(Contract).filter_by(id=contract_id).first()
     if c:
         _refresh_contract_billing_cache(c)
 
@@ -2958,7 +3119,7 @@ app.jinja_env.globals['money_round'] = _money_round
 
 def customer_primary_contract(customer):
     contracts = (
-        Contract.query.filter_by(customer_id=customer.id)
+        tenant_query(Contract).filter_by(customer_id=customer.id)
         .order_by(Contract.end_date.desc())
         .all()
     )
@@ -2988,29 +3149,29 @@ def _customer_in_period_filter(model, contract, date_field):
 def build_customer_profile(customer_id, contract_id=None):
     from customer_billing import customer_uncollected_ops
 
-    customer = Customer.query.get_or_404(customer_id)
+    customer = tenant_get_or_404(Customer, customer_id)
     if contract_id:
-        contract = Contract.query.filter_by(
+        contract = tenant_query(Contract).filter_by(
             id=contract_id, customer_id=customer_id
         ).first_or_404()
     else:
         contract = customer_primary_contract(customer)
 
     contracts = (
-        Contract.query.filter_by(customer_id=customer_id)
+        tenant_query(Contract).filter_by(customer_id=customer_id)
         .order_by(Contract.start_date.desc())
         .all()
     )
 
-    rev_q = Revenue.query.filter(
+    rev_q = tenant_query(Revenue).filter(
         Revenue.customer_id == customer_id,
         Revenue.status.in_(('محصّل', 'محصل')),
     )
-    parts_q = PartsBilling.query.filter(
+    parts_q = tenant_query(PartsBilling).filter(
         PartsBilling.customer_id == customer_id,
         PartsBilling.status.in_(('مكتملة', 'محصل', 'محصّل')),
     )
-    inv_q = Invoice.query.filter(
+    inv_q = tenant_query(Invoice).filter(
         Invoice.customer_id == customer_id,
         Invoice.status.in_(PAID_INVOICE_STATUSES),
     )
@@ -3036,10 +3197,10 @@ def build_customer_profile(customer_id, contract_id=None):
     contract_value = contract.total if contract else 0
     balance = max(contract_value - contract_payments, 0) if contract else 0
 
-    visit_q = MaintenanceVisit.query.join(Elevator).filter(
+    visit_q = tenant_query(MaintenanceVisit).join(Elevator).filter(
         Elevator.customer_id == customer_id
     )
-    fault_q = Fault.query.join(Elevator).filter(
+    fault_q = tenant_query(Fault).join(Elevator).filter(
         Elevator.customer_id == customer_id
     )
     if contract:
@@ -3221,23 +3382,25 @@ def _contract_duration_months(start, end):
 
 
 def _sync_contract_elevators(contract_id, elevator_ids):
-    ContractElevator.query.filter_by(contract_id=contract_id).delete()
+    tenant_query(ContractElevator).filter_by(contract_id=contract_id).delete()
     for eid in elevator_ids:
         if eid:
-            db.session.add(ContractElevator(contract_id=contract_id, elevator_id=int(eid)))
+            link = ContractElevator(contract_id=contract_id, elevator_id=int(eid))
+            assign_organization(link)
+            db.session.add(link)
 
 
 def _purge_contract_dependencies(contract_id):
     """إزالة الارتباطات التي تمنع حذف العقد."""
-    MaintenanceVisit.query.filter_by(contract_id=contract_id).delete(synchronize_session=False)
-    ContractElevator.query.filter_by(contract_id=contract_id).delete(synchronize_session=False)
-    Invoice.query.filter_by(contract_id=contract_id).update(
+    tenant_query(MaintenanceVisit).filter_by(contract_id=contract_id).delete(synchronize_session=False)
+    tenant_query(ContractElevator).filter_by(contract_id=contract_id).delete(synchronize_session=False)
+    tenant_query(Invoice).filter_by(contract_id=contract_id).update(
         {Invoice.contract_id: None}, synchronize_session=False
     )
-    Revenue.query.filter_by(contract_id=contract_id).update(
+    tenant_query(Revenue).filter_by(contract_id=contract_id).update(
         {Revenue.contract_id: None}, synchronize_session=False
     )
-    PartsBilling.query.filter_by(contract_id=contract_id).update(
+    tenant_query(PartsBilling).filter_by(contract_id=contract_id).update(
         {PartsBilling.contract_id: None}, synchronize_session=False
     )
 
@@ -3330,15 +3493,15 @@ def contracts():
     from sqlalchemy.orm import joinedload
 
     contracts_list = (
-        Contract.query
+        tenant_query(Contract)
         .options(joinedload(Contract.customer), joinedload(Contract.elevators))
         .order_by(Contract.id.desc())
         .all()
     )
-    customers = Customer.query.order_by(Customer.name).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
-        for e in Elevator.query.all()
+        for e in tenant_query(Elevator).all()
     }
     return render_template(
         'contracts.html',
@@ -3381,7 +3544,7 @@ def contract_edit(id):
     if err:
         flash(err, 'error')
         return redirect(url_for('contracts'))
-    c = Contract.query.get_or_404(id)
+    c = tenant_get_or_404(Contract, id)
     _apply_contract_form(c, request.form)
     _save_contract_file(c, request.files.get('contract_file'))
     _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
@@ -3399,6 +3562,7 @@ def contract_add():
         return redirect(url_for('contracts'))
     c = Contract(code=next_code(Contract, 'CN-', digits=5))
     _apply_contract_form(c, request.form)
+    assign_organization(c)
     db.session.add(c)
     db.session.flush()
     _save_contract_file(c, request.files.get('contract_file'))
@@ -3411,7 +3575,7 @@ def contract_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    c = Contract.query.get_or_404(id)
+    c = tenant_get_or_404(Contract, id)
     try:
         _remove_contract_file(c)
         _purge_contract_dependencies(id)
@@ -3442,12 +3606,12 @@ def technician_display_status(tech, today=None):
         raw = 'متاح'
     if raw in ('إجازة', 'غير نشط'):
         return raw
-    busy_visit = MaintenanceVisit.query.filter(
+    busy_visit = tenant_query(MaintenanceVisit).filter(
         visits_for_technician_filter(tech.id),
         MaintenanceVisit.visit_date == today,
         MaintenanceVisit.status == 'جارٍ',
     ).count()
-    open_fault = Fault.query.filter(
+    open_fault = tenant_query(Fault).filter(
         faults_for_technician_filter(tech.id),
         Fault.status == 'قيد المعالجة',
     ).count()
@@ -3599,7 +3763,7 @@ def _save_technician_signature(tech, file_storage, pin_plain=''):
 
     pin = str(pin_plain or '').strip()
     has_file = file_storage and file_storage.filename and _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT)
-    existing = Signatory.query.filter_by(technician_id=tech.id, is_active=True).first()
+    existing = tenant_query(Signatory).filter_by(technician_id=tech.id, is_active=True).first()
     if not has_file and not pin and not existing:
         return
     # رمز دخول الجوال — يُحفظ على الفني (وموقّعه إن وُجد)
@@ -3664,14 +3828,16 @@ def _save_technician_documents(tech, files, types, titles):
         file_storage.save(abs_path)
         doc_type = types[i] if i < len(types) and types[i] else 'أخرى'
         title = titles[i] if i < len(titles) and titles[i] else original
-        db.session.add(TechnicianDocument(
+        doc = TechnicianDocument(
             technician_id=tech.id,
             doc_type=doc_type,
             title=title,
             file_path=f'uploads/technicians/{tech.id}/docs/{stored}',
             file_name=original,
             mime_type=file_storage.mimetype or '',
-        ))
+        )
+        assign_organization(doc)
+        db.session.add(doc)
 
 
 def _remove_technician_files(tech):
@@ -3700,7 +3866,7 @@ def technicians():
     from sqlalchemy.orm import joinedload
 
     techs = (
-        Technician.query
+        tenant_query(Technician)
         .options(
             joinedload(Technician.documents),
             joinedload(Technician.visits),
@@ -3709,7 +3875,7 @@ def technicians():
         .order_by(Technician.id.desc())
         .all()
     )
-    unassigned_faults = Fault.query.filter(
+    unassigned_faults = tenant_query(Fault).filter(
         Fault.technician_id.is_(None),
         Fault.status.in_(['مفتوح', 'قيد المعالجة']),
     ).count()
@@ -3730,16 +3896,16 @@ def technicians():
 
 @app.route('/api/technicians/<int:tech_id>/profile')
 def api_technician_profile(tech_id):
-    tech = Technician.query.get_or_404(tech_id)
+    tech = tenant_get_or_404(Technician, tech_id)
     today = date.today()
     visits = (
-        MaintenanceVisit.query.filter_by(technician_id=tech_id)
+        tenant_query(MaintenanceVisit).filter_by(technician_id=tech_id)
         .order_by(MaintenanceVisit.visit_date.desc())
         .limit(25)
         .all()
     )
     faults = (
-        Fault.query.filter_by(technician_id=tech_id)
+        tenant_query(Fault).filter_by(technician_id=tech_id)
         .order_by(Fault.reported_at.desc())
         .limit(25)
         .all()
@@ -3801,6 +3967,7 @@ def technician_add():
     except ValueError as exc:
         flash(str(exc), 'error')
         return redirect(url_for('technicians'))
+    assign_organization(t)
     db.session.add(t)
     db.session.flush()
     _save_technician_photo(t, request.files.get('photo'))
@@ -3823,7 +3990,7 @@ def technician_add():
 
 @app.route('/technicians/<int:id>/phone', methods=['POST'])
 def technician_update_phone(id):
-    t = Technician.query.get_or_404(id)
+    t = tenant_get_or_404(Technician, id)
     data = request.get_json(silent=True) or request.form
     phone = (data.get('phone') or '').strip()
     phone2 = (data.get('phone2') or '').strip()
@@ -3843,7 +4010,7 @@ def technician_update_phone(id):
 
 @app.route('/technicians/edit/<int:id>', methods=['POST'])
 def technician_edit(id):
-    t = Technician.query.get_or_404(id)
+    t = tenant_get_or_404(Technician, id)
     phone = request.form.get('phone', '')
     taken, msg = phone_taken(phone, technician_id=t.id)
     if taken:
@@ -3883,7 +4050,7 @@ def technician_document_delete(doc_id):
     err = enforce_admin_delete(json_response=True)
     if err:
         return err
-    doc = TechnicianDocument.query.get_or_404(doc_id)
+    doc = tenant_get_or_404(TechnicianDocument, doc_id)
     abs_path = os.path.join(app.root_path, 'static', doc.file_path.replace('/', os.sep))
     if os.path.isfile(abs_path):
         try:
@@ -3900,7 +4067,7 @@ def technician_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    t = Technician.query.get_or_404(id)
+    t = tenant_get_or_404(Technician, id)
     _remove_technician_files(t)
     db.session.delete(t)
     db.session.commit()
@@ -3915,14 +4082,14 @@ def maintenance_visits():
     from sqlalchemy.orm import joinedload
 
     visits = exclude_fault_visits(
-        MaintenanceVisit.query.options(
+        tenant_query(MaintenanceVisit).options(
             joinedload(MaintenanceVisit.elevator).joinedload(Elevator.customer),
         )
     ).order_by(MaintenanceVisit.visit_date.desc()).all()
-    elevators = Elevator.query.options(joinedload(Elevator.customer)).all()
-    customers = Customer.query.order_by(Customer.name).all()
-    contracts = Contract.query.order_by(Contract.start_date.desc()).all()
-    technicians = Technician.query.filter(
+    elevators = tenant_query(Elevator).options(joinedload(Elevator.customer)).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    contracts = tenant_query(Contract).order_by(Contract.start_date.desc()).all()
+    technicians = tenant_query(Technician).filter(
         Technician.status.in_(['نشط', 'متاح', 'مشغول'])
     ).all()
     today = date.today()
@@ -3971,16 +4138,16 @@ def maintenance_visits():
 
 def build_elevator_profile(elevator_id):
     """ملخص المصعد + سجل مصروفاته (قطع غيار + صرف مخزن)."""
-    elev = Elevator.query.get_or_404(elevator_id)
+    elev = tenant_get_or_404(Elevator, elevator_id)
     customer = elev.customer
 
     parts = (
-        PartsBilling.query.filter_by(elevator_id=elevator_id)
+        tenant_query(PartsBilling).filter_by(elevator_id=elevator_id)
         .order_by(PartsBilling.billing_date.desc(), PartsBilling.id.desc())
         .all()
     )
     stock_moves = (
-        StockMovement.query.filter_by(elevator_id=elevator_id, direction='صادر')
+        tenant_query(StockMovement).filter_by(elevator_id=elevator_id, direction='صادر')
         .order_by(StockMovement.movement_date.desc(), StockMovement.id.desc())
         .all()
     )
@@ -4019,13 +4186,13 @@ def build_elevator_profile(elevator_id):
     total_cost = round(parts_total + stock_total, 2)
 
     visits = (
-        MaintenanceVisit.query.filter_by(elevator_id=elevator_id)
+        tenant_query(MaintenanceVisit).filter_by(elevator_id=elevator_id)
         .order_by(MaintenanceVisit.visit_date.desc())
         .limit(8)
         .all()
     )
     faults = (
-        Fault.query.filter_by(elevator_id=elevator_id)
+        tenant_query(Fault).filter_by(elevator_id=elevator_id)
         .order_by(Fault.reported_at.desc())
         .limit(8)
         .all()
@@ -4073,8 +4240,8 @@ def build_elevator_profile(elevator_id):
             'ledger': ledger,
         },
         'activity': {
-            'visits_count': MaintenanceVisit.query.filter_by(elevator_id=elevator_id).count(),
-            'faults_count': Fault.query.filter_by(elevator_id=elevator_id).count(),
+            'visits_count': tenant_query(MaintenanceVisit).filter_by(elevator_id=elevator_id).count(),
+            'faults_count': tenant_query(Fault).filter_by(elevator_id=elevator_id).count(),
             'recent_visits': [
                 {
                     'code': v.code,
@@ -4114,7 +4281,7 @@ def _find_recent_duplicate_visit(payload: dict, tech_ids: list[int]):
 
     window_start = datetime.utcnow() - timedelta(minutes=5)
     candidates = (
-        MaintenanceVisit.query.filter(
+        tenant_query(MaintenanceVisit).filter(
             MaintenanceVisit.created_at >= window_start,
             MaintenanceVisit.elevator_id == payload['elevator_id'],
             MaintenanceVisit.contract_id == payload['contract_id'],
@@ -4195,6 +4362,7 @@ def visit_add():
         observations  = visit_payload['observations'],
         notes         = visit_payload['notes'],
     )
+    assign_organization(v)
     db.session.add(v)
     db.session.flush()
     sync_visit_technicians(v, tech_ids)
@@ -4212,7 +4380,7 @@ def visit_edit(id):
         flash(err, 'error')
         return redirect(url_for('maintenance_visits'))
 
-    v = MaintenanceVisit.query.get_or_404(id)
+    v = tenant_get_or_404(MaintenanceVisit, id)
     links = resolve_visit_links(
         request.form['elevator_id'],
         request.form.get('contract_id'),
@@ -4244,18 +4412,18 @@ def visit_edit(id):
 
 def _purge_visit_dependencies(visit_id: int) -> None:
     """فك الارتباطات التي تمنع حذف الزيارة."""
-    v = MaintenanceVisit.query.get(visit_id)
+    v = tenant_query(MaintenanceVisit).filter_by(id=visit_id).first()
     if not v:
         return
-    VisitTechnician.query.filter_by(visit_id=visit_id).delete(synchronize_session=False)
-    Fault.query.filter_by(visit_id=visit_id).update(
+    tenant_query(VisitTechnician).filter_by(visit_id=visit_id).delete(synchronize_session=False)
+    tenant_query(Fault).filter_by(visit_id=visit_id).update(
         {Fault.visit_id: None}, synchronize_session=False
     )
-    PartsBilling.query.filter_by(visit_id=visit_id).update(
+    tenant_query(PartsBilling).filter_by(visit_id=visit_id).update(
         {PartsBilling.visit_id: None}, synchronize_session=False
     )
     if v.fault_id:
-        fault = Fault.query.get(v.fault_id)
+        fault = tenant_query(Fault).filter_by(id=v.fault_id).first()
         if fault and fault.visit_id == visit_id:
             fault.visit_id = None
         v.fault_id = None
@@ -4277,7 +4445,7 @@ def visit_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    v = MaintenanceVisit.query.get_or_404(id)
+    v = tenant_get_or_404(MaintenanceVisit, id)
     _purge_visit_dependencies(id)
     db.session.delete(v)
     db.session.commit()
@@ -4291,7 +4459,7 @@ def api_maintenance_visits():
 
     month = request.args.get('month', '').strip()
     q = exclude_fault_visits(
-        MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc())
+        tenant_query(MaintenanceVisit).order_by(MaintenanceVisit.visit_date.desc())
     )
     if month and '-' in month:
         try:
@@ -4399,7 +4567,7 @@ def api_assign_visits():
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
     if not plan_month and visit_ids:
-        first = MaintenanceVisit.query.get(int(visit_ids[0]))
+        first = tenant_query(MaintenanceVisit).filter_by(id=int(visit_ids[0])).first()
         if first and first.plan_month:
             plan_month = first.plan_month
         elif first and first.visit_date:
@@ -4582,9 +4750,10 @@ def api_save_maintenance_team():
     if assistant_id and int(assistant_id) == int(leader_id):
         return jsonify({'error': 'المساعد يجب أن يختلف عن رئيس الفريق'}), 400
     if team_id:
-        team = MaintenanceTeam.query.get_or_404(int(team_id))
+        team = tenant_get_or_404(MaintenanceTeam, int(team_id))
     else:
         team = MaintenanceTeam(code=next_code(MaintenanceTeam, 'MT-', digits=3))
+        assign_organization(team)
         db.session.add(team)
     team.name = name
     team.leader_id = int(leader_id)
@@ -4601,8 +4770,8 @@ def api_delete_maintenance_team(team_id):
     err = enforce_admin_delete(json_response=True)
     if err:
         return err
-    team = MaintenanceTeam.query.get_or_404(team_id)
-    assigned = MaintenanceVisit.query.filter_by(maintenance_team_id=team.id).count()
+    team = tenant_get_or_404(MaintenanceTeam, team_id)
+    assigned = tenant_query(MaintenanceVisit).filter_by(maintenance_team_id=team.id).count()
     if assigned:
         return jsonify({'error': f'لا يمكن الحذف — {assigned} زيارة مرتبطة بهذا الفريق'}), 400
     db.session.delete(team)
@@ -4711,7 +4880,7 @@ def field_login():
             tech = find_technician_by_login(login_id)
             if not tech:
                 raw = login_id.lower()
-                inactive = Technician.query.filter(Technician.code.ilike(raw)).first()
+                inactive = tenant_query(Technician).filter(Technician.code.ilike(raw)).first()
                 if inactive and (inactive.status or 'متاح') not in ('نشط', 'متاح', 'مشغول'):
                     error = f'حساب الفني غير مفعّل للجوال (الحالة: {inactive.status}) — راجع المشرف'
                 else:
@@ -4767,7 +4936,7 @@ def api_field_me():
     from field_auth import technician_portal_kind
     from operations import field_technician_payload
 
-    tech = Technician.query.get_or_404(tech_id)
+    tech = tenant_get_or_404(Technician, tech_id)
     kind = technician_portal_kind(tech)
     payload = field_technician_payload(tech_id, request.url_root, portal_kind=kind)
     return jsonify({'ok': True, **payload})
@@ -4894,7 +5063,7 @@ def api_save_fault_report(fault_id):
 
     tech_id = getattr(g, 'field_tech_id', None)
     if tech_id:
-        f = Fault.query.get_or_404(fault_id)
+        f = tenant_get_or_404(Fault, fault_id)
         if not technician_assigned_to_fault(f, tech_id):
             return jsonify({'ok': False, 'error': 'العطل غير مخصص لهذا الفني'}), 403
 
@@ -4920,7 +5089,7 @@ def api_verify_signature():
     fault_id = data.get('fault_id')
     visit_technician_id = None
     if visit_id:
-        v = MaintenanceVisit.query.get(visit_id)
+        v = tenant_query(MaintenanceVisit).filter_by(id=visit_id).first()
         if v:
             field_tid = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
             if field_tid and technician_assigned_to_visit(v, field_tid):
@@ -4928,7 +5097,7 @@ def api_verify_signature():
             else:
                 visit_technician_id = v.technician_id
     elif fault_id:
-        f = Fault.query.get(fault_id)
+        f = tenant_query(Fault).filter_by(id=fault_id).first()
         if f:
             field_tid = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
             if field_tid and technician_assigned_to_fault(f, field_tid):
@@ -5032,7 +5201,7 @@ def api_save_visit_report(visit_id):
 
     tech_id = getattr(g, 'field_tech_id', None)
     if tech_id:
-        v = MaintenanceVisit.query.get_or_404(visit_id)
+        v = tenant_get_or_404(MaintenanceVisit, visit_id)
         if v.technician_id and v.technician_id != tech_id:
             return jsonify({'ok': False, 'error': 'الزيارة غير مخصصة لهذا الفني'}), 403
 
@@ -5052,7 +5221,7 @@ def field_visit_complete(visit_id):
 
     tech_id = getattr(g, 'field_tech_id', None)
     if tech_id:
-        v = MaintenanceVisit.query.get_or_404(visit_id)
+        v = tenant_get_or_404(MaintenanceVisit, visit_id)
         if v.technician_id and v.technician_id != tech_id:
             abort(403)
 
@@ -5071,7 +5240,7 @@ def field_fault_complete(fault_id):
 
     tech_id = getattr(g, 'field_tech_id', None)
     if tech_id:
-        f = Fault.query.get_or_404(fault_id)
+        f = tenant_get_or_404(Fault, fault_id)
         if f.technician_id and f.technician_id != tech_id:
             abort(403)
 
@@ -5094,7 +5263,7 @@ def field_fault_request_parts(fault_id):
 
     tech_id = getattr(g, 'field_tech_id', None)
     if tech_id:
-        f = Fault.query.get_or_404(fault_id)
+        f = tenant_get_or_404(Fault, fault_id)
         if f.technician_id and f.technician_id != tech_id:
             abort(403)
 
@@ -5116,15 +5285,15 @@ def faults():
     from sqlalchemy.orm import joinedload
 
     faults_list = (
-        Fault.query
+        tenant_query(Fault)
         .options(joinedload(Fault.elevator).joinedload(Elevator.customer))
         .order_by(Fault.reported_at.desc())
         .all()
     )
-    elevators = Elevator.query.options(joinedload(Elevator.customer)).all()
-    customers = Customer.query.order_by(Customer.name).all()
-    inventory_items = InventoryItem.query.order_by(InventoryItem.name).all()
-    technicians = Technician.query.filter(
+    elevators = tenant_query(Elevator).options(joinedload(Elevator.customer)).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    inventory_items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    technicians = tenant_query(Technician).filter(
         Technician.status.in_(['نشط', 'متاح', 'مشغول'])
     ).all()
     pending_wa = session.pop('pending_whatsapp', '')
@@ -5216,7 +5385,7 @@ def fault_edit(id):
         flash(close_err, 'error')
         return redirect(url_for('faults'))
 
-    f = Fault.query.get_or_404(id)
+    f = tenant_get_or_404(Fault, id)
     tech_ids = parse_technician_ids(request.form)
     f.elevator_id   = request.form['elevator_id']
     f.technician_id = tech_ids[0] if tech_ids else None
@@ -5280,6 +5449,7 @@ def fault_add():
         notes         = request.form.get('notes',''),
         reported_at   = reported or datetime.utcnow(),
     )
+    assign_organization(f)
     db.session.add(f)
     db.session.flush()
     sync_fault_technicians(f, tech_ids)
@@ -5310,12 +5480,12 @@ def fault_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    f = Fault.query.get_or_404(id)
-    FaultTechnician.query.filter_by(fault_id=id).delete(synchronize_session=False)
-    MaintenanceVisit.query.filter_by(fault_id=id).update(
+    f = tenant_get_or_404(Fault, id)
+    tenant_query(FaultTechnician).filter_by(fault_id=id).delete(synchronize_session=False)
+    tenant_query(MaintenanceVisit).filter_by(fault_id=id).update(
         {MaintenanceVisit.fault_id: None}, synchronize_session=False
     )
-    PartsBilling.query.filter_by(fault_id=id).update(
+    tenant_query(PartsBilling).filter_by(fault_id=id).update(
         {PartsBilling.fault_id: None}, synchronize_session=False
     )
     db.session.delete(f)
@@ -5330,12 +5500,12 @@ def revenues():
     from sqlalchemy.orm import joinedload
 
     revs = (
-        Revenue.query
+        tenant_query(Revenue)
         .options(joinedload(Revenue.customer), joinedload(Revenue.contract))
         .order_by(Revenue.revenue_date.desc())
         .all()
     )
-    customers = Customer.query.order_by(Customer.name).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
     return render_template(
         'revenues.html',
         revenues=revs,
@@ -5402,6 +5572,7 @@ def _revenue_from_form(form, existing: Revenue | None = None):
             setattr(existing, key, val)
         return existing
     r = Revenue(code=next_code(Revenue, 'REV-', digits=3), **data)
+    assign_organization(r)
     db.session.add(r)
     return r
 
@@ -5410,7 +5581,7 @@ def _revenue_from_form(form, existing: Revenue | None = None):
 def revenue_edit(id):
     from customer_billing import COLLECTED_REVENUE_STATUSES, create_receipt_voucher_for_revenue
 
-    r = Revenue.query.get_or_404(id)
+    r = tenant_get_or_404(Revenue, id)
     old_contract_id = r.contract_id
     _revenue_from_form(request.form, existing=r)
     receipt = None
@@ -5444,7 +5615,7 @@ def revenue_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    r = Revenue.query.get_or_404(id)
+    r = tenant_get_or_404(Revenue, id)
     contract_id = r.contract_id
     db.session.delete(r)
     sync_contract_invoice_status(contract_id)
@@ -5456,7 +5627,7 @@ def revenue_delete(id):
 # =============================================
 @app.route('/expenses')
 def expenses():
-    exps = Expense.query.order_by(Expense.expense_date.desc()).all()
+    exps = tenant_query(Expense).order_by(Expense.expense_date.desc()).all()
     return render_template(
         'expenses.html',
         expenses=exps,
@@ -5464,7 +5635,7 @@ def expenses():
     )
 @app.route('/expenses/edit/<int:id>', methods=['POST'])
 def expense_edit(id):
-    e = Expense.query.get_or_404(id)
+    e = tenant_get_or_404(Expense, id)
     e.expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date()
     e.expense_type   = request.form.get('expense_type','')
     e.description    = request.form.get('description','')
@@ -5489,6 +5660,7 @@ def expense_add():
         reference      = request.form.get('reference',''),
         notes          = request.form.get('notes',''),
     )
+    assign_organization(e)
     db.session.add(e)
     db.session.commit()
     return redirect(url_for('expenses'))
@@ -5498,7 +5670,7 @@ def expense_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    e = Expense.query.get_or_404(id)
+    e = tenant_get_or_404(Expense, id)
     db.session.delete(e)
     db.session.commit()
     return redirect(url_for('expenses'))
@@ -5511,12 +5683,12 @@ def invoices():
     from sqlalchemy.orm import joinedload
 
     invs = (
-        Invoice.query
+        tenant_query(Invoice)
         .options(joinedload(Invoice.customer), joinedload(Invoice.contract))
         .order_by(Invoice.invoice_date.desc())
         .all()
     )
-    customers = Customer.query.order_by(Customer.name).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
     return render_template(
         'invoices.html',
         invoices=invs,
@@ -5529,7 +5701,7 @@ def invoices():
 def invoice_edit(id):
     from form_validation import invoice_amount_error
 
-    i = Invoice.query.get_or_404(id)
+    i = tenant_get_or_404(Invoice, id)
     amount = float(request.form.get('amount', 0) or 0)
     tax = amount * 0.15
     total = amount + tax
@@ -5582,6 +5754,11 @@ def invoice_add():
     if tax_err:
         flash(tax_err, 'error')
         return redirect(url_for('invoices'))
+    from zatca_tenant import tax_invoice_zatca_error
+    zatca_err = tax_invoice_zatca_error(invoice_type)
+    if zatca_err:
+        flash(zatca_err, 'error')
+        return redirect(url_for('invoices'))
     customer_id = request.form.get('customer_id') or None
     contract_id = request.form.get('contract_id') or None
     parts_billing_id = None
@@ -5589,7 +5766,7 @@ def invoice_add():
     description = (request.form.get('description') or '').strip()
 
     if source_type == 'parts_billing' and source_id:
-        pb = PartsBilling.query.get_or_404(int(source_id))
+        pb = tenant_get_or_404(PartsBilling, int(source_id))
         from customer_billing import _invoice_exists_for_parts
         if _invoice_exists_for_parts(pb.id):
             flash('يوجد فاتورة لهذه العملية مسبقاً', 'error')
@@ -5601,7 +5778,7 @@ def invoice_add():
         if ref not in (notes or ''):
             notes = (ref + (' — ' + notes if notes else '')).strip()
     elif source_type == 'contract' and source_id:
-        c = Contract.query.get_or_404(int(source_id))
+        c = tenant_get_or_404(Contract, int(source_id))
         from customer_billing import _invoice_exists_for_contract, contract_paid_amount
         if _invoice_exists_for_contract(c.id):
             flash('يوجد فاتورة لهذا العقد مسبقاً', 'error')
@@ -5625,7 +5802,7 @@ def invoice_add():
     invoice_status = request.form.get('status', 'غير مدفوعة')
     invoice_paid = 0.0
     if source_type == 'parts_billing' and source_id:
-        pb = PartsBilling.query.get(int(source_id))
+        pb = tenant_query(PartsBilling).filter_by(id=int(source_id)).first()
         if pb:
             from customer_billing import _round_money
             paid_on_parts = _round_money(getattr(pb, 'paid_amount', 0) or 0)
@@ -5637,7 +5814,7 @@ def invoice_add():
             else:
                 invoice_status = 'غير مدفوعة'
     elif source_type == 'contract' and source_id:
-        c = Contract.query.get(int(source_id))
+        c = tenant_query(Contract).filter_by(id=int(source_id)).first()
         if c:
             from customer_billing import _round_money
             paid_on_contract = contract_paid_amount(c.id)
@@ -5666,10 +5843,11 @@ def invoice_add():
         status=invoice_status,
         notes=notes,
     )
+    assign_organization(i)
     db.session.add(i)
     db.session.flush()
     if source_type == 'contract' and source_id and contract_id:
-        for rev in Revenue.query.filter_by(
+        for rev in tenant_query(Revenue).filter_by(
             contract_id=int(contract_id),
             customer_id=i.customer_id,
         ).filter(Revenue.invoice_id.is_(None)):
@@ -5682,7 +5860,7 @@ def invoice_add():
 def invoice_print_page(invoice_id):
     from invoice_print import invoice_print_payload
 
-    invo = Invoice.query.get_or_404(invoice_id)
+    invo = tenant_get_or_404(Invoice, invoice_id)
     return render_template('invoice-print.html', **invoice_print_payload(invo, base_url=request.url_root))
 
 
@@ -5711,7 +5889,7 @@ def invoice_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    i = Invoice.query.get_or_404(id)
+    i = tenant_get_or_404(Invoice, id)
     contract_id = i.contract_id
     db.session.delete(i)
     sync_contract_invoice_status(contract_id)
@@ -5723,7 +5901,7 @@ def invoice_delete(id):
 # =============================================
 @app.route('/inventory')
 def inventory():
-    items = InventoryItem.query.order_by(InventoryItem.id.desc()).all()
+    items = tenant_query(InventoryItem).order_by(InventoryItem.id.desc()).all()
     items_json = [
         {
             'id': i.id,
@@ -5758,7 +5936,7 @@ def inventory_edit(id):
     if err:
         flash(err, 'error')
         return redirect(url_for('inventory'))
-    item = InventoryItem.query.get_or_404(id)
+    item = tenant_get_or_404(InventoryItem, id)
     name = (request.form.get('name') or '').strip()
     if not name:
         return redirect(url_for('inventory'))
@@ -5787,7 +5965,7 @@ def inventory_add():
     if not name:
         return redirect(url_for('inventory'))
     code = (request.form.get('code') or '').strip() or next_code(InventoryItem, '#', digits=3)
-    if InventoryItem.query.filter_by(code=code).first():
+    if tenant_query(InventoryItem).filter_by(code=code).first():
         code = next_code(InventoryItem, '#', digits=3)
     item = InventoryItem(
         code=code,
@@ -5802,6 +5980,7 @@ def inventory_add():
         location=request.form.get('location', ''),
         notes=request.form.get('notes', ''),
     )
+    assign_organization(item)
     db.session.add(item)
     db.session.commit()
     return redirect(url_for('inventory'))
@@ -5811,7 +5990,7 @@ def inventory_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    item = InventoryItem.query.get_or_404(id)
+    item = tenant_get_or_404(InventoryItem, id)
     db.session.delete(item)
     db.session.commit()
     return redirect(url_for('inventory'))
@@ -6056,8 +6235,8 @@ def _apply_purchase_receipt(order):
 
 @app.route('/purchase-orders')
 def purchase_orders():
-    orders = PurchaseOrder.query.order_by(PurchaseOrder.order_date.desc().nullslast()).all()
-    items = InventoryItem.query.order_by(InventoryItem.name).all()
+    orders = tenant_query(PurchaseOrder).order_by(PurchaseOrder.order_date.desc().nullslast()).all()
+    items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
     return render_template(
         'purchase-orders.html',
         orders=orders,
@@ -6103,9 +6282,10 @@ def purchase_orders_save():
         return redirect(url_for('purchase_orders'))
 
     if order_id:
-        order = PurchaseOrder.query.get_or_404(int(order_id))
+        order = tenant_get_or_404(PurchaseOrder, int(order_id))
     else:
         order = PurchaseOrder(code=next_code(PurchaseOrder, 'PO-', digits=4))
+        assign_organization(order)
         db.session.add(order)
 
     old_status = order.status
@@ -6128,7 +6308,7 @@ def purchase_orders_save():
 
 
 def _purchase_order_print_context(order, *, en_only=False):
-    s = Settings.query.first()
+    s = tenant_query(Settings).first()
     logo_w = (getattr(s, 'logo_width_report', None) or 150) if s else 150
     uid = session.get('user_id')
     user = db.session.get(User, uid) if uid else None
@@ -6175,7 +6355,7 @@ def _purchase_order_print_context(order, *, en_only=False):
 
 @app.route('/purchase-orders/<int:order_id>/print')
 def purchase_order_print(order_id):
-    order = PurchaseOrder.query.get_or_404(order_id)
+    order = tenant_get_or_404(PurchaseOrder, order_id)
     return render_template(
         'purchase-order-print.html',
         **_purchase_order_print_context(order),
@@ -6184,7 +6364,7 @@ def purchase_order_print(order_id):
 
 @app.route('/purchase-orders/<int:order_id>/print-en')
 def purchase_order_print_en(order_id):
-    order = PurchaseOrder.query.get_or_404(order_id)
+    order = tenant_get_or_404(PurchaseOrder, order_id)
     return render_template(
         'purchase-order-print.html',
         **_purchase_order_print_context(order, en_only=True),
@@ -6193,7 +6373,7 @@ def purchase_order_print_en(order_id):
 
 @app.route('/purchase-orders/<int:order_id>/contact', methods=['POST'])
 def purchase_order_update_contact(order_id):
-    order = PurchaseOrder.query.get_or_404(order_id)
+    order = tenant_get_or_404(PurchaseOrder, order_id)
     order.supplier_phone = request.form.get('supplier_phone', '').strip() or None
     order.supplier_email = request.form.get('supplier_email', '').strip() or None
     db.session.commit()
@@ -6204,7 +6384,7 @@ def purchase_order_update_contact(order_id):
 
 @app.route('/purchase-orders/<int:order_id>/signature', methods=['POST'])
 def purchase_order_save_signature(order_id):
-    order = PurchaseOrder.query.get_or_404(order_id)
+    order = tenant_get_or_404(PurchaseOrder, order_id)
     payload = request.get_json(silent=True) or {}
     sig = (payload.get('signature') or '').strip()
     if sig and sig.startswith('data:image/') and len(sig) < 600000:
@@ -6215,7 +6395,7 @@ def purchase_order_save_signature(order_id):
 
 @app.route('/purchase-orders/<int:order_id>/pdf', methods=['POST'])
 def purchase_order_upload_pdf(order_id):
-    order = PurchaseOrder.query.get_or_404(order_id)
+    order = tenant_get_or_404(PurchaseOrder, order_id)
     upload = request.files.get('pdf')
     if not upload:
         return jsonify(ok=False, error='لم يُرفَع ملف PDF'), 400
@@ -6235,7 +6415,7 @@ def purchase_orders_delete(order_id):
     err = enforce_admin_delete()
     if err:
         return err
-    order = PurchaseOrder.query.get_or_404(order_id)
+    order = tenant_get_or_404(PurchaseOrder, order_id)
     if order.status == 'مستلم':
         return redirect(url_for('purchase_orders'))
     db.session.delete(order)
@@ -6291,12 +6471,12 @@ def _parse_estimate_lines(form):
 
 @app.route('/elevator-estimates')
 def elevator_estimates():
-    estimates = ElevatorEstimate.query.order_by(ElevatorEstimate.created_at.desc()).all()
-    customers = Customer.query.order_by(Customer.name).all()
+    estimates = tenant_query(ElevatorEstimate).order_by(ElevatorEstimate.created_at.desc()).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
     edit_raw = request.args.get('edit', '').strip()
     edit_est = None
     if edit_raw.isdigit():
-        edit_est = ElevatorEstimate.query.get(int(edit_raw))
+        edit_est = tenant_query(ElevatorEstimate).filter_by(id=int(edit_raw)).first()
     return render_template(
         'elevator-estimates.html',
         estimates=estimates,
@@ -6347,9 +6527,10 @@ def elevator_estimates_save():
     totals = summarize_lines(lines_data, margin_pct, vat_pct)
 
     if estimate_id:
-        est = ElevatorEstimate.query.get_or_404(int(estimate_id))
+        est = tenant_get_or_404(ElevatorEstimate, int(estimate_id))
     else:
         est = ElevatorEstimate(code=next_code(ElevatorEstimate, 'ES-', digits=4))
+        assign_organization(est)
         db.session.add(est)
 
     cust_raw = request.form.get('customer_id', '').strip()
@@ -6395,7 +6576,7 @@ def elevator_estimates_delete(estimate_id):
     err = enforce_admin_delete()
     if err:
         return err
-    est = ElevatorEstimate.query.get_or_404(estimate_id)
+    est = tenant_get_or_404(ElevatorEstimate, estimate_id)
     db.session.delete(est)
     db.session.commit()
     return redirect(url_for('elevator_estimates'))
@@ -6403,8 +6584,8 @@ def elevator_estimates_delete(estimate_id):
 
 @app.route('/elevator-estimates/print/<int:estimate_id>')
 def elevator_estimate_print(estimate_id):
-    est = ElevatorEstimate.query.get_or_404(estimate_id)
-    s = Settings.query.first()
+    est = tenant_get_or_404(ElevatorEstimate, estimate_id)
+    s = tenant_query(Settings).first()
     logo_w = (getattr(s, 'logo_width_report', None) or 150) if s else 150
     return render_template(
         'elevator-estimate-print.html',
@@ -6429,13 +6610,13 @@ def stock_movements():
     from sqlalchemy.orm import joinedload
 
     movements = (
-        StockMovement.query
+        tenant_query(StockMovement)
         .options(joinedload(StockMovement.item))
         .order_by(StockMovement.movement_date.desc())
         .all()
     )
-    items = InventoryItem.query.order_by(InventoryItem.name).all()
-    technicians = Technician.query.filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).all()
+    items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    technicians = tenant_query(Technician).filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).all()
     tech_names = {t.id: t.name for t in technicians}
     return render_template(
         'stock-movements.html',
@@ -6467,9 +6648,10 @@ def stock_add():
         reason        = request.form.get('reason',''),
         notes         = request.form.get('notes',''),
     )
+    assign_organization(m)
     db.session.add(m)
 
-    item = InventoryItem.query.get(item_id)
+    item = tenant_query(InventoryItem).filter_by(id=item_id).first()
     _adjust_inventory_qty(item, direction, qty)
 
     db.session.commit()
@@ -6480,8 +6662,8 @@ def stock_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
-    m = StockMovement.query.get_or_404(id)
-    item = InventoryItem.query.get(m.item_id)
+    m = tenant_get_or_404(StockMovement, id)
+    item = tenant_query(InventoryItem).filter_by(id=m.item_id).first()
     _adjust_inventory_qty(item, m.direction, m.quantity, reverse=True)
     db.session.delete(m)
     db.session.commit()
@@ -6549,7 +6731,7 @@ def parts_billing():
     from sqlalchemy.orm import joinedload
 
     parts = (
-        PartsBilling.query
+        tenant_query(PartsBilling)
         .options(
             joinedload(PartsBilling.customer),
             joinedload(PartsBilling.contract),
@@ -6561,13 +6743,13 @@ def parts_billing():
         .order_by(PartsBilling.billing_date.desc())
         .all()
     )
-    customers = Customer.query.order_by(Customer.name).all()
-    contracts = Contract.query.order_by(Contract.code).all()
-    inventory_items = InventoryItem.query.order_by(InventoryItem.name).all()
-    technicians = Technician.query.filter(
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    contracts = tenant_query(Contract).order_by(Contract.code).all()
+    inventory_items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    technicians = tenant_query(Technician).filter(
         Technician.status.in_(['نشط', 'متاح', 'مشغول'])
     ).order_by(Technician.name).all()
-    pending_faults = Fault.query.filter_by(status='انتظار قطع').order_by(
+    pending_faults = tenant_query(Fault).filter_by(status='انتظار قطع').order_by(
         Fault.reported_at.desc()
     ).all()
     return render_template(
@@ -6602,7 +6784,7 @@ def parts_edit(id):
     from inventory_stock import reverse_stock_by_reference, stock_reference
     from operations import apply_parts_billing_inventory, parse_fault_parts_lines
 
-    p = PartsBilling.query.get_or_404(id)
+    p = tenant_get_or_404(PartsBilling, id)
     lines = parse_fault_parts_lines(request.form.get('parts_lines'))
     user_notes = request.form.get('notes', '')
     cost = float(request.form.get('cost_price', 0))
@@ -6643,7 +6825,7 @@ def parts_edit(id):
         p.profit = sell - cost
         p.notes = user_notes
     if links['fault_id']:
-        fault = Fault.query.get(links['fault_id'])
+        fault = tenant_query(Fault).filter_by(id=links['fault_id']).first()
         if fault:
             fault.billed = True
     try:
@@ -6691,6 +6873,7 @@ def parts_add():
         status='غير محصل',
         notes=user_notes,
     )
+    assign_organization(p)
     db.session.add(p)
     db.session.flush()
     if lines:
@@ -6701,7 +6884,7 @@ def parts_add():
             flash(str(exc), 'error')
             return redirect(url_for('parts_billing'))
     if links['fault_id']:
-        fault = Fault.query.get(links['fault_id'])
+        fault = tenant_query(Fault).filter_by(id=links['fault_id']).first()
         if fault:
             fault.billed = True
     try:
@@ -6718,7 +6901,7 @@ def parts_delete(id):
         return err
     from inventory_stock import reverse_stock_by_reference, stock_reference
 
-    p = PartsBilling.query.get_or_404(id)
+    p = tenant_get_or_404(PartsBilling, id)
     reverse_stock_by_reference(stock_reference('parts_billing', p.id))
     db.session.delete(p)
     db.session.commit()
@@ -6765,7 +6948,7 @@ def report_dashboard():
 
 @app.route('/reports/client-annual')
 def report_client_annual():
-    customers = Customer.query.order_by(Customer.name).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
     customers_json = [{'id': c.id, 'name': c.name, 'code': c.code} for c in customers]
     cur_year = date.today().year
     report_years = list(range(cur_year, cur_year - 6, -1))
@@ -6904,7 +7087,7 @@ def verify_password(stored, plain):
 def _migrate_plain_text_passwords():
     """ترقية كلمات المرور القديمة (نص صريح) إلى تشفير pbkdf2 عند التشغيل."""
     changed = False
-    for u in User.query.all():
+    for u in tenant_query(User).all():
         if u.password_hash and not password_is_hashed(u.password_hash):
             u.password_hash = hash_password(u.password_hash)
             changed = True
@@ -6916,7 +7099,7 @@ def _flag_weak_default_passwords():
     """يُعلِم المستخدمين بكلمات مرور افتراضية معروفة."""
     from liftcore_security import BANNED_PASSWORDS
     changed = False
-    for u in User.query.all():
+    for u in tenant_query(User).all():
         if getattr(u, 'must_change_password', False):
             continue
         for weak in BANNED_PASSWORDS:
@@ -6992,13 +7175,13 @@ def settings():
         db.session.rollback()
         app.logger.warning('settings permissions schema: %s', exc)
     s = get_app_settings()
-    users = User.query.order_by(User.id).all()
+    users = tenant_query(User).order_by(User.id).all()
     edit_user = None
     edit_id = request.args.get('edit_user', type=int)
     if edit_id and user.role == 'admin':
-        edit_user = User.query.get(edit_id)
+        edit_user = tenant_query(User).filter_by(id=edit_id).first()
     try:
-        signatories = Signatory.query.filter_by(is_active=True).order_by(Signatory.name).all()
+        signatories = tenant_query(Signatory).filter_by(is_active=True).order_by(Signatory.name).all()
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('signatories load failed: %s', exc)
@@ -7014,7 +7197,7 @@ def settings():
     )
 
     field_technicians = []
-    for t in Technician.query.order_by(Technician.name).all():
+    for t in tenant_query(Technician).order_by(Technician.name).all():
         field_technicians.append({
             'id': t.id,
             'code': t.code,
@@ -7058,13 +7241,13 @@ def settings_field_portal_pin(tech_id):
         return _settings_redirect('field-portal')
     from signature_auth import validate_sign_pin
 
-    tech = Technician.query.get_or_404(tech_id)
+    tech = tenant_get_or_404(Technician, tech_id)
     pin = (request.form.get('pin') or '').strip()
     if not validate_sign_pin(pin):
         session['settings_notice'] = 'رمز دخول الجوال يجب أن يكون 6 أرقام.'
         return _settings_redirect('field-portal')
     tech.sign_pin_hash = hash_password(pin)
-    sig = Signatory.query.filter_by(technician_id=tech.id, is_active=True).first()
+    sig = tenant_query(Signatory).filter_by(technician_id=tech.id, is_active=True).first()
     if sig:
         sig.sign_pin_hash = tech.sign_pin_hash
     db.session.commit()
@@ -7099,7 +7282,7 @@ def settings_signatory_add():
             secret=app.config['SECRET_KEY'],
         )
         nid_norm = normalize_national_id(national_id)
-        for candidate in Technician.query.filter(Technician.national_id.isnot(None)):
+        for candidate in tenant_query(Technician).filter(Technician.national_id.isnot(None)):
             if normalize_national_id(candidate.national_id) == nid_norm:
                 row.technician_id = candidate.id
                 candidate.signature_path = row.signature_path
@@ -7125,7 +7308,7 @@ def settings_signatory_delete(sig_id):
         return err
     from signatory_service import delete_signatory_files
 
-    row = Signatory.query.get_or_404(sig_id)
+    row = tenant_get_or_404(Signatory, sig_id)
     delete_signatory_files(app.root_path, row)
     row.is_active = False
     row.signature_path = None
@@ -7259,7 +7442,7 @@ def _apply_username_change(user, new_username):
         return 'اسم المستخدم مطلوب.'
     if new_username == user.username:
         return None
-    taken = User.query.filter(
+    taken = tenant_query(User).filter(
         User.username == new_username,
         User.id != user.id,
     ).first()
@@ -7366,7 +7549,7 @@ def settings_user_add():
         session['settings_notice'] = 'اسم المستخدم مطلوب.'
         return _settings_redirect('users')
 
-    if User.query.filter_by(username=username).first():
+    if tenant_query(User).filter_by(username=username).first():
         session['settings_notice'] = f'اسم المستخدم «{username}» مستخدم مسبقاً.'
         return _settings_redirect('users')
 
@@ -7392,6 +7575,7 @@ def settings_user_add():
         user.permissions_extra = dump_permissions_extra(permissions_grants_from_form(request.form))
     else:
         user.permissions_extra = None
+    assign_organization(user)
     db.session.add(user)
     db.session.commit()
     session['settings_notice'] = f'تم إنشاء المستخدم «{username}» بنجاح.'
@@ -7403,7 +7587,7 @@ def settings_user_edit(user_id):
     admin = require_admin()
     if not admin:
         return redirect(url_for('login'))
-    target = User.query.get_or_404(user_id)
+    target = tenant_get_or_404(User, user_id)
     username_err = _apply_username_change(target, request.form.get('username'))
     if username_err:
         session['settings_notice'] = username_err
@@ -7443,7 +7627,7 @@ def settings_user_toggle(user_id):
     admin = require_admin()
     if not admin:
         return redirect(url_for('login'))
-    target = User.query.get_or_404(user_id)
+    target = tenant_get_or_404(User, user_id)
     if target.id == admin.id:
         session['settings_notice'] = 'لا يمكنك تعطيل حسابك.'
         return _settings_redirect('users')
@@ -7548,7 +7732,7 @@ def api_dashboard():
             'status': cust.status or '',
         })
 
-    expiring_list = Contract.query.filter(
+    expiring_list = tenant_query(Contract).filter(
         Contract.end_date >= today,
         Contract.end_date <= in_60_days,
     ).order_by(Contract.end_date).limit(15).all()
@@ -7565,13 +7749,13 @@ def api_dashboard():
             'inv_status': c.invoice_status or '—',
         })
 
-    down_elevators = Elevator.query.filter(
+    down_elevators = tenant_query(Elevator).filter(
         Elevator.status.in_(['متوقف', 'خارج الخدمة']),
     ).order_by(Elevator.code).limit(20).all()
 
     down_elevators_rows = []
     for e in down_elevators:
-        last_visit = MaintenanceVisit.query.filter_by(
+        last_visit = tenant_query(MaintenanceVisit).filter_by(
             elevator_id=e.id,
         ).order_by(MaintenanceVisit.visit_date.desc()).first()
         tech_name = '—'
@@ -7640,7 +7824,7 @@ def api_dashboard():
             self.status = status
             self.end_date = end_date
 
-    for status, end_date in Contract.query.with_entities(Contract.status, Contract.end_date):
+    for status, end_date in tenant_query(Contract).with_entities(Contract.status, Contract.end_date):
         label = contract_display_status(_ContractStatusRow(status, end_date))
         if label in contract_status:
             contract_status[label] += 1
@@ -7797,31 +7981,31 @@ def api_report_financial_health():
 def api_client_annual(customer_id):
     from sqlalchemy import extract
     year = int(request.args.get('year', datetime.now().year))
-    c = Customer.query.get_or_404(customer_id)
+    c = tenant_get_or_404(Customer, customer_id)
 
     # العقود
-    contracts = Contract.query.filter_by(customer_id=customer_id).all()
+    contracts = tenant_query(Contract).filter_by(customer_id=customer_id).all()
 
     # الزيارات
-    visits = MaintenanceVisit.query.join(Elevator).filter(
+    visits = tenant_query(MaintenanceVisit).join(Elevator).filter(
         Elevator.customer_id == customer_id,
         extract('year', MaintenanceVisit.visit_date) == year
     ).all()
 
     # الأعطال
-    faults = Fault.query.join(Elevator).filter(
+    faults = tenant_query(Fault).join(Elevator).filter(
         Elevator.customer_id == customer_id,
         extract('year', Fault.reported_at) == year
     ).all()
 
     # الإيرادات
-    revenues = Revenue.query.filter(
+    revenues = tenant_query(Revenue).filter(
         Revenue.customer_id == customer_id,
         extract('year', Revenue.revenue_date) == year
     ).all()
 
     # القطع
-    parts = PartsBilling.query.filter(
+    parts = tenant_query(PartsBilling).filter(
         PartsBilling.customer_id == customer_id,
         extract('year', PartsBilling.billing_date) == year
     ).all()

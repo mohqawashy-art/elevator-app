@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — تسجيل شركة جديدة</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#070a10;--gold:#c9a14a;--text:#f2f5fa;--muted:#5e6b7e;--err:#f87171;--ok:#4ade80}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:420px;background:rgba(255,255,255,.03);border:1px solid rgba(201,161,74,.15);border-radius:16px;padding:28px 24px}
+h1{font-size:1.35rem;margin-bottom:6px}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:20px}
+.field{margin-bottom:14px}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.25);color:var(--text)}
+input:focus{outline:none;border-color:var(--gold)}
+.hint{font-size:.75rem;color:var(--muted);margin-top:4px}
+.btn{width:100%;margin-top:8px;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#c9a14a,#a8842f);color:#111;font-weight:700;cursor:pointer}
+.err{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);color:var(--err);padding:10px 12px;border-radius:10px;margin-bottom:14px;font-size:.9rem}
+.ok{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:var(--ok);padding:12px;border-radius:10px;margin-bottom:14px;font-size:.9rem;line-height:1.6}
+.ok a{color:var(--gold)}
+.foot{margin-top:16px;text-align:center;font-size:.85rem;color:var(--muted)}
+.foot a{color:var(--gold);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>إنشاء حساب LiftCore</h1>
+  <p class="sub">سجّل شركتك واحصل على لوحة تحكم خاصة خلال دقائق.</p>
+
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+
+  {% if success %}
+  <div class="ok">
+    تم إنشاء حساب <strong>{{ success.slug }}</strong> بنجاح.<br>
+    اسم المستخدم: <strong>{{ success.username }}</strong><br>
+    <a href="{{ success.login_url }}">الدخول إلى لوحتك</a>
+  </div>
+  {% else %}
+  <form method="post" id="signupForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="company_name">اسم الشركة</label>
+      <input id="company_name" name="company_name" required maxlength="200" placeholder="مثال: جما لتقنية المصاعد">
+    </div>
+    <div class="field">
+      <label for="slug">معرّف المؤسسة (subdomain)</label>
+      <input id="slug" name="slug" required maxlength="63" pattern="[a-z0-9-]+" placeholder="jama">
+      <div class="hint">سيصبح رابطك: <span id="slugPreview">slug</span>.liftcoreapp.com</div>
+    </div>
+    <div class="field">
+      <label for="admin_name">اسم المسؤول</label>
+      <input id="admin_name" name="admin_name" required maxlength="100">
+    </div>
+    <div class="field">
+      <label for="admin_email">البريد الإلكتروني</label>
+      <input id="admin_email" name="admin_email" type="email" required maxlength="100">
+    </div>
+    <div class="field">
+      <label for="password">كلمة المرور</label>
+      <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="password_confirm">تأكيد كلمة المرور</label>
+      <input id="password_confirm" name="password_confirm" type="password" required minlength="8" autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn">إنشاء الحساب</button>
+  </form>
+  {% endif %}
+
+  <div class="foot"><a href="{{ url_for('login') }}">لديك حساب؟ تسجيل الدخول</a></div>
+</div>
+<script>
+document.getElementById('slug')?.addEventListener('input', function(){
+  var v = (this.value || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+  this.value = v;
+  document.getElementById('slugPreview').textContent = v || 'slug';
+});
+</script>
+</body>
+</html>
