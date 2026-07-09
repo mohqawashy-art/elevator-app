@@ -135,6 +135,9 @@ def _tenant_slug_from_host(host: str) -> str | None:
     host = (host or '').split(':')[0].lower().rstrip('.')
     if not host or host in PLATFORM_HOSTS:
         return None
+    # IP / localhost — ليس subdomain tenant (مهم لـ e2e والتطوير المحلي)
+    if host in ('localhost', '127.0.0.1', '::1') or host.replace('.', '').isdigit():
+        return None
     parts = host.split('.')
     if len(parts) < 3:
         return None
@@ -142,6 +145,25 @@ def _tenant_slug_from_host(host: str) -> str | None:
     if slug in MARKETING_SLUGS:
         return None
     return slug
+
+
+def _bind_local_default_org() -> bool:
+    """localhost / 127.0.0.1 → مؤسسة default (e2e + تطوير)."""
+    host = (request.host or '').split(':')[0].lower()
+    if host not in ('127.0.0.1', 'localhost', '::1'):
+        return False
+    from models import Organization
+
+    g._resolving_default_org = True
+    try:
+        org = Organization.query.filter_by(slug='default').first()
+    finally:
+        g._resolving_default_org = False
+    if not org:
+        return False
+    g.organization = org
+    g.organization_id = org.id
+    return True
 
 
 def resolve_tenant():
@@ -154,7 +176,7 @@ def resolve_tenant():
 
     slug = _tenant_slug_from_host(request.host or '')
     if not slug:
-        if _bind_app_host_default_org():
+        if _bind_app_host_default_org() or _bind_local_default_org():
             return None
         g.organization = None
         g.organization_id = None

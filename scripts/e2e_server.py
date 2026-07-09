@@ -13,7 +13,11 @@ instance = os.path.join(ROOT, 'instance')
 os.makedirs(instance, exist_ok=True)
 e2e_db = os.path.join(instance, 'e2e.db')
 if os.path.isfile(e2e_db):
-    os.remove(e2e_db)
+    try:
+        os.remove(e2e_db)
+    except OSError:
+        # ملف مقفول من تشغيل سابق — استخدم اسماً جديداً
+        e2e_db = os.path.join(instance, f'e2e-{os.getpid()}.db')
 
 os.environ['DATABASE_URL'] = 'sqlite:///' + e2e_db.replace('\\', '/')
 os.environ.setdefault('SECRET_KEY', 'e2e-test-secret-key-not-default')

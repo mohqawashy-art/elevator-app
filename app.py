@@ -1665,6 +1665,8 @@ def signup():
                     app.logger.exception('signup welcome email failed')
                 success = result
                 try:
+                    from audit_log import log_audit
+
                     log_audit(
                         'tenant_signup',
                         organization_id=result['organization_id'],
@@ -1711,19 +1713,26 @@ def api_signup():
     if not result.get('ok'):
         return jsonify({'ok': False, 'errors': result.get('errors', [])}), 400
 
-    send_welcome_email(
-        to_email=(data.get('admin_email') or '').strip(),
-        company_name=(data.get('company_name') or '').strip(),
-        slug=result['slug'],
-        admin_name=(data.get('admin_name') or '').strip(),
-        login_url=result['login_url'],
-    )
-    from audit_log import log_audit
-    log_audit(
-        'tenant_signup',
-        organization_id=result['organization_id'],
-        details={'slug': result['slug'], 'organization_id': result['organization_id']},
-    )
+    try:
+        send_welcome_email(
+            to_email=(data.get('admin_email') or '').strip(),
+            company_name=(data.get('company_name') or '').strip(),
+            slug=result['slug'],
+            admin_name=(data.get('admin_name') or '').strip(),
+            login_url=result['login_url'],
+        )
+    except Exception:
+        app.logger.exception('api signup welcome email failed')
+    try:
+        from audit_log import log_audit
+
+        log_audit(
+            'tenant_signup',
+            organization_id=result['organization_id'],
+            details={'slug': result['slug'], 'organization_id': result['organization_id']},
+        )
+    except Exception:
+        app.logger.exception('api signup audit failed')
     return jsonify({
         'ok': True,
         'slug': result['slug'],
