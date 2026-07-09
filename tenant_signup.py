@@ -94,10 +94,27 @@ def validate_admin_name(name: str) -> str | None:
 
 def _username_for_signup(slug: str, email: str) -> str:
     local = (email.split('@', 1)[0] or '').strip().lower()
-    local = re.sub(r'[^a-z0-9_]+', '_', local)[:40]
-    if local:
-        return local
-    return f'{slug}_admin'[:50]
+    local = re.sub(r'[^a-z0-9_]+', '_', local).strip('_')[:30]
+    if local and local not in ('admin', 'root', 'user', 'test'):
+        candidate = local
+    else:
+        candidate = f'{slug}_admin'
+    return candidate[:50]
+
+
+def _allocate_unique_username(preferred: str, slug: str) -> str:
+    """يتجنب تعارض UniqueConstraint(username) القديم على القاعدة."""
+    base = (preferred or f'{slug}_admin').strip().lower()[:40] or f'{slug}_admin'
+    base = re.sub(r'[^a-z0-9_]+', '_', base).strip('_') or f'{slug}_admin'
+    candidates = [base, f'{base}_{slug}'[:50], f'{slug}_admin', f'{slug}_owner']
+    for i in range(2, 50):
+        candidates.append(f'{base}{i}'[:50])
+    for name in candidates:
+        if not name:
+            continue
+        if not User.query.filter_by(username=name).first():
+            return name
+    return f'{slug}_{os.getpid()}'[:50]
 
 
 def create_tenant_signup(
@@ -110,6 +127,8 @@ def create_tenant_signup(
     username: str | None = None,
 ) -> dict:
     """ينشئ organization + admin + settings — بدون nginx/systemd."""
+    from sqlalchemy.exc import IntegrityError
+
     slug = normalize_slug(slug)
     company_name = company_name.strip()
     admin_email = admin_email.strip()
@@ -127,46 +146,57 @@ def create_tenant_signup(
     if errors:
         return {'ok': False, 'errors': errors}
 
-    uname = (username or _username_for_signup(slug, admin_email)).strip().lower()[:50]
-    if not uname:
+    preferred = (username or _username_for_signup(slug, admin_email)).strip().lower()[:50]
+    if not preferred:
         return {'ok': False, 'errors': ['اسم المستخدم غير صالح.']}
+    uname = _allocate_unique_username(preferred, slug)
 
     trial_days = int(os.environ.get('LIFTCORE_TRIAL_DAYS', '14') or 14)
     trial_ends = datetime.utcnow() + timedelta(days=max(1, trial_days))
 
-    org = Organization(
-        slug=slug,
-        name=company_name,
-        status='trial',
-        plan='basic',
-        admin_email=admin_email,
-        trial_ends_at=trial_ends,
-    )
-    db.session.add(org)
-    db.session.flush()
+    try:
+        org = Organization(
+            slug=slug,
+            name=company_name,
+            status='trial',
+            plan='basic',
+            admin_email=admin_email,
+            trial_ends_at=trial_ends,
+        )
+        db.session.add(org)
+        db.session.flush()
 
-    settings = Settings(
-        organization_id=org.id,
-        company_name=company_name,
-        email=admin_email,
-        tax_pct=15,
-        currency='SAR',
-        language='ar',
-    )
-    db.session.add(settings)
+        settings = Settings(
+            organization_id=org.id,
+            company_name=company_name,
+            email=admin_email,
+            tax_pct=15,
+            currency='SAR',
+            language='ar',
+        )
+        db.session.add(settings)
 
-    user = User(
-        organization_id=org.id,
-        username=uname,
-        password_hash=password_hash,
-        full_name=admin_name,
-        email=admin_email,
-        role='admin',
-        is_active=True,
-        language='ar',
-    )
-    db.session.add(user)
-    db.session.commit()
+        user = User(
+            organization_id=org.id,
+            username=uname,
+            password_hash=password_hash,
+            full_name=admin_name,
+            email=admin_email,
+            role='admin',
+            is_active=True,
+            language='ar',
+        )
+        db.session.add(user)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return {
+            'ok': False,
+            'errors': ['تعذّر إنشاء الحساب — المعرّف أو اسم المستخدم مستخدم مسبقاً. جرّب معرّفاً آخر.'],
+        }
+    except Exception:
+        db.session.rollback()
+        raise
 
     login_url = f'https://{slug}.liftcoreapp.com/login'
     return {

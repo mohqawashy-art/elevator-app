@@ -102,6 +102,8 @@ CSRF_HEADER = 'X-CSRF-Token'
 CSRF_EXEMPT_ENDPOINTS = frozenset({
     'login',
     'field_login',
+    'signup',
+    'api_signup',
     'static',
     'web_manifest',
     'api_version',

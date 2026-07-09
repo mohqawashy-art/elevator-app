@@ -1617,14 +1617,13 @@ def signup():
     if not signup_enabled():
         abort(404)
 
-    # جلسة من subdomain آخر على .liftcoreapp.com قد تكسر الصفحة — امسحها على نطاق المنصة
+    # جلسة من subdomain آخر قد تكسر CSRF/الطلب — امسحها ثم أعد رمز CSRF
     if session.get('user_id'):
         session.clear()
+    ensure_csrf_token()
 
     error = None
     success = None
-    if request.method == 'GET':
-        ensure_csrf_token()
 
     if request.method == 'POST':
         company_name = request.form.get('company_name', '')
@@ -1643,16 +1642,22 @@ def signup():
         elif password != password2:
             error = 'تأكيد كلمة المرور غير متطابق.'
         else:
-            result = create_tenant_signup(
-                company_name=company_name,
-                slug=slug,
-                admin_email=admin_email,
-                admin_name=admin_name,
-                password_hash=hash_password(password),
-            )
-            if not result.get('ok'):
+            try:
+                result = create_tenant_signup(
+                    company_name=company_name,
+                    slug=slug,
+                    admin_email=admin_email,
+                    admin_name=admin_name,
+                    password_hash=hash_password(password),
+                )
+            except Exception:
+                app.logger.exception('tenant signup failed')
+                db.session.rollback()
+                error = 'تعذّر إنشاء الحساب بسبب خطأ في الخادم. جرّب معرّفاً أو بريداً مختلفاً.'
+                result = None
+            if result is not None and not result.get('ok'):
                 error = ' — '.join(result.get('errors') or ['تعذّر إنشاء الحساب.'])
-            else:
+            elif result is not None:
                 try:
                     send_welcome_email(
                         to_email=admin_email,
