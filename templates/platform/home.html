@@ -41,15 +41,15 @@
         <td>{{ o.plan }}</td>
         <td>{{ o.admin_email or '—' }}</td>
         <td class="muted">{{ o.created_at }}</td>
-        <td><a class="btn btn-secondary btn-sm" href="{{ url_for('platform_org_detail', org_id=o.id) }}">إدارة</a></td>
+        <td><a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ o.id }}">إدارة</a></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
   {% endif %}
   <div class="actions">
-    <a class="btn btn-primary" href="{{ url_for('platform_orgs') }}">كل المؤسسات</a>
-    <a class="btn btn-secondary" href="{{ url_for('operator_onboarding') }}">إنشاء دعوة عميل</a>
+    <a class="btn btn-primary" href="/platform/orgs">كل المؤسسات</a>
+    <a class="btn btn-secondary" href="/operator/onboarding">إنشاء دعوة عميل</a>
   </div>
 </div>
 
@@ -70,7 +70,7 @@
         <td>{{ inv.company_name or inv.contact_name or '—' }}</td>
         <td>{{ inv.plan }}</td>
         <td>{{ inv.admin_email or inv.contact_email or '—' }}</td>
-        <td><a class="btn btn-secondary btn-sm" href="{{ url_for('operator_onboarding_detail', invite_id=inv.id) }}">تفاصيل</a></td>
+        <td><a class="btn btn-secondary btn-sm" href="/operator/onboarding/{{ inv.id }}">تفاصيل</a></td>
       </tr>
       {% endfor %}
     </tbody>

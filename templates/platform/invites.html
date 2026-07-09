@@ -4,7 +4,7 @@
 <div class="h1">دعوات الانضمام</div>
 <p class="sub">متابعة طلبات العملاء قبل وبعد التفعيل.</p>
 <div class="actions" style="margin-bottom:14px">
-  <a class="btn btn-primary" href="{{ url_for('operator_onboarding') }}">إنشاء دعوة جديدة</a>
+  <a class="btn btn-primary" href="/operator/onboarding">إنشاء دعوة جديدة</a>
 </div>
 <div class="card">
   <table class="table">
@@ -24,7 +24,7 @@
           {% if inv.submitted_at %}تعبئة: {{ inv.submitted_at }}<br>{% endif %}
           {% if inv.activated_at %}تفعيل: {{ inv.activated_at }}{% endif %}
         </td>
-        <td><a class="btn btn-secondary btn-sm" href="{{ url_for('operator_onboarding_detail', invite_id=inv.id) }}">تفاصيل</a></td>
+        <td><a class="btn btn-secondary btn-sm" href="/operator/onboarding/{{ inv.id }}">تفاصيل</a></td>
       </tr>
       {% else %}
       <tr><td colspan="7" class="muted">لا دعوات.</td></tr>

@@ -8,6 +8,7 @@ from operator_onboarding import activate_invite, create_invite, submit_invite_fo
 
 ROOT_URL = 'https://liftcoreapp.com'
 APP_URL = 'https://app.liftcoreapp.com'
+ADMIN_URL = 'https://admin.liftcoreapp.com'
 
 
 @pytest.fixture
@@ -39,11 +40,11 @@ def ob_client():
         yield client
 
 
-def _login_ops(client):
+def _login_ops(client, base_url=ADMIN_URL):
     return client.post(
         '/login',
         data={'username': 'opsadmin', 'password': 'OpsPass123!'},
-        base_url=APP_URL,
+        base_url=base_url,
         follow_redirects=False,
     )
 
@@ -134,13 +135,23 @@ def test_activate_creates_active_org(ob_client):
 
 
 def test_operator_panel_requires_default_admin(ob_client):
-    r = ob_client.get('/operator/onboarding', base_url=APP_URL)
+    r = ob_client.get('/operator/onboarding', base_url=ADMIN_URL)
     assert r.status_code in (302, 401)
 
     _login_ops(ob_client)
-    r = ob_client.get('/operator/onboarding', base_url=APP_URL)
+    r = ob_client.get('/operator/onboarding', base_url=ADMIN_URL)
     assert r.status_code == 200
-    assert 'دعوات انضمام' in r.get_data(as_text=True)
+    body = r.get_data(as_text=True)
+    assert 'دعوات انضمام' in body
+    assert 'liftcore-header-logo.png' in body or 'liftcore-brand-logo.png' in body
+    assert 'Platform Admin' in body or 'PLATFORM' in body or 'إدارة المنصة' in body
+
+
+def test_operator_panel_redirects_from_app_host(ob_client):
+    _login_ops(ob_client, base_url=APP_URL)
+    r = ob_client.get('/operator/onboarding', base_url=APP_URL, follow_redirects=False)
+    assert r.status_code in (302, 303)
+    assert 'admin.liftcoreapp.com' in (r.headers.get('Location') or '')
 
 
 def test_operator_create_via_post(ob_client):
@@ -154,7 +165,7 @@ def test_operator_create_via_post(ob_client):
             'contact_email': 'ali@gamma.test',
             'days': '7',
         },
-        base_url=APP_URL,
+        base_url=ADMIN_URL,
         follow_redirects=True,
     )
     assert r.status_code == 200
@@ -199,8 +210,9 @@ def test_operator_detail_page(ob_client):
         )['invite']
         invite_id = inv.id
     _login_ops(ob_client)
-    r = ob_client.get(f'/operator/onboarding/{invite_id}', base_url=APP_URL)
+    r = ob_client.get(f'/operator/onboarding/{invite_id}', base_url=ADMIN_URL)
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert 'تفاصيل' in body or 'detailco' in body
     assert 'ملخص الحساب' in body
+    assert 'liftcore-header-logo.png' in body or 'liftcore-brand-logo.png' in body

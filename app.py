@@ -741,6 +741,7 @@ def inject_global_template_vars():
         'permission_groups': perm_groups,
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
         'is_platform_operator': platform_op,
+        'platform_admin_host': bool(getattr(g, 'platform_admin_host', False)),
     }
 
 
@@ -2033,7 +2034,10 @@ def onboard_form(token):
 
 def _require_platform_operator():
     from operator_onboarding import is_platform_operator
+    from platform_admin import is_admin_host
 
+    if not is_admin_host():
+        return None
     user = require_admin()
     if not user or not is_platform_operator(user):
         return None
@@ -2044,15 +2048,19 @@ def _require_platform_operator():
 def operator_onboarding():
     from liftcore_mail import mail_configured
     from operator_onboarding import PLANS, invite_public_url, is_platform_operator, list_invites
+    from platform_admin import is_admin_host
 
     user = require_login()
     if not user:
         return redirect(url_for('login'))
     if not is_platform_operator(user):
         abort(404)
+    if not is_admin_host():
+        return redirect('https://admin.liftcoreapp.com/operator/onboarding')
 
     return render_template(
         'operator_onboarding.html',
+        nav='create_invite',
         invites=list_invites(100),
         plans=PLANS,
         invite_url=invite_public_url,
@@ -2069,7 +2077,10 @@ def operator_onboarding():
 def operator_onboarding_create():
     from liftcore_mail import mail_result_message, send_onboarding_invite_email
     from operator_onboarding import create_invite
+    from platform_admin import is_admin_host
 
+    if not is_admin_host():
+        abort(404)
     user = _require_platform_operator()
     if not user:
         abort(404)
@@ -2169,17 +2180,21 @@ def operator_onboarding_resend(invite_id):
 def operator_onboarding_detail(invite_id):
     from models import OnboardingInvite
     from operator_onboarding import PLANS, invite_public_url, is_platform_operator
+    from platform_admin import is_admin_host
 
     user = require_login()
     if not user:
         return redirect(url_for('login'))
     if not is_platform_operator(user):
         abort(404)
+    if not is_admin_host():
+        return redirect(f'https://admin.liftcoreapp.com/operator/onboarding/{invite_id}')
     inv = db.session.get(OnboardingInvite, invite_id)
     if not inv:
         abort(404)
     return render_template(
         'operator_onboarding_detail.html',
+        nav='invites',
         inv=inv,
         plans=PLANS,
         invite_url=invite_public_url(inv.token),

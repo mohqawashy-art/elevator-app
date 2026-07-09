@@ -4,82 +4,151 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}LiftCore Platform{% endblock %}</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Tajawal:wght@500;700&display=swap" rel="stylesheet">
 {% include 'partials/csrf_meta.html' %}
 <style>
 :root{
-  --bg:#070b12;--panel:#0f1520;--card:#131b27;--line:rgba(120,160,220,.12);
-  --text:#e8eef8;--muted:#7a8aa3;--accent:#3b82f6;--gold:#c8a055;
-  --ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--r:12px;
+  --bg:#070a10;--panel:#0c121c;--card:#111925;--line:rgba(201,161,74,.14);
+  --text:#f2f5fa;--muted:#7a8aa3;--accent:#c9a14a;--accent-2:#e8cd86;
+  --blue:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--r:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-a{color:var(--accent);text-decoration:none}
-.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line);background:rgba(15,21,32,.92);position:sticky;top:0;z-index:20;backdrop-filter:blur(8px)}
-.brand{font-weight:700;letter-spacing:.02em}
-.brand span{color:var(--gold);font-weight:500;margin-right:8px;font-size:12px}
-.nav{display:flex;gap:8px;flex-wrap:wrap}
-.nav a{padding:8px 12px;border-radius:8px;color:var(--muted);font-size:13px}
-.nav a:hover,.nav a.on{background:rgba(59,130,246,.12);color:var(--text)}
-.userbox{font-size:12px;color:var(--muted)}
-.wrap{max-width:1180px;margin:0 auto;padding:22px 20px 48px}
-.h1{font-size:24px;font-weight:700;margin-bottom:6px}
-.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
-.flash{padding:10px 14px;border-radius:10px;margin-bottom:14px;font-size:13px;line-height:1.6}
-.flash-ok{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.28);color:var(--ok)}
-.flash-warn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.28);color:var(--bad)}
+body{
+  font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, rgba(201,161,74,.08), transparent 55%),
+    linear-gradient(180deg, #0b1018 0%, #070a10 40%);
+}
+a{color:var(--accent-2);text-decoration:none}
+a:hover{color:#fff}
+.top{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding:10px 22px;border-bottom:1px solid var(--line);
+  background:rgba(8,12,18,.95);position:sticky;top:0;z-index:30;backdrop-filter:blur(10px);
+}
+.brand{display:flex;align-items:center;gap:14px;min-width:0;flex-shrink:0}
+.brand img{
+  height:52px;width:auto;max-width:min(280px,42vw);display:block;object-fit:contain;
+  background:#000;border-radius:8px;padding:4px 8px;
+}
+.brand-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand-meta strong{font-family:'Tajawal',sans-serif;font-size:13px;color:var(--accent-2);letter-spacing:.04em}
+.brand-meta span{font-size:11px;color:var(--muted);font-weight:500}
+.nav{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.nav a{
+  padding:8px 14px;border-radius:999px;color:var(--muted);font-size:13px;border:1px solid transparent;
+  transition:.2s ease;
+}
+.nav a:hover{color:var(--text);background:rgba(201,161,74,.08);border-color:rgba(201,161,74,.18)}
+.nav a.on{color:#111;background:linear-gradient(135deg,var(--accent),#a8842f);border-color:transparent;font-weight:600}
+.userbox{font-size:12px;color:var(--muted);white-space:nowrap}
+.userbox a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 20px 56px}
+.h1{font-size:26px;font-weight:700;margin-bottom:6px;letter-spacing:.01em}
+.sub{color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.7}
+.flash{padding:12px 14px;border-radius:12px;margin-bottom:14px;font-size:13px;line-height:1.7}
+.flash-ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.28);color:var(--ok)}
+.flash-warn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.28);color:#fca5a5}
 .flash-info{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#93c5fd}
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
-.stat .n{font-size:22px;font-weight:700}
-.stat .l{font-size:11px;color:var(--muted);margin-top:4px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
-.section{font-size:13px;font-weight:600;color:var(--gold);margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.stat{
+  background:linear-gradient(180deg,rgba(255,255,255,.03),transparent), var(--card);
+  border:1px solid var(--line);border-radius:var(--r);padding:16px 14px;
+}
+.stat .n{font-size:24px;font-weight:700;color:var(--accent-2)}
+.stat .l{font-size:11px;color:var(--muted);margin-top:6px}
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.02),transparent), var(--card);
+  border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.18);
+}
+.section{
+  font-size:13px;font-weight:700;color:var(--accent);margin:0 0 14px;padding-bottom:10px;
+  border-bottom:1px solid rgba(201,161,74,.16);letter-spacing:.02em;
+}
 .table{width:100%;border-collapse:collapse;font-size:13px}
-.table th,.table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
-.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px}
+.table th{color:var(--muted);font-weight:500;font-size:11px}
+.table th,.table td{padding:12px 8px;border-bottom:1px solid rgba(255,255,255,.05);text-align:right;vertical-align:top}
+.table tr:hover td{background:rgba(201,161,74,.03)}
+.badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:500}
 .badge-active{background:rgba(34,197,94,.15);color:var(--ok)}
 .badge-trial{background:rgba(245,158,11,.15);color:var(--warn)}
-.badge-suspended{background:rgba(239,68,68,.15);color:var(--bad)}
+.badge-suspended{background:rgba(239,68,68,.15);color:#fca5a5}
 .badge-pending{background:rgba(59,130,246,.15);color:#93c5fd}
-.badge-submitted{background:rgba(200,160,85,.15);color:var(--gold)}
+.badge-submitted{background:rgba(200,160,85,.15);color:var(--accent)}
 .badge-activated{background:rgba(34,197,94,.15);color:var(--ok)}
-.badge-cancelled,.badge-expired{background:rgba(239,68,68,.12);color:var(--bad)}
-.btn{border:none;border-radius:8px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-.btn-primary{background:var(--accent);color:#fff}
-.btn-secondary{background:#182233;color:var(--text);border:1px solid var(--line)}
-.btn-danger{background:rgba(239,68,68,.15);color:var(--bad);border:1px solid rgba(239,68,68,.3)}
-.btn-sm{padding:6px 10px;font-size:12px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid .full{grid-column:1/-1}
+.badge-cancelled,.badge-expired{background:rgba(239,68,68,.12);color:#fca5a5}
+.btn{
+  border:none;border-radius:10px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;
+  cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;transition:.2s ease;
+}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#a8842f);color:#111}
+.btn-primary:hover{filter:brightness(1.05);color:#111}
+.btn-secondary{background:rgba(255,255,255,.03);color:var(--text);border:1px solid rgba(255,255,255,.08)}
+.btn-secondary:hover{border-color:rgba(201,161,74,.35);color:var(--accent-2)}
+.btn-danger{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.28)}
+.btn-sm{padding:7px 11px;font-size:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid .full,.grid-3 .full{grid-column:1/-1}
 label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}
-input,select,textarea{width:100%;padding:10px 12px;background:#0c121c;border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.kv .k{font-size:11px;color:var(--muted);margin-bottom:2px}
-.kv .v{font-size:13px;line-height:1.6;word-break:break-word}
-code{background:#0c121c;padding:2px 7px;border-radius:4px;direction:ltr;display:inline-block}
+input,select,textarea{
+  width:100%;padding:11px 12px;background:#0a1018;border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;color:var(--text);font-family:inherit;font-size:13px;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(201,161,74,.45)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.kv .k{font-size:11px;color:var(--muted);margin-bottom:3px}
+.kv .v{font-size:13px;line-height:1.7;word-break:break-word}
+code,.link{background:#0a1018;padding:2px 8px;border-radius:6px;direction:ltr;display:inline-block;word-break:break-all}
+.link{color:var(--accent-2);background:transparent;padding:0}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:end}
 .muted{color:var(--muted);font-size:12px}
-@media(max-width:900px){.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.top{flex-direction:column;align-items:flex-start}}
+.creds{
+  background:rgba(201,161,74,.08);border:1px solid rgba(201,161,74,.25);border-radius:12px;
+  padding:14px;margin-bottom:14px;font-size:13px;line-height:1.8;
+}
+.detail{font-size:12px;color:var(--muted);line-height:1.7;margin-top:4px}
+.foot{
+  margin-top:28px;padding-top:16px;border-top:1px solid rgba(255,255,255,.05);
+  color:#4a5568;font-size:11px;text-align:center;letter-spacing:.04em;
+}
+@media(max-width:980px){
+  .stats{grid-template-columns:1fr 1fr}
+  .grid,.grid-3{grid-template-columns:1fr}
+  .top{flex-direction:column;align-items:flex-start}
+  .nav{justify-content:flex-start}
+  .brand img{height:44px}
+}
 </style>
 {% block head %}{% endblock %}
 </head>
 <body>
 <header class="top">
-  <div class="brand">LiftCore <span>Platform Admin</span></div>
+  <a class="brand" href="/platform">
+    <img src="{{ url_for('static', filename='images/liftcore-header-logo.png') }}?v=9"
+         alt="LiftCore"
+         onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=9';}">
+    <div class="brand-meta">
+      <strong>PLATFORM</strong>
+      <span>إدارة المنصة</span>
+    </div>
+  </a>
   <nav class="nav">
-    <a href="{{ url_for('platform_home') }}" class="{% if nav == 'home' %}on{% endif %}">لوحة المنصة</a>
-    <a href="{{ url_for('platform_orgs') }}" class="{% if nav == 'orgs' %}on{% endif %}">المؤسسات</a>
-    <a href="{{ url_for('platform_invites') }}" class="{% if nav == 'invites' %}on{% endif %}">الدعوات</a>
-    <a href="{{ url_for('operator_onboarding') }}">إنشاء دعوة</a>
+    <a href="/platform" class="{% if nav == 'home' %}on{% endif %}">لوحة المنصة</a>
+    <a href="/platform/orgs" class="{% if nav == 'orgs' %}on{% endif %}">المؤسسات</a>
+    <a href="/platform/invites" class="{% if nav == 'invites' %}on{% endif %}">الدعوات</a>
+    <a href="/operator/onboarding" class="{% if nav == 'create_invite' %}on{% endif %}">إنشاء دعوة</a>
   </nav>
   <div class="userbox">
-    {% if auth_user %}{{ auth_user.full_name or auth_user.username }} · <a href="{{ url_for('logout') }}">خروج</a>{% endif %}
+    {% if auth_user %}{{ auth_user.full_name or auth_user.username }} · <a href="{{ url_for('logout') }}">خروج</a>{% else %}مشغّل المنصة{% endif %}
   </div>
 </header>
 <main class="wrap">
   {% if notice %}<div class="flash flash-{{ notice_type or 'info' }}">{{ notice }}</div>{% endif %}
   {% block content %}{% endblock %}
+  <div class="foot">LIFTCORE · PLATFORM CONSOLE · 2026</div>
 </main>
 </body>
 </html>

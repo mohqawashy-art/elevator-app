@@ -43,7 +43,7 @@
         <td>{{ o.plan }}</td>
         <td>{{ o.admin_email or '—' }}</td>
         <td class="muted">{{ o.created_at }}</td>
-        <td><a class="btn btn-secondary btn-sm" href="{{ url_for('platform_org_detail', org_id=o.id) }}">إدارة</a></td>
+        <td><a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ o.id }}">إدارة</a></td>
       </tr>
       {% else %}
       <tr><td colspan="7" class="muted">لا نتائج.</td></tr>

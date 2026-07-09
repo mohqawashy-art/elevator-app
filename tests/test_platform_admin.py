@@ -63,6 +63,8 @@ def test_admin_host_login_and_home():
     body = r.get_data(as_text=True)
     assert 'لوحة إدارة المنصة' in body
     assert 'Acme' in body
+    assert 'liftcore-header-logo.png' in body or 'liftcore-brand-logo.png' in body
+    assert 'PLATFORM' in body or 'Platform Admin' in body or 'إدارة المنصة' in body
 
 
 def test_tenant_user_cannot_use_admin_console():
