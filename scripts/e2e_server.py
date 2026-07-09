@@ -20,7 +20,14 @@ os.environ.setdefault('SECRET_KEY', 'e2e-test-secret-key-not-default')
 os.environ.pop('LIFTCORE_HTTPS', None)
 
 from app import app, db, hash_password  # noqa: E402
-from models import Customer, Elevator, Settings, Technician, User  # noqa: E402
+from models import (  # noqa: E402
+    Customer,
+    Elevator,
+    Organization,
+    Settings,
+    Technician,
+    User,
+)
 
 E2E_PASSWORD = 'E2ePass123!'
 
@@ -28,10 +35,28 @@ E2E_PASSWORD = 'E2ePass123!'
 def seed() -> None:
     with app.app_context():
         db.create_all()
-        if not Settings.query.first():
-            db.session.add(Settings(company_name='LiftCore E2E', tax_pct=15, city='مكة المكرمة'))
-        if not User.query.filter_by(username='admin').first():
+        org = Organization.query.filter_by(slug='default').first()
+        if not org:
+            org = Organization(
+                slug='default',
+                name='LiftCore E2E',
+                status='active',
+                plan='basic',
+            )
+            db.session.add(org)
+            db.session.flush()
+        oid = org.id
+
+        if not Settings.query.filter_by(organization_id=oid).first():
+            db.session.add(Settings(
+                organization_id=oid,
+                company_name='LiftCore E2E',
+                tax_pct=15,
+                city='مكة المكرمة',
+            ))
+        if not User.query.filter_by(organization_id=oid, username='admin').first():
             db.session.add(User(
+                organization_id=oid,
                 username='admin',
                 password_hash=hash_password(E2E_PASSWORD),
                 full_name='مدير E2E',
@@ -39,8 +64,9 @@ def seed() -> None:
                 is_active=True,
                 must_change_password=False,
             ))
-        if not Customer.query.first():
+        if not Customer.query.filter_by(organization_id=oid).first():
             c = Customer(
+                organization_id=oid,
                 code='C-E2E01',
                 name='عميل اختبار E2E',
                 phone='+966512345678',
@@ -51,13 +77,15 @@ def seed() -> None:
             db.session.add(c)
             db.session.flush()
             db.session.add(Elevator(
+                organization_id=oid,
                 code='EL-E2E01',
                 customer_id=c.id,
                 building_name='برج E2E',
                 status='نشط',
             ))
-        if not Technician.query.first():
+        if not Technician.query.filter_by(organization_id=oid).first():
             db.session.add(Technician(
+                organization_id=oid,
                 code='TECH-E2E',
                 name='فني E2E',
                 phone='512999888',
