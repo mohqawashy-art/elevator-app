@@ -1929,13 +1929,21 @@ def onboard_form(token):
     ensure_csrf_token()
 
     inv = get_invite(token)
-    if not inv:
-        abort(404)
-
     error = None
     success = False
     closed = None
     form = {}
+
+    if not inv:
+        return render_template(
+            'onboard.html',
+            invite=None,
+            error=None,
+            success=False,
+            closed='رابط الدعوة غير صالح أو منتهي. اطلب رابطاً جديداً من فريق LiftCore.',
+            form={},
+            signup_host=is_signup_host(),
+        ), 404
 
     if request.method == 'POST':
         form = request.form.to_dict()

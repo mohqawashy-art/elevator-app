@@ -42,11 +42,11 @@ input:focus,textarea:focus{outline:none;border-color:var(--gold)}
   <div class="ok">
     تم استلام بياناتكم بنجاح.<br>
     سنراجع الطلب ونفعّل الحساب قريباً.<br>
-    {% if invite.admin_email %}سيتم التواصل عبر: <strong>{{ invite.admin_email }}</strong>{% endif %}
+    {% if invite and invite.admin_email %}سيتم التواصل عبر: <strong>{{ invite.admin_email }}</strong>{% endif %}
   </div>
   {% elif closed %}
   <div class="err">{{ closed }}</div>
-  {% else %}
+  {% elif invite %}
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
