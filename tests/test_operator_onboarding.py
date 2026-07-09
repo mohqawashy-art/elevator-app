@@ -172,3 +172,18 @@ def test_create_invite_requires_email(ob_client):
         result = create_invite(plan='basic', contact_name='بدون بريد')
         assert not result['ok']
         assert any('بريد' in e for e in result['errors'])
+
+
+def test_invite_email_reports_missing_api_key(ob_client, monkeypatch):
+    monkeypatch.delenv('MAIL_API_KEY', raising=False)
+    from liftcore_mail import send_onboarding_invite_email
+
+    result = send_onboarding_invite_email(
+        to_email='client@example.com',
+        contact_name='عميل',
+        invite_url='https://liftcoreapp.com/onboard/abc',
+        plan='basic',
+        days=7,
+    )
+    assert result['ok'] is False
+    assert result['reason'] == 'mail_not_configured'

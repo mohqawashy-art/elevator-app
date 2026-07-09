@@ -49,6 +49,14 @@ input,textarea,select{width:100%;padding:10px 12px;background:var(--bg3);border:
   <div class="page-heading">دعوات انضمام العملاء</div>
   <p class="sub">أنشئ رابط دعوة بعد الاتفاق التجاري، راجع بيانات العميل، ثم فعّل الحساب بالباقة المناسبة.</p>
 
+  {% if not mail_ready %}
+  <div class="flash flash-warn">
+    البريد غير مفعّل على السيرفر (<code>MAIL_API_KEY</code> ناقص).
+    الدعوات تُنشأ والرابط يظهر هنا، لكن لن يصل بريد للعميل حتى تضيف مفتاح Resend في
+    <code>/etc/liftcore/platform.env</code> ثم تعيد تشغيل الخدمة.
+  </div>
+  {% endif %}
+
   {% if notice %}
   <div class="flash flash-{{ notice_type or 'info' }}">{{ notice }}</div>
   {% endif %}

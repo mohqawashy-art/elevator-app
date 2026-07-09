@@ -15,16 +15,24 @@ def _mail_from() -> str:
     return os.environ.get('MAIL_FROM', 'noreply@liftcoreapp.com').strip()
 
 
-def _send_email(*, to_email: str, subject: str, body_text: str, log_tag: str) -> bool:
+def mail_configured() -> bool:
+    return bool(os.environ.get('MAIL_API_KEY', '').strip())
+
+
+def _send_email(*, to_email: str, subject: str, body_text: str, log_tag: str) -> dict:
+    """يرجع {ok, reason} — ok=True فقط عند إرسال فعلي ناجح."""
     to_email = (to_email or '').strip()
     if not to_email:
         logger.warning('%s skipped — empty recipient', log_tag)
-        return False
+        return {'ok': False, 'reason': 'empty_recipient'}
 
     api_key = os.environ.get('MAIL_API_KEY', '').strip()
     if not api_key:
-        logger.info('%s (dry-run) to=%s subject=%s', log_tag, to_email, subject)
-        return True
+        logger.warning(
+            '%s not sent — MAIL_API_KEY missing (to=%s subject=%s)',
+            log_tag, to_email, subject,
+        )
+        return {'ok': False, 'reason': 'mail_not_configured'}
 
     payload = {
         'from': _mail_from(),
@@ -43,13 +51,22 @@ def _send_email(*, to_email: str, subject: str, body_text: str, log_tag: str) ->
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            return 200 <= resp.status < 300
+            if 200 <= resp.status < 300:
+                return {'ok': True, 'reason': 'sent'}
+            return {'ok': False, 'reason': f'http_{resp.status}'}
     except urllib.error.HTTPError as exc:
-        logger.warning('Resend HTTP %s (%s): %s', exc.code, log_tag, exc.read()[:500])
-        return False
+        body = exc.read()[:500]
+        logger.warning('Resend HTTP %s (%s): %s', exc.code, log_tag, body)
+        return {'ok': False, 'reason': f'http_{exc.code}'}
     except OSError as exc:
         logger.warning('Resend send failed (%s): %s', log_tag, exc)
-        return False
+        return {'ok': False, 'reason': 'network_error'}
+
+
+def _as_bool(result: dict | bool) -> bool:
+    if isinstance(result, dict):
+        return bool(result.get('ok'))
+    return bool(result)
 
 
 def send_welcome_email(
@@ -60,7 +77,7 @@ def send_welcome_email(
     admin_name: str,
     login_url: str,
 ) -> bool:
-    """يرسل بريد ترحيب — أو يسجّل فقط إن لم يُضبط MAIL_API_KEY."""
+    """يرسل بريد ترحيب. يرجع False إن لم يُضبط MAIL_API_KEY أو فشل الإرسال."""
     subject = f'مرحباً بك في LiftCore — {company_name}'
     body_text = (
         f'مرحباً {admin_name},\n\n'
@@ -69,12 +86,12 @@ def send_welcome_email(
         f'معرّف المؤسسة: {slug}\n'
         '— فريق LiftCore'
     )
-    return _send_email(
+    return _as_bool(_send_email(
         to_email=to_email,
         subject=subject,
         body_text=body_text,
         log_tag='signup welcome',
-    )
+    ))
 
 
 def send_onboarding_invite_email(
@@ -139,3 +156,22 @@ def send_onboarding_activated_email(
         body_text=body_text,
         log_tag='onboarding activated',
     )
+
+
+def mail_result_message(result: dict | bool, *, to_email: str) -> tuple[str, str]:
+    """(notice, notice_type) لواجهة المشغّل."""
+    if isinstance(result, bool):
+        result = {'ok': result, 'reason': 'sent' if result else 'failed'}
+    if result.get('ok'):
+        return f'تم إرسال البريد إلى {to_email}.', 'ok'
+    reason = result.get('reason') or 'failed'
+    if reason == 'mail_not_configured':
+        return (
+            'لم يُرسل البريد: MAIL_API_KEY غير مضبوط على السيرفر. '
+            'أضفه في /etc/liftcore/platform.env ثم أعد تشغيل الخدمة. '
+            f'انسخ الرابط يدوياً للعميل.',
+            'warn',
+        )
+    if reason == 'empty_recipient':
+        return 'لم يُرسل البريد: لا يوجد عنوان مستلم.', 'warn'
+    return f'تعذّر إرسال البريد إلى {to_email} ({reason}). انسخ الرابط يدوياً.', 'warn'

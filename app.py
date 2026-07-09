@@ -1980,6 +1980,7 @@ def _require_platform_operator():
 
 @app.route('/operator/onboarding')
 def operator_onboarding():
+    from liftcore_mail import mail_configured
     from operator_onboarding import PLANS, invite_public_url, is_platform_operator, list_invites
 
     user = require_login()
@@ -1997,13 +1998,14 @@ def operator_onboarding():
         notice_type=session.pop('op_notice_type', None),
         created_url=session.pop('op_created_url', None),
         activated=session.pop('op_activated', None),
+        mail_ready=mail_configured(),
         current_user=user,
     )
 
 
 @app.route('/operator/onboarding/create', methods=['POST'])
 def operator_onboarding_create():
-    from liftcore_mail import send_onboarding_invite_email
+    from liftcore_mail import mail_result_message, send_onboarding_invite_email
     from operator_onboarding import create_invite
 
     user = _require_platform_operator()
@@ -2027,9 +2029,9 @@ def operator_onboarding_create():
     if result.get('ok'):
         inv = result['invite']
         session['op_created_url'] = result['url']
-        mailed = False
+        mail_result = {'ok': False, 'reason': 'failed'}
         try:
-            mailed = send_onboarding_invite_email(
+            mail_result = send_onboarding_invite_email(
                 to_email=inv.contact_email,
                 contact_name=inv.contact_name or '',
                 invite_url=result['url'],
@@ -2038,15 +2040,12 @@ def operator_onboarding_create():
             )
         except Exception:
             app.logger.exception('invite email failed')
-        if mailed:
-            session['op_notice'] = f'تم إنشاء الدعوة وإرسال الرابط إلى {inv.contact_email}.'
-            session['op_notice_type'] = 'ok'
+        notice, ntype = mail_result_message(mail_result, to_email=inv.contact_email)
+        if mail_result.get('ok'):
+            session['op_notice'] = f'تم إنشاء الدعوة. {notice}'
         else:
-            session['op_notice'] = (
-                f'تم إنشاء الدعوة، لكن تعذّر إرسال البريد إلى {inv.contact_email}. '
-                'انسخ الرابط يدوياً أو أعد الإرسال.'
-            )
-            session['op_notice_type'] = 'warn'
+            session['op_notice'] = f'تم إنشاء الدعوة. {notice}'
+        session['op_notice_type'] = ntype
         try:
             from audit_log import log_audit
 
@@ -2055,7 +2054,8 @@ def operator_onboarding_create():
                 details={
                     'invite_id': inv.id,
                     'plan': inv.plan,
-                    'email_sent': mailed,
+                    'email_sent': bool(mail_result.get('ok')),
+                    'email_reason': mail_result.get('reason'),
                     'contact_email': inv.contact_email,
                 },
             )
@@ -2069,7 +2069,7 @@ def operator_onboarding_create():
 
 @app.route('/operator/onboarding/<int:invite_id>/resend', methods=['POST'])
 def operator_onboarding_resend(invite_id):
-    from liftcore_mail import send_onboarding_invite_email
+    from liftcore_mail import mail_result_message, send_onboarding_invite_email
     from models import OnboardingInvite
     from operator_onboarding import invite_public_url
 
@@ -2090,19 +2090,16 @@ def operator_onboarding_resend(invite_id):
     ttl = None
     if inv.expires_at:
         ttl = max(1, (inv.expires_at - datetime.utcnow()).days)
-    mailed = send_onboarding_invite_email(
+    mail_result = send_onboarding_invite_email(
         to_email=to_email,
         contact_name=inv.contact_name or inv.admin_name or '',
         invite_url=invite_public_url(inv.token),
         plan=inv.plan or 'basic',
         days=ttl,
     )
-    if mailed:
-        session['op_notice'] = f'أُعيد إرسال رابط الدعوة إلى {to_email}.'
-        session['op_notice_type'] = 'ok'
-    else:
-        session['op_notice'] = f'تعذّر إرسال البريد إلى {to_email}.'
-        session['op_notice_type'] = 'warn'
+    notice, ntype = mail_result_message(mail_result, to_email=to_email)
+    session['op_notice'] = notice
+    session['op_notice_type'] = ntype
     return redirect(url_for('operator_onboarding'))
 
 
@@ -2146,7 +2143,7 @@ def operator_onboarding_activate(invite_id):
         session['op_notice_type'] = 'ok'
         try:
             from audit_log import log_audit
-            from liftcore_mail import send_onboarding_activated_email
+            from liftcore_mail import mail_result_message, send_onboarding_activated_email
 
             log_audit(
                 'onboarding_invite_activated',
@@ -2155,7 +2152,7 @@ def operator_onboarding_activate(invite_id):
             )
             to_email = inv.admin_email or inv.contact_email
             if to_email:
-                mailed = send_onboarding_activated_email(
+                mail_result = send_onboarding_activated_email(
                     to_email=to_email,
                     company_name=inv.company_name or result['slug'],
                     admin_name=inv.admin_name or inv.contact_name or '',
@@ -2165,15 +2162,9 @@ def operator_onboarding_activate(invite_id):
                     login_url=result['login_url'],
                     plan=result['plan'],
                 )
-                if mailed:
-                    session['op_notice'] = (
-                        f"تم تفعيل {result['slug']} وإرسال بيانات الدخول إلى {to_email}."
-                    )
-                else:
-                    session['op_notice'] = (
-                        f"تم تفعيل {result['slug']}، لكن تعذّر إرسال البريد — انسخ بيانات الدخول أدناه."
-                    )
-                    session['op_notice_type'] = 'warn'
+                notice, ntype = mail_result_message(mail_result, to_email=to_email)
+                session['op_notice'] = f"تم تفعيل {result['slug']}. {notice}"
+                session['op_notice_type'] = ntype
         except Exception:
             app.logger.exception('activate invite follow-up failed')
     else:
