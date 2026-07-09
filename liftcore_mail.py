@@ -12,7 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 def _mail_from() -> str:
-    return os.environ.get('MAIL_FROM', 'noreply@liftcoreapp.com').strip()
+    raw = os.environ.get('MAIL_FROM', 'noreply@liftcoreapp.com').strip()
+    if not raw:
+        raw = 'noreply@liftcoreapp.com'
+    # Resend يقبل "Name <email@domain>" — أفضل للتسليم
+    if '<' not in raw and '@' in raw:
+        return f'LiftCore <{raw}>'
+    return raw
 
 
 def mail_configured() -> bool:
