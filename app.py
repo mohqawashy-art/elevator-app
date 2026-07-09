@@ -1790,8 +1790,8 @@ def login():
     return render_template(
         'login.html',
         error=error,
-        platform_login=platform,
-        admin_console_login=admin_console,
+        platform_login=bool(platform),
+        admin_console_login=bool(admin_console),
         signup_enabled=(
             False if admin_console else
             os.environ.get('LIFTCORE_SIGNUP_ENABLED', '').strip().lower() in (

@@ -17,13 +17,13 @@ from tenant_signup import (
 )
 
 
-PLANS = ('basic', 'pro', 'enterprise')
 INVITE_TTL_DAYS = int(os.environ.get('LIFTCORE_INVITE_DAYS', '14') or 14)
 
 
 def operator_org_slugs() -> set[str]:
-    raw = os.environ.get('LIFTCORE_OPERATOR_ORGS', 'default')
-    return {s.strip().lower() for s in raw.split(',') if s.strip()} or {'default'}
+    from platform_admin import operator_org_slugs as _slugs
+
+    return _slugs()
 
 
 def is_platform_operator(user) -> bool:
@@ -31,6 +31,10 @@ def is_platform_operator(user) -> bool:
     from platform_admin import is_platform_operator as _op
 
     return _op(user)
+
+
+# توافق خلفي — الباقات معرّفة في platform_admin
+from platform_admin import PLANS  # noqa: E402
 
 
 def _new_token() -> str:

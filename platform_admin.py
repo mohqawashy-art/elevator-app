@@ -7,14 +7,20 @@ from datetime import datetime
 from flask import g, has_request_context, request
 
 from models import OnboardingInvite, Organization, Settings, User, db
-from operator_onboarding import PLANS, invite_public_url, operator_org_slugs
 
+
+PLANS = ('basic', 'pro', 'enterprise')
 
 ADMIN_HOSTS = frozenset({
     'admin.liftcoreapp.com',
     'admin.localhost',
     'admin.127.0.0.1',
 })
+
+
+def operator_org_slugs() -> set[str]:
+    raw = os.environ.get('LIFTCORE_OPERATOR_ORGS', 'default')
+    return {s.strip().lower() for s in raw.split(',') if s.strip()} or {'default'}
 
 
 def is_admin_host(host: str | None = None) -> bool:
@@ -25,7 +31,6 @@ def is_admin_host(host: str | None = None) -> bool:
     host = (host or '').split(':')[0].lower().rstrip('.')
     if host in ADMIN_HOSTS:
         return True
-    # اختبارات / تطوير محلي
     if host.startswith('admin.') and host.endswith('.liftcoreapp.com'):
         return True
     return False
@@ -200,4 +205,6 @@ def recent_invites(limit: int = 30) -> list[OnboardingInvite]:
 
 
 def invite_link(token: str) -> str:
+    from operator_onboarding import invite_public_url
+
     return invite_public_url(token)
