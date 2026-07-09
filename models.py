@@ -8,14 +8,51 @@ from datetime import datetime, date
 
 db = SQLAlchemy()
 
+
+# =============================================
+# 0. المؤسسات (multi-tenant)
+# =============================================
+class Organization(db.Model):
+    __tablename__ = 'organizations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(63), unique=True, nullable=False, index=True)
+    name = db.Column(db.String(200), nullable=False)
+    name_en = db.Column(db.String(200))
+    status = db.Column(db.String(20), default='trial')  # trial | active | suspended
+    plan = db.Column(db.String(30), default='basic')
+    admin_email = db.Column(db.String(100))
+    trial_ends_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    suspended_at = db.Column(db.DateTime)
+    notes = db.Column(db.Text)
+
+    def __repr__(self):
+        return f'<Organization {self.slug}>'
+
+
+class TenantMixin:
+    """Mixin — organization_id على كل جدول تشغيلي."""
+
+    organization_id = db.Column(
+        db.Integer,
+        db.ForeignKey('organizations.id'),
+        nullable=False,
+        index=True,
+    )
+
+
 # =============================================
 # 1. العملاء
 # =============================================
-class Customer(db.Model):
+class Customer(TenantMixin, db.Model):
     __tablename__ = 'customers'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_customer_org_code'),
+    )
 
     id          = db.Column(db.Integer, primary_key=True)
-    code        = db.Column(db.String(20), unique=True, nullable=False)   # C-0001
+    code        = db.Column(db.String(20), nullable=False)   # C-0001
     name        = db.Column(db.String(200), nullable=False)
     name_en     = db.Column(db.String(200))
     city        = db.Column(db.String(100))
@@ -47,11 +84,14 @@ class Customer(db.Model):
 # =============================================
 # 2. المصاعد
 # =============================================
-class Elevator(db.Model):
+class Elevator(TenantMixin, db.Model):
     __tablename__ = 'elevators'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_elevator_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # EL-0001
+    code            = db.Column(db.String(20), nullable=False)  # EL-0001
     customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
     building_name   = db.Column(db.String(200))
     city            = db.Column(db.String(100))
@@ -93,11 +133,14 @@ class Elevator(db.Model):
 # =============================================
 # 3. العقود
 # =============================================
-class Contract(db.Model):
+class Contract(TenantMixin, db.Model):
     __tablename__ = 'contracts'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_contract_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # CN-00001
+    code            = db.Column(db.String(20), nullable=False)  # CN-00001
     customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
     contract_type   = db.Column(db.String(50))   # عقد صيانة / ضمان / تركيب / طوارئ
     start_date      = db.Column(db.Date, nullable=False)
@@ -130,7 +173,7 @@ class Contract(db.Model):
 
 
 # جدول وسيط بين العقد والمصاعد (علاقة many-to-many)
-class ContractElevator(db.Model):
+class ContractElevator(TenantMixin, db.Model):
     __tablename__ = 'contract_elevators'
     id          = db.Column(db.Integer, primary_key=True)
     contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=False)
@@ -140,11 +183,14 @@ class ContractElevator(db.Model):
 # =============================================
 # 4. الفنيون
 # =============================================
-class Technician(db.Model):
+class Technician(TenantMixin, db.Model):
     __tablename__ = 'technicians'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_technician_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # Tech-001
+    code            = db.Column(db.String(20), nullable=False)  # Tech-001
     name            = db.Column(db.String(100), nullable=False)
     name_en         = db.Column(db.String(100))
     phone           = db.Column(db.String(20))
@@ -176,7 +222,7 @@ class Technician(db.Model):
         return f'<Technician {self.code} {self.name}>'
 
 
-class TechnicianDocument(db.Model):
+class TechnicianDocument(TenantMixin, db.Model):
     __tablename__ = 'technician_documents'
 
     id              = db.Column(db.Integer, primary_key=True)
@@ -195,11 +241,14 @@ class TechnicianDocument(db.Model):
 # =============================================
 # 4ب. فرق الصيانة الدورية (فني + مساعد)
 # =============================================
-class MaintenanceTeam(db.Model):
+class MaintenanceTeam(TenantMixin, db.Model):
     __tablename__ = 'maintenance_teams'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_mteam_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # MT-001
+    code            = db.Column(db.String(20), nullable=False)  # MT-001
     name            = db.Column(db.String(100), nullable=False)
     leader_id       = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=False)
     assistant_id    = db.Column(db.Integer, db.ForeignKey('technicians.id'))
@@ -218,11 +267,14 @@ class MaintenanceTeam(db.Model):
 # =============================================
 # 5. زيارات الصيانة
 # =============================================
-class MaintenanceVisit(db.Model):
+class MaintenanceVisit(TenantMixin, db.Model):
     __tablename__ = 'maintenance_visits'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_visit_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # VI-00001
+    code            = db.Column(db.String(20), nullable=False)  # VI-00001
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
     elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
     technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
@@ -253,7 +305,7 @@ class MaintenanceVisit(db.Model):
         return f'<Visit {self.code}>'
 
 
-class VisitTechnician(db.Model):
+class VisitTechnician(TenantMixin, db.Model):
     __tablename__ = 'visit_technicians'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -276,11 +328,14 @@ class VisitTechnician(db.Model):
 # =============================================
 # 6. الأعطال
 # =============================================
-class Fault(db.Model):
+class Fault(TenantMixin, db.Model):
     __tablename__ = 'faults'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_fault_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # FA-00001
+    code            = db.Column(db.String(20), nullable=False)  # FA-00001
     elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
     technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'))
     visit_id        = db.Column(db.Integer, db.ForeignKey('maintenance_visits.id'))
@@ -307,7 +362,7 @@ class Fault(db.Model):
         return f'<Fault {self.code}>'
 
 
-class FaultTechnician(db.Model):
+class FaultTechnician(TenantMixin, db.Model):
     __tablename__ = 'fault_technicians'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -330,11 +385,14 @@ class FaultTechnician(db.Model):
 # =============================================
 # 7. الإيرادات
 # =============================================
-class Revenue(db.Model):
+class Revenue(TenantMixin, db.Model):
     __tablename__ = 'revenues'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_revenue_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # REV-001
+    code            = db.Column(db.String(20), nullable=False)  # REV-001
     customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'))
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
     invoice_id      = db.Column(db.Integer, db.ForeignKey('invoices.id'))
@@ -362,11 +420,14 @@ class Revenue(db.Model):
 # =============================================
 # 8. المصروفات
 # =============================================
-class Expense(db.Model):
+class Expense(TenantMixin, db.Model):
     __tablename__ = 'expenses'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_expense_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # EXP-001
+    code            = db.Column(db.String(20), nullable=False)  # EXP-001
     expense_date    = db.Column(db.Date, nullable=False)
     expense_type    = db.Column(db.String(100))  # رواتب / قطع غيار / وقود / أدوات
     description     = db.Column(db.String(300))
@@ -384,11 +445,14 @@ class Expense(db.Model):
 # =============================================
 # 9. الفواتير وسندات القبض
 # =============================================
-class Invoice(db.Model):
+class Invoice(TenantMixin, db.Model):
     __tablename__ = 'invoices'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_invoice_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # INV-0001
+    code            = db.Column(db.String(20), nullable=False)  # INV-0001
     invoice_type    = db.Column(db.String(30))   # فاتورة / سند قبض / إشعار دائن
     customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'))
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
@@ -420,11 +484,14 @@ class Invoice(db.Model):
 # =============================================
 # 10. الأصناف (المخزن)
 # =============================================
-class InventoryItem(db.Model):
+class InventoryItem(TenantMixin, db.Model):
     __tablename__ = 'inventory_items'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_inventory_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # #001
+    code            = db.Column(db.String(20), nullable=False)  # #001
     name            = db.Column(db.String(200), nullable=False)
     category        = db.Column(db.String(100))   # أبواب / كهرباء / ميكانيكا / تشحيم
     unit            = db.Column(db.String(20))    # قطعة / لتر / متر
@@ -459,11 +526,14 @@ class InventoryItem(db.Model):
 # =============================================
 # 11. حركة المخزن
 # =============================================
-class StockMovement(db.Model):
+class StockMovement(TenantMixin, db.Model):
     __tablename__ = 'stock_movements'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_stockmv_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # MV-001
+    code            = db.Column(db.String(20), nullable=False)  # MV-001
     item_id         = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=False)
     movement_date   = db.Column(db.Date, nullable=False)
     direction       = db.Column(db.String(10))   # وارد / صادر
@@ -485,11 +555,14 @@ class StockMovement(db.Model):
 # =============================================
 # 12. بيان تركيب قطع الغيار
 # =============================================
-class PartsBilling(db.Model):
+class PartsBilling(TenantMixin, db.Model):
     __tablename__ = 'parts_billing'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_partsbill_org_code'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), unique=True, nullable=False)  # PB-001
+    code            = db.Column(db.String(20), nullable=False)  # PB-001
     customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'))
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
     elevator_id     = db.Column(db.Integer, db.ForeignKey('elevators.id'))
@@ -522,11 +595,14 @@ class PartsBilling(db.Model):
 # =============================================
 # 12ب. طلبات الشراء
 # =============================================
-class PurchaseOrder(db.Model):
+class PurchaseOrder(TenantMixin, db.Model):
     __tablename__ = 'purchase_orders'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_po_org_code'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), unique=True, nullable=False)
+    code = db.Column(db.String(20), nullable=False)
     supplier = db.Column(db.String(200))
     supplier_phone = db.Column(db.String(30))
     supplier_email = db.Column(db.String(120))
@@ -544,7 +620,7 @@ class PurchaseOrder(db.Model):
     )
 
 
-class PurchaseOrderLine(db.Model):
+class PurchaseOrderLine(TenantMixin, db.Model):
     __tablename__ = 'purchase_order_lines'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -561,11 +637,14 @@ class PurchaseOrderLine(db.Model):
 # =============================================
 # 12ج. تقدير تكلفة إنشاء مصعد
 # =============================================
-class ElevatorEstimate(db.Model):
+class ElevatorEstimate(TenantMixin, db.Model):
     __tablename__ = 'elevator_estimates'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_est_org_code'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), unique=True, nullable=False)
+    code = db.Column(db.String(20), nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True)
     project_name = db.Column(db.String(200))
     city = db.Column(db.String(100))
@@ -597,7 +676,7 @@ class ElevatorEstimate(db.Model):
     )
 
 
-class ElevatorEstimateLine(db.Model):
+class ElevatorEstimateLine(TenantMixin, db.Model):
     __tablename__ = 'elevator_estimate_lines'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -615,7 +694,7 @@ class ElevatorEstimateLine(db.Model):
 # =============================================
 # 12ب. الموقّعون (توقيعات مشفّرة)
 # =============================================
-class Signatory(db.Model):
+class Signatory(TenantMixin, db.Model):
     __tablename__ = 'signatories'
 
     id              = db.Column(db.Integer, primary_key=True)
@@ -634,7 +713,7 @@ class Signatory(db.Model):
 # =============================================
 # 13. إعدادات النظام
 # =============================================
-class Settings(db.Model):
+class Settings(TenantMixin, db.Model):
     __tablename__ = 'settings'
 
     id              = db.Column(db.Integer, primary_key=True)
@@ -680,13 +759,39 @@ class Settings(db.Model):
 
 
 # =============================================
+# 13b. اعتمادات زاتكا (لكل مؤسسة)
+# =============================================
+class ZatcaCredentials(TenantMixin, db.Model):
+    __tablename__ = 'zatca_credentials'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', name='uq_zatca_credentials_org'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    vat_number = db.Column(db.String(15), nullable=False)
+    cr_number = db.Column(db.String(20))
+    csid = db.Column(db.Text)
+    private_key = db.Column(db.Text)
+    certificate = db.Column(db.Text)
+    environment = db.Column(db.String(10), default='sandbox')
+    onboarded_at = db.Column(db.DateTime)
+    status = db.Column(db.String(20), default='pending')
+
+    def __repr__(self):
+        return f'<ZatcaCredentials org={self.organization_id} status={self.status}>'
+
+
+# =============================================
 # 14. المستخدمون
 # =============================================
-class User(db.Model):
+class User(TenantMixin, db.Model):
     __tablename__ = 'users'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'username', name='uq_user_org_username'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
-    username        = db.Column(db.String(50), unique=True, nullable=False)
+    username        = db.Column(db.String(50), nullable=False)
     password_hash   = db.Column(db.String(200), nullable=False)
     full_name       = db.Column(db.String(100))
     email           = db.Column(db.String(100))
@@ -704,7 +809,7 @@ class User(db.Model):
         return f'<User {self.username}>'
 
 
-class AuditLog(db.Model):
+class AuditLog(TenantMixin, db.Model):
     """سجل تدقيق — حذف، إعدادات، تغيير كلمة مرور."""
     __tablename__ = 'audit_logs'
 

@@ -5,7 +5,7 @@
 import json
 from datetime import datetime, date
 
-from models import db
+from models import TenantMixin, db
 
 LEAD_STATUSES = (
     'جديد',
@@ -55,11 +55,14 @@ TIMELINE_STEP_STATUSES = (
 )
 
 
-class InstallLead(db.Model):
+class InstallLead(TenantMixin, db.Model):
     __tablename__ = 'installation_leads'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_install_lead_org_code'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), unique=True, nullable=False)
+    code = db.Column(db.String(20), nullable=False)
     inquiry_date = db.Column(db.Date, default=date.today)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True)
     client_name = db.Column(db.String(200), nullable=False)
@@ -96,11 +99,14 @@ class InstallLead(db.Model):
         return '—'
 
 
-class InstallProject(db.Model):
+class InstallProject(TenantMixin, db.Model):
     __tablename__ = 'installation_projects'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_install_project_org_code'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), unique=True, nullable=False)
+    code = db.Column(db.String(20), nullable=False)
     title = db.Column(db.String(300))
     status = db.Column(db.String(40), default='استفسار')
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True)
@@ -150,12 +156,15 @@ class InstallProject(db.Model):
         return self.title or '—'
 
 
-class InstallQuotation(db.Model):
+class InstallQuotation(TenantMixin, db.Model):
     """عرض سعر / تسعير تركيب — مراحل 3–6."""
     __tablename__ = 'installation_quotations'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_install_quote_org_code'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), unique=True, nullable=False)
+    code = db.Column(db.String(20), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('installation_projects.id'), nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True)
     quote_type = db.Column(db.String(20), default='new')  # new | upgrade
@@ -234,7 +243,7 @@ class InstallQuotation(db.Model):
         return round(float(gt) * float(pct) / 100.0)
 
 
-class InstallQuotationLine(db.Model):
+class InstallQuotationLine(TenantMixin, db.Model):
     __tablename__ = 'installation_quotation_lines'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -253,7 +262,7 @@ class InstallQuotationLine(db.Model):
         return (self.qty or 0) * (self.unit_price or 0)
 
 
-class InstallTimelineStep(db.Model):
+class InstallTimelineStep(TenantMixin, db.Model):
     """خطوة في جدول تنفيذ المشروع بعد قبول العرض."""
     __tablename__ = 'installation_timeline_steps'
 
