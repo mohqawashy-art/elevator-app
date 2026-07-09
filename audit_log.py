@@ -18,6 +18,7 @@ def log_audit(
     action: str,
     *,
     user=None,
+    organization_id: int | None = None,
     entity_type: str | None = None,
     entity_id=None,
     details: dict | None = None,
@@ -31,8 +32,14 @@ def log_audit(
         if user is not None:
             user_id = getattr(user, 'id', None)
             username = getattr(user, 'username', None) or getattr(user, 'full_name', None) or ''
+        oid = organization_id
+        if oid is None and user is not None:
+            oid = getattr(user, 'organization_id', None)
+        if oid is None:
+            return
 
         row = AuditLog(
+            organization_id=oid,
             created_at=datetime.utcnow(),
             user_id=user_id,
             username=username or None,
