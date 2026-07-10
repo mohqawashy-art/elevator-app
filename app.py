@@ -3278,6 +3278,21 @@ def clients_import_template():
     )
 
 
+@app.route('/clients/import', methods=['POST'])
+def clients_import():
+    """استيراد عملاء بالجملة (JSON) — يُرجع عدد النجاح/الفشل مع الأخطاء."""
+    payload = request.get_json(silent=True) or {}
+    rows = payload.get('rows')
+    if not isinstance(rows, list) or not rows:
+        return jsonify({'error': 'لا توجد سجلات للاستيراد'}), 400
+    if len(rows) > 500:
+        return jsonify({'error': 'الحد الأقصى 500 سجل في المرة الواحدة'}), 400
+    from client_bulk_import import import_customer_rows
+
+    result = import_customer_rows(rows)
+    return jsonify(result)
+
+
 @app.route('/clients/import-addresses', methods=['POST'])
 def clients_import_addresses():
     """تحديث عناوين عملاء موجودين من Excel + إحداثيات للخريطة."""

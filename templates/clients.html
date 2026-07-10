@@ -809,8 +809,8 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
         <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
-        <div style="color:var(--accent)">الاسم، رقم الهاتف</div>
-        <div style="color:var(--text3);margin-top:4px">اختيارية: المدينة، الحي، المسؤول، البريد</div>
+        <div style="color:var(--accent)">الاسم / اسم العميل، رقم الهاتف / الجوال</div>
+        <div style="color:var(--text3);margin-top:4px">اختيارية: المدينة، الحي، العنوان، المسؤول، البريد، رقم الهوية</div>
         <div style="margin-top:8px">
           <a href="{{ url_for('clients_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
         </div>
@@ -2223,6 +2223,47 @@ async function confirmAddressImport() {
 // ===== استيراد =====
 var importData = [];
 
+var IMPORT_NAME_KEYS = ['الاسم (عربي)', 'الاسم', 'اسم العميل', 'name', 'Name'];
+var IMPORT_PHONE_KEYS = ['رقم الهاتف', 'الهاتف', 'الجوال', 'رقم الجوال', 'phone', 'Phone', 'mobile', 'Mobile'];
+var IMPORT_CITY_KEYS = ['المدينة', 'city', 'City'];
+var IMPORT_DISTRICT_KEYS = ['الحي', 'الحي أو المنطقة', 'district', 'District'];
+var IMPORT_ADDRESS_KEYS = ['العنوان', 'العنوان التفصيلي', 'address', 'Address'];
+var IMPORT_EMAIL_KEYS = ['البريد الإلكتروني', 'البريد الالكتروني', 'email', 'Email'];
+var IMPORT_CONTACT_KEYS = ['اسم المسؤول', 'المسؤول', 'contact', 'Contact'];
+var IMPORT_ENTITY_KEYS = ['نوع المتعاقد', 'entity_type'];
+var IMPORT_NID_KEYS = ['رقم هوية المتعاقد', 'رقم الهوية', 'national_id'];
+var IMPORT_CR_KEYS = ['رقم السجل التجاري', 'cr_number'];
+var IMPORT_CODE_KEYS = ['رقم العميل', 'الكود', 'code', 'Code'];
+var IMPORT_STATUS_KEYS = ['حالة العميل', 'الحالة', 'status', 'Status'];
+var IMPORT_NOTES_KEYS = ['ملاحظات', 'notes', 'Notes'];
+
+function importPick(row, keys) {
+  for (var i = 0; i < keys.length; i++) {
+    var v = row[keys[i]];
+    if (v != null && String(v).trim()) return String(v).trim();
+  }
+  // تسامح مع عناوين بلا مسافات (مثل رقمالهاتف)
+  var compactMap = {};
+  Object.keys(row).forEach(function(k) {
+    compactMap[String(k).replace(/\s+/g, '')] = row[k];
+  });
+  for (var j = 0; j < keys.length; j++) {
+    var v2 = compactMap[String(keys[j]).replace(/\s+/g, '')];
+    if (v2 != null && String(v2).trim()) return String(v2).trim();
+  }
+  return '';
+}
+
+function isImportNameHeader(v) {
+  var s = String(v || '').trim().toLowerCase();
+  if (!s) return false;
+  if (s.indexOf('name') >= 0 && s.indexOf('user') < 0) return true;
+  if (s.indexOf('الاسم') >= 0) return true;
+  if (s.indexOf('اسم العميل') >= 0) return true;
+  if (s === 'اسم' || (s.indexOf('اسم') >= 0 && s.indexOf('عميل') >= 0)) return true;
+  return false;
+}
+
 function handleImport(input){
   var file = input.files[0];
   if(!file) return;
@@ -2242,14 +2283,14 @@ function processXLSX(data){
   var rows = XLSX.utils.sheet_to_json(ws, {header:1});
   var hi = 0;
   for(var i=0;i<rows.length;i++){
-    if(rows[i].some(function(v){return String(v||'').includes('الاسم')||String(v||'').toLowerCase().includes('name');})){hi=i;break;}
+    if(rows[i].some(function(v){ return isImportNameHeader(v); })){ hi=i; break; }
   }
   var headers = rows[hi].map(function(h){return String(h||'').trim();});
   importData = [];
   for(var i=hi+1;i<rows.length;i++){
     var row={};
     headers.forEach(function(h,j){row[h]=String(rows[i][j]||'').trim();});
-    var name = row['الاسم (عربي)']||row['الاسم']||row['name']||row['Name'];
+    var name = importPick(row, IMPORT_NAME_KEYS);
     if(name && name!=='برج الياسمين') importData.push(row);
   }
   showImportPreview(headers.filter(function(h){return h;}));
@@ -2263,7 +2304,7 @@ function parseCSV(text){
     var vals = lines[i].split(',').map(function(v){return v.trim().replace(/"/g,'');});
     var row={};
     headers.forEach(function(h,j){row[h]=vals[j]||'';});
-    var name = row['الاسم']||row['الاسم (عربي)']||row['name'];
+    var name = importPick(row, IMPORT_NAME_KEYS);
     if(name) importData.push(row);
   }
   showImportPreview(headers);
@@ -2288,33 +2329,61 @@ function showImportPreview(headers){
 
 async function confirmImport(){
   var btn = document.getElementById('btn-confirm-import');
-  btn.innerHTML = 'جاري الاستيراد...'; btn.disabled = true;
-  var ok = 0;
-  for(var i=0;i<importData.length;i++){
-    var row = importData[i];
-    var fd = new FormData();
-    fd.append('name',    row['الاسم (عربي)']||row['الاسم']||row['name']||'');
-    fd.append('city',    row['المدينة']||row['city']||'');
-    fd.append('district',row['الحي']||row['district']||'');
-    fd.append('address', row['العنوان']||row['العنوان التفصيلي']||row['address']||'');
-    fd.append('phone',   row['رقم الهاتف']||row['الهاتف']||row['phone']||'');
-    fd.append('email',   row['البريد الإلكتروني']||row['email']||'');
-    fd.append('contact_person',row['اسم المسؤول']||row['contact']||'');
-    var entityType = row['نوع المتعاقد'] || row['entity_type'] || 'فرد';
-    fd.append('entity_type', entityType);
-    if (entityType === 'شركة') {
-      fd.append('cr_number', row['رقم السجل التجاري']||row['cr_number']||'');
-      fd.append('national_id', '');
-    } else {
-      fd.append('national_id', row['رقم هوية المتعاقد']||row['رقم الهوية']||row['national_id']||'');
-      fd.append('cr_number', '');
+  var btnHtml = btn.innerHTML;
+  btn.innerHTML = 'جاري الاستيراد...';
+  btn.disabled = true;
+
+  var rows = importData.map(function(row){
+    var entityType = importPick(row, IMPORT_ENTITY_KEYS) || 'فرد';
+    return {
+      name: importPick(row, IMPORT_NAME_KEYS),
+      phone: importPick(row, IMPORT_PHONE_KEYS),
+      city: importPick(row, IMPORT_CITY_KEYS),
+      district: importPick(row, IMPORT_DISTRICT_KEYS),
+      address: importPick(row, IMPORT_ADDRESS_KEYS),
+      email: importPick(row, IMPORT_EMAIL_KEYS),
+      contact_person: importPick(row, IMPORT_CONTACT_KEYS),
+      entity_type: entityType,
+      national_id: entityType === 'شركة' ? '' : importPick(row, IMPORT_NID_KEYS),
+      cr_number: entityType === 'شركة' ? importPick(row, IMPORT_CR_KEYS) : '',
+      code: importPick(row, IMPORT_CODE_KEYS),
+      status: importPick(row, IMPORT_STATUS_KEYS) || 'نشط',
+      notes: importPick(row, IMPORT_NOTES_KEYS)
+    };
+  });
+
+  try {
+    var r = await fetch('/clients/import', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ rows: rows })
+    });
+    var data = {};
+    try { data = await r.json(); } catch (e) { data = {}; }
+    if (!r.ok) {
+      alert(data.error || data.message || ('فشل الاستيراد (رمز ' + r.status + ')'));
+      btn.disabled = false;
+      btn.innerHTML = btnHtml;
+      return;
     }
-    fd.append('status','نشط');
-    var r = await fetch('/clients/add',{method:'POST',body:fd});
-    if(r.ok) ok++;
+    var msg = 'تم استيراد ' + (data.imported || 0) + ' عميل بنجاح';
+    if (data.failed) msg += '\nفشل: ' + data.failed;
+    if (data.errors && data.errors.length) {
+      msg += '\n' + data.errors.slice(0, 5).map(function(e){
+        return '• صف ' + e.row + ': ' + e.error;
+      }).join('\n');
+    }
+    alert(msg);
+    window.location.reload();
+  } catch (e) {
+    alert('خطأ في الاتصال: ' + (e.message || e));
+    btn.disabled = false;
+    btn.innerHTML = btnHtml;
   }
-  alert('تم استيراد ' + ok + ' عميل بنجاح');
-  window.location.reload();
 }
 
 // ===== تصدير =====

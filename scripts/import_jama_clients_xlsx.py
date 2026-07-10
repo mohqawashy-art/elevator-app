@@ -149,6 +149,7 @@ def import_clients(
 def main() -> int:
     parser = argparse.ArgumentParser(description='Update Jama customers from Excel')
     parser.add_argument('xlsx', help='Path to clients Excel file')
+    parser.add_argument('--slug', default='jama', help='Organization slug (default: jama)')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--no-geocode', action='store_true')
     parser.add_argument('--force-geocode', action='store_true')
@@ -162,17 +163,48 @@ def main() -> int:
     print(f'File: {args.xlsx}')
     print(f'Rows with client code: {len(rows)}')
 
+    from flask import g
+    from models import Organization
+    from tenant_scope import assign_organization
+
     with app.app_context():
+        slug = (args.slug or 'jama').strip().lower()
+        org = Organization.query.filter_by(slug=slug).first()
+        if not org:
+            print(f'ERROR: لا توجد مؤسسة slug={slug!r}')
+            for o in Organization.query.order_by(Organization.id).all():
+                print(f'  - {o.slug}')
+            return 1
+        g.organization = org
+        g.organization_id = org.id
+        print(f'Tenant: {org.name} ({org.slug}) id={org.id}')
         print(f'Database: {app.config.get("SQLALCHEMY_DATABASE_URI", "")}')
-        stats = import_clients(
-            rows,
-            dry_run=args.dry_run,
-            no_geocode=args.no_geocode,
-            force_geocode=args.force_geocode,
-        )
+
+        # لفّ الإنشاء لتعيين organization_id
+        _orig_add = db.session.add
+
+        def _add_with_org(obj):
+            if isinstance(obj, Customer) and getattr(obj, 'organization_id', None) is None:
+                assign_organization(obj)
+            return _orig_add(obj)
+
+        db.session.add = _add_with_org  # type: ignore[method-assign]
+        try:
+            stats = import_clients(
+                rows,
+                dry_run=args.dry_run,
+                no_geocode=args.no_geocode,
+                force_geocode=args.force_geocode,
+            )
+        finally:
+            db.session.add = _orig_add  # type: ignore[method-assign]
+
         print('\n=== النتيجة ===')
         for key, val in stats.items():
             print(f'  {key}: {val}')
+        if not args.dry_run:
+            n = Customer.query.filter_by(organization_id=org.id).count()
+            print(f'  customers_in_tenant: {n}')
     return 0
 
 
