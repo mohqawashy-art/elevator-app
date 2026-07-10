@@ -893,10 +893,10 @@ pg_dump -Fc liftcore > liftcore.pre-cutover.dump
 - [x] `app.liftcoreapp.com` يعمل من PostgreSQL multi-tenant (ترحيل 2026-07-10 — inventory≈201 على `default`)
 - [x] عملاء signup أحياء (`afaq`, `demo3`, `farha`) — حسابات فارغة طبيعية
 - [ ] tenant demo `jama` داخل نفس التطبيق (اختياري — ليس عميل B2B)
-- [ ] لا خدمة `liftcore-jama` منفصلة على الإنتاج (أوقف بعد استقرار 72 ساعة)
-- [ ] `certbot renew --dry-run` ناجح
+- [x] لا خدمة `liftcore-jama` منفصلة على الإنتاج (`disable --now` في 2026-07-10)
+- [x] `certbot renew --dry-run` ناجح (بما فيها `*.liftcoreapp.com`)
 - [x] نقطة رجوع checkpoint: `~/liftcore/checkpoints/pre-multitenant-20260710-125010`
-- [ ] نسخ احتياطي PostgreSQL يومي (cron) يعمل
+- [x] نسخ احتياطي PostgreSQL يومي (cron) + نسخة فورية `liftcore-20260710-131525.dump`
 
 ---
 
