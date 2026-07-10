@@ -1432,6 +1432,7 @@ app.jinja_env.globals['customer_fleet_status'] = customer_fleet_status
 
 
 def next_code(model, prefix, field='code', digits=4):
+    """التالي من التسلسل داخل المستأجر — مع تجنّب تعارض القيد العالمي القديم على code إن وُجد."""
     import re
 
     from models import TenantMixin
@@ -1446,7 +1447,48 @@ def next_code(model, prefix, field='code', digits=4):
         m = pattern.match(str(code).strip())
         if m:
             max_num = max(max_num, int(m.group(1)))
-    return f'{prefix}{str(max_num + 1).zfill(digits)}'
+
+    n = max_num + 1
+    col = getattr(model, field)
+    while True:
+        candidate = f'{prefix}{str(n).zfill(digits)}'
+        if issubclass(model, TenantMixin) and _legacy_global_code_unique(model.__tablename__):
+            taken = (
+                model.query.execution_options(skip_tenant=True)
+                .filter(col == candidate)
+                .first()
+            )
+            if taken:
+                n += 1
+                continue
+        return candidate
+
+
+def _legacy_global_code_unique(table_name: str) -> bool:
+    """True إذا بقي UNIQUE(code) القديم من قبل عزل المستأجر."""
+    cache = getattr(g, '_legacy_code_unique', None)
+    if cache is None:
+        cache = {}
+        g._legacy_code_unique = cache
+    if table_name in cache:
+        return cache[table_name]
+    try:
+        insp = inspect(db.engine)
+        for uq in insp.get_unique_constraints(table_name) or []:
+            cols = list(uq.get('column_names') or [])
+            if cols == ['code']:
+                cache[table_name] = True
+                return True
+        for ix in insp.get_indexes(table_name) or []:
+            if ix.get('unique') and list(ix.get('column_names') or []) == ['code']:
+                cache[table_name] = True
+                return True
+    except Exception:
+        cache[table_name] = False
+        return False
+    cache[table_name] = False
+    return False
+
 
 # =============================================
 # تسجيل الدخول

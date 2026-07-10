@@ -95,3 +95,62 @@ def test_clients_import_template_columns(client):
     assert r.status_code == 200
     data = r.get_json()
     assert data['imported'] == 1
+
+
+def test_clients_import_avoids_global_code_collision(client):
+    """C-0001 في مؤسسة أخرى لا يمنع الاستيراد عند وجود customers_code_key القديم."""
+    from flask import g
+    from sqlalchemy import text
+
+    from app import app, db, hash_password
+    from client_bulk_import import import_customer_rows
+    from models import Customer, Organization, User
+    from tests.conftest import ensure_test_organization
+
+    with app.app_context():
+        default_id = ensure_test_organization()
+        existing = Customer(
+            code='C-0001',
+            name='عميل افتراضي',
+            phone='+966500000001',
+            organization_id=default_id,
+        )
+        db.session.add(existing)
+        db.session.commit()
+        # محاكاة قيد الإنتاج العالمي
+        db.session.execute(text(
+            'CREATE UNIQUE INDEX IF NOT EXISTS customers_code_key ON customers (code)'
+        ))
+        db.session.commit()
+
+        jama = Organization(slug='jama-test', name='Jama Test', status='active')
+        db.session.add(jama)
+        db.session.flush()
+        admin = User(
+            username='jama_admin',
+            password_hash=hash_password('TestPass123!'),
+            full_name='jama',
+            role='admin',
+            is_active=True,
+            organization_id=jama.id,
+        )
+        db.session.add(admin)
+        db.session.commit()
+        jama_id = jama.id
+
+        g.organization_id = jama_id
+        g.pop('_legacy_code_unique', None) if hasattr(g, 'pop') else None
+        if hasattr(g, '_legacy_code_unique'):
+            del g._legacy_code_unique
+
+        result = import_customer_rows([
+            {'اسم العميل': 'عميل جما', 'الجوال': '511111111'},
+            {'اسم العميل': 'عميل جما 2', 'الجوال': '522222222', 'رقم العميل': 'C-0001'},
+        ])
+        assert result['imported'] == 2, result
+        assert result['failed'] == 0, result
+        codes = {
+            c.code for c in Customer.query.filter_by(organization_id=jama_id).all()
+        }
+        assert len(codes) == 2
+        assert 'C-0001' not in codes

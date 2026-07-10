@@ -111,7 +111,8 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """استيراد قائمة صفوف. يُرجع imported/failed/errors."""
     from form_validation import customer_name_error
     from models import Customer, db
-    from tenant_scope import assign_organization, tenant_query
+    from sqlalchemy.exc import IntegrityError
+    from tenant_scope import assign_organization
 
     # استيراد دوال التطبيق بعد تهيئة السياق
     from app import (
@@ -173,30 +174,26 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         if entity_type not in ('فرد', 'شركة'):
             entity_type = 'فرد'
 
-        code = (data.get('code') or '').strip()
-        if code:
-            exists = tenant_query(Customer).filter_by(code=code).first()
-            if exists:
-                code = next_code(Customer, 'C-', digits=4)
-        else:
-            code = next_code(Customer, 'C-', digits=4)
+        preferred = (data.get('code') or '').strip()
+        code = _allocate_customer_code(preferred)
+
+        payload = dict(
+            name=name,
+            city=data.get('city') or '',
+            district=data.get('district') or '',
+            address=data.get('address') or '',
+            phone=phone,
+            email=data.get('email') or '',
+            contact_person=data.get('contact_person') or '',
+            entity_type=entity_type,
+            national_id=(data.get('national_id') or '') if entity_type != 'شركة' else '',
+            cr_number=(data.get('cr_number') or '') if entity_type == 'شركة' else '',
+            status=_client_account_status(data.get('status') or 'نشط'),
+            notes=data.get('notes') or '',
+        )
 
         try:
-            c = Customer(
-                code=code,
-                name=name,
-                city=data.get('city') or '',
-                district=data.get('district') or '',
-                address=data.get('address') or '',
-                phone=phone,
-                email=data.get('email') or '',
-                contact_person=data.get('contact_person') or '',
-                entity_type=entity_type,
-                national_id=(data.get('national_id') or '') if entity_type != 'شركة' else '',
-                cr_number=(data.get('cr_number') or '') if entity_type == 'شركة' else '',
-                status=_client_account_status(data.get('status') or 'نشط'),
-                notes=data.get('notes') or '',
-            )
+            c = Customer(code=code, **payload)
             assign_organization(c)
             db.session.add(c)
             db.session.commit()
@@ -204,6 +201,22 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
             seen_names.add(name_key)
             if phone_k:
                 seen_phones.add(phone_k)
+        except IntegrityError as exc:
+            db.session.rollback()
+            # تعارض UNIQUE(code) القديم — أعد بكود جديد
+            try:
+                c = Customer(code=next_code(Customer, 'C-', digits=4), **payload)
+                assign_organization(c)
+                db.session.add(c)
+                db.session.commit()
+                imported += 1
+                seen_names.add(name_key)
+                if phone_k:
+                    seen_phones.add(phone_k)
+            except Exception as exc2:  # noqa: BLE001
+                db.session.rollback()
+                failed += 1
+                errors.append({'row': idx, 'error': f'خطأ في الحفظ: {exc2}'})
         except Exception as exc:  # noqa: BLE001 — نُبلغ الصف ونكمل
             db.session.rollback()
             failed += 1
@@ -215,3 +228,24 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         'errors': errors[:20],
         'total': len(rows),
     }
+
+
+def _allocate_customer_code(preferred: str) -> str:
+    from app import _legacy_global_code_unique, next_code
+    from models import Customer
+    from tenant_scope import tenant_query
+
+    code = (preferred or '').strip()
+    if code:
+        if tenant_query(Customer).filter_by(code=code).first():
+            return next_code(Customer, 'C-', digits=4)
+        if _legacy_global_code_unique('customers'):
+            taken = (
+                Customer.query.execution_options(skip_tenant=True)
+                .filter_by(code=code)
+                .first()
+            )
+            if taken:
+                return next_code(Customer, 'C-', digits=4)
+        return code
+    return next_code(Customer, 'C-', digits=4)
