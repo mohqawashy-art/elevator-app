@@ -40,20 +40,33 @@ def _load_sheet_rows(path: str) -> list[dict]:
 
 
 def _norm_phone(val) -> str:
-    from import_real_data import _norm_id
-
-    s = _norm_id(val)
-    if not s:
+    """طبّع جوال إلى +966XXXXXXXXX — يأخذ أول رقم إن وُجد أكثر من واحد."""
+    raw = str(val or '').strip()
+    if not raw or raw.lower() == 'nan':
         return ''
-    if s.startswith('966'):
-        return '+' + s
-    if s.startswith('0') and len(s) >= 10:
-        return '+966' + s[1:]
-    if s.startswith('5') and len(s) == 9:
-        return '+966' + s
-    if s.startswith('+'):
-        return s
-    return s
+    # أكثر من رقم مفصول بفاصلة/شرطة/سطر
+    first = re.split(r'[,;/|\n]+', raw)[0].strip()
+    digits = re.sub(r'\D', '', first)
+    if not digits:
+        return ''
+    if digits.startswith('966'):
+        digits = digits[3:]
+    if digits.startswith('0'):
+        digits = digits[1:]
+    if digits.startswith('5') and len(digits) >= 9:
+        digits = digits[:9]
+        return '+966' + digits
+    if len(digits) >= 9:
+        return '+' + digits[:15]
+    return ''
+
+
+def _secondary_phone(val) -> str:
+    raw = str(val or '').strip()
+    parts = [p.strip() for p in re.split(r'[,;/|\n]+', raw) if p.strip()]
+    if len(parts) < 2:
+        return ''
+    return _norm_phone(parts[1])
 
 
 def _bind_tenant(slug: str):
@@ -107,7 +120,9 @@ def import_customers(path: str, *, dry_run: bool = False) -> dict[str, int]:
         city = _norm_city(_cell(r, 'المدينة'))
         district = _str(_cell(r, 'الحي أو المنطقة', 'الحي'))
         address = _str(_cell(r, 'العنوان'))
-        phone = _norm_phone(_cell(r, 'الجوال', 'الهاتف'))
+        phone_raw = _cell(r, 'الجوال', 'الهاتف')
+        phone = _norm_phone(phone_raw)
+        phone2 = _secondary_phone(phone_raw)
 
         if code in existing:
             c = existing[code]
@@ -118,31 +133,34 @@ def import_customers(path: str, *, dry_run: bool = False) -> dict[str, int]:
                 ('district', district),
                 ('address', address or c.address),
                 ('phone', phone or c.phone),
+                ('phone2', phone2 or c.phone2),
             ):
                 if val and getattr(c, attr) != val:
                     setattr(c, attr, val)
                     changed = True
-            nid = _norm_id(_cell(r, 'رقم الهوية'))
+            nid = _norm_id(_cell(r, 'رقم الهوية'))[:20]
             if nid and c.national_id != nid:
                 c.national_id = nid
                 changed = True
-            email = _str(_cell(r, 'البريد الالكتروني', 'البريد الإلكتروني'))
+            email = _str(_cell(r, 'البريد الالكتروني', 'البريد الإلكتروني'))[:100]
             if email and c.email != email:
                 c.email = email
                 changed = True
             stats['updated' if changed else 'skipped'] += 1
             continue
 
+        status = (_str(_cell(r, 'حالة العميل')) or 'نشط')[:20]
         c = Customer(
-            code=code,
-            name=name,
-            city=city,
-            district=district,
+            code=code[:20],
+            name=name[:200],
+            city=city[:100],
+            district=district[:100],
             address=address,
-            phone=phone,
-            national_id=_norm_id(_cell(r, 'رقم الهوية')),
-            email=_str(_cell(r, 'البريد الالكتروني', 'البريد الإلكتروني')),
-            status=_str(_cell(r, 'حالة العميل')) or 'نشط',
+            phone=phone[:40],
+            phone2=(phone2 or '')[:40],
+            national_id=_norm_id(_cell(r, 'رقم الهوية'))[:20],
+            email=_str(_cell(r, 'البريد الالكتروني', 'البريد الإلكتروني'))[:100],
+            status=status,
             notes=_str(_cell(r, 'ملاحظات')),
             entity_type='فرد',
         )

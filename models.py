@@ -136,8 +136,8 @@ class Customer(TenantMixin, db.Model):
     city        = db.Column(db.String(100))
     district    = db.Column(db.String(100))
     address     = db.Column(db.Text)
-    phone       = db.Column(db.String(20))
-    phone2      = db.Column(db.String(20))
+    phone       = db.Column(db.String(40))
+    phone2      = db.Column(db.String(40))
     email       = db.Column(db.String(100))
     contact_person = db.Column(db.String(100))
     status      = db.Column(db.String(20), default='نشط')   # نشط / غير نشط
@@ -272,8 +272,8 @@ class Technician(TenantMixin, db.Model):
     code            = db.Column(db.String(20), nullable=False)  # Tech-001
     name            = db.Column(db.String(100), nullable=False)
     name_en         = db.Column(db.String(100))
-    phone           = db.Column(db.String(20))
-    phone2          = db.Column(db.String(20))
+    phone           = db.Column(db.String(40))
+    phone2          = db.Column(db.String(40))
     job_title       = db.Column(db.String(100))   # فني أول / فني ثانٍ / مشرف
     specialization  = db.Column(db.String(100))   # مصاعد ركاب / كهرباء / ميكانيكا
     city            = db.Column(db.String(100))
