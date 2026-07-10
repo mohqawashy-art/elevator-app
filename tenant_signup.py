@@ -27,6 +27,13 @@ def signup_enabled() -> bool:
     )
 
 
+def coming_soon_enabled() -> bool:
+    """صفحة «قريباً» على النطاق العام (liftcoreapp.com / www)."""
+    return os.environ.get('LIFTCORE_COMING_SOON', '').strip().lower() in (
+        '1', 'true', 'yes', 'on',
+    )
+
+
 def is_signup_host(host: str | None = None) -> bool:
     if host is None:
         if not has_request_context():

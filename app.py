@@ -176,6 +176,7 @@ migrate = Migrate(app, db)
 PUBLIC_ENDPOINTS = frozenset({
     'login', 'logout', 'static', 'index', 'api_version', 'api_health',
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
+    'coming_soon',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
@@ -1571,15 +1572,29 @@ def api_live_sync():
 @app.route('/')
 def index():
     from platform_admin import is_admin_host, is_platform_operator
+    from tenant_signup import coming_soon_enabled, is_signup_host
 
     if is_admin_host():
         user = current_user()
         if user and is_platform_operator(user):
             return redirect(url_for('platform_home'))
         return redirect(url_for('login'))
+    if is_signup_host() and coming_soon_enabled():
+        return render_template('coming_soon.html')
     if current_user():
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
+
+
+@app.route('/coming-soon')
+def coming_soon():
+    """صفحة قريباً — متاحة أيضاً كمسار مباشر على النطاق العام."""
+    from tenant_signup import coming_soon_enabled, is_signup_host, require_signup_host
+
+    require_signup_host()
+    if not coming_soon_enabled():
+        return redirect(url_for('index'))
+    return render_template('coming_soon.html')
 
 
 def _find_login_user(login_id):
@@ -1872,6 +1887,7 @@ def signup():
     from liftcore_security import ensure_csrf_token, password_policy_error
     from liftcore_mail import send_welcome_email
     from tenant_signup import (
+        coming_soon_enabled,
         create_tenant_signup,
         is_signup_host,
         require_signup_host,
@@ -1880,6 +1896,8 @@ def signup():
     )
 
     require_signup_host()
+    if coming_soon_enabled():
+        return render_template('coming_soon.html')
     if not signup_enabled():
         abort(404)
 
@@ -1958,10 +1976,15 @@ def signup():
 def api_signup():
     from liftcore_security import password_policy_error
     from liftcore_mail import send_welcome_email
-    from tenant_signup import create_tenant_signup, require_signup_host, signup_enabled
+    from tenant_signup import (
+        coming_soon_enabled,
+        create_tenant_signup,
+        require_signup_host,
+        signup_enabled,
+    )
 
     require_signup_host()
-    if not signup_enabled():
+    if coming_soon_enabled() or not signup_enabled():
         return jsonify({'ok': False, 'error': 'signup_disabled'}), 404
 
     data = request.get_json(silent=True) if request.is_json else None

@@ -32,8 +32,24 @@ ROOT_URL = 'https://liftcoreapp.com'
 
 def test_signup_disabled_returns_404(monkeypatch, signup_client):
     monkeypatch.delenv('LIFTCORE_SIGNUP_ENABLED', raising=False)
+    monkeypatch.delenv('LIFTCORE_COMING_SOON', raising=False)
     r = signup_client.get('/signup', base_url=ROOT_URL)
     assert r.status_code == 404
+
+
+def test_coming_soon_on_marketing_host(monkeypatch, signup_client):
+    monkeypatch.setenv('LIFTCORE_COMING_SOON', '1')
+    monkeypatch.delenv('LIFTCORE_SIGNUP_ENABLED', raising=False)
+    r = signup_client.get('/', base_url=ROOT_URL)
+    assert r.status_code == 200
+    assert 'قريباً'.encode('utf-8') in r.data or b'COMING SOON' in r.data
+    r2 = signup_client.get('/signup', base_url=ROOT_URL)
+    assert r2.status_code == 200
+    assert b'COMING SOON' in r2.data
+    # مستأجر غير موجود في DB الاختبار → 404 طبيعي؛ المهم ألا يُعرض coming soon
+    r3 = signup_client.get('/', base_url='https://jama.liftcoreapp.com')
+    assert r3.status_code in (200, 302, 401, 404)
+    assert b'COMING SOON' not in r3.data
 
 
 def test_signup_on_subdomain_returns_404(signup_client):
