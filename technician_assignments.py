@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy import or_
 
 from models import db, Technician, VisitTechnician, FaultTechnician, MaintenanceVisit, Fault
+from tenant_scope import assign_organization, tenant_query
 
 
 def parse_technician_ids(form) -> list[int]:
@@ -40,33 +41,37 @@ def _role_for_index(index: int) -> str:
 def sync_visit_technicians(visit, technician_ids: list[int]) -> None:
     """مزامنة فريق الزيارة — الأول هو الفني الرئيسي."""
     vid = visit.id if hasattr(visit, 'id') else int(visit)
-    VisitTechnician.query.filter_by(visit_id=vid).delete()
+    tenant_query(VisitTechnician).filter_by(visit_id=vid).delete(synchronize_session=False)
     for i, tid in enumerate(technician_ids):
-        db.session.add(VisitTechnician(
+        link = VisitTechnician(
             visit_id=vid,
             technician_id=tid,
             role=_role_for_index(i),
-        ))
+        )
+        assign_organization(link)
+        db.session.add(link)
     if hasattr(visit, 'technician_id'):
         visit.technician_id = technician_ids[0] if technician_ids else None
 
 
 def sync_fault_technicians(fault, technician_ids: list[int]) -> None:
     fid = fault.id if hasattr(fault, 'id') else int(fault)
-    FaultTechnician.query.filter_by(fault_id=fid).delete()
+    tenant_query(FaultTechnician).filter_by(fault_id=fid).delete(synchronize_session=False)
     for i, tid in enumerate(technician_ids):
-        db.session.add(FaultTechnician(
+        link = FaultTechnician(
             fault_id=fid,
             technician_id=tid,
             role=_role_for_index(i),
-        ))
+        )
+        assign_organization(link)
+        db.session.add(link)
     if hasattr(fault, 'technician_id'):
         fault.technician_id = technician_ids[0] if technician_ids else None
 
 
 def visit_technician_rows(visit_id: int) -> list[VisitTechnician]:
     return (
-        VisitTechnician.query
+        tenant_query(VisitTechnician)
         .filter_by(visit_id=visit_id)
         .order_by(VisitTechnician.id)
         .all()
@@ -75,7 +80,7 @@ def visit_technician_rows(visit_id: int) -> list[VisitTechnician]:
 
 def fault_technician_rows(fault_id: int) -> list[FaultTechnician]:
     return (
-        FaultTechnician.query
+        tenant_query(FaultTechnician)
         .filter_by(fault_id=fault_id)
         .order_by(FaultTechnician.id)
         .all()
@@ -97,7 +102,7 @@ def _names_from_rows(rows) -> str:
         return '—'
     parts = []
     for r in rows:
-        tech = r.technician or Technician.query.get(r.technician_id)
+        tech = r.technician or tenant_query(Technician).filter_by(id=r.technician_id).first()
         if not tech:
             continue
         label = tech.name
@@ -133,7 +138,7 @@ def visit_technicians_payload(visit) -> list[dict]:
         rows = [type('Row', (), {'technician_id': visit.technician_id, 'role': 'فني', 'technician': visit.technician})()]
     out = []
     for r in rows:
-        tech = r.technician if hasattr(r, 'technician') else Technician.query.get(r.technician_id)
+        tech = r.technician if hasattr(r, 'technician') else tenant_query(Technician).filter_by(id=r.technician_id).first()
         out.append({
             'id': r.technician_id,
             'name': tech.name if tech else '—',
@@ -148,7 +153,7 @@ def fault_technicians_payload(fault) -> list[dict]:
         rows = [type('Row', (), {'technician_id': fault.technician_id, 'role': 'فني', 'technician': fault.technician})()]
     out = []
     for r in rows:
-        tech = r.technician if hasattr(r, 'technician') else Technician.query.get(r.technician_id)
+        tech = r.technician if hasattr(r, 'technician') else tenant_query(Technician).filter_by(id=r.technician_id).first()
         out.append({
             'id': r.technician_id,
             'name': tech.name if tech else '—',
@@ -162,7 +167,7 @@ def technician_assigned_to_visit(visit, tech_id: int) -> bool:
         return True
     if visit.technician_id == tech_id:
         return True
-    return VisitTechnician.query.filter_by(visit_id=visit.id, technician_id=tech_id).count() > 0
+    return tenant_query(VisitTechnician).filter_by(visit_id=visit.id, technician_id=tech_id).count() > 0
 
 
 def technician_assigned_to_fault(fault, tech_id: int) -> bool:
@@ -170,7 +175,7 @@ def technician_assigned_to_fault(fault, tech_id: int) -> bool:
         return True
     if fault.technician_id == tech_id:
         return True
-    return FaultTechnician.query.filter_by(fault_id=fault.id, technician_id=tech_id).count() > 0
+    return tenant_query(FaultTechnician).filter_by(fault_id=fault.id, technician_id=tech_id).count() > 0
 
 
 def visits_for_technician_filter(tech_id: int):
@@ -195,10 +200,10 @@ def faults_for_technician_filter(tech_id: int):
 
 def backfill_technician_assignments() -> None:
     """نسخ technician_id الحالي إلى جداول الفريق (مرة واحدة)."""
-    for v in MaintenanceVisit.query.filter(MaintenanceVisit.technician_id.isnot(None)).all():
+    for v in tenant_query(MaintenanceVisit).filter(MaintenanceVisit.technician_id.isnot(None)).all():
         if not visit_technician_ids(v):
             sync_visit_technicians(v, [v.technician_id])
-    for f in Fault.query.filter(Fault.technician_id.isnot(None)).all():
+    for f in tenant_query(Fault).filter(Fault.technician_id.isnot(None)).all():
         if not fault_technician_ids(f):
             sync_fault_technicians(f, [f.technician_id])
     db.session.commit()

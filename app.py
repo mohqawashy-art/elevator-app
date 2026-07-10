@@ -6441,46 +6441,45 @@ def fault_add():
         flash('اختر المصعد', 'error')
         return redirect(url_for('faults'))
 
-    billable = request.form.get('billable', 'no')
     client_report = request.form.get('client_report') or request.form.get('description', '')
     reported = _parse_reported_at(request.form.get('reported_at'))
     tech_ids = parse_technician_ids(request.form)
-    f = Fault(
-        code          = next_code(Fault, 'FA-', digits=5),
-        elevator_id   = request.form['elevator_id'],
-        technician_id = tech_ids[0] if tech_ids else None,
-        fault_type    = request.form.get('fault_type',''),
-        description   = client_report,
-        client_report = client_report,
-        reporter_name = request.form.get('reporter_name', ''),
-        reporter_phone= request.form.get('reporter_phone', ''),
-        priority      = request.form.get('priority','عادية'),
-        status        = request.form.get('status','مفتوح'),
-        notes         = request.form.get('notes',''),
-        reported_at   = reported or datetime.utcnow(),
-    )
-    assign_organization(f)
-    db.session.add(f)
-    db.session.flush()
-    sync_fault_technicians(f, tech_ids)
-
-    visit_code = request.form.get('visit_code', '').strip()
-    if visit_code:
-        visit = lookup_visit(visit_code)
-        if visit:
-            link_fault_to_visit(f, visit)
-
     try:
+        f = Fault(
+            code          = next_code(Fault, 'FA-', digits=5),
+            elevator_id   = int(request.form['elevator_id']),
+            technician_id = tech_ids[0] if tech_ids else None,
+            fault_type    = request.form.get('fault_type',''),
+            description   = client_report,
+            client_report = client_report,
+            reporter_name = request.form.get('reporter_name', ''),
+            reporter_phone= request.form.get('reporter_phone', ''),
+            priority      = request.form.get('priority','عادية'),
+            status        = request.form.get('status','مفتوح'),
+            notes         = request.form.get('notes',''),
+            reported_at   = reported or datetime.utcnow(),
+        )
+        assign_organization(f)
+        db.session.add(f)
+        db.session.flush()
+        sync_fault_technicians(f, tech_ids)
+
+        visit_code = request.form.get('visit_code', '').strip()
+        if visit_code:
+            visit = lookup_visit(visit_code)
+            if visit:
+                link_fault_to_visit(f, visit)
+
         _apply_fault_billing_from_form(f, request.form)
         db.session.commit()
     except ValueError as e:
         db.session.rollback()
         flash(str(e), 'error')
         return redirect(url_for('faults'))
-    except Exception:
+    except Exception as e:
         db.session.rollback()
         app.logger.exception('fault_add failed')
-        flash('تعذّر حفظ العطل — تحقق من البيانات أو سجّل الخطأ في السيرفر.', 'error')
+        flash(f'تعذّر حفظ العطل: {e}', 'error')
         return redirect(url_for('faults'))
 
     flash(f'تم تسجيل العطل {f.code}', 'success')

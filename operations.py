@@ -2127,7 +2127,7 @@ def clear_fault_parts_billing(fault_id: int) -> None:
     from inventory_stock import reverse_stock_by_reference, stock_reference
 
     reverse_stock_by_reference(stock_reference('fault', fault_id))
-    tenant_query(PartsBilling).filter_by(fault_id=fault_id).delete()
+    tenant_query(PartsBilling).filter_by(fault_id=fault_id).delete(synchronize_session=False)
 
 
 def apply_fault_parts_billing(

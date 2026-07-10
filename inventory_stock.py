@@ -24,8 +24,11 @@ def stock_reference(prefix: str, entity_id: int) -> str:
 def reverse_stock_by_reference(reference: str) -> None:
     if not reference:
         return
-    for m in StockMovement.query.filter_by(reference=reference).all():
-        item = InventoryItem.query.get(m.item_id)
+    from tenant_scope import tenant_query
+
+    rows = tenant_query(StockMovement).filter_by(reference=reference).all()
+    for m in rows:
+        item = db.session.get(InventoryItem, m.item_id)
         if item:
             adjust_inventory_qty(item, m.direction, m.quantity, reverse=True)
         db.session.delete(m)
@@ -60,13 +63,14 @@ def deduct_parts_from_stock(
     notes: str = '',
 ) -> None:
     from operations import next_code
+    from tenant_scope import assign_organization, tenant_query
 
     stock_lines = _stock_lines(lines)
     if not stock_lines:
         return
 
     for ln in stock_lines:
-        item = InventoryItem.query.get(int(ln['item_id']))
+        item = tenant_query(InventoryItem).filter_by(id=int(ln['item_id'])).first()
         if not item:
             raise ValueError('أحد الأصناف المختارة غير موجود في المخزون')
         qty = float(ln.get('qty') or 0)
@@ -77,7 +81,7 @@ def deduct_parts_from_stock(
             )
 
     for ln in stock_lines:
-        item = InventoryItem.query.get(int(ln['item_id']))
+        item = tenant_query(InventoryItem).filter_by(id=int(ln['item_id'])).first()
         qty = float(ln.get('qty') or 0)
         unit_price = float(ln.get('cost_price') or item.buy_price or 0)
         m = StockMovement(
@@ -94,6 +98,7 @@ def deduct_parts_from_stock(
             reference=reference,
             notes=notes or str(ln.get('name') or ''),
         )
+        assign_organization(m)
         db.session.add(m)
         adjust_inventory_qty(item, 'صادر', qty)
 
