@@ -28,6 +28,7 @@ from models import (
     Technician,
     db,
 )
+from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
 VISIT_ACTIVE = ('مجدولة', 'مُرسلة للفني', 'جارية')
 VISIT_DONE = ('مكتملة', 'ملغاة')
@@ -56,7 +57,7 @@ def next_code(model, prefix, field='code', digits=4):
   import re as _re
   max_num = 0
   pattern = _re.compile(r'^' + _re.escape(prefix) + r'(\d+)$')
-  for row in model.query.with_entities(getattr(model, field)).all():
+  for row in tenant_query(model).with_entities(getattr(model, field)).all():
     code = row[0]
     if not code:
       continue
@@ -157,7 +158,7 @@ def build_invoice_payment_whatsapp(invoice, base_url: str = '') -> str:
     phone = customer_whatsapp_phone(cust)
     if not phone:
         return ''
-    settings = Settings.query.first()
+    settings = tenant_query(Settings).first()
     company_name = (settings.company_name if settings else '') or 'LiftCore'
     greeting = _payment_greeting(cust)
     total = float(invoice.total or 0)
@@ -195,7 +196,7 @@ def build_revenue_payment_whatsapp(revenue, base_url: str = '') -> str:
     phone = customer_whatsapp_phone(cust)
     if not phone:
         return ''
-    settings = Settings.query.first()
+    settings = tenant_query(Settings).first()
     company_name = (settings.company_name if settings else '') or 'LiftCore'
     total = float(revenue.total or revenue.amount or 0)
     lines = [
@@ -230,7 +231,7 @@ def build_parts_payment_whatsapp(parts, base_url: str = '') -> str:
     phone = customer_whatsapp_phone(cust)
     if not phone:
         return ''
-    settings = Settings.query.first()
+    settings = tenant_query(Settings).first()
     company_name = (settings.company_name if settings else '') or 'LiftCore'
     amount = float(parts.sell_price or 0)
     lines = [
@@ -268,7 +269,7 @@ def build_contract_payment_whatsapp(contract, base_url: str = '') -> str:
     phone = customer_whatsapp_phone(cust)
     if not phone:
         return ''
-    settings = Settings.query.first()
+    settings = tenant_query(Settings).first()
     company_name = (settings.company_name if settings else '') or 'LiftCore'
     lines = [
         _payment_greeting(cust),
@@ -288,7 +289,7 @@ def financial_whatsapp_url(doc_type: str, doc_id: int, base_url: str = '') -> tu
     """يرجع (whatsapp_url, error_message)."""
     doc_type = (doc_type or '').strip().lower()
     if doc_type == 'invoice':
-        row = Invoice.query.get(doc_id)
+        row = tenant_query(Invoice).filter_by(id=doc_id).first()
         if not row:
             return '', 'المستند غير موجود'
         url = build_invoice_payment_whatsapp(row, base_url)
@@ -299,7 +300,7 @@ def financial_whatsapp_url(doc_type: str, doc_id: int, base_url: str = '') -> tu
         return url, ''
     if doc_type == 'revenue':
         from models import Revenue
-        row = Revenue.query.get(doc_id)
+        row = tenant_query(Revenue).filter_by(id=doc_id).first()
         if not row:
             return '', 'المستند غير موجود'
         url = build_revenue_payment_whatsapp(row, base_url)
@@ -308,7 +309,7 @@ def financial_whatsapp_url(doc_type: str, doc_id: int, base_url: str = '') -> tu
         return url, ''
     if doc_type in ('parts', 'parts-billing', 'parts_billing'):
         from models import PartsBilling
-        row = PartsBilling.query.get(doc_id)
+        row = tenant_query(PartsBilling).filter_by(id=doc_id).first()
         if not row:
             return '', 'المستند غير موجود'
         url = build_parts_payment_whatsapp(row, base_url)
@@ -316,7 +317,7 @@ def financial_whatsapp_url(doc_type: str, doc_id: int, base_url: str = '') -> tu
             return '', 'لا يوجد رقم واتساب مسجّل للعميل — أضفه من بيانات العميل'
         return url, ''
     if doc_type == 'contract':
-        row = Contract.query.get(doc_id)
+        row = tenant_query(Contract).filter_by(id=doc_id).first()
         if not row:
             return '', 'العقد غير موجود'
         url = build_contract_payment_whatsapp(row, base_url)
@@ -373,7 +374,7 @@ def _is_periodic_visit(v: MaintenanceVisit) -> bool:
 
 def _periodic_visit_in_month(elevator_id: int, year: int, month: int) -> MaintenanceVisit | None:
     start, end = _month_bounds(year, month)
-    for v in MaintenanceVisit.query.filter(
+    for v in tenant_query(MaintenanceVisit).filter(
         MaintenanceVisit.elevator_id == elevator_id,
         MaintenanceVisit.visit_date >= start,
         MaintenanceVisit.visit_date <= end,
@@ -407,7 +408,7 @@ def _visits_for_plan_month(plan_month: str) -> list[MaintenanceVisit]:
     year, month = _parse_plan_month(plan_month)
     start, end = _month_bounds(year, month)
     return (
-        MaintenanceVisit.query.filter(
+        tenant_query(MaintenanceVisit).filter(
             MaintenanceVisit.status != 'ملغية',
             or_(
                 MaintenanceVisit.plan_month == plan_month,
@@ -441,12 +442,12 @@ def _is_maintenance_contract(c: Contract) -> bool:
 
 
 def _elevators_for_contract(contract: Contract) -> list[Elevator]:
-    links = ContractElevator.query.filter_by(contract_id=contract.id).all()
+    links = tenant_query(ContractElevator).filter_by(contract_id=contract.id).all()
     if links:
         ids = [lk.elevator_id for lk in links]
-        return Elevator.query.filter(Elevator.id.in_(ids)).order_by(Elevator.code).all()
+        return tenant_query(Elevator).filter(Elevator.id.in_(ids)).order_by(Elevator.code).all()
     return (
-        Elevator.query.filter_by(customer_id=contract.customer_id)
+        tenant_query(Elevator).filter_by(customer_id=contract.customer_id)
         .order_by(Elevator.code)
         .all()
     )
@@ -455,14 +456,14 @@ def _elevators_for_contract(contract: Contract) -> list[Elevator]:
 def _elevators_for_maintenance_plan(contract: Contract) -> list[Elevator]:
     """زيارة دورية لكل مصعد — وليس زيارة واحدة للعميل."""
     return (
-        Elevator.query.filter_by(customer_id=contract.customer_id)
+        tenant_query(Elevator).filter_by(customer_id=contract.customer_id)
         .order_by(Elevator.code)
         .all()
     )
 
 
 def _existing_plan_codes(plan_month: str) -> set[str]:
-    rows = MaintenanceVisit.query.filter_by(plan_month=plan_month).all()
+    rows = tenant_query(MaintenanceVisit).filter_by(plan_month=plan_month).all()
     keys = set()
     for v in rows:
         keys.add(f'{v.elevator_id}:{v.visit_date}')
@@ -478,17 +479,17 @@ def generate_monthly_plan(
 
     drafts_to_replace = 0
     if replace_draft:
-        drafts_to_replace = MaintenanceVisit.query.filter(
+        drafts_to_replace = tenant_query(MaintenanceVisit).filter(
             MaintenanceVisit.plan_month == plan_month,
             MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
         ).count()
         if not preview_only and drafts_to_replace:
-            MaintenanceVisit.query.filter(
+            tenant_query(MaintenanceVisit).filter(
                 MaintenanceVisit.plan_month == plan_month,
                 MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
             ).delete(synchronize_session=False)
 
-    contracts = Contract.query.filter(
+    contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
         or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
@@ -583,6 +584,7 @@ def generate_monthly_plan(
                     route_order=0,
                     observations=f'خطة شهر {plan_month} — {district}',
                 )
+                assign_organization(v)
                 db.session.add(v)
                 db.session.flush()
             created += 1
@@ -641,12 +643,12 @@ def generate_monthly_plan(
 
 def cancel_monthly_plan(plan_month: str, *, dry_run: bool = False) -> dict:
     """إلغاء خطة شهر — حذف الزيارات المجدولة/المُرسلة للفني فقط."""
-    visits = MaintenanceVisit.query.filter(
+    visits = tenant_query(MaintenanceVisit).filter(
         MaintenanceVisit.plan_month == plan_month,
         MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
     ).order_by(MaintenanceVisit.id).all()
 
-    kept = MaintenanceVisit.query.filter(
+    kept = tenant_query(MaintenanceVisit).filter(
         MaintenanceVisit.plan_month == plan_month,
         MaintenanceVisit.status.notin_(('مجدولة', 'مُرسلة للفني', 'ملغية')),
     ).count()
@@ -690,11 +692,11 @@ def visit_district_name(v: MaintenanceVisit) -> str:
 
 def list_districts() -> list[str]:
     districts: set[str] = set()
-    for c in Customer.query.all():
+    for c in tenant_query(Customer).all():
         d = _customer_district(c, None)
         if d != 'غير محدد':
             districts.add(d)
-    for e in Elevator.query.all():
+    for e in tenant_query(Elevator).all():
         d = _customer_district(e.customer if e.customer else None, e)
         if d != 'غير محدد':
             districts.add(d)
@@ -704,7 +706,7 @@ def list_districts() -> list[str]:
 def elevators_for_district(district: str) -> list[dict]:
     seen: set[int] = set()
     rows: list[dict] = []
-    for e in Elevator.query.join(Customer).order_by(Customer.name).all():
+    for e in tenant_query(Elevator).join(Customer).order_by(Customer.name).all():
         if e.id in seen:
             continue
         if _customer_district(e.customer, e) != district:
@@ -795,7 +797,7 @@ def generate_district_plan(
     """توليد زيارات شهرية لمنطقة واحدة فقط."""
     start, end = _month_bounds(year, month)
     plan_month = f'{year}-{month:02d}'
-    contracts = Contract.query.filter(
+    contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
         or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
@@ -879,6 +881,7 @@ def generate_district_plan(
                     route_order=0,
                     observations=f'خطة شهر {plan_month} — {district}',
                 )
+                assign_organization(v)
                 db.session.add(v)
                 db.session.flush()
             existing.add(key)
@@ -904,7 +907,7 @@ def generate_district_plan(
 
 def add_manual_plan_visit(plan_month: str, elevator_id: int, visit_date: str) -> dict:
     """إضافة زيارة واحدة للخطة يدوياً — داخل شهر الخطة فقط."""
-    elev = Elevator.query.get(int(elevator_id))
+    elev = tenant_query(Elevator).filter_by(id=int(elevator_id)).first()
     if not elev:
         raise ValueError('المصعد غير موجود')
     cust = elev.customer
@@ -934,6 +937,7 @@ def add_manual_plan_visit(plan_month: str, elevator_id: int, visit_date: str) ->
         route_order=0,
         observations=f'إضافة يدوية — خطة {plan_month} — {district}',
     )
+    assign_organization(v)
     db.session.add(v)
     db.session.commit()
     return _visit_plan_row(v)
@@ -948,7 +952,7 @@ def assign_visits_to_technician(
     updated = 0
     plan_months: set[str] = set()
     for vid in visit_ids:
-        v = MaintenanceVisit.query.get(int(vid))
+        v = tenant_query(MaintenanceVisit).filter_by(id=int(vid)).first()
         if not v:
             continue
         v.technician_id = int(technician_id)
@@ -973,7 +977,7 @@ def assign_district_technician(
     from models import MaintenanceTeam
     from technician_assignments import sync_visit_technicians
 
-    team = MaintenanceTeam.query.filter_by(leader_id=int(technician_id), active=True).first()
+    team = tenant_query(MaintenanceTeam).filter_by(leader_id=int(technician_id), active=True).first()
     if team:
         return assign_district_team(plan_month, district, team.id, only_unassigned=only_unassigned)
 
@@ -996,7 +1000,7 @@ def assign_district_technician(
 def assign_visit_technician(visit_id: int, technician_id: int) -> None:
     from technician_assignments import sync_visit_technicians
 
-    v = MaintenanceVisit.query.get_or_404(visit_id)
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
     v.technician_id = technician_id
     sync_visit_technicians(v, [technician_id])
     db.session.commit()
@@ -1047,14 +1051,14 @@ def dispatch_technician_route(
 ) -> dict:
     """إرسال زيارات يوم واحد فقط للفني — اليوم أو غداً (لا يُرسل الشهر كاملاً)."""
     target = _resolve_dispatch_day(dispatch_day)
-    q = MaintenanceVisit.query.filter(
+    q = tenant_query(MaintenanceVisit).filter(
         MaintenanceVisit.technician_id == technician_id,
         MaintenanceVisit.visit_date == target,
         MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
     )
     visits = q.order_by(MaintenanceVisit.route_order, MaintenanceVisit.id).all()
     day_label = _dispatch_day_label(target)
-    tech = Technician.query.get(technician_id)
+    tech = tenant_query(Technician).filter_by(id=technician_id).first()
     if not visits:
         return {
             'count': 0,
@@ -1128,7 +1132,7 @@ def build_fault_whatsapp(fault: Fault, base_url: str = '') -> str:
 
 
 def dispatch_fault(fault_id: int, base_url: str = '') -> dict:
-    fault = Fault.query.get_or_404(fault_id)
+    fault = tenant_get_or_404(Fault, fault_id)
     if not fault.technician_id:
         return {'error': 'لم يُعيَّن فني', 'whatsapp_url': ''}
     fault.dispatched_at = datetime.utcnow()
@@ -1145,7 +1149,7 @@ def visit_stats(today: date | None = None) -> dict:
     today = today or date.today()
     month_start = today.replace(day=1)
     month_end = today.replace(day=monthrange(today.year, today.month)[1])
-    q = exclude_fault_visits(MaintenanceVisit.query)
+    q = exclude_fault_visits(tenant_query(MaintenanceVisit))
     return {
         'today': q.filter(MaintenanceVisit.visit_date == today).count(),
         'in_progress': q.filter(MaintenanceVisit.status.in_(('جارية', 'مُرسلة للفني'))).count(),
@@ -1177,7 +1181,7 @@ def visit_stats(today: date | None = None) -> dict:
 def visit_alerts(today: date | None = None) -> list[dict]:
     today = today or date.today()
     alerts = []
-    late = exclude_fault_visits(MaintenanceVisit.query).filter(
+    late = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
         MaintenanceVisit.visit_date < today,
         ~MaintenanceVisit.status.in_(VISIT_DONE),
     ).count()
@@ -1187,7 +1191,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
             'filter': 'late',
             'text': f'{late} زيارة متأخرة — تجاوزت الموعد المحدد',
         })
-    critical = exclude_fault_visits(MaintenanceVisit.query).filter(
+    critical = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
         MaintenanceVisit.priority == 'حرجة',
         ~MaintenanceVisit.status.in_(VISIT_DONE),
     ).count()
@@ -1197,7 +1201,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
             'filter': 'critical',
             'text': f'{critical} زيارة حرجة لم تُكتمل بعد',
         })
-    tomorrow = exclude_fault_visits(MaintenanceVisit.query).filter(
+    tomorrow = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
         MaintenanceVisit.visit_date == today + timedelta(days=1),
         MaintenanceVisit.status == 'مجدولة',
     ).count()
@@ -1212,7 +1216,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
 
 def fault_stats(today: date | None = None) -> dict:
     today = today or date.today()
-    q = Fault.query
+    q = tenant_query(Fault)
     closed_today = q.filter(
         Fault.status.in_(FAULT_CLOSED),
         Fault.resolved_at >= datetime.combine(today, datetime.min.time()),
@@ -1232,7 +1236,7 @@ def fault_stats(today: date | None = None) -> dict:
 
 def fault_alerts() -> list[dict]:
     alerts = []
-    critical = Fault.query.filter(
+    critical = tenant_query(Fault).filter(
         Fault.priority == 'حرجة',
         Fault.status.in_(FAULT_OPEN),
     ).limit(5).all()
@@ -1241,13 +1245,13 @@ def fault_alerts() -> list[dict]:
             'level': 'critical',
             'text': f'{len(critical)} عطل حرج يحتاج تدخلاً فورياً',
         })
-    waiting = Fault.query.filter_by(status='انتظار قطع').count()
+    waiting = tenant_query(Fault).filter_by(status='انتظار قطع').count()
     if waiting:
         alerts.append({
             'level': 'warning',
             'text': f'{waiting} عطل بانتظار توفير قطع الغيار',
         })
-    old = Fault.query.filter(
+    old = tenant_query(Fault).filter(
         Fault.status.in_(('مفتوح', 'قيد المعالجة')),
         Fault.reported_at < datetime.utcnow() - timedelta(hours=48),
     ).count()
@@ -1260,24 +1264,24 @@ def fault_alerts() -> list[dict]:
 
 
 def parts_stats() -> dict:
-    parts = PartsBilling.query.all()
-    pending_faults = Fault.query.filter_by(status='انتظار قطع').count()
+    parts = tenant_query(PartsBilling).all()
+    pending_faults = tenant_query(Fault).filter_by(status='انتظار قطع').count()
     return {
         'pending_fault_requests': pending_faults,
-        'awaiting_client': PartsBilling.query.filter_by(status='بانتظار موافقة العميل').count(),
-        'awaiting_supply': PartsBilling.query.filter_by(status='بانتظار التوريد').count(),
+        'awaiting_client': tenant_query(PartsBilling).filter_by(status='بانتظار موافقة العميل').count(),
+        'awaiting_supply': tenant_query(PartsBilling).filter_by(status='بانتظار التوريد').count(),
     }
 
 
 def parts_alerts() -> list[dict]:
     alerts = []
-    n = Fault.query.filter_by(status='انتظار قطع').count()
+    n = tenant_query(Fault).filter_by(status='انتظار قطع').count()
     if n:
         alerts.append({
             'level': 'warning',
             'text': f'{n} طلب قطع غيار من الفنيين بانتظار المكتب',
         })
-    n2 = PartsBilling.query.filter_by(status='بانتظار موافقة العميل').count()
+    n2 = tenant_query(PartsBilling).filter_by(status='بانتظار موافقة العميل').count()
     if n2:
         alerts.append({
             'level': 'info',
@@ -1290,7 +1294,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
     """مهام الفني على الجوال: اليوم وغداً فقط — حسب فريق الفني."""
     from technician_assignments import visits_for_technician_filter, faults_for_technician_filter
 
-    tech = Technician.query.get_or_404(tech_id)
+    tech = tenant_get_or_404(Technician, tech_id)
     today = on_date or date.today()
     tomorrow = today + timedelta(days=1)
     show_visits = portal_kind in ('maintenance', 'both')
@@ -1301,7 +1305,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
     visits: list = []
     if show_visits:
         visits = (
-            MaintenanceVisit.query.filter(
+            tenant_query(MaintenanceVisit).filter(
                 visits_for_technician_filter(tech_id),
                 MaintenanceVisit.visit_date.in_([today, tomorrow]),
                 MaintenanceVisit.status.in_(VISIT_ACTIVE),
@@ -1314,7 +1318,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
 
     faults: list = []
     has_assigned_faults = (
-        Fault.query.filter(
+        tenant_query(Fault).filter(
             faults_for_technician_filter(tech_id),
             Fault.status.in_(FAULT_OPEN),
         ).count()
@@ -1322,7 +1326,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
     )
     if show_faults or has_assigned_faults:
         faults = (
-            Fault.query.filter(
+            tenant_query(Fault).filter(
                 faults_for_technician_filter(tech_id),
                 Fault.status.in_(FAULT_OPEN),
             )
@@ -1346,7 +1350,22 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         'faults': [field_fault_summary(f, base_url) for f in faults],
         'show_visits': show_visits,
         'show_faults': show_faults or bool(faults),
+        'alert_stamp': _field_alert_stamp(visits, faults),
     }
+
+
+def _field_alert_stamp(visits: list, faults: list) -> str:
+    """بصمة مهام الفني لاكتشاف الإرسال الجديد على الجوال."""
+    parts = []
+    for v in visits:
+        parts.append(
+            f"v{v.id}:{v.status}:{v.dispatched_at.isoformat() if v.dispatched_at else ''}"
+        )
+    for f in faults:
+        parts.append(
+            f"f{f.id}:{f.status}:{f.dispatched_at.isoformat() if f.dispatched_at else ''}"
+        )
+    return '|'.join(sorted(parts))
 
 
 def field_visit_summary(v: MaintenanceVisit, base_url: str = '') -> dict:
@@ -1358,6 +1377,7 @@ def field_visit_summary(v: MaintenanceVisit, base_url: str = '') -> dict:
         'visit_type': v.visit_type or '',
         'status': v.status,
         'route_order': v.route_order or 0,
+        'dispatched_at': v.dispatched_at.isoformat(sep=' ', timespec='seconds') if v.dispatched_at else '',
         'customer': cust.name if cust else '—',
         'customer_code': cust.code if cust else '',
         'district': (cust.district if cust else '') or '—',
@@ -1379,6 +1399,8 @@ def field_fault_summary(f: Fault, base_url: str = '') -> dict:
         'status': f.status,
         'fault_type': f.fault_type or '',
         'client_report': f.client_report or f.description or '',
+        'dispatched_at': f.dispatched_at.isoformat(sep=' ', timespec='seconds') if f.dispatched_at else '',
+        'reported_at': f.reported_at.isoformat(sep=' ', timespec='seconds') if f.reported_at else '',
         'customer': cust.name if cust else '—',
         'customer_code': cust.code if cust else '',
         'district': (cust.district if cust else '') or '—',
@@ -1395,7 +1417,7 @@ def field_visit_detail(visit_id: int, tech_id: int | None = None) -> dict:
     from checklist_templates import parse_report_json, report_completion_stats
     from technician_assignments import technician_assigned_to_visit, visit_technicians_label
 
-    v = MaintenanceVisit.query.get_or_404(visit_id)
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
     if tech_id and not technician_assigned_to_visit(v, tech_id):
         raise PermissionError('الزيارة غير مخصصة لهذا الفني')
     cust = v.elevator.customer if v.elevator else None
@@ -1426,7 +1448,7 @@ def field_visit_detail(visit_id: int, tech_id: int | None = None) -> dict:
 def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
     from technician_assignments import technician_assigned_to_fault, fault_technicians_label
 
-    f = Fault.query.get_or_404(fault_id)
+    f = tenant_get_or_404(Fault, fault_id)
     if tech_id and not technician_assigned_to_fault(f, tech_id):
         raise PermissionError('العطل غير مخصص لهذا الفني')
     elev = f.elevator
@@ -1468,7 +1490,7 @@ def fault_report_payload(
     from models import InventoryItem
     from technician_assignments import technician_assigned_to_fault
 
-    f = Fault.query.get_or_404(fault_id)
+    f = tenant_get_or_404(Fault, fault_id)
     if tech_id and not technician_assigned_to_fault(f, tech_id):
         raise PermissionError('العطل غير مخصص لهذا الفني')
     elev = f.elevator
@@ -1476,9 +1498,9 @@ def fault_report_payload(
     contract = None
     if elev:
         from models import Contract, ContractElevator
-        link = ContractElevator.query.filter_by(elevator_id=elev.id).first()
+        link = tenant_query(ContractElevator).filter_by(elevator_id=elev.id).first()
         if link:
-            contract = Contract.query.get(link.contract_id)
+            contract = tenant_query(Contract).filter_by(id=link.contract_id).first()
     tech = f.technician
     saved = parse_fault_report_json(f.report_json)
     report_data = merge_fault_report(saved, f)
@@ -1539,7 +1561,7 @@ def fault_report_payload(
                 'sell_price': i.sell_price or 0,
                 'current_qty': i.current_qty or 0,
             }
-            for i in InventoryItem.query.order_by(InventoryItem.name).all()
+            for i in tenant_query(InventoryItem).order_by(InventoryItem.name).all()
         ], ensure_ascii=False),
         'logo_url': _report_brand_logo_url(),
         'company_name': _report_company_name(),
@@ -1550,7 +1572,7 @@ def fault_report_payload(
 
 
 def _report_brand_logo_url() -> str:
-    settings = Settings.query.first()
+    settings = tenant_query(Settings).first()
     if settings and settings.logo_path:
         try:
             from app import upload_url
@@ -1561,12 +1583,12 @@ def _report_brand_logo_url() -> str:
 
 
 def _report_company_name() -> str:
-    settings = Settings.query.first()
+    settings = tenant_query(Settings).first()
     return (settings.company_name if settings and settings.company_name else 'LiftCore')
 
 
 def _report_company_name_en() -> str:
-    settings = Settings.query.first()
+    settings = tenant_query(Settings).first()
     return (settings.company_name_en if settings and settings.company_name_en else '')
 
 
@@ -1579,7 +1601,7 @@ def save_fault_report(
 ) -> dict:
     from fault_report import apply_report_to_fault, merge_fault_report, parse_fault_report_json
 
-    f = Fault.query.get_or_404(fault_id)
+    f = tenant_get_or_404(Fault, fault_id)
     existing = parse_fault_report_json(f.report_json)
     merged = merge_fault_report(existing, f)
 
@@ -1634,7 +1656,7 @@ def complete_field_visit(
     status: str = 'مكتملة',
     report_data: dict | None = None,
 ) -> None:
-    v = MaintenanceVisit.query.get_or_404(visit_id)
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
     if report_data is not None:
         save_visit_report(visit_id, report_data, mark_complete=True, status=status)
         return
@@ -1647,7 +1669,7 @@ def complete_field_visit(
 
 
 def _default_checklist_template_key() -> str:
-    row = Settings.query.first()
+    row = tenant_query(Settings).first()
     from checklist_templates import DEFAULT_TEMPLATE_KEY, template_for_settings
     return template_for_settings(row)['key'] if row else DEFAULT_TEMPLATE_KEY
 
@@ -1684,7 +1706,7 @@ def stamp_field_visit_report_start(visit_id: int, tech_id: int | None = None) ->
     from checklist_templates import merge_report_data, parse_report_json
     from technician_assignments import technician_assigned_to_visit
 
-    v = MaintenanceVisit.query.get_or_404(visit_id)
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
     if tech_id and not technician_assigned_to_visit(v, tech_id):
         raise PermissionError('الزيارة غير مخصصة لهذا الفني')
     template_key = v.checklist_template_key or _default_checklist_template_key()
@@ -1712,7 +1734,7 @@ def stamp_field_fault_report_start(fault_id: int, tech_id: int | None = None) ->
     from fault_report import merge_fault_report, parse_fault_report_json
     from technician_assignments import technician_assigned_to_fault
 
-    f = Fault.query.get_or_404(fault_id)
+    f = tenant_get_or_404(Fault, fault_id)
     if tech_id and not technician_assigned_to_fault(f, tech_id):
         raise PermissionError('العطل غير مخصص لهذا الفني')
     saved = parse_fault_report_json(f.report_json)
@@ -1749,7 +1771,7 @@ def visit_report_payload(
     )
     from technician_assignments import technician_assigned_to_visit, visit_technicians_label
 
-    v = MaintenanceVisit.query.get_or_404(visit_id)
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
     if tech_id and not technician_assigned_to_visit(v, tech_id):
         raise PermissionError('الزيارة غير مخصصة لهذا الفني')
 
@@ -1818,7 +1840,7 @@ def visit_report_payload(
 def _document_sign_config() -> dict:
     from models import Settings
 
-    s = Settings.query.first()
+    s = tenant_query(Settings).first()
     method = (getattr(s, 'default_sign_method', None) or 'pin').strip() if s else 'pin'
     if method not in ('draw', 'pin', 'both'):
         method = 'both'
@@ -1840,7 +1862,7 @@ def save_visit_report(
     """حفظ محضر الفحص على الزيارة."""
     from checklist_templates import checklist_summary_lines, merge_report_data, parse_report_json
 
-    v = MaintenanceVisit.query.get_or_404(visit_id)
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
     template_key = (
         (payload.get('template_key') if isinstance(payload, dict) else None)
         or v.checklist_template_key
@@ -1918,7 +1940,7 @@ def complete_field_fault(
     close_err = fault_close_error(status, resolution)
     if close_err:
         raise ValueError(close_err)
-    f = Fault.query.get_or_404(fault_id)
+    f = tenant_get_or_404(Fault, fault_id)
     f.tech_notes = tech_notes
     f.resolution = resolution
     f.status = status or FAULT_STATUS_FIXED
@@ -1961,14 +1983,14 @@ def parse_fault_parts_lines(raw: str | None) -> list[dict]:
         name = str(row.get('name') or '').strip()
         item_id = row.get('item_id')
         if item_id not in (None, '', 0, '0'):
-            item = InventoryItem.query.get(int(item_id))
+            item = tenant_query(InventoryItem).filter_by(id=int(item_id)).first()
             if item and not name:
                 name = item.name
         qty = float(row.get('qty') or 1)
         unit_price = float(row.get('unit_price') or 0)
         cost_price = float(row.get('cost_price') or 0)
         if item_id not in (None, '', 0, '0') and not cost_price:
-            item = InventoryItem.query.get(int(item_id))
+            item = tenant_query(InventoryItem).filter_by(id=int(item_id)).first()
             if item:
                 cost_price = float(item.buy_price or 0)
         if not name or qty <= 0:
@@ -2014,7 +2036,7 @@ def parts_billing_invoice_lines(pb: PartsBilling | None) -> list[dict]:
                     continue
                 name = str(row.get('name') or '').strip()
                 if not name and row.get('item_id'):
-                    item = InventoryItem.query.get(int(row['item_id']))
+                    item = tenant_query(InventoryItem).filter_by(id=int(row['item_id'])).first()
                     name = item.name if item else ''
                 qty = float(row.get('qty') or 1)
                 unit_price = float(row.get('unit_price') or 0)
@@ -2063,7 +2085,7 @@ def parts_billing_record_lines(pb: PartsBilling | None) -> list[dict]:
 
 def fault_registration_parts_lines(fault_id: int) -> list[dict]:
     pb = (
-        PartsBilling.query.filter_by(fault_id=fault_id)
+        tenant_query(PartsBilling).filter_by(fault_id=fault_id)
         .order_by(PartsBilling.id.desc())
         .first()
     )
@@ -2105,7 +2127,7 @@ def clear_fault_parts_billing(fault_id: int) -> None:
     from inventory_stock import reverse_stock_by_reference, stock_reference
 
     reverse_stock_by_reference(stock_reference('fault', fault_id))
-    PartsBilling.query.filter_by(fault_id=fault_id).delete()
+    tenant_query(PartsBilling).filter_by(fault_id=fault_id).delete()
 
 
 def apply_fault_parts_billing(
@@ -2120,9 +2142,10 @@ def apply_fault_parts_billing(
     cost = round(sum(ln['qty'] * ln['cost_price'] for ln in lines), 2)
     elev = fault.elevator
     cust = elev.customer if elev else None
-    pb = PartsBilling.query.filter_by(fault_id=fault.id).order_by(PartsBilling.id.desc()).first()
+    pb = tenant_query(PartsBilling).filter_by(fault_id=fault.id).order_by(PartsBilling.id.desc()).first()
     if not pb:
         pb = PartsBilling(code=next_code(PartsBilling, 'PB-', digits=3), fault_id=fault.id)
+        assign_organization(pb)
         db.session.add(pb)
     pb.customer_id = cust.id if cust else None
     pb.elevator_id = elev.id if elev else None
@@ -2155,7 +2178,7 @@ def apply_fault_parts_billing(
 
 def request_fault_parts(fault_id: int, *, description: str, sell_price: float = 0) -> PartsBilling:
     """الفني يطلب قطع — يُنبّه المكتب."""
-    f = Fault.query.get_or_404(fault_id)
+    f = tenant_get_or_404(Fault, fault_id)
     elev = f.elevator
     cust = elev.customer if elev else None
     f.needs_parts = True
@@ -2180,6 +2203,7 @@ def request_fault_parts(fault_id: int, *, description: str, sell_price: float = 
         status='بانتظار موافقة العميل',
         notes='طلب من الفني — بانتظار موافقة العميل على السعر',
     )
+    assign_organization(part)
     db.session.add(part)
     db.session.commit()
     return part

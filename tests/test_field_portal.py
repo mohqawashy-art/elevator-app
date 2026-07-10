@@ -1,6 +1,13 @@
 """P2 K1 — smoke بوابة الفني."""
 from __future__ import annotations
 
+from datetime import date, datetime
+
+from models import Customer, Elevator, Fault, MaintenanceVisit, Technician, db
+from operations import _field_alert_stamp, field_technician_payload
+
+from tests.conftest import ensure_test_organization
+
 
 def test_field_login_page_loads(client):
     r = client.get('/field/login')
@@ -17,3 +24,53 @@ def test_field_home_redirects_without_session(client):
 def test_field_api_me_requires_auth(client):
     r = client.get('/api/field/me')
     assert r.status_code in (401, 403)
+
+
+def test_field_payload_includes_alert_stamp(client):
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-AL',
+            name='فني تنبيه',
+            phone='0500000099',
+            team='صيانة',
+        )
+        db.session.add(tech)
+        db.session.flush()
+        cust = Customer(organization_id=oid, code='C-AL', name='عميل تنبيه', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-AL', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-AL1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            status='مُرسلة للفني',
+            dispatched_at=datetime.utcnow(),
+        )
+        fault = Fault(
+            organization_id=oid,
+            code='F-AL1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            status='قيد المعالجة',
+            priority='عالية',
+            fault_type='توقف',
+            dispatched_at=datetime.utcnow(),
+            reported_at=datetime.utcnow(),
+        )
+        db.session.add_all([visit, fault])
+        db.session.commit()
+        payload = field_technician_payload(tech.id, portal_kind='both')
+        assert 'alert_stamp' in payload
+        assert payload['alert_stamp']
+        assert any(v['id'] == visit.id for v in payload['visits'])
+        assert any(f['id'] == fault.id for f in payload['faults'])
+        assert payload['visits'][0].get('dispatched_at')
+        stamp2 = _field_alert_stamp([visit], [fault])
+        assert stamp2 == payload['alert_stamp']
