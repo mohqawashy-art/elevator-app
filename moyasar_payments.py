@@ -4,22 +4,65 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
 from platform_billing import effective_amount, record_payment
 
+_PLATFORM_ENV = '/etc/liftcore/platform.env'
+_MOYASAR_ENV_KEYS = (
+    'MOYASAR_SECRET_KEY',
+    'MOYASAR_PUBLISHABLE_KEY',
+    'LIFTCORE_PUBLIC_BASE',
+)
+
+# Cloudflare أمام api.moyasar.com يحجب User-Agent الافتراضي لـ urllib (Error 1010).
+_MOYASAR_UA = 'LiftCore/1.0 (+https://liftcoreapp.com; subscription-billing)'
+
+
+def _clean_secret(value: str) -> str:
+    """أزل مسافات وعلامات اقتباس ومحارف غير مرئية من المفتاح."""
+    text = (value or '').strip().strip('"').strip("'")
+    text = text.replace('\ufeff', '').replace('\u200b', '').replace('\u200e', '').replace('\u200f', '')
+    text = re.sub(r'\s+', '', text)
+    return text
+
+
+def _ensure_moyasar_env() -> None:
+    """أعد قراءة مفاتيح Moyasar من platform.env قبل كل طلب."""
+    if not os.path.isfile(_PLATFORM_ENV):
+        return
+    try:
+        with open(_PLATFORM_ENV, encoding='utf-8') as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, _, val = line.partition('=')
+                key = key.strip().lstrip('\ufeff')
+                if key.startswith('export '):
+                    key = key[7:].strip()
+                if key not in _MOYASAR_ENV_KEYS:
+                    continue
+                os.environ[key] = _clean_secret(val)
+    except OSError:
+        return
+
 
 def moyasar_enabled() -> bool:
-    return bool((os.environ.get('MOYASAR_SECRET_KEY') or '').strip())
+    _ensure_moyasar_env()
+    return bool(moyasar_secret_key())
 
 
 def moyasar_secret_key() -> str:
-    return (os.environ.get('MOYASAR_SECRET_KEY') or '').strip()
+    _ensure_moyasar_env()
+    return _clean_secret(os.environ.get('MOYASAR_SECRET_KEY') or '')
 
 
 def moyasar_publishable_key() -> str:
-    return (os.environ.get('MOYASAR_PUBLISHABLE_KEY') or '').strip()
+    _ensure_moyasar_env()
+    return _clean_secret(os.environ.get('MOYASAR_PUBLISHABLE_KEY') or '')
 
 
 def _auth_header() -> str:
@@ -28,28 +71,46 @@ def _auth_header() -> str:
 
 
 def _public_base() -> str:
+    _ensure_moyasar_env()
     return (os.environ.get('LIFTCORE_PUBLIC_BASE') or 'https://liftcoreapp.com').rstrip('/')
 
 
-# Cloudflare أمام api.moyasar.com يحجب User-Agent الافتراضي لـ urllib (Error 1010).
-_MOYASAR_UA = 'LiftCore/1.0 (+https://liftcoreapp.com; subscription-billing)'
+def _moyasar_request(url: str, *, data: bytes | None = None, method: str = 'GET') -> urlrequest.Request:
+    req = urlrequest.Request(url, data=data, method=method)
+    req.add_header('Accept', 'application/json')
+    req.add_header('User-Agent', _MOYASAR_UA)
+    if data is not None:
+        req.add_header('Content-Type', 'application/json')
+    # لا يُسقَط Authorization عند إعادة التوجيه
+    req.add_unredirected_header('Authorization', _auth_header())
+    return req
 
 
-def _moyasar_headers(*, json_body: bool = True) -> dict:
-    headers = {
-        'Authorization': _auth_header(),
-        'Accept': 'application/json',
-        'User-Agent': _MOYASAR_UA,
-    }
-    if json_body:
-        headers['Content-Type'] = 'application/json'
-    return headers
+def _friendly_http_error(code: int, detail: str) -> str:
+    if code == 401:
+        return (
+            'مفتاح Moyasar غير صالح — من لوحة Moyasar أعد توليد Secret Key '
+            '(يُعرض مرة واحدة) وضعه في /etc/liftcore/platform.env ثم أعد تشغيل الخدمة.'
+        )
+    if code == 403 and '1010' in detail:
+        return 'Moyasar رفض الطلب (Cloudflare 1010) — حدّث التطبيق أو تواصل مع الدعم.'
+    return f'Moyasar HTTP {code}: {detail[:240]}'
 
 
 def create_subscription_invoice(org, *, callback_base: str | None = None) -> dict:
     """ينشئ فاتورة Moyasar لتجديد اشتراك المؤسسة. يعيد {ok, url, id, errors}."""
     if not moyasar_enabled():
         return {'ok': False, 'errors': ['بوابة الدفع غير مفعّلة — عيّن MOYASAR_SECRET_KEY.']}
+
+    secret = moyasar_secret_key()
+    if not secret.startswith('sk_'):
+        return {
+            'ok': False,
+            'errors': [
+                'MOYASAR_SECRET_KEY يجب أن يبدأ بـ sk_test_ أو sk_live_ '
+                '(يبدو أنك وضعت Publishable Key الذي يبدأ بـ pk_).'
+            ],
+        }
 
     amount_sar = float(effective_amount(org))
     if amount_sar <= 0:
@@ -77,18 +138,13 @@ def create_subscription_invoice(org, *, callback_base: str | None = None) -> dic
         },
     }
     data = json.dumps(body).encode('utf-8')
-    req = urlrequest.Request(
-        'https://api.moyasar.com/v1/invoices',
-        data=data,
-        headers=_moyasar_headers(json_body=True),
-        method='POST',
-    )
+    req = _moyasar_request('https://api.moyasar.com/v1/invoices', data=data, method='POST')
     try:
         with urlrequest.urlopen(req, timeout=30) as resp:
             payload = json.loads(resp.read().decode('utf-8'))
     except urlerror.HTTPError as exc:
         detail = exc.read().decode('utf-8', errors='replace') if exc.fp else str(exc)
-        return {'ok': False, 'errors': [f'Moyasar HTTP {exc.code}: {detail[:300]}']}
+        return {'ok': False, 'errors': [_friendly_http_error(exc.code, detail)]}
     except urlerror.URLError as exc:
         return {'ok': False, 'errors': [f'Moyasar connection error: {exc.reason or exc}']}
     except (TypeError, ValueError, json.JSONDecodeError) as exc:

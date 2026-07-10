@@ -118,7 +118,10 @@ def test_create_invoice_sends_user_agent(monkeypatch):
 
     def fake_urlopen(req, timeout=30):
         captured['ua'] = req.get_header('User-agent') or req.headers.get('User-Agent')
-        captured['auth'] = req.get_header('Authorization') or req.headers.get('Authorization')
+        auth = req.get_header('Authorization') or req.headers.get('Authorization')
+        if not auth and hasattr(req, 'unredirected_hdrs'):
+            auth = req.unredirected_hdrs.get('Authorization') or req.unredirected_hdrs.get('authorization')
+        captured['auth'] = auth
         return _Resp()
 
     with app.app_context():
