@@ -1,7 +1,7 @@
 # LiftCore — دليل التحويل الكامل إلى Multi-Tenant
 
 **آخر تحديث:** يوليو 2026  
-**الحالة:** كود التطبيق مكتمل تقريباً — **cutover الإنتاج معلّق** (DNS/PostgreSQL/ترحيل `app`)  
+**الحالة:** ✅ **Cutover إنتاج مكتمل** (2026-07-10) — PostgreSQL + tenant `default` على `app.liftcoreapp.com`  
 **الجمهور:** مطوّر LiftCore / مسؤول النشر
 
 > **مرافق إلزامي:** [`docs/CURSOR-RECOMMENDATIONS-MULTI-TENANT.md`](CURSOR-RECOMMENDATIONS-MULTI-TENANT.md)  
@@ -889,43 +889,35 @@ pg_dump -Fc liftcore > liftcore.pre-cutover.dump
 - [x] `ONBOARDING.md` محدّث (جما = demo؛ العميل الحقيقي عبر `/signup`)
 - [x] `provision_jama.sh` مُعلَّم **DEPRECATED** / demo في التعليقات
 
-### إنتاج / بنية (معلّق — cutover)
-- [ ] `app.liftcoreapp.com` (أو المنتج الإنتاجي) يعمل من PostgreSQL multi-tenant
-- [ ] tenant demo `jama` يعمل للاختبارات (اختياري — ليس عميل B2B)
-- [ ] لا خدمة `liftcore-jama` منفصلة على الإنتاج
+### إنتاج / بنية
+- [x] `app.liftcoreapp.com` يعمل من PostgreSQL multi-tenant (ترحيل 2026-07-10 — inventory≈201 على `default`)
+- [x] عملاء signup أحياء (`afaq`, `demo3`, `farha`) — حسابات فارغة طبيعية
+- [ ] tenant demo `jama` داخل نفس التطبيق (اختياري — ليس عميل B2B)
+- [ ] لا خدمة `liftcore-jama` منفصلة على الإنتاج (أوقف بعد استقرار 72 ساعة)
 - [ ] `certbot renew --dry-run` ناجح
-- [ ] استعادة نسخة احتياطية مُجرَّبة على staging
-- [ ] نسخ احتياطي PostgreSQL يومي يعمل
+- [x] نقطة رجوع checkpoint: `~/liftcore/checkpoints/pre-multitenant-20260710-125010`
+- [ ] نسخ احتياطي PostgreSQL يومي (cron) يعمل
 
 ---
 
-## 17. الخطوة التالية — أوامر Cutover
-
-على السيرفر (بعد دفع الكود إلى `main`):
+## 17. ما بعد Cutover — أوامر تشغيلية
 
 ```bash
-cd ~/liftcore/elevator-app && git pull origin main
+cd ~/liftcore/elevator-app
 
-# 0) نقطة رجوع
-bash deploy/cutover_multitenant.sh --phase 0
+# SSL
+sudo certbot renew --dry-run
 
-# 1) بنية: checkpoint + PostgreSQL + فحوصات
-bash deploy/cutover_multitenant.sh --phase 1
+# نسخة PostgreSQL الآن + تفعيل يومي
+set -a; source /etc/liftcore/platform.env; set +a
+bash deploy/backup_postgres.sh
+# crontab -e  →  أضف سطراً يومياً (انظر backup_postgres.sh)
 
-# يدوياً: Cloud DNS wildcard + certbot renew --dry-run + Disk Snapshot
-# ثم أضف DATABASE_URL و SECRET_KEY قوي في /etc/liftcore/platform.env (بدون restart بعد)
-
-export DATABASE_URL=postgresql://liftcore:PASS@127.0.0.1:5432/liftcore
-
-# 8) ترحيل جاف ثم فعلي — tenant default لـ app.liftcoreapp.com
-bash deploy/cutover_multitenant.sh --phase 8 --dry-run
-bash deploy/cutover_multitenant.sh --phase 8
-
-sudo systemctl restart liftcore
-bash deploy/verify_deploy.sh https://app.liftcoreapp.com
+# بعد 72 ساعة استقرار — إيقاف نسخة جما المنفصلة
+sudo systemctl disable --now liftcore-jama
 ```
 
-بعد الاستقرار: أغلق بنود «إنتاج / بنية» في القسم 16، ثم ZATCA Phase 2 (`ROADMAP.md` P3).
+الخطوة التقنية التالية للمنتج: **ZATCA Phase 2** (`ROADMAP.md` P3).
 
 ---
 
