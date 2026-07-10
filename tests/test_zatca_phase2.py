@@ -44,10 +44,73 @@ def test_build_ubl_and_hash():
 
 def test_submit_mock(monkeypatch):
     monkeypatch.setenv('LIFTCORE_ZATCA_MOCK', '1')
-    r = submit_simplified_report(xml_text='<Invoice/>', invoice_hash='abc')
+    r = submit_simplified_report(
+        xml_text='<Invoice/>',
+        invoice_hash='abc',
+        invoice_uuid='11111111-1111-1111-1111-111111111111',
+    )
     assert r['ok'] is True
     assert r['mock'] is True
     assert r['status'] == 'reported'
+
+
+def test_ecdsa_sign_and_phase2_tlv():
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID
+    from datetime import timedelta, timezone
+
+    from zatca_crypto import certificate_public_key_b64, sign_invoice_hash
+    from zatca_phase2 import build_simplified_ubl_xml, invoice_hash_from_xml
+    from zatca_qr import zatca_phase2_tlv_base64
+
+    key = ec.generate_private_key(ec.SECP256R1())
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'ZATCA Test')])
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.now(timezone.utc) - timedelta(days=1))
+        .not_valid_after(datetime.now(timezone.utc) + timedelta(days=30))
+        .sign(key, hashes.SHA256())
+    )
+    key_pem = key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode('ascii')
+    cert_pem = cert.public_bytes(serialization.Encoding.PEM).decode('ascii')
+
+    xml = build_simplified_ubl_xml(
+        invoice_uuid='11111111-1111-1111-1111-111111111111',
+        invoice_code='INV-S1',
+        issue_dt=datetime(2026, 7, 10, 12, 0, 0),
+        seller_name='Test Co',
+        vat_number='300000000000003',
+        line_name='Service',
+        amount=100,
+        tax_amount=15,
+        total=115,
+    )
+    inv_hash = invoice_hash_from_xml(xml)
+    sig = sign_invoice_hash(inv_hash, key_pem)
+    pub = certificate_public_key_b64(cert_pem)
+    tlv = zatca_phase2_tlv_base64(
+        seller_name='Test Co',
+        vat_number='300000000000003',
+        invoice_date=date(2026, 7, 10),
+        invoice_total=115,
+        vat_total=15,
+        invoice_hash_b64=inv_hash,
+        signature_b64=sig,
+        public_key_b64=pub,
+    )
+    assert len(tlv) > 50
+    assert sig
+    assert pub
 
 
 def test_process_simplified_invoice_sets_fields(client, monkeypatch):

@@ -38,6 +38,37 @@ def zatca_phase1_tlv_base64(
     return base64.b64encode(payload).decode('ascii')
 
 
+def zatca_phase2_tlv_base64(
+    seller_name: str,
+    vat_number: str,
+    invoice_date: date,
+    invoice_total: float,
+    vat_total: float,
+    invoice_hash_b64: str,
+    signature_b64: str,
+    public_key_b64: str,
+    *,
+    timestamp: datetime | None = None,
+) -> str:
+    """
+    TLV المرحلة الثانية للفواتير المبسطة:
+    1–5 كما في Phase 1، ثم 6 hash، 7 توقيع، 8 المفتاح العام/الشهادة.
+    """
+    ts = timestamp or datetime.combine(invoice_date, time(12, 0, 0))
+    ts_str = ts.strftime('%Y-%m-%dT%H:%M:%SZ')
+    payload = (
+        _tlv(1, (seller_name or '').strip())
+        + _tlv(2, (vat_number or '').strip())
+        + _tlv(3, ts_str)
+        + _tlv(4, f'{float(invoice_total):.2f}')
+        + _tlv(5, f'{float(vat_total):.2f}')
+        + _tlv(6, (invoice_hash_b64 or '').strip())
+        + _tlv(7, (signature_b64 or '').strip())
+        + _tlv(8, (public_key_b64 or '').strip())
+    )
+    return base64.b64encode(payload).decode('ascii')
+
+
 def zatca_qr_image_data_url(tlv_base64: str, *, box_size: int = 5) -> str | None:
     """صورة PNG مضمّنة (data URL) لرمز QR — بدون اعتماد على CDN."""
     if not tlv_base64:

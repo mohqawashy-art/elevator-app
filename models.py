@@ -858,6 +858,7 @@ class ZatcaCredentials(TenantMixin, db.Model):
     csid = db.Column(db.Text)
     private_key = db.Column(db.Text)
     certificate = db.Column(db.Text)
+    api_secret = db.Column(db.Text)  # Secret من بوابة فاتورة (مشفّر)
     environment = db.Column(db.String(10), default='sandbox')
     onboarded_at = db.Column(db.DateTime)
     status = db.Column(db.String(20), default='pending')

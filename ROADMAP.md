@@ -131,7 +131,7 @@
 
 - [x] SaaS multi-tenant + **فوترة يدوية للمنصة** (`platform_billing.py`, `/platform/billing`)
 - [ ] بوابة دفع تلقائية (Moyasar / Tap) — لاحقاً
-- [~] ZATCA Phase 2 (XML + تبليغ مبسّط sandbox) — أساس في `zatca_phase2.py`؛ التوقيع الكامل + B2B clearance لاحقاً
+- [~] ZATCA Phase 2 — أساس + توقيع ECDSA + QR tags 6–8 + تبليغ بمصادقة CSID (mock بدون اعتمادات؛ XAdES كامل لاحقاً)
 - [ ] WhatsApp Business API + تذكيرات مجدولة
 - [x] Offline Field PWA
 - [ ] `/api/translate` (G2)

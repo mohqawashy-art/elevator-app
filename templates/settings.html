@@ -308,7 +308,8 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
         <div>
           <label>البيئة</label>
           <select name="zatca_environment">
-            <option value="sandbox" {% if not zatca_creds or (zatca_creds.environment or 'sandbox') == 'sandbox' %}selected{% endif %}>Sandbox</option>
+            <option value="sandbox" {% if not zatca_creds or (zatca_creds.environment or 'sandbox') == 'sandbox' %}selected{% endif %}>Sandbox (developer-portal)</option>
+            <option value="simulation" {% if zatca_creds and zatca_creds.environment == 'simulation' %}selected{% endif %}>Simulation</option>
             <option value="production" {% if zatca_creds and zatca_creds.environment == 'production' %}selected{% endif %}>Production</option>
           </select>
         </div>
@@ -321,8 +322,12 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
           </select>
         </div>
         <div class="full">
-          <label>CSID {% if zatca_creds and zatca_creds.csid %}(محفوظ — اتركه فارغاً للإبقاء){% endif %}</label>
+          <label>CSID / BinarySecurityToken {% if zatca_creds and zatca_creds.csid %}(محفوظ — اتركه فارغاً للإبقاء){% endif %}</label>
           <textarea name="zatca_csid" rows="2" dir="ltr" placeholder="الصق CSID هنا"></textarea>
+        </div>
+        <div class="full">
+          <label>Secret (من بوابة فاتورة) {% if zatca_creds and zatca_creds.api_secret %}(محفوظ){% endif %}</label>
+          <input type="password" name="zatca_api_secret" dir="ltr" placeholder="اتركه فارغاً إن لم يتغيّر" autocomplete="new-password">
         </div>
         <div class="full">
           <label>الشهادة Certificate {% if zatca_creds and zatca_creds.certificate %}(محفوظة){% endif %}</label>

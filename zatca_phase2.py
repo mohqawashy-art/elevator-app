@@ -32,23 +32,40 @@ def phase2_enabled() -> bool:
     return raw not in ('0', 'false', 'no', 'off')
 
 
+def reporting_url(environment: str = 'sandbox') -> str:
+    override = os.environ.get('LIFTCORE_ZATCA_REPORT_URL', '').strip()
+    if override:
+        return override
+    env = (environment or 'sandbox').strip().lower()
+    if env == 'production':
+        return 'https://gw-fatoora.zatca.gov.sa/e-invoicing/core/invoices/reporting/single'
+    if env == 'simulation':
+        return 'https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation/invoices/reporting/single'
+    # sandbox / developer-portal
+    return 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal/invoices/reporting/single'
+
+
+def sandbox_reporting_url() -> str:
+    return reporting_url('sandbox')
+
+
+def _cred_plain(creds, field: str) -> str:
+    raw = getattr(creds, field, None) if creds else None
+    return (decrypt_zatca_field(raw) or (raw or '')).strip()
+
+
 def use_mock_client() -> bool:
-    """mock عند غياب اعتمادات أو LIFTCORE_ZATCA_MOCK=1 (اختبارات)."""
+    """mock عند غياب اعتمادات كاملة أو LIFTCORE_ZATCA_MOCK=1."""
     if os.environ.get('LIFTCORE_ZATCA_MOCK', '').strip().lower() in ('1', 'true', 'yes'):
         return True
     creds = active_zatca_credentials()
     if not creds:
         return True
-    has_cert = bool(decrypt_zatca_field(creds.certificate) or (creds.certificate or '').strip())
-    has_key = bool(decrypt_zatca_field(creds.private_key) or (creds.private_key or '').strip())
-    return not (has_cert and has_key)
-
-
-def sandbox_reporting_url() -> str:
-    return (
-        os.environ.get('LIFTCORE_ZATCA_REPORT_URL', '').strip()
-        or 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal/invoices/reporting/single'
-    )
+    has_cert = bool(_cred_plain(creds, 'certificate'))
+    has_key = bool(_cred_plain(creds, 'private_key'))
+    has_csid = bool(_cred_plain(creds, 'csid'))
+    has_secret = bool(_cred_plain(creds, 'api_secret'))
+    return not (has_cert and has_key and has_csid and has_secret)
 
 
 def _esc(text: str) -> str:
@@ -149,28 +166,54 @@ def build_phase2_qr_payload(
     invoice_total: float,
     vat_total: float,
     invoice_hash: str,
+    signature_b64: str = '',
+    public_key_b64: str = '',
     timestamp: datetime | None = None,
 ) -> str:
-    """Phase 1 TLV + tag 6 (hash) كأساس لـ QR المرحلة الثانية."""
-    base = zatca_phase1_tlv_base64(
-        seller_name=seller_name,
-        vat_number=vat_number,
-        invoice_date=invoice_date,
-        invoice_total=invoice_total,
-        vat_total=vat_total,
-        timestamp=timestamp,
-    )
-    # أعد فك Phase1 وأضف tag 6 — أبسط: خزّن hash منفصلاً وأبقِ QR على Phase1
-    # حتى يكتمل التوقيع؛ الـ payload المخزّن = JSON للتتبع + TLV للطباعة
+    """JSON للتتبع + TLV للطباعة (Phase 2 إن وُجد توقيع، وإلا Phase 1)."""
+    from zatca_qr import zatca_phase2_tlv_base64
+
+    if signature_b64 and public_key_b64:
+        tlv = zatca_phase2_tlv_base64(
+            seller_name=seller_name,
+            vat_number=vat_number,
+            invoice_date=invoice_date,
+            invoice_total=invoice_total,
+            vat_total=vat_total,
+            invoice_hash_b64=invoice_hash,
+            signature_b64=signature_b64,
+            public_key_b64=public_key_b64,
+            timestamp=timestamp,
+        )
+        phase = 2
+    else:
+        tlv = zatca_phase1_tlv_base64(
+            seller_name=seller_name,
+            vat_number=vat_number,
+            invoice_date=invoice_date,
+            invoice_total=invoice_total,
+            vat_total=vat_total,
+            timestamp=timestamp,
+        )
+        phase = 1
     return json.dumps({
-        'tlv': base,
+        'tlv': tlv,
         'hash': invoice_hash,
-        'phase': 2,
+        'signature': signature_b64 or None,
+        'phase': phase,
     }, ensure_ascii=False)
 
 
-def submit_simplified_report(*, xml_text: str, invoice_hash: str, environment: str = 'sandbox') -> dict:
-    """يرسل XML للـ sandbox أو يعيد نتيجة mock."""
+def submit_simplified_report(
+    *,
+    xml_text: str,
+    invoice_hash: str,
+    invoice_uuid: str,
+    environment: str = 'sandbox',
+    binary_security_token: str = '',
+    api_secret: str = '',
+) -> dict:
+    """يرسل XML للـ sandbox/simulation/production أو يعيد نتيجة mock."""
     if use_mock_client():
         return {
             'ok': True,
@@ -181,20 +224,33 @@ def submit_simplified_report(*, xml_text: str, invoice_hash: str, environment: s
             'hash': invoice_hash,
         }
 
+    import base64
+
+    from zatca_crypto import basic_auth_header
+
     payload = json.dumps({
         'invoiceHash': invoice_hash,
-        'uuid': str(uuid.uuid4()),
-        'invoice': __import__('base64').b64encode(xml_text.encode('utf-8')).decode('ascii'),
+        'uuid': invoice_uuid,
+        'invoice': base64.b64encode(xml_text.encode('utf-8')).decode('ascii'),
     }).encode('utf-8')
 
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Accept-Version': 'V2',
+        'Accept-Language': 'ar',
+    }
+    if binary_security_token and api_secret:
+        headers['Authorization'] = basic_auth_header(binary_security_token, api_secret)
+
     req = urlrequest.Request(
-        sandbox_reporting_url(),
+        reporting_url(environment),
         data=payload,
-        headers={'Content-Type': 'application/json', 'Accept': 'application/json'},
+        headers=headers,
         method='POST',
     )
     try:
-        with urlrequest.urlopen(req, timeout=30) as resp:
+        with urlrequest.urlopen(req, timeout=45) as resp:
             body = resp.read().decode('utf-8', errors='replace')
             return {
                 'ok': 200 <= resp.status < 300,
@@ -267,6 +323,22 @@ def process_simplified_invoice(invoice, settings) -> dict:
     ET.fromstring(xml_text)
 
     inv_hash = invoice_hash_from_xml(xml_text)
+
+    signature_b64 = ''
+    public_key_b64 = ''
+    creds = active_zatca_credentials()
+    key_pem = _cred_plain(creds, 'private_key') if creds else ''
+    cert_pem = _cred_plain(creds, 'certificate') if creds else ''
+    if key_pem and cert_pem:
+        try:
+            from zatca_crypto import certificate_public_key_b64, sign_invoice_hash
+            signature_b64 = sign_invoice_hash(inv_hash, key_pem)
+            public_key_b64 = certificate_public_key_b64(cert_pem)
+        except Exception as exc:
+            invoice.zatca_status = 'failed'
+            invoice.zatca_last_error = f'فشل التوقيع: {exc}'[:2000]
+            return {'ok': False, 'status': 'failed', 'message': invoice.zatca_last_error}
+
     qr_payload = build_phase2_qr_payload(
         seller_name=seller,
         vat_number=vat,
@@ -274,12 +346,20 @@ def process_simplified_invoice(invoice, settings) -> dict:
         invoice_total=total,
         vat_total=tax_amount,
         invoice_hash=inv_hash,
+        signature_b64=signature_b64,
+        public_key_b64=public_key_b64,
         timestamp=issue_dt,
     )
 
-    creds = active_zatca_credentials()
     env = (creds.environment if creds else None) or 'sandbox'
-    result = submit_simplified_report(xml_text=xml_text, invoice_hash=inv_hash, environment=env)
+    result = submit_simplified_report(
+        xml_text=xml_text,
+        invoice_hash=inv_hash,
+        invoice_uuid=invoice_uuid,
+        environment=env,
+        binary_security_token=_cred_plain(creds, 'csid') if creds else '',
+        api_secret=_cred_plain(creds, 'api_secret') if creds else '',
+    )
 
     invoice.zatca_uuid = invoice_uuid
     invoice.zatca_invoice_hash = inv_hash
@@ -337,7 +417,7 @@ def save_zatca_credentials_form(form) -> str | None:
 
     cr = (form.get('zatca_cr_number') or '').strip()
     environment = (form.get('zatca_environment') or 'sandbox').strip().lower()
-    if environment not in ('sandbox', 'production'):
+    if environment not in ('sandbox', 'simulation', 'production'):
         environment = 'sandbox'
     status = (form.get('zatca_status') or 'active').strip().lower()
     if status not in ('pending', 'active', 'expired'):
@@ -346,6 +426,7 @@ def save_zatca_credentials_form(form) -> str | None:
     csid_plain = (form.get('zatca_csid') or '').strip()
     cert_plain = (form.get('zatca_certificate') or '').strip()
     key_plain = (form.get('zatca_private_key') or '').strip()
+    secret_plain = (form.get('zatca_api_secret') or '').strip()
 
     creds = tenant_query(ZatcaCredentials).first()
     if not creds:
@@ -363,6 +444,8 @@ def save_zatca_credentials_form(form) -> str | None:
         creds.certificate = encrypt_zatca_field(cert_plain)
     if key_plain:
         creds.private_key = encrypt_zatca_field(key_plain)
+    if secret_plain:
+        creds.api_secret = encrypt_zatca_field(secret_plain)
     if status == 'active' and (creds.certificate or creds.csid):
         creds.onboarded_at = creds.onboarded_at or datetime.utcnow()
 
