@@ -31,6 +31,21 @@ def _public_base() -> str:
     return (os.environ.get('LIFTCORE_PUBLIC_BASE') or 'https://liftcoreapp.com').rstrip('/')
 
 
+# Cloudflare أمام api.moyasar.com يحجب User-Agent الافتراضي لـ urllib (Error 1010).
+_MOYASAR_UA = 'LiftCore/1.0 (+https://liftcoreapp.com; subscription-billing)'
+
+
+def _moyasar_headers(*, json_body: bool = True) -> dict:
+    headers = {
+        'Authorization': _auth_header(),
+        'Accept': 'application/json',
+        'User-Agent': _MOYASAR_UA,
+    }
+    if json_body:
+        headers['Content-Type'] = 'application/json'
+    return headers
+
+
 def create_subscription_invoice(org, *, callback_base: str | None = None) -> dict:
     """ينشئ فاتورة Moyasar لتجديد اشتراك المؤسسة. يعيد {ok, url, id, errors}."""
     if not moyasar_enabled():
@@ -65,11 +80,7 @@ def create_subscription_invoice(org, *, callback_base: str | None = None) -> dic
     req = urlrequest.Request(
         'https://api.moyasar.com/v1/invoices',
         data=data,
-        headers={
-            'Authorization': _auth_header(),
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
+        headers=_moyasar_headers(json_body=True),
         method='POST',
     )
     try:

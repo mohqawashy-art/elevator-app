@@ -1,9 +1,14 @@
 """اختبارات Moyasar checkout / webhook."""
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 from app import app, db, hash_password
 from models import Organization, PlatformPayment, Settings, User
-from moyasar_payments import apply_moyasar_payment_event
+from moyasar_payments import (
+    _MOYASAR_UA,
+    apply_moyasar_payment_event,
+    create_subscription_invoice,
+)
 from platform_billing import record_payment
 
 
@@ -93,3 +98,33 @@ def test_webhook_endpoint_public(client=None):
     assert r.status_code == 200
     data = r.get_json()
     assert data.get('ok') is True
+
+
+def test_create_invoice_sends_user_agent(monkeypatch):
+    """Cloudflare 1010 يُحجب بدون User-Agent غير الافتراضي."""
+    org_id = _setup()
+    monkeypatch.setenv('MOYASAR_SECRET_KEY', 'sk_test_dummy')
+    captured = {}
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"id":"inv_1","url":"https://moyasar.com/i/inv_1"}'
+
+    def fake_urlopen(req, timeout=30):
+        captured['ua'] = req.get_header('User-agent') or req.headers.get('User-Agent')
+        captured['auth'] = req.get_header('Authorization') or req.headers.get('Authorization')
+        return _Resp()
+
+    with app.app_context():
+        org = db.session.get(Organization, org_id)
+        with patch('moyasar_payments.urlrequest.urlopen', side_effect=fake_urlopen):
+            result = create_subscription_invoice(org)
+    assert result['ok'] is True
+    assert captured['ua'] == _MOYASAR_UA
+    assert captured['auth'] and captured['auth'].startswith('Basic ')
