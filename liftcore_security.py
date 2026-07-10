@@ -109,6 +109,7 @@ CSRF_EXEMPT_ENDPOINTS = frozenset({
     'static',
     'web_manifest',
     'api_version',
+    'moyasar_webhook',
 })
 
 

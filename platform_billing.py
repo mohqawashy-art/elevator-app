@@ -166,6 +166,12 @@ def record_payment(
     if method not in PAYMENT_METHODS:
         method = 'other'
 
+    ref = (reference or '').strip()[:100] or None
+    if ref:
+        existing = PlatformPayment.query.filter_by(reference=ref).first()
+        if existing:
+            return {'ok': True, 'payment': existing, 'org': org, 'duplicate': True}
+
     cycle = org.billing_cycle or 'monthly'
     if months is None:
         months = 12 if cycle == 'yearly' else 1
@@ -183,7 +189,7 @@ def record_payment(
         amount=amount,
         currency='SAR',
         method=method,
-        reference=(reference or '').strip()[:100] or None,
+        reference=ref,
         note=(note or '').strip() or None,
         period_start=start,
         period_end=end,

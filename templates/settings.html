@@ -104,7 +104,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
     {% endif %}
     <button type="button" class="tab {% if active_tab == 'account' %}active{% endif %}" data-tab="account">حسابي</button>
     <button type="button" class="tab {% if active_tab == 'appearance' %}active{% endif %}" data-tab="appearance">المظهر</button>
-    <button type="button" class="tab {% if active_tab == 'plan' %}active{% endif %}" data-tab="plan" disabled style="opacity:.45;cursor:not-allowed" title="قريباً">الباقة</button>
+    <button type="button" class="tab {% if active_tab == 'plan' %}active{% endif %}" data-tab="plan">الباقة</button>
   </div>
 
   <!-- الشركة -->
@@ -734,11 +734,48 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
     </form>
   </div>
 
-  <!-- الباقة (قريباً) -->
+  <!-- الباقة والاشتراك -->
   <div class="panel {% if active_tab == 'plan' %}active{% endif %}" id="panel-plan">
     <div class="card">
       <div class="section">الباقة والاشتراك</div>
-      <p style="font-size:13px;color:var(--text2);line-height:1.8">قريباً — حدود العملاء والمصاعد والمستخدمين حسب باقة SaaS.<br>سيتضمن: الباقة الحالية، الاستخدام، تاريخ الانتهاء، وترقية الاشتراك.</p>
+      {% if current_org %}
+      <div class="grid">
+        <div>
+          <label>الباقة</label>
+          <input value="{{ current_org.plan or 'basic' }}" readonly>
+        </div>
+        <div>
+          <label>دورة الفوترة</label>
+          <input value="{{ current_org.billing_cycle or 'monthly' }}" readonly>
+        </div>
+        <div>
+          <label>حالة الاشتراك</label>
+          <input value="{{ current_org.billing_status or current_org.status or '—' }}" readonly>
+        </div>
+        <div>
+          <label>مبلغ الفترة</label>
+          <input value="{{ '%.0f'|format(plan_amount or 0) }} ر.س" readonly>
+        </div>
+        <div>
+          <label>ينتهي في</label>
+          <input value="{{ (current_org.current_period_end or current_org.trial_ends_at).strftime('%Y-%m-%d') if (current_org.current_period_end or current_org.trial_ends_at) else '—' }}" readonly>
+        </div>
+      </div>
+      {% if current_user.role == 'admin' %}
+      <div class="actions" style="margin-top:16px">
+        {% if moyasar_enabled %}
+        <form method="post" action="{{ url_for('settings_billing_checkout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-primary">تجديد بالبطاقة (Moyasar)</button>
+        </form>
+        {% else %}
+        <p class="hint">الدفع بالبطاقة غير مفعّل بعد. يمكن التجديد يدوياً عبر تحويل بنكي — تواصل مع دعم LiftCore.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+      <p class="hint">لا توجد بيانات اشتراك لهذه الجلسة.</p>
+      {% endif %}
     </div>
   </div>
 </div>

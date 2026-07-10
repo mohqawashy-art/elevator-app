@@ -130,7 +130,7 @@
 ## P3 — حسب الوعد التسويقي فقط
 
 - [x] SaaS multi-tenant + **فوترة يدوية للمنصة** (`platform_billing.py`, `/platform/billing`)
-- [ ] بوابة دفع تلقائية (Moyasar / Tap) — لاحقاً
+- [~] بوابة دفع تلقائية (Moyasar) — checkout + webhook؛ يحتاج `MOYASAR_SECRET_KEY` في الإنتاج
 - [~] ZATCA Phase 2 — أساس + توقيع ECDSA + QR tags 6–8 + تبليغ بمصادقة CSID (mock بدون اعتمادات؛ XAdES كامل لاحقاً)
 - [ ] WhatsApp Business API + تذكيرات مجدولة
 - [x] Offline Field PWA

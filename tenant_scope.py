@@ -17,6 +17,7 @@ TENANT_EXEMPT_PATHS = frozenset({
     '/signup',
     '/api/signup',
     '/auth/handoff',
+    '/api/webhooks/moyasar',
 })
 TENANT_EXEMPT_PREFIXES = ('/onboard/',)
 

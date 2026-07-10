@@ -178,6 +178,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
+    'moyasar_webhook',
 })
 PUBLIC_PATH_PREFIXES = ('/static',)
 STATIC_UPLOADS_PREFIX = '/static/uploads'
@@ -8258,6 +8259,20 @@ def settings():
     )
     from models import ZatcaCredentials
     zatca_creds = tenant_query(ZatcaCredentials).first()
+    from moyasar_payments import moyasar_enabled
+    from platform_billing import effective_amount, refresh_billing_status
+    from models import Organization
+    from tenant_scope import effective_organization_id
+    oid = effective_organization_id()
+    current_org = db.session.get(Organization, oid) if oid else None
+    if current_org:
+        refresh_billing_status(current_org)
+    plan_amount = effective_amount(current_org) if current_org else 0
+    paid_flag = request.args.get('paid')
+    if paid_flag == '1':
+        session['settings_notice'] = 'تم الدفع بنجاح — سيُحدَّث الاشتراك خلال لحظات.'
+    elif paid_flag == '0':
+        session['settings_notice'] = 'لم يكتمل الدفع.'
     return render_template(
         'settings.html',
         settings=s,
@@ -8278,6 +8293,9 @@ def settings():
         custom_holidays_text='\n'.join(sorted(d.isoformat() for d in custom_holidays(s))),
         extra_work_days_text='\n'.join(sorted(d.isoformat() for d in extra_work_days(s))),
         zatca_creds=zatca_creds,
+        current_org=current_org,
+        plan_amount=plan_amount,
+        moyasar_enabled=moyasar_enabled(),
     )
 
 
@@ -8394,6 +8412,55 @@ def settings_screensaver_save():
     db.session.commit()
     session['settings_notice'] = 'تم حفظ إعدادات شاشة الحفظ.'
     return _settings_redirect('screensaver')
+
+
+@app.route('/settings/billing/checkout', methods=['POST'])
+def settings_billing_checkout():
+    """إنشاء فاتورة Moyasar لتجديد اشتراك المؤسسة الحالية."""
+    user = require_admin()
+    if not user:
+        session['settings_notice'] = 'صلاحية المدير مطلوبة لتجديد الاشتراك.'
+        return _settings_redirect('plan')
+    from moyasar_payments import create_subscription_invoice, moyasar_enabled
+    from models import Organization
+    from tenant_scope import effective_organization_id
+
+    if not moyasar_enabled():
+        session['settings_notice'] = 'بوابة الدفع غير مفعّلة حالياً. تواصل مع دعم LiftCore أو ادفع يدوياً.'
+        return _settings_redirect('plan')
+
+    oid = effective_organization_id()
+    org = db.session.get(Organization, oid) if oid else None
+    if not org:
+        session['settings_notice'] = 'المؤسسة غير معروفة.'
+        return _settings_redirect('plan')
+
+    # استخدم أصل الطلب كـ success/back حتى يعود للـ subdomain الصحيح
+    callback_base = request.url_root.rstrip('/')
+    result = create_subscription_invoice(org, callback_base=callback_base)
+    if not result.get('ok'):
+        session['settings_notice'] = (result.get('errors') or ['تعذّر إنشاء رابط الدفع'])[0]
+        return _settings_redirect('plan')
+    return redirect(result['url'])
+
+
+@app.route('/api/webhooks/moyasar', methods=['POST'])
+def moyasar_webhook():
+    """Webhook عام من Moyasar — بدون CSRF وبدون tenant."""
+    from moyasar_payments import apply_moyasar_payment_event
+
+    payload = request.get_json(silent=True)
+    if payload is None:
+        # بعض الإشعارات تصل كـ form
+        raw = request.get_data(as_text=True) or ''
+        try:
+            import json as _json
+            payload = _json.loads(raw) if raw else {}
+        except Exception:
+            payload = dict(request.form) if request.form else {}
+    result = apply_moyasar_payment_event(payload or {})
+    code = 200 if result.get('ok') else 400
+    return jsonify(result), code
 
 
 @app.route('/settings/zatca/save', methods=['POST'])
