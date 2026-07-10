@@ -147,6 +147,7 @@ class Customer(TenantMixin, db.Model):
     entity_type  = db.Column(db.String(20), default='فرد')   # فرد / شركة
     national_id  = db.Column(db.String(20))
     cr_number    = db.Column(db.String(50))   # السجل التجاري
+    vat_number   = db.Column(db.String(50))   # الرقم الضريبي (B2B / ZATCA)
     lat          = db.Column(db.String(20))
     lng          = db.Column(db.String(20))
     maps_url     = db.Column(db.String(500))
@@ -552,7 +553,7 @@ class Invoice(TenantMixin, db.Model):
     zatca_uuid         = db.Column(db.String(64))
     zatca_invoice_hash = db.Column(db.String(128))
     zatca_qr_payload   = db.Column(db.Text)
-    zatca_status       = db.Column(db.String(20))  # draft|reported|failed|skipped
+    zatca_status       = db.Column(db.String(20))  # draft|reported|cleared|failed|skipped
     zatca_reported_at  = db.Column(db.DateTime)
     zatca_last_error   = db.Column(db.Text)
 

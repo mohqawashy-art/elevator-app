@@ -6892,9 +6892,10 @@ def invoice_add():
     sync_contract_invoice_status(i.contract_id)
     db.session.commit()
     try:
-        from zatca_phase2 import is_simplified_tax_invoice, process_simplified_invoice
-        if is_simplified_tax_invoice(i.invoice_type):
-            process_simplified_invoice(i, get_app_settings())
+        from zatca_qr import is_tax_invoice
+        from zatca_phase2 import process_tax_invoice
+        if is_tax_invoice(i.invoice_type):
+            process_tax_invoice(i, get_app_settings())
             db.session.commit()
     except Exception as exc:
         db.session.rollback()

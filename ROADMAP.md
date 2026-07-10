@@ -131,7 +131,7 @@
 
 - [x] SaaS multi-tenant + **فوترة يدوية للمنصة** (`platform_billing.py`, `/platform/billing`)
 - [~] بوابة دفع تلقائية (Moyasar) — checkout + webhook؛ يحتاج `MOYASAR_SECRET_KEY` في الإنتاج
-- [~] ZATCA Phase 2 — أساس + توقيع ECDSA + QR tags 6–8 + تبليغ بمصادقة CSID (mock بدون اعتمادات؛ XAdES كامل لاحقاً)
+- [~] ZATCA Phase 2 — مبسّطة + قياسية (clearance) + PIH + ECDSA/QR؛ XAdES-in-XML كامل لاحقاً
 - [ ] WhatsApp Business API + تذكيرات مجدولة
 - [x] Offline Field PWA
 - [ ] `/api/translate` (G2)
@@ -148,7 +148,7 @@
 | 2026-07-05 | P2 إغلاق | UX, i18n, field, marketing docs |
 | 2026-07-06 | Offline Field PWA | SW + IndexedDB queue + field manifest |
 | 2026-07-06 | Admin PWA جوال/تابلت | manifest + liftcore-admin-mobile.css |
-| 2026-07-06 | ops scripts | setup_production_ops + check + verify |
+| 2026-07-10 | ZATCA Phase 2 slice 3 | B2B clearance + PIH + process_tax_invoice |
 
 ---
 
