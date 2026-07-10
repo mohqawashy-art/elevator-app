@@ -65,10 +65,21 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
-VENV="${VENV:-$APP_DIR/.venv}"
+# shellcheck source=_common.sh
+source "$(cd "$(dirname "$0")" && pwd)/_common.sh"
+VENV="$(lc_resolve_venv "$APP_DIR" "$SERVICE_NAME")"
 PY="$VENV/bin/python"
+PIP="$VENV/bin/pip"
 if [ ! -x "$PY" ]; then
+  echo "WARN: venv python not found at $VENV — using python3"
   PY=python3
+  PIP=pip3
+fi
+echo "Python: $PY"
+
+if ! "$PY" -c "import openpyxl" 2>/dev/null; then
+  echo "==> installing openpyxl"
+  "$PIP" install 'openpyxl>=3.1' || "$PY" -m pip install 'openpyxl>=3.1'
 fi
 
 echo "clients:      $CLIENTS"

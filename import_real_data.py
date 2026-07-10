@@ -7,13 +7,12 @@ LiftCore — استيراد بيانات حقيقية من Excel
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import re
 import sys
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
-
-import pandas as pd
 
 from app import app, db
 from customer_billing import split_vat_amounts
@@ -86,19 +85,27 @@ def find_excel_files(folder: str, prefer_date: str = "5_6_2026") -> dict[str, st
     return found
 
 
+def _isna(val: Any) -> bool:
+    if val is None:
+        return True
+    if isinstance(val, float) and (math.isnan(val) or val != val):
+        return True
+    return False
+
+
 def _cell(row: dict[str, Any], *candidates: str):
     for key in candidates:
-        if key in row and pd.notna(row[key]):
+        if key in row and not _isna(row[key]):
             return row[key]
     for key, value in row.items():
         for candidate in candidates:
-            if candidate in str(key) and pd.notna(value):
+            if candidate in str(key) and not _isna(value):
                 return value
     return None
 
 
 def _str(val) -> str:
-    if val is None or (isinstance(val, float) and pd.isna(val)):
+    if _isna(val):
         return ""
     s = str(val).strip()
     return "" if s.lower() == "nan" else s
@@ -106,7 +113,7 @@ def _str(val) -> str:
 
 def _f(val, default=0.0) -> float:
     try:
-        if val is None or (isinstance(val, float) and pd.isna(val)):
+        if _isna(val):
             return default
         return float(val)
     except (TypeError, ValueError):
@@ -115,7 +122,7 @@ def _f(val, default=0.0) -> float:
 
 def _i(val, default=0) -> int:
     try:
-        if val is None or (isinstance(val, float) and pd.isna(val)):
+        if _isna(val):
             return default
         return int(float(val))
     except (TypeError, ValueError):
@@ -123,12 +130,35 @@ def _i(val, default=0) -> int:
 
 
 def _parse_date(val):
-    if val is None or (isinstance(val, float) and pd.isna(val)):
+    if _isna(val):
         return None
-    if hasattr(val, "date") and callable(val.date):
+    if isinstance(val, datetime):
         return val.date()
-    dt = pd.to_datetime(str(val).strip(), dayfirst=True, errors="coerce")
-    return None if pd.isna(dt) else dt.date()
+    if isinstance(val, date):
+        return val
+    if hasattr(val, "date") and callable(val.date) and not isinstance(val, (str, bytes)):
+        try:
+            return val.date()
+        except Exception:
+            pass
+    text = _str(val)
+    if not text:
+        return None
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%m/%d/%Y", "%d.%m.%Y"):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    # آخر محاولة عبر pandas إن وُجد
+    try:
+        import pandas as pd
+
+        dt = pd.to_datetime(text, dayfirst=True, errors="coerce")
+        if dt is not None and not pd.isna(dt):
+            return dt.date()
+    except Exception:
+        pass
+    return None
 
 
 def _norm_id(val) -> str:
@@ -207,6 +237,13 @@ def _invoice_status(value, paid) -> str:
 
 
 def import_all(folder: str, reset: bool = True) -> dict[str, int]:
+    try:
+        import pandas as pd
+    except ImportError as exc:
+        raise SystemExit(
+            'pandas مطلوب لـ import_real_data.py الكامل — pip install pandas'
+        ) from exc
+
     paths = find_excel_files(folder)
     stats = {k: 0 for k in FILE_PATTERNS}
     stats["files_found"] = len(paths)
