@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 import pytest
 
-from models import Customer, Invoice, Settings, db
+from models import Customer, Invoice, Settings, ZatcaCredentials, db
 from zatca_qr import is_tax_invoice, zatca_phase1_tlv_base64, zatca_qr_image_data_url
 
 from tests.conftest import login_as
@@ -38,6 +38,19 @@ def _seed_settings(**kwargs) -> Settings:
     s.city = kwargs.get('city', 'مكة المكرمة')
     s.address = kwargs.get('address', 'حي العزيزية')
     s.tax_pct = kwargs.get('tax_pct', 15)
+    vat = s.vat_number
+    org_id = s.organization_id
+    if org_id:
+        creds = ZatcaCredentials.query.filter_by(organization_id=org_id).first()
+        if vat:
+            if not creds:
+                creds = ZatcaCredentials(organization_id=org_id, vat_number=vat, status='active')
+                db.session.add(creds)
+            else:
+                creds.vat_number = vat
+                creds.status = 'active'
+        elif creds:
+            db.session.delete(creds)
     db.session.commit()
     return s
 

@@ -9,6 +9,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import or_
 
 from models import Contract, Customer, Invoice, PartsBilling, Revenue, db
+from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
 COLLECTED_REVENUE_STATUSES = ('محصّل', 'محصل')
 UNPAID_INVOICE_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً']
@@ -90,23 +91,23 @@ def resolve_contract_id(
 
     code = _extract_contract_code(reference, notes, description)
     if code:
-        contract = Contract.query.filter_by(code=code, customer_id=customer_id).first()
+        contract = tenant_query(Contract).filter_by(code=code, customer_id=customer_id).first()
         if contract:
             return contract.id
 
     if revenue_id:
-        rev = Revenue.query.get(revenue_id)
+        rev = tenant_query(Revenue).filter_by(id=revenue_id).first()
         if rev:
             if rev.contract_id:
                 return rev.contract_id
             if rev.invoice_id:
-                inv = Invoice.query.get(rev.invoice_id)
+                inv = tenant_query(Invoice).filter_by(id=rev.invoice_id).first()
                 if inv and inv.contract_id:
                     return inv.contract_id
                 if inv:
                     inv_code = _extract_contract_code(inv.description, inv.notes)
                     if inv_code:
-                        contract = Contract.query.filter_by(
+                        contract = tenant_query(Contract).filter_by(
                             code=inv_code, customer_id=customer_id
                         ).first()
                         if contract:
@@ -114,7 +115,7 @@ def resolve_contract_id(
 
     if _is_contract_revenue_type(revenue_type):
         active = [
-            c for c in Contract.query.filter_by(customer_id=customer_id)
+            c for c in tenant_query(Contract).filter_by(customer_id=customer_id)
             .order_by(Contract.start_date.desc())
             .all()
             if _contract_is_collectible(c)
@@ -129,7 +130,7 @@ def repair_contract_payment_links(commit: bool = True) -> int:
     """إصلاح الربط الناقص بين الإيرادات/الفواتير والعقود."""
     changed = 0
 
-    for rev in Revenue.query.filter(
+    for rev in tenant_query(Revenue).filter(
         Revenue.contract_id.is_(None),
         Revenue.customer_id.isnot(None),
     ).all():
@@ -145,7 +146,7 @@ def repair_contract_payment_links(commit: bool = True) -> int:
             rev.contract_id = cid
             changed += 1
 
-    for inv in Invoice.query.filter(
+    for inv in tenant_query(Invoice).filter(
         Invoice.contract_id.is_(None),
         Invoice.customer_id.isnot(None),
     ).all():
@@ -156,7 +157,7 @@ def repair_contract_payment_links(commit: bool = True) -> int:
             inv.description or '',
         )
         if not cid:
-            rev = Revenue.query.filter_by(invoice_id=inv.id).first()
+            rev = tenant_query(Revenue).filter_by(invoice_id=inv.id).first()
             if rev and rev.contract_id:
                 cid = rev.contract_id
         if cid:
@@ -192,11 +193,11 @@ def contract_paid_amount(contract_id: int) -> float:
     if not contract_id:
         return 0.0
 
-    contract = Contract.query.get(contract_id)
+    contract = tenant_query(Contract).filter_by(id=contract_id).first()
     if not contract:
         return 0.0
 
-    rev_rows = Revenue.query.filter(
+    rev_rows = tenant_query(Revenue).filter(
         Revenue.contract_id == contract_id,
         Revenue.status.in_(COLLECTED_REVENUE_STATUSES),
     ).all()
@@ -210,7 +211,7 @@ def contract_paid_amount(contract_id: int) -> float:
         linked_by_invoice[inv_id] = linked_by_invoice.get(inv_id, 0.0) + _round_money(r.total or 0)
 
     inv_extra = 0.0
-    for inv in Invoice.query.filter_by(contract_id=contract_id).all():
+    for inv in tenant_query(Invoice).filter_by(contract_id=contract_id).all():
         inv_paid = _invoice_paid_total(inv)
         linked = linked_by_invoice.get(inv.id, 0.0)
         inv_extra += max(0.0, inv_paid - linked)
@@ -218,7 +219,7 @@ def contract_paid_amount(contract_id: int) -> float:
     code = (contract.code or '').upper()
     customer_id = contract.customer_id
 
-    orphan_revs = Revenue.query.filter(
+    orphan_revs = tenant_query(Revenue).filter(
         Revenue.customer_id == customer_id,
         Revenue.contract_id.is_(None),
         Revenue.status.in_(COLLECTED_REVENUE_STATUSES),
@@ -241,7 +242,7 @@ def contract_paid_amount(contract_id: int) -> float:
         if code and code in f'{rev.reference or ""} {rev.notes or ""}':
             rev_paid += amount
 
-    orphan_invs = Invoice.query.filter(
+    orphan_invs = tenant_query(Invoice).filter(
         Invoice.customer_id == customer_id,
         Invoice.contract_id.is_(None),
     ).all()
@@ -278,7 +279,7 @@ def _contract_is_collectible(contract: Contract, today: date | None = None) -> b
 
 
 def _tax_invoice_q():
-    return Invoice.query.filter(
+    return tenant_query(Invoice).filter(
         or_(
             Invoice.invoice_type.is_(None),
             Invoice.invoice_type == '',
@@ -301,7 +302,7 @@ def customer_billable_ops(customer_id: int) -> list[dict]:
     today = date.today()
 
     for pb in (
-        PartsBilling.query.filter_by(customer_id=customer_id)
+        tenant_query(PartsBilling).filter_by(customer_id=customer_id)
         .order_by(PartsBilling.billing_date.desc())
         .all()
     ):
@@ -332,7 +333,7 @@ def customer_billable_ops(customer_id: int) -> list[dict]:
             'hint': 'تم التحصيل — إصدار فاتورة للتوثيق' if collected else 'غير محصّل — فاتورة ثم تحصيل',
         })
 
-    for c in Contract.query.filter_by(customer_id=customer_id).order_by(Contract.start_date.desc()).all():
+    for c in tenant_query(Contract).filter_by(customer_id=customer_id).order_by(Contract.start_date.desc()).all():
         if not _contract_is_collectible(c, today):
             continue
         if _invoice_exists_for_contract(c.id):
@@ -438,7 +439,7 @@ def customer_invoicable_revenues(customer_id: int) -> list[dict]:
     """إيرادات محصّلة لم تُربط بفاتورة بعد — لإصدار فاتورة ضريبية."""
     rows: list[dict] = []
     revs = (
-        Revenue.query.filter_by(customer_id=customer_id)
+        tenant_query(Revenue).filter_by(customer_id=customer_id)
         .filter(Revenue.status.in_(COLLECTED_REVENUE_STATUSES))
         .filter(Revenue.invoice_id.is_(None))
         .order_by(Revenue.revenue_date.desc())
@@ -482,7 +483,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
     today = date.today()
 
     contracts = (
-        Contract.query.filter_by(customer_id=customer_id)
+        tenant_query(Contract).filter_by(customer_id=customer_id)
         .order_by(Contract.start_date.desc())
         .all()
     )
@@ -509,7 +510,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
         })
 
     invoices = (
-        Invoice.query.filter_by(customer_id=customer_id)
+        tenant_query(Invoice).filter_by(customer_id=customer_id)
         .order_by(Invoice.invoice_date.desc())
         .all()
     )
@@ -537,7 +538,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
         })
 
     parts = (
-        PartsBilling.query.filter_by(customer_id=customer_id)
+        tenant_query(PartsBilling).filter_by(customer_id=customer_id)
         .order_by(PartsBilling.billing_date.desc())
         .all()
     )
@@ -581,7 +582,7 @@ def apply_payment_to_source(
         raise ValueError('مبلغ التحصيل يجب أن يكون أكبر من صفر')
 
     if source_type == 'contract':
-        c = Contract.query.get_or_404(int(source_id))
+        c = tenant_get_or_404(Contract, int(source_id))
         remaining = contract_remaining(c)
         if payment_total > remaining + 0.01:
             raise ValueError(f'المبلغ أكبر من المتبقي على العقد ({remaining:.2f})')
@@ -595,7 +596,7 @@ def apply_payment_to_source(
         }
 
     if source_type == 'invoice':
-        inv = Invoice.query.get_or_404(int(source_id))
+        inv = tenant_get_or_404(Invoice, int(source_id))
         remaining = invoice_remaining(inv)
         if payment_total > remaining + 0.01:
             raise ValueError(f'المبلغ أكبر من المتبقي على الفاتورة ({remaining:.2f})')
@@ -622,7 +623,7 @@ def apply_payment_to_source(
         }
 
     if source_type == 'parts_billing':
-        pb = PartsBilling.query.get_or_404(int(source_id))
+        pb = tenant_get_or_404(PartsBilling, int(source_id))
         remaining = parts_remaining(pb)
         if payment_total > remaining + 0.01:
             raise ValueError(f'المبلغ أكبر من المتبقي على بيان القطع ({remaining:.2f})')
@@ -682,16 +683,16 @@ def expected_source_total(source_type: str | None, source_id: int | None) -> flo
         return None
     sid = int(source_id)
     if st == 'contract':
-        c = Contract.query.get(sid)
+        c = tenant_query(Contract).filter_by(id=sid).first()
         return _round_money(c.total) if c else None
     if st == 'parts_billing':
-        pb = PartsBilling.query.get(sid)
+        pb = tenant_query(PartsBilling).filter_by(id=sid).first()
         return _round_money(pb.sell_price) if pb else None
     return None
 
 
 def receipt_for_revenue(revenue_id: int) -> Invoice | None:
-    return Invoice.query.filter_by(revenue_id=revenue_id).first()
+    return tenant_query(Invoice).filter_by(revenue_id=revenue_id).first()
 
 
 def create_receipt_voucher_for_revenue(revenue: Revenue) -> Invoice | None:
@@ -708,19 +709,19 @@ def create_receipt_voucher_for_revenue(revenue: Revenue) -> Invoice | None:
     if payment_total <= 0.01:
         return None
 
-    parent_inv = Invoice.query.get(revenue.invoice_id) if revenue.invoice_id else None
+    parent_inv = tenant_query(Invoice).filter_by(id=revenue.invoice_id).first() if revenue.invoice_id else None
     description = (revenue.revenue_type or 'تحصيل').strip()
     notes_parts = [f'إيراد {revenue.code}']
     if parent_inv:
         notes_parts.append(f'مقابل فاتورة {parent_inv.code}')
         description = f'سند قبض — {parent_inv.description or parent_inv.invoice_type or "فاتورة"}'[:300]
     elif revenue.contract_id:
-        c = Contract.query.get(revenue.contract_id)
+        c = tenant_query(Contract).filter_by(id=revenue.contract_id).first()
         if c:
             notes_parts.append(f'عقد {c.code}')
             description = f'سند قبض — عقد {c.code}'[:300]
     elif revenue.parts_billing_id:
-        pb = PartsBilling.query.get(revenue.parts_billing_id)
+        pb = tenant_query(PartsBilling).filter_by(id=revenue.parts_billing_id).first()
         if pb:
             notes_parts.append(f'قطع {pb.code}')
             description = f'سند قبض — {pb.description or pb.code}'[:300]
@@ -744,6 +745,7 @@ def create_receipt_voucher_for_revenue(revenue: Revenue) -> Invoice | None:
         status='مدفوعة',
         notes=' — '.join(notes_parts),
     )
+    assign_organization(receipt)
     db.session.add(receipt)
     return receipt
 
@@ -798,10 +800,10 @@ def customer_financial_totals(revenues, parts, invoices) -> dict:
 
 def build_customer_statement(customer_id: int) -> dict:
     """كشف حساب: فواتير ضريبية (مدين) + سندات قبض/إيرادات (دائن) + رصيد."""
-    customer = Customer.query.get_or_404(customer_id)
+    customer = tenant_get_or_404(Customer, customer_id)
 
     tax_invoices = (
-        Invoice.query.filter_by(customer_id=customer_id)
+        tenant_query(Invoice).filter_by(customer_id=customer_id)
         .order_by(Invoice.invoice_date.desc(), Invoice.id.desc())
         .all()
     )
@@ -826,7 +828,7 @@ def build_customer_statement(customer_id: int) -> dict:
         })
 
     revenues = (
-        Revenue.query.filter_by(customer_id=customer_id)
+        tenant_query(Revenue).filter_by(customer_id=customer_id)
         .filter(Revenue.status.in_(COLLECTED_REVENUE_STATUSES))
         .order_by(Revenue.revenue_date.desc(), Revenue.id.desc())
         .all()
@@ -837,14 +839,14 @@ def build_customer_statement(customer_id: int) -> dict:
         receipt = receipt_for_revenue(r.id)
         parent_ref = ''
         if r.invoice_id:
-            inv = Invoice.query.get(r.invoice_id)
+            inv = tenant_query(Invoice).filter_by(id=r.invoice_id).first()
             if inv and not is_receipt_voucher(inv.invoice_type):
                 parent_ref = f'فاتورة {inv.code}'
         elif r.contract_id:
-            c = Contract.query.get(r.contract_id)
+            c = tenant_query(Contract).filter_by(id=r.contract_id).first()
             parent_ref = f'عقد {c.code}' if c else ''
         elif r.parts_billing_id:
-            pb = PartsBilling.query.get(r.parts_billing_id)
+            pb = tenant_query(PartsBilling).filter_by(id=r.parts_billing_id).first()
             parent_ref = f'قطع {pb.code}' if pb else ''
 
         credits.append({

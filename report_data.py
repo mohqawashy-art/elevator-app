@@ -4,10 +4,11 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import extract, case
+from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
 
 def get_report_clients(db, Customer, contract_display_status):
-    customers = Customer.query.order_by(Customer.id).all()
+    customers = tenant_query(Customer).order_by(Customer.id).all()
     return [{
         'code': c.code,
         'name': c.name,
@@ -22,7 +23,7 @@ def get_report_clients(db, Customer, contract_display_status):
 
 
 def get_report_elevators(db, Elevator):
-    elevs = Elevator.query.order_by(Elevator.id).all()
+    elevs = tenant_query(Elevator).order_by(Elevator.id).all()
     return [{
         'code': e.code,
         'customer': e.customer.name,
@@ -37,7 +38,7 @@ def get_report_elevators(db, Elevator):
 
 
 def get_report_contracts(db, Contract):
-    contracts = Contract.query.order_by(Contract.id).all()
+    contracts = tenant_query(Contract).order_by(Contract.id).all()
     return [{
         'code': c.code,
         'customer': c.customer.name,
@@ -53,7 +54,7 @@ def get_report_contracts(db, Contract):
 
 
 def get_report_technicians(db, Technician):
-    techs = Technician.query.order_by(Technician.id).all()
+    techs = tenant_query(Technician).order_by(Technician.id).all()
     return [{
         'code': t.code,
         'name': t.name,
@@ -68,7 +69,7 @@ def get_report_technicians(db, Technician):
 
 
 def get_report_visits(db, MaintenanceVisit):
-    visits = MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc()).all()
+    visits = tenant_query(MaintenanceVisit).order_by(MaintenanceVisit.visit_date.desc()).all()
     return [{
         'code': v.code,
         'customer': v.elevator.customer.name,
@@ -83,7 +84,7 @@ def get_report_visits(db, MaintenanceVisit):
 
 
 def get_report_faults(db, Fault):
-    faults = Fault.query.order_by(Fault.reported_at.desc()).all()
+    faults = tenant_query(Fault).order_by(Fault.reported_at.desc()).all()
     return [{
         'code': f.code,
         'customer': f.elevator.customer.name,
@@ -101,7 +102,7 @@ def get_report_faults(db, Fault):
 def get_report_revenues(db, Revenue, year=None, month=None):
     if year is None:
         year = datetime.now().year
-    q = Revenue.query
+    q = tenant_query(Revenue)
     if year:
         q = q.filter(extract('year', Revenue.revenue_date) == int(year))
     if month:
@@ -124,7 +125,7 @@ def get_report_revenues(db, Revenue, year=None, month=None):
 def get_report_expenses(db, Expense, year=None, month=None):
     if year is None:
         year = datetime.now().year
-    q = Expense.query
+    q = tenant_query(Expense)
     if year:
         q = q.filter(extract('year', Expense.expense_date) == int(year))
     if month:
@@ -142,7 +143,7 @@ def get_report_expenses(db, Expense, year=None, month=None):
 
 
 def get_report_invoices(db, Invoice):
-    invs = Invoice.query.order_by(Invoice.invoice_date.desc()).all()
+    invs = tenant_query(Invoice).order_by(Invoice.invoice_date.desc()).all()
     return [{
         'code': i.code,
         'invoice_type': i.invoice_type or '',
@@ -159,7 +160,7 @@ def get_report_invoices(db, Invoice):
 
 
 def get_report_parts_billing(db, PartsBilling):
-    rows = PartsBilling.query.order_by(PartsBilling.billing_date.desc()).all()
+    rows = tenant_query(PartsBilling).order_by(PartsBilling.billing_date.desc()).all()
     return [{
         'code': p.code,
         'customer': p.customer.name if p.customer else '—',
@@ -178,7 +179,7 @@ def get_report_parts_billing(db, PartsBilling):
 
 
 def get_report_inventory(db, InventoryItem):
-    items = InventoryItem.query.order_by(InventoryItem.id).all()
+    items = tenant_query(InventoryItem).order_by(InventoryItem.id).all()
     return [{
         'code': i.code,
         'name': i.name,
@@ -194,7 +195,7 @@ def get_report_inventory(db, InventoryItem):
 
 
 def get_report_stock(db, StockMovement):
-    movements = StockMovement.query.order_by(StockMovement.movement_date.desc()).all()
+    movements = tenant_query(StockMovement).order_by(StockMovement.movement_date.desc()).all()
     return [{
         'code': m.code,
         'date': str(m.movement_date or ''),
@@ -281,7 +282,7 @@ def _sum_expenses(expenses):
 
 
 def _filter_revenues(Revenue, *, year=None, month=None, on_date=None, date_from=None, date_to=None):
-    q = Revenue.query
+    q = tenant_query(Revenue)
     if year is not None:
         q = q.filter(extract('year', Revenue.revenue_date) == int(year))
     if month is not None:
@@ -296,7 +297,7 @@ def _filter_revenues(Revenue, *, year=None, month=None, on_date=None, date_from=
 
 
 def _filter_expenses(Expense, *, year=None, month=None, on_date=None, date_from=None, date_to=None):
-    q = Expense.query
+    q = tenant_query(Expense)
     if year is not None:
         q = q.filter(extract('year', Expense.expense_date) == int(year))
     if month is not None:
@@ -358,7 +359,7 @@ def _contract_forecast_amount(contract):
 
 
 def _collected_for_contract_in_period(Revenue, contract_id, date_from, date_to):
-    revs = Revenue.query.filter(
+    revs = tenant_query(Revenue).filter(
         Revenue.contract_id == contract_id,
         Revenue.revenue_date >= date_from,
         Revenue.revenue_date <= date_to,
@@ -381,7 +382,7 @@ def get_contract_renewal_forecast(Contract, Revenue, year, month, contract_statu
     year, month = int(year), int(month)
     first, last = _month_bounds(year, month)
 
-    contracts = Contract.query.filter(
+    contracts = tenant_query(Contract).filter(
         Contract.end_date >= first,
         Contract.end_date <= last,
         Contract.status != 'ملغي',
@@ -535,11 +536,11 @@ def get_financial_health_report(
     margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
     health_text, health_level = _health_label(margin_pct, net_profit)
 
-    year_expenses = Expense.query.filter(extract('year', Expense.expense_date) == year).all()
+    year_expenses = tenant_query(Expense).filter(extract('year', Expense.expense_date) == year).all()
     exp_buckets = _expense_buckets(year_expenses)
 
     tech_salaries = _round_money(sum(
-        float(t.salary or 0) for t in Technician.query.filter(
+        float(t.salary or 0) for t in tenant_query(Technician).filter(
             Technician.status.in_(['نشط', 'متاح', 'مشغول'])
         ).all()
     ))
@@ -555,14 +556,14 @@ def get_financial_health_report(
     }
 
     active_contracts = []
-    for c in Contract.query.filter(Contract.status != 'ملغي').all():
+    for c in tenant_query(Contract).filter(Contract.status != 'ملغي').all():
         st = contract_status_fn(c) if contract_status_fn else (c.status or '')
         if st in ('نشط', 'على وشك الانتهاء'):
             active_contracts.append(c)
 
     elevators_under_contract = sum(len(c.elevators) for c in active_contracts)
     if elevators_under_contract == 0:
-        elevators_under_contract = Elevator.query.filter(
+        elevators_under_contract = tenant_query(Elevator).filter(
             Elevator.status.in_(['نشط', 'تحت الصيانة'])
         ).count()
 

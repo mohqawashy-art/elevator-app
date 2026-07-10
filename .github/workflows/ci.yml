@@ -23,6 +23,9 @@ jobs:
       - name: Security audit
         run: python scripts/security_audit.py
 
+      - name: Tenant query guard (week 2+)
+        run: bash scripts/check_tenant_queries.sh
+
       - name: Production boot smoke
         run: python -m pytest tests/test_production_boot.py tests/test_deploy_scripts.py -q --tb=short
         env:

@@ -14,6 +14,11 @@ from tenant_scope import (
 
 @pytest.fixture
 def org_a():
+    """قاعدة in-memory — لا تلمس instance/*.db ولا تتعارض مع e2e_server."""
+    app.config['TESTING'] = True
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    app.config['SECRET_KEY'] = 'test-secret-key-not-default'
+    app.config['SESSION_COOKIE_SECURE'] = False
     with app.app_context():
         db.engine.dispose()
         db.session.remove()
@@ -27,7 +32,7 @@ def org_a():
 
 
 @pytest.fixture
-def org_b():
+def org_b(org_a):
     with app.app_context():
         o = Organization(slug='beta', name='Beta Co', status='active')
         db.session.add(o)
@@ -38,8 +43,6 @@ def org_b():
 @pytest.fixture
 def tenant_pair(org_a, org_b):
     """مؤسستان + مستخدمان + عميل لكل منهما."""
-    app.config['TESTING'] = True
-    app.config['SESSION_COOKIE_SECURE'] = False
     with app.app_context():
         user_a = User(
             username='admin',

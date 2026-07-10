@@ -7,6 +7,7 @@ import os
 from models import Signatory, db
 from signature_auth import normalize_national_id, validate_sign_pin
 from signature_crypto import save_encrypted_signature
+from tenant_scope import assign_organization, tenant_query
 
 
 def upsert_signatory(
@@ -36,10 +37,10 @@ def upsert_signatory(
     if role_key not in ('technician', 'manager'):
         role_key = 'technician'
 
-    row = Signatory.query.get(signatory_id) if signatory_id else None
+    row = tenant_query(Signatory).filter_by(id=signatory_id).first() if signatory_id else None
     if not row and technician_id:
-        row = Signatory.query.filter_by(technician_id=technician_id).first()
-    for existing in Signatory.query.filter_by(is_active=True).all():
+        row = tenant_query(Signatory).filter_by(technician_id=technician_id).first()
+    for existing in tenant_query(Signatory).filter_by(is_active=True).all():
         if normalize_national_id(existing.national_id) == nid and (not row or existing.id != row.id):
             raise ValueError('رقم الهوية مسجّل لموقّع آخر')
 
@@ -52,6 +53,7 @@ def upsert_signatory(
     if not row:
         row = Signatory(name=name.strip(), national_id=nid, role=role_key, technician_id=technician_id)
         row.sign_pin_hash = pin_hash_fn(pin)
+        assign_organization(row)
         db.session.add(row)
         db.session.flush()
     else:
@@ -78,7 +80,7 @@ def sync_technician_signatory(tech, *, pin_hash_fn, app_root: str, secret: str, 
     if not image_bytes and not tech.signature_path and not tech.sign_pin_hash:
         return
     pin = ''
-    if not Signatory.query.filter_by(technician_id=tech.id).first() and not tech.sign_pin_hash:
+    if not tenant_query(Signatory).filter_by(technician_id=tech.id).first() and not tech.sign_pin_hash:
         return
     upsert_signatory(
         name=tech.name,

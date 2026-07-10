@@ -8,6 +8,8 @@ from flask import url_for
 
 from contract_print import amount_in_words
 from models import Contract, Customer, Invoice, Settings
+from tenant_scope import tenant_query
+from zatca_tenant import tenant_vat_number
 from zatca_qr import (
     is_tax_invoice as zatca_is_tax_invoice,
     zatca_phase1_tlv_base64,
@@ -133,12 +135,18 @@ def _amount_in_words_sar(total: float) -> str:
 
 
 def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
-    settings = Settings.query.first()
+    settings = tenant_query(Settings).first()
     if not settings:
         raise RuntimeError('إعدادات النظام غير موجودة')
 
-    customer = Customer.query.get(invo.customer_id) if invo.customer_id else None
-    contract = Contract.query.get(invo.contract_id) if invo.contract_id else None
+    customer = (
+        tenant_query(Customer).filter_by(id=invo.customer_id).first()
+        if invo.customer_id else None
+    )
+    contract = (
+        tenant_query(Contract).filter_by(id=invo.contract_id).first()
+        if invo.contract_id else None
+    )
 
     tax_pct = float(settings.tax_pct or 15)
     is_receipt = not zatca_is_tax_invoice(invo.invoice_type)
@@ -181,7 +189,7 @@ def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
     total_discount = 0.0
 
     company_name = settings.company_name or '—'
-    vat_number = (settings.vat_number or '').strip().replace(' ', '')
+    vat_number = tenant_vat_number() if is_tax else (settings.vat_number or '').strip().replace(' ', '')
     cr_number = (settings.cr_number or '').strip()
 
     zatca_qr_image = ''

@@ -9,7 +9,16 @@ sys.path.insert(0, ROOT)
 os.chdir(ROOT)
 
 from app import app, db, hash_password
-from models import Settings, User
+from models import Organization, Settings, User, ZatcaCredentials
+
+
+def _default_org_id():
+    org = Organization.query.filter_by(slug='default').first()
+    if not org:
+        org = Organization(slug='default', name='Test Org', status='active')
+        db.session.add(org)
+        db.session.commit()
+    return org.id
 
 
 @pytest.fixture
@@ -22,8 +31,15 @@ def client():
         db.session.remove()
         db.drop_all()
         db.create_all()
+        org_id = _default_org_id()
         if not Settings.query.first():
-            db.session.add(Settings(company_name='LiftCore Test', tax_pct=15))
+            db.session.add(Settings(company_name='LiftCore Test', tax_pct=15, organization_id=org_id))
+        if not ZatcaCredentials.query.filter_by(organization_id=org_id).first():
+            db.session.add(ZatcaCredentials(
+                organization_id=org_id,
+                vat_number='300000000000003',
+                status='active',
+            ))
         users = {}
         for role in ('admin', 'manager', 'viewer'):
             u = User(
@@ -32,6 +48,7 @@ def client():
                 full_name=role,
                 role=role,
                 is_active=True,
+                organization_id=org_id,
             )
             db.session.add(u)
             users[role] = u
@@ -47,3 +64,13 @@ def login_as(client, role: str = 'admin'):
     with client.session_transaction() as sess:
         sess['user_id'] = uid
         sess['lang'] = 'ar'
+
+
+def ensure_test_organization():
+    """مؤسسة افتراضية للاختبارات التي تنشئ جداولها يدوياً."""
+    org = Organization.query.filter_by(slug='default').first()
+    if not org:
+        org = Organization(slug='default', name='Test Org', status='active')
+        db.session.add(org)
+        db.session.commit()
+    return org.id

@@ -47,6 +47,7 @@ from installation.catalog import (
     CONTROL_PANEL_BRANDS,
     origins_for_js,
 )
+from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
 install_bp = Blueprint('installation', __name__, url_prefix='/installation')
 
@@ -54,7 +55,7 @@ install_bp = Blueprint('installation', __name__, url_prefix='/installation')
 def _next_code(model, prefix, digits=4):
     max_num = 0
     pattern = re.compile(r'^' + re.escape(prefix) + r'(\d+)$')
-    for (code,) in model.query.with_entities(model.code).all():
+    for (code,) in tenant_query(model).with_entities(model.code).all():
         if not code:
             continue
         m = pattern.match(str(code).strip())
@@ -129,7 +130,7 @@ def _customer_to_js(customer):
 
 
 def _active_customers():
-    return Customer.query.filter(
+    return tenant_query(Customer).filter(
         Customer.status != 'غير نشط'
     ).order_by(Customer.name).all()
 
@@ -162,7 +163,7 @@ def _project_prefill(project):
 def _latest_editable_quotation(project):
     """آخر عرض قابل للتعديل (غير مقبول/مرفوض)."""
     return (
-        InstallQuotation.query.filter_by(project_id=project.id)
+        tenant_query(InstallQuotation).filter_by(project_id=project.id)
         .filter(InstallQuotation.status.notin_(('مقبول', 'مرفوض')))
         .order_by(InstallQuotation.updated_at.desc(), InstallQuotation.id.desc())
         .first()
@@ -205,12 +206,12 @@ def _quotation_to_dict(q):
 
 @install_bp.route('/')
 def index():
-    lead_count = InstallLead.query.count()
-    project_count = InstallProject.query.count()
-    active_leads = InstallLead.query.filter(
+    lead_count = tenant_query(InstallLead).count()
+    project_count = tenant_query(InstallProject).count()
+    active_leads = tenant_query(InstallLead).filter(
         InstallLead.status.notin_(('ملغي', 'تم تحويله لمشروع'))
     ).count()
-    recent_projects = InstallProject.query.order_by(InstallProject.created_at.desc()).limit(5).all()
+    recent_projects = tenant_query(InstallProject).order_by(InstallProject.created_at.desc()).limit(5).all()
     return render_template(
         'installation/index.html',
         lead_count=lead_count,
@@ -223,7 +224,7 @@ def index():
 
 @install_bp.route('/projects')
 def projects_list():
-    projects = InstallProject.query.order_by(InstallProject.created_at.desc()).all()
+    projects = tenant_query(InstallProject).order_by(InstallProject.created_at.desc()).all()
     return render_template(
         'installation/projects.html',
         projects=projects,
@@ -234,7 +235,7 @@ def projects_list():
 
 @install_bp.route('/projects/<int:project_id>')
 def project_detail(project_id):
-    project = InstallProject.query.get_or_404(project_id)
+    project = tenant_get_or_404(InstallProject, project_id)
     quotations = project.quotations.order_by(InstallQuotation.created_at.desc()).all()
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
     progress = timeline_progress(steps) if project.execution_active else 0
@@ -254,7 +255,7 @@ def project_detail(project_id):
 
 @install_bp.route('/projects/<int:project_id>/quote')
 def project_quote(project_id):
-    project = InstallProject.query.get_or_404(project_id)
+    project = tenant_get_or_404(InstallProject, project_id)
     if project.execution_active:
         flash('التنفيذ بدأ — لا يمكن تعديل التسعير. افتح جدول التنفيذ أو التقرير.', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
@@ -271,7 +272,7 @@ def project_quote(project_id):
     quotation = None
     saved = None
     if quotation_id:
-        quotation = InstallQuotation.query.filter_by(id=quotation_id, project_id=project.id).first_or_404()
+        quotation = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
         if quotation.status == 'مقبول':
             flash('هذا العرض مقبول — افتح صفحة التنفيذ', 'error')
             return redirect(url_for('installation.project_execution', project_id=project.id))
@@ -301,7 +302,7 @@ def project_quote(project_id):
 
 @install_bp.route('/projects/<int:project_id>/quote/save', methods=['POST'])
 def project_quote_save(project_id):
-    project = InstallProject.query.get_or_404(project_id)
+    project = tenant_get_or_404(InstallProject, project_id)
     data = request.get_json(silent=True) or {}
     lines = data.get('lines') or []
     if not lines:
@@ -311,7 +312,7 @@ def project_quote_save(project_id):
     if not customer_id:
         return jsonify({'ok': False, 'error': 'اختر عميلاً مسجّلاً من قائمة العملاء'}), 400
 
-    customer = Customer.query.get(customer_id)
+    customer = tenant_query(Customer).filter_by(id=customer_id).first()
     if not customer:
         return jsonify({'ok': False, 'error': 'العميل غير موجود — أضفه من صفحة العملاء أولاً'}), 400
 
@@ -320,7 +321,7 @@ def project_quote_save(project_id):
 
     quotation_id = data.get('quotation_id')
     if quotation_id:
-        q = InstallQuotation.query.filter_by(id=quotation_id, project_id=project.id).first()
+        q = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first()
         if not q:
             return jsonify({'ok': False, 'error': 'عرض السعر غير موجود'}), 404
         for ln in list(q.lines):
@@ -330,6 +331,7 @@ def project_quote_save(project_id):
             code=_next_code(InstallQuotation, 'Q-', 4),
             project_id=project.id,
         )
+        assign_organization(q)
         db.session.add(q)
 
     q.customer_id = customer.id
@@ -361,7 +363,7 @@ def project_quote_save(project_id):
         qty = float(row.get('qty') or 0)
         price = float(row.get('price') or 0)
         materials += qty * price
-        db.session.add(InstallQuotationLine(
+        line = InstallQuotationLine(
             quotation=q,
             stage=(row.get('stage') or '').strip(),
             name=(row.get('name') or 'بند').strip(),
@@ -369,7 +371,9 @@ def project_quote_save(project_id):
             qty=qty,
             unit_price=price,
             sort_order=i,
-        ))
+        )
+        assign_organization(line)
+        db.session.add(line)
 
     cost = materials + q.labor + q.transport + q.other_costs
     profit = cost * q.profit_pct / 100
@@ -396,8 +400,8 @@ def project_quote_save(project_id):
 
 @install_bp.route('/projects/<int:project_id>/quotes/<int:quotation_id>/send', methods=['POST'])
 def quote_send(project_id, quotation_id):
-    project = InstallProject.query.get_or_404(project_id)
-    q = InstallQuotation.query.filter_by(id=quotation_id, project_id=project.id).first_or_404()
+    project = tenant_get_or_404(InstallProject, project_id)
+    q = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
     if q.status == 'مقبول':
         flash('لا يمكن تعديل عرض مقبول', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
@@ -411,8 +415,8 @@ def quote_send(project_id, quotation_id):
 
 @install_bp.route('/projects/<int:project_id>/quotes/<int:quotation_id>/cancel', methods=['POST'])
 def quote_cancel(project_id, quotation_id):
-    project = InstallProject.query.get_or_404(project_id)
-    q = InstallQuotation.query.filter_by(id=quotation_id, project_id=project.id).first_or_404()
+    project = tenant_get_or_404(InstallProject, project_id)
+    q = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
     if q.status == 'مقبول':
         flash('لا يمكن إلغاء عرض مقبول — المشروع في مرحلة التنفيذ', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
@@ -430,8 +434,8 @@ def quote_cancel(project_id, quotation_id):
 
 @install_bp.route('/projects/<int:project_id>/quotes/<int:quotation_id>/approve', methods=['POST'])
 def quote_approve(project_id, quotation_id):
-    project = InstallProject.query.get_or_404(project_id)
-    q = InstallQuotation.query.filter_by(id=quotation_id, project_id=project.id).first_or_404()
+    project = tenant_get_or_404(InstallProject, project_id)
+    q = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
     if not project.customer_id and not q.customer_id:
         flash('اربط المشروع بعميل مسجّل قبل قبول العرض', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
@@ -459,7 +463,7 @@ def quote_approve(project_id, quotation_id):
 
 @install_bp.route('/projects/<int:project_id>/execution')
 def project_execution(project_id):
-    project = InstallProject.query.get_or_404(project_id)
+    project = tenant_get_or_404(InstallProject, project_id)
     if not project.execution_active:
         flash('ابدأ التنفيذ بقبول عرض سعر من صفحة المشروع', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
@@ -503,8 +507,8 @@ def project_execution(project_id):
 
 @install_bp.route('/projects/<int:project_id>/timeline/<int:step_id>/update', methods=['POST'])
 def timeline_step_update(project_id, step_id):
-    project = InstallProject.query.get_or_404(project_id)
-    step = InstallTimelineStep.query.filter_by(id=step_id, project_id=project.id).first_or_404()
+    project = tenant_get_or_404(InstallProject, project_id)
+    step = tenant_query(InstallTimelineStep).filter_by(id=step_id, project_id=project.id).first_or_404()
     old_status = step.status
     status = (request.form.get('status') or '').strip()
     if status in TIMELINE_STEP_STATUSES:
@@ -606,7 +610,7 @@ def _handover_context(project):
 @install_bp.route('/projects/<int:project_id>/handover')
 def project_handover(project_id):
     from installation.handover import HANDOVER_CHECKLIST, HANDOVER_TERMS
-    project = InstallProject.query.get_or_404(project_id)
+    project = tenant_get_or_404(InstallProject, project_id)
     if not project.execution_active or not project.accepted_quotation:
         flash('محضر الاستلام متاح بعد قبول العرض وبدء التنفيذ', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
@@ -623,11 +627,11 @@ def project_handover(project_id):
 
 @install_bp.route('/projects/<int:project_id>/timeline/<int:step_id>/edit', methods=['GET', 'POST'])
 def timeline_step_edit(project_id, step_id):
-    project = InstallProject.query.get_or_404(project_id)
+    project = tenant_get_or_404(InstallProject, project_id)
     if not project.execution_active:
         flash('التعديل متاح بعد بدء التنفيذ', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
-    step = InstallTimelineStep.query.filter_by(id=step_id, project_id=project.id).first_or_404()
+    step = tenant_query(InstallTimelineStep).filter_by(id=step_id, project_id=project.id).first_or_404()
     return_to = request.args.get('return') or request.form.get('return') or 'report'
     if request.method == 'POST':
         old_status = step.status
@@ -683,7 +687,7 @@ def timeline_step_edit(project_id, step_id):
 
 @install_bp.route('/projects/<int:project_id>/report')
 def project_report(project_id):
-    project = InstallProject.query.get_or_404(project_id)
+    project = tenant_get_or_404(InstallProject, project_id)
     if not project.execution_active:
         flash('التقرير متاح بعد قبول العرض وبدء التنفيذ', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
@@ -702,7 +706,7 @@ def project_report(project_id):
 @install_bp.route('/quotes/<int:quotation_id>/print')
 def quote_print(quotation_id):
     from installation.catalog import origin_label_from_spec
-    q = InstallQuotation.query.get_or_404(quotation_id)
+    q = tenant_get_or_404(InstallQuotation, quotation_id)
     spec = q.spec()
     dims = {
         'shaft_w': _dim_to_cm(spec.get('shaft_width')),
@@ -727,7 +731,7 @@ def quote_print(quotation_id):
 
 @install_bp.route('/leads')
 def leads_list():
-    leads = InstallLead.query.order_by(InstallLead.created_at.desc()).all()
+    leads = tenant_query(InstallLead).order_by(InstallLead.created_at.desc()).all()
     customers = _active_customers()
     return render_template(
         'installation/leads.html',
@@ -747,7 +751,7 @@ def leads_add():
     if not customer_id:
         flash('اختر عميلاً مسجّلاً من جدول العملاء أولاً', 'error')
         return redirect(url_for('installation.leads_list'))
-    customer = Customer.query.get(customer_id)
+    customer = tenant_query(Customer).filter_by(id=customer_id).first()
     if not customer:
         flash('العميل غير موجود — أضفه من صفحة العملاء', 'error')
         return redirect(url_for('installation.leads_list'))
@@ -769,6 +773,7 @@ def leads_add():
     )
     if lead.status not in LEAD_STATUSES:
         lead.status = 'جديد'
+    assign_organization(lead)
     db.session.add(lead)
     db.session.commit()
     flash(f'تم إنشاء الفرصة {lead.code}', 'success')
@@ -777,7 +782,7 @@ def leads_add():
 
 @install_bp.route('/leads/<int:lead_id>/status', methods=['POST'])
 def leads_status(lead_id):
-    lead = InstallLead.query.get_or_404(lead_id)
+    lead = tenant_get_or_404(InstallLead, lead_id)
     status = (request.form.get('status') or '').strip()
     if status in LEAD_STATUSES:
         lead.status = status
@@ -787,7 +792,7 @@ def leads_status(lead_id):
 
 @install_bp.route('/leads/<int:lead_id>/cancel', methods=['POST'])
 def leads_cancel(lead_id):
-    lead = InstallLead.query.get_or_404(lead_id)
+    lead = tenant_get_or_404(InstallLead, lead_id)
     if lead.status == 'ملغي':
         flash('هذه الفرصة ملغاة مسبقاً', 'error')
         return redirect(url_for('installation.leads_list'))
@@ -802,7 +807,7 @@ def leads_cancel(lead_id):
 
 @install_bp.route('/leads/<int:lead_id>/convert', methods=['POST'])
 def leads_convert(lead_id):
-    lead = InstallLead.query.get_or_404(lead_id)
+    lead = tenant_get_or_404(InstallLead, lead_id)
     if lead.status == 'تم تحويله لمشروع' and lead.project:
         flash('هذه الفرصة مُحوّلة مسبقاً', 'error')
         return redirect(url_for('installation.project_detail', project_id=lead.project.id))
@@ -814,6 +819,7 @@ def leads_convert(lead_id):
         customer_id=lead.customer_id,
         notes=lead.notes,
     )
+    assign_organization(project)
     db.session.add(project)
     lead.status = 'تم تحويله لمشروع'
     db.session.commit()

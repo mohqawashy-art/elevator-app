@@ -7,15 +7,26 @@ init_db.py
 """
 
 from app import app, db, hash_password
-from models import User, Settings
+from models import Organization, Settings, User
 
 with app.app_context():
     # إنشاء كل الجداول
     db.create_all()
     print("[OK] Database tables created")
 
+    org = Organization.query.filter_by(slug='default').first()
+    if not org:
+        org = Organization(
+            slug='default',
+            name='LiftCore Default',
+            status='active',
+        )
+        db.session.add(org)
+        db.session.flush()
+        print("[OK] Default organization created")
+
     # إضافة مستخدم admin إذا مش موجود
-    if not User.query.filter_by(username='admin').first():
+    if not User.query.filter_by(username='admin', organization_id=org.id).first():
         admin = User(
             username   = 'admin',
             password_hash = hash_password('admin123'),
@@ -24,12 +35,13 @@ with app.app_context():
             role       = 'admin',
             is_active  = True,
             must_change_password = True,
+            organization_id = org.id,
         )
         db.session.add(admin)
         print("[OK] Admin user created: admin / admin123")
 
     # إعدادات افتراضية
-    if not Settings.query.first():
+    if not Settings.query.filter_by(organization_id=org.id).first():
         settings = Settings(
             company_name    = 'شركة جما تقنية للمصاعد',
             company_name_en = 'Jama Elevator Technology Co.',
@@ -39,6 +51,7 @@ with app.app_context():
             tax_pct         = 15,
             currency        = 'ر.س',
             language        = 'ar',
+            organization_id = org.id,
         )
         db.session.add(settings)
         print("[OK] Default settings added")

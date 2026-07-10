@@ -1,7 +1,7 @@
 # LiftCore — دليل التحويل الكامل إلى Multi-Tenant
 
 **آخر تحديث:** يوليو 2026  
-**الحالة:** خطة تنفيذ — لم يُنفَّذ بعد  
+**الحالة:** كود التطبيق مكتمل تقريباً — **cutover الإنتاج معلّق** (DNS/PostgreSQL/ترحيل `app`)  
 **الجمهور:** مطوّر LiftCore / مسؤول النشر
 
 > **مرافق إلزامي:** [`docs/CURSOR-RECOMMENDATIONS-MULTI-TENANT.md`](CURSOR-RECOMMENDATIONS-MULTI-TENANT.md)  
@@ -21,9 +21,9 @@
 
 ### الوضع الحالي (Multi-Instance)
 
-كل عميل = **نسخة منفصلة** من التطبيق:
+كل عميل = **نسخة منفصلة** من التطبيق (نموذج قديم — يُلغى):
 
-- مجلد كود خاص (`~/liftcore/jama-elevator-app`)
+- مجلد كود خاص (`~/liftcore/jama-elevator-app`) — **كان لاختبار جما فقط**
 - قاعدة SQLite منفصلة (`jama.db`)
 - خدمة systemd منفصلة (`liftcore-jama`)
 - موقع nginx منفصلة (`jama.liftcoreapp.com`)
@@ -49,6 +49,21 @@
 | تحديث كود لكل نسخة | `git pull` مرة واحدة |
 | منافس يوعد «15 دقيقة» | نفس التجربة ممكنة |
 
+### ⚠️ توضيح مهم: «جما» ليست عميلاً حقيقياً
+
+| الاسم | الدور | بعد Multi-Tenant |
+|-------|------|------------------|
+| **`app` / `liftcore`** | الإنتاج الفعلي — بيانات الشركة الحقيقية | tenant إنتاجي (`slug`: `app` أو `liftcore`) |
+| **`jama`** | **بيئة اختبار / demo / QA فقط** — ليس عميل B2B مدفوع | tenant تجريبي (`slug`: `jama`) من `seed_data` أو نسخة اختبار |
+| **عميل جديد** | شركة مسجّلة عبر `/signup` | tenant جديد (`slug` يختاره العميل) |
+
+**ما يعنيه ذلك للخطة:**
+
+- لا نُبقي نموذج «عميل = سيرفر منفصل» لأن جما موجودة — كان ذلك **للتجارب فقط**.
+- ترحيل `jama.db` **اختياري**؛ يكفي tenant `jama` ببيانات demo بعد التحويل.
+- `jama.liftcoreapp.com` في DNS **للاختبار** — ليس شرطاً لكل عميل حقيقي.
+- أول **عميل مدفوع حقيقي** = أول تسجيل ناجح من `/signup` (مثال: `ahmed.liftcoreapp.com`).
+
 ---
 
 ## 2. قرارات معمارية (ثابتة قبل البدء)
@@ -62,6 +77,7 @@
 | 5 | رفع الملفات | مجلد لكل عميل: `uploads/{slug}/` | bucket منفصل لكل عميل — لاحقاً |
 | 6 | uniqueness | مركّب: `(organization_id, code)` | unique عالمي — يتعارض بين العملاء |
 | 7 | العملاء الحاليون | ترحيل إلى tenants | الإبقاء على النموذج القديم — ازدواجية |
+| 8 | tenant `jama` | **QA / demo فقط** — ليس عميلاً حقيقياً | لا يُعامل كعميل B2B في التسويق أو الفوترة |
 
 ---
 
@@ -585,20 +601,43 @@ pg_dump -Fc liftcore > /var/backups/liftcore/liftcore_$(date +%Y%m%d).dump
 
 ---
 
-## 8. ترحيل العملاء الحاليين
+## 8. ترحيل البيانات الحالية
+
+### 8.0 أولوية الترحيل
+
+| الأولوية | Tenant | المصدر | ملاحظة |
+|----------|--------|--------|--------|
+| **1 — إلزامي** | `default` | `instance/liftcore.db` | الإنتاج — `app.liftcoreapp.com` يربط `slug=default` |
+| **2 — اختياري** | `jama` | `seed_data.py` أو `jama.db` | **demo/QA فقط** — ليس عميلاً مدفوعاً |
+| **3 — لاحقاً** | من `/signup` | — | أول عميل B2B حقيقي |
+
+> **لا تستخدم** `--slug app`: `app` ضمن `MARKETING_SLUGS` ولا يُنشئ tenant منفصل.
 
 ### 8.1 سكربت مقترح: `scripts/migrate_instance_to_tenant.py`
+
+**مثال — إنتاج (`liftcore.db` → slug `default`):**
+
+```bash
+python scripts/migrate_instance_to_tenant.py \
+  --slug default \
+  --name "LiftCore" \
+  --sqlite /home/USER/liftcore/elevator-app/instance/liftcore.db \
+  --uploads-source /home/USER/liftcore/elevator-app/static/uploads \
+  --dry-run
+```
+
+**مثال — tenant تجريبي `jama` (اختياري — QA فقط):**
 
 ```bash
 python scripts/migrate_instance_to_tenant.py \
   --slug jama \
-  --name "جما لتقنية المصاعد" \
+  --name "جما — بيئة اختبار" \
   --sqlite /home/USER/liftcore/jama-elevator-app/instance/jama.db \
   --uploads-source /home/USER/liftcore/jama-elevator-app/static/uploads \
   --dry-run
-
-python scripts/migrate_instance_to_tenant.py ... # بدون --dry-run
 ```
+
+أو بعد التحويل: `python seed_data.py` داخل tenant `jama` بدون ترحيل SQLite قديم.
 
 **خطوات السكربت:**
 
@@ -613,26 +652,29 @@ python scripts/migrate_instance_to_tenant.py ... # بدون --dry-run
 
 ### 8.2 ترتيب الترحيل الموصى به
 
-| # | Tenant | المصدر |
-|---|--------|--------|
-| 1 | `liftcore` | `instance/liftcore.db` (المنصة الرئيسية) |
-| 2 | `jama` | `jama-elevator-app/instance/jama.db` |
+| # | Tenant | المصدر | الغرض |
+|---|--------|--------|--------|
+| 1 | `default` | `instance/liftcore.db` | إنتاج (`app.liftcoreapp.com`) |
+| 2 | `jama` | `seed_data` أو `jama.db` (اختياري) | **اختبار / regression فقط** |
 
 ### 8.3 التحقق بعد الترحيل
 
 ```bash
+bash deploy/verify_deploy.sh https://app.liftcoreapp.com
+python scripts/verify_production_ops.py --url https://app.liftcoreapp.com
+# اختبار QA على tenant demo:
 bash deploy/verify_deploy.sh https://jama.liftcoreapp.com
-python scripts/verify_production_ops.py --url https://jama.liftcoreapp.com
 pytest tests/test_tenant_isolation.py -q
 ```
 
 **يدوياً:**
 
-- [ ] تسجيل دخول admin جما
+- [ ] تسجيل دخول tenant الإنتاج (`app`)
 - [ ] عدد العملاء = العدد قبل الترحيل
 - [ ] صورة مبنى تظهر
 - [ ] فني ميداني `/field/login`
-- [ ] tenant آخر لا يرى بيانات جما (اختبار عزل)
+- [ ] tenant `jama` (demo) يعمل للاختبارات
+- [ ] tenant إنتاج لا يرى بيانات tenant demo (اختبار عزل)
 
 ---
 
@@ -649,7 +691,7 @@ pytest tests/test_tenant_isolation.py -q
 | **5** | تعديل `app.py` (عملاء، مصاعد، عقود، صيانة) | 50% routes |
 | **6** | تقارير + فوترة + فني + uploads + **`zatca_credentials`** | 100% routes + زاتكا |
 | **7** | `/signup` + بريد — **فقط بعد خضرة اختبارات العزل** | تسجيل محدود ثم عام |
-| **8** | ترحيل jama + liftcore + staging | بيانات حية |
+| **8** | ترحيل `app` + tenant demo `jama` (اختياري) + staging | بيانات حية |
 | **9** | cutover إنتاج + إيقاف multi-instance | عميل = حساب |
 | **10** | مراقبة + توثيق + «تصدير بياناتي» | إغلاق |
 
@@ -773,26 +815,30 @@ pg_dump -Fc liftcore > liftcore.pre-cutover.dump
 
 ---
 
-## 13. سيناريو عميل جديد «جما» (بعد التحويل)
+## 13. سيناريوهات بعد التحويل
+
+### 13.1 عميل حقيقي جديد (مثال: شركة أحمد)
 
 ```
-1. مدير جما يفتح https://liftcoreapp.com/signup
+1. يفتح https://liftcoreapp.com/signup
 2. يملأ:
-     - اسم الشركة: جما لتقنية المصاعد
-     - الرابط: jama  →  jama.liftcoreapp.com
+     - اسم الشركة: شركة أحمد للمصاعد
+     - الرابط: ahmed  →  ahmed.liftcoreapp.com
      - الإيميل + كلمة المرور
-3. خلال ~30 ثانية:
-     - INSERT INTO organizations ...
-     - INSERT INTO users ...
-     - INSERT INTO settings ...
-     - إيميل: «حسابك جاهز»
-4. يدخل https://jama.liftcoreapp.com/login
-5. العملاء → استيراد Excel
-6. المصاعد → استيراد Excel
-7. يبدأ العمل — بدون SSH، بدون انتظارك
+3. خلال ~30 ثانية: organization + user + settings + إيميل ترحيب
+4. يدخل https://ahmed.liftcoreapp.com/login
+5. استيراد Excel → يبدأ العمل
 ```
 
-**أنت (اختياري):** استيراد بيانات قديمة عبر سكربت أو دعم يدوي — ليس شرطاً للتشغيل.
+### 13.2 tenant تجريبي `jama` (QA — ليس عميلاً B2B)
+
+```
+- slug: jama
+- الغرض: regression، اختبار يدوي، عرض demo
+- البيانات: seed_data أو نسخة من jama.db القديمة
+- URL: https://jama.liftcoreapp.com (اختياري في DNS)
+- لا يُستخدم كمثال لعميل مدفوع في التسويق
+```
 
 ---
 
@@ -805,7 +851,7 @@ pg_dump -Fc liftcore > liftcore.pre-cutover.dump
 | فواتير ببيانات زاتكا خاطئة | عالٍ | `zatca_credentials` per tenant + حارس 422 |
 | فشل SSL بعد 90 يوم | متوسط | Cloud DNS + `certbot renew --dry-run` |
 | `SECRET_KEY` ضعيف / مشترك | حرج | إزالة fallback في أسبوع 1 |
-| تعطل جما أثناء الترحيل | متوسط | staging + rollback plan |
+| تعطل الإنتاج أثناء الترحيل | متوسط | staging + rollback plan |
 | بطء PostgreSQL | منخفض | indexes على `organization_id` |
 | تعارض usernames بين tenants | منخفض | unique مركّب |
 | حجم `app.py` | موجود | `tenant_scope.py` + ت refactor تدريجي |
@@ -827,32 +873,59 @@ pg_dump -Fc liftcore > liftcore.pre-cutover.dump
 | `models.py` | إضافة Organization + organization_id |
 | `tenant_scope.py` | **جديد** — عزل الاستعلامات |
 | `scripts/migrate_instance_to_tenant.py` | **جديد** — ترحيل SQLite |
+| `deploy/cutover_multitenant.sh` | **جديد** — orchestrator cutover (phases 0/1/8) |
 | `tests/test_tenant_isolation.py` | **جديد** — اختبارات عزل |
 
 ---
 
 ## 16. تعريف «تم التحويل» (Definition of Done)
 
-- [ ] عميل جديد يسجّل من `/signup` بدون تدخل يدوي
-- [ ] `jama.liftcoreapp.com` يعمل من PostgreSQL multi-tenant
+### كود / CI (محلي)
+- [x] عميل جديد يسجّل من `/signup` بدون تدخل يدوي (مسار + اختبارات)
+- [x] اختبارات عزل خضراء (بما فيها `test_forgotten_filter_is_still_isolated`)
+- [x] `check_tenant_queries.sh` في CI ويمنع الدمج عند الفشل
+- [x] tenant بدون CSID لا يُصدر فواتير — لا fallback لزاتكا من منصة أخرى
+- [x] لا `SECRET_KEY` fallback في مسار إنتاجي (`LIFTCORE_HTTPS=1`) ولا `debug=True` ثابت
+- [x] `ONBOARDING.md` محدّث (جما = demo؛ العميل الحقيقي عبر `/signup`)
+- [x] `provision_jama.sh` مُعلَّم **DEPRECATED** / demo في التعليقات
+
+### إنتاج / بنية (معلّق — cutover)
+- [ ] `app.liftcoreapp.com` (أو المنتج الإنتاجي) يعمل من PostgreSQL multi-tenant
+- [ ] tenant demo `jama` يعمل للاختبارات (اختياري — ليس عميل B2B)
 - [ ] لا خدمة `liftcore-jama` منفصلة على الإنتاج
-- [ ] اختبارات عزل خضراء (بما فيها `test_forgotten_filter_is_still_isolated`)
-- [ ] `check_tenant_queries.sh` في CI ويمنع الدمج عند الفشل
-- [ ] tenant بدون CSID لا يُصدر فواتير — لا fallback لزاتكا من منصة أخرى
 - [ ] `certbot renew --dry-run` ناجح
-- [ ] لا `SECRET_KEY` fallback ولا `debug=True` في مسار إنتاجي
 - [ ] استعادة نسخة احتياطية مُجرَّبة على staging
 - [ ] نسخ احتياطي PostgreSQL يومي يعمل
-- [ ] `ONBOARDING.md` محدّث
-- [ ] `provision_jama.sh` مُعلَّم deprecated في التعليقات
 
 ---
 
-## 17. الخطوة التالية
+## 17. الخطوة التالية — أوامر Cutover
 
-1. **أسبوع 1 — بنية فقط:** نفّذ القسم 7 على السيرفر بدون تغيير كود
-2. **أسبوع 2 — أول كود:** `Organization` + `resolve_tenant()` + `test_tenant_isolation.py`
-3. راجع هذا الملف مع كل مرحلة وحدّث حالة البنود في القسم 16
+على السيرفر (بعد دفع الكود إلى `main`):
+
+```bash
+cd ~/liftcore/elevator-app && git pull origin main
+
+# 0) نقطة رجوع
+bash deploy/cutover_multitenant.sh --phase 0
+
+# 1) بنية: checkpoint + PostgreSQL + فحوصات
+bash deploy/cutover_multitenant.sh --phase 1
+
+# يدوياً: Cloud DNS wildcard + certbot renew --dry-run + Disk Snapshot
+# ثم أضف DATABASE_URL و SECRET_KEY قوي في /etc/liftcore/platform.env (بدون restart بعد)
+
+export DATABASE_URL=postgresql://liftcore:PASS@127.0.0.1:5432/liftcore
+
+# 8) ترحيل جاف ثم فعلي — tenant default لـ app.liftcoreapp.com
+bash deploy/cutover_multitenant.sh --phase 8 --dry-run
+bash deploy/cutover_multitenant.sh --phase 8
+
+sudo systemctl restart liftcore
+bash deploy/verify_deploy.sh https://app.liftcoreapp.com
+```
+
+بعد الاستقرار: أغلق بنود «إنتاج / بنية» في القسم 16، ثم ZATCA Phase 2 (`ROADMAP.md` P3).
 
 ---
 

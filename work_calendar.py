@@ -45,12 +45,13 @@ WEEKDAY_ORDER_AR = [6, 0, 1, 2, 3, 4, 5]
 
 def _get_settings():
     from models import Settings, db
+    from tenant_scope import tenant_query
 
     try:
         from flask import has_app_context
         if not has_app_context():
             return None
-        s = Settings.query.first()
+        s = tenant_query(Settings).first()
     except Exception:
         try:
             db.session.rollback()

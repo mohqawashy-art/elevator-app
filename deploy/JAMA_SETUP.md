@@ -1,5 +1,9 @@
 # تجهيز جما للمصاعد — jama.liftcoreapp.com
 
+> **⚠️ توضيح:** `jama` **بيئة اختبار / demo / QA فقط** — ليست عميل B2B حقيقياً.  
+> بعد Multi-Tenant ستصبح `slug=jama` tenant تجريبي داخل تطبيق واحد (انظر `docs/MULTI-TENANT.md`).  
+> **`provision_jama.sh` DEPRECATED** لتجهيز عملاء جدد — استخدم `/signup` أو دعوة المنصة.
+
 ## المتطلبات
 - DNS: `jama` → `A` → `34.18.56.21` ✅
 - SSH على السيرفر (GCP Console)

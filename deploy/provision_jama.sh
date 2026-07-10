@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# LiftCore — تجهيز نسخة جما (قاعدة بيانات منفصلة + خدمة + Nginx)
-# شغّل من GCP Console SSH:
+# DEPRECATED — لا تستخدم لتجهيز عملاء جدد.
+# البديل بعد Multi-Tenant: تسجيل من /signup أو دعوة من لوحة المنصة.
+# ⚠️ جما = بيئة اختبار/demo فقط — ليست عميل B2B. يُستبدل بـ tenant demo.
+# شغّل من GCP Console SSH (للتراجع/الصيانة فقط):
 #   cd ~/liftcore/elevator-app && git pull origin main
 #   bash deploy/provision_jama.sh
 

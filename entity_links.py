@@ -6,6 +6,7 @@ from datetime import date
 
 from models import Contract, ContractElevator, Customer, Elevator, Fault, MaintenanceVisit, PartsBilling
 import re
+from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
 
 def normalize_code(code: str, prefix: str) -> str:
@@ -24,36 +25,36 @@ def lookup_visit(code: str) -> MaintenanceVisit | None:
     norm = normalize_code(code, 'VI-')
     if not norm:
         return None
-    return MaintenanceVisit.query.filter_by(code=norm).first()
+    return tenant_query(MaintenanceVisit).filter_by(code=norm).first()
 
 
 def lookup_fault(code: str) -> Fault | None:
     norm = normalize_code(code, 'FA-')
     if not norm:
         return None
-    return Fault.query.filter_by(code=norm).first()
+    return tenant_query(Fault).filter_by(code=norm).first()
 
 
 def active_contract_for_elevator(elevator_id: int, on_date: date | None = None) -> Contract | None:
     """أحدث عقد نشط يربط المصعد (أو عقد العميل) في التاريخ المحدد."""
     if not elevator_id:
         return None
-    elev = Elevator.query.get(elevator_id)
+    elev = tenant_query(Elevator).filter_by(id=elevator_id).first()
     if not elev:
         return None
     on_date = on_date or date.today()
 
-    links = ContractElevator.query.filter_by(elevator_id=elevator_id).all()
+    links = tenant_query(ContractElevator).filter_by(elevator_id=elevator_id).all()
     contract_ids = [lk.contract_id for lk in links]
     if contract_ids:
         contracts = (
-            Contract.query.filter(Contract.id.in_(contract_ids))
+            tenant_query(Contract).filter(Contract.id.in_(contract_ids))
             .order_by(Contract.end_date.desc())
             .all()
         )
     else:
         contracts = (
-            Contract.query.filter_by(customer_id=elev.customer_id)
+            tenant_query(Contract).filter_by(customer_id=elev.customer_id)
             .order_by(Contract.end_date.desc())
             .all()
         )
@@ -97,7 +98,7 @@ def contract_by_code(code: str) -> Contract | None:
             if variant in seen:
                 continue
             seen.add(variant)
-            found = Contract.query.filter_by(code=variant).first()
+            found = tenant_query(Contract).filter_by(code=variant).first()
             if found:
                 return found
         return None
@@ -105,14 +106,14 @@ def contract_by_code(code: str) -> Contract | None:
         return contract_by_code(f'CN-{code}')
     if code.startswith('CN') and not code.startswith('CN-'):
         return contract_by_code('CN-' + code[2:].lstrip('-'))
-    return Contract.query.filter_by(code=code).first()
+    return tenant_query(Contract).filter_by(code=code).first()
 
 
 def customer_by_name(name: str) -> Customer | None:
     name = (name or '').strip()
     if not name:
         return None
-    return Customer.query.filter(Customer.name == name).first()
+    return tenant_query(Customer).filter(Customer.name == name).first()
 
 
 def resolve_parts_links(
@@ -136,8 +137,8 @@ def resolve_parts_links(
     vid = int(visit_id) if visit_id else None
     fid = int(fault_id) if fault_id else None
 
-    visit = MaintenanceVisit.query.get(vid) if vid else None
-    fault = Fault.query.get(fid) if fid else None
+    visit = tenant_query(MaintenanceVisit).filter_by(id=vid).first() if vid else None
+    fault = tenant_query(Fault).filter_by(id=fid).first() if fid else None
     if not visit and visit_code:
         visit = lookup_visit(visit_code)
     if not fault and fault_code:
@@ -152,12 +153,12 @@ def resolve_parts_links(
         elev_id = elev_id or fault.elevator_id
         tech_id = tech_id or fault.technician_id
         if not visit and fault.visit_id:
-            visit = MaintenanceVisit.query.get(fault.visit_id)
+            visit = tenant_query(MaintenanceVisit).filter_by(id=fault.visit_id).first()
             if visit:
                 vid = visit.id
                 cid = cid or visit.contract_id
 
-    contract = Contract.query.get(cid) if cid else None
+    contract = tenant_query(Contract).filter_by(id=cid).first() if cid else None
     if not contract and contract_code:
         contract = contract_by_code(contract_code)
     if contract:
@@ -170,23 +171,23 @@ def resolve_parts_links(
             cust_id = cust.id
 
     if not cid and cust_id:
-        cust = Customer.query.get(cust_id)
+        cust = tenant_query(Customer).filter_by(id=cust_id).first()
         if cust:
             c = _primary_contract(cust)
             if c:
                 cid = c.id
 
     if not elev_id and cid:
-        link = ContractElevator.query.filter_by(contract_id=cid).first()
+        link = tenant_query(ContractElevator).filter_by(contract_id=cid).first()
         if link:
             elev_id = link.elevator_id
     if not elev_id and cust_id:
-        elev = Elevator.query.filter_by(customer_id=cust_id).first()
+        elev = tenant_query(Elevator).filter_by(customer_id=cust_id).first()
         if elev:
             elev_id = elev.id
 
     if not cust_id and elev_id:
-        elev = Elevator.query.get(elev_id)
+        elev = tenant_query(Elevator).filter_by(id=elev_id).first()
         if elev:
             cust_id = elev.customer_id
 
@@ -215,7 +216,7 @@ def link_fault_to_visit(fault: Fault, visit: MaintenanceVisit) -> None:
 def _primary_contract(customer: Customer) -> Contract | None:
     today = date.today()
     contracts = (
-        Contract.query.filter_by(customer_id=customer.id)
+        tenant_query(Contract).filter_by(customer_id=customer.id)
         .order_by(Contract.end_date.desc())
         .all()
     )
@@ -264,10 +265,10 @@ def fault_parts_link_fields(f: Fault) -> dict:
     visit_code = _code_from_text(combined, 'VI')
     cn_code = _code_from_text(combined, 'CN')
 
-    visit = MaintenanceVisit.query.get(f.visit_id) if f.visit_id else None
+    visit = tenant_query(MaintenanceVisit).filter_by(id=f.visit_id).first() if f.visit_id else None
     if not visit:
         visit = (
-            MaintenanceVisit.query.filter_by(fault_id=f.id)
+            tenant_query(MaintenanceVisit).filter_by(fault_id=f.id)
             .order_by(MaintenanceVisit.visit_date.desc(), MaintenanceVisit.id.desc())
             .first()
         )
@@ -279,15 +280,15 @@ def fault_parts_link_fields(f: Fault) -> dict:
         f.reported_at.date() if f.reported_at else None
     )
 
-    contract = Contract.query.get(visit.contract_id) if visit and visit.contract_id else None
+    contract = tenant_query(Contract).filter_by(id=visit.contract_id).first() if visit and visit.contract_id else None
     if not contract and cn_code:
         contract = contract_by_code(cn_code)
     if not contract and elev:
         contract = active_contract_for_elevator(elev.id, ref_date)
     if not contract and elev:
-        link = ContractElevator.query.filter_by(elevator_id=elev.id).first()
+        link = tenant_query(ContractElevator).filter_by(elevator_id=elev.id).first()
         if link:
-            contract = Contract.query.get(link.contract_id)
+            contract = tenant_query(Contract).filter_by(id=link.contract_id).first()
 
     resolved_visit_code = visit.code if visit else (visit_code or '')
     resolved_cn = contract.code if contract else (cn_code or '')
@@ -308,15 +309,15 @@ def fault_parts_link_fields(f: Fault) -> dict:
 
 
 def elevator_link_payload(elevator_id: int) -> dict:
-    elev = Elevator.query.get_or_404(elevator_id)
+    elev = tenant_get_or_404(Elevator, elevator_id)
     contract_ids = [
-        lk.contract_id for lk in ContractElevator.query.filter_by(elevator_id=elevator_id).all()
+        lk.contract_id for lk in tenant_query(ContractElevator).filter_by(elevator_id=elevator_id).all()
     ]
     if contract_ids:
-        contracts = Contract.query.filter(Contract.id.in_(contract_ids)).order_by(Contract.end_date.desc()).all()
+        contracts = tenant_query(Contract).filter(Contract.id.in_(contract_ids)).order_by(Contract.end_date.desc()).all()
     else:
         contracts = (
-            Contract.query.filter_by(customer_id=elev.customer_id)
+            tenant_query(Contract).filter_by(customer_id=elev.customer_id)
             .order_by(Contract.end_date.desc())
             .all()
         )

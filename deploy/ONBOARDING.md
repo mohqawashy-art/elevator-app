@@ -1,5 +1,8 @@
 # LiftCore — Onboarding عميل جديد
 
+> **ملاحظة:** `jama.liftcoreapp.com` = **بيئة اختبار (demo)** وليس عميلاً مدفوعاً.  
+> العميل الحقيقي الجديد يُسجَّل عبر `/signup` بعد Multi-Tenant (`docs/MULTI-TENANT.md`).
+
 ## 1. محلياً (التطوير)
 
 ```bat
@@ -87,7 +90,7 @@ bash deploy/verify_deploy.sh https://client.liftcoreapp.com
 | عملاء | Excel من `/clients` → استيراد |
 | مصاعد | `/elevators` → قالب Excel |
 | عقود | scripts/import أو يدوي |
-| جما demo | `scripts/reset_jama_demo.py` |
+| جما demo (اختبار QA فقط — ليس عميل B2B) | `scripts/reset_jama_demo.py` |
 
 ## 4. قرارات المنتج (ثابتة حتى P3)
 

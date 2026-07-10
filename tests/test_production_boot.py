@@ -46,6 +46,28 @@ def test_production_rejects_weak_secret_subprocess():
     assert 'SECRET_KEY' in (proc.stderr + proc.stdout)
 
 
+def test_production_rejects_missing_secret_subprocess():
+    """بدون SECRET_KEY في الإنتاج — فشل فوري بلا fallback."""
+    code = """
+import os
+os.environ['LIFTCORE_HTTPS'] = '1'
+# سلسلة فارغة تمنع .env من ملء المفتاح (override فقط إن غاب المفتاح)
+os.environ['SECRET_KEY'] = ''
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+from app import app  # noqa: F401
+"""
+    proc = subprocess.run(
+        [sys.executable, '-c', code],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        stdin=subprocess.DEVNULL,
+    )
+    assert proc.returncode != 0
+    assert 'SECRET_KEY' in (proc.stderr + proc.stdout)
+
+
 def test_flask_migrate_importable():
     import flask_migrate  # noqa: F401
 

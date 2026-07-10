@@ -100,7 +100,21 @@ def _resolve_database_uri():
 # =============================================
 # الإعدادات
 # =============================================
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'liftcore-secret-2025')
+def _resolve_secret_key() -> str:
+    """إنتاج (LIFTCORE_HTTPS): SECRET_KEY إلزامي بلا fallback. تطوير: مفتاح محلي فقط."""
+    key = (os.environ.get('SECRET_KEY') or '').strip()
+    if key:
+        return key
+    https_on = os.environ.get('LIFTCORE_HTTPS', '').strip().lower() in ('1', 'true', 'yes')
+    if https_on:
+        raise RuntimeError(
+            'LiftCore: SECRET_KEY مطلوب في الإنتاج (LIFTCORE_HTTPS=1). '
+            'عيّن متغير البيئة قبل التشغيل — لا يوجد fallback.'
+        )
+    return 'liftcore-secret-2025'
+
+
+app.config['SECRET_KEY'] = _resolve_secret_key()
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or _resolve_database_uri()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -1600,14 +1614,15 @@ def _find_org_for_portal(org_key: str):
     key = (org_key or '').strip()
     if not key:
         return None
-    org = Organization.query.filter(db.func.lower(Organization.slug) == key.lower()).first()
+    # بحث عبر المؤسسات (بوابة الدخول)
+    org = Organization.query.filter(db.func.lower(Organization.slug) == key.lower()).first()  # tenant: platform
     if org:
         return org
-    org = Organization.query.filter(db.func.lower(Organization.name) == key.lower()).first()
+    org = Organization.query.filter(db.func.lower(Organization.name) == key.lower()).first()  # tenant: platform
     if org:
         return org
-    # اسم الشركة من الإعدادات
-    settings_row = Settings.query.filter(db.func.lower(Settings.company_name) == key.lower()).first()
+    # اسم الشركة من الإعدادات — مطابقة عبر كل المؤسسات
+    settings_row = Settings.query.filter(db.func.lower(Settings.company_name) == key.lower()).first()  # tenant: platform
     if settings_row and settings_row.organization_id:
         return db.session.get(Organization, settings_row.organization_id)
     return None
@@ -1617,7 +1632,7 @@ def _find_user_in_org(org_id: int, login_id: str):
     login_id = (login_id or '').strip()
     if not login_id or not org_id:
         return None
-    return User.query.filter(
+    return User.query.filter(  # tenant: platform — org محدد صراحةً
         User.organization_id == org_id,
         User.is_active.is_(True),
         or_(User.username == login_id, db.func.lower(User.email) == login_id.lower()),
@@ -2516,7 +2531,7 @@ def platform_org_reset_password(org_id):
     g._resolving_default_org = True
     try:
         admin = (
-            User.query.filter_by(organization_id=org.id, role='admin', is_active=True)
+            User.query.filter_by(organization_id=org.id, role='admin', is_active=True)  # tenant: platform
             .order_by(User.id.asc())
             .first()
         )
@@ -6357,7 +6372,7 @@ def _parse_reported_at(raw: str | None):
     return None
 
 
-def _apply_fault_billing_from_form(fault, form):
+def _apply_fault_billing_from_form(fault, form, *, is_new: bool = False):
     from operations import (
         apply_fault_parts_billing,
         clear_fault_parts_billing,
@@ -6373,12 +6388,14 @@ def _apply_fault_billing_from_form(fault, form):
             apply_fault_parts_billing(
                 fault, lines, technician_id=fault.technician_id,
             )
-        else:
+        elif not is_new:
             clear_fault_parts_billing(fault.id)
     else:
         fault.needs_parts = False
         fault.billed = False
-        clear_fault_parts_billing(fault.id)
+        # عطل جديد بدون قطع: لا تلمس parts_billing/stock (كانت تسبب فشل الحفظ)
+        if not is_new:
+            clear_fault_parts_billing(fault.id)
 
 
 @app.route('/faults/edit/<int:id>', methods=['POST'])
@@ -6470,7 +6487,7 @@ def fault_add():
             if visit:
                 link_fault_to_visit(f, visit)
 
-        _apply_fault_billing_from_form(f, request.form)
+        _apply_fault_billing_from_form(f, request.form, is_new=True)
         db.session.commit()
     except ValueError as e:
         db.session.rollback()
