@@ -96,6 +96,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
   <div class="tabs" role="tablist">
     <button type="button" class="tab {% if active_tab == 'company' %}active{% endif %}" data-tab="company">الشركة والهوية</button>
     {% if current_user.role == 'admin' %}
+    <button type="button" class="tab {% if active_tab == 'zatca' %}active{% endif %}" data-tab="zatca">الفوترة الإلكترونية</button>
     <button type="button" class="tab {% if active_tab == 'users' %}active{% endif %}" data-tab="users">المستخدمون</button>
     <button type="button" class="tab {% if active_tab == 'field-portal' %}active{% endif %}" data-tab="field-portal">دخول الفني (الجوال)</button>
     <button type="button" class="tab {% if active_tab == 'signatures' %}active{% endif %}" data-tab="signatures">التوقيعات</button>
@@ -283,6 +284,61 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
   </form>
     {% endif %}
   </div>
+
+  <!-- الفوترة الإلكترونية ZATCA -->
+  {% if current_user.role == 'admin' %}
+  <div class="panel {% if active_tab == 'zatca' %}active{% endif %}" id="panel-zatca">
+    <form class="card" method="post" action="{{ url_for('settings_zatca_save') }}">
+      <div class="section">الفوترة الإلكترونية (ZATCA)</div>
+      <p class="hint" style="margin-bottom:14px">
+        المرحلة 1: رمز QR على الفاتورة. المرحلة 2 (مبسّطة): تبليغ sandbox بعد الإصدار.
+        اترك حقول الشهادة فارغة إن لم تتغيّر.
+      </p>
+      <div class="grid">
+        <div>
+          <label>الرقم الضريبي *</label>
+          <input name="zatca_vat_number" required dir="ltr"
+                 value="{{ (zatca_creds.vat_number if zatca_creds else settings.vat_number) or '' }}">
+        </div>
+        <div>
+          <label>السجل التجاري</label>
+          <input name="zatca_cr_number" dir="ltr"
+                 value="{{ (zatca_creds.cr_number if zatca_creds else settings.cr_number) or '' }}">
+        </div>
+        <div>
+          <label>البيئة</label>
+          <select name="zatca_environment">
+            <option value="sandbox" {% if not zatca_creds or (zatca_creds.environment or 'sandbox') == 'sandbox' %}selected{% endif %}>Sandbox</option>
+            <option value="production" {% if zatca_creds and zatca_creds.environment == 'production' %}selected{% endif %}>Production</option>
+          </select>
+        </div>
+        <div>
+          <label>الحالة</label>
+          <select name="zatca_status">
+            <option value="active" {% if not zatca_creds or (zatca_creds.status or 'active') == 'active' %}selected{% endif %}>نشط</option>
+            <option value="pending" {% if zatca_creds and zatca_creds.status == 'pending' %}selected{% endif %}>قيد الإعداد</option>
+            <option value="expired" {% if zatca_creds and zatca_creds.status == 'expired' %}selected{% endif %}>منتهي</option>
+          </select>
+        </div>
+        <div class="full">
+          <label>CSID {% if zatca_creds and zatca_creds.csid %}(محفوظ — اتركه فارغاً للإبقاء){% endif %}</label>
+          <textarea name="zatca_csid" rows="2" dir="ltr" placeholder="الصق CSID هنا"></textarea>
+        </div>
+        <div class="full">
+          <label>الشهادة Certificate {% if zatca_creds and zatca_creds.certificate %}(محفوظة){% endif %}</label>
+          <textarea name="zatca_certificate" rows="3" dir="ltr" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+        </div>
+        <div class="full">
+          <label>المفتاح الخاص Private Key {% if zatca_creds and zatca_creds.private_key %}(محفوظ){% endif %}</label>
+          <textarea name="zatca_private_key" rows="3" dir="ltr" placeholder="-----BEGIN EC PRIVATE KEY-----"></textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">حفظ إعدادات زاتكا</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 
   <!-- التوقيعات -->
   {% if current_user.role == 'admin' %}

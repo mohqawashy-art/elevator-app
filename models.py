@@ -548,6 +548,13 @@ class Invoice(TenantMixin, db.Model):
     parent_invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'))
     revenue_id      = db.Column(db.Integer, db.ForeignKey('revenues.id'))
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+    # ZATCA Phase 2 — تبليغ الفاتورة المبسطة
+    zatca_uuid         = db.Column(db.String(64))
+    zatca_invoice_hash = db.Column(db.String(128))
+    zatca_qr_payload   = db.Column(db.Text)
+    zatca_status       = db.Column(db.String(20))  # draft|reported|failed|skipped
+    zatca_reported_at  = db.Column(db.DateTime)
+    zatca_last_error   = db.Column(db.Text)
 
     customer        = db.relationship('Customer', foreign_keys=[customer_id])
     contract        = db.relationship('Contract', foreign_keys=[contract_id])

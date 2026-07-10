@@ -6890,6 +6890,14 @@ def invoice_add():
             rev.invoice_id = i.id
     sync_contract_invoice_status(i.contract_id)
     db.session.commit()
+    try:
+        from zatca_phase2 import is_simplified_tax_invoice, process_simplified_invoice
+        if is_simplified_tax_invoice(i.invoice_type):
+            process_simplified_invoice(i, get_app_settings())
+            db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('zatca phase2 report failed for %s: %s', i.code, exc)
     return redirect(url_for('invoices'))
 
 @app.route('/invoices/<int:invoice_id>/print')
@@ -8248,6 +8256,8 @@ def settings():
         parse_permissions_extra(edit_user.permissions_extra)
         if edit_user else {'grants': [], 'denies': []}
     )
+    from models import ZatcaCredentials
+    zatca_creds = tenant_query(ZatcaCredentials).first()
     return render_template(
         'settings.html',
         settings=s,
@@ -8267,6 +8277,7 @@ def settings():
         work_days_selected=work_weekdays(s),
         custom_holidays_text='\n'.join(sorted(d.isoformat() for d in custom_holidays(s))),
         extra_work_days_text='\n'.join(sorted(d.isoformat() for d in extra_work_days(s))),
+        zatca_creds=zatca_creds,
     )
 
 
@@ -8385,6 +8396,20 @@ def settings_screensaver_save():
     return _settings_redirect('screensaver')
 
 
+@app.route('/settings/zatca/save', methods=['POST'])
+def settings_zatca_save():
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة لإعداد الفوترة الإلكترونية.'
+        return _settings_redirect('zatca')
+    from zatca_phase2 import save_zatca_credentials_form
+    err = save_zatca_credentials_form(request.form)
+    if err:
+        session['settings_notice'] = err
+        return _settings_redirect('zatca')
+    session['settings_notice'] = 'تم حفظ إعدادات الفوترة الإلكترونية.'
+    return _settings_redirect('zatca', saved=1)
+
+
 @app.route('/settings/save', methods=['POST'])
 def settings_save():
     if not require_admin():
@@ -8447,6 +8472,8 @@ def settings_save():
     s.logo_width_report  = _clamp_logo_width(request.form.get('logo_width_report'), 150)
     s.logo_width_login   = _clamp_logo_width(request.form.get('logo_width_login'), 180, min_w=80, max_w=500)
     _save_company_logo(s, request.files.get('logo'))
+    from zatca_phase2 import sync_zatca_credentials_from_settings
+    sync_zatca_credentials_from_settings(s)
     db.session.commit()
     session['settings_notice'] = 'تم حفظ بيانات الشركة بنجاح.'
     return _settings_redirect('company', saved=1)

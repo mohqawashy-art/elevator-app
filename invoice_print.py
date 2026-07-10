@@ -197,7 +197,9 @@ def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
     show_zatca_qr = False
     if is_tax and not is_receipt and vat_number:
         try:
-            tlv = zatca_phase1_tlv_base64(
+            from zatca_phase2 import qr_tlv_from_invoice
+            stored_tlv = qr_tlv_from_invoice(invo)
+            tlv = stored_tlv or zatca_phase1_tlv_base64(
                 seller_name=company_name,
                 vat_number=vat_number,
                 invoice_date=inv_date,
