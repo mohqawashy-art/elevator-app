@@ -6307,7 +6307,7 @@ def faults():
         Technician.status.in_(['نشط', 'متاح', 'مشغول'])
     ).all()
     pending_wa = session.pop('pending_whatsapp', '')
-    fault_techs = [t for t in technicians if (t.team or 'عام') in ('أعطال', 'عام')] or list(technicians)
+    fault_techs = [t for t in technicians if (t.team or 'عام') in ('أعطال', 'عام', 'صيانة')] or list(technicians)
     return render_template(
         'faults.html',
         faults=faults_list,
@@ -6477,12 +6477,22 @@ def fault_add():
         db.session.rollback()
         flash(str(e), 'error')
         return redirect(url_for('faults'))
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('fault_add failed')
+        flash('تعذّر حفظ العطل — تحقق من البيانات أو سجّل الخطأ في السيرفر.', 'error')
+        return redirect(url_for('faults'))
 
+    flash(f'تم تسجيل العطل {f.code}', 'success')
     if f.technician_id:
         base = request.url_root
-        result = dispatch_fault(f.id, base)
-        if result.get('whatsapp_url'):
-            session['pending_whatsapp'] = result['whatsapp_url']
+        try:
+            result = dispatch_fault(f.id, base)
+            if result.get('whatsapp_url'):
+                session['pending_whatsapp'] = result['whatsapp_url']
+        except Exception:
+            app.logger.exception('fault dispatch after add failed')
+            flash('تم حفظ العطل لكن تعذّر إرساله للفني عبر واتساب.', 'error')
     return redirect(url_for('faults'))
 
 @app.route('/faults/delete/<int:id>', methods=['POST'])

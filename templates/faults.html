@@ -1050,6 +1050,8 @@ function openAddModal() {
 function saveFault() {
   const editId = document.getElementById('modal-add').dataset.editId;
   const fd = new FormData();
+  const csrf = document.querySelector('meta[name="csrf-token"]');
+  if (csrf && csrf.content) fd.append('csrf_token', csrf.content);
   const clientSel = document.getElementById('f-client-sel');
   if (!clientSel || !clientSel.value) { alert('اختر العميل'); return; }
   const elev = document.getElementById('f-elevator-sel');
@@ -1102,8 +1104,28 @@ function saveFault() {
     if (res) fd.append('resolution', res);
   }
 
-  fetch(editId ? `/faults/edit/${editId}` : '/faults/add', {method:'POST',body:fd})
-    .then(()=>window.location.reload());
+  const btn = document.querySelector('#modal-add .btn-primary, #modal-add [onclick*="saveFault"]');
+  if (btn) { btn.disabled = true; btn.dataset._old = btn.textContent; btn.textContent = 'جاري الحفظ…'; }
+  const url = editId ? `/faults/edit/${editId}` : '/faults/add';
+  fetch(url, { method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual' })
+    .then(async (r) => {
+      // لا نتبع التحويل داخل fetch حتى لا تُستهلك رسائل flash
+      if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400)) {
+        window.location.href = '/faults';
+        return;
+      }
+      if (r.status === 403) {
+        throw new Error('انتهت صلاحية الجلسة أو فشل التحقق الأمني — حدّث الصفحة وحاول مرة أخرى');
+      }
+      if (!r.ok) {
+        throw new Error('تعذّر حفظ العطل (رمز ' + r.status + ')');
+      }
+      window.location.href = '/faults';
+    })
+    .catch((err) => {
+      alert(err.message || 'تعذّر حفظ العطل');
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset._old || 'حفظ'; }
+    });
 }
 
 // ===== تعديل =====
