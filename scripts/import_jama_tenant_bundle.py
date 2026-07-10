@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
-"""استيراد حزمة جما (عملاء + فنيين + مصاعد + عقود) إلى مؤسسة متعددة المستأجرين.
+"""استيراد حزمة جما (عملاء + فنيين + مصاعد + عقود) — بدون pandas (openpyxl فقط).
 
-الترتيب: عملاء → فنيين → مصاعد → عقود
-
-  # على السيرفر:
   set -a; source /etc/liftcore/platform.env; set +a
   cd ~/liftcore/elevator-app
-  .venv/bin/python scripts/import_jama_tenant_bundle.py --slug jama \\
-    --clients "/path/العملاء.xlsx" \\
-    --technicians "/path/الفنيين.xlsx" \\
-    --elevators "/path/المصاعد.xlsx" \\
-    --contracts "/path/العقود.xlsx" \\
-    --skip-geocode
+  bash deploy/import_jama_tenant_bundle.sh
 """
 from __future__ import annotations
 
@@ -26,6 +18,25 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'scripts'))
+
+
+def _load_sheet_rows(path: str) -> list[dict]:
+    from openpyxl import load_workbook
+
+    wb = load_workbook(path, read_only=True, data_only=True)
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    wb.close()
+    if not rows:
+        return []
+    headers = [str(h or '').strip() for h in rows[0]]
+    out = []
+    for r in rows[1:]:
+        if not any(v is not None and str(v).strip() for v in r):
+            continue
+        d = {headers[i]: (r[i] if i < len(r) else None) for i in range(len(headers))}
+        out.append(d)
+    return out
 
 
 def _norm_phone(val) -> str:
@@ -71,12 +82,11 @@ def _add(obj):
 
 
 def import_customers(path: str, *, dry_run: bool = False) -> dict[str, int]:
-    import pandas as pd
     from import_real_data import _cell, _norm_city, _norm_id, _str
     from models import Customer, db
 
-    df = pd.read_excel(path)
-    stats = {'rows': len(df), 'added': 0, 'updated': 0, 'skipped': 0}
+    rows = _load_sheet_rows(path)
+    stats = {'rows': len(rows), 'added': 0, 'updated': 0, 'skipped': 0}
 
     def norm_code(code: str) -> str:
         s = _str(code)
@@ -85,8 +95,7 @@ def import_customers(path: str, *, dry_run: bool = False) -> dict[str, int]:
 
     existing = {norm_code(c.code): c for c in Customer.query.all() if c.code}
 
-    for _, row in df.iterrows():
-        r = row.to_dict()
+    for r in rows:
         code = norm_code(_cell(r, 'رقم العميل'))
         name = _str(_cell(r, 'اسم العميل')) or _str(_cell(r, 'اسم العميل | رقم العميل'))
         if '|' in name:
@@ -151,12 +160,11 @@ def import_customers(path: str, *, dry_run: bool = False) -> dict[str, int]:
 
 
 def import_technicians(path: str, *, dry_run: bool = False) -> dict[str, int]:
-    import pandas as pd
     from import_real_data import _cell, _extract_tech, _str
     from models import Technician, db
 
-    df = pd.read_excel(path)
-    stats = {'rows': len(df), 'added': 0, 'updated': 0, 'skipped': 0}
+    rows = _load_sheet_rows(path)
+    stats = {'rows': len(rows), 'added': 0, 'updated': 0, 'skipped': 0}
     existing = {t.code.upper(): t for t in Technician.query.all() if t.code}
 
     def norm_status(raw: str) -> str:
@@ -167,8 +175,7 @@ def import_technicians(path: str, *, dry_run: bool = False) -> dict[str, int]:
             return 'غير نشط'
         return 'متاح'
 
-    for _, row in df.iterrows():
-        r = row.to_dict()
+    for r in rows:
         code = _extract_tech(_cell(r, 'Technical ID | رقم الفني', 'رقم واسم الفني', 'رقم الفني'))
         name = _str(_cell(r, 'Technical Name | اسم الفني', 'اسم الفني'))
         if not code or not name:
@@ -217,7 +224,6 @@ def import_elevators(path: str, *, dry_run: bool = False) -> dict[str, int]:
     from models import Elevator, db
     from tenant_scope import assign_organization
 
-    # لفّ الإضافة لتعيين organization_id
     orig_add = db.session.add
 
     def add_wrapped(obj):
@@ -233,23 +239,157 @@ def import_elevators(path: str, *, dry_run: bool = False) -> dict[str, int]:
 
 
 def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
-    from import_jama_contracts import import_contracts as _imp
-    from models import Contract, ContractElevator, db
+    """عقود عبر openpyxl — بدون pandas."""
+    from import_real_data import (
+        _cell,
+        _extract_all_el,
+        _extract_cn,
+        _f,
+        _invoice_status,
+        _norm_contract_status,
+        _parse_date,
+        _str,
+    )
+    from models import Contract, ContractElevator, Customer, Elevator, db
     from tenant_scope import assign_organization
 
-    orig_add = db.session.add
+    def norm_cn(code: str) -> str:
+        s = _str(code)
+        m = re.match(r'CN-(\d+)', s, re.I)
+        return f'CN-{int(m.group(1)):05d}' if m else s.upper()
 
-    def add_wrapped(obj):
-        if isinstance(obj, (Contract, ContractElevator)) and hasattr(obj, 'organization_id'):
-            if getattr(obj, 'organization_id', None) is None:
-                assign_organization(obj)
-        return orig_add(obj)
+    def find_customer(name: str, cn_code: str | None) -> Customer | None:
+        name = _str(name)
+        if name:
+            customer = Customer.query.filter_by(name=name).first()
+            if customer:
+                return customer
+            norm = re.sub(r'\s+', ' ', name).strip()
+            for c in Customer.query.all():
+                if c.name and re.sub(r'\s+', ' ', c.name).strip() == norm:
+                    return c
+                if c.name and (norm in c.name or c.name in norm):
+                    return c
+        if cn_code:
+            m = re.match(r'CN-(\d+)$', cn_code, re.I)
+            if m:
+                short = f'C-{int(m.group(1)):04d}'
+                customer = Customer.query.filter_by(code=short).first()
+                if customer:
+                    return customer
+        return None
 
-    db.session.add = add_wrapped  # type: ignore[method-assign]
-    try:
-        return _imp(path, dry_run=dry_run)
-    finally:
-        db.session.add = orig_add  # type: ignore[method-assign]
+    def link_elevators(contract: Contract, el_codes: list[str]) -> int:
+        linked = 0
+        for el_code in el_codes:
+            if not el_code:
+                continue
+            elev = Elevator.query.filter_by(code=el_code).first()
+            if not elev:
+                continue
+            exists = ContractElevator.query.filter_by(
+                contract_id=contract.id, elevator_id=elev.id
+            ).first()
+            if exists:
+                continue
+            if dry_run:
+                linked += 1
+                continue
+            ce = ContractElevator(contract_id=contract.id, elevator_id=elev.id)
+            assign_organization(ce)
+            db.session.add(ce)
+            linked += 1
+        return linked
+
+    rows = _load_sheet_rows(path)
+    stats = {
+        'rows': len(rows),
+        'added': 0,
+        'updated': 0,
+        'skipped': 0,
+        'no_customer': 0,
+        'linked_elevators': 0,
+    }
+    existing = {norm_cn(c.code): c for c in Contract.query.all() if c.code}
+
+    for r in rows:
+        code = _str(_cell(r, 'رقم العقد')) or (_extract_cn(_cell(r, 'اسم العميل ورقم العقد')) or '')
+        code = norm_cn(code) if code else ''
+        name = _str(_cell(r, 'العملاء'))
+        annual = _f(_cell(r, 'قيمة العقد'))
+        start = _parse_date(_cell(r, 'تاريخ بداية العقد'))
+        end = _parse_date(_cell(r, 'تاريخ انتهاء العقد'))
+        el_codes = _extract_all_el(_cell(r, 'رقم المصعد', 'اسم العميل ورقم العقد'))
+
+        if not code or not start or not end:
+            stats['skipped'] += 1
+            continue
+        if (not name or name.lower() == 'nan') and annual <= 0 and code not in existing:
+            stats['skipped'] += 1
+            continue
+
+        customer = find_customer(name, code)
+        if not customer:
+            stats['no_customer'] += 1
+            print(f'  [تخطي] {code}: لا عميل لـ «{name}»')
+            continue
+
+        paid = _f(_cell(r, 'المبلغ المسدد'))
+        val = annual
+        tax = round(val * 0.15, 2)
+        payload = dict(
+            customer_id=customer.id,
+            contract_type=(
+                'عقد صيانة'
+                if _str(_cell(r, 'نوع العقد')) == 'صيانة'
+                else _str(_cell(r, 'نوع العقد')) or 'عقد صيانة'
+            ),
+            start_date=start,
+            end_date=end,
+            duration_months=max(0, (end.year - start.year) * 12 + end.month - start.month),
+            maint_frequency=_str(_cell(r, 'برنامج الصيانة')) or 'سنوي',
+            visits_per_month=1,
+            value=val,
+            tax_pct=15,
+            tax_amount=tax,
+            total=round(val + tax, 2),
+            payment_terms='دفعة واحدة',
+            invoice_status=_invoice_status(val, paid),
+            status=_norm_contract_status(_cell(r, 'حالة العقد')),
+            reminder_date=end - timedelta(days=30),
+            city=customer.city or _str(_cell(r, 'المنطقة')),
+            district=customer.district or '',
+            address=customer.address or _str(_cell(r, 'العنوان')),
+            notes=_str(_cell(r, 'ملاحظات')),
+        )
+
+        if code in existing:
+            c = existing[code]
+            for key, val_item in payload.items():
+                setattr(c, key, val_item)
+            stats['updated'] += 1
+            contract = c
+        else:
+            if dry_run:
+                stats['added'] += 1
+                stats['linked_elevators'] += sum(
+                    1 for el in el_codes if el and Elevator.query.filter_by(code=el).first()
+                )
+                continue
+            c = Contract(code=code, **payload)
+            assign_organization(c)
+            db.session.add(c)
+            db.session.flush()
+            existing[code] = c
+            contract = c
+            stats['added'] += 1
+
+        if contract.id:
+            stats['linked_elevators'] += link_elevators(contract, el_codes)
+
+    if not dry_run:
+        db.session.commit()
+    return stats
 
 
 def main() -> int:
@@ -279,7 +419,7 @@ def main() -> int:
 
     with app.app_context():
         org = _bind_tenant(args.slug.strip().lower())
-        print('Database:', app.config.get('SQLALCHEMY_DATABASE_URI', '')[:60], '...')
+        print('Database:', (app.config.get('SQLALCHEMY_DATABASE_URI') or '')[:60], '...')
 
         print('\n==> [1/4] العملاء')
         print(import_customers(args.clients, dry_run=args.dry_run))
