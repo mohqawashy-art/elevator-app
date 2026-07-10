@@ -67,7 +67,14 @@
         var href = a.getAttribute('data-lc-back') || a.getAttribute('href');
         if (!href || href === '#') return;
         e.preventDefault();
-        goBack(href);
+        // نافذة منبثقة / طباعة: أغلق أو ارجع
+        if (isPopupContext() || (window.opener && !window.opener.closed)) {
+          goBack(href);
+          return;
+        }
+        // صفحة عادية (مثل الإعدادات): اذهب للوجهة صراحةً — لا history.back()
+        // وإلا قد يعود المستخدم لصفحة الدخول ويظن أن لوحة التحكم لا تفتح.
+        window.location.href = href;
       });
     });
   }
