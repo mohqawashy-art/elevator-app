@@ -3,14 +3,17 @@
 
   python scripts/verify_production_ops.py
   python scripts/verify_production_ops.py --url https://app.liftcoreapp.com
+  python scripts/verify_production_ops.py --url https://app.liftcoreapp.com --jama-url https://jama.liftcoreapp.com
 """
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 
 def fetch_health(url: str) -> dict:
@@ -22,6 +25,7 @@ def fetch_health(url: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description='LiftCore production ops verify')
     parser.add_argument('--url', default='https://app.liftcoreapp.com', help='Base URL')
+    parser.add_argument('--jama-url', default='', help='Optional Jama tenant URL for smoke')
     args = parser.parse_args()
 
     warns = 0
@@ -51,6 +55,14 @@ def main() -> int:
     else:
         print(f'WARN: version قديم أو غير معروف: {version!r}')
         warns += 1
+
+    if args.jama_url:
+        smoke = Path(__file__).resolve().parent / 'verify_jama_smoke.py'
+        print(f'\n==> Jama smoke: {args.jama_url}')
+        rc = subprocess.call([sys.executable, str(smoke), '--url', args.jama_url])
+        if rc != 0:
+            print('FAIL: Jama smoke')
+            return 1
 
     print('')
     print('على السيرفر شغّل: bash deploy/setup_production_ops.sh')

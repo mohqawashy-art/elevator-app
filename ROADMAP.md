@@ -20,9 +20,9 @@
 
 - [x] سكربت موحّد: `deploy/setup_production_ops.sh` (backup cron + auto-update + فحص)
 - [x] فحص: `deploy/check_production_ops.sh` + `scripts/verify_production_ops.py`
-- [ ] **SENTRY_DSN** في `/etc/liftcore/platform.env` على الإنتاج
-- [ ] **سيناريو جما يدوي** — `deploy/REGRESSION_CHECKLIST.txt`
-- [ ] **PostgreSQL** (اختياري — `deploy/POSTGRES.md`)
+- [x] **سيناريو جما يدوي** — `deploy/REGRESSION_CHECKLIST.txt` + `scripts/verify_jama_smoke.py`
+- [ ] **SENTRY_DSN** في `/etc/liftcore/platform.env` على الإنتاج (تحقق يدوي)
+- [ ] **PostgreSQL** (اختياري — `deploy/POSTGRES.md`) — مفعّل على الإنتاج
 
 ---
 
@@ -130,9 +130,10 @@
 ## P3 — حسب الوعد التسويقي فقط
 
 - [x] SaaS multi-tenant + **فوترة يدوية للمنصة** (`platform_billing.py`, `/platform/billing`)
-- [~] بوابة دفع تلقائية (Moyasar) — checkout + webhook؛ يحتاج `MOYASAR_SECRET_KEY` في الإنتاج
-- [~] ZATCA Phase 2 — مبسّطة + قياسية (clearance) + PIH + ECDSA/QR؛ XAdES-in-XML كامل لاحقاً
-- [ ] WhatsApp Business API + تذكيرات مجدولة
+- [~] بوابة دفع تلقائية (Moyasar) — checkout + webhook؛ يحتاج تفعيل حساب Moyasar
+- [~] ZATCA Phase 2 — مبسّطة/قياسية + PIH + ECDSA + تضمين توقيع خفيف (`zatca_xades`)؛ XAdES-BES/SDK لاحقاً
+- [~] تذكيرات عقود مجدولة عبر wa.me (`scripts/send_contract_reminders.py` + cron) — WhatsApp Business API لاحقاً
+- [ ] WhatsApp Business API (إرسال تلقائي عبر Graph)
 - [x] Offline Field PWA
 - [ ] `/api/translate` (G2)
 
@@ -149,6 +150,7 @@
 | 2026-07-06 | Offline Field PWA | SW + IndexedDB queue + field manifest |
 | 2026-07-06 | Admin PWA جوال/تابلت | manifest + liftcore-admin-mobile.css |
 | 2026-07-10 | ZATCA Phase 2 slice 3 | B2B clearance + PIH + process_tax_invoice |
+| 2026-07-10 | نواقص ops + تذكيرات + XAdES خفيف | jama smoke, reminder cron, zatca_xades |
 
 ---
 

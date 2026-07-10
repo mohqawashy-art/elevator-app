@@ -7,7 +7,7 @@ LiftCore — Regression Checklist (قبل كل نشر على السيرفر)
 [ ] py scripts/security_audit.py  → OK
 [ ] pytest tests/  → all passed
 
-يدوياً (5 دقائق):
+يدوياً (5 دقائق) — tenant default / app:
 [ ] /login — دخول admin
 [ ] /dashboard — بطاقات تفتح drill-down
 [ ] /clients — إضافة عميل + حفظ
@@ -16,16 +16,28 @@ LiftCore — Regression Checklist (قبل كل نشر على السيرفر)
 [ ] /field/login — صفحة دخول الفني
 [ ] حساب viewer — لا أزرار إضافة + POST مرفوض
 
+سيناريو جما يدوي (jama.liftcoreapp.com) — ~10 دقائق:
+[ ] python scripts/verify_jama_smoke.py --url https://jama.liftcoreapp.com
+[ ] /login — دخول admin (tenant jama)
+[ ] /clients — قائمة العملاء تظهر (أو فارغة بعد ترحيل جديد)
+[ ] /contracts — صفحة العقود تفتح
+[ ] /maintenance-visits — زيارات الصيانة
+[ ] /faults — الأعطال
+[ ] /invoices — فاتورة ضريبية: طباعة + QR إن وُجد رقم ضريبي
+[ ] /field/login — دخول فني جما (إن وُجد حساب)
+[ ] /settings?tab=plan — تبويب الباقة يظهر بدون خطأ 500
+[ ] عزل: جلسة jama لا ترى بيانات default (عميل من tenant آخر)
+
 بعد النشر:
-[ ] curl BASE/api/health  → database:true, sentry_configured (اختياري)
+[ ] curl BASE/api/health  → database:true, database_backend:postgresql
 [ ] bash deploy/verify_deploy.sh BASE_URL
-[ ] python scripts/verify_production_ops.py --url BASE_URL
+[ ] python scripts/verify_production_ops.py --url BASE_URL --jama-url https://jama.liftcoreapp.com
 [ ] Ctrl+F5 في المتصفح
 
 تشغيلي (مرة على السيرفر — إن لم يُفعَّل):
 [ ] bash deploy/setup_production_ops.sh
 [ ] أضف SENTRY_DSN إلى /etc/liftcore/platform.env + restart
-[ ] bash deploy/REGRESSION_CHECKLIST.txt — سيناريو جما يدوي
+[ ] bash deploy/install_reminder_cron.sh   # تذكيرات العقود اليومية
 
 Rollback:
-[ ] استعادة instance/liftcore.db.bak.TIMESTAMP
+[ ] استعادة من ~/liftcore/checkpoints أو نسخة Postgres الاحتياطية

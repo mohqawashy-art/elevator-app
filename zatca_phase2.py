@@ -5,7 +5,7 @@
 2) ECDSA + QR tags 6–8 + مصادقة CSID
 3) فاتورة قياسية (B2B) + Clearance API + سلسلة PIH
 
-XAdES-in-XML الكامل عبر SDK الهيئة يبقى لاحقاً.
+XAdES-in-XML الكامل عبر SDK الهيئة يبقى لاحقاً؛ يُضمَّن حالياً توقيع ECDSA خفيف عبر zatca_xades.
 """
 from __future__ import annotations
 
@@ -527,8 +527,15 @@ def process_simplified_invoice(invoice, settings) -> dict:
     if key_pem and cert_pem:
         try:
             from zatca_crypto import certificate_public_key_b64, sign_invoice_hash
+            from zatca_xades import embed_ecdsa_signature
             signature_b64 = sign_invoice_hash(inv_hash, key_pem)
             public_key_b64 = certificate_public_key_b64(cert_pem)
+            xml_text = embed_ecdsa_signature(
+                xml_text,
+                invoice_hash_b64=inv_hash,
+                private_key_pem=key_pem,
+                certificate_pem=cert_pem,
+            )
         except Exception as exc:
             invoice.zatca_status = 'failed'
             invoice.zatca_last_error = f'فشل التوقيع: {exc}'[:2000]
@@ -629,8 +636,15 @@ def process_standard_invoice(invoice, settings) -> dict:
     if key_pem and cert_pem:
         try:
             from zatca_crypto import certificate_public_key_b64, sign_invoice_hash
+            from zatca_xades import embed_ecdsa_signature
             signature_b64 = sign_invoice_hash(inv_hash, key_pem)
             public_key_b64 = certificate_public_key_b64(cert_pem)
+            xml_text = embed_ecdsa_signature(
+                xml_text,
+                invoice_hash_b64=inv_hash,
+                private_key_pem=key_pem,
+                certificate_pem=cert_pem,
+            )
         except Exception as exc:
             invoice.zatca_status = 'failed'
             invoice.zatca_last_error = f'فشل التوقيع: {exc}'[:2000]

@@ -89,6 +89,64 @@ def tech_whatsapp_phone(tech: Technician) -> str:
     return (tech.phone2 or tech.phone or '').strip()
 
 
+def due_contract_reminders(*, on_date: date | None = None, days_ahead: int = 0):
+    """عقود لها reminder_date خلال [اليوم .. اليوم+days_ahead] وحالتها نشطة."""
+    today = on_date or date.today()
+    end = today + timedelta(days=max(0, int(days_ahead)))
+    active = ('نشط', 'على وشك الانتهاء')
+    return (
+        tenant_query(Contract)
+        .filter(
+            Contract.reminder_date.isnot(None),
+            Contract.reminder_date >= today,
+            Contract.reminder_date <= end,
+            or_(
+                Contract.status.is_(None),
+                Contract.status == '',
+                Contract.status.in_(active),
+            ),
+        )
+        .order_by(Contract.reminder_date.asc(), Contract.id.asc())
+        .all()
+    )
+
+
+def build_contract_reminder_message(contract: Contract, *, company_name: str = '') -> str:
+    cust = getattr(contract, 'customer', None)
+    cust_name = (cust.name if cust else '') or 'العميل'
+    company = (company_name or '').strip() or 'LiftCore'
+    rem = contract.reminder_date.strftime('%Y-%m-%d') if contract.reminder_date else ''
+    end = contract.end_date.strftime('%Y-%m-%d') if contract.end_date else ''
+    return (
+        f'مرحباً {cust_name}،\n'
+        f'تذكير من {company}: عقد الصيانة {contract.code or ""} '
+        f'ينتهي في {end or "—"} (تذكير مجدول: {rem or "—"}).\n'
+        f'للتجديد أو الاستفسار تواصلوا معنا.'
+    )
+
+
+def contract_reminder_rows(*, on_date: date | None = None, days_ahead: int = 0, company_name: str = '') -> list[dict]:
+    """صفوف تذكير جاهزة للواتساب (رابط wa.me) — بدون إرسال تلقائي عبر Business API."""
+    rows = []
+    for c in due_contract_reminders(on_date=on_date, days_ahead=days_ahead):
+        cust = getattr(c, 'customer', None)
+        if cust is None and c.customer_id:
+            cust = db.session.get(Customer, c.customer_id)
+        phone = customer_whatsapp_phone(cust)
+        msg = build_contract_reminder_message(c, company_name=company_name)
+        rows.append({
+            'contract_id': c.id,
+            'code': c.code,
+            'reminder_date': c.reminder_date.isoformat() if c.reminder_date else None,
+            'end_date': c.end_date.isoformat() if c.end_date else None,
+            'customer': (cust.name if cust else '') or '',
+            'phone': phone,
+            'whatsapp_url': whatsapp_url(phone, msg) if phone else '',
+            'message': msg,
+        })
+    return rows
+
+
 PAID_INVOICE_STATUSES = frozenset({'مدفوعة', 'مدفوع', 'محصّل', 'محصل', 'مسددة', 'Paid', 'paid'})
 COLLECTED_STATUSES = frozenset({
     'محصّل', 'محصل', 'مدفوعة', 'مدفوع', 'مسددة', 'مكتملة', 'Paid', 'paid',
