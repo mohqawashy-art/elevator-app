@@ -84,14 +84,22 @@ th{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:500}
     {% if flash_ok %}<div class="flash flash-ok">{{ flash_ok }}</div>{% endif %}
     {% if flash_err %}<div class="flash flash-err">{{ flash_err }}</div>{% endif %}
 
+    {% if pending_whatsapp %}
+    <div class="banner" id="wa-send-banner" style="border-color:rgba(31,184,122,.45);background:rgba(31,184,122,.1)">
+      <strong style="color:var(--success)">جاهز للإرسال عبر واتساب (wa.me)</strong><br>
+      اضغط الزر بالأسفل — المتصفح غالباً يمنع الفتح التلقائي.
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn btn-primary" id="wa-open-btn" href="{{ pending_whatsapp }}" target="_blank" rel="noopener">فتح واتساب وإرسال</a>
+        <button type="button" class="btn btn-secondary" onclick="navigator.clipboard.writeText({{ pending_whatsapp|tojson }}).then(function(){alert('تم نسخ رابط واتساب')})">نسخ الرابط</button>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="banner">
       رقم الاستقبال الرسمي: <code>{{ whatsapp_phone }}</code>
       · المستلم أولاً: <strong>المكتب</strong>
+      · طريقة الإرسال الحالية: <strong>wa.me</strong> (يفتح واتساب للمكتب ثم إرسال)
       · بعد إنشاء العطل يتم التوزيع يدوياً من شاشة الأعطال.
-      {% if pending_whatsapp %}
-      <br>تم تجهيز رسالة تأكيد للعميل —
-      <a href="{{ pending_whatsapp }}" target="_blank" rel="noopener" style="color:var(--accent)">افتح واتساب الآن</a>
-      {% endif %}
     </div>
 
     <div class="stats">
@@ -209,7 +217,15 @@ th{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:500}
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open')}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open')}
 {% if pending_whatsapp %}
-window.open({{ pending_whatsapp|tojson }}, '_blank');
+(function () {
+  var url = {{ pending_whatsapp|tojson }};
+  var btn = document.getElementById('wa-open-btn');
+  if (btn) {
+    btn.addEventListener('click', function () {
+      try { window.open(url, '_blank', 'noopener'); } catch (e) {}
+    });
+  }
+})();
 {% endif %}
 </script>
 </body>

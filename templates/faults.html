@@ -307,6 +307,17 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       {% include 'partials/flash_messages.html' %}
+      {% if pending_whatsapp %}
+      <div id="wa-send-banner" style="background:rgba(31,184,122,.1);border:1px solid rgba(31,184,122,.35);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.7">
+        <strong style="color:var(--success)">رسالة واتساب جاهزة (wa.me)</strong>
+        — اضغط للإرسال من رقم/حساب المكتب إلى العميل.
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn btn-primary btn-sm" href="{{ pending_whatsapp }}" target="_blank" rel="noopener">فتح واتساب وإرسال</a>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText({{ pending_whatsapp|tojson }}).then(function(){alert('تم نسخ الرابط')})">نسخ الرابط</button>
+          <a class="btn btn-secondary btn-sm" href="/support/whatsapp">وارد واتساب</a>
+        </div>
+      </div>
+      {% endif %}
       <div class="page-header">
         <div class="page-title">الأعطال <span id="faults-count" data-i18n-skip></span></div>
         <div class="page-actions">
@@ -1203,11 +1214,14 @@ function viewFault(id) {
         <a href="/faults/${f.id}/report" style="color:var(--accent)">تعديل التقرير</a>
         · <a href="/faults/${f.id}/report?print=1" class="lc-open-tab" style="color:var(--accent)">طباعة PDF</a>
       </div></div>
-      <div class="view-item view-full"><div class="view-label">واتساب العميل — رحلة الحالة</div><div class="view-val" style="display:flex;flex-wrap:wrap;gap:6px">
+      <div class="view-item view-full"><div class="view-label">واتساب العميل — wa.me</div><div class="view-val">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">يفتح واتساب بنص جاهز — المكتب يضغط إرسال</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
         <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'received')">تأكيد الاستلام</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'assigned')">تعيين فني</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'on_way')">في الطريق</button>
         <button type="button" class="btn btn-success btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'resolved')">تم الإصلاح</button>
+        </div>
       </div></div>
     </div>`;
   openModal('modal-view');
@@ -1220,17 +1234,25 @@ async function notifyCustomerWhatsApp(faultId, stage) {
   try {
     const r = await fetch('/api/faults/' + faultId + '/customer-notify', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': (window.__LC_CSRF || '')},
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({stage: stage, force: false})
     });
     const data = await r.json();
     if (!data.ok) {
-      alert(data.error || 'تعذّر تجهيز الرسالة');
+      alert(data.error || 'تعذّر تجهيز رسالة واتساب');
       return;
     }
-    if (data.url) window.open(data.url, '_blank');
+    if (!data.url) {
+      alert('لا يوجد رابط واتساب');
+      return;
+    }
+    var opened = window.open(data.url, '_blank', 'noopener');
+    if (!opened) {
+      var go = confirm((data.label || 'واتساب') + ' جاهز.\nالمتصفح منع النافذة — اضغط موافق لفتح الرابط.');
+      if (go) window.location.href = data.url;
+    }
   } catch (e) {
-    alert('خطأ في الإرسال');
+    alert('خطأ في تجهيز واتساب');
   }
 }
 
@@ -1290,7 +1312,9 @@ if (new URLSearchParams(window.location.search).get('action') === 'add') {
   history.replaceState(null, '', window.location.pathname);
 }
 {% if pending_whatsapp %}
-window.open({{ pending_whatsapp|tojson }}, '_blank');
+(function () {
+  /* لا نعتمد على window.open التلقائي — غالباً يُحجب. الزر في البانر هو المسار الأساسي. */
+})();
 {% endif %}
 </script>
 </body>
