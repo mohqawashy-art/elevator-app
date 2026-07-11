@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Import Jama expenses from Excel with salary split and type normalization."""
+"""Import Jama expenses from Excel with salary split and type normalization.
+
+  python scripts/import_jama_expenses.py deploy/data/jama_import/expenses_11_7_2026.xlsx --slug jama --dry-run
+  python scripts/import_jama_expenses.py deploy/data/jama_import/expenses_11_7_2026.xlsx --slug jama
+"""
 from __future__ import annotations
 
 import argparse
@@ -11,11 +15,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-import pandas as pd
+from openpyxl import load_workbook
 
 from app import app, db
 from import_real_data import _cell, _f, _i, _parse_date, _str
 from models import Expense
+from tenant_scope import assign_organization, tenant_query
 
 # توزيع الرواتب الشهرية (يُستخدم كنسب من إجمالي دفعة الرواتب في Excel)
 SALARY_LINES: list[tuple[str, float]] = [
@@ -89,7 +94,7 @@ def _salary_codes(base_num: int) -> list[str]:
 def _purge_salary_group(base_num: int, *, dry_run: bool) -> None:
     codes = [f'EXP-{base_num:04d}'] + _salary_codes(base_num)
     for code in codes:
-        row = Expense.query.filter_by(code=code).first()
+        row = tenant_query(Expense).filter_by(code=code).first()
         if row and not dry_run:
             db.session.delete(row)
 
@@ -106,7 +111,7 @@ def _build_expense(
     reference: str,
     notes: str,
 ) -> Expense:
-    return Expense(
+    expense = Expense(
         code=code,
         expense_date=edate,
         expense_type=expense_type,
@@ -117,6 +122,25 @@ def _build_expense(
         reference=reference,
         notes=notes,
     )
+    assign_organization(expense)
+    return expense
+
+
+def _load_rows(path: str) -> list[dict]:
+    wb = load_workbook(path, read_only=True, data_only=True)
+    ws = wb.active
+    rows_iter = ws.iter_rows(values_only=True)
+    header = next(rows_iter, None)
+    if not header:
+        return []
+    keys = [(_str(h) or f'col_{i}') for i, h in enumerate(header)]
+    out: list[dict] = []
+    for row in rows_iter:
+        if not any(v is not None and _str(v) for v in row):
+            continue
+        item = {keys[i]: (row[i] if i < len(row) else None) for i in range(len(keys))}
+        out.append(item)
+    return out
 
 
 def import_expenses(
@@ -126,9 +150,9 @@ def import_expenses(
     skip_existing: bool = True,
     sync_existing: bool = False,
 ) -> dict:
-    df = pd.read_excel(path)
+    rows = _load_rows(path)
     stats = {
-        'rows': len(df),
+        'rows': len(rows),
         'imported': 0,
         'updated': 0,
         'salary_splits': 0,
@@ -137,10 +161,9 @@ def import_expenses(
         'excel_total': 0.0,
         'types': {},
     }
-    existing_codes = {e.code.upper() for e in Expense.query.all() if e.code}
+    existing_codes = {e.code.upper() for e in tenant_query(Expense).all() if e.code}
 
-    for _, row in df.iterrows():
-        r = row.to_dict()
+    for r in rows:
         num = _i(_cell(r, 'رقم العملية'))
         base_code = f'EXP-{num:04d}' if num else ''
         edate = _parse_date(_cell(r, 'التاريخ'))
@@ -164,7 +187,6 @@ def import_expenses(
         if sync_existing and is_salary_lump:
             _purge_salary_group(num, dry_run=dry_run)
 
-        existing = [Expense.query.filter_by(code=c).first() for c in target_codes]
         if is_salary_lump:
             if skip_existing and not sync_existing and all(
                 c.upper() in existing_codes for c in target_codes
@@ -172,7 +194,7 @@ def import_expenses(
                 stats['skipped_existing'] += len(target_codes)
                 continue
         else:
-            one = Expense.query.filter_by(code=base_code).first()
+            one = tenant_query(Expense).filter_by(code=base_code).first()
             if one and sync_existing:
                 pass
             elif skip_existing and base_code.upper() in existing_codes:
@@ -186,7 +208,7 @@ def import_expenses(
                 exp_type = 'رواتب'
                 desc = label
                 stats['types'][exp_type] = stats['types'].get(exp_type, 0) + 1
-                existing_row = Expense.query.filter_by(code=code).first()
+                existing_row = tenant_query(Expense).filter_by(code=code).first()
                 fields = dict(
                     expense_date=edate,
                     expense_type=exp_type,
@@ -236,7 +258,7 @@ def import_expenses(
             reference=reference,
             notes=vendor,
         )
-        existing_row = Expense.query.filter_by(code=base_code).first()
+        existing_row = tenant_query(Expense).filter_by(code=base_code).first()
         if existing_row and sync_existing:
             for k, v in fields.items():
                 setattr(existing_row, k, v)
@@ -262,17 +284,24 @@ def import_expenses(
     if not dry_run:
         db.session.commit()
 
-    stats['db_total'] = round(sum(_f(e.amount) for e in Expense.query.all()), 2) if not dry_run else None
-    stats['db_salary_total'] = round(
-        sum(_f(e.amount) for e in Expense.query.filter_by(expense_type='رواتب').all()),
-        2,
-    ) if not dry_run else None
+    stats['db_total'] = (
+        round(sum(_f(e.amount) for e in tenant_query(Expense).all()), 2) if not dry_run else None
+    )
+    stats['db_salary_total'] = (
+        round(
+            sum(_f(e.amount) for e in tenant_query(Expense).filter_by(expense_type='رواتب').all()),
+            2,
+        )
+        if not dry_run
+        else None
+    )
     return stats
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description='Import Jama expenses from Excel')
     parser.add_argument('xlsx', help='Path to expenses .xlsx')
+    parser.add_argument('--slug', default='jama', help='Organization slug')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--force', action='store_true', help='Import even if expense code exists')
     parser.add_argument('--sync', action='store_true', help='Update existing rows and refresh salary splits')
@@ -282,9 +311,18 @@ def main() -> int:
         print(f'ERROR: file not found: {args.xlsx}')
         return 1
 
+    from flask import g
+    from models import Organization
+
     with app.app_context():
-        db.create_all()
-        print('Database:', app.config.get('SQLALCHEMY_DATABASE_URI', ''))
+        slug = (args.slug or 'jama').strip().lower()
+        org = Organization.query.filter_by(slug=slug).first()
+        if not org:
+            print(f'ERROR: لا توجد مؤسسة slug={slug!r}')
+            return 1
+        g.organization = org
+        g.organization_id = org.id
+        print(f'Tenant: {org.name} ({org.slug})')
         print('File:', args.xlsx)
         result = import_expenses(
             args.xlsx,
@@ -293,6 +331,8 @@ def main() -> int:
             sync_existing=args.sync,
         )
         print(result)
+        if not args.dry_run:
+            print('expenses in tenant:', tenant_query(Expense).count())
     return 0
 
 
