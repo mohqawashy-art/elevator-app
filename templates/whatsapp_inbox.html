@@ -62,6 +62,14 @@ th{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:500}
 .flash-ok{background:rgba(31,184,122,.12);color:var(--success)}
 .flash-err{background:rgba(224,72,72,.12);color:var(--danger)}
 .muted{color:var(--text3);font-size:12px}
+.link-box{margin-top:8px;min-width:min(320px,78vw);background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px}
+.link-search{position:relative}
+.link-search input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);padding:8px 10px;font-family:inherit;font-size:13px}
+.link-results{position:absolute;inset-inline:0;top:100%;z-index:20;max-height:180px;overflow:auto;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-sm);margin-top:4px;display:none}
+.link-results.open{display:block}
+.link-results button{display:block;width:100%;text-align:right;background:transparent;border:none;color:var(--text1);padding:8px 10px;font:inherit;cursor:pointer;border-bottom:1px solid var(--border)}
+.link-results button:hover{background:rgba(42,127,255,.12)}
+.link-selected{font-size:12px;color:var(--accent);margin-top:6px;min-height:18px}
 @media(max-width:900px){.stats{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -170,27 +178,28 @@ th{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:500}
             <td>
               <div class="actions">
                 {% if item.status != 'تم إنشاء عطل' %}
-                <details>
+                <details class="link-details" data-item-id="{{ item.id }}" data-customer-id="{{ item.customer_id or '' }}" data-elevator-id="{{ item.elevator_id or '' }}">
                   <summary class="btn btn-secondary btn-sm" style="list-style:none;cursor:pointer">ربط</summary>
-                  <form method="post" action="/support/whatsapp/{{ item.id }}/link" style="margin-top:8px;min-width:220px">
+                  <form method="post" action="/support/whatsapp/{{ item.id }}/link" class="link-box wa-link-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="field" style="margin-bottom:6px">
-                      <label>عميل</label>
-                      <select name="customer_id">
-                        <option value="">—</option>
-                        {% for c in customers %}
-                        <option value="{{ c.id }}" {% if item.customer_id == c.id %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
-                        {% endfor %}
-                      </select>
+                    <input type="hidden" name="customer_id" class="wa-customer-id" value="{{ item.customer_id or '' }}">
+                    <input type="hidden" name="elevator_id" class="wa-elevator-id" value="{{ item.elevator_id or '' }}">
+                    <div class="field" style="margin-bottom:8px">
+                      <label>بحث عن العميل</label>
+                      <div class="link-search">
+                        <input type="search" class="wa-customer-search" placeholder="اسم / كود / جوال..." autocomplete="off">
+                        <div class="link-results wa-customer-results"></div>
+                      </div>
+                      <div class="link-selected wa-customer-label">
+                        {% if item.customer %}{{ item.customer.code }} — {{ item.customer.name }}{% else %}لم يُختر عميل بعد{% endif %}
+                      </div>
                     </div>
-                    <div class="field" style="margin-bottom:6px">
-                      <label>مصعد</label>
-                      <select name="elevator_id">
-                        <option value="">—</option>
-                        {% for e in elevators %}
-                        <option value="{{ e.id }}" {% if item.elevator_id == e.id %}selected{% endif %}>{{ e.code }} — {{ e.customer.name if e.customer else '' }}</option>
-                        {% endfor %}
+                    <div class="field" style="margin-bottom:8px">
+                      <label>مصاعد العميل</label>
+                      <select name="elevator_id_display" class="wa-elevator-select" disabled>
+                        <option value="">— اختر عميلاً أولاً —</option>
                       </select>
+                      <div class="muted" style="margin-top:4px">بعد اختيار العميل تظهر مصاعده فقط</div>
                     </div>
                     <button class="btn btn-secondary btn-sm" type="submit">حفظ الربط</button>
                   </form>
@@ -214,8 +223,155 @@ th{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:500}
   </div>
 </div>
 <script>
+var WA_CUSTOMERS = {{ customers_js|tojson }};
+var WA_ELEVATORS = {{ elevators_js|tojson }};
+
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open')}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open')}
+
+function waNorm(s) {
+  return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function waFindCustomers(q) {
+  q = waNorm(q);
+  if (!q) return WA_CUSTOMERS.slice(0, 12);
+  return WA_CUSTOMERS.filter(function (c) {
+    var blob = waNorm([c.code, c.name, c.phone, c.phone2, c.city].join(' '));
+    return blob.indexOf(q) !== -1;
+  }).slice(0, 12);
+}
+
+function waElevatorsForCustomer(customerId) {
+  var cid = String(customerId || '');
+  if (!cid) return [];
+  return WA_ELEVATORS.filter(function (e) { return String(e.customer_id) === cid; });
+}
+
+function waFillElevators(root, customerId, selectedElevatorId) {
+  var sel = root.querySelector('.wa-elevator-select');
+  var hiddenElev = root.querySelector('.wa-elevator-id');
+  if (!sel) return;
+  var list = waElevatorsForCustomer(customerId);
+  sel.innerHTML = '';
+  if (!customerId) {
+    sel.disabled = true;
+    sel.innerHTML = '<option value="">— اختر عميلاً أولاً —</option>';
+    if (hiddenElev) hiddenElev.value = '';
+    return;
+  }
+  sel.disabled = false;
+  if (!list.length) {
+    sel.innerHTML = '<option value="">لا مصاعد لهذا العميل</option>';
+    if (hiddenElev) hiddenElev.value = '';
+    return;
+  }
+  var opt0 = document.createElement('option');
+  opt0.value = '';
+  opt0.textContent = '— اختر مصعد —';
+  sel.appendChild(opt0);
+  list.forEach(function (e) {
+    var opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = e.code + (e.building ? (' — ' + e.building) : '') + (e.city ? (' · ' + e.city) : '');
+    if (String(selectedElevatorId) === String(e.id)) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (selectedElevatorId && list.some(function (e) { return String(e.id) === String(selectedElevatorId); })) {
+    sel.value = String(selectedElevatorId);
+    if (hiddenElev) hiddenElev.value = String(selectedElevatorId);
+  } else if (list.length === 1) {
+    sel.value = String(list[0].id);
+    if (hiddenElev) hiddenElev.value = String(list[0].id);
+  } else if (hiddenElev) {
+    hiddenElev.value = sel.value || '';
+  }
+}
+
+function waSelectCustomer(root, customer) {
+  var hiddenCust = root.querySelector('.wa-customer-id');
+  var label = root.querySelector('.wa-customer-label');
+  var search = root.querySelector('.wa-customer-search');
+  var results = root.querySelector('.wa-customer-results');
+  if (hiddenCust) hiddenCust.value = customer ? customer.id : '';
+  if (label) label.textContent = customer ? (customer.code + ' — ' + customer.name) : 'لم يُختر عميل بعد';
+  if (search) search.value = customer ? (customer.code + ' — ' + customer.name) : '';
+  if (results) results.classList.remove('open');
+  waFillElevators(root, customer ? customer.id : '', '');
+}
+
+function waRenderCustomerResults(root, q) {
+  var results = root.querySelector('.wa-customer-results');
+  if (!results) return;
+  var rows = waFindCustomers(q);
+  results.innerHTML = '';
+  if (!rows.length) {
+    results.innerHTML = '<button type="button" disabled>لا نتائج</button>';
+    results.classList.add('open');
+    return;
+  }
+  rows.forEach(function (c) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = c.code + ' — ' + c.name + (c.phone ? (' · ' + c.phone) : '');
+    btn.addEventListener('click', function () { waSelectCustomer(root, c); });
+    results.appendChild(btn);
+  });
+  results.classList.add('open');
+}
+
+function waInitLinkBox(details) {
+  var form = details.querySelector('.wa-link-form');
+  if (!form || form.dataset.ready === '1') return;
+  form.dataset.ready = '1';
+  var cid = details.getAttribute('data-customer-id') || form.querySelector('.wa-customer-id').value;
+  var eid = details.getAttribute('data-elevator-id') || form.querySelector('.wa-elevator-id').value;
+  var search = form.querySelector('.wa-customer-search');
+  var results = form.querySelector('.wa-customer-results');
+  var elevSel = form.querySelector('.wa-elevator-select');
+  var hiddenElev = form.querySelector('.wa-elevator-id');
+
+  if (cid) {
+    var found = WA_CUSTOMERS.find(function (c) { return String(c.id) === String(cid); });
+    if (found) {
+      form.querySelector('.wa-customer-label').textContent = found.code + ' — ' + found.name;
+      if (search) search.value = found.code + ' — ' + found.name;
+    }
+  }
+  waFillElevators(form, cid, eid);
+
+  if (search) {
+    search.addEventListener('focus', function () { waRenderCustomerResults(form, search.value); });
+    search.addEventListener('input', function () {
+      form.querySelector('.wa-customer-id').value = '';
+      waRenderCustomerResults(form, search.value);
+      waFillElevators(form, '', '');
+    });
+  }
+  if (elevSel) {
+    elevSel.addEventListener('change', function () {
+      if (hiddenElev) hiddenElev.value = elevSel.value || '';
+    });
+  }
+  document.addEventListener('click', function (ev) {
+    if (!form.contains(ev.target) && results) results.classList.remove('open');
+  });
+  form.addEventListener('submit', function () {
+    // sync select -> hidden (name elevator_id is on hidden)
+    if (hiddenElev && elevSel) hiddenElev.value = elevSel.value || '';
+    // ensure hidden has name elevator_id only once
+    hiddenElev.setAttribute('name', 'elevator_id');
+  });
+}
+
+document.querySelectorAll('.link-details').forEach(function (d) {
+  d.addEventListener('toggle', function () {
+    if (d.open) waInitLinkBox(d);
+  });
+  // init if already open
+  if (d.open) waInitLinkBox(d);
+});
+
 {% if pending_whatsapp %}
 (function () {
   var url = {{ pending_whatsapp|tojson }};

@@ -6440,13 +6440,38 @@ def whatsapp_inbox():
         .all()
     )
     customers = tenant_query(Customer).order_by(Customer.name).all()
-    elevators = tenant_query(Elevator).order_by(Elevator.code).all()
+    elevators = (
+        tenant_query(Elevator)
+        .order_by(Elevator.code)
+        .all()
+    )
     pending_wa = session.pop('pending_whatsapp', '')
     return render_template(
         'whatsapp_inbox.html',
         items=items,
         customers=customers,
         elevators=elevators,
+        customers_js=[
+            {
+                'id': c.id,
+                'code': c.code or '',
+                'name': c.name or '',
+                'phone': c.phone or '',
+                'phone2': c.phone2 or '',
+                'city': c.city or '',
+            }
+            for c in customers
+        ],
+        elevators_js=[
+            {
+                'id': e.id,
+                'code': e.code or '',
+                'customer_id': e.customer_id,
+                'building': e.building_name or '',
+                'city': e.city or '',
+            }
+            for e in elevators
+        ],
         stats=inbox_stats(),
         whatsapp_phone=s.whatsapp_phone or '0555076078',
         pending_whatsapp=pending_wa,
