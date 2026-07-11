@@ -5930,8 +5930,37 @@ def api_dispatch_route(tech_id):
 @app.route('/api/faults/<int:fault_id>/dispatch', methods=['POST'])
 def api_dispatch_fault(fault_id):
     from operations import dispatch_fault
+    from whatsapp_support import notify_customer_stage
 
     result = dispatch_fault(fault_id, request.url_root)
+    fault = tenant_query(Fault).filter_by(id=fault_id).first()
+    if fault and not result.get('error'):
+        cust = notify_customer_stage(fault, 'assigned', next_code_fn=next_code)
+        if cust.get('ok') and cust.get('url'):
+            result['customer_whatsapp_url'] = cust['url']
+            db.session.commit()
+    return jsonify(result)
+
+
+@app.route('/api/faults/<int:fault_id>/customer-notify', methods=['POST'])
+def api_fault_customer_notify(fault_id):
+    """المرحلة 2 — إرسال/تجهيز رسالة حالة واتساب للعميل."""
+    from whatsapp_support import JOURNEY_STAGES, notify_customer_stage
+
+    fault = tenant_get_or_404(Fault, fault_id)
+    data = request.get_json(silent=True) or request.form or {}
+    stage = (data.get('stage') or '').strip()
+    force = str(data.get('force') or '').lower() in ('1', 'true', 'yes')
+    if stage not in JOURNEY_STAGES:
+        return jsonify({'ok': False, 'error': 'مرحلة غير صالحة'}), 400
+    result = notify_customer_stage(fault, stage, next_code_fn=next_code, force=force)
+    if result.get('ok') and not result.get('skipped'):
+        db.session.commit()
+    elif result.get('ok'):
+        db.session.rollback()
+    else:
+        db.session.rollback()
+        return jsonify(result), 400
     return jsonify(result)
 
 
@@ -6348,6 +6377,7 @@ def field_visit_complete(visit_id):
 @app.route('/field/fault/<int:fault_id>/complete', methods=['POST'])
 def field_fault_complete(fault_id):
     from operations import complete_field_fault
+    from whatsapp_support import notify_customer_stage
 
     tech_id = getattr(g, 'field_tech_id', None)
     if tech_id:
@@ -6362,6 +6392,10 @@ def field_fault_complete(fault_id):
             resolution=request.form.get('resolution', ''),
             status=request.form.get('status', 'تم الاصلاح'),
         )
+        fault = tenant_query(Fault).filter_by(id=fault_id).first()
+        if fault:
+            notify_customer_stage(fault, 'resolved', next_code_fn=next_code)
+            db.session.commit()
     except ValueError as e:
         flash(str(e), 'error')
         return redirect(url_for('field_fault_report', fault_id=fault_id))
@@ -6475,17 +6509,17 @@ def whatsapp_inbox_link(item_id):
 
 @app.route('/support/whatsapp/<int:item_id>/create-fault', methods=['POST'])
 def whatsapp_inbox_create_fault(item_id):
-    from whatsapp_support import ack_whatsapp_url, create_fault_from_inbox
+    from whatsapp_support import create_fault_from_inbox, notify_customer_stage
 
     item = tenant_get_or_404(WhatsAppInbox, item_id)
     try:
         fault = create_fault_from_inbox(item, next_code_fn=next_code, priority='عاجلة')
+        cust = notify_customer_stage(fault, 'received', next_code_fn=next_code)
         db.session.commit()
-        wa = ack_whatsapp_url(item, fault)
-        if wa:
-            session['pending_whatsapp'] = wa
+        if cust.get('url'):
+            session['pending_whatsapp'] = cust['url']
         session['wa_flash_ok'] = (
-            f'تم إنشاء العطل {fault.code} — المكتب يستلمه الآن. '
+            f'تم إنشاء العطل {fault.code} وإرسال تأكيد الاستلام للعميل. '
             f'وزّع الفني من شاشة الأعطال.'
         )
     except ValueError as exc:
@@ -6614,6 +6648,7 @@ def fault_edit(id):
     from entity_links import link_fault_to_visit, lookup_visit
     from form_validation import fault_close_error
     from technician_assignments import parse_technician_ids, sync_fault_technicians
+    from whatsapp_support import auto_stage_for_fault_status, notify_customer_stage
 
     close_err = fault_close_error(
         request.form.get('status'),
@@ -6624,6 +6659,8 @@ def fault_edit(id):
         return redirect(url_for('faults'))
 
     f = tenant_get_or_404(Fault, id)
+    old_status = f.status
+    had_tech = bool(f.technician_id)
     tech_ids = parse_technician_ids(request.form)
     f.elevator_id   = request.form['elevator_id']
     f.technician_id = tech_ids[0] if tech_ids else None
@@ -6648,7 +6685,18 @@ def fault_edit(id):
     try:
         _apply_fault_billing_from_form(f, request.form)
         sync_fault_technicians(f, tech_ids)
+        stage = auto_stage_for_fault_status(
+            old_status,
+            f.status,
+            had_tech=had_tech,
+            has_tech=bool(f.technician_id),
+        )
+        cust_wa = None
+        if stage:
+            cust_wa = notify_customer_stage(f, stage, next_code_fn=next_code)
         db.session.commit()
+        if cust_wa and cust_wa.get('url'):
+            session['pending_whatsapp'] = cust_wa['url']
     except ValueError as e:
         db.session.rollback()
         flash(str(e), 'error')

@@ -1203,11 +1203,35 @@ function viewFault(id) {
         <a href="/faults/${f.id}/report" style="color:var(--accent)">تعديل التقرير</a>
         · <a href="/faults/${f.id}/report?print=1" class="lc-open-tab" style="color:var(--accent)">طباعة PDF</a>
       </div></div>
+      <div class="view-item view-full"><div class="view-label">واتساب العميل — رحلة الحالة</div><div class="view-val" style="display:flex;flex-wrap:wrap;gap:6px">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'received')">تأكيد الاستلام</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'assigned')">تعيين فني</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'on_way')">في الطريق</button>
+        <button type="button" class="btn btn-success btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'resolved')">تم الإصلاح</button>
+      </div></div>
     </div>`;
   openModal('modal-view');
   if (window.LiftCoreNav) LiftCoreNav.bindOpenTabLinks(document.getElementById('view-body'));
   var elev = ELEVATORS.find(x => x.id === f.elevator_id);
   if (elev && elev.customer_id) LiftCoreProfile.appendToView(document.getElementById('view-body'), elev.customer_id, null, { timelineLimit: 15 });
+}
+
+async function notifyCustomerWhatsApp(faultId, stage) {
+  try {
+    const r = await fetch('/api/faults/' + faultId + '/customer-notify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': (window.__LC_CSRF || '')},
+      body: JSON.stringify({stage: stage, force: false})
+    });
+    const data = await r.json();
+    if (!data.ok) {
+      alert(data.error || 'تعذّر تجهيز الرسالة');
+      return;
+    }
+    if (data.url) window.open(data.url, '_blank');
+  } catch (e) {
+    alert('خطأ في الإرسال');
+  }
 }
 
 // ===== حذف =====

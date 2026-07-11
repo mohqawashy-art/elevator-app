@@ -11,6 +11,21 @@ from tenant_scope import assign_organization, tenant_query
 DEFAULT_OFFICE_WHATSAPP = '0555076078'
 INBOX_OPEN = frozenset({'جديد', 'مربوط'})
 
+# المرحلة 2 — رحلة حالة العميل
+JOURNEY_STAGES = (
+    'received',
+    'assigned',
+    'on_way',
+    'resolved',
+)
+JOURNEY_LABELS = {
+    'received': 'تأكيد الاستلام',
+    'assigned': 'تعيين فني',
+    'on_way': 'في الطريق',
+    'resolved': 'تم الإصلاح',
+}
+RESOLVED_STATUSES = frozenset({'تم الاصلاح', 'تم الإصلاح', 'مغلق', 'محلول'})
+
 
 def ensure_whatsapp_settings(settings: Settings) -> Settings:
     """ضمان رقم الاستقبال ووضع المكتب."""
@@ -92,6 +107,7 @@ def intake_inbound(
         body=(body or '').strip(),
         media_url=(media_url or '').strip()[:500] or None,
         status=status,
+        stage='inbound',
         receive_target='office',
         customer_id=customer.id if customer else None,
         elevator_id=elevator.id if elevator else None,
@@ -166,8 +182,155 @@ def create_fault_from_inbox(item: WhatsAppInbox, *, next_code_fn, priority: str 
     return fault
 
 
+def customer_phone_for_fault(fault: Fault) -> str:
+    if fault.reporter_phone and phone_key(fault.reporter_phone):
+        return display_phone(fault.reporter_phone)
+    elev = fault.elevator
+    cust = elev.customer if elev else None
+    if cust:
+        for p in (cust.phone2, cust.phone):
+            if p and phone_key(p):
+                return display_phone(p)
+    return ''
+
+
+def build_customer_journey_message(fault: Fault, stage: str) -> str:
+    stage = (stage or '').strip()
+    if stage not in JOURNEY_STAGES:
+        raise ValueError('مرحلة غير معروفة')
+    elev = fault.elevator
+    cust = elev.customer if elev else None
+    cust_name = (fault.reporter_name or (cust.name if cust else '') or 'عميلنا الكريم').strip()
+    elev_code = elev.code if elev else '—'
+    tech_name = fault.technician.name if fault.technician else 'الفني المختص'
+    code = fault.code
+
+    if stage == 'received':
+        return (
+            f'مرحباً {cust_name}\n'
+            f'تم استلام بلاغكم بنجاح.\n'
+            f'رقم المتابعة: {code}\n'
+            f'المصعد: {elev_code}\n'
+            f'المكتب يستلم البلاغ الآن وسيتم تحويله للفني قريباً.\n'
+            f'شكراً لتواصلكم.'
+        )
+    if stage == 'assigned':
+        return (
+            f'مرحباً {cust_name}\n'
+            f'بلاغكم {code} قيد المعالجة.\n'
+            f'تم تعيين الفني: {tech_name}\n'
+            f'المصعد: {elev_code}\n'
+            f'سنتواصل عند التوجه للموقع.'
+        )
+    if stage == 'on_way':
+        return (
+            f'مرحباً {cust_name}\n'
+            f'الفني {tech_name} في الطريق إليكم الآن.\n'
+            f'بلاغ: {code} · المصعد: {elev_code}\n'
+            f'نعتذر عن أي إزعاج ونقدّر تعاونكم.'
+        )
+    return (
+        f'مرحباً {cust_name}\n'
+        f'تم الانتهاء من بلاغكم {code}.\n'
+        f'المصعد: {elev_code}\n'
+        f'نأمل أن يكون كل شيء على ما يرام.\n'
+        f'تقييمكم يهمنا: ردّوا برقم من 1 إلى 5 ⭐\n'
+        f'شكراً لثقتكم.'
+    )
+
+
+def already_notified(fault_id: int, stage: str) -> bool:
+    return (
+        tenant_query(WhatsAppInbox)
+        .filter_by(fault_id=fault_id, direction='outbound', stage=stage)
+        .first()
+        is not None
+    )
+
+
+def notify_customer_stage(
+    fault: Fault,
+    stage: str,
+    *,
+    next_code_fn,
+    force: bool = False,
+) -> dict:
+    """يبني رسالة حالة للعميل ويسجّلها صادرة. يفتح wa.me حتى تفعيل Cloud API."""
+    stage = (stage or '').strip()
+    if stage not in JOURNEY_STAGES:
+        return {'ok': False, 'error': 'مرحلة غير معروفة', 'url': ''}
+    phone = customer_phone_for_fault(fault)
+    if not phone:
+        return {'ok': False, 'error': 'لا يوجد جوال للعميل/المبلّغ', 'url': ''}
+    if not force and already_notified(fault.id, stage):
+        existing = (
+            tenant_query(WhatsAppInbox)
+            .filter_by(fault_id=fault.id, direction='outbound', stage=stage)
+            .order_by(WhatsAppInbox.id.desc())
+            .first()
+        )
+        msg = build_customer_journey_message(fault, stage)
+        return {
+            'ok': True,
+            'skipped': True,
+            'url': whatsapp_url(phone, msg),
+            'stage': stage,
+            'label': JOURNEY_LABELS[stage],
+            'log_id': existing.id if existing else None,
+        }
+
+    msg = build_customer_journey_message(fault, stage)
+    elev = fault.elevator
+    log = WhatsAppInbox(
+        code=next_code_fn(WhatsAppInbox, 'WA-', digits=5),
+        direction='outbound',
+        from_phone=phone,
+        from_name=(fault.reporter_name or (elev.customer.name if elev and elev.customer else ''))[:120],
+        body=msg,
+        status='مُرسل',
+        stage=stage,
+        receive_target='customer',
+        customer_id=elev.customer_id if elev else None,
+        elevator_id=fault.elevator_id,
+        fault_id=fault.id,
+        received_at=datetime.utcnow(),
+        notes=f'رحلة حالة — {JOURNEY_LABELS.get(stage, stage)}',
+    )
+    assign_organization(log)
+    db.session.add(log)
+    db.session.flush()
+    return {
+        'ok': True,
+        'skipped': False,
+        'url': whatsapp_url(phone, msg),
+        'stage': stage,
+        'label': JOURNEY_LABELS[stage],
+        'log_id': log.id,
+    }
+
+
+def auto_stage_for_fault_status(old_status: str | None, new_status: str | None, *, had_tech: bool, has_tech: bool) -> str | None:
+    """يقترح مرحلة إشعار عند تغيّر العطل."""
+    new_status = (new_status or '').strip()
+    if new_status in RESOLVED_STATUSES and (old_status or '') not in RESOLVED_STATUSES:
+        return 'resolved'
+    if has_tech and not had_tech:
+        return 'assigned'
+    if new_status == 'قيد المعالجة' and (old_status or '') == 'مفتوح' and has_tech:
+        return 'assigned'
+    return None
+
+
 def ack_whatsapp_url(item: WhatsAppInbox, fault: Fault | None = None) -> str:
     fault = fault or (tenant_query(Fault).filter_by(id=item.fault_id).first() if item.fault_id else None)
+    if fault:
+        try:
+            return whatsapp_url(
+                item.from_phone or customer_phone_for_fault(fault),
+                build_customer_journey_message(fault, 'received'),
+            )
+        except ValueError:
+            pass
     code = fault.code if fault else item.code
     msg = (
         f'تم استلام بلاغكم بنجاح.\n'

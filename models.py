@@ -455,7 +455,8 @@ class WhatsAppInbox(TenantMixin, db.Model):
     from_name = db.Column(db.String(120))
     body = db.Column(db.Text)
     media_url = db.Column(db.String(500))
-    status = db.Column(db.String(40), default='جديد')  # جديد / مربوط / تم إنشاء عطل / مغلق
+    status = db.Column(db.String(40), default='جديد')  # جديد / مربوط / تم إنشاء عطل / مغلق / مُرسل
+    stage = db.Column(db.String(40))  # received / assigned / on_way / resolved / inbound
     receive_target = db.Column(db.String(40), default='office')  # office أولاً ثم توزيع
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'))
     elevator_id = db.Column(db.Integer, db.ForeignKey('elevators.id'))
