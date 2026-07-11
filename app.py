@@ -7,7 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import MaintenanceTeam
-from models import VisitTechnician, FaultTechnician
+from models import VisitTechnician, FaultTechnician, WhatsAppInbox
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
 from models import ElevatorEstimate, ElevatorEstimateLine
@@ -180,6 +180,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
+    'whatsapp_webhook',
 })
 PUBLIC_PATH_PREFIXES = ('/static',)
 STATIC_UPLOADS_PREFIX = '/static/uploads'
@@ -6389,6 +6390,131 @@ def field_fault_request_parts(fault_id):
 # =============================================
 # الأعطال
 # =============================================
+# =============================================
+# وارد واتساب — المرحلة 1 (المكتب ثم التوزيع)
+# =============================================
+@app.route('/support/whatsapp')
+def whatsapp_inbox():
+    from whatsapp_support import ensure_whatsapp_settings, inbox_stats
+
+    s = ensure_whatsapp_settings(get_app_settings())
+    db.session.commit()
+    items = (
+        tenant_query(WhatsAppInbox)
+        .order_by(WhatsAppInbox.received_at.desc(), WhatsAppInbox.id.desc())
+        .limit(200)
+        .all()
+    )
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    elevators = tenant_query(Elevator).order_by(Elevator.code).all()
+    pending_wa = session.pop('pending_whatsapp', '')
+    return render_template(
+        'whatsapp_inbox.html',
+        items=items,
+        customers=customers,
+        elevators=elevators,
+        stats=inbox_stats(),
+        whatsapp_phone=s.whatsapp_phone or '0555076078',
+        pending_whatsapp=pending_wa,
+        flash_ok=session.pop('wa_flash_ok', ''),
+        flash_err=session.pop('wa_flash_err', ''),
+    )
+
+
+@app.route('/support/whatsapp/intake', methods=['POST'])
+def whatsapp_inbox_intake():
+    from whatsapp_support import ensure_whatsapp_settings, intake_inbound
+
+    ensure_whatsapp_settings(get_app_settings())
+    try:
+        item = intake_inbound(
+            from_phone=request.form.get('from_phone', ''),
+            from_name=request.form.get('from_name', ''),
+            body=request.form.get('body', ''),
+            next_code_fn=next_code,
+        )
+        db.session.commit()
+        if item.customer_id and item.elevator_id:
+            session['wa_flash_ok'] = f'تم استلام {item.code} وربطه تلقائياً بالعميل/المصعد — بانتظار إنشاء العطل والتوزيع.'
+        elif item.customer_id:
+            session['wa_flash_ok'] = f'تم استلام {item.code} وربطه بالعميل — اختر المصعد ثم أنشئ العطل.'
+        else:
+            session['wa_flash_ok'] = f'تم استلام {item.code} في صندوق المكتب — اربط العميل/المصعد.'
+    except ValueError as exc:
+        db.session.rollback()
+        session['wa_flash_err'] = str(exc)
+    except Exception as exc:
+        db.session.rollback()
+        session['wa_flash_err'] = f'تعذّر الاستلام: {exc}'
+    return redirect(url_for('whatsapp_inbox'))
+
+
+@app.route('/support/whatsapp/<int:item_id>/link', methods=['POST'])
+def whatsapp_inbox_link(item_id):
+    from whatsapp_support import link_inbox_item
+
+    item = tenant_get_or_404(WhatsAppInbox, item_id)
+    try:
+        cid = request.form.get('customer_id') or None
+        eid = request.form.get('elevator_id') or None
+        link_inbox_item(
+            item,
+            customer_id=int(cid) if cid else None,
+            elevator_id=int(eid) if eid else None,
+        )
+        db.session.commit()
+        session['wa_flash_ok'] = f'تم ربط {item.code}'
+    except ValueError as exc:
+        db.session.rollback()
+        session['wa_flash_err'] = str(exc)
+    except Exception as exc:
+        db.session.rollback()
+        session['wa_flash_err'] = f'تعذّر الربط: {exc}'
+    return redirect(url_for('whatsapp_inbox'))
+
+
+@app.route('/support/whatsapp/<int:item_id>/create-fault', methods=['POST'])
+def whatsapp_inbox_create_fault(item_id):
+    from whatsapp_support import ack_whatsapp_url, create_fault_from_inbox
+
+    item = tenant_get_or_404(WhatsAppInbox, item_id)
+    try:
+        fault = create_fault_from_inbox(item, next_code_fn=next_code, priority='عاجلة')
+        db.session.commit()
+        wa = ack_whatsapp_url(item, fault)
+        if wa:
+            session['pending_whatsapp'] = wa
+        session['wa_flash_ok'] = (
+            f'تم إنشاء العطل {fault.code} — المكتب يستلمه الآن. '
+            f'وزّع الفني من شاشة الأعطال.'
+        )
+    except ValueError as exc:
+        db.session.rollback()
+        session['wa_flash_err'] = str(exc)
+    except Exception as exc:
+        db.session.rollback()
+        session['wa_flash_err'] = f'تعذّر إنشاء العطل: {exc}'
+    return redirect(url_for('whatsapp_inbox'))
+
+
+@app.route('/api/webhooks/whatsapp', methods=['GET', 'POST'])
+def whatsapp_webhook():
+    """Webhook جاهز لـ Meta WhatsApp Cloud API (المرحلة التالية للربط الآلي)."""
+    # Meta verification challenge
+    if request.method == 'GET':
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        expected = os.environ.get('WHATSAPP_VERIFY_TOKEN', '')
+        if mode == 'subscribe' and expected and token == expected and challenge:
+            return challenge, 200
+        return jsonify({'ok': False, 'error': 'verify_failed'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    # حالياً نسجّل الاستلام فقط — الربط الكامل بعد تفعيل WABA لكل مستأجر
+    return jsonify({'ok': True, 'received': True, 'phase': 1, 'note': 'office_intake_ui_active'}), 200
+
+
 @app.route('/faults')
 def faults():
     from operations import fault_alerts, fault_stats
@@ -8571,6 +8697,8 @@ def settings_save():
     s.company_name    = request.form.get('company_name', '')
     s.company_name_en = request.form.get('company_name_en', '')
     s.phone           = request.form.get('phone', '')
+    s.whatsapp_phone  = request.form.get('whatsapp_phone', '') or '0555076078'
+    s.whatsapp_receive_mode = 'office'
     s.email           = request.form.get('email', '')
     s.address         = request.form.get('address', '')
     s.address_en      = request.form.get('address_en', '')

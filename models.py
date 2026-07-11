@@ -441,6 +441,38 @@ class Fault(TenantMixin, db.Model):
         return f'<Fault {self.code}>'
 
 
+class WhatsAppInbox(TenantMixin, db.Model):
+    """وارد واتساب — يستلمه المكتب أولاً ثم يُوزَّع كعطل."""
+    __tablename__ = 'whatsapp_inbox'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_whatsapp_inbox_org_code'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)  # WA-00001
+    direction = db.Column(db.String(20), default='inbound')  # inbound / outbound
+    from_phone = db.Column(db.String(40), nullable=False)
+    from_name = db.Column(db.String(120))
+    body = db.Column(db.Text)
+    media_url = db.Column(db.String(500))
+    status = db.Column(db.String(40), default='جديد')  # جديد / مربوط / تم إنشاء عطل / مغلق
+    receive_target = db.Column(db.String(40), default='office')  # office أولاً ثم توزيع
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'))
+    elevator_id = db.Column(db.Integer, db.ForeignKey('elevators.id'))
+    fault_id = db.Column(db.Integer, db.ForeignKey('faults.id'))
+    wa_message_id = db.Column(db.String(120))  # idempotency for webhook
+    received_at = db.Column(db.DateTime, default=datetime.utcnow)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    customer = db.relationship('Customer', foreign_keys=[customer_id])
+    elevator = db.relationship('Elevator', foreign_keys=[elevator_id])
+    fault = db.relationship('Fault', foreign_keys=[fault_id])
+
+    def __repr__(self):
+        return f'<WhatsAppInbox {self.code}>'
+
+
 class FaultTechnician(TenantMixin, db.Model):
     __tablename__ = 'fault_technicians'
 
@@ -806,6 +838,8 @@ class Settings(TenantMixin, db.Model):
     company_name    = db.Column(db.String(200))
     company_name_en = db.Column(db.String(200))
     phone           = db.Column(db.String(20))
+    whatsapp_phone  = db.Column(db.String(40))  # رقم واتساب استقبال البلاغات
+    whatsapp_receive_mode = db.Column(db.String(20), default='office')  # office أولاً ثم توزيع
     email           = db.Column(db.String(100))
     address         = db.Column(db.Text)
     address_en      = db.Column(db.Text)

@@ -110,6 +110,7 @@ CSRF_EXEMPT_ENDPOINTS = frozenset({
     'web_manifest',
     'api_version',
     'moyasar_webhook',
+    'whatsapp_webhook',
 })
 
 

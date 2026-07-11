@@ -74,6 +74,7 @@ PATH_RULES: tuple[tuple[str, str, str], ...] = (
     ('/technicians', 'technicians.read', 'technicians.write'),
     ('/maintenance-visits', 'operations.read', 'operations.write'),
     ('/faults', 'operations.read', 'operations.write'),
+    ('/support/whatsapp', 'operations.read', 'operations.write'),
     ('/parts-billing', 'operations.read', 'operations.write'),
     ('/elevator-estimates', 'installation.read', 'installation.write'),
     ('/installation', 'installation.read', 'installation.write'),
