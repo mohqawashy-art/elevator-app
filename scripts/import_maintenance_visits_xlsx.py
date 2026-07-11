@@ -101,21 +101,17 @@ def _map_visit_type(raw: str) -> str:
 
 
 def is_routine_maintenance_visit(raw: str) -> bool:
-    """صيانة دورية فقط → صفحة زيارات الصيانة."""
+    """صيانة دورية + زيارة متابعة → صفحة زيارات الصيانة."""
     s = _str(raw)
-    return bool(s) and 'دورية' in s and 'عطل' not in s
+    if not s or 'عطل' in s:
+        return False
+    return 'دورية' in s or 'متابعة' in s or 'مرجعة' in s
 
 
 def is_fault_bucket_visit(raw: str) -> bool:
-    """عطل + زيارة متابعة (مرجعة) → صفحة الأعطال."""
+    """صفوف «عطل» فقط → صفحة الأعطال."""
     s = _str(raw)
-    if not s:
-        return False
-    if 'عطل' in s:
-        return True
-    if 'متابعة' in s or 'مرجعة' in s:
-        return True
-    return False
+    return bool(s) and 'عطل' in s
 
 
 def _visit_type_cell(row: tuple) -> str:
@@ -206,6 +202,8 @@ def load_rows(path: str) -> list[tuple]:
 
 
 def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = True) -> dict:
+    from tenant_scope import assign_organization
+
     rows = load_rows(path)
     stats = {
         'rows': len(rows),
@@ -277,6 +275,7 @@ def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
             notes=notes or None,
             completed_at=datetime.utcnow() if status == 'مكتملة' else None,
         )
+        assign_organization(visit)
         db.session.add(visit)
         existing_visits.add(visit_code.upper())
         stats['imported'] += 1
@@ -291,6 +290,7 @@ def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
 def main() -> int:
     parser = argparse.ArgumentParser(description='Import maintenance visits from Excel')
     parser.add_argument('xlsx', help='Path to Excel file')
+    parser.add_argument('--slug', default='jama', help='Organization slug')
     parser.add_argument('--dry-run', action='store_true', help='Preview only')
     parser.add_argument('--force', action='store_true', help='Import even if visit code exists')
     args = parser.parse_args()
@@ -299,7 +299,19 @@ def main() -> int:
         print(f'ERROR: file not found: {args.xlsx}')
         return 1
 
+    from flask import g
+    from models import Organization
+
     with app.app_context():
+        slug = (args.slug or 'jama').strip().lower()
+        org = Organization.query.filter_by(slug=slug).first()
+        if not org:
+            print(f'ERROR: لا توجد مؤسسة slug={slug!r}')
+            return 1
+        g.organization = org
+        g.organization_id = org.id
+        print(f'Tenant: {org.name} ({org.slug})')
+
         result = import_visits(
             args.xlsx,
             dry_run=args.dry_run,
@@ -323,6 +335,8 @@ def main() -> int:
             print('Missing samples:')
             for line in result['missing_samples']:
                 print(' ', line)
+        if not args.dry_run:
+            print('  visits in tenant:', MaintenanceVisit.query.filter_by(organization_id=org.id).count())
     return 0
 
 

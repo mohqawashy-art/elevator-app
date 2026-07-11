@@ -100,6 +100,8 @@ def load_fault_rows(path: str) -> list[tuple]:
 
 
 def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = True) -> dict:
+    from tenant_scope import assign_organization
+
     rows = load_fault_rows(path)
     stats = {
         'rows': len(rows),
@@ -190,6 +192,7 @@ def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
             notes=notes or None,
             resolved_at=reported_at if status == 'تم الاصلاح' else None,
         )
+        assign_organization(fault)
         db.session.add(fault)
         db.session.flush()
 
@@ -210,6 +213,7 @@ def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
 def main() -> int:
     parser = argparse.ArgumentParser(description='Import faults from visits Excel (عطل rows only)')
     parser.add_argument('xlsx', help='Path to Excel file')
+    parser.add_argument('--slug', default='jama', help='Organization slug')
     parser.add_argument('--dry-run', action='store_true', help='Preview only')
     parser.add_argument('--force', action='store_true', help='Import even if visit already has a fault')
     args = parser.parse_args()
@@ -218,7 +222,19 @@ def main() -> int:
         print(f'ERROR: file not found: {args.xlsx}')
         return 1
 
+    from flask import g
+    from models import Organization
+
     with app.app_context():
+        slug = (args.slug or 'jama').strip().lower()
+        org = Organization.query.filter_by(slug=slug).first()
+        if not org:
+            print(f'ERROR: لا توجد مؤسسة slug={slug!r}')
+            return 1
+        g.organization = org
+        g.organization_id = org.id
+        print(f'Tenant: {org.name} ({org.slug})')
+
         result = import_faults(
             args.xlsx,
             dry_run=args.dry_run,
@@ -240,6 +256,8 @@ def main() -> int:
             print('Missing samples:')
             for line in result['missing_samples']:
                 print(' ', line)
+        if not args.dry_run:
+            print('  faults in tenant:', Fault.query.filter_by(organization_id=org.id).count())
     return 0
 
 
