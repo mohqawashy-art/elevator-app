@@ -23,32 +23,20 @@ body{
   position:fixed;
   inset:0;
   display:flex;
-  flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:clamp(16px,3vh,32px);
-  padding:clamp(16px,3vh,36px) clamp(12px,2vw,24px);
+  padding:clamp(10px,2vh,24px) clamp(10px,2vw,24px);
   background:#000;
-}
-.brand-logo{
-  display:block;
-  width:auto;
-  height:auto;
-  max-width:min(520px,86vw);
-  max-height:min(120px,18vh);
-  object-fit:contain;
-  opacity:0;
-  animation:fade .6s ease .05s forwards;
 }
 .hero-art{
   display:block;
   width:auto;
   height:auto;
   max-width:100%;
-  max-height:min(72vh,72dvh);
+  max-height:100%;
   object-fit:contain;
   opacity:0;
-  animation:fade .6s ease .15s forwards;
+  animation:fade .6s ease .1s forwards;
 }
 @keyframes fade{to{opacity:1}}
 .login{
@@ -76,7 +64,7 @@ body{
   overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
 }
 @media (prefers-reduced-motion: reduce){
-  .brand-logo,.hero-art{animation:none;opacity:1}
+  .hero-art{animation:none;opacity:1}
 }
 </style>
 </head>
@@ -84,21 +72,13 @@ body{
 <h1 class="sr-only">LiftCore — قريباً · إدارة المصاعد أسهل وأذكى</h1>
 <div class="hero">
   <img
-    class="brand-logo"
-    src="{{ url_for('static', filename='images/liftcore-header-logo.png') }}?v=10"
-    alt="LiftCore — الإدارة الذكية للمصاعد"
-    width="1024"
-    height="320"
-    decoding="async"
-    fetchpriority="high"
-  >
-  <img
     class="hero-art"
-    src="{{ url_for('static', filename='images/liftcore-coming-soon.png') }}?v=5"
-    alt="LiftCore قريباً — منصة متكاملة لإدارة وتشغيل وصيانة المصاعد"
+    src="{{ url_for('static', filename='images/liftcore-coming-soon.png') }}?v=6"
+    alt="LiftCore قريباً — الإدارة الذكية للمصاعد"
     width="1536"
     height="1024"
     decoding="async"
+    fetchpriority="high"
   >
 </div>
 <a class="login" href="{{ url_for('login') }}">دخول المنصة</a>
