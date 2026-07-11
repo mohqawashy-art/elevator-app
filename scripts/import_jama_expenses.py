@@ -172,8 +172,8 @@ def import_expenses(
         raw_type = _str(_cell(r, 'نوع المصروف'))
         responsible = _str(_cell(r, 'مسئول الصرف'))
         payment_method = _str(_cell(r, 'طريقة الدفع')) or 'كاش'
-        reference = _str(_cell(r, 'مرفقات'))
-        vendor = _str(_cell(r, 'المورد'))
+        reference = _str(_cell(r, 'مرفقات'))[:500]
+        vendor = _str(_cell(r, 'المورد'))[:100]
 
         if not base_code or not edate or amount <= 0:
             stats['errors'] += 1
@@ -245,7 +245,7 @@ def import_expenses(
             continue
 
         exp_type = _normalize_expense_type(raw_type, notes)
-        desc = notes or raw_type or exp_type
+        desc = (notes or raw_type or exp_type)[:300]
         stats['types'][exp_type] = stats['types'].get(exp_type, 0) + 1
 
         fields = dict(

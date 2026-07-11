@@ -483,7 +483,7 @@ class Revenue(TenantMixin, db.Model):
     tax_amount      = db.Column(db.Float, default=0)
     total           = db.Column(db.Float, nullable=False)
     status          = db.Column(db.String(30), default='محصّل')  # محصّل / معلق / ملغي
-    reference       = db.Column(db.String(100))  # رقم الشيك أو التحويل
+    reference       = db.Column(db.String(500))  # رقم الشيك أو التحويل / مرفقات
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -513,7 +513,7 @@ class Expense(TenantMixin, db.Model):
     responsible     = db.Column(db.String(100))
     payment_method  = db.Column(db.String(50))
     amount          = db.Column(db.Float, nullable=False)
-    reference       = db.Column(db.String(100))
+    reference       = db.Column(db.String(500))
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 

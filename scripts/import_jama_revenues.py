@@ -389,7 +389,7 @@ def import_revenues(
             tax_amount=tax,
             total=total_incl,
             status=_map_status(_cell(r, 'Status', 'الحالة')),
-            reference=_str(_cell(r, 'مرفقات')),
+            reference=_str(_cell(r, 'مرفقات'))[:500],
             notes=row_notes,
         )
 
