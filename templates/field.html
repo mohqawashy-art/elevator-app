@@ -72,7 +72,7 @@
           <span class="fp-code">{{ f.code }}</span>
           <span class="fp-priority {% if f.priority == 'حرجة' %}fp-p-critical{% elif f.priority in ['عالية','عاجلة'] %}fp-p-high{% else %}fp-p-normal{% endif %}">{{ f.priority }}</span>
         </div>
-        <div class="fp-title">{{ f.customer }}</div>
+        <div class="fp-title">{{ f.customer }}{% if f.unassigned %} <span style="font-size:11px;color:var(--fp-warning)">(غير معيّن — اضغط للاستلام)</span>{% endif %}</div>
         <div class="fp-meta">{{ f.fault_type }} · {{ f.status }}</div>
         <div class="fp-meta" style="margin-top:6px">{{ f.client_report[:100] }}{% if f.client_report|length > 100 %}…{% endif %}</div>
         <span class="fp-district">{{ f.district }}</span>

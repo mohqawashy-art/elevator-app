@@ -74,3 +74,37 @@ def test_field_payload_includes_alert_stamp(client):
         assert payload['visits'][0].get('dispatched_at')
         stamp2 = _field_alert_stamp([visit], [fault])
         assert stamp2 == payload['alert_stamp']
+
+
+def test_field_faults_team_sees_unassigned_open_faults(client):
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-UF',
+            name='فني أعطال',
+            phone='0500000088',
+            team='أعطال',
+        )
+        db.session.add(tech)
+        db.session.flush()
+        cust = Customer(organization_id=oid, code='C-UF', name='عميل بلا تعيين', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-UF', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=oid,
+            code='F-UF1',
+            elevator_id=elev.id,
+            technician_id=None,
+            status='مفتوح',
+            priority='عاجلة',
+            reported_at=datetime.utcnow(),
+        )
+        db.session.add(fault)
+        db.session.commit()
+        payload = field_technician_payload(tech.id, portal_kind='faults')
+        assert any(f['id'] == fault.id for f in payload['faults'])
+        assert any(f.get('unassigned') for f in payload['faults'] if f['id'] == fault.id)

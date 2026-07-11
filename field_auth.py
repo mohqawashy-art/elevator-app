@@ -34,10 +34,12 @@ def technician_has_field_pin(tech: Technician) -> bool:
 
 
 def find_technician_by_login(login_id: str | None) -> Technician | None:
+    from tenant_scope import tenant_query
+
     raw = (login_id or '').strip()
     if not raw:
         return None
-    by_code = Technician.query.filter(Technician.code.ilike(raw)).first()
+    by_code = tenant_query(Technician).filter(Technician.code.ilike(raw)).first()
     if by_code:
         if (by_code.status or 'متاح') in FIELD_ACTIVE_STATUSES:
             return by_code
@@ -45,7 +47,7 @@ def find_technician_by_login(login_id: str | None) -> Technician | None:
     phone = normalize_phone(raw)
     if not phone:
         return None
-    for tech in Technician.query.all():
+    for tech in tenant_query(Technician).all():
         st = tech.status or 'متاح'
         if st not in FIELD_ACTIVE_STATUSES:
             continue

@@ -1,7 +1,7 @@
 /* LiftCore Field PWA — Service Worker (scope: /field/) */
 'use strict';
 
-const CACHE_NAME = 'liftcore-field-v2';
+const CACHE_NAME = 'liftcore-field-v3';
 const PRECACHE = [
   '/static/field-portal.css',
   '/static/field-portal.js',

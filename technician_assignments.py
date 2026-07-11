@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 
 from models import db, Technician, VisitTechnician, FaultTechnician, MaintenanceVisit, Fault
 from tenant_scope import assign_organization, tenant_query
@@ -57,13 +57,17 @@ def sync_visit_technicians(visit, technician_ids: list[int]) -> None:
 def sync_fault_technicians(fault, technician_ids: list[int]) -> None:
     fid = fault.id if hasattr(fault, 'id') else int(fault)
     tenant_query(FaultTechnician).filter_by(fault_id=fid).delete(synchronize_session=False)
+    org_id = getattr(fault, 'organization_id', None)
     for i, tid in enumerate(technician_ids):
         link = FaultTechnician(
             fault_id=fid,
             technician_id=tid,
             role=_role_for_index(i),
         )
-        assign_organization(link)
+        if org_id:
+            link.organization_id = org_id
+        else:
+            assign_organization(link)
         db.session.add(link)
     if hasattr(fault, 'technician_id'):
         fault.technician_id = technician_ids[0] if technician_ids else None
@@ -178,6 +182,51 @@ def technician_assigned_to_fault(fault, tech_id: int) -> bool:
     return tenant_query(FaultTechnician).filter_by(fault_id=fault.id, technician_id=tech_id).count() > 0
 
 
+def faults_for_technician_filter(tech_id: int):
+    """أعطال مكلّفة للفني — يشمل صفوف الفريق حتى لو organization_id ناقص."""
+    assigned = (
+        db.session.query(FaultTechnician.fault_id)
+        .filter(FaultTechnician.technician_id == int(tech_id))
+        .execution_options(skip_tenant=True)
+    )
+    return or_(
+        Fault.technician_id == int(tech_id),
+        Fault.id.in_(assigned),
+    )
+
+
+def ensure_fault_links_for_technician(tech_id: int) -> int:
+    """زامن FaultTechnician من technician_id لأي عطل مفتوح مكلّف للفني."""
+    from operations import FAULT_OPEN
+
+    fixed = 0
+    rows = (
+        tenant_query(Fault)
+        .filter(
+            Fault.technician_id == int(tech_id),
+            Fault.status.in_(FAULT_OPEN),
+        )
+        .all()
+    )
+    for fault in rows:
+        if not fault_technician_ids(fault):
+            sync_fault_technicians(fault, [int(tech_id)])
+            fixed += 1
+    return fixed
+
+
+def unassigned_open_faults_filter():
+    """أعطال مفتوحة بلا فني رئيسي وبلا صف فريق."""
+    from operations import FAULT_OPEN
+
+    linked = db.session.query(FaultTechnician.fault_id).execution_options(skip_tenant=True)
+    return and_(
+        Fault.status.in_(FAULT_OPEN),
+        Fault.technician_id.is_(None),
+        ~Fault.id.in_(linked),
+    )
+
+
 def visits_for_technician_filter(tech_id: int):
     assigned = db.session.query(VisitTechnician.visit_id).filter(
         VisitTechnician.technician_id == tech_id
@@ -185,16 +234,6 @@ def visits_for_technician_filter(tech_id: int):
     return or_(
         MaintenanceVisit.technician_id == tech_id,
         MaintenanceVisit.id.in_(assigned),
-    )
-
-
-def faults_for_technician_filter(tech_id: int):
-    assigned = db.session.query(FaultTechnician.fault_id).filter(
-        FaultTechnician.technician_id == tech_id
-    )
-    return or_(
-        Fault.technician_id == tech_id,
-        Fault.id.in_(assigned),
     )
 
 

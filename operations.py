@@ -1213,9 +1213,13 @@ def build_fault_whatsapp(fault: Fault, base_url: str = '') -> str:
 
 
 def dispatch_fault(fault_id: int, base_url: str = '') -> dict:
+    from technician_assignments import fault_technician_ids, sync_fault_technicians
+
     fault = tenant_get_or_404(Fault, fault_id)
     if not fault.technician_id:
         return {'error': 'لم يُعيَّن فني', 'whatsapp_url': ''}
+    if not fault_technician_ids(fault):
+        sync_fault_technicians(fault, [fault.technician_id])
     fault.dispatched_at = datetime.utcnow()
     if fault.status == 'مفتوح':
         fault.status = 'قيد المعالجة'
@@ -1373,7 +1377,12 @@ def parts_alerts() -> list[dict]:
 
 def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | None = None, portal_kind: str = 'both') -> dict:
     """مهام الفني على الجوال: اليوم وغداً فقط — حسب فريق الفني."""
-    from technician_assignments import visits_for_technician_filter, faults_for_technician_filter
+    from technician_assignments import (
+        ensure_fault_links_for_technician,
+        faults_for_technician_filter,
+        unassigned_open_faults_filter,
+        visits_for_technician_filter,
+    )
 
     tech = tenant_get_or_404(Technician, tech_id)
     today = on_date or date.today()
@@ -1397,6 +1406,10 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         today_visits = [v for v in visits if v.visit_date == today]
         tomorrow_visits = [v for v in visits if v.visit_date == tomorrow]
 
+    # أصلح روابط التعيين الناقصة قبل الجلب
+    if ensure_fault_links_for_technician(tech_id):
+        db.session.commit()
+
     faults: list = []
     has_assigned_faults = (
         tenant_query(Fault).filter(
@@ -1406,13 +1419,31 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         > 0
     )
     if show_faults or has_assigned_faults:
-        faults = (
+        by_id: dict[int, Fault] = {}
+        assigned_rows = (
             tenant_query(Fault).filter(
                 faults_for_technician_filter(tech_id),
                 Fault.status.in_(FAULT_OPEN),
             )
             .order_by(Fault.reported_at.desc())
             .all()
+        )
+        for f in assigned_rows:
+            by_id[f.id] = f
+        # فريق الأعطال/العام يرى أيضاً الأعطال المفتوحة غير المعيّنة (لا تضيع بعد واتساب)
+        if show_faults:
+            for f in (
+                tenant_query(Fault)
+                .filter(unassigned_open_faults_filter())
+                .order_by(Fault.reported_at.desc())
+                .limit(50)
+                .all()
+            ):
+                by_id.setdefault(f.id, f)
+        faults = sorted(
+            by_id.values(),
+            key=lambda x: x.reported_at or datetime.min,
+            reverse=True,
         )
 
     return {
@@ -1490,6 +1521,7 @@ def field_fault_summary(f: Fault, base_url: str = '') -> dict:
         'building_photo': customer_photo_url(cust, base_url),
         'elevator': elev.code if elev else '',
         'needs_parts': bool(f.needs_parts),
+        'unassigned': not bool(f.technician_id),
         'url': f'/field/fault/{f.id}',
     }
 
@@ -1527,11 +1559,30 @@ def field_visit_detail(visit_id: int, tech_id: int | None = None) -> dict:
 
 
 def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
-    from technician_assignments import technician_assigned_to_fault, fault_technicians_label
+    from field_auth import technician_portal_kind
+    from technician_assignments import (
+        fault_technicians_label,
+        sync_fault_technicians,
+        technician_assigned_to_fault,
+    )
 
     f = tenant_get_or_404(Fault, fault_id)
     if tech_id and not technician_assigned_to_fault(f, tech_id):
-        raise PermissionError('العطل غير مخصص لهذا الفني')
+        tech = tenant_query(Technician).filter_by(id=tech_id).first()
+        kind = technician_portal_kind(tech) if tech else 'both'
+        can_claim = (
+            kind in ('faults', 'both')
+            and not f.technician_id
+            and (f.status or '') in FAULT_OPEN
+        )
+        if can_claim:
+            sync_fault_technicians(f, [tech_id])
+            if f.status == 'مفتوح':
+                f.status = 'قيد المعالجة'
+            f.dispatched_at = f.dispatched_at or datetime.utcnow()
+            db.session.commit()
+        else:
+            raise PermissionError('العطل غير مخصص لهذا الفني')
     elev = f.elevator
     cust = elev.customer if elev else None
     tech = f.technician
@@ -1554,6 +1605,7 @@ def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
         'elevator': elev.code if elev else '',
         'technician_id': f.technician_id,
         'technician_name': tech.name if tech else '—',
+        'technician': fault_technicians_label(f),
         'report_url': f'/field/fault/{f.id}/report',
         'has_report': bool(f.report_json),
     }
@@ -1568,12 +1620,27 @@ def fault_report_payload(
     field_times_locked: bool = False,
 ) -> dict:
     from fault_report import FAULT_TYPE_OPTIONS, merge_fault_report, parse_fault_report_json, report_stats
+    from field_auth import technician_portal_kind
     from models import InventoryItem
-    from technician_assignments import technician_assigned_to_fault
+    from technician_assignments import sync_fault_technicians, technician_assigned_to_fault
 
     f = tenant_get_or_404(Fault, fault_id)
     if tech_id and not technician_assigned_to_fault(f, tech_id):
-        raise PermissionError('العطل غير مخصص لهذا الفني')
+        tech = tenant_query(Technician).filter_by(id=tech_id).first()
+        kind = technician_portal_kind(tech) if tech else 'both'
+        can_claim = (
+            kind in ('faults', 'both')
+            and not f.technician_id
+            and (f.status or '') in FAULT_OPEN
+        )
+        if can_claim:
+            sync_fault_technicians(f, [tech_id])
+            if f.status == 'مفتوح':
+                f.status = 'قيد المعالجة'
+            f.dispatched_at = f.dispatched_at or datetime.utcnow()
+            db.session.commit()
+        else:
+            raise PermissionError('العطل غير مخصص لهذا الفني')
     elev = f.elevator
     cust = elev.customer if elev else None
     contract = None
