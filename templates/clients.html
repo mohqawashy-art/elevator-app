@@ -567,7 +567,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           </div>
           <div class="map-legend">
             <div class="map-legend-item"><span class="map-legend-dot active"></span> عميل نشط</div>
-            <div class="map-legend-item"><span class="map-legend-dot inactive"></span> عميل غير نشط</div>
+            <div class="map-legend-item" style="color:var(--text3)">غير النشطين لا يظهرون على الخريطة</div>
             <div class="map-legend-item"><span class="map-legend-cluster">2</span> تجميع عند التصغير</div>
             <button class="btn btn-secondary btn-sm" onclick="refreshMainMap(true)">تحديث الخريطة</button>
           </div>
@@ -1198,6 +1198,11 @@ function clientAccountStatus(c) {
   return s === 'غير نشط' ? 'غير نشط' : 'نشط';
 }
 
+/** العملاء غير النشطين لا يُعرضون على خريطة العملاء. */
+function clientShownOnMap(c) {
+  return clientAccountStatus(c) === 'نشط';
+}
+
 function clientStatusBadge(c) {
   var st = clientAccountStatus(c);
   return '<span class="badge ' + (STATUS_B[st] || 'badge-active') + '">' + lcDisp(st) + '</span>';
@@ -1421,6 +1426,7 @@ function saveClientStatusFromCard(id, status) {
       c.status = status;
       renderTable(filtered);
       updateStats();
+      if (typeof refreshMainMap === 'function') refreshMainMap(false);
       if (currentCardId === id) openClientCard(id);
     })
     .catch(function () {
@@ -1918,11 +1924,12 @@ function refreshMainMapOsm() {
   osmMainMarkers.forEach(function (m) { osmMainMap.removeLayer(m); });
   osmMainMarkers = [];
   var bounds = [];
-  var activeCount = 0, inactiveCount = 0;
+  var activeCount = 0;
   CUSTOMERS.forEach(function (c) {
+    if (!clientShownOnMap(c)) return;
     var pos = getClientPosition(c);
     if (!pos) return;
-    if (clientAccountStatus(c) === 'نشط') activeCount++; else inactiveCount++;
+    activeCount++;
     var marker = L.circleMarker([pos.lat, pos.lng], {
       radius: CLIENT_MAP_OSM_RADIUS,
       color: '#ffffff',
@@ -1935,13 +1942,12 @@ function refreshMainMapOsm() {
     osmMainMarkers.push(marker);
     bounds.push([pos.lat, pos.lng]);
   });
-  var total = activeCount + inactiveCount;
   if (summaryEl) {
-    summaryEl.textContent = total
-      ? ('OpenStreetMap — ' + total + ' عميل (' + activeCount + ' نشط، ' + inactiveCount + ' غير نشط)')
-      : 'لا توجد إحداثيات GPS — أضف موقعاً من نموذج العميل';
+    summaryEl.textContent = activeCount
+      ? ('OpenStreetMap — ' + activeCount + ' عميل نشط')
+      : 'لا مواقع لعملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
   }
-  if (emptyEl) emptyEl.style.display = total ? 'none' : 'block';
+  if (emptyEl) emptyEl.style.display = activeCount ? 'none' : 'block';
   if (bounds.length) {
     osmMainMap.fitBounds(bounds, { padding: [48, 48] });
     if (bounds.length === 1) osmMainMap.setZoom(14);
@@ -2009,20 +2015,21 @@ function refreshMainMap(fitAgain) {
   clearMapMarkers();
 
   var bounds = new google.maps.LatLngBounds();
-  var activeCount = 0, inactiveCount = 0;
+  var activeCount = 0;
 
   CUSTOMERS.forEach(function(c) {
+    if (!clientShownOnMap(c)) return;
     var pos = getClientPosition(c);
     if (!pos) return;
 
-    if (clientAccountStatus(c) === 'نشط') activeCount++; else inactiveCount++;
+    activeCount++;
 
     var pinColor = getClientPinColor(c);
     var marker = LiftCoreMap.createPinMarker({
       position: {lat: pos.lat, lng: pos.lng},
       color: pinColor,
       scale: CLIENT_MAP_PIN_SCALE,
-      zIndex: clientAccountStatus(c) === 'نشط' ? 2 : 1
+      zIndex: 2
     });
     if (!marker) return;
 
@@ -2067,18 +2074,20 @@ function refreshMainMap(fitAgain) {
     });
   }
 
-  var total = activeCount + inactiveCount;
+  var total = activeCount;
   if (summaryEl) {
     summaryEl.textContent = total
-      ? ('معروض على الخريطة: ' + total + ' عميل (' + activeCount + ' نشط، ' + inactiveCount + ' غير نشط)')
-      : 'لا توجد إحداثيات GPS — شغّل geocode_clients.py لتحويل العناوين';
+      ? ('معروض على الخريطة: ' + total + ' عميل نشط')
+      : 'لا مواقع لعملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
   }
 
   if (emptyEl) emptyEl.style.display = total ? 'none' : 'block';
   mapEl.style.display = 'block';
 
   if (window.LiftCoreGeocode && !window._liftcoreGeocodeStarted) {
-    var missing = CUSTOMERS.filter(function(c) { return !getClientPosition(c); });
+    var missing = CUSTOMERS.filter(function(c) {
+      return clientShownOnMap(c) && !getClientPosition(c);
+    });
     if (missing.length) {
       window._liftcoreGeocodeStarted = true;
       if (summaryEl) summaryEl.textContent = 'جاري تحديد مواقع ' + missing.length + ' عميل من العناوين...';
@@ -2103,7 +2112,9 @@ function refreshMainMap(fitAgain) {
         });
       }
       if (total === 1) {
-        var only = getClientPosition(CUSTOMERS.find(function(c){ return getClientPosition(c); }));
+        var only = getClientPosition(CUSTOMERS.find(function(c){
+          return clientShownOnMap(c) && getClientPosition(c);
+        }));
         if (only) mainMap.setCenter({lat: only.lat, lng: only.lng});
         mainMap.setZoom(14);
       }
@@ -2113,7 +2124,9 @@ function refreshMainMap(fitAgain) {
     }
   }
   if (total === 1) {
-    var single = getClientPosition(CUSTOMERS.find(function(c){ return getClientPosition(c); }));
+    var single = getClientPosition(CUSTOMERS.find(function(c){
+      return clientShownOnMap(c) && getClientPosition(c);
+    }));
     if (single) {
       mainMap.setCenter({lat: single.lat, lng: single.lng});
       mainMap.setZoom(14);
