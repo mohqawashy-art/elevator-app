@@ -318,7 +318,25 @@ function saveReport(markResolved) {
       }
       updateProgress();
       if (markResolved) {
-        alert('✅ تم حفظ التقرير وإغلاق العطل');
+        var waUrl = data.customer_whatsapp_url || '';
+        var isField = (REPORT_CFG.backUrl || '').indexOf('/field') >= 0;
+        if (waUrl && !isField) {
+          var send = confirm('تم حفظ التقرير وإغلاق العطل.\nفتح واتساب لإرسال تأكيد الإصلاح وملخص العمل للعميل؟');
+          if (send) {
+            window.open(waUrl, '_blank', 'noopener');
+            if (data.customer_wa && data.customer_wa.log_id) {
+              fetch('/support/whatsapp/' + data.customer_wa.log_id + '/ack-send', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({stage: 'resolved'})
+              }).catch(function () {});
+            }
+          }
+        } else if (isField) {
+          alert('تم حفظ التقرير وإغلاق العطل.\nرسالة انتهاء العميل جاهزة للمكتب من شاشة الأعطال أو وارد واتساب.');
+        } else {
+          alert('✅ تم حفظ التقرير وإغلاق العطل');
+        }
         if (REPORT_CFG.backUrl) (window.LiftCoreNav ? LiftCoreNav.goBack(REPORT_CFG.backUrl) : (window.location.href = REPORT_CFG.backUrl));
       } else {
         alert('✅ تم حفظ التقرير');

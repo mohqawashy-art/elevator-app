@@ -318,6 +318,20 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
       </div>
       {% endif %}
+      {% if pending_customer_wa %}
+      <div style="background:rgba(42,127,255,.08);border:1px solid rgba(42,127,255,.28);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.7">
+        <strong style="color:var(--accent)">رسائل انتهاء جاهزة للعميل</strong>
+        — بعد إغلاق الفني للعطل: افتح واتساب من المكتب وأرسل الملخص.
+        {% for p in pending_customer_wa %}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(42,127,255,.15);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <span>{{ p.fault_code or p.thread_code }} · {{ p.label or p.stage }} · <span dir="ltr">{{ p.from_phone }}</span></span>
+          <a class="btn btn-primary btn-sm" href="{{ p.url }}" target="_blank" rel="noopener"
+             onclick="ackCustomerWaSend({{ p.thread_id }}, {{ (p.stage or '')|tojson }})">فتح واتساب وإرسال</a>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText({{ p.url|tojson }}).then(function(){alert('تم نسخ الرابط')})">نسخ</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
       <div class="page-header">
         <div class="page-title">الأعطال <span id="faults-count" data-i18n-skip></span></div>
         <div class="page-actions">
@@ -1251,9 +1265,19 @@ async function notifyCustomerWhatsApp(faultId, stage) {
       var go = confirm((data.label || 'واتساب') + ' جاهز.\nالمتصفح منع النافذة — اضغط موافق لفتح الرابط.');
       if (go) window.location.href = data.url;
     }
+    if (data.log_id) ackCustomerWaSend(data.log_id, stage);
   } catch (e) {
     alert('خطأ في تجهيز واتساب');
   }
+}
+
+function ackCustomerWaSend(threadId, stage) {
+  if (!threadId) return;
+  fetch('/support/whatsapp/' + threadId + '/ack-send', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({stage: stage || ''})
+  }).catch(function () {});
 }
 
 // ===== حذف =====

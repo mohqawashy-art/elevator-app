@@ -244,6 +244,33 @@ def customer_phone_for_fault(fault: Fault) -> str:
     return ''
 
 
+def resolution_summary_for_fault(fault: Fault, *, max_len: int = 280) -> str:
+    """ملخص إصلاح من العطل/التقرير لرسالة انتهاء العميل."""
+    parts: list[str] = []
+    resolution = (fault.resolution or '').strip()
+    if resolution:
+        parts.append(resolution)
+    tech_notes = (fault.tech_notes or '').strip()
+    if tech_notes:
+        first = tech_notes.split('\n\n')[0].strip()
+        if first and first not in parts and first != resolution:
+            parts.append(first)
+    if not parts and (fault.report_json or '').strip():
+        from fault_report import parse_fault_report_json
+
+        meta = parse_fault_report_json(fault.report_json).get('meta') or {}
+        for key in ('action_taken', 'diagnosis', 'final_notes'):
+            val = (meta.get(key) or '').strip()
+            if val:
+                parts.append(val)
+                break
+    text = ' — '.join(parts)
+    text = re.sub(r'\s+', ' ', text).strip()
+    if len(text) > max_len:
+        return text[: max_len - 1] + '…'
+    return text
+
+
 def build_customer_journey_message(fault: Fault, stage: str, *, thread_code: str = '') -> str:
     stage = (stage or '').strip()
     if stage not in JOURNEY_STAGES:
@@ -280,14 +307,21 @@ def build_customer_journey_message(fault: Fault, stage: str, *, thread_code: str
             f'بلاغ: {track} · المصعد: {elev_code}\n'
             f'نعتذر عن أي إزعاج ونقدّر تعاونكم.'
         )
-    return (
-        f'مرحباً {cust_name}\n'
-        f'تم الانتهاء من بلاغكم {track}.\n'
-        f'المصعد: {elev_code}\n'
-        f'نأمل أن يكون كل شيء على ما يرام.\n'
-        f'تقييمكم يهمنا: ردّوا برقم من 1 إلى 5 ⭐\n'
-        f'شكراً لثقتكم.'
-    )
+    summary = resolution_summary_for_fault(fault)
+    lines = [
+        f'مرحباً {cust_name}',
+        f'تم الانتهاء من بلاغكم {track}.',
+        f'المصعد: {elev_code}',
+        f'الفني: {tech_name}',
+    ]
+    if summary:
+        lines.append(f'ملخص الإصلاح: {summary}')
+    lines.extend([
+        'نأمل أن يكون كل شيء على ما يرام.',
+        'تقييمكم يهمنا: ردّوا برقم من 1 إلى 5 ⭐',
+        'شكراً لثقتكم.',
+    ])
+    return '\n'.join(lines)
 
 
 def _load_journey(thread: WhatsAppInbox) -> list[dict]:
@@ -378,9 +412,16 @@ def notify_customer_stage(
     url = whatsapp_url(phone, msg)
 
     if not force and journey_has_stage(thread, stage):
+        pending = False
+        for e in _load_journey(thread):
+            if (e or {}).get('stage') == stage:
+                url = (e or {}).get('url') or url
+                pending = bool((e or {}).get('pending_send'))
+                break
         return {
             'ok': True,
             'skipped': True,
+            'pending_send': pending,
             'url': url,
             'stage': stage,
             'label': JOURNEY_LABELS[stage],
@@ -397,12 +438,13 @@ def notify_customer_stage(
         'label': JOURNEY_LABELS.get(stage, stage),
         'body': msg,
         'url': url,
+        'pending_send': True,
         'at': datetime.utcnow().isoformat(sep=' ', timespec='seconds'),
     })
     _save_journey(thread, entries)
     thread.stage = stage
     if stage == 'resolved':
-        thread.status = 'مغلق'
+        thread.status = 'جاهز للإرسال'
     elif thread.status in ('جديد', 'مربوط'):
         thread.status = 'تم إنشاء عطل'
     db.session.add(thread)
@@ -410,6 +452,7 @@ def notify_customer_stage(
     return {
         'ok': True,
         'skipped': False,
+        'pending_send': True,
         'url': url,
         'stage': stage,
         'label': JOURNEY_LABELS[stage],
@@ -417,6 +460,65 @@ def notify_customer_stage(
         'fault_code': fault.code,
         'log_id': thread.id,
     }
+
+
+def pending_customer_sends(*, limit: int = 30) -> list[dict]:
+    """رسائل جاهزة ينتظر المكتب فتح wa.me وإرسالها."""
+    rows = (
+        thread_query()
+        .order_by(WhatsAppInbox.id.desc())
+        .limit(200)
+        .all()
+    )
+    out: list[dict] = []
+    for thread in rows:
+        for entry in reversed(_load_journey(thread)):
+            if not (entry or {}).get('pending_send'):
+                continue
+            url = (entry or {}).get('url') or ''
+            if not url:
+                continue
+            fault = thread.fault
+            out.append({
+                'thread_id': thread.id,
+                'thread_code': thread.code,
+                'fault_id': thread.fault_id,
+                'fault_code': fault.code if fault else '',
+                'stage': entry.get('stage') or '',
+                'label': entry.get('label') or JOURNEY_LABELS.get(entry.get('stage') or '', ''),
+                'url': url,
+                'from_phone': thread.from_phone or '',
+                'from_name': thread.from_name or '',
+                'at': entry.get('at') or '',
+            })
+            break
+        if len(out) >= limit:
+            break
+    return out
+
+
+def ack_pending_send(thread_id: int, *, stage: str | None = None) -> WhatsAppInbox | None:
+    thread = thread_query().filter(WhatsAppInbox.id == thread_id).first()
+    if not thread:
+        return None
+    entries = _load_journey(thread)
+    changed = False
+    for entry in entries:
+        if not (entry or {}).get('pending_send'):
+            continue
+        if stage and entry.get('stage') != stage:
+            continue
+        entry['pending_send'] = False
+        changed = True
+        if stage:
+            break
+    if changed:
+        _save_journey(thread, entries)
+        if not any((e or {}).get('pending_send') for e in entries):
+            if thread.stage == 'resolved' or thread.status == 'جاهز للإرسال':
+                thread.status = 'مغلق'
+        db.session.add(thread)
+    return thread
 
 
 def auto_stage_for_fault_status(
@@ -463,6 +565,7 @@ def inbox_stats() -> dict:
         'new': sum(1 for r in rows if r.status == 'جديد'),
         'linked': sum(1 for r in rows if r.status == 'مربوط'),
         'faulted': sum(1 for r in rows if r.status == 'تم إنشاء عطل'),
+        'ready_send': sum(1 for r in rows if r.status == 'جاهز للإرسال'),
         'open': sum(1 for r in rows if r.status in INBOX_OPEN),
     }
 

@@ -146,6 +146,62 @@ def test_journey_messages_include_fault_code(client):
             assert len(msg) > 20
 
 
+def test_resolved_message_includes_summary_and_pending_queue(client):
+    from app import app
+    from whatsapp_support import pending_customer_sends, resolution_summary_for_fault
+
+    login_as(client, 'admin')
+    with app.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        g.organization = org
+        g.organization_id = org.id
+        cust = Customer(
+            organization_id=org.id,
+            code='C-WA04',
+            name='عميل إغلاق',
+            phone='0555444555',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(
+            organization_id=org.id,
+            code='EL-WA04',
+            customer_id=cust.id,
+            status='نشط',
+        )
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=org.id,
+            code='FA-00777',
+            elevator_id=elev.id,
+            reporter_phone='0555444555',
+            status='تم الاصلاح',
+            resolution='تم استبدال كونتاكتور الباب',
+            tech_notes='العطل في دائرة الباب',
+        )
+        db.session.add(fault)
+        db.session.commit()
+        fault = Fault.query.filter_by(code='FA-00777').first()
+        assert 'كونتاكتور' in resolution_summary_for_fault(fault)
+        msg = build_customer_journey_message(fault, 'resolved')
+        assert 'ملخص الإصلاح' in msg
+        assert 'كونتاكتور' in msg
+
+        n = {'i': 0}
+
+        def _next(model, prefix, digits=5):
+            n['i'] += 1
+            return f'{prefix}{n["i"]:05d}'
+
+        result = notify_customer_stage(fault, 'resolved', next_code_fn=_next)
+        db.session.commit()
+        assert result['ok'] and result.get('pending_send')
+        pending = pending_customer_sends()
+        assert any(p['fault_code'] == 'FA-00777' for p in pending)
+
+
 def test_notify_customer_stage_same_thread_code(client):
     from app import app
 

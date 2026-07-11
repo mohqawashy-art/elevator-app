@@ -6200,6 +6200,7 @@ def office_fault_report(fault_id):
 def api_save_fault_report(fault_id):
     from operations import save_fault_report
     from technician_assignments import technician_assigned_to_fault
+    from whatsapp_support import notify_customer_stage
 
     tech_id = getattr(g, 'field_tech_id', None)
     if tech_id:
@@ -6211,8 +6212,26 @@ def api_save_fault_report(fault_id):
     mark_resolved = bool(data.pop('mark_resolved', False))
     try:
         save_fault_report(fault_id, data, mark_resolved=mark_resolved)
-        return jsonify({'ok': True, 'fault_id': fault_id})
+        result = {'ok': True, 'fault_id': fault_id}
+        if mark_resolved:
+            fault = tenant_query(Fault).filter_by(id=fault_id).first()
+            if fault:
+                cust = notify_customer_stage(
+                    fault, 'resolved', next_code_fn=next_code, force=True,
+                )
+                db.session.commit()
+                if cust.get('ok') and cust.get('url'):
+                    result['customer_whatsapp_url'] = cust['url']
+                    result['customer_wa'] = {
+                        'thread_code': cust.get('thread_code'),
+                        'fault_code': cust.get('fault_code'),
+                        'label': cust.get('label'),
+                        'pending_send': cust.get('pending_send', True),
+                        'log_id': cust.get('log_id'),
+                    }
+        return jsonify(result)
     except Exception as e:
+        db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 400
 
 
@@ -6393,9 +6412,14 @@ def field_fault_complete(fault_id):
             status=request.form.get('status', 'تم الاصلاح'),
         )
         fault = tenant_query(Fault).filter_by(id=fault_id).first()
-        if fault:
-            notify_customer_stage(fault, 'resolved', next_code_fn=next_code)
+        status = (request.form.get('status') or 'تم الاصلاح').strip()
+        if fault and status in ('تم الاصلاح', 'تم الإصلاح', 'مغلق', 'محلول'):
+            notify_customer_stage(fault, 'resolved', next_code_fn=next_code, force=True)
             db.session.commit()
+            flash(
+                f'تم إغلاق {fault.code}. رسالة انتهاء العميل جاهزة للمكتب من شاشة الأعطال أو وارد واتساب.',
+                'success',
+            )
     except ValueError as e:
         flash(str(e), 'error')
         return redirect(url_for('field_fault_report', fault_id=fault_id))
@@ -6429,7 +6453,13 @@ def field_fault_request_parts(fault_id):
 # =============================================
 @app.route('/support/whatsapp')
 def whatsapp_inbox():
-    from whatsapp_support import ensure_whatsapp_settings, inbox_stats, parse_journey_for_template, thread_query
+    from whatsapp_support import (
+        ensure_whatsapp_settings,
+        inbox_stats,
+        parse_journey_for_template,
+        pending_customer_sends,
+        thread_query,
+    )
 
     s = ensure_whatsapp_settings(get_app_settings())
     db.session.commit()
@@ -6447,10 +6477,12 @@ def whatsapp_inbox():
         .all()
     )
     pending_wa = session.pop('pending_whatsapp', '')
+    pending_customer_wa = pending_customer_sends(limit=20)
     return render_template(
         'whatsapp_inbox.html',
         items=items,
         journeys=journeys,
+        pending_customer_wa=pending_customer_wa,
         customers=customers,
         elevators=elevators,
         customers_js=[
@@ -6534,6 +6566,29 @@ def whatsapp_inbox_link(item_id):
     return redirect(url_for('whatsapp_inbox'))
 
 
+    return redirect(url_for('whatsapp_inbox'))
+
+
+@app.route('/support/whatsapp/<int:item_id>/ack-send', methods=['POST'])
+def whatsapp_ack_send(item_id):
+    """بعد فتح wa.me — إزالة من قائمة «جاهز للإرسال»."""
+    from whatsapp_support import ack_pending_send
+
+    data = request.get_json(silent=True) or {}
+    stage = (data.get('stage') or request.form.get('stage') or '').strip() or None
+    item = ack_pending_send(item_id, stage=stage)
+    if not item:
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'ok': False, 'error': 'غير موجود'}), 404
+        session['wa_flash_err'] = 'البلاغ غير موجود'
+        return redirect(url_for('whatsapp_inbox'))
+    db.session.commit()
+    if request.is_json or request.headers.get('Accept', '').find('application/json') >= 0:
+        return jsonify({'ok': True, 'thread_id': item.id, 'status': item.status})
+    session['wa_flash_ok'] = f'تم تأكيد إرسال {item.code}'
+    return redirect(url_for('whatsapp_inbox'))
+
+
 @app.route('/support/whatsapp/<int:item_id>/create-fault', methods=['POST'])
 def whatsapp_inbox_create_fault(item_id):
     from whatsapp_support import create_fault_from_inbox, notify_customer_stage
@@ -6580,6 +6635,7 @@ def whatsapp_webhook():
 def faults():
     from operations import fault_alerts, fault_stats
     from sqlalchemy.orm import joinedload
+    from whatsapp_support import pending_customer_sends
 
     faults_list = (
         tenant_query(Fault)
@@ -6594,6 +6650,7 @@ def faults():
         Technician.status.in_(['نشط', 'متاح', 'مشغول'])
     ).all()
     pending_wa = session.pop('pending_whatsapp', '')
+    pending_customer_wa = pending_customer_sends(limit=20)
     fault_techs = [t for t in technicians if (t.team or 'عام') in ('أعطال', 'عام', 'صيانة')] or list(technicians)
     return render_template(
         'faults.html',
@@ -6629,6 +6686,7 @@ def faults():
         fault_alerts=fault_alerts(),
         fault_technicians=fault_techs,
         pending_whatsapp=pending_wa,
+        pending_customer_wa=pending_customer_wa,
     )
 
 

@@ -108,6 +108,19 @@ th{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:500}
     </div>
     {% endif %}
 
+    {% if pending_customer_wa %}
+    <div class="banner" style="border-color:rgba(42,127,255,.4);background:rgba(42,127,255,.08)">
+      <strong>رسائل جاهزة للعميل (بعد إغلاق العطل)</strong>
+      {% for p in pending_customer_wa %}
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span>{{ p.fault_code or p.thread_code }} · {{ p.label }} · <span dir="ltr">{{ p.from_phone }}</span></span>
+        <a class="btn btn-primary btn-sm" href="{{ p.url }}" target="_blank" rel="noopener"
+           onclick="ackWaPending({{ p.thread_id }}, {{ (p.stage or '')|tojson }})">فتح واتساب وإرسال</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="banner">
       رقم الاستقبال الرسمي: <code>{{ whatsapp_phone }}</code>
       · المستلم أولاً: <strong>المكتب</strong>
@@ -177,7 +190,11 @@ th{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:500}
                 <div class="journey-title">مراحل نفس الكود {{ item.code }}</div>
                 <div class="journey-steps">
                   {% for step in steps %}
-                  <span class="journey-step{% if step.stage == 'resolved' %} done-resolved{% endif %}">{{ step.label or step.stage }}</span>
+                  <span class="journey-step{% if step.stage == 'resolved' %} done-resolved{% endif %}">{{ step.label or step.stage }}{% if step.pending_send %} · بانتظار إرسال{% endif %}</span>
+                  {% if step.pending_send and step.url %}
+                  <a class="btn btn-primary btn-sm" href="{{ step.url }}" target="_blank" rel="noopener"
+                     onclick="ackWaPending({{ item.id }}, {{ (step.stage or '')|tojson }})">إرسال</a>
+                  {% endif %}
                   {% endfor %}
                 </div>
               </div>
@@ -192,6 +209,7 @@ th{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:500}
               {% if item.status == 'جديد' %}<span class="badge badge-new">جديد</span>
               {% elif item.status == 'مربوط' %}<span class="badge badge-linked">مربوط</span>
               {% elif item.status == 'تم إنشاء عطل' %}<span class="badge badge-done">تم إنشاء عطل</span>
+              {% elif item.status == 'جاهز للإرسال' %}<span class="badge badge-linked">جاهز للإرسال</span>
               {% else %}<span class="badge">{{ item.status }}</span>{% endif %}
             </td>
             <td>
@@ -244,6 +262,15 @@ th{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:500}
 <script>
 var WA_CUSTOMERS = {{ customers_js|tojson }};
 var WA_ELEVATORS = {{ elevators_js|tojson }};
+
+function ackWaPending(threadId, stage) {
+  if (!threadId) return;
+  fetch('/support/whatsapp/' + threadId + '/ack-send', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({stage: stage || ''})
+  }).catch(function () {});
+}
 
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open')}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open')}
