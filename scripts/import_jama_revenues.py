@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Import Jama revenues from Excel with contract / parts / invoice linking."""
+"""Import Jama revenues from Excel with contract / parts / invoice linking.
+
+  python scripts/import_jama_revenues.py deploy/data/jama_import/revenues_11_7_2026.xlsx --slug jama --dry-run
+  python scripts/import_jama_revenues.py deploy/data/jama_import/revenues_11_7_2026.xlsx --slug jama
+"""
 from __future__ import annotations
 
 import argparse
@@ -11,7 +15,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-import pandas as pd
+from openpyxl import load_workbook
 
 from app import app, db, sync_contract_invoice_status
 from customer_billing import (
@@ -24,6 +28,7 @@ from customer_billing import (
 from entity_links import contract_by_code, customer_by_name
 from import_real_data import _cell, _extract_cn, _f, _i, _parse_date, _str
 from models import Contract, Customer, Invoice, PartsBilling, Revenue
+from tenant_scope import assign_organization, tenant_query
 
 PARTS_REVENUE_TYPES = frozenset({'قطع غيار', 'بيع قطع غيار', 'زيارة'})
 CONTRACT_REVENUE_TYPES = frozenset({'تجديد عقد', 'عقد صيانة', 'عقد جديد', 'ضمان'})
@@ -103,13 +108,13 @@ def _find_customer_by_title(title: str) -> Customer | None:
     if exact:
         return exact
     compact = _normalize_ar_name(name)
-    for cust in Customer.query.all():
+    for cust in tenant_query(Customer).all():
         cn = _normalize_ar_name(cust.name or '')
         if not cn:
             continue
         if cn == compact or compact in cn or cn in compact:
             return cust
-    return Customer.query.filter(Customer.name.ilike(f'%{name[:20]}%')).first()
+    return tenant_query(Customer).filter(Customer.name.ilike(f'%{name[:20]}%')).first()
 
 
 def _money_close(a: float, b: float, tol: float = 1.0) -> bool:
@@ -125,7 +130,7 @@ def _find_parts_billing(
     total_incl: float,
     used_parts: set[int],
 ) -> PartsBilling | None:
-    q = PartsBilling.query.filter_by(customer_id=customer_id)
+    q = tenant_query(PartsBilling).filter_by(customer_id=customer_id)
     if contract_id:
         q = q.filter(
             (PartsBilling.contract_id == contract_id) | (PartsBilling.contract_id.is_(None))
@@ -178,7 +183,7 @@ def _find_invoice(
     total_incl: float,
     used_invoices: set[int],
 ) -> Invoice | None:
-    q = Invoice.query.filter_by(customer_id=customer_id)
+    q = tenant_query(Invoice).filter_by(customer_id=customer_id)
     if contract_id:
         q = q.filter(
             (Invoice.contract_id == contract_id) | (Invoice.contract_id.is_(None))
@@ -212,7 +217,7 @@ def _resolve_customer_contract(row: dict) -> tuple:
     # لا نربط بعقد آخر للعميل إذا كان رقم عقد محدداً في الملف ولم يُوجد
     if not contract and customer and not cn:
         contract = (
-            Contract.query.filter_by(customer_id=customer.id)
+            tenant_query(Contract).filter_by(customer_id=customer.id)
             .order_by(Contract.end_date.desc())
             .first()
         )
@@ -229,6 +234,23 @@ def _append_note(notes: str, extra: str) -> str:
     return f'{extra} — {notes}'.strip(' —') if notes else extra
 
 
+def _load_rows(path: str) -> list[dict]:
+    wb = load_workbook(path, read_only=True, data_only=True)
+    ws = wb.active
+    rows_iter = ws.iter_rows(values_only=True)
+    header = next(rows_iter, None)
+    if not header:
+        return []
+    keys = [(_str(h) or f'col_{i}') for i, h in enumerate(header)]
+    out: list[dict] = []
+    for row in rows_iter:
+        if not any(v is not None and _str(v) for v in row):
+            continue
+        item = {keys[i]: (row[i] if i < len(row) else None) for i in range(len(keys))}
+        out.append(item)
+    return out
+
+
 def import_revenues(
     path: str,
     *,
@@ -237,9 +259,9 @@ def import_revenues(
     sync_existing: bool = False,
     import_orphans: bool = False,
 ) -> dict:
-    df = pd.read_excel(path)
+    rows = _load_rows(path)
     stats = {
-        'rows': len(df),
+        'rows': len(rows),
         'imported': 0,
         'updated': 0,
         'skipped_existing': 0,
@@ -258,10 +280,9 @@ def import_revenues(
     used_parts: set[int] = set()
     used_invoices: set[int] = set()
 
-    existing_codes = {r.code.upper() for r in Revenue.query.all() if r.code}
+    existing_codes = {r.code.upper() for r in tenant_query(Revenue).all() if r.code}
 
-    for _, row in df.iterrows():
-        r = row.to_dict()
+    for r in rows:
         num = _i(_cell(r, 'رقم العملية'))
         code = f'REV-{num:04d}' if num else ''
         rdate = _parse_date(_cell(r, 'التاريخ'))
@@ -274,7 +295,7 @@ def import_revenues(
             stats['errors'] += 1
             continue
 
-        existing_rev = Revenue.query.filter_by(code=code).first()
+        existing_rev = tenant_query(Revenue).filter_by(code=code).first()
         if existing_rev and sync_existing:
             pass
         elif skip_existing and code.upper() in existing_codes:
@@ -379,6 +400,7 @@ def import_revenues(
             action = 'updated'
         else:
             revenue = Revenue(code=code, **fields)
+            assign_organization(revenue)
             action = 'imported'
 
         if not dry_run:
@@ -416,30 +438,29 @@ def import_revenues(
 
     stats['missing_samples'] = missing_samples
     stats['db_total'] = round(
-        sum(_f(r.total) for r in Revenue.query.all()),
+        sum(_f(r.total) for r in tenant_query(Revenue).all()),
         2,
     ) if not dry_run else None
-    if dry_run or not dry_run:
-        missing_cn_amount = 0.0
-        missing_cn_codes: list[str] = []
-        for _, row in df.iterrows():
-            r = row.to_dict()
-            raw_amount = _f(_cell(r, 'المبلغ'))
-            if raw_amount <= 0:
-                continue
-            contract, customer, cn = _resolve_customer_contract(r)
-            if not contract and not customer:
-                missing_cn_amount = round(missing_cn_amount + raw_amount, 2)
-                if cn and cn not in missing_cn_codes:
-                    missing_cn_codes.append(cn)
-        stats['missing_amount'] = missing_cn_amount
-        stats['missing_cn_count'] = len(missing_cn_codes)
+    missing_cn_amount = 0.0
+    missing_cn_codes: list[str] = []
+    for r in rows:
+        raw_amount = _f(_cell(r, 'المبلغ'))
+        if raw_amount <= 0:
+            continue
+        contract, customer, cn = _resolve_customer_contract(r)
+        if not contract and not customer:
+            missing_cn_amount = round(missing_cn_amount + raw_amount, 2)
+            if cn and cn not in missing_cn_codes:
+                missing_cn_codes.append(cn)
+    stats['missing_amount'] = missing_cn_amount
+    stats['missing_cn_count'] = len(missing_cn_codes)
     return stats
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description='Import Jama revenues from Excel')
     parser.add_argument('xlsx', help='Path to revenues .xlsx')
+    parser.add_argument('--slug', default='jama', help='Organization slug')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--force', action='store_true', help='Import even if revenue code exists')
     parser.add_argument(
@@ -458,9 +479,18 @@ def main() -> int:
         print(f'ERROR: file not found: {args.xlsx}')
         return 1
 
+    from flask import g
+    from models import Organization
+
     with app.app_context():
-        db.create_all()
-        print('Database:', app.config.get('SQLALCHEMY_DATABASE_URI', ''))
+        slug = (args.slug or 'jama').strip().lower()
+        org = Organization.query.filter_by(slug=slug).first()
+        if not org:
+            print(f'ERROR: لا توجد مؤسسة slug={slug!r}')
+            return 1
+        g.organization = org
+        g.organization_id = org.id
+        print(f'Tenant: {org.name} ({org.slug})')
         print('File:', args.xlsx)
         result = import_revenues(
             args.xlsx,
@@ -474,6 +504,8 @@ def main() -> int:
             print('Missing samples:')
             for line in result['missing_samples']:
                 print(' ', line)
+        if not args.dry_run:
+            print('revenues in tenant:', tenant_query(Revenue).count())
     return 0
 
 
