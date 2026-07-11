@@ -464,6 +464,7 @@ class WhatsAppInbox(TenantMixin, db.Model):
     wa_message_id = db.Column(db.String(120))  # idempotency for webhook
     received_at = db.Column(db.DateTime, default=datetime.utcnow)
     notes = db.Column(db.Text)
+    journey_json = db.Column(db.Text)  # سجل مراحل نفس البلاغ بدون أكواد جديدة
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     customer = db.relationship('Customer', foreign_keys=[customer_id])

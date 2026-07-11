@@ -68,14 +68,37 @@ def next_code(model, prefix, field='code', digits=4):
 
 
 def whatsapp_digits(phone: str) -> str:
-    digits = re.sub(r'\D', '', phone or '')
+    """أرقام wa.me: سعودي محلي → 966…؛ دولي مع كود دولة يُحفظ كما هو بدون فرض 966."""
+    raw = (phone or '').strip()
+    digits = re.sub(r'\D', '', raw)
     if not digits:
         return ''
+    # 00XXXXXXXX → دولي
+    if digits.startswith('00'):
+        return digits[2:]
+    # المستخدم كتب +كود الدولة صراحةً
+    if raw.startswith('+'):
+        return digits
+    # سعودي بالكود الدولي
+    if digits.startswith('966'):
+        rest = digits[3:]
+        if rest.startswith('0'):
+            rest = rest[1:]
+        return '966' + rest
+    # جوال سعودي محلي: 05XXXXXXXX أو 5XXXXXXXX
+    if digits.startswith('05') and len(digits) == 10:
+        return '966' + digits[1:]
+    if len(digits) == 9 and digits.startswith('5'):
+        return '966' + digits
+    if digits.startswith('0') and len(digits) == 10 and digits[1] == '5':
+        return '966' + digits[1:]
+    # رقم طويل بدون 966 → يُفترض أنه يتضمن كود دولة (مصر 20، الإمارات 971، …)
+    if len(digits) >= 10:
+        return digits.lstrip('0') if digits.startswith('0') and len(digits) > 10 else digits
+    # رقم قصير غامض: الإبقاء على السلوك السابق للسعودية فقط
     if digits.startswith('0'):
         return '966' + digits[1:]
-    if not digits.startswith('966'):
-        return '966' + digits
-    return digits
+    return '966' + digits
 
 
 def whatsapp_url(phone: str, message: str) -> str:

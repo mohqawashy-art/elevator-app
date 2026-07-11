@@ -6429,16 +6429,17 @@ def field_fault_request_parts(fault_id):
 # =============================================
 @app.route('/support/whatsapp')
 def whatsapp_inbox():
-    from whatsapp_support import ensure_whatsapp_settings, inbox_stats
+    from whatsapp_support import ensure_whatsapp_settings, inbox_stats, parse_journey_for_template, thread_query
 
     s = ensure_whatsapp_settings(get_app_settings())
     db.session.commit()
     items = (
-        tenant_query(WhatsAppInbox)
+        thread_query()
         .order_by(WhatsAppInbox.received_at.desc(), WhatsAppInbox.id.desc())
         .limit(200)
         .all()
     )
+    journeys = {item.id: parse_journey_for_template(item) for item in items}
     customers = tenant_query(Customer).order_by(Customer.name).all()
     elevators = (
         tenant_query(Elevator)
@@ -6449,6 +6450,7 @@ def whatsapp_inbox():
     return render_template(
         'whatsapp_inbox.html',
         items=items,
+        journeys=journeys,
         customers=customers,
         elevators=elevators,
         customers_js=[
@@ -6544,8 +6546,8 @@ def whatsapp_inbox_create_fault(item_id):
         if cust.get('url'):
             session['pending_whatsapp'] = cust['url']
         session['wa_flash_ok'] = (
-            f'تم إنشاء العطل {fault.code} وإرسال تأكيد الاستلام للعميل. '
-            f'وزّع الفني من شاشة الأعطال.'
+            f'تم إنشاء العطل {fault.code} على نفس كود الوارد {item.code}. '
+            f'أكد الاستلام للعميل ثم وزّع الفني من شاشة الأعطال.'
         )
     except ValueError as exc:
         db.session.rollback()

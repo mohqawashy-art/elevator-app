@@ -20,6 +20,26 @@ def test_phone_key_normalizes_saudi():
     assert phone_key('966555076078') == '555076078'
 
 
+def test_phone_preserves_international():
+    from operations import whatsapp_digits
+    from whatsapp_support import display_phone
+
+    assert whatsapp_digits('+201012345678') == '201012345678'
+    assert whatsapp_digits('00201012345678') == '201012345678'
+    assert whatsapp_digits('+971501234567') == '971501234567'
+    assert whatsapp_digits('0555076078') == '966555076078'
+    assert whatsapp_digits('555076078') == '966555076078'
+    assert whatsapp_digits('+966555076078') == '966555076078'
+    # رقم دولي بدون + لكن بطول كافٍ — لا يُفرض 966
+    assert whatsapp_digits('201012345678') == '201012345678'
+
+    assert display_phone('+201012345678') == '+201012345678'
+    assert display_phone('00201012345678') == '+201012345678'
+    assert display_phone('0555076078') == '0555076078'
+    assert phone_key('+201012345678') == '201012345678'
+    assert phone_key('+201012345678') != phone_key('0555076078')
+
+
 def test_intake_matches_customer_and_creates_fault(client):
     from app import app
 
@@ -126,7 +146,7 @@ def test_journey_messages_include_fault_code(client):
             assert len(msg) > 20
 
 
-def test_notify_customer_stage_logs_outbound(client):
+def test_notify_customer_stage_same_thread_code(client):
     from app import app
 
     login_as(client, 'admin')
@@ -171,5 +191,29 @@ def test_notify_customer_stage_logs_outbound(client):
         db.session.commit()
         assert first['ok'] and first['url'].startswith('https://wa.me/')
         assert not first.get('skipped')
+        thread_code = first['thread_code']
+        assert thread_code.startswith('WA-')
+
         second = notify_customer_stage(fault, 'received', next_code_fn=_next)
         assert second['ok'] and second.get('skipped')
+        assert second['thread_code'] == thread_code
+
+        assigned = notify_customer_stage(fault, 'assigned', next_code_fn=_next)
+        db.session.commit()
+        assert assigned['ok'] and not assigned.get('skipped')
+        assert assigned['thread_code'] == thread_code
+
+        on_way = notify_customer_stage(fault, 'on_way', next_code_fn=_next)
+        resolved = notify_customer_stage(fault, 'resolved', next_code_fn=_next)
+        db.session.commit()
+        assert on_way['thread_code'] == thread_code
+        assert resolved['thread_code'] == thread_code
+
+        threads = WhatsAppInbox.query.filter_by(fault_id=fault.id, direction='inbound').all()
+        assert len(threads) == 1
+        assert threads[0].code == thread_code
+        import json
+        journey = json.loads(threads[0].journey_json or '[]')
+        assert [e['stage'] for e in journey] == ['received', 'assigned', 'on_way', 'resolved']
+        outbound = WhatsAppInbox.query.filter_by(fault_id=fault.id, direction='outbound').count()
+        assert outbound == 0
