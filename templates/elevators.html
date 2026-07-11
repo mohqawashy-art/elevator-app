@@ -415,12 +415,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <span><span class="map-legend-dot" style="background:#e09030"></span> تحت الصيانة</span>
             <span><span class="map-legend-dot" style="background:#e04848"></span> متوقف</span>
             <span><span class="map-legend-dot" style="background:#8a9bb8"></span> خارج الخدمة</span>
+            <span style="color:var(--text3)">عملاء غير نشطين لا يظهرون</span>
             <button class="btn btn-secondary btn-sm" onclick="refreshElevatorMap(true)">تحديث</button>
           </div>
         </div>
         <div id="map"></div>
         <div id="map-empty" style="display:none;padding:24px;text-align:center;color:var(--text3);font-size:13px;border-top:1px solid var(--border)">
-          لا توجد مصاعد بموقع GPS — أضف موقع العميل من صفحة العملاء (خريطة) ثم ارجع هنا.
+          لا مواقع لمصاعد عملاء نشطين — أضف موقع العميل من صفحة العملاء، والعملاء غير النشطين لا يظهرون على الخريطة.
         </div>
       </div>
     </div>
@@ -1441,6 +1442,7 @@ var MAP_POI_HIDDEN = [
 ];
 
 function getElevatorPosition(e) {
+  if ((e.customer_status || 'نشط') === 'غير نشط') return null;
   var lat = parseFloat(e.customer_lat), lng = parseFloat(e.customer_lng);
   if (isNaN(lat) || isNaN(lng)) return null;
   var spread = (e.id % 8) * 0.00012;
@@ -1506,6 +1508,7 @@ function refreshElevatorMap(fitAgain) {
   var shown = 0;
 
   ELEVATORS.forEach(function(e) {
+    if ((e.customer_status || 'نشط') === 'غير نشط') return;
     var pos = getElevatorPosition(e);
     if (!pos) return;
     shown++;
@@ -1541,8 +1544,8 @@ function refreshElevatorMap(fitAgain) {
   var summary = document.getElementById('map-summary');
   if (summary) {
     summary.textContent = shown
-      ? ('معروض: ' + shown + ' مصعد على الخريطة')
-      : 'لا توجد إحداثيات GPS — أضف موقع العميل من صفحة العملاء';
+      ? ('معروض: ' + shown + ' مصعد (عملاء نشطون فقط)')
+      : 'لا مواقع لمصاعد عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
   }
 
   var emptyEl = document.getElementById('map-empty');

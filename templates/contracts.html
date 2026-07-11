@@ -481,6 +481,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <div class="map-legend-item"><span class="map-legend-dot status-expired"></span> منتهي</div>
             <div class="map-legend-item"><span class="map-legend-dot status-cancelled"></span> ملغي</div>
             <div class="map-legend-item"><span class="map-legend-cluster">2</span> تجميع</div>
+            <div class="map-legend-item" style="color:var(--text3)">عملاء غير نشطين لا يظهرون</div>
             <button class="btn btn-secondary btn-sm" type="button" onclick="refreshContractMap(true)" title="تحديث الخريطة">تحديث</button>
           </div>
         </div>
@@ -1840,7 +1841,9 @@ function getContractPinColor(c) {
 }
 
 function getContractPosition(c) {
+  if ((c.customer_status || 'نشط') === 'غير نشط') return null;
   var cust = getCustomerRecord(c.customer_id);
+  if (cust && (cust.status || 'نشط') === 'غير نشط') return null;
   if (window.LiftCoreMap) {
     var fromMap = LiftCoreMap.coordsForRecord(cust || {
       lat: c.customer_lat, lng: c.customer_lng, city: c.customer_city
@@ -1975,8 +1978,8 @@ function renderContractMapMarkers(fitAgain) {
   var summary = document.getElementById('map-summary');
   if (summary) {
     summary.textContent = shownContracts
-      ? ('معروض: ' + shownContracts + ' عقد في ' + groups.length + ' موقع')
-      : 'لا توجد مواقع — حدّد موقع العميل على الخريطة في صفحة العملاء';
+      ? ('معروض: ' + shownContracts + ' عقد في ' + groups.length + ' موقع (عملاء نشطون فقط)')
+      : 'لا مواقع لعقود عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
   }
 
   if (contractMarkers.length && window.LiftCoreMap) {
@@ -2040,8 +2043,10 @@ function refreshContractMap(fitAgain) {
   var missing = [];
   var seen = {};
   CONTRACTS.forEach(function(c) {
-    if (getContractPosition(c)) return;
+    if ((c.customer_status || 'نشط') === 'غير نشط') return;
     var cust = getCustomerRecord(c.customer_id);
+    if (cust && (cust.status || 'نشط') === 'غير نشط') return;
+    if (getContractPosition(c)) return;
     if (!cust || seen[cust.id]) return;
     seen[cust.id] = true;
     if (window.LiftCoreGeocode && !LiftCoreGeocode.hasGps(cust)) missing.push(cust);

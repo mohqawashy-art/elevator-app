@@ -839,6 +839,7 @@ def contract_to_js_dict(c):
         'customer_city': (c.customer.city or '') if c.customer else '',
         'customer_lat': (c.customer.lat or '') if c.customer else '',
         'customer_lng': (c.customer.lng or '') if c.customer else '',
+        'customer_status': ((c.customer.status or 'نشط') if c.customer else 'نشط'),
         'contract_type': c.contract_type or '',
         'start_date': c.start_date.isoformat() if c.start_date else '',
         'end_date': c.end_date.isoformat() if c.end_date else '',
@@ -879,6 +880,7 @@ def contract_customer_js_dict(c):
         'lng': c.lng or '',
         'maps_url': c.maps_url or '',
         'building_photo_url': upload_url(c.building_photo_path),
+        'status': c.status or 'نشط',
     }
 
 
@@ -951,6 +953,7 @@ def elevator_to_js_dict(e):
         'notes': e.notes or '',
         'customer_lat': (e.customer.lat if e.customer else '') or '',
         'customer_lng': (e.customer.lng if e.customer else '') or '',
+        'customer_status': ((e.customer.status or 'نشط') if e.customer else 'نشط'),
     }
 
 
@@ -4037,6 +4040,7 @@ def elevators():
                 'district': c.district or '',
                 'lat': c.lat or '',
                 'lng': c.lng or '',
+                'status': c.status or 'نشط',
             }
             for c in customers
         ],
