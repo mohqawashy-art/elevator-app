@@ -1,7 +1,7 @@
 /* LiftCore Field PWA — Service Worker (scope: /field/) */
 'use strict';
 
-const CACHE_NAME = 'liftcore-field-v3';
+const CACHE_NAME = 'liftcore-field-v4';
 const PRECACHE = [
   '/static/field-portal.css',
   '/static/field-portal.js',
@@ -66,18 +66,8 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  if (url.pathname === '/api/field/me') {
-    event.respondWith(
-      fetch(event.request).then(function (resp) {
-        if (resp && resp.ok) {
-          var clone = resp.clone();
-          caches.open(CACHE_NAME).then(function (c) { c.put(event.request, clone); });
-        }
-        return resp;
-      }).catch(function () {
-        return caches.match(event.request);
-      })
-    );
+  if (url.pathname === '/api/field/me' || url.pathname === '/api/live/revision') {
+    event.respondWith(fetch(event.request));
     return;
   }
 

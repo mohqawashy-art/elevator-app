@@ -6,7 +6,7 @@ from datetime import date, datetime
 from models import Customer, Elevator, Fault, MaintenanceVisit, Technician, db
 from operations import _field_alert_stamp, field_technician_payload
 
-from tests.conftest import ensure_test_organization
+from tests.conftest import ensure_test_organization, login_as
 
 
 def test_field_login_page_loads(client):
@@ -74,6 +74,103 @@ def test_field_payload_includes_alert_stamp(client):
         assert payload['visits'][0].get('dispatched_at')
         stamp2 = _field_alert_stamp([visit], [fault])
         assert stamp2 == payload['alert_stamp']
+
+
+def test_fault_add_appears_on_field_portal(client):
+    """عطل جديد من المكتب يظهر فوراً في بوابة الفني المكلّف."""
+    from werkzeug.security import generate_password_hash
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-FP1',
+            name='فني بوابة',
+            phone='0503334455',
+            team='صيانة',
+            status='متاح',
+            sign_pin_hash=generate_password_hash('123456'),
+        )
+        db.session.add(tech)
+        cust = Customer(organization_id=oid, code='C-FP1', name='عميل بوابة', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-FP1', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.commit()
+        tech_id, elev_id = tech.id, elev.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    r = client.post(
+        '/faults/add',
+        data={
+            'csrf_token': 'test-csrf',
+            'elevator_id': str(elev_id),
+            'technician_ids': str(tech_id),
+            'technician_id': str(tech_id),
+            'fault_type': 'توقف',
+            'priority': 'عاجلة',
+            'client_report': 'المصعد واقف',
+            'billable': 'no',
+        },
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    home = client.get('/field')
+    assert home.status_code == 200
+    html = home.get_data(as_text=True)
+    assert 'أعطال مكلّفة' in html or 'الأعطال المفتوحة' in html
+
+    api = client.get('/api/field/me')
+    assert api.status_code == 200
+    payload = api.get_json()
+    assert payload.get('ok') is True
+    assert any(f.get('fault_type') == 'توقف' for f in payload.get('faults') or [])
+
+
+def test_fault_add_bumps_live_revision(client):
+    from live_sync import get_live_revision
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        rev_before = get_live_revision()
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-REV', name='فني', phone='0500000077', team='أعطال', status='متاح')
+        db.session.add(tech)
+        cust = Customer(organization_id=oid, code='C-REV', name='عميل', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-REV', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.commit()
+        tech_id, elev_id = tech.id, elev.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    client.post(
+        '/faults/add',
+        data={
+            'csrf_token': 'test-csrf',
+            'elevator_id': str(elev_id),
+            'technician_ids': str(tech_id),
+            'technician_id': str(tech_id),
+            'fault_type': 'توقف',
+            'priority': 'عاجلة',
+            'client_report': 'اختبار',
+            'billable': 'no',
+        },
+        follow_redirects=True,
+    )
+    with client.application.app_context():
+        assert get_live_revision() > rev_before
 
 
 def test_field_faults_team_sees_unassigned_open_faults(client):

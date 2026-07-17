@@ -1,7 +1,9 @@
 (function () {
   'use strict';
 
-  var POLL_MS = 12000;
+  var POLL_MS = 4000;
+  var REVISION_MS = 2500;
+  var STAMP_KEY = 'liftcore_fp_stamp';
   var statusEl = document.getElementById('fp-connection-status');
   var pendingEl = document.getElementById('fp-pending-sync');
   var lastStamp = null;
@@ -204,18 +206,26 @@
     } catch (e) { /* ignore */ }
   }
 
-  function detectNewTasks(payload) {
+  function detectNewTasks(payload, opts) {
+    opts = opts || {};
     var nextKeys = collectKeys(payload);
     var stamp = payload.alert_stamp || '';
+
     if (knownKeys === null) {
-      knownKeys = nextKeys;
-      lastStamp = stamp;
-      return [];
+      var prevStamp = '';
+      try { prevStamp = sessionStorage.getItem(STAMP_KEY) || ''; } catch (e) { /* ignore */ }
+      if (opts.silentBootstrap && prevStamp && stamp && prevStamp !== stamp) {
+        // تغيّرت المهام أثناء إغلاق الصفحة — قارن من الصفر
+        knownKeys = {};
+        lastStamp = prevStamp;
+      } else {
+        knownKeys = nextKeys;
+        lastStamp = stamp;
+        try { sessionStorage.setItem(STAMP_KEY, stamp); } catch (e) { /* ignore */ }
+        return [];
+      }
     }
-    if (stamp && stamp === lastStamp) {
-      knownKeys = nextKeys;
-      return [];
-    }
+
     var added = [];
     Object.keys(nextKeys).forEach(function (k) {
       var cur = nextKeys[k];
@@ -224,15 +234,21 @@
         added.push(cur);
         return;
       }
-      // إعادة إرسال: تغيّر dispatched_at أو الحالة إلى مُرسلة
       if (cur.dispatched_at && cur.dispatched_at !== prev.dispatched_at) {
         added.push(cur);
-      } else if (cur.status === 'مُرسلة للفني' && prev.status !== 'مُرسلة للفني') {
+        return;
+      }
+      if (cur.status === 'مُرسلة للفني' && prev.status !== 'مُرسلة للفني') {
+        added.push(cur);
+        return;
+      }
+      if (cur.kind === 'fault' && cur.status === 'قيد المعالجة' && prev.status === 'مفتوح') {
         added.push(cur);
       }
     });
     knownKeys = nextKeys;
     lastStamp = stamp;
+    try { sessionStorage.setItem(STAMP_KEY, stamp); } catch (e) { /* ignore */ }
     return added;
   }
 
@@ -275,7 +291,7 @@
     if (!document.getElementById('fp-connection-status') && !document.querySelector('.fp-panel')) return;
     polling = true;
     var offlineApi = window.LiftCoreFieldOffline;
-    fetch('/api/field/me', { credentials: 'same-origin', cache: 'no-store' })
+    fetch('/api/field/me?_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
       .then(function (r) {
         if (r.status === 401) throw new Error('auth');
         return r.json();
@@ -283,7 +299,7 @@
       .then(function (data) {
         if (!data || !data.ok) return;
         if (offlineApi) offlineApi.cacheMePayload(data);
-        var added = detectNewTasks(data);
+        var added = detectNewTasks(data, opts);
         if (document.querySelector('.fp-panel[data-fp-panel="all"]')) {
           renderHome(data);
           var banner = document.getElementById('fp-offline-banner');
@@ -303,6 +319,29 @@
       });
   }
 
+  var lastRevision = null;
+  var revisionTimer = null;
+
+  function pollLiveRevision() {
+    if (!navigator.onLine) return;
+    if (!document.getElementById('fp-connection-status') && !document.querySelector('.fp-panel')) return;
+    fetch('/api/live/revision?_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var rev = data && data.revision != null ? Number(data.revision) : null;
+        if (rev == null || isNaN(rev)) return;
+        if (lastRevision === null) {
+          lastRevision = rev;
+          return;
+        }
+        if (rev !== lastRevision) {
+          lastRevision = rev;
+          pollFieldTasks();
+        }
+      })
+      .catch(function () { /* ignore */ });
+  }
+
   function startPolling() {
     if (pollTimer) return;
     pollFieldTasks({ silentBootstrap: true });
@@ -310,6 +349,10 @@
       if (document.visibilityState === 'hidden') return;
       pollFieldTasks();
     }, POLL_MS);
+    if (!revisionTimer) {
+      pollLiveRevision();
+      revisionTimer = setInterval(pollLiveRevision, REVISION_MS);
+    }
   }
 
   function ensureSoundTip() {
@@ -319,7 +362,7 @@
     tip.type = 'button';
     tip.id = 'fp-sound-tip';
     tip.className = 'fp-sound-tip';
-    tip.textContent = 'تفعيل التنبيه الصوتي';
+    tip.textContent = 'اضغط لتفعيل التنبيه (صوت + اهتزاز)';
     tip.addEventListener('click', function () {
       unlockAudio();
       if ('Notification' in window && Notification.permission === 'default') {
@@ -358,7 +401,10 @@
   window.addEventListener('offline', refreshStatus);
   window.addEventListener('liftcore-field-synced', refreshStatus);
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') pollFieldTasks();
+    if (document.visibilityState === 'visible') {
+      pollLiveRevision();
+      pollFieldTasks();
+    }
   });
   // أول لمسة تفتح الصوت على الجوال
   ['touchstart', 'click'].forEach(function (ev) {

@@ -33,25 +33,47 @@ def technician_has_field_pin(tech: Technician) -> bool:
     return bool(sig and sig.sign_pin_hash)
 
 
-def find_technician_by_login(login_id: str | None) -> Technician | None:
-    from tenant_scope import tenant_query
+def bind_field_technician_tenant(tech_id: int | None):
+    """اربط سياق المؤسسة بمؤسسة الفني — ضروري لظهور الأعطال/الزيارات في بوابة الجوال."""
+    if not tech_id:
+        return None
+    from flask import g
 
+    from models import Organization, Technician
+
+    tech = Technician.query.execution_options(skip_tenant=True).filter_by(id=int(tech_id)).first()
+    if not tech:
+        return None
+    oid = tech.organization_id
+    if oid:
+        g.organization_id = oid
+        org = Organization.query.execution_options(skip_tenant=True).filter_by(id=oid).first()
+        if org:
+            g.organization = org
+    return tech
+
+
+def find_technician_by_login(login_id: str | None) -> Technician | None:
+    """يبحث بالكود أو الجوال — عبر كل المؤسسات ثم يربط سياق الفني."""
     raw = (login_id or '').strip()
     if not raw:
         return None
-    by_code = tenant_query(Technician).filter(Technician.code.ilike(raw)).first()
+    q = Technician.query.execution_options(skip_tenant=True)
+    by_code = q.filter(Technician.code.ilike(raw)).first()
     if by_code:
         if (by_code.status or 'متاح') in FIELD_ACTIVE_STATUSES:
+            bind_field_technician_tenant(by_code.id)
             return by_code
         return None
     phone = normalize_phone(raw)
     if not phone:
         return None
-    for tech in tenant_query(Technician).all():
+    for tech in q.all():
         st = tech.status or 'متاح'
         if st not in FIELD_ACTIVE_STATUSES:
             continue
         if normalize_phone(tech.phone) == phone or normalize_phone(tech.phone2) == phone:
+            bind_field_technician_tenant(tech.id)
             return tech
     return None
 

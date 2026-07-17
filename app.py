@@ -429,6 +429,8 @@ def enforce_auth():
         tech_id = _resolve_field_technician_id()
         if tech_id:
             g.field_tech_id = tech_id
+            from field_auth import bind_field_technician_tenant
+            bind_field_technician_tenant(tech_id)
             return None
         if path.startswith('/api/field'):
             return jsonify({'error': 'يجب تسجيل دخول الفني'}), 401
@@ -436,6 +438,8 @@ def enforce_auth():
 
     if field_tid and _field_tech_api_allowed(path, request.method):
         g.field_tech_id = field_tid
+        from field_auth import bind_field_technician_tenant
+        bind_field_technician_tenant(field_tid)
         return None
 
     user = current_user()
@@ -6690,6 +6694,55 @@ def faults():
     )
 
 
+def _wants_json_fault_response() -> bool:
+    return (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+
+
+def _fault_dispatch_feedback(dispatch_result: dict | None, tech_ids: list[int]) -> str | None:
+    """رسالة تحذير عند الإرسال لبوابة الفني بدون رابط واتساب."""
+    if not tech_ids or not dispatch_result:
+        return None
+    if dispatch_result.get('whatsapp_url'):
+        return None
+    if dispatch_result.get('error'):
+        return f'تم الحفظ — {dispatch_result["error"]}'
+    tech = tenant_query(Technician).filter_by(id=tech_ids[0]).first()
+    name = tech.name if tech else 'الفني'
+    if tech and not ((tech.phone or '').strip() or (tech.phone2 or '').strip()):
+        return (
+            f'تم إرسال العطل لبوابة الفني ({name}) — لا يوجد جوال مسجّل لرسالة واتساب. '
+            'أضف الجوال من صفحة الفنيين.'
+        )
+    return f'تم إرسال العطل لبوابة الفني ({name}) — تعذّر تجهيز رابط واتساب (تحقق من جوال الفني).'
+
+
+def _finish_fault_save(
+    fault,
+    *,
+    dispatch_result: dict | None,
+    flash_ok: str,
+    flash_warn: str | None = None,
+):
+    if dispatch_result and dispatch_result.get('whatsapp_url'):
+        session['pending_whatsapp'] = dispatch_result['whatsapp_url']
+    if flash_warn:
+        flash(flash_warn, 'warning')
+    flash(flash_ok, 'success')
+    if _wants_json_fault_response():
+        return jsonify({
+            'ok': True,
+            'fault_id': fault.id,
+            'code': fault.code,
+            'whatsapp_url': (dispatch_result or {}).get('whatsapp_url', ''),
+            'dispatched': bool(dispatch_result and not dispatch_result.get('error')),
+            'warning': flash_warn or '',
+        })
+    return redirect(url_for('faults'))
+
+
 def _parse_reported_at(raw: str | None):
     if not raw or not str(raw).strip():
         return None
@@ -6732,7 +6785,8 @@ def _apply_fault_billing_from_form(fault, form, *, is_new: bool = False):
 def fault_edit(id):
     from entity_links import link_fault_to_visit, lookup_visit
     from form_validation import fault_close_error
-    from technician_assignments import parse_technician_ids, sync_fault_technicians
+    from operations import dispatch_fault
+    from technician_assignments import fault_technician_ids, parse_technician_ids, sync_fault_technicians
     from whatsapp_support import auto_stage_for_fault_status, notify_customer_stage
 
     close_err = fault_close_error(
@@ -6746,6 +6800,7 @@ def fault_edit(id):
     f = tenant_get_or_404(Fault, id)
     old_status = f.status
     had_tech = bool(f.technician_id)
+    old_tech_ids = fault_technician_ids(f) or ([f.technician_id] if f.technician_id else [])
     tech_ids = parse_technician_ids(request.form)
     f.elevator_id   = request.form['elevator_id']
     f.technician_id = tech_ids[0] if tech_ids else None
@@ -6780,13 +6835,27 @@ def fault_edit(id):
         if stage:
             cust_wa = notify_customer_stage(f, stage, next_code_fn=next_code)
         db.session.commit()
-        if cust_wa and cust_wa.get('url'):
+        dispatch_result = None
+        if tech_ids and (set(tech_ids) != set(old_tech_ids) or not f.dispatched_at):
+            try:
+                dispatch_result = dispatch_fault(f.id, request.url_root)
+            except Exception:
+                app.logger.exception('fault dispatch after edit failed')
+                flash('تم حفظ العطل لكن تعذّر إرساله للفني.', 'error')
+                return redirect(url_for('faults'))
+        warn = _fault_dispatch_feedback(dispatch_result, tech_ids)
+        if cust_wa and cust_wa.get('url') and not (dispatch_result and dispatch_result.get('whatsapp_url')):
             session['pending_whatsapp'] = cust_wa['url']
+        return _finish_fault_save(
+            f,
+            dispatch_result=dispatch_result,
+            flash_ok=f'تم تحديث العطل {f.code}',
+            flash_warn=warn,
+        )
     except ValueError as e:
         db.session.rollback()
         flash(str(e), 'error')
         return redirect(url_for('faults'))
-    return redirect(url_for('faults'))
 
 @app.route('/faults/add', methods=['POST'])
 def fault_add():
@@ -6843,17 +6912,21 @@ def fault_add():
         flash(f'تعذّر حفظ العطل: {e}', 'error')
         return redirect(url_for('faults'))
 
-    flash(f'تم تسجيل العطل {f.code}', 'success')
+    dispatch_result = None
     if f.technician_id:
-        base = request.url_root
         try:
-            result = dispatch_fault(f.id, base)
-            if result.get('whatsapp_url'):
-                session['pending_whatsapp'] = result['whatsapp_url']
+            dispatch_result = dispatch_fault(f.id, request.url_root)
         except Exception:
             app.logger.exception('fault dispatch after add failed')
-            flash('تم حفظ العطل لكن تعذّر إرساله للفني عبر واتساب.', 'error')
-    return redirect(url_for('faults'))
+            flash('تم حفظ العطل لكن تعذّر إرساله للفني.', 'error')
+            return redirect(url_for('faults'))
+    warn = _fault_dispatch_feedback(dispatch_result, tech_ids)
+    return _finish_fault_save(
+        f,
+        dispatch_result=dispatch_result,
+        flash_ok=f'تم تسجيل العطل {f.code}',
+        flash_warn=warn,
+    )
 
 @app.route('/faults/delete/<int:id>', methods=['POST'])
 def fault_delete(id):

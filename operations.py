@@ -1377,6 +1377,7 @@ def parts_alerts() -> list[dict]:
 
 def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | None = None, portal_kind: str = 'both') -> dict:
     """مهام الفني على الجوال: اليوم وغداً فقط — حسب فريق الفني."""
+    from field_auth import bind_field_technician_tenant
     from technician_assignments import (
         ensure_fault_links_for_technician,
         faults_for_technician_filter,
@@ -1384,6 +1385,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         visits_for_technician_filter,
     )
 
+    bind_field_technician_tenant(tech_id)
     tech = tenant_get_or_404(Technician, tech_id)
     today = on_date or date.today()
     tomorrow = today + timedelta(days=1)
@@ -1462,6 +1464,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         'faults': [field_fault_summary(f, base_url) for f in faults],
         'show_visits': show_visits,
         'show_faults': show_faults or bool(faults),
+        'has_assigned_faults': has_assigned_faults,
         'alert_stamp': _field_alert_stamp(visits, faults),
     }
 

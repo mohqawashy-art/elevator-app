@@ -179,7 +179,12 @@ def technician_assigned_to_fault(fault, tech_id: int) -> bool:
         return True
     if fault.technician_id == tech_id:
         return True
-    return tenant_query(FaultTechnician).filter_by(fault_id=fault.id, technician_id=tech_id).count() > 0
+    return (
+        FaultTechnician.query.execution_options(skip_tenant=True)
+        .filter_by(fault_id=fault.id, technician_id=tech_id)
+        .count()
+        > 0
+    )
 
 
 def faults_for_technician_filter(tech_id: int):

@@ -309,12 +309,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       {% include 'partials/flash_messages.html' %}
       {% if pending_whatsapp %}
       <div id="wa-send-banner" style="background:rgba(31,184,122,.1);border:1px solid rgba(31,184,122,.35);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.7">
-        <strong style="color:var(--success)">رسالة واتساب جاهزة (wa.me)</strong>
-        — اضغط للإرسال من رقم/حساب المكتب إلى العميل.
+        <strong style="color:var(--success)">رسالة واتساب جاهزة للفني (wa.me)</strong>
+        — اضغط للإرسال من حساب المكتب إلى جوال الفني المكلّف. يظهر العطل أيضاً في <a href="/field/login" style="color:var(--accent)">بوابة الفني</a>.
         <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-          <a class="btn btn-primary btn-sm" href="{{ pending_whatsapp }}" target="_blank" rel="noopener">فتح واتساب وإرسال</a>
+          <a class="btn btn-primary btn-sm" href="{{ pending_whatsapp }}" target="_blank" rel="noopener">فتح واتساب وإرسال للفني</a>
           <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText({{ pending_whatsapp|tojson }}).then(function(){alert('تم نسخ الرابط')})">نسخ الرابط</button>
-          <a class="btn btn-secondary btn-sm" href="/support/whatsapp">وارد واتساب</a>
         </div>
       </div>
       {% endif %}
@@ -1068,7 +1067,8 @@ function openAddModal() {
   if (closeFields) closeFields.style.display = 'none';
   const resEl = document.getElementById('f-resolution');
   if (resEl) resEl.value = '';
-  renderFaultTechSelect([]);
+  const defaultTech = (FAULT_TECHS.length ? FAULT_TECHS : TECHNICIANS)[0];
+  renderFaultTechSelect(defaultTech ? [defaultTech.id] : []);
   openModal('modal-add');
 }
 
@@ -1132,9 +1132,32 @@ function saveFault() {
   const btn = document.querySelector('#modal-add .btn-primary, #modal-add [onclick*="saveFault"]');
   if (btn) { btn.disabled = true; btn.dataset._old = btn.textContent; btn.textContent = 'جاري الحفظ…'; }
   const url = editId ? `/faults/edit/${editId}` : '/faults/add';
-  fetch(url, { method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual' })
+  fetch(url, {
+    method: 'POST',
+    body: fd,
+    credentials: 'same-origin',
+    redirect: 'manual',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+  })
     .then(async (r) => {
-      // لا نتبع التحويل داخل fetch حتى لا تُستهلك رسائل flash
+      const ct = (r.headers.get('content-type') || '').toLowerCase();
+      if (ct.includes('application/json')) {
+        const data = await r.json();
+        if (!data.ok) {
+          throw new Error(data.error || 'تعذّر حفظ العطل');
+        }
+        if (data.warning) {
+          alert(data.warning);
+        }
+        if (data.whatsapp_url) {
+          var opened = window.open(data.whatsapp_url, '_blank', 'noopener');
+          if (!opened) {
+            sessionStorage.setItem('liftcore_pending_wa', data.whatsapp_url);
+          }
+        }
+        window.location.href = '/faults';
+        return;
+      }
       if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400)) {
         window.location.href = '/faults';
         return;
@@ -1228,6 +1251,10 @@ function viewFault(id) {
         <a href="/faults/${f.id}/report" style="color:var(--accent)">تعديل التقرير</a>
         · <a href="/faults/${f.id}/report?print=1" class="lc-open-tab" style="color:var(--accent)">طباعة PDF</a>
       </div></div>
+      <div class="view-item view-full"><div class="view-label">إرسال للفني</div><div class="view-val">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">يُرسل لبوابة الجوال + واتساب wa.me — المكتب يضغط إرسال</div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="dispatchTechnicianWhatsApp(${f.id})">إرسال / إعادة إرسال للفني</button>
+      </div></div>
       <div class="view-item view-full"><div class="view-label">واتساب العميل — wa.me</div><div class="view-val">
         <div style="font-size:11px;color:var(--text3);margin-bottom:8px">يفتح واتساب بنص جاهز — المكتب يضغط إرسال</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -1242,6 +1269,35 @@ function viewFault(id) {
   if (window.LiftCoreNav) LiftCoreNav.bindOpenTabLinks(document.getElementById('view-body'));
   var elev = ELEVATORS.find(x => x.id === f.elevator_id);
   if (elev && elev.customer_id) LiftCoreProfile.appendToView(document.getElementById('view-body'), elev.customer_id, null, { timelineLimit: 15 });
+}
+
+async function dispatchTechnicianWhatsApp(faultId) {
+  try {
+    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    const csrf = document.querySelector('meta[name="csrf-token"]');
+    if (csrf && csrf.content) headers['X-CSRF-Token'] = csrf.content;
+    const r = await fetch('/api/faults/' + faultId + '/dispatch', {
+      method: 'POST',
+      headers: headers,
+      credentials: 'same-origin',
+    });
+    const data = await r.json();
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+    if (!data.whatsapp_url) {
+      alert('تم إرسال العطل لبوابة الفني — لا يوجد جوال واتساب مسجّل للفني');
+      return;
+    }
+    var opened = window.open(data.whatsapp_url, '_blank', 'noopener');
+    if (!opened) {
+      var go = confirm('رسالة واتساب للفني جاهزة.\nالمتصفح منع النافذة — اضغط موافق لفتح الرابط.');
+      if (go) window.location.href = data.whatsapp_url;
+    }
+  } catch (e) {
+    alert('تعذّر إرسال العطل للفني');
+  }
 }
 
 async function notifyCustomerWhatsApp(faultId, stage) {
@@ -1340,6 +1396,23 @@ if (new URLSearchParams(window.location.search).get('action') === 'add') {
   /* لا نعتمد على window.open التلقائي — غالباً يُحجب. الزر في البانر هو المسار الأساسي. */
 })();
 {% endif %}
+(function () {
+  var stored = sessionStorage.getItem('liftcore_pending_wa');
+  if (!stored) return;
+  sessionStorage.removeItem('liftcore_pending_wa');
+  var opened = window.open(stored, '_blank', 'noopener');
+  if (!opened) {
+    var banner = document.getElementById('wa-send-banner');
+    if (!banner) {
+      var el = document.createElement('div');
+      el.id = 'wa-send-banner';
+      el.style.cssText = 'background:rgba(31,184,122,.1);border:1px solid rgba(31,184,122,.35);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px';
+      el.innerHTML = '<strong style="color:var(--success)">رسالة واتساب للفني جاهزة</strong> — <a class="btn btn-primary btn-sm" href="' + stored.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">فتح واتساب</a>';
+      var anchor = document.querySelector('.page-header');
+      if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(el, anchor);
+    }
+  }
+})();
 </script>
 </body>
 </html>

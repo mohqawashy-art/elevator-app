@@ -15,6 +15,17 @@
   زيارات <strong>اليوم وغداً</strong> فقط — {{ payload.today }} / {{ payload.tomorrow }}
 </p>
 
+{% if payload.has_assigned_faults and payload.faults|length %}
+<a href="#faults" class="fp-card" style="border-color:rgba(224,72,72,.45);background:rgba(224,72,72,.08);margin-bottom:12px;text-decoration:none">
+  <div class="fp-card-top">
+    <span class="fp-code" style="color:var(--fp-danger,#e04848)">أعطال مكلّفة</span>
+    <span class="fp-count">{{ payload.faults|length }}</span>
+  </div>
+  <div class="fp-title">لديك {{ payload.faults|length }} عطل مفتوح — اضغط للانتقال</div>
+  <div class="fp-meta">يُحدَّث تلقائياً عند إسناد عطل جديد من المكتب</div>
+</a>
+{% endif %}
+
 {% if portal_kind == 'both' or (payload.show_visits and payload.show_faults) %}
 <div class="fp-tabs">
   <button type="button" class="fp-tab on" data-fp-tab="all">الكل</button>
