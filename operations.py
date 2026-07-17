@@ -1169,19 +1169,21 @@ def build_route_whatsapp(
     if not tech or not visits:
         return ''
     title = day_label or 'خط سير الصيانة'
-    lines = [f'📋 {title} — {tech.name}', '']
+    lines = [f'[صيانة] {title} — {tech.name}', '']
     for i, v in enumerate(visits, start=1):
         cust = v.elevator.customer if v.elevator else None
         lines.append(f'{i}. {cust.code if cust else ""} — {cust.name if cust else "—"}')
-        lines.append(f'   📍 {(cust.district if cust else "") or "—"} | {v.visit_date}')
+        lines.append(f'   المنطقة: {(cust.district if cust else "") or "—"} | {v.visit_date}')
         if cust and cust.address:
             lines.append(f'   {cust.address}')
         link = customer_maps_link(cust) if cust else ''
         if link:
-            lines.append(f'   🗺 {link}')
+            lines.append('   الخريطة:')
+            lines.append(f'   {link}')
         lines.append('')
     if base_url:
-        lines.append(f'🔗 مهامك على الجوال:\n{base_url.rstrip("/")}/field/login')
+        lines.append('بوابة الفني:')
+        lines.append(f'{base_url.rstrip("/")}/field/login')
     return whatsapp_url(tech_whatsapp_phone(tech), '\n'.join(lines))
 
 
@@ -1191,7 +1193,7 @@ def build_fault_whatsapp(fault: Fault, base_url: str = '') -> str:
     elev = fault.elevator
     cust = elev.customer if elev else None
     lines = [
-        f'🚨 بلاغ عطل جديد {fault.code}',
+        f'[عطل] بلاغ جديد {fault.code}',
         f'العميل: {cust.name if cust else "—"} ({cust.code if cust else ""})',
         f'المصعد: {elev.code if elev else "—"}',
         f'المنطقة: {(cust.district if cust else "") or "—"}',
@@ -1206,9 +1208,12 @@ def build_fault_whatsapp(fault: Fault, base_url: str = '') -> str:
         lines.append(f'العنوان: {cust.address}')
     link = customer_maps_link(cust) if cust else ''
     if link:
-        lines.append(f'🗺 {link}')
+        lines.append('الخريطة:')
+        lines.append(link)
     if base_url:
-        lines.append(f'\n🔗 نفّذ من الجوال:\n{base_url.rstrip("/")}/field/fault/{fault.id}')
+        lines.append('')
+        lines.append('نفّذ من بوابة الفني:')
+        lines.append(f'{base_url.rstrip("/")}/field/fault/{fault.id}')
     return whatsapp_url(tech_whatsapp_phone(fault.technician), '\n'.join(lines))
 
 

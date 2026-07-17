@@ -83,3 +83,43 @@ def test_invoice_payment_whatsapp_alias(client):
 def test_financial_whatsapp_requires_auth(client):
     r = client.get('/api/financial/whatsapp/invoice/1')
     assert r.status_code in (302, 303, 401, 403)
+
+
+def test_build_fault_whatsapp_puts_urls_on_clean_lines(client):
+    from urllib.parse import parse_qs, unquote, urlparse
+
+    from models import Elevator, Fault, Technician
+    from operations import build_fault_whatsapp
+
+    with client.application.app_context():
+        from tests.conftest import ensure_test_organization
+
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-WA', name='فني', phone='0501112233', status='متاح')
+        cust = Customer(organization_id=oid, code='C-WA', name='عميل', status='نشط', address='مكة')
+        db.session.add_all([tech, cust])
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-WA', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=oid,
+            code='FA-TEST',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            fault_type='عطل أبواب',
+            client_report='اختبار',
+            priority='عادية',
+            status='قيد المعالجة',
+        )
+        db.session.add(fault)
+        db.session.commit()
+        wa = build_fault_whatsapp(fault, 'https://jama.liftcoreapp.com/')
+        qs = parse_qs(urlparse(wa).query)
+        text = unquote(qs.get('text', [''])[0])
+        assert '🗺' not in text and '🔗' not in text and '🚨' not in text
+        for line in text.splitlines():
+            s = line.strip()
+            if s.startswith('http') and '/field/fault/' in s:
+                assert s.endswith(f'/field/fault/{fault.id}')
+        assert text.rstrip().endswith(f'/field/fault/{fault.id}')
