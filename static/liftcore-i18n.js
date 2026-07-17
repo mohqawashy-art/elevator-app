@@ -21,6 +21,9 @@
     '/purchase-orders': { ar: 'طلبات الشراء', en: 'Purchase Orders' },
     '/reports': { ar: 'التقارير', en: 'Reports' },
     '/settings': { ar: 'الإعدادات', en: 'Settings' },
+    '/installation/': { ar: 'لوحة المشاريع', en: 'Projects Home' },
+    '/installation/leads': { ar: 'فرص البيع', en: 'Sales Leads' },
+    '/installation/projects': { ar: 'المشاريع والتسعير', en: 'Projects & Pricing' },
   };
 
   var SECTIONS = {
@@ -30,6 +33,7 @@
     'المالية': 'Finance',
     'المخزن': 'Inventory',
     'التقارير': 'Reports',
+    'تركيب جديد': 'New Installation',
   };
 
   var ROLES = {
@@ -370,7 +374,14 @@
       .replace(/([0-9.,]+)\s*متر/g, '$1 m')
       .replace(/([0-9.,]+)\s*لتر/g, '$1 L')
       .replace(/الطلبات السابقة\s*\((\d+)\)/g, 'Previous Orders ($1)')
-      .replace(/عرض\s+(\d+)\s+من\s+(\d+)/g, 'Showing $1 of $2');
+      .replace(/عرض\s+(\d+)\s+من\s+(\d+)/g, 'Showing $1 of $2')
+      .replace(/(\d+)\s*\/\s*(\d+)\s*خطوة/g, '$1 / $2 steps')
+      .replace(/المهمة الحالية · (\d+) خطوة متبقية/g, 'Current task · $1 steps remaining')
+      .replace(/جدول التنفيذ\s*\((\d+)%\)/g, 'Timeline ($1%)')
+      .replace(/مرحلة\s+(\d+)/g, 'Phase $1')
+      .replace(/الفرص المسجّلة\s*\((\d+)\)/g, 'Registered Leads ($1)')
+      .replace(/متابعة التسعير\s*\(([^)]+)\)/g, 'Continue Pricing ($1)')
+      .replace(/(\d+)%\s*من العقد/g, '$1% of contract');
   }
 
   function setNavItemLabel(link, lang) {
@@ -572,6 +583,15 @@
       '.filter-label',
       '.hint',
       'option',
+      '.panel-title',
+      '.exec-aside-title',
+      '.exec-hero-label',
+      '.exec-hero-hint',
+      '.exec-hero-phase',
+      '.exec-auto-lbl',
+      '.exec-auto-note',
+      '.exec-done-panel h2',
+      'summary',
     ];
     selectors.forEach(function (sel) {
       root.querySelectorAll(sel).forEach(function (el) {
@@ -615,8 +635,24 @@
   var applying = false;
   var moTimer = null;
 
-  function applyLanguage(lang) {
+  /** ترجمة جزء من DOM فقط (بدون إعادة رسم الجداول) */
+  function applySubtree(root, lang) {
+    if (!root || root.nodeType !== 1) return;
+    var tag = (root.tagName || '').toUpperCase();
+    if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') return;
+    applyDataI18n(root, lang);
+    walkTextNodes(root, lang);
+    translateFormAttributes(root, lang);
+    if (global.LiftCoreDisplay && global.LiftCoreDisplay.applyDom) {
+      global.LiftCoreDisplay.applyDom(root, lang);
+    }
+  }
+
+  function applyLanguage(lang, options) {
+    options = options || {};
     if (applying) return;
+    var prevLang = currentLang;
+    var langChanged = prevLang !== lang;
     applying = true;
     try {
     if (lang !== 'ar' && lang !== 'en') lang = 'ar';
@@ -654,13 +690,20 @@
       global.LiftCoreDisplay.applyDom(document, lang);
     }
 
-    document.dispatchEvent(new CustomEvent('liftcore:lang', { detail: { lang: lang } }));
-
-    /* بعض الصفحات تعيد كتابة نصوص عربية في معالجات الحدث أعلاه — نترجم مرة أخيرة */
-    zones.forEach(function (z) {
-      if (!shouldTranslateZone(z)) return;
-      walkTextNodes(z, lang);
-    });
+    /* لا نُطلق liftcore:lang إلا عند تغيير اللغة — وإلا تُعاد كتابة الجداول بالكامل ويومض الصف */
+    if (langChanged || options.forceEvent) {
+      document.dispatchEvent(new CustomEvent('liftcore:lang', { detail: { lang: lang } }));
+      /* بعض الصفحات تعيد كتابة نصوص عربية في معالجات الحدث أعلاه — نترجم مرة أخيرة */
+      zones.forEach(function (z) {
+        if (!shouldTranslateZone(z)) return;
+        walkTextNodes(z, lang);
+      });
+    } else if (options.rewalk) {
+      zones.forEach(function (z) {
+        if (!shouldTranslateZone(z)) return;
+        walkTextNodes(z, lang);
+      });
+    }
     } finally {
       applying = false;
     }
@@ -738,16 +781,30 @@
   window.addEventListener('load', function () {
     installSetLang();
     applyLanguage(currentLang);
-    setTimeout(function () { installSetLang(); applyLanguage(currentLang); }, 400);
-    setTimeout(function () { installSetLang(); applyLanguage(currentLang); }, 1200);
-    setTimeout(function () { installSetLang(); applyLanguage(currentLang); }, 2500);
+    setTimeout(function () { installSetLang(); applyLanguage(currentLang, { rewalk: true }); }, 400);
+    setTimeout(function () { installSetLang(); applyLanguage(currentLang, { rewalk: true }); }, 1200);
   });
 
   if (typeof MutationObserver !== 'undefined') {
-    var mo = new MutationObserver(function () {
+    var mo = new MutationObserver(function (records) {
       if (currentLang !== 'en' || applying) return;
+      var roots = [];
+      records.forEach(function (rec) {
+        Array.prototype.forEach.call(rec.addedNodes, function (n) {
+          if (n.nodeType === 1) roots.push(n);
+        });
+      });
+      if (!roots.length) return;
       clearTimeout(moTimer);
-      moTimer = setTimeout(function () { applyLanguage('en'); }, 300);
+      moTimer = setTimeout(function () {
+        if (applying) return;
+        applying = true;
+        try {
+          roots.forEach(function (r) { applySubtree(r, 'en'); });
+        } finally {
+          applying = false;
+        }
+      }, 150);
     });
     if (document.body) {
       mo.observe(document.body, { childList: true, subtree: true });

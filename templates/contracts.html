@@ -108,15 +108,22 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .tab:hover:not(.active){background:var(--bg3);color:var(--text1)}
 .map-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .map-toolbar{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--bg2)}
-.map-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text2)}
-.map-legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff}
+.map-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text2)}
+.map-legend-item{display:flex;align-items:center;gap:6px}
+.map-legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);flex-shrink:0}
+.map-legend-dot.status-active{background:#1fb87a}
+.map-legend-dot.status-expiring{background:#e8b923}
+.map-legend-dot.status-expired{background:#e04848}
+.map-legend-dot.status-cancelled{background:#8a9bb8}
 .map-legend-cluster{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#2a7fff;color:#fff;font-size:10px;font-weight:700;border:2px solid #fff;box-shadow:0 0 0 3px rgba(42,127,255,.2)}
 #map{height:min(68vh,620px);min-height:480px;width:100%}
 .map-info{padding:10px 12px;min-width:200px;direction:rtl;font-family:'IBM Plex Sans Arabic',sans-serif}
 .map-info-title{font-size:14px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 .map-info-sub{font-size:12px;color:#555;line-height:1.5}
 .map-info-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #d0d7e5;background:#f5f8ff;color:#2a7fff;cursor:pointer;margin-top:8px}
-.alert-expiry{background:rgba(224,144,48,.08);border:1px solid rgba(224,144,48,.2);border-radius:var(--r);padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--warning)}
+.alert-expired{background:rgba(224,72,72,.1);border:1px solid rgba(224,72,72,.28);border-radius:var(--r);padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--danger);cursor:pointer}
+.alert-expired svg{width:16px;height:16px;flex-shrink:0}
+.alert-expiry{background:rgba(224,144,48,.08);border:1px solid rgba(224,144,48,.2);border-radius:var(--r);padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--warning);cursor:pointer}
 .alert-expiry svg{width:16px;height:16px;flex-shrink:0}
 .filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
 .search-wrap{position:relative;flex:1;min-width:200px}
@@ -188,6 +195,29 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .field textarea{resize:vertical;min-height:70px}
 .field-hint{font-size:11px;color:var(--text3)}
 .field-calc{font-size:12px;color:var(--accent);margin-top:3px}
+/* فورم إضافة/تعديل العقد — مسافات واسعة بين السطور */
+#modal-add .modal-body{padding:30px 32px;line-height:1.75}
+#modal-add .form-section{margin-bottom:44px}
+#modal-add .form-section:last-child{margin-bottom:0}
+#modal-add .form-section-title{margin-bottom:22px;padding-bottom:14px;line-height:1.6}
+#modal-add .form-grid,#modal-add .form-grid-3{gap:36px 28px;align-items:start}
+#modal-add .field{gap:14px}
+#modal-add .field label{font-size:13px;line-height:1.75;margin-bottom:2px}
+#modal-add .field input,#modal-add .field select,#modal-add .field textarea{padding:14px 16px;line-height:1.75;font-size:14px}
+#modal-add .field textarea{min-height:110px;padding-top:14px;padding-bottom:14px}
+#modal-add .field-hint{font-size:12px;margin-top:8px;line-height:1.8;display:block}
+#modal-add .field-calc{margin-top:14px;margin-bottom:10px;line-height:1.75;font-size:13px}
+#modal-add .elevators-select{padding:14px;margin-top:12px;gap:12px;display:flex;flex-direction:column;max-height:200px}
+#modal-add .elev-option{padding:14px 14px;line-height:1.75}
+#modal-add .upload-area{padding:32px;margin-top:14px;line-height:1.75}
+#modal-add .lc-tax-block{margin-top:8px}
+#modal-add .lc-tax-mode-toggle{gap:10px;margin-bottom:18px}
+#modal-add .lc-tax-mode-btn{padding:12px 14px;line-height:1.6;font-size:13px}
+#modal-add .lc-tax-breakdown,#modal-add .lc-tax-summary{margin-top:18px;padding:18px 20px}
+#modal-add .lc-tax-row,#modal-add .lc-tax-summary-row{padding:12px 0;line-height:1.75;font-size:14px}
+#modal-add .lc-tax-row-total,#modal-add .lc-tax-summary-total{padding-top:14px;margin-top:10px}
+#modal-add .form-full .field{margin-bottom:12px}
+#modal-add .form-full .field:last-child{margin-bottom:0}
 .calc-box{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-top:4px}
 .calc-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0}
 .calc-row.total{border-top:1px solid var(--border);padding-top:10px;margin-top:6px;font-weight:600;color:var(--text1);font-size:14px}
@@ -329,8 +359,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
     </div>
 
+    <!-- EXPIRED ALERT -->
+    <div class="alert-expired" id="expired-alert" style="display:none" onclick="openContractDrill('expired', this)" title="عرض العقود المنتهية">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
+      <span>تنبيه: <strong id="expired-count">0 عقود</strong> منتهية — يُرجى مراجعة العقود وتجديدها أو إغلاقها.</span>
+    </div>
+
     <!-- EXPIRY ALERT -->
-    <div class="alert-expiry" id="expiry-alert" style="display:none">
+    <div class="alert-expiry" id="expiry-alert" style="display:none" onclick="openContractDrill('expiring', this)" title="عرض العقود على وشك الانتهاء">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1L1 14h14L8 1z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="12" r=".6" fill="currentColor"/></svg>
       <span>تنبيه: <strong id="expiry-count">0 عقود</strong> على وشك الانتهاء خلال 30 يوماً — يُنصح بالتجديد قبل انتهاء المدة.</span>
     </div>
@@ -405,16 +441,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <table>
           <thead>
             <tr>
-              <th>الكود</th>
-              <th>العميل</th>
-              <th>النوع</th>
-              <th>تاريخ البداية</th>
-              <th>تاريخ الانتهاء</th>
-              <th>المصاعد</th>
-              <th>قيمة العقد</th>
-              <th>الإجمالي</th>
-              <th>حالة العقد</th>
-              <th>حالة الفاتورة</th>
+              <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract_type">النوع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="start_date">تاريخ البداية <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="end_date">تاريخ الانتهاء <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="value">قيمة العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="total">الإجمالي <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="inv_status">حالة الفاتورة <span class="sort-ind"></span></th>
               <th>إجراءات</th>
             </tr>
           </thead>
@@ -431,8 +467,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <td style="direction:ltr;font-family:var(--font-en)">{{ c.start_date.isoformat() if c.start_date else '—' }}</td>
             <td style="direction:ltr;font-family:var(--font-en)">{{ c.end_date.isoformat() if c.end_date else '—' }}</td>
             <td style="text-align:center">{{ c.elevators|length }}</td>
-            <td class="td-amount">{{ '{:,.2f}'.format(c.value or 0) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
-            <td class="td-amount">{{ '{:,.2f}'.format(c.total or 0) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+            <td class="td-amount">{{ format_money_amount(c.value) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+            <td class="td-amount">{{ format_money_amount(c.total) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
             <td><span class="badge {{ ctr_badges.get(disp, 'badge-active') }}">{{ disp }}</span></td>
             <td><span class="badge {{ inv_badges.get(inv, 'badge-unpaid') }}">{{ inv }}</span></td>
             <td onclick="event.stopPropagation()"><div class="td-actions">
@@ -470,12 +506,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <div id="map-summary" style="font-size:12px;color:var(--text3);margin-top:4px"></div>
           </div>
           <div class="map-legend">
-            <span><span class="map-legend-dot" style="background:#1fb87a"></span> نشط</span>
-            <span><span class="map-legend-dot" style="background:#c8a055"></span> على وشك الانتهاء</span>
-            <span><span class="map-legend-dot" style="background:#e04848"></span> منتهي</span>
-            <span><span class="map-legend-dot" style="background:#8a9bb8"></span> ملغي</span>
-            <span><span class="map-legend-cluster">2</span> تجميع عند التصغير</span>
-            <button class="btn btn-secondary btn-sm" onclick="refreshContractMap(true)">تحديث</button>
+            <div class="map-legend-item"><span class="map-legend-dot status-active"></span> نشط</div>
+            <div class="map-legend-item"><span class="map-legend-dot status-expiring"></span> على وشك الانتهاء</div>
+            <div class="map-legend-item"><span class="map-legend-dot status-expired"></span> منتهي</div>
+            <div class="map-legend-item"><span class="map-legend-dot status-cancelled"></span> ملغي</div>
+            <div class="map-legend-item"><span class="map-legend-cluster">2</span> تجميع</div>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="refreshContractMap(true)" title="تحديث الخريطة">تحديث</button>
           </div>
         </div>
         <div id="map"></div>
@@ -568,7 +604,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
         </div>
         <div class="field-calc" id="selected-count">لم يتم اختيار مصاعد</div>
-        <div class="form-grid" style="margin-top:12px">
+        <div class="form-grid" style="margin-top:28px">
           <div class="field">
             <label>تكرار الصيانة</label>
             <select id="f-maint-freq" onchange="calcTotalVisits()">
@@ -590,7 +626,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="form-section">
         <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="5.5"/><path d="M6.5 4v.7M6.5 8.5V9M5 7.5c0 .83.67 1.5 1.5 1.5S8 8.33 8 7.5s-.67-1.5-1.5-1.5S5 5.17 5 4.5 5.67 3 6.5 3 8 3.67 8 4.5"/></svg>البيانات المالية</div>
         <div class="form-full">
-          {% with prefix='ctax', before_field_id='f-value', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (<span class="lc-sar" role="img" aria-label="ريال"></span>)', inclusive_label='قيمة العقد شامل الضريبة (<span class="lc-sar" role="img" aria-label="ريال"></span>)', breakdown_before_label='قيمة العقد قبل الضريبة', full_width=false %}
+          {% with prefix='ctax', before_field_id='f-value', total_field_id='f-total', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (<span class="lc-sar" role="img" aria-label="ريال"></span>)', inclusive_label='قيمة العقد شامل الضريبة (<span class="lc-sar" role="img" aria-label="ريال"></span>)', breakdown_before_label='قيمة العقد قبل الضريبة', full_width=false %}
           {% include '_tax_amount_block.html' %}
           {% endwith %}
         </div>
@@ -698,12 +734,12 @@ const CONTRACTS = [
     elevators:     {{ c.elevators|length }},
     maint_freq:    {{ (c.maint_frequency or '')|tojson }},
     visits_month:  {{ c.visits_per_month or 1 }},
-    value:         {{ c.value or 0 }},
+    value:         {{ money_round(c.value or 0) }},
     tax_pct:       {{ c.tax_pct or 15 }},
-    tax_amount:    {{ c.tax_amount or 0 }},
-    total:         {{ c.total or 0 }},
+    tax_amount:    {{ money_round(c.tax_amount or 0) }},
+    total:         {{ money_round(c.total or 0) }},
     pay_terms:     {{ (c.payment_terms or '')|tojson }},
-    paid_amount:   {{ contract_paid_total(c.id) }},
+    paid_amount:   {{ money_round(contract_paid_total(c.id)) }},
     inv_status:    {{ contract_invoice_status(c)|tojson }},
     status:        {{ c.status|tojson }},
     reminder_date: {{ (c.reminder_date.isoformat() if c.reminder_date else '')|tojson }},
@@ -734,6 +770,28 @@ const NEXT_CONTRACT_CODE = {{ next_contract_code|tojson }};
 
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function moneyRound2(n) {
+  if (window.LiftCoreTaxCalc && window.LiftCoreTaxCalc.round2) {
+    return LiftCoreTaxCalc.round2(n);
+  }
+  return Math.round((parseFloat(n) || 0) * 100) / 100;
+}
+
+function sumMoneyAmounts(values) {
+  var cents = values.reduce(function(s, v) {
+    return s + Math.round(moneyRound2(v) * 100);
+  }, 0);
+  return cents / 100;
+}
+
+function fmtMoneyAmt(n) {
+  var cents = Math.round(moneyRound2(n) * 100);
+  if (cents % 100 === 0) {
+    return (cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
+  return (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function isExpiring(c) {
@@ -770,17 +828,26 @@ function updateStats() {
   var active = CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'نشط'; }).length;
   var expired = CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'منتهي'; }).length;
   var expiring = CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'على وشك الانتهاء'; }).length;
-  var totalVal = CONTRACTS.reduce(function(s, c) { return s + c.total; }, 0);
-  var unpaid = CONTRACTS.filter(function(c) {
+  var totalVal = sumMoneyAmounts(CONTRACTS.map(function(c) { return c.total; }));
+  var unpaid = sumMoneyAmounts(CONTRACTS.filter(function(c) {
     return c.inv_status === 'غير مدفوع' || c.inv_status === 'متأخر';
-  }).reduce(function(s, c) { return s + c.total; }, 0);
+  }).map(function(c) { return c.total; }));
 
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-active').textContent = active;
   document.getElementById('stat-expired').textContent = expired;
   document.getElementById('stat-expiring').textContent = expiring;
-  document.getElementById('stat-total-val').textContent = totalVal.toLocaleString();
-  document.getElementById('stat-unpaid-val').textContent = unpaid.toLocaleString();
+  document.getElementById('stat-total-val').textContent = fmtMoneyAmt(totalVal);
+  document.getElementById('stat-unpaid-val').textContent = fmtMoneyAmt(unpaid);
+
+  var expiredAlert = document.getElementById('expired-alert');
+  var expiredCount = document.getElementById('expired-count');
+  if (expired > 0) {
+    if (expiredAlert) expiredAlert.style.display = 'flex';
+    if (expiredCount) expiredCount.textContent = expired + ' عقود';
+  } else if (expiredAlert) {
+    expiredAlert.style.display = 'none';
+  }
 
   var alertBox = document.getElementById('expiry-alert');
   var expiryCount = document.getElementById('expiry-count');
@@ -827,6 +894,19 @@ var DRILL_TITLES = {
 let currentDeleteId = null;
 let currentViewId = null;
 let filtered = CONTRACTS.slice();
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
+  defaultCol: 'code',
+  defaultDir: 'desc',
+  dateCols: ['start_date', 'end_date'],
+  numberCols: ['elevators', 'value', 'total'],
+  getters: {
+    customer: function (c) {
+      return window.LiftCoreDisplay ? LiftCoreDisplay.name(c.customer, c.customer_name_en) : c.customer;
+    },
+    contract_status: function (c) { return getContractDisplayStatus(c); },
+  },
+  onChange: function () { renderTable(filtered); },
+}) : null;
 
 function getContractsByDrill(type) {
   if (type === 'all') return CONTRACTS.slice();
@@ -852,7 +932,7 @@ function renderDrillTable(rows) {
       '<td>' + esc(c.contract_type) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
       '<td style="text-align:center">' + c.elevators + '</td>' +
-      '<td style="font-family:var(--font-en)">' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
+      '<td style="font-family:var(--font-en)">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></td>' +
       '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span></td>' +
     '</tr>';
@@ -890,6 +970,10 @@ function closeContractDrill() {
 }
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   var D = lcDisp;
@@ -910,8 +994,8 @@ function renderTable(data) {
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.start_date) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
       '<td style="text-align:center" title="' + esc(elevatorLabels(c.elevator_ids)) + '">' + c.elevators + '</td>' +
-      '<td class="td-amount">' + c.value.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
-      '<td class="td-amount">' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
+      '<td class="td-amount">' + fmtMoneyAmt(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
+      '<td class="td-amount">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td><span class="badge ' + (STATUS_BADGE[disp] || 'badge-active') + '">' + esc(D(disp)) + '</span></td>' +
       '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(D(c.inv_status)) + '</span></td>' +
       '<td onclick="event.stopPropagation()"><div class="td-actions">' +
@@ -1012,6 +1096,8 @@ function saveContract() {
   fd.append('maint_frequency', document.getElementById('f-maint-freq').value);
   fd.append('visits_per_month', document.getElementById('f-visits-month').value || '1');
   fd.append('value', document.getElementById('f-value').value || '0');
+  var totalEl = document.getElementById('f-total');
+  fd.append('total', totalEl ? totalEl.value : '');
   fd.append('tax_pct', document.getElementById('f-tax-pct').value || '15');
   fd.append('payment_terms', document.getElementById('f-payment-terms').value);
   fd.append('status', document.getElementById('f-status-sel').value);
@@ -1062,9 +1148,9 @@ function viewContract(id) {
   document.getElementById('view-body').innerHTML =
     locHtml +
     '<div class="financial-summary">' +
-      '<div class="fin-row"><span>قيمة العقد (قبل الضريبة)</span><span>' + c.value.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
-      '<div class="fin-row"><span>الضريبة (' + c.tax_pct + '%)</span><span>' + c.tax_amount.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
-      '<div class="fin-row"><span>الإجمالي</span><span>' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
+      '<div class="fin-row"><span>قيمة العقد (قبل الضريبة)</span><span>' + fmtMoneyAmt(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
+      '<div class="fin-row"><span>الضريبة (' + c.tax_pct + '%)</span><span>' + fmtMoneyAmt(c.tax_amount) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
+      '<div class="fin-row"><span>الإجمالي</span><span>' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>' +
     '</div>' +
     '<div class="view-grid">' +
       '<div class="view-section">البيانات الأساسية</div>' +
@@ -1073,7 +1159,7 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">نوع العقد</div><div class="view-val">' + esc(c.contract_type) + '</div></div>' +
       '<div class="view-item"><div class="view-label">المصاعد المرتبطة</div><div class="view-val" style="font-family:var(--font-en)">' + esc(elevatorLabels(c.elevator_ids)) + '</div></div>' +
       '<div class="view-item"><div class="view-label">حالة العقد</div><div class="view-val"><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></div></div>' +
-      '<div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span> <span style="font-size:12px;color:var(--text3)">(' + (c.paid_amount || 0).toLocaleString() + ' / ' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>)</span></div></div>' +
+      '<div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span> <span style="font-size:12px;color:var(--text3)">(' + fmtMoneyAmt(c.paid_amount || 0) + ' / ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>)</span></div></div>' +
       '<div class="view-section">التواريخ والصيانة</div>' +
       '<div class="view-item"><div class="view-label">تاريخ البداية</div><div class="view-val" style="direction:ltr">' + esc(c.start_date) + '</div></div>' +
       '<div class="view-item"><div class="view-label">تاريخ الانتهاء</div><div class="view-val" style="direction:ltr">' + esc(c.end_date) + '</div></div>' +
@@ -1095,7 +1181,8 @@ function editFromView() {
 function printContractForm(id) {
   var cid = id || currentViewId;
   if (!cid) return;
-  window.open('/contracts/' + cid + '/print', '_blank');
+  if (window.LiftCoreNav) LiftCoreNav.openTab('/contracts/' + cid + '/print');
+  else window.open('/contracts/' + cid + '/print?popup=1', '_blank');
 }
 
 // ===== حذف =====
@@ -1251,7 +1338,7 @@ var contractInfoPinned = false, contractHoverTimer = null;
 
 var CONTRACT_PIN_COLORS = {
   'نشط': '#1fb87a',
-  'على وشك الانتهاء': '#c8a055',
+  'على وشك الانتهاء': '#e8b923',
   'منتهي': '#e04848',
   'ملغي': '#8a9bb8'
 };
@@ -1345,7 +1432,7 @@ function contractGroupMapInfo(group) {
   var rows = group.contracts.map(function(c) {
     return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' +
       '<strong>' + esc(c.code) + '</strong> — ' + esc(c.contract_type) + '<br>' +
-      esc(getContractDisplayStatus(c)) + ' · ' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>' +
+      esc(getContractDisplayStatus(c)) + ' · ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>' +
       ' · ' + esc(c.inv_status) +
       '<br><button class="map-info-btn" style="margin-top:6px" onclick="viewContract(' + c.id + ')">عرض العقد</button></div>';
   }).join('');
@@ -1358,7 +1445,7 @@ function contractMapInfo(c, exact) {
   var locNote = exact ? 'موقع GPS دقيق' : 'موقع تقريبي';
   return '<div class="map-info"><div class="map-info-title">' + esc(c.code) + '</div>' +
     '<div class="map-info-sub">' + esc(c.customer) + '<br>' + esc(c.contract_type) + '<br>' +
-    'الإجمالي: ' + c.total.toLocaleString() + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span><br>' + esc(getContractDisplayStatus(c)) + ' · ' + esc(c.inv_status) +
+    'الإجمالي: ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span><br>' + esc(getContractDisplayStatus(c)) + ' · ' + esc(c.inv_status) +
     '<br><span style="color:#888;font-size:11px">' + locNote + '</span></div>' +
     '<button class="map-info-btn" onclick="viewContract(' + c.id + ')">عرض العقد</button></div>';
 }
@@ -1404,7 +1491,7 @@ function renderContractMapMarkers(fitAgain) {
   var summary = document.getElementById('map-summary');
   if (summary) {
     summary.textContent = shownContracts
-      ? ('معروض: ' + shownContracts + ' عقد في ' + groups.length + ' موقع (صورة أقمار صناعية + تجميع عند التصغير)')
+      ? ('معروض: ' + shownContracts + ' عقد في ' + groups.length + ' موقع')
       : 'لا توجد مواقع — حدّد موقع العميل على الخريطة في صفحة العملاء';
   }
 
@@ -1509,7 +1596,7 @@ if (window.LiftCoreLocation) {
   LiftCoreLocation.setLookup(getCustomerById);
 }
 
-try { initFilters(); updateStats(); renderTable(CONTRACTS); } catch (bootErr) { console.error('contracts boot', bootErr); }
+try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); } catch (bootErr) { console.error('contracts boot', bootErr); }
 window.__lcRefreshPage = function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : CONTRACTS);
   if (typeof updateStats === 'function') updateStats();

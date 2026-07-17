@@ -62,11 +62,26 @@ if [ -d "$VENV" ] && [ -f "$APP_DIR/scripts/init_install_module.py" ]; then
   python "$APP_DIR/scripts/init_install_module.py" || echo "  WARN: init_install_module failed"
 fi
 
+if [ -d "$VENV" ]; then
+  echo "==> test app import"
+  # shellcheck disable=SC1091
+  source "$VENV/bin/activate"
+  if ! python -c "from app import app; print('  app import OK')" 2>&1; then
+    echo "ERROR: التطبيق لا يشتغل — راجع: sudo journalctl -u $SERVICE_NAME -n 40 --no-pager"
+    exit 1
+  fi
+fi
+
 echo "==> restart service: $SERVICE_NAME"
 if command -v systemctl >/dev/null 2>&1; then
   sudo systemctl restart "$SERVICE_NAME"
-  sleep 2
-  sudo systemctl is-active "$SERVICE_NAME"
+  sleep 3
+  if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+    echo "ERROR: الخدمة متوقفة — شغّل: bash deploy/fix_502.sh"
+    sudo journalctl -u "$SERVICE_NAME" -n 30 --no-pager || true
+    exit 1
+  fi
+  echo "  service active OK"
 elif command -v supervisorctl >/dev/null 2>&1; then
   sudo supervisorctl restart "$SERVICE_NAME" || sudo supervisorctl restart all
 else

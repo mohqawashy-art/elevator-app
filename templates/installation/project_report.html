@@ -38,7 +38,7 @@ tr.done td{background:#f8fdf9}
 <body>
 <div class="toolbar">
   <button class="btn btn-primary" onclick="window.print()">طباعة / PDF</button>
-  <a class="btn" href="/installation/projects/{{ project.id }}/handover" target="_blank">محضر استلام العميل</a>
+  <a class="btn" href="/installation/projects/{{ project.id }}/handover">محضر استلام العميل</a>
   <a class="btn" href="/installation/projects/{{ project.id }}">← المشروع</a>
   {% if not is_complete %}
   <a class="btn" href="/installation/projects/{{ project.id }}/execution">جدول التنفيذ</a>
@@ -214,7 +214,7 @@ tr.done td{background:#f8fdf9}
   {% endif %}
 
   <div class="r-sec" style="margin-top:24px;font-size:12px;color:#6b7a90;text-align:center">
-    تقرير صادر من LiftCore — موديول التركيب · {{ report_date.strftime('%Y-%m-%d') }}
+    تقرير صادر من LiftCore · {{ report_date.strftime('%Y-%m-%d') }}
   </div>
 </div>
 </body>

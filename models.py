@@ -148,6 +148,8 @@ class Technician(db.Model):
     status          = db.Column(db.String(20), default='متاح')  # متاح / مشغول / إجازة / غير نشط
     team            = db.Column(db.String(30), default='عام')   # صيانة / أعطال / عام
     photo_path      = db.Column(db.String(300))   # uploads/technicians/{id}/photo.jpg
+    signature_path  = db.Column(db.String(300))   # uploads/technicians/{id}/signature.png
+    sign_pin_hash   = db.Column(db.String(200))   # رمز توقيع من 6 أرقام (مشفّر)
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -475,6 +477,25 @@ class PurchaseOrderLine(db.Model):
 
 
 # =============================================
+# 12ب. الموقّعون (توقيعات مشفّرة)
+# =============================================
+class Signatory(db.Model):
+    __tablename__ = 'signatories'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    name            = db.Column(db.String(100), nullable=False)
+    national_id     = db.Column(db.String(20), nullable=False, index=True)
+    role            = db.Column(db.String(30), default='technician')  # technician | manager
+    sign_pin_hash   = db.Column(db.String(200), nullable=False)
+    signature_path  = db.Column(db.String(300))  # uploads/signatures/{id}.enc
+    technician_id   = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=True)
+    is_active       = db.Column(db.Boolean, default=True)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    technician = db.relationship('Technician', backref='signatory', uselist=False)
+
+
+# =============================================
 # 13. إعدادات النظام
 # =============================================
 class Settings(db.Model):
@@ -499,6 +520,10 @@ class Settings(db.Model):
     logo_width_login   = db.Column(db.Integer, default=180)
     rep_name        = db.Column(db.String(200))   # ممثل الشركة في العقود
     rep_mobile      = db.Column(db.String(20))      # جوال الممثل
+    rep_national_id = db.Column(db.String(20))    # هوية الممثل للتوقيع الرقمي
+    rep_signature_path = db.Column(db.String(300))
+    rep_sign_pin_hash = db.Column(db.String(200))
+    default_sign_method = db.Column(db.String(20), default='both')  # draw | pin | both
     checklist_template_key = db.Column(db.String(50), default='liftcore_standard_v1')  # SaaS: قالب الفحص الافتراضي
 
 

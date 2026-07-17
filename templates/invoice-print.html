@@ -98,12 +98,12 @@ body.page-a5 .inv-meta{grid-template-columns:1fr 1fr}
 body.page-a5 .zatca-qr-img{width:100px;height:100px}
 </style>
 </head>
-<body class="{% if is_receipt %}page-a5{% else %}page-a4{% endif %}">
+<body class="{% if is_receipt %}page-a5{% else %}page-a4{% endif %}"{% if request.args.get('popup') == '1' or request.args.get('print') == '1' %} data-lc-popup="1"{% endif %}>
 <div class="toolbar">
   <span>{{ doc_title }} — {{ irn }} ({{ page_size }})</span>
   <div>
     <button type="button" class="print" onclick="window.print()">طباعة</button>
-    <a class="back" href="/invoices" onclick="window.close();return false;">إغلاق</a>
+    <a class="back" href="/invoices">إغلاق</a>
   </div>
 </div>
 
@@ -266,5 +266,6 @@ body.page-a5 .zatca-qr-img{width:100px;height:100px}
 {% if request.args.get('print') == '1' %}
 <script>window.addEventListener('load',function(){window.print();});</script>
 {% endif %}
+<script src="/static/liftcore-nav.js?v=2"></script>
 </body>
 </html>

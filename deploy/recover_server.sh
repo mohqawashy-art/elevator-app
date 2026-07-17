@@ -90,7 +90,8 @@ for f in \
   templates/settings.html \
   static/liftcore-shell.css \
   templates/purchase-orders.html \
-  deploy/gcp_update.sh; do
+  deploy/gcp_update.sh \
+  installation/routes.py; do
   if [ -f "$f" ]; then
     echo "  OK  $f"
   else
@@ -128,7 +129,13 @@ DROP_IN="/etc/systemd/system/${SERVICE_NAME}.service.d"
 if command -v systemctl >/dev/null 2>&1; then
   sudo mkdir -p "$DROP_IN"
   printf '%s\n' '[Service]' 'Environment=LIFTCORE_HTTPS=1' | sudo tee "$DROP_IN/https.conf" >/dev/null
+  printf '%s\n' '[Service]' 'Environment=LIFTCORE_INSTALL_MODULE=1' | sudo tee "$DROP_IN/install-module.conf" >/dev/null
   sudo systemctl daemon-reload
+  if [ -f "$APP_DIR/scripts/init_install_module.py" ] && [ -d "$VENV" ]; then
+    # shellcheck disable=SC1091
+    source "$VENV/bin/activate"
+    python "$APP_DIR/scripts/init_install_module.py" || true
+  fi
   sudo systemctl restart "$SERVICE_NAME"
   sleep 3
   sudo systemctl is-active "$SERVICE_NAME"

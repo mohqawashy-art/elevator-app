@@ -48,6 +48,11 @@ html[data-theme="light"] tbody tr:hover {
   background: var(--bg3);
 }
 
+/* تظليل صف الجدول — خلفية فقط بدون وميض */
+tbody tr {
+  transition: background-color 0.1s ease;
+}
+
 html[data-theme="light"] .search-input,
 html[data-theme="light"] .filter-select,
 html[data-theme="light"] .filter-input {
@@ -79,4 +84,21 @@ html[data-theme="light"] .nav-item:hover {
 html[data-theme="light"] .lc-app-header {
   background: var(--bg2);
   border-color: var(--border);
+}
+
+/* ترتيب أعمدة الجداول */
+th.th-sort {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+th.th-sort:hover {
+  color: var(--text1);
+}
+th.th-sort .sort-ind {
+  display: inline-block;
+  margin-inline-start: 4px;
+  font-size: 10px;
+  color: var(--accent);
+  min-width: 10px;
 }

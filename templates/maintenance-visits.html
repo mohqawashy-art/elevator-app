@@ -406,8 +406,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th>الكود</th><th>العميل</th><th>المصعد</th><th>الفني</th>
-                <th>النوع</th><th>التاريخ</th><th>الوقت</th><th>الأولوية</th><th>الحالة</th><th>إجراءات</th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="elevator">المصعد <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="technician">الفني <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="visit_type">النوع <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="visit_date">التاريخ <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="visit_time">الوقت <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="priority">الأولوية <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+                <th>إجراءات</th>
               </tr>
             </thead>
             <tbody id="table-body"></tbody>
@@ -558,7 +566,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
-      <a class="btn btn-primary" id="view-report-link" href="#" target="_blank" style="text-decoration:none;display:none">
+      <a class="btn btn-primary" id="view-report-link" href="#" style="text-decoration:none;display:none">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10v8H2z"/><path d="M4 2h6v2H4z"/><path d="M5 7l1.5 1.5L9 5"/></svg>
         تعديل المحضر
       </a>
@@ -833,6 +841,17 @@ const PRIORITY_BADGE = {
 
 let currentDeleteId = null;
 let filtered = [...VISITS];
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
+  defaultCol: 'visit_date',
+  defaultDir: 'desc',
+  dateCols: ['visit_date'],
+  getters: {
+    customer: function (v) {
+      return window.LiftCoreDisplay ? LiftCoreDisplay.name(v.customer, v.customer_name_en) : v.customer;
+    },
+  },
+  onChange: function () { renderTable(filtered); },
+}) : null;
 let activeVisitFilter = null;
 
 function isVisitDoneToday(v) {
@@ -902,6 +921,10 @@ function clearVisitFilter() {
 }
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -927,10 +950,10 @@ function renderTable(data) {
       <td><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${D(v.status)}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
-          <a class="btn btn-primary btn-sm btn-icon" href="/maintenance-visits/${v.id}/report" target="_blank" title="تعبئة / تعديل محضر الفحص" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+          <a class="btn btn-primary btn-sm btn-icon" href="/maintenance-visits/${v.id}/report" title="تعبئة / تعديل محضر الفحص" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10v8H2z"/><path d="M4 2h6v2H4z"/><path d="M5 7l1.5 1.5L9 5"/></svg>
           </a>
-          <a class="btn btn-secondary btn-sm btn-icon" href="/maintenance-visits/${v.id}/report?print=1" target="_blank" title="طباعة محضر العميل" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+          <a class="btn btn-secondary btn-sm btn-icon lc-open-tab" href="/maintenance-visits/${v.id}/report?print=1" title="طباعة محضر العميل" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10v8H2z"/><path d="M4 2h6v2H4z"/><line x1="5" y1="7" x2="9" y2="7"/><line x1="5" y1="9" x2="8" y2="9"/></svg>
           </a>
           <button class="btn btn-secondary btn-sm btn-icon" onclick="viewVisit(${v.id})">
@@ -945,6 +968,7 @@ function renderTable(data) {
         </div>
       </td>
     </tr>`).join('');
+  if (window.LiftCoreNav) LiftCoreNav.bindOpenTabLinks(tbody);
 }
 
 function filterTable() {
@@ -1568,9 +1592,10 @@ function viewVisit(id) {
       ${v.fault_code?`<div class="view-item"><div class="view-label">رقم العطل</div><div class="view-val" style="font-family:var(--font-en)">${v.fault_code}</div></div>`:''}
       ${renderVisitFlaggedItems(v)}
       ${v.observations?`<div class="view-item view-full"><div class="view-label">الملاحظات</div><div class="view-val">${v.observations}</div></div>`:''}
-      ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" target="_blank" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" target="_blank" style="color:var(--accent)">طباعة PDF</a></div></div>`:''}
+      ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" class="lc-open-tab" style="color:var(--accent)">طباعة PDF</a></div></div>`:''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
+  if (window.LiftCoreNav) LiftCoreNav.bindOpenTabLinks(document.getElementById('view-body'));
   const rpt = document.getElementById('view-report-link');
   if (rpt) {
     rpt.href = '/maintenance-visits/' + v.id + '/report';
@@ -1607,6 +1632,7 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.
 
 /* التاريخ في الهيدر: liftcore-format.js */
 
+if (tableSort) tableSort.bindHeaders();
 OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
 OpsPage.fillFilterSelect('f-tech', TECHNICIANS.map(t => ({ value: t.name, label: t.name })), 'كل الفنيين');
 OpsPage.initCalendar('cal-grid', 'cal-title', VISITS, 'visit_date', 'customer', 'status', 'العميل');

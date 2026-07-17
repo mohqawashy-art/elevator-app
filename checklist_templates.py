@@ -13,6 +13,15 @@ from typing import Any
 
 DEFAULT_TEMPLATE_KEY = 'liftcore_standard_v1'
 
+# بنود افتراضها «لا ينطبق» عند فتح محضر جديد (إيماتيك، إنذار الحريق)
+DEFAULT_NA_ITEM_IDS = frozenset({'5_3', '5_4'})
+
+
+def default_checklist_item_status(item_id: str) -> str:
+    if item_id in DEFAULT_NA_ITEM_IDS:
+        return 'na'
+    return 'ok'
+
 # قالب افتراضي — 5 أقسام (مطابق لمحضر الصيانة)
 TEMPLATES: dict[str, dict[str, Any]] = {
     DEFAULT_TEMPLATE_KEY: {
@@ -107,7 +116,8 @@ def empty_report_data(template_key: str | None = None) -> dict[str, Any]:
     items: dict[str, dict[str, str]] = {}
     for sec in tpl['sections']:
         for item in sec['items']:
-            items[item['id']] = {'status': '', 'note': ''}
+            iid = item['id']
+            items[iid] = {'status': default_checklist_item_status(iid), 'note': ''}
     return {
         'template_key': tpl['key'],
         'template_version': tpl['version'],
@@ -121,7 +131,13 @@ def empty_report_data(template_key: str | None = None) -> dict[str, Any]:
             'parts_used': '',
             'next_visit': '',
         },
-        'signatures': {'tech': '', 'client': ''},
+        'signatures': {
+            'tech': '',
+            'client': '',
+            'tech_method': '',
+            'tech_signed_by': '',
+            'tech_signed_at': '',
+        },
         'photos': [],
     }
 
@@ -144,8 +160,9 @@ def merge_report_data(saved: dict[str, Any] | None, template_key: str | None = N
     base['template_version'] = saved.get('template_version') or base['template_version']
     for item_id, val in (saved.get('items') or {}).items():
         if item_id in base['items'] and isinstance(val, dict):
+            saved_status = (val.get('status') or '').strip()
             base['items'][item_id] = {
-                'status': val.get('status') or '',
+                'status': saved_status if saved_status else base['items'][item_id]['status'],
                 'note': val.get('note') or '',
             }
     meta = saved.get('meta') or {}
@@ -153,8 +170,8 @@ def merge_report_data(saved: dict[str, Any] | None, template_key: str | None = N
         base['meta'].update({k: meta.get(k) or base['meta'].get(k, '') for k in base['meta']})
     sig = saved.get('signatures') or {}
     if isinstance(sig, dict):
-        base['signatures']['tech'] = sig.get('tech') or ''
-        base['signatures']['client'] = sig.get('client') or ''
+        for key in base['signatures']:
+            base['signatures'][key] = sig.get(key) or base['signatures'].get(key) or ''
     if isinstance(saved.get('photos'), list):
         base['photos'] = saved['photos']
     return base

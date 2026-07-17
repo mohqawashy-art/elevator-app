@@ -126,8 +126,58 @@
     document.addEventListener('touchend', onStatusTap, { capture: true, passive: false });
   }
 
+  const DEFAULT_NA_ITEMS = ['5_3', '5_4'];
+  const AUTO_TECH_NOTE = 'تم عمل الصيانة اللازمة والمصعد بحالة جيدة';
+
+  function applyDefaultItemStatuses(template, reportData) {
+    if (!template || !template.sections) return;
+    const items = (reportData && reportData.items) || {};
+    template.sections.forEach(function (sec) {
+      (sec.items || []).forEach(function (item) {
+        const val = items[item.id] || {};
+        const status = (val.status || '').trim();
+        if (status) {
+          setItemStatus(item.id, status);
+        } else if (DEFAULT_NA_ITEMS.indexOf(item.id) >= 0) {
+          setItemStatus(item.id, 'na');
+        } else {
+          setItemStatus(item.id, 'ok');
+        }
+      });
+    });
+  }
+
+  function allItemsOkOrNa(template) {
+    if (!template || !template.sections) return false;
+    for (let si = 0; si < template.sections.length; si++) {
+      const sec = template.sections[si];
+      const secItems = sec.items || [];
+      for (let ii = 0; ii < secItems.length; ii++) {
+        const item = secItems[ii];
+        const group = findStatusGroup(item.id);
+        const selected = group ? group.querySelector('.status-btn.is-selected') : null;
+        const status = selected ? selected.getAttribute('data-value') || '' : '';
+        if (!status || (status !== 'ok' && status !== 'na')) return false;
+      }
+    }
+    return true;
+  }
+
+  function syncAutoTechNotes(template) {
+    const el = document.getElementById('tech-notes');
+    if (!el || el.readOnly) return;
+    const shouldFill = allItemsOkOrNa(template);
+    const cur = (el.value || '').trim();
+    if (shouldFill) {
+      if (!cur || cur === AUTO_TECH_NOTE) el.value = AUTO_TECH_NOTE;
+    } else if (cur === AUTO_TECH_NOTE) {
+      el.value = '';
+    }
+  }
+
   function applyReportData(reportData, template) {
     if (!reportData) return;
+    applyDefaultItemStatuses(template, reportData);
     const items = reportData.items || {};
     Object.keys(items).forEach(itemId => {
       const val = items[itemId] || {};
@@ -151,8 +201,13 @@
       const el = document.getElementById(elId);
       if (el && v != null) el.value = v;
     });
-    applySignatures(reportData.signatures || {});
+    const sig = reportData.signatures || {};
+    applySignatures(sig);
+    if (global.LiftCoreDigitalSign && sig.tech_method === 'pin') {
+      global.LiftCoreDigitalSign.applyTechSignMeta(sig);
+    }
     applyPhotos(reportData.photos || []);
+    syncAutoTechNotes(template);
   }
 
   function applySignatures(signatures) {
@@ -238,10 +293,18 @@
         parts_used: val('parts-used'),
         next_visit: val('next-visit'),
       },
-      signatures: {
-        tech: canvasDataUrl('sig-tech'),
-        client: canvasDataUrl('sig-client'),
-      },
+      signatures: (function () {
+        const techMeta = global.LiftCoreDigitalSign
+          ? global.LiftCoreDigitalSign.getTechSignMeta()
+          : { method: '', signed_by: '', signed_at: '' };
+        return {
+          tech: canvasDataUrl('sig-tech'),
+          client: canvasDataUrl('sig-client'),
+          tech_method: techMeta.method || '',
+          tech_signed_by: techMeta.signed_by || '',
+          tech_signed_at: techMeta.signed_at || '',
+        };
+      })(),
       photos: collectPhotos(),
     };
   }
@@ -454,6 +517,7 @@
     pickStatus,
     setItemStatus,
     applyReportData,
+    syncAutoTechNotes,
     collectReportData,
     buildPhotosGrid,
     initPhotosGrid,

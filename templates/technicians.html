@@ -130,6 +130,10 @@ tbody tr:last-child{border-bottom:none}
 tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
 .td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500}
 .td-name{color:var(--text1);font-weight:500}
+.td-name-photo{display:flex;align-items:center;gap:10px}
+.td-name-text{line-height:1.3}
+.tech-row-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);flex-shrink:0;background:var(--bg4)}
+.tech-row-avatar-ph{display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-en)}
 .td-actions{display:flex;gap:6px;align-items:center}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
 .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
@@ -382,14 +386,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <select class="filter-select" id="f-city" onchange="filterTable()">
           <option value="">كل المدن</option>
         </select>
-        <select class="filter-select" id="f-spec" onchange="filterTable()">
+        <select class="filter-select" id="filter-spec" onchange="filterTable()">
           <option value="">كل التخصصات</option>
         </select>
-        <select class="filter-select" id="f-status" onchange="filterTable()">
+        <select class="filter-select" id="filter-status" onchange="filterTable()">
           <option value="">كل الحالات</option>
           <option>متاح</option><option>مشغول</option><option>إجازة</option><option>غير نشط</option>
         </select>
-        <select class="filter-select" id="f-emergency" onchange="filterTable()">
+        <select class="filter-select" id="filter-emergency" onchange="filterTable()">
           <option value="">الطوارئ</option>
           <option value="نعم">متاح للطوارئ</option>
           <option value="لا">غير متاح</option>
@@ -401,8 +405,15 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th>الكود</th><th>اسم الفني</th><th>الهاتف</th><th>المسمى الوظيفي</th>
-                <th>التخصص</th><th>المدينة</th><th>الحالة</th><th>طوارئ</th><th>إجراءات</th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="name">اسم الفني <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="phone">الهاتف <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="job_title">المسمى الوظيفي <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="specialization">التخصص <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="city">المدينة <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="display_status">الحالة <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="emergency">طوارئ <span class="sort-ind"></span></th>
+                <th>إجراءات</th>
               </tr>
             </thead>
             <tbody id="table-body"></tbody>
@@ -435,6 +446,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="contact" onclick="switchTechTab('contact')">بيانات الاتصال</button>
         <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="area" onclick="switchTechTab('area')">المنطقة</button>
         <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="docs" onclick="switchTechTab('docs')">الوثائق</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-tech-tab="signature" onclick="switchTechTab('signature')">التوقيع الرقمي</button>
       </div>
 
       <div class="form-section tech-tab-panel active" data-tech-tab="basic" id="tech-section-photo">
@@ -481,6 +493,22 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="districts-wrap" style="margin-top:12px">
           <label style="font-size:12px;font-weight:500;color:var(--text2)">الأحياء المخصصة</label>
           <div class="districts-list" id="districts-list"><div style="padding:10px;text-align:center;color:var(--text3);font-size:12px">اختر المدينة أولاً</div></div>
+        </div>
+      </div>
+
+      <div class="form-section tech-tab-panel" data-tech-tab="signature" id="tech-section-signature">
+        <div class="form-section-title">التوقيع الرقمي (اختياري)</div>
+        <p class="upload-hint" style="margin-bottom:10px">ارفع صورة التوقيع وكلمة مرور من 6 أرقام — تُحفظ مشفّرة وتُستخدم عبر زر «إضافة توقيع» في المحاضر.</p>
+        <div class="form-grid">
+          <div class="field full">
+            <label>صورة التوقيع</label>
+            <input type="file" id="f-signature" accept="image/png,image/jpeg,image/webp">
+            <img id="signature-preview" alt="" style="max-height:72px;margin-top:8px;display:none">
+          </div>
+          <div class="field">
+            <label>كلمة مرور التوقيع (6 أرقام)</label>
+            <input type="password" id="f-sign-pin" inputmode="numeric" maxlength="6" dir="ltr" placeholder="اتركه فارغاً عند التعديل للإبقاء" autocomplete="new-password">
+          </div>
         </div>
       </div>
 
@@ -634,13 +662,15 @@ const TECHNICIANS = [
     national_id:    {{ (t.national_id or '')|tojson }},
     hire_date:      {{ (t.hire_date.isoformat() if t.hire_date else '')|tojson }},
     salary:         {{ t.salary or 0 }},
-    emergency:      {{ 'true' if t.emergency else 'false' }},
+    emergency:      {{ t.emergency|tojson }},
     status:         {{ (t.status or 'متاح')|tojson }},
     display_status: {{ technician_display_status(t)|tojson }},
     visits:         {{ t.visits|length }},
     faults:         {{ t.faults|length }},
     notes:          {{ (t.notes or '')|tojson }},
-    photo_url:      {{ (url_for('static', filename=t.photo_path) if t.photo_path else '')|tojson }},
+    photo_url:      {{ (upload_url(t.photo_path) if t.photo_path else '')|tojson }},
+    signature_url:  {{ (upload_url(t.signature_path) if t.signature_path else '')|tojson }},
+    has_sign_pin:   {{ (t.sign_pin_hash is not none and t.sign_pin_hash != '')|tojson }},
     documents:      {{ t.documents | map(attribute='id') | list | length }},
     docs: [
       {% for d in t.documents %}
@@ -674,7 +704,8 @@ const DRILL_TITLES = {
   'مشغول': 'فنيون مشغولون',
   'إجازة': 'فنيون في إجازة',
   'غير نشط': 'فنيون غير نشطين',
-  emergency: 'فنيو الطوارئ'
+  emergency: 'فنيو الطوارئ',
+  emergency_unavailable: 'فنيو طوارئ غير متاحين'
 };
 
 const DISTRICTS = {
@@ -687,6 +718,15 @@ var currentDeleteId = null;
 var currentViewId = null;
 var currentEditId = null;
 var filtered = TECHNICIANS.slice();
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
+  defaultCol: 'code',
+  defaultDir: 'desc',
+  getters: {
+    name: function (t) { return window.LiftCoreDisplay ? LiftCoreDisplay.techName(t) : t.name; },
+    emergency: function (t) { return isTechEmergencyOn(t) ? 1 : 0; },
+  },
+  onChange: function () { renderTable(filtered); },
+}) : null;
 var docRowCounter = 0;
 
 var DOC_TYPES = ['شهادة', 'مؤهل', 'رخصة', 'إقامة', 'تدريب', 'أخرى'];
@@ -726,6 +766,22 @@ function resetPhotoPreview(url) {
     preview.removeAttribute('src');
     preview.style.display = 'none';
     ph.style.display = 'flex';
+  }
+}
+
+function resetSignaturePreview(url) {
+  var preview = document.getElementById('signature-preview');
+  var input = document.getElementById('f-signature');
+  var pin = document.getElementById('f-sign-pin');
+  if (input) input.value = '';
+  if (pin) pin.value = '';
+  if (!preview) return;
+  if (url) {
+    preview.src = url;
+    preview.style.display = 'block';
+  } else {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
   }
 }
 
@@ -800,6 +856,18 @@ function renderDocumentsGrid(docs, techId) {
   return html;
 }
 
+function techTableAvatarHtml(t) {
+  if (t.photo_url) {
+    return '<img class="tech-row-avatar" src="' + esc(t.photo_url) + '" alt="">';
+  }
+  return '<span class="tech-row-avatar tech-row-avatar-ph" aria-hidden="true">' + esc(getInitials(t.name)) + '</span>';
+}
+
+function techTableNameCell(t, useDisplayName) {
+  var name = useDisplayName && window.LiftCoreDisplay ? LiftCoreDisplay.techName(t) : t.name;
+  return '<td class="td-name td-name-photo">' + techTableAvatarHtml(t) + '<span class="td-name-text">' + esc(name) + '</span></td>';
+}
+
 function techPhotoHeaderHtml(t, photoUrl) {
   photoUrl = photoUrl || t.photo_url;
   var photoInner = photoUrl
@@ -857,12 +925,16 @@ function initFilters() {
       citySel.innerHTML += '<option>' + esc(c) + '</option>';
     });
   }
-  var specSel = document.getElementById('f-spec');
+  var specSel = document.getElementById('filter-spec');
   if (specSel) {
     Object.keys(specs).sort().forEach(function(s) {
       specSel.innerHTML += '<option>' + esc(s) + '</option>';
     });
   }
+}
+
+function getTechEmergencySelect() {
+  return document.querySelector('#modal-add select#f-emergency');
 }
 
 function updateStats() {
@@ -879,15 +951,35 @@ function updateStats() {
   updateAlerts();
 }
 
+function isTechEmergencyOn(t) {
+  return t.emergency === true || t.emergency === 1 || t.emergency === 'true';
+}
+
+function isTechUnavailable(t) {
+  var st = String(t.display_status || t.status || '').trim();
+  return st && st !== 'متاح' && st !== 'نشط';
+}
+
+function getEmergencyUnavailableTechs() {
+  return TECHNICIANS.filter(function(t) {
+    return isTechEmergencyOn(t) && isTechUnavailable(t);
+  });
+}
+
+function techDisplayName(t) {
+  return window.LiftCoreDisplay && LiftCoreDisplay.techName ? LiftCoreDisplay.techName(t) : t.name;
+}
+
 function updateAlerts() {
   var bar = document.getElementById('alerts-bar');
   if (!bar) return;
   var html = '';
-  var emergencyOff = TECHNICIANS.filter(function(t) {
-    return t.emergency && t.display_status !== 'متاح';
-  }).length;
-  if (emergencyOff) {
-    html += '<div class="alert-chip danger"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="7.5"/></svg>فني طوارئ غير متاح — ' + emergencyOff + '</div>';
+  var emergOffList = getEmergencyUnavailableTechs();
+  if (emergOffList.length) {
+    var emergNames = emergOffList.map(function(t) { return esc(techDisplayName(t)); }).join('، ');
+    html += '<div class="alert-chip danger" onclick="openTechDrill(\'emergency_unavailable\', null)" title="اضغط لعرض التفاصيل">' +
+      '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="7.5"/></svg>' +
+      'فني طوارئ غير متاح — ' + emergOffList.length + ' (' + emergNames + ')</div>';
   }
   if (UNASSIGNED_FAULTS > 0) {
     html += '<div class="alert-chip warning" onclick="window.location.href=\'/faults\'"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>أعطال بدون فني — ' + UNASSIGNED_FAULTS + '</div>';
@@ -901,7 +993,8 @@ function updateAlerts() {
 
 function getTechByDrill(type) {
   if (type === 'all') return TECHNICIANS.slice();
-  if (type === 'emergency') return TECHNICIANS.filter(function(t) { return t.emergency; });
+  if (type === 'emergency') return TECHNICIANS.filter(function(t) { return isTechEmergencyOn(t); });
+  if (type === 'emergency_unavailable') return getEmergencyUnavailableTechs();
   return TECHNICIANS.filter(function(t) { return t.display_status === type; });
 }
 
@@ -909,7 +1002,7 @@ function renderDrillTable(rows) {
   document.getElementById('drill-body').innerHTML = rows.map(function(t) {
     return '<tr style="cursor:pointer" onclick="viewTech(' + t.id + ')">' +
       '<td class="td-code">' + esc(t.code) + '</td>' +
-      '<td class="td-name">' + (t.photo_url ? '<img src="' + esc(t.photo_url) + '" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-left:8px;border:1px solid var(--border)">' : '') + esc(t.name) + '</td>' +
+      techTableNameCell(t, false) +
       '<td style="direction:ltr;font-family:var(--font-en);cursor:pointer;color:' + (t.phone ? 'var(--text2)' : 'var(--accent)') + '" onclick="event.stopPropagation();editTechPhone(' + t.id + ')" title="اضغط لتسجيل/تعديل الجوال">' + (esc(t.phone) || '➕ إضافة جوال') + '</td>' +
       '<td>' + esc(t.specialization) + '</td>' +
       '<td>' + esc(t.city) + '</td>' +
@@ -928,15 +1021,15 @@ function openTechDrill(type, cardEl) {
   renderDrillTable(rows);
   document.getElementById('drill-panel').style.display = 'block';
   document.getElementById('drill-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
-  if (type === 'emergency') {
-    document.getElementById('f-emergency').value = 'نعم';
-    document.getElementById('f-status').value = '';
+  if (type === 'emergency' || type === 'emergency_unavailable') {
+    document.getElementById('filter-emergency').value = 'نعم';
+    document.getElementById('filter-status').value = '';
   } else if (type !== 'all') {
-    document.getElementById('f-status').value = type;
-    document.getElementById('f-emergency').value = '';
+    document.getElementById('filter-status').value = type;
+    document.getElementById('filter-emergency').value = '';
   } else {
-    document.getElementById('f-status').value = '';
-    document.getElementById('f-emergency').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-emergency').value = '';
   }
   filterTable();
 }
@@ -944,12 +1037,16 @@ function openTechDrill(type, cardEl) {
 function closeTechDrill() {
   document.getElementById('drill-panel').style.display = 'none';
   document.querySelectorAll('.stat-mini').forEach(function(el) { el.classList.remove('active'); });
-  document.getElementById('f-status').value = '';
-  document.getElementById('f-emergency').value = '';
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-emergency').value = '';
   filterTable();
 }
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   var D = window.lcDisp || function(s) { return s; };
@@ -964,7 +1061,7 @@ function renderTable(data) {
   tbody.innerHTML = data.map(function(t) {
     return '<tr onclick="viewTech(' + t.id + ')">' +
       '<td class="td-code">' + esc(t.code) + '</td>' +
-      '<td class="td-name">' + (t.photo_url ? '<img src="' + esc(t.photo_url) + '" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-left:8px;border:1px solid var(--border)">' : '') + esc(LC ? LC.techName(t) : t.name) + '</td>' +
+      techTableNameCell(t, true) +
       '<td style="direction:ltr;font-family:var(--font-en);cursor:pointer;color:' + (t.phone ? 'var(--text2)' : 'var(--accent)') + '" onclick="event.stopPropagation();editTechPhone(' + t.id + ')" title="اضغط لتسجيل/تعديل الجوال">' + (esc(t.phone) || D('➕ إضافة جوال')) + '</td>' +
       '<td>' + esc(D(t.job_title)) + '</td>' +
       '<td>' + esc(D(t.specialization)) + '</td>' +
@@ -982,16 +1079,16 @@ function renderTable(data) {
 
 function filterTable() {
   var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').toLowerCase();
-  var sp = document.getElementById('f-spec') && document.getElementById('f-spec').value || '';
+  var sp = document.getElementById('filter-spec') && document.getElementById('filter-spec').value || '';
   var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
-  var st = document.getElementById('f-status') && document.getElementById('f-status').value || '';
-  var em = document.getElementById('f-emergency') && document.getElementById('f-emergency').value || '';
+  var st = document.getElementById('filter-status') && document.getElementById('filter-status').value || '';
+  var em = document.getElementById('filter-emergency') && document.getElementById('filter-emergency').value || '';
   filtered = TECHNICIANS.filter(function(t) {
     return (!s || t.name.includes(s) || t.code.toLowerCase().includes(s) || (t.phone && t.phone.includes(s))) &&
       (!sp || t.specialization === sp) &&
       (!ct || t.city === ct) &&
       (!st || t.display_status === st) &&
-      (!em || (em === 'نعم' ? t.emergency : !t.emergency));
+      (!em || (em === 'نعم' ? isTechEmergencyOn(t) : !isTechEmergencyOn(t)));
   });
   renderTable(filtered);
 }
@@ -1022,11 +1119,13 @@ function clearTechForm() {
   });
   document.getElementById('f-code').value = NEXT_TECH_CODE;
   document.getElementById('f-spec').value = 'مصاعد ركاب';
-  document.getElementById('f-emergency').value = 'نعم';
+  var emSel = getTechEmergencySelect();
+  if (emSel) emSel.value = 'نعم';
   document.getElementById('f-cur-status').value = 'متاح';
   document.getElementById('f-city-sel').value = '';
   loadDistricts();
   resetPhotoPreview('');
+  resetSignaturePreview('');
   document.getElementById('new-docs-rows').innerHTML = '';
   document.getElementById('existing-docs-wrap').style.display = 'none';
   document.getElementById('existing-docs-list').innerHTML = '';
@@ -1136,10 +1235,17 @@ function saveTech() {
   fd.append('salary', document.getElementById('f-salary').value);
   fd.append('status', document.getElementById('f-cur-status').value);
   fd.append('notes', document.getElementById('f-notes').value);
-  if (document.getElementById('f-emergency').value === 'نعم') fd.append('emergency', 'on');
+  var emSel = getTechEmergencySelect();
+  if (emSel && emSel.value === 'نعم') fd.append('emergency', 'on');
   var photoInput = document.getElementById('f-photo');
   if (photoInput && photoInput.files && photoInput.files[0]) {
     fd.append('photo', photoInput.files[0]);
+  }
+  var signPin = document.getElementById('f-sign-pin');
+  if (signPin && signPin.value.trim()) fd.append('sign_pin', signPin.value.trim());
+  var signInput = document.getElementById('f-signature');
+  if (signInput && signInput.files && signInput.files[0]) {
+    fd.append('signature', signInput.files[0]);
   }
   document.querySelectorAll('#new-docs-rows .doc-form-row').forEach(function(row) {
     var fileInp = row.querySelector('.doc-file-inp');
@@ -1170,7 +1276,8 @@ function editTech(id) {
   document.getElementById('f-city-sel').value = t.city || '';
   loadDistricts();
   document.getElementById('f-cur-status').value = t.status === 'نشط' ? 'متاح' : (t.status || 'متاح');
-  document.getElementById('f-emergency').value = t.emergency ? 'نعم' : 'لا';
+  var emSel = getTechEmergencySelect();
+  if (emSel) emSel.value = t.emergency ? 'نعم' : 'لا';
   document.getElementById('f-iqama').value = t.national_id || '';
   document.getElementById('f-hire').value = t.hire_date || '';
   document.getElementById('f-salary').value = t.salary || '';
@@ -1178,6 +1285,7 @@ function editTech(id) {
   splitPhone(t.phone, 'f-code-ph', 'f-phone');
   splitPhone(t.phone2, 'f-code-wa', 'f-whatsapp');
   resetPhotoPreview(t.photo_url || '');
+  resetSignaturePreview(t.signature_url || '');
   document.getElementById('new-docs-rows').innerHTML = '';
   renderExistingDocs(t.docs || [], t.id);
   document.getElementById('modal-add').classList.add('open');
@@ -1285,6 +1393,7 @@ document.getElementById('h-date').textContent = days[now.getDay()] + '، ' + now
 
 initFilters();
 updateStats();
+if (tableSort) tableSort.bindHeaders();
 renderTable(TECHNICIANS);
 window.__lcRefreshPage = function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : TECHNICIANS);

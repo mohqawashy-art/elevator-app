@@ -205,8 +205,16 @@
     applyDom(document, currentLang());
   }
 
+  var lastAppliedLang = null;
+
   function onLangChange(lang) {
+    lang = lang || currentLang();
     global.__LC_LANG = lang;
+    if (lastAppliedLang === lang) {
+      applyDom(document, lang);
+      return;
+    }
+    lastAppliedLang = lang;
     refreshPage();
   }
 

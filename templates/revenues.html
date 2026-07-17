@@ -292,14 +292,14 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <table>
           <thead>
             <tr>
-              <th>رقم العملية</th>
-              <th>العميل / العقد</th>
-              <th>التاريخ</th>
-              <th>نوع الإيراد</th>
-              <th>طريقة الدفع</th>
-              <th>المبلغ (⃁)</th>
-              <th>الحالة</th>
-              <th>ملاحظات</th>
+              <th class="th-sort" data-sort-col="code">رقم العملية <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="customer">العميل / العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="revenue_date">التاريخ <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="revenue_type">نوع الإيراد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="pay_method">طريقة الدفع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="total">المبلغ (⃁) <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="notes">ملاحظات <span class="sort-ind"></span></th>
               <th></th>
             </tr>
           </thead>
@@ -475,8 +475,22 @@ const STATUS_BADGE = {
 
 let currentDeleteId = null;
 let filtered = [...REVENUES];
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
+  defaultCol: 'code',
+  defaultDir: 'desc',
+  dateCols: ['revenue_date'],
+  numberCols: ['total', 'amount'],
+  getters: {
+    customer: function (r) { return (r.customer || '') + ' ' + (r.contract || ''); },
+  },
+  onChange: function () { renderTable(filtered); },
+}) : null;
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   const tbody = document.getElementById('rev-tbody');
   if (!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -648,6 +662,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') document.que
 document.addEventListener('click', e => { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
 
 updateStats();
+if (tableSort) tableSort.bindHeaders();
 renderTable(REVENUES);
 window.__lcRefreshPage = function () {
   if (typeof updateStats === 'function') updateStats();

@@ -1,0 +1,6 @@
+{# استخدام: {% include 'partials/_sort_th.html' with context %}
+   {{ sort_th('code', 'الكود') }}
+#}
+{% macro sort_th(col, label) %}
+<th class="th-sort" data-sort-col="{{ col }}">{{ label }} <span class="sort-ind"></span></th>
+{% endmacro %}

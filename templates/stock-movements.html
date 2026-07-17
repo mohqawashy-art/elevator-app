@@ -274,16 +274,16 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <table>
           <thead>
             <tr>
-              <th>رقم الحركة</th>
-              <th>التاريخ</th>
-              <th>الاتجاه</th>
-              <th>نوع الحركة</th>
-              <th>الصنف</th>
-              <th>الكمية</th>
-              <th>القيمة</th>
-              <th>الفني / المستلم</th>
-              <th>السبب / الموقع</th>
-              <th>ملاحظات</th>
+              <th class="th-sort" data-sort-col="code">رقم الحركة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="movement_date">التاريخ <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="direction">الاتجاه <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="movement_type">نوع الحركة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="item_name">الصنف <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="quantity">الكمية <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="total_value">القيمة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="technician">الفني / المستلم <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="reason">السبب / الموقع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="notes">ملاحظات <span class="sort-ind"></span></th>
               <th></th>
             </tr>
           </thead>
@@ -433,8 +433,19 @@ function updateStats() {
 }
 
 let filtered = [...MOVEMENTS];
+var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
+  defaultCol: 'movement_date',
+  defaultDir: 'desc',
+  dateCols: ['movement_date'],
+  numberCols: ['quantity', 'total_value'],
+  onChange: function () { renderTable(filtered); },
+}) : null;
 
 function renderTable(data) {
+  if (tableSort) {
+    data = tableSort.apply(data);
+    tableSort.updateIndicators();
+  }
   const tbody = document.getElementById('mov-tbody');
   if (!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -617,6 +628,7 @@ document.getElementById('h-date').textContent = `${days[now.getDay()]}، ${now.g
 
 fillItemFilter();
 updateStats();
+if (tableSort) tableSort.bindHeaders();
 renderTable(MOVEMENTS);
 window.__lcRefreshPage = function () {
   updateStats();

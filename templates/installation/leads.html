@@ -6,7 +6,6 @@
 <body>
 {% include 'installation/_sidebar.html' %}
 <div class="main">
-  <div class="install-beta">تجريبي — محلي فقط · المرحلة 1: Lead / استفسار عميل</div>
   {% set page_title = 'فرص البيع' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
@@ -148,6 +147,9 @@
               {% elif l.status != 'ملغي' %}
               <form method="post" action="{{ url_for('installation.leads_convert', lead_id=l.id) }}" style="display:inline">
                 <button type="submit" class="btn btn-secondary btn-sm">تحويل لمشروع</button>
+              </form>
+              <form method="post" action="{{ url_for('installation.leads_cancel', lead_id=l.id) }}" style="display:inline" onsubmit="return confirm('إلغاء فرصة البيع {{ l.code }}؟')">
+                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger)">إلغاء</button>
               </form>
               {% endif %}
             </td>
