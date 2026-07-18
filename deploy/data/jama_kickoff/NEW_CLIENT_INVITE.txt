@@ -1,0 +1,38 @@
+دعوة جما كعميل جديد (بعد حذف الحساب القديم)
+
+1) على السيرفر:
+   cd ~/liftcore/elevator-app && git pull --ff-only origin main
+   bash deploy/delete_jama_org.sh
+
+2) من لوحة المنصة (مشغّل):
+   https://admin.liftcoreapp.com/operator/onboarding
+
+   - اسم الشركة: شركة تقنية جما التميز للمصاعد
+   - المعرّف المقترح: jama
+   - بريد المسؤول: (بريد جما الحقيقي)
+   - الباقة: حسب الاتفاق
+   - أنشئ الدعوة وأرسل الرابط
+
+3) جما يفتح رابط الدعوة ويكمل التسجيل (اسم المدير + كلمة مرور يختارونها)
+
+4) الدخول بعد التفعيل:
+   https://jama.liftcoreapp.com/login
+
+5) متابعة الملاحظات:
+   deploy/data/jama_kickoff/FEEDBACK_TRACKER.csv
+   deploy/data/jama_kickoff/WEEK1_CHECKLIST.txt
+
+نص قصير لإرسال الدعوة:
+
+---
+مرحباً فريق جما،
+
+تم تجهيزكم كعميل جديد على LiftCore من البداية لتجربة كاملة.
+
+رابط إكمال التسجيل سيصلكم على البريد (أو نرسله هنا).
+بعد التسجيل يكون دخولكم على:
+https://jama.liftcoreapp.com/login
+
+خلال فترة الاختبار نتابع ملاحظاتكم يومياً عبر جدول الملاحظات المتفق عليه.
+فريق LiftCore
+---

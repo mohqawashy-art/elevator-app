@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
 """
-تفريغ بيانات مستأجر جما بالكامل (عملاء/مصاعد/عقود/زيارات/أعطال/مخزن…).
+تفريغ أو حذف مستأجر جما بالكامل.
 
-يُبقي مؤسسة organizations، ويعيد ضبط الإعدادات.
-لا يمسّ مستأجرين آخرين (default وغيره).
-
-الاستخدام على السيرفر:
-  cd ~/liftcore/elevator-app
-  set -a; source /etc/liftcore/platform.env; set +a
+أ) تفريغ البيانات مع الإبقاء على المؤسسة:
   python scripts/wipe_tenant_data.py --slug jama --confirm JAMA_WIPE
-  python scripts/kickoff_jama_formal.py   # إعادة مستخدمي الاختبار + اسم الشركة
 
-خيارات:
-  --keep-users     الإبقاء على المستخدمين الحاليين
-  --print-only     عرض الإحصاءات دون حذف
+ب) حذف الحساب كاملاً (بيانات + مؤسسة) لإعادة دعوة كعميل جديد:
+  python scripts/wipe_tenant_data.py --slug jama --delete-org --confirm JAMA_DELETE_ORG
+
+لا يمسّ مستأجرين آخرين (default وغيره).
 """
 from __future__ import annotations
 
@@ -29,6 +24,7 @@ if ROOT not in sys.path:
 COMPANY_AR = 'شركة تقنية جما التميز للمصاعد'
 COMPANY_EN = 'Jama Elevator Excellence Tech Co.'
 CONFIRM_TOKEN = 'JAMA_WIPE'
+DELETE_ORG_TOKEN = 'JAMA_DELETE_ORG'
 
 
 def _count(model, org_id: int) -> int:
@@ -58,7 +54,7 @@ def _null_fk(model, org_id: int, *columns) -> None:
             setattr(row, col, None)
 
 
-def wipe_tenant(org, *, keep_users: bool) -> dict:
+def wipe_tenant(org, *, keep_users: bool, delete_organization: bool = False) -> dict:
     from app import db, hash_password
     from flask import g
     from models import (
@@ -77,6 +73,7 @@ def wipe_tenant(org, *, keep_users: bool) -> dict:
         MaintenanceTeam,
         MaintenanceVisit,
         PartsBilling,
+        PlatformPayment,
         PurchaseOrder,
         PurchaseOrderLine,
         Revenue,
@@ -98,6 +95,7 @@ def wipe_tenant(org, *, keep_users: bool) -> dict:
         im = None
 
     org_id = org.id
+    org_slug = org.slug
     g.organization = org
     g.organization_id = org_id
 
@@ -113,7 +111,8 @@ def wipe_tenant(org, *, keep_users: bool) -> dict:
         'whatsapp': _count(WhatsAppInbox, org_id),
     }
 
-    # فك الروابط الدائرية + حذف صفوف الربط عبر الآباء (حتى لو organization_id ناقص)
+    deleted: dict[str, int] = {}
+
     visit_ids = [
         r.id for r in (
             MaintenanceVisit.query.execution_options(skip_tenant=True)
@@ -143,9 +142,6 @@ def wipe_tenant(org, *, keep_users: bool) -> dict:
     _null_fk(Fault, org_id, 'visit_id')
     db.session.commit()
 
-    deleted: dict[str, int] = {}
-
-    # التركيب أولاً إن وُجد
     if im is not None:
         for label, model in (
             ('install_timeline', getattr(im, 'InstallTimelineStep', None)),
@@ -183,36 +179,35 @@ def wipe_tenant(org, *, keep_users: bool) -> dict:
         ('customers', Customer),
         ('audit_logs', AuditLog),
         ('zatca', ZatcaCredentials),
+        ('settings', Settings),
     )
     for label, model in wipe_order:
         deleted[label] = _delete(model, org_id)
 
-    if not keep_users:
+    if delete_organization or not keep_users:
         deleted['users'] = _delete(User, org_id)
 
-    # إعدادات نظيفة باسم الشركة الرسمي
-    settings = (
-        Settings.query.execution_options(skip_tenant=True)
-        .filter_by(organization_id=org_id)
-        .first()
+    deleted['platform_payments'] = (
+        PlatformPayment.query.filter_by(organization_id=org_id)
+        .delete(synchronize_session=False)
     )
-    if not settings:
-        settings = Settings()
-        assign_organization(settings)
-        db.session.add(settings)
+
+    if delete_organization:
+        db.session.delete(org)
+        db.session.commit()
+        return {
+            'before': stats_before,
+            'deleted': deleted,
+            'after': {'organization': 'deleted', 'slug': org_slug},
+            'organization_deleted': True,
+            'slug': org_slug,
+        }
+
+    settings = Settings()
+    assign_organization(settings)
     settings.company_name = COMPANY_AR
     settings.company_name_en = COMPANY_EN
-    settings.phone = None
-    settings.email = None
-    settings.address = None
-    settings.logo_path = None
-    settings.cr_number = None
-    settings.vat_number = None
-    settings.rep_name = None
-    settings.rep_mobile = None
-    settings.rep_national_id = None
-    settings.rep_signature_path = None
-    settings.rep_sign_pin_hash = None
+    db.session.add(settings)
 
     org.name = COMPANY_AR
     org.name_en = COMPANY_EN
@@ -220,9 +215,7 @@ def wipe_tenant(org, *, keep_users: bool) -> dict:
         f'[{datetime.utcnow().date()}] WIPE pilot data — account zeroed for formal kickoff'
     )
     db.session.add(org)
-    db.session.add(settings)
 
-    # إن لم يُبقَ مستخدمون: أنشئ admin مؤقتاً حتى يعمل kickoff
     if not keep_users:
         admin = User(
             username='admin',
@@ -254,14 +247,17 @@ def wipe_tenant(org, *, keep_users: bool) -> dict:
         'before': stats_before,
         'deleted': deleted,
         'after': stats_after,
+        'organization_deleted': False,
+        'slug': org_slug,
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='تفريغ بيانات مستأجر جما')
+    parser = argparse.ArgumentParser(description='تفريغ أو حذف مستأجر جما')
     parser.add_argument('--slug', default='jama')
-    parser.add_argument('--confirm', default='', help=f'يجب: {CONFIRM_TOKEN}')
+    parser.add_argument('--confirm', default='', help=f'{CONFIRM_TOKEN} أو {DELETE_ORG_TOKEN}')
     parser.add_argument('--keep-users', action='store_true')
+    parser.add_argument('--delete-org', action='store_true', help='حذف المؤسسة بالكامل')
     parser.add_argument('--print-only', action='store_true')
     args = parser.parse_args()
 
@@ -272,12 +268,14 @@ def main() -> int:
     )
 
     slug = (args.slug or 'jama').strip().lower()
+    delete_org = bool(args.delete_org)
+    expected = DELETE_ORG_TOKEN if delete_org else CONFIRM_TOKEN
 
     with app.app_context():
         org = Organization.query.filter_by(slug=slug).first()
         if not org:
-            print(f'ERROR: لا توجد مؤسسة slug={slug}')
-            return 1
+            print(f'OK: لا توجد مؤسسة slug={slug} — الحساب غير موجود أصلاً')
+            return 0
 
         print(f'==> مستأجر: {org.slug} (id={org.id}) — {org.name}')
         before = {
@@ -297,21 +295,36 @@ def main() -> int:
         if args.print_only:
             return 0
 
-        if (args.confirm or '').strip() != CONFIRM_TOKEN:
+        if (args.confirm or '').strip() != expected:
             print('')
-            print(f'للتنفيذ أعد الأمر مع: --confirm {CONFIRM_TOKEN}')
-            print('تحذير: سيحذف كل البيانات التشغيلية لهذا المستأجر فقط.')
+            if delete_org:
+                print(f'لحذف الحساب كاملاً: --delete-org --confirm {DELETE_ORG_TOKEN}')
+                print('تحذير: يحذف المؤسسة وكل بياناتها — لا يمكن التراجع.')
+            else:
+                print(f'لتفريغ البيانات فقط: --confirm {CONFIRM_TOKEN}')
             return 2
 
-        result = wipe_tenant(org, keep_users=bool(args.keep_users))
+        result = wipe_tenant(
+            org,
+            keep_users=bool(args.keep_users) and not delete_org,
+            delete_organization=delete_org,
+        )
         print('')
-        print('==> تم التفريغ')
-        print('  قبل:', result['before'])
-        print('  بعد:', result['after'])
-        print('')
-        print('الخطوة التالية:')
-        print('  python scripts/kickoff_jama_formal.py')
-        print('  أو: bash deploy/kickoff_jama_formal.sh')
+        if result.get('organization_deleted'):
+            print(f"==> تم حذف الحساب بالكامل: slug={result.get('slug')}")
+            print('  قبل:', result['before'])
+            print('')
+            print('الخطوة التالية — دعوة كعميل جديد:')
+            print('  1) https://admin.liftcoreapp.com/operator/onboarding')
+            print('  2) شركة: شركة تقنية جما التميز للمصاعد')
+            print('  3) المعرّف المقترح: jama')
+            print('  4) أرسل رابط الدعوة لبريد جما')
+            print('  5) بعد التفعيل: https://jama.liftcoreapp.com/login')
+        else:
+            print('==> تم التفريغ (المؤسسة ما زالت موجودة)')
+            print('  قبل:', result['before'])
+            print('  بعد:', result['after'])
+            print('  ثم: bash deploy/kickoff_jama_formal.sh')
         return 0
 
 

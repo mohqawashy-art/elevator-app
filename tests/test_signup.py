@@ -133,7 +133,7 @@ def test_signup_rejects_reserved_slug(signup_client):
         '/api/signup',
         json={
             'company_name': 'محجوز',
-            'slug': 'jama',
+            'slug': 'demo',
             'admin_email': 'j@x.sa',
             'admin_name': 'خالد',
             'password': 'SecurePass99!',

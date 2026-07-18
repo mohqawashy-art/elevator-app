@@ -15,7 +15,7 @@ SLUG_RE = re.compile(r'^[a-z][a-z0-9-]{1,61}[a-z0-9]$')
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 RESERVED_SLUGS = frozenset({
-    'default', 'jama', 'demo', 'test', 'liftcore', 'platform', 'signup', 'register',
+    'default', 'demo', 'test', 'liftcore', 'platform', 'signup', 'register',
 }) | MARKETING_SLUGS
 
 SIGNUP_HOSTS = frozenset({'liftcoreapp.com', 'www.liftcoreapp.com', 'localhost', '127.0.0.1'})
