@@ -3572,12 +3572,15 @@ def _fault_registration_parts_lines(fault_id: int):
 
 def _faults_js_list(faults):
     from technician_assignments import fault_technicians_label, fault_technician_ids, fault_technicians_payload
+    from whatsapp_support import journey_snapshots_for_faults
 
+    wa_map = journey_snapshots_for_faults(list(faults))
     rows = []
     for f in faults:
         elev = f.elevator
         cust = elev.customer if elev else None
         linked = getattr(f, 'linked_visit', None)
+        wa = wa_map.get(f.id) or {}
         rows.append({
             'id': f.id,
             'code': f.code,
@@ -3607,6 +3610,7 @@ def _faults_js_list(faults):
             'needs_parts': bool(f.needs_parts),
             'parts_lines': _fault_registration_parts_lines(f.id),
             'has_report': bool(f.report_json),
+            'wa': wa,
         })
     return rows
 
@@ -5957,7 +5961,12 @@ def api_fault_customer_notify(fault_id):
     force = str(data.get('force') or '').lower() in ('1', 'true', 'yes')
     if stage not in JOURNEY_STAGES:
         return jsonify({'ok': False, 'error': 'مرحلة غير صالحة'}), 400
-    result = notify_customer_stage(fault, stage, next_code_fn=next_code, force=force)
+    report_url = ''
+    if stage == 'resolved':
+        report_url = request.url_root.rstrip('/') + f'/faults/{fault.id}/report?print=1'
+    result = notify_customer_stage(
+        fault, stage, next_code_fn=next_code, force=force, report_url=report_url,
+    )
     if result.get('ok') and not result.get('skipped'):
         db.session.commit()
     elif result.get('ok'):
@@ -6654,6 +6663,7 @@ def faults():
         Technician.status.in_(['نشط', 'متاح', 'مشغول'])
     ).all()
     pending_wa = session.pop('pending_whatsapp', '')
+    pending_wa_fault_id = session.pop('pending_whatsapp_fault_id', None)
     pending_customer_wa = pending_customer_sends(limit=20)
     fault_techs = [t for t in technicians if (t.team or 'عام') in ('أعطال', 'عام', 'صيانة')] or list(technicians)
     return render_template(
@@ -6690,6 +6700,7 @@ def faults():
         fault_alerts=fault_alerts(),
         fault_technicians=fault_techs,
         pending_whatsapp=pending_wa,
+        pending_whatsapp_fault_id=pending_wa_fault_id,
         pending_customer_wa=pending_customer_wa,
     )
 
@@ -6728,6 +6739,7 @@ def _finish_fault_save(
 ):
     if dispatch_result and dispatch_result.get('whatsapp_url'):
         session['pending_whatsapp'] = dispatch_result['whatsapp_url']
+        session['pending_whatsapp_fault_id'] = fault.id
     if flash_warn:
         flash(flash_warn, 'warning')
     flash(flash_ok, 'success')
@@ -6844,8 +6856,7 @@ def fault_edit(id):
                 flash('تم حفظ العطل لكن تعذّر إرساله للفني.', 'error')
                 return redirect(url_for('faults'))
         warn = _fault_dispatch_feedback(dispatch_result, tech_ids)
-        if cust_wa and cust_wa.get('url') and not (dispatch_result and dispatch_result.get('whatsapp_url')):
-            session['pending_whatsapp'] = cust_wa['url']
+        # رسائل العميل تظهر بجانب صف العطل (journey) — لا تُكدَّس فوق الجدول
         return _finish_fault_save(
             f,
             dispatch_result=dispatch_result,

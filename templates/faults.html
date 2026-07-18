@@ -89,14 +89,20 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .stat-mini-val{font-size:20px;font-weight:600;color:var(--text1);font-family:var(--font-en);line-height:1;margin-bottom:3px}
 .stat-mini-label{font-size:10px;color:var(--text3);line-height:1.3}
 
-/* ALERTS */
-.alerts-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
-.alert-chip{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--r-sm);font-size:12px;border:1px solid transparent;cursor:pointer;transition:var(--trans);animation:pulse 2s infinite}
+/* ALERTS — صف أفقي مضغوط */
+.alerts-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.alert-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:var(--r-sm);font-size:12px;border:1px solid transparent;cursor:pointer;transition:var(--trans);white-space:nowrap;flex:0 0 auto}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
-.alert-chip.critical{background:rgba(255,59,59,.1);border-color:rgba(255,59,59,.3);color:#ff6b6b}
+.alert-chip.critical{background:rgba(255,59,59,.1);border-color:rgba(255,59,59,.3);color:#ff6b6b;animation:pulse 2s infinite}
 .alert-chip.danger{background:rgba(224,72,72,.08);border-color:rgba(224,72,72,.2);color:var(--danger)}
 .alert-chip.warning{background:rgba(224,144,48,.08);border-color:rgba(224,144,48,.2);color:var(--warning)}
+.alert-chip.info{background:rgba(42,127,255,.08);border-color:rgba(42,127,255,.2);color:var(--accent);animation:none;opacity:.85}
 .alert-chip svg{width:13px;height:13px}
+.wa-cell{min-width:148px;max-width:220px}
+.wa-cell-stage{font-size:11px;font-weight:600;margin-bottom:4px;line-height:1.35;color:var(--text2)}
+.wa-cell-stage.pending{color:var(--warning)}
+.wa-cell-actions{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.wa-cell-actions .btn{font-size:11px;padding:4px 8px}
 
 /* TABS */
 .tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:4px}
@@ -298,39 +304,19 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="stat-mini" style="--sm-color:var(--info)"><div class="stat-mini-val">{{ fault_stats.billable }}</div><div class="stat-mini-label">بانتظار فوترة</div></div>
     </div>
 
-    <!-- ALERTS -->
+    <!-- ALERTS — تنبيهات إحصائية مضغوطة؛ رسائل واتساب تظهر بجانب كل عطل -->
     <div class="alerts-row">
       {% for a in fault_alerts %}
-      <div class="alert-chip {{ a.level }}"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>{{ a.text }}</div>
-      {% endfor %}
-      {% if not fault_alerts %}<div class="alert-chip info" style="animation:none;opacity:.7">لا تنبيهات عاجلة</div>{% endif %}
+      <div class="alert-chip {{ a.level }}" role="button" tabindex="0"
+           onclick="filterFromAlert({{ a.text|tojson }})"
+           title="اضغط للفلترة في الجدول">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>{{ a.text }}
       </div>
+      {% endfor %}
+      {% if not fault_alerts %}<div class="alert-chip info">لا تنبيهات عاجلة</div>{% endif %}
+    </div>
 
       {% include 'partials/flash_messages.html' %}
-      {% if pending_whatsapp %}
-      <div id="wa-send-banner" style="background:rgba(31,184,122,.1);border:1px solid rgba(31,184,122,.35);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.7">
-        <strong style="color:var(--success)">رسالة واتساب جاهزة للفني (wa.me)</strong>
-        — اضغط للإرسال من حساب المكتب إلى جوال الفني المكلّف. يظهر العطل أيضاً في <a href="/field/login" style="color:var(--accent)">بوابة الفني</a>.
-        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-          <a class="btn btn-primary btn-sm" href="{{ pending_whatsapp }}" target="_blank" rel="noopener">فتح واتساب وإرسال للفني</a>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText({{ pending_whatsapp|tojson }}).then(function(){alert('تم نسخ الرابط')})">نسخ الرابط</button>
-        </div>
-      </div>
-      {% endif %}
-      {% if pending_customer_wa %}
-      <div style="background:rgba(42,127,255,.08);border:1px solid rgba(42,127,255,.28);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.7">
-        <strong style="color:var(--accent)">رسائل انتهاء جاهزة للعميل</strong>
-        — بعد إغلاق الفني للعطل: افتح واتساب من المكتب وأرسل الملخص.
-        {% for p in pending_customer_wa %}
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(42,127,255,.15);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <span>{{ p.fault_code or p.thread_code }} · {{ p.label or p.stage }} · <span dir="ltr">{{ p.from_phone }}</span></span>
-          <a class="btn btn-primary btn-sm" href="{{ p.url }}" target="_blank" rel="noopener"
-             onclick="ackCustomerWaSend({{ p.thread_id }}, {{ (p.stage or '')|tojson }})">فتح واتساب وإرسال</a>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText({{ p.url|tojson }}).then(function(){alert('تم نسخ الرابط')})">نسخ</button>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
       <div class="page-header">
         <div class="page-title">الأعطال <span id="faults-count" data-i18n-skip></span></div>
         <div class="page-actions">
@@ -402,6 +388,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th class="th-sort" data-sort-col="technician">الفنيون <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="response_time">الاستجابة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+                <th>متابعة واتساب</th>
                 <th class="th-sort" data-sort-col="billing">فوترة <span class="sort-ind"></span></th>
                 <th>إجراءات</th>
               </tr>
@@ -623,6 +610,57 @@ var TECHNICIANS = {{ technicians_js|tojson }};
 var INVENTORY_ITEMS = {{ inventory_items_js|tojson }};
 const NEXT_FAULT_CODE = {{ next_fault_code|tojson }};
 const FAULT_TECHS = {{ fault_technicians_js|tojson }};
+const PENDING_TECH_WA = {{ (pending_whatsapp or '')|tojson }};
+const PENDING_TECH_FAULT_ID = {{ (pending_whatsapp_fault_id or none)|tojson }};
+
+function filterFromAlert(text) {
+  const st = document.getElementById('f-status');
+  if (!st) return;
+  const t = String(text || '');
+  if (t.indexOf('قطع') >= 0) st.value = 'انتظار قطع';
+  else if (t.indexOf('حرج') >= 0) { st.value = ''; document.getElementById('f-priority').value = 'حرجة'; }
+  else if (t.indexOf('48') >= 0) st.value = 'مفتوح';
+  else st.value = '';
+  if (tablePager) tablePager.resetPage();
+  filterTable();
+}
+
+function escAttr(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function renderWaCell(f) {
+  const wa = f.wa || {};
+  const parts = [];
+  const stageClass = wa.pending_send ? 'wa-cell-stage pending' : 'wa-cell-stage';
+  const label = wa.pending_send
+    ? ('بانتظار إرسال: ' + (wa.pending_label || wa.current_label || 'رسالة'))
+    : (wa.current_label || 'بدون رسالة بعد');
+  parts.push('<div class="' + stageClass + '" title="' + escAttr(wa.current_preview || '') + '">' + escAttr(label) + '</div>');
+  parts.push('<div class="wa-cell-actions">');
+  if (PENDING_TECH_WA && String(PENDING_TECH_FAULT_ID) === String(f.id)) {
+    parts.push('<a class="btn btn-primary btn-sm" href="' + escAttr(PENDING_TECH_WA) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">إرسال للفني</a>');
+  }
+  if (wa.pending_send && wa.pending_url) {
+    parts.push(
+      '<a class="btn btn-primary btn-sm" href="' + escAttr(wa.pending_url) + '" target="_blank" rel="noopener" ' +
+      'onclick="event.stopPropagation();ackCustomerWaSend(' + (wa.thread_id || 0) + ', ' + JSON.stringify(wa.pending_stage || '') + ')">إرسال للعميل</a>'
+    );
+    if (wa.pending_stage === 'resolved' || wa.show_pdf) {
+      parts.push(
+        '<a class="btn btn-secondary btn-sm lc-open-tab" href="' + escAttr(wa.report_print_url || ('/faults/' + f.id + '/report?print=1')) +
+        '" onclick="event.stopPropagation()" title="افتح التقرير وأرفقه PDF في واتساب">PDF</a>'
+      );
+    }
+  } else if (wa.next_stage) {
+    parts.push(
+      '<button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();notifyCustomerWhatsApp(' +
+      f.id + ',' + JSON.stringify(wa.next_stage) + ')">' + escAttr(wa.next_label || 'تجهيز الرسالة') + '</button>'
+    );
+  }
+  parts.push('</div>');
+  return '<div class="wa-cell">' + parts.join('') + '</div>';
+}
 
 function renderFaultTechSelect(selectedIds) {
   const box = document.getElementById('tech-select');
@@ -857,7 +895,7 @@ function updateSidebarBadge() {
 }
 
 const STATUS_BADGE = {
-  'مفتوح':'badge-expired','قيد المعالجة':'badge-pending',
+  'مفتوح':'badge-expired','قيد المعالجة':'badge-pending','انتظار قطع':'badge-waiting',
   'تم الاصلاح':'badge-active','محلول':'badge-active','مغلق':'badge-cancelled'
 };
 const PRIORITY_BADGE = {
@@ -968,6 +1006,7 @@ function renderTable(data) {
       <td>${D(f.technician)}</td>
       <td>${formatResponseTimeCell(f.response_time)}</td>
       <td><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${D(f.status)}</span></td>
+      <td onclick="event.stopPropagation()">${renderWaCell(f)}</td>
       <td><span class="badge ${f.needs_parts?'badge-billable':'badge-cancelled'}">${D(f.needs_parts?'قابل للفوترة':'ضمن العقد')}</span></td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
@@ -1255,13 +1294,15 @@ function viewFault(id) {
         <div style="font-size:11px;color:var(--text3);margin-bottom:8px">يُرسل لبوابة الجوال + واتساب wa.me — المكتب يضغط إرسال</div>
         <button type="button" class="btn btn-primary btn-sm" onclick="dispatchTechnicianWhatsApp(${f.id})">إرسال / إعادة إرسال للفني</button>
       </div></div>
-      <div class="view-item view-full"><div class="view-label">واتساب العميل — wa.me</div><div class="view-val">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">يفتح واتساب بنص جاهز — المكتب يضغط إرسال</div>
+      <div class="view-item view-full"><div class="view-label">واتساب العميل — رسالة الحالة الحالية</div><div class="view-val">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">تتغير الرسالة مع الحالة: استلام → فني → في الطريق → قطع غيار → تم الإصلاح (+ PDF)</div>
+        <div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--text2)">${(f.wa && f.wa.current_label) ? f.wa.current_label : 'بدون رسالة بعد'}${(f.wa && f.wa.pending_send) ? ' · بانتظار إرسال' : ''}</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'received')">تأكيد الاستلام</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'received')">استلام البلاغ</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'assigned')">تعيين فني</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'on_way')">في الطريق</button>
-        <button type="button" class="btn btn-success btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'resolved')">تم الإصلاح</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'parts_needed')">قطع غيار</button>
+        <button type="button" class="btn btn-success btn-sm" onclick="notifyCustomerWhatsApp(${f.id},'resolved')">تم الإصلاح + PDF</button>
         </div>
       </div></div>
     </div>`;
@@ -1315,6 +1356,23 @@ async function notifyCustomerWhatsApp(faultId, stage) {
     if (!data.url) {
       alert('لا يوجد رابط واتساب');
       return;
+    }
+    const f = FAULTS.find(x => x.id === faultId);
+    if (f) {
+      f.wa = Object.assign({}, f.wa || {}, {
+        current_stage: data.stage || stage,
+        current_label: data.label || stage,
+        pending_send: true,
+        pending_url: data.url,
+        pending_stage: data.stage || stage,
+        pending_label: data.label || stage,
+        thread_id: data.log_id || (f.wa && f.wa.thread_id) || null,
+        show_pdf: (data.stage || stage) === 'resolved',
+        report_print_url: data.report_url || ('/faults/' + faultId + '/report?print=1'),
+        next_stage: '',
+        next_label: '',
+      });
+      renderTable(filtered);
     }
     var opened = window.open(data.url, '_blank', 'noopener');
     if (!opened) {
@@ -1391,27 +1449,21 @@ if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);
 }
-{% if pending_whatsapp %}
+{% if pending_whatsapp and pending_whatsapp_fault_id %}
 (function () {
-  /* لا نعتمد على window.open التلقائي — غالباً يُحجب. الزر في البانر هو المسار الأساسي. */
+  var row = document.querySelector('tr[data-fault-id="' + {{ pending_whatsapp_fault_id|tojson }} + '"]');
+  if (row) {
+    try { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    row.style.outline = '2px solid rgba(31,184,122,.55)';
+    setTimeout(function () { row.style.outline = ''; }, 4000);
+  }
 })();
 {% endif %}
 (function () {
   var stored = sessionStorage.getItem('liftcore_pending_wa');
   if (!stored) return;
   sessionStorage.removeItem('liftcore_pending_wa');
-  var opened = window.open(stored, '_blank', 'noopener');
-  if (!opened) {
-    var banner = document.getElementById('wa-send-banner');
-    if (!banner) {
-      var el = document.createElement('div');
-      el.id = 'wa-send-banner';
-      el.style.cssText = 'background:rgba(31,184,122,.1);border:1px solid rgba(31,184,122,.35);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px';
-      el.innerHTML = '<strong style="color:var(--success)">رسالة واتساب للفني جاهزة</strong> — <a class="btn btn-primary btn-sm" href="' + stored.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">فتح واتساب</a>';
-      var anchor = document.querySelector('.page-header');
-      if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(el, anchor);
-    }
-  }
+  window.open(stored, '_blank', 'noopener');
 })();
 </script>
 </body>

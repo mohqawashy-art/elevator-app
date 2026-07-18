@@ -18,15 +18,18 @@ JOURNEY_STAGES = (
     'received',
     'assigned',
     'on_way',
+    'parts_needed',
     'resolved',
 )
 JOURNEY_LABELS = {
-    'received': 'تأكيد الاستلام',
+    'received': 'استلام البلاغ',
     'assigned': 'تعيين فني',
-    'on_way': 'في الطريق',
+    'on_way': 'الفني في الطريق',
+    'parts_needed': 'انتظار قطع غيار',
     'resolved': 'تم الإصلاح',
 }
 RESOLVED_STATUSES = frozenset({'تم الاصلاح', 'تم الإصلاح', 'مغلق', 'محلول'})
+PARTS_STATUSES = frozenset({'انتظار قطع'})
 
 
 def ensure_whatsapp_settings(settings: Settings) -> Settings:
@@ -271,7 +274,17 @@ def resolution_summary_for_fault(fault: Fault, *, max_len: int = 280) -> str:
     return text
 
 
-def build_customer_journey_message(fault: Fault, stage: str, *, thread_code: str = '') -> str:
+def fault_report_print_path(fault: Fault) -> str:
+    return f'/faults/{fault.id}/report?print=1'
+
+
+def build_customer_journey_message(
+    fault: Fault,
+    stage: str,
+    *,
+    thread_code: str = '',
+    report_url: str = '',
+) -> str:
     stage = (stage or '').strip()
     if stage not in JOURNEY_STAGES:
         raise ValueError('مرحلة غير معروفة')
@@ -307,6 +320,15 @@ def build_customer_journey_message(fault: Fault, stage: str, *, thread_code: str
             f'بلاغ: {track} · المصعد: {elev_code}\n'
             f'نعتذر عن أي إزعاج ونقدّر تعاونكم.'
         )
+    if stage == 'parts_needed':
+        return (
+            f'مرحباً {cust_name}\n'
+            f'بلاغكم {track} يحتاج قطع غيار لإكمال الإصلاح.\n'
+            f'المصعد: {elev_code}\n'
+            f'الفني: {tech_name}\n'
+            f'نعمل على توفير القطع وسنُعلمكم فور استئناف العمل.\n'
+            f'شكراً لصبركم.'
+        )
     summary = resolution_summary_for_fault(fault)
     lines = [
         f'مرحباً {cust_name}',
@@ -316,6 +338,11 @@ def build_customer_journey_message(fault: Fault, stage: str, *, thread_code: str
     ]
     if summary:
         lines.append(f'ملخص الإصلاح: {summary}')
+    pdf = (report_url or '').strip()
+    if pdf:
+        lines.append(f'تقرير الإصلاح (PDF): {pdf}')
+    else:
+        lines.append('تقرير الإصلاح (PDF) جاهز لدى المكتب — سيُرفق مع الرسالة عند الإرسال.')
     lines.extend([
         'نأمل أن يكون كل شيء على ما يرام.',
         'تقييمكم يهمنا: ردّوا برقم من 1 إلى 5 ⭐',
@@ -398,6 +425,7 @@ def notify_customer_stage(
     *,
     next_code_fn,
     force: bool = False,
+    report_url: str = '',
 ) -> dict:
     """رسالة حالة على نفس كود الوارد — بدون WA جديد لكل مرحلة."""
     stage = (stage or '').strip()
@@ -408,7 +436,12 @@ def notify_customer_stage(
         return {'ok': False, 'error': 'لا يوجد جوال للعميل/المبلّغ', 'url': ''}
 
     thread = ensure_thread_for_fault(fault, next_code_fn=next_code_fn)
-    msg = build_customer_journey_message(fault, stage, thread_code=thread.code)
+    pdf = (report_url or '').strip()
+    if stage == 'resolved' and not pdf:
+        pdf = fault_report_print_path(fault)
+    msg = build_customer_journey_message(
+        fault, stage, thread_code=thread.code, report_url=pdf,
+    )
     url = whatsapp_url(phone, msg)
 
     if not force and journey_has_stage(thread, stage):
@@ -428,6 +461,7 @@ def notify_customer_stage(
             'thread_code': thread.code,
             'fault_code': fault.code,
             'log_id': thread.id,
+            'report_url': pdf if stage == 'resolved' else '',
         }
 
     entries = _load_journey(thread)
@@ -439,6 +473,7 @@ def notify_customer_stage(
         'body': msg,
         'url': url,
         'pending_send': True,
+        'report_url': pdf if stage == 'resolved' else '',
         'at': datetime.utcnow().isoformat(sep=' ', timespec='seconds'),
     })
     _save_journey(thread, entries)
@@ -459,6 +494,7 @@ def notify_customer_stage(
         'thread_code': thread.code,
         'fault_code': fault.code,
         'log_id': thread.id,
+        'report_url': pdf if stage == 'resolved' else '',
     }
 
 
@@ -529,13 +565,91 @@ def auto_stage_for_fault_status(
     has_tech: bool,
 ) -> str | None:
     new_status = (new_status or '').strip()
-    if new_status in RESOLVED_STATUSES and (old_status or '') not in RESOLVED_STATUSES:
+    old = (old_status or '').strip()
+    if new_status in RESOLVED_STATUSES and old not in RESOLVED_STATUSES:
         return 'resolved'
+    if new_status in PARTS_STATUSES and old not in PARTS_STATUSES:
+        return 'parts_needed'
     if has_tech and not had_tech:
         return 'assigned'
-    if new_status == 'قيد المعالجة' and (old_status or '') == 'مفتوح' and has_tech:
+    if new_status == 'قيد المعالجة' and old == 'مفتوح' and has_tech:
         return 'assigned'
     return None
+
+
+def suggested_next_stage(fault: Fault, entries: list[dict] | None = None) -> str | None:
+    """أقرب رسالة يجب تجهيزها حسب حالة العطل ومراحل الرحلة."""
+    done = {(e or {}).get('stage') for e in (entries or []) if (e or {}).get('stage')}
+    status = (fault.status or '').strip()
+    has_tech = bool(fault.technician_id)
+    if 'received' not in done:
+        return 'received'
+    if has_tech and 'assigned' not in done:
+        return 'assigned'
+    if has_tech and status == 'قيد المعالجة' and 'on_way' not in done:
+        return 'on_way'
+    if status in PARTS_STATUSES and 'parts_needed' not in done:
+        return 'parts_needed'
+    if status in RESOLVED_STATUSES and 'resolved' not in done:
+        return 'resolved'
+    return None
+
+
+def journey_snapshots_for_faults(faults: list[Fault]) -> dict[int, dict]:
+    """لقطة متابعة واتساب لكل عطل — للعرض بجانب الصف."""
+    if not faults:
+        return {}
+    ids = [f.id for f in faults if f and f.id]
+    if not ids:
+        return {}
+    threads = (
+        thread_query()
+        .filter(WhatsAppInbox.fault_id.in_(ids))
+        .order_by(WhatsAppInbox.id.asc())
+        .all()
+    )
+    by_fault: dict[int, WhatsAppInbox] = {}
+    for t in threads:
+        if t.fault_id and t.fault_id not in by_fault:
+            by_fault[t.fault_id] = t
+
+    out: dict[int, dict] = {}
+    for fault in faults:
+        thread = by_fault.get(fault.id)
+        entries = _load_journey(thread) if thread else []
+        pending = None
+        for e in reversed(entries):
+            if (e or {}).get('pending_send') and (e or {}).get('url'):
+                pending = e
+                break
+        current = entries[-1] if entries else None
+        next_stage = suggested_next_stage(fault, entries)
+        # إن وُجد إرسال معلّق فهو الحالة الحالية للعمل
+        display = pending or current
+        out[fault.id] = {
+            'thread_id': thread.id if thread else None,
+            'thread_code': thread.code if thread else '',
+            'current_stage': (display or {}).get('stage') or '',
+            'current_label': (display or {}).get('label')
+                or JOURNEY_LABELS.get((display or {}).get('stage') or '', '')
+                or 'بدون رسالة',
+            'current_preview': ((display or {}).get('body') or '').split('\n')[0][:80],
+            'pending_send': bool(pending),
+            'pending_url': (pending or {}).get('url') or '',
+            'pending_stage': (pending or {}).get('stage') or '',
+            'pending_label': (pending or {}).get('label')
+                or JOURNEY_LABELS.get((pending or {}).get('stage') or '', ''),
+            'stages_done': [e.get('stage') for e in entries if e.get('stage')],
+            'next_stage': next_stage,
+            'next_label': JOURNEY_LABELS.get(next_stage or '', ''),
+            'report_print_url': fault_report_print_path(fault),
+            'show_pdf': (display or {}).get('stage') == 'resolved' or status_is_resolved(fault),
+        }
+    return out
+
+
+def status_is_resolved(fault: Fault) -> bool:
+    return (fault.status or '').strip() in RESOLVED_STATUSES
 
 
 def ack_whatsapp_url(item: WhatsAppInbox, fault: Fault | None = None) -> str:

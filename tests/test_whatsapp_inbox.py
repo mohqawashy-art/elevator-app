@@ -146,6 +146,51 @@ def test_journey_messages_include_fault_code(client):
             assert len(msg) > 20
 
 
+def test_parts_needed_and_resolved_pdf_hint(client):
+    from app import app
+
+    login_as(client, 'admin')
+    with app.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        g.organization = org
+        g.organization_id = org.id
+        cust = Customer(
+            organization_id=org.id,
+            code='C-WA05',
+            name='عميل قطع',
+            phone='0555666777',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(
+            organization_id=org.id,
+            code='EL-WA05',
+            customer_id=cust.id,
+            status='نشط',
+        )
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=org.id,
+            code='FA-00555',
+            elevator_id=elev.id,
+            reporter_phone='0555666777',
+            status='انتظار قطع',
+        )
+        db.session.add(fault)
+        db.session.commit()
+        fault = Fault.query.filter_by(code='FA-00555').first()
+        msg = build_customer_journey_message(fault, 'parts_needed')
+        assert 'قطع غيار' in msg
+        assert 'FA-00555' in msg
+        done = build_customer_journey_message(
+            fault, 'resolved', report_url='https://example.com/faults/1/report?print=1',
+        )
+        assert 'تقرير الإصلاح' in done
+        assert 'report?print=1' in done
+
+
 def test_resolved_message_includes_summary_and_pending_queue(client):
     from app import app
     from whatsapp_support import pending_customer_sends, resolution_summary_for_fault
