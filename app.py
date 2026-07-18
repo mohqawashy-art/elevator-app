@@ -4776,50 +4776,161 @@ def technician_display_status(tech, today=None):
     return raw if raw in ('متاح', 'مشغول') else 'متاح'
 
 
+def _upload_url_fast(relative_path: str) -> str:
+    """رابط static بدون فحص القرص (أسرع لقوائم الصفحات)."""
+    if not relative_path:
+        return ''
+    rel = relative_path.replace('\\', '/').lstrip('/')
+    return '/static/' + rel
+
+
+def batch_technician_list_meta(techs, today=None) -> dict[int, dict]:
+    """إحصاءات وحالة عرض لكل الفنيين باستعلامات مجمّعة بدل N+1."""
+    from sqlalchemy import func
+
+    from models import FaultTechnician, VisitTechnician
+
+    today = today or date.today()
+    ids = [t.id for t in techs if t and t.id]
+    if not ids:
+        return {}
+
+    visit_counts = dict(
+        tenant_query(MaintenanceVisit)
+        .with_entities(MaintenanceVisit.technician_id, func.count())
+        .filter(MaintenanceVisit.technician_id.in_(ids))
+        .group_by(MaintenanceVisit.technician_id)
+        .all()
+    )
+    fault_counts = dict(
+        tenant_query(Fault)
+        .with_entities(Fault.technician_id, func.count())
+        .filter(Fault.technician_id.in_(ids))
+        .group_by(Fault.technician_id)
+        .all()
+    )
+
+    busy_visit = {
+        int(r[0])
+        for r in (
+            tenant_query(MaintenanceVisit)
+            .with_entities(MaintenanceVisit.technician_id)
+            .filter(
+                MaintenanceVisit.visit_date == today,
+                MaintenanceVisit.status == 'جارٍ',
+                MaintenanceVisit.technician_id.in_(ids),
+            )
+            .all()
+        )
+        if r[0]
+    }
+    busy_visit |= {
+        int(r[0])
+        for r in (
+            tenant_query(VisitTechnician)
+            .join(MaintenanceVisit, MaintenanceVisit.id == VisitTechnician.visit_id)
+            .with_entities(VisitTechnician.technician_id)
+            .filter(
+                MaintenanceVisit.visit_date == today,
+                MaintenanceVisit.status == 'جارٍ',
+                VisitTechnician.technician_id.in_(ids),
+            )
+            .all()
+        )
+        if r[0]
+    }
+    busy_fault = {
+        int(r[0])
+        for r in (
+            tenant_query(Fault)
+            .with_entities(Fault.technician_id)
+            .filter(
+                Fault.status == 'قيد المعالجة',
+                Fault.technician_id.in_(ids),
+            )
+            .all()
+        )
+        if r[0]
+    }
+    busy_fault |= {
+        int(r[0])
+        for r in (
+            tenant_query(FaultTechnician)
+            .join(Fault, Fault.id == FaultTechnician.fault_id)
+            .with_entities(FaultTechnician.technician_id)
+            .filter(
+                Fault.status == 'قيد المعالجة',
+                FaultTechnician.technician_id.in_(ids),
+            )
+            .all()
+        )
+        if r[0]
+    }
+
+    out: dict[int, dict] = {}
+    for t in techs:
+        raw = t.status or 'متاح'
+        if raw == 'نشط':
+            raw = 'متاح'
+        if raw in ('إجازة', 'غير نشط'):
+            display = raw
+        elif t.id in busy_visit or t.id in busy_fault:
+            display = 'مشغول'
+        else:
+            display = raw if raw in ('متاح', 'مشغول') else 'متاح'
+        out[t.id] = {
+            'visits': int(visit_counts.get(t.id, 0) or 0),
+            'faults': int(fault_counts.get(t.id, 0) or 0),
+            'display_status': display,
+        }
+    return out
+
+
 app.jinja_env.globals['technician_display_status'] = technician_display_status
 
 
-def technician_to_js_dict(t):
-  """تسلسل فني لـ JSON (حالة العرض تُحسب مرة واحدة في السيرفر)."""
-  docs = []
-  for d in sorted(t.documents, key=lambda x: x.uploaded_at or datetime.min, reverse=True):
-    fname = d.file_name or ''
-    docs.append({
-      'id': d.id,
-      'doc_type': d.doc_type or '',
-      'title': d.title or d.file_name or '',
-      'file_name': fname,
-      'url': url_for('static', filename=d.file_path) if d.file_path else '',
-      'is_image': fname.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')),
-      'is_pdf': fname.lower().endswith('.pdf'),
-      'uploaded_at': d.uploaded_at.strftime('%Y-%m-%d') if d.uploaded_at else '',
-    })
-  return {
-    'id': t.id,
-    'code': t.code,
-    'name': t.name,
-    'name_en': t.name_en or '',
-    'phone': t.phone or '',
-    'phone2': t.phone2 or '',
-    'job_title': t.job_title or '',
-    'specialization': t.specialization or '',
-    'team': t.team or 'عام',
-    'city': t.city or '',
-    'national_id': t.national_id or '',
-    'hire_date': t.hire_date.isoformat() if t.hire_date else '',
-    'salary': t.salary or 0,
-    'emergency': bool(t.emergency),
-    'status': t.status or 'متاح',
-    'display_status': technician_display_status(t),
-    'visits': len(t.visits),
-    'faults': len(t.faults),
-    'notes': t.notes or '',
-    'photo_url': upload_url(t.photo_path) if t.photo_path else '',
-    'signature_url': upload_url(t.signature_path) if t.signature_path else '',
-    'has_sign_pin': bool(t.sign_pin_hash),
-    'documents': len(t.documents),
-    'docs': docs,
-  }
+def technician_to_js_dict(t, *, meta: dict | None = None):
+    """تسلسل فني لـ JSON (حالة العرض تُحسب مرة واحدة في السيرفر)."""
+    docs = []
+    for d in sorted(t.documents, key=lambda x: x.uploaded_at or datetime.min, reverse=True):
+        fname = d.file_name or ''
+        docs.append({
+            'id': d.id,
+            'doc_type': d.doc_type or '',
+            'title': d.title or d.file_name or '',
+            'file_name': fname,
+            'url': _upload_url_fast(d.file_path) if d.file_path else '',
+            'is_image': fname.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')),
+            'is_pdf': fname.lower().endswith('.pdf'),
+            'uploaded_at': d.uploaded_at.strftime('%Y-%m-%d') if d.uploaded_at else '',
+        })
+    meta = meta or {}
+    return {
+        'id': t.id,
+        'code': t.code,
+        'name': t.name,
+        'name_en': t.name_en or '',
+        'phone': t.phone or '',
+        'phone2': t.phone2 or '',
+        'job_title': t.job_title or '',
+        'specialization': t.specialization or '',
+        'team': t.team or 'عام',
+        'city': t.city or '',
+        'national_id': t.national_id or '',
+        'hire_date': t.hire_date.isoformat() if t.hire_date else '',
+        'salary': t.salary or 0,
+        'emergency': bool(t.emergency),
+        'status': t.status or 'متاح',
+        'display_status': meta.get('display_status') or technician_display_status(t),
+        'visits': int(meta['visits']) if meta and 'visits' in meta else 0,
+        'faults': int(meta['faults']) if meta and 'faults' in meta else 0,
+        'notes': t.notes or '',
+        'photo_url': _upload_url_fast(t.photo_path) if t.photo_path else '',
+        'signature_url': _upload_url_fast(t.signature_path) if t.signature_path else '',
+        'has_sign_pin': bool(t.sign_pin_hash),
+        'documents': len(list(t.documents or [])),
+        'docs': docs,
+    }
 
 
 from technician_assignments import fault_technicians_label as _fault_technicians_label_jinja
@@ -5023,11 +5134,7 @@ def technicians():
 
     techs = (
         tenant_query(Technician)
-        .options(
-            joinedload(Technician.documents),
-            joinedload(Technician.visits),
-            joinedload(Technician.faults),
-        )
+        .options(joinedload(Technician.documents))
         .order_by(Technician.id.desc())
         .all()
     )
@@ -5038,10 +5145,11 @@ def technicians():
     maint_techs = [t for t in techs if (t.team or 'عام') in ('صيانة', 'عام')] or list(techs)
     from maintenance_teams import list_all_teams, team_to_dict
     maint_teams = [team_to_dict(t) for t in list_all_teams() if t.active]
+    meta = batch_technician_list_meta(techs)
     return render_template(
         'technicians.html',
         technicians=techs,
-        technicians_js=[technician_to_js_dict(t) for t in techs],
+        technicians_js=[technician_to_js_dict(t, meta=meta.get(t.id)) for t in techs],
         next_tech_code=next_code(Technician, 'Tech-', digits=3),
         unassigned_faults=unassigned_faults,
         maint_technicians=maint_techs,
