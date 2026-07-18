@@ -633,13 +633,13 @@ def journey_snapshots_for_faults(faults: list[Fault]) -> dict[int, dict]:
             'current_label': (display or {}).get('label')
                 or JOURNEY_LABELS.get((display or {}).get('stage') or '', '')
                 or 'بدون رسالة',
-            'current_preview': ((display or {}).get('body') or '').split('\n')[0][:80],
+            'current_preview': '',
             'pending_send': bool(pending),
             'pending_url': (pending or {}).get('url') or '',
             'pending_stage': (pending or {}).get('stage') or '',
             'pending_label': (pending or {}).get('label')
                 or JOURNEY_LABELS.get((pending or {}).get('stage') or '', ''),
-            'stages_done': [e.get('stage') for e in entries if e.get('stage')],
+            'stages_done': [],
             'next_stage': next_stage,
             'next_label': JOURNEY_LABELS.get(next_stage or '', ''),
             'report_print_url': fault_report_print_path(fault),

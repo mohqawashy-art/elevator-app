@@ -2248,6 +2248,27 @@ def fault_registration_parts_lines(fault_id: int) -> list[dict]:
     return parts_billing_record_lines(pb)
 
 
+def fault_registration_parts_lines_map(fault_ids: list[int]) -> dict[int, list[dict]]:
+    """أحدث قطع غيار مسجّلة لكل عطل — استعلام واحد بدل N."""
+    out: dict[int, list[dict]] = {int(i): [] for i in fault_ids}
+    if not fault_ids:
+        return out
+    rows = (
+        tenant_query(PartsBilling)
+        .filter(PartsBilling.fault_id.in_(fault_ids))
+        .order_by(PartsBilling.id.desc())
+        .all()
+    )
+    seen: set[int] = set()
+    for pb in rows:
+        fid = int(pb.fault_id) if pb.fault_id else 0
+        if not fid or fid in seen:
+            continue
+        seen.add(fid)
+        out[fid] = parts_billing_record_lines(pb)
+    return out
+
+
 def apply_parts_billing_inventory(
     pb: PartsBilling,
     lines: list[dict],

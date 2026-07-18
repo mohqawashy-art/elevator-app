@@ -91,6 +91,67 @@ def fault_technician_rows(fault_id: int) -> list[FaultTechnician]:
     )
 
 
+def fault_technician_rows_by_fault_ids(fault_ids: list[int]) -> dict[int, list[FaultTechnician]]:
+    """تحميل صفوف فنيي الأعطال دفعة واحدة — يتجنب N+1 في قوائم الأعطال."""
+    from sqlalchemy.orm import joinedload
+
+    out: dict[int, list[FaultTechnician]] = {int(i): [] for i in fault_ids}
+    if not fault_ids:
+        return out
+    rows = (
+        tenant_query(FaultTechnician)
+        .options(joinedload(FaultTechnician.technician))
+        .filter(FaultTechnician.fault_id.in_(fault_ids))
+        .order_by(FaultTechnician.id)
+        .all()
+    )
+    for r in rows:
+        out.setdefault(int(r.fault_id), []).append(r)
+    return out
+
+
+def visit_technician_rows_by_visit_ids(visit_ids: list[int]) -> dict[int, list[VisitTechnician]]:
+    from sqlalchemy.orm import joinedload
+
+    out: dict[int, list[VisitTechnician]] = {int(i): [] for i in visit_ids}
+    if not visit_ids:
+        return out
+    rows = (
+        tenant_query(VisitTechnician)
+        .options(joinedload(VisitTechnician.technician))
+        .filter(VisitTechnician.visit_id.in_(visit_ids))
+        .order_by(VisitTechnician.id)
+        .all()
+    )
+    for r in rows:
+        out.setdefault(int(r.visit_id), []).append(r)
+    return out
+
+
+def _ids_from_rows(rows) -> list[int]:
+    return [r.technician_id for r in rows]
+
+
+def _payload_from_rows(rows, *, fallback_id=None, fallback_tech=None) -> list[dict]:
+    if not rows and fallback_id:
+        rows = [type('Row', (), {
+            'technician_id': fallback_id,
+            'role': 'فني',
+            'technician': fallback_tech,
+        })()]
+    out = []
+    for r in rows:
+        tech = getattr(r, 'technician', None)
+        if tech is None:
+            tech = tenant_query(Technician).filter_by(id=r.technician_id).first()
+        out.append({
+            'id': r.technician_id,
+            'name': tech.name if tech else '—',
+            'role': getattr(r, 'role', 'فني') or 'فني',
+        })
+    return out
+
+
 def visit_technician_ids(visit) -> list[int]:
     vid = visit.id if hasattr(visit, 'id') else int(visit)
     return [r.technician_id for r in visit_technician_rows(vid)]

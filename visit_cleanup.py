@@ -24,24 +24,30 @@ def _duplicate_key(v: MaintenanceVisit) -> tuple:
     )
 
 
-def find_duplicate_visit_ids() -> list[int]:
-    periodic = [
-        v for v in MaintenanceVisit.query.order_by(MaintenanceVisit.id).all()
-        if not is_fault_visit_type(v.visit_type)
-    ]
-    groups: dict[tuple, list[MaintenanceVisit]] = {}
+def find_duplicate_visit_ids_from(visits: list) -> list[int]:
+    """اكتشاف المكررات من قائمة محمّلة مسبقاً (بدون استعلام إضافي)."""
+    periodic = [v for v in visits if not is_fault_visit_type(getattr(v, 'visit_type', None))]
+    groups: dict[tuple, list] = {}
     for v in periodic:
         groups.setdefault(_duplicate_key(v), []).append(v)
 
     to_delete: list[int] = []
-    for visits in groups.values():
-        if len(visits) < 2:
+    for group in groups.values():
+        if len(group) < 2:
             continue
-        keep = max(visits, key=_visit_score)
-        for v in visits:
+        keep = max(group, key=_visit_score)
+        for v in group:
             if v.id != keep.id:
                 to_delete.append(v.id)
     return sorted(to_delete)
+
+
+def find_duplicate_visit_ids() -> list[int]:
+    from tenant_scope import tenant_query
+
+    return find_duplicate_visit_ids_from(
+        tenant_query(MaintenanceVisit).order_by(MaintenanceVisit.id).all()
+    )
 
 
 def remove_duplicate_visits(*, dry_run: bool = False) -> dict:

@@ -3521,15 +3521,31 @@ def _coords_from_customer(cust):
 
 def _visits_js_list(visits):
     from checklist_templates import parse_report_json, report_completion_stats, checklist_flagged_items, checklist_all_ok
-    from technician_assignments import visit_technicians_label, visit_technician_ids, visit_technicians_payload
+    from technician_assignments import (
+        _ids_from_rows,
+        _names_from_rows,
+        _payload_from_rows,
+        visit_technician_rows_by_visit_ids,
+    )
 
+    visit_ids = [v.id for v in visits]
+    tech_map = visit_technician_rows_by_visit_ids(visit_ids)
     rows = []
     for v in visits:
         elev = v.elevator
         cust = elev.customer if elev else None
         linked = getattr(v, 'linked_fault', None)
-        saved = parse_report_json(v.checklist_json)
+        tech_rows = tech_map.get(v.id) or []
+        tech_ids = _ids_from_rows(tech_rows) or ([v.technician_id] if v.technician_id else [])
+        if tech_rows:
+            tech_label = _names_from_rows(tech_rows)
+        elif v.technician:
+            tech_label = v.technician.name
+        else:
+            tech_label = '—'
+        saved = parse_report_json(v.checklist_json) if (v.checklist_json or '').strip() else {}
         stats = report_completion_stats(saved, v.checklist_template_key) if saved else {'filled': 0, 'total': 0, 'percent': 0}
+        filled = int(stats.get('filled', 0) or 0)
         rows.append({
             'id': v.id,
             'code': v.code,
@@ -3542,10 +3558,12 @@ def _visits_js_list(visits):
             'building': (elev.building_name if elev else '') or '',
             'customer': cust.name if cust else '',
             'customer_name_en': (cust.name_en or '') if cust else '',
-            'technician': visit_technicians_label(v),
+            'technician': tech_label,
             'tech_id': v.technician_id,
-            'tech_ids': visit_technician_ids(v) or ([v.technician_id] if v.technician_id else []),
-            'technicians': visit_technicians_payload(v),
+            'tech_ids': tech_ids,
+            'technicians': _payload_from_rows(
+                tech_rows, fallback_id=v.technician_id, fallback_tech=v.technician,
+            ),
             'visit_type': v.visit_type or '',
             'visit_date': str(v.visit_date or ''),
             'plan_month': v.plan_month or '',
@@ -3556,11 +3574,11 @@ def _visits_js_list(visits):
             'works_done': v.works_done or '',
             'observations': v.observations or '',
             'notes': v.notes or '',
-            'has_report': bool(saved and stats.get('filled', 0) > 0),
-            'report_filled': stats.get('filled', 0),
-            'report_total': stats.get('total', 0),
-            'report_flagged_items': checklist_flagged_items(saved, v.checklist_template_key) if saved else [],
-            'report_all_ok': checklist_all_ok(saved, v.checklist_template_key) if saved else False,
+            'has_report': bool(saved and filled > 0),
+            'report_filled': filled,
+            'report_total': int(stats.get('total', 0) or 0),
+            'report_flagged_items': checklist_flagged_items(saved, v.checklist_template_key) if saved and filled else [],
+            'report_all_ok': checklist_all_ok(saved, v.checklist_template_key) if saved and filled else False,
         })
     return rows
 
@@ -3571,16 +3589,33 @@ def _fault_registration_parts_lines(fault_id: int):
 
 
 def _faults_js_list(faults):
-    from technician_assignments import fault_technicians_label, fault_technician_ids, fault_technicians_payload
+    from operations import fault_registration_parts_lines_map
+    from technician_assignments import (
+        _ids_from_rows,
+        _names_from_rows,
+        _payload_from_rows,
+        fault_technician_rows_by_fault_ids,
+    )
     from whatsapp_support import journey_snapshots_for_faults
 
+    fault_ids = [f.id for f in faults]
     wa_map = journey_snapshots_for_faults(list(faults))
+    tech_map = fault_technician_rows_by_fault_ids(fault_ids)
+    parts_map = fault_registration_parts_lines_map(fault_ids)
     rows = []
     for f in faults:
         elev = f.elevator
         cust = elev.customer if elev else None
         linked = getattr(f, 'linked_visit', None)
         wa = wa_map.get(f.id) or {}
+        tech_rows = tech_map.get(f.id) or []
+        tech_ids = _ids_from_rows(tech_rows) or ([f.technician_id] if f.technician_id else [])
+        if tech_rows:
+            tech_label = _names_from_rows(tech_rows)
+        elif f.technician:
+            tech_label = f.technician.name
+        else:
+            tech_label = '—'
         rows.append({
             'id': f.id,
             'code': f.code,
@@ -3590,9 +3625,11 @@ def _faults_js_list(faults):
             'customer_name_en': (cust.name_en or '') if cust else '',
             'customer_id': cust.id if cust else None,
             'tech_id': f.technician_id,
-            'tech_ids': fault_technician_ids(f) or ([f.technician_id] if f.technician_id else []),
-            'technician': fault_technicians_label(f),
-            'technicians': fault_technicians_payload(f),
+            'tech_ids': tech_ids,
+            'technician': tech_label,
+            'technicians': _payload_from_rows(
+                tech_rows, fallback_id=f.technician_id, fallback_tech=f.technician,
+            ),
             'fault_type': f.fault_type or '',
             'description': f.description or '',
             'client_report': f.client_report or f.description or '',
@@ -3608,7 +3645,7 @@ def _faults_js_list(faults):
             'reporter_name': f.reporter_name or '',
             'reporter_phone': f.reporter_phone or '',
             'needs_parts': bool(f.needs_parts),
-            'parts_lines': _fault_registration_parts_lines(f.id),
+            'parts_lines': parts_map.get(f.id) or [],
             'has_report': bool(f.report_json),
             'wa': wa,
         })
@@ -5199,10 +5236,13 @@ def technician_delete(id):
 def maintenance_visits():
     from operations import exclude_fault_visits, list_districts, visit_alerts, visit_stats
     from sqlalchemy.orm import joinedload
+    from visit_cleanup import find_duplicate_visit_ids_from
 
     visits = exclude_fault_visits(
         tenant_query(MaintenanceVisit).options(
             joinedload(MaintenanceVisit.elevator).joinedload(Elevator.customer),
+            joinedload(MaintenanceVisit.technician),
+            joinedload(MaintenanceVisit.linked_fault),
         )
     ).order_by(MaintenanceVisit.visit_date.desc()).all()
     elevators = tenant_query(Elevator).options(joinedload(Elevator.customer)).all()
@@ -5216,10 +5256,10 @@ def maintenance_visits():
     month_end = today.replace(day=monthrange(today.year, today.month)[1])
     maint_techs = [t for t in technicians if (t.team or 'عام') in ('صيانة', 'عام')] or list(technicians)
     from maintenance_teams import list_all_teams, team_to_dict
-    maint_teams = [team_to_dict(t) for t in list_all_teams() if t.active]
-    all_teams = [team_to_dict(t) for t in list_all_teams()]
-    from visit_cleanup import find_duplicate_visit_ids
-    duplicate_visit_ids = find_duplicate_visit_ids()
+    teams_all = list_all_teams()
+    maint_teams = [team_to_dict(t) for t in teams_all if t.active]
+    all_teams = [team_to_dict(t) for t in teams_all]
+    duplicate_visit_ids = find_duplicate_visit_ids_from(visits)
     return render_template(
         'maintenance-visits.html',
         visits=visits,
@@ -6648,11 +6688,14 @@ def whatsapp_webhook():
 def faults():
     from operations import fault_alerts, fault_stats
     from sqlalchemy.orm import joinedload
-    from whatsapp_support import pending_customer_sends
 
     faults_list = (
         tenant_query(Fault)
-        .options(joinedload(Fault.elevator).joinedload(Elevator.customer))
+        .options(
+            joinedload(Fault.elevator).joinedload(Elevator.customer),
+            joinedload(Fault.technician),
+            joinedload(Fault.linked_visit),
+        )
         .order_by(Fault.reported_at.desc())
         .all()
     )
@@ -6664,7 +6707,6 @@ def faults():
     ).all()
     pending_wa = session.pop('pending_whatsapp', '')
     pending_wa_fault_id = session.pop('pending_whatsapp_fault_id', None)
-    pending_customer_wa = pending_customer_sends(limit=20)
     fault_techs = [t for t in technicians if (t.team or 'عام') in ('أعطال', 'عام', 'صيانة')] or list(technicians)
     return render_template(
         'faults.html',
@@ -6701,7 +6743,7 @@ def faults():
         fault_technicians=fault_techs,
         pending_whatsapp=pending_wa,
         pending_whatsapp_fault_id=pending_wa_fault_id,
-        pending_customer_wa=pending_customer_wa,
+        pending_customer_wa=[],
     )
 
 
