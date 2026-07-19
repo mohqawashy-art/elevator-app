@@ -61,8 +61,12 @@ def client():
 
 def login_as(client, role: str = 'admin'):
     uid = client._user_ids[role]
+    with app.app_context():
+        user = db.session.get(User, uid)
+        ver = int(getattr(user, 'session_version', None) or 0) if user else 0
     with client.session_transaction() as sess:
         sess['user_id'] = uid
+        sess['session_version'] = ver
         sess['lang'] = 'ar'
 
 
