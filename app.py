@@ -22,6 +22,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import re
+import time
 import uuid
 import shutil
 import secrets
@@ -594,17 +595,22 @@ def idle_screensaver_seconds(settings=None):
 
 
 def brand_logo_url(settings=None):
+    """شعار شركة العميل (ليس شعار منتج LiftCore)."""
     s = settings or get_app_settings()
     if s and s.logo_path:
         rel = s.logo_path.replace('\\', '/').lstrip('/')
         full = os.path.join(app.static_folder, rel.replace('/', os.sep))
+        # دائماً نعيد مسار شعار العميل — لا نستبدله بشعار LiftCore
+        url = url_for('static', filename=rel)
         if os.path.isfile(full):
-            # ?v=mtime يكسر الكاش بعد رفع شعار جديد بنفس الاسم
-            return url_for('static', filename=rel) + '?v=' + str(int(os.path.getmtime(full)))
-    for name in ('logo.png', 'images/liftcore-brand-logo.png'):
-        if os.path.isfile(os.path.join(app.static_folder, name.replace('/', os.sep))):
-            return url_for('static', filename=name)
-    return url_for('static', filename='logo.png')
+            url += '?v=' + str(int(os.path.getmtime(full)))
+        else:
+            url += '?v=missing'
+        return url
+    # بدون شعار مرفوع: ملف افتراضي عام فقط
+    if os.path.isfile(os.path.join(app.static_folder, 'logo.png')):
+        return url_for('static', filename='logo.png')
+    return url_for('static', filename='images/liftcore-brand-logo.png')
 
 
 def liftcore_header_logo_url(settings=None):
@@ -5124,7 +5130,11 @@ def serve_upload_file(subpath):
     full = os.path.normpath(os.path.join(directory, subpath))
     if not full.startswith(os.path.normpath(directory)) or not os.path.isfile(full):
         abort(404)
-    return send_from_directory(directory, subpath)
+    resp = send_from_directory(directory, subpath)
+    # شعار الشركة يتغيّر كثيراً — امنع الكاش القوي
+    if subpath.replace('\\', '/').startswith('company/'):
+        resp.headers['Cache-Control'] = 'no-cache, max-age=0, must-revalidate'
+    return resp
 
 
 app.jinja_env.globals['upload_url'] = upload_url
@@ -8876,27 +8886,35 @@ def generate_password(length=12):
 # الإعدادات
 # =============================================
 def _save_company_logo(settings_row, file_storage):
+    """يحفظ شعار العميل. يرجع (ok, message_ar|None)."""
     if not file_storage or not file_storage.filename:
-        return
+        return True, None
     if not _ext_ok(file_storage.filename, ALLOWED_LOGO_EXT):
-        return
+        return False, 'نوع ملف الشعار غير مدعوم — استخدم PNG أو JPG أو WEBP أو SVG.'
+    ok_up, err_up = _upload_ok(file_storage, ALLOWED_LOGO_EXT)
+    if not ok_up:
+        return False, err_up or 'تعذّر قبول ملف الشعار.'
+
     org_id = getattr(settings_row, 'organization_id', None) or 0
     dest_dir = os.path.join(COMPANY_UPLOAD_ROOT, str(org_id))
     os.makedirs(dest_dir, exist_ok=True)
     ext = file_storage.filename.rsplit('.', 1)[1].lower()
-    if ext == 'svg':
-        filename = 'logo.svg'
-    else:
-        filename = f'logo.{ext}'
-    # امسح الشعارات القديمة لهذه المؤسسة فقط (لا تمس باقي العملاء)
+    if ext == 'jpeg':
+        ext = 'jpg'
+    # اسم فريد يكسر الكاش حتى لو بقي service worker قديماً
+    filename = f'logo-{int(time.time())}.{ext}'
     for old in os.listdir(dest_dir):
-        if old.startswith('logo.'):
+        if old.startswith('logo'):
             try:
                 os.remove(os.path.join(dest_dir, old))
             except OSError:
                 pass
-    file_storage.save(os.path.join(dest_dir, filename))
+    dest = os.path.join(dest_dir, filename)
+    file_storage.save(dest)
+    if not os.path.isfile(dest):
+        return False, 'فشل حفظ ملف الشعار على السيرفر.'
     settings_row.logo_path = f'uploads/company/{org_id}/{filename}'
+    return True, 'تم تحديث شعار الشركة.'
 
 
 def _clamp_logo_width(value, default=150, min_w=60, max_w=400):
@@ -9244,11 +9262,16 @@ def settings_save():
     s.logo_width_sidebar = _clamp_logo_width(request.form.get('logo_width_sidebar'), 150)
     s.logo_width_report  = _clamp_logo_width(request.form.get('logo_width_report'), 150)
     s.logo_width_login   = _clamp_logo_width(request.form.get('logo_width_login'), 180, min_w=80, max_w=500)
-    _save_company_logo(s, request.files.get('logo'))
+    logo_ok, logo_msg = _save_company_logo(s, request.files.get('logo'))
     from zatca_phase2 import sync_zatca_credentials_from_settings
     sync_zatca_credentials_from_settings(s)
     db.session.commit()
-    session['settings_notice'] = 'تم حفظ بيانات الشركة بنجاح.'
+    if not logo_ok:
+        session['settings_notice'] = logo_msg or 'تعذّر حفظ الشعار.'
+    elif logo_msg:
+        session['settings_notice'] = 'تم حفظ بيانات الشركة. ' + logo_msg
+    else:
+        session['settings_notice'] = 'تم حفظ بيانات الشركة بنجاح.'
     return _settings_redirect('company', saved=1)
 
 
