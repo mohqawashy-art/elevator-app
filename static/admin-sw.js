@@ -1,7 +1,7 @@
 /* LiftCore Admin PWA */
 'use strict';
 
-const CACHE = 'liftcore-admin-v6';
+const CACHE = 'liftcore-admin-v7';
 const PRECACHE = [
   '/static/liftcore-shell.css?v=43',
   '/static/liftcore-admin-mobile.css?v=6',
@@ -20,6 +20,11 @@ function isStaticAsset(url) {
 
 function isStyleOrScript(url) {
   return /\.(css|js)(\?|$)/i.test(url.pathname + (url.search || ''));
+}
+
+/** ملفات المستخدم (شعار الشركة وغيرها) — لا تُخزَّن حتى يظهر التحديث فوراً */
+function isUserUpload(url) {
+  return url.pathname.indexOf('/static/uploads/') === 0;
 }
 
 self.addEventListener('install', function (event) {
@@ -56,6 +61,15 @@ self.addEventListener('fetch', function (event) {
   }
   if (url.origin !== self.location.origin) return;
   if (!isStaticAsset(url)) return;
+
+  if (isUserUpload(url)) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).catch(function () {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
 
   if (isStyleOrScript(url)) {
     event.respondWith(

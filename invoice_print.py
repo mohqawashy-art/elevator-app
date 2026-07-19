@@ -32,7 +32,8 @@ class PrintLineItem:
 
 def _logo_url(settings: Settings) -> str:
     if settings.logo_path:
-        return url_for('static', filename=settings.logo_path.replace('\\', '/'))
+        from app import upload_url
+        return upload_url(settings.logo_path.replace('\\', '/'))
     return url_for('static', filename='logo.png')
 
 

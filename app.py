@@ -596,10 +596,11 @@ def idle_screensaver_seconds(settings=None):
 def brand_logo_url(settings=None):
     s = settings or get_app_settings()
     if s and s.logo_path:
-        rel = s.logo_path.replace('\\', '/')
+        rel = s.logo_path.replace('\\', '/').lstrip('/')
         full = os.path.join(app.static_folder, rel.replace('/', os.sep))
         if os.path.isfile(full):
-            return url_for('static', filename=rel)
+            # ?v=mtime يكسر الكاش بعد رفع شعار جديد بنفس الاسم
+            return url_for('static', filename=rel) + '?v=' + str(int(os.path.getmtime(full)))
     for name in ('logo.png', 'images/liftcore-brand-logo.png'):
         if os.path.isfile(os.path.join(app.static_folder, name.replace('/', os.sep))):
             return url_for('static', filename=name)
@@ -8879,20 +8880,23 @@ def _save_company_logo(settings_row, file_storage):
         return
     if not _ext_ok(file_storage.filename, ALLOWED_LOGO_EXT):
         return
-    os.makedirs(COMPANY_UPLOAD_ROOT, exist_ok=True)
+    org_id = getattr(settings_row, 'organization_id', None) or 0
+    dest_dir = os.path.join(COMPANY_UPLOAD_ROOT, str(org_id))
+    os.makedirs(dest_dir, exist_ok=True)
     ext = file_storage.filename.rsplit('.', 1)[1].lower()
     if ext == 'svg':
         filename = 'logo.svg'
     else:
         filename = f'logo.{ext}'
-    for old in os.listdir(COMPANY_UPLOAD_ROOT):
+    # امسح الشعارات القديمة لهذه المؤسسة فقط (لا تمس باقي العملاء)
+    for old in os.listdir(dest_dir):
         if old.startswith('logo.'):
             try:
-                os.remove(os.path.join(COMPANY_UPLOAD_ROOT, old))
+                os.remove(os.path.join(dest_dir, old))
             except OSError:
                 pass
-    file_storage.save(os.path.join(COMPANY_UPLOAD_ROOT, filename))
-    settings_row.logo_path = f'uploads/company/{filename}'
+    file_storage.save(os.path.join(dest_dir, filename))
+    settings_row.logo_path = f'uploads/company/{org_id}/{filename}'
 
 
 def _clamp_logo_width(value, default=150, min_w=60, max_w=400):
