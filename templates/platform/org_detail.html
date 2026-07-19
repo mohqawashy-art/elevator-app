@@ -241,6 +241,60 @@
 </div>
 {% endif %}
 
+<div class="card">
+  <div class="section">تصدير بيانات العميل</div>
+  <p class="muted" style="margin-bottom:12px;line-height:1.8">
+    نزّل نسخة احتياطية (ملف ZIP فيه JSON) واحفظها على جهازك قبل أي حذف.
+    التصدير يشمل سجلات قاعدة البيانات لهذا العميل فقط — بدون لمس باقي المؤسسات.
+  </p>
+  <div class="actions">
+    <a class="btn btn-primary" href="{{ url_for('platform_org_export', org_id=org.id) }}">تنزيل البيانات إلى جهازي</a>
+  </div>
+</div>
+
+{% set can_delete = can_delete if can_delete is defined else (org.slug not in ['default', 'app', 'liftcore', 'platform']) %}
+{% if can_delete %}
+<div class="card" style="border-color:rgba(239,68,68,.35)">
+  <div class="section" style="color:#fca5a5">إلغاء العميل ومسح القاعدة</div>
+  <p class="muted" style="margin-bottom:12px;line-height:1.8">
+    يحذف المؤسسة <code>{{ org.slug }}</code> وكل بياناتها (عملاء، مصاعد، عقود، زيارات، أعطال، مستخدمين…).
+    العملية نهائية. يُفضّل التصدير أولاً.
+  </p>
+  <form method="post" action="{{ url_for('platform_org_delete', org_id=org.id) }}"
+        onsubmit="return confirm('تأكيد نهائي: حذف {{ org.name }} ومسح كل بياناته؟')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid">
+      <div>
+        <label>اكتب المعرّف للتأكيد: <code>{{ org.slug }}</code></label>
+        <input name="confirm_slug" required autocomplete="off" placeholder="{{ org.slug }}" dir="ltr">
+      </div>
+      <div>
+        <label>اكتب <code>DELETE</code> بالإنجليزية</label>
+        <input name="confirm_phrase" required autocomplete="off" placeholder="DELETE" dir="ltr">
+      </div>
+      <div class="full">
+        <label>كلمة مرور مشغّل المنصة</label>
+        <input name="admin_password" type="password" required autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <div class="full">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;color:var(--text);font-size:13px;line-height:1.6">
+          <input type="checkbox" name="acknowledge" value="1" required style="width:auto;margin-top:3px">
+          أؤكّد أنني صدّرت البيانات إن لزم، وأن الحذف نهائي ولا يمكن التراجع عنه.
+        </label>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-danger" type="submit">إلغاء العميل ومسح بياناته</button>
+    </div>
+  </form>
+</div>
+{% else %}
+<div class="card">
+  <div class="section">حذف الحساب</div>
+  <p class="muted">مؤسسة مشغّل المنصة محمية ولا يمكن حذفها من هنا.</p>
+</div>
+{% endif %}
+
 <div class="actions">
   <a class="btn btn-secondary" href="/platform/orgs">رجوع</a>
 </div>

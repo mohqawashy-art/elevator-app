@@ -2519,6 +2519,7 @@ def platform_org_detail(org_id):
     detail = get_org_detail(org_id)
     if not detail:
         abort(404)
+    from tenant_lifecycle import is_protected_operator_org
     return render_template(
         'platform/org_detail.html',
         nav='orgs',
@@ -2531,6 +2532,7 @@ def platform_org_detail(org_id):
         billing_amount=detail.get('billing_amount') or 0,
         login_url=detail['login_url'],
         plans=detail['plans'],
+        can_delete=not is_protected_operator_org(detail['org']),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
         issued_password=session.pop('plat_issued_password', None),
@@ -2768,6 +2770,126 @@ def platform_org_payment(org_id):
         session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل تسجيل الدفعة.'])
         session['plat_notice_type'] = 'warn'
     return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/export')
+def platform_org_export(org_id):
+    """تنزيل نسخة احتياطية JSON (داخل ZIP) لبيانات العميل على جهاز المشغّل."""
+    from flask import Response
+    from models import Organization
+    from platform_admin import is_admin_host
+    from tenant_lifecycle import build_tenant_export_zip
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    try:
+        data, filename, counts = build_tenant_export_zip(org)
+    except Exception:
+        app.logger.exception('platform org export failed org_id=%s', org_id)
+        session['plat_notice'] = 'فشل تصدير بيانات المؤسسة.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+    try:
+        from audit_log import log_audit
+        log_audit(
+            'platform_org_exported',
+            organization_id=org.id,
+            details={'slug': org.slug, 'counts': counts, 'bytes': len(data)},
+        )
+    except Exception:
+        app.logger.exception('platform export audit failed')
+    return Response(
+        data,
+        mimetype='application/zip',
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Cache-Control': 'no-store',
+        },
+    )
+
+
+@app.route('/platform/orgs/<int:org_id>/delete', methods=['POST'])
+def platform_org_delete(org_id):
+    """إلغاء العميل ومسح كل بياناته من المنصة (بعد تصدير اختياري)."""
+    from models import Organization
+    from platform_admin import is_admin_host
+    from tenant_lifecycle import is_protected_operator_org, wipe_tenant
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+
+    if is_protected_operator_org(org):
+        session['plat_notice'] = 'لا يمكن حذف مؤسسة مشغّل المنصة.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+
+    confirm_slug = (request.form.get('confirm_slug') or '').strip().lower()
+    confirm_phrase = (request.form.get('confirm_phrase') or '').strip().upper()
+    pwd = (request.form.get('admin_password') or request.form.get('password') or '').strip()
+    ack = (request.form.get('acknowledge') or '').strip() in ('1', 'on', 'true', 'yes')
+
+    if confirm_slug != (org.slug or '').lower():
+        session['plat_notice'] = 'اكتب معرّف المؤسسة (slug) بشكل صحيح للتأكيد.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+    if confirm_phrase != 'DELETE':
+        session['plat_notice'] = 'اكتب DELETE بالإنجليزية للتأكيد النهائي.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+    if not ack:
+        session['plat_notice'] = 'يجب الموافقة على أن الحذف نهائي ولا يمكن التراجع عنه.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+    if not pwd or not verify_password(user.password_hash, pwd):
+        session['plat_notice'] = 'كلمة مرور مشغّل المنصة غير صحيحة — لم يتم الحذف.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+
+    slug = org.slug
+    name = org.name
+    try:
+        result = wipe_tenant(org, keep_users=False, delete_organization=True)
+    except ValueError as exc:
+        session['plat_notice'] = str(exc)
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+    except Exception:
+        app.logger.exception('platform org delete failed org_id=%s', org_id)
+        session['plat_notice'] = 'فشل حذف المؤسسة — راجع سجلات السيرفر.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+
+    try:
+        from audit_log import log_audit
+        log_audit(
+            'platform_org_deleted',
+            details={
+                'slug': slug,
+                'name': name,
+                'before': result.get('before'),
+                'deleted': result.get('deleted'),
+            },
+        )
+    except Exception:
+        app.logger.exception('platform delete audit failed')
+
+    session['plat_notice'] = (
+        f'تم إلغاء العميل «{name}» ({slug}) ومسح كل بياناته من قاعدة المنصة.'
+    )
+    session['plat_notice_type'] = 'ok'
+    return redirect(url_for('platform_orgs'))
 
 
 @app.route('/platform/orgs/<int:org_id>/extend-trial', methods=['POST'])

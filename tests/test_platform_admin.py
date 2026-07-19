@@ -115,3 +115,106 @@ def test_platform_routes_404_on_app_host():
     )
     r = client.get('/platform', base_url=APP_URL)
     assert r.status_code == 404
+
+
+def test_platform_org_export_download():
+    from models import Customer
+
+    client = _client()
+    client.post(
+        '/login',
+        data={'username': 'opsadmin', 'password': 'OpsPass123!'},
+        base_url=ADMIN_URL,
+    )
+    with app.app_context():
+        org = Organization.query.filter_by(slug='acmeco').first()
+        oid = org.id
+        db.session.add(Customer(
+            organization_id=oid,
+            code='C-1',
+            name='عميل تجريبي',
+        ))
+        db.session.commit()
+
+    r = client.get(f'/platform/orgs/{oid}/export', base_url=ADMIN_URL)
+    assert r.status_code == 200
+    assert r.mimetype == 'application/zip'
+    assert 'attachment' in (r.headers.get('Content-Disposition') or '')
+    assert r.data[:2] == b'PK'
+
+
+def test_platform_org_delete_requires_confirm_and_password():
+    from models import Customer
+
+    client = _client()
+    client.post(
+        '/login',
+        data={'username': 'opsadmin', 'password': 'OpsPass123!'},
+        base_url=ADMIN_URL,
+    )
+    with app.app_context():
+        org = Organization.query.filter_by(slug='acmeco').first()
+        oid = org.id
+        db.session.add(Customer(organization_id=oid, code='C-DEL', name='للحذف'))
+        db.session.commit()
+
+    # wrong slug
+    r = client.post(
+        f'/platform/orgs/{oid}/delete',
+        data={
+            'confirm_slug': 'wrong',
+            'confirm_phrase': 'DELETE',
+            'admin_password': 'OpsPass123!',
+            'acknowledge': '1',
+        },
+        base_url=ADMIN_URL,
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    with app.app_context():
+        assert Organization.query.filter_by(slug='acmeco').first() is not None
+
+    # success
+    r = client.post(
+        f'/platform/orgs/{oid}/delete',
+        data={
+            'confirm_slug': 'acmeco',
+            'confirm_phrase': 'DELETE',
+            'admin_password': 'OpsPass123!',
+            'acknowledge': '1',
+        },
+        base_url=ADMIN_URL,
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'تم إلغاء العميل' in body or 'مسح' in body
+    with app.app_context():
+        assert Organization.query.filter_by(slug='acmeco').first() is None
+        assert Customer.query.filter_by(code='C-DEL').count() == 0
+
+
+def test_platform_cannot_delete_operator_org():
+    client = _client()
+    client.post(
+        '/login',
+        data={'username': 'opsadmin', 'password': 'OpsPass123!'},
+        base_url=ADMIN_URL,
+    )
+    with app.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        oid = org.id
+    r = client.post(
+        f'/platform/orgs/{oid}/delete',
+        data={
+            'confirm_slug': 'default',
+            'confirm_phrase': 'DELETE',
+            'admin_password': 'OpsPass123!',
+            'acknowledge': '1',
+        },
+        base_url=ADMIN_URL,
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    with app.app_context():
+        assert Organization.query.filter_by(slug='default').first() is not None
