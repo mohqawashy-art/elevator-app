@@ -1,4 +1,66 @@
 {# صلاحيات الدور «مخصص» — تظهر فقط عند اختيار هذا الدور #}
+<style>
+#lc-custom-perms-panel .lc-perms-group { margin-bottom: 14px; }
+#lc-custom-perms-panel .lc-perms-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  margin: 0 0 8px;
+}
+#lc-custom-perms-panel .lc-perms-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px 76px 76px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  font-size: 12px;
+}
+#lc-custom-perms-panel .lc-perms-grid > * {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+}
+#lc-custom-perms-panel .lc-perms-grid > *:nth-last-child(-n+4) {
+  border-bottom: none;
+}
+#lc-custom-perms-panel .lc-perm-head {
+  background: rgba(42, 127, 255, 0.14);
+  color: #7eb8ff;
+  font-weight: 600;
+  font-size: 11px;
+  justify-content: center;
+  text-align: center;
+}
+#lc-custom-perms-panel .lc-perm-head.lc-perm-page {
+  justify-content: flex-start;
+  text-align: right;
+}
+#lc-custom-perms-panel .lc-perm-page-cell {
+  justify-content: flex-start;
+  text-align: right;
+  color: var(--text1);
+}
+#lc-custom-perms-panel .lc-perm-check-cell {
+  justify-content: center;
+  text-align: center;
+}
+#lc-custom-perms-panel .lc-perm-check-cell label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+#lc-custom-perms-panel .lc-perm-check-cell input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+</style>
 <div id="lc-custom-perms-panel" class="lc-custom-perms-panel" style="display:none;margin-top:14px">
   <div class="card" style="border:1px dashed var(--border)">
     <div class="section">صلاحيات الدور المخصص</div>
@@ -7,39 +69,28 @@
       (إعدادات النظام والحذف الإداري تبقى للمسؤول فقط.)
     </p>
     {% for group in permission_groups %}
-    <div style="margin-bottom:14px">
-      <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px">{{ group.group_ar }}</div>
-      <div style="overflow:auto">
-        <table class="users-table" style="margin-top:0">
-          <thead>
-            <tr>
-              <th>الصفحة</th>
-              <th>قراءة</th>
-              <th>إضافة</th>
-              <th>تعديل</th>
-            </tr>
-          </thead>
-          <tbody>
+    <div class="lc-perms-group">
+      <div class="lc-perms-group-title">{{ group.group_ar }}</div>
+      <div class="lc-perms-grid" role="table" aria-label="{{ group.group_ar }}">
+        <div class="lc-perm-head lc-perm-page" role="columnheader">الصفحة</div>
+        <div class="lc-perm-head" role="columnheader">قراءة</div>
+        <div class="lc-perm-head" role="columnheader">إضافة</div>
+        <div class="lc-perm-head" role="columnheader">تعديل</div>
         {% for page in group.pages %}
-            <tr>
-              <td>{{ page.label_ar }}</td>
-              {% for action in ['read', 'create', 'edit'] %}
-              <td>
-                <label style="display:inline-flex;align-items:center;justify-content:center;width:100%;cursor:pointer">
-                  <input
-                    type="checkbox"
-                    name="perm_grant"
-                    value="{{ page.perms[action] }}"
-                    style="width:auto"
-                    {% if edit_user_perms is defined and page.perms[action] in edit_user_perms.grants %}checked{% endif %}
-                  >
-                </label>
-              </td>
-              {% endfor %}
-            </tr>
+        <div class="lc-perm-page-cell" role="rowheader">{{ page.label_ar }}</div>
+        {% for action in ['read', 'create', 'edit'] %}
+        <div class="lc-perm-check-cell" role="cell">
+          <label>
+            <input
+              type="checkbox"
+              name="perm_grant"
+              value="{{ page.perms[action] }}"
+              {% if edit_user_perms is defined and page.perms[action] in edit_user_perms.grants %}checked{% endif %}
+            >
+          </label>
+        </div>
         {% endfor %}
-          </tbody>
-        </table>
+        {% endfor %}
       </div>
     </div>
     {% endfor %}
@@ -49,11 +100,19 @@
 (function () {
   function syncPermissionRow(input) {
     if (!input) return;
-    var row = input.closest('tr');
-    if (!row) return;
-    var read = row.querySelector('input[value$=".read"]');
-    var create = row.querySelector('input[value$=".create"]');
-    var edit = row.querySelector('input[value$=".edit"]');
+    var checkCell = input.closest('.lc-perm-check-cell');
+    var grid = checkCell && checkCell.closest('.lc-perms-grid');
+    if (!grid) return;
+    var cells = Array.prototype.slice.call(grid.children);
+    var idx = cells.indexOf(checkCell);
+    if (idx < 4) return;
+    var rowStart = idx;
+    while (rowStart > 3 && !cells[rowStart].classList.contains('lc-perm-page-cell')) {
+      rowStart -= 1;
+    }
+    var read = cells[rowStart + 1] && cells[rowStart + 1].querySelector('input');
+    var create = cells[rowStart + 2] && cells[rowStart + 2].querySelector('input');
+    var edit = cells[rowStart + 3] && cells[rowStart + 3].querySelector('input');
     if (!read || !create || !edit) return;
     if (input === edit && edit.checked) {
       create.checked = true;
@@ -74,6 +133,7 @@
     if (!sel || !panel) return;
     panel.style.display = sel.value === 'custom' ? 'block' : 'none';
   }
+
   document.addEventListener('DOMContentLoaded', function () {
     var sel = document.querySelector('#panel-users select[name="role"]');
     if (sel) sel.addEventListener('change', syncCustomPermsPanel);
