@@ -3,20 +3,43 @@
   <div class="card" style="border:1px dashed var(--border)">
     <div class="section">صلاحيات الدور المخصص</div>
     <p class="hint" style="margin-bottom:12px;line-height:1.7">
-      اختر ما يمكن لهذا المستخدم <strong>عرضه</strong> و<strong>تعديله</strong>.
-      (حذف السجلات وإعدادات النظام للمسؤول فقط.)
+      لكل صفحة اختر ما يمكن لهذا المستخدم <strong>قراءته</strong> أو <strong>إضافته</strong> أو <strong>تعديله</strong>.
+      (إعدادات النظام والحذف الإداري تبقى للمسؤول فقط.)
     </p>
     {% for group in permission_groups %}
     <div style="margin-bottom:14px">
       <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px">{{ group.group_ar }}</div>
-      <div class="grid" style="gap:8px">
-        {% for item in group.permissions %}
-        <label class="full" style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border-radius:8px;cursor:pointer;font-size:13px">
-          <input type="checkbox" name="perm_grant" value="{{ item.key }}" style="width:auto"
-            {% if edit_user_perms is defined and item.key in edit_user_perms.grants %}checked{% endif %}>
-          {{ item.label_ar }}
-        </label>
+      <div style="overflow:auto">
+        <table class="users-table" style="margin-top:0">
+          <thead>
+            <tr>
+              <th>الصفحة</th>
+              <th>قراءة</th>
+              <th>إضافة</th>
+              <th>تعديل</th>
+            </tr>
+          </thead>
+          <tbody>
+        {% for page in group.pages %}
+            <tr>
+              <td>{{ page.label_ar }}</td>
+              {% for action in ['read', 'create', 'edit'] %}
+              <td>
+                <label style="display:inline-flex;align-items:center;justify-content:center;width:100%;cursor:pointer">
+                  <input
+                    type="checkbox"
+                    name="perm_grant"
+                    value="{{ page.perms[action] }}"
+                    style="width:auto"
+                    {% if edit_user_perms is defined and page.perms[action] in edit_user_perms.grants %}checked{% endif %}
+                  >
+                </label>
+              </td>
+              {% endfor %}
+            </tr>
         {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
     {% endfor %}
@@ -24,6 +47,27 @@
 </div>
 <script>
 (function () {
+  function syncPermissionRow(input) {
+    if (!input) return;
+    var row = input.closest('tr');
+    if (!row) return;
+    var read = row.querySelector('input[value$=".read"]');
+    var create = row.querySelector('input[value$=".create"]');
+    var edit = row.querySelector('input[value$=".edit"]');
+    if (!read || !create || !edit) return;
+    if (input === edit && edit.checked) {
+      create.checked = true;
+      read.checked = true;
+    } else if (input === create && create.checked) {
+      read.checked = true;
+    } else if (input === read && !read.checked) {
+      create.checked = false;
+      edit.checked = false;
+    } else if (input === create && !create.checked) {
+      edit.checked = false;
+    }
+  }
+
   function syncCustomPermsPanel() {
     var sel = document.querySelector('#panel-users select[name="role"]');
     var panel = document.getElementById('lc-custom-perms-panel');
@@ -33,6 +77,10 @@
   document.addEventListener('DOMContentLoaded', function () {
     var sel = document.querySelector('#panel-users select[name="role"]');
     if (sel) sel.addEventListener('change', syncCustomPermsPanel);
+    document.querySelectorAll('#lc-custom-perms-panel input[type="checkbox"][name="perm_grant"]').forEach(function (el) {
+      el.addEventListener('change', function () { syncPermissionRow(el); });
+      syncPermissionRow(el);
+    });
     syncCustomPermsPanel();
   });
 })();

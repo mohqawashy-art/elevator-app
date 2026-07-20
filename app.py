@@ -811,6 +811,11 @@ def has_perm(perm: str) -> bool:
 
 
 @app.template_global()
+def has_any_perm(*perms: str) -> bool:
+    return any(has_perm(perm) for perm in perms)
+
+
+@app.template_global()
 def csrf_token():
     from liftcore_security import ensure_csrf_token
     return ensure_csrf_token()
