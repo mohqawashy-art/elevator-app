@@ -21,7 +21,6 @@ def test_custom_role_user_gets_finance_only(client):
 
     with client.session_transaction() as sess:
         sess['user_id'] = uid
-        sess['session_version'] = 0
         sess['lang'] = 'ar'
 
     assert client.get('/invoices', follow_redirects=False).status_code == 200
@@ -47,7 +46,6 @@ def test_custom_role_can_write_when_granted(client):
 
     with client.session_transaction() as sess:
         sess['user_id'] = uid
-        sess['session_version'] = 0
         sess['lang'] = 'ar'
 
     r = client.post(

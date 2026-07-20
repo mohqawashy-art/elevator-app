@@ -208,30 +208,7 @@ def current_user():
         return None
     if not user or not user.is_active:
         return None
-    # سياسة الترخيص: جلسة مكتب واحدة لكل مستخدم — دخول جديد يُنهي الجلسات القديمة
-    cookie_ver = session.get('session_version')
-    db_ver = int(getattr(user, 'session_version', None) or 0)
-    try:
-        cookie_ver_i = int(cookie_ver) if cookie_ver is not None else None
-    except (TypeError, ValueError):
-        cookie_ver_i = None
-    if cookie_ver_i is None or cookie_ver_i != db_ver:
-        session.clear()
-        session['login_notice'] = (
-            'تم إنهاء جلستك لأن الحساب سُجّل دخوله من جهاز أو متصفح آخر. '
-            'كل مستخدم مسموح له بجلسة واحدة فقط حسب سياسة الترخيص.'
-        )
-        return None
     return user
-
-
-def bump_user_session_version(user, *, bind_current_session: bool = False) -> int:
-    """يزيد رقم جلسة المستخدم (يُبطل الكوكيز القديمة)."""
-    ver = int(getattr(user, 'session_version', None) or 0) + 1
-    user.session_version = ver
-    if bind_current_session and session.get('user_id') == user.id:
-        session['session_version'] = ver
-    return ver
 
 
 def require_login():
@@ -1174,7 +1151,6 @@ def _sqlite_legacy_schema_patches():
                 ('photo_path', 'VARCHAR(300)'),
                 ('must_change_password', 'BOOLEAN'),
                 ('permissions_extra', 'TEXT'),
-                ('session_version', 'INTEGER DEFAULT 0'),
             ],
             'faults': [
                 ('visit_id', 'INTEGER'),
@@ -1767,10 +1743,8 @@ def _load_login_handoff_token(token: str, *, max_age: int = 180) -> dict | None:
 
 def _complete_user_login(user, *, next_url: str | None = None):
     """ضبط الجلسة بعد تحقق كلمة المرور."""
-    bump_user_session_version(user)
     session.clear()
     session['user_id'] = user.id
-    session['session_version'] = int(user.session_version or 0)
     session['username'] = user.full_name or user.username
     form_lang = (request.form.get('lang') or '').strip()
     if form_lang in ('ar', 'en'):
@@ -1919,8 +1893,6 @@ def login():
                     error = 'بيانات الدخول غير صحيحة — تحقق من المنشأة واسم المستخدم وكلمة المرور'
                 else:
                     error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
-    if not error:
-        error = session.pop('login_notice', None)
     return render_template(
         'login.html',
         error=error,
@@ -9496,7 +9468,6 @@ def settings_user_edit(user_id):
             session['settings_notice'] = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.'
             return _settings_redirect('users', edit_user=target.id)
         target.password_hash = hash_password(new_pass)
-        bump_user_session_version(target)  # يُنهي جلسات ذلك المستخدم فوراً
         session['settings_generated_username'] = target.username
         session['settings_generated_password'] = new_pass
     from liftcore_permissions import dump_permissions_extra, permissions_grants_from_form
@@ -9554,7 +9525,6 @@ def settings_change_password():
 
     user.password_hash = hash_password(new_pass)
     user.must_change_password = False
-    bump_user_session_version(user, bind_current_session=True)
     db.session.commit()
     from audit_log import log_audit
     log_audit('password_changed', user=user)

@@ -925,7 +925,6 @@ class User(TenantMixin, db.Model):
     is_active       = db.Column(db.Boolean, default=True)
     must_change_password = db.Column(db.Boolean, default=False)
     permissions_extra = db.Column(db.Text)  # JSON: {"grants":[],"denies":[]} — اختياري
-    session_version = db.Column(db.Integer, default=0, nullable=False)  # جلسة واحدة: يزيد عند كل دخول جديد
     last_login      = db.Column(db.DateTime)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 

@@ -82,12 +82,8 @@ def _tenant_client(user_id: int, base_url: str):
     client = app.test_client()
     app.config['TESTING'] = True
     app.config['SESSION_COOKIE_SECURE'] = False
-    with app.app_context():
-        user = db.session.get(User, user_id)
-        ver = int(getattr(user, 'session_version', None) or 0) if user else 0
     with client.session_transaction() as sess:
         sess['user_id'] = user_id
-        sess['session_version'] = ver
         sess['lang'] = 'ar'
     return client, base_url
 
