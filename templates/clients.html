@@ -508,7 +508,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <div class="filters-bar">
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-          <input type="text" class="search-input" id="search-input" placeholder="بحث بالاسم أو رقم العميل أو المسؤول أو الهاتف..." oninput="filterTable()">
+          <input type="text" class="search-input" id="search-input" placeholder="بحث بالاسم أو الهاتف أو الكود..." oninput="filterTable()">
         </div>
         <select class="filter-select" id="f-city" onchange="filterTable()">
           <option value="">كل المدن</option>
@@ -529,12 +529,11 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           <table>
             <thead>
               <tr>
-                <th class="th-sort" data-sort-col="code">رقم العميل <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="name">اسم العميل <span class="sort-ind"></span></th>
-                <th class="th-sort" data-sort-col="contact">المسؤول <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="city">المدينة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="district">الحي <span class="sort-ind"></span></th>
-                <th class="th-sort" data-sort-col="phone">أرقام التواصل <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="phone">الهاتف <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
@@ -1130,33 +1129,6 @@ function waButtonHtml(phone, name) {
   return '<button type="button" class="btn-wa" data-wa-phone=' + JSON.stringify(String(phone)) + ' data-wa-name=' + JSON.stringify(String(name || '')) + '>' +
     '<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg> ' + lcDisp('واتساب') + '</button>';
 }
-
-function clientPhonesSame(a, b) {
-  if (!a || !b) return false;
-  return phoneKeyFromFull(a) === phoneKeyFromFull(b);
-}
-
-function clientTablePhonesHtml(c) {
-  var pContact = (c.phone2 || '').trim();
-  var pMobile = (c.phone || '').trim();
-  var lines = [];
-  if (pContact && pMobile && clientPhonesSame(pContact, pMobile)) {
-    lines.push({ label: 'المسؤول / الجوال', phone: pContact, waName: c.contact || lcClient(c) });
-  } else {
-    if (pContact) lines.push({ label: 'المسؤول', phone: pContact, waName: c.contact || lcClient(c) });
-    if (pMobile) lines.push({ label: 'الجوال', phone: pMobile, waName: lcClient(c) });
-  }
-  if (!lines.length) return '—';
-  return '<div style="display:flex;flex-direction:column;gap:4px">' +
-    lines.map(function(row) {
-      return '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
-        '<span style="font-size:10px;color:var(--text3);min-width:52px">' + lcDisp(row.label) + '</span>' +
-        '<span style="direction:ltr;font-family:var(--font-en)">' + row.phone + '</span>' +
-        waButtonHtml(row.phone, row.waName) +
-      '</div>';
-    }).join('') +
-  '</div>';
-}
 document.addEventListener('click', function (e) {
   var btn = e.target.closest('.btn-wa[data-wa-phone]');
   if (!btn) return;
@@ -1269,13 +1241,12 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   getters: {
     code: function (c) { return c.code; },
     name: function (c) { return lcClient(c); },
-    contact: function (c) { return c.contact || ''; },
     city: function (c) { return c.city || ''; },
     district: function (c) { return c.district || ''; },
     elevators: function (c) { return c.elevators || 0; },
     contract_status: function (c) { return c.contract_status || ''; },
     status: function (c) { return c.status || ''; },
-    phone: function (c) { return (c.phone2 || c.phone || ''); },
+    phone: function (c) { return c.phone || ''; },
   },
   onChange: function () { renderTable(filtered); },
 }) : null;
@@ -1309,16 +1280,18 @@ function renderTable(data) {
       : ('عرض ' + data.length + ' من ' + CUSTOMERS.length);
   }
   if(!pg.rows.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text3)">' + lcDisp('لا توجد بيانات — اضغط إضافة عميل للبدء') + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text3)">' + lcDisp('لا توجد بيانات — اضغط إضافة عميل للبدء') + '</td></tr>';
     return;
   }
   tbody.innerHTML = pg.rows.map(c => '<tr>' +
     '<td class="td-code" style="cursor:pointer;color:var(--accent)" onclick="openClientCard(' + c.id + ')">' + c.code + '</td>' +
     '<td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="openClientCard(' + c.id + ')">' + lcClient(c) + '</td>' +
-    '<td>' + lcDisp(c.contact||'—') + '</td>' +
     '<td>' + lcDisp(c.city||'—') + '</td>' +
     '<td>' + lcDisp(c.district||'—') + '</td>' +
-    '<td>' + clientTablePhonesHtml(c) + '</td>' +
+    '<td><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+      '<span style="direction:ltr;font-family:var(--font-en)">' + (c.phone||'—') + '</span>' +
+      waButtonHtml(c.phone, lcClient(c)) +
+    '</div></td>' +
     '<td style="text-align:center;font-family:var(--font-en)">' + c.elevators + '</td>' +
     '<td><span class="badge ' + (CONTRACT_B[c.contract_status]||'badge-cancelled') + '">' + lcDisp(c.contract_status) + '</span></td>' +
     '<td><span class="badge ' + (STATUS_B[clientAccountStatus(c)]||'badge-active') + '">' + lcDisp(clientAccountStatus(c)) + '</span></td>' +
@@ -1337,7 +1310,7 @@ function filterTable() {
   var cs = document.getElementById('f-contract').value||'';
   var st = document.getElementById('f-status').value||'';
   filtered = CUSTOMERS.filter(function(c) {
-    return (!s  || (c.name||'').includes(s)||String(c.code||'').toLowerCase().includes(s)||(c.contact||'').includes(s)||(c.phone||'').includes(s)||(c.phone2||'').includes(s)||(c.district||'').includes(s)) &&
+    return (!s  || (c.name||'').includes(s)||String(c.code||'').toLowerCase().includes(s)||(c.phone||'').includes(s)||(c.district||'').includes(s)) &&
            (!ct || c.city===ct) &&
            (!cs || c.contract_status===cs) &&
            (!st || clientAccountStatus(c)===st);
@@ -1494,7 +1467,7 @@ function openClientCard(id) {
     '</div>' +
     '<div class="client-card-section">' + lcDisp('البيانات الأساسية') + '</div>' +
     '<div class="client-card-grid">' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('رقم العميل') + '</div><div class="client-card-val" style="font-family:var(--font-en);color:var(--accent)">' + c.code + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الكود') + '</div><div class="client-card-val" style="font-family:var(--font-en);color:var(--accent)">' + c.code + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الاسم') + '</div><div class="client-card-val">' + lcClient(c) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('حالة العميل') + '</div><div class="client-card-val">' + clientStatusBadge(c) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('المدينة') + '</div><div class="client-card-val">' + lcDisp(c.city||'—') + '</div></div>' +
