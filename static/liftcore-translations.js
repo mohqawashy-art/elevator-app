@@ -10,6 +10,7 @@ window.__LC_TRANSLATIONS = {
   'تفاصيل': 'Details',
   'بحث بالاسم أو الهاتف أو الكود...': 'Search by name, phone, or code...',
   'أرقام التواصل': 'Contact Numbers',
+  'هاتف المسؤول': 'Contact Phone',
   'كل المدن': 'All Cities',
   'حالة العقد': 'Contract Status',
   'على وشك الانتهاء': 'Expiring Soon',
