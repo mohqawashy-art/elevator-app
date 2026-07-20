@@ -9,6 +9,7 @@ window.__LC_TRANSLATIONS = {
   'مواقع GPS دقيقة': 'Accurate GPS Locations',
   'تفاصيل': 'Details',
   'بحث بالاسم أو الهاتف أو الكود...': 'Search by name, phone, or code...',
+  'أرقام التواصل': 'Contact Numbers',
   'كل المدن': 'All Cities',
   'حالة العقد': 'Contract Status',
   'على وشك الانتهاء': 'Expiring Soon',
