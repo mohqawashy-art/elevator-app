@@ -3,6 +3,10 @@
 /** @param {import('@playwright/test').Page} page */
 async function loginAsAdmin(page) {
   await page.goto('/login');
+  const org = page.locator('#org');
+  if (await org.count()) {
+    await org.fill('default');
+  }
   await page.locator('#user').fill('admin');
   await page.locator('#pass').fill('E2ePass123!');
   await page.locator('#loginBtn').click();
