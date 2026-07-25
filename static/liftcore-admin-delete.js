@@ -27,20 +27,16 @@
   }
 
   function postDelete(url, password) {
-    var isJson = url.indexOf('/api/') !== -1;
     var opts = {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'X-LC-Admin-Delete': '1' },
+      headers: {
+        'X-LC-Admin-Delete': '1',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ admin_password: password }),
     };
-    if (isJson) {
-      opts.headers['Content-Type'] = 'application/json';
-      opts.body = JSON.stringify({ admin_password: password });
-    } else {
-      var fd = new FormData();
-      fd.append('admin_password', password);
-      opts.body = fd;
-    }
     return fetch(url, opts).then(function (res) {
       if (res.status === 403 || res.status === 401) {
         return res.json().catch(function () { return {}; }).then(function (data) {
@@ -48,7 +44,9 @@
         });
       }
       if (!res.ok && !res.redirected) {
-        throw new Error(msg('تعذّر الحذف', 'Delete failed'));
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          throw new Error(data.message || msg('تعذّر الحذف', 'Delete failed'));
+        });
       }
       return res;
     });
@@ -56,9 +54,14 @@
 
   function openModal(modal) {
     if (!modal) return;
+    /* اجعل نافذة التأكيد فوق أي modal مفتوح (مثل تعديل الفني) */
+    if (modal.parentNode) modal.parentNode.appendChild(modal);
+    modal.style.zIndex = '9500';
     modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
     var inp = modal.querySelector('.lc-admin-delete-password');
     if (inp) {
+      inp.value = '';
       setTimeout(function () { inp.focus(); }, 80);
     }
   }
@@ -66,6 +69,7 @@
   function closeModal(modal) {
     if (!modal) return;
     modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
     clearPassword(modal);
   }
 
@@ -118,17 +122,18 @@
   /** حوار كامل (رسالة + كلمة مرور) */
   function confirm(opts) {
     opts = opts || {};
-    if (!guardAdmin()) return Promise.reject();
+    if (!guardAdmin()) return Promise.reject(new Error('not admin'));
     var modal = document.getElementById('lc-admin-delete-modal');
     if (!modal) {
-      if (!opts.url) return Promise.reject();
+      if (!opts.url) return Promise.reject(new Error('no url'));
       var pwd = global.prompt(msg('كلمة مرور المسؤول للحذف:', 'Admin password to delete:'));
-      if (!pwd) return Promise.reject();
-      return postDelete(opts.url, pwd).then(opts.onSuccess || function () { global.location.reload(); });
+      if (!pwd) return Promise.reject(new Error('cancelled'));
+      return postDelete(opts.url, pwd);
     }
     var msgEl = modal.querySelector('[data-lc-delete-message]');
     if (msgEl) msgEl.textContent = opts.message || msg('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete?');
     modal.dataset.lcDeleteUrl = opts.url || '';
+    modal._lcOnSuccess = typeof opts.onSuccess === 'function' ? opts.onSuccess : null;
     openModal(modal);
     return new Promise(function (resolve, reject) {
       modal._lcResolve = resolve;
@@ -150,9 +155,16 @@
     if (btn) btn.disabled = true;
     postDelete(url, pwd)
       .then(function (res) {
+        var onSuccess = modal._lcOnSuccess;
+        var resolve = modal._lcResolve;
+        modal._lcOnSuccess = null;
+        modal._lcResolve = null;
+        modal._lcReject = null;
         closeModal(modal);
-        if (modal._lcResolve) modal._lcResolve(res);
+        if (typeof onSuccess === 'function') onSuccess(res);
+        else if (res.redirected) global.location.href = res.url;
         else global.location.reload();
+        if (resolve) resolve(res);
       })
       .catch(function (err) {
         alert(err.message || msg('تعذّر الحذف', 'Delete failed'));
@@ -189,9 +201,11 @@
     submitForm: submitForm,
     post: function (url, opts) {
       opts = opts || {};
-      return confirm({ url: url, message: opts.message || '' }).then(
-        opts.onSuccess || function () { global.location.reload(); }
-      );
+      return confirm({
+        url: url,
+        message: opts.message || '',
+        onSuccess: opts.onSuccess || function () { global.location.reload(); },
+      });
     },
   };
 

@@ -824,13 +824,25 @@ function renderExistingDocs(docs, techId) {
 }
 
 function deleteTechDocument(docId, techId) {
+  if (!window.LiftCoreAdminDelete) {
+    alert('تعذّر تحميل أداة الحذف — حدّث الصفحة وحاول مجدداً');
+    return;
+  }
   LiftCoreAdminDelete.post('/technicians/documents/delete/' + docId, {
     message: 'حذف هذا المستند؟',
     onSuccess: function () {
       var t = TECHNICIANS.find(function(x) { return x.id === techId; });
-      if (t && t.docs) t.docs = t.docs.filter(function(d) { return d.id !== docId; });
-      renderExistingDocs(t ? t.docs : [], techId);
-      if (currentViewId === techId) viewTech(techId);
+      if (t && t.docs) {
+        t.docs = t.docs.filter(function(d) { return d.id !== docId; });
+        t.documents = t.docs.length;
+      }
+      if (document.getElementById('modal-add') && document.getElementById('modal-add').classList.contains('open')) {
+        renderExistingDocs(t ? t.docs : [], techId);
+      }
+      if (currentViewId === techId && document.getElementById('modal-view') && document.getElementById('modal-view').classList.contains('open')) {
+        var box = document.getElementById('tech-docs-data');
+        if (box) box.innerHTML = renderDocumentsGrid(t ? t.docs : [], techId);
+      }
     }
   });
 }
@@ -851,7 +863,8 @@ function renderDocumentsGrid(docs, techId) {
         '<div class="doc-title">' + esc(d.title) + '</div>' +
         '<div class="doc-date">' + esc(d.uploaded_at || '') + '</div>' +
         '<div class="doc-actions">' +
-          '<a class="btn btn-secondary btn-sm" href="' + esc(d.url) + '" target="_blank" rel="noopener">عرض</a>' +
+          '<a class="btn btn-secondary btn-sm" href="' + esc(d.url) + '" target="_blank" rel="noopener">عرض</a> ' +
+          '<button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="event.stopPropagation();deleteTechDocument(' + d.id + ',' + techId + ')">حذف</button>' +
         '</div>' +
       '</div></div>';
   });
