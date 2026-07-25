@@ -603,8 +603,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <input type="date" lang="en-GB" id="f-install-date" style="direction:ltr" onchange="onInstallDateChange()">
           </div>
           <div class="field">
+            <label>مدة الضمان</label>
+            <select id="f-warranty-years" onchange="calcWarrantyEnd()">
+              <option value="0">لا يوجد ضمان</option>
+              <option value="1">سنة</option>
+              <option value="2">سنتان</option>
+            </select>
+          </div>
+          <div class="field">
             <label>انتهاء الضمان</label>
-            <input type="date" lang="en-GB" id="f-warranty" style="direction:ltr">
+            <input type="date" lang="en-GB" id="f-warranty" style="direction:ltr" onchange="onWarrantyEndManualChange()" title="يُحسب تلقائياً من مدة الضمان وتاريخ التركيب">
           </div>
           <div class="field">
             <label>آخر صيانة</label>
@@ -1136,6 +1144,61 @@ function onInstallDateChange() {
     lastEl.value = installEl.value;
   }
   calcElevMaintDates();
+  calcWarrantyEnd();
+}
+
+/** يحسب انتهاء الضمان من تاريخ التركيب + مدة الضمان */
+function calcWarrantyEnd() {
+  var yearsEl = document.getElementById('f-warranty-years');
+  var warrantyEl = document.getElementById('f-warranty');
+  var installEl = document.getElementById('f-install-date');
+  if (!yearsEl || !warrantyEl) return;
+  var years = parseInt(yearsEl.value, 10) || 0;
+  if (years <= 0) {
+    warrantyEl.value = '';
+    return;
+  }
+  var base = (installEl && installEl.value) ? installEl.value : todayISODate();
+  warrantyEl.value = addMonthsToDate(base, years * 12);
+}
+
+function onWarrantyEndManualChange() {
+  /* إذا عدّل المستخدم التاريخ يدوياً نحدّث قائمة المدة إن أمكن */
+  syncWarrantyYearsFromDates();
+}
+
+function syncWarrantyYearsFromDates() {
+  var yearsEl = document.getElementById('f-warranty-years');
+  var warrantyEl = document.getElementById('f-warranty');
+  var installEl = document.getElementById('f-install-date');
+  if (!yearsEl || !warrantyEl) return;
+  if (!warrantyEl.value) {
+    yearsEl.value = '0';
+    return;
+  }
+  if (!installEl || !installEl.value) return;
+  var start = new Date(installEl.value + 'T12:00:00');
+  var end = new Date(warrantyEl.value + 'T12:00:00');
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+    yearsEl.value = '0';
+    return;
+  }
+  var months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  if (months >= 18 && months <= 30) yearsEl.value = '2';
+  else if (months >= 6 && months <= 18) yearsEl.value = '1';
+  else yearsEl.value = '0';
+}
+
+function warrantyDurationLabel(installDate, warrantyEnd) {
+  if (!warrantyEnd) return 'لا يوجد ضمان';
+  if (!installDate) return warrantyEnd;
+  var start = new Date(installDate + 'T12:00:00');
+  var end = new Date(warrantyEnd + 'T12:00:00');
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return warrantyEnd;
+  var months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  if (months >= 18 && months <= 30) return 'سنتان';
+  if (months >= 6 && months <= 18) return 'سنة';
+  return warrantyEnd;
 }
 
 function resetElevatorForm() {
@@ -1160,6 +1223,8 @@ function resetElevatorForm() {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
+  var warrantyYears = document.getElementById('f-warranty-years');
+  if (warrantyYears) warrantyYears.value = '0';
   var maintFreq = document.getElementById('f-maint-freq');
   if (maintFreq) maintFreq.selectedIndex = 0;
   document.getElementById('f-elev-city').value = '';
@@ -1262,6 +1327,7 @@ function editElevator(id) {
   updateMachineHint();
   document.getElementById('f-install-date').value = e.install_date || '';
   document.getElementById('f-warranty').value = e.warranty_end || '';
+  syncWarrantyYearsFromDates();
   document.getElementById('f-last-maint').value = e.last_maint || '';
   document.getElementById('f-next-maint').value = e.next_maint || '';
   document.getElementById('f-maint-freq').value = e.maint_freq || 'شهري';
@@ -1322,6 +1388,7 @@ function viewElevator(id) {
       viewItem('تفاصيل إضافية', esc(e.control_detail || '—'), { full: true, style: 'font-family:var(--font-en)' }) +
       '<div class="view-section">' + lcDisp('الصيانة والحالة') + '</div>' +
       viewItem('تاريخ التركيب', esc(e.install_date || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
+      viewItem('مدة الضمان', esc(lcDisp(warrantyDurationLabel(e.install_date, e.warranty_end)))) +
       viewItem('انتهاء الضمان', esc(e.warranty_end || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
       viewItem('آخر صيانة', esc(e.last_maint || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
       viewItem('الصيانة القادمة', esc(e.next_maint || '—'), { style: 'direction:ltr;font-family:var(--font-en)' }) +
