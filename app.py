@@ -1230,6 +1230,13 @@ def _sqlite_legacy_schema_patches():
                 ('name_en', 'VARCHAR(100)'),
                 ('signature_path', 'VARCHAR(300)'),
                 ('sign_pin_hash', 'VARCHAR(200)'),
+                ('nationality', 'VARCHAR(100)'),
+                ('experience_years', 'INTEGER'),
+                ('email', 'VARCHAR(120)'),
+                ('national_id_expiry', 'DATE'),
+                ('license_number', 'VARCHAR(50)'),
+                ('license_expiry', 'DATE'),
+                ('districts_json', 'TEXT'),
             ],
             'customers': [
                 ('name_en', 'VARCHAR(200)'),
@@ -4948,6 +4955,8 @@ def _upload_url_fast(relative_path: str) -> str:
 
 def batch_technician_list_meta(techs, today=None) -> dict[int, dict]:
     """إحصاءات وحالة عرض لكل الفنيين باستعلامات مجمّعة بدل N+1."""
+    from collections import defaultdict
+
     from sqlalchemy import func
 
     from models import FaultTechnician, VisitTechnician
@@ -4957,20 +4966,41 @@ def batch_technician_list_meta(techs, today=None) -> dict[int, dict]:
     if not ids:
         return {}
 
-    visit_counts = dict(
+    visit_sets: dict[int, set] = defaultdict(set)
+    for tid, vid in (
         tenant_query(MaintenanceVisit)
-        .with_entities(MaintenanceVisit.technician_id, func.count())
+        .with_entities(MaintenanceVisit.technician_id, MaintenanceVisit.id)
         .filter(MaintenanceVisit.technician_id.in_(ids))
-        .group_by(MaintenanceVisit.technician_id)
         .all()
-    )
-    fault_counts = dict(
+    ):
+        if tid and vid:
+            visit_sets[int(tid)].add(int(vid))
+    for tid, vid in (
+        tenant_query(VisitTechnician)
+        .with_entities(VisitTechnician.technician_id, VisitTechnician.visit_id)
+        .filter(VisitTechnician.technician_id.in_(ids))
+        .all()
+    ):
+        if tid and vid:
+            visit_sets[int(tid)].add(int(vid))
+
+    fault_sets: dict[int, set] = defaultdict(set)
+    for tid, fid in (
         tenant_query(Fault)
-        .with_entities(Fault.technician_id, func.count())
+        .with_entities(Fault.technician_id, Fault.id)
         .filter(Fault.technician_id.in_(ids))
-        .group_by(Fault.technician_id)
         .all()
-    )
+    ):
+        if tid and fid:
+            fault_sets[int(tid)].add(int(fid))
+    for tid, fid in (
+        tenant_query(FaultTechnician)
+        .with_entities(FaultTechnician.technician_id, FaultTechnician.fault_id)
+        .filter(FaultTechnician.technician_id.in_(ids))
+        .all()
+    ):
+        if tid and fid:
+            fault_sets[int(tid)].add(int(fid))
 
     busy_visit = {
         int(r[0])
@@ -5041,8 +5071,8 @@ def batch_technician_list_meta(techs, today=None) -> dict[int, dict]:
         else:
             display = raw if raw in ('متاح', 'مشغول') else 'متاح'
         out[t.id] = {
-            'visits': int(visit_counts.get(t.id, 0) or 0),
-            'faults': int(fault_counts.get(t.id, 0) or 0),
+            'visits': len(visit_sets.get(t.id, ())),
+            'faults': len(fault_sets.get(t.id, ())),
             'display_status': display,
         }
     return out
@@ -5053,6 +5083,8 @@ app.jinja_env.globals['technician_display_status'] = technician_display_status
 
 def technician_to_js_dict(t, *, meta: dict | None = None):
     """تسلسل فني لـ JSON (حالة العرض تُحسب مرة واحدة في السيرفر)."""
+    import json as _json
+
     docs = []
     for d in sorted(t.documents, key=lambda x: x.uploaded_at or datetime.min, reverse=True):
         fname = d.file_name or ''
@@ -5066,6 +5098,17 @@ def technician_to_js_dict(t, *, meta: dict | None = None):
             'is_pdf': fname.lower().endswith('.pdf'),
             'uploaded_at': d.uploaded_at.strftime('%Y-%m-%d') if d.uploaded_at else '',
         })
+    districts = []
+    raw_dist = getattr(t, 'districts_json', None) or ''
+    if raw_dist:
+        try:
+            parsed = _json.loads(raw_dist)
+            if isinstance(parsed, list):
+                districts = [str(x) for x in parsed if x]
+            elif isinstance(parsed, str) and parsed.strip():
+                districts = [parsed.strip()]
+        except (_json.JSONDecodeError, TypeError):
+            districts = [x.strip() for x in str(raw_dist).split(',') if x.strip()]
     meta = meta or {}
     return {
         'id': t.id,
@@ -5078,9 +5121,22 @@ def technician_to_js_dict(t, *, meta: dict | None = None):
         'specialization': t.specialization or '',
         'team': t.team or 'عام',
         'city': t.city or '',
+        'nationality': getattr(t, 'nationality', None) or '',
+        'experience_years': getattr(t, 'experience_years', None),
+        'email': getattr(t, 'email', None) or '',
         'national_id': t.national_id or '',
+        'national_id_expiry': (
+            t.national_id_expiry.isoformat()
+            if getattr(t, 'national_id_expiry', None) else ''
+        ),
+        'license_number': getattr(t, 'license_number', None) or '',
+        'license_expiry': (
+            t.license_expiry.isoformat()
+            if getattr(t, 'license_expiry', None) else ''
+        ),
+        'districts': districts,
         'hire_date': t.hire_date.isoformat() if t.hire_date else '',
-        'salary': t.salary or 0,
+        'salary': t.salary if t.salary is not None else '',
         'emergency': bool(t.emergency),
         'status': t.status or 'متاح',
         'display_status': meta.get('display_status') or technician_display_status(t),
@@ -5101,22 +5157,73 @@ app.jinja_env.globals['fault_technicians_label'] = _fault_technicians_label_jinj
 app.jinja_env.globals['visit_technicians_label'] = _visit_technicians_label_jinja
 
 
+TECH_TEAMS_ALLOWED = frozenset({'عام', 'صيانة', 'أعطال'})
+TECH_STATUS_ALLOWED = frozenset({'متاح', 'مشغول', 'إجازة', 'غير نشط'})
+
+
 def _apply_technician_form(t, form):
-    t.name = form['name']
-    t.name_en = form.get('name_en', '')
-    t.phone = form.get('phone', '')
-    t.phone2 = form.get('phone2', '')
-    t.job_title = form.get('job_title', '')
-    t.specialization = form.get('specialization', '')
-    t.city = form.get('city', '')
-    t.national_id = form.get('national_id', '')
+    import json as _json
+
+    name = (form.get('name') or '').strip()
+    if not name:
+        raise ValueError('اسم الفني مطلوب')
+    t.name = name
+    t.name_en = (form.get('name_en') or '').strip()
+    t.phone = (form.get('phone') or '').strip()
+    t.phone2 = (form.get('phone2') or '').strip()
+    t.job_title = (form.get('job_title') or '').strip()
+    t.specialization = (form.get('specialization') or '').strip()
+    t.city = (form.get('city') or '').strip()
+    t.nationality = (form.get('nationality') or '').strip()
+    t.email = (form.get('email') or '').strip()
+    nid = (form.get('national_id') or '').strip()
+    if nid:
+        q = tenant_query(Technician).filter(Technician.national_id == nid)
+        if getattr(t, 'id', None):
+            q = q.filter(Technician.id != t.id)
+        if q.first():
+            raise ValueError('رقم الإقامة مسجّل لفني آخر')
+    t.national_id = nid
+    t.national_id_expiry = _parse_date(form.get('national_id_expiry') or form.get('iqama_expiry'))
+    t.license_number = (form.get('license_number') or form.get('license') or '').strip()
+    t.license_expiry = _parse_date(form.get('license_expiry'))
+    exp_raw = form.get('experience_years')
+    if exp_raw in (None, ''):
+        t.experience_years = None
+    else:
+        try:
+            t.experience_years = max(0, int(float(exp_raw)))
+        except (TypeError, ValueError) as exc:
+            raise ValueError('سنوات الخبرة غير صالحة') from exc
+    districts = []
+    if hasattr(form, 'getlist'):
+        districts = [str(x).strip() for x in form.getlist('districts') if str(x).strip()]
+    if not districts:
+        raw = (form.get('districts_json') or form.get('districts') or '').strip()
+        if raw.startswith('['):
+            try:
+                parsed = _json.loads(raw)
+                if isinstance(parsed, list):
+                    districts = [str(x).strip() for x in parsed if str(x).strip()]
+            except _json.JSONDecodeError:
+                districts = []
+        elif raw:
+            districts = [x.strip() for x in raw.split(',') if x.strip()]
+    t.districts_json = _json.dumps(districts, ensure_ascii=False) if districts else ''
     t.hire_date = _parse_date(form.get('hire_date'))
     salary = form.get('salary')
-    t.salary = float(salary) if salary not in (None, '') else None
+    try:
+        t.salary = float(salary) if salary not in (None, '') else None
+    except (TypeError, ValueError) as exc:
+        raise ValueError('الراتب غير صالح') from exc
     t.emergency = form.get('emergency') == 'on'
-    t.status = form.get('status', 'متاح')
-    t.team = form.get('team', 'عام') or 'عام'
-    t.notes = form.get('notes', '')
+    status = (form.get('status') or 'متاح').strip()
+    if status == 'نشط':
+        status = 'متاح'
+    t.status = status if status in TECH_STATUS_ALLOWED else 'متاح'
+    team = (form.get('team') or 'عام').strip()
+    t.team = team if team in TECH_TEAMS_ALLOWED else 'عام'
+    t.notes = (form.get('notes') or '').strip()
 
 
 def _tech_dir(tech_id, sub=''):
@@ -5195,7 +5302,12 @@ def _save_technician_signature(tech, file_storage, pin_plain=''):
     from signature_auth import normalize_national_id, validate_sign_pin
 
     pin = str(pin_plain or '').strip()
-    has_file = file_storage and file_storage.filename and _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT)
+    has_file = bool(file_storage and file_storage.filename)
+    if has_file:
+        ok, err = _upload_ok(file_storage, ALLOWED_TECH_PHOTO_EXT)
+        if not ok:
+            raise ValueError('صورة التوقيع: ' + (err or 'غير صالحة'))
+        has_file = _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT)
     existing = tenant_query(Signatory).filter_by(technician_id=tech.id, is_active=True).first()
     if not has_file and not pin and not existing:
         return
@@ -5207,9 +5319,33 @@ def _save_technician_signature(tech, file_storage, pin_plain=''):
         if existing:
             existing.sign_pin_hash = tech.sign_pin_hash
         return
+    if has_file and not pin and not tech.sign_pin_hash and not existing:
+        raise ValueError('كلمة مرور التوقيع (6 أرقام) مطلوبة مع صورة التوقيع')
     if not tech.national_id:
         raise ValueError('أدخل رقم الإقامة في الوثائق الرسمية قبل حفظ التوقيع')
     raw = file_storage.read() if has_file else None
+    if has_file and not pin and tech.sign_pin_hash and not existing:
+        # إنشاء موقّع من الهاش الحالي بدون طلب PIN جديد
+        from models import Signatory as _Signatory
+        from signature_crypto import save_encrypted_signature
+        nid = normalize_national_id(tech.national_id)
+        row = _Signatory(
+            name=(tech.name or '').strip(),
+            national_id=nid,
+            role='technician',
+            technician_id=tech.id,
+            sign_pin_hash=tech.sign_pin_hash,
+            is_active=True,
+        )
+        assign_organization(row)
+        db.session.add(row)
+        db.session.flush()
+        if raw:
+            row.signature_path = save_encrypted_signature(
+                app.root_path, app.config['SECRET_KEY'], row.id, raw
+            )
+        tech.signature_path = row.signature_path
+        return
     row = upsert_signatory(
         name=tech.name,
         national_id=tech.national_id,
@@ -5229,8 +5365,9 @@ def _save_technician_signature(tech, file_storage, pin_plain=''):
 def _save_technician_photo(tech, file_storage):
     if not file_storage or not file_storage.filename:
         return
-    if not _ext_ok(file_storage.filename, ALLOWED_TECH_PHOTO_EXT):
-        return
+    ok, err = _upload_ok(file_storage, ALLOWED_TECH_PHOTO_EXT)
+    if not ok:
+        raise ValueError('صورة الفني: ' + (err or 'نوع الملف غير مسموح'))
     ext = file_storage.filename.rsplit('.', 1)[1].lower()
     folder = _tech_dir(tech.id)
     for old in os.listdir(folder):
@@ -5249,10 +5386,13 @@ def _save_technician_documents(tech, files, types, titles):
     if not files:
         return
     docs_folder = _tech_dir(tech.id, 'docs')
+    errors = []
     for i, file_storage in enumerate(files):
         if not file_storage or not file_storage.filename:
             continue
-        if not _ext_ok(file_storage.filename, ALLOWED_TECH_DOC_EXT):
+        ok, err = _upload_ok(file_storage, ALLOWED_TECH_DOC_EXT)
+        if not ok:
+            errors.append(f'{file_storage.filename}: {err or "نوع غير مسموح"}')
             continue
         original = secure_filename(file_storage.filename) or 'document'
         ext = original.rsplit('.', 1)[1].lower() if '.' in original else 'pdf'
@@ -5267,10 +5407,12 @@ def _save_technician_documents(tech, files, types, titles):
             title=title,
             file_path=f'uploads/technicians/{tech.id}/docs/{stored}',
             file_name=original,
-            mime_type=file_storage.mimetype or '',
+            mime_type=getattr(file_storage, 'mimetype', None) or '',
         )
         assign_organization(doc)
         db.session.add(doc)
+    if errors:
+        raise ValueError('مستندات مرفوضة — ' + '؛ '.join(errors[:3]))
 
 
 def _remove_technician_files(tech):
@@ -5326,20 +5468,50 @@ def technicians():
 
 @app.route('/api/technicians/<int:tech_id>/profile')
 def api_technician_profile(tech_id):
+    from models import FaultTechnician, VisitTechnician
+
     tech = tenant_get_or_404(Technician, tech_id)
     today = date.today()
-    visits = (
-        tenant_query(MaintenanceVisit).filter_by(technician_id=tech_id)
-        .order_by(MaintenanceVisit.visit_date.desc())
-        .limit(25)
-        .all()
-    )
-    faults = (
-        tenant_query(Fault).filter_by(technician_id=tech_id)
-        .order_by(Fault.reported_at.desc())
-        .limit(25)
-        .all()
-    )
+    visit_ids = {
+        int(r[0])
+        for r in tenant_query(MaintenanceVisit).with_entities(MaintenanceVisit.id)
+        .filter_by(technician_id=tech_id).all()
+        if r[0]
+    }
+    visit_ids |= {
+        int(r[0])
+        for r in tenant_query(VisitTechnician).with_entities(VisitTechnician.visit_id)
+        .filter_by(technician_id=tech_id).all()
+        if r[0]
+    }
+    fault_ids = {
+        int(r[0])
+        for r in tenant_query(Fault).with_entities(Fault.id)
+        .filter_by(technician_id=tech_id).all()
+        if r[0]
+    }
+    fault_ids |= {
+        int(r[0])
+        for r in tenant_query(FaultTechnician).with_entities(FaultTechnician.fault_id)
+        .filter_by(technician_id=tech_id).all()
+        if r[0]
+    }
+    visits = []
+    if visit_ids:
+        visits = (
+            tenant_query(MaintenanceVisit).filter(MaintenanceVisit.id.in_(visit_ids))
+            .order_by(MaintenanceVisit.visit_date.desc())
+            .limit(25)
+            .all()
+        )
+    faults = []
+    if fault_ids:
+        faults = (
+            tenant_query(Fault).filter(Fault.id.in_(fault_ids))
+            .order_by(Fault.reported_at.desc())
+            .limit(25)
+            .all()
+        )
     return jsonify({
         'technician': {
             'id': tech.id,
@@ -5349,13 +5521,15 @@ def api_technician_profile(tech_id):
             'photo_url': _static_upload_url(tech.photo_path),
             'job_title': tech.job_title or '',
             'specialization': tech.specialization or '',
+            'team': tech.team or 'عام',
+            'has_sign_pin': bool(tech.sign_pin_hash),
         },
         'documents': _technician_documents_json(tech),
         'stats': {
-            'total_visits': len(tech.visits),
-            'total_faults': len(tech.faults),
-            'open_faults': sum(1 for f in tech.faults if f.status in ('مفتوح', 'قيد المعالجة')),
-            'today_visits': sum(1 for v in tech.visits if v.visit_date == today),
+            'total_visits': len(visit_ids),
+            'total_faults': len(fault_ids),
+            'open_faults': sum(1 for f in faults if f.status in ('مفتوح', 'قيد المعالجة')),
+            'today_visits': sum(1 for v in visits if v.visit_date == today),
         },
         'visits': [{
             'code': v.code,
@@ -5394,26 +5568,22 @@ def technician_add():
     t = Technician(code=next_code(Technician, 'Tech-', digits=3))
     try:
         _apply_technician_form(t, request.form)
-    except ValueError as exc:
-        flash(str(exc), 'error')
-        return redirect(url_for('technicians'))
-    assign_organization(t)
-    db.session.add(t)
-    db.session.flush()
-    _save_technician_photo(t, request.files.get('photo'))
-    try:
+        assign_organization(t)
+        db.session.add(t)
+        db.session.flush()
+        _save_technician_photo(t, request.files.get('photo'))
         _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
-    except ValueError as exc:
+        _save_technician_documents(
+            t,
+            request.files.getlist('documents'),
+            request.form.getlist('doc_types'),
+            request.form.getlist('doc_titles'),
+        )
+        db.session.commit()
+    except (ValueError, KeyError) as exc:
         db.session.rollback()
-        flash(str(exc), 'error')
+        flash(str(exc) or 'تعذّر حفظ الفني', 'error')
         return redirect(url_for('technicians'))
-    _save_technician_documents(
-        t,
-        request.files.getlist('documents'),
-        request.form.getlist('doc_types'),
-        request.form.getlist('doc_titles'),
-    )
-    db.session.commit()
     flash('تم إضافة الفني بنجاح', 'success')
     return redirect(url_for('technicians'))
 
@@ -5454,23 +5624,19 @@ def technician_edit(id):
             return redirect(url_for('technicians'))
     try:
         _apply_technician_form(t, request.form)
-    except ValueError as exc:
-        flash(str(exc), 'error')
-        return redirect(url_for('technicians'))
-    _save_technician_photo(t, request.files.get('photo'))
-    try:
+        _save_technician_photo(t, request.files.get('photo'))
         _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
-    except ValueError as exc:
+        _save_technician_documents(
+            t,
+            request.files.getlist('documents'),
+            request.form.getlist('doc_types'),
+            request.form.getlist('doc_titles'),
+        )
+        db.session.commit()
+    except (ValueError, KeyError) as exc:
         db.session.rollback()
-        flash(str(exc), 'error')
+        flash(str(exc) or 'تعذّر تحديث الفني', 'error')
         return redirect(url_for('technicians'))
-    _save_technician_documents(
-        t,
-        request.files.getlist('documents'),
-        request.form.getlist('doc_types'),
-        request.form.getlist('doc_titles'),
-    )
-    db.session.commit()
     flash('تم تحديث بيانات الفني بنجاح', 'success')
     return redirect(url_for('technicians'))
 
@@ -5497,10 +5663,30 @@ def technician_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
+    from models import FaultTechnician, MaintenanceTeam, VisitTechnician
+
     t = tenant_get_or_404(Technician, id)
+    blockers = []
+    n_visits = tenant_query(MaintenanceVisit).filter_by(technician_id=t.id).count()
+    n_visits += tenant_query(VisitTechnician).filter_by(technician_id=t.id).count()
+    if n_visits:
+        blockers.append(f'{n_visits} زيارة')
+    n_faults = tenant_query(Fault).filter_by(technician_id=t.id).count()
+    n_faults += tenant_query(FaultTechnician).filter_by(technician_id=t.id).count()
+    if n_faults:
+        blockers.append(f'{n_faults} عطل')
+    n_teams = tenant_query(MaintenanceTeam).filter(
+        db.or_(MaintenanceTeam.leader_id == t.id, MaintenanceTeam.assistant_id == t.id)
+    ).count()
+    if n_teams:
+        blockers.append(f'{n_teams} فريق صيانة')
+    if blockers:
+        flash('لا يمكن حذف الفني لارتباطه بـ: ' + '، '.join(blockers), 'error')
+        return redirect(url_for('technicians'))
     _remove_technician_files(t)
     db.session.delete(t)
     db.session.commit()
+    flash('تم حذف الفني', 'success')
     return redirect(url_for('technicians'))
 
 # =============================================

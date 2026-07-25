@@ -600,7 +600,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-grid">
           <div class="field">
             <label>تاريخ التركيب</label>
-            <input type="date" lang="en-GB" id="f-install-date" style="direction:ltr">
+            <input type="date" lang="en-GB" id="f-install-date" style="direction:ltr" onchange="onInstallDateChange()">
           </div>
           <div class="field">
             <label>انتهاء الضمان</label>
@@ -608,7 +608,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
           <div class="field">
             <label>آخر صيانة</label>
-            <input type="date" lang="en-GB" id="f-last-maint" style="direction:ltr">
+            <input type="date" lang="en-GB" id="f-last-maint" style="direction:ltr" onchange="calcElevMaintDates()">
           </div>
           <div class="field">
             <label>الصيانة القادمة</label>
@@ -616,7 +616,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
           <div class="field">
             <label>تكرار الصيانة</label>
-            <select id="f-maint-freq">
+            <select id="f-maint-freq" onchange="calcElevMaintDates()">
               <option>شهري</option>
               <option>كل شهرين</option>
               <option>ربع سنوي</option>
@@ -1081,6 +1081,63 @@ function filterTable() {
 }
 
 // ===== نماذج =====
+var MAINT_FREQ_INTERVALS = {
+  'شهري': 1,
+  'كل شهرين': 2,
+  'ربع سنوي': 3,
+  'نصف سنوي': 6,
+  'سنوي': 12
+};
+
+function todayISODate() {
+  var d = new Date();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + day;
+}
+
+function addMonthsToDate(dateStr, months) {
+  if (!dateStr || !months) return '';
+  var d = new Date(dateStr + 'T12:00:00');
+  var day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+  if (d.getDate() < day) d.setDate(0);
+  return d.toISOString().split('T')[0];
+}
+
+/** يحسب الصيانة القادمة = آخر صيانة + فترة التكرار */
+function calcElevMaintDates() {
+  var lastEl = document.getElementById('f-last-maint');
+  var nextEl = document.getElementById('f-next-maint');
+  var freqEl = document.getElementById('f-maint-freq');
+  if (!lastEl || !nextEl || !freqEl) return;
+  var last = lastEl.value;
+  var interval = MAINT_FREQ_INTERVALS[freqEl.value];
+  if (!last || !interval) return;
+  nextEl.value = addMonthsToDate(last, interval);
+}
+
+/** عند إضافة مصعد: آخر صيانة = تاريخ التركيب أو اليوم، ثم حساب القادمة */
+function applyDefaultMaintDates() {
+  var lastEl = document.getElementById('f-last-maint');
+  var installEl = document.getElementById('f-install-date');
+  if (!lastEl) return;
+  if (!lastEl.value) {
+    lastEl.value = (installEl && installEl.value) ? installEl.value : todayISODate();
+  }
+  calcElevMaintDates();
+}
+
+function onInstallDateChange() {
+  var editId = document.getElementById('modal-add').dataset.editId;
+  var lastEl = document.getElementById('f-last-maint');
+  var installEl = document.getElementById('f-install-date');
+  if (!editId && lastEl && installEl && installEl.value) {
+    lastEl.value = installEl.value;
+  }
+  calcElevMaintDates();
+}
+
 function resetElevatorForm() {
   ['f-building','f-brand','f-model','f-serial','f-capacity-kg','f-capacity-p','f-floors','f-stops','f-doors','f-notes','f-maps-url','f-lat','f-lng'].forEach(function(id) {
     var el = document.getElementById(id);
@@ -1114,6 +1171,7 @@ function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة مصعد جديد';
   document.getElementById('modal-add').dataset.editId = '';
   resetElevatorForm();
+  applyDefaultMaintDates();
   fillClientSelect(null);
   openElevFormModal(function () {
     if (window.LiftCoreMapPicker) LiftCoreMapPicker.reset();
@@ -1620,7 +1678,7 @@ function setLang(l) {
 function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(function(m) { m.classList.remove('open'); }); });
-document.addEventListener('click', function(e) { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(function(m) { m.classList.remove('open'); }); });
+/* إغلاق الخلفية: liftcore-shell.js */
 
 var now = new Date();
 var days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];

@@ -2490,11 +2490,7 @@ document.addEventListener('keydown',function(e){
     closeTopModal();
   }
 });
-document.addEventListener('click',function(e){
-  if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) {
-    closeTopModal();
-  }
-});
+/* إغلاق الخلفية: liftcore-shell.js (يستدعي closeTopModal إن وُجد) */
 
 var pendingBuildingPhotoFile = null;
 var buildingPhotoHasCustom = false;

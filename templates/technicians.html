@@ -391,6 +391,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th class="th-sort" data-sort-col="phone">الهاتف <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="job_title">المسمى الوظيفي <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="specialization">التخصص <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="team">البوابة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="city">المدينة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="display_status">الحالة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="emergency">طوارئ <span class="sort-ind"></span></th>
@@ -477,10 +478,18 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>الاسم (عربي) <span style="color:var(--danger)">*</span></label><input type="text" id="f-name-ar" placeholder="اسم الفني" required></div>
           <div class="field"><label>Name (English)</label><input type="text" id="f-name-en" placeholder="Technician Name" style="direction:ltr"></div>
           <div class="field"><label>المسمى الوظيفي</label><input type="text" id="f-job" placeholder="فني صيانة / مهندس..."></div>
-          <div class="field"><label>التخصص</label><select id="f-spec"><option>مصاعد ركاب</option><option>كهرباء</option><option>ميكانيكا</option><option>أبواب</option><option>فحص</option></select></div>
+          <div class="field"><label>التخصص</label>
+            <select id="f-spec">
+              <option value="مصاعد ركاب">مصاعد ركاب</option>
+              <option value="كهرباء">كهرباء</option>
+              <option value="ميكانيكا">ميكانيكا</option>
+              <option value="أبواب">أبواب</option>
+              <option value="فحص">فحص</option>
+            </select>
+          </div>
           <div class="field"><label>فريق العمل (بوابة الجوال)</label><select id="f-team" name="team"><option value="عام">عام — صيانة وأعطال</option><option value="صيانة">صيانة فقط</option><option value="أعطال">أعطال فقط</option></select></div>
           <div class="field"><label>سنوات الخبرة</label><input type="number" id="f-exp" placeholder="5" style="direction:ltr" min="0"></div>
-          <div class="field"><label>متاح للطوارئ</label><select id="f-emergency"><option value="نعم">نعم</option><option value="لا">لا</option></select></div>
+          <div class="field"><label>متاح للطوارئ</label><select id="f-emergency"><option value="لا">لا</option><option value="نعم">نعم</option></select></div>
         </div>
       </div>
 
@@ -574,7 +583,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <input type="tel" class="phone-input" id="f-whatsapp" placeholder="512345678">
             </div>
           </div>
-          <div class="field form-full"><label>البريد الإلكتروني</label><input type="email" id="f-email" placeholder="tech@liftcore.com" style="direction:ltr"></div>
+          <div class="field form-full"><label>البريد الإلكتروني</label><input type="email" id="f-email" placeholder="tech@liftcore.com" style="direction:ltr" autocomplete="off" inputmode="email"></div>
         </div>
       </div>
 
@@ -682,7 +691,7 @@ const DRILL_TITLES = {
 };
 
 const DISTRICTS = {
-  'مكة': ['العزيزية','الشوقية','العوالي','الزاهر','النسيم','أجياد','المسفلة','العزيزية'],
+  'مكة': ['العزيزية','الشوقية','العوالي','الزاهر','النسيم','أجياد','المسفلة'],
   'جدة': ['الروضة','السلامة','الحمراء','البلد','الشاطئ'],
   'الطائف': ['الشهداء','القمرية','الحوية']
 };
@@ -1104,12 +1113,15 @@ function renderTable(data) {
     if (!tablePager) document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + TECHNICIANS.length;
   }
   tbody.innerHTML = pg.rows.map(function(t) {
+    var teamShort = t.team === 'صيانة' ? 'صيانة' : (t.team === 'أعطال' ? 'أعطال' : 'عام');
+    var pinHint = t.has_sign_pin ? '' : ' <span title="بدون رمز دخول جوال" style="color:var(--warning);font-size:10px">PIN?</span>';
     return '<tr onclick="viewTech(' + t.id + ')">' +
       '<td class="td-code">' + esc(t.code) + '</td>' +
       techTableNameCell(t, true) +
       '<td style="direction:ltr;font-family:var(--font-en);cursor:pointer;color:' + (t.phone ? 'var(--text2)' : 'var(--accent)') + '" onclick="event.stopPropagation();editTechPhone(' + t.id + ')" title="اضغط لتسجيل/تعديل الجوال">' + (esc(t.phone) || D('➕ إضافة جوال')) + '</td>' +
       '<td>' + esc(D(t.job_title)) + '</td>' +
       '<td>' + esc(D(t.specialization)) + '</td>' +
+      '<td><span class="badge badge-available">' + esc(D(teamShort)) + '</span>' + pinHint + '</td>' +
       '<td>' + esc(D(t.city)) + '</td>' +
       '<td><span class="badge ' + (STATUS_BADGE[t.display_status] || 'badge-inactive') + '">' + esc(D(t.display_status)) + '</span></td>' +
       '<td><span class="badge ' + (t.emergency ? 'badge-yes' : 'badge-no') + '">' + (t.emergency ? D('نعم') : D('لا')) + '</span></td>' +
@@ -1123,13 +1135,22 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').toLowerCase();
+  var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').toLowerCase().trim();
   var sp = document.getElementById('filter-spec') && document.getElementById('filter-spec').value || '';
   var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
   var st = document.getElementById('filter-status') && document.getElementById('filter-status').value || '';
   var em = document.getElementById('filter-emergency') && document.getElementById('filter-emergency').value || '';
   filtered = TECHNICIANS.filter(function(t) {
-    return (!s || t.name.includes(s) || t.code.toLowerCase().includes(s) || (t.phone && t.phone.includes(s))) &&
+    var nameAr = String(t.name || '').toLowerCase();
+    var nameEn = String(t.name_en || '').toLowerCase();
+    var phone = String(t.phone || '');
+    var phone2 = String(t.phone2 || '');
+    var email = String(t.email || '').toLowerCase();
+    var nid = String(t.national_id || '');
+    var hit = !s || nameAr.includes(s) || nameEn.includes(s) ||
+      String(t.code || '').toLowerCase().includes(s) ||
+      phone.includes(s) || phone2.includes(s) || email.includes(s) || nid.includes(s);
+    return hit &&
       (!sp || t.specialization === sp) &&
       (!ct || t.city === ct) &&
       (!st || techMatchesStatus(t, st)) &&
@@ -1140,22 +1161,42 @@ function filterTable() {
   renderTable(filtered);
 }
 
-function loadDistricts() {
+function loadDistricts(selected) {
   var city = document.getElementById('f-city-sel').value;
   var list = document.getElementById('districts-list');
   if (!list) return;
+  var sel = Array.isArray(selected) ? selected.map(String) : [];
   var districts = DISTRICTS[city] || [];
   if (!districts.length) {
-    list.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text3);font-size:12px">لا توجد أحياء محددة لهذه المدينة</div>';
+    list.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text3);font-size:12px">' +
+      (city ? 'لا توجد أحياء محددة لهذه المدينة' : 'اختر المدينة أولاً') + '</div>';
     return;
   }
-  list.innerHTML = districts.map(function(d, i) {
-    return '<label class="district-option"><input type="checkbox" name="districts" value="' + esc(d) + '"> ' + esc(d) + '</label>';
+  list.innerHTML = districts.map(function(d) {
+    var checked = sel.indexOf(d) >= 0 ? ' checked' : '';
+    return '<label class="district-option"><input type="checkbox" name="districts" value="' + esc(d) + '"' + checked + '> ' + esc(d) + '</label>';
   }).join('');
 }
 
+function ensureSpecOption(value) {
+  var sel = document.getElementById('f-spec');
+  if (!sel) return;
+  var v = (value || '').trim() || 'مصاعد ركاب';
+  var found = false;
+  Array.prototype.forEach.call(sel.options, function(o) {
+    if (o.value === v || o.textContent === v) found = true;
+  });
+  if (!found) {
+    var opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    sel.appendChild(opt);
+  }
+  sel.value = v;
+}
+
 function clearTechForm() {
-  ['f-name-ar','f-name-en','f-job','f-exp','f-email','f-iqama','f-license','f-notes'].forEach(function(id) {
+  ['f-name-ar','f-name-en','f-job','f-exp','f-email','f-iqama','f-license','f-notes','f-nationality','f-sign-pin'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
   ['f-iqama-exp','f-license-exp','f-hire','f-salary'].forEach(function(id) {
@@ -1164,13 +1205,19 @@ function clearTechForm() {
   ['f-phone','f-whatsapp'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
+  var codePh = document.getElementById('f-code-ph');
+  var codeWa = document.getElementById('f-code-wa');
+  if (codePh) codePh.value = '+966';
+  if (codeWa) codeWa.value = '+966';
   document.getElementById('f-code').value = NEXT_TECH_CODE;
-  document.getElementById('f-spec').value = 'مصاعد ركاب';
+  ensureSpecOption('مصاعد ركاب');
+  var teamEl = document.getElementById('f-team');
+  if (teamEl) teamEl.value = 'عام';
   var emSel = getTechEmergencySelect();
-  if (emSel) emSel.value = 'نعم';
+  if (emSel) emSel.value = 'لا';
   document.getElementById('f-cur-status').value = 'متاح';
   document.getElementById('f-city-sel').value = '';
-  loadDistricts();
+  loadDistricts([]);
   resetPhotoPreview('');
   resetSignaturePreview('');
   document.getElementById('new-docs-rows').innerHTML = '';
@@ -1281,20 +1328,31 @@ function saveTech() {
   var signFile = document.getElementById('f-signature');
   var hasSignFile = signFile && signFile.files && signFile.files[0];
   var iqama = (document.getElementById('f-iqama') && document.getElementById('f-iqama').value || '').trim();
+  var editId = document.getElementById('modal-add').dataset.editId;
+  var existing = editId ? TECHNICIANS.find(function(x) { return String(x.id) === String(editId); }) : null;
+  var hasExistingPin = !!(existing && existing.has_sign_pin);
   if (hasSignFile && !iqama) {
     alert('عند رفع صورة التوقيع يجب إدخال رقم الإقامة في تبويب الوثائق');
     switchTechTab('docs');
     return;
   }
-  if (signPinVal && signPinVal.length !== 6) {
+  if (hasSignFile && !signPinVal && !hasExistingPin) {
+    alert('عند رفع صورة التوقيع يجب إدخال رمز دخول الجوال (6 أرقام)');
+    switchTechTab('signature');
+    if (signPin) signPin.focus();
+    return;
+  }
+  if (signPinVal && !/^\d{6}$/.test(signPinVal)) {
     alert('رمز دخول الجوال يجب أن يكون 6 أرقام');
     switchTechTab('signature');
     return;
   }
-  var editId = document.getElementById('modal-add').dataset.editId;
   var fd = new FormData();
   fd.append('name', name);
   fd.append('name_en', document.getElementById('f-name-en').value.trim());
+  fd.append('nationality', (document.getElementById('f-nationality') && document.getElementById('f-nationality').value || '').trim());
+  fd.append('experience_years', document.getElementById('f-exp') ? document.getElementById('f-exp').value : '');
+  fd.append('email', document.getElementById('f-email') ? document.getElementById('f-email').value.trim() : '');
   fd.append('phone', fullPhone('f-code-ph', 'f-phone'));
   fd.append('phone2', fullPhone('f-code-wa', 'f-whatsapp'));
   fd.append('job_title', document.getElementById('f-job').value);
@@ -1303,10 +1361,16 @@ function saveTech() {
   fd.append('team', teamEl ? teamEl.value : 'عام');
   fd.append('city', document.getElementById('f-city-sel').value);
   fd.append('national_id', document.getElementById('f-iqama').value);
+  fd.append('national_id_expiry', document.getElementById('f-iqama-exp') ? document.getElementById('f-iqama-exp').value : '');
+  fd.append('license_number', document.getElementById('f-license') ? document.getElementById('f-license').value : '');
+  fd.append('license_expiry', document.getElementById('f-license-exp') ? document.getElementById('f-license-exp').value : '');
   fd.append('hire_date', document.getElementById('f-hire').value);
   fd.append('salary', document.getElementById('f-salary').value);
   fd.append('status', document.getElementById('f-cur-status').value);
   fd.append('notes', document.getElementById('f-notes').value);
+  document.querySelectorAll('#districts-list input[name="districts"]:checked').forEach(function(cb) {
+    fd.append('districts', cb.value);
+  });
   var emSel = getTechEmergencySelect();
   if (emSel && emSel.value === 'نعم') fd.append('emergency', 'on');
   var photoInput = document.getElementById('f-photo');
@@ -1347,23 +1411,36 @@ function editTech(id) {
   var t = TECHNICIANS.find(function(x) { return x.id === id; });
   if (!t) return;
   closeModal('modal-view');
+  clearTechForm();
   document.getElementById('modal-title').textContent = 'تعديل بيانات الفني';
   document.getElementById('modal-add').dataset.editId = id;
   currentEditId = id;
   document.getElementById('f-code').value = t.code;
   document.getElementById('f-name-ar').value = t.name;
   document.getElementById('f-name-en').value = t.name_en || '';
+  var nat = document.getElementById('f-nationality');
+  if (nat) nat.value = t.nationality || '';
+  var exp = document.getElementById('f-exp');
+  if (exp) exp.value = (t.experience_years != null && t.experience_years !== '') ? t.experience_years : '';
+  var email = document.getElementById('f-email');
+  if (email) email.value = t.email || '';
   document.getElementById('f-job').value = t.job_title || '';
-  document.getElementById('f-spec').value = t.specialization || 'مصاعد ركاب';
+  ensureSpecOption(t.specialization || 'مصاعد ركاب');
   document.getElementById('f-team').value = t.team || 'عام';
   document.getElementById('f-city-sel').value = t.city || '';
-  loadDistricts();
+  loadDistricts(t.districts || []);
   document.getElementById('f-cur-status').value = t.status === 'نشط' ? 'متاح' : (t.status || 'متاح');
   var emSel = getTechEmergencySelect();
   if (emSel) emSel.value = t.emergency ? 'نعم' : 'لا';
   document.getElementById('f-iqama').value = t.national_id || '';
+  var iqExp = document.getElementById('f-iqama-exp');
+  if (iqExp) iqExp.value = t.national_id_expiry || '';
+  var lic = document.getElementById('f-license');
+  if (lic) lic.value = t.license_number || '';
+  var licExp = document.getElementById('f-license-exp');
+  if (licExp) licExp.value = t.license_expiry || '';
   document.getElementById('f-hire').value = t.hire_date || '';
-  document.getElementById('f-salary').value = t.salary || '';
+  document.getElementById('f-salary').value = (t.salary !== '' && t.salary != null) ? t.salary : '';
   document.getElementById('f-notes').value = t.notes || '';
   splitPhone(t.phone, 'f-code-ph', 'f-phone');
   splitPhone(t.phone2, 'f-code-wa', 'f-whatsapp');
@@ -1380,6 +1457,9 @@ function viewTech(id) {
   var t = TECHNICIANS.find(function(x) { return x.id === id; });
   if (!t) return;
   currentViewId = id;
+  var teamLabel = t.team === 'صيانة' ? 'صيانة فقط' : (t.team === 'أعطال' ? 'أعطال فقط' : 'عام — صيانة وأعطال');
+  var pinLabel = t.has_sign_pin ? 'مفعّل' : 'غير مفعّل';
+  var dist = (t.districts && t.districts.length) ? t.districts.join('، ') : '—';
   document.getElementById('view-title').textContent = t.code + ' — ' + t.name;
   document.getElementById('view-body').innerHTML =
     techPhotoHeaderHtml(t) +
@@ -1393,11 +1473,24 @@ function viewTech(id) {
       '<div class="view-section">البيانات الأساسية</div>' +
       '<div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">' + esc(t.code) + '</div></div>' +
       '<div class="view-item"><div class="view-label">الاسم</div><div class="view-val">' + esc(t.name) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">Name</div><div class="view-val" style="direction:ltr">' + esc(t.name_en || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">الجنسية</div><div class="view-val">' + esc(t.nationality || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">سنوات الخبرة</div><div class="view-val" style="direction:ltr">' + esc(t.experience_years != null && t.experience_years !== '' ? t.experience_years : '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">الهاتف</div><div class="view-val" style="direction:ltr">' + esc(t.phone || '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">واتساب</div><div class="view-val" style="direction:ltr">' + esc(t.phone2 || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">البريد</div><div class="view-val" style="direction:ltr">' + esc(t.email || '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">المسمى الوظيفي</div><div class="view-val">' + esc(t.job_title || '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">التخصص</div><div class="view-val">' + esc(t.specialization || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">بوابة الجوال</div><div class="view-val">' + esc(teamLabel) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">رمز الدخول (PIN)</div><div class="view-val">' + esc(pinLabel) + '</div></div>' +
       '<div class="view-item"><div class="view-label">المدينة</div><div class="view-val">' + esc(t.city || '—') + '</div></div>' +
+      '<div class="view-item view-full"><div class="view-label">الأحياء</div><div class="view-val">' + esc(dist) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">رقم الإقامة</div><div class="view-val" style="direction:ltr;font-family:var(--font-en)">' + esc(t.national_id || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">انتهاء الإقامة</div><div class="view-val" style="direction:ltr">' + esc(t.national_id_expiry || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">رقم الرخصة</div><div class="view-val" style="direction:ltr;font-family:var(--font-en)">' + esc(t.license_number || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">انتهاء الرخصة</div><div class="view-val" style="direction:ltr">' + esc(t.license_expiry || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">تاريخ التوظيف</div><div class="view-val" style="direction:ltr">' + esc(t.hire_date || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">الراتب</div><div class="view-val" style="direction:ltr">' + esc(t.salary !== '' && t.salary != null ? t.salary : '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">الحالة المسجّلة</div><div class="view-val"><span class="badge ' + (STATUS_BADGE[t.status] || 'badge-inactive') + '">' + esc(t.status) + '</span></div></div>' +
       (t.notes ? '<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">' + esc(t.notes) + '</div></div>' : '') +
     '</div>' +
@@ -1452,11 +1545,20 @@ function confirmDelete() {
 }
 
 function exportExcel() {
-  var rows = [['الكود','الاسم','الهاتف','المسمى','التخصص','المدينة','الحالة','طوارئ','الزيارات']];
+  function csvCell(v) {
+    var s = String(v == null ? '' : v);
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  var rows = [['الكود','الاسم','الاسم إنجليزي','الهاتف','واتساب','البريد','المسمى','التخصص','البوابة','المدينة','الحالة','طوارئ','الزيارات','أعطال','PIN']];
   filtered.forEach(function(t) {
-    rows.push([t.code, t.name, t.phone, t.job_title, t.specialization, t.city, t.display_status, t.emergency ? 'نعم' : 'لا', t.visits]);
+    rows.push([
+      t.code, t.name, t.name_en || '', t.phone || '', t.phone2 || '', t.email || '',
+      t.job_title || '', t.specialization || '', t.team || '', t.city || '',
+      t.display_status, t.emergency ? 'نعم' : 'لا', t.visits, t.faults, t.has_sign_pin ? 'نعم' : 'لا'
+    ]);
   });
-  var csv = rows.map(function(r) { return r.join(','); }).join('\n');
+  var csv = rows.map(function(r) { return r.map(csvCell).join(','); }).join('\n');
   var a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'}));
   a.download = 'technicians.csv';
@@ -1467,8 +1569,12 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 /* setLang: liftcore-i18n.js */
 function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(function(m) { m.classList.remove('open'); }); });
-document.addEventListener('click', function(e) { if (!e.target.closest('.modal') && e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(function(m) { m.classList.remove('open'); }); });
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  var open = Array.prototype.slice.call(document.querySelectorAll('.modal-overlay.open'));
+  if (open.length) open[open.length - 1].classList.remove('open');
+});
+/* إغلاق الخلفية: liftcore-shell.js (لا يُغلق عند تظليل النص داخل الحقول) */
 
 var now = new Date();
 var days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];

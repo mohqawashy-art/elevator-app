@@ -278,6 +278,13 @@ class Technician(TenantMixin, db.Model):
     specialization  = db.Column(db.String(100))   # مصاعد ركاب / كهرباء / ميكانيكا
     city            = db.Column(db.String(100))
     national_id     = db.Column(db.String(20))
+    nationality     = db.Column(db.String(100))
+    experience_years = db.Column(db.Integer)
+    email           = db.Column(db.String(120))
+    national_id_expiry = db.Column(db.Date)
+    license_number  = db.Column(db.String(50))
+    license_expiry  = db.Column(db.Date)
+    districts_json  = db.Column(db.Text)  # JSON قائمة أحياء
     hire_date       = db.Column(db.Date)
     salary          = db.Column(db.Float)
     emergency       = db.Column(db.Boolean, default=False)  # متاح للطوارئ

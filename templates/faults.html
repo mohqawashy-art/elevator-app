@@ -308,7 +308,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="alerts-row">
       {% for a in fault_alerts %}
       <div class="alert-chip {{ a.level }}" role="button" tabindex="0"
-           onclick="filterFromAlert({{ a.text|tojson }})"
+           onclick='filterFromAlert({{ a.text|tojson }})'
            title="اضغط للفلترة في الجدول">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>{{ a.text }}
       </div>
@@ -484,7 +484,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <p style="font-size:12px;color:var(--text3);margin-bottom:10px">اضغط على البطاقة لإضافة/إزالة الفني من الفريق — يُقترح الفني الأنسب حسب المدينة والتخصص</p>
         <div class="tech-cards" id="tech-suggestions">
           {% for t in fault_technicians[:4] %}
-          <div class="tech-card{% if loop.first %} recommended{% endif %}" data-tech-id="{{ t.id }}" onclick="selectTech(this,{{ t.id }},{{ t.name|tojson }})">
+          <div class="tech-card{% if loop.first %} recommended{% endif %}" data-tech-id="{{ t.id }}" onclick="event.stopPropagation();selectTech(this,{{ t.id }})">
             <div class="tc-avatar">{{ t.name[:1] }}</div>
             <div class="tc-info">
               <div class="tc-name">{{ t.name }}{% if loop.first %} <span class="tc-recommend">⭐</span>{% endif %}</div>
@@ -668,7 +668,7 @@ function renderFaultTechSelect(selectedIds) {
   const sel = new Set((selectedIds || []).map(String));
   const list = FAULT_TECHS.length ? FAULT_TECHS : TECHNICIANS;
   box.innerHTML = list.map(t =>
-    `<label class="tech-option"><input type="checkbox" value="${t.id}"${sel.has(String(t.id)) ? ' checked' : ''} onchange="syncFaultTechCards()"><span>${t.name}</span></label>`
+    `<label class="tech-option" onclick="event.stopPropagation()"><input type="checkbox" value="${t.id}"${sel.has(String(t.id)) ? ' checked' : ''} onchange="syncFaultTechCards()"><span>${t.name}</span></label>`
   ).join('') || '<div style="padding:8px;color:var(--text3);font-size:12px">لا يوجد فنيون متاحون</div>';
   syncFaultTechCards();
 }
@@ -765,7 +765,7 @@ function loadClientElevators() {
   onCustomerSelected();
 }
 
-function selectTech(el, id, name) {
+function selectTech(el, id) {
   const cb = document.querySelector(`#tech-select input[type=checkbox][value="${id}"]`);
   if (cb) {
     cb.checked = !cb.checked;
@@ -1427,7 +1427,7 @@ function setLang(l) {
 function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
-document.addEventListener('click',e=>{ if(!e.target.closest('.modal')&&e.target.closest('.modal-overlay')) document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open')); });
+/* إغلاق الخلفية: liftcore-shell.js */
 
 const now = new Date();
 const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];

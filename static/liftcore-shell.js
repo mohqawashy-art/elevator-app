@@ -407,4 +407,48 @@
   }
 
   window.LiftCoreToast = toast;
+
+  /** إغلاق النوافذ عند النقر على الخلفية فقط — لا يُغلق عند تظليل نص داخل الحقول */
+  function dismissModalOverlay(overlay) {
+    if (!overlay || !overlay.classList.contains('open')) return;
+    if (typeof window.closeTopModal === 'function') {
+      var open = document.querySelectorAll('.modal-overlay.open');
+      if (open.length && open[open.length - 1] === overlay) {
+        window.closeTopModal();
+        return;
+      }
+    }
+    overlay.classList.remove('open');
+  }
+
+  function bindModalBackdropClose(overlay) {
+    if (!overlay || overlay.dataset.lcBackdropBound === '1') return;
+    overlay.dataset.lcBackdropBound = '1';
+    var downOnBackdrop = false;
+    function markBackdropPointer(e) {
+      downOnBackdrop = e.target === overlay;
+    }
+    overlay.addEventListener('pointerdown', markBackdropPointer);
+    overlay.addEventListener('mousedown', markBackdropPointer);
+    overlay.addEventListener('click', function (e) {
+      var sel = window.getSelection && window.getSelection();
+      var hasTextSel = !!(sel && String(sel).length > 0);
+      if (hasTextSel) {
+        downOnBackdrop = false;
+        return;
+      }
+      if (downOnBackdrop && e.target === overlay) dismissModalOverlay(overlay);
+      downOnBackdrop = false;
+    });
+  }
+
+  function initModalBackdropClose() {
+    document.querySelectorAll('.modal-overlay').forEach(bindModalBackdropClose);
+  }
+
+  window.LiftCoreBindModalBackdrop = bindModalBackdropClose;
+  window.LiftCoreInitModalBackdrop = initModalBackdropClose;
+
+  document.addEventListener('DOMContentLoaded', initModalBackdropClose);
+  if (document.readyState !== 'loading') initModalBackdropClose();
 })();
