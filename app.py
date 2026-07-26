@@ -4794,7 +4794,7 @@ def _remove_fin_proof(row):
 
 
 def _save_fin_proof(row, file_storage, *, kind: str, required: bool = False):
-    """يحفظ إثبات دفع/صرف. يرفع ValueError عند الرفض أو الإلزام بدون ملف."""
+    """يحفظ إثبات دفع/صرف إن وُجد ملف. required=True يفرض وجود مرفق."""
     has_file = bool(file_storage and file_storage.filename)
     if not has_file:
         if required and not getattr(row, 'proof_path', None):
@@ -7605,7 +7605,7 @@ def revenue_edit(id):
     old_contract_id = r.contract_id
     try:
         _revenue_from_form(request.form, existing=r)
-        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=True)
+        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=False)
     except (ValueError, KeyError) as exc:
         db.session.rollback()
         flash(str(exc) or 'تعذّر تحديث الإيراد', 'error')
@@ -7628,7 +7628,7 @@ def revenue_add():
     try:
         r = _revenue_from_form(request.form)
         db.session.flush()
-        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=True)
+        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=False)
     except (ValueError, KeyError) as exc:
         db.session.rollback()
         flash(str(exc) or 'تعذّر حفظ الإيراد', 'error')
@@ -7678,7 +7678,7 @@ def expense_edit(id):
         e.amount         = float(request.form.get('amount', 0))
         e.reference      = request.form.get('reference','')
         e.notes          = request.form.get('notes','')
-        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=True)
+        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)
         db.session.commit()
     except (ValueError, KeyError) as exc:
         db.session.rollback()
@@ -7703,7 +7703,7 @@ def expense_add():
         assign_organization(e)
         db.session.add(e)
         db.session.flush()
-        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=True)
+        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)
         db.session.commit()
     except (ValueError, KeyError) as exc:
         db.session.rollback()

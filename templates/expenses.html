@@ -323,9 +323,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <input id="m-attach" placeholder="رقم الفاتورة أو المرجع النصي">
         </div>
         <div class="field form-full">
-          <label>مستند إثبات الصرف <span style="color:var(--danger)">*</span></label>
+          <label>مرفق إثبات الصرف</label>
           <input type="file" id="m-proof" accept=".pdf,image/png,image/jpeg,image/webp" style="direction:ltr">
-          <span class="field-hint" id="m-proof-hint" style="margin-top:4px;font-size:11px;color:var(--text3)">PDF أو صورة — إلزامي</span>
+          <span class="field-hint" id="m-proof-hint" style="margin-top:4px;font-size:11px;color:var(--text3)">اختياري — PDF أو صورة</span>
           <div id="m-proof-existing" style="display:none;margin-top:6px;font-size:12px"></div>
         </div>
         <div class="field form-full">
@@ -466,7 +466,7 @@ function openModal(editId) {
     var proofEx = document.getElementById('m-proof-existing');
     if (proofEx) { proofEx.style.display = 'none'; proofEx.innerHTML = ''; }
     var proofHint = document.getElementById('m-proof-hint');
-    if (proofHint) proofHint.textContent = 'PDF أو صورة — إلزامي';
+    if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة';
   }
   modal.classList.add('open');
 }
@@ -485,12 +485,6 @@ function saveRecord() {
   const editId = document.getElementById('modal').dataset.editId;
   const proofInput = document.getElementById('m-proof');
   const hasNewProof = proofInput && proofInput.files && proofInput.files[0];
-  const existing = editId ? EXPENSES.find(function(x) { return String(x.id) === String(editId); }) : null;
-  if (!hasNewProof && !(existing && existing.has_proof)) {
-    alert('يجب إرفاق مستند إثبات الصرف (PDF أو صورة)');
-    if (proofInput) proofInput.focus();
-    return;
-  }
   const fd = new FormData();
   fd.append('expense_date', date);
   fd.append('expense_type', document.getElementById('m-type').value);
@@ -532,10 +526,10 @@ function editExpense(id) {
       proofEx.style.display = 'block';
       proofEx.innerHTML = 'المرفق الحالي: <a href="' + e.proof_url + '" target="_blank" rel="noopener">عرض المستند</a> — ارفع ملفاً جديداً لاستبداله';
     }
-    if (proofHint) proofHint.textContent = 'اختياري عند التعديل إذا وُجد مرفق سابق';
+    if (proofHint) proofHint.textContent = 'اختياري — ارفع ملفاً جديداً للاستبدال';
   } else {
     if (proofEx) { proofEx.style.display = 'none'; proofEx.innerHTML = ''; }
-    if (proofHint) proofHint.textContent = 'PDF أو صورة — إلزامي (لا يوجد مرفق محفوظ)';
+    if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة';
   }
 }
 

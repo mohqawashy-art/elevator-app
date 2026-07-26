@@ -388,9 +388,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <input id="f-reference" placeholder="رقم العقد أو المرجع">
         </div>
         <div class="field form-full">
-          <label>مستند إثبات الدفع <span style="color:var(--danger)">*</span></label>
+          <label>مرفق إثبات الدفع</label>
           <input type="file" id="f-proof" accept=".pdf,image/png,image/jpeg,image/webp" style="direction:ltr">
-          <span class="field-hint" id="f-proof-hint" style="margin-top:4px;font-size:11px;color:var(--text3)">PDF أو صورة — إلزامي عند الإضافة والحفظ</span>
+          <span class="field-hint" id="f-proof-hint" style="margin-top:4px;font-size:11px;color:var(--text3)">اختياري — PDF أو صورة</span>
           <div id="f-proof-existing" style="display:none;margin-top:6px;font-size:12px"></div>
         </div>
         <div class="field form-full">
@@ -826,7 +826,7 @@ function openAddModal(preselectedCustomerId, opts) {
   var proofEx = document.getElementById('f-proof-existing');
   if (proofEx) { proofEx.style.display = 'none'; proofEx.innerHTML = ''; }
   var proofHint = document.getElementById('f-proof-hint');
-  if (proofHint) proofHint.textContent = 'PDF أو صورة — إلزامي عند الإضافة والحفظ';
+  if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة';
   clearRevenueSource();
   const wrap = document.getElementById('rev-billable-wrap');
   if (!cid && wrap) wrap.style.display = 'none';
@@ -858,12 +858,6 @@ function saveRevenue() {
   const editId = document.getElementById('modal-add').dataset.editId;
   const proofInput = document.getElementById('f-proof');
   const hasNewProof = proofInput && proofInput.files && proofInput.files[0];
-  const existing = editId ? REVENUES.find(function(x) { return String(x.id) === String(editId); }) : null;
-  if (!hasNewProof && !(existing && existing.has_proof)) {
-    alert('يجب إرفاق مستند إثبات الدفع (PDF أو صورة)');
-    if (proofInput) proofInput.focus();
-    return;
-  }
   const fd = new FormData();
   [['customer_id', 'f-customer-sel'], ['revenue_date', 'f-date'],
     ['revenue_type', 'f-rev-type'], ['payment_method', 'f-pay-method'],
@@ -915,10 +909,10 @@ function editRevenue(id) {
       proofEx.style.display = 'block';
       proofEx.innerHTML = 'المرفق الحالي: <a href="' + r.proof_url + '" target="_blank" rel="noopener">عرض المستند</a> — ارفع ملفاً جديداً لاستبداله';
     }
-    if (proofHint) proofHint.textContent = 'اختياري عند التعديل إذا وُجد مرفق سابق';
+    if (proofHint) proofHint.textContent = 'اختياري — ارفع ملفاً جديداً للاستبدال';
   } else {
     if (proofEx) { proofEx.style.display = 'none'; proofEx.innerHTML = ''; }
-    if (proofHint) proofHint.textContent = 'PDF أو صورة — إلزامي (لا يوجد مرفق محفوظ)';
+    if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة';
   }
   clearRevenueSource();
   pendingOps = [];
@@ -949,7 +943,7 @@ function viewRevenue(id) {
       <div class="view-item"><div class="view-label">نوع الإيراد</div><div class="view-val">${r.revenue_type}</div></div>
       <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${r.pay_method}</div></div>
       <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${r.reference||'—'}</div></div>
-      <div class="view-item"><div class="view-label">إثبات الدفع</div><div class="view-val">${r.proof_url ? '<a href="'+r.proof_url+'" target="_blank" rel="noopener">عرض المستند</a>' : '<span style="color:var(--danger)">غير مرفق</span>'}</div></div>
+      <div class="view-item"><div class="view-label">إثبات الدفع</div><div class="view-val">${r.proof_url ? '<a href="'+r.proof_url+'" target="_blank" rel="noopener">عرض المستند</a>' : '—'}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[r.status]||'badge-active'}">${r.status}</span></div></div>
       ${r.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${r.notes}</div></div>`:''}
     </div>`;
