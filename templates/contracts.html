@@ -235,6 +235,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .elevators-select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;max-height:140px;overflow-y:auto}
 .elevators-select::-webkit-scrollbar{width:4px}
 .elevators-select::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.elev-option.elev-locked{opacity:.62;cursor:not-allowed;background:rgba(255,180,80,.06)}
+.elev-option .elev-lock-note{display:block;font-size:11px;color:var(--warning);margin-top:4px}
+.elev-add-bar{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .elev-option{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:12px;color:var(--text2)}
 .elev-option:hover{background:var(--bg4);color:var(--text1)}
 .elev-option input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent)}
@@ -646,6 +649,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="elevators-select" id="elevators-select">
             <div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">اختر العميل أولاً لعرض مصاعده</div>
           </div>
+          <div id="elevators-actions" class="elev-add-bar" style="display:none"></div>
         </div>
         <div class="field-calc" id="selected-count">لم يتم اختيار مصاعد</div>
         <div class="form-grid" style="margin-top:28px">
@@ -1117,6 +1121,7 @@ function resetContractForm() {
   document.getElementById('f-payment-terms').selectedIndex = 0;
   document.getElementById('elevators-select').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">اختر العميل أولاً لعرض مصاعده</div>';
   document.getElementById('selected-count').textContent = 'لم يتم اختيار مصاعد';
+  setElevatorsActions(null, false);
   renderContractClientSummary(null);
   setContractFileUi(null);
   calcTotalVisits();
@@ -1125,6 +1130,7 @@ function resetContractForm() {
 function openAddModal(customerId) {
   document.getElementById('modal-title').textContent = 'إضافة عقد جديد';
   document.getElementById('modal-add').dataset.editId = '';
+  document.getElementById('modal-add').dataset.renewFromId = '';
   contractSaving = false;
   var saveBtn = document.getElementById('btn-save-contract');
   if (saveBtn) {
@@ -1134,10 +1140,14 @@ function openAddModal(customerId) {
   resetContractForm();
   var cid = customerId ? parseInt(customerId, 10) : null;
   fillClientSelect(cid || null);
-  if (cid) onContractClientSelected();
+  if (cid) renderContractClientSummary(getCustomerById(cid));
   openContractFormModal(function () {
-    if (window.LiftCoreMapPicker) LiftCoreMapPicker.reset();
-    if (cid) applyContractClientData({ silent: true });
+    if (!cid) {
+      if (window.LiftCoreMapPicker) LiftCoreMapPicker.reset();
+      return;
+    }
+    applyContractClientData({ silent: true });
+    loadClientElevators();
   });
 }
 
@@ -1385,6 +1395,7 @@ function editContract(id) {
   if (!c) return;
   document.getElementById('modal-title').textContent = 'تعديل العقد';
   document.getElementById('modal-add').dataset.editId = id;
+  document.getElementById('modal-add').dataset.renewFromId = '';
   fillClientSelect(c.customer_id);
   renderContractClientSummary(getCustomerById(c.customer_id));
   document.getElementById('f-code').value = c.code;
@@ -1403,7 +1414,7 @@ function editContract(id) {
   document.getElementById('f-contract-address').value = c.address || '';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, c.value, c.tax_pct || 15);
-  loadClientElevators(c.elevator_ids || []);
+  loadClientElevators(c.elevator_ids || [], { allowContractId: c.id });
   calcTotalVisits();
   setContractFileUi(c);
   openContractFormModal(function () {
@@ -1485,6 +1496,7 @@ function renewContract(id) {
   if (!c) return;
   document.getElementById('modal-title').textContent = 'تجديد عقد';
   document.getElementById('modal-add').dataset.editId = '';
+  document.getElementById('modal-add').dataset.renewFromId = String(id);
   contractSaving = false;
   var saveBtn = document.getElementById('btn-save-contract');
   if (saveBtn) {
@@ -1514,7 +1526,7 @@ function renewContract(id) {
   document.getElementById('f-contract-address').value = c.address || '';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, c.value, c.tax_pct || 15);
-  loadClientElevators(c.elevator_ids || []);
+  loadClientElevators(c.elevator_ids || [], { allowContractId: c.id });
   calcTotalVisits();
   setContractFileUi(null);
   openContractFormModal(function () {
@@ -1665,32 +1677,98 @@ function calcDurationFromEnd() {
   calcTotalVisits();
 }
 
-function loadClientElevators(selectedIds) {
+function getAllowedContractElevatorId() {
+  var modal = document.getElementById('modal-add');
+  if (!modal) return null;
+  var editId = parseInt(modal.dataset.editId || '', 10);
+  if (editId) return editId;
+  var renewId = parseInt(modal.dataset.renewFromId || '', 10);
+  return renewId || null;
+}
+
+function elevatorAddLinkHtml(customerId) {
+  var href = '/elevators?action=add' + (customerId ? ('&customer_id=' + encodeURIComponent(customerId)) : '');
+  return '<a class="btn btn-primary btn-sm" href="' + href + '" target="_blank" rel="noopener">' +
+      '<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-left:4px"><path d="M7 2v10M2 7h10"/></svg>' +
+      'إضافة مصعد' +
+    '</a>' +
+    '<span class="field-hint" style="margin:0">يفتح في تبويب جديد — حدّث القائمة بعد الحفظ</span>' +
+    '<button type="button" class="btn btn-secondary btn-sm" onclick="loadClientElevators()">تحديث المصاعد</button>';
+}
+
+function setElevatorsActions(customerId, show) {
+  var bar = document.getElementById('elevators-actions');
+  if (!bar) return;
+  if (!show || !customerId) {
+    bar.style.display = 'none';
+    bar.innerHTML = '';
+    return;
+  }
+  bar.style.display = 'flex';
+  bar.innerHTML = elevatorAddLinkHtml(customerId);
+}
+
+function loadClientElevators(selectedIds, opts) {
   var customerId = document.getElementById('f-client-sel').value;
   var container = document.getElementById('elevators-select');
   var label = document.getElementById('elev-count-label');
   if (!container) return;
   selectedIds = selectedIds || [];
+  opts = opts || {};
+  var allowContractId = opts.allowContractId != null ? opts.allowContractId : getAllowedContractElevatorId();
   if (!customerId) {
     container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">اختر العميل أولاً لعرض مصاعده</div>';
     if (label) label.textContent = '(اختر العميل أولاً)';
+    setElevatorsActions(null, false);
     updateElevatorCount();
     return;
   }
   fetch('/api/elevators/' + customerId)
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (label) label.textContent = '(' + data.length + ' مصعد)';
+      if (!Array.isArray(data)) data = [];
+      var available = [];
+      var locked = [];
+      data.forEach(function(e) {
+        var ac = e.active_contract;
+        var lockedByOther = !!(ac && allowContractId !== ac.id);
+        if (lockedByOther) locked.push(e);
+        else available.push(e);
+      });
+      if (label) {
+        label.textContent = '(' + available.length + ' متاح' +
+          (locked.length ? ' / ' + locked.length + ' متعاقد' : '') +
+          ' من ' + data.length + ')';
+      }
       if (!data.length) {
-        container.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text3);font-size:12px">لا توجد مصاعد لهذا العميل — <a href="/elevators?action=add" style="color:var(--accent)">أضف مصعداً</a></div>';
+        container.innerHTML =
+          '<div style="padding:12px;text-align:center;color:var(--text3);font-size:12px">لا توجد مصاعد لهذا العميل</div>';
+        setElevatorsActions(customerId, true);
         updateElevatorCount();
         return;
       }
-      container.innerHTML = data.map(function(e) {
+      var html = available.map(function(e) {
         var checked = selectedIds.indexOf(e.id) >= 0 || selectedIds.indexOf(String(e.id)) >= 0 ? ' checked' : '';
         return '<label class="elev-option"><input type="checkbox" value="' + e.id + '"' + checked + ' onchange="updateElevatorCount()">' +
           '<span class="elev-code">' + esc(e.code) + '</span><span>' + esc(e.building || '—') + '</span></label>';
       }).join('');
+      html += locked.map(function(e) {
+        var ac = e.active_contract || {};
+        return '<label class="elev-option elev-locked" title="مرتبط بعقد ساري">' +
+          '<input type="checkbox" value="' + e.id + '" disabled>' +
+          '<span class="elev-code">' + esc(e.code) + '</span><span>' + esc(e.building || '—') + '</span>' +
+          '<span class="elev-lock-note">متعاقد عليه — ' + esc(ac.code || '') + ' (' + esc(ac.status || 'ساري') + ')</span></label>';
+      }).join('');
+      if (!available.length) {
+        html = '<div style="padding:10px 4px;color:var(--text3);font-size:12px;margin-bottom:6px">جميع مصاعد هذا العميل مرتبطة بعقود سارية. أضف مصعداً جديداً للتعاقد عليه.</div>' + html;
+      }
+      container.innerHTML = html;
+      setElevatorsActions(customerId, true);
+      updateElevatorCount();
+    })
+    .catch(function() {
+      container.innerHTML = '<div style="padding:12px;text-align:center;color:var(--danger);font-size:12px">تعذّر تحميل المصاعد</div>';
+      setElevatorsActions(customerId, true);
       updateElevatorCount();
     });
 }

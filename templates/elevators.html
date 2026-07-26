@@ -1232,14 +1232,21 @@ function resetElevatorForm() {
   document.getElementById('f-elev-code').value = NEXT_ELEV_CODE;
 }
 
-function openAddModal() {
+function openAddModal(customerId) {
   document.getElementById('modal-title').textContent = 'إضافة مصعد جديد';
   document.getElementById('modal-add').dataset.editId = '';
   resetElevatorForm();
   applyDefaultMaintDates();
-  fillClientSelect(null);
+  var cid = customerId ? parseInt(customerId, 10) : null;
+  fillClientSelect(cid || null);
+  if (cid && typeof fillClientData === 'function') {
+    try { fillClientData(); } catch (e) { /* ignore */ }
+  }
   openElevFormModal(function () {
-    if (window.LiftCoreMapPicker) LiftCoreMapPicker.reset();
+    if (window.LiftCoreMapPicker && !cid) LiftCoreMapPicker.reset();
+    else if (cid && typeof fillClientData === 'function') {
+      try { fillClientData(); } catch (e) { /* ignore */ }
+    }
   });
 }
 
@@ -1783,8 +1790,9 @@ window.__lcRefreshPage = function () {
 if (new URLSearchParams(window.location.search).get('view') === 'map') {
   switchElevTab('map', document.getElementById('tab-btn-map'));
 }
-if (new URLSearchParams(window.location.search).get('action') === 'add') {
-  openAddModal();
+var elevBootParams = new URLSearchParams(window.location.search);
+if (elevBootParams.get('action') === 'add') {
+  openAddModal(elevBootParams.get('customer_id'));
   history.replaceState(null, '', window.location.pathname);
 }
 </script>

@@ -4398,8 +4398,46 @@ def elevator_delete(id):
 
 @app.route('/api/elevators/<int:customer_id>')
 def api_elevators_by_customer(customer_id):
+    """مصاعد العميل مع بيان العقد الساري المرتبط مباشرة بالمصعد (إن وجد)."""
     elevs = tenant_query(Elevator).filter_by(customer_id=customer_id).all()
-    return jsonify([{'id':e.id,'code':e.code,'building':e.building_name} for e in elevs])
+    elev_ids = [e.id for e in elevs]
+    active_by_elev = {}
+    if elev_ids:
+        links = tenant_query(ContractElevator).filter(
+            ContractElevator.elevator_id.in_(elev_ids)
+        ).all()
+        contract_ids = list({lk.contract_id for lk in links})
+        contracts = {
+            c.id: c
+            for c in tenant_query(Contract).filter(Contract.id.in_(contract_ids)).all()
+        } if contract_ids else {}
+        for lk in links:
+            c = contracts.get(lk.contract_id)
+            if not c:
+                continue
+            st = contract_display_status(c)
+            if st not in ('نشط', 'على وشك الانتهاء'):
+                continue
+            prev = active_by_elev.get(lk.elevator_id)
+            if not prev or (c.end_date and (not prev.get('_end') or c.end_date > prev['_end'])):
+                active_by_elev[lk.elevator_id] = {
+                    'id': c.id,
+                    'code': c.code or '',
+                    'status': st,
+                    '_end': c.end_date,
+                }
+    rows = []
+    for e in elevs:
+        ac = active_by_elev.get(e.id)
+        if ac:
+            ac = {'id': ac['id'], 'code': ac['code'], 'status': ac['status']}
+        rows.append({
+            'id': e.id,
+            'code': e.code,
+            'building': e.building_name,
+            'active_contract': ac,
+        })
+    return jsonify(rows)
 
 def contract_display_status(contract, today=None):
     today = today or date.today()
