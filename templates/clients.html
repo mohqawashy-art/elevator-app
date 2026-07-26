@@ -789,6 +789,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
     <div class="modal-foot">
       <a class="btn btn-secondary btn-sm" id="card-report-clients" href="/reports/clients" style="margin-left:auto">تقرير العملاء</a>
       <a class="btn btn-primary btn-sm" id="card-report-annual" href="/reports/client-annual">تقرير سنوي</a>
+      <a class="btn btn-primary btn-sm" id="card-new-contract" href="/contracts?action=add" style="display:none">عمل عقد</a>
       <button type="button" class="btn btn-secondary" onclick="closeClientCard()">إغلاق</button>
     </div>
   </div>
@@ -1310,6 +1311,7 @@ function renderTable(data) {
     '<td><span class="badge ' + (CONTRACT_B[c.contract_status]||'badge-cancelled') + '">' + lcDisp(c.contract_status) + '</span></td>' +
     '<td><span class="badge ' + (STATUS_B[clientAccountStatus(c)]||'badge-active') + '">' + lcDisp(clientAccountStatus(c)) + '</span></td>' +
     '<td><div class="td-actions">' +
+      '<a class="btn btn-secondary btn-sm btn-icon" title="عمل عقد" href="/contracts?action=add&amp;customer_id=' + c.id + '" style="color:var(--gold)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2h6l2 2v8H3V2z"/><path d="M9 2v2h2M5 7h4M5 9.5h4"/></svg></a>' +
       '<button class="btn btn-secondary btn-sm btn-icon" title="عرض" onclick="openClientCard(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
       '<button class="btn btn-secondary btn-sm btn-icon" title="تعديل" onclick="editClient(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>' +
       '<button class="btn btn-danger btn-sm btn-icon lc-admin-delete" title="حذف" onclick="deleteClient(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>' +
@@ -1500,8 +1502,13 @@ function openClientCard(id) {
   openModal('modal-client-card');
   var annualLink = document.getElementById('card-report-annual');
   var clientsLink = document.getElementById('card-report-clients');
+  var contractLink = document.getElementById('card-new-contract');
   if (annualLink) annualLink.href = '/reports/client-annual?customer_id=' + encodeURIComponent(id);
   if (clientsLink) clientsLink.href = '/reports/clients?q=' + encodeURIComponent(c.code || c.name || '');
+  if (contractLink) {
+    contractLink.href = '/contracts?action=add&customer_id=' + encodeURIComponent(id);
+    contractLink.style.display = '';
+  }
   if (window.LiftCoreDisplay) LiftCoreDisplay.applyDom(document.getElementById('card-body'), LiftCoreDisplay.currentLang());
   loadClientData(id);
 
