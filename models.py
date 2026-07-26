@@ -525,6 +525,7 @@ class Revenue(TenantMixin, db.Model):
     total           = db.Column(db.Float, nullable=False)
     status          = db.Column(db.String(30), default='محصّل')  # محصّل / معلق / ملغي
     reference       = db.Column(db.String(500))  # رقم الشيك أو التحويل / مرفقات
+    proof_path      = db.Column(db.String(300))  # إثبات الدفع (صورة/PDF)
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -555,6 +556,7 @@ class Expense(TenantMixin, db.Model):
     payment_method  = db.Column(db.String(50))
     amount          = db.Column(db.Float, nullable=False)
     reference       = db.Column(db.String(500))
+    proof_path      = db.Column(db.String(300))  # إثبات الصرف (صورة/PDF)
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 

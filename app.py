@@ -1008,6 +1008,8 @@ def expense_to_js_dict(e):
         'pay_method': e.payment_method or '',
         'amount': e.amount or 0,
         'reference': e.reference or '',
+        'proof_url': _upload_url_fast(e.proof_path) if getattr(e, 'proof_path', None) else '',
+        'has_proof': bool(getattr(e, 'proof_path', None)),
         'notes': e.notes or '',
     }
 
@@ -1028,6 +1030,8 @@ def revenue_to_js_dict(r):
         'total': r.total or 0,
         'status': r.status or 'محصّل',
         'reference': r.reference or '',
+        'proof_url': _upload_url_fast(r.proof_path) if getattr(r, 'proof_path', None) else '',
+        'has_proof': bool(getattr(r, 'proof_path', None)),
         'notes': r.notes or '',
     }
 
@@ -1224,6 +1228,10 @@ def _sqlite_legacy_schema_patches():
             'revenues': [
                 ('invoice_id', 'INTEGER'),
                 ('parts_billing_id', 'INTEGER'),
+                ('proof_path', 'VARCHAR(300)'),
+            ],
+            'expenses': [
+                ('proof_path', 'VARCHAR(300)'),
             ],
             'technicians': [
                 ('team', 'VARCHAR(30)'),
@@ -1388,7 +1396,10 @@ ALLOWED_LOGO_EXT = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
 ALLOWED_TECH_DOC_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 ALLOWED_CLIENT_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_CONTRACT_FILE_EXT = {'pdf'}
+ALLOWED_FIN_PROOF_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 MAX_CONTRACT_FILE_BYTES = 10 * 1024 * 1024
+MAX_FIN_PROOF_BYTES = 10 * 1024 * 1024
+FIN_PROOF_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'financial_proofs')
 
 # =============================================
 # Helper — توليد الكودات التلقائية
@@ -4764,6 +4775,49 @@ def _apply_contract_form(c, form):
     c.invoice_status = contract_invoice_status(c)
 
 
+def _fin_proof_upload_dir(kind, row_id):
+    path = os.path.join(FIN_PROOF_UPLOAD_ROOT, kind, str(row_id))
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _remove_fin_proof(row):
+    path = getattr(row, 'proof_path', None) or ''
+    if not path:
+        return
+    full = os.path.join(app.root_path, 'static', path.replace('/', os.sep))
+    if os.path.isfile(full):
+        try:
+            os.remove(full)
+        except OSError:
+            pass
+
+
+def _save_fin_proof(row, file_storage, *, kind: str, required: bool = False):
+    """يحفظ إثبات دفع/صرف. يرفع ValueError عند الرفض أو الإلزام بدون ملف."""
+    has_file = bool(file_storage and file_storage.filename)
+    if not has_file:
+        if required and not getattr(row, 'proof_path', None):
+            raise ValueError('يجب إرفاق مستند إثبات الدفع أو الصرف (PDF أو صورة)')
+        return
+    ok, err = _upload_ok(file_storage, ALLOWED_FIN_PROOF_EXT)
+    if not ok:
+        raise ValueError('مستند الإثبات: ' + (err or 'نوع الملف غير مسموح'))
+    file_storage.seek(0, os.SEEK_END)
+    size = file_storage.tell()
+    file_storage.seek(0)
+    if size > MAX_FIN_PROOF_BYTES:
+        raise ValueError('مستند الإثبات أكبر من الحد المسموح (10 ميجا)')
+    if not row.id:
+        db.session.flush()
+    _remove_fin_proof(row)
+    original = secure_filename(file_storage.filename) or 'proof.pdf'
+    stored = f'{uuid.uuid4().hex[:10]}_{original}'
+    abs_path = os.path.join(_fin_proof_upload_dir(kind, row.id), stored)
+    file_storage.save(abs_path)
+    row.proof_path = f'uploads/financial_proofs/{kind}/{row.id}/{stored}'
+
+
 def _contract_upload_dir(contract_id):
     path = os.path.join(app.root_path, 'static', 'uploads', 'contracts', str(contract_id))
     os.makedirs(path, exist_ok=True)
@@ -7549,7 +7603,13 @@ def revenue_edit(id):
 
     r = tenant_get_or_404(Revenue, id)
     old_contract_id = r.contract_id
-    _revenue_from_form(request.form, existing=r)
+    try:
+        _revenue_from_form(request.form, existing=r)
+        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=True)
+    except (ValueError, KeyError) as exc:
+        db.session.rollback()
+        flash(str(exc) or 'تعذّر تحديث الإيراد', 'error')
+        return redirect(url_for('revenues'))
     receipt = None
     if (r.status or '') in COLLECTED_REVENUE_STATUSES:
         receipt = create_receipt_voucher_for_revenue(r)
@@ -7565,8 +7625,14 @@ def revenue_edit(id):
 def revenue_add():
     from customer_billing import COLLECTED_REVENUE_STATUSES, create_receipt_voucher_for_revenue
 
-    r = _revenue_from_form(request.form)
-    db.session.flush()
+    try:
+        r = _revenue_from_form(request.form)
+        db.session.flush()
+        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=True)
+    except (ValueError, KeyError) as exc:
+        db.session.rollback()
+        flash(str(exc) or 'تعذّر حفظ الإيراد', 'error')
+        return redirect(url_for('revenues'))
     receipt = None
     if (r.status or '') in COLLECTED_REVENUE_STATUSES:
         receipt = create_receipt_voucher_for_revenue(r)
@@ -7583,6 +7649,7 @@ def revenue_delete(id):
         return err
     r = tenant_get_or_404(Revenue, id)
     contract_id = r.contract_id
+    _remove_fin_proof(r)
     db.session.delete(r)
     sync_contract_invoice_status(contract_id)
     db.session.commit()
@@ -7602,33 +7669,46 @@ def expenses():
 @app.route('/expenses/edit/<int:id>', methods=['POST'])
 def expense_edit(id):
     e = tenant_get_or_404(Expense, id)
-    e.expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date()
-    e.expense_type   = request.form.get('expense_type','')
-    e.description    = request.form.get('description','')
-    e.responsible    = request.form.get('responsible','')
-    e.payment_method = request.form.get('payment_method','')
-    e.amount         = float(request.form.get('amount', 0))
-    e.reference      = request.form.get('reference','')
-    e.notes          = request.form.get('notes','')
-    db.session.commit()
+    try:
+        e.expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date()
+        e.expense_type   = request.form.get('expense_type','')
+        e.description    = request.form.get('description','')
+        e.responsible    = request.form.get('responsible','')
+        e.payment_method = request.form.get('payment_method','')
+        e.amount         = float(request.form.get('amount', 0))
+        e.reference      = request.form.get('reference','')
+        e.notes          = request.form.get('notes','')
+        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=True)
+        db.session.commit()
+    except (ValueError, KeyError) as exc:
+        db.session.rollback()
+        flash(str(exc) or 'تعذّر تحديث المصروف', 'error')
+        return redirect(url_for('expenses'))
     return redirect(url_for('expenses'))
 
 @app.route('/expenses/add', methods=['POST'])
 def expense_add():
-    e = Expense(
-        code           = next_code(Expense, 'EXP-', digits=3),
-        expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date(),
-        expense_type   = request.form.get('expense_type',''),
-        description    = request.form.get('description',''),
-        responsible    = request.form.get('responsible',''),
-        payment_method = request.form.get('payment_method',''),
-        amount         = float(request.form.get('amount', 0)),
-        reference      = request.form.get('reference',''),
-        notes          = request.form.get('notes',''),
-    )
-    assign_organization(e)
-    db.session.add(e)
-    db.session.commit()
+    try:
+        e = Expense(
+            code           = next_code(Expense, 'EXP-', digits=3),
+            expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date(),
+            expense_type   = request.form.get('expense_type',''),
+            description    = request.form.get('description',''),
+            responsible    = request.form.get('responsible',''),
+            payment_method = request.form.get('payment_method',''),
+            amount         = float(request.form.get('amount', 0)),
+            reference      = request.form.get('reference',''),
+            notes          = request.form.get('notes',''),
+        )
+        assign_organization(e)
+        db.session.add(e)
+        db.session.flush()
+        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=True)
+        db.session.commit()
+    except (ValueError, KeyError) as exc:
+        db.session.rollback()
+        flash(str(exc) or 'تعذّر حفظ المصروف', 'error')
+        return redirect(url_for('expenses'))
     return redirect(url_for('expenses'))
 
 @app.route('/expenses/delete/<int:id>', methods=['POST'])
@@ -7637,6 +7717,7 @@ def expense_delete(id):
     if err:
         return err
     e = tenant_get_or_404(Expense, id)
+    _remove_fin_proof(e)
     db.session.delete(e)
     db.session.commit()
     return redirect(url_for('expenses'))
