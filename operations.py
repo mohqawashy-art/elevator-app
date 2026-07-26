@@ -273,6 +273,8 @@ def build_revenue_payment_whatsapp(revenue, base_url: str = '') -> str:
         return ''
     if _is_cancelled_status(revenue.status):
         return ''
+    if _is_collected_status(revenue.status):
+        return ''
     cust = revenue.customer
     phone = customer_whatsapp_phone(cust)
     if not phone:
@@ -294,8 +296,7 @@ def build_revenue_payment_whatsapp(revenue, base_url: str = '') -> str:
     ref = (revenue.reference or revenue.notes or '').strip()
     if ref:
         lines.append(f'مرجع: {ref[:120]}')
-    if not _is_collected_status(revenue.status):
-        _append_bank_details(lines, settings)
+    _append_bank_details(lines, settings)
     lines.append('')
     lines.append(f'مع التحية،\n{company_name}')
     return whatsapp_url(phone, '\n'.join(lines))
@@ -307,6 +308,8 @@ def build_parts_payment_whatsapp(parts, base_url: str = '') -> str:
     if not isinstance(parts, PartsBilling):
         return ''
     if _is_cancelled_status(parts.status):
+        return ''
+    if _is_collected_status(parts.status):
         return ''
     cust = parts.customer
     phone = customer_whatsapp_phone(cust)
@@ -329,8 +332,7 @@ def build_parts_payment_whatsapp(parts, base_url: str = '') -> str:
     if desc:
         short = desc if len(desc) <= 160 else desc[:157] + '...'
         lines.append(f'البيان: {short}')
-    if not _is_collected_status(parts.status):
-        _append_bank_details(lines, settings)
+    _append_bank_details(lines, settings)
     lines.append('')
     lines.append(f'مع التحية،\n{company_name}')
     return whatsapp_url(phone, '\n'.join(lines))
@@ -384,6 +386,10 @@ def financial_whatsapp_url(doc_type: str, doc_id: int, base_url: str = '') -> tu
         row = tenant_query(Revenue).filter_by(id=doc_id).first()
         if not row:
             return '', 'المستند غير موجود'
+        if _is_collected_status(row.status):
+            return '', 'الإيراد محصّل — لا حاجة لطلب سداد'
+        if _is_cancelled_status(row.status):
+            return '', 'هذا الإيراد ملغي'
         url = build_revenue_payment_whatsapp(row, base_url)
         if not url:
             return '', 'لا يوجد رقم واتساب مسجّل للعميل — أضفه من بيانات العميل'
@@ -393,6 +399,10 @@ def financial_whatsapp_url(doc_type: str, doc_id: int, base_url: str = '') -> tu
         row = tenant_query(PartsBilling).filter_by(id=doc_id).first()
         if not row:
             return '', 'المستند غير موجود'
+        if _is_collected_status(row.status):
+            return '', 'الفاتورة محصّلة — لا حاجة لطلب سداد'
+        if _is_cancelled_status(row.status):
+            return '', 'هذا المستند ملغي'
         url = build_parts_payment_whatsapp(row, base_url)
         if not url:
             return '', 'لا يوجد رقم واتساب مسجّل للعميل — أضفه من بيانات العميل'
