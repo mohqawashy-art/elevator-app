@@ -641,7 +641,8 @@ function onRevenueCustomerChange() {
   loadUncollectedOps(cid);
 }
 
-function loadUncollectedOps(cid) {
+function loadUncollectedOps(cid, opts) {
+  opts = opts || {};
   const wrap = document.getElementById('rev-billable-wrap');
   const list = document.getElementById('rev-billable-list');
   const hint = document.getElementById('rev-billable-hint');
@@ -684,6 +685,12 @@ function loadUncollectedOps(cid) {
       if (mainHint) mainHint.textContent = msg;
       renderRevenuePendingOps();
       renderRevenuePendingMainTable();
+      if (opts.source_type && opts.source_id) {
+        const idx = pendingOps.findIndex(function (op) {
+          return op.source_type === opts.source_type && String(op.source_id) === String(opts.source_id);
+        });
+        if (idx >= 0) selectRevenuePendingOp(idx);
+      }
     })
     .catch(() => {
       if (token !== pendingLoadToken) return;
@@ -843,8 +850,14 @@ function openAddModal(preselectedCustomerId, opts) {
   if (cid && opts.keepPendingOps && pendingOps.length) {
     if (wrap) wrap.style.display = 'block';
     renderRevenuePendingOps();
+    if (opts.source_type && opts.source_id) {
+      const idx = pendingOps.findIndex(function (op) {
+        return op.source_type === opts.source_type && String(op.source_id) === String(opts.source_id);
+      });
+      if (idx >= 0) selectRevenuePendingOp(idx);
+    }
   } else if (cid) {
-    loadUncollectedOps(cid);
+    loadUncollectedOps(cid, opts);
   }
 }
 
@@ -980,6 +993,14 @@ function initRevenuesPage() {
   if (tableSort) tableSort.bindHeaders();
   initRevenueClientSelects();
   renderTable(REVENUES);
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('action') === 'add') {
+    openAddModal(params.get('customer_id'), {
+      source_type: params.get('source_type') || '',
+      source_id: params.get('source_id') || '',
+    });
+    history.replaceState(null, '', window.location.pathname);
+  }
 }
 
 if (document.readyState === 'loading') {

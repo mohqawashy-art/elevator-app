@@ -414,6 +414,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     <div class="modal-body" id="view-body"></div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+      <a class="btn btn-primary btn-sm" id="btn-collect-part" href="/revenues" style="display:none;color:#fff;text-decoration:none">تسجيل سداد</a>
     </div>
   </div>
 </div>
@@ -496,6 +497,13 @@ const STATUS_BADGE = {
   'محصل':'badge-green','مكتملة':'badge-green','غير محصل':'badge-red','معلقة':'badge-gold'
 };
 
+function partsNeedsCollection(p) {
+  if (!p) return false;
+  var st = p.status || '';
+  if (st.indexOf('ملغ') >= 0) return false;
+  return !['محصل', 'محصّل', 'مدفوع', 'مكتملة'].includes(st);
+}
+
 let currentDeleteId = null;
 var filtered = [...PARTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
@@ -574,7 +582,8 @@ function renderTable(data) {
           <button class="btn btn-secondary btn-sm btn-icon" onclick="viewPart(${p.id})">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
           </button>
-          ${!['محصل','محصّل','مدفوع','مكتملة'].includes(p.status) && (p.status || '').indexOf('ملغ') < 0 && window.LiftCoreFinancialWa ? LiftCoreFinancialWa.buttonHtml('parts', p.id) : ''}
+          ${partsNeedsCollection(p) && window.LiftCoreFinancialWa ? LiftCoreFinancialWa.collectButtonHtml('parts', p.id, p.customer_id) : ''}
+          ${partsNeedsCollection(p) && window.LiftCoreFinancialWa ? LiftCoreFinancialWa.buttonHtml('parts', p.id) : ''}
           <button class="btn btn-secondary btn-sm btn-icon" onclick="editPart(${p.id})">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
           </button>
@@ -1129,6 +1138,15 @@ function viewPart(id) {
     </div>`;
   document.getElementById('modal-view').classList.add('open');
   if (p.customer_id) LiftCoreProfile.appendToView(document.getElementById('view-body'), p.customer_id, p.contract_id, { timelineLimit: 15 });
+  var collectBtn = document.getElementById('btn-collect-part');
+  if (collectBtn) {
+    if (partsNeedsCollection(p) && window.LiftCoreFinancialWa) {
+      collectBtn.href = LiftCoreFinancialWa.collectHref('parts', p.id, p.customer_id);
+      collectBtn.style.display = '';
+    } else {
+      collectBtn.style.display = 'none';
+    }
+  }
 }
 
 // ===== حذف =====
