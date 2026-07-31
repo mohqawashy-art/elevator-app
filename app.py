@@ -4998,7 +4998,9 @@ def contract_edit(id):
         and int(new_customer_id) != int(c.customer_id)
     )
     if customer_changed:
+        # دائماً JSON عند رفض تغيير العميل — حتى لا يُفسَّر التوجيه كنجاح في الواجهة
         auth_err = enforce_admin_password(
+            json_response=True,
             action='contract_customer_change_confirmed',
             admin_only_ar='تغيير عميل العقد متاح لمدير النظام فقط.',
             admin_only_en='Changing the contract client is admin-only.',

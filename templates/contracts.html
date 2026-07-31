@@ -559,7 +559,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             </select>
           </div>
           <div class="field">
-            <label>العميل</label>
+            <div class="label-row">
+              <label>العميل</label>
+              <button type="button" class="btn btn-secondary btn-sm lc-write-only" id="btn-unlock-contract-client" onclick="requestContractClientChange()" style="display:none">تغيير العميل</button>
+            </div>
             <select id="f-client-sel" onchange="onContractClientSelected()">
               <option value="">اختر العميل</option>
             </select>
@@ -1089,6 +1092,14 @@ function filterTable() {
   renderTable(filtered);
 }
 
+var contractClientChangePassword = '';
+
+function setContractClientChangeButton(show) {
+  var btn = document.getElementById('btn-unlock-contract-client');
+  if (!btn) return;
+  btn.style.display = show ? '' : 'none';
+}
+
 function setContractClientEditable(editable) {
   if (typeof LcClientSelect !== 'undefined' && LcClientSelect.setDisabled) {
     LcClientSelect.setDisabled('f-client-sel', !editable);
@@ -1100,6 +1111,65 @@ function setContractClientEditable(editable) {
     input.disabled = !editable;
     input.readOnly = !editable;
   }
+}
+
+function getOriginalContractCustomerId(editId) {
+  var modal = document.getElementById('modal-add');
+  var fromDataset = String((modal && modal.dataset.originalCustomerId) || '');
+  if (fromDataset) return fromDataset;
+  if (!editId) return '';
+  var c = CONTRACTS.find(function(x) { return String(x.id) === String(editId); });
+  return c ? String(c.customer_id || '') : '';
+}
+
+function isContractClientChangeUnlocked() {
+  var modal = document.getElementById('modal-add');
+  return !!(modal && modal.dataset.clientChangeUnlocked === '1' && contractClientChangePassword);
+}
+
+function revertContractClientToOriginal() {
+  var modal = document.getElementById('modal-add');
+  var originalId = getOriginalContractCustomerId(modal && modal.dataset.editId);
+  if (!originalId) return;
+  if (typeof LcClientSelect !== 'undefined' && LcClientSelect.setCustomers) {
+    LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, originalId);
+  } else {
+    var sel = document.getElementById('f-client-sel');
+    if (sel) sel.value = originalId;
+  }
+  setContractClientEditable(false);
+  renderContractClientSummary(getCustomerById(parseInt(originalId, 10)));
+}
+
+function requestContractClientChange() {
+  var modal = document.getElementById('modal-add');
+  if (!modal || !modal.dataset.editId) return;
+  if (!window.__LC_IS_ADMIN) {
+    alert('تغيير عميل العقد متاح لمدير النظام فقط');
+    return;
+  }
+  var ask = (window.LiftCoreAdminDelete && LiftCoreAdminDelete.confirmPassword)
+    ? LiftCoreAdminDelete.confirmPassword({
+        title: 'موافقة مدير النظام',
+        message: 'لتغيير عميل هذا العقد يجب إدخال كلمة مرور مدير النظام أولاً.',
+        confirmLabel: 'السماح بالتغيير',
+      })
+    : Promise.resolve(window.prompt('كلمة مرور مدير النظام لتغيير عميل العقد:') || '');
+  ask.then(function(pwd) {
+    if (!pwd) {
+      alert('أدخل كلمة مرور مدير النظام للتأكيد');
+      return;
+    }
+    contractClientChangePassword = String(pwd);
+    modal.dataset.clientChangeUnlocked = '1';
+    setContractClientEditable(true);
+    var hint = document.getElementById('f-client-hint');
+    if (hint) hint.textContent = 'تم السماح بالتغيير — اختر العميل الجديد ثم احفظ العقد';
+    var input = document.getElementById('f-client-sel-input');
+    if (input) {
+      try { input.focus(); input.select(); } catch (e) { /* ignore */ }
+    }
+  }).catch(function() { /* cancelled */ });
 }
 
 function fillClientSelect(selectedId, opts) {
@@ -1165,6 +1235,9 @@ function openAddModal(customerId) {
   var clientHint = document.getElementById('f-client-hint');
   if (clientHint) clientHint.textContent = 'ابحث بالاسم أو الكود لاختيار العميل';
   document.getElementById('modal-add').dataset.originalCustomerId = '';
+  document.getElementById('modal-add').dataset.clientChangeUnlocked = '';
+  contractClientChangePassword = '';
+  setContractClientChangeButton(false);
   resetContractForm();
   var cid = customerId ? parseInt(customerId, 10) : null;
   fillClientSelect(cid || null, { editable: true });
@@ -1277,6 +1350,17 @@ function applyContractClientData(options) {
 }
 
 function onContractClientSelected() {
+  var modal = document.getElementById('modal-add');
+  var editId = modal && modal.dataset.editId;
+  if (editId) {
+    var originalId = getOriginalContractCustomerId(editId);
+    var currentId = String((document.getElementById('f-client-sel') && document.getElementById('f-client-sel').value) || '');
+    if (originalId && currentId && currentId !== originalId && !isContractClientChangeUnlocked()) {
+      alert('تغيير العميل يتطلب موافقة مدير النظام أولاً — اضغط «تغيير العميل»');
+      revertContractClientToOriginal();
+      return;
+    }
+  }
   applyContractClientData({ silent: true });
   loadClientElevators();
 }
@@ -1395,6 +1479,11 @@ function postContractSave(editId, fd, saveBtn, saveBtnHtml) {
     },
   })
     .then(function(res) {
+      if (res.status === 401 || res.status === 403) {
+        return res.json().catch(function() { return {}; }).then(function(data) {
+          throw new Error(data.message || 'غير مصرح أو كلمة المرور خاطئة');
+        });
+      }
       if (res.redirected || res.ok) {
         window.location.href = res.url || '/contracts';
         return null;
@@ -1435,7 +1524,7 @@ function saveContract() {
   }
   var modalAdd = document.getElementById('modal-add');
   var editId = modalAdd.dataset.editId;
-  var originalCustomerId = String(modalAdd.dataset.originalCustomerId || '');
+  var originalCustomerId = getOriginalContractCustomerId(editId);
   var customerChanged = !!(editId && originalCustomerId && String(clientSel.value) !== originalCustomerId);
   var saveBtn = document.getElementById('btn-save-contract');
   var saveBtnHtml = saveBtn ? saveBtn.innerHTML : '';
@@ -1443,26 +1532,15 @@ function saveContract() {
   if (customerChanged) {
     if (!window.__LC_IS_ADMIN) {
       alert('تغيير عميل العقد متاح لمدير النظام فقط');
+      revertContractClientToOriginal();
       return;
     }
-    var fromCust = getCustomerById(parseInt(originalCustomerId, 10));
-    var toCust = getCustomerById(parseInt(clientSel.value, 10));
-    var fromLabel = fromCust ? ((fromCust.code || '') + ' — ' + (fromCust.name || '')) : originalCustomerId;
-    var toLabel = toCust ? ((toCust.code || '') + ' — ' + (toCust.name || '')) : clientSel.value;
-    var ask = (window.LiftCoreAdminDelete && LiftCoreAdminDelete.confirmPassword)
-      ? LiftCoreAdminDelete.confirmPassword({
-          title: 'موافقة مدير النظام',
-          message: 'تغيير عميل العقد من «' + fromLabel + '» إلى «' + toLabel + '». أدخل كلمة مرور مدير النظام للتأكيد.',
-          confirmLabel: 'تأكيد التغيير',
-        })
-      : Promise.resolve(window.prompt('كلمة مرور مدير النظام لتغيير عميل العقد:') || '');
-    ask.then(function(pwd) {
-      if (!pwd) {
-        alert('أدخل كلمة مرور مدير النظام للتأكيد');
-        return;
-      }
-      postContractSave(editId, buildContractFormData(pwd), saveBtn, saveBtnHtml);
-    }).catch(function() { /* cancelled */ });
+    if (!isContractClientChangeUnlocked()) {
+      alert('اضغط «تغيير العميل» وأدخل كلمة مرور مدير النظام قبل الحفظ');
+      revertContractClientToOriginal();
+      return;
+    }
+    postContractSave(editId, buildContractFormData(contractClientChangePassword), saveBtn, saveBtnHtml);
     return;
   }
 
@@ -1476,13 +1554,16 @@ function editContract(id) {
   document.getElementById('modal-add').dataset.editId = id;
   document.getElementById('modal-add').dataset.renewFromId = '';
   document.getElementById('modal-add').dataset.originalCustomerId = String(c.customer_id || '');
-  var canChangeClient = !!(window.__LC_IS_ADMIN);
-  fillClientSelect(c.customer_id, { editable: canChangeClient });
+  document.getElementById('modal-add').dataset.clientChangeUnlocked = '';
+  contractClientChangePassword = '';
+  // مقفول دائماً حتى موافقة المدير — حتى للمسؤول
+  fillClientSelect(c.customer_id, { editable: false });
+  setContractClientChangeButton(!!window.__LC_IS_ADMIN);
   renderContractClientSummary(getCustomerById(c.customer_id));
   var clientHint = document.getElementById('f-client-hint');
   if (clientHint) {
-    clientHint.textContent = canChangeClient
-      ? 'تغيير العميل يتطلب موافقة مدير النظام وكلمة المرور عند الحفظ'
+    clientHint.textContent = window.__LC_IS_ADMIN
+      ? 'لتغيير العميل: اضغط «تغيير العميل» وأدخل كلمة مرور مدير النظام'
       : 'تغيير عميل العقد متاح لمدير النظام فقط';
   }
   document.getElementById('f-code').value = c.code;
