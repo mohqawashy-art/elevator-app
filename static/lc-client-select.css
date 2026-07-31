@@ -1,5 +1,12 @@
 .lc-client-select{position:relative;width:100%}
-.lc-client-select-input{width:100%}
+.lc-client-select-input{width:100%;padding-inline-end:34px}
+.lc-client-select-clear{
+  position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);
+  width:24px;height:24px;border:0;border-radius:6px;cursor:pointer;
+  background:transparent;color:var(--text3);font-size:18px;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;z-index:2;
+}
+.lc-client-select-clear:hover{background:var(--bg3);color:var(--text1)}
 .lc-client-select-list{
   position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:220px;overflow-y:auto;
   background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-sm);z-index:120;

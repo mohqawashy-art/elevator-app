@@ -563,6 +563,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <select id="f-client-sel" onchange="onContractClientSelected()">
               <option value="">اختر العميل</option>
             </select>
+            <span class="field-hint" id="f-client-hint">ابحث بالاسم أو الكود — يمكن تغيير العميل حتى عند التعديل</span>
           </div>
           <div class="form-full" id="contract-client-summary"></div>
           <div class="field">
@@ -1091,8 +1092,11 @@ function filterTable() {
 function fillClientSelect(selectedId) {
   if (typeof LcClientSelect !== 'undefined') {
     LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, selectedId);
+    if (LcClientSelect.setDisabled) LcClientSelect.setDisabled('f-client-sel', false);
     return;
   }
+  var sel = document.getElementById('f-client-sel');
+  if (sel) sel.disabled = false;
 }
 
 function initContractClientSelect() {
@@ -1143,6 +1147,8 @@ function openAddModal(customerId) {
     saveBtn.disabled = false;
     saveBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> حفظ العقد';
   }
+  var clientHint = document.getElementById('f-client-hint');
+  if (clientHint) clientHint.textContent = 'ابحث بالاسم أو الكود — يمكن تغيير العميل حتى عند التعديل';
   resetContractForm();
   var cid = customerId ? parseInt(customerId, 10) : null;
   fillClientSelect(cid || null);
@@ -1404,6 +1410,8 @@ function editContract(id) {
   document.getElementById('modal-add').dataset.renewFromId = '';
   fillClientSelect(c.customer_id);
   renderContractClientSummary(getCustomerById(c.customer_id));
+  var clientHint = document.getElementById('f-client-hint');
+  if (clientHint) clientHint.textContent = 'لتغيير العميل: اضغط × أو ابحث بالكود/الاسم ثم اختر من القائمة';
   document.getElementById('f-code').value = c.code;
   document.getElementById('f-type-sel').value = c.contract_type || 'عقد صيانة';
   document.getElementById('f-status-sel').value = getContractDisplayStatus(c);
@@ -2241,7 +2249,12 @@ function switchTab(tab, el) {
   document.getElementById('tab-map').style.display = tab === 'map' ? '' : 'none';
   document.querySelectorAll('.tabs .tab').forEach(function(t) { t.classList.remove('active'); });
   if (el) el.classList.add('active');
-  if (tab === 'map') setTimeout(function() { refreshContractMap(true); }, 250);
+  if (tab === 'map') {
+    if (window.ensureGoogleMapsScript) ensureGoogleMapsScript();
+    whenGoogleMapsReady(function () {
+      setTimeout(function() { refreshContractMap(true); }, 120);
+    });
+  }
 }
 
 function showFileName(input) {
