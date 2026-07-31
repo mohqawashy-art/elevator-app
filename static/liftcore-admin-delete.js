@@ -1,9 +1,14 @@
 /**
- * حذف محمي — مسؤول فقط + كلمة مرور.
+ * حذف/إجراء محمي — مسؤول فقط + كلمة مرور.
  * window.__LC_IS_ADMIN يُعرَّف من liftcore_head.
  */
 (function (global) {
   'use strict';
+
+  var DEFAULT_TITLE = 'تأكيد الحذف';
+  var DEFAULT_CONFIRM = 'حذف نهائي';
+  var DEFAULT_TITLE_COLOR = 'var(--danger)';
+  var DEFAULT_CONFIRM_CLASS = 'btn btn-danger';
 
   function isAdmin() {
     return !!global.__LC_IS_ADMIN;
@@ -24,6 +29,34 @@
     if (!modal) return;
     var inp = modal.querySelector('.lc-admin-delete-password');
     if (inp) inp.value = '';
+  }
+
+  function resetModalChrome(modal) {
+    if (!modal) return;
+    var title = modal.querySelector('[data-lc-delete-title]');
+    var btn = modal.querySelector('[data-lc-delete-confirm]');
+    if (title) {
+      title.textContent = DEFAULT_TITLE;
+      title.style.color = DEFAULT_TITLE_COLOR;
+    }
+    if (btn) {
+      btn.textContent = DEFAULT_CONFIRM;
+      btn.className = DEFAULT_CONFIRM_CLASS;
+    }
+  }
+
+  function applyModalChrome(modal, opts) {
+    opts = opts || {};
+    var title = modal.querySelector('[data-lc-delete-title]');
+    var btn = modal.querySelector('[data-lc-delete-confirm]');
+    if (title) {
+      title.textContent = opts.title || DEFAULT_TITLE;
+      title.style.color = opts.titleColor || DEFAULT_TITLE_COLOR;
+    }
+    if (btn) {
+      btn.textContent = opts.confirmLabel || DEFAULT_CONFIRM;
+      btn.className = opts.confirmClass || DEFAULT_CONFIRM_CLASS;
+    }
   }
 
   function postDelete(url, password) {
@@ -71,11 +104,12 @@
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
     clearPassword(modal);
+    resetModalChrome(modal);
   }
 
   function guardAdmin() {
     if (!isAdmin()) {
-      alert(msg('الحذف متاح للمسؤول فقط.', 'Delete is restricted to administrators.'));
+      alert(msg('هذا الإجراء متاح للمسؤول فقط.', 'This action is restricted to administrators.'));
       return false;
     }
     return true;
@@ -119,7 +153,45 @@
       });
   }
 
-  /** حوار كامل (رسالة + كلمة مرور) */
+  /**
+   * يطلب كلمة مرور المسؤول فقط (بدون إرسال طلب).
+   * resolve(password) عند التأكيد، reject عند الإلغاء.
+   */
+  function confirmPassword(opts) {
+    opts = opts || {};
+    if (!guardAdmin()) return Promise.reject(new Error('not admin'));
+    var modal = document.getElementById('lc-admin-delete-modal');
+    if (!modal) {
+      var pwd = global.prompt(
+        opts.prompt || msg('كلمة مرور المسؤول للتأكيد:', 'Admin password to confirm:')
+      );
+      if (!pwd) return Promise.reject(new Error('cancelled'));
+      return Promise.resolve(String(pwd).trim());
+    }
+    var msgEl = modal.querySelector('[data-lc-delete-message]');
+    if (msgEl) {
+      msgEl.textContent = opts.message || msg(
+        'أدخل كلمة مرور مدير النظام للمتابعة.',
+        'Enter the system admin password to continue.'
+      );
+    }
+    applyModalChrome(modal, {
+      title: opts.title || msg('موافقة مدير النظام', 'Admin approval'),
+      titleColor: opts.titleColor || 'var(--accent)',
+      confirmLabel: opts.confirmLabel || msg('تأكيد', 'Confirm'),
+      confirmClass: opts.confirmClass || 'btn btn-primary',
+    });
+    modal.dataset.lcDeleteUrl = '';
+    modal.dataset.lcPasswordOnly = '1';
+    modal._lcOnSuccess = null;
+    openModal(modal);
+    return new Promise(function (resolve, reject) {
+      modal._lcResolve = function (password) { resolve(password); };
+      modal._lcReject = reject;
+    });
+  }
+
+  /** حوار كامل (رسالة + كلمة مرور) ثم POST للحذف */
   function confirm(opts) {
     opts = opts || {};
     if (!guardAdmin()) return Promise.reject(new Error('not admin'));
@@ -132,7 +204,14 @@
     }
     var msgEl = modal.querySelector('[data-lc-delete-message]');
     if (msgEl) msgEl.textContent = opts.message || msg('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete?');
+    applyModalChrome(modal, {
+      title: opts.title || DEFAULT_TITLE,
+      titleColor: opts.titleColor || DEFAULT_TITLE_COLOR,
+      confirmLabel: opts.confirmLabel || DEFAULT_CONFIRM,
+      confirmClass: opts.confirmClass || DEFAULT_CONFIRM_CLASS,
+    });
     modal.dataset.lcDeleteUrl = opts.url || '';
+    modal.dataset.lcPasswordOnly = '';
     modal._lcOnSuccess = typeof opts.onSuccess === 'function' ? opts.onSuccess : null;
     openModal(modal);
     return new Promise(function (resolve, reject) {
@@ -146,11 +225,20 @@
     if (!modal) return;
     var url = modal.dataset.lcDeleteUrl;
     var pwd = passwordFromModal(modal);
-    if (!url) return;
     if (!pwd) {
       alert(msg('أدخل كلمة مرور المسؤول.', 'Enter admin password.'));
       return;
     }
+    if (modal.dataset.lcPasswordOnly === '1') {
+      var resolvePwd = modal._lcResolve;
+      modal._lcResolve = null;
+      modal._lcReject = null;
+      modal.dataset.lcPasswordOnly = '';
+      closeModal(modal);
+      if (resolvePwd) resolvePwd(pwd);
+      return;
+    }
+    if (!url) return;
     var btn = modal.querySelector('[data-lc-delete-confirm]');
     if (btn) btn.disabled = true;
     postDelete(url, pwd)
@@ -178,7 +266,6 @@
   function submitForm(ev, form) {
     if (ev) ev.preventDefault();
     if (!guardAdmin()) return false;
-    var modal = document.getElementById('lc-admin-delete-modal');
     var url = form ? form.action : '';
     if (!url) return false;
     confirm({ url: url, message: form.getAttribute('data-delete-message') || '' })
@@ -196,6 +283,7 @@
   global.LiftCoreAdminDelete = {
     isAdmin: isAdmin,
     confirm: confirm,
+    confirmPassword: confirmPassword,
     confirmFromOpenModal: confirmFromOpenModal,
     submitGlobalModal: submitGlobalModal,
     submitForm: submitForm,
@@ -215,8 +303,12 @@
     if (modal) {
       modal.querySelectorAll('[data-lc-delete-cancel]').forEach(function (btn) {
         btn.addEventListener('click', function () {
+          var reject = modal._lcReject;
+          modal._lcResolve = null;
+          modal._lcReject = null;
+          modal.dataset.lcPasswordOnly = '';
           closeModal(modal);
-          if (modal._lcReject) modal._lcReject(new Error('cancelled'));
+          if (reject) reject(new Error('cancelled'));
         });
       });
       var ok = modal.querySelector('[data-lc-delete-confirm]');

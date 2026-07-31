@@ -563,7 +563,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <select id="f-client-sel" onchange="onContractClientSelected()">
               <option value="">اختر العميل</option>
             </select>
-            <span class="field-hint" id="f-client-hint">ابحث بالاسم أو الكود — يمكن تغيير العميل حتى عند التعديل</span>
+            <span class="field-hint" id="f-client-hint">ابحث بالاسم أو الكود لاختيار العميل</span>
           </div>
           <div class="form-full" id="contract-client-summary"></div>
           <div class="field">
@@ -1089,14 +1089,29 @@ function filterTable() {
   renderTable(filtered);
 }
 
-function fillClientSelect(selectedId) {
+function setContractClientEditable(editable) {
+  if (typeof LcClientSelect !== 'undefined' && LcClientSelect.setDisabled) {
+    LcClientSelect.setDisabled('f-client-sel', !editable);
+  }
+  var sel = document.getElementById('f-client-sel');
+  if (sel && sel.tagName === 'SELECT') sel.disabled = !editable;
+  var input = document.getElementById('f-client-sel-input');
+  if (input) {
+    input.disabled = !editable;
+    input.readOnly = !editable;
+  }
+}
+
+function fillClientSelect(selectedId, opts) {
+  opts = opts || {};
+  var editable = opts.editable !== false;
   if (typeof LcClientSelect !== 'undefined') {
     LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, selectedId);
-    if (LcClientSelect.setDisabled) LcClientSelect.setDisabled('f-client-sel', false);
+    setContractClientEditable(editable);
     return;
   }
   var sel = document.getElementById('f-client-sel');
-  if (sel) sel.disabled = false;
+  if (sel) sel.disabled = !editable;
 }
 
 function initContractClientSelect() {
@@ -1148,10 +1163,11 @@ function openAddModal(customerId) {
     saveBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> حفظ العقد';
   }
   var clientHint = document.getElementById('f-client-hint');
-  if (clientHint) clientHint.textContent = 'ابحث بالاسم أو الكود — يمكن تغيير العميل حتى عند التعديل';
+  if (clientHint) clientHint.textContent = 'ابحث بالاسم أو الكود لاختيار العميل';
+  document.getElementById('modal-add').dataset.originalCustomerId = '';
   resetContractForm();
   var cid = customerId ? parseInt(customerId, 10) : null;
-  fillClientSelect(cid || null);
+  fillClientSelect(cid || null, { editable: true });
   if (cid) renderContractClientSummary(getCustomerById(cid));
   openContractFormModal(function () {
     if (!cid) {
@@ -1334,26 +1350,8 @@ function updateElevatorCount() {
   if (el) el.textContent = ids.length ? ('تم اختيار ' + ids.length + ' مصعد') : 'لم يتم اختيار مصاعد';
 }
 
-function saveContract() {
-  if (contractSaving) return;
+function buildContractFormData(adminPassword) {
   var clientSel = document.getElementById('f-client-sel');
-  if (!clientSel || !clientSel.value) { alert('يرجى اختيار العميل'); return; }
-  if (!document.getElementById('f-start').value || !document.getElementById('f-end').value) {
-    alert('يرجى إدخال تاريخ البداية والانتهاء');
-    return;
-  }
-  if (new Date(document.getElementById('f-end').value) < new Date(document.getElementById('f-start').value)) {
-    alert('تاريخ النهاية يجب أن يكون بعد تاريخ البداية');
-    return;
-  }
-  var taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && taxBlock._lcTaxCalc) taxBlock._lcTaxCalc.update();
-  var contractVal = parseFloat(document.getElementById('f-value').value || document.getElementById('ctax-input').value || 0);
-  if (!contractVal || contractVal <= 0) {
-    alert('قيمة العقد يجب أن تكون أكبر من صفر');
-    return;
-  }
-  var editId = document.getElementById('modal-add').dataset.editId;
   var fd = new FormData();
   fd.append('customer_id', clientSel.value);
   fd.append('contract_type', document.getElementById('f-type-sel').value);
@@ -1377,29 +1375,98 @@ function saveContract() {
   if (fileInput && fileInput.files && fileInput.files.length) {
     fd.append('contract_file', fileInput.files[0]);
   }
+  if (adminPassword) fd.append('admin_password', adminPassword);
+  return fd;
+}
+
+function postContractSave(editId, fd, saveBtn, saveBtnHtml) {
   contractSaving = true;
-  var saveBtn = document.getElementById('btn-save-contract');
-  var saveBtnHtml = saveBtn ? saveBtn.innerHTML : '';
   if (saveBtn) {
     saveBtn.disabled = true;
     saveBtn.textContent = 'جاري الحفظ...';
   }
-  fetch(editId ? '/contracts/edit/' + editId : '/contracts/add', {method: 'POST', body: fd, credentials: 'same-origin'})
+  fetch(editId ? '/contracts/edit/' + editId : '/contracts/add', {
+    method: 'POST',
+    body: fd,
+    credentials: 'same-origin',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json',
+    },
+  })
     .then(function(res) {
       if (res.redirected || res.ok) {
         window.location.href = res.url || '/contracts';
-        return;
+        return null;
       }
-      throw new Error('save failed');
+      return res.json().catch(function() { return {}; }).then(function(data) {
+        throw new Error(data.message || 'save failed');
+      });
     })
-    .catch(function() {
+    .catch(function(err) {
       contractSaving = false;
       if (saveBtn) {
         saveBtn.disabled = false;
         saveBtn.innerHTML = saveBtnHtml;
       }
-      alert('فشل حفظ العقد — تحقق من البيانات وحاول مجدداً');
+      if (err && err.message === 'cancelled') return;
+      alert((err && err.message) || 'فشل حفظ العقد — تحقق من البيانات وحاول مجدداً');
     });
+}
+
+function saveContract() {
+  if (contractSaving) return;
+  var clientSel = document.getElementById('f-client-sel');
+  if (!clientSel || !clientSel.value) { alert('يرجى اختيار العميل'); return; }
+  if (!document.getElementById('f-start').value || !document.getElementById('f-end').value) {
+    alert('يرجى إدخال تاريخ البداية والانتهاء');
+    return;
+  }
+  if (new Date(document.getElementById('f-end').value) < new Date(document.getElementById('f-start').value)) {
+    alert('تاريخ النهاية يجب أن يكون بعد تاريخ البداية');
+    return;
+  }
+  var taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && taxBlock._lcTaxCalc) taxBlock._lcTaxCalc.update();
+  var contractVal = parseFloat(document.getElementById('f-value').value || document.getElementById('ctax-input').value || 0);
+  if (!contractVal || contractVal <= 0) {
+    alert('قيمة العقد يجب أن تكون أكبر من صفر');
+    return;
+  }
+  var modalAdd = document.getElementById('modal-add');
+  var editId = modalAdd.dataset.editId;
+  var originalCustomerId = String(modalAdd.dataset.originalCustomerId || '');
+  var customerChanged = !!(editId && originalCustomerId && String(clientSel.value) !== originalCustomerId);
+  var saveBtn = document.getElementById('btn-save-contract');
+  var saveBtnHtml = saveBtn ? saveBtn.innerHTML : '';
+
+  if (customerChanged) {
+    if (!window.__LC_IS_ADMIN) {
+      alert('تغيير عميل العقد متاح لمدير النظام فقط');
+      return;
+    }
+    var fromCust = getCustomerById(parseInt(originalCustomerId, 10));
+    var toCust = getCustomerById(parseInt(clientSel.value, 10));
+    var fromLabel = fromCust ? ((fromCust.code || '') + ' — ' + (fromCust.name || '')) : originalCustomerId;
+    var toLabel = toCust ? ((toCust.code || '') + ' — ' + (toCust.name || '')) : clientSel.value;
+    var ask = (window.LiftCoreAdminDelete && LiftCoreAdminDelete.confirmPassword)
+      ? LiftCoreAdminDelete.confirmPassword({
+          title: 'موافقة مدير النظام',
+          message: 'تغيير عميل العقد من «' + fromLabel + '» إلى «' + toLabel + '». أدخل كلمة مرور مدير النظام للتأكيد.',
+          confirmLabel: 'تأكيد التغيير',
+        })
+      : Promise.resolve(window.prompt('كلمة مرور مدير النظام لتغيير عميل العقد:') || '');
+    ask.then(function(pwd) {
+      if (!pwd) {
+        alert('أدخل كلمة مرور مدير النظام للتأكيد');
+        return;
+      }
+      postContractSave(editId, buildContractFormData(pwd), saveBtn, saveBtnHtml);
+    }).catch(function() { /* cancelled */ });
+    return;
+  }
+
+  postContractSave(editId, buildContractFormData(''), saveBtn, saveBtnHtml);
 }
 
 function editContract(id) {
@@ -1408,10 +1475,16 @@ function editContract(id) {
   document.getElementById('modal-title').textContent = 'تعديل العقد';
   document.getElementById('modal-add').dataset.editId = id;
   document.getElementById('modal-add').dataset.renewFromId = '';
-  fillClientSelect(c.customer_id);
+  document.getElementById('modal-add').dataset.originalCustomerId = String(c.customer_id || '');
+  var canChangeClient = !!(window.__LC_IS_ADMIN);
+  fillClientSelect(c.customer_id, { editable: canChangeClient });
   renderContractClientSummary(getCustomerById(c.customer_id));
   var clientHint = document.getElementById('f-client-hint');
-  if (clientHint) clientHint.textContent = 'لتغيير العميل: اضغط × أو ابحث بالكود/الاسم ثم اختر من القائمة';
+  if (clientHint) {
+    clientHint.textContent = canChangeClient
+      ? 'تغيير العميل يتطلب موافقة مدير النظام وكلمة المرور عند الحفظ'
+      : 'تغيير عميل العقد متاح لمدير النظام فقط';
+  }
   document.getElementById('f-code').value = c.code;
   document.getElementById('f-type-sel').value = c.contract_type || 'عقد صيانة';
   document.getElementById('f-status-sel').value = getContractDisplayStatus(c);

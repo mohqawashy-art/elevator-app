@@ -270,8 +270,17 @@ def _admin_delete_wants_json(*, json_response=False):
     return False
 
 
-def enforce_admin_delete(*, json_response=False):
-    """يتطلب دور admin + كلمة مرور المستخدم الحالي لتأكيد الحذف."""
+def enforce_admin_password(
+    *,
+    json_response=False,
+    action='admin_action_confirmed',
+    admin_only_ar='هذا الإجراء متاح للمسؤول فقط.',
+    admin_only_en='This action is admin-only.',
+    bad_password_ar='كلمة المرور غير صحيحة — لم يتم التنفيذ.',
+    bad_password_en='Incorrect password — action cancelled.',
+    details=None,
+):
+    """يتطلب دور admin + كلمة مرور المستخدم الحالي لتأكيد إجراء حسّاس."""
     as_json = _admin_delete_wants_json(json_response=json_response)
     user = current_user()
     if not user:
@@ -280,27 +289,43 @@ def enforce_admin_delete(*, json_response=False):
             return api_json_error('login_required', 401)
         return redirect(url_for('login'))
     if user.role != 'admin':
-        msg = 'الحذف متاح للمسؤول فقط.'
         if as_json:
             from liftcore_api_i18n import api_json_error
-            return api_json_error('admin_required', 403, message_ar=msg, message_en='Delete is admin-only.')
-        flash(msg, 'error')
+            return api_json_error(
+                'admin_required', 403,
+                message_ar=admin_only_ar, message_en=admin_only_en,
+            )
+        flash(admin_only_ar, 'error')
         abort(403)
     pwd = _admin_delete_password_from_request()
     if not pwd or not verify_password(user.password_hash, pwd):
-        msg = 'كلمة المرور غير صحيحة — لم يتم الحذف.'
         if as_json:
             from liftcore_api_i18n import api_json_error
-            return api_json_error('invalid_password', 403, message_ar=msg, message_en='Incorrect password — delete cancelled.')
-        flash(msg, 'error')
+            return api_json_error(
+                'invalid_password', 403,
+                message_ar=bad_password_ar, message_en=bad_password_en,
+            )
+        flash(bad_password_ar, 'error')
         return redirect(request.referrer or url_for('dashboard'))
     from audit_log import log_audit
     log_audit(
-        'admin_delete_confirmed',
+        action,
         user=user,
-        details={'path': request.path, 'endpoint': request.endpoint},
+        details={'path': request.path, 'endpoint': request.endpoint, **(details or {})},
     )
     return None
+
+
+def enforce_admin_delete(*, json_response=False):
+    """يتطلب دور admin + كلمة مرور المستخدم الحالي لتأكيد الحذف."""
+    return enforce_admin_password(
+        json_response=json_response,
+        action='admin_delete_confirmed',
+        admin_only_ar='الحذف متاح للمسؤول فقط.',
+        admin_only_en='Delete is admin-only.',
+        bad_password_ar='كلمة المرور غير صحيحة — لم يتم الحذف.',
+        bad_password_en='Incorrect password — delete cancelled.',
+    )
 
 
 def session_is_locked():
@@ -4962,6 +4987,32 @@ def contract_edit(id):
         flash(err, 'error')
         return redirect(url_for('contracts'))
     c = tenant_get_or_404(Contract, id)
+    raw_cid = (request.form.get('customer_id') or '').strip()
+    try:
+        new_customer_id = int(raw_cid) if raw_cid else None
+    except (TypeError, ValueError):
+        new_customer_id = None
+    customer_changed = (
+        new_customer_id is not None
+        and c.customer_id is not None
+        and int(new_customer_id) != int(c.customer_id)
+    )
+    if customer_changed:
+        auth_err = enforce_admin_password(
+            action='contract_customer_change_confirmed',
+            admin_only_ar='تغيير عميل العقد متاح لمدير النظام فقط.',
+            admin_only_en='Changing the contract client is admin-only.',
+            bad_password_ar='كلمة المرور غير صحيحة — لم يتم تغيير عميل العقد.',
+            bad_password_en='Incorrect password — contract client was not changed.',
+            details={
+                'contract_id': c.id,
+                'contract_code': c.code,
+                'from_customer_id': c.customer_id,
+                'to_customer_id': new_customer_id,
+            },
+        )
+        if auth_err:
+            return auth_err
     _apply_contract_form(c, request.form)
     _save_contract_file(c, request.files.get('contract_file'))
     _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
