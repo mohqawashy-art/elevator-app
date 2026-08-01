@@ -4167,7 +4167,7 @@ def client_add():
     db.session.commit()
     if photo_err:
         flash(photo_err, 'error')
-    return redirect(url_for('clients'))
+    return redirect(url_for('clients', focus=c.id))
 
 @app.route('/clients/edit/<int:id>', methods=['POST'])
 def client_edit(id):
@@ -4231,7 +4231,7 @@ def client_edit(id):
     db.session.commit()
     if photo_err:
         flash(photo_err, 'error')
-    return redirect(url_for('clients'))
+    return redirect(url_for('clients', focus=c.id))
 
 @app.route('/clients/delete/<int:id>', methods=['POST'])
 def client_delete(id):

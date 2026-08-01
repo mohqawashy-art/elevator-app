@@ -1194,6 +1194,7 @@ function openClientDrill(type, cardEl) {
   document.getElementById('drill-panel').style.display = 'block';
 
   filtered = rows;
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
   switchTab('table');
 }
@@ -1202,6 +1203,7 @@ function closeClientDrill() {
   document.getElementById('drill-panel').style.display = 'none';
   document.querySelectorAll('.stat-mini').forEach(function(el){ el.classList.remove('active'); });
   filtered = CUSTOMERS.slice();
+  if (tablePager) tablePager.resetPage();
   renderTable(filtered);
 }
 
@@ -1275,11 +1277,14 @@ var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
   onPageChange: function () { renderTable(filtered); },
 }) : null;
 
+var renderedRows = [];
+
 function renderTable(data) {
   if (tableSort) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
+  renderedRows = data || [];
   var pg = tablePager ? tablePager.apply(data, CUSTOMERS.length) : {
     rows: data,
     start: data.length ? 1 : 0,
@@ -1300,7 +1305,7 @@ function renderTable(data) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text3)">' + lcDisp('لا توجد بيانات — اضغط إضافة عميل للبدء') + '</td></tr>';
     return;
   }
-  tbody.innerHTML = pg.rows.map(c => '<tr>' +
+  tbody.innerHTML = pg.rows.map(c => '<tr data-id="' + c.id + '">' +
     '<td class="td-code" style="cursor:pointer;color:var(--accent)" onclick="openClientCard(' + c.id + ')">' + c.code + '</td>' +
     '<td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="openClientCard(' + c.id + ')">' + lcClient(c) + '</td>' +
     '<td>' + lcDisp(c.city||'—') + '</td>' +
@@ -1333,6 +1338,26 @@ function filterTable() {
   });
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
+}
+
+/** الانتقال إلى الصفحة التي يظهر فيها عميل محدد وإبراز صفّه */
+function focusClientRow(id) {
+  id = parseInt(id, 10);
+  if (!id) return;
+  var idx = -1;
+  for (var i = 0; i < renderedRows.length; i++) {
+    if (renderedRows[i] && renderedRows[i].id === id) { idx = i; break; }
+  }
+  if (idx < 0) return;
+  if (tablePager && tablePager.setPage) {
+    tablePager.setPage(tablePager.pageOf(idx));
+    renderTable(filtered);
+  }
+  var tr = document.querySelector('#table-body tr[data-id="' + id + '"]');
+  if (!tr) return;
+  tr.classList.add('lc-row-flash');
+  try { tr.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { tr.scrollIntoView(); }
+  setTimeout(function () { tr.classList.remove('lc-row-flash'); }, 2600);
 }
 
 // ===== كارت العميل =====
@@ -2650,8 +2675,13 @@ fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');
 bindPhoneInputs();
 try { if (tableSort) tableSort.bindHeaders(); updateStats(); renderTable(CUSTOMERS); syncModalA11y(); } catch (bootErr) { console.error('clients boot', bootErr); }
-if (new URLSearchParams(window.location.search).get('action') === 'add') {
+var bootParams = new URLSearchParams(window.location.search);
+if (bootParams.get('action') === 'add') {
   openAddModal();
+  history.replaceState(null, '', window.location.pathname);
+}
+if (bootParams.get('focus')) {
+  try { focusClientRow(bootParams.get('focus')); } catch (focusErr) { console.error('clients focus', focusErr); }
   history.replaceState(null, '', window.location.pathname);
 }
 </script>

@@ -215,7 +215,13 @@
   }
 
   function refreshPage() {
-    if (typeof global.__lcRefreshPage === 'function') global.__lcRefreshPage();
+    // إعادة رسم بسبب تغيير العرض/اللغة — تحافظ على صفحة الجدول الحالية
+    global.__lcPreservePage = true;
+    try {
+      if (typeof global.__lcRefreshPage === 'function') global.__lcRefreshPage();
+    } finally {
+      global.__lcPreservePage = false;
+    }
     applyDom(document, currentLang());
   }
 

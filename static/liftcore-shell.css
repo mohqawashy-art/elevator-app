@@ -1361,6 +1361,20 @@ html[data-theme="light"] .lc-welcome-logo {
   border-color: var(--border);
 }
 
+/* ── إبراز الصف بعد الحفظ أو الوصول إليه ── */
+tr.lc-row-flash > td {
+  animation: lc-row-flash 2.4s ease-out;
+}
+
+@keyframes lc-row-flash {
+  0%, 55% { background: rgba(201, 161, 74, 0.24); }
+  100% { background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  tr.lc-row-flash > td { animation: none; background: rgba(201, 161, 74, 0.16); }
+}
+
 /* ── LiftCore: تبويبات ذهبية — القائمة فقط ── */
 html:not([data-theme="light"]) #sidebar .nav-item,
 html:not([data-theme="light"]) .sidebar .nav-item,
