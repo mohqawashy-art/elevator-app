@@ -285,7 +285,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
 <script src="/static/liftcore-dates.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/static/tax_calc.js"></script>
+<script src="/static/tax_calc.js?v=2"></script>
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -1581,7 +1581,13 @@ function editContract(id) {
   document.getElementById('f-contract-district').value = c.district || '';
   document.getElementById('f-contract-address').value = c.address || '';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, c.value, c.tax_pct || 15);
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    if (c.total != null && LiftCoreTaxCalc.loadInclusiveElement) {
+      LiftCoreTaxCalc.loadInclusiveElement(taxBlock, c.total, c.tax_pct || 15);
+    } else {
+      LiftCoreTaxCalc.loadElement(taxBlock, c.value, c.tax_pct || 15);
+    }
+  }
   loadClientElevators(c.elevator_ids || [], { allowContractId: c.id });
   calcTotalVisits();
   setContractFileUi(c);
@@ -1702,7 +1708,13 @@ function renewContract(id) {
   document.getElementById('f-contract-district').value = c.district || '';
   document.getElementById('f-contract-address').value = c.address || '';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock) LiftCoreTaxCalc.loadElement(taxBlock, c.value, c.tax_pct || 15);
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    if (c.total != null && LiftCoreTaxCalc.loadInclusiveElement) {
+      LiftCoreTaxCalc.loadInclusiveElement(taxBlock, c.total, c.tax_pct || 15);
+    } else {
+      LiftCoreTaxCalc.loadElement(taxBlock, c.value, c.tax_pct || 15);
+    }
+  }
   loadClientElevators(c.elevator_ids || [], { allowContractId: c.id });
   calcTotalVisits();
   setContractFileUi(null);

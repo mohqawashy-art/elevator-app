@@ -21,10 +21,11 @@
 
   function fromInclusive(total, pct) {
     pct = parseFloat(pct) || 15;
-    total = parseFloat(total) || 0;
+    total = round2(total);
     var before = round2(total / (1 + pct / 100));
     var tax = round2(total - before);
-    return { before: before, tax: tax, total: round2(before + tax), pct: pct };
+    /* الإجمالي الشامل هو مصدر الحقيقة — لا تُعد بناؤه من قبل + ضريبة */
+    return { before: before, tax: tax, total: total, pct: pct };
   }
 
   function formatMoney(n) {
@@ -129,9 +130,26 @@
       if (inputEl) inputEl.value = beforeAmount || '';
       updateBlock(cfg);
     };
+    cfg.loadInclusive = function (totalAmount, pct) {
+      if (pct != null && cfg.pctId) {
+        var pctEl = $(cfg.pctId);
+        if (pctEl) pctEl.value = pct;
+      }
+      cfg.setMode('inclusive');
+      var inputEl = $(cfg.inputId);
+      if (inputEl) {
+        var t = round2(totalAmount);
+        inputEl.value = t > 0 ? t.toFixed(2) : '';
+      }
+      updateBlock(cfg);
+    };
     cfg.getBeforeTax = function () {
       var result = updateBlock(cfg);
       return result ? result.before : 0;
+    };
+    cfg.getTotal = function () {
+      var result = updateBlock(cfg);
+      return result ? result.total : 0;
     };
 
     if (cfg.beforeBtnId) {
@@ -191,6 +209,11 @@
     if (calc) calc.loadBeforeTax(beforeAmount, pct);
   }
 
+  function loadInclusiveElement(el, totalAmount, pct) {
+    var calc = el && (el._lcTaxCalc || bindFromElement(el));
+    if (calc) calc.loadInclusive(totalAmount, pct);
+  }
+
   function summaryHTML(result, labelBefore) {
     labelBefore = labelBefore || 'المبلغ قبل الضريبة';
     return (
@@ -213,6 +236,7 @@
     bindFromElement: bindFromElement,
     resetElement: resetElement,
     loadElement: loadElement,
+    loadInclusiveElement: loadInclusiveElement,
     summaryHTML: summaryHTML,
   };
 

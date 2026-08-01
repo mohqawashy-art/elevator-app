@@ -4805,15 +4805,21 @@ def _purge_contract_dependencies(contract_id):
 
 
 def _apply_contract_form(c, form):
-    value = _money_round(form.get('value', 0))
+    from customer_billing import split_vat_amounts
     tax_pct = _money_round(form.get('tax_pct', 15) or 15)
     total_raw = form.get('total')
+    value_raw = form.get('value', 0)
     if total_raw not in (None, ''):
-        total = _money_round(total_raw)
-        tax_amount = _money_round(total - value)
+        value, tax_amount, total = split_vat_amounts(
+            amount_ex_vat=value_raw if value_raw not in (None, '') else None,
+            total_incl_vat=total_raw,
+            tax_pct=tax_pct,
+        )
     else:
-        tax_amount = _money_round(value * tax_pct / 100)
-        total = _money_round(value + tax_amount)
+        value, tax_amount, total = split_vat_amounts(
+            amount_ex_vat=value_raw,
+            tax_pct=tax_pct,
+        )
     start = _parse_date(form.get('start_date'))
     end = _parse_date(form.get('end_date'))
     c.customer_id = form['customer_id']
@@ -7838,11 +7844,16 @@ def invoices():
 @app.route('/invoices/edit/<int:id>', methods=['POST'])
 def invoice_edit(id):
     from form_validation import invoice_amount_error
+    from customer_billing import split_vat_amounts
 
     i = tenant_get_or_404(Invoice, id)
-    amount = float(request.form.get('amount', 0) or 0)
-    tax = amount * 0.15
-    total = amount + tax
+    amount_raw = request.form.get('amount', 0)
+    total_raw = request.form.get('total')
+    amount, tax, total = split_vat_amounts(
+        amount_ex_vat=amount_raw,
+        total_incl_vat=total_raw if total_raw not in (None, '') else None,
+        tax_pct=15,
+    )
     amt_err = invoice_amount_error(amount)
     if amt_err:
         flash(amt_err, 'error')
@@ -7854,7 +7865,7 @@ def invoice_edit(id):
     i.description    = request.form.get('description','')
     i.amount         = amount
     i.tax_amount     = tax
-    i.total          = amount + tax
+    i.total          = total
     i.payment_method = request.form.get('payment_method','')
     status = request.form.get('status', 'غير مدفوعة')
     i.status = status
@@ -7871,12 +7882,17 @@ def invoice_add():
     from form_validation import invoice_amount_error
     from customer_billing import (
         contract_paid_amount,
+        split_vat_amounts,
         validate_tax_invoice_full_amount,
     )
 
-    amount = float(request.form.get('amount', 0) or 0)
-    tax = round(amount * 0.15, 2)
-    total = round(amount + tax, 2)
+    amount_raw = request.form.get('amount', 0)
+    total_raw = request.form.get('total')
+    amount, tax, total = split_vat_amounts(
+        amount_ex_vat=amount_raw,
+        total_incl_vat=total_raw if total_raw not in (None, '') else None,
+        tax_pct=15,
+    )
     invoice_type = request.form.get('invoice_type', 'فاتورة ضريبية')
     amt_err = invoice_amount_error(amount)
     if amt_err:
