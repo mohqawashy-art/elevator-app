@@ -88,7 +88,12 @@
     var anchor = state.inputEl;
     if (!list || !anchor || list.hidden) return;
     var r = anchor.getBoundingClientRect();
-    if (!document.body.contains(anchor) || (!r.width && !r.height) || !isVisible(anchor)) {
+    /* أثناء أنيمشن فتح النافذة تكون visibility/opacity غير مستقرة، فلا نحكم
+       باختفاء الحقل إلا بعد استقرارها. */
+    var settled = Date.now() - (state.openedAt || 0) > 400;
+    var gone = !document.body.contains(anchor) ||
+      (settled && ((!r.width && !r.height) || !isVisible(anchor)));
+    if (gone) {
       closeList(state);
       return;
     }
@@ -123,6 +128,7 @@
     detach(state);
     state.listEl.hidden = false;
     state.rectKey = null;
+    state.openedAt = Date.now();
     openState = state;
     positionList(state);
     startTracking();
