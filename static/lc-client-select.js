@@ -4,6 +4,10 @@
 
   var mounts = {};
   var hiddenIndex = {};
+  var openState = null;
+  var MAX_LIST_H = 220;
+  var GAP = 4;
+  var EDGE = 8;
 
   function $(id) {
     return document.getElementById(id);
@@ -56,28 +60,86 @@
     state.clearBtn.hidden = !has || !!(state.inputEl && state.inputEl.disabled);
   }
 
+  /* القائمة تُنقل إلى <body> وتُثبّت بالإحداثيات حتى لا يفسدها transform/overflow
+     على النوافذ المنبثقة أو الحاويات الأب. */
+  function detach(state) {
+    var list = state.listEl;
+    if (list && list.parentNode !== document.body) {
+      list.classList.add('lc-client-select-floating');
+      if (state.inputEl) {
+        list.style.direction = getComputedStyle(state.inputEl).direction;
+      }
+      document.body.appendChild(list);
+    }
+  }
+
+  function isVisible(el) {
+    var node = el;
+    while (node && node.nodeType === 1) {
+      var cs = getComputedStyle(node);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return false;
+      node = node.parentElement;
+    }
+    return true;
+  }
+
   function positionList(state) {
     var list = state.listEl;
-    var input = state.inputEl;
-    if (!list || !input || list.hidden) return;
-    var rect = input.getBoundingClientRect();
-    var spaceBelow = window.innerHeight - rect.bottom;
-    var maxH = 220;
-    var openUp = spaceBelow < 160 && rect.top > spaceBelow;
+    var anchor = state.inputEl;
+    if (!list || !anchor || list.hidden) return;
+    var r = anchor.getBoundingClientRect();
+    if (!document.body.contains(anchor) || (!r.width && !r.height) || !isVisible(anchor)) {
+      closeList(state);
+      return;
+    }
+    var key = [r.left, r.top, r.width, r.height, window.innerWidth, window.innerHeight].join(',');
+    if (key === state.rectKey) return;
+    state.rectKey = key;
+
+    var left = Math.max(EDGE, Math.min(r.left, window.innerWidth - r.width - EDGE));
     list.style.position = 'fixed';
-    list.style.left = Math.max(8, rect.left) + 'px';
-    list.style.width = Math.max(180, rect.width) + 'px';
+    list.style.width = Math.max(180, r.width) + 'px';
+    list.style.left = left + 'px';
     list.style.right = 'auto';
     list.style.zIndex = '4000';
-    if (openUp) {
+    list.style.maxHeight = MAX_LIST_H + 'px';
+
+    var needed = Math.min(MAX_LIST_H, list.offsetHeight || MAX_LIST_H);
+    var below = window.innerHeight - r.bottom - GAP - EDGE;
+    var above = r.top - GAP - EDGE;
+    if (below < needed && above > below) {
+      var h = Math.min(needed, Math.max(120, above));
+      list.style.maxHeight = h + 'px';
+      list.style.bottom = (window.innerHeight - r.top + GAP) + 'px';
       list.style.top = 'auto';
-      list.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
-      list.style.maxHeight = Math.min(maxH, Math.max(120, rect.top - 12)) + 'px';
     } else {
+      list.style.maxHeight = Math.min(MAX_LIST_H, Math.max(120, below)) + 'px';
+      list.style.top = (r.bottom + GAP) + 'px';
       list.style.bottom = 'auto';
-      list.style.top = (rect.bottom + 4) + 'px';
-      list.style.maxHeight = Math.min(maxH, Math.max(120, spaceBelow - 12)) + 'px';
     }
+  }
+
+  function openList(state) {
+    detach(state);
+    state.listEl.hidden = false;
+    state.rectKey = null;
+    openState = state;
+    positionList(state);
+    startTracking();
+  }
+
+  var tracking = false;
+  function startTracking() {
+    if (tracking || typeof requestAnimationFrame !== 'function') return;
+    tracking = true;
+    (function step() {
+      if (!openState) {
+        tracking = false;
+        return;
+      }
+      positionList(openState);
+      requestAnimationFrame(step);
+    })();
   }
 
   function renderList(state) {
@@ -93,8 +155,7 @@
     var rows = filterCustomers(state.customers, q);
     if (!rows.length) {
       list.innerHTML = '<li class="lc-client-select-empty">لا توجد نتائج</li>';
-      list.hidden = false;
-      positionList(state);
+      openList(state);
       return;
     }
     list.innerHTML = rows.map(function (c) {
@@ -102,21 +163,34 @@
       return '<li class="lc-client-select-item' + active + '" data-id="' + c.id + '" role="option">' +
         esc(labelFor(c)) + '</li>';
     }).join('');
-    list.hidden = false;
-    positionList(state);
+    openList(state);
   }
 
   function closeList(state) {
-    if (!state.listEl) return;
-    state.listEl.hidden = true;
-    state.listEl.style.position = '';
-    state.listEl.style.left = '';
-    state.listEl.style.right = '';
-    state.listEl.style.top = '';
-    state.listEl.style.bottom = '';
-    state.listEl.style.width = '';
-    state.listEl.style.maxHeight = '';
-    state.listEl.style.zIndex = '';
+    var list = state.listEl;
+    if (list) {
+      list.hidden = true;
+      list.style.position = '';
+      list.style.left = '';
+      list.style.right = '';
+      list.style.top = '';
+      list.style.bottom = '';
+      list.style.width = '';
+      list.style.maxHeight = '';
+      list.style.zIndex = '';
+      var orphan = state.inputEl && !document.body.contains(state.inputEl);
+      if (orphan && list.parentNode === document.body) list.remove();
+    }
+    if (openState === state) openState = null;
+  }
+
+  function reposition() {
+    if (openState) positionList(openState);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
   }
 
   function pick(state, id, opts) {
@@ -134,6 +208,11 @@
   function mount(opts) {
     var wrap = typeof opts.wrapId === 'string' ? $(opts.wrapId) : opts.wrapEl;
     if (!wrap) return null;
+    var stale = mounts[opts.wrapId];
+    if (stale && stale.listEl && stale.listEl.parentNode === document.body) {
+      closeList(stale);
+      stale.listEl.remove();
+    }
     var hidden = $(opts.hiddenId);
     var input = $(opts.inputId);
     var list = $(opts.listId);
@@ -169,8 +248,14 @@
     input.addEventListener('focus', function () {
       if (input.disabled) return;
       renderList(state);
-      // سهّل التعديل: حدّد النص ليُستبدل بالبحث فوراً
       try { input.select(); } catch (e) { /* ignore */ }
+    });
+    list.addEventListener('mouseenter', function () { state.hover = true; });
+    list.addEventListener('mouseleave', function () { state.hover = false; });
+    input.addEventListener('blur', function () {
+      setTimeout(function () {
+        if (!state.hover && document.activeElement !== input) closeList(state);
+      }, 120);
     });
     input.addEventListener('input', function () {
       if (input.disabled) return;
@@ -212,12 +297,6 @@
         closeList(state);
       }
     });
-    window.addEventListener('resize', function () {
-      if (!list.hidden) positionList(state);
-    });
-    document.addEventListener('scroll', function () {
-      if (!list.hidden) positionList(state);
-    }, true);
 
     if (opts.selectedId) setValue(opts.wrapId, opts.selectedId, { silent: true });
     syncClearBtn(state);
