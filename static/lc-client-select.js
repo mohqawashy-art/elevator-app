@@ -106,7 +106,7 @@
     list.style.width = Math.max(180, r.width) + 'px';
     list.style.left = left + 'px';
     list.style.right = 'auto';
-    list.style.zIndex = '4000';
+    list.style.zIndex = '9100';
     list.style.maxHeight = MAX_LIST_H + 'px';
 
     var needed = Math.min(MAX_LIST_H, list.offsetHeight || MAX_LIST_H);
