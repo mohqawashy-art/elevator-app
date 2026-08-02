@@ -4988,8 +4988,14 @@ def contracts_import_template():
 def contract_edit(id):
     from form_validation import contract_form_error
 
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
     err = contract_form_error(request.form, money_round=_money_round)
     if err:
+        if wants_json:
+            return jsonify({'ok': False, 'message': err}), 400
         flash(err, 'error')
         return redirect(url_for('contracts'))
     c = tenant_get_or_404(Contract, id)
@@ -5021,10 +5027,20 @@ def contract_edit(id):
         )
         if auth_err:
             return auth_err
-    _apply_contract_form(c, request.form)
-    _save_contract_file(c, request.files.get('contract_file'))
-    _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
-    db.session.commit()
+    try:
+        _apply_contract_form(c, request.form)
+        _save_contract_file(c, request.files.get('contract_file'))
+        _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('contract_edit failed')
+        if wants_json:
+            return jsonify({'ok': False, 'message': str(exc) or 'تعذّر حفظ العقد'}), 400
+        flash(str(exc) or 'تعذّر حفظ العقد', 'error')
+        return redirect(url_for('contracts'))
+    if wants_json:
+        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': url_for('contracts')})
     return redirect(url_for('contracts'))
 
 
@@ -5032,18 +5048,34 @@ def contract_edit(id):
 def contract_add():
     from form_validation import contract_form_error
 
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
     err = contract_form_error(request.form, money_round=_money_round)
     if err:
+        if wants_json:
+            return jsonify({'ok': False, 'message': err}), 400
         flash(err, 'error')
         return redirect(url_for('contracts'))
     c = Contract(code=next_code(Contract, 'CN-', digits=5))
-    _apply_contract_form(c, request.form)
-    assign_organization(c)
-    db.session.add(c)
-    db.session.flush()
-    _save_contract_file(c, request.files.get('contract_file'))
-    _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
-    db.session.commit()
+    try:
+        _apply_contract_form(c, request.form)
+        assign_organization(c)
+        db.session.add(c)
+        db.session.flush()
+        _save_contract_file(c, request.files.get('contract_file'))
+        _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('contract_add failed')
+        if wants_json:
+            return jsonify({'ok': False, 'message': str(exc) or 'تعذّر حفظ العقد'}), 400
+        flash(str(exc) or 'تعذّر حفظ العقد', 'error')
+        return redirect(url_for('contracts'))
+    if wants_json:
+        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': url_for('contracts')})
     return redirect(url_for('contracts'))
 
 @app.route('/contracts/delete/<int:id>', methods=['POST'])

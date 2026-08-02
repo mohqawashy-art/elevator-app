@@ -51,11 +51,12 @@
     }
     if (cfg.beforeValueId) {
       var hidden = $(cfg.beforeValueId);
-      if (hidden) hidden.value = result.before > 0 ? result.before.toFixed(2) : '';
+      // 0 صراحةً — يسمح بحفظ العقود بدون قيمة
+      if (hidden) hidden.value = result.before.toFixed(2);
     }
     if (cfg.totalValueId) {
       var totalHidden = $(cfg.totalValueId);
-      if (totalHidden) totalHidden.value = result.total > 0 ? result.total.toFixed(2) : '';
+      if (totalHidden) totalHidden.value = result.total.toFixed(2);
     }
   }
 

@@ -285,7 +285,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
 <script src="/static/liftcore-dates.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/static/tax_calc.js?v=2"></script>
+<script src="/static/tax_calc.js?v=3"></script>
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -1445,9 +1445,17 @@ function buildContractFormData(adminPassword) {
   fd.append('reminder_date', document.getElementById('f-reminder').value);
   fd.append('maint_frequency', document.getElementById('f-maint-freq').value);
   fd.append('visits_per_month', document.getElementById('f-visits-month').value || '1');
-  fd.append('value', document.getElementById('f-value').value || '0');
+  // القيمة اختيارية: فارغ أو غير رقمي → 0 (عقود بدون مبالغ مستلمة)
+  var rawValue = (document.getElementById('f-value') || {}).value;
+  var rawCtax = (document.getElementById('ctax-input') || {}).value;
+  var valueNum = parseFloat(rawValue);
+  if (!isFinite(valueNum)) valueNum = parseFloat(rawCtax);
+  if (!isFinite(valueNum) || valueNum < 0) valueNum = 0;
+  fd.append('value', String(valueNum));
   var totalEl = document.getElementById('f-total');
-  fd.append('total', totalEl ? totalEl.value : '');
+  var totalNum = totalEl ? parseFloat(totalEl.value) : NaN;
+  if (!isFinite(totalNum) || totalNum < 0) totalNum = valueNum;
+  fd.append('total', String(totalNum));
   fd.append('tax_pct', document.getElementById('f-tax-pct').value || '15');
   fd.append('payment_terms', document.getElementById('f-payment-terms').value);
   fd.append('status', document.getElementById('f-status-sel').value);
@@ -1483,6 +1491,16 @@ function postContractSave(editId, fd, saveBtn, saveBtnHtml) {
       if (res.status === 401 || res.status === 403) {
         return res.json().catch(function() { return {}; }).then(function(data) {
           throw new Error(data.message || 'غير مصرح أو كلمة المرور خاطئة');
+        });
+      }
+      var ct = (res.headers.get('content-type') || '');
+      if (ct.indexOf('application/json') >= 0) {
+        return res.json().then(function(data) {
+          if (!res.ok || (data && data.ok === false)) {
+            throw new Error((data && data.message) || 'فشل حفظ العقد');
+          }
+          window.location.href = (data && data.redirect) || '/contracts';
+          return null;
         });
       }
       if (res.redirected || res.ok) {
