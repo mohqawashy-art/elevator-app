@@ -681,6 +681,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           {% with prefix='ctax', before_field_id='f-value', total_field_id='f-total', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (⃁)', inclusive_label='قيمة العقد شامل الضريبة (⃁)', breakdown_before_label='قيمة العقد قبل الضريبة', full_width=false %}
           {% include '_tax_amount_block.html' %}
           {% endwith %}
+          <span class="field-hint" style="display:block;margin-top:6px">اختياري — يمكن حفظ العقد بدون قيمة (0) إن لم تُسلَّم المبالغ أو لم تُحدد بعد</span>
         </div>
         <div class="form-grid">
           <div class="field">
@@ -1517,11 +1518,6 @@ function saveContract() {
   }
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock && taxBlock._lcTaxCalc) taxBlock._lcTaxCalc.update();
-  var contractVal = parseFloat(document.getElementById('f-value').value || document.getElementById('ctax-input').value || 0);
-  if (!contractVal || contractVal <= 0) {
-    alert('قيمة العقد يجب أن تكون أكبر من صفر');
-    return;
-  }
   var modalAdd = document.getElementById('modal-add');
   var editId = modalAdd.dataset.editId;
   var originalCustomerId = getOriginalContractCustomerId(editId);
