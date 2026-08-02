@@ -1,15 +1,16 @@
 /* LiftCore Admin PWA */
 'use strict';
 
-const CACHE = 'liftcore-admin-v7';
+const CACHE = 'liftcore-admin-v8';
 const PRECACHE = [
-  '/static/liftcore-shell.css?v=43',
+  '/static/liftcore-shell.css?v=44',
   '/static/liftcore-admin-mobile.css?v=6',
   '/static/liftcore-mobile-touch.css?v=2',
   '/static/liftcore-theme.css',
   '/static/liftcore-layout.css?v=5',
   '/static/liftcore-sticky-top.css?v=6',
-  '/static/liftcore-shell.js?v=21',
+  '/static/liftcore-shell.js?v=24',
+  '/static/contracts-zero-hotfix.js?v=1',
   '/static/liftcore-mobile-touch.js?v=2',
   '/static/images/icon-192.png',
 ];

@@ -4972,6 +4972,12 @@ def _save_contract_file(c, file_storage):
 def contracts():
     from sqlalchemy.orm import joinedload
 
+    # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة التي ترفض القيمة 0
+    if request.args.get('z') != '2':
+        args = request.args.to_dict(flat=True)
+        args['z'] = '2'
+        return redirect(url_for('contracts', **args))
+
     contracts_list = (
         tenant_query(Contract)
         .options(joinedload(Contract.customer), joinedload(Contract.elevators))

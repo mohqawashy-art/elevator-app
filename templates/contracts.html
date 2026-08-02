@@ -1567,6 +1567,15 @@ function saveContract() {
   postContractSave(editId, buildContractFormData(''), saveBtn, saveBtnHtml);
 }
 
+// للـ hotfix: اجعل الدوال على window دائماً
+window.buildContractFormData = buildContractFormData;
+window.postContractSave = postContractSave;
+window.saveContract = saveContract;
+window.saveContractAllowZero = saveContractAllowZero;
+window.getOriginalContractCustomerId = getOriginalContractCustomerId;
+window.isContractClientChangeUnlocked = isContractClientChangeUnlocked;
+window.revertContractClientToOriginal = revertContractClientToOriginal;
+
 function editContract(id) {
   var c = CONTRACTS.find(function(x) { return x.id === id; });
   if (!c) return;
