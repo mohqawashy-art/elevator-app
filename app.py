@@ -208,6 +208,7 @@ migrate = Migrate(app, db)
 
 PUBLIC_ENDPOINTS = frozenset({
     'login', 'logout', 'static', 'index', 'api_version', 'api_health',
+    'api_debug_contract_zero',
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
     'coming_soon',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
