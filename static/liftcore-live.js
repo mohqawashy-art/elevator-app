@@ -142,13 +142,19 @@
   }
 
   function refreshUiAfterLive() {
-    if (typeof global.filterTable === 'function') {
-      global.filterTable();
-    } else if (typeof global.applyFilters === 'function') {
-      global.applyFilters();
-    } else {
-      resyncFilteredFromMaster();
-      if (typeof global.__lcRefreshPage === 'function') global.__lcRefreshPage();
+    // تحديث تلقائي وليس تفاعل مستخدم — نُبقي المستخدم على صفحته الحالية
+    global.__lcPreservePage = true;
+    try {
+      if (typeof global.filterTable === 'function') {
+        global.filterTable();
+      } else if (typeof global.applyFilters === 'function') {
+        global.applyFilters();
+      } else {
+        resyncFilteredFromMaster();
+        if (typeof global.__lcRefreshPage === 'function') global.__lcRefreshPage();
+      }
+    } finally {
+      global.__lcPreservePage = false;
     }
     if (typeof global.updateStats === 'function') global.updateStats();
     if (typeof global.updateDashboard === 'function') global.updateDashboard();

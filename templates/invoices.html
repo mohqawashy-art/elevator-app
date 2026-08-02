@@ -173,7 +173,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
 <link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
 <script src="/static/liftcore-dates.js" defer></script>
-<script src="/static/tax_calc.js"></script>
+<script src="/static/tax_calc.js?v=2"></script>
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -345,8 +345,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>البيان <span>*</span></label>
           <textarea id="f-desc" placeholder="وصف الخدمة أو القطع..."></textarea>
         </div>
-        {% with prefix='invtax', before_field_id='f-amount', pct_id='f-tax-pct' %}
-        {% include '_tax_amount_block.html' %}
+        {% with prefix='invtax', before_field_id='f-amount', total_field_id='f-total', pct_id='f-tax-pct' %}
+          {% include '_tax_amount_block.html' %}
         {% endwith %}
         <div class="field">
           <label>طريقة الدفع</label>
@@ -676,13 +676,14 @@ function selectBillableOp(idx) {
   document.getElementById('f-desc').value = accountDesc;
   const invDate = document.getElementById('f-date');
   if (invDate && op.date) invDate.value = op.date;
-  const beforeTax = Number(op.amount_before_tax || 0);
+  const inclusiveTotal = Number(op.remaining != null ? op.remaining : (op.total || 0));
   const taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock && window.LiftCoreTaxCalc) {
-    LiftCoreTaxCalc.loadElement(taxBlock, beforeTax, 15);
+    if (LiftCoreTaxCalc.loadInclusiveElement) LiftCoreTaxCalc.loadInclusiveElement(taxBlock, inclusiveTotal, 15);
+    else LiftCoreTaxCalc.loadElement(taxBlock, inclusiveTotal / 1.15, 15);
   } else {
     const amt = document.getElementById('f-amount');
-    if (amt) amt.value = beforeTax.toFixed(2);
+    if (amt) amt.value = (inclusiveTotal / 1.15).toFixed(2);
     calcTotal();
   }
   const st = document.getElementById('f-status-sel');
@@ -746,7 +747,7 @@ function saveInvoice() {
   if (!parseFloat(document.getElementById('f-amount')?.value || 0)) { alert('أدخل المبلغ'); return; }
   const fd = new FormData();
   [['invoice_type','f-inv-type'],['customer_id','f-customer-sel'],['invoice_date','f-date'],['due_date','f-due-date'],
-   ['description','f-desc'],['amount','f-amount'],['payment_method','f-pay-method'],['status','f-status-sel'],['notes','f-notes'],
+   ['description','f-desc'],['amount','f-amount'],['total','f-total'],['payment_method','f-pay-method'],['status','f-status-sel'],['notes','f-notes'],
    ['source_type','f-source-type'],['source_id','f-source-id'],['contract_id','f-contract-id']
   ].forEach(([f,i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
   fetch(editId ? `/invoices/edit/${editId}` : '/invoices/add', { method:'POST', body:fd })
@@ -774,7 +775,13 @@ function editInvoice(id) {
   const wrap = document.getElementById('inv-billable-wrap');
   if (wrap) wrap.style.display = 'none';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, i.amount, 15);
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    if (i.total != null && LiftCoreTaxCalc.loadInclusiveElement) {
+      LiftCoreTaxCalc.loadInclusiveElement(taxBlock, i.total, 15);
+    } else {
+      LiftCoreTaxCalc.loadElement(taxBlock, i.amount, 15);
+    }
+  }
   document.getElementById('modal-add').classList.add('open');
 }
 

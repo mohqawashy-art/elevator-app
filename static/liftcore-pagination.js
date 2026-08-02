@@ -38,12 +38,39 @@
     return 'عرض ' + start + '–' + end + ' من ' + (master != null ? master : filtered);
   }
 
+  /** مفتاح حفظ الصفحة الحالية — لكل جدول في كل صفحة */
+  function storageKey(options) {
+    if (options.persist === false) return null;
+    if (options.persistKey) return 'lc:page:' + options.persistKey;
+    var sel = typeof options.container === 'string' ? options.container : null;
+    if (!sel) return null;
+    return 'lc:page:' + global.location.pathname + '|' + sel;
+  }
+
+  function readStored(key) {
+    if (!key) return 1;
+    try {
+      var v = parseInt(global.sessionStorage.getItem(key), 10);
+      return v > 0 ? v : 1;
+    } catch (e) {
+      return 1;
+    }
+  }
+
+  function writeStored(key, value) {
+    if (!key) return;
+    try {
+      global.sessionStorage.setItem(key, String(value));
+    } catch (e) { /* تجاهل */ }
+  }
+
   function create(options) {
     options = options || {};
     var pageSize = options.pageSize || DEFAULT_SIZE;
     var container = $(options.container);
     var infoEl = $(options.infoEl);
-    var page = 1;
+    var storeKey = storageKey(options);
+    var page = readStored(storeKey);
     var filteredTotal = 0;
     var getMasterTotal = options.getMasterTotal || null;
     var onPageChange = options.onPageChange || null;
@@ -58,8 +85,18 @@
       if (page < 1) page = 1;
     }
 
+    function setPage(p) {
+      p = Number(p);
+      if (!p || p < 1) p = 1;
+      page = p;
+      writeStored(storeKey, page);
+    }
+
     function resetPage() {
+      // التحديث التلقائي للبيانات لا يجب أن يُرجع المستخدم للصفحة الأولى
+      if (global.__lcPreservePage) return;
       page = 1;
+      writeStored(storeKey, page);
     }
 
     function setTotal(n) {
@@ -106,7 +143,7 @@
     function goTo(p) {
       p = Number(p);
       if (isNaN(p) || p < 1 || p > totalPages() || p === page) return;
-      page = p;
+      setPage(p);
       if (onPageChange) onPageChange(page);
     }
 
@@ -162,6 +199,7 @@
     return {
       pageSize: pageSize,
       resetPage: resetPage,
+      setPage: setPage,
       setTotal: setTotal,
       slice: slice,
       paginate: paginate,
@@ -192,6 +230,7 @@
       var pager = create({
         pageSize: pageSize,
         container: container,
+        persist: false,
         onPageChange: function (p) {
           page = p;
           apply(false);
@@ -253,9 +292,25 @@
         return inst;
       }
       return {
+        pageSize: options.pageSize || DEFAULT_SIZE,
         resetPage: function () {
           var i = getInst();
           if (i) i.resetPage();
+        },
+        setPage: function (p) {
+          var i = getInst();
+          if (i) i.setPage(p);
+        },
+        getPage: function () {
+          var i = getInst();
+          return i ? i.getPage() : 1;
+        },
+        /** رقم الصفحة التي يقع فيها صف بترتيب معيّن (0-based) */
+        pageOf: function (index) {
+          var size = options.pageSize || DEFAULT_SIZE;
+          index = Number(index);
+          if (isNaN(index) || index < 0) return 1;
+          return Math.floor(index / size) + 1;
         },
         apply: function (data, masterTotal) {
           var i = getInst();

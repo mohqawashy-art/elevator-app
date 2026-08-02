@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/tax_calc.css">
 <script src="/static/customer_profile.js"></script>
-<script src="/static/tax_calc.js"></script>
+<script src="/static/tax_calc.js?v=2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -754,12 +754,14 @@ function applyPendingOpFields(op) {
   if (dateEl && op.date) dateEl.value = op.date;
   const st = document.getElementById('f-status-sel');
   if (st) st.value = 'محصّل';
-  const beforeTax = Number(op.amount_before_tax != null ? op.amount_before_tax : (op.remaining || 0) / 1.15);
+  const inclusiveTotal = Number(op.remaining != null ? op.remaining : (op.total || 0));
   const taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, beforeTax, 15);
-  else {
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    if (LiftCoreTaxCalc.loadInclusiveElement) LiftCoreTaxCalc.loadInclusiveElement(taxBlock, inclusiveTotal, 15);
+    else LiftCoreTaxCalc.loadElement(taxBlock, inclusiveTotal / 1.15, 15);
+  } else {
     const amt = document.getElementById('f-amount');
-    if (amt) amt.value = beforeTax.toFixed(2);
+    if (amt) amt.value = (inclusiveTotal / 1.15).toFixed(2);
   }
 }
 
@@ -932,7 +934,13 @@ function editRevenue(id) {
   const wrap = document.getElementById('rev-billable-wrap');
   if (wrap) wrap.style.display = 'none';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.loadElement(taxBlock, r.amount, 15);
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    if (r.total != null && LiftCoreTaxCalc.loadInclusiveElement) {
+      LiftCoreTaxCalc.loadInclusiveElement(taxBlock, r.total, 15);
+    } else {
+      LiftCoreTaxCalc.loadElement(taxBlock, r.amount, 15);
+    }
+  }
   document.getElementById('modal-add').classList.add('open');
 }
 

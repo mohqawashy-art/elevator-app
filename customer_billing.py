@@ -55,6 +55,12 @@ def split_vat_amounts(
     return float(amount_d), float(tax_d), float(total_d)
 
 
+def _before_tax_from_inclusive(total_incl, tax_pct: float = 15) -> float:
+    """قبل الضريبة من إجمالي شامل دون إعادة بناء تُنتج 1299.99 / 3000.01."""
+    amount, _tax, _total = split_vat_amounts(total_incl_vat=total_incl, tax_pct=tax_pct)
+    return amount
+
+
 def _extract_contract_code(*texts) -> str | None:
     for text in texts:
         if not text:
@@ -320,7 +326,7 @@ def customer_billable_ops(customer_id: int) -> list[dict]:
             'date': str(pb.billing_date or ''),
             'title': 'تركيب قطع غيار',
             'description': (pb.description or 'قطع غيار')[:200],
-            'amount_before_tax': round(total / 1.15, 2),
+            'amount_before_tax': _before_tax_from_inclusive(total),
             'total': total,
             'paid': paid,
             'remaining': max(total - paid, 0),
@@ -354,7 +360,7 @@ def customer_billable_ops(customer_id: int) -> list[dict]:
             'date': str(c.start_date or ''),
             'title': c.contract_type or 'عقد',
             'description': f'فاتورة عقد {c.code} — {c.contract_type or "صيانة"} (المبلغ الكامل)',
-            'amount_before_tax': round(total / 1.15, 2),
+            'amount_before_tax': _before_tax_from_inclusive(total),
             'total': total,
             'paid': paid,
             'remaining': max(remaining, 0),
@@ -502,7 +508,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'total': _round_money(c.total),
             'paid': paid,
             'remaining': remaining,
-            'amount_before_tax': round(remaining / 1.15, 2),
+            'amount_before_tax': _before_tax_from_inclusive(remaining),
             'contract_id': c.id,
             'status': c.invoice_status or 'غير مدفوع',
             'collected': False,
@@ -530,7 +536,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'total': _round_money(inv.total),
             'paid': _round_money(getattr(inv, 'paid_amount', 0) or 0),
             'remaining': remaining,
-            'amount_before_tax': round(remaining / 1.15, 2),
+            'amount_before_tax': _before_tax_from_inclusive(remaining),
             'contract_id': inv.contract_id,
             'status': inv.status or 'غير مدفوعة',
             'collected': False,
@@ -558,7 +564,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'total': _round_money(pb.sell_price),
             'paid': _round_money(getattr(pb, 'paid_amount', 0) or 0),
             'remaining': remaining,
-            'amount_before_tax': round(remaining / 1.15, 2),
+            'amount_before_tax': _before_tax_from_inclusive(remaining),
             'contract_id': pb.contract_id,
             'status': pb.status or 'غير محصل',
             'fault_code': pb.fault.code if pb.fault else '',

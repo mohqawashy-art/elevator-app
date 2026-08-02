@@ -12,6 +12,10 @@
   background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-sm);z-index:120;
   margin:0;padding:4px 0;list-style:none;box-shadow:0 8px 24px rgba(0,0,0,.35)
 }
+/* فوق .modal-overlay (9000 في liftcore-shell) وأسفل التوست/الشاشة الترحيبية */
+.lc-client-select-list.lc-client-select-floating{
+  position:fixed;top:0;left:0;right:auto;z-index:9100
+}
 .lc-client-select-item{padding:9px 12px;font-size:13px;color:var(--text2);cursor:pointer}
 .lc-client-select-item:hover,.lc-client-select-item.active{background:var(--bg3);color:var(--text1)}
 .lc-client-select-empty{padding:10px 12px;font-size:12px;color:var(--text3)}
