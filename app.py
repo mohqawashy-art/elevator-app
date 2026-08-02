@@ -154,6 +154,38 @@ def _security_headers(response):
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
     return response
 
+
+@app.after_request
+def _strip_obsolete_contract_value_guard(response):
+    """يشيل تحقق «قيمة العقد > 0» القديم من HTML حتى لو بقيت نسخة قديمة في الكاش/القرص."""
+    try:
+        if request.endpoint not in ('contracts',):
+            return response
+        ctype = (response.headers.get('Content-Type') or '').lower()
+        if 'html' not in ctype:
+            return response
+        raw = response.get_data(as_text=True)
+        marker = 'قيمة العقد يجب أن تكون أكبر من صفر'
+        if marker not in raw:
+            return response
+        import re
+        cleaned, n = re.subn(
+            r"var\s+contractVal\s*=\s*parseFloat\([^;]*;\s*"
+            r"if\s*\(\s*!contractVal\s*\|\|\s*contractVal\s*<=\s*0\s*\)\s*\{\s*"
+            r"alert\(\s*['\"]قيمة العقد يجب أن تكون أكبر من صفر['\"]\s*\)\s*;\s*"
+            r"return\s*;\s*\}\s*",
+            "\n",
+            raw,
+            flags=re.M,
+        )
+        if n:
+            response.set_data(cleaned)
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['X-LC-Contract-Zero'] = f'stripped:{n}'
+    except Exception:
+        app.logger.exception('strip obsolete contract value guard failed')
+    return response
+
 db.init_app(app)
 
 from tenant_scope import (  # noqa: E402

@@ -720,7 +720,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add')">إلغاء</button>
-      <button type="button" class="btn btn-primary" id="btn-save-contract" onclick="saveContract()">
+      <button type="button" class="btn btn-primary" id="btn-save-contract" onclick="saveContractAllowZero()">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
         حفظ العقد
       </button>
@@ -1523,6 +1523,10 @@ function postContractSave(editId, fd, saveBtn, saveBtnHtml) {
     });
 }
 
+function saveContractAllowZero() {
+  saveContract();
+}
+
 function saveContract() {
   if (contractSaving) return;
   var clientSel = document.getElementById('f-client-sel');
@@ -1535,6 +1539,7 @@ function saveContract() {
     alert('تاريخ النهاية يجب أن يكون بعد تاريخ البداية');
     return;
   }
+  // القيمة 0 مسموحة عمداً — لا ترفض الحفظ
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock && taxBlock._lcTaxCalc) taxBlock._lcTaxCalc.update();
   var modalAdd = document.getElementById('modal-add');
