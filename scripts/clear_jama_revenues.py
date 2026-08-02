@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""مسح جميع سجلات الإيرادات من قاعدة جما (مع تحديث حالة العقود)."""
+"""مسح جميع سجلات الإيرادات لمستأجر (افتراضي: jama) مع تحديث حالة العقود.
+
+أمثلة على السيرفر (PostgreSQL multi-tenant):
+  cd ~/liftcore/elevator-app
+  set -a; source /etc/liftcore/platform.env; set +a
+  python3 scripts/clear_jama_revenues.py --slug jama --dry-run
+  python3 scripts/clear_jama_revenues.py --slug jama --yes
+"""
 
 from __future__ import annotations
 
@@ -31,9 +38,10 @@ def _resolve_database_url() -> str:
 def clear_all_revenues(*, dry_run: bool = False) -> dict:
     from app import app, db, sync_contract_invoice_status
     from models import Revenue
+    from tenant_scope import tenant_query
 
     with app.app_context():
-        rows = Revenue.query.order_by(Revenue.id).all()
+        rows = tenant_query(Revenue).order_by(Revenue.id).all()
         count = len(rows)
         contract_ids = sorted({r.contract_id for r in rows if r.contract_id})
         db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
@@ -56,7 +64,7 @@ def clear_all_revenues(*, dry_run: bool = False) -> dict:
             sync_contract_invoice_status(cid)
 
         db.session.commit()
-        remaining = Revenue.query.count()
+        remaining = tenant_query(Revenue).count()
         return {
             'dry_run': False,
             'deleted': count,
@@ -68,7 +76,8 @@ def clear_all_revenues(*, dry_run: bool = False) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='مسح جميع الإيرادات من قاعدة جما')
+    parser = argparse.ArgumentParser(description='مسح جميع الإيرادات لمستأجر جما')
+    parser.add_argument('--slug', default='jama', help='Organization slug (default: jama)')
     parser.add_argument('--dry-run', action='store_true', help='عرض العدد فقط دون حذف')
     parser.add_argument('--yes', action='store_true', help='تأكيد الحذف دون سؤال')
     args = parser.parse_args()
@@ -78,14 +87,28 @@ def main() -> int:
         os.environ['DATABASE_URL'] = db_url
         print(f'DATABASE_URL = {db_url}')
     else:
-        print('تحذير: لم يُعثر على jama.db — سيُستخدم مسار التطبيق الافتراضي')
+        print('تحذير: لم يُضبط DATABASE_URL — سيُستخدم إعداد التطبيق الافتراضي')
 
     if not args.dry_run and not args.yes:
         print('أضف --yes لتأكيد الحذف، أو --dry-run للمعاينة فقط')
         return 2
 
+    from flask import g
+    from models import Organization
+    from app import app
+
     try:
-        result = clear_all_revenues(dry_run=args.dry_run)
+        with app.app_context():
+            slug = (args.slug or 'jama').strip().lower()
+            org = Organization.query.filter_by(slug=slug).first()
+            if org:
+                g.organization = org
+                g.organization_id = org.id
+                print(f'Tenant: {org.name} ({org.slug}) id={org.id}')
+            else:
+                # قواعد SQLite قديمة بدون organizations
+                print(f'تحذير: لا توجد مؤسسة slug={slug!r} — سيتم المسح على نطاق الجلسة الحالية')
+            result = clear_all_revenues(dry_run=args.dry_run)
     except Exception as exc:
         print(f'فشل: {exc}', file=sys.stderr)
         return 1
