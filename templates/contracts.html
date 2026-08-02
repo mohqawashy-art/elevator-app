@@ -681,7 +681,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           {% with prefix='ctax', before_field_id='f-value', total_field_id='f-total', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (⃁)', inclusive_label='قيمة العقد شامل الضريبة (⃁)', breakdown_before_label='قيمة العقد قبل الضريبة', full_width=false %}
           {% include '_tax_amount_block.html' %}
           {% endwith %}
-          <span class="field-hint" style="display:block;margin-top:6px">اختياري — يمكن حفظ العقد بدون قيمة (0) إن لم تُسلَّم المبالغ أو لم تُحدد بعد</span>
+          <span id="contract-value-optional-hint" class="field-hint" style="display:block;margin-top:8px;color:var(--gold);font-weight:600">اختياري — يمكن حفظ العقد بقيمة 0 أو بدون مبلغ</span>
+          <!-- contract-zero-value-ok-v3 -->
         </div>
         <div class="form-grid">
           <div class="field">

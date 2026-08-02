@@ -3,7 +3,7 @@ LiftCore — Flask Application
 app.py
 """
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort, make_response
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import MaintenanceTeam
@@ -4951,14 +4951,19 @@ def contracts():
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
         for e in tenant_query(Elevator).all()
     }
-    return render_template(
+    resp = make_response(render_template(
         'contracts.html',
         contracts=contracts_list,
         contracts_js=[contract_to_js_dict(c) for c in contracts_list],
         customers_js=[contract_customer_js_dict(c) for c in customers],
         elev_lookup=elev_lookup,
         next_contract_code=next_code(Contract, 'CN-', digits=5),
-    )
+    ))
+    # منع كاش المتصفح للنسخة القديمة من سكربت حفظ العقد
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
 
 
 @app.route('/contracts/template')
