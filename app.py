@@ -1526,8 +1526,11 @@ def next_code(model, prefix, field='code', digits=4):
 
     max_num = 0
     pattern = re.compile(r'^' + re.escape(prefix) + r'(\d+)$')
+    col = getattr(model, field)
     q = tenant_query(model) if issubclass(model, TenantMixin) else model.query
-    for row in q.with_entities(getattr(model, field)).all():
+    # تضييق الاستعلام على بادئة التسلسل بدل مسح كل الأكواد
+    like_prefix = prefix.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    for row in q.with_entities(col).filter(col.like(like_prefix + '%', escape='\\')).all():
         code = row[0]
         if not code:
             continue
@@ -1536,7 +1539,6 @@ def next_code(model, prefix, field='code', digits=4):
             max_num = max(max_num, int(m.group(1)))
 
     n = max_num + 1
-    col = getattr(model, field)
     while True:
         candidate = f'{prefix}{str(n).zfill(digits)}'
         if issubclass(model, TenantMixin) and _legacy_global_code_unique(model.__tablename__):
@@ -4322,14 +4324,47 @@ def elevators_import_template():
     )
 
 
+def _wants_json_elevator_response() -> bool:
+    return (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+
+
+def _elevator_save_error(message: str):
+    if _wants_json_elevator_response():
+        return jsonify({'ok': False, 'error': message}), 400
+    flash(message, 'error')
+    return redirect(url_for('elevators'))
+
+
+def _finish_elevator_save(elevator):
+    from sqlalchemy.orm import joinedload
+
+    elev = (
+        tenant_query(Elevator)
+        .options(joinedload(Elevator.customer))
+        .filter_by(id=elevator.id)
+        .first()
+    )
+    if elev is None:
+        elev = elevator
+    if _wants_json_elevator_response():
+        return jsonify({
+            'ok': True,
+            'elevator': elevator_to_js_dict(elev),
+            'next_code': next_code(Elevator, 'EL-', digits=4),
+        })
+    return redirect(url_for('elevators'))
+
+
 @app.route('/elevators/add', methods=['POST'])
 def elevator_add():
     from form_validation import elevator_form_error
 
     elev_err = elevator_form_error(request.form, parse_int=_parse_int)
     if elev_err:
-        flash(elev_err, 'error')
-        return redirect(url_for('elevators'))
+        return _elevator_save_error(elev_err)
     e = Elevator(
         code            = next_code(Elevator, 'EL-', digits=4),
         customer_id     = request.form['customer_id'],
@@ -4365,7 +4400,7 @@ def elevator_add():
     db.session.flush()
     sync_customer_from_elevators(e.customer)
     db.session.commit()
-    return redirect(url_for('elevators'))
+    return _finish_elevator_save(e)
 
 
 @app.route('/elevators/edit/<int:id>', methods=['POST'])
@@ -4374,8 +4409,7 @@ def elevator_edit(id):
 
     elev_err = elevator_form_error(request.form, parse_int=_parse_int)
     if elev_err:
-        flash(elev_err, 'error')
-        return redirect(url_for('elevators'))
+        return _elevator_save_error(elev_err)
     e = tenant_get_or_404(Elevator, id)
     e.customer_id      = request.form['customer_id']
     e.building_name    = request.form.get('building_name', '')
@@ -4406,7 +4440,7 @@ def elevator_edit(id):
     e.notes            = request.form.get('notes', '')
     sync_customer_from_elevators(e.customer)
     db.session.commit()
-    return redirect(url_for('elevators'))
+    return _finish_elevator_save(e)
 
 @app.route('/elevators/delete/<int:id>', methods=['POST'])
 def elevator_delete(id):
