@@ -4944,6 +4944,7 @@ def _remove_contract_file(c):
             os.remove(full)
         except OSError:
             pass
+    c.file_path = None
 
 
 def _save_contract_file(c, file_storage):
@@ -5000,7 +5001,7 @@ def api_debug_contract_zero():
         'has_hotfix_file': os.path.isfile(
             os.path.join(app.root_path, 'static', 'contracts-zero-hotfix.js')
         ),
-        'open_contracts': '/contracts?z=3',
+        'open_contracts': '/contracts?z=4',
     })
 
 
@@ -5009,9 +5010,9 @@ def contracts():
     from sqlalchemy.orm import joinedload
 
     # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة التي ترفض القيمة 0
-    if request.args.get('z') != '3':
+    if request.args.get('z') != '4':
         args = request.args.to_dict(flat=True)
-        args['z'] = '3'
+        args['z'] = '4'
         return redirect(url_for('contracts', **args))
 
     contracts_list = (
@@ -5108,7 +5109,13 @@ def contract_edit(id):
             return auth_err
     try:
         _apply_contract_form(c, request.form)
-        _save_contract_file(c, request.files.get('contract_file'))
+        upload = request.files.get('contract_file')
+        if upload and upload.filename:
+            _save_contract_file(c, upload)
+        elif (request.form.get('remove_contract_file') or '').strip().lower() in (
+            '1', 'true', 'yes', 'on',
+        ):
+            _remove_contract_file(c)
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
         db.session.commit()
     except Exception as exc:
@@ -5156,6 +5163,22 @@ def contract_add():
     if wants_json:
         return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': url_for('contracts')})
     return redirect(url_for('contracts'))
+
+@app.route('/contracts/<int:id>/remove-file', methods=['POST'])
+def contract_remove_file(id):
+    """حذف مرفق ملف العقد فقط."""
+    user = require_login()
+    if not user:
+        return jsonify({'ok': False, 'message': 'يجب تسجيل الدخول'}), 401
+    if getattr(user, 'role', None) == 'viewer':
+        return jsonify({'ok': False, 'message': 'ليس لديك صلاحية التعديل'}), 403
+    c = tenant_get_or_404(Contract, id)
+    if not c.file_path:
+        return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    _remove_contract_file(c)
+    db.session.commit()
+    return jsonify({'ok': True, 'removed': True, 'id': c.id, 'code': c.code})
+
 
 @app.route('/contracts/delete/<int:id>', methods=['POST'])
 def contract_delete(id):

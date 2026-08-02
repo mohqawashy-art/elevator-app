@@ -708,7 +708,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <div id="file-name" style="font-size:12px;color:var(--accent);margin-top:8px;display:none"></div>
         <div id="existing-file-wrap" style="display:none;margin-top:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;color:var(--text2)">
-          <span>الملف الحالي: </span><a id="existing-file-link" href="#" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none"></a>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>الملف الحالي: </span>
+            <a id="existing-file-link" href="#" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none"></a>
+            <button type="button" class="btn btn-danger btn-sm" id="btn-remove-contract-file" onclick="removeContractAttachment()" style="margin-inline-start:auto">حذف المرفق</button>
+          </div>
+          <input type="hidden" id="f-remove-contract-file" value="0">
         </div>
       </div>
 
@@ -804,9 +809,46 @@ function contractAttachmentBlock(c) {
       '<div class="view-item view-full"><div class="view-label">ملف العقد</div><div class="view-val contract-attach-empty">لا يوجد مرفق</div></div>';
   }
   return '<div class="view-section">المرفقات</div>' +
-    '<div class="view-item view-full"><div class="view-label">ملف العقد (PDF)</div><div class="view-val">' +
+    '<div class="view-item view-full"><div class="view-label">ملف العقد (PDF)</div><div class="view-val" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
     '<a class="contract-attach-link" href="' + esc(c.file_url) + '" target="_blank" rel="noopener">📄 ' + esc(c.file_name || 'فتح المرفق') + '</a>' +
+    (window.__LC_IS_VIEWER ? '' :
+      '<button type="button" class="btn btn-danger btn-sm" onclick="removeContractAttachmentFromView(' + c.id + ')">حذف المرفق</button>') +
     '</div></div>';
+}
+
+function removeContractAttachmentFromView(contractId) {
+  if (!contractId) return;
+  if (!confirm('حذف مرفق العقد نهائياً؟')) return;
+  fetch('/contracts/' + contractId + '/remove-file', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json',
+    },
+  })
+    .then(function(res) {
+      return res.json().catch(function() { return {}; }).then(function(data) {
+        if (!res.ok || (data && data.ok === false)) {
+          throw new Error((data && data.message) || 'تعذّر حذف المرفق');
+        }
+        return data;
+      });
+    })
+    .then(function() {
+      var idx = CONTRACTS.findIndex(function(x) { return String(x.id) === String(contractId); });
+      if (idx >= 0) {
+        CONTRACTS[idx].file_url = '';
+        CONTRACTS[idx].file_name = '';
+      }
+      if (typeof renderTable === 'function') renderTable();
+      var c = CONTRACTS.find(function(x) { return String(x.id) === String(contractId); });
+      if (c && typeof viewContract === 'function') viewContract(c.id);
+      else closeModal('modal-view');
+    })
+    .catch(function(err) {
+      alert((err && err.message) || 'تعذّر حذف المرفق');
+    });
 }
 
 function setContractFileUi(c) {
@@ -814,7 +856,9 @@ function setContractFileUi(c) {
   var wrap = document.getElementById('existing-file-wrap');
   var link = document.getElementById('existing-file-link');
   var input = document.getElementById('contract-file');
+  var removeFlag = document.getElementById('f-remove-contract-file');
   if (input) input.value = '';
+  if (removeFlag) removeFlag.value = '0';
   if (fn) { fn.style.display = 'none'; fn.textContent = ''; }
   if (c && c.file_url && wrap && link) {
     wrap.style.display = 'block';
@@ -823,6 +867,63 @@ function setContractFileUi(c) {
   } else if (wrap) {
     wrap.style.display = 'none';
   }
+}
+
+function removeContractAttachment() {
+  var modalAdd = document.getElementById('modal-add');
+  var editId = modalAdd && modalAdd.dataset.editId;
+  var removeFlag = document.getElementById('f-remove-contract-file');
+  var wrap = document.getElementById('existing-file-wrap');
+  var input = document.getElementById('contract-file');
+  var fn = document.getElementById('file-name');
+
+  if (!editId) {
+    if (removeFlag) removeFlag.value = '1';
+    if (wrap) wrap.style.display = 'none';
+    if (input) input.value = '';
+    if (fn) { fn.style.display = 'none'; fn.textContent = ''; }
+    return;
+  }
+
+  if (!confirm('حذف مرفق العقد نهائياً؟')) return;
+
+  var btn = document.getElementById('btn-remove-contract-file');
+  if (btn) { btn.disabled = true; btn.textContent = 'جاري الحذف...'; }
+
+  fetch('/contracts/' + editId + '/remove-file', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json',
+    },
+  })
+    .then(function(res) {
+      return res.json().catch(function() { return {}; }).then(function(data) {
+        if (!res.ok || (data && data.ok === false)) {
+          throw new Error((data && data.message) || 'تعذّر حذف المرفق');
+        }
+        return data;
+      });
+    })
+    .then(function() {
+      var idx = CONTRACTS.findIndex(function(x) { return String(x.id) === String(editId); });
+      if (idx >= 0) {
+        CONTRACTS[idx].file_url = '';
+        CONTRACTS[idx].file_name = '';
+      }
+      if (removeFlag) removeFlag.value = '0';
+      if (wrap) wrap.style.display = 'none';
+      if (input) input.value = '';
+      if (fn) { fn.style.display = 'none'; fn.textContent = ''; }
+      if (typeof renderTable === 'function') renderTable();
+    })
+    .catch(function(err) {
+      alert((err && err.message) || 'تعذّر حذف المرفق');
+    })
+    .finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = 'حذف المرفق'; }
+    });
 }
 
 function moneyRound2(n) {
@@ -1470,6 +1571,8 @@ function buildContractFormData(adminPassword) {
     fd.append('contract_file', fileInput.files[0]);
   }
   if (adminPassword) fd.append('admin_password', adminPassword);
+  var removeFlag = document.getElementById('f-remove-contract-file');
+  if (removeFlag && removeFlag.value === '1') fd.append('remove_contract_file', '1');
   return fd;
 }
 
