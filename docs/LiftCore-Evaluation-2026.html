@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تقييم LiftCore — عرض صوتي</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --bg2: #1a222c;
+      --card: #232d3a;
+      --text: #f0f3f6;
+      --muted: #9aa8b5;
+      --accent: #2f9e7a;
+      --warn: #d4a017;
+      --danger: #c45c5c;
+      --info: #4a8fc7;
+      --line: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Tahoma", "Arial", sans-serif;
+      overflow: hidden;
+    }
+    .deck { height: 100%; width: 100%; position: relative; }
+    .slide {
+      display: none;
+      height: 100%;
+      padding: 4.5vh 6vw 8vh;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1.4rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .slide.active { display: flex; animation: fade .28s ease; }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; line-height: 1.25; }
+    h2 { font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 700; color: var(--accent); }
+    h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: .4rem; }
+    p, li { font-size: clamp(1rem, 1.6vw, 1.2rem); line-height: 1.7; color: var(--text); }
+    .muted { color: var(--muted); }
+    .lead { font-size: clamp(1.1rem, 2vw, 1.35rem); color: var(--muted); max-width: 42rem; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-top: .5rem;
+    }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.1rem 1rem;
+      text-align: center;
+    }
+    .stat .v { font-size: 1.55rem; font-weight: 700; margin-bottom: .35rem; }
+    .stat .l { font-size: .9rem; color: var(--muted); }
+    .ok { color: var(--accent); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+    .info { color: var(--info); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.1rem 1.2rem;
+    }
+    .card ul { padding-right: 1.1rem; }
+    .card li { margin: .35rem 0; font-size: 1rem; }
+    table { width: 100%; border-collapse: collapse; font-size: clamp(.92rem, 1.4vw, 1.05rem); }
+    th, td { text-align: right; padding: .7rem .85rem; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; background: var(--bg2); }
+    tr:last-child td { border-bottom: none; }
+    .badge {
+      display: inline-block;
+      padding: .15rem .55rem;
+      border-radius: 999px;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    .badge.ok { background: rgba(47,158,122,.18); color: var(--accent); }
+    .badge.warn { background: rgba(212,160,23,.18); color: var(--warn); }
+    .callout {
+      background: rgba(47,158,122,.12);
+      border: 1px solid rgba(47,158,122,.35);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+    .callout.warn {
+      background: rgba(212,160,23,.1);
+      border-color: rgba(212,160,23,.35);
+    }
+    .nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 56px;
+      background: rgba(15,20,25,.92);
+      border-top: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      z-index: 10;
+      gap: .5rem;
+      backdrop-filter: blur(8px);
+    }
+    .nav button {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: .45rem .85rem;
+      font-size: .9rem;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .nav button:hover { border-color: var(--accent); color: var(--accent); }
+    .nav button:disabled { opacity: .35; cursor: default; border-color: var(--line); color: var(--muted); }
+    .nav button.primary {
+      background: var(--accent);
+      color: #0b1511;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+    .nav button.primary:hover { filter: brightness(1.08); color: #0b1511; }
+    .nav button.speaking {
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+    .progress-wrap {
+      flex: 1;
+      margin: 0 .6rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      min-width: 0;
+    }
+    .progress {
+      flex: 1;
+      height: 4px;
+      background: var(--line);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress > i {
+      display: block;
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width .25s ease;
+    }
+    .page { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+    .brand {
+      position: fixed; top: 1.1rem; left: 1.5rem;
+      font-size: .85rem; color: var(--muted); z-index: 10;
+    }
+    .hint {
+      position: fixed; top: 1.1rem; right: 1.5rem;
+      font-size: .8rem; color: var(--muted); z-index: 10;
+    }
+    .title-slide { text-align: center; align-items: center; }
+    .title-slide .lead { text-align: center; }
+    .big-num { font-size: 3rem; font-weight: 700; color: var(--accent); line-height: 1; }
+    ol.priority { padding-right: 1.4rem; }
+    ol.priority li { margin: .55rem 0; }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 12, 16, .88);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .overlay.hidden { display: none; }
+    .overlay-box {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 2rem 1.8rem;
+      max-width: 420px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .overlay-box h1 { font-size: 1.5rem; }
+    .overlay-box p { color: var(--muted); font-size: 1rem; }
+    .overlay-box button {
+      background: var(--accent);
+      color: #0b1511;
+      border: none;
+      border-radius: 10px;
+      padding: .85rem 1.2rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .voice-status {
+      position: fixed;
+      bottom: 64px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg2);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: .35rem .9rem;
+      font-size: .8rem;
+      color: var(--muted);
+      z-index: 11;
+      display: none;
+      white-space: nowrap;
+    }
+    .voice-status.on { display: block; color: var(--accent); border-color: rgba(47,158,122,.4); }
+
+    @media (max-width: 800px) {
+      .stats, .grid2, .grid3 { grid-template-columns: 1fr; }
+      .slide { padding: 3.5vh 5vw 9vh; gap: 1rem; }
+      .hint { display: none; }
+      .nav button { padding: .4rem .55rem; font-size: .8rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="brand">LiftCore · عرض صوتي</div>
+  <div class="hint">الصوت تلقائي · ← → للتنقل · M كتم · F ملء الشاشة</div>
+
+  <div class="overlay" id="startOverlay">
+    <div class="overlay-box">
+      <h1>تقييم LiftCore</h1>
+      <p>عرض تقديمي مع سرد صوتي عربي. اضغط للبدء — المتصفح يحتاج موافقتك للصوت.</p>
+      <button type="button" id="startBtn">▶ ابدأ العرض الصوتي</button>
+      <button type="button" id="startSilent" style="background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:600;padding:.65rem">بدون صوت</button>
+    </div>
+  </div>
+
+  <div class="voice-status" id="voiceStatus">🔊 جاري السرد...</div>
+
+  <div class="deck" id="deck">
+
+    <section class="slide title-slide active" data-speak="مرحباً. هذا تقييم منتج ليفت كور لشهر يوليو ألفين وستة وعشرين. نظام تشغيل لشركات صيانة وتركيب المصاعد. سنراجع ماذا يعمل، على أي منصات، وماذا ينقصه.">
+      <p class="muted">يوليو 2026</p>
+      <h1>تقييم LiftCore</h1>
+      <p class="lead">نظام تشغيل لشركات صيانة وتركيب المصاعد — ماذا يعمل، على أي منصات، وماذا ينقصه</p>
+    </section>
+
+    <section class="slide" data-speak="الحكم باختصار: البرنامج قوي للمكتب والميدان، وجاهز نسبياً للبيع المخصص لعميل واحد. أما التسويق كمنصة سحابية عامة، فينقصه إكمال تعدد الشركات، وزاتكا المرحلة الثانية، وبوابة دفع. الجاهزية ناضجة، والساس جزئي، والجوال عبر بي دبليو إيه فقط، وزاتكا في المرحلة الأولى.">
+      <h2>الحكم في جملة</h2>
+      <div class="callout">
+        برنامج مكتبي/ميداني <strong>قوي</strong> لدورة الصيانة والفوترة،
+        <strong>جاهز نسبياً للبيع المخصص (B2B)</strong>.
+        للتسويق كـ SaaS كامل ينقصه: multi-tenant، ZATCA Phase 2، وبوابة دفع.
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="v ok">ناضج</div><div class="l">جاهزية B2B</div></div>
+        <div class="stat"><div class="v warn">جزئي</div><div class="l">SaaS متعدد</div></div>
+        <div class="stat"><div class="v">PWA</div><div class="l">جوال / تابلت</div></div>
+        <div class="stat"><div class="v warn">Phase 1</div><div class="l">ZATCA</div></div>
+      </div>
+    </section>
+
+    <section class="slide" data-speak="ما هو البرنامج؟ نظام تشغيلي يغطي الدورة كاملة: عملاء، مصاعد، عقود، زيارات، أعطال، مخزون، فواتير، ثم تقارير. المستخدمون: مكتب إداري، فني ميداني برقم سري، ومشغّل المنصة. التقنية: فلاسك وواجهة عربية، مع قواعد بيانات و نشر على جوجل كلاود.">
+      <h2>ما هو البرنامج؟</h2>
+      <p>ERP تشغيلي لدورة كاملة:</p>
+      <div class="card">
+        <p style="font-size:1.15rem;text-align:center;line-height:2">
+          عملاء → مصاعد → عقود → زيارات → أعطال → مخزون → فواتير → تقارير
+        </p>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h3>المستخدمون</h3>
+          <ul>
+            <li>مكتب: admin / manager / viewer</li>
+            <li>فني ميداني: بوابة PIN</li>
+            <li>مشغّل المنصة</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>التقنية</h3>
+          <ul>
+            <li>Flask + واجهة ويب عربية</li>
+            <li>SQLite / PostgreSQL</li>
+            <li>نشر GCP + nginx</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-speak="المنصات: ويندوز جاهز بالمتصفح وكتطبيق سطح مكتب. أندرويد وآي أو إس عبر بي دبليو إيه، أي إضافة للشاشة الرئيسية. التابلت متجاوب. لا يوجد تطبيق أصلي من متاجر التطبيقات حالياً.">
+      <h2>المنصات</h2>
+      <table>
+        <thead>
+          <tr><th>المنصة</th><th>الحالة</th><th>التفصيل</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ويندوز (متصفح)</td><td><span class="badge ok">جاهز</span></td><td>Chrome / Edge</td></tr>
+          <tr><td>ويندوز Desktop</td><td><span class="badge ok">جاهز</span></td><td>غلاف نافذة حول نفس الويب</td></tr>
+          <tr><td>جوال Android</td><td><span class="badge ok">PWA</span></td><td>إضافة للشاشة من Chrome</td></tr>
+          <tr><td>جوال iOS</td><td><span class="badge ok">PWA</span></td><td>Add to Home Screen من Safari</td></tr>
+          <tr><td>تابلت</td><td><span class="badge ok">متجاوب</span></td><td>يعمل بالمتصفح</td></tr>
+          <tr><td>تطبيق من المتاجر</td><td><span class="badge warn">غير موجود</span></td><td>لا App Store / Play Store</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-speak="الوحدات المكتملة تشمل العملاء والعقود والصيانة والأعطال والمخزن وبوابة الفني مع العمل دون إنترنت، والفواتير والتقارير والصلاحيات واللغتين. الجزئي قيد العمل: زاتكا كيو آر فقط، وتعدد الشركات، والاشتراكات بدون بوابة دفع، وموديول التركيب اختياري.">
+      <h2>الوحدات — ما المكتمل؟</h2>
+      <div class="grid2">
+        <div class="card">
+          <h3 class="ok">مكتمل</h3>
+          <ul>
+            <li>عملاء / مصاعد / عقود</li>
+            <li>زيارات صيانة + تقويم</li>
+            <li>أعطال + مخزن + مشتريات</li>
+            <li>بوابة فني + offline</li>
+            <li>فواتير + تقارير (13+)</li>
+            <li>صلاحيات وأمان</li>
+            <li>عربي / إنجليزي</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 class="warn">جزئي / قيد العمل</h3>
+          <ul>
+            <li>ZATCA — QR فقط (Phase 1)</li>
+            <li>Multi-tenant SaaS</li>
+            <li>اشتراكات بدون بوابة دفع</li>
+            <li>موديول التركيب (اختياري)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-speak="التقارير كثيرة: تشغيلية ومالية مع تصدير إكسل وطباعة. والمستندات المطبوعة تشمل العقد والفاتورة مع رمز الاستجابة، وطلب الشراء، ومحضر الصيانة، وتقرير العطل، وتقدير المصعد. ملاحظة: البي دي إف عبر طباعة المتصفح.">
+      <h2>التقارير والمخرجات</h2>
+      <div class="grid2">
+        <div class="card">
+          <h3>تقارير شاشة</h3>
+          <p class="muted" style="font-size:1rem">
+            عملاء، مصاعد، عقود، فنيون، صيانة، أعطال، إيرادات، مصروفات، فواتير، مخزون، مالي، صحة مالية، توقع عقود، فروقات فوترة — Excel + طباعة
+          </p>
+        </div>
+        <div class="card">
+          <h3>مستندات طباعة</h3>
+          <p class="muted" style="font-size:1rem">
+            عقد · فاتورة + QR · طلب شراء · محضر صيانة · تقرير عطل · تقدير مصعد · عرض تركيب
+          </p>
+        </div>
+      </div>
+      <p class="muted" style="font-size:.95rem">ملاحظة: PDF عبر طباعة المتصفح — ليس توليد سيرفر منفصل.</p>
+    </section>
+
+    <section class="slide" data-speak="الجودة: الأمان مكتمل مئة بالمئة، والاختبارات والنشر مكتملان. المرحلة الثالثة للساس وزاتكا جزئية. قبل أول عميل مدفوع يلزم تفعيل سينتري على السيرفر وسيناريو جما يدوي. الكود جاهز، والتفعيل التشغيلي ناقص.">
+      <h2>الجودة والتشغيل</h2>
+      <div class="stats" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat"><div class="v ok">100%</div><div class="l">P0 أمان</div></div>
+        <div class="stat"><div class="v ok">100%</div><div class="l">P1 QA / نشر</div></div>
+        <div class="stat"><div class="v warn">جزئي</div><div class="l">P3 SaaS / ZATCA</div></div>
+      </div>
+      <div class="callout warn">
+        قبل أول عميل مدفوع: تفعيل Sentry على السيرفر + سيناريو جما يدوي.
+        الكود جاهز — التفعيل التشغيلي ناقص.
+      </div>
+    </section>
+
+    <section class="slide" data-speak="ما ينقصه بالأولوية. للبيع كساس: أولاً إكمال تعدد الشركات ونشره، ثانياً زاتكا المرحلة الثانية، ثالثاً بوابة دفع. أما التطبيقات الأصلية وواتساب الآلي وتقسيم الكود الضخم فمهمة لكنها ليست حاجزاً للبيع المخصص.">
+      <h2>ما ينقصه — الأولويات</h2>
+      <h3 class="danger">حرج للبيع كـ SaaS</h3>
+      <ol class="priority">
+        <li><strong>إكمال multi-tenant</strong> ونشره فعلياً</li>
+        <li><strong>ZATCA Phase 2</strong> (XML / clearance)</li>
+        <li><strong>بوابة دفع</strong> للاشتراكات الآلية</li>
+      </ol>
+      <h3 class="warn" style="margin-top:1rem">مهم لكن ليس حاجزاً للبيع المخصص</h3>
+      <ul style="padding-right:1.2rem">
+        <li>تطبيقات native للجوال</li>
+        <li>WhatsApp Business API</li>
+        <li>تقسيم الملف البرمجي الضخم</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-speak="التوصية: البيع المخصص لعميل واحد جاهز نسبياً الآن. المنصة السحابية العامة انتظر إكمال تعدد الشركات وزاتكا اثنين. للجوال اعتمد بي دبليو إيه حالياً. الأولوية التقنية القادمة: تعدد الشركات ثم زاتكا المرحلة الثانية.">
+      <h2>التوصية</h2>
+      <div class="grid3">
+        <div class="card">
+          <h3 class="ok">بيع B2B مخصص</h3>
+          <p style="font-size:1.05rem">جاهز نسبياً الآن</p>
+        </div>
+        <div class="card">
+          <h3 class="warn">SaaS عام</h3>
+          <p style="font-size:1.05rem">انتظر tenant + ZATCA 2</p>
+        </div>
+        <div class="card">
+          <h3 class="info">الجوال</h3>
+          <p style="font-size:1.05rem">اعتمد PWA حالياً</p>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:.5rem">
+        أولوية تقنية قادمة: <strong>multi-tenant</strong> ثم <strong>ZATCA Phase 2</strong>
+      </div>
+    </section>
+
+    <section class="slide title-slide" data-speak="شكراً لكم. هذا نهاية التقييم. المصدر من مستودع المشروع وخارطة الطريق وجرد الصفحات. هل لديكم أسئلة؟">
+      <p class="big-num">شكراً</p>
+      <h1 style="font-size:1.8rem">أسئلة؟</h1>
+      <p class="lead">المصدر: مستودع elevator-app · ROADMAP · جرد الصفحات · يوليو 2026</p>
+    </section>
+
+  </div>
+
+  <div class="nav">
+    <button type="button" id="prev">السابق</button>
+    <button type="button" id="speakBtn" class="primary" title="تشغيل / إيقاف الصوت">🔊 صوت</button>
+    <div class="progress-wrap">
+      <div class="progress"><i id="bar"></i></div>
+      <span class="page" id="page">1 / 10</span>
+    </div>
+    <button type="button" id="autoBtn" title="انتقال تلقائي بعد انتهاء الصوت">تلقائي</button>
+    <button type="button" id="next">التالي</button>
+  </div>
+
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      let i = 0;
+      let voiceOn = true;
+      let autoAdvance = true;
+      let arabicVoice = null;
+
+      const prev = document.getElementById("prev");
+      const next = document.getElementById("next");
+      const page = document.getElementById("page");
+      const bar = document.getElementById("bar");
+      const speakBtn = document.getElementById("speakBtn");
+      const autoBtn = document.getElementById("autoBtn");
+      const voiceStatus = document.getElementById("voiceStatus");
+      const overlay = document.getElementById("startOverlay");
+      const startBtn = document.getElementById("startBtn");
+      const startSilent = document.getElementById("startSilent");
+
+      const synth = window.speechSynthesis;
+      const canSpeak = !!synth;
+
+      function pickVoice() {
+        const voices = synth.getVoices();
+        arabicVoice =
+          voices.find(v => /ar[-_]?SA/i.test(v.lang)) ||
+          voices.find(v => /^ar/i.test(v.lang)) ||
+          voices.find(v => /arabic|عربي/i.test(v.name)) ||
+          null;
+      }
+      if (canSpeak) {
+        pickVoice();
+        synth.onvoiceschanged = pickVoice;
+      }
+
+      function stopSpeak() {
+        if (canSpeak) synth.cancel();
+        voiceStatus.classList.remove("on");
+        speakBtn.classList.remove("speaking");
+        speakBtn.textContent = voiceOn ? "🔊 صوت" : "🔇 مكتوم";
+      }
+
+      function speakCurrent() {
+        stopSpeak();
+        if (!voiceOn || !canSpeak) return;
+        const text = slides[i].getAttribute("data-speak") || "";
+        if (!text) return;
+
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "ar-SA";
+        u.rate = 0.95;
+        u.pitch = 1;
+        if (arabicVoice) u.voice = arabicVoice;
+
+        u.onstart = () => {
+          voiceStatus.classList.add("on");
+          speakBtn.classList.add("speaking");
+          speakBtn.textContent = "⏸ إيقاف";
+        };
+        u.onend = () => {
+          voiceStatus.classList.remove("on");
+          speakBtn.classList.remove("speaking");
+          speakBtn.textContent = voiceOn ? "🔊 صوت" : "🔇 مكتوم";
+          if (autoAdvance && i < slides.length - 1) {
+            setTimeout(() => show(i + 1, true), 450);
+          }
+        };
+        u.onerror = () => {
+          voiceStatus.classList.remove("on");
+          speakBtn.classList.remove("speaking");
+        };
+        synth.speak(u);
+      }
+
+      function show(n, fromAuto) {
+        i = Math.max(0, Math.min(slides.length - 1, n));
+        slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+        page.textContent = (i + 1) + " / " + slides.length;
+        bar.style.width = ((i + 1) / slides.length * 100) + "%";
+        prev.disabled = i === 0;
+        next.disabled = i === slides.length - 1;
+        if (fromAuto || overlay.classList.contains("hidden")) {
+          speakCurrent();
+        }
+      }
+
+      function updateAutoBtn() {
+        autoBtn.textContent = autoAdvance ? "تلقائي ✓" : "تلقائي";
+        autoBtn.style.borderColor = autoAdvance ? "var(--accent)" : "";
+        autoBtn.style.color = autoAdvance ? "var(--accent)" : "";
+      }
+
+      prev.addEventListener("click", () => show(i - 1, true));
+      next.addEventListener("click", () => show(i + 1, true));
+
+      speakBtn.addEventListener("click", () => {
+        if (canSpeak && synth.speaking) {
+          stopSpeak();
+          return;
+        }
+        voiceOn = !voiceOn;
+        speakBtn.textContent = voiceOn ? "🔊 صوت" : "🔇 مكتوم";
+        if (voiceOn) speakCurrent();
+        else stopSpeak();
+      });
+
+      autoBtn.addEventListener("click", () => {
+        autoAdvance = !autoAdvance;
+        updateAutoBtn();
+      });
+
+      startBtn.addEventListener("click", () => {
+        voiceOn = true;
+        overlay.classList.add("hidden");
+        speakBtn.textContent = "🔊 صوت";
+        show(0, true);
+      });
+
+      startSilent.addEventListener("click", () => {
+        voiceOn = false;
+        overlay.classList.add("hidden");
+        speakBtn.textContent = "🔇 مكتوم";
+        show(0, false);
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (!overlay.classList.contains("hidden")) return;
+        if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === " " || e.key === "PageDown") {
+          e.preventDefault();
+          show(i + 1, true);
+        } else if (e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "PageUp") {
+          e.preventDefault();
+          show(i - 1, true);
+        } else if (e.key === "m" || e.key === "M") {
+          speakBtn.click();
+        } else if (e.key === "f" || e.key === "F") {
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+          else document.exitFullscreen?.();
+        }
+      });
+
+      let touchX = null;
+      document.addEventListener("touchstart", (e) => { touchX = e.changedTouches[0].screenX; }, { passive: true });
+      document.addEventListener("touchend", (e) => {
+        if (touchX == null || !overlay.classList.contains("hidden")) return;
+        const dx = e.changedTouches[0].screenX - touchX;
+        if (Math.abs(dx) > 50) show(dx > 0 ? i + 1 : i - 1, true);
+        touchX = null;
+      }, { passive: true });
+
+      updateAutoBtn();
+      show(0, false);
+
+      if (!canSpeak) {
+        document.querySelector(".overlay-box p").textContent =
+          "متصفحك لا يدعم الصوت. يمكنك متابعة العرض بدون سرد.";
+        startBtn.textContent = "ابدأ بدون صوت";
+      }
+    })();
+  </script>
+</body>
+</html>

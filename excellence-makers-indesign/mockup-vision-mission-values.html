@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تصور ثنائي اللغة — Vision · Mission · Values</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Montserrat:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #0b2a4a;
+      --gold: #c4a35a;
+      --ink: #333;
+      --muted: #5c6570;
+      --line: #d7dde5;
+      --bg: #e8edf2;
+      --card: #fff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "IBM Plex Sans Arabic", sans-serif;
+      background: linear-gradient(180deg, #e3e9f0, var(--bg));
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 28px 16px 56px;
+    }
+    .wrap { width: min(1180px, 100%); margin: 0 auto; }
+    .hero { margin-bottom: 16px; }
+    .hero h1 { color: var(--navy); font-size: clamp(22px, 3vw, 30px); font-weight: 700; }
+    .hero p { color: var(--muted); font-size: 14px; line-height: 1.75; margin-top: 6px; max-width: 720px; }
+    .badge {
+      display: inline-block; margin-top: 10px;
+      font-family: Montserrat, sans-serif; font-size: 10px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--gold); font-weight: 600;
+      border: 1px solid rgba(196,163,90,.45); padding: 7px 11px; background: rgba(255,255,255,.75);
+    }
+    .frame {
+      background: var(--card); border: 1px solid var(--line);
+      box-shadow: 0 22px 55px rgba(11,42,74,.13); padding: 12px; margin-bottom: 20px;
+    }
+    .frame img { width: 100%; display: block; }
+    .caption {
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      margin-top: 10px; font-size: 12px; color: var(--muted);
+    }
+    .caption a { color: var(--navy); font-weight: 600; text-decoration: none; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--line); padding: 18px 20px;
+    }
+    .panel h2 { color: var(--navy); font-size: 17px; margin-bottom: 2px; }
+    .panel .sub {
+      font-family: Montserrat, sans-serif; font-size: 10px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--gold); font-weight: 600; margin-bottom: 12px;
+    }
+    .pair { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #eef1f5; }
+    .pair:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+    .pair .titles {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 10px; margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .pair .ar-t { color: var(--navy); font-weight: 700; font-size: 16px; }
+    .pair .en-t {
+      font-family: Montserrat, sans-serif; color: var(--gold); font-weight: 600;
+      font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    }
+    .pair .ar { direction: rtl; text-align: right; font-size: 13.5px; line-height: 1.85; color: #2c3340; margin-bottom: 8px; }
+    .pair .en {
+      direction: ltr; text-align: left; font-family: Montserrat, "IBM Plex Sans Arabic", sans-serif;
+      font-size: 12px; line-height: 1.7; color: var(--muted);
+    }
+    .diamond {
+      width: 7px; height: 7px; background: var(--gold); transform: rotate(45deg);
+      margin: 10px auto; opacity: .85;
+    }
+    .vals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .val {
+      border: 1px solid #eef1f5; padding: 10px 12px; text-align: center;
+    }
+    .val .ar-t { font-size: 14px; }
+    .val .en-t { display: block; margin: 2px 0 6px; }
+    .val .ar, .val .en { font-size: 11.5px; margin: 0; line-height: 1.55; }
+    .note {
+      background: var(--card); border: 1px solid var(--line); padding: 16px 18px;
+      font-size: 13.5px; line-height: 1.8; color: #3a4450;
+    }
+    .note strong { color: var(--navy); }
+    .note ol { padding-inline-start: 18px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>تصور ثنائي اللغة — الرؤية / Vision · الرسالة / Mission · القيم / Values</h1>
+      <p>نفس أسلوب Twin Axis في البروشور: عربي + إنجليزي معاً. الصفحة اليسرى للرؤية والرسالة (كل لغة تحت عنوانها)، واليمنى للقيم بعناوين ووصف باللغتين.</p>
+      <div class="badge">AR + EN · Twin Axis · Excellence Makers</div>
+    </header>
+
+    <section class="frame">
+      <img src="EM-concept-vision-mission-values-bilingual.png" alt="Bilingual Vision Mission Values concept" />
+      <div class="caption">
+        <span>مرجع بصري عربي/إنجليزي — نفّذ مثله في InDesign</span>
+        <a href="EM-concept-vision-mission-values-bilingual.png" download>تحميل PNG</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>الصفحة اليسرى — رؤية ورسالة</h2>
+        <div class="sub">EN left-aligned · AR right-aligned</div>
+
+        <div class="pair">
+          <div class="titles">
+            <span class="ar-t">الرؤية</span>
+            <span class="en-t">Vision</span>
+          </div>
+          <p class="en">To be the most trusted partner in delivering integrated, sustainable elevator solutions across the Kingdom—with global standards and a strong local presence.</p>
+          <div class="diamond" aria-hidden="true"></div>
+          <p class="ar">أن نكون الشريك الأكثر ثقة في تقديم حلول المصاعد المتكاملة والمستدامة في المملكة، بمعايير عالمية وطابع محلي راسخ.</p>
+        </div>
+
+        <div class="pair">
+          <div class="titles">
+            <span class="ar-t">رسالتنا</span>
+            <span class="en-t">Mission</span>
+          </div>
+          <p class="en">We design, deliver, and maintain lifting systems with high efficiency—committed to safety, quality, and rapid response—so our clients enjoy a reliable experience that endures and supports every stage of their projects.</p>
+          <div class="diamond" aria-hidden="true"></div>
+          <p class="ar">نصمّم وننفّذ ونصون أنظمة الرفع بكفاءة عالية، مع التزام راسخ بالسلامة والجودة وسرعة الاستجابة، لنمنح عملاءنا تجربة موثوقة تدوم مع الزمن وتدعم مشاريعهم في كل مرحلة.</p>
+        </div>
+      </article>
+
+      <article class="panel">
+        <h2>الصفحة اليمنى — قيمنا / Our Values</h2>
+        <div class="sub">Arabic title + English title · bilingual blurb</div>
+        <div class="vals">
+          <div class="val">
+            <div class="ar-t">الجودة</div>
+            <span class="en-t">Quality</span>
+            <p class="ar">معايير تنفيذ دقيقة في كل مرحلة.</p>
+            <p class="en">Precise standards at every stage.</p>
+          </div>
+          <div class="val">
+            <div class="ar-t">السلامة</div>
+            <span class="en-t">Safety</span>
+            <p class="ar">أولوية لحماية المستخدم والموقع.</p>
+            <p class="en">Priority for people and site safety.</p>
+          </div>
+          <div class="val">
+            <div class="ar-t">الالتزام</div>
+            <span class="en-t">Commitment</span>
+            <p class="ar">مواعيد واضحة واستجابة مستمرة.</p>
+            <p class="en">Clear timelines and steady response.</p>
+          </div>
+          <div class="val">
+            <div class="ar-t">الابتكار</div>
+            <span class="en-t">Innovation</span>
+            <p class="ar">حلول حديثة تواكب السوق.</p>
+            <p class="en">Modern solutions for market needs.</p>
+          </div>
+          <div class="val">
+            <div class="ar-t">الشفافية</div>
+            <span class="en-t">Transparency</span>
+            <p class="ar">تواصل واضح وتقارير موثوقة.</p>
+            <p class="en">Clear communication and trusted reports.</p>
+          </div>
+          <div class="val">
+            <div class="ar-t">الشراكة</div>
+            <span class="en-t">Partnership</span>
+            <p class="ar">علاقة طويلة مبنية على الثقة.</p>
+            <p class="en">Long-term relations built on trust.</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="note">
+      <strong>قاعدة التنفيذ في InDesign (مثل صفحة من نحن):</strong>
+      <ol>
+        <li>كل عنوان يظهر باللغتين: عربي كحلي + إنجليزي ذهبي Small Caps.</li>
+        <li>نص الرؤية/الرسالة: إنجليزي محاذاة يسار → معين ذهبي صغير → عربي محاذاة يمين.</li>
+        <li>القيم: أيقونة دائرية ذهبية + عنوان عربي ثم إنجليزي + سطر عربي ثم سطر إنجليزي.</li>
+        <li>استخدم ستايلات Twin Axis: <code>01 AR / H1</code> و <code>11 EN / H1</code> و Body لكل لغة.</li>
+      </ol>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تقرير المنتج الشامل — LiftCore 2026</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --paper: #ffffff;
+      --text: #1a2332;
+      --muted: #5a6a7a;
+      --accent: #0d7a5f;
+      --accent-soft: #e8f5f1;
+      --warn: #9a6b00;
+      --warn-soft: #fff8e6;
+      --line: #e2e8f0;
+      --card: #f1f5f9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Tahoma", "Arial", sans-serif;
+      line-height: 1.75;
+      font-size: 15px;
+    }
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+    .cover {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 2.5rem 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .cover .eyebrow {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: .95rem;
+      letter-spacing: .02em;
+      margin-bottom: .75rem;
+    }
+    .cover h1 {
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      margin-bottom: .75rem;
+      line-height: 1.35;
+    }
+    .cover .lead {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 38rem;
+      margin: 0 auto 1.5rem;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: .6rem;
+    }
+    .chip {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(13,122,95,.2);
+      border-radius: 999px;
+      padding: .25rem .85rem;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    .chip.warn {
+      background: var(--warn-soft);
+      color: var(--warn);
+      border-color: rgba(154,107,0,.25);
+    }
+    .toc, .section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.6rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .toc h2, .section h2 {
+      font-size: 1.25rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      padding-bottom: .5rem;
+      border-bottom: 2px solid var(--accent-soft);
+    }
+    .section h3 {
+      font-size: 1.05rem;
+      margin: 1.35rem 0 .55rem;
+      color: var(--text);
+    }
+    .section p, .section li { color: var(--text); }
+    .section p { margin-bottom: .7rem; }
+    .section ul, .section ol { padding-right: 1.25rem; margin-bottom: .8rem; }
+    .section li { margin: .3rem 0; }
+    .toc ol { padding-right: 1.4rem; }
+    .toc a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .toc a:hover { text-decoration: underline; }
+    .verdict {
+      background: var(--accent-soft);
+      border: 1px solid rgba(13,122,95,.3);
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--warn-soft);
+      border: 1px solid rgba(154,107,0,.25);
+      border-radius: 10px;
+      padding: .9rem 1.1rem;
+      margin: 1rem 0;
+      color: var(--text);
+      font-size: .95rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: .8rem 0 1.1rem;
+      font-size: .92rem;
+    }
+    th, td {
+      text-align: right;
+      padding: .65rem .75rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      background: var(--card);
+      color: var(--muted);
+      font-weight: 700;
+      font-size: .85rem;
+    }
+    tr:last-child td { border-bottom: none; }
+    .badge {
+      display: inline-block;
+      padding: .1rem .5rem;
+      border-radius: 6px;
+      font-size: .8rem;
+      font-weight: 700;
+    }
+    .badge.ok { background: var(--accent-soft); color: var(--accent); }
+    .badge.warn { background: var(--warn-soft); color: var(--warn); }
+    .badge.muted { background: var(--card); color: var(--muted); }
+    .flow {
+      background: var(--card);
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1.02rem;
+      margin: 1rem 0;
+      line-height: 2;
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .9rem;
+      margin: .9rem 0;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+    }
+    .card h4 {
+      margin-bottom: .45rem;
+      font-size: .98rem;
+      color: var(--accent);
+    }
+    .card ul { margin-bottom: 0; }
+    .print-bar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(247,248,250,.95);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--line);
+      padding: .65rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .75rem;
+    }
+    .print-bar span { color: var(--muted); font-size: .85rem; }
+    .print-bar button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: .5rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .print-bar button:hover { filter: brightness(1.05); }
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: .85rem;
+      margin-top: 1.5rem;
+      padding: 1rem;
+    }
+    @media (max-width: 700px) {
+      .grid2 { grid-template-columns: 1fr; }
+      .wrap { padding: 1rem .75rem 3rem; }
+      .cover, .section, .toc { padding: 1.2rem 1rem; }
+    }
+    @media print {
+      body { background: #fff; font-size: 12pt; }
+      .print-bar { display: none !important; }
+      .wrap { max-width: none; padding: 0; }
+      .cover, .toc, .section {
+        border: none;
+        border-radius: 0;
+        padding: 0 0 1.2rem;
+        margin-bottom: 1rem;
+        break-inside: avoid;
+      }
+      .section { page-break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+      .footer { border-top: 1px solid #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <span>تقرير LiftCore للمشتري · يوليو 2026</span>
+    <button type="button" onclick="window.print()">طباعة / حفظ PDF</button>
+  </div>
+
+  <div class="wrap">
+    <header class="cover">
+      <p class="eyebrow">LiftCore · تقرير منتج تجاري</p>
+      <h1>تقرير شامل عن نظام LiftCore<br />لشركات صيانة وتركيب المصاعد</h1>
+      <p class="lead">
+        وثيقة تقييم كاملة موجّهة للمشتري: ما هو المنتج، ماذا يفعل، ما يشمله العقد،
+        المنصات، الأمان، الأسعار الإرشادية، وما لا يشمله حالياً — بشفافية كاملة.
+      </p>
+      <div class="meta">
+        <span class="chip">يوليو 2026</span>
+        <span class="chip">بيع B2B مخصص</span>
+        <span class="chip">جاهزية تشغيلية ناضجة</span>
+        <span class="chip warn">SaaS العام جزئي</span>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>فهرس المحتويات</h2>
+      <ol>
+        <li><a href="#s1">الخلاصة التنفيذية</a></li>
+        <li><a href="#s2">ما هو LiftCore؟</a></li>
+        <li><a href="#s3">القيمة التجارية للشركة المشترية</a></li>
+        <li><a href="#s4">الوحدات والميزات بالتفصيل</a></li>
+        <li><a href="#s5">بوابة الفني الميداني</a></li>
+        <li><a href="#s6">المالية والفواتير وZATCA</a></li>
+        <li><a href="#s7">التقارير والمستندات المطبوعة</a></li>
+        <li><a href="#s8">موديول التركيب (اختياري)</a></li>
+        <li><a href="#s9">الأدوار والصلاحيات والأمان</a></li>
+        <li><a href="#s10">المنصات والتقنية والنشر</a></li>
+        <li><a href="#s11">ما يشمله العقد وما لا يشمله</a></li>
+        <li><a href="#s12">الأسعار والنماذج التجارية</a></li>
+        <li><a href="#s13">التسليم والتدريب والدعم</a></li>
+        <li><a href="#s14">حساب تجريبي للمعاينة</a></li>
+        <li><a href="#s15">الجاهزية والثغرات بشفافية</a></li>
+        <li><a href="#s16">التوصية للمشتري</a></li>
+      </ol>
+    </nav>
+
+    <!-- 1 -->
+    <section class="section" id="s1">
+      <h2>1) الخلاصة التنفيذية</h2>
+      <div class="verdict">
+        <strong>الحكم:</strong> LiftCore نظام تشغيل مكتبي وميداني <strong>ناضج وجاهز للبيع المخصص (B2B)</strong>
+        لشركة صيانة مصاعد واحدة أو أكثر عبر نشر مخصص. يغطي الدورة الكاملة من العميل حتى الفاتورة والتقرير.
+        التسويق كمنصة سحابية عامة متعددة الشركات (SaaS ذاتي الخدمة) ما زال <strong>جزئياً</strong>
+        وينقصه إكمال بعض بنود الدفع الإلكتروني وZATCA المرحلة الثانية.
+      </div>
+      <table>
+        <thead>
+          <tr><th>البند</th><th>التقييم</th><th>المعنى للمشتري</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>جاهزية التشغيل اليومي</td>
+            <td><span class="badge ok">ناضج ~85–90%</span></td>
+            <td>يصلح للاستبدال الفوري لجداول Excel والطرق اليدوية</td>
+          </tr>
+          <tr>
+            <td>بيع مخصص لشركة واحدة</td>
+            <td><span class="badge ok">جاهز</span></td>
+            <td>النموذج الموصى به حالياً</td>
+          </tr>
+          <tr>
+            <td>منصة SaaS عامة</td>
+            <td><span class="badge warn">جزئي ~60–70%</span></td>
+            <td>البنية موجودة؛ الدفع الآلي والتشغيل العام يحتاجان إكمالاً</td>
+          </tr>
+          <tr>
+            <td>الفوترة الإلكترونية ZATCA</td>
+            <td><span class="badge warn">Phase 1 (QR)</span></td>
+            <td>رمز QR على الفاتورة جاهز؛ الإرسال/الاعتماد الكامل Phase 2 غير مكتمل</td>
+          </tr>
+          <tr>
+            <td>الجوال للفنيين</td>
+            <td><span class="badge ok">PWA + Offline</span></td>
+            <td>يعمل من المتصفح / إضافة للشاشة — بدون متجر تطبيقات</td>
+          </tr>
+          <tr>
+            <td>الجوال للإدارة</td>
+            <td><span class="badge ok">PWA + Offline</span></td>
+            <td>صفحات محفوظة للقراءة + طابور نماذج عند انقطاع النت</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 2 -->
+    <section class="section" id="s2">
+      <h2>2) ما هو LiftCore؟</h2>
+      <p>
+        <strong>LiftCore</strong> نظام إدارة عمليات (ERP تشغيلي) مصمّم خصيصاً لشركات
+        <strong>صيانة وتركيب المصاعد في السعودية</strong>. ليس برنامجاً عاماً للمحاسبة فقط،
+        بل يغطي سلسلة العمل الميداني والإداري معاً.
+      </p>
+      <div class="flow">
+        عملاء ← مصاعد ← عقود ← زيارات صيانة ← أعطال ← مخزون ← فواتير ← تقارير
+      </div>
+      <h3>الهوية والروابط</h3>
+      <table>
+        <thead><tr><th>البند</th><th>التفاصيل</th></tr></thead>
+        <tbody>
+          <tr><td>اسم المنتج</td><td>LiftCore</td></tr>
+          <tr><td>موقع الإنتاج</td><td>https://app.liftcoreapp.com</td></tr>
+          <tr><td>حساب تجريبي</td><td>https://jama.liftcoreapp.com</td></tr>
+          <tr><td>اللغات</td><td>العربية (أساسية) + الإنجليزية لواجهة المكتب</td></tr>
+          <tr><td>السوق المستهدف</td><td>شركات صيانة/تركيب المصاعد في المملكة</td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        ملاحظة: أي مواد باسم «Excellence Makers» في المستودع هي بروفايل/بروشور شركة منفصل،
+        وليست جزءاً من برنامج LiftCore نفسه إلا إذا نُصّ على ذلك في العقد.
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="section" id="s3">
+      <h2>3) القيمة التجارية للشركة المشترية</h2>
+      <p>ما الذي يغيّره البرنامج عملياً داخل شركة المصاعد؟</p>
+      <div class="grid2">
+        <div class="card">
+          <h4>قبل LiftCore (شائع)</h4>
+          <ul>
+            <li>عقود وزيارات في Excel وواتساب</li>
+            <li>صعوبة معرفة من زار وماذا أصلح</li>
+            <li>فواتير يدوية وأخطاء تحصيل</li>
+            <li>مخزون غير مرتبط بالأعطال</li>
+            <li>تقارير متأخرة أو غير دقيقة</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>بعد LiftCore</h4>
+          <ul>
+            <li>سجل موحّد للعميل والمصعد والعقد</li>
+            <li>جدولة زيارات وتكليف فنيين</li>
+            <li>محاضر ميدانية من الجوال (حتى بدون نت)</li>
+            <li>فواتير مع QR زاتكا + كشف حساب</li>
+            <li>+15 تقريراً جاهزاً للطباعة/Excel</li>
+          </ul>
+        </div>
+      </div>
+      <h3>من يستفيد داخل الشركة؟</h3>
+      <ul>
+        <li><strong>المالك / المدير:</strong> لوحة تحكم، صحة مالية، عقود منتهية، فروقات فوترة</li>
+        <li><strong>مشرف العمليات:</strong> زيارات، أعطال، فنيين، خريطة/تقويم</li>
+        <li><strong>المحاسب:</strong> إيرادات، مصروفات، فواتير، مخزون، أوامر شراء</li>
+        <li><strong>الفني الميداني:</strong> مهام اليوم، تقرير زيارة/عطل، عمل دون إنترنت</li>
+      </ul>
+    </section>
+
+    <!-- 4 -->
+    <section class="section" id="s4">
+      <h2>4) الوحدات والميزات بالتفصيل</h2>
+
+      <h3>4.1 العملاء</h3>
+      <ul>
+        <li>إضافة وتعديل وبحث وفلاتر</li>
+        <li>بيانات الاتصال، المدينة، الحي، العنوان، ملاحظات</li>
+        <li>موقع GPS وخريطة (Google Maps أو OpenStreetMap)</li>
+        <li>استيراد عناوين عبر Excel</li>
+        <li>كشف حساب العميل والعمليات غير المحصّلة</li>
+      </ul>
+
+      <h3>4.2 المصاعد</h3>
+      <ul>
+        <li>سجل أصول مرتبط بكل عميل</li>
+        <li>النوع، التوقفات، السعة، سنة التركيب، الحالة، العقد المرتبط</li>
+        <li>استيراد من Excel</li>
+      </ul>
+
+      <h3>4.3 العقود</h3>
+      <ul>
+        <li>عقود صيانة/خدمة مرتبطة بعميل ومصعد/مصاعد</li>
+        <li>تتبّع تواريخ البداية والانتهاء والتنبيهات</li>
+        <li>طباعة عقد رسمي</li>
+      </ul>
+
+      <h3>4.4 الفنيون وفرق الصيانة</h3>
+      <ul>
+        <li>إدارة الفنيين وفرق العمل</li>
+        <li>ربط المهام والزيارات والأعطال بالفني</li>
+        <li>بوابة ميدانية منفصلة برقم جوال وPIN</li>
+      </ul>
+
+      <h3>4.5 زيارات الصيانة</h3>
+      <ul>
+        <li>عرض جدول / يوم على الخريطة / تقويم</li>
+        <li>جدولة وتكليف فني وإكمال المحضر</li>
+        <li>تخطيط تلقائي حسب الحي (حسب الإعدادات)</li>
+        <li>محضر زيارة قابل للطباعة</li>
+      </ul>
+
+      <h3>4.6 الأعطال</h3>
+      <ul>
+        <li>تذاكر أعطال مع أولوية وحالة</li>
+        <li>تعيين فني وقطع غيار</li>
+        <li>تقرير عطل مطبوع</li>
+        <li>صندوق وارد واتساب للدعم → ربط/إنشاء عطل</li>
+      </ul>
+
+      <h3>4.7 المخزون والمشتريات</h3>
+      <ul>
+        <li>أصناف المخزن وحركة المخزون</li>
+        <li>أوامر شراء مع طباعة عربية/إنجليزية</li>
+        <li>إرسال عبر واتساب/بريد وتوقيع رقمي (حسب الإعداد)</li>
+        <li>فوترة تركيب قطع الغيار</li>
+      </ul>
+
+      <h3>4.8 لوحة التحكم والإعدادات</h3>
+      <ul>
+        <li>بطاقات إحصائية مع drill-down للتفاصيل</li>
+        <li>هوية الشركة (شعار، سجل، ضريبة، بنك)</li>
+        <li>المستخدمون والصلاحيات وPIN الفنيين</li>
+        <li>سمات المظهر واللغة</li>
+      </ul>
+    </section>
+
+    <!-- 5 -->
+    <section class="section" id="s5">
+      <h2>5) بوابة الفني الميداني</h2>
+      <p>
+        بوابة مستقلة على المسار <code>/field</code> مصمّمة للجوال والتابلت.
+        لا تحتاج حساب مكتب؛ الدخول بجوال الفني + رمز PIN من 6 أرقام.
+      </p>
+      <div class="grid2">
+        <div class="card">
+          <h4>ما يستطيع الفني فعله</h4>
+          <ul>
+            <li>رؤية مهام اليوم (زيارات وأعطال)</li>
+            <li>تعبئة محضر زيارة</li>
+            <li>إغلاق/تقرير عطل</li>
+            <li>طوابع زمنية تلقائية</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>العمل دون إنترنت (Offline PWA)</h4>
+          <ul>
+            <li>حفظ المحاضر محلياً بدون نت</li>
+            <li>مزامنة تلقائية عند عودة الاتصال</li>
+            <li>Service Worker + IndexedDB</li>
+            <li>إضافة للشاشة الرئيسية كتطبيق</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note">
+        لا يوجد حالياً تطبيق أصلي من Google Play أو App Store.
+        الاعتماد على PWA (متصفح Chrome/Safari + إضافة للشاشة الرئيسية).
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="section" id="s6">
+      <h2>6) المالية والفواتير وZATCA</h2>
+      <h3>ما هو جاهز</h3>
+      <ul>
+        <li>إيرادات ومصروفات</li>
+        <li>فواتير: ضريبية / مبسّطة / سندات قبض</li>
+        <li>كشف حساب عميل وربط التحصيل</li>
+        <li><strong>ZATCA Phase 1:</strong> رمز QR على طباعة الفاتورة</li>
+        <li>تقرير فروقات مالية بين العقود/الفواتير</li>
+        <li>أدوات إصلاح اتساق الفوترة (للإدارة)</li>
+      </ul>
+      <h3>ما هو جزئي / غير مكتمل</h3>
+      <table>
+        <thead><tr><th>البند</th><th>الحالة</th><th>أثره على المشتري</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>ZATCA Phase 2 (XML / Clearance)</td>
+            <td><span class="badge warn">جزئي</span></td>
+            <td>لا يُوعد به في العقد القياسي ما لم يُذكر صراحة كبند إضافي</td>
+          </tr>
+          <tr>
+            <td>WhatsApp Business API آلي</td>
+            <td><span class="badge warn">يدوي (wa.me)</span></td>
+            <td>إرسال روابط/ملخصات يدوياً؛ الأتمتة الكاملة لاحقاً</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note">
+        مسؤولية دقة البيانات المالية أمام هيئة الزكاة والضريبة والجمارك تقع على العميل.
+        النظام أداة تشغيل وطباعة؛ ليس بديلاً عن مراجعة محاسبية رسمية.
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section class="section" id="s7">
+      <h2>7) التقارير والمستندات المطبوعة</h2>
+      <h3>تقارير جاهزة (أكثر من 15)</h3>
+      <ul>
+        <li>لوحة تقارير · عملاء · مصاعد · عقود · فنيين</li>
+        <li>زيارات صيانة · أعطال · إيرادات · مصروفات · فواتير</li>
+        <li>مخزون · حركة مخزون · قطع غيار</li>
+        <li>مالي · صحة مالية · توقعات عقود · فروقات فوترة · سنوي</li>
+      </ul>
+      <h3>مستندات قابلة للطباعة</h3>
+      <ul>
+        <li>عقد صيانة</li>
+        <li>فاتورة (مع QR ZATCA)</li>
+        <li>أمر شراء (عربي / إنجليزي)</li>
+        <li>محضر زيارة صيانة</li>
+        <li>تقرير عطل</li>
+        <li>تقدير تكلفة مصعد (مع رسم shaft)</li>
+        <li>عروض أسعار التركيب (إن فُعّل الموديول)</li>
+      </ul>
+      <p><strong>ملاحظة تقنية:</strong> التصدير إلى PDF يتم عبر طباعة المتصفح (Ctrl+P ← حفظ PDF)، وهو الأسلوب المعتمد حالياً.</p>
+    </section>
+
+    <!-- 8 -->
+    <section class="section" id="s8">
+      <h2>8) موديول التركيب (اختياري)</h2>
+      <p>
+        موديول منفصل يُفعَّل عند الطلب عبر إعداد
+        <code>LIFTCORE_INSTALL_MODULE=1</code>.
+        مناسب للشركات التي تبيع وتركّب مصاعد جديدة بالإضافة للصيانة.
+      </p>
+      <ul>
+        <li>عملاء محتملون (Leads)</li>
+        <li>مشاريع تركيب</li>
+        <li>عروض أسعار وطباعتها</li>
+        <li>خط زمني للتنفيذ</li>
+        <li>تسليم وتسليم نهائي (Handover)</li>
+        <li>تقارير مشروع</li>
+        <li>تقدير تكلفة مصعد مع مخطط shaft</li>
+      </ul>
+      <p>إن لم تحتاجه الشركة، يبقى النظام مركّزاً على الصيانة دون تعقيد إضافي.</p>
+    </section>
+
+    <!-- 9 -->
+    <section class="section" id="s9">
+      <h2>9) الأدوار والصلاحيات والأمان</h2>
+      <h3>أدوار المكتب</h3>
+      <table>
+        <thead><tr><th>الدور</th><th>الصلاحيات</th></tr></thead>
+        <tbody>
+          <tr><td><strong>admin</strong></td><td>كامل النظام: إعدادات، مستخدمون، حذف، إصلاح فوترة</td></tr>
+          <tr><td><strong>manager</strong></td><td>التشغيل اليومي بدون إعدادات الشركة/المستخدمين الحساسة</td></tr>
+          <tr><td><strong>viewer</strong></td><td>عرض فقط (يمكنه تغيير كلمة مروره)</td></tr>
+          <tr><td><strong>custom</strong></td><td>صلاحيات مفصّلة لكل قسم: قراءة/كتابة (عملاء، مالية، تقارير…)</td></tr>
+        </tbody>
+      </table>
+      <h3>ضوابط أمنية مطبّقة</h3>
+      <ul>
+        <li>CSRF على طلبات التعديل</li>
+        <li>Rate limiting على صفحات الدخول</li>
+        <li>سياسة كلمة مرور قوية + إجبار التغيير عند الحاجة</li>
+        <li>سجل تدقيق (حذف، إعدادات، دخول فاشل…)</li>
+        <li>تقييد رفع الملفات (حجم ونوع)</li>
+        <li>توقيعات رقمية على بعض المستندات</li>
+        <li>اختبارات أمان وصلاحيات ضمن CI</li>
+      </ul>
+    </section>
+
+    <!-- 10 -->
+    <section class="section" id="s10">
+      <h2>10) المنصات والتقنية والنشر</h2>
+      <h3>المنصات المدعومة</h3>
+      <table>
+        <thead><tr><th>المنصة</th><th>الحالة</th><th>التفصيل</th></tr></thead>
+        <tbody>
+          <tr><td>ويندوز (متصفح)</td><td><span class="badge ok">جاهز</span></td><td>Chrome / Edge</td></tr>
+          <tr><td>ويندوز Desktop</td><td><span class="badge ok">جاهز</span></td><td>غلاف نافذة حول نفس النظام</td></tr>
+          <tr><td>Android</td><td><span class="badge ok">PWA</span></td><td>إضافة للشاشة من Chrome</td></tr>
+          <tr><td>iOS</td><td><span class="badge ok">PWA</span></td><td>Add to Home Screen من Safari</td></tr>
+          <tr><td>تابلت</td><td><span class="badge ok">متجاوب</span></td><td>واجهة متكيّفة</td></tr>
+          <tr><td>متاجر التطبيقات</td><td><span class="badge muted">غير متوفر</span></td><td>لا Play Store / App Store حالياً</td></tr>
+        </tbody>
+      </table>
+      <h3>المكدس التقني</h3>
+      <table>
+        <thead><tr><th>الطبقة</th><th>التقنية</th></tr></thead>
+        <tbody>
+          <tr><td>الخادم</td><td>Python · Flask · Jinja2</td></tr>
+          <tr><td>قاعدة البيانات</td><td>SQLite (تطوير) · PostgreSQL (موصى به للإنتاج)</td></tr>
+          <tr><td>النشر</td><td>Gunicorn + nginx + systemd · Google Cloud VM</td></tr>
+          <tr><td>الجوال</td><td>PWA + Offline للمكتب والفني</td></tr>
+          <tr><td>الجودة</td><td>pytest + Playwright + GitHub Actions CI</td></tr>
+          <tr><td>المراقبة</td><td>Sentry (اختياري) · /api/health</td></tr>
+        </tbody>
+      </table>
+      <h3>تكاملات خارجية</h3>
+      <table>
+        <thead><tr><th>الخدمة</th><th>الاستخدام</th><th>الحالة</th></tr></thead>
+        <tbody>
+          <tr><td>Google Maps</td><td>خريطة العملاء والإكمال التلقائي</td><td>اختياري (مفتاح من العميل)</td></tr>
+          <tr><td>OpenStreetMap</td><td>بديل خرائط</td><td>مدمج</td></tr>
+          <tr><td>ZATCA</td><td>QR على الفاتورة</td><td>Phase 1 جاهز</td></tr>
+          <tr><td>واتساب</td><td>روابط wa.me + صندوق وارد</td><td>جزئي / يدوي</td></tr>
+          <tr><td>Moyasar</td><td>دفع اشتراكات المنصة</td><td>كود جاهز — يحتاج تفعيل حساب</td></tr>
+          <tr><td>Resend</td><td>بريد ترحيبي/دعوات</td><td>اختياري</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 11 -->
+    <section class="section" id="s11">
+      <h2>11) ما يشمله العقد وما لا يشمله</h2>
+      <h3>يشمله العقد النموذجي (B2B مخصص)</h3>
+      <ul>
+        <li>ترخيص استخدام غير حصري على البنية المتفق عليها</li>
+        <li>مستخدمون ضمن الخطة المتفق عليها (admin / manager / viewer / custom)</li>
+        <li>نشر مخصص: سيرفر العميل أو GCP مُدار</li>
+        <li>نسخ احتياطي يومي + استعادة موثّقة</li>
+        <li>جلسة تدريب تشغيل واحدة</li>
+        <li>دعم تصحيح أخطاء خلال فترة الضمان المتفق عليها</li>
+        <li>دليل مستخدم + دليل مسؤول نظام</li>
+        <li>تصدير البيانات عند إنهاء العقد (ضمن المدة المتفق عليها)</li>
+      </ul>
+      <h3>لا يشمله إلا بنص صريح في العقد</h3>
+      <table>
+        <thead><tr><th>البند</th><th>الملاحظة</th></tr></thead>
+        <tbody>
+          <tr><td>SaaS متعدد المستأجرين عام</td><td>البيع الحالي مخصص B2B</td></tr>
+          <tr><td>ZATCA Phase 2 كامل</td><td>QR Phase 1 فقط في القياسي</td></tr>
+          <tr><td>WhatsApp Business API آلي</td><td>روابط يدوية حالياً</td></tr>
+          <tr><td>ترجمة تلقائية للمحتوى المكتوب</td><td>واجهة AR/EN؛ الملاحظات اليدوية لا تُترجم آلياً</td></tr>
+          <tr><td>فيديو تدريبي مخصص</td><td>خدمة إضافية اختيارية</td></tr>
+          <tr><td>تطبيقات متاجر Google/Apple</td><td>غير مدرجة</td></tr>
+          <tr><td>إعادة بيع أو تشغيل SaaS عام من قبل العميل</td><td>ممنوع بدون اتفاق كتابي</td></tr>
+        </tbody>
+      </table>
+      <h3>متطلبات من جهة العميل</h3>
+      <ul>
+        <li>شعار الشركة وبيانات السجل التجاري والضريبة والحساب البنكي</li>
+        <li>نطاق فرعي + HTTPS</li>
+        <li>مسؤول نظام واحد على الأقل</li>
+        <li>مفتاح Google Maps (اختياري للخرائط المتقدمة)</li>
+      </ul>
+    </section>
+
+    <!-- 12 -->
+    <section class="section" id="s12">
+      <h2>12) الأسعار والنماذج التجارية</h2>
+      <p>
+        السعر النهائي للبيع المخصص يُتفق عليه في عرض السعر حسب حجم الشركة،
+        عدد المصاعد، خيار التركيب، ومستوى الإدارة (سيرفر خاص / مُدار).
+        الأرقام أدناه <strong>إرشادية من إعدادات منصة الاشتراكات الافتراضية</strong>
+        وليست عرض سعر ملزم.
+      </p>
+      <table>
+        <thead>
+          <tr><th>الخطة (إرشادي SaaS)</th><th>شهري (ر.س)</th><th>سنوي</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Basic</td><td>299</td><td>خصم 10% عن مجموع 12 شهراً</td></tr>
+          <tr><td>Pro</td><td>599</td><td>نفس قاعدة الخصم</td></tr>
+          <tr><td>Enterprise</td><td>1,499</td><td>نفس قاعدة الخصم</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>فترة تجريبية افتراضية للمنصة: <strong>14 يوماً</strong></li>
+        <li>الدفع بالبطاقة على المنصة: غير مفعّل بالكامل حالياً (تحويل بنكي / تنسيق مع الدعم)</li>
+        <li><strong>البيع الموصى به للمشتري الحالي:</strong> رخصة B2B مخصصة + نشر + تدريب + ضمان — بسعر صفقة وليس اشتراك متجر عام</li>
+      </ul>
+    </section>
+
+    <!-- 13 -->
+    <section class="section" id="s13">
+      <h2>13) التسليم والتدريب والدعم</h2>
+      <h3>خطوات التسليم</h3>
+      <ol>
+        <li>تثبيت النظام والتحقق عبر سكربتات النشر</li>
+        <li>استيراد بيانات Excel أو البدء من صفر</li>
+        <li>تسليم حساب admin + دليل المستخدم ودليل المسؤول</li>
+        <li>جلسة تدريب تشغيل</li>
+        <li>Checklist انحدار (regression) موقّع قبل الاعتماد</li>
+      </ol>
+      <h3>التشغيل بعد الإطلاق</h3>
+      <ul>
+        <li>نسخ احتياطي يومي مع احتفاظ 30 يوماً (حسب إعداد النشر)</li>
+        <li>تحديثات أمنية ضمن فترة الاشتراك/الضمان</li>
+        <li>فحص صحة الخدمة عبر <code>/api/health</code></li>
+        <li>الميزات الجديدة (مثل Phase 2 أو WhatsApp API) تُعرض كعروض منفصلة</li>
+      </ul>
+      <h3>القانون والدعم</h3>
+      <ul>
+        <li>القانون الحاكم النموذجي: المملكة العربية السعودية</li>
+        <li>هدف التوفر: حسب SLA المتفق عليه (افتراضي: أفضل جهد في ساعات العمل)</li>
+      </ul>
+    </section>
+
+    <!-- 14 -->
+    <section class="section" id="s14">
+      <h2>14) حساب تجريبي للمعاينة</h2>
+      <p>يمكن للمشتري معاينة النظام على بيئة تجريبية (بيانات سيناريو توضيحي وليست بيانات عميل حقيقي):</p>
+      <table>
+        <thead><tr><th>البند</th><th>القيمة</th></tr></thead>
+        <tbody>
+          <tr><td>الرابط</td><td><strong>https://jama.liftcoreapp.com</strong></td></tr>
+          <tr><td>دخول المكتب</td><td>المستخدم: <code>admin</code> · كلمة المرور: <code>admin123</code></td></tr>
+          <tr><td>فني ميداني (مثال)</td><td>Tech-001 / 0552001001 · PIN: <code>123456</code></td></tr>
+          <tr><td>فني أعطال (مثال)</td><td>Tech-002 / 0552001002 · PIN: <code>123456</code></td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        هذه بيانات بيئة تجريبية فقط. في أي نشر إنتاجي تُغيَّر فوراً ويُمنع استخدام كلمات المرور الافتراضية.
+      </div>
+    </section>
+
+    <!-- 15 -->
+    <section class="section" id="s15">
+      <h2>15) الجاهزية والثغرات بشفافية</h2>
+      <h3>نقاط القوة</h3>
+      <ul>
+        <li>تغطية دورة صيانة كاملة من العميل إلى التقرير</li>
+        <li>بوابة فني عملية مع Offline</li>
+        <li>ملاءمة السوق السعودي: عربي، ZATCA QR، واتساب، تقويم عمل</li>
+        <li>صلاحيات وأمان مناسبان لبيئة B2B</li>
+        <li>تقارير ومستندات مطبوعة غنية</li>
+        <li>أدوات نشر ونسخ احتياطي واختبارات آلية جاهزة</li>
+      </ul>
+      <h3>نواقص يجب أن يعرفها المشتري قبل التوقيع</h3>
+      <table>
+        <thead><tr><th>المجال</th><th>المستوى</th><th>التوصية التعاقدية</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>ERP صيانة لشركة واحدة</td>
+            <td><span class="badge ok">~85–90%</span></td>
+            <td>مناسب للشراء الآن</td>
+          </tr>
+          <tr>
+            <td>منصة SaaS عامة</td>
+            <td><span class="badge warn">~60–70%</span></td>
+            <td>لا تُشترَ كمنتج مكتمل اليوم</td>
+          </tr>
+          <tr>
+            <td>ZATCA الكامل (Phase 2)</td>
+            <td><span class="badge warn">~40–50%</span></td>
+            <td>اعتبر Phase 1 فقط ما لم يُضف بنداً</td>
+          </tr>
+          <tr>
+            <td>تطبيقات أصلية للمتاجر</td>
+            <td><span class="badge muted">غير موجود</span></td>
+            <td>PWA كافٍ لمعظم الفرق الميدانية</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        داخلياً: مراحل الأمان والجودة والنشر ومواد التسويق (P0–P2) مغلقة بنسبة عالية.
+        بنود P3 (دفع آلي كامل، ZATCA Phase 2، WhatsApp Graph API، ترجمة آلية) تُعامل كخريطة طريق وليست مشمولة افتراضياً.
+      </p>
+    </section>
+
+    <!-- 16 -->
+    <section class="section" id="s16">
+      <h2>16) التوصية للمشتري</h2>
+      <div class="verdict">
+        <strong>اشترِ LiftCore كنظام تشغيل مخصص لشركتك</strong>
+        إذا كنت تدير صيانة مصاعد وتريد استبدال الفوضى التشغيلية بنظام موحّد للمكتب والميدان والفوترة.
+        <br /><br />
+        <strong>لا تفترض</strong> أنك تشتري منصة SaaS عامة جاهزة 100%، أو اعتماد ZATCA Phase 2 كاملاً،
+        أو تطبيقات من المتاجر — إلا إذا نُصّ على ذلك صراحة في عرض السعر والعقد.
+      </div>
+      <h3>أسئلة يُفضّل طرحها قبل التوقيع</h3>
+      <ol>
+        <li>هل النشر على سيرفرنا أم مُدار لديكم؟</li>
+        <li>هل نحتاج موديول التركيب أم الصيانة فقط؟</li>
+        <li>ما مدة الضمان وساعات الدعم؟</li>
+        <li>هل استيراد بياناتنا الحالية (Excel) مشمول؟</li>
+        <li>هل ZATCA Phase 2 مطلوب الآن أم لاحقاً كمرحلة ثانية؟</li>
+        <li>كم جلسة تدريب؟ وهل هناك تدريب إضافي مدفوع؟</li>
+      </ol>
+      <h3>الخطوة التالية المقترحة</h3>
+      <ol>
+        <li>معاينة الحساب التجريبي أعلاه (15–30 دقيقة)</li>
+        <li>جلسة عرض حي على بيانات شركتك أو سيناريو قريب منها</li>
+        <li>عرض سعر مكتوب يحدد المشمول والمستثنى بوضوح</li>
+        <li>توقيع عقد B2B + جدول تسليم</li>
+      </ol>
+    </section>
+
+    <footer class="footer">
+      LiftCore — تقرير منتج للمشتري · يوليو 2026<br />
+      وثيقة معلومات تجارية — الأسعار الإرشادية غير ملزمة · يُخصَّص العقد قبل التوقيع<br />
+      للطباعة: استخدم زر «طباعة / حفظ PDF» أعلى الصفحة
+    </footer>
+  </div>
+</body>
+</html>
