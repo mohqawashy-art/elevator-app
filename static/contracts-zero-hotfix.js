@@ -122,7 +122,12 @@
   // function declarations في الصفحة تُعرَّف أثناء التحليل؛ نثبّت بعد load
   window.addEventListener('load', install);
   document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(install, 0);
-    setTimeout(install, 300);
+    install();
+    var n = 0;
+    var t = setInterval(function () {
+      install();
+      n += 1;
+      if (n >= 20) clearInterval(t);
+    }, 100);
   });
 })();

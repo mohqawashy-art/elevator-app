@@ -4968,14 +4968,49 @@ def _save_contract_file(c, file_storage):
 # =============================================
 # العقود
 # =============================================
+@app.route('/api/debug/contract-zero')
+def api_debug_contract_zero():
+    """تشخيص سريع: هل نسخة التشغيل ما زالت فيها منع القيمة 0؟"""
+    import subprocess
+
+    path = os.path.join(app.root_path, 'templates', 'contracts.html')
+    text = ''
+    try:
+        with open(path, encoding='utf-8') as f:
+            text = f.read()
+    except OSError as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'root': app.root_path}), 500
+    commit = ''
+    try:
+        commit = subprocess.check_output(
+            ['git', '-C', app.root_path, 'log', '-1', '--oneline'],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        commit = ''
+    alert = 'قيمة العقد يجب أن تكون أكبر من صفر'
+    return jsonify({
+        'ok': True,
+        'root': app.root_path,
+        'commit': commit,
+        'has_old_alert_string': alert in text,
+        'has_allow_zero': 'saveContractAllowZero' in text,
+        'has_hotfix_file': os.path.isfile(
+            os.path.join(app.root_path, 'static', 'contracts-zero-hotfix.js')
+        ),
+        'open_contracts': '/contracts?z=3',
+    })
+
+
 @app.route('/contracts')
 def contracts():
     from sqlalchemy.orm import joinedload
 
     # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة التي ترفض القيمة 0
-    if request.args.get('z') != '2':
+    if request.args.get('z') != '3':
         args = request.args.to_dict(flat=True)
-        args['z'] = '2'
+        args['z'] = '3'
         return redirect(url_for('contracts', **args))
 
     contracts_list = (

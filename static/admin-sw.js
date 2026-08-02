@@ -10,7 +10,7 @@ const PRECACHE = [
   '/static/liftcore-layout.css?v=5',
   '/static/liftcore-sticky-top.css?v=6',
   '/static/liftcore-shell.js?v=24',
-  '/static/contracts-zero-hotfix.js?v=1',
+  '/static/contracts-zero-hotfix.js?v=3',
   '/static/liftcore-mobile-touch.js?v=2',
   '/static/images/icon-192.png',
 ];
