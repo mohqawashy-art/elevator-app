@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # مسح جميع إيرادات مستأجر جما (PostgreSQL على elevator-app)
+# لا يوقف الخدمة (لتجنب 502) — الحذف آمن أثناء التشغيل.
 #
 #   cd ~/liftcore/elevator-app
 #   bash deploy/clear_jama_revenues.sh --dry-run
@@ -30,6 +31,8 @@ if [ -f "$PLATFORM_ENV" ]; then
   source "$PLATFORM_ENV"
   set +a
   echo "==> محمّل: $PLATFORM_ENV"
+else
+  echo "WARN: لا يوجد $PLATFORM_ENV"
 fi
 
 if [ -d "$APP_DIR/.venv" ]; then
@@ -42,11 +45,10 @@ fi
 
 echo "==> Clear revenues for slug=$SLUG"
 echo "    App: $APP_DIR"
+echo "    DATABASE_URL set: $([ -n "${DATABASE_URL:-}" ] && echo yes || echo no)"
 
-# لا نوقف الخدمة إن كان dry-run
-if [[ " ${EXTRA[*]} " != *" --dry-run "* ]]; then
-  sudo systemctl stop "$SERVICE" 2>/dev/null || true
-fi
+# تأكد أن الخدمة شغّالة قبل/بعد (لا نوقفها)
+sudo systemctl start "$SERVICE" 2>/dev/null || true
 
 python3 scripts/clear_jama_revenues.py --slug "$SLUG" "${EXTRA[@]}"
 EXIT=$?
@@ -57,9 +59,10 @@ if [[ $EXIT -ne 0 ]]; then
   exit "$EXIT"
 fi
 
-if [[ " ${EXTRA[*]} " != *" --dry-run "* ]]; then
-  sudo systemctl start "$SERVICE" 2>/dev/null || true
-  sleep 2
-  echo ""
+sudo systemctl start "$SERVICE" 2>/dev/null || true
+echo ""
+if [[ " ${EXTRA[*]} " == *" --dry-run "* ]]; then
+  echo "معاينة فقط — لم يُحذف شيء"
+else
   echo "Done — https://jama.liftcoreapp.com/revenues"
 fi

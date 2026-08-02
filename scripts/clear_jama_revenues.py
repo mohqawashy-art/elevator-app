@@ -36,43 +36,50 @@ def _resolve_database_url() -> str:
 
 
 def clear_all_revenues(*, dry_run: bool = False) -> dict:
-    from app import app, db, sync_contract_invoice_status
+    """يجب استدعاؤها داخل app.app_context() مع ضبط g.organization إن وُجد."""
+    from flask import g
+    from app import db, sync_contract_invoice_status
     from models import Revenue
     from tenant_scope import tenant_query
 
-    with app.app_context():
-        rows = tenant_query(Revenue).order_by(Revenue.id).all()
-        count = len(rows)
-        contract_ids = sorted({r.contract_id for r in rows if r.contract_id})
-        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        total = sum((r.total or 0) for r in rows)
+    rows = tenant_query(Revenue).order_by(Revenue.id).all()
+    count = len(rows)
+    contract_ids = sorted({r.contract_id for r in rows if r.contract_id})
+    from flask import current_app
 
-        if dry_run:
-            return {
-                'dry_run': True,
-                'count': count,
-                'total': total,
-                'contracts': len(contract_ids),
-                'database': db_uri,
-            }
+    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    total = sum((r.total or 0) for r in rows)
+    org = getattr(g, 'organization', None)
+    org_label = f'{org.slug}#{org.id}' if org else '(no-org)'
 
-        for r in rows:
-            db.session.delete(r)
-        db.session.flush()
-
-        for cid in contract_ids:
-            sync_contract_invoice_status(cid)
-
-        db.session.commit()
-        remaining = tenant_query(Revenue).count()
+    if dry_run:
         return {
-            'dry_run': False,
-            'deleted': count,
+            'dry_run': True,
+            'count': count,
             'total': total,
-            'contracts_updated': len(contract_ids),
-            'remaining': remaining,
+            'contracts': len(contract_ids),
             'database': db_uri,
+            'tenant': org_label,
         }
+
+    for r in rows:
+        db.session.delete(r)
+    db.session.flush()
+
+    for cid in contract_ids:
+        sync_contract_invoice_status(cid)
+
+    db.session.commit()
+    remaining = tenant_query(Revenue).count()
+    return {
+        'dry_run': False,
+        'deleted': count,
+        'total': total,
+        'contracts_updated': len(contract_ids),
+        'remaining': remaining,
+        'database': db_uri,
+        'tenant': org_label,
+    }
 
 
 def main() -> int:
@@ -101,27 +108,30 @@ def main() -> int:
         with app.app_context():
             slug = (args.slug or 'jama').strip().lower()
             org = Organization.query.filter_by(slug=slug).first()
-            if org:
-                g.organization = org
-                g.organization_id = org.id
-                print(f'Tenant: {org.name} ({org.slug}) id={org.id}')
-            else:
-                # قواعد SQLite قديمة بدون organizations
-                print(f'تحذير: لا توجد مؤسسة slug={slug!r} — سيتم المسح على نطاق الجلسة الحالية')
+            if not org:
+                print(f'ERROR: لا توجد مؤسسة slug={slug!r} — لن يتم المسح')
+                return 1
+            g.organization = org
+            g.organization_id = org.id
+            print(f'Tenant: {org.name} ({org.slug}) id={org.id}')
             result = clear_all_revenues(dry_run=args.dry_run)
     except Exception as exc:
         print(f'فشل: {exc}', file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return 1
 
     if result.get('dry_run'):
         print(f"معاينة: {result['count']} إيراد بإجمالي {result['total']:,.2f}")
         print(f"عقود مرتبطة: {result['contracts']}")
+        print(f"المستأجر: {result.get('tenant')}")
         print(f"قاعدة البيانات: {result['database']}")
         return 0
 
     print(f"تم حذف {result['deleted']} إيراد بإجمالي {result['total']:,.2f}")
     print(f"عقود محدّثة: {result['contracts_updated']}")
     print(f"متبقي في القاعدة: {result['remaining']}")
+    print(f"المستأجر: {result.get('tenant')}")
     print(f"قاعدة البيانات: {result['database']}")
     return 0 if result['remaining'] == 0 else 1
 
