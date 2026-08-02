@@ -4913,8 +4913,11 @@ def _save_fin_proof(row, file_storage, *, kind: str, required: bool = False):
     if not row.id:
         db.session.flush()
     _remove_fin_proof(row)
-    original = secure_filename(file_storage.filename) or 'proof.pdf'
-    stored = f'{uuid.uuid4().hex[:10]}_{original}'
+    stored = _safe_stored_upload_name(
+        file_storage.filename,
+        allowed=ALLOWED_FIN_PROOF_EXT,
+        default_stem='proof',
+    )
     abs_path = os.path.join(_fin_proof_upload_dir(kind, row.id), stored)
     file_storage.save(abs_path)
     row.proof_path = f'uploads/financial_proofs/{kind}/{row.id}/{stored}'
@@ -4931,8 +4934,8 @@ def contract_file_display_name(relative_path):
         return ''
     base = os.path.basename(relative_path.replace('\\', '/'))
     if '_' in base:
-        return base.split('_', 1)[1]
-    return base
+        base = base.split('_', 1)[1]
+    return _upload_download_name(base)
 
 
 def _remove_contract_file(c):
@@ -4960,8 +4963,11 @@ def _save_contract_file(c, file_storage):
     if not c.id:
         db.session.flush()
     _remove_contract_file(c)
-    original = secure_filename(file_storage.filename) or 'contract.pdf'
-    stored = f'{uuid.uuid4().hex[:10]}_{original}'
+    stored = _safe_stored_upload_name(
+        file_storage.filename,
+        allowed=ALLOWED_CONTRACT_FILE_EXT,
+        default_stem='contract',
+    )
     abs_path = os.path.join(_contract_upload_dir(c.id), stored)
     file_storage.save(abs_path)
     c.file_path = f'uploads/contracts/{c.id}/{stored}'
@@ -5539,6 +5545,7 @@ def _static_upload_url(relative_path):
 def serve_upload_file(subpath):
     """تأكيد تقديم الملفات المرفوعة (صور المباني، مستندات الفنيين...)."""
     from field_auth import field_session_technician_id
+    from urllib.parse import quote
 
     if not current_user() and not field_session_technician_id():
         if request.path.startswith('/api/') or (
@@ -5555,7 +5562,25 @@ def serve_upload_file(subpath):
     full = os.path.normpath(os.path.join(directory, subpath))
     if not full.startswith(os.path.normpath(directory)) or not os.path.isfile(full):
         abort(404)
-    resp = send_from_directory(directory, subpath)
+
+    mime = _guess_upload_mimetype(full)
+    download_name = _upload_download_name(os.path.basename(full))
+    # عرض PDF/الصور داخل المتصفح بدل تنزيل إجباري باسم خاطئ
+    inline = mime.startswith('image/') or mime == 'application/pdf'
+    resp = send_from_directory(
+        directory,
+        subpath,
+        mimetype=mime,
+        as_attachment=not inline,
+        download_name=download_name,
+    )
+    if inline:
+        # filename* لدعم الأسماء غير ASCII إن لزم
+        ascii_name = download_name.encode('ascii', 'ignore').decode('ascii') or 'document.pdf'
+        resp.headers['Content-Disposition'] = (
+            f"inline; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(download_name)}"
+        )
+        resp.headers['X-Content-Type-Options'] = 'nosniff'
     # شعار الشركة يتغيّر كثيراً — امنع الكاش القوي
     if subpath.replace('\\', '/').startswith('company/'):
         resp.headers['Cache-Control'] = 'no-cache, max-age=0, must-revalidate'
@@ -5570,6 +5595,68 @@ def _ext_ok(filename, allowed):
     if not filename or '.' not in filename:
         return False
     return filename.rsplit('.', 1)[1].lower() in allowed
+
+
+def _original_upload_ext(filename, allowed, default='pdf'):
+    """استخراج الامتداد من الاسم الأصلي قبل secure_filename (يدعم الأسماء العربية)."""
+    name = (filename or '').replace('\\', '/').split('/')[-1].strip()
+    if '.' in name:
+        ext = name.rsplit('.', 1)[-1].lower().strip()
+        if ext in allowed:
+            return ext
+    return default if default in allowed else next(iter(allowed), 'pdf')
+
+
+def _safe_stored_upload_name(filename, *, allowed, default_stem='file'):
+    """
+    اسم تخزين آمن مع امتداد صحيح.
+    secure_filename يحذف العربية فيحوّل «مرفق.pdf» → «pdf» ثم يُحفظ كـ xxx_pdf بدون نقطة.
+    """
+    ext = _original_upload_ext(filename, allowed, default='pdf')
+    raw = (filename or '').replace('\\', '/').split('/')[-1]
+    stem = raw.rsplit('.', 1)[0] if '.' in raw else raw
+    safe_stem = secure_filename(stem) or default_stem
+    # أزل أي امتداد زائف لصقه secure_filename
+    if '.' in safe_stem:
+        maybe_ext = safe_stem.rsplit('.', 1)[-1].lower()
+        if maybe_ext in allowed or len(maybe_ext) <= 5:
+            safe_stem = safe_stem.rsplit('.', 1)[0] or default_stem
+    safe_stem = (safe_stem or default_stem).replace('.', '_')
+    return f'{uuid.uuid4().hex[:10]}_{safe_stem}.{ext}'
+
+
+def _upload_download_name(stored_basename):
+    """اسم ظاهر للمتصفح — يصلح xxx_pdf → xxx.pdf للملفات القديمة."""
+    name = (stored_basename or 'file').split('/')[-1]
+    lower = name.lower()
+    for ext in ('pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'):
+        suffix = '_' + ext
+        if lower.endswith(suffix) and not lower.endswith('.' + ext):
+            return name[: -len(suffix)] + '.' + ext
+    return name
+
+
+def _guess_upload_mimetype(path):
+    import mimetypes
+
+    base = os.path.basename(path).lower()
+    # ملفات قديمة بلا نقطة: xxx_pdf
+    for ext, mime in (
+        ('_pdf', 'application/pdf'),
+        ('.pdf', 'application/pdf'),
+        ('_png', 'image/png'),
+        ('.png', 'image/png'),
+        ('_jpg', 'image/jpeg'),
+        ('.jpg', 'image/jpeg'),
+        ('_jpeg', 'image/jpeg'),
+        ('.jpeg', 'image/jpeg'),
+        ('_webp', 'image/webp'),
+        ('.webp', 'image/webp'),
+    ):
+        if base.endswith(ext):
+            return mime
+    mime, _ = mimetypes.guess_type(path)
+    return mime or 'application/octet-stream'
 
 
 def _upload_ok(file_storage, allowed_ext):
@@ -5680,18 +5767,25 @@ def _save_technician_documents(tech, files, types, titles):
             errors.append(f'{file_storage.filename}: {err or "نوع غير مسموح"}')
             continue
         original = secure_filename(file_storage.filename) or 'document'
-        ext = original.rsplit('.', 1)[1].lower() if '.' in original else 'pdf'
-        stored = f'{uuid.uuid4().hex[:12]}_{original}'
+        stored = _safe_stored_upload_name(
+            file_storage.filename,
+            allowed=ALLOWED_TECH_DOC_EXT,
+            default_stem='document',
+        )
+        # اسم العرض يحافظ على الامتداد الصحيح
+        display_name = _upload_download_name(stored.split('_', 1)[-1] if '_' in stored else stored)
+        if original and '.' not in original:
+            original = display_name
         abs_path = os.path.join(docs_folder, stored)
         file_storage.save(abs_path)
         doc_type = types[i] if i < len(types) and types[i] else 'أخرى'
-        title = titles[i] if i < len(titles) and titles[i] else original
+        title = titles[i] if i < len(titles) and titles[i] else (display_name or original)
         doc = TechnicianDocument(
             technician_id=tech.id,
             doc_type=doc_type,
             title=title,
             file_path=f'uploads/technicians/{tech.id}/docs/{stored}',
-            file_name=original,
+            file_name=display_name or original,
             mime_type=getattr(file_storage, 'mimetype', None) or '',
         )
         assign_organization(doc)
