@@ -43,26 +43,33 @@ elif [ -d "$HOME/liftcore/venv" ]; then
   source "$HOME/liftcore/venv/bin/activate"
 fi
 
-echo "==> Clear revenues for slug=$SLUG"
-echo "    App: $APP_DIR"
-echo "    DATABASE_URL set: $([ -n "${DATABASE_URL:-}" ] && echo yes || echo no)"
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "ERROR: DATABASE_URL فارغ بعد تحميل $PLATFORM_ENV"
+  echo "بدون هذا المتغير لن يُمسَح شيء من قاعدة جما الحية."
+  exit 1
+fi
 
-# تأكد أن الخدمة شغّالة قبل/بعد (لا نوقفها)
+echo "==> Clear revenues + receipt vouchers for slug=$SLUG"
+echo "    App: $APP_DIR"
+echo "    DATABASE_URL set: yes"
+
+# لا نوقف الخدمة — الحذف أثناء التشغيل آمن
 sudo systemctl start "$SERVICE" 2>/dev/null || true
 
 python3 scripts/clear_jama_revenues.py --slug "$SLUG" "${EXTRA[@]}"
 EXIT=$?
 
 if [[ $EXIT -ne 0 ]]; then
-  echo "ERROR: clear failed (exit $EXIT)"
-  sudo systemctl start "$SERVICE" 2>/dev/null || true
+  echo "ERROR: clear failed (exit $EXIT) — لم يُكتمل المسح"
   exit "$EXIT"
 fi
 
-sudo systemctl start "$SERVICE" 2>/dev/null || true
 echo ""
 if [[ " ${EXTRA[*]} " == *" --dry-run "* ]]; then
   echo "معاينة فقط — لم يُحذف شيء"
+  echo "للمسح الفعلي: bash deploy/clear_jama_revenues.sh --yes"
 else
-  echo "Done — https://jama.liftcoreapp.com/revenues"
+  echo "Done — تحقق:"
+  echo "  https://jama.liftcoreapp.com/revenues"
+  echo "  https://jama.liftcoreapp.com/invoices"
 fi

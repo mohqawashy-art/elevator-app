@@ -7974,6 +7974,9 @@ def revenue_delete(id):
         return err
     r = tenant_get_or_404(Revenue, id)
     contract_id = r.contract_id
+    # سند القبض يشير للإيراد (FK) — احذفه أولاً وإلا يفشل الحذف
+    for inv in tenant_query(Invoice).filter_by(revenue_id=r.id).all():
+        db.session.delete(inv)
     _remove_fin_proof(r)
     db.session.delete(r)
     sync_contract_invoice_status(contract_id)
