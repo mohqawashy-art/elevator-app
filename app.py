@@ -9402,6 +9402,27 @@ def report_client_annual():
         current_year=cur_year,
     )
 
+
+@app.route('/reports/customer-statement')
+def report_customer_statement():
+    """كشف حساب عميل — مدين/دائن/رصيد مستحق."""
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    selected_id = request.args.get('customer_id', type=int)
+    settings = tenant_query(Settings).first()
+    company_json = {
+        'name': (settings.company_name if settings and settings.company_name else 'LiftCore'),
+        'vat': (getattr(settings, 'vat_number', None) or '') if settings else '',
+        'logo': brand_logo_url(settings),
+    }
+    return render_template(
+        'report-customer-statement.html',
+        customers=customers,
+        selected_id=selected_id,
+        company_json=company_json,
+        brand_logo_url=brand_logo_url(settings),
+    )
+
+
 @app.route('/reports/clients')
 def report_clients():
     return _render_report_page('report-clients', 'report-clients.html')

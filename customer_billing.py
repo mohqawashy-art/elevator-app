@@ -907,20 +907,23 @@ def customer_financial_totals(revenues, parts, invoices) -> dict:
 
 
 def build_customer_statement(customer_id: int) -> dict:
-    """كشف حساب: فواتير ضريبية (مدين) + سندات قبض/إيرادات (دائن) + رصيد."""
+    """كشف حساب: مدين (عقود/فواتير) + دائن (إيرادات/سندات) + رصيد جاري."""
     customer = tenant_get_or_404(Customer, customer_id)
 
     tax_invoices = (
         tenant_query(Invoice).filter_by(customer_id=customer_id)
-        .order_by(Invoice.invoice_date.desc(), Invoice.id.desc())
+        .order_by(Invoice.invoice_date.asc(), Invoice.id.asc())
         .all()
     )
 
     debits: list[dict] = []
+    invoiced_contract_ids: set[int] = set()
     for inv in tax_invoices:
-        if is_receipt_voucher(inv.invoice_type):
+        if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
             continue
         remaining = invoice_remaining(inv)
+        if inv.contract_id:
+            invoiced_contract_ids.add(int(inv.contract_id))
         debits.append({
             'date': str(inv.invoice_date or ''),
             'code': inv.code,
@@ -935,10 +938,37 @@ def build_customer_statement(customer_id: int) -> dict:
             'source_id': inv.id,
         })
 
+    # عقود بلا فاتورة ضريبية — تُحسب كمدين (شائع في جما عند التحصيل على العقد مباشرة)
+    for c in (
+        tenant_query(Contract).filter_by(customer_id=customer_id)
+        .order_by(Contract.start_date.asc(), Contract.id.asc())
+        .all()
+    ):
+        if c.id in invoiced_contract_ids:
+            continue
+        total = _round_money(c.total)
+        if total <= 0.01:
+            continue
+        paid = contract_paid_amount(c.id)
+        remaining = max(total - paid, 0)
+        debits.append({
+            'date': str(c.start_date or ''),
+            'code': c.code,
+            'type': 'عقد',
+            'description': f'{c.contract_type or "عقد"} — قيمة العقد',
+            'debit': total,
+            'credit': 0,
+            'paid': paid,
+            'remaining': remaining,
+            'status': c.invoice_status or 'غير مدفوع',
+            'source_type': 'contract',
+            'source_id': c.id,
+        })
+
     revenues = (
         tenant_query(Revenue).filter_by(customer_id=customer_id)
         .filter(Revenue.status.in_(COLLECTED_REVENUE_STATUSES))
-        .order_by(Revenue.revenue_date.desc(), Revenue.id.desc())
+        .order_by(Revenue.revenue_date.asc(), Revenue.id.asc())
         .all()
     )
 
@@ -972,18 +1002,68 @@ def build_customer_statement(customer_id: int) -> dict:
             'invoice_id': r.invoice_id,
         })
 
+    # دفتر حركة موحّد مع رصيد جاري
+    raw_lines: list[dict] = []
+    for d in debits:
+        raw_lines.append({
+            'date': d['date'],
+            'code': d['code'],
+            'type': d['type'],
+            'description': d['description'],
+            'debit': d['debit'],
+            'credit': 0.0,
+            'source_type': d['source_type'],
+            'source_id': d['source_id'],
+        })
+    for c in credits:
+        desc = c['description']
+        if c.get('receipt_code'):
+            desc = f"{desc} — سند {c['receipt_code']}".strip(' —')
+        raw_lines.append({
+            'date': c['date'],
+            'code': c['code'],
+            'type': c['type'],
+            'description': desc,
+            'debit': 0.0,
+            'credit': c['credit'],
+            'source_type': c['source_type'],
+            'source_id': c['source_id'],
+        })
+
+    raw_lines.sort(key=lambda x: (x['date'] or '', x['source_type'], x['source_id'] or 0))
+    balance = 0.0
+    lines: list[dict] = []
+    for row in raw_lines:
+        balance = _round_money(balance + row['debit'] - row['credit'])
+        lines.append({**row, 'balance': balance})
+
     total_invoiced = _round_money(sum(d['debit'] for d in debits))
     total_paid = _round_money(sum(c['credit'] for c in credits))
-    total_outstanding = _round_money(sum(d['remaining'] for d in debits))
+    balance_due = max(_round_money(total_invoiced - total_paid), 0)
+    # إن وُجد رصيد دائن (دفع زائد) يظهر سالباً في running balance
+    running = lines[-1]['balance'] if lines else 0.0
+
+    uncollected = customer_uncollected_ops(customer_id)
+    uncollected_total = _round_money(sum(_round_money(o.get('remaining') or 0) for o in uncollected))
 
     return {
         'customer_id': customer_id,
+        'customer_code': customer.code,
         'customer_name': customer.name,
+        'customer_phone': customer.phone or '',
+        'customer_city': customer.city or '',
+        'customer_address': customer.address or '',
         'total_invoiced': total_invoiced,
-        'total_outstanding': total_outstanding,
+        'total_debit': total_invoiced,
+        'total_outstanding': balance_due,
         'total_paid': total_paid,
-        'balance_due': total_outstanding,
+        'total_credit': total_paid,
+        'balance_due': balance_due,
+        'running_balance': running,
+        'uncollected_total': uncollected_total,
         'debits': debits,
         'credits': credits,
-        'uncollected_ops': customer_uncollected_ops(customer_id),
+        'lines': lines,
+        'uncollected_ops': uncollected,
+        'generated_at': date.today().isoformat(),
     }

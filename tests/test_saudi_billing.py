@@ -193,6 +193,38 @@ def test_statement_links_invoice_and_receipt(client):
     data = r.get_json()
     assert data['total_invoiced'] == total
     assert data['total_paid'] == 5000
+    assert data['balance_due'] == 6500
     assert len(data['debits']) == 1
     assert len(data['credits']) == 1
     assert data['credits'][0]['receipt_code'].startswith('RCP-')
+    assert len(data['lines']) >= 2
+    assert data['lines'][-1]['balance'] == 6500
+
+
+def test_statement_includes_contract_without_invoice(client):
+    login_as(client, 'admin')
+    cid, contract_id, total = _seed_customer_contract(client, total=2500.0)
+
+    client.post('/revenues/add', data={
+        'customer_id': cid,
+        'contract_id': contract_id,
+        'revenue_date': date.today().isoformat(),
+        'revenue_type': 'عقد صيانة',
+        'amount': '1086.96',
+        'total': '1250',
+        'tax_pct': '15',
+        'status': 'محصّل',
+        'source_type': 'contract',
+        'source_id': contract_id,
+    })
+
+    r = client.get(f'/api/customers/{cid}/statement')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['total_debit'] == 2500
+    assert data['total_credit'] == 1250
+    assert data['balance_due'] == 1250
+
+    page = client.get(f'/reports/customer-statement?customer_id={cid}')
+    assert page.status_code == 200
+    assert 'كشف حساب' in page.get_data(as_text=True)
