@@ -1,109 +1,264 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — كشف حساب عميل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);
-  --accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
   --success:#1fb87a;--warning:#e09030;--danger:#e04848;
-  --font-ar:'IBM Plex Sans Arabic',sans-serif;--r:10px;--r-sm:7px;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
 }
+html[dir="ltr"]{font-family:var(--font-en)}
 html[dir="rtl"]{font-family:var(--font-ar)}
 body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
-.sidebar{width:240px;min-width:240px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
-.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:60px}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
 .sidebar-logo img{width:150px;height:44px;object-fit:contain}
 .sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
 .sidebar-nav::-webkit-scrollbar{width:3px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;color:var(--text2);text-decoration:none}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);cursor:pointer;transition:var(--trans);font-size:13px;color:var(--text2);position:relative;text-decoration:none}
 .nav-item:hover{background:var(--bg3);color:var(--text1)}
 .nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
-.nav-item svg{width:16px!important;height:16px!important;flex-shrink:0;opacity:.8;max-width:16px;max-height:16px}
-.nav-group{margin:2px 0}
-.nav-group-btn{display:flex;align-items:center;justify-content:space-between;width:calc(100% - 16px);margin:1px 8px;padding:9px 12px;border:none;border-radius:var(--r-sm);background:transparent;color:var(--text2);font:inherit;cursor:pointer;text-align:right}
-.nav-group-btn:hover{background:var(--bg3);color:var(--text1)}
-.nav-group-label{font-size:13px;font-weight:500}
-.nav-group-chevron{opacity:.6;flex-shrink:0}
-.nav-group-menu{display:none;padding:2px 0 6px}
-.nav-group[data-open] .nav-group-menu,.nav-group-btn[aria-expanded="true"] + .nav-group-menu{display:block}
-.nav-group-menu .nav-item{padding-right:28px;font-size:12.5px}
-.nav-menu-section{padding:10px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.06em}
+.nav-item.active::before{content:'';position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:3px}
+html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.nav-badge{margin-right:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+html[dir="ltr"] .nav-badge{margin-left:auto;margin-right:0}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
+.sidebar-user-name{font-size:13px;font-weight:500;color:var(--text1)}
+.sidebar-user-role{font-size:11px;color:var(--text3)}
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:var(--header-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:90}
+.header-title{font-size:15px;font-weight:500;color:var(--text1)}
+.header-title span{color:var(--text3);font-weight:400;font-size:13px;margin-right:6px}
+html[dir="ltr"] .header-title span{margin-right:0;margin-left:6px}
+.header-spacer{flex:1}
+.header-actions{display:flex;align-items:center;gap:8px}
+.icon-btn{width:34px;height:34px;border-radius:var(--r-sm);background:transparent;border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans);position:relative}
+.icon-btn:hover{background:var(--bg3);border-color:var(--border2);color:var(--text1)}
+.icon-btn svg{width:16px;height:16px}
+.notif-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--danger);border:1px solid var(--bg2)}
+html[dir="ltr"] .notif-dot{right:auto;left:6px}
+.lang-toggle{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.lang-opt{padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:var(--trans);color:var(--text3);border:none;background:none}
+.lang-opt.active{background:var(--accent);color:#fff}
+.header-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;cursor:pointer;border:2px solid var(--border2)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.hamburger svg{width:20px;height:20px}
 .content{flex:1;padding:24px;overflow-y:auto}
-.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-ar);text-decoration:none;color:inherit}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
+html[dir="ltr"] .page-title span{margin-right:0;margin-left:8px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
+html[dir="ltr"] .btn{font-family:var(--font-en)}
+.btn svg{width:14px;height:14px}
 .btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.btn-success{background:rgba(31,184,122,.12);color:var(--success);border:1px solid rgba(31,184,122,.2)}
+.btn-success:hover{background:rgba(31,184,122,.22)}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
-.btn-sm{padding:6px 12px;font-size:12px}
-.stmt-filters{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:20px}
-.stmt-filters .row{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:end}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
+.btn-danger{background:rgba(224,72,72,.12);color:var(--danger);border:1px solid rgba(224,72,72,.15)}
+.btn-danger:hover{background:rgba(224,72,72,.22)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:4px}
+.tab{flex:1;padding:8px;text-align:center;font-size:13px;color:var(--text2);cursor:pointer;border-radius:var(--r-sm);transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px}
+.tab svg{width:14px;height:14px}
+.tab.active{background:var(--bg4);color:var(--text1)}
+.tab:hover:not(.active){background:var(--bg3);color:var(--text1)}
+.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
+html[dir="ltr"] .search-wrap svg{right:auto;left:11px}
+.search-input{width:100%;padding:8px 36px 8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);direction:rtl}
+html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8px 12px 8px 36px}
+.search-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.search-input::placeholder{color:var(--text3)}
+.filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;outline:none;cursor:pointer;transition:var(--trans);font-family:var(--font-ar);min-width:130px}
+html[dir="ltr"] .filter-select{font-family:var(--font-en)}
+.filter-select:focus{border-color:var(--border2)}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap;letter-spacing:.04em}
+html[dir="ltr"] thead th{text-align:left}tbody tr{border-bottom:1px solid rgba(100,160,255,.05);cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
+.td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500}
+.td-name{color:var(--text1);font-weight:500}
+.td-actions{display:flex;gap:6px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.badge-active{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-inactive{background:rgba(138,155,184,.1);color:var(--text2)}
+.badge-contract-yes{background:rgba(42,127,255,.12);color:var(--accent)}
+.badge-contract-no{background:rgba(224,72,72,.1);color:var(--danger)}
+.badge-contract-exp{background:rgba(224,144,48,.1);color:var(--warning)}
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
+.table-info{font-size:12px;color:var(--text3)}
+.pagination{display:flex;gap:4px}
+.page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.map-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.map-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.map-title{font-size:13px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
+.map-title svg{width:15px;height:15px;color:var(--accent)}
+#map{height:480px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:780px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:600;color:var(--text1)}
+.modal-close{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.modal-close:hover{background:rgba(224,72,72,.15);color:var(--danger)}
+.modal-close svg{width:14px;height:14px}
+.modal-body{flex:1;overflow-y:auto;padding:22px}
+.modal-body::-webkit-scrollbar{width:4px}
+.modal-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.form-section{margin-bottom:22px}
+.form-section-title{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:12px;font-weight:500;color:var(--text2)}
-.field select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;padding:9px 12px;width:100%;font-family:inherit}
-.stmt-empty{text-align:center;padding:48px 20px;color:var(--text3);background:var(--card);border:1px dashed var(--border);border-radius:var(--r)}
-.stmt-empty h2{color:var(--text1);font-size:16px;margin:12px 0 6px}
-.print-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-.print-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg2);gap:8px;flex-wrap:wrap}
-#report-page{background:#fff;color:#111;padding:28px 32px;font-family:var(--font-ar);min-height:200px}
-.rpt-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid #1a4fa0;padding-bottom:14px;margin-bottom:18px}
-.rpt-header h1{font-size:18px;color:#1a4fa0;margin:0 0 4px}
-.rpt-header h2{font-size:12px;color:#666;font-weight:400;margin:0}
-.rpt-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:16px;font-size:13px}
-.rpt-meta .k{color:#666;font-size:11px}
-.rpt-meta .v{font-weight:600;color:#111}
-.rpt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
-.rpt-kpi{border:1px solid #e5e9f0;border-radius:8px;padding:12px;text-align:center}
-.rpt-kpi .l{font-size:11px;color:#666;margin-bottom:4px}
-.rpt-kpi .n{font-size:18px;font-weight:700}
-.rpt-kpi.due .n{color:#c0392b}
-.rpt-kpi.paid .n{color:#1a7f4b}
-table.stmt-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
-table.stmt-tbl th{background:#f3f6fb;color:#334;text-align:right;padding:8px 10px;border-bottom:2px solid #d8e0ec;font-weight:600}
-table.stmt-tbl td{padding:8px 10px;border-bottom:1px solid #eef1f6;vertical-align:top}
-table.stmt-tbl .num{font-variant-numeric:tabular-nums;direction:ltr;text-align:left;white-space:nowrap}
-table.stmt-tbl tfoot td{font-weight:700;background:#f8fafc;border-top:2px solid #d8e0ec}
-.rpt-foot{margin-top:18px;font-size:11px;color:#777;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;direction:rtl;width:100%}
+html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .field textarea{font-family:var(--font-en);direction:ltr}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field textarea{resize:vertical;min-height:80px}
+.field-hint{font-size:11px;color:var(--text3)}
+.phone-wrap{display:flex;gap:6px}
+.phone-code{width:80px;flex-shrink:0;padding:9px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;cursor:pointer;direction:ltr}
+.phone-input{flex:1;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;direction:ltr;font-family:var(--font-en)}
+.phone-input:focus,.phone-code:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
+.coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.maps-row{display:flex;gap:8px;align-items:flex-end;margin-top:14px}
+.maps-row .field{flex:1}
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.view-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
+.view-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+.view-val{font-size:13px;color:var(--text1);font-weight:500}
+.view-full{grid-column:1/-1}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:768px){
-  .sidebar{position:fixed;right:-240px;transition:right .25s}
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  html[dir="ltr"] .sidebar{right:auto;left:-240px;transition:left .25s ease}
   .sidebar.open{right:0}
+  html[dir="ltr"] .sidebar.open{left:0;right:auto}
   .mobile-overlay.open{display:block}
-  .stmt-filters .row{grid-template-columns:1fr}
-  .rpt-kpis{grid-template-columns:1fr 1fr}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .form-grid,.form-grid-3{grid-template-columns:1fr}
+  .view-grid{grid-template-columns:1fr}
 }
-@media print{
-  body *{visibility:hidden}
-  #report-page,#report-page *{visibility:visible}
-  #report-page{position:absolute;inset:0;width:100%;padding:12mm}
-  .sidebar,.stmt-filters,.print-toolbar,.page-head,.mobile-overlay{display:none!important}
-}
+@media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
+<style>
+.rpt-page{background:#fff;color:#111;padding:28px 32px;font-family:'IBM Plex Sans Arabic',sans-serif;position:relative}
+.rpt-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:3px solid #1a4fa0;margin-bottom:18px}
+.rpt-header-logo img{height:50px;object-fit:contain}
+.rpt-header-logo-sub{font-size:9px;color:#555;text-align:center;margin-top:2px}
+.rpt-header-center{text-align:center;flex:1;padding:0 16px}
+.rpt-header-center h1{font-size:18px;font-weight:700;color:#1a4fa0;margin-bottom:2px}
+.rpt-header-center h2{font-size:11px;color:#666;font-weight:400;font-family:'DM Sans',sans-serif}
+.rpt-header-center p{font-size:10px;color:#888;margin-top:4px}
+.rpt-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;background:#f5f8ff;border:1px solid #c5d0e6;border-radius:6px;padding:10px 14px}
+.rpt-meta-item{display:flex;flex-direction:column;gap:2px}
+.rpt-meta-label{font-size:9px;color:#666}
+.rpt-meta-val{font-size:11px;font-weight:600;color:#1a4fa0}
+.rpt-stats{display:grid;gap:8px;margin-bottom:14px}
+.rpt-stat-row{display:grid;gap:8px}
+.rpt-stat-box{background:#f5f8ff;border:1px solid #c5d0e6;border-radius:6px;padding:8px 12px;text-align:center}
+.rpt-stat-val{font-size:20px;font-weight:700;color:#1a4fa0;font-family:'DM Sans',sans-serif}
+.rpt-stat-label{font-size:9px;color:#555;margin-top:1px}
+.rpt-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px}
+.rpt-table th{background:#1a4fa0;color:#fff;padding:6px 8px;text-align:right;font-weight:600;border:1px solid #1a4fa0}
+.rpt-table td{padding:5px 8px;border:1px solid #ddd;color:#222;vertical-align:middle}
+.rpt-table tr:nth-child(even) td{background:#f8faff}
+.rpt-table .num{font-family:'DM Sans',sans-serif;text-align:center;direction:ltr}
+.rpt-table .ltr{font-family:'DM Sans',sans-serif;direction:ltr;text-align:left}
+.rpt-footer-line{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:10px;border-top:1px solid #ddd;font-size:9px;color:#888}
+.rpt-footer-brand{color:#1a4fa0;font-weight:600}
+.print-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:20px}
+.print-toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.print-toolbar-title{font-size:13px;color:var(--text2)}
+.filter-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:0}
+.filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.filter-row .field{flex:1;min-width:140px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-weight:500;color:var(--text2)}
+.field select,.field input{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:12px;outline:none;font-family:'IBM Plex Sans Arabic',sans-serif;padding:8px 10px;width:100%}
+.field select:focus,.field input:focus{border-color:var(--border2)}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:500}
+.badge::before{content:'';width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.7}
+.badge-green{background:rgba(31,184,122,.12);color:#1fb87a}
+.badge-red{background:rgba(224,72,72,.12);color:#e04848}
+.badge-gold{background:rgba(224,144,48,.12);color:#e09030}
+.badge-blue{background:rgba(42,127,255,.12);color:#2a7fff}
+.badge-gray{background:rgba(138,155,184,.1);color:#8a9bb8}
+</style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
+<link rel="stylesheet" href="{{ url_for('static', filename='reports-print.css') }}?v=4">
+<script src="{{ url_for('static', filename='reports-print.js') }}?v=1"></script>
+<script src="/static/liftcore-dates.js" defer></script>
 </head>
-<body>
+
+<body data-report-id="report-customer-statement">
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
-  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+  <nav class="sidebar-nav">
+{% include 'partials/app_sidebar_nav.html' %}
+</nav>
 </aside>
-<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <div class="main">
+  {% set page_title = 'كشف حساب عميل' %}
+  {% include 'partials/app_header.html' %}
   <div class="content">
-    <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-size:18px;font-weight:600">كشف حساب عميل</div>
-        <div style="font-size:13px;color:var(--text3);margin-top:4px">مدين (عقود/فواتير) · دائن (تحصيلات) · الرصيد المستحق</div>
+    <div class="page-header screen-only">
+      <div class="page-title">كشف حساب عميل <span>مدين / دائن / الرصيد المستحق</span></div>
+      <div class="page-actions">
+        <a class="btn btn-secondary btn-sm" href="/reports" style="text-decoration:none">كل التقارير</a>
+        <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()" id="btn-print-top" disabled>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
+        </button>
+        <button class="btn btn-success btn-sm" onclick="exportExcel()" id="btn-excel-top" disabled>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>Excel
+        </button>
       </div>
-      <a class="btn btn-secondary btn-sm" href="/reports">كل التقارير</a>
     </div>
 
-    <div class="stmt-filters screen-only">
-      <div class="row">
-        <div class="field">
-          <label>اختر العميل</label>
+    <div class="filter-card screen-only" style="margin-bottom:20px">
+      <div class="filter-row">
+        <div class="field" style="flex:2">
+          <label>العميل</label>
           <select id="sel-client">
             <option value="">— اختر العميل —</option>
             {% for c in customers %}
@@ -111,129 +266,194 @@ table.stmt-tbl tfoot td{font-weight:700;background:#f8fafc;border-top:2px solid 
             {% endfor %}
           </select>
         </div>
-        <button type="button" class="btn btn-primary" onclick="loadStatement()" style="height:38px">عرض الكشف</button>
-        <button type="button" class="btn btn-secondary" onclick="window.print()" id="btn-print" style="height:38px;display:none">طباعة</button>
-      </div>
-    </div>
-
-    <div id="stmt-empty" class="stmt-empty" {% if selected_id %}style="display:none"{% endif %}>
-      <div style="font-size:36px;opacity:.5">📋</div>
-      <h2>كشف حساب العميل</h2>
-      <p>اختر العميل ثم اضغط «عرض الكشف» لرؤية العقود/الفواتير والمدفوعات والرصيد المستحق.</p>
-    </div>
-
-    <div class="print-wrap" id="stmt-wrap" style="display:none">
-      <div class="print-toolbar screen-only">
-        <span id="toolbar-title" style="font-size:13px;color:var(--text2)">كشف الحساب</span>
-        <div style="display:flex;gap:8px">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">طباعة</button>
-          <a class="btn btn-primary btn-sm" id="link-revenues" href="/revenues">تسجيل تحصيل</a>
+        <div class="field" style="flex:0;min-width:auto">
+          <label>&nbsp;</label>
+          <button type="button" class="btn btn-primary" onclick="loadStatement()" style="white-space:nowrap">عرض الكشف</button>
         </div>
       </div>
-      <div id="report-page"></div>
+    </div>
+
+    <div id="stmt-empty" class="filter-card screen-only" style="text-align:center;padding:40px 20px;color:var(--text3);{% if selected_id %}display:none{% endif %}">
+      <div style="font-size:15px;color:var(--text1);font-weight:600;margin-bottom:6px">كشف حساب العميل</div>
+      <div style="font-size:13px">اختر العميل ثم اضغط «عرض الكشف» لعرض الحركات والرصيد المستحق.</div>
+    </div>
+
+    <div id="stmt-body" style="{% if not selected_id %}display:none{% endif %}">
+      <div class="rpt-stat-row screen-only" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-debit">—</div><div class="rpt-stat-label">إجمالي المدين</div></div>
+        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-credit">—</div><div class="rpt-stat-label">إجمالي الدائن</div></div>
+        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-due" style="color:var(--danger)">—</div><div class="rpt-stat-label">الرصيد المستحق</div></div>
+        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-lines">—</div><div class="rpt-stat-label">عدد الحركات</div></div>
+      </div>
+
+      <div class="print-wrap">
+        <div class="print-toolbar">
+          <span class="print-toolbar-title" id="toolbar-title">كشف حساب عميل</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
+            </button>
+            <button class="btn btn-success btn-sm" onclick="exportExcel()">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>Excel
+            </button>
+            <a class="btn btn-primary btn-sm" id="link-revenues" href="/revenues" style="text-decoration:none">تسجيل تحصيل</a>
+          </div>
+        </div>
+        <div class="rpt-page">
+          <div class="rpt-header">
+            <div style="width:56px;height:56px;border:2px solid #1a4fa0;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#1a4fa0" stroke-width="1.5" width="32" height="32"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div class="rpt-header-center">
+              <h1>كشف حساب عميل</h1>
+              <h2>Customer Account Statement</h2>
+              <p id="rpt-date-range">تاريخ التقرير: —</p>
+            </div>
+            <div class="rpt-header-logo">
+              <img src="{{ brand_logo_url }}" alt="LiftCore">
+              <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
+            </div>
+          </div>
+
+          <div class="rpt-meta" id="rpt-meta">
+            <div class="rpt-meta-item"><span class="rpt-meta-label">العميل</span><span class="rpt-meta-val" id="m-name">—</span></div>
+            <div class="rpt-meta-item"><span class="rpt-meta-label">الكود</span><span class="rpt-meta-val" id="m-code">—</span></div>
+            <div class="rpt-meta-item"><span class="rpt-meta-label">الجوال</span><span class="rpt-meta-val ltr" id="m-phone">—</span></div>
+          </div>
+
+          <div id="rpt-print-stats" class="rpt-print-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif" id="p-debit">—</div><div style="font-size:9px;color:#555;margin-top:2px">المدين</div></div>
+            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a7f4b;font-family:DM Sans,sans-serif" id="p-credit">—</div><div style="font-size:9px;color:#555;margin-top:2px">الدائن</div></div>
+            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#c0392b;font-family:DM Sans,sans-serif" id="p-due">—</div><div style="font-size:9px;color:#555;margin-top:2px">المستحق</div></div>
+            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif" id="p-lines">—</div><div style="font-size:9px;color:#555;margin-top:2px">الحركات</div></div>
+          </div>
+
+          <table class="rpt-table">
+            <thead>
+              <tr>
+                <th>التاريخ</th>
+                <th>النوع</th>
+                <th>الكود</th>
+                <th>البيان</th>
+                <th>مدين</th>
+                <th>دائن</th>
+                <th>الرصيد</th>
+              </tr>
+            </thead>
+            <tbody id="print-tbody">
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:#888">اختر عميلاً لعرض الكشف</td></tr>
+            </tbody>
+          </table>
+          <div class="rpt-footer-line">
+            <span>LiftCore — الإدارة الذكية للمصاعد</span>
+            <span id="footer-date"></span>
+            <span>كشف حساب عميل</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap screen-only" style="margin-top:16px">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>التاريخ</th>
+                <th>النوع</th>
+                <th>الكود</th>
+                <th>البيان</th>
+                <th>مدين</th>
+                <th>دائن</th>
+                <th>الرصيد</th>
+              </tr>
+            </thead>
+            <tbody id="report-tbody">
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">اختر عميلاً لعرض الكشف</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span class="table-info" id="table-info">—</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
-
 <script>
 const COMPANY = {{ company_json|tojson }};
 const PRESELECT = {{ selected_id|tojson }};
+let LAST_DATA = null;
 
+const _now = new Date();
+const _days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const _months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+var hDateEl = document.getElementById('h-date');
+if (hDateEl) hDateEl.textContent = `${_days[_now.getDay()]}، ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} — `;
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 
-document.addEventListener('click', function (e) {
-  var btn = e.target.closest('.nav-group-btn');
-  if (!btn) return;
-  var group = btn.closest('.nav-group');
-  if (!group) return;
-  var open = btn.getAttribute('aria-expanded') === 'true';
-  document.querySelectorAll('.nav-group-btn[aria-expanded="true"]').forEach(function (b) {
-    if (b !== btn) b.setAttribute('aria-expanded', 'false');
-  });
-  btn.setAttribute('aria-expanded', open ? 'false' : 'true');
-});
-
 function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 function money(n) {
   return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function fmtDate(s) {
+function fmtD(s) {
   if (!s) return '—';
   const p = String(s).slice(0, 10).split('-');
   if (p.length !== 3) return esc(s);
   return p[2] + '/' + p[1] + '/' + p[0];
 }
+function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+function buildRows(lines) {
+  if (!lines.length) {
+    return '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888">لا توجد حركات لهذا العميل</td></tr>';
+  }
+  return lines.map(function (r) {
+    return '<tr>' +
+      '<td>' + fmtD(r.date) + '</td>' +
+      '<td>' + esc(r.type) + '</td>' +
+      '<td class="td-code">' + esc(r.code) + '</td>' +
+      '<td>' + esc(r.description || '') + '</td>' +
+      '<td class="num">' + (r.debit ? money(r.debit) : '—') + '</td>' +
+      '<td class="num">' + (r.credit ? money(r.credit) : '—') + '</td>' +
+      '<td class="num"><strong>' + money(r.balance) + '</strong></td>' +
+    '</tr>';
+  }).join('');
+}
 
 function renderStatement(data) {
+  LAST_DATA = data;
   const lines = data.lines || [];
-  let rows = '';
-  if (!lines.length) {
-    rows = '<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">لا توجد حركات لهذا العميل</td></tr>';
-  } else {
-    lines.forEach(function (r) {
-      rows += '<tr>' +
-        '<td>' + fmtDate(r.date) + '</td>' +
-        '<td>' + esc(r.type) + '</td>' +
-        '<td><strong>' + esc(r.code) + '</strong><div style="color:#666;font-size:11px;margin-top:2px">' + esc(r.description || '') + '</div></td>' +
-        '<td class="num">' + (r.debit ? money(r.debit) : '—') + '</td>' +
-        '<td class="num">' + (r.credit ? money(r.credit) : '—') + '</td>' +
-        '<td class="num"><strong>' + money(r.balance) + '</strong></td>' +
-      '</tr>';
-    });
-  }
-
   const due = Number(data.balance_due || 0);
-  document.getElementById('report-page').innerHTML =
-    '<div class="rpt-header">' +
-      '<div>' +
-        '<h1>كشف حساب عميل</h1>' +
-        '<h2>Customer Account Statement</h2>' +
-        '<div style="margin-top:8px;font-size:12px;color:#555">' + esc(COMPANY.name || 'LiftCore') +
-          (COMPANY.vat ? ' · ضريبة: ' + esc(COMPANY.vat) : '') +
-        '</div>' +
-      '</div>' +
-      '<div style="text-align:left">' +
-        (COMPANY.logo ? '<img src="' + esc(COMPANY.logo) + '" alt="" style="height:48px;object-fit:contain">' : '') +
-        '<div style="font-size:11px;color:#777;margin-top:4px">تاريخ الإصدار: ' + fmtDate(data.generated_at) + '</div>' +
-      '</div>' +
-    '</div>' +
-    '<div class="rpt-meta">' +
-      '<div><div class="k">العميل</div><div class="v">' + esc(data.customer_name) + '</div></div>' +
-      '<div><div class="k">الكود</div><div class="v">' + esc(data.customer_code || '') + '</div></div>' +
-      '<div><div class="k">الجوال</div><div class="v" style="direction:ltr">' + esc(data.customer_phone || '—') + '</div></div>' +
-      '<div><div class="k">المدينة / العنوان</div><div class="v">' + esc([data.customer_city, data.customer_address].filter(Boolean).join(' — ') || '—') + '</div></div>' +
-    '</div>' +
-    '<div class="rpt-kpis">' +
-      '<div class="rpt-kpi"><div class="l">إجمالي المدين</div><div class="n">' + money(data.total_debit) + '</div></div>' +
-      '<div class="rpt-kpi paid"><div class="l">إجمالي الدائن (محصّل)</div><div class="n">' + money(data.total_credit) + '</div></div>' +
-      '<div class="rpt-kpi due"><div class="l">الرصيد المستحق</div><div class="n">' + money(due) + '</div></div>' +
-      '<div class="rpt-kpi"><div class="l">بنود غير محصّلة</div><div class="n">' + (data.uncollected_ops || []).length + '</div></div>' +
-    '</div>' +
-    '<table class="stmt-tbl">' +
-      '<thead><tr><th>التاريخ</th><th>النوع</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>' +
-      '<tbody>' + rows + '</tbody>' +
-      '<tfoot><tr>' +
-        '<td colspan="3">الإجمالي</td>' +
-        '<td class="num">' + money(data.total_debit) + '</td>' +
-        '<td class="num">' + money(data.total_credit) + '</td>' +
-        '<td class="num">' + money(due) + '</td>' +
-      '</tr></tfoot>' +
-    '</table>' +
-    '<div class="rpt-foot">' +
-      '<span>الرصيد المستحق = المدين − الدائن</span>' +
-      '<span>مستند آلي من LiftCore</span>' +
-    '</div>';
+  const rows = buildRows(lines);
 
   document.getElementById('stmt-empty').style.display = 'none';
-  document.getElementById('stmt-wrap').style.display = '';
-  document.getElementById('btn-print').style.display = '';
-  document.getElementById('toolbar-title').textContent =
-    'كشف حساب — ' + (data.customer_name || '') + ' · مستحق ' + money(due);
-  document.getElementById('link-revenues').href =
-    '/revenues?customer_id=' + encodeURIComponent(data.customer_id);
+  document.getElementById('stmt-body').style.display = '';
+  document.getElementById('btn-print-top').disabled = false;
+  document.getElementById('btn-excel-top').disabled = false;
+
+  setText('m-name', data.customer_name || '—');
+  setText('m-code', data.customer_code || '—');
+  setText('m-phone', data.customer_phone || '—');
+  setText('st-debit', money(data.total_debit));
+  setText('st-credit', money(data.total_credit));
+  setText('st-due', money(due));
+  setText('st-lines', String(lines.length));
+  setText('p-debit', money(data.total_debit));
+  setText('p-credit', money(data.total_credit));
+  setText('p-due', money(due));
+  setText('p-lines', String(lines.length));
+  setText('toolbar-title', 'كشف حساب — ' + (data.customer_name || ''));
+  setText('table-info', 'عرض ' + lines.length + ' حركة · مستحق ' + money(due));
+
+  document.getElementById('print-tbody').innerHTML = rows;
+  document.getElementById('report-tbody').innerHTML = rows;
+  document.getElementById('link-revenues').href = '/revenues?customer_id=' + encodeURIComponent(data.customer_id);
+
+  const todayStr = (window.fmtDate ? window.fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
+  setText('footer-date', todayStr);
+  setText('rpt-date-range', 'تاريخ التقرير: ' + todayStr + (COMPANY && COMPANY.name ? ' · ' + COMPANY.name : ''));
 }
 
 async function loadStatement() {
@@ -251,7 +471,27 @@ async function loadStatement() {
   }
 }
 
+function exportExcel() {
+  if (!LAST_DATA) { alert('اعرض الكشف أولاً'); return; }
+  const rows = [['التاريخ','النوع','الكود','البيان','مدين','دائن','الرصيد']];
+  (LAST_DATA.lines || []).forEach(function (r) {
+    rows.push([r.date || '', r.type || '', r.code || '', r.description || '', r.debit || 0, r.credit || 0, r.balance || 0]);
+  });
+  rows.push([]);
+  rows.push(['إجمالي المدين', LAST_DATA.total_debit || 0]);
+  rows.push(['إجمالي الدائن', LAST_DATA.total_credit || 0]);
+  rows.push(['الرصيد المستحق', LAST_DATA.balance_due || 0]);
+  const csv = rows.map(function (r) { return r.join(','); }).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'كشف_حساب_' + (LAST_DATA.customer_code || LAST_DATA.customer_id) + '.csv';
+  a.click();
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+  const todayStr = (window.fmtDate ? window.fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
+  setText('footer-date', todayStr);
+  setText('rpt-date-range', 'تاريخ التقرير: ' + todayStr);
   if (PRESELECT) loadStatement();
 });
 </script>
