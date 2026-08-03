@@ -3184,21 +3184,38 @@ def get_dashboard_stats():
     today = date.today()
     in_30_days = today + timedelta(days=30)
 
-    total_invoices = db.session.query(db.func.sum(Invoice.total)).scalar() or 0
-    paid_invoices = db.session.query(db.func.sum(Invoice.total)).filter(
-        Invoice.status.in_(['مدفوعة', 'مدفوع', 'محصّل'])
-    ).scalar() or 0
-    unpaid_total = db.session.query(db.func.sum(Invoice.total)).filter(
-        Invoice.status.in_(['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً'])
-    ).scalar() or 0
-    overdue_total = db.session.query(db.func.sum(Invoice.total)).filter(
-        Invoice.due_date < today,
-        Invoice.status.in_(['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً'])
-    ).scalar() or 0
-    overdue_count = tenant_query(Invoice).filter(
-        Invoice.due_date < today,
-        Invoice.status.in_(['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً'])
-    ).count()
+    from customer_billing import (
+        is_receipt_voucher,
+        tenant_outstanding_collectible,
+    )
+
+    outstanding = tenant_outstanding_collectible(today=today)
+
+    # فواتير ضريبية فقط (بدون سندات قبض) — المتبقي = الإجمالي − المدفوع
+    tax_invoices = [
+        inv for inv in tenant_query(Invoice).all()
+        if not is_receipt_voucher(inv.invoice_type) and not getattr(inv, 'revenue_id', None)
+    ]
+    total_invoices = sum(_money_round(inv.total) for inv in tax_invoices)
+    paid_invoices = sum(
+        _money_round(getattr(inv, 'paid_amount', 0) or 0)
+        for inv in tax_invoices
+    )
+    unpaid_total = sum(
+        max(_money_round(inv.total) - _money_round(getattr(inv, 'paid_amount', 0) or 0), 0)
+        for inv in tax_invoices
+        if max(_money_round(inv.total) - _money_round(getattr(inv, 'paid_amount', 0) or 0), 0) > 0.01
+    )
+    overdue_invoices = [
+        inv for inv in tax_invoices
+        if inv.due_date and inv.due_date < today
+        and max(_money_round(inv.total) - _money_round(getattr(inv, 'paid_amount', 0) or 0), 0) > 0.01
+    ]
+    overdue_total = sum(
+        max(_money_round(inv.total) - _money_round(getattr(inv, 'paid_amount', 0) or 0), 0)
+        for inv in overdue_invoices
+    )
+    overdue_count = len(overdue_invoices)
 
     expiring_contracts = tenant_query(Contract).filter(
         Contract.status == 'نشط',
@@ -3236,6 +3253,10 @@ def get_dashboard_stats():
         'overdue_count':    overdue_count,
         'paid_pct':         round(paid_invoices / total_invoices * 100) if total_invoices else 0,
         'unpaid_pct':       round(unpaid_total / total_invoices * 100) if total_invoices else 0,
+        'outstanding_collectible': outstanding['total'],
+        'outstanding_count': outstanding['items_count'],
+        'outstanding_contracts': outstanding['contracts_count'],
+        'outstanding_contracts_total': outstanding['contracts_total'],
     }
 
     alerts = {
@@ -3381,6 +3402,26 @@ def api_dashboard_drill(card_type):
         payload = {
             'title': 'الفواتير غير المدفوعة', 'link': '/invoices',
             'columns': ['الكود', 'العميل', 'التاريخ', 'الاستحقاق', 'الإجمالي', 'الحالة', 'واتساب'],
+            'rows': rows,
+        }
+    elif card_type == 'outstanding_collectible':
+        from customer_billing import tenant_outstanding_collectible
+        data = tenant_outstanding_collectible(today=today)
+        rows = []
+        for r in data['rows'][:100]:
+            rows.append([
+                r['kind'],
+                r['code'],
+                r['customer'],
+                f"{r['total']:,.0f} \u20c1",
+                f"{r['paid']:,.0f} \u20c1",
+                f"{r['remaining']:,.0f} \u20c1",
+                r['status'],
+            ])
+        payload = {
+            'title': f"مستحق التحصيل — {data['total']:,.0f} ⃁",
+            'link': '/contracts',
+            'columns': ['النوع', 'الكود', 'العميل', 'الإجمالي', 'المدفوع', 'المتبقي', 'الحالة'],
             'rows': rows,
         }
     elif card_type == 'technicians':
@@ -10347,6 +10388,8 @@ def api_dashboard():
         'faults_open':        stats['faults_open'],
         'visits_done':        stats['visits_done'],
         'unpaid_invoices':    stats['unpaid_invoices'],
+        'outstanding_collectible': stats.get('outstanding_collectible', 0),
+        'outstanding_count':  stats.get('outstanding_count', 0),
         'parts_profit':       stats['parts_profit'],
         'trends':             trends,
         'expiring_contracts': alerts['expiring_contracts_count'],

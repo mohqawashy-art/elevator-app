@@ -462,14 +462,14 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
         <div class="stat-label" id="sl6">Open Faults</div>
         <div class="stat-label-ar" id="sl6ar">أعطال مفتوحة</div>
       </div>
-      <div class="stat-card c-warn" style="animation-delay:.35s" data-drill="unpaid_invoices" onclick="openDrill('unpaid_invoices',this)">
+      <div class="stat-card c-warn" style="animation-delay:.35s" data-drill="outstanding_collectible" onclick="openDrill('outstanding_collectible',this)">
         <div class="stat-top">
-          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/></svg></div>
-          <span class="stat-trend {{ trends.unpaid_invoices.class }}" id="tr7" title="{{ trends.unpaid_invoices.title_ar }}" data-title-en="{{ trends.unpaid_invoices.title_en }}">{{ trends.unpaid_invoices.text }}</span>
+          <div class="stat-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 1.5"/></svg></div>
+          <span class="stat-trend flat" id="tr7" title="عقود وفواتير وقطع بمتبقي للتحصيل">{{ stats.outstanding_count }} بند</span>
         </div>
-        <div class="stat-val">{{ stats.unpaid_invoices }}</div>
-        <div class="stat-label" id="sl7">Unpaid Invoices</div>
-        <div class="stat-label-ar" id="sl7ar">فواتير غير مدفوعة</div>
+        <div class="stat-val" id="outstanding-collectible-val">{{ '{:,.0f}'.format(stats.outstanding_collectible) }}</div>
+        <div class="stat-label" id="sl7">Outstanding Receivables</div>
+        <div class="stat-label-ar" id="sl7ar">مستحق التحصيل</div>
       </div>
       <div class="stat-card c-green" style="animation-delay:.4s" data-drill="technicians" onclick="openDrill('technicians',this)">
         <div class="stat-top">
@@ -523,7 +523,16 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
               <span class="alert-count">{{ stats.faults_open }} عطل</span>
             </div>
             {% endif %}
-            {% if stats.unpaid_total > 0 %}
+            {% if stats.outstanding_collectible > 0 %}
+            <div class="alert-item warning" onclick="openDrill('outstanding_collectible',this)">
+              <div class="alert-dot"></div>
+              <div>
+                <div class="alert-text" id="a4">مبالغ مستحقة التحصيل</div>
+                <div class="alert-sub">{{ stats.outstanding_contracts }} عقود بمتبقي + فواتير/قطع</div>
+              </div>
+              <span class="alert-count">{{ '{:,.0f}'.format(stats.outstanding_collectible) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
+            </div>
+            {% elif stats.unpaid_total > 0 %}
             <div class="alert-item warning" onclick="openDrill('unpaid_invoices',this)">
               <div class="alert-dot"></div>
               <div>
@@ -533,7 +542,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
               <span class="alert-count">{{ '{:,.0f}'.format(stats.unpaid_total) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
             </div>
             {% endif %}
-            {% if alerts.expiring_contracts_count == 0 and alerts.low_stock_count == 0 and stats.faults_open == 0 and stats.unpaid_total == 0 %}
+            {% if alerts.expiring_contracts_count == 0 and alerts.low_stock_count == 0 and stats.faults_open == 0 and stats.outstanding_collectible == 0 and stats.unpaid_total == 0 %}
             <div class="alert-item info">
               <div class="alert-dot"></div>
               <div>
@@ -595,8 +604,13 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
             </div>
           </div>
           <div class="panel-body" style="padding-top:12px">
-            <p style="font-size:11px;color:var(--text3);margin-bottom:10px">اضغط «فواتير متأخرة» أو «إجمالي الفواتير» ثم زر <span style="color:#25d366;font-weight:600">واتساب</span> في الجدول لطلب السداد.</p>
+            <p style="font-size:11px;color:var(--text3);margin-bottom:10px">اضغط «مستحق التحصيل» لعرض العقود والعملاء بمتبقي، أو «فواتير متأخرة» لطلب السداد عبر واتساب.</p>
             <div class="finance-grid">
+              <div class="finance-card" onclick="openDrill('outstanding_collectible',this)" style="border-color:rgba(232,168,56,.35)">
+                <div class="finance-label" id="fl0">مستحق التحصيل</div>
+                <div class="finance-val danger">{{ '{:,.0f}'.format(stats.outstanding_collectible) }}</div>
+                <div class="finance-sub">{{ stats.outstanding_count }} بند · {{ stats.outstanding_contracts }} عقود</div>
+              </div>
               <div class="finance-card" onclick="openDrill('all_invoices',this)">
                 <div class="finance-label" id="fl1">إجمالي الفواتير</div>
                 <div class="finance-val">{{ '{:,.0f}'.format(stats.total_invoices) }}</div>
@@ -607,12 +621,6 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
                 <div class="finance-val success">{{ '{:,.0f}'.format(stats.paid_invoices) }}</div>
                 <div class="finance-sub">{{ stats.paid_pct|int }}%</div>
                 <div class="finance-bar"><div class="finance-bar-fill" style="width:{{ stats.paid_pct }}%;background:var(--success)"></div></div>
-              </div>
-              <div class="finance-card" onclick="openDrill('unpaid_invoices',this)">
-                <div class="finance-label" id="fl3">المبالغ المتبقية</div>
-                <div class="finance-val">{{ '{:,.0f}'.format(stats.unpaid_total) }}</div>
-                <div class="finance-sub">{{ stats.unpaid_pct|int }}%</div>
-                <div class="finance-bar"><div class="finance-bar-fill" style="width:{{ stats.unpaid_pct }}%;background:var(--warning)"></div></div>
               </div>
               <div class="finance-card" onclick="openDrill('overdue_invoices',this)">
                 <div class="finance-label" id="fl4">فواتير متأخرة</div>
@@ -661,6 +669,8 @@ var STATS = {
   expired_contracts: {{ stats.expired_contracts }},
   visits_today:      {{ stats.visits_today }},
   faults_open:       {{ stats.faults_open }},
+  outstanding_collectible: {{ stats.outstanding_collectible }},
+  outstanding_count: {{ stats.outstanding_count }},
   unpaid_invoices:   {{ stats.unpaid_invoices }},
   visits_done:       {{ stats.visits_done }},
   technicians:       {{ stats.technicians }},
@@ -669,11 +679,12 @@ var STATS = {
 };
 
 const TRENDS = {{ trends|tojson }};
-const TREND_KEYS = ['customers', 'elevators', 'contracts', 'expired_contracts', 'visits_today', 'faults_open', 'unpaid_invoices', 'technicians'];
+const TREND_KEYS = ['customers', 'elevators', 'contracts', 'expired_contracts', 'visits_today', 'faults_open', null, 'technicians'];
 
 function applyTrends(tr) {
   if (!tr) return;
   TREND_KEYS.forEach(function (key, i) {
+    if (!key) return;
     const el = document.getElementById('tr' + (i + 1));
     const t = tr[key];
     if (!el || !t) return;
@@ -693,8 +704,11 @@ function updateDashboard() {
   if(vals[3]) vals[3].textContent = STATS.expired_contracts;
   if(vals[4]) vals[4].textContent = STATS.visits_today;
   if(vals[5]) vals[5].textContent = STATS.faults_open;
-  if(vals[6]) vals[6].textContent = STATS.unpaid_invoices;
+  if(vals[6]) vals[6].textContent = Number(STATS.outstanding_collectible || 0).toLocaleString('en-US', {maximumFractionDigits: 0});
   if(vals[7]) vals[7].textContent = STATS.technicians;
+
+  const outTrend = document.getElementById('tr7');
+  if (outTrend) outTrend.textContent = (STATS.outstanding_count || 0) + ' بند';
 
   // تحديث الإيرادات لو موجودة
   const revEl = document.getElementById('total-revenue');

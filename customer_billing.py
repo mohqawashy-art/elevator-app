@@ -488,6 +488,97 @@ def customer_invoicable_revenues(customer_id: int) -> list[dict]:
     return rows
 
 
+def tenant_outstanding_collectible(*, today: date | None = None) -> dict:
+    """المبالغ المستحقة التحصيل على مستوى المستأجر.
+
+    يعتمد أساساً على المتبقي من العقود (قيمة العقد − المدفوع)،
+    ويضيف فواتير بلا عقد + قطع غيار غير محصّلة — دون تكرار سندات القبض.
+    """
+    today = today or date.today()
+    contracts_total = 0.0
+    contracts_count = 0
+    invoices_total = 0.0
+    invoices_count = 0
+    parts_total = 0.0
+    parts_count = 0
+    detail_rows: list[dict] = []
+
+    for c in tenant_query(Contract).order_by(Contract.end_date.asc()).all():
+        if not _contract_is_collectible(c, today):
+            continue
+        rem = max(
+            _round_money(c.total) - _round_money(getattr(c, 'paid_amount', 0) or 0),
+            0,
+        )
+        if rem <= 0.01:
+            continue
+        contracts_total += rem
+        contracts_count += 1
+        detail_rows.append({
+            'kind': 'عقد',
+            'code': c.code,
+            'customer': c.customer.name if c.customer else '—',
+            'customer_id': c.customer_id,
+            'total': _round_money(c.total),
+            'paid': _round_money(getattr(c, 'paid_amount', 0) or 0),
+            'remaining': rem,
+            'status': c.invoice_status or 'غير مدفوع',
+            'link': f'/contracts?highlight={c.id}',
+        })
+
+    for inv in tenant_query(Invoice).filter(Invoice.contract_id.is_(None)).all():
+        if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
+            continue
+        rem = invoice_remaining(inv)
+        if rem <= 0.01:
+            continue
+        invoices_total += rem
+        invoices_count += 1
+        detail_rows.append({
+            'kind': 'فاتورة',
+            'code': inv.code,
+            'customer': inv.customer.name if inv.customer else '—',
+            'customer_id': inv.customer_id,
+            'total': _round_money(inv.total),
+            'paid': _round_money(getattr(inv, 'paid_amount', 0) or 0),
+            'remaining': rem,
+            'status': inv.status or 'غير مدفوعة',
+            'link': f'/invoices/{inv.id}/print',
+        })
+
+    for pb in tenant_query(PartsBilling).all():
+        rem = parts_remaining(pb)
+        if rem <= 0.01:
+            continue
+        parts_total += rem
+        parts_count += 1
+        detail_rows.append({
+            'kind': 'قطع غيار',
+            'code': pb.code,
+            'customer': pb.customer.name if pb.customer else '—',
+            'customer_id': pb.customer_id,
+            'total': _round_money(pb.sell_price),
+            'paid': _round_money(getattr(pb, 'paid_amount', 0) or 0),
+            'remaining': rem,
+            'status': pb.status or 'غير محصل',
+            'link': f'/parts-billing?highlight={pb.id}',
+        })
+
+    detail_rows.sort(key=lambda r: r['remaining'], reverse=True)
+    total = _round_money(contracts_total + invoices_total + parts_total)
+    return {
+        'total': total,
+        'contracts_total': _round_money(contracts_total),
+        'contracts_count': contracts_count,
+        'invoices_total': _round_money(invoices_total),
+        'invoices_count': invoices_count,
+        'parts_total': _round_money(parts_total),
+        'parts_count': parts_count,
+        'items_count': contracts_count + invoices_count + parts_count,
+        'rows': detail_rows,
+    }
+
+
 def customer_uncollected_ops(customer_id: int) -> list[dict]:
     """عمليات العميل غير المحصّلة بالكامل."""
     rows: list[dict] = []
