@@ -260,11 +260,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="field" style="flex:2">
           <label>العميل</label>
           <select id="sel-client">
-            <option value="">— اختر العميل —</option>
+            <option value="">— ابحث بالاسم أو الكود —</option>
             {% for c in customers %}
             <option value="{{ c.id }}" {% if selected_id == c.id %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
             {% endfor %}
           </select>
+          <span class="field-hint" style="font-size:11px;color:var(--text3);margin-top:4px">اكتب اسم العميل أو الكود للبحث والاختيار</span>
         </div>
         <div class="field" style="flex:0;min-width:auto">
           <label>&nbsp;</label>
@@ -492,6 +493,18 @@ document.addEventListener('DOMContentLoaded', function () {
   const todayStr = (window.fmtDate ? window.fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
   setText('footer-date', todayStr);
   setText('rpt-date-range', 'تاريخ التقرير: ' + todayStr);
+
+  if (window.LcClientSelect) {
+    LcClientSelect.upgradeSelect('sel-client', {
+      placeholder: 'ابحث بالاسم أو الكود...',
+      selectedId: PRESELECT || null,
+      onChange: function () {
+        var id = document.getElementById('sel-client');
+        if (id && id.value) loadStatement();
+      },
+    });
+  }
+
   if (PRESELECT) loadStatement();
 });
 </script>
