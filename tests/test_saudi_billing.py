@@ -111,7 +111,52 @@ def test_tax_invoice_must_be_full_contract_amount(client):
         assert abs(inv.total - total) < 0.02
 
 
+def test_partial_contract_payment_not_double_counted_with_receipt(client):
+    """دفعة جزئية + سند قبض تلقائي يجب ألا تُظهر العقد محصّلاً بالكامل."""
+    login_as(client, 'admin')
+    cid, contract_id, total = _seed_customer_contract(client, total=2500.0)
+
+    r = client.post('/revenues/add', data={
+        'customer_id': cid,
+        'contract_id': contract_id,
+        'revenue_date': date.today().isoformat(),
+        'revenue_type': 'عقد صيانة',
+        'payment_method': 'تحويل',
+        'amount': '1086.96',
+        'total': '1250',
+        'tax_pct': '15',
+        'status': 'محصّل',
+        'source_type': 'contract',
+        'source_id': contract_id,
+    }, follow_redirects=False)
+    assert r.status_code in (302, 303)
+
+    with client.application.app_context():
+        from customer_billing import contract_paid_amount, contract_remaining
+        from billing_consistency import refresh_contract_cache
+
+        rev = Revenue.query.filter_by(contract_id=contract_id).first()
+        assert rev is not None
+        assert rev.total == 1250
+        receipt = Invoice.query.filter_by(revenue_id=rev.id).first()
+        assert receipt is not None
+        assert 'سند' in (receipt.invoice_type or '')
+
+        paid = contract_paid_amount(contract_id)
+        assert paid == 1250, f'expected 1250 paid, got {paid} (receipt double-count?)'
+        remaining = contract_remaining(db.session.get(Contract, contract_id))
+        assert remaining == 1250
+
+        contract = db.session.get(Contract, contract_id)
+        refresh_contract_cache(contract)
+        db.session.commit()
+        assert contract.paid_amount == 1250
+        assert contract.invoice_status == 'مدفوع جزئياً'
+        assert abs(contract.total - total) < 0.01
+
+
 def test_statement_links_invoice_and_receipt(client):
+
     login_as(client, 'admin')
     cid, contract_id, total = _seed_customer_contract(client)
 

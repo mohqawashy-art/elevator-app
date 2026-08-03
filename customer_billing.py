@@ -218,6 +218,9 @@ def contract_paid_amount(contract_id: int) -> float:
 
     inv_extra = 0.0
     for inv in tenant_query(Invoice).filter_by(contract_id=contract_id).all():
+        # سند القبض = نفس مبلغ الإيراد — لا يُحسب مرتين
+        if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
+            continue
         inv_paid = _invoice_paid_total(inv)
         linked = linked_by_invoice.get(inv.id, 0.0)
         inv_extra += max(0.0, inv_paid - linked)
@@ -253,6 +256,8 @@ def contract_paid_amount(contract_id: int) -> float:
         Invoice.contract_id.is_(None),
     ).all()
     for inv in orphan_invs:
+        if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
+            continue
         inv_paid = _invoice_paid_total(inv)
         if inv_paid <= 0.01:
             continue
