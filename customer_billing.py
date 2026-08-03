@@ -762,14 +762,20 @@ def create_receipt_voucher_for_revenue(revenue: Revenue) -> Invoice | None:
 
 
 def customer_financial_totals(revenues, parts, invoices) -> dict:
-    """مجاميع المدفوعات دون احتساب العملية مرتين (إيراد + قطع غيار)."""
+    """مجاميع المدفوعات دون احتساب العملية مرتين (إيراد + قطع غيار + سند قبض)."""
     revenue_linked_parts = {
         int(r.parts_billing_id) for r in revenues if r.parts_billing_id
     }
     rev_keys = {(r.revenue_date, _round_money(r.total)) for r in revenues}
+    revenue_ids = {int(r.id) for r in revenues if r.id}
 
     invoice_extra = []
     for inv in invoices:
+        # سند القبض مرآة للإيراد — لا يُضاف للمجموع
+        if is_receipt_voucher(inv.invoice_type):
+            continue
+        if getattr(inv, 'revenue_id', None) and int(inv.revenue_id) in revenue_ids:
+            continue
         if inv.parts_billing_id and int(inv.parts_billing_id) in revenue_linked_parts:
             continue
         if (inv.invoice_date, _round_money(inv.total)) in rev_keys:

@@ -4627,7 +4627,14 @@ def build_customer_profile(customer_id, contract_id=None):
     invoice_extra = fin['invoice_extra']
 
     contract_value = contract.total if contract else 0
-    balance = max(contract_value - contract_payments, 0) if contract else 0
+    # المتبقي من حساب العقد (إيرادات فقط — بدون تكرار سند القبض)
+    if contract:
+        from customer_billing import contract_paid_amount as _cpa
+        paid_on_contract = _cpa(contract.id)
+        contract_payments = paid_on_contract
+        balance = max(_money_round(contract_value) - paid_on_contract, 0)
+    else:
+        balance = 0
 
     visit_q = tenant_query(MaintenanceVisit).join(Elevator).filter(
         Elevator.customer_id == customer_id
