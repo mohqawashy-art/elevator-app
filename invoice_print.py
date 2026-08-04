@@ -40,7 +40,14 @@ def _logo_url(settings: Settings) -> str:
 def _customer_address(customer: Customer | None) -> str:
     if not customer:
         return ''
-    parts = [p for p in (customer.address, customer.district, customer.city) if (p or '').strip()]
+    parts = [
+        p for p in (
+            customer.national_address,
+            customer.address,
+            customer.district,
+            customer.city,
+        ) if (p or '').strip()
+    ]
     return ' — '.join(parts)
 
 
@@ -261,7 +268,9 @@ def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
         'customer_address_line': (customer.address if customer else '') or '—',
         'customer_phone': (customer.phone if customer else '') or '',
         'buyer_address': _customer_address(customer),
+        'buyer_vat_number': (customer.vat_number or '').strip() if customer else '',
         'buyer_cr': (customer.cr_number or '').strip() if customer else '',
+        'buyer_national_address': (customer.national_address or '').strip() if customer else '',
         'invoice_date': _fmt_date(inv_date),
         'issue_date_display': _fmt_date(inv_date),
         'issue_date_iso': inv_date.isoformat(),

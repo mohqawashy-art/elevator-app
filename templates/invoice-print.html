@@ -249,9 +249,9 @@ body.page-a5 .qr-side img{width:85px;height:85px}
         <span class="k">اسم العميل</span><span class="v">{{ customer_name }}</span>
         <span class="k">رقم العميل</span><span class="v ltr">{{ customer_code }}</span>
       </div>
-      {% if buyer_cr %}
+      {% if buyer_vat_number %}
       <div class="cust-row">
-        <span class="k">الرقم الضريبي</span><span class="v ltr">{{ buyer_cr }}</span>
+        <span class="k">الرقم الضريبي</span><span class="v ltr">{{ buyer_vat_number }}</span>
         <span class="k">المدينة</span><span class="v">{{ customer_city }}</span>
       </div>
       {% else %}
@@ -272,6 +272,12 @@ body.page-a5 .qr-side img{width:85px;height:85px}
         <span></span><span></span>
         <span class="k">العنوان</span><span class="v">{{ customer_address_line }}</span>
       </div>
+      {% if buyer_national_address or buyer_cr %}
+      <div class="cust-row">
+        <span class="k">العنوان الوطني</span><span class="v">{{ buyer_national_address or '—' }}</span>
+        <span class="k">السجل التجاري</span><span class="v ltr">{{ buyer_cr or '—' }}</span>
+      </div>
+      {% endif %}
     </div>
   </div>
   {% else %}

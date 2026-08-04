@@ -193,3 +193,43 @@ def test_b2b_missing_customer_address_warns(client):
     login_as(client, 'admin')
     html = client.get(f'/invoices/{inv_id}/print').get_data(as_text=True)
     assert 'عنوان المشتري' in html
+
+
+def test_b2b_invoice_shows_customer_vat_and_national_address(client):
+    with client.application.app_context():
+        _seed_settings()
+        cust = Customer(
+            code='C-B2B1',
+            name='شركة عميل',
+            phone='512111333',
+            city='مكة',
+            district='العزيزية',
+            address='شارع إبراهيم الخليل',
+            status='نشط',
+            entity_type='شركة',
+            cr_number='1010123456',
+            vat_number='310123456700003',
+            national_address='مكة المكرمة، العزيزية، 24243، مبنى 1234',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        inv = Invoice(
+            code='INV-B2B-VAT',
+            invoice_type='فاتورة ضريبية',
+            customer_id=cust.id,
+            invoice_date=date.today(),
+            description='عقد صيانة',
+            amount=1000,
+            tax_amount=150,
+            total=1150,
+        )
+        db.session.add(inv)
+        db.session.commit()
+        inv_id = inv.id
+
+    login_as(client, 'admin')
+    html = client.get(f'/invoices/{inv_id}/print').get_data(as_text=True)
+    assert '310123456700003' in html
+    assert '1010123456' in html
+    assert 'العنوان الوطني' in html
+    assert 'مبنى 1234' in html

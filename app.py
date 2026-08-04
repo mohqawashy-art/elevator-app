@@ -1000,6 +1000,8 @@ def client_to_js_dict(c):
         'entity_type': c.entity_type or 'فرد',
         'national_id': c.national_id or '',
         'cr_number': c.cr_number or '',
+        'vat_number': c.vat_number or '',
+        'national_address': c.national_address or '',
         'elevators': len(c.elevators),
         'fleet_status': customer_fleet_status(c),
         'contracts': len(c.contracts),
@@ -4228,6 +4230,8 @@ def client_add():
         entity_type    = request.form.get('entity_type', 'فرد') or 'فرد',
         national_id    = request.form.get('national_id',''),
         cr_number      = request.form.get('cr_number',''),
+        vat_number     = request.form.get('vat_number',''),
+        national_address = request.form.get('national_address',''),
         status       = _client_account_status(request.form.get('status', 'نشط')),
         notes        = request.form.get('notes',''),
         lat          = request.form.get('lat',''),
@@ -4290,6 +4294,8 @@ def client_edit(id):
     c.entity_type    = request.form.get('entity_type', 'فرد') or 'فرد'
     c.national_id    = request.form.get('national_id','')
     c.cr_number      = request.form.get('cr_number','')
+    c.vat_number     = request.form.get('vat_number','')
+    c.national_address = request.form.get('national_address','')
     c.lat            = request.form.get('lat','')
     c.lng            = request.form.get('lng','')
     c.maps_url       = request.form.get('maps_url','')

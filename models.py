@@ -148,6 +148,7 @@ class Customer(TenantMixin, db.Model):
     national_id  = db.Column(db.String(20))
     cr_number    = db.Column(db.String(50))   # السجل التجاري
     vat_number   = db.Column(db.String(50))   # الرقم الضريبي (B2B / ZATCA)
+    national_address = db.Column(db.String(200))  # العنوان الوطني للفواتير الضريبية
     lat          = db.Column(db.String(20))
     lng          = db.Column(db.String(20))
     maps_url     = db.Column(db.String(500))

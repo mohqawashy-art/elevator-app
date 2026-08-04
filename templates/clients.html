@@ -658,6 +658,16 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           <input type="text" id="f-national-id" placeholder="1XXXXXXXXX" inputmode="numeric" maxlength="20" style="direction:ltr;font-family:var(--font-en)">
           <span class="field-hint" id="f-contractor-id-hint">رقم الهوية أو الإقامة لصاحب التوقيع على العقد</span>
         </div>
+        <div class="field company-only-field" id="f-vat-number-wrap" style="display:none">
+          <label>الرقم الضريبي</label>
+          <input type="text" id="f-vat-number" placeholder="3XXXXXXXXXXXXXX" inputmode="numeric" maxlength="50" style="direction:ltr;font-family:var(--font-en)">
+          <span class="field-hint">يُستخدم في الفواتير الضريبية للشركات</span>
+        </div>
+        <div class="field form-full company-only-field" id="f-national-address-wrap" style="display:none">
+          <label>العنوان الوطني</label>
+          <input type="text" id="f-national-address" placeholder="الرمز البريدي، رقم المبنى، الرقم الإضافي...">
+          <span class="field-hint">يُطبع في فاتورة العميل عند كون المتعاقد شركة</span>
+        </div>
         <!-- الجوال -->
         <div class="field form-full">
           <label>رقم الجوال <span style="color:var(--danger)">*</span></label>
@@ -921,6 +931,8 @@ function updateContractorIdField() {
   var label = document.getElementById('f-contractor-id-label');
   var input = document.getElementById('f-national-id');
   var hint = document.getElementById('f-contractor-id-hint');
+  var vatWrap = document.getElementById('f-vat-number-wrap');
+  var nationalAddressWrap = document.getElementById('f-national-address-wrap');
   if (!label || !input) return;
   if (isCompany) {
     label.textContent = 'رقم السجل التجاري';
@@ -931,6 +943,8 @@ function updateContractorIdField() {
     input.placeholder = '1XXXXXXXXX';
     if (hint) hint.textContent = 'رقم الهوية أو الإقامة لصاحب التوقيع على العقد';
   }
+  if (vatWrap) vatWrap.style.display = isCompany ? '' : 'none';
+  if (nationalAddressWrap) nationalAddressWrap.style.display = isCompany ? '' : 'none';
 }
 
 function getExtraCities() {
@@ -1518,6 +1532,8 @@ function openClientCard(id) {
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الصفة') + '</div><div class="client-card-val">' + lcDisp(c.role||'—') + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('نوع المتعاقد') + '</div><div class="client-card-val">' + lcDisp(c.entity_type || 'فرد') + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp(contractorIdLabel(c.entity_type)) + '</div><div class="client-card-val" style="direction:ltr;font-family:var(--font-en)">' + contractorIdValue(c) + '</div></div>' +
+      ((c.entity_type === 'شركة' && c.vat_number) ? '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الرقم الضريبي') + '</div><div class="client-card-val" style="direction:ltr;font-family:var(--font-en)">' + esc(c.vat_number) + '</div></div>' : '') +
+      ((c.entity_type === 'شركة' && c.national_address) ? '<div class="client-card-item full"><div class="client-card-label">' + lcDisp('العنوان الوطني') + '</div><div class="client-card-val">' + esc(c.national_address) + '</div></div>' : '') +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('واتساب المسؤول') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone2||'—') + '</span>' + waButtonHtml(c.phone2, c.contact) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('رقم الجوال') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone||'—') + '</span>' + waButtonHtml(c.phone, lcClient(c)) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('البريد') + '</div><div class="client-card-val" style="direction:ltr">' + (c.email||'—') + '</div></div>' +
@@ -1650,7 +1666,7 @@ function openAddModal() {
   document.getElementById('modal-title').textContent = 'إضافة عميل جديد';
   document.getElementById('modal-add').dataset.editId = '';
   document.getElementById('f-code-display').textContent = NEXT_CODE;
-  ['f-name','f-name-en','f-district','f-address','f-contact','f-national-id','f-phone','f-whatsapp','f-maps-url','f-lat','f-lng','f-notes','client-map-search'].forEach(function(id){
+  ['f-name','f-name-en','f-district','f-address','f-contact','f-national-id','f-vat-number','f-national-address','f-phone','f-whatsapp','f-maps-url','f-lat','f-lng','f-notes','client-map-search'].forEach(function(id){
     var el = document.getElementById(id); if(el) { el.value=''; delete el.dataset.userEdited; }
   });
   var elevDisp = document.getElementById('f-elevators-display');
@@ -1761,9 +1777,13 @@ function saveClient() {
   if (entityType === 'شركة') {
     fd.append('cr_number', contractorId);
     fd.append('national_id', '');
+    fd.append('vat_number', document.getElementById('f-vat-number').value.trim());
+    fd.append('national_address', document.getElementById('f-national-address').value.trim());
   } else {
     fd.append('national_id', contractorId);
     fd.append('cr_number', '');
+    fd.append('vat_number', '');
+    fd.append('national_address', '');
   }
   fd.append('status',         document.getElementById('f-status-sel').value||'نشط');
   fd.append('notes',          document.getElementById('f-notes').value||'');
@@ -1822,6 +1842,8 @@ function editClient(id) {
   document.getElementById('f-role').value       = c.role||'';
   document.getElementById('f-entity-type').value = c.entity_type || 'فرد';
   document.getElementById('f-national-id').value = contractorIdValue(c) === '—' ? '' : contractorIdValue(c);
+  document.getElementById('f-vat-number').value = c.vat_number || '';
+  document.getElementById('f-national-address').value = c.national_address || '';
   updateContractorIdField();
   document.getElementById('f-status-sel').value = clientAccountStatus(c);
   document.getElementById('f-notes').value      = c.notes||'';

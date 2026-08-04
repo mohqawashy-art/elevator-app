@@ -62,6 +62,28 @@ def test_client_add_as_admin(client):
         assert c.phone
 
 
+def test_company_client_add_saves_vat_and_national_address(client):
+    login_as(client, 'admin')
+    r = client.post('/clients/add', data={
+        'name': 'شركة الاختبار',
+        'phone': '512345679',
+        'city': 'مكة',
+        'status': 'نشط',
+        'entity_type': 'شركة',
+        'cr_number': '1010123456',
+        'vat_number': '310123456700003',
+        'national_address': 'مكة المكرمة، العزيزية، 24243، مبنى 1234',
+    }, follow_redirects=False)
+    assert r.status_code in (302, 303)
+    with client.application.app_context():
+        c = Customer.query.filter_by(name='شركة الاختبار').first()
+        assert c is not None
+        assert c.entity_type == 'شركة'
+        assert c.cr_number == '1010123456'
+        assert c.vat_number == '310123456700003'
+        assert c.national_address == 'مكة المكرمة، العزيزية، 24243، مبنى 1234'
+
+
 def test_invoices_page_ok(client):
     login_as(client, 'admin')
     r = client.get('/invoices')
