@@ -943,8 +943,9 @@ function updateContractorIdField() {
     input.placeholder = '1XXXXXXXXX';
     if (hint) hint.textContent = 'رقم الهوية أو الإقامة لصاحب التوقيع على العقد';
   }
-  if (vatWrap) vatWrap.style.display = isCompany ? '' : 'none';
-  if (nationalAddressWrap) nationalAddressWrap.style.display = isCompany ? '' : 'none';
+  // .field يستخدم display:flex — لا نترك القيمة فارغة حتى لا تبقى الحقول مخفية
+  if (vatWrap) vatWrap.style.display = isCompany ? 'flex' : 'none';
+  if (nationalAddressWrap) nationalAddressWrap.style.display = isCompany ? 'flex' : 'none';
 }
 
 function getExtraCities() {
