@@ -574,6 +574,9 @@ window.__lcRefreshPage = function () {
   if (typeof updateStats === 'function') updateStats();
   renderTable(typeof filtered !== 'undefined' ? filtered : EXPENSES);
 };
+if (new URLSearchParams(window.location.search).get('action') === 'add') {
+  openModal();
+}
 </script>
 </body>
 </html>
