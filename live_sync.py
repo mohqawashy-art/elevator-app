@@ -143,7 +143,12 @@ def _sync_clients():
             'elevators': len(c.elevators),
             'fleet_status': h.customer_fleet_status(c),
             'contracts': len(c.contracts),
-            'contract_status': h.contract_display_status(c.contracts[0]) if c.contracts else 'بدون عقد',
+            'contract_status': (
+                h.contract_display_status(
+                    c.contracts[0],
+                    renewed_ids=h._annotate_contract_renewals(list(c.contracts or [])),
+                ) if c.contracts else 'بدون عقد'
+            ),
             'status': c.status,
             'notes': c.notes or '',
             'address': c.address or '',
@@ -158,6 +163,7 @@ def _sync_clients():
 def _sync_contracts():
     h = _helpers()
     contracts = Contract.query.order_by(Contract.id.desc()).all()
+    renewed_ids = h._annotate_contract_renewals(contracts)
     customers = Customer.query.order_by(Customer.name).all()
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
@@ -165,39 +171,8 @@ def _sync_contracts():
     }
     rows = []
     for c in contracts:
-        rows.append({
-            'id': c.id,
-            'code': c.code,
-            'customer_id': c.customer_id,
-            'customer': c.customer.name if c.customer else '',
-            'customer_name_en': (c.customer.name_en or '') if c.customer else '',
-            'customer_city': (c.customer.city or '') if c.customer else '',
-            'customer_lat': (c.customer.lat or '') if c.customer else '',
-            'customer_lng': (c.customer.lng or '') if c.customer else '',
-            'contract_type': c.contract_type or '',
-            'start_date': c.start_date.isoformat() if c.start_date else '',
-            'end_date': c.end_date.isoformat() if c.end_date else '',
-            'duration': c.duration_months or 0,
-            'elevator_ids': [ce.elevator_id for ce in c.elevators],
-            'elevators': len(c.elevators),
-            'maint_freq': c.maint_frequency or '',
-            'visits_month': c.visits_per_month or 1,
-            'value': h._money_round(c.value or 0),
-            'tax_pct': c.tax_pct or 15,
-            'tax_amount': h._money_round(c.tax_amount or 0),
-            'total': h._money_round(c.total or 0),
-            'pay_terms': c.payment_terms or '',
-            'paid_amount': h._money_round(c.paid_amount or 0),
-            'inv_status': c.invoice_status or 'غير مدفوع',
-            'status': c.status,
-            'reminder_date': c.reminder_date.isoformat() if c.reminder_date else '',
-            'city': c.city or '',
-            'district': c.district or '',
-            'address': c.address or '',
-            'notes': c.notes or '',
-            'file_url': h.upload_url(c.file_path),
-            'file_name': h.contract_file_display_name(c.file_path),
-        })
+        row = h.contract_to_js_dict(c, renewed_ids=renewed_ids)
+        rows.append(row)
     cust_rows = [{
         'id': c.id,
         'name': c.name,

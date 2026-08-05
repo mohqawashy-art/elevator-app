@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
+from datetime import date
+from typing import Iterable, Optional
 
 # CN-00042 أو CN-00042-2026 أو CN-00042/2026 أو CN-00042-2026-2
 _YEAR_SUFFIX = re.compile(r'^(.+?)[-/](20\d{2})(?:-(\d+))?$', re.IGNORECASE)
@@ -59,3 +60,33 @@ def unique_renewal_contract_code(existing_code: Optional[str], year: int, taken_
         n += 1
         if n > 99:
             raise ValueError('تعذّر توليد رقم عقد فريد للتجديد')
+
+
+def _contract_sort_key(contract) -> tuple:
+    start = getattr(contract, 'start_date', None) or date.min
+    end = getattr(contract, 'end_date', None) or date.min
+    cid = int(getattr(contract, 'id', 0) or 0)
+    return (start, end, cid)
+
+
+def build_superseded_contract_ids(contracts: Iterable) -> set[int]:
+    """معرّفات العقود التي لها عقد أحدث بنفس أساس الرقم (تم تجديدها)."""
+    from collections import defaultdict
+
+    by_base: dict[str, list] = defaultdict(list)
+    for c in contracts or []:
+        base = contract_base_code(getattr(c, 'code', None))
+        if not base:
+            continue
+        if getattr(c, 'id', None) is None:
+            continue
+        by_base[base].append(c)
+
+    superseded: set[int] = set()
+    for group in by_base.values():
+        if len(group) < 2:
+            continue
+        ordered = sorted(group, key=_contract_sort_key)
+        for c in ordered[:-1]:
+            superseded.add(int(c.id))
+    return superseded

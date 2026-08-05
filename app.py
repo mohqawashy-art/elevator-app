@@ -926,8 +926,12 @@ def _backfill_contract_billing_cache():
     app.logger.info('Contract billing cache backfill complete.')
 
 
-def contract_to_js_dict(c):
+def contract_to_js_dict(c, *, renewed_ids=None):
     """تسلسل عقد لـ JSON في الصفحة (بدون استعلامات إضافية)."""
+    cid = getattr(c, 'id', None)
+    is_renewed = bool(getattr(c, '_is_renewed', False))
+    if renewed_ids is not None and cid is not None:
+        is_renewed = int(cid) in renewed_ids
     return {
         'id': c.id,
         'code': c.code,
@@ -954,6 +958,8 @@ def contract_to_js_dict(c):
         'paid_amount': _money_round(c.paid_amount or 0),
         'inv_status': c.invoice_status or 'غير مدفوع',
         'status': c.status or 'نشط',
+        'renewed': is_renewed,
+        'display_status': contract_display_status(c, renewed_ids=renewed_ids),
         'reminder_date': c.reminder_date.isoformat() if c.reminder_date else '',
         'city': c.city or '',
         'district': c.district or '',
@@ -984,7 +990,20 @@ def contract_customer_js_dict(c):
 
 def client_to_js_dict(c):
     """تسلسل عميل لـ JSON (مع علاقات محمّلة مسبقاً)."""
-    first_contract = c.contracts[0] if c.contracts else None
+    cust_contracts = list(c.contracts or [])
+    renewed_ids = _annotate_contract_renewals(cust_contracts)
+    primary = None
+    for ct in sorted(
+        cust_contracts,
+        key=lambda x: (x.end_date or date.min, x.id or 0),
+        reverse=True,
+    ):
+        st = contract_display_status(ct, renewed_ids=renewed_ids)
+        if st in ('نشط', 'على وشك الانتهاء'):
+            primary = ct
+            break
+    if primary is None and cust_contracts:
+        primary = cust_contracts[0]
     return {
         'id': c.id,
         'code': c.code,
@@ -1005,7 +1024,7 @@ def client_to_js_dict(c):
         'elevators': len(c.elevators),
         'fleet_status': customer_fleet_status(c),
         'contracts': len(c.contracts),
-        'contract_status': contract_display_status(first_contract) if first_contract else 'بدون عقد',
+        'contract_status': contract_display_status(primary, renewed_ids=renewed_ids) if primary else 'بدون عقد',
         'status': c.status,
         'notes': c.notes or '',
         'address': c.address or '',
@@ -3230,13 +3249,19 @@ def get_dashboard_stats():
         InventoryItem.current_qty < InventoryItem.min_qty,
     ).order_by(InventoryItem.current_qty).all()
 
+    all_contracts_for_status = tenant_query(Contract).all()
+    renewed_contract_ids = _annotate_contract_renewals(all_contracts_for_status)
+    expired_contracts_count = sum(
+        1
+        for c in all_contracts_for_status
+        if contract_display_status(c, renewed_ids=renewed_contract_ids) == 'منتهي'
+    )
+
     stats = {
         'customers':        tenant_query(Customer).count(),
         'elevators':        tenant_query(Elevator).count(),
         'contracts':        tenant_query(Contract).filter_by(status='نشط').count(),
-        'expired_contracts': tenant_query(Contract).filter(
-            db.or_(Contract.status == 'منتهي', Contract.end_date < today)
-        ).count(),
+        'expired_contracts': expired_contracts_count,
         'visits_today':     tenant_query(MaintenanceVisit).filter_by(visit_date=today).count(),
         'visits_done':      tenant_query(MaintenanceVisit).filter_by(status='مكتملة').count(),
         'faults_open':      tenant_query(Fault).filter(
@@ -3346,12 +3371,14 @@ def api_dashboard_drill(card_type):
             'rows': rows,
         }
     elif card_type == 'expired_contracts':
+        all_c = tenant_query(Contract).order_by(Contract.end_date.desc()).all()
+        renewed_ids = _annotate_contract_renewals(all_c)
         rows = [
-            [c.code, c.customer.name, c.contract_type or '—',
-             str(c.start_date), str(c.end_date), c.status]
-            for c in tenant_query(Contract).filter(
-                db.or_(Contract.status == 'منتهي', Contract.end_date < today)
-            ).order_by(Contract.end_date.desc()).all()
+            [c.code, c.customer.name if c.customer else '—', c.contract_type or '—',
+             str(c.start_date), str(c.end_date),
+             contract_display_status(c, renewed_ids=renewed_ids)]
+            for c in all_c
+            if contract_display_status(c, renewed_ids=renewed_ids) == 'منتهي'
         ]
         payload = {
             'title': 'العقود المنتهية', 'link': '/contracts',
@@ -4558,20 +4585,44 @@ def api_elevators_by_customer(customer_id):
         })
     return jsonify(rows)
 
-def contract_display_status(contract, today=None):
+def contract_display_status(contract, today=None, *, renewed_ids=None):
+    """حالة العرض: نشط / على وشك الانتهاء / تم تجديده / منتهي / ملغي."""
     today = today or date.today()
-    raw = contract.status or 'نشط'
+    raw = (contract.status or 'نشط').strip()
     if raw in ('ملغي', 'معلق'):
         return 'ملغي'
+    if raw in ('تم تجديده', 'مجدد', 'مُجدَّد'):
+        return 'تم تجديده'
+    cid = getattr(contract, 'id', None)
+    is_renewed = False
+    if renewed_ids is not None and cid is not None:
+        is_renewed = int(cid) in renewed_ids
+    elif getattr(contract, '_is_renewed', None) is not None:
+        is_renewed = bool(contract._is_renewed)
+    if is_renewed:
+        return 'تم تجديده'
     if raw == 'منتهي' or (contract.end_date and contract.end_date < today):
         return 'منتهي'
     if raw == 'على وشك الانتهاء':
         return 'على وشك الانتهاء'
-    if contract.end_date and contract.status == 'نشط':
+    if contract.end_date and raw == 'نشط':
         days_left = (contract.end_date - today).days
         if 0 < days_left <= 30:
             return 'على وشك الانتهاء'
     return 'نشط'
+
+
+def _annotate_contract_renewals(contracts):
+    """يضع _is_renewed ويعيد مجموعة المعرّفات المجدَّدة."""
+    from contract_codes import build_superseded_contract_ids
+
+    renewed_ids = build_superseded_contract_ids(contracts)
+    for c in contracts or []:
+        try:
+            c._is_renewed = int(c.id) in renewed_ids
+        except Exception:
+            pass
+    return renewed_ids
 
 
 def contract_paid_total(contract_id):
@@ -4618,8 +4669,9 @@ def customer_primary_contract(customer):
     )
     if not contracts:
         return None
+    renewed_ids = _annotate_contract_renewals(contracts)
     for c in contracts:
-        if contract_display_status(c) in ('نشط', 'على وشك الانتهاء'):
+        if contract_display_status(c, renewed_ids=renewed_ids) in ('نشط', 'على وشك الانتهاء'):
             return c
     return contracts[0]
 
@@ -5108,6 +5160,7 @@ def contracts():
         .order_by(Contract.id.desc())
         .all()
     )
+    renewed_ids = _annotate_contract_renewals(contracts_list)
     customers = tenant_query(Customer).order_by(Customer.name).all()
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
@@ -5116,7 +5169,7 @@ def contracts():
     resp = make_response(render_template(
         'contracts.html',
         contracts=contracts_list,
-        contracts_js=[contract_to_js_dict(c) for c in contracts_list],
+        contracts_js=[contract_to_js_dict(c, renewed_ids=renewed_ids) for c in contracts_list],
         customers_js=[contract_customer_js_dict(c) for c in customers],
         elev_lookup=elev_lookup,
         next_contract_code=next_code(Contract, 'CN-', digits=5),
@@ -5267,8 +5320,8 @@ def contract_add():
         assign_organization(c)
         db.session.add(c)
         db.session.flush()
-        if renew_src and (renew_src.status or '') != 'منتهي':
-            renew_src.status = 'منتهي'
+        if renew_src and (renew_src.status or '') not in ('تم تجديده', 'ملغي'):
+            renew_src.status = 'تم تجديده'
         _save_contract_file(c, request.files.get('contract_file'))
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
         db.session.commit()
@@ -10497,17 +10550,15 @@ def api_dashboard():
         if status in elev_status:
             elev_status[status] = int(cnt or 0)
 
-    contract_status = {label: 0 for label in ('نشط', 'على وشك الانتهاء', 'منتهي', 'ملغي')}
+    contract_status = {
+        label: 0
+        for label in ('نشط', 'على وشك الانتهاء', 'تم تجديده', 'منتهي', 'ملغي')
+    }
 
-    class _ContractStatusRow:
-        __slots__ = ('status', 'end_date')
-
-        def __init__(self, status, end_date):
-            self.status = status
-            self.end_date = end_date
-
-    for status, end_date in tenant_query(Contract).with_entities(Contract.status, Contract.end_date):
-        label = contract_display_status(_ContractStatusRow(status, end_date))
+    all_c = tenant_query(Contract).all()
+    renewed_ids = _annotate_contract_renewals(all_c)
+    for c in all_c:
+        label = contract_display_status(c, renewed_ids=renewed_ids)
         if label in contract_status:
             contract_status[label] += 1
 

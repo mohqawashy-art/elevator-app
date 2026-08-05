@@ -520,7 +520,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         </select>
         <select class="filter-select" id="f-contract" onchange="filterTable()">
           <option value="">حالة العقد</option>
-          <option>نشط</option><option>على وشك الانتهاء</option><option>منتهي</option><option>ملغي</option><option>بدون عقد</option>
+          <option>نشط</option><option>على وشك الانتهاء</option><option>تم تجديده</option><option>منتهي</option><option>ملغي</option><option>بدون عقد</option>
         </select>
         <select class="filter-select" id="f-status" onchange="filterTable()">
           <option value="">الحالة</option>
@@ -1225,7 +1225,7 @@ function closeClientDrill() {
 
 // ===== Badges =====
 const STATUS_B   = {'نشط':'badge-active','غير نشط':'badge-cancelled'};
-const CONTRACT_B = {'نشط':'badge-active','على وشك الانتهاء':'badge-expiring','منتهي':'badge-expired','ملغي':'badge-cancelled','بدون عقد':'badge-cancelled','معلق':'badge-cancelled'};
+const CONTRACT_B = {'نشط':'badge-active','على وشك الانتهاء':'badge-expiring','تم تجديده':'badge-paid','منتهي':'badge-expired','ملغي':'badge-cancelled','بدون عقد':'badge-cancelled','معلق':'badge-cancelled'};
 
 function clientAccountStatus(c) {
   var s = (typeof c === 'string') ? c : ((c && c.status) || 'نشط');

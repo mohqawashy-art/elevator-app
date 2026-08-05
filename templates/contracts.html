@@ -116,6 +116,7 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .map-legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);flex-shrink:0}
 .map-legend-dot.status-active{background:#1fb87a}
 .map-legend-dot.status-expiring{background:#e8b923}
+.map-legend-dot.status-renewed{background:#2a7fff}
 .map-legend-dot.status-expired{background:#e04848}
 .map-legend-dot.status-cancelled{background:#8a9bb8}
 .map-legend-cluster{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#2a7fff;color:#fff;font-size:10px;font-weight:700;border:2px solid #fff;box-shadow:0 0 0 3px rgba(42,127,255,.2)}
@@ -161,6 +162,7 @@ tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
 .badge-partial{background:rgba(42,127,255,.12);color:var(--accent)}
 .badge-unpaid{background:rgba(224,144,48,.12);color:var(--warning)}
 .badge-overdue{background:rgba(224,72,72,.12);color:var(--danger)}
+.badge-renewed{background:rgba(42,127,255,.12);color:var(--accent)}
 .badge-expiring{background:rgba(224,144,48,.12);color:var(--warning);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
@@ -423,6 +425,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <option value="">كل الحالات</option>
         <option>نشط</option>
         <option>على وشك الانتهاء</option>
+        <option>تم تجديده</option>
         <option>منتهي</option>
         <option>ملغي</option>
       </select>
@@ -483,6 +486,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="map-legend">
             <div class="map-legend-item"><span class="map-legend-dot status-active"></span> نشط</div>
             <div class="map-legend-item"><span class="map-legend-dot status-expiring"></span> على وشك الانتهاء</div>
+            <div class="map-legend-item"><span class="map-legend-dot status-renewed"></span> تم تجديده</div>
             <div class="map-legend-item"><span class="map-legend-dot status-expired"></span> منتهي</div>
             <div class="map-legend-item"><span class="map-legend-dot status-cancelled"></span> ملغي</div>
             <div class="map-legend-item"><span class="map-legend-cluster">2</span> تجميع</div>
@@ -577,6 +581,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <select id="f-status-sel">
               <option>نشط</option>
               <option>على وشك الانتهاء</option>
+              <option>تم تجديده</option>
               <option>منتهي</option>
               <option>ملغي</option>
             </select>
@@ -926,7 +931,13 @@ function isExpiring(c) {
 function getContractDisplayStatus(c) {
   var raw = c.status || 'نشط';
   if (raw === 'ملغي' || raw === 'معلق') return 'ملغي';
-  if (raw === 'منتهي' || (c.end_date && new Date(c.end_date) < new Date())) return 'منتهي';
+  if (raw === 'تم تجديده' || raw === 'مجدد' || c.renewed || c.display_status === 'تم تجديده') {
+    return 'تم تجديده';
+  }
+  if (raw === 'منتهي' || (c.end_date && new Date(c.end_date) < new Date())) {
+    if (c.renewed) return 'تم تجديده';
+    return 'منتهي';
+  }
   if (raw === 'على وشك الانتهاء') return 'على وشك الانتهاء';
   if (c.end_date && raw === 'نشط') {
     var diff = (new Date(c.end_date) - new Date()) / (1000 * 60 * 60 * 24);
@@ -1004,6 +1015,7 @@ function initFilters() {
 const STATUS_BADGE = {
   'نشط': 'badge-active',
   'على وشك الانتهاء': 'badge-expiring',
+  'تم تجديده': 'badge-renewed',
   'منتهي': 'badge-expired',
   'ملغي': 'badge-cancelled'
 };
@@ -2311,6 +2323,7 @@ var contractInfoPinned = false, contractHoverTimer = null;
 var CONTRACT_PIN_COLORS = {
   'نشط': '#1fb87a',
   'على وشك الانتهاء': '#e8b923',
+  'تم تجديده': '#2a7fff',
   'منتهي': '#e04848',
   'ملغي': '#8a9bb8'
 };
@@ -2392,7 +2405,7 @@ function buildContractLocationGroups() {
 }
 
 function getGroupPinColor(group) {
-  var priority = {'نشط': 4, 'على وشك الانتهاء': 3, 'منتهي': 2, 'ملغي': 1};
+  var priority = {'نشط': 4, 'على وشك الانتهاء': 3, 'تم تجديده': 2, 'منتهي': 1, 'ملغي': 0};
   var best = group.contracts[0];
   group.contracts.forEach(function(c) {
     var st = getContractDisplayStatus(c);
