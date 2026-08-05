@@ -243,8 +243,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .elev-option input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent)}
 .elev-code{font-family:var(--font-en);color:var(--accent);font-size:11px}
 .upload-area{border:2px dashed var(--border);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:var(--trans)}
-.upload-area:hover{border-color:var(--border2);background:var(--bg3)}
+.upload-area:hover,.upload-area.is-dragover{border-color:var(--accent);background:rgba(42,127,255,.08)}
+.upload-area.is-dragover{border-style:solid}
 .upload-area svg{width:28px;height:28px;color:var(--text3);margin-bottom:8px}
+.upload-area.is-dragover svg{color:var(--accent)}
 .upload-area p{font-size:12px;color:var(--text3)}
 .upload-area span{color:var(--accent)}
 .contract-attach-link{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--accent);text-decoration:none;font-weight:500}
@@ -700,11 +702,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
       <div class="form-section">
         <div class="form-section-title"><svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1H3a1 1 0 00-1 1v9a1 1 0 001 1h7a1 1 0 001-1V5L7 1z"/><path d="M7 1v4h4"/></svg>ملف العقد</div>
-        <div class="upload-area" onclick="document.getElementById('contract-file').click()">
+        <div class="upload-area" id="contract-upload-area" role="button" tabindex="0" aria-label="رفع ملف العقد PDF">
           <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M14 4v14M8 10l6-6 6 6"/><path d="M4 20v2a2 2 0 002 2h16a2 2 0 002-2v-2"/></svg>
           <p>اسحب ملف PDF هنا أو <span>اضغط للرفع</span></p>
           <p style="margin-top:4px;font-size:11px">PDF فقط — حجم أقصى 10MB</p>
-          <input type="file" id="contract-file" accept=".pdf" style="display:none" onchange="showFileName(this)">
+          <input type="file" id="contract-file" accept=".pdf,application/pdf" style="display:none" onchange="showFileName(this)">
         </div>
         <div id="file-name" style="font-size:12px;color:var(--accent);margin-top:8px;display:none"></div>
         <div id="existing-file-wrap" style="display:none;margin-top:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;color:var(--text2)">
@@ -2555,12 +2557,111 @@ function switchTab(tab, el) {
   }
 }
 
+var CONTRACT_FILE_MAX_BYTES = 10 * 1024 * 1024;
+
+function isContractPdfFile(file) {
+  if (!file) return false;
+  var name = String(file.name || '').toLowerCase();
+  var type = String(file.type || '').toLowerCase();
+  return name.endsWith('.pdf') || type === 'application/pdf';
+}
+
+function applyContractFile(file) {
+  var input = document.getElementById('contract-file');
+  var fn = document.getElementById('file-name');
+  var removeFlag = document.getElementById('f-remove-contract-file');
+  if (!file || !input) return false;
+  if (!isContractPdfFile(file)) {
+    alert('يُسمح بملف PDF فقط');
+    return false;
+  }
+  if (file.size > CONTRACT_FILE_MAX_BYTES) {
+    alert('حجم الملف أكبر من 10MB');
+    return false;
+  }
+  try {
+    var dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+  } catch (err) {
+    alert('تعذّر إرفاق الملف — جرّب الضغط للرفع');
+    return false;
+  }
+  if (removeFlag) removeFlag.value = '0';
+  if (fn) {
+    fn.textContent = '📄 ' + file.name;
+    fn.style.display = 'block';
+  }
+  return true;
+}
+
 function showFileName(input) {
-  if(input.files.length>0){
-    const fn=document.getElementById('file-name');
-    if(fn){ fn.textContent='📄 '+input.files[0].name; fn.style.display='block'; }
+  if (!input || !input.files || !input.files.length) return;
+  var file = input.files[0];
+  if (!isContractPdfFile(file)) {
+    input.value = '';
+    alert('يُسمح بملف PDF فقط');
+    return;
+  }
+  if (file.size > CONTRACT_FILE_MAX_BYTES) {
+    input.value = '';
+    alert('حجم الملف أكبر من 10MB');
+    return;
+  }
+  var removeFlag = document.getElementById('f-remove-contract-file');
+  if (removeFlag) removeFlag.value = '0';
+  var fn = document.getElementById('file-name');
+  if (fn) {
+    fn.textContent = '📄 ' + file.name;
+    fn.style.display = 'block';
   }
 }
+
+function bindContractFileDropzone() {
+  var area = document.getElementById('contract-upload-area');
+  var input = document.getElementById('contract-file');
+  if (!area || !input || area.dataset.lcDropBound) return;
+  area.dataset.lcDropBound = '1';
+
+  area.addEventListener('click', function (e) {
+    if (e.target === input) return;
+    e.preventDefault();
+    input.click();
+  });
+  area.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      input.click();
+    }
+  });
+
+  ['dragenter', 'dragover'].forEach(function (evt) {
+    area.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      area.classList.add('is-dragover');
+    });
+  });
+  ['dragleave', 'dragend'].forEach(function (evt) {
+    area.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (evt === 'dragleave' && e.relatedTarget && area.contains(e.relatedTarget)) return;
+      area.classList.remove('is-dragover');
+    });
+  });
+  area.addEventListener('drop', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    area.classList.remove('is-dragover');
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (!files || !files.length) return;
+    applyContractFile(files[0]);
+  });
+}
+
+bindContractFileDropzone();
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 /* setLang: liftcore-i18n.js */
