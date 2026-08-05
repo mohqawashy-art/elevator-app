@@ -11,12 +11,35 @@ from sqlalchemy import or_
 from models import Contract, Customer, Invoice, PartsBilling, Revenue, db
 from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
-COLLECTED_REVENUE_STATUSES = ('محصّل', 'محصل')
+COLLECTED_REVENUE_STATUSES = ('محصّل', 'محصل', 'مدفوع', 'مدفوعة')
 UNPAID_INVOICE_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً']
-PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل']
+PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل', 'محصل']
 UNPAID_PARTS_STATUSES = ('غير محصل', 'معلقة', 'بانتظار موافقة العميل', 'بانتظار التوريد')
 CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد')
-_CN_CODE_RE = re.compile(r'(CN-\d+)', re.I)
+_CN_CODE_RE = re.compile(r'CN-?\s*(\d+)', re.I)
+
+
+def _normalize_contract_code(code: str | None) -> str | None:
+    raw = (code or '').strip().upper()
+    if not raw:
+        return None
+    m = _CN_CODE_RE.search(raw)
+    if m:
+        return f'CN-{int(m.group(1)):05d}'
+    m2 = re.fullmatch(r'(\d+)', raw)
+    if m2:
+        return f'CN-{int(m2.group(1)):05d}'
+    return raw
+
+
+def _extract_contract_code(*texts) -> str | None:
+    for text in texts:
+        if not text:
+            continue
+        match = _CN_CODE_RE.search(str(text))
+        if match:
+            return f'CN-{int(match.group(1)):05d}'
+    return None
 
 
 def _round_money(v: float) -> float:
@@ -59,16 +82,6 @@ def _before_tax_from_inclusive(total_incl, tax_pct: float = 15) -> float:
     """قبل الضريبة من إجمالي شامل دون إعادة بناء تُنتج 1299.99 / 3000.01."""
     amount, _tax, _total = split_vat_amounts(total_incl_vat=total_incl, tax_pct=tax_pct)
     return amount
-
-
-def _extract_contract_code(*texts) -> str | None:
-    for text in texts:
-        if not text:
-            continue
-        match = _CN_CODE_RE.search(str(text))
-        if match:
-            return match.group(1).upper()
-    return None
 
 
 def _is_contract_revenue_type(revenue_type: str) -> bool:
