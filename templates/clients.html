@@ -757,7 +757,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
             <div class="cloc-building-actions">
               <button type="button" class="btn btn-secondary btn-sm" onclick="triggerBuildingPhotoUpload(event)">رفع / تغيير</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-download-building-photo" style="display:none" onclick="downloadBuildingPhoto()">تحميل</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-delete-building-photo" style="display:none" onclick="deleteBuildingPhoto()">حذف</button>
+              <button type="button" class="btn btn-danger btn-sm" id="btn-delete-building-photo" style="display:none" onclick="deleteBuildingPhoto()">حذف المرفق</button>
             </div>
           </div>
           <input type="hidden" id="f-delete-building-photo" value="">
@@ -1796,9 +1796,6 @@ function saveClient() {
   if (photoFile) {
     fd.append('building_photo', photoFile, photoFile.name || 'building.jpg');
   }
-  if (document.getElementById('f-delete-building-photo').value === '1') {
-    fd.append('delete_building_photo', '1');
-  }
 
   var saveBtn = document.querySelector('#modal-add .btn-primary');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'جاري الحفظ...'; }
@@ -2565,9 +2562,15 @@ function updateBuildingPhotoActions() {
   var dl = document.getElementById('btn-download-building-photo');
   var del = document.getElementById('btn-delete-building-photo');
   var canDownload = !!(buildingPhotoDownloadUrl && (buildingPhotoHasCustom || pendingBuildingPhotoFile) && !buildingPhotoMarkedDelete);
+  var isStored = !!(buildingPhotoHasCustom && !pendingBuildingPhotoFile);
   var canDelete = !!(buildingPhotoHasCustom || pendingBuildingPhotoFile) && !buildingPhotoMarkedDelete;
+  if (isStored && !window.__LC_IS_ADMIN) canDelete = false;
   if (dl) dl.style.display = canDownload ? 'inline-flex' : 'none';
-  if (del) del.style.display = canDelete ? 'inline-flex' : 'none';
+  if (del) {
+    del.style.display = canDelete ? 'inline-flex' : 'none';
+    if (isStored) del.classList.add('lc-admin-delete');
+    else del.classList.remove('lc-admin-delete');
+  }
 }
 
 function resetBuildingPhotoPreview(url, opts) {
@@ -2638,8 +2641,30 @@ function previewBuildingPhoto(input) {
 }
 
 function deleteBuildingPhoto() {
-  if (!confirm('حذف صورة المبنى؟')) return;
-  resetBuildingPhotoPreview('', { markDeleted: true, hasStoredPhoto: false });
+  var modalAdd = document.getElementById('modal-add');
+  var editId = modalAdd ? (modalAdd.dataset.editId || '') : '';
+  var isStored = !!(buildingPhotoHasCustom && !pendingBuildingPhotoFile && editId);
+  if (isStored) {
+    if (!window.__LC_IS_ADMIN) {
+      alert('حذف المرفقات متاح لمدير النظام فقط.');
+      return;
+    }
+    if (!window.LiftCoreAdminDelete) {
+      alert('تعذّر تحميل أداة الحذف — حدّث الصفحة وحاول مجدداً');
+      return;
+    }
+    LiftCoreAdminDelete.post('/clients/' + editId + '/remove-building-photo', {
+      message: 'حذف صورة المبنى نهائياً؟',
+      onSuccess: function () {
+        var c = CUSTOMERS.find(function (x) { return String(x.id) === String(editId); });
+        if (c) c.building_photo_url = '';
+        resetBuildingPhotoPreview('', { hasStoredPhoto: false });
+        if (typeof renderTable === 'function') renderTable();
+      }
+    });
+    return;
+  }
+  resetBuildingPhotoPreview('', { markDeleted: false, hasStoredPhoto: false });
 }
 
 function downloadBuildingPhoto() {

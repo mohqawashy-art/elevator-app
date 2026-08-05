@@ -87,9 +87,17 @@
 
   function openModal(modal) {
     if (!modal) return;
-    /* اجعل نافذة التأكيد فوق أي modal مفتوح (مثل تعديل الفني) */
-    if (modal.parentNode) modal.parentNode.appendChild(modal);
-    modal.style.zIndex = '9500';
+    /* دائماً في نهاية body وفوق أي نافذة تعديل مفتوحة (إيرادات/عقود/…) */
+    if (document.body) {
+      document.body.appendChild(modal);
+    } else if (modal.parentNode) {
+      modal.parentNode.appendChild(modal);
+    }
+    try {
+      modal.style.setProperty('z-index', '20000', 'important');
+    } catch (e) {
+      modal.style.zIndex = '20000';
+    }
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
     var inp = modal.querySelector('.lc-admin-delete-password');
@@ -300,6 +308,9 @@
   document.addEventListener('DOMContentLoaded', function () {
     hideNonAdminControls();
     var modal = document.getElementById('lc-admin-delete-modal');
+    if (modal && document.body && modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
     if (modal) {
       modal.querySelectorAll('[data-lc-delete-cancel]').forEach(function (btn) {
         btn.addEventListener('click', function () {

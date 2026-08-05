@@ -419,18 +419,18 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-delete">
+<div class="modal-overlay" id="modal-delete" style="z-index:300">
   <div class="modal" style="max-width:400px">
     <div class="modal-head">
-      <span class="modal-title">تأكيد الحذف</span>
-      <button type="button" class="modal-close" onclick="closeModal('modal-delete')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+      <span class="modal-title" id="modal-delete-title">تأكيد الحذف</span>
+      <button type="button" class="modal-close" onclick="closeRevenueDeleteModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
-    <div class="modal-body"><p style="color:var(--text2)">هل أنت متأكد من حذف هذا الإيراد؟</p>
+    <div class="modal-body"><p id="modal-delete-message" style="color:var(--text2)">هل أنت متأكد من حذف هذا الإيراد؟</p>
       {% include 'partials/admin_delete_fields.html' %}
     </div>
     <div class="modal-foot">
-      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
-      <button type="button" class="btn btn-danger lc-admin-delete" onclick="confirmDelete()">حذف</button>
+      <button type="button" class="btn btn-secondary" onclick="closeRevenueDeleteModal()">إلغاء</button>
+      <button type="button" class="btn btn-danger lc-admin-delete" id="btn-confirm-revenue-delete" onclick="confirmDelete()">حذف</button>
     </div>
   </div>
 </div>
@@ -485,6 +485,7 @@ function revenueHasPaymentWhatsApp(r) {
 }
 
 let currentDeleteId = null;
+let currentProofDeleteId = null;
 var filtered = [...REVENUES];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
@@ -922,7 +923,11 @@ function editRevenue(id) {
   if (r.has_proof && r.proof_url) {
     if (proofEx) {
       proofEx.style.display = 'block';
-      proofEx.innerHTML = 'المرفق الحالي: <a href="' + r.proof_url + '" target="_blank" rel="noopener">عرض المستند</a> — ارفع ملفاً جديداً لاستبداله';
+      proofEx.innerHTML = 'المرفق الحالي: <a href="' + r.proof_url + '" target="_blank" rel="noopener">عرض المستند</a>' +
+        (window.__LC_IS_ADMIN
+          ? ' <button type="button" class="btn btn-danger btn-sm lc-admin-delete" style="margin-inline-start:8px" onclick="removeRevenueProof(' + r.id + ', event)">حذف المرفق</button>'
+          : '') +
+        ' — أو ارفع ملفاً جديداً لاستبداله';
     }
     if (proofHint) proofHint.textContent = 'اختياري — ارفع ملفاً جديداً للاستبدال';
   } else {
@@ -964,7 +969,7 @@ function viewRevenue(id) {
       <div class="view-item"><div class="view-label">نوع الإيراد</div><div class="view-val">${r.revenue_type}</div></div>
       <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${r.pay_method}</div></div>
       <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${r.reference||'—'}</div></div>
-      <div class="view-item"><div class="view-label">إثبات الدفع</div><div class="view-val">${r.proof_url ? '<a href="'+r.proof_url+'" target="_blank" rel="noopener">عرض المستند</a>' : '—'}</div></div>
+      <div class="view-item"><div class="view-label">إثبات الدفع</div><div class="view-val">${r.proof_url ? '<a href="'+r.proof_url+'" target="_blank" rel="noopener">عرض المستند</a>' + (window.__LC_IS_ADMIN ? ' <button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="removeRevenueProof(' + r.id + ', event)">حذف المرفق</button>' : '') : '—'}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[r.status]||'badge-active'}">${r.status}</span></div></div>
       ${r.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${r.notes}</div></div>`:''}
     </div>`;
@@ -973,9 +978,83 @@ function viewRevenue(id) {
 }
 
 // ===== حذف =====
-function deleteRevenue(id) { currentDeleteId=id; document.getElementById('modal-delete').classList.add('open'); }
+function closeRevenueDeleteModal() {
+  var modal = document.getElementById('modal-delete');
+  if (modal) modal.classList.remove('open');
+  currentDeleteId = null;
+  currentProofDeleteId = null;
+  var title = document.getElementById('modal-delete-title');
+  var msg = document.getElementById('modal-delete-message');
+  var btn = document.getElementById('btn-confirm-revenue-delete');
+  if (title) title.textContent = 'تأكيد الحذف';
+  if (msg) msg.textContent = 'هل أنت متأكد من حذف هذا الإيراد؟';
+  if (btn) btn.textContent = 'حذف';
+  var pwd = document.querySelector('#modal-delete .lc-admin-delete-password');
+  if (pwd) pwd.value = '';
+}
+
+function openRevenueDeleteModal(opts) {
+  opts = opts || {};
+  var title = document.getElementById('modal-delete-title');
+  var msg = document.getElementById('modal-delete-message');
+  var btn = document.getElementById('btn-confirm-revenue-delete');
+  if (title) title.textContent = opts.title || 'تأكيد الحذف';
+  if (msg) msg.textContent = opts.message || 'هل أنت متأكد من حذف هذا الإيراد؟';
+  if (btn) btn.textContent = opts.confirmLabel || 'حذف';
+  var pwd = document.querySelector('#modal-delete .lc-admin-delete-password');
+  if (pwd) pwd.value = '';
+  var modal = document.getElementById('modal-delete');
+  if (modal) {
+    modal.style.zIndex = '300';
+    if (document.body) document.body.appendChild(modal);
+    modal.classList.add('open');
+  }
+}
+
+function removeRevenueProof(id, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  if (ev && ev.preventDefault) ev.preventDefault();
+  id = parseInt(id, 10);
+  if (!id) return;
+  if (!window.__LC_IS_ADMIN) {
+    alert('حذف المرفقات متاح لمدير النظام فقط.');
+    return;
+  }
+  currentDeleteId = null;
+  currentProofDeleteId = id;
+  openRevenueDeleteModal({
+    title: 'حذف المرفق',
+    message: 'حذف إثبات الدفع لهذا الإيراد؟ لن يُحذف سجل الإيراد.',
+    confirmLabel: 'حذف المرفق',
+  });
+}
+
+function deleteRevenue(id) {
+  currentProofDeleteId = null;
+  currentDeleteId = id;
+  openRevenueDeleteModal({
+    title: 'تأكيد الحذف',
+    message: 'هل أنت متأكد من حذف هذا الإيراد؟',
+    confirmLabel: 'حذف',
+  });
+}
+
 function confirmDelete() {
-  if(!currentDeleteId) return;
+  if (!window.LiftCoreAdminDelete) {
+    alert('تعذّر تحميل أداة الحذف — حدّث الصفحة وحاول مجدداً');
+    return;
+  }
+  if (currentProofDeleteId) {
+    var proofId = currentProofDeleteId;
+    LiftCoreAdminDelete.confirmFromOpenModal('/revenues/' + proofId + '/remove-proof', {
+      onSuccess: function () {
+        currentProofDeleteId = null;
+        window.location.reload();
+      }
+    });
+    return;
+  }
+  if (!currentDeleteId) return;
   LiftCoreAdminDelete.confirmFromOpenModal('/revenues/delete/' + currentDeleteId);
 }
 
@@ -993,7 +1072,15 @@ function exportExcel() {
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); });
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  var open = Array.prototype.slice.call(document.querySelectorAll('.modal-overlay.open'));
+  if (!open.length) return;
+  /* أغلق الأعلى فقط حتى لا تُغلق نافذة التعديل مع تأكيد حذف المرفق */
+  var top = open[open.length - 1];
+  top.classList.remove('open');
+  top.setAttribute('aria-hidden', 'true');
+});
 /* إغلاق الخلفية: liftcore-shell.js */
 
 function initRevenuesPage() {

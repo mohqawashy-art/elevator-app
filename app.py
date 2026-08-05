@@ -4304,14 +4304,28 @@ def client_edit(id):
     if upload and upload.filename:
         photo_err = _save_client_building_photo(c, upload)
     elif request.form.get('delete_building_photo') == '1':
-        _delete_client_building_photo(c)
-        photo_err = None
+        photo_err = 'حذف صورة المبنى متاح لمدير النظام عبر زر حذف المرفق فقط'
     else:
         photo_err = None
     db.session.commit()
     if photo_err:
         flash(photo_err, 'error')
     return redirect(url_for('clients', focus=c.id))
+
+
+@app.route('/clients/<int:id>/remove-building-photo', methods=['POST'])
+def client_remove_building_photo(id):
+    """حذف صورة مبنى العميل — مدير النظام فقط."""
+    err = enforce_admin_attachment_delete(json_response=True)
+    if err:
+        return err
+    c = tenant_get_or_404(Customer, id)
+    if not c.building_photo_path:
+        return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    _delete_client_building_photo(c)
+    db.session.commit()
+    return jsonify({'ok': True, 'removed': True, 'id': c.id})
+
 
 @app.route('/clients/delete/<int:id>', methods=['POST'])
 def client_delete(id):
@@ -4947,6 +4961,19 @@ def _remove_fin_proof(row):
             os.remove(full)
         except OSError:
             pass
+    row.proof_path = None
+
+
+def enforce_admin_attachment_delete(*, json_response=False):
+    """حذف المرفقات: مدير النظام فقط + كلمة مرور."""
+    return enforce_admin_password(
+        json_response=json_response,
+        action='admin_attachment_delete_confirmed',
+        admin_only_ar='حذف المرفقات متاح لمدير النظام فقط.',
+        admin_only_en='Attachment deletion is admin-only.',
+        bad_password_ar='كلمة المرور غير صحيحة — لم يتم حذف المرفق.',
+        bad_password_en='Incorrect password — attachment was not deleted.',
+    )
 
 
 def _save_fin_proof(row, file_storage, *, kind: str, required: bool = False):
@@ -5175,7 +5202,12 @@ def contract_edit(id):
         elif (request.form.get('remove_contract_file') or '').strip().lower() in (
             '1', 'true', 'yes', 'on',
         ):
-            _remove_contract_file(c)
+            # حذف المرفق عبر /contracts/<id>/remove-file فقط (مدير النظام + كلمة مرور)
+            msg = 'حذف مرفق العقد متاح لمدير النظام عبر زر حذف المرفق فقط'
+            if wants_json:
+                return jsonify({'ok': False, 'message': msg}), 403
+            flash(msg, 'error')
+            return redirect(url_for('contracts'))
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
         db.session.commit()
     except Exception as exc:
@@ -5253,12 +5285,10 @@ def contract_add():
 
 @app.route('/contracts/<int:id>/remove-file', methods=['POST'])
 def contract_remove_file(id):
-    """حذف مرفق ملف العقد فقط."""
-    user = require_login()
-    if not user:
-        return jsonify({'ok': False, 'message': 'يجب تسجيل الدخول'}), 401
-    if getattr(user, 'role', None) == 'viewer':
-        return jsonify({'ok': False, 'message': 'ليس لديك صلاحية التعديل'}), 403
+    """حذف مرفق ملف العقد — مدير النظام فقط."""
+    err = enforce_admin_attachment_delete(json_response=True)
+    if err:
+        return err
     c = tenant_get_or_404(Contract, id)
     if not c.file_path:
         return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
@@ -6103,7 +6133,7 @@ def technician_edit(id):
 
 @app.route('/technicians/documents/delete/<int:doc_id>', methods=['POST'])
 def technician_document_delete(doc_id):
-    err = enforce_admin_delete(json_response=True)
+    err = enforce_admin_attachment_delete(json_response=True)
     if err:
         return err
     doc = tenant_get_or_404(TechnicianDocument, doc_id)
@@ -8064,6 +8094,21 @@ def revenue_delete(id):
     db.session.commit()
     return redirect(url_for('revenues'))
 
+
+@app.route('/revenues/<int:id>/remove-proof', methods=['POST'])
+def revenue_remove_proof(id):
+    """حذف إثبات دفع الإيراد — مدير النظام فقط."""
+    err = enforce_admin_attachment_delete(json_response=True)
+    if err:
+        return err
+    r = tenant_get_or_404(Revenue, id)
+    if not r.proof_path:
+        return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    _remove_fin_proof(r)
+    db.session.commit()
+    return jsonify({'ok': True, 'removed': True, 'id': r.id})
+
+
 # =============================================
 # المصروفات
 # =============================================
@@ -8130,6 +8175,21 @@ def expense_delete(id):
     db.session.delete(e)
     db.session.commit()
     return redirect(url_for('expenses'))
+
+
+@app.route('/expenses/<int:id>/remove-proof', methods=['POST'])
+def expense_remove_proof(id):
+    """حذف إثبات صرف المصروف — مدير النظام فقط."""
+    err = enforce_admin_attachment_delete(json_response=True)
+    if err:
+        return err
+    e = tenant_get_or_404(Expense, id)
+    if not e.proof_path:
+        return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    _remove_fin_proof(e)
+    db.session.commit()
+    return jsonify({'ok': True, 'removed': True, 'id': e.id})
+
 
 # =============================================
 # الفواتير
@@ -8883,6 +8943,27 @@ def purchase_order_upload_pdf(order_id):
     db.session.commit()
     pdf_url = url_for('static', filename=order.pdf_path, _external=True)
     return jsonify(ok=True, url=pdf_url)
+
+
+@app.route('/purchase-orders/<int:order_id>/remove-pdf', methods=['POST'])
+def purchase_order_remove_pdf(order_id):
+    """حذف PDF طلب الشراء المرفوع — مدير النظام فقط."""
+    err = enforce_admin_attachment_delete(json_response=True)
+    if err:
+        return err
+    order = tenant_get_or_404(PurchaseOrder, order_id)
+    path = (order.pdf_path or '').strip()
+    if not path:
+        return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    full = os.path.join(app.root_path, 'static', path.replace('/', os.sep))
+    if os.path.isfile(full):
+        try:
+            os.remove(full)
+        except OSError:
+            pass
+    order.pdf_path = None
+    db.session.commit()
+    return jsonify({'ok': True, 'removed': True, 'id': order.id})
 
 
 @app.route('/purchase-orders/delete/<int:order_id>', methods=['POST'])

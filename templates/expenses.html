@@ -524,7 +524,11 @@ function editExpense(id) {
   if (e.has_proof && e.proof_url) {
     if (proofEx) {
       proofEx.style.display = 'block';
-      proofEx.innerHTML = 'المرفق الحالي: <a href="' + e.proof_url + '" target="_blank" rel="noopener">عرض المستند</a> — ارفع ملفاً جديداً لاستبداله';
+      proofEx.innerHTML = 'المرفق الحالي: <a href="' + e.proof_url + '" target="_blank" rel="noopener">عرض المستند</a>' +
+        (window.__LC_IS_ADMIN
+          ? ' <button type="button" class="btn btn-danger btn-sm lc-admin-delete" style="margin-inline-start:8px" onclick="removeExpenseProof(' + e.id + ')">حذف المرفق</button>'
+          : '') +
+        ' — أو ارفع ملفاً جديداً لاستبداله';
     }
     if (proofHint) proofHint.textContent = 'اختياري — ارفع ملفاً جديداً للاستبدال';
   } else {
@@ -535,6 +539,48 @@ function editExpense(id) {
 
 function viewExpense(id) {
   editExpense(id);
+}
+
+function removeExpenseProof(id) {
+  if (!window.__LC_IS_ADMIN) {
+    alert('حذف المرفقات متاح لمدير النظام فقط.');
+    return;
+  }
+  if (!window.LiftCoreAdminDelete) {
+    alert('تعذّر تحميل أداة الحذف — حدّث الصفحة وحاول مجدداً');
+    return;
+  }
+  LiftCoreAdminDelete.confirmPassword({
+    title: 'حذف المرفق',
+    message: 'حذف إثبات الصرف لهذا المصروف؟',
+    confirmLabel: 'حذف المرفق',
+    confirmClass: 'btn btn-danger',
+    titleColor: 'var(--danger)',
+  }).then(function (pwd) {
+    return fetch('/expenses/' + id + '/remove-proof', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-LC-Admin-Delete': '1',
+      },
+      body: JSON.stringify({ admin_password: pwd }),
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (!res.ok || (data && data.ok === false)) {
+          throw new Error((data && data.message) || 'تعذّر حذف المرفق');
+        }
+        return data;
+      });
+    });
+  }).then(function () {
+    window.location.reload();
+  }).catch(function (err) {
+    if (err && err.message === 'cancelled') return;
+    if (err && err.message === 'not admin') return;
+    alert((err && err.message) || 'تعذّر حذف المرفق');
+  });
 }
 
 function deleteExpense(id) {
