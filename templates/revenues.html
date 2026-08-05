@@ -286,6 +286,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             <tr>
               <th>الكود</th>
               <th>التاريخ</th>
+              <th>الاستحقاق</th>
               <th>البيان</th>
               <th>الإجمالي</th>
               <th>محصّل</th>
@@ -723,6 +724,7 @@ function renderRevenuePendingMainTable() {
     <tr class="lc-op-row" data-op-idx="${idx}" style="cursor:pointer" onclick="pickPendingOp(${idx})">
       <td class="td-code">${escHtml(op.code)}</td>
       <td class="lc-date">${escHtml(op.date)}</td>
+      <td class="lc-date">${escHtml(op.due_date || '—')}</td>
       <td>${escHtml(op.title)} — ${escHtml(op.description)}</td>
       <td style="font-family:var(--font-en)">${Number(op.total || 0).toLocaleString('en-US')}</td>
       <td style="font-family:var(--font-en);color:var(--success)">${Number(op.paid || 0).toLocaleString('en-US')}</td>
@@ -779,6 +781,7 @@ function renderRevenuePendingOps() {
         <tr>
           <th>الكود</th>
           <th>التاريخ</th>
+          <th>الاستحقاق</th>
           <th>البيان</th>
           <th>الإجمالي</th>
           <th>محصّل</th>
@@ -790,6 +793,7 @@ function renderRevenuePendingOps() {
           <tr class="lc-op-row" data-op-idx="${idx}" onclick="selectRevenuePendingOp(${idx})">
             <td class="lc-code">${escHtml(op.code)}</td>
             <td class="lc-num">${escHtml(op.date)}</td>
+            <td class="lc-num">${escHtml(op.due_date || '—')}</td>
             <td>${escHtml(op.title)} — ${escHtml(op.description)}</td>
             <td class="lc-num">${Number(op.total || 0).toLocaleString('en-US')}</td>
             <td class="lc-num">${Number(op.paid || 0).toLocaleString('en-US')}</td>

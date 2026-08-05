@@ -535,6 +535,7 @@ def tenant_outstanding_collectible(*, today: date | None = None) -> dict:
             'total': _round_money(c.total),
             'paid': _round_money(getattr(c, 'paid_amount', 0) or 0),
             'remaining': rem,
+            'due_date': str(getattr(c, 'due_date', None) or ''),
             'status': c.invoice_status or 'غير مدفوع',
             'link': f'/contracts?highlight={c.id}',
         })
@@ -555,6 +556,7 @@ def tenant_outstanding_collectible(*, today: date | None = None) -> dict:
             'total': _round_money(inv.total),
             'paid': _round_money(getattr(inv, 'paid_amount', 0) or 0),
             'remaining': rem,
+            'due_date': str(inv.due_date or ''),
             'status': inv.status or 'غير مدفوعة',
             'link': f'/invoices/{inv.id}/print',
         })
@@ -573,6 +575,7 @@ def tenant_outstanding_collectible(*, today: date | None = None) -> dict:
             'total': _round_money(pb.sell_price),
             'paid': _round_money(getattr(pb, 'paid_amount', 0) or 0),
             'remaining': rem,
+            'due_date': '',
             'status': pb.status or 'غير محصل',
             'link': f'/parts-billing?highlight={pb.id}',
         })
@@ -612,6 +615,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'source_id': c.id,
             'code': c.code,
             'date': str(c.start_date or ''),
+            'due_date': str(getattr(c, 'due_date', None) or ''),
             'title': c.contract_type or 'عقد',
             'description': f'عقد {c.code} — المتبقي على قيمة العقد',
             'total': _round_money(c.total),
@@ -640,6 +644,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'source_id': inv.id,
             'code': inv.code,
             'date': str(inv.invoice_date or ''),
+            'due_date': str(inv.due_date or ''),
             'title': inv.invoice_type or 'فاتورة',
             'description': inv.description or inv.invoice_type or 'فاتورة',
             'total': _round_money(inv.total),
@@ -668,6 +673,7 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'source_id': pb.id,
             'code': pb.code,
             'date': str(pb.billing_date or ''),
+            'due_date': '',
             'title': 'تركيب قطع غيار',
             'description': (pb.description or 'قطع غيار')[:120],
             'total': _round_money(pb.sell_price),

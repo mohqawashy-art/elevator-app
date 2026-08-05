@@ -360,6 +360,8 @@ def build_contract_payment_whatsapp(contract, base_url: str = '') -> str:
         f'نذكّركم بمستحقات العقد رقم {contract.code}',
         f'المبلغ المتبقي: {remaining:,.2f} ر.س',
     ]
+    if getattr(contract, 'due_date', None):
+        lines.append(f'تاريخ الاستحقاق: {contract.due_date.strftime("%d/%m/%Y")}')
     if contract.end_date:
         lines.append(f'نهاية العقد: {contract.end_date.strftime("%d/%m/%Y")}')
     _append_bank_details(lines, settings)

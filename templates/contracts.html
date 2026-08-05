@@ -458,6 +458,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="value">قيمة العقد <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="total">الإجمالي <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="due_date">الاستحقاق <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="inv_status">حالة الفاتورة <span class="sort-ind"></span></th>
               <th>مرفق</th>
@@ -708,6 +709,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <option>سنوي</option>
               <option>شهري</option>
             </select>
+          </div>
+          <div class="field">
+            <label>تاريخ استحقاق التحصيل</label>
+            <input type="date" lang="en-GB" id="f-due-date" style="direction:ltr">
+            <span class="field-hint">للمبالغ غير المحصّلة — يُقترح تلقائياً بتاريخ بداية العقد</span>
           </div>
         </div>
       </div>
@@ -992,6 +998,22 @@ function formatContractDaysCell(c) {
     'منذ ' + abs + ' ' + word + '</span>';
 }
 
+/** عرض تاريخ استحقاق التحصيل — أحمر إن متأخر وغير محصّل. */
+function formatContractDueCell(c) {
+  if (!c || !c.due_date) return '<span class="contract-days muted">—</span>';
+  var unpaid = c.inv_status === 'غير مدفوع' || c.inv_status === 'متأخر' || c.inv_status === 'مدفوع جزئياً';
+  var overdue = unpaid && (c.inv_status === 'متأخر' || (function () {
+    var due = new Date(c.due_date);
+    if (isNaN(due.getTime())) return false;
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+    return due < today;
+  })());
+  var cls = overdue ? 'expired' : (unpaid ? 'expiring' : 'muted');
+  return '<span class="contract-days ' + cls + '" title="تاريخ استحقاق التحصيل">' + esc(c.due_date) + '</span>';
+}
+
 function elevatorLabels(ids) {
   if (!ids || !ids.length) return '—';
   return ids.map(function(id) {
@@ -1085,7 +1107,7 @@ var filtered = CONTRACTS.slice();
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'asc',
-  dateCols: ['start_date', 'end_date'],
+  dateCols: ['start_date', 'end_date', 'due_date'],
   numberCols: ['elevators', 'value', 'total', 'days_left'],
   getters: {
     customer: function (c) {
@@ -1198,6 +1220,7 @@ function renderTable(data) {
       '<td style="text-align:center" title="' + esc(elevatorLabels(c.elevator_ids)) + '">' + c.elevators + '</td>' +
       '<td class="td-amount">' + fmtMoneyAmt(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td class="td-amount">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
+      '<td style="direction:ltr;font-family:var(--font-en)">' + formatContractDueCell(c) + '</td>' +
       '<td><span class="badge ' + (STATUS_BADGE[disp] || 'badge-active') + '">' + esc(D(disp)) + '</span></td>' +
       '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(D(c.inv_status)) + '</span></td>' +
       '<td>' + contractAttachmentCell(c) + '</td>' +
@@ -1334,7 +1357,7 @@ function resetContractForm() {
   document.getElementById('f-code').value = NEXT_CONTRACT_CODE;
   var codeHint = document.getElementById('f-code-hint');
   if (codeHint) codeHint.textContent = 'يُولَّد تلقائياً للعقد الجديد';
-  ['f-end','f-reminder','f-notes','f-visits-month','f-contract-city','f-contract-district','f-contract-address','f-contract-maps-url','f-contract-lat','f-contract-lng'].forEach(function(id) {
+  ['f-end','f-reminder','f-due-date','f-notes','f-visits-month','f-contract-city','f-contract-district','f-contract-address','f-contract-maps-url','f-contract-lat','f-contract-lng'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1342,6 +1365,7 @@ function resetContractForm() {
   if (mapSearch) mapSearch.value = '';
   var startEl = document.getElementById('f-start');
   if (startEl) startEl.value = new Date().toISOString().split('T')[0];
+  suggestDueDateFromStart(true);
   var durEl = document.getElementById('f-duration');
   if (durEl) {
     Array.from(durEl.querySelectorAll('option[data-custom]')).forEach(function(o) { o.remove(); });
@@ -1586,6 +1610,7 @@ function buildContractFormData(adminPassword) {
   fd.append('start_date', document.getElementById('f-start').value);
   fd.append('end_date', document.getElementById('f-end').value);
   fd.append('reminder_date', document.getElementById('f-reminder').value);
+  fd.append('due_date', document.getElementById('f-due-date').value);
   fd.append('maint_frequency', document.getElementById('f-maint-freq').value);
   fd.append('visits_per_month', document.getElementById('f-visits-month').value || '1');
   // القيمة اختيارية: فارغ أو غير رقمي → 0 (عقود بدون مبالغ مستلمة)
@@ -1746,6 +1771,7 @@ function editContract(id) {
   document.getElementById('f-end').value = c.end_date || '';
   setContractDurationSelect(c.duration);
   document.getElementById('f-reminder').value = c.reminder_date || '';
+  document.getElementById('f-due-date').value = c.due_date || '';
   document.getElementById('f-maint-freq').value = c.maint_freq || 'شهري';
   document.getElementById('f-visits-month').value = c.visits_month || 1;
   document.getElementById('f-payment-terms').value = c.pay_terms || 'دفعة واحدة';
@@ -1813,6 +1839,7 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">تاريخ البداية</div><div class="view-val" style="direction:ltr">' + esc(c.start_date) + '</div></div>' +
       '<div class="view-item"><div class="view-label">تاريخ الانتهاء</div><div class="view-val" style="direction:ltr">' + esc(c.end_date) + '</div></div>' +
       '<div class="view-item"><div class="view-label">الأيام المتبقية / المنقضية</div><div class="view-val">' + formatContractDaysCell(c) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">تاريخ استحقاق التحصيل</div><div class="view-val">' + formatContractDueCell(c) + '</div></div>' +
       '<div class="view-item"><div class="view-label">مدة العقد</div><div class="view-val">' + (c.duration || '—') + ' شهر</div></div>' +
       '<div class="view-item"><div class="view-label">تكرار الصيانة</div><div class="view-val">' + esc(c.maint_freq || '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">إجمالي الزيارات</div><div class="view-val">' + (c.visits_month || '—') + '</div></div>' +
@@ -1905,6 +1932,7 @@ function renewContract(id) {
   document.getElementById('f-type-sel').value = c.contract_type || 'عقد صيانة';
   document.getElementById('f-status-sel').value = 'نشط';
   document.getElementById('f-start').value = c.end_date || new Date().toISOString().split('T')[0];
+  suggestDueDateFromStart(true);
   var durEl = document.getElementById('f-duration');
   if (durEl) {
     Array.from(durEl.querySelectorAll('option[data-custom]')).forEach(function(o) { o.remove(); });
@@ -1912,6 +1940,7 @@ function renewContract(id) {
   }
   document.getElementById('f-end').value = '';
   document.getElementById('f-reminder').value = '';
+  document.getElementById('f-due-date').value = '';
   document.getElementById('f-maint-freq').value = c.maint_freq || 'شهري';
   document.getElementById('f-visits-month').value = c.visits_month || 1;
   document.getElementById('f-payment-terms').value = c.pay_terms || 'دفعة واحدة';
@@ -2029,6 +2058,14 @@ function updateReminderFromEnd(endStr) {
   if (r) r.value = reminder.toISOString().split('T')[0];
 }
 
+/** يقترح تاريخ الاستحقاق = تاريخ البداية إذا كان الحقل فارغاً. */
+function suggestDueDateFromStart(force) {
+  var start = document.getElementById('f-start')?.value;
+  var dueEl = document.getElementById('f-due-date');
+  if (!start || !dueEl) return;
+  if (force || !dueEl.value) dueEl.value = start;
+}
+
 function setContractDurationSelect(months) {
   var durSel = document.getElementById('f-duration');
   if (!durSel) return;
@@ -2061,6 +2098,7 @@ function onContractStartChange() {
   } else {
     calcDurationFromEnd();
   }
+  suggestDueDateFromStart(false);
   syncRenewalContractCode();
 }
 
@@ -2177,7 +2215,7 @@ function loadClientElevators(selectedIds, opts) {
 }
 
 function exportExcel() {
-  const rows=[['الكود','العميل','النوع','البداية','الانتهاء','الأيام','القيمة','الإجمالي','حالة العقد','حالة الفاتورة']];
+  const rows=[['الكود','العميل','النوع','البداية','الانتهاء','الأيام','القيمة','الإجمالي','الاستحقاق','حالة العقد','حالة الفاتورة']];
   filtered.forEach(function(c) {
     var days = contractDaysLeft(c);
     var daysLabel = '—';
@@ -2189,7 +2227,7 @@ function exportExcel() {
         else daysLabel = 'منذ ' + Math.abs(days);
       }
     }
-    rows.push([c.code,c.customer,c.contract_type,c.start_date,c.end_date,daysLabel,c.value,c.total,getContractDisplayStatus(c),c.inv_status]);
+    rows.push([c.code,c.customer,c.contract_type,c.start_date,c.end_date,daysLabel,c.value,c.total,c.due_date||'',getContractDisplayStatus(c),c.inv_status]);
   });
   const csv=rows.map(r=>r.join(',')).join('\n');
   const a=document.createElement('a');

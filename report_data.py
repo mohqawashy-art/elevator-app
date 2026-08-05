@@ -50,6 +50,7 @@ def get_report_contracts(db, Contract):
         'total': c.total or 0,
         'status': c.status,
         'inv_status': c.invoice_status or '',
+        'due_date': str(getattr(c, 'due_date', None) or ''),
     } for c in contracts]
 
 

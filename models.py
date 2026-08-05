@@ -237,6 +237,7 @@ class Contract(TenantMixin, db.Model):
     paid_amount     = db.Column(db.Float, default=0)                 # محصّل العقد (مخزّن — يُحدَّث عند الدفع)
     status          = db.Column(db.String(30), default='نشط')        # نشط / على وشك الانتهاء / منتهي / ملغي
     reminder_date   = db.Column(db.Date)
+    due_date        = db.Column(db.Date)  # تاريخ استحقاق تحصيل قيمة العقد
     city            = db.Column(db.String(100))
     district        = db.Column(db.String(100))
     address         = db.Column(db.Text)

@@ -885,26 +885,9 @@ def _money_round(n):
 
 def _invoice_status_from_paid(contract, paid, today=None):
     """حالة الفاتورة من المبلغ المحصّل المخزّن (بدون إعادة حساب كامل)."""
-    from customer_billing import UNPAID_INVOICE_STATUSES
+    from billing_consistency import _contract_invoice_status
 
-    today = today or date.today()
-    total = _money_round(contract.total or 0)
-    paid = _money_round(paid)
-    remaining = max(total - paid, 0)
-    if total <= 0:
-        return 'غير مدفوع'
-    if remaining <= 0.01:
-        return 'مدفوع'
-    status = 'مدفوع جزئياً' if paid > 0 else 'غير مدفوع'
-    overdue = tenant_query(Invoice).filter(
-        Invoice.contract_id == contract.id,
-        Invoice.due_date.isnot(None),
-        Invoice.due_date < today,
-        Invoice.status.in_(UNPAID_INVOICE_STATUSES),
-    ).first()
-    if overdue and remaining > 0.01:
-        return 'متأخر'
-    return status
+    return _contract_invoice_status(contract, paid, today)
 
 
 def _refresh_contract_billing_cache(contract):
@@ -961,6 +944,7 @@ def contract_to_js_dict(c, *, renewed_ids=None):
         'renewed': is_renewed,
         'display_status': contract_display_status(c, renewed_ids=renewed_ids),
         'reminder_date': c.reminder_date.isoformat() if c.reminder_date else '',
+        'due_date': c.due_date.isoformat() if getattr(c, 'due_date', None) else '',
         'city': c.city or '',
         'district': c.district or '',
         'address': c.address or '',
@@ -3442,6 +3426,7 @@ def api_dashboard_drill(card_type):
                 r['kind'],
                 r['code'],
                 r['customer'],
+                r.get('due_date') or '—',
                 f"{r['total']:,.0f} \u20c1",
                 f"{r['paid']:,.0f} \u20c1",
                 f"{r['remaining']:,.0f} \u20c1",
@@ -3450,7 +3435,7 @@ def api_dashboard_drill(card_type):
         payload = {
             'title': f"مستحق التحصيل — {data['total']:,.0f} ⃁",
             'link': '/contracts',
-            'columns': ['النوع', 'الكود', 'العميل', 'الإجمالي', 'المدفوع', 'المتبقي', 'الحالة'],
+            'columns': ['النوع', 'الكود', 'العميل', 'الاستحقاق', 'الإجمالي', 'المدفوع', 'المتبقي', 'الحالة'],
             'rows': rows,
         }
     elif card_type == 'technicians':
@@ -4133,6 +4118,7 @@ def _contract_json(c):
         'paid_amount': contract_paid_total(c.id),
         'inv_status': contract_invoice_status(c),
         'status': contract_display_status(c),
+        'due_date': c.due_date.isoformat() if getattr(c, 'due_date', None) else '',
         'notes': c.notes or '',
     }
 
@@ -4990,6 +4976,7 @@ def _apply_contract_form(c, form):
     c.payment_terms = form.get('payment_terms', '')
     c.status = form.get('status', 'نشط')
     c.reminder_date = _parse_date(form.get('reminder_date'))
+    c.due_date = _parse_date(form.get('due_date'))
     c.city = form.get('city', '')
     c.district = form.get('district', '')
     c.address = form.get('address', '')

@@ -31,6 +31,21 @@ def revenue_paid_for_parts(parts_id: int) -> float:
     return _round_money(sum(_round_money(r.total or 0) for r in rows))
 
 
+def _contract_payment_overdue(contract: Contract, today: date | None = None) -> bool:
+    """متأخر إن تجاوز استحقاق العقد أو فاتورة مرتبطة غير مدفوعة."""
+    today = today or date.today()
+    due = getattr(contract, 'due_date', None)
+    if due and due < today:
+        return True
+    overdue = Invoice.query.filter(
+        Invoice.contract_id == contract.id,
+        Invoice.due_date.isnot(None),
+        Invoice.due_date < today,
+        Invoice.status.in_(UNPAID_INVOICE_STATUSES),
+    ).first()
+    return bool(overdue)
+
+
 def _contract_invoice_status(contract: Contract, paid: float, today: date | None = None) -> str:
     today = today or date.today()
     total = _round_money(contract.total or 0)
@@ -41,13 +56,7 @@ def _contract_invoice_status(contract: Contract, paid: float, today: date | None
     if remaining <= 0.01:
         return 'مدفوع'
     status = 'مدفوع جزئياً' if paid > 0 else 'غير مدفوع'
-    overdue = Invoice.query.filter(
-        Invoice.contract_id == contract.id,
-        Invoice.due_date.isnot(None),
-        Invoice.due_date < today,
-        Invoice.status.in_(UNPAID_INVOICE_STATUSES),
-    ).first()
-    if overdue and remaining > 0.01:
+    if remaining > 0.01 and _contract_payment_overdue(contract, today):
         return 'متأخر'
     return status
 
