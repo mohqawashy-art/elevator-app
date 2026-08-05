@@ -5193,6 +5193,7 @@ def contract_edit(id):
 @app.route('/contracts/add', methods=['POST'])
 def contract_add():
     from form_validation import contract_form_error
+    from contract_codes import unique_renewal_contract_code
 
     wants_json = (
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -5204,12 +5205,38 @@ def contract_add():
             return jsonify({'ok': False, 'message': err}), 400
         flash(err, 'error')
         return redirect(url_for('contracts'))
-    c = Contract(code=next_code(Contract, 'CN-', digits=5))
+
+    renew_from_id = request.form.get('renew_from_id', type=int)
+    renew_src = tenant_get_or_404(Contract, renew_from_id) if renew_from_id else None
+
+    if renew_src:
+        start_raw = (request.form.get('start_date') or '').strip()
+        try:
+            year = int(start_raw[:4]) if start_raw else date.today().year
+        except ValueError:
+            year = date.today().year
+        taken = [
+            row[0]
+            for row in tenant_query(Contract).with_entities(Contract.code).all()
+            if row[0]
+        ]
+        code = unique_renewal_contract_code(renew_src.code, year, taken)
+        if len(code) > 20:
+            if wants_json:
+                return jsonify({'ok': False, 'message': 'رقم العقد الناتج أطول من المسموح'}), 400
+            flash('رقم العقد الناتج أطول من المسموح', 'error')
+            return redirect(url_for('contracts'))
+    else:
+        code = next_code(Contract, 'CN-', digits=5)
+
+    c = Contract(code=code)
     try:
         _apply_contract_form(c, request.form)
         assign_organization(c)
         db.session.add(c)
         db.session.flush()
+        if renew_src and (renew_src.status or '') != 'منتهي':
+            renew_src.status = 'منتهي'
         _save_contract_file(c, request.files.get('contract_file'))
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
         db.session.commit()

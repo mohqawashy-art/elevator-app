@@ -550,6 +550,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field">
             <label>كود العقد</label>
             <input type="text" id="f-code" placeholder="CN-00001" readonly style="direction:ltr;font-family:var(--font-en);opacity:.85">
+            <span class="field-hint" id="f-code-hint">يُولَّد تلقائياً للعقد الجديد</span>
           </div>
           <div class="field">
             <label>نوع العقد</label>
@@ -1299,6 +1300,8 @@ function initContractClientSelect() {
 
 function resetContractForm() {
   document.getElementById('f-code').value = NEXT_CONTRACT_CODE;
+  var codeHint = document.getElementById('f-code-hint');
+  if (codeHint) codeHint.textContent = 'يُولَّد تلقائياً للعقد الجديد';
   ['f-end','f-reminder','f-notes','f-visits-month','f-contract-city','f-contract-district','f-contract-address','f-contract-maps-url','f-contract-lat','f-contract-lng'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
@@ -1544,6 +1547,10 @@ function buildContractFormData(adminPassword) {
   var fd = new FormData();
   fd.append('customer_id', clientSel.value);
   fd.append('contract_type', document.getElementById('f-type-sel').value);
+  var codeEl = document.getElementById('f-code');
+  if (codeEl && codeEl.value) fd.append('code', codeEl.value.trim());
+  var renewFromId = getRenewFromContractId();
+  if (renewFromId) fd.append('renew_from_id', String(renewFromId));
   fd.append('start_date', document.getElementById('f-start').value);
   fd.append('end_date', document.getElementById('f-end').value);
   fd.append('reminder_date', document.getElementById('f-reminder').value);
@@ -1808,6 +1815,44 @@ function renewFromView() {
   if (currentViewId) renewContract(currentViewId);
 }
 
+function contractBaseCode(code) {
+  var raw = String(code || '').trim();
+  if (!raw) return '';
+  var m = raw.match(/^(.+?)[-/](20\d{2})(?:-\d+)?$/i);
+  return m ? m[1].trim() : raw;
+}
+
+function renewalContractCode(existingCode, year) {
+  var base = contractBaseCode(existingCode) || 'CN-00000';
+  var y = parseInt(year, 10);
+  if (!isFinite(y) || y < 2000 || y > 2100) y = new Date().getFullYear();
+  return base + '-' + y;
+}
+
+function getRenewFromContractId() {
+  var modal = document.getElementById('modal-add');
+  if (!modal) return null;
+  var renewId = parseInt(modal.dataset.renewFromId || '', 10);
+  return renewId || null;
+}
+
+function syncRenewalContractCode() {
+  var renewId = getRenewFromContractId();
+  var codeEl = document.getElementById('f-code');
+  var hint = document.getElementById('f-code-hint');
+  if (!renewId || !codeEl) {
+    if (hint && !renewId) hint.textContent = 'يُولَّد تلقائياً للعقد الجديد';
+    return;
+  }
+  var src = CONTRACTS.find(function (x) { return x.id === renewId; });
+  var startVal = (document.getElementById('f-start') || {}).value || '';
+  var year = startVal ? parseInt(startVal.slice(0, 4), 10) : new Date().getFullYear();
+  codeEl.value = renewalContractCode(src && src.code, year);
+  if (hint) {
+    hint.textContent = 'تجديد: تثبيت رقم العقد مع سنة التعاقد (' + year + ')';
+  }
+}
+
 function renewContract(id) {
   var c = CONTRACTS.find(function(x) { return x.id === id; });
   if (!c) return;
@@ -1821,9 +1866,9 @@ function renewContract(id) {
     saveBtn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> حفظ العقد';
   }
   resetContractForm();
+  document.getElementById('modal-add').dataset.renewFromId = String(id);
   fillClientSelect(c.customer_id);
   renderContractClientSummary(getCustomerById(c.customer_id));
-  document.getElementById('f-code').value = NEXT_CONTRACT_CODE;
   document.getElementById('f-type-sel').value = c.contract_type || 'عقد صيانة';
   document.getElementById('f-status-sel').value = 'نشط';
   document.getElementById('f-start').value = c.end_date || new Date().toISOString().split('T')[0];
@@ -1852,6 +1897,7 @@ function renewContract(id) {
   loadClientElevators(c.elevator_ids || [], { allowContractId: c.id });
   calcTotalVisits();
   setContractFileUi(null);
+  syncRenewalContractCode();
   openContractFormModal(function () {
     var loc = { address: c.address, district: c.district, city: c.city };
     if (c.address || c.city || c.district) {
@@ -1982,6 +2028,7 @@ function onContractStartChange() {
   } else {
     calcDurationFromEnd();
   }
+  syncRenewalContractCode();
 }
 
 function calcDurationFromEnd() {
