@@ -164,6 +164,11 @@ tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}
 .badge-overdue{background:rgba(224,72,72,.12);color:var(--danger)}
 .badge-renewed{background:rgba(42,127,255,.12);color:var(--accent)}
 .badge-expiring{background:rgba(224,144,48,.12);color:var(--warning);animation:pulse 2s infinite}
+.contract-days{font-size:12px;font-weight:600;font-family:var(--font-ar);white-space:nowrap}
+.contract-days.active{color:var(--success)}
+.contract-days.expiring{color:var(--warning)}
+.contract-days.expired{color:var(--danger)}
+.contract-days.muted{color:var(--text3);font-weight:500}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
 .table-info{font-size:12px;color:var(--text3)}
@@ -347,7 +352,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <table>
           <thead>
             <tr>
-              <th>الكود</th><th>العميل</th><th>النوع</th><th>الانتهاء</th><th>المصاعد</th><th>الإجمالي</th><th>حالة العقد</th><th>الفاتورة</th>
+              <th>الكود</th><th>العميل</th><th>النوع</th><th>الانتهاء</th><th>الأيام</th><th>المصاعد</th><th>الإجمالي</th><th>حالة العقد</th><th>الفاتورة</th>
             </tr>
           </thead>
           <tbody id="drill-body"></tbody>
@@ -449,6 +454,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <th class="th-sort" data-sort-col="contract_type">النوع <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="start_date">تاريخ البداية <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="end_date">تاريخ الانتهاء <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="days_left">الأيام <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="value">قيمة العقد <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="total">الإجمالي <span class="sort-ind"></span></th>
@@ -946,6 +952,46 @@ function getContractDisplayStatus(c) {
   return 'نشط';
 }
 
+/** عدد الأيام حتى/منذ تاريخ الانتهاء (موجب = متبقي، سالب = منتهي منذ). */
+function contractDaysLeft(c) {
+  if (!c || !c.end_date) return null;
+  var end = new Date(c.end_date);
+  if (isNaN(end.getTime())) return null;
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  return Math.round((end - today) / (1000 * 60 * 60 * 24));
+}
+
+function formatDaysWord(n) {
+  n = Math.abs(parseInt(n, 10) || 0);
+  if (n === 1) return 'يوم';
+  if (n === 2) return 'يومان';
+  if (n >= 3 && n <= 10) return 'أيام';
+  return 'يوماً';
+}
+
+function formatContractDaysCell(c) {
+  var days = contractDaysLeft(c);
+  if (days === null) return '<span class="contract-days muted">—</span>';
+  var st = getContractDisplayStatus(c);
+  if (st === 'ملغي' || st === 'تم تجديده') {
+    return '<span class="contract-days muted">—</span>';
+  }
+  var abs = Math.abs(days);
+  var word = formatDaysWord(abs);
+  if (days > 0) {
+    var cls = days <= 30 ? 'expiring' : 'active';
+    return '<span class="contract-days ' + cls + '" title="متبقي حتى انتهاء العقد">' +
+      'متبقي ' + abs + ' ' + word + '</span>';
+  }
+  if (days === 0) {
+    return '<span class="contract-days expiring" title="ينتهي اليوم">ينتهي اليوم</span>';
+  }
+  return '<span class="contract-days expired" title="انتهى العقد">' +
+    'منذ ' + abs + ' ' + word + '</span>';
+}
+
 function elevatorLabels(ids) {
   if (!ids || !ids.length) return '—';
   return ids.map(function(id) {
@@ -1040,12 +1086,16 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'asc',
   dateCols: ['start_date', 'end_date'],
-  numberCols: ['elevators', 'value', 'total'],
+  numberCols: ['elevators', 'value', 'total', 'days_left'],
   getters: {
     customer: function (c) {
       return window.LiftCoreDisplay ? LiftCoreDisplay.name(c.customer, c.customer_name_en) : c.customer;
     },
     contract_status: function (c) { return getContractDisplayStatus(c); },
+    days_left: function (c) {
+      var d = contractDaysLeft(c);
+      return d === null ? 999999 : d;
+    },
   },
   onChange: function () { renderTable(filtered); },
 }) : null;
@@ -1071,7 +1121,7 @@ function getContractsByDrill(type) {
 function renderDrillTable(rows) {
   var body = document.getElementById('drill-body');
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">لا توجد بيانات</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">لا توجد بيانات</td></tr>';
     return;
   }
   body.innerHTML = rows.map(function(c) {
@@ -1080,6 +1130,7 @@ function renderDrillTable(rows) {
       '<td class="td-name">' + esc(c.customer) + '</td>' +
       '<td>' + esc(c.contract_type) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
+      '<td>' + formatContractDaysCell(c) + '</td>' +
       '<td style="text-align:center">' + c.elevators + '</td>' +
       '<td style="font-family:var(--font-en)">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></td>' +
@@ -1143,6 +1194,7 @@ function renderTable(data) {
       '<td>' + esc(D(c.contract_type)) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.start_date) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
+      '<td>' + formatContractDaysCell(c) + '</td>' +
       '<td style="text-align:center" title="' + esc(elevatorLabels(c.elevator_ids)) + '">' + c.elevators + '</td>' +
       '<td class="td-amount">' + fmtMoneyAmt(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td class="td-amount">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
@@ -1760,6 +1812,7 @@ function viewContract(id) {
       '<div class="view-section">التواريخ والصيانة</div>' +
       '<div class="view-item"><div class="view-label">تاريخ البداية</div><div class="view-val" style="direction:ltr">' + esc(c.start_date) + '</div></div>' +
       '<div class="view-item"><div class="view-label">تاريخ الانتهاء</div><div class="view-val" style="direction:ltr">' + esc(c.end_date) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">الأيام المتبقية / المنقضية</div><div class="view-val">' + formatContractDaysCell(c) + '</div></div>' +
       '<div class="view-item"><div class="view-label">مدة العقد</div><div class="view-val">' + (c.duration || '—') + ' شهر</div></div>' +
       '<div class="view-item"><div class="view-label">تكرار الصيانة</div><div class="view-val">' + esc(c.maint_freq || '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">إجمالي الزيارات</div><div class="view-val">' + (c.visits_month || '—') + '</div></div>' +
@@ -2124,8 +2177,20 @@ function loadClientElevators(selectedIds, opts) {
 }
 
 function exportExcel() {
-  const rows=[['الكود','العميل','النوع','البداية','الانتهاء','القيمة','الإجمالي','حالة العقد','حالة الفاتورة']];
-  filtered.forEach(c=>rows.push([c.code,c.customer,c.contract_type,c.start_date,c.end_date,c.value,c.total,getContractDisplayStatus(c),c.inv_status]));
+  const rows=[['الكود','العميل','النوع','البداية','الانتهاء','الأيام','القيمة','الإجمالي','حالة العقد','حالة الفاتورة']];
+  filtered.forEach(function(c) {
+    var days = contractDaysLeft(c);
+    var daysLabel = '—';
+    if (days !== null) {
+      var st = getContractDisplayStatus(c);
+      if (st !== 'ملغي' && st !== 'تم تجديده') {
+        if (days > 0) daysLabel = 'متبقي ' + days;
+        else if (days === 0) daysLabel = 'ينتهي اليوم';
+        else daysLabel = 'منذ ' + Math.abs(days);
+      }
+    }
+    rows.push([c.code,c.customer,c.contract_type,c.start_date,c.end_date,daysLabel,c.value,c.total,getContractDisplayStatus(c),c.inv_status]);
+  });
   const csv=rows.map(r=>r.join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
