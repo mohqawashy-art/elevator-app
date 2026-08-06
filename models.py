@@ -529,6 +529,8 @@ class Revenue(TenantMixin, db.Model):
     reference       = db.Column(db.String(500))  # رقم الشيك أو التحويل / مرفقات
     proof_path      = db.Column(db.String(300))  # إثبات الدفع (صورة/PDF)
     notes           = db.Column(db.Text)
+    created_by_user_id = db.Column(db.Integer)
+    created_by_name = db.Column(db.String(100))  # اسم من سجّل العملية (لقطة عند الإنشاء)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
     customer        = db.relationship('Customer', foreign_keys=[customer_id])
@@ -560,6 +562,8 @@ class Expense(TenantMixin, db.Model):
     reference       = db.Column(db.String(500))
     proof_path      = db.Column(db.String(300))  # إثبات الصرف (صورة/PDF)
     notes           = db.Column(db.Text)
+    created_by_user_id = db.Column(db.Integer)
+    created_by_name = db.Column(db.String(100))  # اسم من سجّل العملية (لقطة عند الإنشاء)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):

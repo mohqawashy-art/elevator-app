@@ -120,6 +120,7 @@ def get_report_revenues(db, Revenue, year=None, month=None):
         'tax': r.tax_amount or 0,
         'total': r.total or 0,
         'status': r.status or '',
+        'created_by': (getattr(r, 'created_by_name', None) or '—'),
     } for r in revs]
 
 
@@ -140,6 +141,7 @@ def get_report_expenses(db, Expense, year=None, month=None):
         'responsible': e.responsible or '',
         'pay_method': e.payment_method or '',
         'amount': e.amount or 0,
+        'created_by': (getattr(e, 'created_by_name', None) or '—'),
     } for e in exps]
 
 

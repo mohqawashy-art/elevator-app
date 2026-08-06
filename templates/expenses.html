@@ -256,6 +256,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th class="th-sort" data-sort-col="responsible">المسؤول <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="pay_method">طريقة الدفع <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="amount">المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>) <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="created_by">سجّله <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="notes">ملاحظات <span class="sort-ind"></span></th>
               <th></th>
             </tr>
@@ -404,6 +405,7 @@ function renderTable(data) {
       <td>${D(e.responsible||'—')}</td>
       <td>${D(e.pay_method)}</td>
       <td style="font-family:var(--font-en);color:var(--danger)">${e.amount.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+      <td style="font-size:12px;color:var(--text2)">${D(e.created_by || '—')}</td>
       <td style="color:var(--text3);font-size:11px">${e.notes||'—'}</td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
@@ -428,7 +430,7 @@ function applyFilters() {
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = EXPENSES.filter(e =>
-    (!s || e.code.toLowerCase().includes(s) || (e.description || '').includes(s) || (e.responsible || '').includes(s)) &&
+    (!s || e.code.toLowerCase().includes(s) || (e.description || '').includes(s) || (e.responsible || '').includes(s) || (e.created_by || '').toLowerCase().includes(s)) &&
     (!tp || e.expense_type === tp) &&
     (!pm || e.pay_method === pm) &&
     (!fd || e.expense_date >= fd) &&
@@ -588,8 +590,8 @@ function deleteExpense(id) {
 }
 
 function exportCSV() {
-  const rows = [['الكود', 'التاريخ', 'النوع', 'الوصف', 'المسؤول', 'طريقة الدفع', 'المبلغ']];
-  filtered.forEach(e => rows.push([e.code, e.expense_date, e.expense_type, e.description, e.responsible, e.pay_method, e.amount]));
+  const rows = [['الكود', 'التاريخ', 'النوع', 'الوصف', 'المسؤول', 'طريقة الدفع', 'المبلغ', 'سجّله']];
+  filtered.forEach(e => rows.push([e.code, e.expense_date, e.expense_type, e.description, e.responsible, e.pay_method, e.amount, e.created_by || '']));
   const csv = rows.map(r => r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));

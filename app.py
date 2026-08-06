@@ -258,6 +258,35 @@ def current_user():
     return user
 
 
+def stamp_created_by(row) -> None:
+    """يثبّت من أنشأ السجل مرة واحدة (لا يُستبدل عند التعديل)."""
+    if getattr(row, 'created_by_user_id', None) or getattr(row, 'created_by_name', None):
+        return
+    user = current_user()
+    if not user:
+        return
+    if hasattr(row, 'created_by_user_id'):
+        row.created_by_user_id = user.id
+    if hasattr(row, 'created_by_name'):
+        name = (getattr(user, 'full_name', None) or getattr(user, 'username', None) or '').strip()
+        row.created_by_name = (name or f'#{user.id}')[:100]
+
+
+def created_by_display(row) -> str:
+    name = (getattr(row, 'created_by_name', None) or '').strip()
+    if name:
+        return name
+    uid = getattr(row, 'created_by_user_id', None)
+    if not uid:
+        return ''
+    try:
+        user = db.session.get(User, uid)
+    except Exception:
+        return ''
+    if not user:
+        return ''
+    return (user.full_name or user.username or f'#{uid}').strip()
+
 def bump_user_session_version(user, *, bind_current_session: bool = False) -> int:
     """يزيد رقم جلسة المستخدم (يُبطل الكوكيز القديمة)."""
     ver = int(getattr(user, 'session_version', None) or 0) + 1
@@ -1074,6 +1103,7 @@ def expense_to_js_dict(e):
         'proof_url': _upload_url_fast(e.proof_path) if getattr(e, 'proof_path', None) else '',
         'has_proof': bool(getattr(e, 'proof_path', None)),
         'notes': e.notes or '',
+        'created_by': created_by_display(e) or '—',
     }
 
 
@@ -1096,6 +1126,7 @@ def revenue_to_js_dict(r):
         'proof_url': _upload_url_fast(r.proof_path) if getattr(r, 'proof_path', None) else '',
         'has_proof': bool(getattr(r, 'proof_path', None)),
         'notes': r.notes or '',
+        'created_by': created_by_display(r) or '—',
     }
 
 
@@ -8069,6 +8100,7 @@ def _revenue_from_form(form, existing: Revenue | None = None):
         return existing
     r = Revenue(code=next_code(Revenue, 'REV-', digits=3), **data)
     assign_organization(r)
+    stamp_created_by(r)
     db.session.add(r)
     return r
 
@@ -8195,6 +8227,7 @@ def expense_add():
             notes          = request.form.get('notes',''),
         )
         assign_organization(e)
+        stamp_created_by(e)
         db.session.add(e)
         db.session.flush()
         _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)

@@ -73,9 +73,9 @@ var __lcReportDomPager = null;
       case 'report-faults':
         return [row.code, row.customer, row.elevator, row.fault_type, row.priority, row.technician, row.response, row.status, row.billed];
       case 'report-revenues':
-        return [row.code, joinClientContract(row), row.date, row.revenue_type, row.pay_method, row.total, row.status];
+        return [row.code, joinClientContract(row), row.date, row.revenue_type, row.pay_method, row.total, row.status, row.created_by || '—'];
       case 'report-expenses':
-        return [row.code, row.date, row.expense_type, row.description, row.responsible, row.pay_method, row.amount];
+        return [row.code, row.date, row.expense_type, row.description, row.responsible, row.pay_method, row.amount, row.created_by || '—'];
       case 'report-invoices':
         return [row.code, row.invoice_type, joinClientContract(row), row.date, row.description, row.total, row.pay_method, row.status];
       case 'report-parts':

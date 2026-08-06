@@ -312,6 +312,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th class="th-sort" data-sort-col="pay_method">طريقة الدفع <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="total">المبلغ (⃁) <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="created_by">سجّله <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="notes">ملاحظات <span class="sort-ind"></span></th>
               <th></th>
             </tr>
@@ -539,6 +540,7 @@ function renderTable(data) {
       <td>${D(r.pay_method || '—')}</td>
       <td style="font-family:var(--font-en);color:var(--success)">${D(Number(r.total || 0).toLocaleString('en-US') + ' ⃁')}</td>
       <td><span class="badge ${STATUS_BADGE[r.status]||'badge-active'}">${D(r.status)}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${escHtml(r.created_by || '—')}</td>
       <td style="color:var(--text3);font-size:11px">${r.notes||'—'}</td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
@@ -565,7 +567,7 @@ function applyFilters() {
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = REVENUES.filter(r =>
-    (!s || r.code.toLowerCase().includes(s) || r.customer.toLowerCase().includes(s)) &&
+    (!s || r.code.toLowerCase().includes(s) || r.customer.toLowerCase().includes(s) || (r.created_by || '').toLowerCase().includes(s)) &&
     (!tp || r.revenue_type === tp) &&
     (!pm || r.pay_method === pm) &&
     (!st || r.status === st || (st === 'محصل' && r.status === 'محصّل') || (st === 'غير محصل' && r.status === 'غير محصّل')) &&
@@ -975,6 +977,7 @@ function viewRevenue(id) {
       <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${r.reference||'—'}</div></div>
       <div class="view-item"><div class="view-label">إثبات الدفع</div><div class="view-val">${r.proof_url ? '<a href="'+r.proof_url+'" target="_blank" rel="noopener">عرض المستند</a>' + (window.__LC_IS_ADMIN ? ' <button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="removeRevenueProof(' + r.id + ', event)">حذف المرفق</button>' : '') : '—'}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[r.status]||'badge-active'}">${r.status}</span></div></div>
+      <div class="view-item"><div class="view-label">سجّله</div><div class="view-val">${escHtml(r.created_by || '—')}</div></div>
       ${r.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${r.notes}</div></div>`:''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
@@ -1064,8 +1067,8 @@ function confirmDelete() {
 
 function exportCSV() { exportExcel(); }
 function exportExcel() {
-  const rows = [['الكود', 'العميل', 'العقد', 'التاريخ', 'النوع', 'طريقة الدفع', 'المبلغ', 'الضريبة', 'الإجمالي', 'الحالة']];
-  filtered.forEach(r => rows.push([r.code, r.customer, r.contract, r.revenue_date, r.revenue_type, r.pay_method, r.amount, r.tax_amount, r.total, r.status]));
+  const rows = [['الكود', 'العميل', 'العقد', 'التاريخ', 'النوع', 'طريقة الدفع', 'المبلغ', 'الضريبة', 'الإجمالي', 'الحالة', 'سجّله']];
+  filtered.forEach(r => rows.push([r.code, r.customer, r.contract, r.revenue_date, r.revenue_type, r.pay_method, r.amount, r.tax_amount, r.total, r.status, r.created_by || '']));
   const csv = rows.map(r => r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));

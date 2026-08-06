@@ -435,6 +435,7 @@ def _sync_revenues():
             'status': r.status or 'محصّل',
             'reference': r.reference or '',
             'notes': r.notes or '',
+            'created_by': (getattr(r, 'created_by_name', None) or '—'),
         } for r in revs],
         'CUSTOMERS': [{'id': c.id, 'name': c.name, 'code': c.code} for c in customers],
     }
@@ -454,6 +455,7 @@ def _sync_expenses():
             'amount': e.amount or 0,
             'reference': e.reference or '',
             'notes': e.notes or '',
+            'created_by': (getattr(e, 'created_by_name', None) or '—'),
         } for e in expenses],
     }
 
