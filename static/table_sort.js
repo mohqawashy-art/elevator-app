@@ -8,7 +8,14 @@
     if (code == null || code === '') return 0;
     var parts = String(code).match(/\d+/g);
     if (!parts || !parts.length) return String(code).toLowerCase();
+    // آخر مجموعة أرقام = الرقم التسلسلي (VI-00002 → 2، VI-00011 → 11)
     return parseInt(parts[parts.length - 1], 10) || 0;
+  }
+
+  function naturalCodeCompare(a, b) {
+    var sa = String(a == null ? '' : a);
+    var sb = String(b == null ? '' : b);
+    return sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' });
   }
 
   function parseDate(d) {
@@ -87,6 +94,9 @@
       return list.slice().sort(function (a, b) {
         var va = normalize(col, getValue(a, col));
         var vb = normalize(col, getValue(b, col));
+        if (isCodeCol(col, options)) {
+          return naturalCodeCompare(getValue(a, col), getValue(b, col)) * mul;
+        }
         if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * mul;
         return String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: 'base' }) * mul;
       });

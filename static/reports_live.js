@@ -38,6 +38,17 @@ var __lcReportDomPager = null;
 
   var MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
+  function naturalCodeSortRows(rows, field) {
+    field = field || 'code';
+    return (rows || []).slice().sort(function (a, b) {
+      return String((a && a[field]) || '').localeCompare(
+        String((b && b[field]) || ''),
+        undefined,
+        { numeric: true, sensitivity: 'base' }
+      );
+    });
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -526,7 +537,11 @@ function hookReportPagination(reset) {
   }
 
   function applyReportPayload(reportId, data) {
-    __lcReportData = Array.isArray(data) ? data : [];
+    var rows = Array.isArray(data) ? data : [];
+    if (reportId === 'report-maintenance' || reportId === 'report-faults' || reportId === 'report-elevators') {
+      rows = naturalCodeSortRows(rows, 'code');
+    }
+    __lcReportData = rows;
     __lcReportId = reportId;
     __lcReportLoaded = true;
     populateFilterSelects(reportId, __lcReportData);

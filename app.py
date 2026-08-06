@@ -6265,7 +6265,12 @@ def maintenance_visits():
             joinedload(MaintenanceVisit.technician),
             joinedload(MaintenanceVisit.linked_fault),
         )
-    ).order_by(MaintenanceVisit.visit_date.desc()).all()
+    ).all()
+    from entity_links import natural_code_key
+    visits = sorted(
+        visits,
+        key=lambda v: (natural_code_key(v.code), v.visit_date or date.min, v.id or 0),
+    )
     elevators = tenant_query(Elevator).options(joinedload(Elevator.customer)).all()
     customers = tenant_query(Customer).order_by(Customer.name).all()
     contracts = tenant_query(Contract).order_by(Contract.start_date.desc()).all()

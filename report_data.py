@@ -70,11 +70,21 @@ def get_report_technicians(db, Technician):
 
 
 def get_report_visits(db, MaintenanceVisit):
-    visits = tenant_query(MaintenanceVisit).order_by(MaintenanceVisit.visit_date.desc()).all()
+    from entity_links import natural_code_key
+
+    visits = tenant_query(MaintenanceVisit).all()
+    visits = sorted(
+        visits,
+        key=lambda v: (
+            natural_code_key(v.code),
+            v.visit_date or date.min,
+            v.id or 0,
+        ),
+    )
     return [{
         'code': v.code,
-        'customer': v.elevator.customer.name,
-        'elevator': v.elevator.code,
+        'customer': v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
+        'elevator': v.elevator.code if v.elevator else '—',
         'technician': v.technician.name if v.technician else '—',
         'visit_type': v.visit_type or '',
         'visit_date': str(v.visit_date or ''),
