@@ -535,24 +535,23 @@ def _is_maintenance_contract(c: Contract) -> bool:
 
 
 def _elevators_for_contract(contract: Contract) -> list[Elevator]:
+    from entity_links import sort_by_natural_code
+
     links = tenant_query(ContractElevator).filter_by(contract_id=contract.id).all()
     if links:
         ids = [lk.elevator_id for lk in links]
-        return tenant_query(Elevator).filter(Elevator.id.in_(ids)).order_by(Elevator.code).all()
-    return (
-        tenant_query(Elevator).filter_by(customer_id=contract.customer_id)
-        .order_by(Elevator.code)
-        .all()
-    )
+        rows = tenant_query(Elevator).filter(Elevator.id.in_(ids)).all()
+        return sort_by_natural_code(rows)
+    rows = tenant_query(Elevator).filter_by(customer_id=contract.customer_id).all()
+    return sort_by_natural_code(rows)
 
 
 def _elevators_for_maintenance_plan(contract: Contract) -> list[Elevator]:
     """زيارة دورية لكل مصعد — وليس زيارة واحدة للعميل."""
-    return (
-        tenant_query(Elevator).filter_by(customer_id=contract.customer_id)
-        .order_by(Elevator.code)
-        .all()
-    )
+    from entity_links import sort_by_natural_code
+
+    rows = tenant_query(Elevator).filter_by(customer_id=contract.customer_id).all()
+    return sort_by_natural_code(rows)
 
 
 def _existing_plan_codes(plan_month: str) -> set[str]:
@@ -797,6 +796,8 @@ def list_districts() -> list[str]:
 
 
 def elevators_for_district(district: str) -> list[dict]:
+    from entity_links import sort_by_natural_code
+
     seen: set[int] = set()
     rows: list[dict] = []
     for e in tenant_query(Elevator).join(Customer).order_by(Customer.name).all():
@@ -814,7 +815,7 @@ def elevators_for_district(district: str) -> list[dict]:
             'customer_code': c.code if c else '',
             'district': district,
         })
-    return rows
+    return sort_by_natural_code(rows, code_attr='elevator_code')
 
 
 def get_plan(plan_month: str) -> dict:
@@ -1100,6 +1101,8 @@ def assign_visit_technician(visit_id: int, technician_id: int) -> None:
 
 
 def _reorder_routes(plan_month: str) -> None:
+    from entity_links import natural_code_key
+
     visits = sorted(
         _visits_for_plan_month(plan_month),
         key=lambda v: (v.technician_id or 0, v.visit_date or date.min),
@@ -1108,7 +1111,14 @@ def _reorder_routes(plan_month: str) -> None:
     for v in visits:
         by_tech_day[(v.technician_id, v.visit_date)].append(v)
     for group in by_tech_day.values():
-        for i, v in enumerate(sorted(group, key=lambda x: x.id), start=1):
+        ordered = sorted(
+            group,
+            key=lambda x: (
+                natural_code_key(x.elevator.code if x.elevator else ''),
+                x.id or 0,
+            ),
+        )
+        for i, v in enumerate(ordered, start=1):
             v.route_order = i
     db.session.commit()
 

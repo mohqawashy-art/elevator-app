@@ -21,6 +21,30 @@ def normalize_code(code: str, prefix: str) -> str:
     return code
 
 
+def natural_code_key(code: str | None):
+    """مفتاح ترتيب طبيعي: EL-2 قبل EL-11 (وليس ترتيب نصي)."""
+    text = str(code or '')
+    parts = re.split(r'(\d+)', text)
+    key = []
+    for part in parts:
+        if not part:
+            continue
+        if part.isdigit():
+            key.append((0, int(part)))
+        else:
+            key.append((1, part.casefold()))
+    return tuple(key) if key else ((1, ''),)
+
+
+def sort_by_natural_code(rows, *, code_attr: str = 'code'):
+    """ترتيب قائمة كائنات أو dict حسب كود طبيعي."""
+    def _code(row):
+        if isinstance(row, dict):
+            return row.get(code_attr) or row.get('elevator') or row.get('elevator_code') or ''
+        return getattr(row, code_attr, None) or ''
+    return sorted(rows, key=lambda row: natural_code_key(_code(row)))
+
+
 def lookup_visit(code: str) -> MaintenanceVisit | None:
     norm = normalize_code(code, 'VI-')
     if not norm:

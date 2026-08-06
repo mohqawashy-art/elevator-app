@@ -883,6 +883,7 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'visit_date',
   defaultDir: 'asc',
   dateCols: ['visit_date'],
+  codeCols: ['code', 'elevator'],
   getters: {
     customer: function (v) {
       return window.LiftCoreDisplay ? LiftCoreDisplay.name(v.customer, v.customer_name_en) : v.customer;
@@ -1743,7 +1744,7 @@ function renderPlanDistricts() {
     const visits = byDate[day].slice().sort((a, b) => {
       const ro = (a.route_order || 0) - (b.route_order || 0);
       if (ro) return ro;
-      return String(a.elevator || '').localeCompare(String(b.elevator || ''), 'ar');
+      return String(a.elevator || '').localeCompare(String(b.elevator || ''), undefined, { numeric: true, sensitivity: 'base' });
     });
     const districts = [...new Set(visits.map(v => v.district || 'غير محدد'))].join('، ');
     const planRowHead = `<div class="plan-visit-head" style="display:flex;align-items:center;gap:8px;padding:0 0 6px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);margin-bottom:4px">

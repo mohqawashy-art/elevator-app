@@ -10810,9 +10810,13 @@ def api_client_annual(customer_id):
 
     elev_ids = [ce.elevator_id for ce in (ct.elevators or [])]
     elevators = (
-        tenant_query(Elevator).filter(Elevator.id.in_(elev_ids)).order_by(Elevator.code).all()
+        tenant_query(Elevator).filter(Elevator.id.in_(elev_ids)).all()
         if elev_ids else []
     )
+    if elevators:
+        from entity_links import sort_by_natural_code
+        elevators = sort_by_natural_code(elevators)
+
 
     # الزيارات المرتبطة بالعقد وداخل فترة التعاقد
     visits_q = tenant_query(MaintenanceVisit).filter(
@@ -10829,9 +10833,17 @@ def api_client_annual(customer_id):
         ))
     else:
         visits_q = visits_q.filter(MaintenanceVisit.contract_id == ct.id)
-    visits = visits_q.order_by(
-        MaintenanceVisit.visit_date.asc(), MaintenanceVisit.id.asc()
-    ).all()
+    visits = visits_q.all()
+    if visits:
+        from entity_links import natural_code_key
+        visits = sorted(
+            visits,
+            key=lambda v: (
+                v.visit_date or date.min,
+                natural_code_key(v.elevator.code if v.elevator else ''),
+                v.id or 0,
+            ),
+        )
 
     # الأعطال على مصاعد العقد داخل فترة التعاقد
     faults = []
