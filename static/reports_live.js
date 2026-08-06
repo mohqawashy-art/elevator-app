@@ -798,13 +798,18 @@ function hookReportPagination(reset) {
   function initAnnualReportSelectors() {
     var clientSel = document.getElementById('sel-client');
     var yearSel = document.getElementById('sel-year');
+    var contractSel = document.getElementById('sel-contract');
     if (yearSel && !yearSel.dataset.liveReady) {
       var cur = new Date().getFullYear();
       yearSel.innerHTML = '';
       for (var y = cur; y >= cur - 6; y--) {
-        yearSel.innerHTML += '<option value="' + y + '">' + y + '</option>';
+        yearSel.innerHTML += '<option value="' + y + '"' + (y === cur ? ' selected' : '') + '>' + y + '</option>';
       }
       yearSel.dataset.liveReady = '1';
+    }
+    if (contractSel && !contractSel.dataset.liveReady) {
+      contractSel.innerHTML = '<option value="">اختر العقد أولاً</option>';
+      contractSel.dataset.liveReady = '1';
     }
     if (!clientSel || clientSel.dataset.liveReady) return;
     var list = global.__LC_ANNUAL_CUSTOMERS || [];
@@ -817,46 +822,134 @@ function hookReportPagination(reset) {
 
     var params = new URLSearchParams(global.location.search);
     var pre = params.get('customer_id') || params.get('customer');
+    var preContract = params.get('contract_id') || params.get('contract');
     if (pre) {
       clientSel.value = pre;
-      generateAnnualReport();
+      loadAnnualContracts(preContract).then(function () {
+        if (preContract && document.getElementById('sel-contract')) {
+          document.getElementById('sel-contract').value = String(preContract);
+          generateAnnualReport();
+        }
+      });
     }
+  }
+
+  function fillAnnualContractOptions(contracts, preferId) {
+    var contractSel = document.getElementById('sel-contract');
+    if (!contractSel) return;
+    if (!contracts || !contracts.length) {
+      contractSel.innerHTML = '<option value="">لا توجد عقود في هذه الفترة</option>';
+      return;
+    }
+    contractSel.innerHTML = '<option value="">اختر العقد / فترة التعاقد</option>' +
+      contracts.map(function (ct) {
+        var label = esc(ct.code) + ' — ' + esc(ct.start || '؟') + ' → ' + esc(ct.end || '؟');
+        if (ct.status) label += ' (' + esc(ct.status) + ')';
+        return '<option value="' + ct.id + '">' + label + '</option>';
+      }).join('');
+    if (preferId) {
+      contractSel.value = String(preferId);
+      if (contractSel.value !== String(preferId) && contracts[0]) {
+        contractSel.value = String(contracts[0].id);
+      }
+    } else if (contracts.length === 1) {
+      contractSel.value = String(contracts[0].id);
+    }
+  }
+
+  async function loadAnnualContracts(preferId) {
+    var clientId = document.getElementById('sel-client') && document.getElementById('sel-client').value;
+    var year = document.getElementById('sel-year') && document.getElementById('sel-year').value;
+    var contractSel = document.getElementById('sel-contract');
+    if (!clientId) {
+      if (contractSel) contractSel.innerHTML = '<option value="">اختر العميل أولاً</option>';
+      return [];
+    }
+    try {
+      var url = '/api/reports/client-annual/' + encodeURIComponent(clientId) +
+        '?year=' + encodeURIComponent(year || '');
+      var res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      var contracts = data.contracts || [];
+      fillAnnualContractOptions(contracts, preferId);
+      return contracts;
+    } catch (e) {
+      console.error('Annual contracts load error:', e);
+      if (contractSel) contractSel.innerHTML = '<option value="">تعذّر تحميل العقود</option>';
+      return [];
+    }
+  }
+
+  async function onAnnualClientChange() {
+    await loadAnnualContracts();
+    var contractSel = document.getElementById('sel-contract');
+    if (contractSel && contractSel.value) generateAnnualReport();
+    else hideAnnualReport();
+  }
+
+  async function onAnnualYearChange() {
+    var prev = document.getElementById('sel-contract') && document.getElementById('sel-contract').value;
+    await loadAnnualContracts(prev);
+    var contractSel = document.getElementById('sel-contract');
+    if (contractSel && contractSel.value) generateAnnualReport();
+    else hideAnnualReport();
+  }
+
+  function hideAnnualReport() {
+    var container = document.getElementById('report-container');
+    var hint = document.getElementById('annual-empty-hint');
+    if (container) container.style.display = 'none';
+    if (hint) hint.style.display = '';
   }
 
   async function generateAnnualReport() {
     var clientId = document.getElementById('sel-client') && document.getElementById('sel-client').value;
     var year = document.getElementById('sel-year') && document.getElementById('sel-year').value;
-    if (!clientId) return;
+    var contractId = document.getElementById('sel-contract') && document.getElementById('sel-contract').value;
+    if (!clientId) {
+      alert('اختر العميل أولاً');
+      return;
+    }
+    if (!contractId) {
+      alert('اختر العقد / فترة التعاقد');
+      hideAnnualReport();
+      return;
+    }
 
     try {
-      var res = await fetch('/api/reports/client-annual/' + encodeURIComponent(clientId) + '?year=' + encodeURIComponent(year || new Date().getFullYear()));
+      var url = '/api/reports/client-annual/' + encodeURIComponent(clientId) +
+        '?contract_id=' + encodeURIComponent(contractId) +
+        '&year=' + encodeURIComponent(year || '');
+      var res = await fetch(url);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
+      if (data.error) throw new Error(data.error);
       var c = data.customer || {};
       var stats = data.stats || {};
-      var contracts = data.contracts || [];
+      var contract = data.contract || (data.contracts || [])[0] || {};
 
       setText('r-client-name', c.name || '—');
       setText('r-client-address', c.address || c.city || '—');
-      var contractCode = contracts[0] ? contracts[0].code : '—';
-      setText('r-contract-no', contractCode);
-      if (contracts[0]) {
-        setText('r-contract-period', (contracts[0].start || '—') + ' → ' + (contracts[0].end || '—'));
-      }
-      var elev = (data.elevators && data.elevators[0]) || {};
-      setText('r-elev-type', elev.type || '—');
-      setText('r-elev-model', elev.brand || '—');
-      setText('r-elev-capacity', elev.capacity || '—');
-      setText('r-elev-no', elev.code || '—');
+      setText('r-contract-no', contract.code || '—');
+      setText('r-contract-period', (contract.start || '—') + ' → ' + (contract.end || '—'));
 
-      setText('r-planned-visits', stats.planned_visits);
-      setText('r-done-visits', stats.done_visits);
+      var elevs = data.elevators || [];
+      var elev = elevs[0] || {};
+      var elevCodes = elevs.map(function (e) { return e.code; }).filter(Boolean).join('، ');
+      setText('r-elev-type', elev.type || '—');
+      setText('r-elev-model', elev.model || elev.brand || '—');
+      setText('r-elev-capacity', elev.capacity || '—');
+      setText('r-elev-no', elevCodes || elev.code || '—');
+
+      setText('r-planned-visits', stats.planned_visits != null ? stats.planned_visits : '—');
+      setText('r-done-visits', stats.done_visits != null ? stats.done_visits : '—');
       setText('r-compliance', (stats.compliance || 0) + '%');
-      setText('r-faults-count', stats.total_faults);
+      setText('r-faults-count', stats.total_faults != null ? stats.total_faults : '—');
       setText('r-faults-done', (stats.fault_rate || 0) + '%');
-      setText('s-visits', stats.done_visits);
+      setText('s-visits', stats.done_visits != null ? stats.done_visits : '—');
       setText('s-compliance', (stats.compliance || 0) + '%');
-      setText('s-faults', stats.total_faults);
+      setText('s-faults', stats.total_faults != null ? stats.total_faults : '—');
       setText('s-resolve', (stats.fault_rate || 0) + '%');
 
       var visitsEl = document.getElementById('r-visits-table');
@@ -865,7 +958,7 @@ function hookReportPagination(reset) {
           ? data.visits.map(function (v, i) {
             return '<tr><td class="num">' + (i + 1) + '</td><td class="num">' + esc(v.date) + '</td><td>' + esc(v.tech) + '</td><td>' + esc(v.type) + '</td><td>' + esc(v.works) + '</td><td>' + esc(v.status) + '</td></tr>';
           }).join('')
-          : '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:12px">لا توجد زيارات</td></tr>';
+          : '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:12px">لا توجد زيارات ضمن فترة هذا العقد</td></tr>';
       }
 
       var faultsEl = document.getElementById('r-faults-table');
@@ -874,7 +967,7 @@ function hookReportPagination(reset) {
           ? data.faults.map(function (f, i) {
             return '<tr><td class="num">' + (i + 1) + '</td><td>' + esc(f.type) + '</td><td class="num">' + esc(f.date) + '</td><td>' + esc(f.status) + '</td></tr>';
           }).join('')
-          : '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:12px">لا توجد أعطال</td></tr>';
+          : '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:12px">لا توجد أعطال ضمن فترة هذا العقد</td></tr>';
       }
 
       var partsEl = document.getElementById('r-parts-table');
@@ -883,11 +976,15 @@ function hookReportPagination(reset) {
           ? data.parts.map(function (p) {
             return '<tr><td>' + esc(p.description) + '</td><td class="num">' + esc(p.quantity) + '</td><td class="num">' + esc(p.date) + '</td></tr>';
           }).join('')
-          : '<tr><td colspan="3" style="text-align:center;color:#aaa;padding:12px">لا توجد قطع</td></tr>';
+          : '<tr><td colspan="3" style="text-align:center;color:#aaa;padding:12px">لا توجد قطع ضمن فترة هذا العقد</td></tr>';
       }
 
       setText('r-print-date', 'تاريخ التقرير: ' + new Date().toLocaleDateString('ar-SA'));
-      setText('toolbar-title', 'التقرير الختامي — ' + (c.name || '') + ' — ' + year);
+      setText(
+        'toolbar-title',
+        'التقرير الختامي — ' + (c.name || '') + ' — ' + (contract.code || '') +
+          ' (' + (contract.start || '') + ' → ' + (contract.end || '') + ')'
+      );
 
       var container = document.getElementById('report-container');
       var hint = document.getElementById('annual-empty-hint');
@@ -898,7 +995,7 @@ function hookReportPagination(reset) {
       if (hint) hint.style.display = 'none';
     } catch (e) {
       console.error('Annual report error:', e);
-      alert('تعذّر تحميل التقرير السنوي');
+      alert('تعذّر تحميل التقرير السنوي' + (e && e.message ? ': ' + e.message : ''));
     }
   }
 
@@ -982,6 +1079,8 @@ function hookReportPagination(reset) {
   global.loadReportData = loadReportData;
   global.loadDashboardReport = loadDashboardReport;
   global.generateAnnualReport = generateAnnualReport;
+  global.onAnnualClientChange = onAnnualClientChange;
+  global.onAnnualYearChange = onAnnualYearChange;
   global.generateReport = generateAnnualReport;
   global.exportReportExcel = exportReportExcel;
   global.loadData = function () { loadDashboardReport(); };

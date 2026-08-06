@@ -64,7 +64,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 .page-title{font-size:18px;font-weight:600;color:var(--text1)}
 .page-actions{display:flex;gap:8px;flex-wrap:wrap}
 .filter-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:20px}
-.filter-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end}
+.filter-row{display:grid;grid-template-columns:1.2fr 0.7fr 1.6fr auto;gap:12px;align-items:end}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:12px;font-weight:500;color:var(--text2)}
 .field select,.field input{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;transition:var(--trans);font-family:var(--font-ar);padding:9px 12px;width:100%}
@@ -212,16 +212,22 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
       <div class="filter-row">
         <div class="field">
           <label>العميل</label>
-          <select id="sel-client" onchange="generateAnnualReport()">
+          <select id="sel-client" onchange="onAnnualClientChange()">
             <option value="">اختر العميل</option>
           </select>
         </div>
         <div class="field">
-          <label>السنة</label>
-          <select id="sel-year" onchange="generateAnnualReport()">
+          <label>السنة (لفرز العقود)</label>
+          <select id="sel-year" onchange="onAnnualYearChange()">
             {% for y in report_years %}
             <option value="{{ y }}"{% if y == current_year %} selected{% endif %}>{{ y }}</option>
             {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>العقد / فترة التعاقد</label>
+          <select id="sel-contract" onchange="generateAnnualReport()">
+            <option value="">اختر العقد أولاً</option>
           </select>
         </div>
         <div>
@@ -237,7 +243,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
     <div id="annual-empty-hint" class="annual-empty-hint">
       <div class="annual-empty-icon">📋</div>
       <h2>التقرير الختامي لعقد الصيانة السنوي</h2>
-      <p>اختر العميل والسنة من الأعلى، ثم اضغط <strong>توليد التقرير</strong> لعرض التقرير الكامل والطباعة أو التصدير PDF.</p>
+      <p>اختر العميل ثم <strong>العقد / فترة التعاقد</strong>، ثم اضغط <strong>توليد التقرير</strong> لعرض نتيجة ذلك العقد فقط.</p>
     </div>
 
     <!-- التقرير -->
@@ -500,6 +506,6 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 function setLang(l){document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');document.getElementById('btn-ar').classList.toggle('active',l==='ar');document.getElementById('btn-en').classList.toggle('active',l==='en');}
 </script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=5"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=6"></script>
 </body>
 </html>

@@ -10734,88 +10734,200 @@ def api_report_financial_health():
 
 @app.route('/api/reports/client-annual/<int:customer_id>')
 def api_client_annual(customer_id):
-    from sqlalchemy import extract
-    year = int(request.args.get('year', datetime.now().year))
+    """التقرير الختامي لعقد صيانة — يُفلتر برقم العقد وفترة التعاقد فقط."""
+    from sqlalchemy import and_, or_
+
     c = tenant_get_or_404(Customer, customer_id)
+    contract_id = request.args.get('contract_id', type=int)
+    year_raw = (request.args.get('year') or '').strip()
+    year = None
+    if year_raw:
+        try:
+            year = int(year_raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'سنة غير صالحة'}), 400
 
-    # العقود
-    contracts = tenant_query(Contract).filter_by(customer_id=customer_id).all()
+    all_contracts = (
+        tenant_query(Contract)
+        .filter_by(customer_id=customer_id)
+        .order_by(Contract.start_date.desc(), Contract.id.desc())
+        .all()
+    )
 
-    # الزيارات
-    visits = tenant_query(MaintenanceVisit).join(Elevator).filter(
-        Elevator.customer_id == customer_id,
-        extract('year', MaintenanceVisit.visit_date) == year
+    def _contract_row(ct):
+        return {
+            'id': ct.id,
+            'code': ct.code,
+            'type': ct.contract_type or '',
+            'start': str(ct.start_date or ''),
+            'end': str(ct.end_date or ''),
+            'total': ct.total or 0,
+            'status': contract_display_status(ct),
+            'visits_planned': int(ct.visits_per_month or 0),
+        }
+
+    if year:
+        period_start = date(year, 1, 1)
+        period_end = date(year, 12, 31)
+        contracts_for_year = [
+            ct for ct in all_contracts
+            if ct.start_date and ct.end_date
+            and ct.start_date <= period_end
+            and ct.end_date >= period_start
+        ]
+    else:
+        contracts_for_year = all_contracts
+
+    contracts_payload = [_contract_row(ct) for ct in contracts_for_year]
+
+    # بدون عقد محدد: أعد قائمة العقود فقط لاختيار فترة التعاقد
+    if not contract_id:
+        return jsonify({
+            'customer': {
+                'code': c.code,
+                'name': c.name,
+                'city': c.city or '',
+                'address': c.address or '',
+                'phone': c.phone or '',
+            },
+            'contracts': contracts_payload,
+            'needs_contract': True,
+            'stats': None,
+            'elevators': [],
+            'visits': [],
+            'faults': [],
+            'parts': [],
+        })
+
+    ct = next((x for x in all_contracts if x.id == contract_id), None)
+    if not ct:
+        return jsonify({'error': 'العقد غير موجود لهذا العميل'}), 404
+
+    start = ct.start_date
+    end = ct.end_date
+    if not start or not end:
+        return jsonify({'error': 'العقد بلا تاريخ بداية/نهاية'}), 400
+
+    elev_ids = [ce.elevator_id for ce in (ct.elevators or [])]
+    elevators = (
+        tenant_query(Elevator).filter(Elevator.id.in_(elev_ids)).order_by(Elevator.code).all()
+        if elev_ids else []
+    )
+
+    # الزيارات المرتبطة بالعقد وداخل فترة التعاقد
+    visits_q = tenant_query(MaintenanceVisit).filter(
+        MaintenanceVisit.visit_date >= start,
+        MaintenanceVisit.visit_date <= end,
+    )
+    if elev_ids:
+        visits_q = visits_q.filter(or_(
+            MaintenanceVisit.contract_id == ct.id,
+            and_(
+                MaintenanceVisit.contract_id.is_(None),
+                MaintenanceVisit.elevator_id.in_(elev_ids),
+            ),
+        ))
+    else:
+        visits_q = visits_q.filter(MaintenanceVisit.contract_id == ct.id)
+    visits = visits_q.order_by(
+        MaintenanceVisit.visit_date.asc(), MaintenanceVisit.id.asc()
     ).all()
 
-    # الأعطال
-    faults = tenant_query(Fault).join(Elevator).filter(
-        Elevator.customer_id == customer_id,
-        extract('year', Fault.reported_at) == year
-    ).all()
+    # الأعطال على مصاعد العقد داخل فترة التعاقد
+    faults = []
+    if elev_ids:
+        faults = (
+            tenant_query(Fault)
+            .filter(
+                Fault.elevator_id.in_(elev_ids),
+                Fault.reported_at.isnot(None),
+                Fault.reported_at >= datetime.combine(start, datetime.min.time()),
+                Fault.reported_at <= datetime.combine(end, datetime.max.time()),
+            )
+            .order_by(Fault.reported_at.asc())
+            .all()
+        )
 
-    # الإيرادات
-    revenues = tenant_query(Revenue).filter(
-        Revenue.customer_id == customer_id,
-        extract('year', Revenue.revenue_date) == year
-    ).all()
+    revenues = (
+        tenant_query(Revenue)
+        .filter(
+            Revenue.contract_id == ct.id,
+            Revenue.revenue_date >= start,
+            Revenue.revenue_date <= end,
+        )
+        .order_by(Revenue.revenue_date.asc())
+        .all()
+    )
 
-    # القطع
-    parts = tenant_query(PartsBilling).filter(
-        PartsBilling.customer_id == customer_id,
-        extract('year', PartsBilling.billing_date) == year
-    ).all()
+    parts = (
+        tenant_query(PartsBilling)
+        .filter(
+            PartsBilling.contract_id == ct.id,
+            PartsBilling.billing_date >= start,
+            PartsBilling.billing_date <= end,
+        )
+        .order_by(PartsBilling.billing_date.asc())
+        .all()
+    )
 
-    planned_visits = len(contracts) * 12  # تقديري
-    done_visits    = len([v for v in visits if v.status == 'مكتملة'])
-    solved_faults  = len([f for f in faults if f.status in ['تم الاصلاح', 'محلول', 'مغلق']])
+    planned_visits = int(ct.visits_per_month or 0)
+    if planned_visits <= 0:
+        # تقدير من المدة إن لم يُحفظ عدد الزيارات
+        months = ct.duration_months or max(
+            1,
+            (end.year - start.year) * 12 + (end.month - start.month) + 1,
+        )
+        planned_visits = months
+    done_visits = len([v for v in visits if (v.status or '') == 'مكتملة'])
+    solved_faults = len([
+        f for f in faults
+        if (f.status or '') in ('تم الاصلاح', 'محلول', 'مغلق')
+    ])
 
     return jsonify({
         'customer': {
-            'code':    c.code,
-            'name':    c.name,
-            'city':    c.city or '',
+            'code': c.code,
+            'name': c.name,
+            'city': c.city or '',
             'address': c.address or '',
-            'phone':   c.phone or '',
+            'phone': c.phone or '',
         },
-        'contracts': [{
-            'code':       ct.code,
-            'type':       ct.contract_type or '',
-            'start':      str(ct.start_date or ''),
-            'end':        str(ct.end_date or ''),
-            'total':      ct.total or 0,
-            'status':     ct.status,
-        } for ct in contracts],
+        'contracts': contracts_payload,
+        'contract': _contract_row(ct),
+        'needs_contract': False,
         'elevators': [{
-            'code':      e.code,
-            'type':      e.elev_type or '',
-            'brand':     e.brand or '',
-            'capacity':  str(e.capacity_kg or '') + ' كجم' if e.capacity_kg else '',
-        } for e in c.elevators],
+            'code': e.code,
+            'type': e.elev_type or '',
+            'brand': e.brand or '',
+            'model': e.model or '',
+            'capacity': (str(e.capacity_kg) + ' كجم') if e.capacity_kg else '',
+        } for e in elevators],
         'stats': {
             'planned_visits': planned_visits,
-            'done_visits':    done_visits,
-            'compliance':     round(done_visits/planned_visits*100) if planned_visits else 0,
-            'total_faults':   len(faults),
-            'solved_faults':  solved_faults,
-            'fault_rate':     round(solved_faults/len(faults)*100) if faults else 100,
-            'total_revenue':  sum(r.total for r in revenues),
+            'done_visits': done_visits,
+            'compliance': round(done_visits / planned_visits * 100) if planned_visits else 0,
+            'total_faults': len(faults),
+            'solved_faults': solved_faults,
+            'fault_rate': round(solved_faults / len(faults) * 100) if faults else 100,
+            'total_revenue': sum(float(r.total or 0) for r in revenues),
         },
         'visits': [{
-            'date':       str(v.visit_date or ''),
-            'tech':       v.technician.name if v.technician else '—',
-            'type':       v.visit_type or '',
-            'works':      v.works_done or '',
-            'status':     v.status,
+            'date': str(v.visit_date or ''),
+            'tech': v.technician.name if v.technician else '—',
+            'type': v.visit_type or '',
+            'works': v.works_done or '',
+            'status': v.status,
+            'code': v.code,
         } for v in visits],
         'faults': [{
-            'type':   f.fault_type or '',
-            'date':   str(f.reported_at.date() if f.reported_at else ''),
+            'type': f.fault_type or '',
+            'date': str(f.reported_at.date() if f.reported_at else ''),
             'status': f.status,
         } for f in faults],
         'parts': [{
             'description': p.description or '',
-            'quantity':    1,
-            'date':        str(p.billing_date or ''),
+            'quantity': 1,
+            'date': str(p.billing_date or ''),
         } for p in parts],
     })
 # =============================================
