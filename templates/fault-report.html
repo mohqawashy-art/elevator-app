@@ -153,7 +153,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="section" style="margin-top:12px">
     <div class="sec-title"><span class="sec-dot"></span> بيانات الزيارة</div>
     <div class="row row-4">
-      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" style="direction:ltr" {% if not editable %}readonly{% endif %}></div>
+      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" style="direction:ltr" {% if not editable or field_times_locked %}readonly{% endif %}></div>
       <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" style="direction:ltr" {% if not editable or field_times_locked %}readonly{% endif %}></div>
       <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" style="direction:ltr" {% if not editable or field_times_locked %}readonly{% endif %}></div>
       <div class="field"><label>الفني المنفذ</label><input type="text" value="{{ technician.name }}" readonly></div>
@@ -271,7 +271,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 <script src="/static/digital-signature.js?v=5"></script>
 <script src="/static/document-signatures.js?v=3"></script>
 <script src="/static/tax_calc.js?v=2"></script>
-<script src="/static/fault-report.js?v=5"></script>
+<script src="/static/fault-report.js?v=3"></script>
 <script>
 const REPORT_CFG = {
   faultId: {{ fault_id }},

@@ -1871,11 +1871,10 @@ def _apply_field_end_timestamp(meta: dict) -> dict:
 
 
 def _preserve_field_start_times(merged: dict, existing: dict | None) -> None:
-    """بعد الدمج — لا تسمح بتغيير وقت البدء المسجَّل تلقائياً.
-    ملاحظة: تاريخ الزيارة (visit_date) يبقى قابلاً للتعديل والحفظ يدوياً."""
+    """بعد الدمج — لا تسمح بتغيير وقت/تاريخ البدء إذا سُجّلا مسبقاً."""
     em = (existing or {}).get('meta') or {}
     meta = merged.setdefault('meta', {})
-    for key in ('arrival_time',):
+    for key in ('visit_date', 'arrival_time'):
         if (em.get(key) or '').strip():
             meta[key] = em[key]
 
