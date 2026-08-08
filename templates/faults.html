@@ -208,7 +208,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .tech-option:hover{background:var(--bg4)}
 .tech-option input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent);flex-shrink:0}
 .field-hint{font-size:11px;color:var(--text3)}
-.fault-datetime-display{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-size:13px;color:var(--text1);min-height:38px;display:flex;align-items:center;line-height:1.5}
 .fault-parts-panel{margin-top:4px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm)}
 .fault-parts-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
 .fault-parts-table th{text-align:right;font-weight:600;color:var(--text2);padding:6px 8px;border-bottom:1px solid var(--border);font-size:11px}
@@ -423,9 +422,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="form-grid">
           <div class="field"><label>كود العطل</label><input type="text" id="f-code" readonly placeholder="يُولَّد تلقائياً" style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg4)"></div>
           <div class="field"><label>تاريخ ووقت الإبلاغ</label>
-            <div id="f-datetime-display" class="fault-datetime-display">—</div>
-            <input type="hidden" id="f-datetime">
-            <span class="field-hint">يُسجّل تلقائياً عند فتح النموذج</span>
+            <input type="datetime-local" id="f-datetime" lang="en-GB" style="direction:ltr;font-family:var(--font-en)">
+            <span class="field-hint">افتراضياً الوقت الحالي — عدّله لإدخال الأعطال القديمة بتاريخها</span>
           </div>
           <div class="field"><label>العميل <span style="color:var(--danger)">*</span></label>
             <select id="f-client-sel" onchange="onCustomerSelected()">
@@ -1055,34 +1053,17 @@ function filterTable() {
 function localDatetimeInputValue(d) {
   d = d || new Date();
   const p = n => String(n).padStart(2, '0');
-  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + p(d.getMinutes());
-}
-
-function formatFaultDatetimeDisplay(d) {
-  if (!(d instanceof Date) || isNaN(d.getTime())) d = new Date();
-  const p = n => String(n).padStart(2, '0');
-  const isEn = window.__LC_LANG === 'en';
-  const days = isEn
-    ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    : ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-  const months = (window.LiftCoreFormat && LiftCoreFormat.MONTHS && LiftCoreFormat.MONTHS()) ||
-    (window.LiftCoreFormat && LiftCoreFormat.AR_MONTHS) || [
-    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-  ];
-  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} — ${p(d.getHours())}:${p(d.getMinutes())}`;
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
 function setFaultReportDatetime(value) {
-  const hidden = document.getElementById('f-datetime');
-  const display = document.getElementById('f-datetime-display');
+  const input = document.getElementById('f-datetime');
   let d = new Date();
   if (value) {
     const parsed = new Date(String(value).replace(' ', 'T'));
     if (!isNaN(parsed.getTime())) d = parsed;
   }
-  if (hidden) hidden.value = localDatetimeInputValue(d);
-  if (display) display.textContent = formatFaultDatetimeDisplay(d);
+  if (input) input.value = localDatetimeInputValue(d);
 }
 
 function openAddModal() {
