@@ -124,6 +124,7 @@ def empty_report_data(template_key: str | None = None) -> dict[str, Any]:
         'items': items,
         'meta': {
             'overall_status': 'جيدة',
+            'visit_date': '',
             'arrival_time': '',
             'end_time': '',
             'tech_notes': '',

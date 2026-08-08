@@ -1964,6 +1964,8 @@ def visit_report_payload(
     template = get_template(template_key)
     meta = report_data.get('meta') or {}
     visit_date_display = (meta.get('visit_date') or '').strip() or str(v.visit_date or '')
+    # اضمن وصول التاريخ للعميل حتى لا يُمسح الحقل للسجلات القديمة
+    meta['visit_date'] = visit_date_display
 
     return {
         'visit_id': v.id,
@@ -2091,6 +2093,12 @@ def save_visit_report(
     obs_parts = [p for p in [issues, parts] if p]
     if obs_parts:
         v.observations = '\n\n'.join(obs_parts)
+    visit_d = (meta.get('visit_date') or '').strip()
+    if visit_d and len(visit_d) >= 10:
+        try:
+            v.visit_date = datetime.strptime(visit_d[:10], '%Y-%m-%d').date()
+        except ValueError:
+            pass
     next_v = (meta.get('next_visit') or '').strip()
     if next_v and len(next_v) >= 10:
         try:

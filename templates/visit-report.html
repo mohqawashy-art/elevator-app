@@ -215,7 +215,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="section">
     <div class="sec-title"><span class="sec-dot"></span> بيانات الزيارة</div>
     <div class="row row-4">
-      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" value="{{ visit_date_display }}" readonly style="direction:ltr"></div>
+      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" value="{{ visit_date_display }}" style="direction:ltr" {% if not editable %}readonly{% endif %}></div>
       <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" style="direction:ltr" readonly></div>
       <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" style="direction:ltr" readonly></div>
       <div class="field"><label>الفني المنفذ</label><input type="text" value="{{ technician.name }}" readonly></div>
