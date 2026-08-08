@@ -1684,6 +1684,7 @@ def fault_report_payload(
     report_data = merge_fault_report(saved, f)
     stats = report_stats(report_data)
     reported = f.reported_at.strftime('%Y-%m-%d %H:%M') if f.reported_at else ''
+    reported_input = f.reported_at.strftime('%Y-%m-%dT%H:%M') if f.reported_at else ''
 
     return {
         'fault_id': f.id,
@@ -1696,6 +1697,7 @@ def fault_report_payload(
             'priority': f.priority or 'عادية',
             'status': f.status or '',
             'reported_at': reported,
+            'reported_at_input': reported_input,
             'client_report': f.client_report or f.description or '',
             'reporter_name': f.reporter_name or '',
             'reporter_phone': f.reporter_phone or '',
@@ -1770,6 +1772,18 @@ def _report_company_name_en() -> str:
     return (settings.company_name_en if settings and settings.company_name_en else '')
 
 
+def _parse_report_datetime(raw):
+    if not raw or not str(raw).strip():
+        return None
+    text = str(raw).strip().replace('Z', '')
+    for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(text[:len('YYYY-MM-DDTHH:MM:SS')], fmt)
+        except ValueError:
+            continue
+    return None
+
+
 def save_fault_report(
     fault_id: int,
     payload: dict,
@@ -1797,6 +1811,11 @@ def save_fault_report(
                 merged['signatures'][key] = sig.get(key) or merged['signatures'].get(key) or ''
         if isinstance(payload.get('photos'), list):
             merged['photos'] = payload['photos']
+
+    if isinstance(payload, dict) and payload.get('reported_at'):
+        new_reported = _parse_report_datetime(payload.get('reported_at'))
+        if new_reported:
+            f.reported_at = new_reported
 
     _preserve_field_start_times(merged, existing)
 
