@@ -149,8 +149,11 @@ def main() -> int:
         print('أضف --yes للتأكيد أو --dry-run للمعاينة')
         return 2
 
+    import json
+
     from flask import g
     from app import app, db, next_code
+    from fault_report import empty_report
     from models import Elevator, Fault, MaintenanceVisit, Organization, Technician
     from tenant_scope import assign_organization
 
@@ -236,6 +239,22 @@ def main() -> int:
                 stats['imported'] += 1
                 continue
 
+            has_time = bool(rec['time'].strip())
+            report = empty_report()
+            report['meta'].update({
+                'visit_date': reported_at.strftime('%Y-%m-%d'),
+                'arrival_time': reported_at.strftime('%H:%M') if has_time else '',
+                'client_description': rec['client_report'],
+                'fault_types': [rec['fault_type']] if rec['fault_type'] else [],
+                'diagnosis': rec['tech_notes'],
+                'action_taken': rec['resolution'],
+                'visit_outcome': 'solved' if status == 'تم الاصلاح' else '',
+                'final_notes': rec['notes'],
+                'contract_type': 'عقد صيانة نشط' if rec['contract_code'] else 'بدون عقد',
+            })
+            if resolved_at:
+                report['meta']['end_time'] = resolved_at.strftime('%H:%M') if has_time else ''
+
             fault = Fault(
                 code=next_code(Fault, 'FA-', digits=5),
                 elevator_id=elevator.id,
@@ -253,6 +272,7 @@ def main() -> int:
                 resolution=rec['resolution'] or None,
                 resolved_at=resolved_at,
                 notes=notes or None,
+                report_json=json.dumps(report, ensure_ascii=False),
             )
             assign_organization(fault)
             db.session.add(fault)
