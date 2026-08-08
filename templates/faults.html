@@ -705,12 +705,25 @@ function elevatorCustomerName(e) {
 }
 
 function elevatorOptionLabel(e) {
-  const name = elevatorCustomerName(e);
+  // القائمة تظهر بعد اختيار العميل، فاسم العميل زائد.
+  // اسم المبنى يُملأ تلقائياً كـ «اسم العميل — كود المصعد»، لذا ننظّفه من التكرار.
+  const custName = elevatorCustomerName(e);
+  const code = (e.code || '').trim();
+  let building = (e.building_name || '').trim();
+  if (custName && building.indexOf(custName) === 0) {
+    building = building.slice(custName.length).replace(/^\s*[—-]\s*/, '').trim();
+  }
+  if (building) {
+    building = building
+      .split('—')
+      .map(s => s.trim())
+      .filter(s => s && s !== code && s !== custName)
+      .join(' — ');
+  }
   const parts = [];
-  if (name) parts.push(name);
-  if (e.code) parts.push(e.code);
-  if (e.building_name) parts.push(e.building_name);
-  return parts.length ? parts.join(' — ') : 'مصعد';
+  if (code) parts.push(code);
+  if (building && building !== code) parts.push(building);
+  return parts.length ? parts.join(' — ') : (custName || 'مصعد');
 }
 
 function resetCustomerLinkedFields() {
