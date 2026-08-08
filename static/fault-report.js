@@ -222,7 +222,6 @@
       return parseFloat(document.getElementById(id)?.value) || 0;
     }
     return {
-      reported_at: val('reported-at'),
       meta: {
         visit_date: val('visit-date'),
         arrival_time: val('arrival-time'),
