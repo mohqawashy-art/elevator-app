@@ -2038,6 +2038,7 @@ def save_visit_report(
     *,
     mark_complete: bool = False,
     status: str = 'مكتملة',
+    preserve_field_times: bool = True,
 ) -> dict:
     """حفظ محضر الفحص على الزيارة."""
     from checklist_templates import checklist_summary_lines, merge_report_data, parse_report_json
@@ -2073,7 +2074,8 @@ def save_visit_report(
         if isinstance(payload.get('photos'), list):
             merged['photos'] = payload['photos']
 
-    _preserve_field_start_times(merged, existing)
+    if preserve_field_times:
+        _preserve_field_start_times(merged, existing)
 
     if mark_complete:
         merged['meta'] = _apply_field_end_timestamp(merged.get('meta') or {})

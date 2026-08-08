@@ -7447,7 +7447,13 @@ def api_save_visit_report(visit_id):
     mark_complete = bool(data.pop('mark_complete', False))
     status = data.pop('status', 'مكتملة')
     try:
-        save_visit_report(visit_id, data, mark_complete=mark_complete, status=status)
+        save_visit_report(
+            visit_id,
+            data,
+            mark_complete=mark_complete,
+            status=status,
+            preserve_field_times=bool(tech_id),
+        )
         return jsonify({'ok': True, 'visit_id': visit_id})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 400
