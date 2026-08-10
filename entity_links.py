@@ -108,14 +108,15 @@ def contract_by_code(code: str) -> Contract | None:
     code = (code or '').strip().upper().replace(' ', '')
     if not code:
         return None
-    m = re.match(r'CN-?(\d+)$', code)
+    m = re.match(r'(CN|CI)-?(\d+)$', code)
     if m:
-        num = int(m.group(1))
+        prefix = m.group(1)
+        num = int(m.group(2))
         variants = (
-            f'CN-{num:05d}',
-            f'CN-{num}',
-            f'CN-{num:04d}',
-            f'CN-{num:03d}',
+            f'{prefix}-{num:05d}',
+            f'{prefix}-{num}',
+            f'{prefix}-{num:04d}',
+            f'{prefix}-{num:03d}',
         )
         seen: set[str] = set()
         for variant in variants:
@@ -130,6 +131,8 @@ def contract_by_code(code: str) -> Contract | None:
         return contract_by_code(f'CN-{code}')
     if code.startswith('CN') and not code.startswith('CN-'):
         return contract_by_code('CN-' + code[2:].lstrip('-'))
+    if code.startswith('CI') and not code.startswith('CI-'):
+        return contract_by_code('CI-' + code[2:].lstrip('-'))
     return tenant_query(Contract).filter_by(code=code).first()
 
 
@@ -266,18 +269,17 @@ def normalize_parts_status(status: str) -> str:
 def _code_from_text(text: str, prefix: str) -> str | None:
     if not text:
         return None
+    prefix_u = prefix.upper()
+    digits = 5 if prefix_u in ('CN', 'CI', 'VI') else 4
     for pattern in (
         rf'{prefix}-\s*(\d+)',
         rf'{prefix}\s*:\s*(\d+)',
-        rf'رقم\s*{"الزيارة" if prefix == "VI" else "العقد"}\s*:\s*{prefix}-?\s*(\d+)',
+        rf'رقم\s*{"الزيارة" if prefix_u == "VI" else "العقد"}\s*:\s*{prefix}-?\s*(\d+)',
     ):
         m = re.search(pattern, text, re.I)
         if m:
             n = int(m.group(1))
-            if prefix.upper() == 'CN':
-                return f'CN-{n:05d}'
-            if prefix.upper() == 'VI':
-                return f'VI-{n:05d}'
+            return f'{prefix_u}-{n:0{digits}d}'
     return None
 
 
@@ -287,7 +289,7 @@ def fault_parts_link_fields(f: Fault) -> dict:
         x for x in (f.notes or '', f.description or '', f.client_report or '', f.tech_notes or '') if x
     )
     visit_code = _code_from_text(combined, 'VI')
-    cn_code = _code_from_text(combined, 'CN')
+    cn_code = _code_from_text(combined, 'CN') or _code_from_text(combined, 'CI')
 
     visit = tenant_query(MaintenanceVisit).filter_by(id=f.visit_id).first() if f.visit_id else None
     if not visit:

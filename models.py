@@ -220,9 +220,9 @@ class Contract(TenantMixin, db.Model):
     )
 
     id              = db.Column(db.Integer, primary_key=True)
-    code            = db.Column(db.String(20), nullable=False)  # CN-00001 أو CN-00001-2026
+    code            = db.Column(db.String(20), nullable=False)  # CN-00001 / CI-00001 أو …-2026
     customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
-    contract_type   = db.Column(db.String(50))   # عقد صيانة / ضمان / تركيب / طوارئ
+    contract_type   = db.Column(db.String(50))   # عقد صيانة / ضمان / تركيب / تحديث / طوارئ
     start_date      = db.Column(db.Date, nullable=False)
     end_date        = db.Column(db.Date, nullable=False)
     duration_months = db.Column(db.Integer)

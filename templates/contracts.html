@@ -424,6 +424,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <option>عقد صيانة</option>
         <option>عقد ضمان</option>
         <option>عقد تركيب</option>
+        <option>عقد تحديث</option>
         <option>عقد طوارئ</option>
       </select>
       <select class="filter-select" id="f-status" onchange="filterTable()">
@@ -561,14 +562,15 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field">
             <label>كود العقد</label>
             <input type="text" id="f-code" placeholder="CN-00001" readonly style="direction:ltr;font-family:var(--font-en);opacity:.85">
-            <span class="field-hint" id="f-code-hint">يُولَّد تلقائياً للعقد الجديد</span>
+            <span class="field-hint" id="f-code-hint">يُولَّد تلقائياً حسب نوع العقد (صيانة CN- / تركيب وتحديث CI-)</span>
           </div>
           <div class="field">
             <label>نوع العقد</label>
-            <select id="f-type-sel">
+            <select id="f-type-sel" onchange="onContractTypeChanged()">
               <option>عقد صيانة</option>
               <option>عقد ضمان</option>
               <option>عقد تركيب</option>
+              <option>عقد تحديث</option>
               <option>عقد طوارئ</option>
             </select>
           </div>
@@ -808,7 +810,50 @@ var CONTRACTS = {{ contracts_js|tojson }};
 var CUSTOMERS = {{ customers_js|tojson }};
 
 var ELEVATOR_LOOKUP = {{ elev_lookup|tojson }};
+const NEXT_CONTRACT_CODES = {{ next_contract_codes|tojson }};
 const NEXT_CONTRACT_CODE = {{ next_contract_code|tojson }};
+
+function contractPrefixForType(contractType) {
+  var raw = String(contractType || '').toLowerCase();
+  if (
+    raw.indexOf('تركيب') >= 0 ||
+    raw.indexOf('تحديث') >= 0 ||
+    raw.indexOf('installation') >= 0 ||
+    raw.indexOf('install') >= 0 ||
+    raw.indexOf('upgrade') >= 0 ||
+    raw.indexOf('modern') >= 0
+  ) {
+    return 'CI-';
+  }
+  return 'CN-';
+}
+
+function nextContractCodeForType(contractType) {
+  var prefix = contractPrefixForType(contractType);
+  var map = NEXT_CONTRACT_CODES || {};
+  return map[prefix] || (prefix === 'CI-' ? 'CI-00001' : (NEXT_CONTRACT_CODE || 'CN-00001'));
+}
+
+function isNewContractForm() {
+  var modal = document.getElementById('modal-add');
+  if (!modal) return true;
+  return !modal.dataset.editId && !modal.dataset.renewFromId;
+}
+
+function onContractTypeChanged() {
+  if (!isNewContractForm()) return;
+  var typeSel = document.getElementById('f-type-sel');
+  var codeEl = document.getElementById('f-code');
+  if (!typeSel || !codeEl) return;
+  codeEl.value = nextContractCodeForType(typeSel.value);
+  var codeHint = document.getElementById('f-code-hint');
+  if (codeHint) {
+    var prefix = contractPrefixForType(typeSel.value);
+    codeHint.textContent = prefix === 'CI-'
+      ? 'يُولَّد تلقائياً — تسلسل التركيب والتحديث (CI-)'
+      : 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
+  }
+}
 
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1354,9 +1399,10 @@ function initContractClientSelect() {
 }
 
 function resetContractForm() {
-  document.getElementById('f-code').value = NEXT_CONTRACT_CODE;
+  document.getElementById('f-type-sel').selectedIndex = 0;
+  document.getElementById('f-code').value = nextContractCodeForType('عقد صيانة');
   var codeHint = document.getElementById('f-code-hint');
-  if (codeHint) codeHint.textContent = 'يُولَّد تلقائياً للعقد الجديد';
+  if (codeHint) codeHint.textContent = 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
   ['f-end','f-reminder','f-due-date','f-notes','f-visits-month','f-contract-city','f-contract-district','f-contract-address','f-contract-maps-url','f-contract-lat','f-contract-lng'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
@@ -1374,7 +1420,6 @@ function resetContractForm() {
   document.getElementById('f-tax-pct').value = '15';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock) LiftCoreTaxCalc.resetElement(taxBlock);
-  document.getElementById('f-type-sel').selectedIndex = 0;
   document.getElementById('f-status-sel').value = 'نشط';
   document.getElementById('f-maint-freq').selectedIndex = 0;
   document.getElementById('f-payment-terms').selectedIndex = 0;
@@ -1765,6 +1810,8 @@ function editContract(id) {
       : 'تغيير عميل العقد متاح لمدير النظام فقط';
   }
   document.getElementById('f-code').value = c.code;
+  var codeHint = document.getElementById('f-code-hint');
+  if (codeHint) codeHint.textContent = 'رقم ثابت — لا يتغيّر عند تعديل النوع';
   document.getElementById('f-type-sel').value = c.contract_type || 'عقد صيانة';
   document.getElementById('f-status-sel').value = getContractDisplayStatus(c);
   document.getElementById('f-start').value = c.start_date || '';
@@ -1901,7 +1948,9 @@ function syncRenewalContractCode() {
   var codeEl = document.getElementById('f-code');
   var hint = document.getElementById('f-code-hint');
   if (!renewId || !codeEl) {
-    if (hint && !renewId) hint.textContent = 'يُولَّد تلقائياً للعقد الجديد';
+    if (hint && !renewId && isNewContractForm()) {
+      onContractTypeChanged();
+    }
     return;
   }
   var src = CONTRACTS.find(function (x) { return x.id === renewId; });

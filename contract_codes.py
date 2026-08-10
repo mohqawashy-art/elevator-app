@@ -1,12 +1,41 @@
-"""ترقيم عقود التجديد: تثبيت الأساس + سنة التعاقد (CN-00042-2026)."""
+"""ترقيم العقود: بادئة حسب النوع + تجديد بالأساس-السنة (CN-00042-2026)."""
 from __future__ import annotations
 
 import re
 from datetime import date
 from typing import Iterable, Optional
 
-# CN-00042 أو CN-00042-2026 أو CN-00042/2026 أو CN-00042-2026-2
+# صيانة/ضمان/طوارئ: CN-##### — تركيب/تحديث: CI-##### (تسلسل واحد)
+CONTRACT_CODE_DIGITS = 5
+CONTRACT_PREFIX_MAINTENANCE = 'CN-'
+CONTRACT_PREFIX_INSTALLATION = 'CI-'
+
+# CN-00042 أو CI-00003 أو CN-00042-2026 أو CN-00042/2026 أو CN-00042-2026-2
 _YEAR_SUFFIX = re.compile(r'^(.+?)[-/](20\d{2})(?:-(\d+))?$', re.IGNORECASE)
+
+
+def contract_prefix_for_type(contract_type: Optional[str]) -> str:
+    """بادئة كود العقد حسب النوع — تسلسل مستقل لكل بادئة.
+
+    صيانة/ضمان/طوارئ → CN-
+    تركيب أو تحديث (modernization) → CI- (نفس التسلسل)
+    """
+    raw = (contract_type or '').strip().lower()
+    if not raw:
+        return CONTRACT_PREFIX_MAINTENANCE
+    if any(
+        k in raw
+        for k in (
+            'تركيب',
+            'تحديث',
+            'installation',
+            'install',
+            'upgrade',
+            'modern',
+        )
+    ):
+        return CONTRACT_PREFIX_INSTALLATION
+    return CONTRACT_PREFIX_MAINTENANCE
 
 
 def contract_base_code(code: Optional[str]) -> str:
@@ -35,11 +64,11 @@ def renewal_contract_code(existing_code: Optional[str], year: int) -> str:
     """
     رقم التجديد: الأساس-السنة.
     مثال: CN-00042 → CN-00042-2026
-         CN-00042-2025 → CN-00042-2026
+         CI-00003-2025 → CI-00003-2026
     """
     base = contract_base_code(existing_code)
     if not base:
-        base = 'CN-00000'
+        base = f'{CONTRACT_PREFIX_MAINTENANCE}{"0" * CONTRACT_CODE_DIGITS}'
     year = int(year)
     if year < 2000 or year > 2100:
         raise ValueError('سنة تعاقد غير صالحة')

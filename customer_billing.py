@@ -16,16 +16,16 @@ UNPAID_INVOICE_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخ
 PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل', 'محصل']
 UNPAID_PARTS_STATUSES = ('غير محصل', 'معلقة', 'بانتظار موافقة العميل', 'بانتظار التوريد')
 CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد')
-_CN_CODE_RE = re.compile(r'CN-?\s*(\d+)', re.I)
+_CONTRACT_CODE_RE = re.compile(r'(CN|CI)-?\s*(\d+)', re.I)
 
 
 def _normalize_contract_code(code: str | None) -> str | None:
     raw = (code or '').strip().upper()
     if not raw:
         return None
-    m = _CN_CODE_RE.search(raw)
+    m = _CONTRACT_CODE_RE.search(raw)
     if m:
-        return f'CN-{int(m.group(1)):05d}'
+        return f'{m.group(1).upper()}-{int(m.group(2)):05d}'
     m2 = re.fullmatch(r'(\d+)', raw)
     if m2:
         return f'CN-{int(m2.group(1)):05d}'
@@ -36,9 +36,9 @@ def _extract_contract_code(*texts) -> str | None:
     for text in texts:
         if not text:
             continue
-        match = _CN_CODE_RE.search(str(text))
+        match = _CONTRACT_CODE_RE.search(str(text))
         if match:
-            return f'CN-{int(match.group(1)):05d}'
+            return f'{match.group(1).upper()}-{int(match.group(2)):05d}'
     return None
 
 

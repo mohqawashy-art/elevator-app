@@ -148,9 +148,13 @@ def amount_in_words(amount: float) -> str:
 
 
 def format_contract_code(code: str | None) -> str:
-    """CN-00001 → CN0001 (كما في Word)."""
+    """CN-00001 → CN0001 ، CI-00003 → CI0003 (كما في Word)."""
     if not code:
         return 'CN0000'
+    raw = (code or '').strip().upper()
+    m = re.match(r'^([A-Z]+)-?(\d+)', raw)
+    if m:
+        return m.group(1) + m.group(2).zfill(4)[-4:]
     digits = re.sub(r'\D', '', code)
     if not digits:
         return code

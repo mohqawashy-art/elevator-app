@@ -5190,6 +5190,10 @@ def contracts():
         contracts_js=[contract_to_js_dict(c, renewed_ids=renewed_ids) for c in contracts_list],
         customers_js=[contract_customer_js_dict(c) for c in customers],
         elev_lookup=elev_lookup,
+        next_contract_codes={
+            'CN-': next_code(Contract, 'CN-', digits=5),
+            'CI-': next_code(Contract, 'CI-', digits=5),
+        },
         next_contract_code=next_code(Contract, 'CN-', digits=5),
     ))
     # منع كاش المتصفح للنسخة القديمة من سكربت حفظ العقد
@@ -5330,7 +5334,10 @@ def contract_add():
             flash('رقم العقد الناتج أطول من المسموح', 'error')
             return redirect(url_for('contracts'))
     else:
-        code = next_code(Contract, 'CN-', digits=5)
+        from contract_codes import CONTRACT_CODE_DIGITS, contract_prefix_for_type
+
+        prefix = contract_prefix_for_type(request.form.get('contract_type'))
+        code = next_code(Contract, prefix, digits=CONTRACT_CODE_DIGITS)
 
     c = Contract(code=code)
     try:

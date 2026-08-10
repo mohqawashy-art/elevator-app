@@ -27,7 +27,7 @@
     'بغرفة آلة — MR': 'With Machine Room — MR', 'بدون غرفة — MRL': 'Machine Room Less — MRL',
     'هيدروليك — Hydraulic': 'Hydraulic',
     'مالك': 'Owner', 'مدير': 'Manager', 'مستأجر': 'Tenant', 'مسؤول': 'Contact',
-    'عقد': 'Contract', 'عقد صيانة': 'Maintenance Contract', 'عقد تركيب': 'Installation Contract',
+    'عقد': 'Contract', 'عقد صيانة': 'Maintenance Contract', 'عقد تركيب': 'Installation Contract', 'عقد تحديث': 'Modernization Contract',
     'إيراد': 'Revenue', 'فاتورة': 'Invoice', 'عطل': 'Fault',
     'كجم': 'kg', 'ر.س': '\u20C1', 'واتساب': 'WhatsApp',
     'نعم': 'Yes', 'لا': 'No', 'متاح': 'Available', 'مشغول': 'Busy', 'إجازة': 'On Leave',
