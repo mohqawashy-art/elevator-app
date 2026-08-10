@@ -7,9 +7,10 @@ from datetime import datetime
 from flask import g, has_request_context, request
 
 from models import OnboardingInvite, Organization, PlatformPayment, Settings, User, db
+from plan_catalog import known_plan_keys
 
 
-PLANS = ('basic', 'pro', 'enterprise')
+PLANS = known_plan_keys()
 
 ADMIN_HOSTS = frozenset({
     'admin.liftcoreapp.com',
@@ -133,7 +134,10 @@ def get_org_detail(org_id: int) -> dict | None:
         .all()
     )
     from platform_billing import effective_amount, refresh_billing_status
+    from entitlements import addon_catalog_for_ui, list_org_addons, resolve_entitlements
+
     refresh_billing_status(org)
+    entitlements = resolve_entitlements(org=org)
     return {
         'org': org,
         'settings': settings,
@@ -144,6 +148,9 @@ def get_org_detail(org_id: int) -> dict | None:
         'billing_amount': effective_amount(org),
         'login_url': tenant_login_url(org.slug),
         'plans': PLANS,
+        'entitlements': entitlements,
+        'org_addons': list_org_addons(org.id),
+        'addon_catalog': addon_catalog_for_ui(),
     }
 
 

@@ -766,6 +766,20 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
           <input value="{{ (current_org.current_period_end or current_org.trial_ends_at).strftime('%Y-%m-%d') if (current_org.current_period_end or current_org.trial_ends_at) else '—' }}" readonly>
         </div>
       </div>
+      {% if entitlements %}
+      <div class="section" style="margin-top:18px">الاستخدام والحدود</div>
+      <div class="grid">
+        <div><label>المصاعد</label><input value="{{ entitlements.usage.elevators }} / {{ entitlements.limits.elevators }}" readonly></div>
+        <div><label>مستخدمون مكتبيون</label><input value="{{ entitlements.usage.office_users }} / {{ entitlements.limits.office_users }}" readonly></div>
+        <div><label>فنيون</label><input value="{{ entitlements.usage.technicians }} / {{ entitlements.limits.technicians }}" readonly></div>
+        <div><label>تخزين</label><input value="{{ entitlements.limits.storage_gb }} GB" readonly></div>
+      </div>
+      {% if entitlements.addons %}
+      <p class="hint" style="margin-top:10px">إضافات مفعّلة:
+        {% for a in entitlements.addons %}{{ a.label }}{% if a.quantity > 1 %} ×{{ a.quantity }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
+      </p>
+      {% endif %}
+      {% endif %}
       {% if current_user.role == 'admin' %}
       <div class="actions" style="margin-top:16px">
         {% if moyasar_enabled %}

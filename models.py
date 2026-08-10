@@ -38,6 +38,12 @@ class Organization(db.Model):
     last_payment_ref = db.Column(db.String(100))
     billing_notes = db.Column(db.Text)
 
+    # تجاوزات حدود الباقة (فارغ = استخدم الباقة + الإضافات)
+    elevators_limit_override = db.Column(db.Integer)
+    office_users_limit_override = db.Column(db.Integer)
+    technicians_limit_override = db.Column(db.Integer)
+    storage_gb_limit_override = db.Column(db.Integer)
+
     def __repr__(self):
         return f'<Organization {self.slug}>'
 
@@ -62,6 +68,27 @@ class PlatformPayment(db.Model):
 
     def __repr__(self):
         return f'<PlatformPayment org={self.organization_id} {self.amount}>'
+
+
+class OrganizationAddon(db.Model):
+    """إضافات اشتراك لكل مؤسسة (تُدار من لوحة المنصة)."""
+    __tablename__ = 'organization_addons'
+
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False, index=True)
+    addon_key = db.Column(db.String(50), nullable=False, index=True)
+    quantity = db.Column(db.Integer, default=1, nullable=False)
+    unit_price_monthly = db.Column(db.Float)
+    status = db.Column(db.String(20), default='active')  # active | cancelled
+    note = db.Column(db.Text)
+    starts_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ends_at = db.Column(db.DateTime)
+    created_by_user_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<OrganizationAddon org={self.organization_id} {self.addon_key} x{self.quantity}>'
 
 
 class TenantMixin:

@@ -5,13 +5,11 @@ from calendar import monthrange
 from datetime import datetime, timedelta
 
 from models import Organization, PlatformPayment, db
+from plan_catalog import PLAN_CATALOG, normalize_plan
 
-# أسعار افتراضية ر.س / شهر — قابلة للتجاوز لكل مؤسسة
-PLAN_MONTHLY_SAR = {
-    'basic': 299.0,
-    'pro': 599.0,
-    'enterprise': 1499.0,
-}
+# أسعار مشتقة من كتالوج الباقات
+PLAN_MONTHLY_SAR = {k: float(v['monthly_sar']) for k, v in PLAN_CATALOG.items()}
+PLAN_YEARLY_SAR = {k: float(v['yearly_sar']) for k, v in PLAN_CATALOG.items()}
 
 BILLING_STATUSES = ('ok', 'due', 'overdue', 'complimentary')
 BILLING_CYCLES = ('monthly', 'yearly')
@@ -19,10 +17,10 @@ PAYMENT_METHODS = ('transfer', 'cash', 'card', 'complimentary', 'other')
 
 
 def plan_price(plan: str | None, cycle: str = 'monthly') -> float:
-    monthly = PLAN_MONTHLY_SAR.get((plan or 'basic').strip().lower(), PLAN_MONTHLY_SAR['basic'])
+    key = normalize_plan(plan)
     if (cycle or 'monthly').strip().lower() == 'yearly':
-        return round(monthly * 12 * 0.9, 2)  # خصم 10% سنوي
-    return float(monthly)
+        return float(PLAN_YEARLY_SAR.get(key, PLAN_YEARLY_SAR['basic']))
+    return float(PLAN_MONTHLY_SAR.get(key, PLAN_MONTHLY_SAR['basic']))
 
 
 def effective_amount(org: Organization) -> float:
@@ -248,4 +246,9 @@ def billing_overview(limit: int = 200) -> dict:
     # ترتيب: overdue ثم due ثم الباقي
     order = {'overdue': 0, 'due': 1, 'ok': 2, 'complimentary': 3}
     rows.sort(key=lambda r: (order.get(r['billing_status'], 9), r['days_left'] if r['days_left'] is not None else 9999))
-    return {'rows': rows, 'stats': stats, 'plan_prices': PLAN_MONTHLY_SAR}
+    return {
+        'rows': rows,
+        'stats': stats,
+        'plan_prices': PLAN_MONTHLY_SAR,
+        'plan_prices_yearly': PLAN_YEARLY_SAR,
+    }

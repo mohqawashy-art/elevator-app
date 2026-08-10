@@ -1378,6 +1378,10 @@ def _sqlite_legacy_schema_patches():
                 ('last_payment_amount', 'FLOAT'),
                 ('last_payment_ref', 'VARCHAR(100)'),
                 ('billing_notes', 'TEXT'),
+                ('elevators_limit_override', 'INTEGER'),
+                ('office_users_limit_override', 'INTEGER'),
+                ('technicians_limit_override', 'INTEGER'),
+                ('storage_gb_limit_override', 'INTEGER'),
             ],
             'onboarding_invites': [
                 ('admin_username', 'VARCHAR(50)'),
@@ -1793,6 +1797,12 @@ def coming_soon():
     if not coming_soon_enabled():
         return redirect(url_for('index'))
     return render_template('coming_soon.html')
+
+
+@app.route('/pricing')
+def pricing():
+    """صفحة الباقات والأسعار — عرض عام للعملاء."""
+    return render_template('pricing.html')
 
 
 def _find_login_user(login_id):
@@ -2684,6 +2694,9 @@ def platform_org_detail(org_id):
         billing_amount=detail.get('billing_amount') or 0,
         login_url=detail['login_url'],
         plans=detail['plans'],
+        entitlements=detail.get('entitlements') or {},
+        org_addons=detail.get('org_addons') or [],
+        addon_catalog=detail.get('addon_catalog') or [],
         can_delete=not is_protected_operator_org(detail['org']),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
@@ -2813,6 +2826,7 @@ def platform_billing():
         rows=overview['rows'],
         stats=overview['stats'],
         plan_prices=overview['plan_prices'],
+        plan_prices_yearly=overview['plan_prices_yearly'],
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
     )
@@ -2858,6 +2872,7 @@ def platform_org_subscription(org_id):
 
     result = set_subscription(
         org,
+        plan=request.form.get('plan'),
         cycle=request.form.get('billing_cycle'),
         amount=amount,
         clear_amount=clear_amount,
@@ -2867,6 +2882,119 @@ def platform_org_subscription(org_id):
     )
     if result.get('ok'):
         session['plat_notice'] = 'تم حفظ إعدادات الاشتراك.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل الحفظ.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/addons', methods=['POST'])
+def platform_org_addon_add(org_id):
+    from models import Organization
+    from platform_admin import is_admin_host
+    from entitlements import upsert_org_addon
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    try:
+        qty = int(request.form.get('quantity') or 1)
+    except (TypeError, ValueError):
+        qty = 1
+    price_raw = (request.form.get('unit_price_monthly') or '').strip()
+    unit_price = None
+    if price_raw:
+        try:
+            unit_price = float(price_raw)
+        except ValueError:
+            session['plat_notice'] = 'سعر الإضافة غير صالح.'
+            session['plat_notice_type'] = 'warn'
+            return redirect(url_for('platform_org_detail', org_id=org_id))
+    result = upsert_org_addon(
+        org,
+        addon_key=request.form.get('addon_key') or '',
+        quantity=qty,
+        note=request.form.get('note') or '',
+        unit_price_monthly=unit_price,
+        created_by_user_id=user.id,
+    )
+    if result.get('ok'):
+        session['plat_notice'] = 'تم إضافة/تحديث الإضافة على باقة العميل.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل حفظ الإضافة.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/addons/<int:addon_id>/cancel', methods=['POST'])
+def platform_org_addon_cancel(org_id, addon_id):
+    from models import Organization
+    from platform_admin import is_admin_host
+    from entitlements import cancel_org_addon
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    result = cancel_org_addon(org, addon_id)
+    if result.get('ok'):
+        session['plat_notice'] = 'تم إلغاء الإضافة.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['تعذّر الإلغاء.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/limits', methods=['POST'])
+def platform_org_limits(org_id):
+    from models import Organization
+    from platform_admin import is_admin_host
+    from entitlements import set_limit_overrides
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+
+    def _opt_int(name):
+        raw = (request.form.get(name) or '').strip()
+        if raw == '':
+            return None
+        return int(raw)
+
+    if request.form.get('clear_overrides') == '1':
+        result = set_limit_overrides(org, clear=True)
+    else:
+        try:
+            result = set_limit_overrides(
+                org,
+                elevators=_opt_int('elevators_limit_override'),
+                office_users=_opt_int('office_users_limit_override'),
+                technicians=_opt_int('technicians_limit_override'),
+                storage_gb=_opt_int('storage_gb_limit_override'),
+            )
+        except ValueError:
+            session['plat_notice'] = 'قيم الحدود غير صالحة.'
+            session['plat_notice_type'] = 'warn'
+            return redirect(url_for('platform_org_detail', org_id=org_id))
+    if result.get('ok'):
+        session['plat_notice'] = 'تم حفظ تجاوزات الحدود.'
         session['plat_notice_type'] = 'ok'
     else:
         session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل الحفظ.'])
@@ -4463,10 +4591,15 @@ def elevators_import_template():
 @app.route('/elevators/add', methods=['POST'])
 def elevator_add():
     from form_validation import elevator_form_error
+    from entitlements import assert_capacity
 
     elev_err = elevator_form_error(request.form, parse_int=_parse_int)
     if elev_err:
         flash(elev_err, 'error')
+        return redirect(url_for('elevators'))
+    cap = assert_capacity('elevators')
+    if not cap.get('ok'):
+        flash(cap.get('error') or 'تجاوزت حد المصاعد في الباقة.', 'error')
         return redirect(url_for('elevators'))
     e = Elevator(
         code            = next_code(Elevator, 'EL-', digits=4),
@@ -6122,6 +6255,12 @@ def api_technician_profile(tech_id):
 
 @app.route('/technicians/add', methods=['POST'])
 def technician_add():
+    from entitlements import assert_capacity
+
+    cap = assert_capacity('technicians')
+    if not cap.get('ok'):
+        flash(cap.get('error') or 'تجاوزت حد الفنيين في الباقة.', 'error')
+        return redirect(url_for('technicians'))
     phone = request.form.get('phone', '')
     taken, msg = phone_taken(phone)
     if taken:
@@ -9895,6 +10034,7 @@ def settings():
     zatca_creds = tenant_query(ZatcaCredentials).first()
     from moyasar_payments import moyasar_enabled
     from platform_billing import effective_amount, refresh_billing_status
+    from entitlements import resolve_entitlements
     from models import Organization
     from tenant_scope import effective_organization_id
     oid = effective_organization_id()
@@ -9902,6 +10042,7 @@ def settings():
     if current_org:
         refresh_billing_status(current_org)
     plan_amount = effective_amount(current_org) if current_org else 0
+    entitlements = resolve_entitlements(org=current_org) if current_org else None
     paid_flag = request.args.get('paid')
     if paid_flag == '1':
         session['settings_notice'] = 'تم الدفع بنجاح — سيُحدَّث الاشتراك خلال لحظات.'
@@ -9929,6 +10070,7 @@ def settings():
         zatca_creds=zatca_creds,
         current_org=current_org,
         plan_amount=plan_amount,
+        entitlements=entitlements,
         moyasar_enabled=moyasar_enabled(),
     )
 
@@ -10308,6 +10450,12 @@ def settings_user_add():
     admin = require_admin()
     if not admin:
         return redirect(url_for('login'))
+
+    from entitlements import assert_capacity
+    cap = assert_capacity('office_users')
+    if not cap.get('ok'):
+        session['settings_notice'] = cap.get('error') or 'تجاوزت حد المستخدمين في الباقة.'
+        return _settings_redirect('users')
 
     username = (request.form.get('username') or '').strip()
     full_name = (request.form.get('full_name') or '').strip()

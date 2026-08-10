@@ -2,7 +2,7 @@
 {% block title %}الاشتراكات — LiftCore Platform{% endblock %}
 {% block content %}
 <div class="h1">اشتراكات العملاء</div>
-<p class="sub">متابعة التجارب والمدفوعات يدوياً — بدون بوابة دفع بعد. الأسعار الافتراضية: basic {{ plan_prices.basic }} · pro {{ plan_prices.pro }} · enterprise {{ plan_prices.enterprise }} ر.س/شهر.</p>
+<p class="sub">متابعة التجارب والمدفوعات يدوياً — بدون بوابة دفع بعد. الأسعار السنوية: basic {{ plan_prices_yearly.basic }} · plus {{ plan_prices_yearly.plus }} · pro {{ plan_prices_yearly.pro }} · enterprise {{ plan_prices_yearly.enterprise }} ر.س/سنة.</p>
 
 <div class="stats">
   <div class="stat"><div class="n">{{ stats.ok or 0 }}</div><div class="l">سارية</div></div>

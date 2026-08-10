@@ -52,10 +52,18 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="grid">
       <div>
+        <label>الباقة</label>
+        <select name="plan">
+          {% for p in plans %}
+          <option value="{{ p }}" {% if p == org.plan %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
         <label>دورة الفوترة</label>
         <select name="billing_cycle">
-          <option value="monthly" {% if (org.billing_cycle or 'monthly') == 'monthly' %}selected{% endif %}>شهري</option>
-          <option value="yearly" {% if org.billing_cycle == 'yearly' %}selected{% endif %}>سنوي (−10%)</option>
+          <option value="yearly" {% if (org.billing_cycle or 'yearly') == 'yearly' %}selected{% endif %}>سنوي</option>
+          <option value="monthly" {% if org.billing_cycle == 'monthly' %}selected{% endif %}>شهري</option>
         </select>
       </div>
       <div>
@@ -148,6 +156,114 @@
     </tbody>
   </table>
   {% endif %}
+</div>
+
+<div class="card">
+  <div class="section">الحدود والاستخدام — {{ entitlements.plan_label or org.plan }}</div>
+  <div class="grid">
+    {% for key, label in [('elevators','المصاعد'),('office_users','مستخدمون مكتبيون'),('technicians','فنيون'),('storage_gb','تخزين GB')] %}
+    <div class="kv">
+      <div class="k">{{ label }}</div>
+      <div class="v">
+        <strong>{{ entitlements.usage.get(key, 0) }}</strong>
+        /
+        {{ entitlements.limits.get(key, 0) }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="section" style="margin-top:18px">الميزات المفعّلة</div>
+  <p class="muted" style="margin-bottom:12px">
+    {% for fk, on in (entitlements.features or {}).items() if on %}
+      <span class="badge badge-active" style="margin:2px">{{ fk }}</span>
+    {% else %}
+      —
+    {% endfor %}
+  </p>
+
+  <div class="section" style="margin-top:18px">إضافة على الباقة</div>
+  <form method="post" action="/platform/orgs/{{ org.id }}/addons">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid">
+      <div>
+        <label>الإضافة</label>
+        <select name="addon_key" required>
+          {% for a in addon_catalog %}
+          <option value="{{ a.key }}">{{ a.label }} — {{ '%.0f'|format(a.monthly_sar) }} ر.س/شهر</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>الكمية</label>
+        <input name="quantity" type="number" min="1" max="200" value="1">
+      </div>
+      <div>
+        <label>سعر شهري مخصص (اختياري)</label>
+        <input name="unit_price_monthly" type="number" step="0.01" min="0" placeholder="سعر الكتالوج">
+      </div>
+      <div class="full">
+        <label>ملاحظة</label>
+        <input name="note" maxlength="300" placeholder="حسب طلب العميل…">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">تفعيل الإضافة</button>
+    </div>
+  </form>
+
+  {% if org_addons %}
+  <div class="section" style="margin-top:22px">إضافات العميل</div>
+  <table class="table">
+    <thead><tr><th>#</th><th>الإضافة</th><th>الكمية</th><th>السعر/شهر</th><th>الحالة</th><th>ملاحظة</th><th></th></tr></thead>
+    <tbody>
+      {% for a in org_addons %}
+      <tr>
+        <td>{{ a.id }}</td>
+        <td><code>{{ a.addon_key }}</code></td>
+        <td>{{ a.quantity }}</td>
+        <td>{{ a.unit_price_monthly if a.unit_price_monthly is not none else '—' }}</td>
+        <td><span class="badge badge-{{ 'active' if a.status == 'active' else 'suspended' }}">{{ a.status }}</span></td>
+        <td class="muted">{{ a.note or '—' }}</td>
+        <td>
+          {% if a.status == 'active' %}
+          <form method="post" action="/platform/orgs/{{ org.id }}/addons/{{ a.id }}/cancel" style="display:inline" onsubmit="return confirm('إلغاء هذه الإضافة؟')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-danger" type="submit" style="padding:4px 10px;font-size:12px">إلغاء</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="section" style="margin-top:22px">تجاوز حدود يدوي (عقد خاص)</div>
+  <form method="post" action="/platform/orgs/{{ org.id }}/limits">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid">
+      <div>
+        <label>حد المصاعد</label>
+        <input name="elevators_limit_override" type="number" min="0" value="{{ org.elevators_limit_override if org.elevators_limit_override is not none else '' }}" placeholder="من الباقة">
+      </div>
+      <div>
+        <label>حد المستخدمين</label>
+        <input name="office_users_limit_override" type="number" min="0" value="{{ org.office_users_limit_override if org.office_users_limit_override is not none else '' }}" placeholder="من الباقة">
+      </div>
+      <div>
+        <label>حد الفنيين</label>
+        <input name="technicians_limit_override" type="number" min="0" value="{{ org.technicians_limit_override if org.technicians_limit_override is not none else '' }}" placeholder="من الباقة">
+      </div>
+      <div>
+        <label>حد التخزين GB</label>
+        <input name="storage_gb_limit_override" type="number" min="0" value="{{ org.storage_gb_limit_override if org.storage_gb_limit_override is not none else '' }}" placeholder="من الباقة">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">حفظ التجاوزات</button>
+      <button class="btn btn-secondary" type="submit" name="clear_overrides" value="1">مسح التجاوزات</button>
+    </div>
+  </form>
 </div>
 
 <div class="card">

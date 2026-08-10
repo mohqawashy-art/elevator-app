@@ -63,8 +63,10 @@ def _login(client):
 
 
 def test_plan_prices():
-    assert plan_price('basic', 'monthly') == 299.0
-    assert plan_price('pro', 'yearly') == round(599 * 12 * 0.9, 2)
+    assert plan_price('basic', 'monthly') == 250.0
+    assert plan_price('plus', 'yearly') == 4590.0
+    assert plan_price('pro', 'yearly') == 5400.0
+    assert plan_price('enterprise', 'monthly') == 1000.0
 
 
 def test_record_payment_extends_period():
