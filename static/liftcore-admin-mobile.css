@@ -224,3 +224,39 @@
     padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* Offline admin banner */
+.lc-admin-offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 16px;
+  background: #1a2332;
+  border-bottom: 1px solid rgba(224, 144, 48, 0.35);
+  color: #f0d9b5;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  z-index: 40;
+}
+.lc-admin-offline-banner.is-offline {
+  background: #2a1f12;
+  border-bottom-color: rgba(224, 144, 48, 0.55);
+}
+.lc-admin-offline-banner.has-pending:not(.is-offline) {
+  background: #122033;
+  border-bottom-color: rgba(42, 127, 255, 0.4);
+  color: #c9daf8;
+}
+.lc-admin-offline-banner__text { flex: 1; }
+.lc-admin-offline-banner__sync {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #2a7fff;
+  color: #fff;
+}

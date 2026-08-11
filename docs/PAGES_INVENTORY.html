@@ -431,7 +431,7 @@
         <li><strong>ملفات مشتركة:</strong> <code>field_base.html</code>, <code>field_brand_bar.html</code>, <code>static/field-portal.css</code>, <code>field_auth.py</code></li>
         <li><strong>إعداد PIN:</strong> الإعدادات → تبويب <strong>دخول الفني (الجوال)</strong> أو توقيع الفني في ملف الفني</li>
         <li><strong>إصلاحات حديثة:</strong> شعارات العميل + LiftCore · عرض الأعطال المُسندة لفريق صيانة أيضاً</li>
-        <li><strong>غير منفّذ:</strong> <span class="status-planned">⏳</span> وضع offline (Service Worker + IndexedDB + مزامنة)</li>
+        <li><strong>Offline:</strong> <span class="status-ok">✅</span> بوابة الفني (<code>field-offline.js</code> + مزامنة محاضر)</li>
         <li><strong>الحالة العامة:</strong> <span class="status-ok">✅</span> (يتطلب تفعيل PIN لكل فني)</li>
       </ul>
     </section>
@@ -628,7 +628,8 @@
         <table class="data-table">
           <thead><tr><th>العنصر</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
           <tbody>
-            <tr><td>Offline PWA للفني</td><td class="status-planned">⏳</td><td>Service Worker + IndexedDB</td></tr>
+            <tr><td>Offline PWA للفني</td><td class="status-ok">✅</td><td><code>field-offline.js</code> + مزامنة محاضر</td></tr>
+            <tr><td>Offline PWA للإدارة</td><td class="status-ok">✅ جزئي</td><td>صفحات مزارة + طابور نماذج (<code>admin-offline.js</code> + SW v10)</td></tr>
             <tr><td>ترجمة i18n كاملة</td><td class="status-partial">🟡</td><td>ملفات <code>liftcore-i18n-*</code> موجودة محلياً، غير مدمجة بالكامل</td></tr>
             <tr><td>تبويب الباقة في الإعدادات</td><td class="status-planned">⏳</td><td>معطّل</td></tr>
             <tr><td>ZATCA فوترة إلكترونية</td><td class="status-partial">🟡</td><td><code>zatca_invoice.py</code> محلي غير مدمج</td></tr>

@@ -135,6 +135,7 @@
 - [~] تذكيرات عقود مجدولة عبر wa.me (`scripts/send_contract_reminders.py` + cron) — WhatsApp Business API لاحقاً
 - [ ] WhatsApp Business API (إرسال تلقائي عبر Graph)
 - [x] Offline Field PWA
+- [x] Offline Admin PWA (صفحات مزارة + طابور كتابة؛ المرفقات أونلاين فقط)
 - [ ] `/api/translate` (G2)
 
 ---
