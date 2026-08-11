@@ -60,6 +60,19 @@ else
   echo "  WARN: GOOGLE_MAPS_API_KEY فارغ — الخرائط ستستخدم OSM"
 fi
 
+MAIL_KEY="$(_env_val MAIL_API_KEY)"
+MAIL_FROM="$(_env_val MAIL_FROM)"
+if [ -n "$MAIL_KEY" ]; then
+  echo "  MAIL_API_KEY: OK (${#MAIL_KEY} chars)"
+else
+  echo "  WARN: MAIL_API_KEY فارغ — البريد معطّل (انظر deploy/MAIL.md)"
+fi
+if [ -n "$MAIL_FROM" ]; then
+  echo "  MAIL_FROM: $MAIL_FROM"
+else
+  echo "  WARN: MAIL_FROM فارغ — الافتراضي noreply@liftcoreapp.com"
+fi
+
 SENTRY_DSN="$(_env_val SENTRY_DSN)"
 if [ -n "$SENTRY_DSN" ] && [ "$SENTRY_DSN" != "https://examplePublicKey@o0.ingest.sentry.io/0" ]; then
   echo "  SENTRY_DSN: OK"

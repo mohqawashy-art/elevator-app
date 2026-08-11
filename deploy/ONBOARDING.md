@@ -74,6 +74,15 @@ python scripts/verify_production_ops.py --url https://client.liftcoreapp.com
 
 أضف `SENTRY_DSN` في `/etc/liftcore/platform.env` ثم `sudo systemctl restart liftcore`.
 
+### بريد المنصة (Resend)
+
+انظر الدليل الكامل: [`deploy/MAIL.md`](MAIL.md)
+
+```env
+MAIL_API_KEY=re_...
+MAIL_FROM=LiftCore <noreply@liftcoreapp.com>
+```
+
 ### نسخ احتياطي و PostgreSQL
 - SQLite: `bash deploy/backup_daily.sh`
 - PostgreSQL: `DATABASE_URL=postgresql://... python scripts/backup_database.py`

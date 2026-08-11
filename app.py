@@ -1771,18 +1771,30 @@ def api_live_sync():
     return jsonify({'revision': get_live_revision(), 'page': page_key, 'data': data})
 
 
+def _pricing_context():
+    from tenant_signup import coming_soon_enabled, signup_enabled
+
+    signup_open = signup_enabled() and not coming_soon_enabled()
+    return {
+        'signup_open': signup_open,
+        'signup_href': url_for('signup') if signup_open else 'mailto:info@liftcoreapp.com',
+        'signup_label': 'ابدأ الآن' if signup_open else 'تواصل معنا',
+    }
+
+
 @app.route('/')
 def index():
     from platform_admin import is_admin_host, is_platform_operator
-    from tenant_signup import coming_soon_enabled, is_signup_host
+    from tenant_signup import is_signup_host
 
     if is_admin_host():
         user = current_user()
         if user and is_platform_operator(user):
             return redirect(url_for('platform_home'))
         return redirect(url_for('login'))
-    if is_signup_host() and coming_soon_enabled():
-        return render_template('coming_soon.html')
+    if is_signup_host():
+        # الصفحة العامة للموقع: الباقات بدل «قريباً»
+        return render_template('pricing.html', **_pricing_context())
     if current_user():
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
@@ -1790,19 +1802,17 @@ def index():
 
 @app.route('/coming-soon')
 def coming_soon():
-    """صفحة قريباً — متاحة أيضاً كمسار مباشر على النطاق العام."""
-    from tenant_signup import coming_soon_enabled, is_signup_host, require_signup_host
+    """مسار قديم — يوجّه لصفحة الأسعار على النطاق العام."""
+    from tenant_signup import require_signup_host
 
     require_signup_host()
-    if not coming_soon_enabled():
-        return redirect(url_for('index'))
-    return render_template('coming_soon.html')
+    return redirect(url_for('pricing'))
 
 
 @app.route('/pricing')
 def pricing():
     """صفحة الباقات والأسعار — عرض عام للعملاء."""
-    return render_template('pricing.html')
+    return render_template('pricing.html', **_pricing_context())
 
 
 def _find_login_user(login_id):
@@ -2108,10 +2118,9 @@ def signup():
     )
 
     require_signup_host()
-    if coming_soon_enabled():
-        return render_template('coming_soon.html')
-    if not signup_enabled():
-        abort(404)
+    if coming_soon_enabled() or not signup_enabled():
+        # التسجيل مغلق مؤقتاً — اعرض الباقات واتصل بنا
+        return redirect(url_for('pricing'))
 
     # جلسة من subdomain آخر قد تكسر CSRF/الطلب — امسحها ثم أعد رمز CSRF
     if session.get('user_id'):
