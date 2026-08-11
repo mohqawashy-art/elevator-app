@@ -54,6 +54,9 @@ def test_banned_list_not_empty():
 
 def test_login_rate_limit(monkeypatch):
     monkeypatch.setenv('LIFTCORE_HTTPS', '1')
+    monkeypatch.setenv('LIFTCORE_RATE_LIMIT_STORE', 'memory')
+    import liftcore_security as sec
+    sec._db_store_disabled = False
     clear_login_attempts()
     for _ in range(5):
         record_login_failure()
@@ -61,6 +64,28 @@ def test_login_rate_limit(monkeypatch):
     assert allowed is False
     assert retry > 0
     clear_login_attempts()
+
+
+def test_login_rate_limit_db_shared_across_checks(client, monkeypatch):
+    """تخزين DB — نفس المفتاح يُحسب عبر استدعاءات منفصلة (محاكاة workers)."""
+    monkeypatch.setenv('LIFTCORE_HTTPS', '1')
+    monkeypatch.delenv('LIFTCORE_RATE_LIMIT_STORE', raising=False)
+    import liftcore_security as sec
+    from models import RateLimitEvent, db
+
+    sec._db_store_disabled = False
+    with client.application.app_context():
+        RateLimitEvent.query.delete()
+        db.session.commit()
+        clear_login_attempts()
+        for _ in range(5):
+            record_login_failure()
+        allowed, retry = check_login_rate_limit()
+        assert allowed is False
+        assert retry > 0
+        assert RateLimitEvent.query.filter_by(scope='login').count() >= 5
+        clear_login_attempts()
+        assert RateLimitEvent.query.filter_by(scope='login').count() == 0
 
 
 def test_upload_rejects_bad_ext():
