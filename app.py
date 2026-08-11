@@ -815,7 +815,10 @@ def _platform_support_context(*, user=None, settings=None, lang: str = 'ar') -> 
     from operations import whatsapp_url
 
     email = (os.environ.get('LIFTCORE_SUPPORT_EMAIL') or 'info@liftcoreapp.com').strip()
-    phone = (os.environ.get('LIFTCORE_SUPPORT_WHATSAPP') or '').strip()
+    if 'LIFTCORE_SUPPORT_WHATSAPP' in os.environ:
+        phone = (os.environ.get('LIFTCORE_SUPPORT_WHATSAPP') or '').strip()
+    else:
+        phone = '0566299626'
     brand = (getattr(settings, 'company_name', None) or 'LiftCore') if settings else 'LiftCore'
     who = ''
     if user:
