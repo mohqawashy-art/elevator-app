@@ -1,36 +1,62 @@
-{# أيقونة دعم المنصة — واتساب + بريد (صفحات المكتب المسجّل فقط) #}
+{# ويدجت دعم المنصة — واتساب + بريد (صفحات المكتب المسجّل فقط) #}
 {% if auth_user and not platform_admin_host and (support_whatsapp_url or support_email_url) %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-support.css') }}?v=2">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-support.css') }}?v=3">
 <div class="lc-support" id="lc-support" data-lc-support="1">
   <div class="lc-support__panel" id="lc-support-panel" role="menu" aria-label="{{ 'Support' if user_language == 'en' else 'الدعم' }}">
-    <p class="lc-support__title">{{ 'Need help?' if user_language == 'en' else 'تحتاج مساعدة؟' }}</p>
-    {% if support_whatsapp_url %}
-    <a class="lc-support__link lc-support__link--wa" role="menuitem" href="{{ support_whatsapp_url }}" target="_blank" rel="noopener noreferrer">
-      <span class="lc-support__ico lc-support__ico--wa" aria-hidden="true">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.9-.9-.3-.1-.4-.1-.6.1-.2.3-.7.9-.8 1-.1.2-.3.2-.6.1-.3-.1-1.2-.4-2.3-1.4-.8-.8-1.4-1.7-1.6-2-.1-.3 0-.4.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.6-1.5-.8-2-.2-.5-.5-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.6-.7 1.9-1.3.2-.6.2-1.2.1-1.3-.1 0-.3-.1-.6-.2zM12.1 21.2h-.1c-1.8 0-3.5-.5-5-1.4l-.3-.2-3.6.9 1-3.5-.2-.4a8.7 8.7 0 0 1-1.4-4.8 8.8 8.8 0 0 1 8.8-8.8 8.7 8.7 0 0 1 6.2 2.6 8.7 8.7 0 0 1 2.6 6.2 8.8 8.8 0 0 1-8.8 8.8zm7.5-15.1A10.4 10.4 0 0 0 12 1.6 10.5 10.5 0 0 0 1.6 12c0 1.9.5 3.6 1.4 5.2L1 23l5.9-1.6a10.4 10.4 0 0 0 5 1.3h.1c5.8 0 10.5-4.7 10.5-10.5 0-2.8-1.1-5.4-3-7.4z"/></svg>
-      </span>
-      <span>{{ 'WhatsApp' if user_language == 'en' else 'واتساب' }}</span>
-    </a>
-    {% endif %}
-    {% if support_email_url %}
-    <a class="lc-support__link" role="menuitem" href="{{ support_email_url }}">
-      <span class="lc-support__ico lc-support__ico--mail" aria-hidden="true">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5L4 8V6l8 5 8-5v2z"/></svg>
-      </span>
-      <span>{{ 'Email' if user_language == 'en' else 'بريد' }}</span>
-    </a>
-    {% endif %}
+    <div class="lc-support__head">
+      <p class="lc-support__brand">LiftCore</p>
+      <p class="lc-support__title">{{ 'Support' if user_language == 'en' else 'الدعم الفني' }}</p>
+      <p class="lc-support__sub">{{ 'We usually reply within a few hours.' if user_language == 'en' else 'نرد عادةً خلال ساعات قليلة.' }}</p>
+    </div>
+    <div class="lc-support__actions">
+      {% if support_whatsapp_url %}
+      <a class="lc-support__link lc-support__link--wa" role="menuitem" href="{{ support_whatsapp_url }}" target="_blank" rel="noopener noreferrer">
+        <span class="lc-support__ico lc-support__ico--wa" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+        </span>
+        <span class="lc-support__meta">
+          <span class="lc-support__meta-title">{{ 'WhatsApp' if user_language == 'en' else 'واتساب' }}</span>
+          <span class="lc-support__meta-desc">{{ 'Chat with support' if user_language == 'en' else 'محادثة مباشرة مع الدعم' }}</span>
+        </span>
+        <span class="lc-support__chev" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </span>
+      </a>
+      {% endif %}
+      {% if support_email_url %}
+      <a class="lc-support__link" role="menuitem" href="{{ support_email_url }}">
+        <span class="lc-support__ico lc-support__ico--mail" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2"/>
+            <path d="M3 7l9 7 9-7"/>
+          </svg>
+        </span>
+        <span class="lc-support__meta">
+          <span class="lc-support__meta-title">{{ 'Email' if user_language == 'en' else 'البريد الإلكتروني' }}</span>
+          <span class="lc-support__meta-desc">{{ 'Send us a message' if user_language == 'en' else 'أرسل رسالة مفصّلة' }}</span>
+        </span>
+        <span class="lc-support__chev" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </span>
+      </a>
+      {% endif %}
+    </div>
   </div>
-  <button type="button" class="lc-support__btn" aria-expanded="false" aria-controls="lc-support-panel" aria-label="{{ 'Support' if user_language == 'en' else 'الدعم' }}">
-    {# فقاعة دردشة #}
-    <svg class="lc-support__icon-open" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 3c-4.97 0-9 3.58-9 8 0 2.4 1.2 4.55 3.1 6.05L5 21l4.2-1.9c.9.25 1.84.4 2.8.4 4.97 0 9-3.58 9-8s-4.03-8-9-8zm-3.2 7.2h6.4a.8.8 0 0 1 0 1.6H8.8a.8.8 0 0 1 0-1.6zm0 3.2h4.4a.8.8 0 0 1 0 1.6H8.8a.8.8 0 0 1 0-1.6z"/>
-    </svg>
-    {# إغلاق عند الفتح #}
-    <svg class="lc-support__icon-close" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 0 0-1.4 1.4l4.9 4.9-4.9 4.9a1 1 0 1 0 1.4 1.4l4.9-4.9 4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4z"/>
-    </svg>
+  <button type="button" class="lc-support__btn" aria-expanded="false" aria-controls="lc-support-panel" aria-label="{{ 'Open support' if user_language == 'en' else 'فتح الدعم' }}">
+    <span class="lc-support__glyph lc-support__glyph--open" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22l5.9-2z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="8.5" cy="11.5" r="1" fill="currentColor"/>
+        <circle cx="12" cy="11.5" r="1" fill="currentColor"/>
+        <circle cx="15.5" cy="11.5" r="1" fill="currentColor"/>
+      </svg>
+    </span>
+    <span class="lc-support__glyph lc-support__glyph--close" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>
+    </span>
   </button>
 </div>
-<script src="{{ url_for('static', filename='liftcore-support.js') }}?v=2" defer></script>
+<script src="{{ url_for('static', filename='liftcore-support.js') }}?v=3" defer></script>
 {% endif %}
