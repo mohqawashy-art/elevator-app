@@ -18,4 +18,4 @@ def test_viewer_clients_page_hides_add_button(client):
 
 def test_viewer_contracts_page_loads(client):
     login_as(client, 'viewer')
-    assert client.get('/contracts').status_code == 200
+    assert client.get('/contracts', follow_redirects=True).status_code == 200

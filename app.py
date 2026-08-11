@@ -3,7 +3,7 @@ LiftCore — Flask Application
 app.py
 """
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort, make_response
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort, make_response, has_app_context
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import MaintenanceTeam
@@ -1633,7 +1633,13 @@ def _legacy_global_code_unique(table_name: str) -> bool:
     if table_name in cache:
         return cache[table_name]
     try:
-        insp = inspect(db.engine)
+        # inspect(engine) على SQLite/StaticPool يفسد المعاملة المفتوحة ويلغي flush
+        # غير المُلتزم (مثل paid_amount بعد apply_payment قبل next_code).
+        if has_app_context():
+            bind = db.session.connection()
+        else:
+            bind = db.engine
+        insp = inspect(bind)
         for uq in insp.get_unique_constraints(table_name) or []:
             cols = list(uq.get('column_names') or [])
             if cols == ['code']:
@@ -1832,10 +1838,19 @@ def _find_login_user(login_id):
 
 
 def _is_platform_login_host() -> bool:
+    """بوابة المنشآت على النطاق العام فقط — ليس localhost (تطبيق/e2e محلي)."""
     from platform_admin import is_admin_host
     from tenant_signup import is_signup_host
 
-    return is_signup_host() or is_admin_host()
+    if is_admin_host():
+        return True
+    if not is_signup_host():
+        return False
+    host = (request.host or '').split(':')[0].lower().rstrip('.')
+    # localhost مخصّص للتطبيق المحلي وليس نموذج دخول المنصة (يتطلب حقل المنشأة)
+    if host in ('localhost', '127.0.0.1', '::1'):
+        return False
+    return True
 
 
 def _require_platform_console_user():

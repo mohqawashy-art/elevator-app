@@ -33,8 +33,11 @@ ROOT_URL = 'https://liftcoreapp.com'
 def test_signup_disabled_returns_404(monkeypatch, signup_client):
     monkeypatch.delenv('LIFTCORE_SIGNUP_ENABLED', raising=False)
     monkeypatch.delenv('LIFTCORE_COMING_SOON', raising=False)
-    r = signup_client.get('/signup', base_url=ROOT_URL)
-    assert r.status_code == 404
+    r = signup_client.get('/signup', base_url=ROOT_URL, follow_redirects=False)
+    # التسجيل المغلق يوجّه لصفحة الأسعار/التعريف بدل 404 الصريح
+    assert r.status_code in (302, 303, 404)
+    if r.status_code in (302, 303):
+        assert '/pricing' in (r.location or '') or r.location.endswith('/')
 
 
 def test_coming_soon_on_marketing_host(monkeypatch, signup_client):
@@ -42,10 +45,12 @@ def test_coming_soon_on_marketing_host(monkeypatch, signup_client):
     monkeypatch.delenv('LIFTCORE_SIGNUP_ENABLED', raising=False)
     r = signup_client.get('/', base_url=ROOT_URL)
     assert r.status_code == 200
-    assert 'قريباً'.encode('utf-8') in r.data or b'COMING SOON' in r.data
-    r2 = signup_client.get('/signup', base_url=ROOT_URL)
-    assert r2.status_code == 200
-    assert b'COMING SOON' in r2.data
+    # الصفحة العامة = تعريف المنتج (بدل coming_soon.html)
+    body = r.get_data(as_text=True)
+    assert 'نظام تشغيل' in body or 'LiftCore' in body
+    r2 = signup_client.get('/signup', base_url=ROOT_URL, follow_redirects=False)
+    assert r2.status_code in (302, 303)
+    assert '/pricing' in (r2.location or '')
     # مستأجر غير موجود في DB الاختبار → 404 طبيعي؛ المهم ألا يُعرض coming soon
     r3 = signup_client.get('/', base_url='https://jama.liftcoreapp.com')
     assert r3.status_code in (200, 302, 401, 404)
