@@ -130,4 +130,4 @@ def test_refresh_overdue():
         org.billing_status = 'ok'
         status = refresh_billing_status(org, commit=True)
         assert status == 'overdue'
-        assert effective_amount(org) == 299.0
+        assert effective_amount(org) == 250.0

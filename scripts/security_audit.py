@@ -37,6 +37,13 @@ def check_secret_key() -> None:
 def check_delete_routes() -> None:
     app_py = os.path.join(ROOT, 'app.py')
     text = open(app_py, encoding='utf-8').read()
+    # حماية مقبولة لحذف البيانات الحساسة
+    ok_markers = (
+        'enforce_admin_delete',
+        'enforce_admin_attachment_delete',
+        '_require_platform_console_user',
+        'require_admin()',
+    )
     for m in re.finditer(
         r"@app\.route\('([^']*)/delete[^']*'.*?\)\s*\ndef (\w+)\([^)]*\):",
         text,
@@ -47,8 +54,8 @@ def check_delete_routes() -> None:
         next_def = re.search(r'\n@app\.route|\ndef _|\n# =+', text[start:])
         end = start + (next_def.start() if next_def else 800)
         body = text[start:end]
-        if 'enforce_admin_delete' not in body:
-            fail(f'مسار حذف بدون enforce_admin_delete: {route} ({func_name})')
+        if not any(marker in body for marker in ok_markers):
+            fail(f'مسار حذف بدون حماية admin: {route} ({func_name})')
 
 
 def check_rbac_module() -> None:

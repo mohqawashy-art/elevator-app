@@ -8,6 +8,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 os.chdir(ROOT)
 
+# قبل استيراد app: تجنّب مزامنة startup على قاعدة محلية/إنتاج وتهيئة SQLite نظيفة للاختبار
+os.environ.setdefault('SECRET_KEY', 'test-secret-key-not-default')
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+os.environ['LIFTCORE_ALEMBIC'] = '1'  # تخطّي _startup_schema_and_data_sync عند الاستيراد
+os.environ.pop('LIFTCORE_HTTPS', None)
+
 from app import app, db, hash_password
 from models import Organization, Settings, User, ZatcaCredentials
 
@@ -15,8 +21,11 @@ from models import Organization, Settings, User, ZatcaCredentials
 def _default_org_id():
     org = Organization.query.filter_by(slug='default').first()
     if not org:
-        org = Organization(slug='default', name='Test Org', status='active')
+        org = Organization(slug='default', name='Test Org', status='active', plan='pro')
         db.session.add(org)
+        db.session.commit()
+    elif not getattr(org, 'plan', None):
+        org.plan = 'pro'
         db.session.commit()
     return org.id
 
@@ -26,6 +35,7 @@ def client():
     app.config['TESTING'] = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['SECRET_KEY'] = 'test-secret-key-not-default'
+    app.config['SESSION_COOKIE_SECURE'] = False
     with app.app_context():
         db.engine.dispose()
         db.session.remove()
@@ -74,7 +84,7 @@ def ensure_test_organization():
     """مؤسسة افتراضية للاختبارات التي تنشئ جداولها يدوياً."""
     org = Organization.query.filter_by(slug='default').first()
     if not org:
-        org = Organization(slug='default', name='Test Org', status='active')
+        org = Organization(slug='default', name='Test Org', status='active', plan='pro')
         db.session.add(org)
         db.session.commit()
     return org.id

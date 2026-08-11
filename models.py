@@ -998,6 +998,19 @@ class AppLiveState(db.Model):
     revision = db.Column(db.Integer, default=0, nullable=False)
 
 
+class RateLimitEvent(db.Model):
+    """أحداث rate limit مشتركة بين workers (login / field PIN) — ليست tenant-scoped."""
+    __tablename__ = 'rate_limit_events'
+    __table_args__ = (
+        db.Index('ix_rate_limit_scope_key_created', 'scope', 'bucket_key', 'created_at'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    scope = db.Column(db.String(32), nullable=False)
+    bucket_key = db.Column(db.String(191), nullable=False)
+    created_at = db.Column(db.Float, nullable=False, index=True)
+
+
 MaintenanceVisit.linked_fault = db.relationship(
     'Fault', foreign_keys=[MaintenanceVisit.fault_id], uselist=False
 )

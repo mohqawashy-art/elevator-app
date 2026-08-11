@@ -40,22 +40,20 @@ def upgrade():
             continue
         if dialect == 'postgresql':
             op.execute(sa.text(f'ALTER TABLE users DROP CONSTRAINT IF EXISTS {cname}'))
+        elif dialect == 'sqlite':
+            with op.batch_alter_table('users') as batch_op:
+                batch_op.drop_constraint(cname, type_='unique')
         else:
             op.drop_constraint(cname, 'users', type_='unique')
+        existing = _unique_names(bind, 'users')
 
     existing = _unique_names(bind, 'users')
     if 'uq_user_org_username' not in existing:
-        if dialect == 'postgresql':
-            op.execute(sa.text(
-                'CREATE UNIQUE INDEX IF NOT EXISTS uq_user_org_username '
-                'ON users (organization_id, username)'
-            ))
-        else:
-            op.create_unique_constraint(
-                'uq_user_org_username',
-                'users',
-                ['organization_id', 'username'],
-            )
+        # فهرس فريد يعمل على SQLite وPostgreSQL دون ALTER CONSTRAINT
+        op.execute(sa.text(
+            'CREATE UNIQUE INDEX IF NOT EXISTS uq_user_org_username '
+            'ON users (organization_id, username)'
+        ))
 
 
 def downgrade():
@@ -66,7 +64,13 @@ def downgrade():
         if dialect == 'postgresql':
             op.execute(sa.text('DROP INDEX IF EXISTS uq_user_org_username'))
             op.execute(sa.text('ALTER TABLE users DROP CONSTRAINT IF EXISTS uq_user_org_username'))
+        elif dialect == 'sqlite':
+            op.execute(sa.text('DROP INDEX IF EXISTS uq_user_org_username'))
         else:
             op.drop_constraint('uq_user_org_username', 'users', type_='unique')
     if 'users_username_key' not in _unique_names(bind, 'users'):
-        op.create_unique_constraint('users_username_key', 'users', ['username'])
+        if dialect == 'sqlite':
+            with op.batch_alter_table('users') as batch_op:
+                batch_op.create_unique_constraint('users_username_key', ['username'])
+        else:
+            op.create_unique_constraint('users_username_key', 'users', ['username'])

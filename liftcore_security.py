@@ -38,11 +38,14 @@ ALLOWED_UPLOAD_MIME = frozenset({
     'application/pdf',
 })
 
-# ── Rate limiting (in-memory — كافٍ لـ single-tenant) ───────────
+# ── Rate limiting ───────────────────────────────────────────────
+# افتراضياً: جدول DB مشترك بين workers (Postgres/SQLite).
+# LIFTCORE_RATE_LIMIT_STORE=memory يفرض الذاكرة (اختبارات/طوارئ).
 
 _rate_lock = Lock()
 _login_attempts: dict[str, list[float]] = defaultdict(list)
 _field_pin_attempts: dict[str, list[float]] = defaultdict(list)
+_db_store_disabled = False  # يُعطّل تلقائياً إن فشل الجدول/الاتصال
 
 LOGIN_MAX_ATTEMPTS = int(os.environ.get('LIFTCORE_LOGIN_MAX_ATTEMPTS', '5'))
 LOGIN_WINDOW_SEC = int(os.environ.get('LIFTCORE_LOGIN_WINDOW_SEC', '900'))
@@ -51,6 +54,9 @@ LOGIN_LOCKOUT_SEC = int(os.environ.get('LIFTCORE_LOGIN_LOCKOUT_SEC', '900'))
 FIELD_PIN_MAX_ATTEMPTS = int(os.environ.get('LIFTCORE_FIELD_PIN_MAX_ATTEMPTS', '5'))
 FIELD_PIN_WINDOW_SEC = int(os.environ.get('LIFTCORE_FIELD_PIN_WINDOW_SEC', '900'))
 FIELD_PIN_LOCKOUT_SEC = int(os.environ.get('LIFTCORE_FIELD_PIN_LOCKOUT_SEC', '900'))
+
+RATE_SCOPE_LOGIN = 'login'
+RATE_SCOPE_FIELD_PIN = 'field_pin'
 
 
 def is_production_env() -> bool:
@@ -156,12 +162,32 @@ def _client_ip() -> str:
     return forwarded or (request.remote_addr or 'unknown')
 
 
+def _force_memory_store() -> bool:
+    return os.environ.get('LIFTCORE_RATE_LIMIT_STORE', '').strip().lower() in (
+        'memory', 'mem', 'inmemory',
+    )
+
+
+def _use_db_store() -> bool:
+    global _db_store_disabled
+    if _db_store_disabled or _force_memory_store():
+        return False
+    try:
+        from flask import has_app_context
+        if not has_app_context():
+            return False
+        from models import RateLimitEvent, db  # noqa: F401
+        return db.session.get_bind() is not None
+    except Exception:
+        return False
+
+
 def _prune_attempts(bucket: dict[str, list[float]], key: str, window: float) -> None:
     now = time.time()
     bucket[key] = [t for t in bucket.get(key, []) if now - t < window]
 
 
-def _rate_limit_check(
+def _memory_rate_limit_check(
     bucket: dict[str, list[float]],
     key: str,
     *,
@@ -169,9 +195,6 @@ def _rate_limit_check(
     window_sec: int,
     lockout_sec: int,
 ) -> tuple[bool, int]:
-    """يرجع (allowed, seconds_until_retry)."""
-    if not is_production_env():
-        return True, 0
     now = time.time()
     with _rate_lock:
         _prune_attempts(bucket, key, window_sec)
@@ -183,20 +206,171 @@ def _rate_limit_check(
         return True, 0
 
 
-def _record_failure(bucket: dict[str, list[float]], key: str) -> None:
+def _memory_record_failure(bucket: dict[str, list[float]], key: str) -> None:
     with _rate_lock:
         bucket[key].append(time.time())
 
 
-def _clear_attempts(bucket: dict[str, list[float]], key: str) -> None:
+def _memory_clear_attempts(bucket: dict[str, list[float]], key: str) -> None:
     with _rate_lock:
         bucket.pop(key, None)
+
+
+def _db_session():
+    """جلسة مستقلة — لا تُcommit معاملة الطلب الحالية بالخطأ."""
+    from sqlalchemy.orm import Session
+
+    from models import db
+
+    return Session(bind=db.engine)
+
+
+def _db_prune(session, scope: str, key: str, keep_sec: float) -> None:
+    from models import RateLimitEvent
+
+    cutoff = time.time() - keep_sec
+    (
+        session.query(RateLimitEvent)
+        .filter(
+            RateLimitEvent.scope == scope,
+            RateLimitEvent.bucket_key == key,
+            RateLimitEvent.created_at < cutoff,
+        )
+        .delete(synchronize_session=False)
+    )
+
+
+def _db_rate_limit_check(
+    scope: str,
+    key: str,
+    *,
+    max_attempts: int,
+    window_sec: int,
+    lockout_sec: int,
+) -> tuple[bool, int]:
+    global _db_store_disabled
+    from models import RateLimitEvent
+
+    now = time.time()
+    try:
+        with _db_session() as session:
+            _db_prune(session, scope, key, max(window_sec, lockout_sec))
+            rows = (
+                session.query(RateLimitEvent.created_at)
+                .filter(
+                    RateLimitEvent.scope == scope,
+                    RateLimitEvent.bucket_key == key,
+                    RateLimitEvent.created_at >= now - window_sec,
+                )
+                .order_by(RateLimitEvent.created_at.asc())
+                .all()
+            )
+            session.commit()
+            timestamps = [r[0] for r in rows]
+    except Exception:
+        _db_store_disabled = True
+        return True, 0
+
+    if len(timestamps) >= max_attempts:
+        oldest = timestamps[0]
+        retry = int(lockout_sec - (now - oldest)) + 1
+        return False, max(retry, 1)
+    return True, 0
+
+
+def _db_record_failure(scope: str, key: str) -> None:
+    global _db_store_disabled
+    from models import RateLimitEvent
+
+    try:
+        with _db_session() as session:
+            session.add(RateLimitEvent(
+                scope=scope,
+                bucket_key=key[:191],
+                created_at=time.time(),
+            ))
+            session.commit()
+    except Exception:
+        _db_store_disabled = True
+
+
+def _db_clear_attempts(scope: str, key: str) -> None:
+    global _db_store_disabled
+    from models import RateLimitEvent
+
+    try:
+        with _db_session() as session:
+            (
+                session.query(RateLimitEvent)
+                .filter(
+                    RateLimitEvent.scope == scope,
+                    RateLimitEvent.bucket_key == key,
+                )
+                .delete(synchronize_session=False)
+            )
+            session.commit()
+    except Exception:
+        _db_store_disabled = True
+
+
+def _rate_limit_check(
+    bucket: dict[str, list[float]],
+    key: str,
+    *,
+    scope: str,
+    max_attempts: int,
+    window_sec: int,
+    lockout_sec: int,
+) -> tuple[bool, int]:
+    """يرجع (allowed, seconds_until_retry)."""
+    if not is_production_env():
+        return True, 0
+    if _use_db_store():
+        return _db_rate_limit_check(
+            scope,
+            key,
+            max_attempts=max_attempts,
+            window_sec=window_sec,
+            lockout_sec=lockout_sec,
+        )
+    return _memory_rate_limit_check(
+        bucket,
+        key,
+        max_attempts=max_attempts,
+        window_sec=window_sec,
+        lockout_sec=lockout_sec,
+    )
+
+
+def _record_failure(
+    bucket: dict[str, list[float]],
+    key: str,
+    *,
+    scope: str,
+) -> None:
+    if _use_db_store():
+        _db_record_failure(scope, key)
+        return
+    _memory_record_failure(bucket, key)
+
+
+def _clear_attempts(
+    bucket: dict[str, list[float]],
+    key: str,
+    *,
+    scope: str,
+) -> None:
+    if _use_db_store():
+        _db_clear_attempts(scope, key)
+        return
+    _memory_clear_attempts(bucket, key)
 
 
 def check_login_rate_limit() -> tuple[bool, int]:
     return _rate_limit_check(
         _login_attempts,
         _client_ip(),
+        scope=RATE_SCOPE_LOGIN,
         max_attempts=LOGIN_MAX_ATTEMPTS,
         window_sec=LOGIN_WINDOW_SEC,
         lockout_sec=LOGIN_LOCKOUT_SEC,
@@ -204,11 +378,11 @@ def check_login_rate_limit() -> tuple[bool, int]:
 
 
 def record_login_failure() -> None:
-    _record_failure(_login_attempts, _client_ip())
+    _record_failure(_login_attempts, _client_ip(), scope=RATE_SCOPE_LOGIN)
 
 
 def clear_login_attempts() -> None:
-    _clear_attempts(_login_attempts, _client_ip())
+    _clear_attempts(_login_attempts, _client_ip(), scope=RATE_SCOPE_LOGIN)
 
 
 def check_field_pin_rate_limit(login_id: str) -> tuple[bool, int]:
@@ -216,6 +390,7 @@ def check_field_pin_rate_limit(login_id: str) -> tuple[bool, int]:
     return _rate_limit_check(
         _field_pin_attempts,
         key,
+        scope=RATE_SCOPE_FIELD_PIN,
         max_attempts=FIELD_PIN_MAX_ATTEMPTS,
         window_sec=FIELD_PIN_WINDOW_SEC,
         lockout_sec=FIELD_PIN_LOCKOUT_SEC,
@@ -224,12 +399,12 @@ def check_field_pin_rate_limit(login_id: str) -> tuple[bool, int]:
 
 def record_field_pin_failure(login_id: str) -> None:
     key = f'{_client_ip()}:{(login_id or "").strip().lower()}'
-    _record_failure(_field_pin_attempts, key)
+    _record_failure(_field_pin_attempts, key, scope=RATE_SCOPE_FIELD_PIN)
 
 
 def clear_field_pin_attempts(login_id: str) -> None:
     key = f'{_client_ip()}:{(login_id or "").strip().lower()}'
-    _clear_attempts(_field_pin_attempts, key)
+    _clear_attempts(_field_pin_attempts, key, scope=RATE_SCOPE_FIELD_PIN)
 
 
 # ── Upload validation ──────────────────────────────────────────────

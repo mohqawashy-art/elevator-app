@@ -24,7 +24,8 @@ REQUIRED_FRAGMENTS = (
 def test_main_pages_load_for_admin(client):
     login_as(client, 'admin')
     for path in MAIN_PAGES:
-        r = client.get(path)
+        # /contracts يعيد توجيهاً إلى ?z=4 لكسر كاش الواجهة القديمة
+        r = client.get(path, follow_redirects=True)
         assert r.status_code == 200, f'{path} returned {r.status_code}'
         html = r.get_data(as_text=True)
         for frag in REQUIRED_FRAGMENTS:
@@ -34,7 +35,7 @@ def test_main_pages_load_for_admin(client):
 def test_main_pages_no_obvious_script_typos(client):
     login_as(client, 'admin')
     for path in MAIN_PAGES:
-        html = client.get(path).get_data(as_text=True)
+        html = client.get(path, follow_redirects=True).get_data(as_text=True)
         assert 'undefined is not' not in html
         assert 'null is not an object' not in html
 

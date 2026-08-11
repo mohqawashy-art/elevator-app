@@ -118,7 +118,11 @@ def test_platform_routes_404_on_app_host():
 
 
 def test_platform_org_export_download():
-    from models import Customer
+    import io
+    import json
+    import zipfile
+
+    from models import Customer, ZatcaCredentials
 
     client = _client()
     client.post(
@@ -134,6 +138,18 @@ def test_platform_org_export_download():
             code='C-1',
             name='عميل تجريبي',
         ))
+        z = ZatcaCredentials.query.filter_by(organization_id=oid).first()
+        if not z:
+            z = ZatcaCredentials(
+                organization_id=oid,
+                vat_number='300000000000003',
+                status='active',
+            )
+            db.session.add(z)
+        z.private_key = 'SECRET-PRIVATE-KEY'
+        z.api_secret = 'SECRET-API'
+        z.csid = 'SECRET-CSID'
+        z.certificate = 'SECRET-CERT'
         db.session.commit()
 
     r = client.get(f'/platform/orgs/{oid}/export', base_url=ADMIN_URL)
@@ -141,6 +157,47 @@ def test_platform_org_export_download():
     assert r.mimetype == 'application/zip'
     assert 'attachment' in (r.headers.get('Content-Disposition') or '')
     assert r.data[:2] == b'PK'
+
+    with zipfile.ZipFile(io.BytesIO(r.data)) as zf:
+        names = zf.namelist()
+        json_name = next(n for n in names if n.endswith('-data.json'))
+        payload = json.loads(zf.read(json_name).decode('utf-8'))
+
+    assert payload.get('version') == 2
+    assert 'password_hash' in (payload.get('security') or {}).get('redacted_fields', {}).get('users', [])
+
+    users = payload['tables'].get('users') or []
+    assert users
+    for u in users:
+        assert u.get('password_hash') == '[REDACTED]'
+        assert 'pbkdf2' not in str(u.get('password_hash'))
+        assert u.get('password_hash_was_set') is True
+
+    creds = payload['tables'].get('zatca_credentials') or []
+    assert creds
+    for row in creds:
+        assert row.get('private_key') == '[REDACTED]'
+        assert row.get('api_secret') == '[REDACTED]'
+        assert row.get('csid') == '[REDACTED]'
+        assert row.get('certificate') == '[REDACTED]'
+        assert 'SECRET-' not in json.dumps(row)
+
+
+def test_sanitize_export_row_unit():
+    from tenant_lifecycle import EXPORT_REDACT_MARKER, _sanitize_export_row
+
+    out = _sanitize_export_row('users', {
+        'username': 'admin',
+        'password_hash': 'pbkdf2:sha256:...',
+        'role': 'admin',
+    })
+    assert out['username'] == 'admin'
+    assert out['password_hash'] == EXPORT_REDACT_MARKER
+    assert out['password_hash_was_set'] is True
+
+    empty = _sanitize_export_row('technicians', {'sign_pin_hash': None, 'name': 'فني'})
+    assert empty['sign_pin_hash'] is None
+    assert empty['sign_pin_hash_was_set'] is False
 
 
 def test_platform_org_delete_requires_confirm_and_password():

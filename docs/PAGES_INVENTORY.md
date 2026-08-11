@@ -179,7 +179,7 @@
 
 **إصلاحات حديثة:** شعارات العميل + LiftCore · أعطال مُسندة لفريق صيانة · **جلسة الفني لا تُمسح عند حفظ التقرير** (`4519775`) · **ختم وقت الوصول عند فتح التقرير** (`ec558f4`)
 
-**غير منفّذ:** ⏳ وضع offline (Service Worker + IndexedDB + مزامنة)
+**Offline:** ✅ بوابة الفني (`field-offline.js` + `field-sw.js` + مزامنة محاضر)
 
 **الحالة العامة:** ✅ · 🔧 (يتطلب PIN + نشر `ec558f4` و`4519775`)
 
@@ -390,6 +390,7 @@
 | **Sentry على الإنتاج** | 🟡 | الكود جاهز — يحتاج `SENTRY_DSN` في `platform.env` |
 | **backup / auto-update cron** | 🟡 | السكربتات جاهزة — `bash deploy/setup_production_ops.sh` |
 | Offline PWA للفني | ✅ | `field-offline.js` + مزامنة محاضر |
+| Offline PWA للإدارة | ✅ جزئي | صفحات زارها المستخدم + طابور نماذج (`admin-offline.js` + SW v10) — المرفقات تحتاج نت |
 | تطبيق إدارة جوال/تابلت | ✅ | `liftcore-admin-mobile.css` + manifest LiftCore |
 | ترجمة i18n ديناميكية | 🟡 | واجهة ثابتة جيدة؛ `/api/translate` P3 |
 | تبويب الباقة في الإعدادات | ⏸ P3 | معطّل — B2B مخصص |

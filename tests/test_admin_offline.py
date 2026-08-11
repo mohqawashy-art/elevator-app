@@ -1,4 +1,4 @@
-"""Admin Offline PWA — assets, SW routes, queue API."""
+"""Admin Offline PWA — SW يخزّن الصفحات المزارة + طابور الكتابة عبر admin-offline.js."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -30,20 +30,21 @@ def test_admin_offline_js_has_queue_api():
     assert 'lc-admin-offline-banner' in text
 
 
-def test_admin_sw_caches_nav_and_fallback():
+def test_admin_sw_caches_pages_and_fallback():
     text = (STATIC / 'admin-sw.js').read_text(encoding='utf-8')
-    assert 'liftcore-admin-v7' in text
-    assert '/dashboard' in text
+    assert 'liftcore-admin-v10' in text
     assert 'admin-offline-fallback.html' in text
     assert 'admin-offline.js' in text
+    assert 'isCacheableAdminPage' in text
+    assert 'navigate' in text
 
 
-def test_admin_service_worker_serves_offline_bundle(client):
+def test_admin_service_worker_serves_bundle(client):
     r = client.get('/sw.js')
     assert r.status_code == 200
     body = r.get_data(as_text=True)
-    assert 'liftcore-admin' in body
-    assert 'admin-offline' in body or '/dashboard' in body
+    assert 'liftcore-admin-v10' in body
+    assert 'admin-offline-fallback' in body
     assert r.headers.get('Service-Worker-Allowed') == '/'
 
 
@@ -53,16 +54,11 @@ def test_admin_offline_fallback_route(client):
     assert 'لا يوجد اتصال' in r.get_data(as_text=True)
 
 
-def test_dashboard_includes_admin_offline_script(client):
+def test_pwa_head_registers_service_worker(client):
     login_as(client, 'admin')
     r = client.get('/dashboard')
     assert r.status_code == 200
     html = r.get_data(as_text=True)
+    assert '/sw.js' in html or 'serviceWorker' in html
     assert 'admin-offline.js' in html
-
-
-def test_clients_includes_admin_offline_script(client):
-    login_as(client, 'admin')
-    r = client.get('/clients')
-    assert r.status_code == 200
-    assert 'admin-offline.js' in r.get_data(as_text=True)
+    assert 'lc-admin-offline-banner' in (STATIC / 'admin-offline.js').read_text(encoding='utf-8')

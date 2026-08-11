@@ -3,7 +3,7 @@ LiftCore — Flask Application
 app.py
 """
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort, make_response
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort, make_response, has_app_context
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
 from models import MaintenanceTeam
@@ -808,6 +808,42 @@ def format_date_dmy(value):
     return str(value)
 
 
+def _platform_support_context(*, user=None, settings=None, lang: str = 'ar') -> dict:
+    """روابط دعم LiftCore للمنصة (واتساب + بريد) — قابلة للضبط عبر البيئة."""
+    from urllib.parse import quote
+
+    from operations import whatsapp_url
+
+    email = (os.environ.get('LIFTCORE_SUPPORT_EMAIL') or 'info@liftcoreapp.com').strip()
+    if 'LIFTCORE_SUPPORT_WHATSAPP' in os.environ:
+        phone = (os.environ.get('LIFTCORE_SUPPORT_WHATSAPP') or '').strip()
+    else:
+        phone = '0566299626'
+    brand = (getattr(settings, 'company_name', None) or 'LiftCore') if settings else 'LiftCore'
+    who = ''
+    if user:
+        who = (getattr(user, 'full_name', None) or getattr(user, 'username', None) or '').strip()
+    if lang == 'en':
+        msg = f'Hello, I need LiftCore support. Company: {brand}.'
+        if who:
+            msg += f' User: {who}.'
+        subject = f'LiftCore support — {brand}'
+    else:
+        msg = f'مرحباً، أحتاج دعم LiftCore. المنشأة: {brand}.'
+        if who:
+            msg += f' المستخدم: {who}.'
+        subject = f'دعم LiftCore — {brand}'
+    wa = whatsapp_url(phone, msg) if phone else ''
+    mail = ''
+    if email and '@' in email:
+        mail = f'mailto:{email}?subject={quote(subject)}&body={quote(msg)}'
+    return {
+        'support_email': email if mail else '',
+        'support_email_url': mail,
+        'support_whatsapp_url': wa,
+    }
+
+
 @app.context_processor
 def inject_global_template_vars():
     try:
@@ -850,6 +886,7 @@ def inject_global_template_vars():
         platform_op = bool(user and _is_op(user))
     except Exception:
         platform_op = False
+    support = _platform_support_context(user=user, settings=s, lang=lang)
     return {
         'google_maps_api_key': resolve_google_maps_api_key(s),
         'google_maps_key_source': google_maps_key_source(s),
@@ -880,6 +917,7 @@ def inject_global_template_vars():
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
         'is_platform_operator': platform_op,
         'platform_admin_host': bool(getattr(g, 'platform_admin_host', False)),
+        **support,
     }
 
 
@@ -1633,7 +1671,13 @@ def _legacy_global_code_unique(table_name: str) -> bool:
     if table_name in cache:
         return cache[table_name]
     try:
-        insp = inspect(db.engine)
+        # inspect(engine) على SQLite/StaticPool يفسد المعاملة المفتوحة ويلغي flush
+        # غير المُلتزم (مثل paid_amount بعد apply_payment قبل next_code).
+        if has_app_context():
+            bind = db.session.connection()
+        else:
+            bind = db.engine
+        insp = inspect(bind)
         for uq in insp.get_unique_constraints(table_name) or []:
             cols = list(uq.get('column_names') or [])
             if cols == ['code']:
@@ -1832,10 +1876,19 @@ def _find_login_user(login_id):
 
 
 def _is_platform_login_host() -> bool:
+    """بوابة المنشآت على النطاق العام فقط — ليس localhost (تطبيق/e2e محلي)."""
     from platform_admin import is_admin_host
     from tenant_signup import is_signup_host
 
-    return is_signup_host() or is_admin_host()
+    if is_admin_host():
+        return True
+    if not is_signup_host():
+        return False
+    host = (request.host or '').split(':')[0].lower().rstrip('.')
+    # localhost مخصّص للتطبيق المحلي وليس نموذج دخول المنصة (يتطلب حقل المنشأة)
+    if host in ('localhost', '127.0.0.1', '::1'):
+        return False
+    return True
 
 
 def _require_platform_console_user():

@@ -124,6 +124,7 @@
 - [x] L3 — `docs/marketing/DEMO-VIDEO.md` (خطة إنتاج خارجية)
 - [x] L4 — `docs/marketing/ONE-PAGER.md`
 - [x] L5 — `docs/marketing/PRIVACY.md` + `TERMS.md`
+- [ ] **L6 — مراجعة تسويقية لاحقة:** مواءمة ONE-PAGER/الأدلة مع الواقع (SaaS، Offline، ZATCA، الباقات، الدفع) — حالياً عليها شارة «مسودة قديمة»
 
 ---
 
@@ -135,6 +136,7 @@
 - [~] تذكيرات عقود مجدولة عبر wa.me (`scripts/send_contract_reminders.py` + cron) — WhatsApp Business API لاحقاً
 - [ ] WhatsApp Business API (إرسال تلقائي عبر Graph)
 - [x] Offline Field PWA
+- [x] Offline Admin PWA (صفحات مزارة + طابور كتابة؛ المرفقات أونلاين فقط)
 - [ ] `/api/translate` (G2)
 
 ---
