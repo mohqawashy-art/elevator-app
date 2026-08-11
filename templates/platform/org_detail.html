@@ -362,6 +362,8 @@
   <p class="muted" style="margin-bottom:12px;line-height:1.8">
     نزّل نسخة احتياطية (ملف ZIP فيه JSON) واحفظها على جهازك قبل أي حذف.
     التصدير يشمل سجلات قاعدة البيانات لهذا العميل فقط — بدون لمس باقي المؤسسات.
+    الحقول الحساسة (hashes كلمات المرور، PIN، مفاتيح/أسرار ZATCA، رموز الدعوات، مفتاح الخرائط)
+    تُستبدل بـ <code>[REDACTED]</code> ولا تُنزَّل كما هي.
   </p>
   <div class="actions">
     <a class="btn btn-primary" href="{{ url_for('platform_org_export', org_id=org.id) }}">تنزيل البيانات إلى جهازي</a>

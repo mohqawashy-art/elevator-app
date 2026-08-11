@@ -41,6 +41,19 @@ EXPORT_TABLES: tuple[tuple[str, str], ...] = (
     ('onboarding_invites', 'OnboardingInvite'),
 )
 
+# حقول حساسة — لا تُسلَّم في تصدير المنصة (hashes / مفاتيح / أسرار)
+EXPORT_REDACT_MARKER = '[REDACTED]'
+EXPORT_SENSITIVE_FIELDS: dict[str, frozenset[str]] = {
+    'users': frozenset({'password_hash'}),
+    'technicians': frozenset({'sign_pin_hash'}),
+    'signatories': frozenset({'sign_pin_hash'}),
+    'settings': frozenset({'rep_sign_pin_hash', 'google_maps_api_key'}),
+    'zatca_credentials': frozenset({
+        'private_key', 'api_secret', 'csid', 'certificate',
+    }),
+    'onboarding_invites': frozenset({'token'}),
+}
+
 
 def _model_map():
     from models import (
@@ -129,6 +142,25 @@ def _row_to_dict(row) -> dict:
     return data
 
 
+def _sanitize_export_row(table_name: str, data: dict) -> dict:
+    """يحذف/يستبدل الحقول الحساسة قبل كتابة ملف التصدير."""
+    sensitive = EXPORT_SENSITIVE_FIELDS.get(table_name)
+    if not sensitive:
+        return data
+    out = dict(data)
+    for field in sensitive:
+        if field not in out:
+            continue
+        raw = out.get(field)
+        present = raw not in (None, '', b'', EXPORT_REDACT_MARKER)
+        out[field] = EXPORT_REDACT_MARKER if present else None
+        # إشارة غير سرّية لإعادة التهيئة لاحقاً (بدون كشف القيمة)
+        flag = f'{field}_was_set'
+        if flag not in out:
+            out[flag] = bool(present)
+    return out
+
+
 def _org_meta(org) -> dict:
     return {
         'id': org.id,
@@ -166,16 +198,28 @@ def export_tenant_payload(org) -> dict:
             else:
                 continue
             rows = q.order_by(model.id).all()
-            tables[table_name] = [_row_to_dict(r) for r in rows]
+            tables[table_name] = [
+                _sanitize_export_row(table_name, _row_to_dict(r)) for r in rows
+            ]
             counts[table_name] = len(rows)
     finally:
         g._resolving_default_org = prev
 
     return {
-        'version': 1,
+        'version': 2,
         'format': 'liftcore-tenant-export',
         'exported_at': datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z'),
         'organization': _org_meta(org),
+        'security': {
+            'redacted_fields': {
+                table: sorted(fields)
+                for table, fields in EXPORT_SENSITIVE_FIELDS.items()
+            },
+            'note': (
+                'Password hashes, PIN hashes, ZATCA keys/secrets, invite tokens, '
+                'and Maps API keys are redacted. Re-set credentials after restore.'
+            ),
+        },
         'counts': counts,
         'tables': tables,
     }
@@ -206,6 +250,9 @@ def build_tenant_export_zip(org) -> tuple[bytes, str, dict]:
                 '\n'
                 'احفظ هذا الملف على جهازك قبل حذف الحساب.\n'
                 'لا يحتوي على ملفات الوسائط المرفوعة (الصور/PDF) — فقط سجلات قاعدة البيانات.\n'
+                '\n'
+                'أمني: تم تهذيب الحقول الحساسة (كلمات مرور مشفّرة، PIN، مفاتيح ZATCA،\n'
+                'أسرار API، رموز الدعوات، مفتاح خرائط). أعِد ضبط الاعتمادات بعد الاستعادة.\n'
             ),
         )
     return buf.getvalue(), filename, payload.get('counts') or {}
