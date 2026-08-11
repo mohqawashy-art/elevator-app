@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — نظام تشغيل صيانة المصاعد</title>
+<meta name="description" content="LiftCore نظام تشغيل لشركات صيانة وتركيب المصاعد في السعودية: عملاء، عقود، زيارات، أعطال، مخزون، فواتير، وبوابة فني.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070a10;
+  --bg-2:#0b1018;
+  --surface:#111925;
+  --gold:#c9a14a;
+  --gold-light:#e8cd86;
+  --text:#f2f5fa;
+  --muted:#8b97a8;
+  --muted-2:#5e6b7e;
+  --line:rgba(255,255,255,.07);
+  --hair:rgba(201,161,74,.16);
+  --radius:18px;
+  --shadow:0 24px 60px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Tajawal',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.7;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(90% 55% at 80% -10%, rgba(201,161,74,.10), transparent 55%),
+    radial-gradient(70% 45% at 10% 20%, rgba(80,120,180,.07), transparent 50%),
+    linear-gradient(180deg, #0b1018 0%, #070a10 42%, #070a10 100%);
+}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+.wrap{position:relative;z-index:2;width:min(1180px,92vw);margin:0 auto}
+.nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:22px 0 10px;
+  animation:rise .7s ease both;
+}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-brand img{width:42px;height:42px;object-fit:contain}
+.mark{font-family:'Cormorant Garamond',serif;font-size:1.55rem;font-weight:600;letter-spacing:.02em}
+.mark span{color:var(--gold-light)}
+.nav-actions{display:flex;align-items:center;gap:10px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:999px;padding:10px 18px;font-weight:700;font-size:.95rem;
+  border:1px solid transparent;transition:transform .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn-ghost{color:var(--muted);border-color:var(--line);background:transparent}
+.btn-ghost:hover{color:var(--text);border-color:rgba(255,255,255,.16)}
+.btn-gold{
+  background:linear-gradient(180deg,var(--gold-light),var(--gold));
+  color:#14110a;box-shadow:0 10px 30px rgba(201,161,74,.28);
+}
+.btn-outline{border-color:rgba(201,161,74,.45);color:var(--gold-light);background:rgba(201,161,74,.06)}
+
+/* Hero — one composition, brand first, full-bleed visual */
+.hero{
+  position:relative;
+  min-height:min(78vh,720px);
+  margin:12px 0 48px;
+  border-radius:28px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  box-shadow:var(--shadow);
+  isolation:isolate;
+  animation:rise .85s ease .08s both;
+}
+.hero-media{
+  position:absolute;inset:0;
+  background:
+    linear-gradient(105deg, rgba(7,10,16,.92) 0%, rgba(7,10,16,.72) 38%, rgba(7,10,16,.28) 68%, rgba(7,10,16,.45) 100%),
+    url("{{ url_for('static', filename='images/liftcore-brand-hero.png') }}") 72% 45% / cover no-repeat;
+}
+.hero-copy{
+  position:relative;z-index:1;
+  max-width:560px;
+  padding:clamp(36px,7vw,72px) clamp(22px,4vw,48px);
+  display:flex;flex-direction:column;justify-content:center;
+  min-height:min(78vh,720px);
+}
+.brand-lockup{
+  display:flex;align-items:center;gap:14px;margin-bottom:28px;
+}
+.brand-lockup img{width:56px;height:56px;object-fit:contain}
+.brand-lockup .name{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(2rem,5vw,2.8rem);
+  font-weight:600;line-height:1;
+}
+.brand-lockup .name span{color:var(--gold-light)}
+.brand-lockup .sub{font-size:.78rem;color:var(--muted);letter-spacing:.12em;margin-top:6px}
+.hero h1{
+  font-weight:800;
+  font-size:clamp(1.65rem,3.8vw,2.35rem);
+  line-height:1.35;
+  margin-bottom:14px;
+}
+.hero h1 em{font-style:normal;color:var(--gold-light)}
+.hero p{
+  color:var(--muted);
+  font-size:1.05rem;
+  max-width:42ch;
+  margin-bottom:26px;
+}
+.hero-ctas{display:flex;flex-wrap:wrap;gap:10px}
+
+.section{padding:28px 0 10px}
+.section-head{max-width:640px;margin-bottom:22px}
+.eyebrow{
+  display:inline-block;color:var(--gold-light);font-size:.82rem;font-weight:700;
+  letter-spacing:.08em;margin-bottom:8px;
+}
+.section-head h2{
+  font-size:clamp(1.45rem,3vw,1.95rem);font-weight:800;line-height:1.35;margin-bottom:8px;
+}
+.section-head p{color:var(--muted)}
+
+.work{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+}
+.work article{
+  padding:18px 16px 16px;
+  border-top:1px solid var(--hair);
+}
+.work h3{font-size:1.05rem;font-weight:700;margin-bottom:6px;color:var(--gold-light)}
+.work p{color:var(--muted);font-size:.95rem}
+
+.shots{display:grid;gap:18px;margin-top:8px}
+.shot{
+  border:1px solid var(--line);
+  border-radius:20px;
+  overflow:hidden;
+  background:var(--surface);
+  box-shadow:var(--shadow);
+  opacity:0;transform:translateY(18px);
+  animation:rise .8s ease forwards;
+}
+.shot:nth-child(1){animation-delay:.1s}
+.shot:nth-child(2){animation-delay:.2s}
+.shot:nth-child(3){animation-delay:.3s}
+.shot-frame{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:rgba(255,255,255,.02);
+}
+.shot-dots{display:flex;gap:6px}
+.shot-dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18)}
+.shot-dots i:nth-child(1){background:#e07070}
+.shot-dots i:nth-child(2){background:#e0c070}
+.shot-dots i:nth-child(3){background:#70c090}
+.shot-title{font-size:.82rem;color:var(--muted)}
+.shot img{width:100%;height:auto;background:#0b0f17}
+.shot-caption{padding:14px 16px 16px}
+.shot-caption h3{font-size:1.05rem;margin-bottom:4px}
+.shot-caption p{color:var(--muted);font-size:.92rem}
+.shots-split{
+  display:grid;grid-template-columns:1.35fr .75fr;gap:18px;align-items:stretch;
+}
+.shot-phone img{max-height:560px;object-fit:contain;margin:0 auto;background:transparent}
+
+.cta{
+  margin:42px 0 56px;
+  padding:36px 28px;
+  border-radius:24px;
+  border:1px solid var(--hair);
+  background:
+    radial-gradient(80% 120% at 100% 0%, rgba(201,161,74,.14), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,.03), transparent 40%),
+    var(--surface);
+  text-align:center;
+}
+.cta h2{font-size:clamp(1.4rem,3vw,1.9rem);font-weight:800;margin-bottom:10px}
+.cta p{color:var(--muted);max-width:46ch;margin:0 auto 20px}
+.cta .actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
+.footer{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:18px 0 36px;border-top:1px solid var(--line);color:var(--muted-2);font-size:.85rem;
+}
+
+@keyframes rise{
+  from{opacity:0;transform:translateY(16px)}
+  to{opacity:1;transform:none}
+}
+
+@media (max-width:980px){
+  .work{grid-template-columns:1fr}
+  .shots-split{grid-template-columns:1fr}
+  .hero-media{
+    background:
+      linear-gradient(180deg, rgba(7,10,16,.55) 0%, rgba(7,10,16,.88) 55%, rgba(7,10,16,.96) 100%),
+      url("{{ url_for('static', filename='images/liftcore-brand-hero.png') }}") 60% 40% / cover no-repeat;
+  }
+  .hero-copy{min-height:auto;padding-top:48px;padding-bottom:48px}
+}
+@media (max-width:560px){
+  .nav-actions .btn-ghost{display:none}
+  .brand-lockup .sub{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="nav">
+    <a class="nav-brand" href="{{ url_for('index') }}">
+      <img src="{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=4" alt="LiftCore" onerror="this.style.display='none'">
+      <div class="mark">Lift<span>Core</span></div>
+    </a>
+    <div class="nav-actions">
+      <a class="btn btn-ghost" href="#work">ماذا يفعل</a>
+      <a class="btn btn-ghost" href="{{ url_for('pricing') }}">الأسعار</a>
+      <a class="btn btn-gold" href="{{ signup_href|default('mailto:info@liftcoreapp.com') }}">{{ signup_label|default('تواصل معنا') }}</a>
+    </div>
+  </header>
+
+  <section class="hero" aria-label="مقدمة LiftCore">
+    <div class="hero-media" role="img" aria-label="هوية LiftCore"></div>
+    <div class="hero-copy">
+      <div class="brand-lockup">
+        <img src="{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=4" alt="" onerror="this.style.display='none'">
+        <div>
+          <div class="name">Lift<span>Core</span></div>
+          <div class="sub">ELEVATOR OPERATIONS</div>
+        </div>
+      </div>
+      <h1>نظام تشغيل لشركات <em>صيانة المصاعد</em></h1>
+      <p>من العقد إلى زيارة الفني والفواتير — منصة واحدة تدير أسطولك في السعودية بوضوح وتشغيل يومي مرتب.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-gold" href="#shots">شاهد النظام</a>
+        <a class="btn btn-outline" href="{{ url_for('pricing') }}">الباقات والأسعار</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="work">
+    <div class="section-head">
+      <div class="eyebrow">الأعمال</div>
+      <h2>ماذا يعمل LiftCore يومياً؟</h2>
+      <p>يغطي دورة تشغيل شركة الصيانة: من العميل والعقد إلى الميدان والمخزون والفوترة.</p>
+    </div>
+    <div class="work">
+      <article>
+        <h3>عملاء وعقود ومصاعد</h3>
+        <p>سجل كامل للعملاء، عقود الصيانة، وبيانات كل مصعد مع تواريخ الانتهاء والتنبيهات.</p>
+      </article>
+      <article>
+        <h3>زيارات وأعطال ميدانية</h3>
+        <p>جدولة زيارات، تعيين فنيين، تقارير موقّعة، وتتبع الأعطال حتى الإغلاق.</p>
+      </article>
+      <article>
+        <h3>مخزون وفواتير ZATCA</h3>
+        <p>قطع الغيار وحركات المخزون، مع فواتير تحمل QR ضريبي للمرحلة الأولى.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="shots">
+    <div class="section-head">
+      <div class="eyebrow">من داخل النظام</div>
+      <h2>صور من شاشات التشغيل</h2>
+      <p>لوحة التحكم، جدول الزيارات، وبوابة الفني — كما تظهر لفريق المكتب والميدان.</p>
+    </div>
+
+    <div class="shots">
+      <figure class="shot">
+        <div class="shot-frame">
+          <div class="shot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="shot-title">لوحة التحكم · مراقبة يومية</div>
+        </div>
+        <img src="{{ url_for('static', filename='images/marketing/dashboard.png') }}" alt="لوحة تحكم LiftCore: عقود، مصاعد، زيارات وأعطال" width="1280" height="720" loading="lazy">
+        <figcaption class="shot-caption">
+          <h3>رؤية تشغيلية في شاشة واحدة</h3>
+          <p>ملخص العقود والمصاعد والزيارات والأعطال المفتوحة — لمدير التشغيل في مكة أو أي مدينة.</p>
+        </figcaption>
+      </figure>
+
+      <div class="shots-split">
+        <figure class="shot">
+          <div class="shot-frame">
+            <div class="shot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="shot-title">جدول الزيارات · صيانة ميدانية</div>
+          </div>
+          <img src="{{ url_for('static', filename='images/marketing/visits.png') }}" alt="جدول زيارات الصيانة في LiftCore" width="1280" height="720" loading="lazy">
+          <figcaption class="shot-caption">
+            <h3>جدولة واضحة للفنيين والمواقع</h3>
+            <p>من أبراج ومجمعات إلى مستشفيات — حالة كل زيارة ووقتها والفني المسؤول.</p>
+          </figcaption>
+        </figure>
+
+        <figure class="shot shot-phone">
+          <div class="shot-frame">
+            <div class="shot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="shot-title">بوابة الفني</div>
+          </div>
+          <img src="{{ url_for('static', filename='images/marketing/field.png') }}" alt="بوابة الفني على الجوال في LiftCore" width="420" height="860" loading="lazy">
+          <figcaption class="shot-caption">
+            <h3>ميدان بلا أوراق</h3>
+            <p>قائمة فحص، إنهاء زيارة، وتوقيع تقرير من الجوال.</p>
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta" id="cta">
+    <h2>جاهز تشوف الباقة المناسبة لأسطولك؟</h2>
+    <p>أسعار سنوية واضحة، وحدود مصاعد وفنيين، وإضافات تكبر مع نمو شركتك.</p>
+    <div class="actions">
+      <a class="btn btn-gold" href="{{ url_for('pricing') }}">عرض الباقات</a>
+      <a class="btn btn-outline" href="mailto:info@liftcoreapp.com">طلب عرض مخصص</a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div>© LiftCore · مكة المكرمة</div>
+    <div>
+      <a href="{{ url_for('pricing') }}">الأسعار</a>
+      ·
+      <a href="mailto:info@liftcoreapp.com">info@liftcoreapp.com</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore Mock — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=DM+Sans:wght@500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:#0b0f17;color:#e4eaf5;width:1280px;height:720px;overflow:hidden;display:flex}
+.sidebar{width:220px;background:#111720;border-left:1px solid rgba(100,160,255,.1);padding:16px 0;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;padding:0 16px 18px;border-bottom:1px solid rgba(100,160,255,.1);margin-bottom:12px}
+.logo-mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,rgba(42,127,255,.25),rgba(200,160,85,.2));border:1px solid rgba(100,160,255,.2);display:grid;place-items:center;font:600 13px 'DM Sans';color:#c8a055}
+.brand b{display:block;font-size:14px}.brand span{font-size:10px;color:#4a5a72}
+.nav a{display:block;padding:10px 16px;color:#8a9bb8;font-size:13px;text-decoration:none}
+.nav a.active{color:#e4eaf5;background:rgba(42,127,255,.1);border-right:2px solid #2a7fff}
+.main{flex:1;display:flex;flex-direction:column}
+.head{height:56px;border-bottom:1px solid rgba(100,160,255,.1);display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:#111720}
+.head h1{font-size:16px;font-weight:600}
+.head .chip{font-size:11px;color:#8a9bb8;background:#161e2b;border:1px solid rgba(100,160,255,.12);padding:5px 10px;border-radius:8px}
+.content{padding:18px 22px;flex:1}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{background:#131b27;border:1px solid rgba(100,160,255,.1);border-radius:12px;padding:14px 14px 12px;position:relative;overflow:hidden}
+.stat::before{content:"";position:absolute;top:0;right:0;left:0;height:2px;background:var(--c,#2a7fff)}
+.stat .lbl{font-size:12px;color:#8a9bb8;margin-bottom:8px}
+.stat .val{font:600 28px 'DM Sans';line-height:1}
+.stat.g{--c:#c8a055}.stat.s{--c:#1fb87a}.stat.w{--c:#e09030}
+.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:12px}
+.panel{background:#131b27;border:1px solid rgba(100,160,255,.1);border-radius:12px;padding:14px;min-height:280px}
+.panel h2{font-size:13px;color:#8a9bb8;margin-bottom:12px;font-weight:500}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(100,160,255,.07);font-size:13px}
+.row:last-child{border:0}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px}
+.badge.ok{background:rgba(31,184,122,.15);color:#1fb87a}
+.badge.warn{background:rgba(224,144,48,.15);color:#e09030}
+.badge.info{background:rgba(42,127,255,.15);color:#2a7fff}
+.bars{display:flex;align-items:flex-end;gap:10px;height:180px;padding-top:20px}
+.bar{flex:1;background:linear-gradient(180deg,#2a7fff,#1a5fcc);border-radius:6px 6px 2px 2px;opacity:.85}
+.bar:nth-child(2){height:70%}.bar:nth-child(3){height:90%}.bar:nth-child(4){height:55%}.bar:nth-child(5){height:75%}.bar:nth-child(6){height:40%}.bar:nth-child(1){height:60%}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo"><div class="logo-mark">LC</div><div class="brand"><b>Lift<span style="color:#2a7fff">Core</span></b><span>OPERATIONS</span></div></div>
+  <nav class="nav">
+    <a class="active" href="#">لوحة التحكم</a>
+    <a href="#">العملاء</a>
+    <a href="#">العقود</a>
+    <a href="#">المصاعد</a>
+    <a href="#">الزيارات</a>
+    <a href="#">الأعطال</a>
+    <a href="#">الفواتير</a>
+    <a href="#">المخزون</a>
+  </nav>
+</aside>
+<main class="main">
+  <header class="head"><h1>لوحة التحكم</h1><div class="chip">مكة المكرمة · اليوم</div></header>
+  <div class="content">
+    <div class="stats">
+      <div class="stat"><div class="lbl">عقود نشطة</div><div class="val">128</div></div>
+      <div class="stat g"><div class="lbl">مصاعد تحت الصيانة</div><div class="val">412</div></div>
+      <div class="stat s"><div class="lbl">زيارات مكتملة هذا الشهر</div><div class="val">86</div></div>
+      <div class="stat w"><div class="lbl">أعطال مفتوحة</div><div class="val">7</div></div>
+    </div>
+    <div class="grid">
+      <section class="panel">
+        <h2>زيارات اليوم</h2>
+        <div class="row"><span>برج الصفا — صيانة دورية</span><span class="badge info">قيد التنفيذ</span></div>
+        <div class="row"><span>مجمع النور — فحص فرامل</span><span class="badge ok">مكتملة</span></div>
+        <div class="row"><span>فندق زمزم — عطل باب</span><span class="badge warn">متأخرة</span></div>
+        <div class="row"><span>أبراج البيت — زيارة ربع سنوية</span><span class="badge info">مجدولة</span></div>
+        <div class="row"><span>مستشفى الحراء — صيانة طارئة</span><span class="badge ok">مكتملة</span></div>
+      </section>
+      <section class="panel">
+        <h2>أداء الزيارات (6 أسابيع)</h2>
+        <div class="bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+      </section>
+    </div>
+  </div>
+</main>
+</body>
+</html>

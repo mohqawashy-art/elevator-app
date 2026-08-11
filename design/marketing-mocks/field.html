@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore Mock — Field</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=DM+Sans:wght@500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:#070a10;color:#e4eaf5;width:420px;height:860px;overflow:hidden;margin:0 auto;padding:18px;background-image:radial-gradient(80% 40% at 50% 0%,rgba(42,127,255,.12),transparent)}
+.phone{background:#111720;border:1px solid rgba(100,160,255,.15);border-radius:28px;height:100%;padding:18px 16px;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.notch{width:110px;height:8px;border-radius:8px;background:#1c2535;margin:0 auto 16px}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.head b{font-size:16px}
+.head span{font-size:11px;color:#8a9bb8}
+.card{background:#131b27;border:1px solid rgba(100,160,255,.12);border-radius:16px;padding:14px;margin-bottom:12px}
+.card .kicker{font-size:11px;color:#c8a055;margin-bottom:6px}
+.card h2{font-size:15px;margin-bottom:6px}
+.card p{font-size:12px;color:#8a9bb8;line-height:1.6}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.meta div{background:#0b0f17;border-radius:10px;padding:10px;font-size:12px}
+.meta b{display:block;font-size:14px;margin-top:4px;font-family:'DM Sans'}
+.checks{margin-top:8px}
+.check{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(100,160,255,.08);font-size:13px}
+.check:last-child{border:0}
+.box{width:18px;height:18px;border-radius:5px;border:1.5px solid #2a7fff;background:rgba(42,127,255,.2);display:grid;place-items:center;color:#2a7fff;font-size:11px}
+.box.off{border-color:#4a5a72;background:transparent;color:transparent}
+.cta{margin-top:auto;display:grid;gap:8px}
+.cta button{border:0;border-radius:12px;padding:13px;font:600 14px 'IBM Plex Sans Arabic'}
+.cta .p{background:#c8a055;color:#111}
+.cta .s{background:#161e2b;color:#e4eaf5;border:1px solid rgba(100,160,255,.15)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="head"><b>بوابة الفني</b><span>ماهر · وردية صباحية</span></div>
+  <div class="card">
+    <div class="kicker">الزيارة التالية</div>
+    <h2>أبراج البيت — برج أ</h2>
+    <p>صيانة دورية · مصعد EL-0142 · طابق المحرك</p>
+    <div class="meta">
+      <div>الوصول المتوقع<b>10:30</b></div>
+      <div>العميل<b>إدارة الأبراج</b></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="kicker">قائمة الفحص</div>
+    <div class="checks">
+      <div class="check"><div class="box">✓</div>فحص أبواب الكابينة</div>
+      <div class="check"><div class="box">✓</div>مستوى زيت الماكينة</div>
+      <div class="check"><div class="box off">✓</div>اختبار زر الطوارئ</div>
+      <div class="check"><div class="box off">✓</div>تصوير المحضر والتوقيع</div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="p">إنهاء الزيارة وتوقيع التقرير</button>
+    <button class="s">تسجيل عطل جديد</button>
+  </div>
+</div>
+</body>
+</html>

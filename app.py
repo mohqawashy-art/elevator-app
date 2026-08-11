@@ -1793,8 +1793,8 @@ def index():
             return redirect(url_for('platform_home'))
         return redirect(url_for('login'))
     if is_signup_host():
-        # الصفحة العامة للموقع: الباقات بدل «قريباً»
-        return render_template('pricing.html', **_pricing_context())
+        # الصفحة العامة: تعريف المنتج أولاً، ثم الأسعار
+        return render_template('landing.html', **_pricing_context())
     if current_user():
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
@@ -1802,17 +1802,23 @@ def index():
 
 @app.route('/coming-soon')
 def coming_soon():
-    """مسار قديم — يوجّه لصفحة الأسعار على النطاق العام."""
+    """مسار قديم — يوجّه للصفحة التعريفية على النطاق العام."""
     from tenant_signup import require_signup_host
 
     require_signup_host()
-    return redirect(url_for('pricing'))
+    return redirect(url_for('index'))
 
 
 @app.route('/pricing')
 def pricing():
     """صفحة الباقات والأسعار — عرض عام للعملاء."""
     return render_template('pricing.html', **_pricing_context())
+
+
+@app.route('/product')
+def product_landing():
+    """مسار مباشر للصفحة التعريفية (مفيد من روابط الأسعار)."""
+    return render_template('landing.html', **_pricing_context())
 
 
 def _find_login_user(login_id):

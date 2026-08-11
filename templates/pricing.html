@@ -336,12 +336,12 @@ tr:last-child td{border-bottom:none}
 <body>
 <div class="wrap">
   <header class="nav">
-    <a class="nav-brand" href="{{ url_for('pricing') }}">
+    <a class="nav-brand" href="{{ url_for('index') }}">
       <img src="{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=4" alt="LiftCore" onerror="this.style.display='none'">
       <div class="mark">Lift<span>Core</span></div>
     </a>
     <div class="nav-actions">
-      <a class="btn btn-ghost" href="#addons">الإضافات</a>
+      <a class="btn btn-ghost" href="{{ url_for('index') }}#shots">لقطات النظام</a>
       <a class="btn btn-gold" href="{{ signup_href|default('mailto:info@liftcoreapp.com') }}">{{ signup_label|default('تواصل معنا') }}</a>
     </div>
   </header>
