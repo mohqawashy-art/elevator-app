@@ -1,4 +1,4 @@
-/* LiftCore — أيقونة دعم عائمة (واتساب + بريد) */
+/* LiftCore — دعم عائم (واتساب + بريد) */
 .lc-support {
   position: fixed;
   inset-inline-end: max(16px, env(safe-area-inset-right, 0px));
@@ -14,25 +14,38 @@
 .lc-support__panel {
   position: absolute;
   inset-inline-end: 0;
-  bottom: calc(100% + 10px);
-  min-width: 220px;
-  padding: 10px;
-  border-radius: 14px;
-  background: var(--bg2, #131b27);
-  border: 1px solid var(--border, rgba(100, 160, 255, 0.16));
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  bottom: calc(100% + 12px);
+  min-width: 200px;
+  padding: 8px;
+  border-radius: 12px;
+  background: #121a26;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.42);
   display: none;
 }
 
 .lc-support.is-open .lc-support__panel {
   display: block;
+  animation: lc-support-in 0.18s ease-out;
+}
+
+@keyframes lc-support-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .lc-support__title {
-  margin: 0 4px 8px;
-  font-size: 12px;
+  margin: 2px 8px 8px;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--text2, #8a9bb8);
+  letter-spacing: 0.02em;
+  color: #7f8fa8;
 }
 
 .lc-support__link {
@@ -40,17 +53,18 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  margin: 0 0 6px;
-  padding: 10px 12px;
+  margin: 0 0 4px;
+  padding: 10px 11px;
   border-radius: 10px;
   border: 0;
   text-decoration: none;
-  color: var(--text, #e4eaf5);
-  background: var(--bg3, #161e2b);
+  color: #e8eef8;
+  background: transparent;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   box-sizing: border-box;
+  transition: background 0.15s ease;
 }
 
 .lc-support__link:last-child {
@@ -58,17 +72,13 @@
 }
 
 .lc-support__link:hover {
-  background: rgba(42, 127, 255, 0.14);
-}
-
-.lc-support__link--wa:hover {
-  background: rgba(37, 211, 102, 0.16);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .lc-support__ico {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -86,40 +96,58 @@
 }
 
 .lc-support__ico svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   fill: currentColor;
 }
 
 .lc-support__btn {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  border: 1px solid rgba(100, 160, 255, 0.22);
-  background: linear-gradient(160deg, #1a2740 0%, #121a28 100%);
-  color: #d7e6ff;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 0;
+  background: #2a7fff;
+  color: #fff;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 8px 20px rgba(42, 127, 255, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .lc-support__btn:hover {
-  border-color: rgba(42, 127, 255, 0.45);
-  color: #fff;
+  background: #1f6fe6;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(42, 127, 255, 0.42);
+}
+
+.lc-support__btn:active {
+  transform: translateY(0);
 }
 
 .lc-support__btn svg {
   width: 22px;
   height: 22px;
   fill: currentColor;
+  display: block;
+}
+
+.lc-support__icon-close {
+  display: none;
 }
 
 .lc-support.is-open .lc-support__btn {
-  background: #2a7fff;
-  color: #fff;
-  border-color: transparent;
+  background: #1a2333;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.lc-support.is-open .lc-support__icon-open {
+  display: none;
+}
+
+.lc-support.is-open .lc-support__icon-close {
+  display: block;
 }
 
 @media print {
