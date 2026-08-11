@@ -808,6 +808,39 @@ def format_date_dmy(value):
     return str(value)
 
 
+def _platform_support_context(*, user=None, settings=None, lang: str = 'ar') -> dict:
+    """روابط دعم LiftCore للمنصة (واتساب + بريد) — قابلة للضبط عبر البيئة."""
+    from urllib.parse import quote
+
+    from operations import whatsapp_url
+
+    email = (os.environ.get('LIFTCORE_SUPPORT_EMAIL') or 'info@liftcoreapp.com').strip()
+    phone = (os.environ.get('LIFTCORE_SUPPORT_WHATSAPP') or '').strip()
+    brand = (getattr(settings, 'company_name', None) or 'LiftCore') if settings else 'LiftCore'
+    who = ''
+    if user:
+        who = (getattr(user, 'full_name', None) or getattr(user, 'username', None) or '').strip()
+    if lang == 'en':
+        msg = f'Hello, I need LiftCore support. Company: {brand}.'
+        if who:
+            msg += f' User: {who}.'
+        subject = f'LiftCore support — {brand}'
+    else:
+        msg = f'مرحباً، أحتاج دعم LiftCore. المنشأة: {brand}.'
+        if who:
+            msg += f' المستخدم: {who}.'
+        subject = f'دعم LiftCore — {brand}'
+    wa = whatsapp_url(phone, msg) if phone else ''
+    mail = ''
+    if email and '@' in email:
+        mail = f'mailto:{email}?subject={quote(subject)}&body={quote(msg)}'
+    return {
+        'support_email': email if mail else '',
+        'support_email_url': mail,
+        'support_whatsapp_url': wa,
+    }
+
+
 @app.context_processor
 def inject_global_template_vars():
     try:
@@ -850,6 +883,7 @@ def inject_global_template_vars():
         platform_op = bool(user and _is_op(user))
     except Exception:
         platform_op = False
+    support = _platform_support_context(user=user, settings=s, lang=lang)
     return {
         'google_maps_api_key': resolve_google_maps_api_key(s),
         'google_maps_key_source': google_maps_key_source(s),
@@ -880,6 +914,7 @@ def inject_global_template_vars():
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
         'is_platform_operator': platform_op,
         'platform_admin_host': bool(getattr(g, 'platform_admin_host', False)),
+        **support,
     }
 
 
