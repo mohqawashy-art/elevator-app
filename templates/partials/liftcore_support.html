@@ -1,6 +1,6 @@
 {# ويدجت دعم المنصة — واتساب + بريد (صفحات المكتب المسجّل فقط) #}
 {% if auth_user and not platform_admin_host and (support_whatsapp_url or support_email_url) %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-support.css') }}?v=3">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-support.css') }}?v=4">
 <div class="lc-support" id="lc-support" data-lc-support="1">
   <div class="lc-support__panel" id="lc-support-panel" role="menu" aria-label="{{ 'Support' if user_language == 'en' else 'الدعم' }}">
     <div class="lc-support__head">
@@ -42,21 +42,24 @@
       {% endif %}
     </div>
   </div>
-  <button type="button" class="lc-support__btn" aria-expanded="false" aria-controls="lc-support-panel" aria-label="{{ 'Open support' if user_language == 'en' else 'فتح الدعم' }}">
-    <span class="lc-support__glyph lc-support__glyph--open" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22l5.9-2z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="8.5" cy="11.5" r="1" fill="currentColor"/>
-        <circle cx="12" cy="11.5" r="1" fill="currentColor"/>
-        <circle cx="15.5" cy="11.5" r="1" fill="currentColor"/>
-      </svg>
+  <button type="button" class="lc-support__btn" aria-expanded="false" aria-controls="lc-support-panel" aria-label="{{ 'Technical support' if user_language == 'en' else 'الدعم الفني' }}">
+    <span class="lc-support__glyph-wrap" aria-hidden="true">
+      <span class="lc-support__glyph lc-support__glyph--open">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22l5.9-2z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="8.5" cy="11.5" r="1" fill="currentColor"/>
+          <circle cx="12" cy="11.5" r="1" fill="currentColor"/>
+          <circle cx="15.5" cy="11.5" r="1" fill="currentColor"/>
+        </svg>
+      </span>
+      <span class="lc-support__glyph lc-support__glyph--close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </span>
     </span>
-    <span class="lc-support__glyph lc-support__glyph--close" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 6L6 18M6 6l12 12"/>
-      </svg>
-    </span>
+    <span class="lc-support__label">{{ 'Support' if user_language == 'en' else 'الدعم الفني' }}</span>
   </button>
 </div>
-<script src="{{ url_for('static', filename='liftcore-support.js') }}?v=3" defer></script>
+<script src="{{ url_for('static', filename='liftcore-support.js') }}?v=4" defer></script>
 {% endif %}
