@@ -124,6 +124,7 @@
 - [x] L3 — `docs/marketing/DEMO-VIDEO.md` (خطة إنتاج خارجية)
 - [x] L4 — `docs/marketing/ONE-PAGER.md`
 - [x] L5 — `docs/marketing/PRIVACY.md` + `TERMS.md`
+- [ ] **L6 — مراجعة تسويقية لاحقة:** مواءمة ONE-PAGER/الأدلة مع الواقع (SaaS، Offline، ZATCA، الباقات، الدفع) — حالياً عليها شارة «مسودة قديمة»
 
 ---
 
