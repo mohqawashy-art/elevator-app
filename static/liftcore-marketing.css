@@ -43,8 +43,18 @@ body.mkt img{display:block;max-width:100%}
   padding:20px 0 12px;gap:16px;
   animation:mkt-rise .7s ease both;
 }
-.mkt-nav-brand{display:flex;align-items:center;gap:12px}
-.mkt-nav-brand img{width:42px;height:42px;object-fit:contain}
+.mkt-nav-brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mkt-nav-brand img{
+  width:auto;
+  height:48px;
+  max-width:min(280px,52vw);
+  object-fit:contain;
+  display:block;
+}
+.mkt-nav-brand img.mkt-nav-logo-full{
+  height:52px;
+  max-width:min(320px,62vw);
+}
 .mkt-mark{
   font-family:'Cormorant Garamond',serif;
   font-size:1.5rem;font-weight:600;letter-spacing:.02em;direction:ltr;

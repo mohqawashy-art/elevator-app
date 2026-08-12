@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=2">
 <style>
 .hero{
   padding:28px 0 18px;text-align:center;max-width:720px;margin:0 auto;
@@ -202,8 +202,7 @@ tr:last-child td{border-bottom:none}
 <div class="mkt-wrap mkt-wrap--wide">
   <header class="mkt-nav">
     <a class="mkt-nav-brand" href="{{ url_for('index') }}">
-      <img src="{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=4" alt="LiftCore" onerror="this.style.display='none'">
-      <div class="mkt-mark">Lift<span>Core</span></div>
+      <img class="mkt-nav-logo-full" src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}?v=1" alt="LiftCore — الإدارة الذكية للمصاعد">
     </a>
     <div class="mkt-nav-actions">
       <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('index') }}">التعريف</a>
