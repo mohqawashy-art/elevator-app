@@ -129,6 +129,7 @@ def test_ads_landing_and_conversion_flow(monkeypatch):
     assert 'ads-form' in body or 'ads-panel' in body
     assert 'dashboard.png' in body
     assert 'id="contact"' in body
+    assert 'بيانات طلب التجربة' in body or 'طلب التجربة' in body
 
     r = client.post(
         '/demo-request',

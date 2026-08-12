@@ -8,220 +8,178 @@
 <link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=7">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=8">
 <style>
-:root{
-  --ads-ink:#f4f6fa;
-  --ads-mute:#9aa6b8;
-  --ads-line:rgba(255,255,255,.12);
-  --ads-panel:#0f1622;
-  --ads-field:#172233;
-  --ads-gold:#e4c778;
-  --ads-gold-deep:#c9a14a;
-}
-
+/* صفحة تحويل: الغرض = طلب تجربة. النموذج أولاً، المنتج ظاهر بإطار فاتح */
 body.mkt-ads{
-  background:#05070c;
+  background:#071018;
   overflow-x:visible;
 }
 body.mkt-ads::before{
-  content:"";
-  position:fixed;inset:0;pointer-events:none;z-index:0;
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   background:
-    radial-gradient(90% 60% at 100% -10%, rgba(201,161,74,.16), transparent 52%),
-    radial-gradient(70% 50% at -10% 80%, rgba(64,110,180,.10), transparent 48%),
-    linear-gradient(165deg, #0b111a 0%, #05070c 48%, #070b12 100%);
+    radial-gradient(80% 55% at 100% 0%, rgba(201,161,74,.18), transparent 55%),
+    radial-gradient(60% 45% at 0% 100%, rgba(56,98,160,.12), transparent 50%),
+    linear-gradient(180deg,#0d1520 0%,#071018 55%,#071018 100%);
 }
 
 .ads-page{
   position:relative;z-index:1;
-  width:min(1200px,94vw);
+  width:min(1180px,94vw);
   margin:0 auto;
-  min-height:100vh;
-  display:flex;flex-direction:column;
-  padding-bottom:8px;
+  padding-bottom:20px;
 }
 
-.ads-page .mkt-nav{padding:18px 0 6px}
-.ads-page .mkt-nav-brand img{
-  height:58px;max-width:min(360px,68vw);width:auto;
-}
+.ads-page .mkt-nav{padding:16px 0 4px}
+.ads-page .mkt-nav-brand img{height:52px;max-width:min(320px,62vw);width:auto}
 
-/* التركيبة: مقدمة + صف (نموذج | منتج) */
-.ads-intro{
-  padding:18px 0 8px;
-  animation:ads-in .7s ease both;
-}
-.ads-intro .brand{
-  font-family:'Cormorant Garamond',serif;
-  font-size:clamp(2.8rem,7vw,4rem);
-  font-weight:600;line-height:.92;direction:ltr;
-  color:var(--ads-ink);margin:0 0 18px;
-}
-.ads-intro .brand span{color:var(--ads-gold)}
-.ads-intro .brand em{
-  display:block;
-  margin-top:10px;
-  font-family:'Tajawal',sans-serif;
-  font-style:normal;font-size:.72rem;font-weight:600;
-  letter-spacing:.18em;text-transform:uppercase;color:var(--ads-mute);
-}
-.ads-intro h1{
-  margin:0 0 10px;
-  font-size:clamp(1.45rem,3.1vw,2.05rem);
-  font-weight:800;line-height:1.4;color:var(--ads-ink);
-  max-width:22ch;
-}
-.ads-intro h1 mark{
-  background:none;color:var(--ads-gold);font-weight:800;
-}
-.ads-intro .dek{
-  margin:0;color:var(--ads-mute);
-  font-size:1.02rem;line-height:1.7;max-width:40ch;
-}
-
-.ads-main{
-  flex:1;
+.ads-hero{
   display:grid;
-  grid-template-columns:minmax(0, .95fr) minmax(0, 1.05fr);
-  gap:clamp(18px,3vw,28px);
-  align-items:stretch;
-  padding:22px 0 28px;
-  min-width:0;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);
+  gap:22px;
+  align-items:start;
+  padding:12px 0 20px;
+}
+
+/* العمود الأيمن: العلامة + الغرض + النموذج */
+.ads-lead{min-width:0}
+.ads-lead .brand{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(2.4rem,5.5vw,3.35rem);
+  font-weight:700;line-height:.92;direction:ltr;
+  color:#f5f7fb;margin:0 0 14px;
+  animation:ads-in .55s ease both;
+}
+.ads-lead .brand span{color:#e8cd86}
+.ads-lead h1{
+  margin:0 0 8px;
+  font-size:clamp(1.35rem,2.8vw,1.85rem);
+  font-weight:800;line-height:1.4;color:#f5f7fb;
+  animation:ads-in .6s ease .04s both;
+}
+.ads-lead h1 mark{background:none;color:#e8cd86}
+.ads-lead .dek{
+  margin:0 0 16px;color:#b7c2d2;font-size:.98rem;line-height:1.65;
+  animation:ads-in .6s ease .08s both;
+}
+.ads-proof{
+  display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;
+  animation:ads-in .6s ease .1s both;
+}
+.ads-proof span{
+  font-size:.8rem;font-weight:700;color:#d7deea;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:999px;padding:7px 12px;
 }
 
 .ads-panel{
   min-width:0;
-  background:linear-gradient(180deg, rgba(255,255,255,.03), transparent 40%), var(--ads-panel);
-  border:1px solid var(--ads-line);
-  border-radius:22px;
-  padding:22px 20px 18px;
-  box-shadow:0 24px 50px rgba(0,0,0,.4);
-  animation:ads-in .75s ease .08s both;
-}
-.ads-panel .eyebrow{
-  display:inline-block;
-  color:var(--ads-gold);
-  font-size:.78rem;font-weight:700;
-  letter-spacing:.04em;margin-bottom:8px;
+  background:#121c2a;
+  border:1px solid rgba(232,205,134,.28);
+  border-radius:20px;
+  padding:18px 16px 14px;
+  box-shadow:0 18px 40px rgba(0,0,0,.35);
+  animation:ads-in .65s ease .12s both;
 }
 .ads-panel h2{
-  margin:0 0 6px;font-size:1.25rem;font-weight:800;color:#fff;
+  margin:0 0 4px;font-size:1.2rem;font-weight:800;color:#fff;
 }
 .ads-panel .lead{
-  margin:0 0 18px;color:var(--ads-mute);font-size:.9rem;line-height:1.55;
+  margin:0 0 14px;color:#9eabbd;font-size:.86rem;
 }
 
-.ads-form{display:grid;gap:12px;position:relative;min-width:0}
+.ads-form{display:grid;gap:10px;position:relative}
 .ads-form .row{
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;min-width:0;
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;
 }
 .ads-form label{
-  display:block;margin-bottom:6px;
-  font-size:.8rem;font-weight:700;color:#c9d2e0;
+  display:block;margin-bottom:5px;
+  font-size:.78rem;font-weight:700;color:#d5dde9;
 }
 .ads-form input,
 .ads-form textarea{
-  width:100%;max-width:100%;
-  box-sizing:border-box;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.16);
-  background:var(--ads-field);
-  color:var(--ads-ink);
-  padding:12px 13px;
-  font:inherit;outline:none;
+  width:100%;box-sizing:border-box;
+  border-radius:11px;
+  border:1px solid rgba(255,255,255,.18);
+  background:#1a2738;
+  color:#f5f7fb;
+  padding:11px 12px;font:inherit;outline:none;
 }
-.ads-form input::placeholder,
-.ads-form textarea::placeholder{color:#6a778c}
 .ads-form input:focus,
 .ads-form textarea:focus{
-  border-color:rgba(201,161,74,.6);
-  box-shadow:0 0 0 3px rgba(201,161,74,.14);
+  border-color:rgba(232,205,134,.65);
+  box-shadow:0 0 0 3px rgba(201,161,74,.15);
 }
-.ads-form textarea{min-height:68px;resize:vertical}
+.ads-form textarea{min-height:58px;resize:vertical}
 .ads-form .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .ads-form .mkt-btn-gold{
-  width:100%;margin-top:2px;padding:13px 18px;
-  font-size:.98rem;border-radius:14px;
+  width:100%;padding:13px 16px;font-size:.97rem;border-radius:12px;margin-top:2px;
 }
-.ads-form .hint{
-  text-align:center;font-size:.76rem;color:#738194;margin:0;
-}
-.ads-form .hint b{color:#aeb8c8;font-weight:600}
+.ads-form .hint{margin:0;text-align:center;font-size:.74rem;color:#8491a3}
+.ads-form .hint b{color:#c5cedb;font-weight:600}
 
+/* العمود الأيسر: صورة المنتج بإطار فاتح حتى تبان */
 .ads-visual{
   min-width:0;
-  position:relative;
-  border-radius:22px;
+  background:#e9eef5;
+  border-radius:20px;
   overflow:hidden;
-  border:1px solid var(--ads-line);
-  background:#0a1018;
-  box-shadow:0 24px 50px rgba(0,0,0,.35);
-  animation:ads-in .8s ease .14s both;
-  display:flex;flex-direction:column;
+  border:1px solid rgba(255,255,255,.35);
+  box-shadow:0 22px 48px rgba(0,0,0,.4);
+  animation:ads-in .7s ease .14s both;
 }
 .ads-visual__chrome{
-  display:flex;align-items:center;gap:8px;
-  padding:12px 14px;
-  background:rgba(255,255,255,.03);
-  border-bottom:1px solid var(--ads-line);
+  display:flex;align-items:center;gap:7px;
+  padding:11px 14px;background:#d7dee8;
+  border-bottom:1px solid #c5cedb;
 }
 .ads-visual__chrome i{
-  width:9px;height:9px;border-radius:50%;
-  background:rgba(255,255,255,.18);
-  display:inline-block;
+  width:9px;height:9px;border-radius:50%;background:#9aa7b8;display:inline-block;
 }
+.ads-visual__chrome i:nth-child(1){background:#ff5f57}
+.ads-visual__chrome i:nth-child(2){background:#febc2e}
+.ads-visual__chrome i:nth-child(3){background:#28c840}
 .ads-visual__chrome span{
-  margin-inline-start:6px;
-  font-size:.75rem;color:var(--ads-mute);font-weight:600;
+  margin-inline-start:6px;font-size:.74rem;font-weight:700;color:#4a5565;
 }
 .ads-visual__shot{
-  flex:1;min-height:280px;
-  position:relative;overflow:hidden;
-  background:#0a1018;
+  background:#0b1220;
+  aspect-ratio:16/11;
+  overflow:hidden;
 }
 .ads-visual__shot img{
-  width:100%;height:100%;
-  object-fit:cover;object-position:top right;
-  display:block;
-  transform:scale(1.02);
+  width:100%;height:100%;display:block;
+  object-fit:cover;object-position:top center;
 }
 .ads-visual__caption{
-  padding:14px 16px 16px;
-  border-top:1px solid var(--ads-line);
-  background:linear-gradient(180deg, rgba(10,16,24,.2), rgba(10,16,24,.95));
+  padding:12px 14px 14px;background:#e9eef5;
 }
 .ads-visual__caption strong{
-  display:block;font-size:.95rem;font-weight:800;color:#fff;margin-bottom:4px;
+  display:block;color:#152033;font-size:.92rem;font-weight:800;margin-bottom:3px;
 }
-.ads-visual__caption span{
-  color:var(--ads-mute);font-size:.84rem;line-height:1.55;
-}
+.ads-visual__caption span{color:#5b677a;font-size:.82rem;line-height:1.5}
 
 .ads-page .mkt-footer{
-  margin-top:auto;
-  border-top-color:rgba(255,255,255,.07);
-  padding-top:16px;padding-bottom:22px;
+  margin-top:8px;
+  border-top-color:rgba(255,255,255,.08);
+  padding-top:14px;padding-bottom:18px;
 }
 
 @keyframes ads-in{
-  from{opacity:0;transform:translateY(14px)}
+  from{opacity:0;transform:translateY(12px)}
   to{opacity:1;transform:none}
 }
 
 @media (max-width:960px){
-  .ads-main{grid-template-columns:1fr;gap:16px}
-  .ads-visual{order:2;min-height:240px}
-  .ads-panel{order:1}
-  .ads-visual__shot{min-height:220px}
-  .ads-intro h1{max-width:none}
-  .ads-intro .dek{max-width:none}
+  .ads-hero{grid-template-columns:1fr;gap:16px}
+  .ads-visual{order:2}
+  .ads-lead{order:1}
 }
 @media (max-width:560px){
   .ads-form .row{grid-template-columns:1fr}
-  .ads-panel{padding:18px 14px 16px}
-  .ads-intro .brand{font-size:2.5rem}
+  .ads-panel{padding:16px 12px 12px}
 }
 </style>
 </head>
@@ -237,86 +195,90 @@ body.mkt-ads::before{
       </div>
     </header>
 
-    <div class="ads-intro">
-      <div class="brand">Lift<span>Core</span><em>Elevator operations</em></div>
-      <h1>شغّل شركة <mark>صيانة المصاعد</mark> من مكان واحد</h1>
-      <p class="dek">اطلب تجربة قصيرة — نجهّز الحساب ونرد على بريدك خلال يوم عمل.</p>
-    </div>
+    <section class="ads-hero" aria-label="طلب تجربة LiftCore">
+      <div class="ads-lead">
+        <div class="brand">Lift<span>Core</span></div>
+        <h1>اطلب تجربة نظام <mark>صيانة المصاعد</mark></h1>
+        <p class="dek">هذه الصفحة لإرسال طلب تجربة — نجهّز حساباً ونرد على بريدك خلال يوم عمل.</p>
+        <div class="ads-proof" aria-label="ماذا يغطي النظام">
+          <span>عملاء وعقود</span>
+          <span>زيارات وأعطال</span>
+          <span>مخزون وفواتير</span>
+        </div>
 
-    <section class="ads-main" aria-label="طلب تجربة LiftCore">
-      <div class="ads-panel" id="contact">
-        <div class="eyebrow">تجربة مجانية</div>
-        <h2>اطلب تجربتك الآن</h2>
-        <p class="lead">نرد على بريدك · بدون التزام فوري</p>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% for category, message in messages %}
-          <div class="mkt-flash mkt-flash-{{ category }}">{{ message }}</div>
-          {% endfor %}
-        {% endwith %}
-        <form class="ads-form" method="post" action="{{ url_for('demo_request') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input type="hidden" name="next" value="/start">
-          <input type="hidden" name="request_type" value="demo">
-          {% include 'partials/utm_hidden_fields.html' %}
-          <div class="hp" aria-hidden="true">
-            <label>الموقع<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
-          </div>
-          <div class="row">
-            <div>
-              <label for="ads-company">اسم الشركة</label>
-              <input id="ads-company" name="company_name" required maxlength="120" autocomplete="organization">
+        <div class="ads-panel" id="contact">
+          <h2>بيانات طلب التجربة</h2>
+          <p class="lead">عبّئ النموذج — يصل الطلب مباشرة لفريق المبيعات</p>
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="mkt-flash mkt-flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endwith %}
+          <form class="ads-form" method="post" action="{{ url_for('demo_request') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="/start">
+            <input type="hidden" name="request_type" value="demo">
+            {% include 'partials/utm_hidden_fields.html' %}
+            <div class="hp" aria-hidden="true">
+              <label>الموقع<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+            </div>
+            <div class="row">
+              <div>
+                <label for="ads-company">اسم الشركة</label>
+                <input id="ads-company" name="company_name" required maxlength="120" autocomplete="organization">
+              </div>
+              <div>
+                <label for="ads-name">اسم المسؤول</label>
+                <input id="ads-name" name="contact_name" required maxlength="80" autocomplete="name">
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label for="ads-email">البريد الإلكتروني</label>
+                <input id="ads-email" type="email" name="contact_email" required maxlength="120" autocomplete="email" dir="ltr">
+              </div>
+              <div>
+                <label for="ads-phone">الجوال</label>
+                <input id="ads-phone" type="tel" name="phone" maxlength="20" autocomplete="tel" dir="ltr" placeholder="05xxxxxxxx">
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label for="ads-city">المدينة</label>
+                <input id="ads-city" name="city" maxlength="60" value="مكة المكرمة" autocomplete="address-level2">
+              </div>
+              <div>
+                <label for="ads-elevators">عدد المصاعد تقريباً</label>
+                <input id="ads-elevators" name="elevators" maxlength="20" inputmode="numeric" placeholder="مثلاً 25">
+              </div>
             </div>
             <div>
-              <label for="ads-name">اسم المسؤول</label>
-              <input id="ads-name" name="contact_name" required maxlength="80" autocomplete="name">
+              <label for="ads-notes">ملاحظات (اختياري)</label>
+              <textarea id="ads-notes" name="notes" maxlength="800" placeholder="موعد مناسب للتواصل…"></textarea>
             </div>
-          </div>
-          <div class="row">
-            <div>
-              <label for="ads-email">البريد الإلكتروني</label>
-              <input id="ads-email" type="email" name="contact_email" required maxlength="120" autocomplete="email" dir="ltr">
-            </div>
-            <div>
-              <label for="ads-phone">الجوال</label>
-              <input id="ads-phone" type="tel" name="phone" maxlength="20" autocomplete="tel" dir="ltr" placeholder="05xxxxxxxx">
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label for="ads-city">المدينة</label>
-              <input id="ads-city" name="city" maxlength="60" value="مكة المكرمة" autocomplete="address-level2">
-            </div>
-            <div>
-              <label for="ads-elevators">عدد المصاعد تقريباً</label>
-              <input id="ads-elevators" name="elevators" maxlength="20" inputmode="numeric" placeholder="مثلاً 25">
-            </div>
-          </div>
-          <div>
-            <label for="ads-notes">ملاحظات (اختياري)</label>
-            <textarea id="ads-notes" name="notes" maxlength="800" placeholder="حجم الأسطول أو موعد مناسب…"></textarea>
-          </div>
-          <button class="mkt-btn mkt-btn-gold" type="submit">إرسال طلب التجربة</button>
-          <p class="hint">يصل الطلب إلى <b dir="ltr">{{ sales_email }}</b></p>
-        </form>
+            <button class="mkt-btn mkt-btn-gold" type="submit">إرسال طلب التجربة</button>
+            <p class="hint">يصل إلى <b dir="ltr">{{ sales_email }}</b></p>
+          </form>
+        </div>
       </div>
 
-      <aside class="ads-visual" aria-label="معاينة النظام">
+      <aside class="ads-visual" aria-label="معاينة لوحة التحكم">
         <div class="ads-visual__chrome" aria-hidden="true">
           <i></i><i></i><i></i>
-          <span>لوحة التحكم — LiftCore</span>
+          <span>لوحة التحكم داخل LiftCore</span>
         </div>
         <div class="ads-visual__shot">
           <img
-            src="{{ url_for('static', filename='images/marketing/screens/dashboard.png') }}?v=3"
-            alt="لوحة تحكم LiftCore"
+            src="{{ url_for('static', filename='images/marketing/screens/dashboard.png') }}?v=4"
+            alt="لوحة تحكم LiftCore تظهر العملاء والعقود والزيارات"
             width="1440"
             height="900"
             loading="eager"
           >
         </div>
         <div class="ads-visual__caption">
-          <strong>عملاء · عقود · زيارات · أعطال</strong>
-          <span>شاشة تشغيل حقيقية لشركات صيانة المصاعد في السعودية.</span>
+          <strong>هذا شكل النظام من الداخل</strong>
+          <span>عملاء، عقود، زيارات، أعطال — شاشة تشغيل حقيقية لشركات الصيانة.</span>
         </div>
       </aside>
     </section>
