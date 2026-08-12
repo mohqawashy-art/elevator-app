@@ -252,6 +252,18 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 .phone-input{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;padding:9px 12px;outline:none;direction:ltr;font-family:var(--font-en);text-align:left}
 .phone-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(42,127,255,.1)}
 .phone-input::placeholder{color:var(--text3)}
+.extra-phones-list{display:flex;flex-direction:column;gap:8px}
+.extra-phone-row{display:grid;grid-template-columns:minmax(90px,1.1fr) minmax(88px,110px) minmax(0,1.4fr) auto;gap:6px;align-items:center}
+.extra-phone-row .extra-label{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:12px;padding:9px 10px;outline:none}
+.extra-phone-row .phone-code{max-width:none;min-width:0;width:100%}
+.extra-phone-remove{border:1px solid var(--border);background:var(--bg3);color:var(--danger);border-radius:var(--r-sm);width:36px;height:36px;cursor:pointer;font-size:16px;line-height:1}
+@media(max-width:640px){
+  .extra-phone-row{grid-template-columns:1fr auto;grid-template-areas:"label remove" "code code" "num num"}
+  .extra-phone-row .extra-label{grid-area:label}
+  .extra-phone-row .phone-code{grid-area:code}
+  .extra-phone-row .phone-input{grid-area:num}
+  .extra-phone-row .extra-phone-remove{grid-area:remove}
+}
 .select-with-add{display:flex;gap:4px;align-items:stretch;flex-shrink:0}
 .select-with-add .phone-code,.select-with-add select{max-width:none;min-width:96px}
 .add-opt-btn{width:34px;min-width:34px;height:auto;padding:0;border-radius:var(--r-sm);background:var(--bg4);border:1px solid var(--border);color:var(--accent);font-size:18px;font-weight:600;cursor:pointer;line-height:1;transition:var(--trans)}
@@ -703,6 +715,14 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
             </button>
           </div>
         </div>
+        <div class="field form-full">
+          <label>أرقام إضافية</label>
+          <div id="extra-phones-list" class="extra-phones-list"></div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-add-extra-phone" onclick="addExtraPhoneRow()" style="margin-top:8px">
+            + إضافة رقم آخر
+          </button>
+          <span class="field-hint">اختياري — محاسب، حارس، رقم طوارئ… حتى 10 أرقام</span>
+        </div>
         <!-- عدد المصاعد + حالة العميل + حالة المصاعد -->
         <div class="field">
           <label>عدد المصاعد</label>
@@ -986,6 +1006,12 @@ function fillPhoneCodeSelects(selectedPhone, selectedWa) {
   var w = document.getElementById('f-code-wa');
   if(p) { p.innerHTML = html; if(selectedPhone) p.value = selectedPhone; }
   if(w) { w.innerHTML = html; if(selectedWa) w.value = selectedWa; }
+  document.querySelectorAll('#extra-phones-list .phone-code').forEach(function(sel) {
+    var cur = sel.value;
+    sel.innerHTML = html;
+    if (cur && [].some.call(sel.options, function(o){ return o.value === cur; })) sel.value = cur;
+    else if (selectedPhone) sel.value = selectedPhone;
+  });
 }
 function addNewCity() {
   var name = prompt('اسم المدينة الجديدة:');
@@ -1058,20 +1084,93 @@ function stripLeadingZeroPhoneInput(input) {
   if (digits.charAt(0) === '0') input.value = digits.replace(/^0+/, '');
 }
 function bindPhoneInputs() {
-  ['f-phone', 'f-whatsapp'].forEach(function(id) {
-    var el = document.getElementById(id);
+  document.querySelectorAll('#f-phone, #f-whatsapp, .extra-phone-row .phone-input').forEach(function(el) {
     if (!el || el.dataset.lcPhoneBound) return;
     el.dataset.lcPhoneBound = '1';
     el.addEventListener('input', function() { stripLeadingZeroPhoneInput(el); });
   });
+}
+function customerAllPhones(c) {
+  var list = [];
+  if (c.phone) list.push(c.phone);
+  if (c.phone2) list.push(c.phone2);
+  (c.extra_phones || []).forEach(function(p) {
+    if (p && p.number) list.push(p.number);
+  });
+  return list;
 }
 function findPhoneDuplicate(fullPhone, editId) {
   var key = phoneKeyFromFull(fullPhone);
   if (!key || key.length < 9) return null;
   return CUSTOMERS.find(function(c) {
     if (editId && c.id === editId) return false;
-    return phoneKeyFromFull(c.phone) === key || phoneKeyFromFull(c.phone2) === key;
+    return customerAllPhones(c).some(function(p) { return phoneKeyFromFull(p) === key; });
   }) || null;
+}
+function clearExtraPhoneRows() {
+  var box = document.getElementById('extra-phones-list');
+  if (box) box.innerHTML = '';
+}
+function addExtraPhoneRow(prefill) {
+  var box = document.getElementById('extra-phones-list');
+  if (!box) return;
+  if (box.querySelectorAll('.extra-phone-row').length >= 10) {
+    alert('الحد الأقصى 10 أرقام إضافية');
+    return;
+  }
+  var row = document.createElement('div');
+  row.className = 'extra-phone-row';
+  var uid = 'xp-' + Date.now() + '-' + Math.floor(Math.random() * 9999);
+  row.innerHTML =
+    '<input type="text" class="extra-label" placeholder="التسمية (اختياري)" maxlength="40">' +
+    '<select class="phone-code" id="' + uid + '-code"></select>' +
+    '<input type="tel" class="phone-input" placeholder="512345678" inputmode="tel" maxlength="15">' +
+    '<button type="button" class="extra-phone-remove" title="حذف">×</button>';
+  box.appendChild(row);
+  var codeSel = row.querySelector('.phone-code');
+  var parts = parsePhoneParts((prefill && prefill.number) || '');
+  fillOnePhoneCodeSelect(codeSel, parts.code || document.getElementById('f-code-phone').value);
+  if (prefill) {
+    row.querySelector('.extra-label').value = prefill.label || '';
+    row.querySelector('.phone-input').value = parts.number || '';
+  }
+  row.querySelector('.extra-phone-remove').onclick = function() { row.remove(); };
+  bindPhoneInputs();
+}
+function fillOnePhoneCodeSelect(selectEl, preferred) {
+  if (!selectEl) return;
+  var base = document.getElementById('f-code-phone');
+  selectEl.innerHTML = base ? base.innerHTML : '<option value="+966">+966</option>';
+  var want = preferred || '+966';
+  if ([].some.call(selectEl.options, function(o){ return o.value === want; })) {
+    selectEl.value = want;
+  } else if (selectEl.options.length) {
+    selectEl.selectedIndex = 0;
+  }
+}
+function collectExtraPhonesFromForm() {
+  var rows = document.querySelectorAll('#extra-phones-list .extra-phone-row');
+  var out = [];
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var label = (row.querySelector('.extra-label').value || '').trim();
+    var num = (row.querySelector('.phone-input').value || '').trim();
+    if (!num) continue;
+    if (num.replace(/\D/g, '').charAt(0) === '0') {
+      return { error: 'لا تبدأ الرقم الإضافي بـ 0 — أدخل الرقم بدون الصفر' };
+    }
+    var code = row.querySelector('.phone-code').value || '+966';
+    var full = code + num.replace(/\D/g, '');
+    if (phoneKeyFromFull(full).length < 9) {
+      return { error: 'رقم إضافي غير مكتمل' + (label ? (' («' + label + '»)') : '') };
+    }
+    out.push({ label: label, number: full });
+  }
+  return { items: out };
+}
+function setExtraPhones(list) {
+  clearExtraPhoneRows();
+  (list || []).forEach(function(item) { addExtraPhoneRow(item); });
 }
 function validateClientPhoneFields() {
   var phoneRaw = document.getElementById('f-phone').value.trim();
@@ -1111,6 +1210,27 @@ function validateClientPhoneFields() {
       alert('واتساب المسؤول مستخدم للعميل «' + dupWa.name + '» (' + dupWa.code + ')');
       return false;
     }
+  }
+  var extra = collectExtraPhonesFromForm();
+  if (extra.error) {
+    alert(extra.error);
+    return false;
+  }
+  var seenExtra = {};
+  seenExtra[phoneKey] = 1;
+  if (document.getElementById('f-whatsapp').value.trim()) {
+    seenExtra[phoneKeyFromFull(buildClientPhone('f-code-wa', 'f-whatsapp'))] = 1;
+  }
+  for (var i = 0; i < (extra.items || []).length; i++) {
+    var item = extra.items[i];
+    var ek = phoneKeyFromFull(item.number);
+    if (seenExtra[ek]) continue;
+    var dupX = findPhoneDuplicate(item.number, editId);
+    if (dupX) {
+      alert('الرقم الإضافي مستخدم للعميل «' + dupX.name + '» (' + dupX.code + ')');
+      return false;
+    }
+    seenExtra[ek] = 1;
   }
   return true;
 }
@@ -1347,7 +1467,7 @@ function filterTable() {
   var cs = document.getElementById('f-contract').value||'';
   var st = document.getElementById('f-status').value||'';
   filtered = CUSTOMERS.filter(function(c) {
-    return (!s  || (c.name||'').includes(s)||String(c.code||'').toLowerCase().includes(s)||(c.phone||'').includes(s)||(c.phone2||'').includes(s)||(c.district||'').includes(s)) &&
+    return (!s  || (c.name||'').includes(s)||String(c.code||'').toLowerCase().includes(s)||(c.phone||'').includes(s)||(c.phone2||'').includes(s)||customerAllPhones(c).some(function(p){return String(p||'').includes(s);})||(c.district||'').includes(s)) &&
            (!ct || c.city===ct) &&
            (!cs || c.contract_status===cs) &&
            (!st || clientAccountStatus(c)===st);
@@ -1537,6 +1657,12 @@ function openClientCard(id) {
       ((c.entity_type === 'شركة' && c.national_address) ? '<div class="client-card-item full"><div class="client-card-label">' + lcDisp('العنوان الوطني') + '</div><div class="client-card-val">' + esc(c.national_address) + '</div></div>' : '') +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('واتساب المسؤول') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone2||'—') + '</span>' + waButtonHtml(c.phone2, c.contact) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('رقم الجوال') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone||'—') + '</span>' + waButtonHtml(c.phone, lcClient(c)) + '</div></div>' +
+      (((c.extra_phones || []).length) ? ('<div class="client-card-item full"><div class="client-card-label">' + lcDisp('أرقام إضافية') + '</div><div class="client-card-val" style="display:flex;flex-direction:column;gap:8px">' +
+        (c.extra_phones || []).map(function(p){
+          var lab = p.label ? ('<span style="color:var(--text3);font-size:12px">' + esc(p.label) + ': </span>') : '';
+          return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' + lab + '<span style="direction:ltr;font-family:var(--font-en)">' + esc(p.number||'') + '</span>' + waButtonHtml(p.number, p.label || c.contact) + '</div>';
+        }).join('') +
+      '</div></div>') : '') +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('البريد') + '</div><div class="client-card-val" style="direction:ltr">' + (c.email||'—') + '</div></div>' +
       (c.notes ? '<div class="client-card-item full"><div class="client-card-label">' + lcDisp('ملاحظات') + '</div><div class="client-card-val">' + c.notes + '</div></div>' : '') +
     '</div>' +
@@ -1681,6 +1807,7 @@ function openAddModal() {
   document.getElementById('f-entity-type').value = 'فرد';
   updateContractorIdField();
   document.getElementById('f-status-sel').value = 'نشط';
+  clearExtraPhoneRows();
   openClientFormModal();
   bindPhoneInputs();
 }
@@ -1770,6 +1897,9 @@ function saveClient() {
   fd.append('address',        document.getElementById('f-address').value||'');
   fd.append('phone',          fullPhone);
   fd.append('phone2',         fullWa);
+  var extraPack = collectExtraPhonesFromForm();
+  if (extraPack.error) { alert(extraPack.error); return; }
+  fd.append('extra_phones', JSON.stringify(extraPack.items || []));
   fd.append('contact_person', document.getElementById('f-contact').value||'');
   fd.append('contact_role',   document.getElementById('f-role').value||'');
   var entityType = document.getElementById('f-entity-type').value || 'فرد';
@@ -1853,6 +1983,7 @@ function editClient(id) {
   fillPhoneCodeSelects(ph.code, wa.code);
   document.getElementById('f-phone').value = ph.number;
   document.getElementById('f-whatsapp').value = wa.number;
+  setExtraPhones(c.extra_phones || []);
   openClientFormModal(function () {
     if (typeof LiftCoreMapPicker === 'undefined') return;
     if (c.lat && c.lng) {

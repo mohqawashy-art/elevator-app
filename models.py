@@ -165,6 +165,8 @@ class Customer(TenantMixin, db.Model):
     address     = db.Column(db.Text)
     phone       = db.Column(db.String(40))
     phone2      = db.Column(db.String(40))
+    # أرقام إضافية JSON: [{"label":"المحاسب","number":"+9665..."}, ...]
+    extra_phones = db.Column(db.Text)
     email       = db.Column(db.String(100))
     contact_person = db.Column(db.String(100))
     status      = db.Column(db.String(20), default='نشط')   # نشط / غير نشط

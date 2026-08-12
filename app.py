@@ -1077,6 +1077,7 @@ def client_to_js_dict(c):
         'district': c.district or '',
         'phone': c.phone or '',
         'phone2': c.phone2 or '',
+        'extra_phones': parse_customer_extra_phones(getattr(c, 'extra_phones', None)),
         'email': c.email or '',
         'contact': c.contact_person or '',
         'role': c.contact_role or '',
@@ -1280,6 +1281,11 @@ def _sqlite_legacy_schema_patches():
             if 'building_photo_path' not in cust_cols:
                 db.session.execute(text(
                     'ALTER TABLE customers ADD COLUMN building_photo_path VARCHAR(300)'
+                ))
+                db.session.commit()
+            if 'extra_phones' not in cust_cols:
+                db.session.execute(text(
+                    'ALTER TABLE customers ADD COLUMN extra_phones TEXT'
                 ))
                 db.session.commit()
         _migrate_cols = {
@@ -1496,6 +1502,18 @@ def _startup_schema_and_data_sync():
             'LiftCore DB backend=%s — Alembic migrations; skip SQLite legacy ALTER',
             database_backend(app.config.get('SQLALCHEMY_DATABASE_URI')),
         )
+    # عمود الأرقام الإضافية — يُضاف تلقائياً إن غاب (SQLite/Postgres)
+    try:
+        insp = inspect(db.engine)
+        if 'customers' in insp.get_table_names():
+            cust_cols = {c['name'] for c in insp.get_columns('customers')}
+            if 'extra_phones' not in cust_cols:
+                db.session.execute(text('ALTER TABLE customers ADD COLUMN extra_phones TEXT'))
+                db.session.commit()
+                app.logger.info('Added customers.extra_phones column')
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('extra_phones column ensure skip: %s', exc)
     try:
         from liftcore_permissions import ensure_permissions_schema
         ensure_permissions_schema(db.session, db.engine)
@@ -1607,7 +1625,13 @@ def phone_taken(phone, *, customer_id=None, technician_id=None):
     for c in tenant_query(Customer).all():
         if customer_id and c.id == customer_id:
             continue
-        for p in (c.phone, c.phone2):
+        phones = [c.phone, c.phone2]
+        phones.extend(
+            item.get('number') for item in parse_customer_extra_phones(
+                getattr(c, 'extra_phones', None)
+            )
+        )
+        for p in phones:
             if p and phone_key(p) == key:
                 return True, f'رقم الجوال مستخدم للعميل «{c.name}» ({c.code})'
     for t in tenant_query(Technician).all():
@@ -1617,6 +1641,87 @@ def phone_taken(phone, *, customer_id=None, technician_id=None):
             if p and phone_key(p) == key:
                 return True, f'رقم الجوال مستخدم للفني «{t.name}» ({t.code})'
     return False, None
+
+
+def parse_customer_extra_phones(raw) -> list[dict]:
+    """قراءة أرقام إضافية من JSON نصي."""
+    import json
+
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        data = raw
+    else:
+        try:
+            data = json.loads(raw)
+        except Exception:
+            return []
+    if not isinstance(data, list):
+        return []
+    out = []
+    for item in data:
+        if isinstance(item, str):
+            num = format_phone_storage(item)
+            if num:
+                out.append({'label': '', 'number': num})
+            continue
+        if not isinstance(item, dict):
+            continue
+        label = str(item.get('label') or '').strip()[:40]
+        num = format_phone_storage(item.get('number') or item.get('phone') or '')
+        if num:
+            out.append({'label': label, 'number': num})
+    return out[:10]
+
+
+def serialize_customer_extra_phones(items: list[dict] | None) -> str:
+    import json
+
+    cleaned = parse_customer_extra_phones(items or [])
+    return json.dumps(cleaned, ensure_ascii=False) if cleaned else ''
+
+
+def parse_extra_phones_from_request(form) -> tuple[list[dict] | None, str | None]:
+    """من form: extra_phones JSON أو حقول extra_phone[] / extra_phone_label[]."""
+    import json
+
+    raw = (form.get('extra_phones') or '').strip()
+    items: list = []
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                items = parsed
+        except Exception:
+            return None, 'صيغة الأرقام الإضافية غير صالحة'
+
+    if not items:
+        nums = form.getlist('extra_phone') if hasattr(form, 'getlist') else []
+        labels = form.getlist('extra_phone_label') if hasattr(form, 'getlist') else []
+        for i, num in enumerate(nums):
+            label = labels[i] if i < len(labels) else ''
+            items.append({'label': label, 'number': num})
+
+    cleaned = []
+    for item in items:
+        if isinstance(item, str):
+            label, number = '', item
+        elif isinstance(item, dict):
+            label = str(item.get('label') or '').strip()[:40]
+            number = item.get('number') or item.get('phone') or ''
+        else:
+            continue
+        number = str(number or '').strip()
+        if not number:
+            continue
+        err = client_phone_error(number)
+        if err:
+            tip = f'«{label}» — {err}' if label else err
+            return None, f'رقم إضافي: {tip}'
+        cleaned.append({'label': label, 'number': format_phone_storage(number)})
+        if len(cleaned) >= 10:
+            break
+    return cleaned, None
 
 
 def customer_fleet_status(customer):
@@ -4549,6 +4654,18 @@ def client_add():
         if taken2:
             flash(msg2, 'error')
             return redirect(url_for('clients'))
+    extra_phones, extra_err = parse_extra_phones_from_request(request.form)
+    if extra_err:
+        flash(extra_err, 'error')
+        return redirect(url_for('clients'))
+    for item in extra_phones or []:
+        num = item.get('number') or ''
+        if phone_key(num) in (phone_key(phone), phone_key(wa) if wa else ''):
+            continue
+        taken_x, msg_x = phone_taken(num)
+        if taken_x:
+            flash(msg_x, 'error')
+            return redirect(url_for('clients'))
     c = Customer(
         code         = next_code(Customer, 'C-', digits=4),
         name         = request.form['name'],
@@ -4558,6 +4675,7 @@ def client_add():
         address      = request.form.get('address',''),
         phone        = phone,
         phone2       = wa,
+        extra_phones = serialize_customer_extra_phones(extra_phones),
         email        = request.form.get('email',''),
         contact_person = request.form.get('contact_person',''),
         contact_role   = request.form.get('contact_role',''),
@@ -4613,6 +4731,18 @@ def client_edit(id):
         if taken2:
             flash(msg2, 'error')
             return redirect(url_for('clients'))
+    extra_phones, extra_err = parse_extra_phones_from_request(request.form)
+    if extra_err:
+        flash(extra_err, 'error')
+        return redirect(url_for('clients'))
+    for item in extra_phones or []:
+        num = item.get('number') or ''
+        if phone_key(num) in (phone_key(phone), phone_key(wa) if wa else ''):
+            continue
+        taken_x, msg_x = phone_taken(num, customer_id=c.id)
+        if taken_x:
+            flash(msg_x, 'error')
+            return redirect(url_for('clients'))
     c.name           = request.form['name']
     c.name_en        = request.form.get('name_en', '')
     c.city           = request.form.get('city','')
@@ -4620,6 +4750,7 @@ def client_edit(id):
     c.address        = request.form.get('address','')
     c.phone          = phone
     c.phone2         = wa
+    c.extra_phones   = serialize_customer_extra_phones(extra_phones)
     c.email          = request.form.get('email','')
     c.contact_person = request.form.get('contact_person','')
     c.status = _client_account_status(request.form.get('status', 'نشط'))
