@@ -255,6 +255,19 @@ def current_user():
             'كل مستخدم مسموح له بجلسة واحدة فقط حسب سياسة الترخيص.'
         )
         return None
+    # انتهاء تجربة / إيقاف المؤسسة — يُنهي الجلسة فوراً
+    if user.organization_id and not getattr(g, 'platform_admin_host', False):
+        try:
+            from demo_provisioning import organization_access_allowed
+            from models import Organization as _Org
+
+            org = db.session.get(_Org, user.organization_id)
+            if org and not organization_access_allowed(org):
+                session.clear()
+                session['login_notice'] = 'انتهت صلاحية الحساب التجريبي أو أُوقفت المؤسسة.'
+                return None
+        except Exception:
+            db.session.rollback()
     return user
 
 
@@ -2050,15 +2063,23 @@ def login():
                 if not org_key:
                     error = 'أدخل اسم المنشأة أو المعرّف'
                 else:
+                    from demo_provisioning import organization_access_allowed
+
                     org = _find_org_for_portal(org_key)
-                    if not org or org.status == 'suspended':
-                        error = 'المنشأة غير موجودة أو موقوفة'
+                    if not org or not organization_access_allowed(org):
+                        error = 'المنشأة غير موجودة أو انتهت صلاحية التجربة'
                     else:
                         user = _find_user_in_org(org.id, login_id)
             else:
+                from demo_provisioning import organization_access_allowed
+
                 user = _find_login_user(login_id)
                 if user and user.organization_id:
                     org = db.session.get(Organization, user.organization_id)
+                    if org and not organization_access_allowed(org):
+                        error = 'انتهت صلاحية الحساب التجريبي — تواصل مع LiftCore'
+                        user = None
+                        org = None
 
             if not error and user and verify_password(user.password_hash, password):
                 if not password_is_hashed(user.password_hash):
@@ -2144,7 +2165,9 @@ def auth_handoff():
 
     user = db.session.get(User, int(data.get('uid') or 0))
     org = db.session.get(Organization, int(data.get('oid') or 0))
-    if not user or not user.is_active or not org or org.status == 'suspended':
+    from demo_provisioning import organization_access_allowed
+
+    if not user or not user.is_active or not org or not organization_access_allowed(org):
         flash('تعذّر إكمال الدخول.', 'error')
         return redirect(url_for('login'))
     if user.organization_id != org.id:
@@ -2717,6 +2740,7 @@ def platform_home():
 
 @app.route('/platform/orgs')
 def platform_orgs():
+    from demo_provisioning import demo_days_default
     from platform_admin import is_admin_host, list_organizations
 
     if not is_admin_host():
@@ -2732,9 +2756,72 @@ def platform_orgs():
         orgs=list_organizations(q=q, status=status, limit=300),
         q=q,
         status=status,
+        demo_days=demo_days_default(),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
     )
+
+
+@app.route('/platform/demos/create', methods=['GET', 'POST'])
+def platform_demo_create():
+    """إصدار حساب تجريبي مؤقت (يوزر + كلمة مرور + 4 مصاعد)."""
+    from demo_provisioning import create_demo_account, demo_days_default
+    from platform_admin import is_admin_host
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+
+    if request.method == 'GET':
+        return redirect(url_for('platform_orgs'))
+
+    try:
+        days = int(request.form.get('days') or demo_days_default())
+    except (TypeError, ValueError):
+        days = demo_days_default()
+
+    result = create_demo_account(
+        company_name=(request.form.get('company_name') or '').strip() or None,
+        contact_name=(request.form.get('contact_name') or '').strip() or None,
+        contact_email=(request.form.get('contact_email') or '').strip() or None,
+        days=days,
+        password_hasher=hash_password,
+    )
+    if not result.get('ok'):
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل إنشاء الحساب التجريبي.'])
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_orgs'))
+
+    try:
+        from audit_log import log_audit
+
+        log_audit(
+            'platform_demo_created',
+            user=user,
+            organization_id=result.get('organization_id'),
+            details={
+                'slug': result.get('slug'),
+                'days': result.get('days'),
+                'elevators': (result.get('seed') or {}).get('elevators'),
+            },
+        )
+    except Exception:
+        app.logger.exception('platform demo audit failed')
+
+    session['plat_issued_password'] = result['password']
+    session['plat_issued_username'] = result['username']
+    session['plat_issued_login_url'] = result['login_url']
+    session['plat_issued_company'] = result.get('company_name')
+    ends = result.get('trial_ends_at')
+    session['plat_issued_trial_ends'] = ends.strftime('%Y-%m-%d %H:%M') if ends else ''
+    session['plat_notice'] = (
+        f"تم إنشاء حساب تجريبي «{result.get('company_name')}» "
+        f"({result.get('slug')}) — صلاحية {result.get('days')} يوم، 4 مصاعد جاهزة للتجربة."
+    )
+    session['plat_notice_type'] = 'ok'
+    return redirect(url_for('platform_org_detail', org_id=result['organization_id']))
 
 
 @app.route('/platform/orgs/<int:org_id>')
@@ -2769,6 +2856,10 @@ def platform_org_detail(org_id):
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
         issued_password=session.pop('plat_issued_password', None),
+        issued_username=session.pop('plat_issued_username', None),
+        issued_login_url=session.pop('plat_issued_login_url', None),
+        issued_company=session.pop('plat_issued_company', None),
+        issued_trial_ends=session.pop('plat_issued_trial_ends', None),
         issued_to=session.pop('plat_issued_to', None),
     )
 

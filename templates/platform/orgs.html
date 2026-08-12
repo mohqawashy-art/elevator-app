@@ -4,6 +4,34 @@
 <div class="h1">المؤسسات</div>
 <p class="sub">كل عملاء المنصة — بحث، فلترة، وإدارة كاملة.</p>
 
+<div class="card">
+  <div class="section">إصدار حساب تجريبي للعملاء</div>
+  <p class="muted" style="margin-bottom:12px">
+    ينشئ مؤسسة تجريبية مؤقتة بـ <strong>4 مصاعد</strong> وبيانات بسيطة (عملاء، عقد، زيارات، عطل)،
+    مع يوزر وكلمة مرور مؤقتين تُعرض مرة واحدة. الصلاحية الافتراضية {{ demo_days }} أيام.
+  </p>
+  <form method="post" action="/platform/demos/create" class="toolbar" style="align-items:flex-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div>
+      <label>اسم الشركة (اختياري)</label>
+      <input name="company_name" placeholder="مثال: شركة الأفق للمصاعد">
+    </div>
+    <div>
+      <label>اسم المسؤول (اختياري)</label>
+      <input name="contact_name" placeholder="مستخدم تجريبي">
+    </div>
+    <div>
+      <label>بريد للتواصل (اختياري)</label>
+      <input name="contact_email" type="email" placeholder="client@example.com">
+    </div>
+    <div>
+      <label>مدة التجربة (أيام)</label>
+      <input name="days" type="number" min="1" max="90" value="{{ demo_days }}" style="width:90px">
+    </div>
+    <button class="btn btn-primary" type="submit">إصدار حساب ديمو</button>
+  </form>
+</div>
+
 <form class="toolbar" method="get">
   <div>
     <label>بحث</label>

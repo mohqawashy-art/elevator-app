@@ -10,8 +10,14 @@
 
 {% if issued_password %}
 <div class="flash flash-ok">
-  كلمة المرور الجديدة: <code>{{ issued_password }}</code>
+  <strong>بيانات الدخول المؤقتة (تُعرض مرة واحدة):</strong><br>
+  {% if issued_company %}الشركة: {{ issued_company }}<br>{% endif %}
+  {% if issued_login_url %}الرابط: <a href="{{ issued_login_url }}" target="_blank" rel="noopener">{{ issued_login_url }}</a><br>{% endif %}
+  اسم المستخدم: <code>{{ issued_username or (admin.username if admin else '—') }}</code><br>
+  كلمة المرور: <code>{{ issued_password }}</code>
+  {% if issued_trial_ends %}<br>تنتهي التجربة: {{ issued_trial_ends }}{% endif %}
   {% if issued_to %}<br>أُرسلت إلى: {{ issued_to }}{% endif %}
+  <br><span class="muted">انسخها الآن — لن تُعرض مرة أخرى بعد مغادرة الصفحة.</span>
 </div>
 {% endif %}
 

@@ -55,6 +55,18 @@
 </div>
 
 <div class="card">
+  <div class="section">حساب تجريبي سريع</div>
+  <p class="muted" style="margin-bottom:12px">إصدار يوزر مؤقت + كلمة مرور + 4 مصاعد لتجربة العملاء المحتملين.</p>
+  <form method="post" action="/platform/demos/create">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">إصدار حساب ديمو الآن</button>
+      <a class="btn btn-secondary" href="/platform/orgs">تخصيص الاسم/المدة</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
   <div class="section">أحدث الدعوات</div>
   {% if not invites %}
   <p class="muted">لا توجد دعوات.</p>

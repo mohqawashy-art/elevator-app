@@ -107,6 +107,14 @@ def create_tenant_signup(
     admin_name: str,
     password_hash: str,
     username: str | None = None,
+    trial_days: int | None = None,
+    plan: str = 'basic',
+    notes: str | None = None,
+    billing_status: str | None = None,
+    elevators_limit: int | None = None,
+    technicians_limit: int | None = None,
+    office_users_limit: int | None = None,
+    commit: bool = True,
 ) -> dict:
     """ينشئ organization + admin + settings — بدون nginx/systemd."""
     from sqlalchemy.exc import IntegrityError
@@ -133,17 +141,24 @@ def create_tenant_signup(
     if not uname:
         return {'ok': False, 'errors': ['اسم المستخدم غير صالح.']}
 
-    trial_days = int(os.environ.get('LIFTCORE_TRIAL_DAYS', '14') or 14)
-    trial_ends = datetime.utcnow() + timedelta(days=max(1, trial_days))
+    if trial_days is None:
+        trial_days = int(os.environ.get('LIFTCORE_TRIAL_DAYS', '14') or 14)
+    trial_days = max(1, int(trial_days))
+    trial_ends = datetime.utcnow() + timedelta(days=trial_days)
 
     try:
         org = Organization(
             slug=slug,
             name=company_name,
             status='trial',
-            plan='basic',
+            plan=(plan or 'basic').strip().lower() or 'basic',
             admin_email=admin_email,
             trial_ends_at=trial_ends,
+            notes=(notes or None),
+            billing_status=(billing_status or 'ok'),
+            elevators_limit_override=elevators_limit,
+            technicians_limit_override=technicians_limit,
+            office_users_limit_override=office_users_limit,
         )
         db.session.add(org)
         db.session.flush()
@@ -155,6 +170,7 @@ def create_tenant_signup(
             tax_pct=15,
             currency='SAR',
             language='ar',
+            city='مكة المكرمة',
         )
         db.session.add(settings)
 
@@ -169,7 +185,10 @@ def create_tenant_signup(
             language='ar',
         )
         db.session.add(user)
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
     except IntegrityError:
         db.session.rollback()
         return {

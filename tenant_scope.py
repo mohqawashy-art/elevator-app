@@ -216,6 +216,10 @@ def resolve_tenant():
         g._resolving_default_org = False
     if not org or org.status == 'suspended':
         abort(404)
+    from demo_provisioning import organization_access_allowed
+
+    if not organization_access_allowed(org):
+        abort(404)
     g.organization = org
     g.organization_id = org.id
     return None
