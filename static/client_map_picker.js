@@ -663,10 +663,8 @@
 
   function mapHasGoogleError(mapEl) {
     if (!mapEl) return false;
-    if (mapEl.querySelector('.gm-err-container, .gm-err-title, .gm-err-message')) return true;
-    var t = (mapEl.innerText || mapEl.textContent || '').toLowerCase();
-    return (t.indexOf('google maps') >= 0 || t.indexOf('خرائط google') >= 0 || (t.indexOf('google') >= 0 && t.indexOf('خطأ') >= 0)) &&
-      (t.indexOf('error') >= 0 || t.indexOf('خطأ') >= 0 || t.indexOf('didn') >= 0 || t.indexOf('load') >= 0 || t.indexOf('تحم') >= 0);
+    // فقط حاوية خطأ Google الرسمية — لا تعتمد على نص «تحميل» وغيره (كانت تحوّل OSM بالخطأ)
+    return !!mapEl.querySelector('.gm-err-container, .gm-err-title, .gm-err-message');
   }
 
   function fallbackFromGoogleError() {
@@ -674,13 +672,19 @@
     var mapEl = state.opts && $(state.opts.mapEl);
     if (!mapHasGoogleError(mapEl)) return;
     global.__gmapsAuthFailed = true;
+    var coords = state.opts && $(state.opts.coordsEl);
+    if (coords) {
+      coords.textContent = 'تعذّر تحميل Google Maps — تحقق من قيود المفتاح (HTTP referrers) لـ jama.liftcoreapp.com';
+      coords.style.color = 'var(--warning)';
+    }
     var opts = state.opts;
     hardReset();
     if (opts) init(opts);
   }
 
   function scheduleGoogleErrorCheck() {
-    [700, 1500, 2800].forEach(function (ms) {
+    // فحص متأخر فقط لحاوية الخطأ الرسمية — بعد اكتمال التحميل
+    [2000, 4000].forEach(function (ms) {
       setTimeout(fallbackFromGoogleError, ms);
     });
   }
@@ -697,10 +701,19 @@
     state.marker = null;
     state.initialized = false;
 
-    if (preferLeaflet() || !mapsReady()) {
+    // إن وُجد مفتاح Google: لا تسقط على OSM بمجرد أن المكتبة لم تجهز بعد
+    if (preferLeaflet()) {
       if (!ensureLeafletMap()) return false;
       updateCoordsLabel(null);
       return true;
+    }
+    if (!mapsReady()) {
+      var coordsWait = $(state.opts.coordsEl);
+      if (coordsWait) {
+        coordsWait.textContent = 'جاري تحميل خرائط Google...';
+        coordsWait.style.color = '';
+      }
+      return false;
     }
     if (!ensureGoogleMap()) {
       if (!ensureLeafletMap()) return false;
