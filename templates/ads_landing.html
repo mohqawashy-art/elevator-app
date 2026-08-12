@@ -9,59 +9,170 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=5">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=6">
 <style>
-.ads-hero{
-  position:relative;min-height:min(88vh,760px);margin:0 0 40px;isolation:isolate;overflow:hidden;
-  animation:mkt-rise .85s ease .05s both;
+/* صفحة إعلان: خلفية نظيفة بدون بوستر مزدحم — نموذج واضح */
+body.mkt-ads{
+  background:#06080e;
 }
-.ads-hero__media{
-  position:absolute;inset:0;
+body.mkt-ads::before{
   background:
-    linear-gradient(115deg, rgba(7,10,16,.95) 0%, rgba(7,10,16,.82) 42%, rgba(7,10,16,.45) 72%, rgba(7,10,16,.65) 100%),
-    url("{{ url_for('static', filename='images/liftcore-brand-hero.png') }}") 70% 40% / cover no-repeat;
+    radial-gradient(70% 50% at 85% 0%, rgba(201,161,74,.14), transparent 55%),
+    radial-gradient(55% 40% at 10% 70%, rgba(70,110,170,.08), transparent 50%),
+    linear-gradient(180deg, #0c121c 0%, #06080e 55%, #06080e 100%);
 }
-.ads-hero__inner{
-  position:relative;z-index:1;width:min(1100px,92vw);margin:0 auto;
-  min-height:min(88vh,760px);display:grid;grid-template-columns:1.05fr .95fr;gap:28px;
-  align-items:end;padding:28px 0 40px;
+
+.ads-shell{
+  position:relative;z-index:2;
+  width:min(1120px,92vw);margin:0 auto;
+  min-height:100vh;
+  display:flex;flex-direction:column;
 }
-.brand-lockup{display:flex;align-items:center;gap:14px;margin-bottom:22px}
-.brand-lockup img{width:54px;height:54px;object-fit:contain}
-.brand-lockup .name{
+
+.ads-shell .mkt-nav{
+  padding:22px 0 8px;
+}
+.ads-shell .mkt-nav-brand img{
+  height:56px;
+  max-width:min(340px,60vw);
+}
+
+.ads-stage{
+  flex:1;
+  display:grid;
+  grid-template-columns:minmax(0,1.05fr) minmax(300px,.92fr);
+  gap:clamp(28px,4vw,56px);
+  align-items:center;
+  padding:28px 0 40px;
+}
+
+.ads-copy{animation:mkt-rise .8s ease both;max-width:34rem}
+.ads-brand{
   font-family:'Cormorant Garamond',serif;
-  font-size:clamp(2rem,4.5vw,2.85rem);font-weight:600;line-height:1;direction:ltr;
+  font-size:clamp(2.6rem,6vw,3.6rem);
+  font-weight:600;line-height:.95;direction:ltr;
+  margin-bottom:22px;
+  letter-spacing:.01em;
 }
-.brand-lockup .name span{color:var(--mkt-gold-light)}
-.brand-lockup .sub{font-size:.74rem;color:var(--mkt-muted);letter-spacing:.14em;margin-top:6px;text-transform:uppercase}
+.ads-brand span{color:var(--mkt-gold-light)}
+.ads-brand small{
+  display:block;
+  font-family:'Tajawal',sans-serif;
+  font-size:.72rem;font-weight:500;
+  color:var(--mkt-muted);
+  letter-spacing:.16em;text-transform:uppercase;
+  margin-top:10px;
+}
 .ads-copy h1{
-  font-weight:800;font-size:clamp(1.55rem,3.4vw,2.2rem);line-height:1.35;margin-bottom:12px;
+  font-weight:800;
+  font-size:clamp(1.55rem,3.2vw,2.15rem);
+  line-height:1.4;
+  margin-bottom:14px;
+  color:#f5f7fb;
 }
-.ads-copy h1 em{font-style:normal;color:var(--mkt-gold-light)}
-.ads-copy > p{color:var(--mkt-muted);font-size:1.02rem;max-width:38ch;margin-bottom:18px}
-.ads-points{list-style:none;margin:0 0 8px;padding:0}
-.ads-points li{
-  color:var(--mkt-muted);font-size:.95rem;padding:6px 0 6px 0;
-  border-top:1px solid var(--mkt-hair);
+.ads-copy h1 em{
+  font-style:normal;
+  color:var(--mkt-gold-light);
 }
-.ads-points li:first-child{border-top:0}
-.ads-form-panel{
-  background:linear-gradient(180deg,rgba(255,255,255,.04),transparent 50%), var(--mkt-surface);
-  border:1px solid var(--mkt-line);border-radius:var(--mkt-radius);
-  padding:22px 18px 18px;box-shadow:var(--mkt-shadow);
-  animation:mkt-rise .9s ease .2s both;
+.ads-copy .dek{
+  color:#a8b3c4;
+  font-size:1.05rem;
+  line-height:1.75;
+  max-width:32ch;
+  margin:0;
 }
-.ads-form-panel h2{font-size:1.15rem;font-weight:800;margin-bottom:6px}
-.ads-form-panel .lead{color:var(--mkt-muted);font-size:.9rem;margin-bottom:14px}
-.ads-form-panel .mkt-demo-form{position:relative}
+
+.ads-panel{
+  background:#101823;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;
+  padding:clamp(22px,3vw,28px);
+  box-shadow:
+    0 0 0 1px rgba(201,161,74,.08),
+    0 28px 60px rgba(0,0,0,.45);
+  animation:mkt-rise .85s ease .12s both;
+}
+.ads-panel::before{
+  content:"";
+  display:block;height:3px;width:48px;border-radius:99px;
+  background:linear-gradient(90deg,#e8cd86,#c9a14a);
+  margin-bottom:16px;
+}
+.ads-panel h2{
+  font-size:1.28rem;font-weight:800;margin:0 0 6px;color:#fff;
+}
+.ads-panel .lead{
+  color:#9aa6b8;font-size:.92rem;margin:0 0 20px;line-height:1.6;
+}
+
+.ads-form{display:grid;gap:14px;position:relative}
+.ads-form .row{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;
+}
+.ads-form label{
+  display:block;
+  font-size:.82rem;font-weight:600;
+  color:#c5cedb;
+  margin-bottom:7px;
+}
+.ads-form input,
+.ads-form textarea{
+  width:100%;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background:#182131;
+  color:#f2f5fa;
+  padding:13px 14px;
+  font:inherit;
+  outline:none;
+  transition:border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.ads-form input::placeholder,
+.ads-form textarea::placeholder{color:#6d7a8d}
+.ads-form input:focus,
+.ads-form textarea:focus{
+  border-color:rgba(201,161,74,.55);
+  background:#1c2738;
+  box-shadow:0 0 0 3px rgba(201,161,74,.12);
+}
+.ads-form textarea{min-height:76px;resize:vertical}
+.ads-form .hp{position:absolute;left:-9999px;opacity:0;height:0;width:0;overflow:hidden}
+.ads-form .mkt-btn-gold{
+  width:100%;
+  margin-top:4px;
+  padding:14px 20px;
+  font-size:1rem;
+  border-radius:14px;
+}
+.ads-form .hint{
+  font-size:.78rem;color:#7a8799;text-align:center;margin-top:2px;
+}
+.ads-form .hint span{color:#a8b3c4}
+
+.ads-shell .mkt-footer{
+  margin-top:auto;
+  border-top-color:rgba(255,255,255,.06);
+}
+
 @media (max-width:900px){
-  .ads-hero__inner{grid-template-columns:1fr;align-items:stretch;min-height:auto;padding-top:12px}
-  .ads-copy{padding-top:18px}
+  .ads-stage{
+    grid-template-columns:1fr;
+    gap:28px;
+    padding:18px 0 32px;
+    align-items:stretch;
+  }
+  .ads-copy{max-width:none}
+  .ads-copy .dek{max-width:none}
+  .ads-brand{margin-bottom:16px}
+}
+@media (max-width:560px){
+  .ads-form .row{grid-template-columns:1fr}
+  .ads-panel{padding:20px 16px}
 }
 </style>
 </head>
-<body class="mkt">
-  <div class="mkt-wrap">
+<body class="mkt mkt-ads">
+  <div class="ads-shell">
     <header class="mkt-nav">
       <a class="mkt-nav-brand" href="{{ url_for('index') }}">
         <img src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}?v=4" alt="LiftCore">
@@ -71,28 +182,15 @@
         <a class="mkt-btn mkt-btn-outline" href="{{ url_for('login') }}">دخول العملاء</a>
       </div>
     </header>
-  </div>
 
-  <section class="ads-hero" aria-label="طلب تجربة LiftCore">
-    <div class="ads-hero__media" role="img" aria-label="هوية LiftCore"></div>
-    <div class="ads-hero__inner">
+    <section class="ads-stage" aria-label="طلب تجربة LiftCore">
       <div class="ads-copy">
-        <div class="brand-lockup">
-          <img src="{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=4" alt="" onerror="this.style.display='none'">
-          <div>
-            <div class="name">Lift<span>Core</span></div>
-            <div class="sub">Elevator operations</div>
-          </div>
-        </div>
+        <div class="ads-brand">Lift<span>Core</span><small>Elevator operations</small></div>
         <h1>شغّل شركة <em>صيانة المصاعد</em> من مكان واحد</h1>
-        <p>اطلب تجربة قصيرة — نجهّز لك حساباً ونرد على بريدك خلال يوم عمل.</p>
-        <ul class="ads-points">
-          <li>عملاء، عقود، ومصاعد مع تنبيهات الانتهاء</li>
-          <li>زيارات وأعطال ميدانية حتى الإغلاق</li>
-          <li>مخزون وفواتير جاهزة للمرحلة الأولى</li>
-        </ul>
+        <p class="dek">اطلب تجربة قصيرة — نجهّز الحساب ونرد على بريدك خلال يوم عمل.</p>
       </div>
-      <div class="ads-form-panel" id="contact">
+
+      <div class="ads-panel" id="contact">
         <h2>اطلب تجربة الآن</h2>
         <p class="lead">نرد على بريدك · بدون التزام فوري</p>
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -100,7 +198,7 @@
           <div class="mkt-flash mkt-flash-{{ category }}">{{ message }}</div>
           {% endfor %}
         {% endwith %}
-        <form class="mkt-demo-form" method="post" action="{{ url_for('demo_request') }}">
+        <form class="ads-form" method="post" action="{{ url_for('demo_request') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="next" value="/start">
           <input type="hidden" name="request_type" value="demo">
@@ -143,13 +241,11 @@
             <textarea id="ads-notes" name="notes" maxlength="800" placeholder="حجم الأسطول أو موعد مناسب…"></textarea>
           </div>
           <button class="mkt-btn mkt-btn-gold" type="submit">إرسال طلب التجربة</button>
-          <div class="hint">يصل الطلب إلى {{ sales_email }}.</div>
+          <div class="hint">يصل الطلب إلى <span dir="ltr">{{ sales_email }}</span></div>
         </form>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <div class="mkt-wrap">
     <footer class="mkt-footer">
       <div>جميع الحقوق محفوظة لمؤسسة نسق كور للحلول المتكاملة</div>
       <div>

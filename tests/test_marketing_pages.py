@@ -126,6 +126,7 @@ def test_ads_landing_and_conversion_flow(monkeypatch):
     assert 'اطلب تجربة' in body
     assert 'name="next" value="/start"' in body
     assert 'utm_source' in body
+    assert 'ads-form' in body or 'ads-panel' in body
 
     r = client.post(
         '/demo-request',
