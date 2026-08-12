@@ -26,6 +26,15 @@
         <button class="btn btn-secondary btn-sm" type="submit">تصفية</button>
       </form>
     </div>
+    <div>
+      <label>تصفير الكل</label>
+      <form method="post" action="/platform/leads/clear" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end"
+            onsubmit="return confirm('حذف جميع طلبات المبيعات نهائياً؟');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input name="confirm" placeholder="اكتب CLEAR" required style="max-width:140px">
+        <button class="btn btn-danger btn-sm" type="submit">تصفير جميع الطلبات</button>
+      </form>
+    </div>
   </div>
 
   {% if not leads %}

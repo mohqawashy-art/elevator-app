@@ -228,6 +228,13 @@ def fulfill_quote_lead(lead_id: int) -> dict:
     return {'ok': True, 'lead': lead, 'mail': mail}
 
 
+def clear_all_sales_leads() -> int:
+    """يحذف كل طلبات المبيعات. يرجع العدد المحذوف."""
+    n = SalesLead.query.delete()
+    db.session.commit()
+    return int(n or 0)
+
+
 def request_type_label(key: str) -> str:
     return REQUEST_TYPES.get((key or '').lower(), key or '—')
 

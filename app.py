@@ -3109,6 +3109,35 @@ def platform_lead_send_quote(lead_id):
     return redirect(url_for('platform_leads'))
 
 
+@app.route('/platform/leads/clear', methods=['POST'])
+def platform_leads_clear():
+    """تصفير كل طلبات المبيعات."""
+    from platform_admin import is_admin_host
+    from sales_leads import clear_all_sales_leads
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+
+    confirm = (request.form.get('confirm') or '').strip()
+    if confirm != 'CLEAR':
+        session['plat_notice'] = 'لتصفير الطلبات اكتب CLEAR في خانة التأكيد.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_leads'))
+
+    n = clear_all_sales_leads()
+    try:
+        from audit_log import log_audit
+        log_audit('platform_leads_cleared', user=user, details={'count': n})
+    except Exception:
+        app.logger.exception('leads clear audit failed')
+    session['plat_notice'] = f'تم تصفير طلبات المبيعات ({n}).'
+    session['plat_notice_type'] = 'ok'
+    return redirect(url_for('platform_leads'))
+
+
 @app.route('/platform/orgs')
 def platform_orgs():
     from demo_provisioning import demo_days_default
