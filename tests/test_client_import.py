@@ -82,6 +82,21 @@ def test_clients_import_reports_missing_phone(client):
     assert 'جوال' in data['errors'][0]['error']
 
 
+def test_clients_import_allows_shared_phone_with_warning(client):
+    login_as(client, 'admin')
+    r = client.post('/clients/import', json={
+        'rows': [
+            {'اسم العميل': 'عميل أ', 'الجوال': '0555123456', 'المدينة': 'مكة المكرمة'},
+            {'اسم العميل': 'عميل ب', 'الجوال': '0 55 512 3456', 'المدينة': 'مكة المكرمة'},
+        ],
+    })
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['imported'] == 2, data
+    assert data['failed'] == 0, data
+    assert data.get('warnings')
+
+
 def test_clients_import_template_columns(client):
     login_as(client, 'admin')
     r = client.post('/clients/import', json={

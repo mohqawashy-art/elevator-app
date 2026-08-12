@@ -105,22 +105,43 @@ def _prepare_import_phone(phone_raw: str) -> str:
     """طبّع أرقام Excel (05… أو 5… أو +966…) قبل التحقق."""
     import re
 
-    from app import format_phone_storage
+    from app import format_phone_storage, western_digits
 
-    digits = re.sub(r'\D', '', phone_raw or '')
+    # أرقام عربية/فارسية + مسافات/شرطات من Excel
+    text = western_digits(str(phone_raw or '')).strip()
+    digits = re.sub(r'\D', '', text)
     if not digits:
         return ''
+    # منع لصق رقمين في خلية واحدة
+    if len(digits) > 14:
+        # خذ آخر 12 إن بدأت بـ 966، أو آخر 10 إن بدأت بـ 0/5
+        if digits.startswith('966') and len(digits) >= 12:
+            digits = digits[:12] if len(digits) == 12 else digits[-12:]
+            if not digits.startswith('966'):
+                digits = '966' + digits[-9:]
+        elif digits.startswith('0'):
+            digits = digits[:10]
+        elif digits.startswith('5'):
+            digits = digits[:9]
     if digits.startswith('966'):
-        return format_phone_storage(phone_raw)
+        return format_phone_storage(digits)
     if digits.startswith('0') and len(digits) >= 10:
-        return format_phone_storage(phone_raw)
-    if digits.startswith('5') and len(digits) == 9:
-        return '+966' + digits
-    return format_phone_storage(phone_raw) or (phone_raw or '').strip()
+        return format_phone_storage(digits)
+    if digits.startswith('5') and len(digits) >= 9:
+        return '+966' + digits[:9]
+    return format_phone_storage(digits) or ''
+
+
+def _phone_ltr(phone: str) -> str:
+    """عرض الرقم باتجاه LTR داخل رسائل RTL حتى لا ينعكس في التنبيه."""
+    p = (phone or '').strip()
+    if not p:
+        return ''
+    return f'\u200E{p}\u200E'
 
 
 def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """استيراد قائمة صفوف. يُرجع imported/failed/errors."""
+    """استيراد قائمة صفوف. يُرجع imported/failed/errors/warnings."""
     from form_validation import customer_name_error
     from models import Customer, db
     from sqlalchemy.exc import IntegrityError
@@ -138,7 +159,8 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     imported = 0
     failed = 0
     errors: list[dict[str, Any]] = []
-    seen_phones: set[str] = set()
+    warnings: list[dict[str, Any]] = []
+    seen_phones: dict[str, str] = {}
     seen_names: set[str] = set()
 
     for idx, raw in enumerate(rows, start=1):
@@ -171,16 +193,23 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
             continue
 
         phone_k = phone_key(phone)
+        # نفس الجوال لأكثر من عميل شائع (ورثة / اتحاد ملاك) — لا نوقف الاستيراد
         if phone_k and phone_k in seen_phones:
-            failed += 1
-            errors.append({'row': idx, 'error': f'رقم جوال مكرر في الملف: {phone}'})
-            continue
-
-        taken, msg = phone_taken(phone)
-        if taken:
-            failed += 1
-            errors.append({'row': idx, 'error': msg})
-            continue
+            warnings.append({
+                'row': idx,
+                'warning': (
+                    f'الجوال {_phone_ltr(phone)} مستخدم أيضاً لـ '
+                    f'«{seen_phones[phone_k]}» في نفس الملف — تم الاستيراد'
+                ),
+            })
+        else:
+            taken, msg = phone_taken(phone)
+            if taken:
+                warnings.append({
+                    'row': idx,
+                    'warning': (msg or f'الجوال {_phone_ltr(phone)} موجود مسبقاً')
+                    + ' — تم الاستيراد',
+                })
 
         entity_type = data.get('entity_type') or 'فرد'
         if entity_type not in ('فرد', 'شركة'):
@@ -215,8 +244,8 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
             db.session.commit()
             imported += 1
             seen_names.add(name_key)
-            if phone_k:
-                seen_phones.add(phone_k)
+            if phone_k and phone_k not in seen_phones:
+                seen_phones[phone_k] = name
         except IntegrityError as exc:
             db.session.rollback()
             # تعارض UNIQUE(code) القديم — أعد بكود جديد
@@ -227,8 +256,8 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 db.session.commit()
                 imported += 1
                 seen_names.add(name_key)
-                if phone_k:
-                    seen_phones.add(phone_k)
+                if phone_k and phone_k not in seen_phones:
+                    seen_phones[phone_k] = name
             except Exception as exc2:  # noqa: BLE001
                 db.session.rollback()
                 failed += 1
@@ -242,6 +271,7 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         'imported': imported,
         'failed': failed,
         'errors': errors[:20],
+        'warnings': warnings[:20],
         'total': len(rows),
     }
 
