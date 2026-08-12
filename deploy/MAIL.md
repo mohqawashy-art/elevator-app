@@ -2,6 +2,34 @@
 
 المنصة ترسل عبر **Resend API** (`liftcore_mail.py`): ترحيب التسجيل ودعوات الانضمام.
 
+## 0) صناديق البريد الواردة (مهم)
+
+Resend يرسل فقط (outbound). لاستقبال رسائل العملاء أنشئ صناديق على مزوّد البريد (Google Workspace / Microsoft 365 / Hostinger Email):
+
+| العنوان | الاستخدام |
+|---------|-----------|
+| `sales@liftcoreapp.com` | المبيعات وصفحات التعريف والأسعار |
+| `info@liftcoreapp.com` | دعم عام / أيقونة الدعم داخل التطبيق |
+| `noreply@liftcoreapp.com` | إرسال آلي فقط (لا يحتاج صندوق وارد) |
+
+### إنشاء `sales@liftcoreapp.com` (Google Workspace كمثال)
+
+1. ادخل [admin.google.com](https://admin.google.com) بحساب المشرف.
+2. **Directory → Users → Add new user**.
+3. First name: `Sales` — Last name: `LiftCore`.
+4. Primary email: `sales` → النطاق `liftcoreapp.com`.
+5. عيّن كلمة مرور قوية وشاركها مع فريق المبيعات فقط.
+6. اختياري: أضف **Group** `sales@` يستلمها أكثر من شخص بدل صندوق واحد.
+
+تأكد أن سجلات **MX** لنطاق `liftcoreapp.com` تشير لمزوّد البريد الوارد (Google/Microsoft) ولم تُحذف عند إعداد Resend.
+
+في السيرفر (`/etc/liftcore/platform.env`):
+
+```env
+LIFTCORE_SALES_EMAIL=sales@liftcoreapp.com
+LIFTCORE_SUPPORT_EMAIL=info@liftcoreapp.com
+```
+
 ## 1) حساب Resend
 
 1. افتح [resend.com](https://resend.com) وسجّل الدخول.
@@ -26,6 +54,8 @@
 ```env
 MAIL_API_KEY=re_xxxxxxxx
 MAIL_FROM=LiftCore <noreply@liftcoreapp.com>
+LIFTCORE_SALES_EMAIL=sales@liftcoreapp.com
+LIFTCORE_SUPPORT_EMAIL=info@liftcoreapp.com
 ```
 
 ثم:
