@@ -21,6 +21,8 @@ def test_public_landing_and_pricing_anonymous():
     assert 'زيارات الصيانة' in body
     assert 'sales@liftcoreapp.com' in body
     assert 'طلب عرض تجريبي' in body or 'اطلب عرضاً تجريبياً' in body
+    assert 'wa.me/966566299626' in body
+    assert 'text=' in body  # رسالة واتساب جاهزة لطلب التجربة
 
     r = client.get('/pricing', base_url=PUBLIC)
     assert r.status_code == 200

@@ -207,7 +207,7 @@ tr:last-child td{border-bottom:none}
     <div class="mkt-nav-actions">
       <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('index') }}">التعريف</a>
       <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('index') }}#shots">لقطات النظام</a>
-      <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}">{{ signup_label }}</a>
+      <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}"{% if signup_external %} target="_blank" rel="noopener"{% endif %}>{{ signup_label }}</a>
     </div>
   </header>
 
@@ -240,8 +240,9 @@ tr:last-child td{border-bottom:none}
         <li>{{ bullet }}</li>
         {% endfor %}
       </ul>
-      {% set href = sales_mailto if plan.mailto_only else signup_href %}
-      <a class="mkt-btn mkt-btn-{{ plan.cta_style }} mkt-btn-block" href="{{ href }}">{{ plan.cta }}</a>
+      {% set href = sales_whatsapp_demo if plan.mailto_only else signup_href %}
+      {% set open_ext = plan.mailto_only or signup_external %}
+      <a class="mkt-btn mkt-btn-{{ plan.cta_style }} mkt-btn-block" href="{{ href }}"{% if open_ext %} target="_blank" rel="noopener"{% endif %}>{{ plan.cta }}</a>
     </article>
     {% endfor %}
   </section>
@@ -300,7 +301,7 @@ tr:last-child td{border-bottom:none}
     <h2>جاهز تشغّل شركتك على LiftCore؟</h2>
     <p>تجربة مناسبة لحجمك، وحدود واضحة، ونمو بإضافات بسيطة بدون تعقيد.</p>
     <div class="cta-actions">
-      <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}">{% if signup_open %}إنشاء حساب{% else %}اطلب عرضاً تجريبياً{% endif %}</a>
+      <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}"{% if signup_external %} target="_blank" rel="noopener"{% endif %}>{% if signup_open %}إنشاء حساب{% else %}اطلب عرضاً تجريبياً{% endif %}</a>
       <a class="mkt-btn mkt-btn-outline" href="#contact">تواصل المبيعات</a>
     </div>
   </section>
@@ -309,10 +310,10 @@ tr:last-child td{border-bottom:none}
     <div>
       <div class="eyebrow" style="color:var(--mkt-gold-light);font-size:.82rem;font-weight:700;letter-spacing:.08em;margin-bottom:8px">المبيعات</div>
       <h2>راسل المبيعات مباشرة</h2>
-      <p>لطلب حساب تجريبي أو عرض سعر مخصص حسب عدد المصاعد والفريق.</p>
+      <p>لطلب حساب تجريبي أو عرض سعر مخصص حسب عدد المصاعد والفريق — واتساب أسرع من البريد.</p>
       <div class="contact-actions">
-        <a class="mkt-btn mkt-btn-gold" href="{{ sales_mailto_demo }}">طلب عرض تجريبي</a>
-        <a class="mkt-btn mkt-btn-outline" href="{{ support_whatsapp_url }}" target="_blank" rel="noopener">واتساب {{ support_whatsapp_display }}</a>
+        <a class="mkt-btn mkt-btn-gold" href="{{ sales_whatsapp_demo }}" target="_blank" rel="noopener">طلب عرض تجريبي عبر واتساب</a>
+        <a class="mkt-btn mkt-btn-outline" href="{{ sales_mailto_demo }}">بريد المبيعات</a>
       </div>
     </div>
     <div>

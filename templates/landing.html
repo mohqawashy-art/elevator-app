@@ -182,7 +182,7 @@
         <a class="mkt-btn mkt-btn-ghost" href="#work">ماذا يفعل</a>
         <a class="mkt-btn mkt-btn-ghost" href="#shots">الشاشات</a>
         <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('pricing') }}">الأسعار</a>
-        <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}">{{ signup_label }}</a>
+        <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}"{% if signup_external %} target="_blank" rel="noopener"{% endif %}>{{ signup_label }}</a>
       </div>
     </header>
   </div>
@@ -201,7 +201,7 @@
         <h1>نظام تشغيل لشركات <em>صيانة المصاعد</em></h1>
         <p>من العقد إلى زيارة الفني والفواتير — منصة واحدة تدير أسطولك في السعودية بوضوح وتشغيل يومي مرتب.</p>
         <div class="hero-ctas">
-          <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}">{{ signup_label }}</a>
+          <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}"{% if signup_external %} target="_blank" rel="noopener"{% endif %}>{{ signup_label }}</a>
           <a class="mkt-btn mkt-btn-outline" href="{{ url_for('pricing') }}">الباقات والأسعار</a>
         </div>
       </div>
@@ -287,10 +287,10 @@
       <div>
         <div class="eyebrow">المبيعات</div>
         <h2>اطلب حساباً تجريبياً أو عرض سعر</h2>
-        <p>راسلنا على بريد المبيعات أو واتساب — نجهّز لك تجربة بعدد مصاعد مناسب لشركتك.</p>
+        <p>راسلنا على واتساب برسالة جاهزة، أو عبر بريد المبيعات — نجهّز لك تجربة بعدد مصاعد مناسب لشركتك.</p>
         <div class="contact-actions">
-          <a class="mkt-btn mkt-btn-gold" href="{{ sales_mailto_demo }}">طلب عرض تجريبي</a>
-          <a class="mkt-btn mkt-btn-outline" href="{{ support_whatsapp_url }}" target="_blank" rel="noopener">واتساب {{ support_whatsapp_display }}</a>
+          <a class="mkt-btn mkt-btn-gold" href="{{ sales_whatsapp_demo }}" target="_blank" rel="noopener">طلب عرض تجريبي عبر واتساب</a>
+          <a class="mkt-btn mkt-btn-outline" href="{{ sales_mailto_demo }}">بريد المبيعات</a>
         </div>
       </div>
       <div>

@@ -302,12 +302,16 @@ def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label:
         f'?subject={quote(demo_subject)}'
         f'&body={quote(demo_body)}'
     )
+    whatsapp_phone = '966566299626'
+    support_whatsapp_url = f'https://wa.me/{whatsapp_phone}'
+    sales_whatsapp_demo = f'{support_whatsapp_url}?text={quote(demo_body)}'
 
     plans = build_pricing_plans()
     return {
         'signup_open': signup_open,
         'signup_href': signup_href,
         'signup_label': signup_label,
+        'signup_external': False,
         'plans': plans,
         'addons': build_pricing_addons(),
         'compare_rows': build_compare_table(plans),
@@ -315,8 +319,9 @@ def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label:
         'sales_email': sales_email,
         'sales_mailto': sales_mailto,
         'sales_mailto_demo': sales_mailto_demo,
+        'sales_whatsapp_demo': sales_whatsapp_demo,
         'support_email': sales_email,
-        'support_whatsapp_url': 'https://wa.me/966566299626',
+        'support_whatsapp_url': support_whatsapp_url,
         'support_whatsapp_display': '0566299626',
         'landing_shots': LANDING_SHOTS,
     }

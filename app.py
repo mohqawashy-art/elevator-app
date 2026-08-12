@@ -1947,8 +1947,12 @@ def _pricing_context():
         signup_label='ابدأ الآن' if signup_open else 'تواصل مع المبيعات',
     )
     if not signup_open:
-        ctx['signup_href'] = ctx.get('sales_mailto_demo') or ctx.get('sales_mailto') or 'mailto:sales@liftcoreapp.com'
+        ctx['signup_href'] = (
+            ctx.get('sales_whatsapp_demo')
+            or 'https://wa.me/966566299626'
+        )
         ctx['signup_label'] = 'اطلب عرضاً تجريبياً'
+        ctx['signup_external'] = True
     return ctx
 
 
