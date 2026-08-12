@@ -39,6 +39,14 @@
 .client-map-picker{height:260px;width:100%;border-radius:var(--r-sm);border:1px solid var(--border);overflow:hidden;background:var(--bg4);z-index:1}
 .client-map-picker .leaflet-container{height:100%;width:100%;font-family:inherit}
 #map .leaflet-container{height:100%;width:100%;min-height:480px}
+/* منع تعارض CSS العام/Leaflet مع بلاطات Google Maps */
+#map .gm-style img,
+#map .gm-style > div,
+.client-map-picker .gm-style img,
+.client-map-picker .gm-style > div{
+  max-width:none!important;
+  max-height:none!important;
+}
 .map-picker-coords{font-size:11px;color:var(--text3);margin-top:8px;font-family:var(--font-en);direction:ltr;text-align:left}
 .map-picker-coords.set{color:var(--success)}
 .map-picker-advanced{margin-top:8px}

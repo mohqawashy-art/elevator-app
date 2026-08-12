@@ -66,7 +66,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="/static/customer_profile.css">
-<link rel="stylesheet" href="/static/client_location.css">
+<link rel="stylesheet" href="/static/client_location.css?v=2">
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
@@ -2107,11 +2107,38 @@ function useOsmMaps() {
   return !window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed || typeof google === 'undefined' || !google.maps;
 }
 
+function destroyOsmMainMap() {
+  if (osmMainMap) {
+    try { osmMainMap.remove(); } catch (e) { /* ignore */ }
+  }
+  osmMainMap = null;
+  osmMainMarkers = [];
+  var mapEl = document.getElementById('map');
+  if (mapEl) {
+    mapEl.innerHTML = '';
+    mapEl.className = mapEl.className.replace(/\bleaflet-\S+/g, '').trim();
+  }
+}
+
+function destroyGoogleMainMap() {
+  clearMapMarkers();
+  if (markerCluster && markerCluster.clearMarkers) {
+    try { markerCluster.clearMarkers(); } catch (e) { /* ignore */ }
+  }
+  markerCluster = null;
+  mapInfoWindow = null;
+  mainMap = null;
+  var mapEl = document.getElementById('map');
+  if (mapEl) mapEl.innerHTML = '';
+}
+
 function refreshMainMapOsm() {
   var mapEl = document.getElementById('map');
   var emptyEl = document.getElementById('map-empty');
   var summaryEl = document.getElementById('map-summary');
   if (!mapEl || typeof L === 'undefined') return;
+  // لا تخلط Leaflet فوق Google في نفس الحاوية
+  if (mainMap) destroyGoogleMainMap();
   mapEl.style.display = 'block';
   if (!osmMainMap) {
     osmMainMap = L.map(mapEl).setView([21.4225, 39.8262], 11);
@@ -2155,6 +2182,13 @@ function refreshMainMapOsm() {
 }
 
 function refreshMainMap(fitAgain) {
+  // إن وُجد مفتاح Google ولم يُحمَّل بعد — انتظر بدلاً من تثبيت OSM نهائياً
+  if (window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && (typeof google === 'undefined' || !google.maps)) {
+    var summaryWait = document.getElementById('map-summary');
+    if (summaryWait) summaryWait.textContent = 'جاري تحميل خرائط Google...';
+    whenGoogleMapsReady(function () { refreshMainMap(fitAgain); });
+    return;
+  }
   if (useOsmMaps()) {
     refreshMainMapOsm();
     return;
@@ -2168,6 +2202,9 @@ function refreshMainMap(fitAgain) {
   var emptyEl = document.getElementById('map-empty');
   var summaryEl = document.getElementById('map-summary');
   if (!mapEl) return;
+
+  // إزالة Leaflet إن وُجد — وإلا تظهر بلاطات Google مكسورة
+  if (osmMainMap) destroyOsmMainMap();
 
   if (!mainMap) {
     var mainMapOpts = {
@@ -2374,6 +2411,7 @@ function switchTab(tab){
       setTimeout(function(){ refreshMainMap(true); }, 200);
       setTimeout(function(){
         if (mainMap && google.maps) google.maps.event.trigger(mainMap, 'resize');
+        else if (osmMainMap) osmMainMap.invalidateSize();
       }, 500);
     });
   }
