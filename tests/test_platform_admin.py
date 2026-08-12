@@ -98,6 +98,46 @@ def test_platform_leads_page_shows_sales_request():
     assert 'طلبات التجربة' in body or 'طلبات المبيعات' in body
     assert 'شركة مكة للصيانة' in body
     assert 'ahmad@example.com' in body
+    assert 'موافق — إرسال تجربة' in body
+
+
+def test_platform_send_quote_button(monkeypatch):
+    from models import SalesLead
+
+    sent = {}
+
+    def fake_quote(**kwargs):
+        sent.update(kwargs)
+        return {'ok': True, 'reason': 'sent'}
+
+    monkeypatch.setattr('liftcore_mail.send_pricing_quote_email', fake_quote)
+
+    client = _client()
+    with app.app_context():
+        lead = SalesLead(
+            request_type='quote',
+            status='new',
+            company_name='شركة عرض',
+            contact_name='سارة',
+            contact_email='sara@example.com',
+            elevators='40',
+        )
+        db.session.add(lead)
+        db.session.commit()
+        lid = lead.id
+
+    client.post(
+        '/login',
+        data={'username': 'opsadmin', 'password': 'OpsPass123!'},
+        base_url=ADMIN_URL,
+    )
+    r = client.post(f'/platform/leads/{lid}/send-quote', base_url=ADMIN_URL, follow_redirects=False)
+    assert r.status_code in (302, 303)
+    assert sent.get('to_email') == 'sara@example.com'
+    with app.app_context():
+        lead = db.session.get(SalesLead, lid)
+        assert lead.status == 'fulfilled'
+        assert lead.customer_mail_sent is True
 
 
 def test_tenant_user_cannot_use_admin_console():

@@ -2,13 +2,13 @@
 {% block title %}طلبات المبيعات — LiftCore{% endblock %}
 {% block content %}
 <div class="h1">طلبات التجربة وعروض السعر</div>
-<p class="sub">الطلبات الواردة من الصفحة التعريفية والأسعار — مع البريد والجوال.</p>
+<p class="sub">الطلبات الواردة من الصفحة التعريفية والأسعار — وافق بزر واحد لإرسال التجربة أو عرض السعر للعميل.</p>
 <p class="live-hint">تحديث تلقائي كل 4 ثوانٍ · يتوقف مؤقتاً أثناء التعديل على الحقول</p>
 
 <div class="stats">
   <div class="stat"><div class="n">{{ lead_stats.total }}</div><div class="l">الإجمالي</div></div>
   <div class="stat"><div class="n">{{ lead_stats.new }}</div><div class="l">جديد</div></div>
-  <div class="stat"><div class="n">{{ lead_stats.contacted }}</div><div class="l">تم التواصل</div></div>
+  <div class="stat"><div class="n">{{ lead_stats.fulfilled or 0 }}</div><div class="l">تم الإرسال</div></div>
   <div class="stat"><div class="n">{{ lead_stats.closed }}</div><div class="l">مغلق</div></div>
 </div>
 
@@ -43,7 +43,7 @@
         <th>المدينة</th>
         <th>المصاعد</th>
         <th>الحالة</th>
-        <th>إيميل</th>
+        <th>إجراء سريع</th>
         <th>التاريخ</th>
         <th></th>
       </tr>
@@ -56,6 +56,7 @@
         <td>
           <strong>{{ lead.company_name }}</strong>
           {% if lead.notes %}<div class="detail">{{ lead.notes }}</div>{% endif %}
+          {% if lead.action_note %}<div class="detail">{{ lead.action_note }}</div>{% endif %}
         </td>
         <td>{{ lead.contact_name }}</td>
         <td dir="ltr"><a href="mailto:{{ lead.contact_email }}">{{ lead.contact_email }}</a></td>
@@ -64,10 +65,27 @@
         <td>{{ lead.elevators or '—' }}</td>
         <td><span class="badge badge-{{ lead.status }}">{{ status_label(lead.status) }}</span></td>
         <td>
-          {% if lead.email_sent %}
-          <span class="badge badge-ok">أُرسل</span>
+          {% if lead.request_type == 'demo' and lead.status != 'fulfilled' %}
+          <form method="post" action="/platform/leads/{{ lead.id }}/send-demo" style="display:inline" onsubmit="return confirm('إنشاء حساب تجريبي وإرسال بيانات الدخول إلى {{ lead.contact_email }}؟');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-primary btn-sm" type="submit">موافق — إرسال تجربة</button>
+          </form>
+          {% elif lead.request_type == 'quote' and lead.status != 'fulfilled' %}
+          <form method="post" action="/platform/leads/{{ lead.id }}/send-quote" style="display:inline" onsubmit="return confirm('إرسال عرض الأسعار إلى {{ lead.contact_email }}؟');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-primary btn-sm" type="submit">إرسال عرض سعر</button>
+          </form>
+          {% elif lead.status == 'fulfilled' %}
+            {% if lead.customer_mail_sent %}
+            <span class="badge badge-ok">أُرسل للعميل</span>
+            {% else %}
+            <span class="badge badge-due">أُنشئ بدون إيميل</span>
+            {% endif %}
+            {% if lead.result_org_id %}
+            <div style="margin-top:6px"><a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ lead.result_org_id }}">المؤسسة</a></div>
+            {% endif %}
           {% else %}
-          <span class="badge badge-due" title="{{ lead.email_error or '' }}">لم يُرسل</span>
+          <span class="muted">—</span>
           {% endif %}
         </td>
         <td class="muted">{{ lead.created_at }}</td>

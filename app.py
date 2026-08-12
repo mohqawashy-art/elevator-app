@@ -1402,6 +1402,12 @@ def _sqlite_legacy_schema_patches():
                 ('entity_type', 'VARCHAR(20)'),
                 ('cr_number', 'VARCHAR(50)'),
             ],
+            'sales_leads': [
+                ('fulfilled_at', 'DATETIME'),
+                ('result_org_id', 'INTEGER'),
+                ('customer_mail_sent', 'BOOLEAN'),
+                ('action_note', 'VARCHAR(500)'),
+            ],
             'purchase_orders': [
                 ('supplier_phone', 'VARCHAR(30)'),
                 ('supplier_email', 'VARCHAR(120)'),
@@ -3013,6 +3019,93 @@ def platform_lead_status(lead_id):
     nxt = (request.form.get('next') or '').strip()
     if nxt.startswith('/platform/leads'):
         return redirect(nxt)
+    return redirect(url_for('platform_leads'))
+
+
+@app.route('/platform/leads/<int:lead_id>/send-demo', methods=['POST'])
+def platform_lead_send_demo(lead_id):
+    """موافقة على طلب تجربة: إنشاء حساب + إرسال بيانات الدخول للعميل."""
+    from platform_admin import is_admin_host
+    from sales_leads import fulfill_demo_lead
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+
+    result = fulfill_demo_lead(lead_id, password_hasher=hash_password)
+    if not result.get('ok'):
+        session['plat_notice'] = result.get('error') or 'فشل إرسال التجربة.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_leads'))
+
+    demo = result.get('demo') or {}
+    mail_ok = bool((result.get('mail') or {}).get('ok'))
+    session['plat_issued_password'] = result.get('password')
+    session['plat_issued_username'] = demo.get('username')
+    session['plat_issued_login_url'] = demo.get('login_url')
+    session['plat_issued_company'] = demo.get('company_name')
+    ends = demo.get('trial_ends_at')
+    session['plat_issued_trial_ends'] = ends.strftime('%Y-%m-%d %H:%M') if ends else ''
+    if mail_ok:
+        session['plat_notice'] = (
+            f"تم إنشاء التجربة وإرسال بيانات الدخول إلى {demo.get('admin_email') or ''}."
+        )
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = (
+            'تم إنشاء الحساب التجريبي لكن تعذّر إرسال الإيميل — انسخ بيانات الدخول من التفاصيل.'
+        )
+        session['plat_notice_type'] = 'warn'
+
+    try:
+        from audit_log import log_audit
+        log_audit(
+            'platform_lead_demo_sent',
+            user=user,
+            organization_id=demo.get('organization_id'),
+            details={'lead_id': lead_id, 'slug': demo.get('slug'), 'mail_ok': mail_ok},
+        )
+    except Exception:
+        app.logger.exception('lead demo audit failed')
+
+    org_id = demo.get('organization_id')
+    if org_id:
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+    return redirect(url_for('platform_leads'))
+
+
+@app.route('/platform/leads/<int:lead_id>/send-quote', methods=['POST'])
+def platform_lead_send_quote(lead_id):
+    """إرسال عرض أسعار للعميل بضغطة واحدة."""
+    from platform_admin import is_admin_host
+    from sales_leads import fulfill_quote_lead, get_sales_lead
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+
+    result = fulfill_quote_lead(lead_id)
+    if not result.get('ok'):
+        session['plat_notice'] = result.get('error') or 'فشل إرسال عرض السعر.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_leads'))
+
+    lead = result.get('lead') or get_sales_lead(lead_id)
+    session['plat_notice'] = f'تم إرسال عرض السعر إلى {lead.contact_email if lead else ""}.'
+    session['plat_notice_type'] = 'ok'
+    try:
+        from audit_log import log_audit
+        log_audit(
+            'platform_lead_quote_sent',
+            user=user,
+            details={'lead_id': lead_id, 'email': getattr(lead, 'contact_email', None)},
+        )
+    except Exception:
+        app.logger.exception('lead quote audit failed')
     return redirect(url_for('platform_leads'))
 
 

@@ -156,7 +156,7 @@ class SalesLead(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     request_type = db.Column(db.String(20), default='demo')  # demo | quote
-    status = db.Column(db.String(20), default='new')  # new | contacted | closed
+    status = db.Column(db.String(20), default='new')  # new | contacted | fulfilled | closed
     company_name = db.Column(db.String(200), nullable=False)
     contact_name = db.Column(db.String(100), nullable=False)
     contact_email = db.Column(db.String(120), nullable=False, index=True)
@@ -167,6 +167,10 @@ class SalesLead(db.Model):
     source_path = db.Column(db.String(40))  # / | /pricing | /product
     email_sent = db.Column(db.Boolean, default=False)
     email_error = db.Column(db.String(300))
+    fulfilled_at = db.Column(db.DateTime)
+    result_org_id = db.Column(db.Integer)
+    customer_mail_sent = db.Column(db.Boolean, default=False)
+    action_note = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

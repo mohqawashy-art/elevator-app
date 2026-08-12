@@ -218,6 +218,80 @@ def send_onboarding_activated_email(
     )
 
 
+def send_demo_access_email(
+    *,
+    to_email: str,
+    contact_name: str,
+    company_name: str,
+    username: str,
+    password: str,
+    login_url: str,
+    days: int,
+    trial_ends_at: str = '',
+) -> dict:
+    """يرسل بيانات الدخول لحساب التجربة إلى العميل."""
+    name = (contact_name or '').strip() or 'عميلنا الكريم'
+    company = (company_name or '').strip() or 'LiftCore'
+    ends = f'\nينتهي الحساب تقريباً في: {trial_ends_at}\n' if trial_ends_at else '\n'
+    subject = f'حسابك التجريبي في LiftCore — {company}'
+    body_text = (
+        f'مرحباً {name},\n\n'
+        f'تمت الموافقة على طلب التجربة لـ«{company}».\n\n'
+        f'رابط الدخول: {login_url}\n'
+        f'اسم المستخدم: {username}\n'
+        f'كلمة المرور: {password}\n'
+        f'مدة التجربة: {days} يوم\n'
+        f'{ends}'
+        'ننصح بتغيير كلمة المرور بعد أول دخول.\n\n'
+        '— فريق مبيعات LiftCore'
+    )
+    return _send_email(
+        to_email=to_email,
+        subject=subject,
+        body_text=body_text,
+        log_tag='demo access',
+    )
+
+
+def send_pricing_quote_email(
+    *,
+    to_email: str,
+    contact_name: str,
+    company_name: str,
+    pricing_url: str = 'https://liftcoreapp.com/pricing',
+    elevators_hint: str = '',
+    plans_text: str = '',
+) -> dict:
+    """يرسل ملخص الباقات / عرض سعر للعميل."""
+    name = (contact_name or '').strip() or 'عميلنا الكريم'
+    company = (company_name or '').strip() or 'شركتك'
+    elev = f'\nعدد المصاعد التقريبي الذي ذكرتموه: {elevators_hint}\n' if elevators_hint else '\n'
+    plans = plans_text.strip() or (
+        'Basic: 3,000 ر.س / سنة (حتى 50 مصعد)\n'
+        'Plus: 4,590 ر.س / سنة\n'
+        'Pro: حسب الحجم\n'
+        'Enterprise: عرض مخصص\n'
+    )
+    subject = f'عرض أسعار LiftCore — {company}'
+    body_text = (
+        f'مرحباً {name},\n\n'
+        f'شكراً لاهتمامكم بـ LiftCore لـ«{company}».\n'
+        f'{elev}'
+        'ملخص الباقات السنوية (قبل ضريبة القيمة المضافة 15%):\n\n'
+        f'{plans}\n'
+        f'تفاصيل الباقات والمقارنة:\n{pricing_url}\n\n'
+        'نسعد بتجهيز عرض مخصص حسب حجم أسطولكم — ردّوا على هذا البريد أو تواصلوا معنا.\n\n'
+        '— فريق مبيعات LiftCore\n'
+        'sales@liftcoreapp.com'
+    )
+    return _send_email(
+        to_email=to_email,
+        subject=subject,
+        body_text=body_text,
+        log_tag='pricing quote',
+    )
+
+
 def send_demo_request_email(
     *,
     sales_email: str,
