@@ -47,6 +47,10 @@ def test_demo_request_posts_to_sales_mail(monkeypatch):
 
     client = app.test_client()
     app.config['TESTING'] = True
+    with app.app_context():
+        from models import SalesLead, db
+        db.create_all()
+
     r = client.post(
         '/demo-request',
         data={
@@ -57,6 +61,7 @@ def test_demo_request_posts_to_sales_mail(monkeypatch):
             'city': 'مكة المكرمة',
             'elevators': '12',
             'notes': 'باقة Plus',
+            'request_type': 'quote',
             'next': '/',
         },
         base_url=PUBLIC,
@@ -66,7 +71,17 @@ def test_demo_request_posts_to_sales_mail(monkeypatch):
     assert '#contact' in (r.headers.get('Location') or '')
     assert captured.get('company_name') == 'شركة تجربة'
     assert captured.get('contact_email') == 'buyer@example.com'
+    assert captured.get('request_type') == 'quote'
     assert 'sales@' in (captured.get('sales_email') or '')
+
+    with app.app_context():
+        from models import SalesLead
+        lead = SalesLead.query.filter_by(contact_email='buyer@example.com').order_by(SalesLead.id.desc()).first()
+        assert lead is not None
+        assert lead.company_name == 'شركة تجربة'
+        assert lead.request_type == 'quote'
+        assert lead.email_sent is True
+        assert lead.status == 'new'
 
 
 def test_product_path_public():

@@ -8,7 +8,7 @@
   <div class="stat"><div class="n">{{ stats.total }}</div><div class="l">إجمالي المؤسسات</div></div>
   <div class="stat"><div class="n">{{ stats.active }}</div><div class="l">نشطة</div></div>
   <div class="stat"><div class="n">{{ stats.trial }}</div><div class="l">تجريبية</div></div>
-  <div class="stat"><div class="n">{{ stats.suspended }}</div><div class="l">موقوفة</div></div>
+  <div class="stat"><div class="n">{{ stats.leads_new or 0 }}</div><div class="l">طلبات مبيعات جديدة</div></div>
   <div class="stat"><div class="n">{{ stats.invites_open }}</div><div class="l">دعوات مفتوحة</div></div>
 </div>
 
@@ -51,6 +51,38 @@
     <a class="btn btn-primary" href="/platform/orgs">كل المؤسسات</a>
     <a class="btn btn-secondary" href="/platform/billing">الاشتراكات</a>
     <a class="btn btn-secondary" href="/operator/onboarding">إنشاء دعوة عميل</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section">أحدث طلبات المبيعات</div>
+  {% if not leads %}
+  <p class="muted">لا توجد طلبات من الصفحة التعريفية بعد.</p>
+  {% else %}
+  <table class="table">
+    <thead>
+      <tr><th>#</th><th>النوع</th><th>الشركة</th><th>البريد</th><th>الجوال</th><th>الحالة</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for lead in leads[:10] %}
+      <tr>
+        <td>{{ lead.id }}</td>
+        <td>{% if lead.request_type == 'quote' %}عرض سعر{% else %}تجربة{% endif %}</td>
+        <td>
+          <strong>{{ lead.company_name }}</strong><br>
+          <span class="muted">{{ lead.contact_name }}</span>
+        </td>
+        <td dir="ltr">{{ lead.contact_email }}</td>
+        <td dir="ltr">{{ lead.phone or '—' }}</td>
+        <td><span class="badge badge-{{ lead.status }}">{{ lead.status }}</span></td>
+        <td><a class="btn btn-secondary btn-sm" href="/platform/leads">عرض</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <div class="actions">
+    <a class="btn btn-primary" href="/platform/leads">كل طلبات المبيعات</a>
   </div>
 </div>
 

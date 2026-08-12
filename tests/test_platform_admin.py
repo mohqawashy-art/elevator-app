@@ -67,6 +67,39 @@ def test_admin_host_login_and_home():
     assert 'PLATFORM' in body or 'Platform Admin' in body or 'إدارة المنصة' in body
 
 
+def test_platform_leads_page_shows_sales_request():
+    from models import SalesLead
+
+    client = _client()
+    with app.app_context():
+        db.session.add(SalesLead(
+            request_type='demo',
+            status='new',
+            company_name='شركة مكة للصيانة',
+            contact_name='أحمد',
+            contact_email='ahmad@example.com',
+            phone='0566299626',
+            city='مكة المكرمة',
+            elevators='20',
+            source_path='/',
+            email_sent=True,
+        ))
+        db.session.commit()
+
+    client.post(
+        '/login',
+        data={'username': 'opsadmin', 'password': 'OpsPass123!'},
+        base_url=ADMIN_URL,
+        follow_redirects=False,
+    )
+    r = client.get('/platform/leads', base_url=ADMIN_URL)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'طلبات التجربة' in body or 'طلبات المبيعات' in body
+    assert 'شركة مكة للصيانة' in body
+    assert 'ahmad@example.com' in body
+
+
 def test_tenant_user_cannot_use_admin_console():
     client = _client()
     r = client.post(

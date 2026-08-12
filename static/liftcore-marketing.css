@@ -132,7 +132,8 @@ body.mkt img{display:block;max-width:100%}
   margin-bottom:4px;
 }
 .mkt-demo-form input,
-.mkt-demo-form textarea{
+.mkt-demo-form textarea,
+.mkt-demo-form select{
   width:100%;
   border-radius:12px;
   border:1px solid var(--mkt-line);
@@ -143,7 +144,8 @@ body.mkt img{display:block;max-width:100%}
   outline:none;
 }
 .mkt-demo-form input:focus,
-.mkt-demo-form textarea:focus{
+.mkt-demo-form textarea:focus,
+.mkt-demo-form select:focus{
   border-color:rgba(201,161,74,.45);
 }
 .mkt-demo-form textarea{min-height:84px;resize:vertical}

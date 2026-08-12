@@ -228,14 +228,16 @@ def send_demo_request_email(
     city: str = '',
     elevators: str = '',
     notes: str = '',
+    request_type: str = 'demo',
 ) -> dict:
-    """يرسل طلب عرض تجريبي إلى بريد المبيعات مع Reply-To لبريد العميل."""
+    """يرسل طلب تجربة أو عرض سعر إلى بريد المبيعات مع Reply-To لبريد العميل."""
     company = (company_name or '').strip() or '—'
     name = (contact_name or '').strip() or '—'
     email = (contact_email or '').strip()
-    subject = f'طلب عرض تجريبي — {company}'
+    kind = 'عرض سعر' if (request_type or '').lower() == 'quote' else 'عرض تجريبي'
+    subject = f'طلب {kind} — {company}'
     body_text = (
-        'طلب عرض تجريبي من صفحة التعريف\n'
+        f'طلب {kind} من صفحة التعريف\n'
         '================================\n\n'
         f'الشركة: {company}\n'
         f'المسؤول: {name}\n'

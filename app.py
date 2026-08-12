@@ -1956,11 +1956,12 @@ def _pricing_context():
 
 @app.route('/demo-request', methods=['POST'])
 def demo_request():
-    """طلب عرض تجريبي من صفحات التسويق — يُرسل إلى بريد المبيعات."""
+    """طلب تجربة أو عرض سعر — يُحفظ في المنصة ويُرسل إيميل للمبيعات."""
     import time
     from liftcore_mail import send_demo_request_email
     from liftcore_security import ensure_csrf_token, validate_csrf
     from marketing_site import marketing_page_context
+    from sales_leads import create_sales_lead, mark_lead_email_result
 
     ensure_csrf_token()
     if not app.config.get('TESTING'):
@@ -1993,9 +1994,28 @@ def demo_request():
     city = (request.form.get('city') or '').strip()
     elevators = (request.form.get('elevators') or '').strip()
     notes = (request.form.get('notes') or '').strip()
+    request_type = (request.form.get('request_type') or 'demo').strip().lower()
 
     if not company or not name or not email or '@' not in email:
         flash('أكمل اسم الشركة والمسؤول والبريد الإلكتروني.', 'warn')
+        return redirect(redirect_to)
+
+    try:
+        lead = create_sales_lead(
+            company_name=company,
+            contact_name=name,
+            contact_email=email,
+            phone=phone,
+            city=city,
+            elevators=elevators,
+            notes=notes,
+            request_type=request_type,
+            source_path=next_url,
+        )
+    except Exception:
+        app.logger.exception('sales lead save failed')
+        db.session.rollback()
+        flash('تعذّر حفظ الطلب. أعد المحاولة أو راسل المبيعات مباشرة.', 'warn')
         return redirect(redirect_to)
 
     sales_email = marketing_page_context(
@@ -2011,19 +2031,26 @@ def demo_request():
         city=city,
         elevators=elevators,
         notes=notes,
+        request_type=request_type,
     )
+    try:
+        mark_lead_email_result(lead, result)
+    except Exception:
+        app.logger.exception('sales lead email meta failed')
+        db.session.rollback()
+
     session['demo_request_at'] = now
     if result.get('ok'):
-        flash('وصل طلبك لفريق المبيعات — نرد عليك على بريدك قريباً.', 'ok')
+        flash('وصل طلبك — سيظهر لفريق المبيعات ونرد على بريدك قريباً.', 'ok')
     elif result.get('reason') == 'mail_not_configured':
         flash(
-            f'تعذّر الإرسال الآلي حالياً. راسلنا مباشرة على {sales_email}',
-            'warn',
+            'تم تسجيل طلبك في المنصة. الإيميل الآلي غير مضبوط حالياً وسنتواصل معك.',
+            'ok',
         )
     else:
         flash(
-            f'تعذّر إرسال الطلب. راسلنا على {sales_email} أو أعد المحاولة.',
-            'warn',
+            'تم تسجيل طلبك في المنصة. تعذّر إرسال إيميل تلقائي وسنتواصل معك.',
+            'ok',
         )
     return redirect(redirect_to)
 
@@ -2910,21 +2937,83 @@ def operator_onboarding_cancel(invite_id):
 @app.route('/platform/')
 def platform_home():
     from platform_admin import is_admin_host, list_organizations, org_stats, recent_invites
+    from sales_leads import list_sales_leads, sales_lead_stats
 
     if not is_admin_host():
         abort(404)
     user = _require_platform_console_user()
     if not user:
         return redirect(url_for('login'))
+    lead_stats = sales_lead_stats()
+    stats = org_stats()
+    stats['leads_new'] = lead_stats.get('new', 0)
     return render_template(
         'platform/home.html',
         nav='home',
-        stats=org_stats(),
+        stats=stats,
         orgs=list_organizations(limit=12),
         invites=recent_invites(12),
+        leads=list_sales_leads(limit=12),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
     )
+
+
+@app.route('/platform/leads')
+def platform_leads():
+    from platform_admin import is_admin_host
+    from sales_leads import (
+        LEAD_STATUSES,
+        REQUEST_TYPES,
+        list_sales_leads,
+        request_type_label,
+        sales_lead_stats,
+        status_label,
+    )
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+    status = (request.args.get('status') or '').strip()
+    return render_template(
+        'platform/leads.html',
+        nav='leads',
+        leads=list_sales_leads(status=status, limit=300),
+        lead_stats=sales_lead_stats(),
+        status_filter=status,
+        lead_statuses=LEAD_STATUSES,
+        request_types=REQUEST_TYPES,
+        request_type_label=request_type_label,
+        status_label=status_label,
+        notice=session.pop('plat_notice', None),
+        notice_type=session.pop('plat_notice_type', None),
+    )
+
+
+@app.route('/platform/leads/<int:lead_id>/status', methods=['POST'])
+def platform_lead_status(lead_id):
+    from platform_admin import is_admin_host
+    from sales_leads import set_sales_lead_status
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+    status = (request.form.get('status') or '').strip()
+    lead = set_sales_lead_status(lead_id, status)
+    if lead:
+        session['plat_notice'] = f'تم تحديث حالة الطلب #{lead.id}.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = 'تعذّر تحديث الحالة.'
+        session['plat_notice_type'] = 'warn'
+    nxt = (request.form.get('next') or '').strip()
+    if nxt.startswith('/platform/leads'):
+        return redirect(nxt)
+    return redirect(url_for('platform_leads'))
 
 
 @app.route('/platform/orgs')

@@ -148,6 +148,33 @@ class OnboardingInvite(db.Model):
 
 
 # =============================================
+# 0c. طلبات التجربة / عروض السعر (من صفحات التسويق)
+# =============================================
+class SalesLead(db.Model):
+    """طلب من الصفحة التعريفية/الأسعار — يظهر في لوحة المنصة + يُرسل إيميل."""
+    __tablename__ = 'sales_leads'
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_type = db.Column(db.String(20), default='demo')  # demo | quote
+    status = db.Column(db.String(20), default='new')  # new | contacted | closed
+    company_name = db.Column(db.String(200), nullable=False)
+    contact_name = db.Column(db.String(100), nullable=False)
+    contact_email = db.Column(db.String(120), nullable=False, index=True)
+    phone = db.Column(db.String(40))
+    city = db.Column(db.String(100))
+    elevators = db.Column(db.String(40))
+    notes = db.Column(db.Text)
+    source_path = db.Column(db.String(40))  # / | /pricing | /product
+    email_sent = db.Column(db.Boolean, default=False)
+    email_error = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<SalesLead {self.id} {self.request_type} {self.status}>'
+
+
+# =============================================
 # 1. العملاء
 # =============================================
 class Customer(TenantMixin, db.Model):

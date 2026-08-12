@@ -94,12 +94,19 @@ def org_stats() -> dict:
     invites_open = OnboardingInvite.query.filter(
         OnboardingInvite.status.in_(('pending', 'submitted'))
     ).count()
+    leads_new = 0
+    try:
+        from models import SalesLead
+        leads_new = SalesLead.query.filter_by(status='new').count()
+    except Exception:
+        leads_new = 0
     return {
         'total': sum(by_status.values()),
         'active': by_status.get('active', 0),
         'trial': by_status.get('trial', 0),
         'suspended': by_status.get('suspended', 0),
         'invites_open': invites_open,
+        'leads_new': leads_new,
         'by_status': by_status,
     }
 
