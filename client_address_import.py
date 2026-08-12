@@ -69,7 +69,15 @@ def _find_header_row(rows: list[tuple]) -> int:
 
 
 def _parse_workbook(wb) -> list[dict[str, str]]:
-    ws = wb.active
+    # فضّل ورقة العناوين/العملاء إن وُجدت (تجنّب ورقة التعليمات)
+    preferred = ('العناوين', 'العملاء', 'Clients', 'addresses')
+    ws = None
+    for name in preferred:
+        if name in wb.sheetnames:
+            ws = wb[name]
+            break
+    if ws is None:
+        ws = wb.active
     raw = [tuple(r) for r in ws.iter_rows(values_only=True)]
     if not raw:
         return []
@@ -80,9 +88,13 @@ def _parse_workbook(wb) -> list[dict[str, str]]:
         if not any(_str(v) for v in values):
             continue
         row = _row_dict(headers, values)
+        # تخطّي صف التلميحات
+        blob = ' '.join(_str(v) for v in values[:6])
+        if any(x in blob for x in ('إلزامي', 'اختياري', 'التفصيلي للموقع', 'يُولَّد')):
+            continue
         code = _cell(row, 'رقم العميل', 'كود العميل', 'customer_code', 'Code')
         if not code:
-            code = _extract_code(_cell(row, 'اسم العميل | رقم العميل', 'اسم العميل', 'name')) or ''
+            code = _extract_code(_cell(row, 'اسم العميل | رقم العميل', 'اسم العميل', 'name', 'الاسم (عربي)')) or ''
         if not code:
             for v in values:
                 code = _extract_code(_str(v))
@@ -91,7 +103,7 @@ def _parse_workbook(wb) -> list[dict[str, str]]:
         if not code:
             continue
         row['_code'] = normalize_client_code(code)
-        row['_name'] = _name_from_row(row)
+        row['_name'] = _name_from_row(row) or _cell(row, 'الاسم (عربي)', 'اسم العميل')
         out.append(row)
     return out
 
@@ -181,7 +193,8 @@ def import_client_addresses(
         city = _cell(row, 'المدينة', 'city')
         district = _cell(row, 'الحي أو المنطقة', 'الحي', 'district')
         geo_query = _cell(row, 'العنوان', 'address', 'العنوان التفصيلي')
-        display_addr = _display_address(city, district, geo_query)
+        # احفظ العنوان التفصيلي من Excel كما هو — لا تختصره إلى «حي، مدينة»
+        display_addr = geo_query or _display_address(city, district, '')
 
         if not geo_query and not city and not district:
             skipped += 1

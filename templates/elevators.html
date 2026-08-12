@@ -1457,22 +1457,45 @@ function handleElevImport(input) {
 }
 
 function processElevXLSX(data) {
+  if (typeof XLSX === 'undefined') {
+    alert('مكتبة قراءة Excel لم تُحمَّل — تحقق من الإنترنت ثم أعد المحاولة');
+    return;
+  }
   var wb = XLSX.read(data, {type: 'array'});
-  var ws = wb.Sheets[wb.SheetNames[0]];
-  var rows = XLSX.utils.sheet_to_json(ws, {header: 1});
-  var hi = 0;
+  var names = wb.SheetNames || [];
+  var sheetName = names[0];
+  var preferred = ['المصاعد', 'Elevators', 'elevators'];
+  for (var p = 0; p < preferred.length; p++) {
+    if (names.indexOf(preferred[p]) >= 0) { sheetName = preferred[p]; break; }
+  }
+  var ws = wb.Sheets[sheetName];
+  var rows = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''});
+  var hi = -1;
   for (var i = 0; i < rows.length; i++) {
     if (rows[i].some(function(v) {
       var s = String(v || '');
       return s.includes('كود العميل') || s.includes('اسم العميل') || s.toLowerCase().includes('customer');
     })) { hi = i; break; }
   }
+  if (hi < 0) {
+    elevImportData = [];
+    alert('لم يُعثر على صف عناوين. تأكد من ورقة «المصاعد» وعمود كود/اسم العميل.');
+    return;
+  }
   var headers = rows[hi].map(function(h) { return String(h || '').trim(); });
   elevImportData = [];
   for (var j = hi + 1; j < rows.length; j++) {
     var row = {};
     headers.forEach(function(h, k) { row[h] = String(rows[j][k] || '').trim(); });
+    // تخطّي صف التلميحات
+    var code = String(row['كود العميل'] || '').trim();
+    var name = String(row['اسم العميل'] || row['العميل'] || '').trim();
+    if ((code && code.indexOf('إلزامي') >= 0) || (name && name.indexOf('إلزامي') >= 0)) continue;
+    if (!code && !name) continue;
     if (resolveCustomerId(row)) elevImportData.push(row);
+  }
+  if (!elevImportData.length) {
+    alert('لم يُقرأ أي مصعد مرتبط بعميل موجود. تأكد أن كود/اسم العميل مطابق للعملاء المستوردين.');
   }
   showElevImportPreview(headers.filter(function(h) { return h; }));
 }

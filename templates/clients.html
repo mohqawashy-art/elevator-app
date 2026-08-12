@@ -882,7 +882,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
         <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المتوقعة:</div>
         <div style="color:var(--accent)">رقم العميل، المدينة، الحي أو المنطقة، العنوان</div>
-        <div style="color:var(--text3);margin-top:6px">يُحدّث العملاء الموجودين فقط — لا يُنشئ عملاء جدد. بعد الاستيراد تظهر النقاط على تبويب الخريطة.</div>
+        <div style="color:var(--text3);margin-top:6px">يُحدّث العملاء الموجودين فقط — لا يُنشئ عملاء جدد. يُحفظ العنوان التفصيلي فوراً بدون انتظار GPS (لتفادي انتهاء مهلة السيرفر).</div>
       </div>
     </div>
     <div class="modal-foot">
@@ -2403,32 +2403,50 @@ async function confirmAddressImport() {
   }
   var btn = document.getElementById('btn-import-addresses');
   var statusEl = document.getElementById('import-addresses-status');
+  var btnHtml = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = 'جاري التحديث...';
-  statusEl.textContent = 'جاري قراءة الملف وتحديث العناوين — قد يستغرق دقيقة...';
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'جاري تحديث العناوين (بدون انتظار GPS لتفادي انتهاء المهلة)...';
 
   var fd = new FormData();
   fd.append('file', addressImportFile);
+  fd.append('no_geocode', '1');
 
   try {
-    var r = await fetch('/clients/import-addresses', { method: 'POST', body: fd });
-    var data = await r.json();
-    if (!r.ok) {
-      alert(data.error || 'فشل التحديث');
+    var r = await fetch('/clients/import-addresses', {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+    var text = await r.text();
+    var data = {};
+    try { data = JSON.parse(text); } catch (parseErr) {
+      var hint = (text || '').indexOf('<html') >= 0
+        ? 'السيرفر أرجع صفحة خطأ بدل JSON — غالباً انتهت المهلة أو يلزم تحديث الكود على السيرفر.'
+        : ('استجابة غير صالحة (رمز ' + r.status + ')');
+      alert('فشل تحديث العناوين: ' + hint);
       btn.disabled = false;
-      btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> تحديث العناوين';
+      btn.innerHTML = btnHtml;
       return;
     }
-    var msg = 'تم التحديث: ' + data.updated + ' عميل';
-    if (data.geocoded) msg += '\nمواقع GPS: ' + data.geocoded;
-    if (data.geo_fail) msg += '\nفشل GPS: ' + data.geo_fail + ' (ستظهر مواقع تقريبية حسب المدينة)';
+    if (!r.ok) {
+      alert(data.error || ('فشل التحديث (رمز ' + r.status + ')'));
+      btn.disabled = false;
+      btn.innerHTML = btnHtml;
+      return;
+    }
+    var msg = 'تم التحديث: ' + (data.updated || 0) + ' عميل';
     if (data.missing) msg += '\nغير موجود في النظام: ' + data.missing;
+    if (data.skipped) msg += '\nبدون عنوان: ' + data.skipped;
+    msg += '\n(تم حفظ العناوين دون GPS الآن — يمكن تحديد المواقع لاحقاً من الخريطة)';
     alert(msg);
     window.location.reload();
   } catch (e) {
-    alert('خطأ في الاتصال: ' + e.message);
+    alert('خطأ في الاتصال: ' + (e.message || e));
     btn.disabled = false;
-    btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> تحديث العناوين';
+    btn.innerHTML = btnHtml;
   }
 }
 

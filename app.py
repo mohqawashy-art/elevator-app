@@ -4072,7 +4072,14 @@ def clients_import_addresses():
         return jsonify({'error': 'الملف يجب أن يكون .xlsx'}), 400
 
     dry_run = request.form.get('dry_run') == '1'
-    no_geocode = request.form.get('no_geocode') == '1'
+    # افتراضي الواجهة: بدون geocode لتفادي timeout nginx عند مئات الصفوف
+    # مرّر geocode=1 لتفعيل تحديد المواقع
+    if 'no_geocode' in request.form:
+        no_geocode = request.form.get('no_geocode') == '1'
+    elif 'geocode' in request.form:
+        no_geocode = request.form.get('geocode') != '1'
+    else:
+        no_geocode = True
 
     try:
         from client_address_import import import_client_addresses_file
@@ -4088,6 +4095,7 @@ def clients_import_addresses():
         return jsonify({'error': 'مكتبة openpyxl غير مثبتة على السيرفر'}), 500
     except Exception as exc:
         db.session.rollback()
+        app.logger.exception('clients import-addresses failed')
         return jsonify({'error': f'فشل الاستيراد: {exc}'}), 500
 
 
