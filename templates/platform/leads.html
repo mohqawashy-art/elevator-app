@@ -3,6 +3,7 @@
 {% block content %}
 <div class="h1">طلبات التجربة وعروض السعر</div>
 <p class="sub">الطلبات الواردة من الصفحة التعريفية والأسعار — مع البريد والجوال.</p>
+<p class="live-hint">تحديث تلقائي كل 4 ثوانٍ · يتوقف مؤقتاً أثناء التعديل على الحقول</p>
 
 <div class="stats">
   <div class="stat"><div class="n">{{ lead_stats.total }}</div><div class="l">الإجمالي</div></div>
@@ -88,4 +89,16 @@
   </table>
   {% endif %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var ms = 4000;
+  setInterval(function () {
+    var active = document.activeElement;
+    if (active && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(active.tagName)) return;
+    window.location.reload();
+  }, ms);
+})();
+</script>
 {% endblock %}
