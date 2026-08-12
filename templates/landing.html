@@ -250,7 +250,7 @@
             <div class="shot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
             <div class="shot-title">{{ shot.title }}</div>
           </div>
-          <img src="{{ url_for('static', filename=shot.file) }}?v=2" alt="{{ shot.caption }}" width="1440" height="900" loading="{{ 'eager' if loop.first else 'lazy' }}">
+          <img src="{{ url_for('static', filename=shot.file) }}?v=3" alt="{{ shot.caption }}" width="1440" height="900" loading="{{ 'eager' if loop.first else 'lazy' }}">
           <figcaption class="shot-caption">
             <h3>{{ shot.caption }}</h3>
             <p>{{ shot.desc }}</p>
@@ -264,7 +264,7 @@
               <div class="shot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
               <div class="shot-title">{{ shot.title }}</div>
             </div>
-            <img src="{{ url_for('static', filename=shot.file) }}?v=2" alt="{{ shot.caption }}" width="1280" height="800" loading="lazy">
+            <img src="{{ url_for('static', filename=shot.file) }}?v=3" alt="{{ shot.caption }}" width="1280" height="800" loading="lazy">
             <figcaption class="shot-caption">
               <h3>{{ shot.caption }}</h3>
               <p>{{ shot.desc }}</p>
