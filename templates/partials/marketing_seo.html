@@ -1,0 +1,26 @@
+{# SEO مشترك لصفحات التسويق العامة #}
+{% set _canon = canonical_url or 'https://liftcoreapp.com/' %}
+{% set _title = page_title or 'LiftCore — نظام تشغيل صيانة المصاعد' %}
+{% set _desc = page_description or 'LiftCore نظام تشغيل لشركات صيانة وتركيب المصاعد في السعودية: عملاء، عقود، زيارات، أعطال، مخزون، فواتير، وبوابة فني.' %}
+{% set _og_image = og_image_url or 'https://liftcoreapp.com/static/images/liftcore-marketing-header-logo.png' %}
+<title>{{ _title }}</title>
+<meta name="description" content="{{ _desc }}">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="author" content="مؤسسة نسق كور للحلول المتكاملة">
+<meta name="geo.region" content="SA-02">
+<meta name="geo.placename" content="مكة المكرمة">
+<link rel="canonical" href="{{ _canon }}">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ar_SA">
+<meta property="og:site_name" content="LiftCore">
+<meta property="og:title" content="{{ _title }}">
+<meta property="og:description" content="{{ _desc }}">
+<meta property="og:url" content="{{ _canon }}">
+<meta property="og:image" content="{{ _og_image }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ _title }}">
+<meta name="twitter:description" content="{{ _desc }}">
+<meta name="twitter:image" content="{{ _og_image }}">
+{% if json_ld %}
+<script type="application/ld+json">{{ json_ld | tojson }}</script>
+{% endif %}

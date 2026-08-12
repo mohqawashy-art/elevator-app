@@ -211,6 +211,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'api_debug_contract_zero',
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
     'coming_soon', 'pricing', 'product_landing', 'demo_request',
+    'robots_txt', 'sitemap_xml',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
@@ -1942,8 +1943,8 @@ def api_live_sync():
     return jsonify({'revision': get_live_revision(), 'page': page_key, 'data': data})
 
 
-def _pricing_context():
-    from marketing_site import marketing_page_context
+def _pricing_context(*, seo_page: str = 'landing'):
+    from marketing_site import marketing_page_context, marketing_seo_context
     from tenant_signup import coming_soon_enabled, signup_enabled
 
     signup_open = signup_enabled() and not coming_soon_enabled()
@@ -1957,7 +1958,55 @@ def _pricing_context():
         ctx['signup_href'] = '#contact'
         ctx['signup_label'] = 'اطلب عرضاً تجريبياً'
         ctx['signup_external'] = False
+    ctx.update(marketing_seo_context(page=seo_page))
     return ctx
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    body = (
+        'User-agent: *\n'
+        'Allow: /\n'
+        'Allow: /pricing\n'
+        'Allow: /product\n'
+        'Disallow: /login\n'
+        'Disallow: /dashboard\n'
+        'Disallow: /platform\n'
+        'Disallow: /field\n'
+        'Disallow: /api/\n'
+        'Disallow: /signup\n'
+        'Disallow: /onboard\n'
+        '\n'
+        'Sitemap: https://liftcoreapp.com/sitemap.xml\n'
+    )
+    return app.response_class(body, mimetype='text/plain; charset=utf-8')
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    from datetime import date
+
+    today = date.today().isoformat()
+    urls = (
+        ('https://liftcoreapp.com/', '1.0', 'weekly'),
+        ('https://liftcoreapp.com/pricing', '0.9', 'weekly'),
+        ('https://liftcoreapp.com/product', '0.8', 'monthly'),
+    )
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for loc, priority, freq in urls:
+        parts.append(
+            '<url>'
+            f'<loc>{loc}</loc>'
+            f'<lastmod>{today}</lastmod>'
+            f'<changefreq>{freq}</changefreq>'
+            f'<priority>{priority}</priority>'
+            '</url>'
+        )
+    parts.append('</urlset>')
+    return app.response_class('\n'.join(parts) + '\n', mimetype='application/xml; charset=utf-8')
 
 
 @app.route('/demo-request', methods=['POST'])
@@ -2091,13 +2140,13 @@ def coming_soon():
 @app.route('/pricing')
 def pricing():
     """صفحة الباقات والأسعار — عرض عام للعملاء."""
-    return render_template('pricing.html', **_pricing_context())
+    return render_template('pricing.html', **_pricing_context(seo_page='pricing'))
 
 
 @app.route('/product')
 def product_landing():
     """مسار مباشر للصفحة التعريفية (مفيد من روابط الأسعار)."""
-    return render_template('landing.html', **_pricing_context())
+    return render_template('landing.html', **_pricing_context(seo_page='landing'))
 
 
 def _find_login_user(login_id):

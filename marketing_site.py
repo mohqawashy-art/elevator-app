@@ -325,3 +325,86 @@ def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label:
         'support_whatsapp_display': '0566299626',
         'landing_shots': LANDING_SHOTS,
     }
+
+
+def marketing_seo_context(*, page: str = 'landing') -> dict[str, Any]:
+    """عناوين ووصف وبيانات منظمة لصفحات التسويق (SEO)."""
+    base = 'https://liftcoreapp.com'
+    og_image = f'{base}/static/images/liftcore-marketing-header-logo.png'
+    org = {
+        '@type': 'Organization',
+        'name': 'LiftCore',
+        'legalName': 'مؤسسة نسق كور للحلول المتكاملة',
+        'url': base,
+        'logo': og_image,
+        'email': 'sales@liftcoreapp.com',
+        'telephone': '+966566299626',
+        'address': {
+            '@type': 'PostalAddress',
+            'addressLocality': 'مكة المكرمة',
+            'addressCountry': 'SA',
+        },
+        'areaServed': 'SA',
+    }
+    software = {
+        '@type': 'SoftwareApplication',
+        'name': 'LiftCore',
+        'applicationCategory': 'BusinessApplication',
+        'operatingSystem': 'Web',
+        'offers': {
+            '@type': 'Offer',
+            'priceCurrency': 'SAR',
+            'price': '3000',
+            'url': f'{base}/pricing',
+        },
+        'description': (
+            'نظام تشغيل لشركات صيانة وتركيب المصاعد في السعودية: '
+            'عملاء، عقود، زيارات، أعطال، مخزون، فواتير، وبوابة فني.'
+        ),
+        'inLanguage': 'ar',
+        'provider': {'@type': 'Organization', 'name': 'LiftCore'},
+    }
+
+    if page == 'pricing':
+        return {
+            'page_title': 'أسعار LiftCore — باقات صيانة المصاعد في السعودية',
+            'page_description': (
+                'باقات LiftCore لشركات صيانة المصاعد في السعودية — '
+                'اشتراك سنوي من 3,000 ر.س، حدود مصاعد وفنيين واضحة، وإضافات للنمو.'
+            ),
+            'canonical_url': f'{base}/pricing',
+            'og_image_url': og_image,
+            'json_ld': {
+                '@context': 'https://schema.org',
+                '@graph': [org, software, {
+                    '@type': 'WebPage',
+                    'name': 'باقات وأسعار LiftCore',
+                    'url': f'{base}/pricing',
+                    'isPartOf': {'@type': 'WebSite', 'url': base, 'name': 'LiftCore'},
+                }],
+            },
+        }
+
+    return {
+        'page_title': 'LiftCore — برنامج إدارة صيانة المصاعد في السعودية',
+        'page_description': (
+            'LiftCore نظام تشغيل لشركات صيانة وتركيب المصاعد في مكة والسعودية: '
+            'عملاء، عقود، زيارات ميدانية، أعطال، مخزون، فواتير، وبوابة فني.'
+        ),
+        'canonical_url': f'{base}/',
+        'og_image_url': og_image,
+        'json_ld': {
+            '@context': 'https://schema.org',
+            '@graph': [
+                org,
+                software,
+                {
+                    '@type': 'WebSite',
+                    'name': 'LiftCore',
+                    'url': base,
+                    'inLanguage': 'ar',
+                    'publisher': {'@type': 'Organization', 'name': 'LiftCore'},
+                },
+            ],
+        },
+    }

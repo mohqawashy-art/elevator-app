@@ -36,6 +36,22 @@ def test_public_landing_and_pricing_anonymous():
     assert 'إرسال طلب التجربة' in body
 
 
+def test_robots_and_sitemap_public():
+    client = app.test_client()
+    app.config['TESTING'] = True
+    r = client.get('/robots.txt', base_url=PUBLIC)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'Sitemap: https://liftcoreapp.com/sitemap.xml' in body
+    assert 'Disallow: /platform' in body
+
+    r = client.get('/sitemap.xml', base_url=PUBLIC)
+    assert r.status_code == 200
+    xml = r.get_data(as_text=True)
+    assert 'https://liftcoreapp.com/' in xml
+    assert 'https://liftcoreapp.com/pricing' in xml
+
+
 def test_demo_request_posts_to_sales_mail(monkeypatch):
     captured = {}
 
