@@ -358,8 +358,8 @@ def marketing_seo_context(*, page: str = 'landing') -> dict[str, Any]:
             'url': f'{base}/pricing',
         },
         'description': (
-            'نظام تشغيل لشركات صيانة وتركيب المصاعد في السعودية: '
-            'عملاء، عقود، زيارات، أعطال، مخزون، فواتير، وبوابة فني.'
+            'برنامج إدارة المصاعد ونظام تشغيل لشركات صيانة وتركيب المصاعد في السعودية: '
+            'إدارة مصاعد، عملاء، عقود، زيارات، أعطال، مخزون، فواتير، وبوابة فني.'
         ),
         'inLanguage': 'ar',
         'provider': {'@type': 'Organization', 'name': 'LiftCore'},
@@ -382,6 +382,73 @@ def marketing_seo_context(*, page: str = 'landing') -> dict[str, Any]:
                     'url': f'{base}/pricing',
                     'isPartOf': {'@type': 'WebSite', 'url': base, 'name': 'LiftCore'},
                 }],
+            },
+        }
+
+    if page == 'seo_elevator':
+        page_url = f'{base}/برنامج-ادارة-المصاعد'
+        return {
+            'page_title': 'برنامج إدارة المصاعد — LiftCore لصيانة المصاعد في السعودية',
+            'page_description': (
+                'برنامج إدارة المصاعد وبرنامج صيانة المصاعد للشركات في السعودية: '
+                'إدارة مصاعد وعملاء وعقود وزيارات وأعطال وفواتير في منصة عربية واحدة.'
+            ),
+            'canonical_url': page_url,
+            'og_image_url': og_image,
+            'json_ld': {
+                '@context': 'https://schema.org',
+                '@graph': [
+                    org,
+                    software,
+                    {
+                        '@type': 'WebPage',
+                        'name': 'برنامج إدارة المصاعد',
+                        'url': page_url,
+                        'description': (
+                            'دليل وبرنامج إدارة مصاعد لشركات الصيانة في السعودية — LiftCore.'
+                        ),
+                        'inLanguage': 'ar',
+                        'isPartOf': {'@type': 'WebSite', 'url': base, 'name': 'LiftCore'},
+                    },
+                    {
+                        '@type': 'FAQPage',
+                        'mainEntity': [
+                            {
+                                '@type': 'Question',
+                                'name': 'هل LiftCore برنامج إدارة مصاعد أم برنامج محاسبة فقط؟',
+                                'acceptedAnswer': {
+                                    '@type': 'Answer',
+                                    'text': (
+                                        'هو نظام تشغيل لصيانة المصاعد: عملاء، عقود، زيارات، أعطال، '
+                                        'مخزون، مع فواتير مرتبطة بالعمل — وليس برنامج محاسبة عام.'
+                                    ),
+                                },
+                            },
+                            {
+                                '@type': 'Question',
+                                'name': 'هل يناسب الشركات في مكة والسعودية؟',
+                                'acceptedAnswer': {
+                                    '@type': 'Answer',
+                                    'text': (
+                                        'نعم. الواجهة عربية، والتركيز على شركات الصيانة المحلية، '
+                                        'ودعم من مكة المكرمة.'
+                                    ),
+                                },
+                            },
+                            {
+                                '@type': 'Question',
+                                'name': 'كيف أجرب برنامج المصاعد؟',
+                                'acceptedAnswer': {
+                                    '@type': 'Answer',
+                                    'text': (
+                                        'اطلب تجربة من صفحة البدء، وسنرد على بريدك خلال يوم عمل '
+                                        'لتهيئة حساب تجريبي.'
+                                    ),
+                                },
+                            },
+                        ],
+                    },
+                ],
             },
         }
 
@@ -416,10 +483,10 @@ def marketing_seo_context(*, page: str = 'landing') -> dict[str, Any]:
         }
 
     return {
-        'page_title': 'LiftCore — برنامج إدارة صيانة المصاعد في السعودية',
+        'page_title': 'برنامج إدارة المصاعد | LiftCore لصيانة المصاعد في السعودية',
         'page_description': (
-            'LiftCore نظام تشغيل لشركات صيانة وتركيب المصاعد في مكة والسعودية: '
-            'عملاء، عقود، زيارات ميدانية، أعطال، مخزون، فواتير، وبوابة فني.'
+            'برنامج إدارة المصاعد وبرنامج صيانة المصاعد للشركات في مكة والسعودية: '
+            'إدارة مصاعد، عقود، زيارات، أعطال، مخزون، فواتير، وبوابة فني.'
         ),
         'canonical_url': f'{base}/',
         'og_image_url': og_image,

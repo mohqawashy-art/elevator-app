@@ -212,7 +212,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
     'coming_soon', 'pricing', 'product_landing', 'demo_request',
     'robots_txt', 'sitemap_xml', 'google_site_verification',
-    'ads_landing', 'ads_thanks',
+    'ads_landing', 'ads_thanks', 'seo_elevator_management',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
@@ -1988,6 +1988,8 @@ def robots_txt():
         'Allow: /pricing\n'
         'Allow: /product\n'
         'Allow: /start\n'
+        'Allow: /elevator-management\n'
+        'Allow: /%D8%A8%D8%B1%D9%86%D8%A7%D9%85%D8%AC-%D8%A7%D8%AF%D8%A7%D8%B1%D8%A9-%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%B9%D8%AF\n'
         'Disallow: /login\n'
         'Disallow: /dashboard\n'
         'Disallow: /platform\n'
@@ -2010,6 +2012,8 @@ def sitemap_xml():
         ('https://liftcoreapp.com/', '1.0', 'weekly'),
         ('https://liftcoreapp.com/pricing', '0.9', 'weekly'),
         ('https://liftcoreapp.com/start', '0.9', 'weekly'),
+        ('https://liftcoreapp.com/برنامج-ادارة-المصاعد', '0.95', 'weekly'),
+        ('https://liftcoreapp.com/elevator-management', '0.8', 'weekly'),
         ('https://liftcoreapp.com/product', '0.8', 'monthly'),
     )
     parts = [
@@ -2193,6 +2197,19 @@ def pricing():
 def product_landing():
     """مسار مباشر للصفحة التعريفية (مفيد من روابط الأسعار)."""
     return render_template('landing.html', **_pricing_context(seo_page='landing'))
+
+
+@app.route('/برنامج-ادارة-المصاعد')
+@app.route('/elevator-management')
+def seo_elevator_management():
+    """صفحة محتوى SEO لكلمات: برنامج إدارة المصاعد / إدارة مصاعد / برنامج مصاعد."""
+    from tenant_signup import require_signup_host
+
+    require_signup_host()
+    return render_template(
+        'seo_elevator_management.html',
+        **_pricing_context(seo_page='seo_elevator'),
+    )
 
 
 def _capture_ads_attribution():

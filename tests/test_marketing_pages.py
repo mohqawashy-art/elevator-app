@@ -52,10 +52,27 @@ def test_robots_and_sitemap_public():
     assert 'https://liftcoreapp.com/' in xml
     assert 'https://liftcoreapp.com/pricing' in xml
     assert 'https://liftcoreapp.com/start' in xml
+    assert 'برنامج-ادارة-المصاعد' in xml or '%D8%A8%D8%B1%D9%86%D8%A7%D9%85%D8%AC' in xml or 'elevator-management' in xml
 
     r = client.get('/googled3a45657a209d04b.html', base_url=PUBLIC)
     assert r.status_code == 200
     assert 'google-site-verification: googled3a45657a209d04b.html' in r.get_data(as_text=True)
+
+
+def test_seo_elevator_management_page():
+    client = app.test_client()
+    app.config['TESTING'] = True
+    r = client.get('/elevator-management', base_url=PUBLIC)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'برنامج إدارة المصاعد' in body
+    assert 'إدارة مصاعد' in body
+    assert 'برنامج مصاعد' in body
+    assert 'LiftCore' in body
+
+    r2 = client.get('/برنامج-ادارة-المصاعد', base_url=PUBLIC)
+    assert r2.status_code == 200
+    assert 'صيانة المصاعد' in r2.get_data(as_text=True)
 
 
 def test_demo_request_posts_to_sales_mail(monkeypatch):

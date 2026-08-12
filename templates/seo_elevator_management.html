@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% include 'partials/marketing_seo.html' %}
+{% include 'partials/marketing_gtag.html' %}
+<link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=9">
+<style>
+body.mkt-seo{background:#070a10}
+.seo-hero{
+  position:relative;padding:28px 0 36px;margin-bottom:10px;
+  animation:mkt-rise .75s ease both;
+}
+.seo-hero .brand{
+  font-family:'Cormorant Garamond',serif;font-size:clamp(2.2rem,5vw,3rem);
+  font-weight:600;direction:ltr;margin-bottom:16px;line-height:.95;
+}
+.seo-hero .brand span{color:var(--mkt-gold-light)}
+.seo-hero h1{
+  font-size:clamp(1.55rem,3.4vw,2.2rem);font-weight:800;line-height:1.4;
+  max-width:22ch;margin-bottom:12px;
+}
+.seo-hero h1 em{font-style:normal;color:var(--mkt-gold-light)}
+.seo-hero .dek{color:var(--mkt-muted);font-size:1.05rem;max-width:48ch;margin-bottom:20px}
+.seo-hero .actions{display:flex;flex-wrap:wrap;gap:10px}
+.seo-article{max-width:760px;padding:8px 0 40px}
+.seo-article h2{
+  font-size:1.35rem;font-weight:800;margin:28px 0 10px;color:var(--mkt-gold-light);
+  padding-top:8px;border-top:1px solid var(--mkt-hair);
+}
+.seo-article h2:first-of-type{border-top:0;padding-top:0;margin-top:8px}
+.seo-article p,.seo-article li{color:var(--mkt-muted);font-size:1.02rem;line-height:1.85}
+.seo-article ul{margin:8px 0 12px;padding-inline-start:1.2rem}
+.seo-article li{margin:6px 0}
+.seo-article strong{color:var(--mkt-text);font-weight:700}
+.seo-cta{
+  margin:32px 0 8px;padding:22px 18px;border-radius:18px;
+  border:1px solid rgba(201,161,74,.28);
+  background:rgba(17,25,37,.9);
+}
+.seo-cta h2{border:0;margin:0 0 8px;padding:0;font-size:1.2rem}
+.seo-cta p{margin-bottom:14px}
+.seo-faq details{
+  border-top:1px solid var(--mkt-line);padding:12px 0;
+}
+.seo-faq summary{
+  cursor:pointer;font-weight:700;color:var(--mkt-text);list-style:none;
+}
+.seo-faq summary::-webkit-details-marker{display:none}
+.seo-faq details p{margin-top:8px}
+</style>
+</head>
+<body class="mkt mkt-seo">
+  <div class="mkt-wrap">
+    <header class="mkt-nav">
+      <a class="mkt-nav-brand" href="{{ url_for('index') }}">
+        <img src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}?v=4" alt="LiftCore">
+      </a>
+      <div class="mkt-nav-actions">
+        <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('pricing') }}">الأسعار</a>
+        <a class="mkt-btn mkt-btn-outline" href="{{ url_for('login') }}">دخول العملاء</a>
+        <a class="mkt-btn mkt-btn-gold" href="{{ url_for('ads_landing') }}">اطلب تجربة</a>
+      </div>
+    </header>
+
+    <header class="seo-hero">
+      <div class="brand">Lift<span>Core</span></div>
+      <h1>برنامج <em>إدارة المصاعد</em> لشركات الصيانة في السعودية</h1>
+      <p class="dek">
+        إذا كنت تبحث عن برنامج مصاعد أو نظام إدارة صيانة المصاعد — LiftCore يجمع العملاء والعقود والزيارات والأعطال والفواتير في منصة واحدة.
+      </p>
+      <div class="actions">
+        <a class="mkt-btn mkt-btn-gold" href="{{ url_for('ads_landing') }}">اطلب تجربة</a>
+        <a class="mkt-btn mkt-btn-outline" href="{{ url_for('pricing') }}">شاهد الأسعار</a>
+      </div>
+    </header>
+
+    <article class="seo-article">
+      <h2>ما هو برنامج إدارة المصاعد؟</h2>
+      <p>
+        <strong>برنامج إدارة المصاعد</strong> هو نظام تشغيل لشركات الصيانة والتركيب:
+        يسجّل كل مصعد وعقده، يجدول زيارات الفنيين، يتابع الأعطال حتى الإغلاق، ويربط المخزون والفواتير بالعمل الميداني.
+        بدل الإكسل والواتساب المتفرّق، يصبح لديك صورة واحدة لحالة الأسطول في مكة أو أي مدينة في السعودية.
+      </p>
+
+      <h2>لمن يناسب برنامج المصاعد؟</h2>
+      <ul>
+        <li>شركات صيانة المصاعد التي تريد متابعة العقود قبل انتهائها.</li>
+        <li>فرق فنية تحتاج جدولة زيارات وتقارير ميدانية واضحة.</li>
+        <li>إدارة تريد معرفة الأعطال المفتوحة والمستحقات من شاشة واحدة.</li>
+      </ul>
+
+      <h2>ماذا يغطي LiftCore يومياً؟</h2>
+      <ul>
+        <li><strong>إدارة مصاعد وعملاء:</strong> بيانات كل مصعد، موقعه، وحالة العقد.</li>
+        <li><strong>عقود الصيانة:</strong> تواريخ البداية والنهاية وتنبيهات التجديد.</li>
+        <li><strong>زيارات وأعطال:</strong> تعيين فنيين وتتبع البلاغ حتى الإغلاق.</li>
+        <li><strong>مخزون وفواتير:</strong> قطع الغيار وفوترة مرتبطة بالتشغيل.</li>
+      </ul>
+
+      <h2>لماذا تبحث الشركات عن «برنامج مصاعد»؟</h2>
+      <p>
+        مع نمو عدد المصاعد يصعب الاعتماد على الملفات اليدوية.
+        البحث عن <strong>إدارة مصاعد</strong> أو <strong>برنامج مصاعد</strong> يعني غالباً الحاجة لنظام يحفظ الالتزامات التعاقدية، يقلّل الزيارات الضائعة، ويعطي تقارير للإدارة والعملاء.
+        LiftCore مصمم لهذا السيناريو في السوق السعودي، مع واجهة عربية وتركيز على تشغيل شركات الصيانة.
+      </p>
+
+      <section class="seo-faq" aria-label="أسئلة شائعة">
+        <h2>أسئلة شائعة</h2>
+        <details>
+          <summary>هل LiftCore برنامج إدارة مصاعد أم برنامج محاسبة فقط؟</summary>
+          <p>هو نظام تشغيل لصيانة المصاعد: عملاء، عقود، زيارات، أعطال، مخزون، مع فواتير مرتبطة بالعمل — وليس برنامج محاسبة عام.</p>
+        </details>
+        <details>
+          <summary>هل يناسب الشركات في مكة والسعودية؟</summary>
+          <p>نعم. الواجهة عربية، والتركيز على شركات الصيانة المحلية، وبيانات التواصل والدعم من مكة المكرمة.</p>
+        </details>
+        <details>
+          <summary>كيف أجرب النظام؟</summary>
+          <p>اطلب تجربة من صفحة البدء، وسنرد على بريدك خلال يوم عمل لتهيئة حساب تجريبي.</p>
+        </details>
+      </section>
+
+      <div class="seo-cta">
+        <h2>ابدأ ببرنامج إدارة المصاعد لشركتك</h2>
+        <p>اطلب تجربة LiftCore أو راجع الباقات السنوية وحدود المصاعد والفنيين.</p>
+        <div class="actions" style="display:flex;flex-wrap:wrap;gap:10px">
+          <a class="mkt-btn mkt-btn-gold" href="{{ url_for('ads_landing') }}">اطلب تجربة الآن</a>
+          <a class="mkt-btn mkt-btn-outline" href="{{ url_for('pricing') }}">الباقات والأسعار</a>
+        </div>
+      </div>
+    </article>
+
+    <footer class="mkt-footer">
+      <div>جميع الحقوق محفوظة لمؤسسة نسق كور للحلول المتكاملة</div>
+      <div>
+        <a href="{{ url_for('index') }}">الرئيسية</a>
+        ·
+        <a href="{{ url_for('pricing') }}">الأسعار</a>
+        ·
+        <span dir="ltr">{{ sales_email }}</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
