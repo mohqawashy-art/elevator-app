@@ -63,7 +63,14 @@ def _parse_resend_error(body: bytes | str) -> str:
     return text[:180]
 
 
-def _send_email(*, to_email: str, subject: str, body_text: str, log_tag: str) -> dict:
+def _send_email(
+    *,
+    to_email: str,
+    subject: str,
+    body_text: str,
+    log_tag: str,
+    reply_to: str | None = None,
+) -> dict:
     """يرجع {ok, reason, detail?} — ok=True فقط عند إرسال فعلي ناجح."""
     _ensure_mail_env()
     to_email = (to_email or '').strip()
@@ -85,6 +92,9 @@ def _send_email(*, to_email: str, subject: str, body_text: str, log_tag: str) ->
         'subject': subject,
         'text': body_text,
     }
+    reply = (reply_to or '').strip()
+    if reply and '@' in reply:
+        payload['reply_to'] = reply
     req = urllib.request.Request(
         'https://api.resend.com/emails',
         data=json.dumps(payload).encode('utf-8'),
@@ -205,6 +215,42 @@ def send_onboarding_activated_email(
         subject=subject,
         body_text=body_text,
         log_tag='onboarding activated',
+    )
+
+
+def send_demo_request_email(
+    *,
+    sales_email: str,
+    company_name: str,
+    contact_name: str,
+    contact_email: str,
+    phone: str = '',
+    city: str = '',
+    elevators: str = '',
+    notes: str = '',
+) -> dict:
+    """يرسل طلب عرض تجريبي إلى بريد المبيعات مع Reply-To لبريد العميل."""
+    company = (company_name or '').strip() or '—'
+    name = (contact_name or '').strip() or '—'
+    email = (contact_email or '').strip()
+    subject = f'طلب عرض تجريبي — {company}'
+    body_text = (
+        'طلب عرض تجريبي من صفحة التعريف\n'
+        '================================\n\n'
+        f'الشركة: {company}\n'
+        f'المسؤول: {name}\n'
+        f'البريد: {email or "—"}\n'
+        f'الجوال: {(phone or "").strip() or "—"}\n'
+        f'المدينة: {(city or "").strip() or "—"}\n'
+        f'عدد المصاعد تقريباً: {(elevators or "").strip() or "—"}\n'
+        f'ملاحظات:\n{(notes or "").strip() or "—"}\n'
+    )
+    return _send_email(
+        to_email=sales_email,
+        subject=subject,
+        body_text=body_text,
+        log_tag='demo request',
+        reply_to=email,
     )
 
 

@@ -210,7 +210,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'login', 'logout', 'static', 'index', 'api_version', 'api_health',
     'api_debug_contract_zero',
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
-    'coming_soon', 'pricing', 'product_landing',
+    'coming_soon', 'pricing', 'product_landing', 'demo_request',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
@@ -1947,13 +1947,85 @@ def _pricing_context():
         signup_label='ابدأ الآن' if signup_open else 'تواصل مع المبيعات',
     )
     if not signup_open:
-        ctx['signup_href'] = (
-            ctx.get('sales_whatsapp_demo')
-            or 'https://wa.me/966566299626'
-        )
+        # نموذج طلب تجربة عبر الإيميل — بدون mailto (يفتح نافذة ويندوز)
+        ctx['signup_href'] = '#contact'
         ctx['signup_label'] = 'اطلب عرضاً تجريبياً'
-        ctx['signup_external'] = True
+        ctx['signup_external'] = False
     return ctx
+
+
+@app.route('/demo-request', methods=['POST'])
+def demo_request():
+    """طلب عرض تجريبي من صفحات التسويق — يُرسل إلى بريد المبيعات."""
+    import time
+    from liftcore_mail import send_demo_request_email
+    from liftcore_security import ensure_csrf_token, validate_csrf
+    from marketing_site import marketing_page_context
+
+    ensure_csrf_token()
+    if not app.config.get('TESTING'):
+        validate_csrf(
+            method=request.method,
+            endpoint=request.endpoint,
+            path=request.path or '',
+        )
+
+    next_url = (request.form.get('next') or '').strip()
+    if next_url not in ('/', '/pricing', '/product'):
+        next_url = '/'
+    redirect_to = f'{next_url}#contact'
+
+    # honeypot
+    if (request.form.get('website') or '').strip():
+        flash('تم استلام طلبك. سنتواصل معك قريباً.', 'ok')
+        return redirect(redirect_to)
+
+    now = time.time()
+    last = float(session.get('demo_request_at') or 0)
+    if last and (now - last) < 60:
+        flash('انتظر دقيقة ثم أعد المحاولة.', 'warn')
+        return redirect(redirect_to)
+
+    company = (request.form.get('company_name') or '').strip()
+    name = (request.form.get('contact_name') or '').strip()
+    email = (request.form.get('contact_email') or '').strip()
+    phone = (request.form.get('phone') or '').strip()
+    city = (request.form.get('city') or '').strip()
+    elevators = (request.form.get('elevators') or '').strip()
+    notes = (request.form.get('notes') or '').strip()
+
+    if not company or not name or not email or '@' not in email:
+        flash('أكمل اسم الشركة والمسؤول والبريد الإلكتروني.', 'warn')
+        return redirect(redirect_to)
+
+    sales_email = marketing_page_context(
+        signup_open=False, signup_href='#contact', signup_label='',
+    )['sales_email']
+
+    result = send_demo_request_email(
+        sales_email=sales_email,
+        company_name=company,
+        contact_name=name,
+        contact_email=email,
+        phone=phone,
+        city=city,
+        elevators=elevators,
+        notes=notes,
+    )
+    session['demo_request_at'] = now
+    if result.get('ok'):
+        flash('وصل طلبك لفريق المبيعات — نرد عليك على بريدك قريباً.', 'ok')
+    elif result.get('reason') == 'mail_not_configured':
+        flash(
+            f'تعذّر الإرسال الآلي حالياً. راسلنا مباشرة على {sales_email}',
+            'warn',
+        )
+    else:
+        flash(
+            f'تعذّر إرسال الطلب. راسلنا على {sales_email} أو أعد المحاولة.',
+            'warn',
+        )
+    return redirect(redirect_to)
 
 
 @app.route('/')

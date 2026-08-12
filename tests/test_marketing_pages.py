@@ -21,8 +21,9 @@ def test_public_landing_and_pricing_anonymous():
     assert 'زيارات الصيانة' in body
     assert 'sales@liftcoreapp.com' in body
     assert 'طلب عرض تجريبي' in body or 'اطلب عرضاً تجريبياً' in body
-    assert 'wa.me/966566299626' in body
-    assert 'text=' in body  # رسالة واتساب جاهزة لطلب التجربة
+    assert 'demo-request' in body or 'إرسال طلب التجربة' in body
+    assert 'name="contact_email"' in body
+    assert '#contact' in body
 
     r = client.get('/pricing', base_url=PUBLIC)
     assert r.status_code == 200
@@ -32,6 +33,40 @@ def test_public_landing_and_pricing_anonymous():
     assert '3,000' in body or '3000' in body
     assert 'ر.س' in body
     assert 'login' not in (r.headers.get('Location') or '').lower()
+    assert 'إرسال طلب التجربة' in body
+
+
+def test_demo_request_posts_to_sales_mail(monkeypatch):
+    captured = {}
+
+    def fake_send(**kwargs):
+        captured.update(kwargs)
+        return {'ok': True, 'reason': 'sent'}
+
+    monkeypatch.setattr('liftcore_mail.send_demo_request_email', fake_send)
+
+    client = app.test_client()
+    app.config['TESTING'] = True
+    r = client.post(
+        '/demo-request',
+        data={
+            'company_name': 'شركة تجربة',
+            'contact_name': 'محمد',
+            'contact_email': 'buyer@example.com',
+            'phone': '0566299626',
+            'city': 'مكة المكرمة',
+            'elevators': '12',
+            'notes': 'باقة Plus',
+            'next': '/',
+        },
+        base_url=PUBLIC,
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    assert '#contact' in (r.headers.get('Location') or '')
+    assert captured.get('company_name') == 'شركة تجربة'
+    assert captured.get('contact_email') == 'buyer@example.com'
+    assert 'sales@' in (captured.get('sales_email') or '')
 
 
 def test_product_path_public():

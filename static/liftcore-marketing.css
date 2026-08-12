@@ -97,6 +97,60 @@ body.mkt img{display:block;max-width:100%}
   to{opacity:1;transform:none}
 }
 
+.mkt-flash{
+  margin:0 0 16px;
+  padding:12px 14px;
+  border-radius:12px;
+  font-size:.92rem;
+  font-weight:600;
+}
+.mkt-flash-ok{
+  background:rgba(107,207,142,.12);
+  border:1px solid rgba(107,207,142,.35);
+  color:#b7efc5;
+}
+.mkt-flash-warn,.mkt-flash-error{
+  background:rgba(255,180,80,.1);
+  border:1px solid rgba(255,180,80,.35);
+  color:#ffd9a8;
+}
+
+.mkt-demo-form{
+  display:grid;
+  gap:10px;
+  margin-top:4px;
+}
+.mkt-demo-form .row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.mkt-demo-form label{
+  display:block;
+  font-size:.78rem;
+  color:var(--mkt-muted2);
+  margin-bottom:4px;
+}
+.mkt-demo-form input,
+.mkt-demo-form textarea{
+  width:100%;
+  border-radius:12px;
+  border:1px solid var(--mkt-line);
+  background:rgba(255,255,255,.03);
+  color:var(--mkt-text);
+  padding:11px 12px;
+  font:inherit;
+  outline:none;
+}
+.mkt-demo-form input:focus,
+.mkt-demo-form textarea:focus{
+  border-color:rgba(201,161,74,.45);
+}
+.mkt-demo-form textarea{min-height:84px;resize:vertical}
+.mkt-demo-form .hp{position:absolute;left:-9999px;opacity:0;height:0;width:0;overflow:hidden}
+.mkt-demo-form .hint{font-size:.8rem;color:var(--mkt-muted2);margin-top:2px}
+
 @media (max-width:640px){
   .mkt-nav-actions .mkt-btn-ghost{display:none}
+  .mkt-demo-form .row{grid-template-columns:1fr}
 }

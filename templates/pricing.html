@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=3">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=4">
 <style>
 .hero{
   padding:28px 0 18px;text-align:center;max-width:720px;margin:0 auto;
@@ -169,7 +169,7 @@ tr:last-child td{border-bottom:none}
   display:grid;
   grid-template-columns:1.2fr .8fr;
   gap:22px;
-  align-items:center;
+  align-items:start;
 }
 .contact h2{font-size:clamp(1.25rem,2.8vw,1.7rem);font-weight:800;margin-bottom:8px}
 .contact p{color:var(--mkt-muted);margin-bottom:14px;max-width:46ch}
@@ -240,8 +240,8 @@ tr:last-child td{border-bottom:none}
         <li>{{ bullet }}</li>
         {% endfor %}
       </ul>
-      {% set href = sales_whatsapp_demo if plan.mailto_only else signup_href %}
-      {% set open_ext = plan.mailto_only or signup_external %}
+      {% set href = '#contact' if plan.mailto_only else signup_href %}
+      {% set open_ext = signup_external and not plan.mailto_only %}
       <a class="mkt-btn mkt-btn-{{ plan.cta_style }} mkt-btn-block" href="{{ href }}"{% if open_ext %} target="_blank" rel="noopener"{% endif %}>{{ plan.cta }}</a>
     </article>
     {% endfor %}
@@ -309,20 +309,64 @@ tr:last-child td{border-bottom:none}
   <section class="contact" id="contact">
     <div>
       <div class="eyebrow" style="color:var(--mkt-gold-light);font-size:.82rem;font-weight:700;letter-spacing:.08em;margin-bottom:8px">المبيعات</div>
-      <h2>راسل المبيعات مباشرة</h2>
-      <p>لطلب حساب تجريبي أو عرض سعر مخصص حسب عدد المصاعد والفريق — واتساب أسرع من البريد.</p>
-      <div class="contact-actions">
-        <a class="mkt-btn mkt-btn-gold" href="{{ sales_whatsapp_demo }}" target="_blank" rel="noopener">طلب عرض تجريبي عبر واتساب</a>
-        <a class="mkt-btn mkt-btn-outline" href="{{ sales_mailto_demo }}">بريد المبيعات</a>
-      </div>
+      <h2>اطلب حساباً تجريبياً عبر الإيميل</h2>
+      <p>عبّئ النموذج وسنرد عليك على بريدك. عنوان المبيعات: <strong dir="ltr">{{ sales_email }}</strong></p>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="mkt-flash mkt-flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+      <form class="mkt-demo-form" method="post" action="{{ url_for('demo_request') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="/pricing">
+        <div class="hp" aria-hidden="true">
+          <label>الموقع<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+        </div>
+        <div class="row">
+          <div>
+            <label for="demo-company">اسم الشركة</label>
+            <input id="demo-company" name="company_name" required maxlength="120" autocomplete="organization">
+          </div>
+          <div>
+            <label for="demo-name">اسم المسؤول</label>
+            <input id="demo-name" name="contact_name" required maxlength="80" autocomplete="name">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="demo-email">البريد الإلكتروني</label>
+            <input id="demo-email" type="email" name="contact_email" required maxlength="120" autocomplete="email" dir="ltr">
+          </div>
+          <div>
+            <label for="demo-phone">الجوال</label>
+            <input id="demo-phone" type="tel" name="phone" maxlength="20" autocomplete="tel" dir="ltr" placeholder="05xxxxxxxx">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="demo-city">المدينة</label>
+            <input id="demo-city" name="city" maxlength="60" value="مكة المكرمة" autocomplete="address-level2">
+          </div>
+          <div>
+            <label for="demo-elevators">عدد المصاعد تقريباً</label>
+            <input id="demo-elevators" name="elevators" maxlength="20" inputmode="numeric" placeholder="مثلاً 25">
+          </div>
+        </div>
+        <div>
+          <label for="demo-notes">ملاحظات (اختياري)</label>
+          <textarea id="demo-notes" name="notes" maxlength="800" placeholder="باقة مهتم بها، موعد مناسب للتواصل…"></textarea>
+        </div>
+        <button class="mkt-btn mkt-btn-gold" type="submit">إرسال طلب التجربة</button>
+        <div class="hint">يصل الطلب إلى {{ sales_email }}.</div>
+      </form>
     </div>
     <div>
       <div class="contact-card">
         <div class="k">بريد المبيعات</div>
-        <div class="v"><a href="{{ sales_mailto }}">{{ sales_email }}</a></div>
+        <div class="v" dir="ltr">{{ sales_email }}</div>
       </div>
       <div class="contact-card">
-        <div class="k">واتساب</div>
+        <div class="k">واتساب (اختياري)</div>
         <div class="v"><a href="{{ support_whatsapp_url }}" target="_blank" rel="noopener">{{ support_whatsapp_display }}</a></div>
       </div>
     </div>
@@ -330,7 +374,7 @@ tr:last-child td{border-bottom:none}
 
   <footer class="mkt-footer">
     <div class="mkt-mark">Lift<span>Core</span></div>
-    <div>© 2026 LiftCore · مكة المكرمة · <a href="{{ sales_mailto }}">{{ sales_email }}</a> · الأسعار غير شاملة الضريبة</div>
+    <div>© 2026 LiftCore · مكة المكرمة · <span dir="ltr">{{ sales_email }}</span> · الأسعار غير شاملة الضريبة</div>
   </footer>
 </div>
 </body>
