@@ -142,6 +142,7 @@ def fulfill_demo_lead(lead_id: int, *, password_hasher) -> dict:
         company_name=lead.company_name,
         contact_name=lead.contact_name,
         contact_email=lead.contact_email,
+        days=2,
         password_hasher=password_hasher,
     )
     if not result.get('ok'):
@@ -159,7 +160,7 @@ def fulfill_demo_lead(lead_id: int, *, password_hasher) -> dict:
         username=result['username'],
         password=result['password'],
         login_url=result['login_url'],
-        days=int(result.get('days') or 7),
+        days=int(result.get('days') or 2),
         trial_ends_at=ends_txt,
     )
 

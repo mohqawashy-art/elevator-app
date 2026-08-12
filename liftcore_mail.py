@@ -232,18 +232,20 @@ def send_demo_access_email(
     """يرسل بيانات الدخول لحساب التجربة إلى العميل."""
     name = (contact_name or '').strip() or 'عميلنا الكريم'
     company = (company_name or '').strip() or 'LiftCore'
+    days_n = max(1, int(days or 2))
     ends = f'\nينتهي الحساب تقريباً في: {trial_ends_at}\n' if trial_ends_at else '\n'
-    subject = f'حسابك التجريبي في LiftCore — {company}'
+    subject = f'مرحباً بكم في تجربة LiftCore — {company}'
     body_text = (
         f'مرحباً {name},\n\n'
-        f'تمت الموافقة على طلب التجربة لـ«{company}».\n\n'
+        f'يسعدنا جداً انضمام «{company}» لتجربة برنامج LiftCore — شرف لنا ثقتكم بنا.\n'
+        'هذه فرصة لتجربة نظامنا لإدارة صيانة المصاعد كما يعمل مع شركات التشغيل يومياً.\n\n'
         f'رابط الدخول: {login_url}\n'
         f'اسم المستخدم: {username}\n'
-        f'كلمة المرور: {password}\n'
-        f'مدة التجربة: {days} يوم\n'
+        f'كلمة المرور: {password}\n\n'
+        f'مدة التجربة: {days_n} يوم فقط.\n'
         f'{ends}'
-        'ننصح بتغيير كلمة المرور بعد أول دخول.\n\n'
-        '— فريق مبيعات LiftCore'
+        'ننصح بتغيير كلمة المرور بعد أول دخول، ونتطلع لسماع ملاحظاتكم.\n\n'
+        '— فريق LiftCore'
     )
     return _send_email(
         to_email=to_email,
