@@ -164,7 +164,11 @@ class SalesLead(db.Model):
     city = db.Column(db.String(100))
     elevators = db.Column(db.String(40))
     notes = db.Column(db.Text)
-    source_path = db.Column(db.String(40))  # / | /pricing | /product
+    source_path = db.Column(db.String(40))  # / | /pricing | /product | /start
+    utm_source = db.Column(db.String(80))
+    utm_medium = db.Column(db.String(80))
+    utm_campaign = db.Column(db.String(120))
+    gclid = db.Column(db.String(120))
     email_sent = db.Column(db.Boolean, default=False)
     email_error = db.Column(db.String(300))
     fulfilled_at = db.Column(db.DateTime)

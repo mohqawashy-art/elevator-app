@@ -8,6 +8,7 @@
 - `https://liftcoreapp.com/sitemap.xml`
 - عناوين ووصف أوضح + Open Graph
 - بيانات منظمة (Organization / SoftwareApplication)
+- صفحة هبوط إعلانات: `/start` (انظر `docs/marketing/ADS.md`)
 
 ## خطواتك الآن (مهم)
 

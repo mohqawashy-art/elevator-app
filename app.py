@@ -212,6 +212,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
     'coming_soon', 'pricing', 'product_landing', 'demo_request',
     'robots_txt', 'sitemap_xml', 'google_site_verification',
+    'ads_landing', 'ads_thanks',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
@@ -1408,6 +1409,10 @@ def _sqlite_legacy_schema_patches():
                 ('result_org_id', 'INTEGER'),
                 ('customer_mail_sent', 'BOOLEAN'),
                 ('action_note', 'VARCHAR(500)'),
+                ('utm_source', 'VARCHAR(80)'),
+                ('utm_medium', 'VARCHAR(80)'),
+                ('utm_campaign', 'VARCHAR(120)'),
+                ('gclid', 'VARCHAR(120)'),
             ],
             'purchase_orders': [
                 ('supplier_phone', 'VARCHAR(30)'),
@@ -1959,7 +1964,20 @@ def _pricing_context(*, seo_page: str = 'landing'):
         ctx['signup_label'] = 'اطلب عرضاً تجريبياً'
         ctx['signup_external'] = False
     ctx.update(marketing_seo_context(page=seo_page))
+    ctx.update(_ads_tracking_context())
+    for key in ('utm_source', 'utm_medium', 'utm_campaign', 'gclid'):
+        ctx[key] = session.get(key) or request.args.get(key) or ''
     return ctx
+
+
+def _ads_tracking_context() -> dict:
+    import os
+    return {
+        'gtag_id': (os.environ.get('LIFTCORE_GTAG_ID') or '').strip(),
+        'ads_conversion_id': (os.environ.get('LIFTCORE_ADS_CONVERSION_ID') or '').strip(),
+        'ads_conversion_label': (os.environ.get('LIFTCORE_ADS_CONVERSION_LABEL') or '').strip(),
+        'fire_ads_conversion': False,
+    }
 
 
 @app.route('/robots.txt')
@@ -1969,6 +1987,7 @@ def robots_txt():
         'Allow: /\n'
         'Allow: /pricing\n'
         'Allow: /product\n'
+        'Allow: /start\n'
         'Disallow: /login\n'
         'Disallow: /dashboard\n'
         'Disallow: /platform\n'
@@ -1990,6 +2009,7 @@ def sitemap_xml():
     urls = (
         ('https://liftcoreapp.com/', '1.0', 'weekly'),
         ('https://liftcoreapp.com/pricing', '0.9', 'weekly'),
+        ('https://liftcoreapp.com/start', '0.9', 'weekly'),
         ('https://liftcoreapp.com/product', '0.8', 'monthly'),
     )
     parts = [
@@ -2037,20 +2057,26 @@ def demo_request():
         )
 
     next_url = (request.form.get('next') or '').strip()
-    if next_url not in ('/', '/pricing', '/product'):
+    if next_url not in ('/', '/pricing', '/product', '/start', '/start/thanks'):
         next_url = '/'
-    redirect_to = f'{next_url}#contact'
+    # بعد النجاح من صفحة الإعلان → صفحة شكر لتسجيل التحويل
+    if next_url == '/start':
+        redirect_to = '/start/thanks'
+    else:
+        redirect_to = f'{next_url}#contact'
 
     # honeypot
     if (request.form.get('website') or '').strip():
         flash('تم استلام طلبك. سنتواصل معك قريباً.', 'ok')
+        if next_url == '/start':
+            return redirect('/start')
         return redirect(redirect_to)
 
     now = time.time()
     last = float(session.get('demo_request_at') or 0)
     if last and (now - last) < 60:
         flash('انتظر دقيقة ثم أعد المحاولة.', 'warn')
-        return redirect(redirect_to)
+        return redirect(redirect_to if next_url != '/start' else '/start#contact')
 
     company = (request.form.get('company_name') or '').strip()
     name = (request.form.get('contact_name') or '').strip()
@@ -2060,10 +2086,14 @@ def demo_request():
     elevators = (request.form.get('elevators') or '').strip()
     notes = (request.form.get('notes') or '').strip()
     request_type = (request.form.get('request_type') or 'demo').strip().lower()
+    utm_source = (request.form.get('utm_source') or session.get('utm_source') or '').strip()
+    utm_medium = (request.form.get('utm_medium') or session.get('utm_medium') or '').strip()
+    utm_campaign = (request.form.get('utm_campaign') or session.get('utm_campaign') or '').strip()
+    gclid = (request.form.get('gclid') or session.get('gclid') or '').strip()
 
     if not company or not name or not email or '@' not in email:
         flash('أكمل اسم الشركة والمسؤول والبريد الإلكتروني.', 'warn')
-        return redirect(redirect_to)
+        return redirect(redirect_to if next_url != '/start' else '/start#contact')
 
     try:
         lead = create_sales_lead(
@@ -2075,13 +2105,17 @@ def demo_request():
             elevators=elevators,
             notes=notes,
             request_type=request_type,
-            source_path=next_url,
+            source_path=next_url if next_url != '/start/thanks' else '/start',
+            utm_source=utm_source,
+            utm_medium=utm_medium,
+            utm_campaign=utm_campaign,
+            gclid=gclid,
         )
     except Exception:
         app.logger.exception('sales lead save failed')
         db.session.rollback()
         flash('تعذّر حفظ الطلب. أعد المحاولة أو راسل المبيعات مباشرة.', 'warn')
-        return redirect(redirect_to)
+        return redirect('/start#contact' if next_url.startswith('/start') else f'{next_url}#contact')
 
     sales_email = marketing_page_context(
         signup_open=False, signup_href='#contact', signup_label='',
@@ -2105,6 +2139,8 @@ def demo_request():
         db.session.rollback()
 
     session['demo_request_at'] = now
+    if next_url == '/start':
+        session['ads_conversion_pending'] = True
     if result.get('ok'):
         flash('وصل طلبك — سيظهر لفريق المبيعات ونرد على بريدك قريباً.', 'ok')
     elif result.get('reason') == 'mail_not_configured':
@@ -2157,6 +2193,36 @@ def pricing():
 def product_landing():
     """مسار مباشر للصفحة التعريفية (مفيد من روابط الأسعار)."""
     return render_template('landing.html', **_pricing_context(seo_page='landing'))
+
+
+def _capture_ads_attribution():
+    """يحفظ UTM/gclid من الرابط في الجلسة لاستخدامها مع نموذج الطلب."""
+    for key in ('utm_source', 'utm_medium', 'utm_campaign', 'gclid'):
+        val = (request.args.get(key) or '').strip()
+        if val:
+            session[key] = val[:120]
+
+
+@app.route('/start')
+def ads_landing():
+    """صفحة هبوط إعلانات Google — نموذج طلب تجربة واضح."""
+    from tenant_signup import require_signup_host
+
+    require_signup_host()
+    _capture_ads_attribution()
+    ctx = _pricing_context(seo_page='ads')
+    return render_template('ads_landing.html', **ctx)
+
+
+@app.route('/start/thanks')
+def ads_thanks():
+    """صفحة شكر بعد الطلب — مكان إطلاق تحويل Google Ads."""
+    from tenant_signup import require_signup_host
+
+    require_signup_host()
+    ctx = _pricing_context(seo_page='ads_thanks')
+    ctx['fire_ads_conversion'] = bool(session.pop('ads_conversion_pending', None))
+    return render_template('ads_thanks.html', **ctx)
 
 
 def _find_login_user(login_id):

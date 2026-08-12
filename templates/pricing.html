@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 {% include 'partials/marketing_seo.html' %}
+{% include 'partials/marketing_gtag.html' %}
 <link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -319,6 +320,7 @@ tr:last-child td{border-bottom:none}
       <form class="mkt-demo-form" method="post" action="{{ url_for('demo_request') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="next" value="/pricing">
+        {% include 'partials/utm_hidden_fields.html' %}
         <div class="hp" aria-hidden="true">
           <label>الموقع<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
         </div>

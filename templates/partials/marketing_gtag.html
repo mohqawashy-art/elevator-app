@@ -1,0 +1,15 @@
+{# Google tag (gtag.js) — يُفعَّل فقط عند ضبط LIFTCORE_GTAG_ID #}
+{% if gtag_id %}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ gtag_id }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{ gtag_id }}');
+  {% if fire_ads_conversion and ads_conversion_id and ads_conversion_label %}
+  gtag('event', 'conversion', {
+    'send_to': '{{ ads_conversion_id }}/{{ ads_conversion_label }}'
+  });
+  {% endif %}
+</script>
+{% endif %}

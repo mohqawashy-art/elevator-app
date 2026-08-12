@@ -30,6 +30,10 @@ def create_sales_lead(
     notes: str = '',
     request_type: str = 'demo',
     source_path: str = '/',
+    utm_source: str = '',
+    utm_medium: str = '',
+    utm_campaign: str = '',
+    gclid: str = '',
 ) -> SalesLead:
     rtype = (request_type or 'demo').strip().lower()
     if rtype not in REQUEST_TYPES:
@@ -45,6 +49,10 @@ def create_sales_lead(
         elevators=(elevators or '').strip()[:40] or None,
         notes=(notes or '').strip()[:2000] or None,
         source_path=(source_path or '/')[:40],
+        utm_source=(utm_source or '').strip()[:80] or None,
+        utm_medium=(utm_medium or '').strip()[:80] or None,
+        utm_campaign=(utm_campaign or '').strip()[:120] or None,
+        gclid=(gclid or '').strip()[:120] or None,
         email_sent=False,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),

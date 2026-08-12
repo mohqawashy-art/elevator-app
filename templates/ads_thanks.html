@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% include 'partials/marketing_seo.html' %}
+{% include 'partials/marketing_gtag.html' %}
+<link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=5">
+<style>
+.thanks{
+  min-height:min(78vh,640px);display:flex;align-items:center;justify-content:center;
+  padding:48px 0 64px;text-align:center;animation:mkt-rise .8s ease both;
+}
+.thanks .brand{
+  font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,4vw,2.6rem);
+  font-weight:600;direction:ltr;margin-bottom:18px;
+}
+.thanks .brand span{color:var(--mkt-gold-light)}
+.thanks h1{font-size:clamp(1.5rem,3.2vw,2rem);font-weight:800;margin-bottom:10px}
+.thanks p{color:var(--mkt-muted);max-width:42ch;margin:0 auto 22px}
+.thanks .actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+</style>
+</head>
+<body class="mkt">
+  <div class="mkt-wrap">
+    <header class="mkt-nav">
+      <a class="mkt-nav-brand" href="{{ url_for('index') }}">
+        <img src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}?v=4" alt="LiftCore">
+      </a>
+    </header>
+
+    <section class="thanks" aria-label="تم استلام الطلب">
+      <div>
+        <div class="brand">Lift<span>Core</span></div>
+        <h1>وصل طلبك</h1>
+        <p>شكراً لك. سيظهر الطلب لفريق المبيعات وسنرد على بريدك قريباً.</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+          <div class="mkt-flash mkt-flash-{{ category }}" style="max-width:420px;margin:0 auto 18px;text-align:right">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+        <div class="actions">
+          <a class="mkt-btn mkt-btn-gold" href="{{ url_for('pricing') }}">عرض الباقات</a>
+          <a class="mkt-btn mkt-btn-outline" href="{{ url_for('index') }}">الصفحة الرئيسية</a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="mkt-footer">
+      <div>جميع الحقوق محفوظة لمؤسسة نسق كور للحلول المتكاملة</div>
+      <div dir="ltr">{{ sales_email }}</div>
+    </footer>
+  </div>
+</body>
+</html>

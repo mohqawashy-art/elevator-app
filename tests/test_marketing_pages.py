@@ -44,12 +44,14 @@ def test_robots_and_sitemap_public():
     body = r.get_data(as_text=True)
     assert 'Sitemap: https://liftcoreapp.com/sitemap.xml' in body
     assert 'Disallow: /platform' in body
+    assert 'Allow: /start' in body
 
     r = client.get('/sitemap.xml', base_url=PUBLIC)
     assert r.status_code == 200
     xml = r.get_data(as_text=True)
     assert 'https://liftcoreapp.com/' in xml
     assert 'https://liftcoreapp.com/pricing' in xml
+    assert 'https://liftcoreapp.com/start' in xml
 
     r = client.get('/googled3a45657a209d04b.html', base_url=PUBLIC)
     assert r.status_code == 200
@@ -102,6 +104,63 @@ def test_demo_request_posts_to_sales_mail(monkeypatch):
         assert lead.request_type == 'quote'
         assert lead.email_sent is True
         assert lead.status == 'new'
+
+
+def test_ads_landing_and_conversion_flow(monkeypatch):
+    monkeypatch.setattr(
+        'liftcore_mail.send_demo_request_email',
+        lambda **kwargs: {'ok': True, 'reason': 'sent'},
+    )
+    client = app.test_client()
+    app.config['TESTING'] = True
+    with app.app_context():
+        from models import db
+        db.create_all()
+
+    r = client.get(
+        '/start?utm_source=google&utm_medium=cpc&utm_campaign=test&gclid=abc123',
+        base_url=PUBLIC,
+    )
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'اطلب تجربة' in body
+    assert 'name="next" value="/start"' in body
+    assert 'utm_source' in body
+
+    r = client.post(
+        '/demo-request',
+        data={
+            'company_name': 'شركة إعلان',
+            'contact_name': 'سارة',
+            'contact_email': 'ads-buyer@example.com',
+            'phone': '0566299626',
+            'city': 'مكة المكرمة',
+            'elevators': '8',
+            'request_type': 'demo',
+            'next': '/start',
+            'utm_source': 'google',
+            'utm_medium': 'cpc',
+            'utm_campaign': 'test',
+            'gclid': 'abc123',
+        },
+        base_url=PUBLIC,
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    assert '/start/thanks' in (r.headers.get('Location') or '')
+
+    with app.app_context():
+        from models import SalesLead
+        lead = SalesLead.query.filter_by(contact_email='ads-buyer@example.com').order_by(SalesLead.id.desc()).first()
+        assert lead is not None
+        assert lead.source_path == '/start'
+        assert lead.utm_source == 'google'
+        assert lead.utm_campaign == 'test'
+        assert lead.gclid == 'abc123'
+
+    r = client.get('/start/thanks', base_url=PUBLIC)
+    assert r.status_code == 200
+    assert 'وصل طلبك' in r.get_data(as_text=True)
 
 
 def test_product_path_public():

@@ -385,6 +385,36 @@ def marketing_seo_context(*, page: str = 'landing') -> dict[str, Any]:
             },
         }
 
+    if page == 'ads':
+        return {
+            'page_title': 'جرّب LiftCore — برنامج صيانة المصاعد لشركتك',
+            'page_description': (
+                'اطلب تجربة LiftCore لشركات صيانة المصاعد في السعودية: '
+                'عملاء، عقود، زيارات، أعطال، مخزون، وفواتير — نرد عليك خلال يوم عمل.'
+            ),
+            'canonical_url': f'{base}/start',
+            'og_image_url': og_image,
+            'robots': 'noindex, follow',
+            'json_ld': {
+                '@context': 'https://schema.org',
+                '@graph': [org, software, {
+                    '@type': 'WebPage',
+                    'name': 'طلب تجربة LiftCore',
+                    'url': f'{base}/start',
+                }],
+            },
+        }
+
+    if page == 'ads_thanks':
+        return {
+            'page_title': 'تم استلام طلبك — LiftCore',
+            'page_description': 'شكراً لطلبك. فريق مبيعات LiftCore سيتواصل معك قريباً.',
+            'canonical_url': f'{base}/start/thanks',
+            'og_image_url': og_image,
+            'robots': 'noindex, nofollow',
+            'json_ld': None,
+        }
+
     return {
         'page_title': 'LiftCore — برنامج إدارة صيانة المصاعد في السعودية',
         'page_description': (

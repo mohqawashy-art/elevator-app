@@ -66,6 +66,15 @@
           <strong>{{ lead.company_name }}</strong>
           {% if lead.notes %}<div class="detail">{{ lead.notes }}</div>{% endif %}
           {% if lead.action_note %}<div class="detail">{{ lead.action_note }}</div>{% endif %}
+          {% if lead.utm_source or lead.utm_campaign or lead.gclid or lead.source_path %}
+          <div class="detail muted" dir="ltr" style="font-size:.78rem;margin-top:4px">
+            {% if lead.source_path %}{{ lead.source_path }}{% endif %}
+            {% if lead.utm_source %} · {{ lead.utm_source }}{% endif %}
+            {% if lead.utm_medium %}/{{ lead.utm_medium }}{% endif %}
+            {% if lead.utm_campaign %} · {{ lead.utm_campaign }}{% endif %}
+            {% if lead.gclid %} · gclid{% endif %}
+          </div>
+          {% endif %}
         </td>
         <td>{{ lead.contact_name }}</td>
         <td dir="ltr"><a href="mailto:{{ lead.contact_email }}">{{ lead.contact_email }}</a></td>

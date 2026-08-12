@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% include 'partials/marketing_seo.html' %}
+{% include 'partials/marketing_gtag.html' %}
+<link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=5">
+<style>
+.ads-hero{
+  position:relative;min-height:min(88vh,760px);margin:0 0 40px;isolation:isolate;overflow:hidden;
+  animation:mkt-rise .85s ease .05s both;
+}
+.ads-hero__media{
+  position:absolute;inset:0;
+  background:
+    linear-gradient(115deg, rgba(7,10,16,.95) 0%, rgba(7,10,16,.82) 42%, rgba(7,10,16,.45) 72%, rgba(7,10,16,.65) 100%),
+    url("{{ url_for('static', filename='images/liftcore-brand-hero.png') }}") 70% 40% / cover no-repeat;
+}
+.ads-hero__inner{
+  position:relative;z-index:1;width:min(1100px,92vw);margin:0 auto;
+  min-height:min(88vh,760px);display:grid;grid-template-columns:1.05fr .95fr;gap:28px;
+  align-items:end;padding:28px 0 40px;
+}
+.brand-lockup{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.brand-lockup img{width:54px;height:54px;object-fit:contain}
+.brand-lockup .name{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(2rem,4.5vw,2.85rem);font-weight:600;line-height:1;direction:ltr;
+}
+.brand-lockup .name span{color:var(--mkt-gold-light)}
+.brand-lockup .sub{font-size:.74rem;color:var(--mkt-muted);letter-spacing:.14em;margin-top:6px;text-transform:uppercase}
+.ads-copy h1{
+  font-weight:800;font-size:clamp(1.55rem,3.4vw,2.2rem);line-height:1.35;margin-bottom:12px;
+}
+.ads-copy h1 em{font-style:normal;color:var(--mkt-gold-light)}
+.ads-copy > p{color:var(--mkt-muted);font-size:1.02rem;max-width:38ch;margin-bottom:18px}
+.ads-points{list-style:none;margin:0 0 8px;padding:0}
+.ads-points li{
+  color:var(--mkt-muted);font-size:.95rem;padding:6px 0 6px 0;
+  border-top:1px solid var(--mkt-hair);
+}
+.ads-points li:first-child{border-top:0}
+.ads-form-panel{
+  background:linear-gradient(180deg,rgba(255,255,255,.04),transparent 50%), var(--mkt-surface);
+  border:1px solid var(--mkt-line);border-radius:var(--mkt-radius);
+  padding:22px 18px 18px;box-shadow:var(--mkt-shadow);
+  animation:mkt-rise .9s ease .2s both;
+}
+.ads-form-panel h2{font-size:1.15rem;font-weight:800;margin-bottom:6px}
+.ads-form-panel .lead{color:var(--mkt-muted);font-size:.9rem;margin-bottom:14px}
+.ads-form-panel .mkt-demo-form{position:relative}
+@media (max-width:900px){
+  .ads-hero__inner{grid-template-columns:1fr;align-items:stretch;min-height:auto;padding-top:12px}
+  .ads-copy{padding-top:18px}
+}
+</style>
+</head>
+<body class="mkt">
+  <div class="mkt-wrap">
+    <header class="mkt-nav">
+      <a class="mkt-nav-brand" href="{{ url_for('index') }}">
+        <img src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}?v=4" alt="LiftCore">
+      </a>
+      <div class="mkt-nav-actions">
+        <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('pricing') }}">الأسعار</a>
+        <a class="mkt-btn mkt-btn-outline" href="{{ url_for('login') }}">دخول العملاء</a>
+      </div>
+    </header>
+  </div>
+
+  <section class="ads-hero" aria-label="طلب تجربة LiftCore">
+    <div class="ads-hero__media" role="img" aria-label="هوية LiftCore"></div>
+    <div class="ads-hero__inner">
+      <div class="ads-copy">
+        <div class="brand-lockup">
+          <img src="{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=4" alt="" onerror="this.style.display='none'">
+          <div>
+            <div class="name">Lift<span>Core</span></div>
+            <div class="sub">Elevator operations</div>
+          </div>
+        </div>
+        <h1>شغّل شركة <em>صيانة المصاعد</em> من مكان واحد</h1>
+        <p>اطلب تجربة قصيرة — نجهّز لك حساباً ونرد على بريدك خلال يوم عمل.</p>
+        <ul class="ads-points">
+          <li>عملاء، عقود، ومصاعد مع تنبيهات الانتهاء</li>
+          <li>زيارات وأعطال ميدانية حتى الإغلاق</li>
+          <li>مخزون وفواتير جاهزة للمرحلة الأولى</li>
+        </ul>
+      </div>
+      <div class="ads-form-panel" id="contact">
+        <h2>اطلب تجربة الآن</h2>
+        <p class="lead">نرد على بريدك · بدون التزام فوري</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+          <div class="mkt-flash mkt-flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+        <form class="mkt-demo-form" method="post" action="{{ url_for('demo_request') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="/start">
+          <input type="hidden" name="request_type" value="demo">
+          {% include 'partials/utm_hidden_fields.html' %}
+          <div class="hp" aria-hidden="true">
+            <label>الموقع<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+          </div>
+          <div class="row">
+            <div>
+              <label for="ads-company">اسم الشركة</label>
+              <input id="ads-company" name="company_name" required maxlength="120" autocomplete="organization">
+            </div>
+            <div>
+              <label for="ads-name">اسم المسؤول</label>
+              <input id="ads-name" name="contact_name" required maxlength="80" autocomplete="name">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="ads-email">البريد الإلكتروني</label>
+              <input id="ads-email" type="email" name="contact_email" required maxlength="120" autocomplete="email" dir="ltr">
+            </div>
+            <div>
+              <label for="ads-phone">الجوال</label>
+              <input id="ads-phone" type="tel" name="phone" maxlength="20" autocomplete="tel" dir="ltr" placeholder="05xxxxxxxx">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="ads-city">المدينة</label>
+              <input id="ads-city" name="city" maxlength="60" value="مكة المكرمة" autocomplete="address-level2">
+            </div>
+            <div>
+              <label for="ads-elevators">عدد المصاعد تقريباً</label>
+              <input id="ads-elevators" name="elevators" maxlength="20" inputmode="numeric" placeholder="مثلاً 25">
+            </div>
+          </div>
+          <div>
+            <label for="ads-notes">ملاحظات (اختياري)</label>
+            <textarea id="ads-notes" name="notes" maxlength="800" placeholder="حجم الأسطول أو موعد مناسب…"></textarea>
+          </div>
+          <button class="mkt-btn mkt-btn-gold" type="submit">إرسال طلب التجربة</button>
+          <div class="hint">يصل الطلب إلى {{ sales_email }}.</div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <div class="mkt-wrap">
+    <footer class="mkt-footer">
+      <div>جميع الحقوق محفوظة لمؤسسة نسق كور للحلول المتكاملة</div>
+      <div>
+        <a href="{{ url_for('pricing') }}">الأسعار</a>
+        ·
+        <span dir="ltr">{{ sales_email }}</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

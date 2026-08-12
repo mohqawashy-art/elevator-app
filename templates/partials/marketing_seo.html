@@ -5,7 +5,7 @@
 {% set _og_image = og_image_url or 'https://liftcoreapp.com/static/images/liftcore-marketing-header-logo.png' %}
 <title>{{ _title }}</title>
 <meta name="description" content="{{ _desc }}">
-<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="robots" content="{{ robots or 'index, follow, max-image-preview:large' }}">
 <meta name="author" content="مؤسسة نسق كور للحلول المتكاملة">
 <meta name="geo.region" content="SA-02">
 <meta name="geo.placename" content="مكة المكرمة">

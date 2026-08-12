@@ -1,0 +1,18 @@
+{# حقول إسناد الإعلانات — تُملأ من السياق أو من رابط الصفحة عبر JS #}
+<input type="hidden" name="utm_source" id="utm_source" value="{{ utm_source or '' }}">
+<input type="hidden" name="utm_medium" id="utm_medium" value="{{ utm_medium or '' }}">
+<input type="hidden" name="utm_campaign" id="utm_campaign" value="{{ utm_campaign or '' }}">
+<input type="hidden" name="gclid" id="gclid" value="{{ gclid or '' }}">
+<script>
+(function () {
+  try {
+    var q = new URLSearchParams(window.location.search);
+    ['utm_source', 'utm_medium', 'utm_campaign', 'gclid'].forEach(function (k) {
+      var v = q.get(k);
+      if (!v) return;
+      var el = document.getElementById(k);
+      if (el && !el.value) el.value = v.slice(0, 120);
+    });
+  } catch (e) {}
+})();
+</script>
