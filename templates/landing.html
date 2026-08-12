@@ -182,6 +182,7 @@
         <a class="mkt-btn mkt-btn-ghost" href="#work">ماذا يفعل</a>
         <a class="mkt-btn mkt-btn-ghost" href="#shots">الشاشات</a>
         <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('pricing') }}">الأسعار</a>
+        <a class="mkt-btn mkt-btn-outline" href="{{ url_for('login') }}">دخول العملاء</a>
         <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}"{% if signup_external %} target="_blank" rel="noopener"{% endif %}>{{ signup_label }}</a>
       </div>
     </header>
@@ -355,8 +356,6 @@
         <a href="{{ url_for('pricing') }}">الأسعار</a>
         ·
         <span dir="ltr">{{ sales_email }}</span>
-        ·
-        <a href="{{ url_for('login') }}">دخول العملاء</a>
       </div>
     </footer>
   </div>
