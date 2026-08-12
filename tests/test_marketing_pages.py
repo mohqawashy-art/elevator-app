@@ -51,6 +51,10 @@ def test_robots_and_sitemap_public():
     assert 'https://liftcoreapp.com/' in xml
     assert 'https://liftcoreapp.com/pricing' in xml
 
+    r = client.get('/googled3a45657a209d04b.html', base_url=PUBLIC)
+    assert r.status_code == 200
+    assert 'google-site-verification: googled3a45657a209d04b.html' in r.get_data(as_text=True)
+
 
 def test_demo_request_posts_to_sales_mail(monkeypatch):
     captured = {}

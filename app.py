@@ -211,7 +211,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'api_debug_contract_zero',
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
     'coming_soon', 'pricing', 'product_landing', 'demo_request',
-    'robots_txt', 'sitemap_xml',
+    'robots_txt', 'sitemap_xml', 'google_site_verification',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
@@ -2007,6 +2007,16 @@ def sitemap_xml():
         )
     parts.append('</urlset>')
     return app.response_class('\n'.join(parts) + '\n', mimetype='application/xml; charset=utf-8')
+
+
+@app.route('/googled3a45657a209d04b.html')
+def google_site_verification():
+    """ملف تحقق ملكية النطاق في Google Search Console."""
+    return send_from_directory(
+        app.static_folder,
+        'googled3a45657a209d04b.html',
+        mimetype='text/html; charset=utf-8',
+    )
 
 
 @app.route('/demo-request', methods=['POST'])
