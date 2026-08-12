@@ -210,7 +210,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'login', 'logout', 'static', 'index', 'api_version', 'api_health',
     'api_debug_contract_zero',
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
-    'coming_soon',
+    'coming_soon', 'pricing', 'product_landing',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
@@ -1937,14 +1937,15 @@ def api_live_sync():
 
 
 def _pricing_context():
+    from marketing_site import marketing_page_context
     from tenant_signup import coming_soon_enabled, signup_enabled
 
     signup_open = signup_enabled() and not coming_soon_enabled()
-    return {
-        'signup_open': signup_open,
-        'signup_href': url_for('signup') if signup_open else 'mailto:info@liftcoreapp.com',
-        'signup_label': 'ابدأ الآن' if signup_open else 'تواصل معنا',
-    }
+    return marketing_page_context(
+        signup_open=signup_open,
+        signup_href=url_for('signup') if signup_open else 'mailto:info@liftcoreapp.com',
+        signup_label='ابدأ الآن' if signup_open else 'تواصل معنا',
+    )
 
 
 @app.route('/')

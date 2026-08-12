@@ -1,0 +1,92 @@
+/* LiftCore — صفحات التسويق العامة (تعريف + أسعار) */
+:root{
+  --mkt-bg:#070a10;
+  --mkt-bg2:#0b1018;
+  --mkt-surface:#111925;
+  --mkt-surface2:#151e2c;
+  --mkt-gold:#c9a14a;
+  --mkt-gold-light:#e8cd86;
+  --mkt-text:#f2f5fa;
+  --mkt-muted:#8b97a8;
+  --mkt-muted2:#5e6b7e;
+  --mkt-line:rgba(255,255,255,.07);
+  --mkt-hair:rgba(201,161,74,.16);
+  --mkt-ok:#6bcf8e;
+  --mkt-radius:18px;
+  --mkt-shadow:0 24px 60px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body.mkt{
+  font-family:'Tajawal',sans-serif;
+  background:var(--mkt-bg);
+  color:var(--mkt-text);
+  line-height:1.7;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body.mkt::before{
+  content:"";
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(90% 55% at 80% -10%, rgba(201,161,74,.10), transparent 55%),
+    radial-gradient(70% 45% at 10% 20%, rgba(80,120,180,.07), transparent 50%),
+    linear-gradient(180deg, #0b1018 0%, #070a10 42%, #070a10 100%);
+}
+body.mkt a{color:inherit;text-decoration:none}
+body.mkt img{display:block;max-width:100%}
+.mkt-wrap{position:relative;z-index:2;width:min(1180px,92vw);margin:0 auto}
+.mkt-wrap--wide{width:min(1280px,94vw)}
+
+.mkt-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 0 12px;gap:16px;
+  animation:mkt-rise .7s ease both;
+}
+.mkt-nav-brand{display:flex;align-items:center;gap:12px}
+.mkt-nav-brand img{width:42px;height:42px;object-fit:contain}
+.mkt-mark{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.5rem;font-weight:600;letter-spacing:.02em;direction:ltr;
+}
+.mkt-mark span{color:var(--mkt-gold-light)}
+.mkt-nav-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+
+.mkt-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border-radius:999px;padding:11px 20px;font-weight:700;font-size:.92rem;
+  border:1px solid transparent;cursor:pointer;font-family:inherit;
+  transition:transform .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.mkt-btn:hover{transform:translateY(-1px)}
+.mkt-btn-ghost{color:var(--mkt-muted);border-color:var(--mkt-line);background:transparent}
+.mkt-btn-ghost:hover{color:var(--mkt-text);border-color:rgba(255,255,255,.16)}
+.mkt-btn-gold{
+  background:linear-gradient(135deg,#e8cd86,#c9a14a 55%,#a8842f);
+  color:#14110a;
+  box-shadow:0 10px 28px rgba(201,161,74,.22);
+}
+.mkt-btn-gold:hover{box-shadow:0 14px 34px rgba(201,161,74,.32)}
+.mkt-btn-outline{
+  border-color:rgba(201,161,74,.45);
+  color:var(--mkt-gold-light);
+  background:rgba(201,161,74,.06);
+}
+.mkt-btn-outline:hover{background:rgba(201,161,74,.1)}
+.mkt-btn-block{width:100%}
+
+.mkt-footer{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:18px 0 36px;border-top:1px solid var(--mkt-line);
+  color:var(--mkt-muted2);font-size:.85rem;
+}
+.mkt-footer a:hover{color:var(--mkt-gold-light)}
+
+@keyframes mkt-rise{
+  from{opacity:0;transform:translateY(16px)}
+  to{opacity:1;transform:none}
+}
+
+@media (max-width:640px){
+  .mkt-nav-actions .mkt-btn-ghost{display:none}
+}
