@@ -19,6 +19,8 @@ def test_public_landing_and_pricing_anonymous():
     assert 'images/marketing/screens/dashboard.png' in body
     assert 'خريطة المصاعد' in body
     assert 'زيارات الصيانة' in body
+    assert 'sales@liftcoreapp.com' in body
+    assert 'طلب عرض تجريبي' in body or 'اطلب عرضاً تجريبياً' in body
 
     r = client.get('/pricing', base_url=PUBLIC)
     assert r.status_code == 200

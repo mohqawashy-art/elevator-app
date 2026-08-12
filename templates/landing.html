@@ -129,9 +129,36 @@
 .cta p{color:var(--mkt-muted);max-width:46ch;margin:0 auto 20px}
 .cta .actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
 
+.contact{
+  margin:28px 0 48px;
+  padding:28px 24px;
+  border-radius:22px;
+  border:1px solid var(--mkt-hair);
+  background:
+    linear-gradient(135deg, rgba(42,127,255,.08), transparent 45%),
+    var(--mkt-surface);
+  display:grid;
+  grid-template-columns:1.2fr .8fr;
+  gap:22px;
+  align-items:center;
+}
+.contact h2{font-size:clamp(1.25rem,2.8vw,1.7rem);font-weight:800;margin-bottom:8px}
+.contact p{color:var(--mkt-muted);margin-bottom:14px;max-width:46ch}
+.contact-actions{display:flex;flex-wrap:wrap;gap:10px}
+.contact-card{
+  border:1px solid var(--mkt-line);
+  border-radius:16px;
+  padding:16px;
+  background:rgba(255,255,255,.02);
+}
+.contact-card .k{font-size:.78rem;color:var(--mkt-muted2);margin-bottom:4px}
+.contact-card .v{font-size:1.02rem;font-weight:700;color:var(--mkt-gold-light);word-break:break-all}
+.contact-card + .contact-card{margin-top:10px}
+
 @media (max-width:980px){
   .work{grid-template-columns:1fr}
   .shots-grid{grid-template-columns:1fr}
+  .contact{grid-template-columns:1fr}
   .hero-bleed__media{
     background:
       linear-gradient(180deg, rgba(7,10,16,.5) 0%, rgba(7,10,16,.88) 55%, rgba(7,10,16,.96) 100%),
@@ -154,6 +181,7 @@
       </a>
       <div class="mkt-nav-actions">
         <a class="mkt-btn mkt-btn-ghost" href="#work">ماذا يفعل</a>
+        <a class="mkt-btn mkt-btn-ghost" href="#shots">الشاشات</a>
         <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('pricing') }}">الأسعار</a>
         <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}">{{ signup_label }}</a>
       </div>
@@ -174,7 +202,7 @@
         <h1>نظام تشغيل لشركات <em>صيانة المصاعد</em></h1>
         <p>من العقد إلى زيارة الفني والفواتير — منصة واحدة تدير أسطولك في السعودية بوضوح وتشغيل يومي مرتب.</p>
         <div class="hero-ctas">
-          <a class="mkt-btn mkt-btn-gold" href="#shots">شاهد النظام</a>
+          <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}">{{ signup_label }}</a>
           <a class="mkt-btn mkt-btn-outline" href="{{ url_for('pricing') }}">الباقات والأسعار</a>
         </div>
       </div>
@@ -252,7 +280,29 @@
       <p>أسعار سنوية واضحة، وحدود مصاعد وفنيين، وإضافات تكبر مع نمو شركتك.</p>
       <div class="actions">
         <a class="mkt-btn mkt-btn-gold" href="{{ url_for('pricing') }}">عرض الباقات</a>
-        <a class="mkt-btn mkt-btn-outline" href="{{ support_whatsapp_url }}" target="_blank" rel="noopener">واتساب {{ support_whatsapp_display }}</a>
+        <a class="mkt-btn mkt-btn-outline" href="#contact">تواصل المبيعات</a>
+      </div>
+    </section>
+
+    <section class="contact" id="contact">
+      <div>
+        <div class="eyebrow">المبيعات</div>
+        <h2>اطلب حساباً تجريبياً أو عرض سعر</h2>
+        <p>راسلنا على بريد المبيعات أو واتساب — نجهّز لك تجربة بعدد مصاعد مناسب لشركتك.</p>
+        <div class="contact-actions">
+          <a class="mkt-btn mkt-btn-gold" href="{{ sales_mailto_demo }}">طلب عرض تجريبي</a>
+          <a class="mkt-btn mkt-btn-outline" href="{{ support_whatsapp_url }}" target="_blank" rel="noopener">واتساب {{ support_whatsapp_display }}</a>
+        </div>
+      </div>
+      <div>
+        <div class="contact-card">
+          <div class="k">بريد المبيعات</div>
+          <div class="v"><a href="{{ sales_mailto }}">{{ sales_email }}</a></div>
+        </div>
+        <div class="contact-card">
+          <div class="k">واتساب</div>
+          <div class="v"><a href="{{ support_whatsapp_url }}" target="_blank" rel="noopener">{{ support_whatsapp_display }}</a></div>
+        </div>
       </div>
     </section>
 

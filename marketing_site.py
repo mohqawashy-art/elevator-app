@@ -281,10 +281,28 @@ LANDING_SHOTS: tuple[dict[str, str], ...] = (
 
 def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label: str) -> dict[str, Any]:
     import os
+    from urllib.parse import quote
 
     sales_email = (os.environ.get('LIFTCORE_SALES_EMAIL') or 'sales@liftcoreapp.com').strip()
     if '@' not in sales_email:
         sales_email = 'sales@liftcoreapp.com'
+
+    demo_subject = 'طلب عرض تجريبي — LiftCore'
+    demo_body = (
+        'السلام عليكم،\n\n'
+        'أرغب في الحصول على حساب تجريبي لتجربة LiftCore.\n'
+        'اسم الشركة:\n'
+        'المدينة:\n'
+        'عدد المصاعد تقريباً:\n'
+        'رقم الجوال:\n'
+    )
+    sales_mailto = f'mailto:{sales_email}'
+    sales_mailto_demo = (
+        f'mailto:{sales_email}'
+        f'?subject={quote(demo_subject)}'
+        f'&body={quote(demo_body)}'
+    )
+
     plans = build_pricing_plans()
     return {
         'signup_open': signup_open,
@@ -295,8 +313,9 @@ def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label:
         'compare_rows': build_compare_table(plans),
         'plan_labels': [p['label'] for p in plans],
         'sales_email': sales_email,
-        'sales_mailto': f'mailto:{sales_email}',
-        'support_email': sales_email,  # توافق خلفي للقوالب الحالية
+        'sales_mailto': sales_mailto,
+        'sales_mailto_demo': sales_mailto_demo,
+        'support_email': sales_email,
         'support_whatsapp_url': 'https://wa.me/966566299626',
         'support_whatsapp_display': '0566299626',
         'landing_shots': LANDING_SHOTS,
