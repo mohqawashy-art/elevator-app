@@ -1941,11 +1941,14 @@ def _pricing_context():
     from tenant_signup import coming_soon_enabled, signup_enabled
 
     signup_open = signup_enabled() and not coming_soon_enabled()
-    return marketing_page_context(
+    ctx = marketing_page_context(
         signup_open=signup_open,
-        signup_href=url_for('signup') if signup_open else 'mailto:info@liftcoreapp.com',
-        signup_label='ابدأ الآن' if signup_open else 'تواصل معنا',
+        signup_href=url_for('signup') if signup_open else '',
+        signup_label='ابدأ الآن' if signup_open else 'تواصل مع المبيعات',
     )
+    if not signup_open:
+        ctx['signup_href'] = ctx.get('sales_mailto') or 'mailto:sales@liftcoreapp.com'
+    return ctx
 
 
 @app.route('/')

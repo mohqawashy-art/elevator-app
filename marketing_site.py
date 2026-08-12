@@ -280,6 +280,11 @@ LANDING_SHOTS: tuple[dict[str, str], ...] = (
 
 
 def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label: str) -> dict[str, Any]:
+    import os
+
+    sales_email = (os.environ.get('LIFTCORE_SALES_EMAIL') or 'sales@liftcoreapp.com').strip()
+    if '@' not in sales_email:
+        sales_email = 'sales@liftcoreapp.com'
     plans = build_pricing_plans()
     return {
         'signup_open': signup_open,
@@ -289,7 +294,9 @@ def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label:
         'addons': build_pricing_addons(),
         'compare_rows': build_compare_table(plans),
         'plan_labels': [p['label'] for p in plans],
-        'support_email': 'info@liftcoreapp.com',
+        'sales_email': sales_email,
+        'sales_mailto': f'mailto:{sales_email}',
+        'support_email': sales_email,  # توافق خلفي للقوالب الحالية
         'support_whatsapp_url': 'https://wa.me/966566299626',
         'support_whatsapp_display': '0566299626',
         'landing_shots': LANDING_SHOTS,

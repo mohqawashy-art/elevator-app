@@ -214,7 +214,7 @@ tr:last-child td{border-bottom:none}
         <li>{{ bullet }}</li>
         {% endfor %}
       </ul>
-      {% set href = 'mailto:' ~ support_email if plan.mailto_only else signup_href %}
+      {% set href = sales_mailto if plan.mailto_only else signup_href %}
       <a class="mkt-btn mkt-btn-{{ plan.cta_style }} mkt-btn-block" href="{{ href }}">{{ plan.cta }}</a>
     </article>
     {% endfor %}
@@ -281,7 +281,7 @@ tr:last-child td{border-bottom:none}
 
   <footer class="mkt-footer">
     <div class="mkt-mark">Lift<span>Core</span></div>
-    <div>© 2026 LiftCore · مكة المكرمة · الأسعار غير شاملة الضريبة</div>
+    <div>© 2026 LiftCore · مكة المكرمة · <a href="{{ sales_mailto }}">{{ sales_email }}</a> · الأسعار غير شاملة الضريبة</div>
   </footer>
 </div>
 </body>
