@@ -2353,18 +2353,62 @@ function handleImport(input){
     reader.onload = function(e){ parseCSV(e.target.result); };
     reader.readAsText(file, 'UTF-8');
   } else {
-    reader.onload = function(e){ processXLSX(new Uint8Array(e.target.result)); };
+    reader.onload = function(e){
+      try {
+        processXLSX(new Uint8Array(e.target.result));
+      } catch (err) {
+        alert('تعذّر قراءة ملف Excel: ' + (err && err.message ? err.message : err));
+      }
+    };
     reader.readAsArrayBuffer(file);
   }
 }
 
+function pickClientsSheet(wb){
+  var names = wb.SheetNames || [];
+  var preferred = ['العملاء', 'Clients', 'clients', 'عملاء'];
+  for (var p = 0; p < preferred.length; p++) {
+    if (names.indexOf(preferred[p]) >= 0) return wb.Sheets[preferred[p]];
+  }
+  // اختر أول ورقة فيها صف عناوين يحتوي «الاسم»/name
+  for (var i = 0; i < names.length; i++) {
+    var rows = XLSX.utils.sheet_to_json(wb.Sheets[names[i]], {header:1, defval:''});
+    for (var r = 0; r < Math.min(rows.length, 8); r++) {
+      if ((rows[r] || []).some(function(v){ return isImportNameHeader(v); })) {
+        return wb.Sheets[names[i]];
+      }
+    }
+  }
+  return wb.Sheets[names[0]];
+}
+
+function isImportHintRow(row){
+  var name = importPick(row, IMPORT_NAME_KEYS);
+  var phone = importPick(row, IMPORT_PHONE_KEYS);
+  var code = importPick(row, IMPORT_CODE_KEYS);
+  var blob = [name, phone, code].join(' ');
+  if (!name) return true;
+  if (/إلزامي|اختياري|يُولَّد|يولد تلقائيا|مثال:|مثل:/.test(blob)) return true;
+  if (/^C-\d+/i.test(name)) return true;
+  return false;
+}
+
 function processXLSX(data){
+  if (typeof XLSX === 'undefined') {
+    alert('مكتبة قراءة Excel لم تُحمَّل — تحقق من الاتصال بالإنترنت ثم أعد المحاولة');
+    return;
+  }
   var wb = XLSX.read(data, {type:'array'});
-  var ws = wb.Sheets[wb.SheetNames[0]];
-  var rows = XLSX.utils.sheet_to_json(ws, {header:1});
-  var hi = 0;
+  var ws = pickClientsSheet(wb);
+  var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  var hi = -1;
   for(var i=0;i<rows.length;i++){
     if(rows[i].some(function(v){ return isImportNameHeader(v); })){ hi=i; break; }
+  }
+  if (hi < 0) {
+    importData = [];
+    alert('لم يُعثر على صف عناوين في الملف. تأكد أن ورقة «العملاء» موجودة وأن العمود «الاسم (عربي)» موجود.');
+    return;
   }
   var headers = rows[hi].map(function(h){return String(h||'').trim();});
   importData = [];
@@ -2372,7 +2416,12 @@ function processXLSX(data){
     var row={};
     headers.forEach(function(h,j){row[h]=String(rows[i][j]||'').trim();});
     var name = importPick(row, IMPORT_NAME_KEYS);
-    if(name && name!=='برج الياسمين') importData.push(row);
+    if(!name || name==='برج الياسمين') continue;
+    if(isImportHintRow(row)) continue;
+    importData.push(row);
+  }
+  if (!importData.length) {
+    alert('لم يُقرأ أي صف بيانات. تأكد أنك تعبّئ ورقة «العملاء» وليس ورقة التعليمات.');
   }
   showImportPreview(headers.filter(function(h){return h;}));
 }
@@ -2416,6 +2465,7 @@ async function confirmImport(){
 
   var rows = importData.map(function(row){
     var entityType = importPick(row, IMPORT_ENTITY_KEYS) || 'فرد';
+    if (entityType !== 'فرد' && entityType !== 'شركة') entityType = 'فرد';
     return {
       name: importPick(row, IMPORT_NAME_KEYS),
       phone: importPick(row, IMPORT_PHONE_KEYS),
@@ -2427,6 +2477,8 @@ async function confirmImport(){
       entity_type: entityType,
       national_id: entityType === 'شركة' ? '' : importPick(row, IMPORT_NID_KEYS),
       cr_number: entityType === 'شركة' ? importPick(row, IMPORT_CR_KEYS) : '',
+      vat_number: entityType === 'شركة' ? importPick(row, ['الرقم الضريبي', 'vat_number', 'VAT']) : '',
+      national_address: entityType === 'شركة' ? importPick(row, ['العنوان الوطني', 'national_address']) : '',
       code: importPick(row, IMPORT_CODE_KEYS),
       status: importPick(row, IMPORT_STATUS_KEYS) || 'نشط',
       notes: importPick(row, IMPORT_NOTES_KEYS)

@@ -1574,18 +1574,21 @@ def format_phone_storage(phone):
 
 
 def client_phone_error(phone):
-    """تحقق من رقم جوال العميل — بدون 0 في البداية."""
+    """تحقق من رقم جوال العميل — يقبل 05… / 5… / +9665… بعد التطبيع."""
     raw = re.sub(r'\D', '', phone or '')
     if not raw:
         return 'يرجى إدخال رقم الجوال'
-    if raw.startswith('9660'):
-        return 'لا تبدأ رقم الجوال بـ 0 — أدخل الرقم بدون الصفر (مثال: 512345678)'
-    if raw.startswith('0') and not raw.startswith('00'):
-        return 'لا تبدأ رقم الجوال بـ 0 — أدخل الرقم بدون الصفر (مثال: 512345678)'
+    # طبّع أولاً حتى لا تُرفض أرقام Excel التي تبدأ بـ 0 أو بها مسافات
     d = normalize_phone(phone)
+    if not d:
+        return 'يرجى إدخال رقم الجوال'
+    if d.startswith('9660'):
+        return 'رقم الجوال غير صالح — أزل الصفر بعد رمز الدولة'
     local = d[3:] if d.startswith('966') else d
     if len(local) < 9:
         return 'رقم الجوال غير مكتمل — أدخل 9 أرقام على الأقل'
+    if d.startswith('966') and not local.startswith('5'):
+        return 'رقم الجوال يجب أن يبدأ بـ 5 بعد رمز السعودية'
     return None
 
 

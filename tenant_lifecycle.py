@@ -382,6 +382,9 @@ def wipe_tenant(org, *, keep_users: bool, delete_organization: bool = False) -> 
 
     _null_fk(MaintenanceVisit, org_id, 'fault_id')
     _null_fk(Fault, org_id, 'visit_id')
+    # إيراد ↔ فاتورة (FK متبادل) + فاتورة أب/ابن + ربط قطع الغيار — فكّ قبل الحذف
+    _null_fk(Invoice, org_id, 'revenue_id', 'parent_invoice_id', 'parts_billing_id')
+    _null_fk(Revenue, org_id, 'invoice_id', 'parts_billing_id')
     db.session.commit()
 
     if im is not None:
@@ -404,9 +407,10 @@ def wipe_tenant(org, *, keep_users: bool, delete_organization: bool = False) -> 
         ('purchase_orders', PurchaseOrder),
         ('estimate_lines', ElevatorEstimateLine),
         ('estimates', ElevatorEstimate),
+        # الفواتير قبل الإيرادات (بعد فك FK المتبادل أعلاه)
+        ('invoices', Invoice),
         ('revenues', Revenue),
         ('expenses', Expense),
-        ('invoices', Invoice),
         ('whatsapp_inbox', WhatsAppInbox),
         ('visits', MaintenanceVisit),
         ('faults', Fault),

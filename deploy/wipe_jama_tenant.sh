@@ -33,18 +33,33 @@ if [ -f "$PLATFORM_ENV" ]; then
   echo "==> محمّل: $PLATFORM_ENV"
 fi
 
-if [ -d "$APP_DIR/.venv" ]; then
-  # shellcheck disable=SC1091
-  source "$APP_DIR/.venv/bin/activate"
+# استخدم مفسّر venv مباشرة — على بعض السيرفرات لا يوجد أمر باسم python
+# وقد يكون venv داخل jama-elevator-app فقط
+PY=""
+for candidate in \
+  "$APP_DIR/.venv/bin/python" \
+  "${JAMA_PY:-$HOME/liftcore/jama-elevator-app/.venv/bin/python}" \
+  "$(command -v python3 2>/dev/null || true)" \
+  "$(command -v python 2>/dev/null || true)"
+do
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+    PY="$candidate"
+    break
+  fi
+done
+if [ -z "$PY" ]; then
+  echo "ERROR: لا يوجد python — أنشئ venv في elevator-app أو استخدم jama-elevator-app/.venv"
+  exit 1
 fi
 
+echo "==> Python: $PY"
 echo "==> تفريغ مستأجر جما"
-python scripts/wipe_tenant_data.py --slug jama "${EXTRA[@]}"
+"$PY" scripts/wipe_tenant_data.py --slug jama "${EXTRA[@]}"
 
 if [ "$DO_KICKOFF" = "1" ]; then
   echo ""
   echo "==> إعادة تجهيز المستخدمين واسم الشركة"
-  python scripts/kickoff_jama_formal.py --days 21
+  "$PY" scripts/kickoff_jama_formal.py --days 21
 fi
 
 echo ""

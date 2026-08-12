@@ -39,6 +39,17 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
         'national_id',
     ),
     'cr_number': ('رقم السجل التجاري', 'cr_number'),
+    'vat_number': (
+        'الرقم الضريبي',
+        'الرقم الضريبي للعميل',
+        'vat_number',
+        'VAT',
+    ),
+    'national_address': (
+        'العنوان الوطني',
+        'national_address',
+        'National Address',
+    ),
     'code': ('رقم العميل', 'الكود', 'code', 'Code'),
     'status': ('حالة العميل', 'الحالة', 'status', 'Status'),
     'notes': ('ملاحظات', 'notes', 'Notes'),
@@ -78,6 +89,7 @@ def normalize_import_row(row: dict[str, Any]) -> dict[str, str]:
         out = {k: str(row.get(k) or '').strip() for k in (
             'name', 'phone', 'city', 'district', 'address', 'email',
             'contact_person', 'entity_type', 'national_id', 'cr_number',
+            'vat_number', 'national_address',
             'code', 'status', 'notes',
         )}
         # املأ الناقص من الأسماء البديلة
@@ -188,6 +200,10 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
             entity_type=entity_type,
             national_id=(data.get('national_id') or '') if entity_type != 'شركة' else '',
             cr_number=(data.get('cr_number') or '') if entity_type == 'شركة' else '',
+            vat_number=(data.get('vat_number') or '') if entity_type == 'شركة' else '',
+            national_address=(
+                (data.get('national_address') or '') if entity_type == 'شركة' else ''
+            ),
             status=_client_account_status(data.get('status') or 'نشط'),
             notes=data.get('notes') or '',
         )

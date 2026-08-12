@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# تفريغ قاعدة بيانات جما — ملف jama.db فقط
+# تفريغ قاعدة بيانات جما — ملف jama.db فقط (النسخة المنفصلة liftcore-jama)
 #   cd ~/liftcore/elevator-app && bash deploy/reset_jama_db.sh
 #
 # SEED=1   إضافة بيانات تجريبية بعد التفريغ
@@ -15,8 +15,41 @@ SEED="${SEED:-0}"
 
 export DATABASE_URL="sqlite:///${DB_FILE}"
 
+echo "==> تفريغ قاعدة بيانات جما"
+echo "    مجلد: $JAMA_DIR"
+echo "    ملف:  $DB_FILE"
+
+if [ ! -d "$JAMA_DIR" ]; then
+  echo "ERROR: مجلد جما غير موجود"
+  exit 1
+fi
+
+# إذا المنصة على PostgreSQL — هذا السكربت (SQLite) لن يصفّر بيانات جما الحية
+if [ -f /etc/liftcore/platform.env ] && grep -qE '^DATABASE_URL=.*postgres' /etc/liftcore/platform.env 2>/dev/null; then
+  echo ""
+  echo "ERROR: السيرفر يستخدم PostgreSQL (Multi-Tenant)."
+  echo "  reset_jama_db.sh يصفّر jama.db فقط ولن يمسّ بيانات jama الحية."
+  echo "  استخدم بدلاً منه:"
+  echo "    cd ~/liftcore/elevator-app"
+  echo "    bash deploy/wipe_jama_tenant.sh --confirm JAMA_WIPE --kickoff"
+  exit 1
+fi
+
+cd "$JAMA_DIR"
+if [ -x "$VENV/bin/python" ]; then
+  PY="$VENV/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+  PY="$(command -v python3)"
+else
+  echo "ERROR: لا يوجد python في $VENV ولا python3 في PATH"
+  exit 1
+fi
+# shellcheck disable=SC1091
+source "$VENV/bin/activate" 2>/dev/null || true
+echo "==> Python: $PY"
+
 db_stats() {
-  python -c "
+  "$PY" -c "
 import os
 os.environ['DATABASE_URL'] = '${DATABASE_URL}'
 from app import app, db
@@ -33,24 +66,11 @@ with app.app_context():
 "
 }
 
-echo "==> تفريغ قاعدة بيانات جما"
-echo "    مجلد: $JAMA_DIR"
-echo "    ملف:  $DB_FILE"
-
-if [ ! -d "$JAMA_DIR" ]; then
-  echo "ERROR: مجلد جما غير موجود"
-  exit 1
-fi
-
-cd "$JAMA_DIR"
-# shellcheck disable=SC1091
-source "$VENV/bin/activate"
-
 echo ""
 echo "==> قبل التفريغ:"
 db_stats 2>/dev/null || echo "  (لا قاعدة بعد)"
 
-# احذف liftcore.db القديم — كان يسبب قراءة قاعدة خاطئة
+# احذف liftcore.db القديمة — كان يسبب قراءة قاعدة خاطئة
 if [ -f "$JAMA_DIR/instance/liftcore.db" ]; then
   echo ""
   echo "==> حذف instance/liftcore.db (قاعدة خاطئة في مجلد جما)"
@@ -72,12 +92,12 @@ echo "==> إعادة إنشاء jama.db فارغة"
 rm -f "$DB_FILE"
 mkdir -p "$(dirname "$DB_FILE")"
 export DATABASE_URL="sqlite:///${DB_FILE}"
-python init_db.py
-python scripts/init_install_module.py
+"$PY" init_db.py
+"$PY" scripts/init_install_module.py
 
 if [ "$SEED" = "1" ]; then
   echo "==> إضافة بيانات تجريبية (10 عملاء)"
-  python scripts/reset_jama_demo.py || python seed_data.py --jama
+  "$PY" scripts/reset_jama_demo.py || "$PY" seed_data.py --jama
 fi
 
 sudo systemctl start "$SERVICE_NAME"
