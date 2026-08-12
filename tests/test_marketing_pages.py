@@ -16,6 +16,9 @@ def test_public_landing_and_pricing_anonymous():
     assert 'LiftCore' in body
     assert 'صيانة المصاعد' in body
     assert '/pricing' in body
+    assert 'images/marketing/screens/dashboard.png' in body
+    assert 'خريطة المصاعد' in body
+    assert 'زيارات الصيانة' in body
 
     r = client.get('/pricing', base_url=PUBLIC)
     assert r.status_code == 200

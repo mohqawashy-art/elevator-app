@@ -83,9 +83,10 @@
   background:var(--mkt-surface);box-shadow:var(--mkt-shadow);
   opacity:0;transform:translateY(18px);animation:mkt-rise .8s ease forwards;
 }
-.shot:nth-child(1){animation-delay:.1s}
-.shot:nth-child(2){animation-delay:.2s}
-.shot:nth-child(3){animation-delay:.3s}
+.shot:nth-child(1){animation-delay:.05s}
+.shot:nth-child(2){animation-delay:.1s}
+.shot:nth-child(3){animation-delay:.15s}
+.shot:nth-child(4){animation-delay:.2s}
 .shot-frame{
   display:flex;align-items:center;gap:8px;
   padding:10px 14px;border-bottom:1px solid var(--mkt-line);
@@ -101,8 +102,19 @@
 .shot-caption{padding:14px 16px 16px}
 .shot-caption h3{font-size:1.05rem;margin-bottom:4px}
 .shot-caption p{color:var(--mkt-muted);font-size:.92rem}
-.shots-split{display:grid;grid-template-columns:1.35fr .75fr;gap:18px}
-.shot-phone img{max-height:560px;object-fit:contain;margin:0 auto;background:transparent}
+.shots-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.shot-tabs{
+  display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;
+}
+.shot-tabs a{
+  font-size:.82rem;font-weight:600;padding:8px 12px;border-radius:999px;
+  border:1px solid var(--mkt-line);color:var(--mkt-muted);
+  transition:border-color .2s ease, color .2s ease, background .2s ease;
+}
+.shot-tabs a:hover,.shot-tabs a.is-on{
+  color:var(--mkt-gold-light);border-color:var(--mkt-hair);
+  background:rgba(201,161,74,.08);
+}
 
 .cta{
   margin:42px 0 56px;padding:36px 28px;border-radius:24px;
@@ -119,7 +131,7 @@
 
 @media (max-width:980px){
   .work{grid-template-columns:1fr}
-  .shots-split{grid-template-columns:1fr}
+  .shots-grid{grid-template-columns:1fr}
   .hero-bleed__media{
     background:
       linear-gradient(180deg, rgba(7,10,16,.5) 0%, rgba(7,10,16,.88) 55%, rgba(7,10,16,.96) 100%),
@@ -195,44 +207,42 @@
     <section class="section" id="shots">
       <div class="section-head">
         <div class="eyebrow">من داخل النظام</div>
-        <h2>صور من شاشات التشغيل</h2>
-        <p>لوحة التحكم، جدول الزيارات، وبوابة الفني — كما تظهر لفريق المكتب والميدان.</p>
+        <h2>شاشات حقيقية من LiftCore</h2>
+        <p>لوحة التحكم، الخريطة، الزيارات، العملاء، العقود، الفنيون، المخزون، والتركيب — كما تظهر لفريق التشغيل.</p>
       </div>
+      <nav class="shot-tabs" aria-label="أقسام اللقطات">
+        {% for shot in landing_shots %}
+        <a href="#shot-{{ shot.id }}">{{ shot.title }}</a>
+        {% endfor %}
+      </nav>
       <div class="shots">
-        <figure class="shot">
+        {% for shot in landing_shots if shot.layout == 'feature' %}
+        <figure class="shot" id="shot-{{ shot.id }}">
           <div class="shot-frame">
             <div class="shot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-            <div class="shot-title">لوحة التحكم · مراقبة يومية</div>
+            <div class="shot-title">{{ shot.title }}</div>
           </div>
-          <img src="{{ url_for('static', filename='images/marketing/dashboard.png') }}" alt="لوحة تحكم LiftCore" width="1280" height="720" loading="lazy">
+          <img src="{{ url_for('static', filename=shot.file) }}?v=2" alt="{{ shot.caption }}" width="1440" height="900" loading="{{ 'eager' if loop.first else 'lazy' }}">
           <figcaption class="shot-caption">
-            <h3>رؤية تشغيلية في شاشة واحدة</h3>
-            <p>ملخص العقود والمصاعد والزيارات والأعطال المفتوحة — لمدير التشغيل في مكة أو أي مدينة.</p>
+            <h3>{{ shot.caption }}</h3>
+            <p>{{ shot.desc }}</p>
           </figcaption>
         </figure>
-        <div class="shots-split">
-          <figure class="shot">
+        {% endfor %}
+        <div class="shots-grid">
+          {% for shot in landing_shots if shot.layout != 'feature' %}
+          <figure class="shot" id="shot-{{ shot.id }}">
             <div class="shot-frame">
               <div class="shot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-              <div class="shot-title">جدول الزيارات · صيانة ميدانية</div>
+              <div class="shot-title">{{ shot.title }}</div>
             </div>
-            <img src="{{ url_for('static', filename='images/marketing/visits.png') }}" alt="جدول زيارات الصيانة" width="1280" height="720" loading="lazy">
+            <img src="{{ url_for('static', filename=shot.file) }}?v=2" alt="{{ shot.caption }}" width="1280" height="800" loading="lazy">
             <figcaption class="shot-caption">
-              <h3>جدولة واضحة للفنيين والمواقع</h3>
-              <p>من أبراج ومجمعات إلى مستشفيات — حالة كل زيارة ووقتها والفني المسؤول.</p>
+              <h3>{{ shot.caption }}</h3>
+              <p>{{ shot.desc }}</p>
             </figcaption>
           </figure>
-          <figure class="shot shot-phone">
-            <div class="shot-frame">
-              <div class="shot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-              <div class="shot-title">بوابة الفني</div>
-            </div>
-            <img src="{{ url_for('static', filename='images/marketing/field.png') }}" alt="بوابة الفني على الجوال" width="420" height="860" loading="lazy">
-            <figcaption class="shot-caption">
-              <h3>ميدان بلا أوراق</h3>
-              <p>قائمة فحص، إنهاء زيارة، وتوقيع تقرير من الجوال.</p>
-            </figcaption>
-          </figure>
+          {% endfor %}
         </div>
       </div>
     </section>

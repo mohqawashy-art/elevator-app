@@ -194,6 +194,91 @@ def build_compare_table(plans: list[dict[str, Any]] | None = None) -> list[dict[
     return rows
 
 
+# لقطات حقيقية من النظام — للصفحة التعريفية
+LANDING_SHOTS: tuple[dict[str, str], ...] = (
+    {
+        'id': 'dashboard',
+        'file': 'images/marketing/screens/dashboard.png',
+        'title': 'لوحة التحكم',
+        'caption': 'رؤية تشغيلية في شاشة واحدة',
+        'desc': 'عملاء، مصاعد، عقود، زيارات، أعطال مفتوحة، ومستحقات — مع إجراءات سريعة وتنبيهات.',
+        'layout': 'feature',
+    },
+    {
+        'id': 'map',
+        'file': 'images/marketing/screens/elevators-map.png',
+        'title': 'خريطة المصاعد',
+        'caption': 'أسطولك على الخريطة',
+        'desc': 'تتبع مواقع المصاعد وتصفية الحالة: نشط، تحت الصيانة، متوقف، أو خارج الخدمة.',
+        'layout': 'feature',
+    },
+    {
+        'id': 'visits',
+        'file': 'images/marketing/screens/visits.png',
+        'title': 'زيارات الصيانة',
+        'caption': 'جدولة ميدانية واضحة',
+        'desc': 'جدول زيارات مع الفني والحالة والتاريخ — وتخطيط الشهر وتقارير الصيانة.',
+        'layout': 'half',
+    },
+    {
+        'id': 'customers',
+        'file': 'images/marketing/screens/customers.png',
+        'title': 'العملاء',
+        'caption': 'سجل العملاء والعقود',
+        'desc': 'بيانات العملاء في مكة والمدن، حالة العقد، وعدد المصاعد، واستيراد وتصدير Excel.',
+        'layout': 'half',
+    },
+    {
+        'id': 'contracts',
+        'file': 'images/marketing/screens/contracts.png',
+        'title': 'العقود',
+        'caption': 'دورة حياة العقد كاملة',
+        'desc': 'عقود نشطة ومنتهية، تنبيهات التجديد، القيم والمستحقات، وطباعة وتقارير.',
+        'layout': 'half',
+    },
+    {
+        'id': 'technicians',
+        'file': 'images/marketing/screens/technicians-list.png',
+        'title': 'الفريق الفني',
+        'caption': 'إدارة الفنيين والتخصص',
+        'desc': 'حالة كل فني (متاح/مشغول)، التخصص، الطوارئ، وتقارير الفريق.',
+        'layout': 'half',
+    },
+    {
+        'id': 'parts',
+        'file': 'images/marketing/screens/parts-billing.png',
+        'title': 'تركيب قطع الغيار',
+        'caption': 'فوترة القطع والربح',
+        'desc': 'بيان تركيب القطع مع التكلفة وسعر العميل والتحصيل — مربوط بالزيارة والعقد.',
+        'layout': 'half',
+    },
+    {
+        'id': 'warehouse',
+        'file': 'images/marketing/screens/warehouse.png',
+        'title': 'إدارة المخازن',
+        'caption': 'مخزون قطع المصاعد',
+        'desc': 'أصناف الرفع والجر والتنبيهات عند النفاد، مع استيراد Excel وتقارير الأصناف.',
+        'layout': 'half',
+    },
+    {
+        'id': 'estimate',
+        'file': 'images/marketing/screens/estimate-form.png',
+        'title': 'تقدير التركيب',
+        'caption': 'عرض سعر إنشاء مصعد',
+        'desc': 'مواصفات المشروع وبنود التكلفة والربح والضريبة — ثم حفظ وطباعة التقدير.',
+        'layout': 'half',
+    },
+    {
+        'id': 'leads',
+        'file': 'images/marketing/screens/install-leads.png',
+        'title': 'فرص البيع',
+        'caption': 'خط أنابيب تركيب المصاعد',
+        'desc': 'تسجيل فرص البيع ومتابعة العملاء المحتملين لوحدة التركيب.',
+        'layout': 'half',
+    },
+)
+
+
 def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label: str) -> dict[str, Any]:
     plans = build_pricing_plans()
     return {
@@ -207,4 +292,5 @@ def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label:
         'support_email': 'info@liftcoreapp.com',
         'support_whatsapp_url': 'https://wa.me/966566299626',
         'support_whatsapp_display': '0566299626',
+        'landing_shots': LANDING_SHOTS,
     }
