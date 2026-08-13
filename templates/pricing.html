@@ -1,10 +1,10 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+{% include 'partials/marketing_gtag.html' %}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 {% include 'partials/marketing_seo.html' %}
-{% include 'partials/marketing_gtag.html' %}
 <link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -376,7 +376,7 @@ tr:last-child td{border-bottom:none}
       </div>
       <div class="contact-card">
         <div class="k">واتساب (اختياري)</div>
-        <div class="v"><a href="{{ support_whatsapp_url }}" target="_blank" rel="noopener">{{ support_whatsapp_display }}</a></div>
+        <div class="v"><a href="{{ support_whatsapp_url }}" target="_blank" rel="noopener" data-gtag-whatsapp>{{ support_whatsapp_display }}</a></div>
       </div>
     </div>
   </section>
@@ -386,5 +386,28 @@ tr:last-child td{border-bottom:none}
     <div>جميع الحقوق محفوظة لمؤسسة نسق كور للحلول المتكاملة · <span dir="ltr">{{ sales_email }}</span> · الأسعار غير شاملة الضريبة</div>
   </footer>
 </div>
+<script>
+(function () {
+  var form = document.querySelector('.mkt-demo-form');
+  if (form) {
+    form.addEventListener('submit', function () {
+      if (typeof gtag === 'function') {
+        gtag('event', 'trial_request_submit', {
+          'send_to': 'AW-18388162918'
+        });
+      }
+    });
+  }
+  document.querySelectorAll('a[data-gtag-whatsapp], a[href^="https://wa.me/966566299626"]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      if (typeof gtag === 'function') {
+        gtag('event', 'whatsapp_click', {
+          'send_to': 'AW-18388162918'
+        });
+      }
+    });
+  });
+})();
+</script>
 </body>
 </html>

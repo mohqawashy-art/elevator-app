@@ -1973,7 +1973,7 @@ def _pricing_context(*, seo_page: str = 'landing'):
 def _ads_tracking_context() -> dict:
     import os
     return {
-        'gtag_id': (os.environ.get('LIFTCORE_GTAG_ID') or '').strip(),
+        'gtag_id': (os.environ.get('LIFTCORE_GTAG_ID') or 'AW-18388162918').strip(),
         'ads_conversion_id': (os.environ.get('LIFTCORE_ADS_CONVERSION_ID') or '').strip(),
         'ads_conversion_label': (os.environ.get('LIFTCORE_ADS_CONVERSION_LABEL') or '').strip(),
         'fire_ads_conversion': False,

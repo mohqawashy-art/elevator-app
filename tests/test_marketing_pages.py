@@ -24,10 +24,16 @@ def test_public_landing_and_pricing_anonymous():
     assert 'demo-request' in body or 'إرسال طلب التجربة' in body
     assert 'name="contact_email"' in body
     assert '#contact' in body
+    assert body.count('googletagmanager.com/gtag/js?id=AW-18388162918') == 1
+    assert body.count("gtag('config', 'AW-18388162918')") == 1
 
     r = client.get('/pricing', base_url=PUBLIC)
     assert r.status_code == 200
     body = r.get_data(as_text=True)
+    assert body.count('googletagmanager.com/gtag/js?id=AW-18388162918') == 1
+    assert body.count("gtag('config', 'AW-18388162918')") == 1
+    assert "gtag('event', 'trial_request_submit'" in body
+    assert "gtag('event', 'whatsapp_click'" in body
     assert 'Basic' in body
     assert 'Plus' in body
     assert '3,000' in body or '3000' in body

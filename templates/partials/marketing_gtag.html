@@ -1,15 +1,17 @@
-{# Google tag (gtag.js) — يُفعَّل فقط عند ضبط LIFTCORE_GTAG_ID #}
-{% if gtag_id %}
-<script async src="https://www.googletagmanager.com/gtag/js?id={{ gtag_id }}"></script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18388162918"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
+
+  gtag('config', 'AW-18388162918');
+  {% if gtag_id and gtag_id != 'AW-18388162918' %}
   gtag('config', '{{ gtag_id }}');
+  {% endif %}
   {% if fire_ads_conversion and ads_conversion_id and ads_conversion_label %}
   gtag('event', 'conversion', {
     'send_to': '{{ ads_conversion_id }}/{{ ads_conversion_label }}'
   });
   {% endif %}
 </script>
-{% endif %}
