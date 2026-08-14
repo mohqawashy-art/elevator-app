@@ -282,9 +282,9 @@ def main() -> int:
         print('أضف --yes للتأكيد أو --dry-run للمعاينة')
         return 2
 
-        from flask import g
-        from app import app
-        from models import Contract, Organization
+    from flask import g
+    from app import app
+    from models import Contract, Organization
 
     with app.app_context():
         slug = (args.slug or 'jama').strip().lower()
