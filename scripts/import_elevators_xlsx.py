@@ -168,7 +168,13 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
 
         title = _cell(row, 'Title', 'Link to Contracts / العقود')
         contract = contracts.get(cn_code or '')
-        customer = _find_customer(cn_code, title, contracts, customers_by_name)
+        customer = None
+        cust_code = _cell(row, 'كود العميل', 'customer_code')
+        m_code = re.match(r'C-(\d+)', cust_code, re.I) if cust_code else None
+        if m_code:
+            customer = Customer.query.filter_by(code=f'C-{int(m_code.group(1)):04d}').first()
+        if not customer:
+            customer = _find_customer(cn_code, title, contracts, customers_by_name)
         if not customer:
             stats['skipped_no_customer'] += 1
             print(f'  [تخطي] {el_code}: لا عميل/عقد لـ {cn_code or _cell(row, "Title")}')

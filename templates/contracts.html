@@ -2295,6 +2295,24 @@ function pickImportRow(row, keys) {
   return '';
 }
 
+function importCell(v) {
+  if (v === undefined || v === null) return '';
+  return String(v).trim();
+}
+
+function pickImportPaid(row) {
+  var keys = ['المبلغ المسدد', 'paid_amount'];
+  for (var i = 0; i < keys.length; i++) {
+    if (!Object.prototype.hasOwnProperty.call(row, keys[i])) continue;
+    var v = row[keys[i]];
+    if (v === undefined || v === null) continue;
+    var s = String(v).trim();
+    if (s === '') continue;
+    return s;
+  }
+  return '0';
+}
+
 function normImportName(s) {
   return String(s || '')
     .replace(/\s+/g, ' ')
@@ -2415,7 +2433,7 @@ function processContractImportXLSX(data) {
     var hits = 0;
     for (var j = hi + 1; j < rows.length; j++) {
       var row = {};
-      headers.forEach(function(h, k) { row[h] = String(rows[j][k] || '').trim(); });
+      headers.forEach(function(h, k) { row[h] = importCell(rows[j][k]); });
       if (resolveImportCustomer(row)) hits++;
     }
     if (hits > best.hits) best = { sheet: name, rows: rows, hi: hi, hits: hits };
@@ -2431,7 +2449,7 @@ function processContractImportXLSX(data) {
   var unmatched = 0;
   for (var j = best.hi + 1; j < best.rows.length; j++) {
     var row = {};
-    headers.forEach(function(h, k) { row[h] = String(best.rows[j][k] || '').trim(); });
+    headers.forEach(function(h, k) { row[h] = importCell(best.rows[j][k]); });
     if (!pickImportRow(row, ['رقم العقد', 'اسم العميل', 'العملاء', 'كود العميل'])) continue;
     if (resolveImportCustomer(row)) contractImportData.push(row);
     else unmatched++;
@@ -2511,8 +2529,8 @@ async function confirmContractImport() {
     fd.append('tax_pct', taxPct === '' ? '0' : taxPct);
     var total = pickImportRow(row, ['الإجمالي شامل الضريبة', 'total', 'الإجمالي']);
     if (total) fd.append('total', total);
-    var paid = pickImportRow(row, ['المبلغ المسدد', 'paid_amount']);
-    if (paid) fd.append('paid_amount', paid);
+    var paid = pickImportPaid(row);
+    fd.append('paid_amount', paid);
     fd.append('payment_terms', pickImportRow(row, ['شروط الدفع', 'payment_terms']) || 'دفعة واحدة');
     fd.append('status', pickImportRow(row, ['حالة العقد', 'status']) || 'نشط');
     fd.append('notes', pickImportRow(row, ['ملاحظات', 'notes']));

@@ -110,7 +110,7 @@ def import_customers(path: str, *, dry_run: bool = False) -> dict[str, int]:
 
     for r in rows:
         code = norm_code(_cell(r, 'رقم العميل'))
-        name = _str(_cell(r, 'اسم العميل')) or _str(_cell(r, 'اسم العميل | رقم العميل'))
+        name = _str(_cell(r, 'اسم العميل')) or _str(_cell(r, 'الاسم (عربي)')) or _str(_cell(r, 'اسم العميل | رقم العميل'))
         if '|' in name:
             name = name.split('|', 1)[0].strip()
         if not code or not name:
@@ -120,7 +120,7 @@ def import_customers(path: str, *, dry_run: bool = False) -> dict[str, int]:
         city = _norm_city(_cell(r, 'المدينة'))
         district = _str(_cell(r, 'الحي أو المنطقة', 'الحي'))
         address = _str(_cell(r, 'العنوان'))
-        phone_raw = _cell(r, 'الجوال', 'الهاتف')
+        phone_raw = _cell(r, 'الجوال', 'الهاتف', 'رقم الهاتف')
         phone = _norm_phone(phone_raw)
         phone2 = _secondary_phone(phone_raw)
 
@@ -276,7 +276,13 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
         m = re.match(r'CN-(\d+)', s, re.I)
         return f'CN-{int(m.group(1)):05d}' if m else s.upper()
 
-    def find_customer(name: str, cn_code: str | None) -> Customer | None:
+    def find_customer(name: str, cn_code: str | None, customer_code: str | None = None) -> Customer | None:
+        code = _str(customer_code)
+        m = re.match(r'C-(\d+)', code, re.I) if code else None
+        if m:
+            customer = Customer.query.filter_by(code=f'C-{int(m.group(1)):04d}').first()
+            if customer:
+                return customer
         name = _str(name)
         if name:
             customer = Customer.query.filter_by(name=name).first()
@@ -333,11 +339,12 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
     for r in rows:
         code = _str(_cell(r, 'رقم العقد')) or (_extract_cn(_cell(r, 'اسم العميل ورقم العقد')) or '')
         code = norm_cn(code) if code else ''
-        name = _str(_cell(r, 'العملاء'))
-        annual = _f(_cell(r, 'قيمة العقد'))
-        start = _parse_date(_cell(r, 'تاريخ بداية العقد'))
-        end = _parse_date(_cell(r, 'تاريخ انتهاء العقد'))
-        el_codes = _extract_all_el(_cell(r, 'رقم المصعد', 'اسم العميل ورقم العقد'))
+        name = _str(_cell(r, 'العملاء', 'اسم العميل'))
+        annual = _f(_cell(r, 'قيمة العقد', 'قيمة العقد قبل الضريبة'))
+        start = _parse_date(_cell(r, 'تاريخ بداية العقد', 'تاريخ البداية'))
+        end = _parse_date(_cell(r, 'تاريخ انتهاء العقد', 'تاريخ الانتهاء'))
+        el_codes = _extract_all_el(_cell(r, 'أكواد المصاعد', 'رقم المصعد', 'اسم العميل ورقم العقد'))
+        cust_code = _str(_cell(r, 'كود العميل'))
 
         if not code or not start or not end:
             stats['skipped'] += 1
@@ -346,7 +353,7 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
             stats['skipped'] += 1
             continue
 
-        customer = find_customer(name, code)
+        customer = find_customer(name, code, cust_code)
         if not customer:
             stats['no_customer'] += 1
             print(f'  [تخطي] {code}: لا عميل لـ «{name}»')
@@ -354,7 +361,9 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
 
         paid = _f(_cell(r, 'المبلغ المسدد'))
         val = annual
-        tax = round(val * 0.15, 2)
+        tax_raw = _cell(r, 'نسبة الضريبة %', 'نسبة الضريبة', 'tax_pct')
+        tax_pct = _f(tax_raw) if tax_raw not in (None, '') else 15.0
+        tax = round(val * tax_pct / 100.0, 2)
         payload = dict(
             customer_id=customer.id,
             contract_type=(
@@ -365,10 +374,10 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
             start_date=start,
             end_date=end,
             duration_months=max(0, (end.year - start.year) * 12 + end.month - start.month),
-            maint_frequency=_str(_cell(r, 'برنامج الصيانة')) or 'سنوي',
+            maint_frequency=_str(_cell(r, 'برنامج الصيانة', 'تكرار الصيانة')) or 'سنوي',
             visits_per_month=1,
             value=val,
-            tax_pct=15,
+            tax_pct=tax_pct,
             tax_amount=tax,
             total=round(val + tax, 2),
             payment_terms='دفعة واحدة',

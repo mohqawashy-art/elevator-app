@@ -254,11 +254,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   .workload-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column}.search-wrap{min-width:100%}.card-stats,.stats-row{grid-template-columns:repeat(2,1fr)!important}}
+.import-area{border:2px dashed var(--border);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:var(--trans)}
+.import-area:hover{border-color:var(--accent);background:rgba(42,127,255,.04)}
+.import-area svg{width:32px;height:32px;color:var(--text3);margin-bottom:10px}
+.import-area span{color:var(--accent)}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
 <link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
 <script src="/static/liftcore-dates.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -346,6 +351,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
             تصدير Excel
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="openModal('modal-import')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
+            استيراد Excel
           </button>
           <button class="btn btn-primary btn-sm" onclick="openAddModal()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
@@ -438,6 +447,41 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <div class="modal-title">استيراد فنيين من Excel</div>
+      <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="import-area" onclick="document.getElementById('tech-import-file').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
+        <p>اسحب ملف Excel هنا أو <span>اضغط للاختيار</span></p>
+        <p style="font-size:11px;margin-top:4px">.xlsx أو .csv</p>
+        <input type="file" id="tech-import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleTechImport(this)">
+      </div>
+      <div id="import-preview" style="margin-top:14px;display:none">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">معاينة:</div>
+        <div id="import-table-wrap" style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)"></div>
+        <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
+        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
+        <div style="color:var(--accent)">اسم الفني</div>
+        <div style="color:var(--text3);margin-top:4px">اختيارية: كود الفني (Tech-001)، المسمى الوظيفي، الحالة، الجوال، المدينة، ملاحظات</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-import')">إلغاء</button>
+      <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmTechImport()" style="display:none">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
+        استيراد
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1552,9 +1596,181 @@ function editFromView() {
 }
 
 function deleteTech(id) { currentDeleteId = id; document.getElementById('modal-delete').classList.add('open'); }
+
 function confirmDelete() {
   if (!currentDeleteId) return;
   LiftCoreAdminDelete.confirmFromOpenModal('/technicians/delete/' + currentDeleteId);
+}
+
+var techImportData = [];
+
+function techImportCell(v) {
+  if (v === undefined || v === null) return '';
+  return String(v).trim();
+}
+
+function pickTechImport(row, keys) {
+  for (var i = 0; i < keys.length; i++) {
+    var v = row[keys[i]];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+  }
+  return '';
+}
+
+function afterPipe(s) {
+  if (!s) return '';
+  if (s.indexOf('|') >= 0) return s.split('|').pop().trim();
+  return s;
+}
+
+function extractTechCode(raw) {
+  var m = String(raw || '').match(/Tech-\d+/i);
+  if (!m) return '';
+  var n = String(parseInt(m[0].split('-')[1], 10));
+  while (n.length < 3) n = '0' + n;
+  return 'Tech-' + n;
+}
+
+function mapTechStatus(raw) {
+  var s = afterPipe(raw).toLowerCase();
+  if (!s) return 'متاح';
+  if (s.indexOf('off') >= 0 || s.indexOf('غير نشط') >= 0) return 'غير نشط';
+  if (s.indexOf('إجازة') >= 0 || s.indexOf('اجازة') >= 0) return 'إجازة';
+  if (s.indexOf('مشغول') >= 0) return 'مشغول';
+  return 'متاح';
+}
+
+function isTechImportHeader(cells) {
+  return (cells || []).some(function(v) {
+    var s = String(v || '');
+    return s.indexOf('اسم الفني') >= 0 || s.indexOf('Technical Name') >= 0
+      || s.indexOf('رقم الفني') >= 0 || s.indexOf('كود الفني') >= 0;
+  });
+}
+
+function handleTechImport(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  if (file.name.toLowerCase().endsWith('.csv')) {
+    reader.onload = function(e) { parseTechImportCSV(e.target.result); };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.onload = function(e) {
+      if (typeof XLSX === 'undefined') {
+        alert('مكتبة قراءة Excel لم تُحمَّل — تحقق من الإنترنت ثم أعد المحاولة');
+        return;
+      }
+      processTechImportXLSX(new Uint8Array(e.target.result));
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function parseTechImportCSV(text) {
+  var lines = text.split('\n').filter(function(l) { return l.trim(); });
+  if (!lines.length) return;
+  var headers = lines[0].split(',').map(function(h) { return h.trim().replace(/"/g, ''); });
+  techImportData = [];
+  for (var i = 1; i < lines.length; i++) {
+    var vals = lines[i].split(',').map(function(v) { return v.trim().replace(/"/g, ''); });
+    var row = {};
+    headers.forEach(function(h, j) { row[h] = vals[j] || ''; });
+    if (pickTechImport(row, ['اسم الفني', 'Technical Name | اسم الفني', 'الاسم'])) techImportData.push(row);
+  }
+  showTechImportPreview(headers.filter(Boolean));
+}
+
+function processTechImportXLSX(data) {
+  var wb = XLSX.read(data, { type: 'array' });
+  var names = wb.SheetNames || [];
+  var sheetName = names[0];
+  var preferred = ['الفنيين', 'Technicians', 'technicians'];
+  for (var p = 0; p < preferred.length; p++) {
+    if (names.indexOf(preferred[p]) >= 0) { sheetName = preferred[p]; break; }
+  }
+  var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
+  var hi = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (isTechImportHeader(rows[i])) { hi = i; break; }
+  }
+  if (hi < 0) {
+    techImportData = [];
+    alert('لم يُعثر على صف عناوين. يلزم عمود اسم الفني.');
+    return;
+  }
+  var headers = rows[hi].map(function(h) { return String(h || '').trim(); });
+  techImportData = [];
+  for (var j = hi + 1; j < rows.length; j++) {
+    var row = {};
+    headers.forEach(function(h, k) { row[h] = techImportCell(rows[j][k]); });
+    var name = pickTechImport(row, ['اسم الفني', 'Technical Name | اسم الفني', 'الاسم', 'الاسم (عربي)']);
+    if (!name) continue;
+    techImportData.push(row);
+  }
+  showTechImportPreview(headers.filter(Boolean));
+}
+
+function showTechImportPreview(headers) {
+  document.getElementById('import-preview').style.display = 'block';
+  document.getElementById('import-status').textContent = 'تم قراءة ' + techImportData.length + ' سجل';
+  var tableHtml = '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>';
+  headers.slice(0, 6).forEach(function(h) {
+    tableHtml += '<th style="padding:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text3)">' + esc(h) + '</th>';
+  });
+  tableHtml += '</tr></thead><tbody>';
+  techImportData.slice(0, 4).forEach(function(row) {
+    tableHtml += '<tr>';
+    headers.slice(0, 6).forEach(function(h) {
+      tableHtml += '<td style="padding:5px 6px;border:1px solid var(--border);color:var(--text2)">' + esc(row[h] || '') + '</td>';
+    });
+    tableHtml += '</tr>';
+  });
+  tableHtml += '</tbody></table>';
+  if (techImportData.length > 4) {
+    tableHtml += '<div style="padding:4px 6px;font-size:11px;color:var(--text3)">... و ' + (techImportData.length - 4) + ' سجل آخر</div>';
+  }
+  document.getElementById('import-table-wrap').innerHTML = tableHtml;
+  document.getElementById('btn-confirm-import').style.display = techImportData.length ? 'flex' : 'none';
+}
+
+async function confirmTechImport() {
+  var btn = document.getElementById('btn-confirm-import');
+  btn.innerHTML = 'جاري الاستيراد...';
+  btn.disabled = true;
+  var ok = 0;
+  var skip = 0;
+  for (var i = 0; i < techImportData.length; i++) {
+    var row = techImportData[i];
+    var name = pickTechImport(row, ['اسم الفني', 'Technical Name | اسم الفني', 'الاسم', 'الاسم (عربي)']);
+    if (!name) { skip++; continue; }
+    var fd = new FormData();
+    var code = extractTechCode(pickTechImport(row, ['كود الفني', 'رقم الفني', 'Technical ID | رقم الفني', 'رقم واسم الفني']));
+    if (code) fd.append('code', code);
+    fd.append('name', name);
+    fd.append('job_title', afterPipe(pickTechImport(row, ['المسمى الوظيفي', 'Job Title | المسمى الوظيفي'])) || 'فني مصاعد');
+    fd.append('status', mapTechStatus(pickTechImport(row, ['الحالة', 'Status | الحالة'])));
+    fd.append('city', pickTechImport(row, ['المدينة', 'city']) || 'مكة');
+    fd.append('phone', pickTechImport(row, ['الجوال', 'رقم الهاتف', 'الهاتف', 'phone']));
+    fd.append('notes', pickTechImport(row, ['ملاحظات', 'Notes | ملاحظات', 'notes']));
+    fd.append('emergency', 'on');
+    fd.append('specialization', 'مصاعد ركاب');
+    fd.append('team', 'عام');
+    try {
+      var res = await fetch('/technicians/add', {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+      });
+      if (res.ok) ok++;
+      else skip++;
+    } catch (e) {
+      skip++;
+    }
+  }
+  alert('تم استيراد ' + ok + ' فني' + (skip ? (' — تم تخطي ' + skip + ' سجل') : ''));
+  window.location.reload();
 }
 
 function exportExcel() {
@@ -1579,6 +1795,7 @@ function exportExcel() {
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
 /* setLang: liftcore-i18n.js */
 function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }

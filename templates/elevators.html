@@ -1548,6 +1548,7 @@ async function confirmElevImport() {
     if (!customerId) { skip++; continue; }
     var fd = new FormData();
     fd.append('customer_id', customerId);
+    fd.append('code', row['كود المصعد'] || row['رقم المصعد'] || row['code'] || '');
     fd.append('building_name', row['المبنى'] || row['building'] || '');
     fd.append('city', row['المدينة'] || row['city'] || '');
     fd.append('district', row['الحي'] || row['district'] || '');
@@ -1555,7 +1556,7 @@ async function confirmElevImport() {
     fd.append('brand', row['الماركة'] || row['brand'] || '');
     fd.append('model', row['الموديل'] || row['model'] || '');
     fd.append('capacity_kg', row['الحمولة (كجم)'] || row['الحمولة'] || row['capacity'] || '');
-    fd.append('floors', row['عدد الطوابق'] || row['floors'] || '');
+    fd.append('floors', row['عدد الطوابق'] || row['عدد الوقفات'] || row['floors'] || '');
     fd.append('serial_number', row['الرقم التسلسلي'] || row['serial'] || '');
     fd.append('machine_type', row['نوع الآلة'] || row['machine_type'] || 'MR');
     fd.append('door_type', row['نوع الباب'] || row['door_type'] || '');
@@ -1566,7 +1567,7 @@ async function confirmElevImport() {
     fd.append('install_date', row['تاريخ التركيب'] || row['install_date'] || '');
     fd.append('last_maintenance', row['آخر صيانة'] || row['last_maintenance'] || '');
     fd.append('next_maintenance', row['الصيانة القادمة'] || row['next_maintenance'] || '');
-    fd.append('status', row['الحالة'] || row['status'] || 'نشط');
+    fd.append('status', row['الحالة'] || row['حالة المصعد'] || row['status'] || 'نشط');
     fd.append('notes', row['ملاحظات'] || row['notes'] || '');
     var r = await fetch('/elevators/add', {method: 'POST', body: fd, credentials: 'same-origin'});
     if (r.ok || r.redirected) ok++;

@@ -5383,8 +5383,14 @@ def elevator_add():
     if not cap.get('ok'):
         flash(cap.get('error') or 'تجاوزت حد المصاعد في الباقة.', 'error')
         return redirect(url_for('elevators'))
+    raw_code = (request.form.get('code') or '').strip()
+    m_el = re.match(r'EL-(\d+)$', raw_code, re.I)
+    if m_el:
+        raw_code = f'EL-{int(m_el.group(1)):04d}'
+        if tenant_query(Elevator).filter_by(code=raw_code).first():
+            raw_code = ''
     e = Elevator(
-        code            = next_code(Elevator, 'EL-', digits=4),
+        code            = raw_code or next_code(Elevator, 'EL-', digits=4),
         customer_id     = request.form['customer_id'],
         building_name   = request.form.get('building_name', ''),
         city            = request.form.get('city', ''),
@@ -5893,6 +5899,20 @@ def _purge_contract_dependencies(contract_id, *, keep_visits=False):
     )
 
 
+def _apply_contract_paid_from_form(c, form):
+    """المبلغ المسدد من النموذج — القيمة 0 تعني غير مدفوع صراحة (لا تُتجاهل)."""
+    if 'paid_amount' in form:
+        raw = (form.get('paid_amount') or '').strip().replace(',', '')
+        try:
+            paid_val = 0.0 if raw == '' else float(raw)
+        except (TypeError, ValueError):
+            paid_val = 0.0
+        c.paid_amount = _money_round(paid_val)
+    elif getattr(c, 'paid_amount', None) is None:
+        c.paid_amount = 0
+    c.invoice_status = _invoice_status_from_paid(c, c.paid_amount or 0)
+
+
 def _apply_contract_form(c, form):
     from customer_billing import split_vat_amounts
     raw_tax = form.get('tax_pct')
@@ -5932,7 +5952,7 @@ def _apply_contract_form(c, form):
     c.district = form.get('district', '')
     c.address = form.get('address', '')
     c.notes = form.get('notes', '')
-    c.invoice_status = contract_invoice_status(c)
+    _apply_contract_paid_from_form(c, form)
 
 
 def _fin_proof_upload_dir(kind, row_id):
@@ -6276,15 +6296,6 @@ def contract_add():
     c = existing or Contract(code=code)
     try:
         _apply_contract_form(c, request.form)
-        paid_raw = (request.form.get('paid_amount') or '').strip()
-        if paid_raw != '':
-            try:
-                paid_val = float(paid_raw)
-            except (TypeError, ValueError):
-                paid_val = 0.0
-            c.paid_amount = paid_val
-            from import_real_data import _invoice_status
-            c.invoice_status = _invoice_status(c.value, paid_val)
         if existing is None:
             assign_organization(c)
             db.session.add(c)
@@ -7068,27 +7079,51 @@ def api_technician_profile(tech_id):
 def technician_add():
     from entitlements import assert_capacity
 
-    cap = assert_capacity('technicians')
-    if not cap.get('ok'):
-        flash(cap.get('error') or 'تجاوزت حد الفنيين في الباقة.', 'error')
-        return redirect(url_for('technicians'))
-    phone = request.form.get('phone', '')
-    taken, msg = phone_taken(phone)
-    if taken:
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+
+    def _fail(msg, code=400):
+        if wants_json:
+            return jsonify({'ok': False, 'message': msg}), code
         flash(msg, 'error')
         return redirect(url_for('technicians'))
+
+    raw_code = (request.form.get('code') or '').strip()
+    m_tech = re.match(r'Tech-(\d+)$', raw_code, re.I)
+    existing = None
+    if m_tech:
+        raw_code = f'Tech-{int(m_tech.group(1)):03d}'
+        existing = tenant_query(Technician).filter_by(code=raw_code).first()
+        if existing and tenant_query(Technician).filter(
+            Technician.code == raw_code, Technician.id != existing.id
+        ).first():
+            raw_code = ''
+            existing = None
+    else:
+        raw_code = ''
+
+    if existing is None:
+        cap = assert_capacity('technicians')
+        if not cap.get('ok'):
+            return _fail(cap.get('error') or 'تجاوزت حد الفنيين في الباقة.')
+    phone = request.form.get('phone', '')
+    taken, msg = phone_taken(phone, technician_id=existing.id if existing else None)
+    if taken:
+        return _fail(msg)
     wa = request.form.get('phone2', '')
     if wa and phone_key(wa) != phone_key(phone):
-        taken2, msg2 = phone_taken(wa)
+        taken2, msg2 = phone_taken(wa, technician_id=existing.id if existing else None)
         if taken2:
-            flash(msg2, 'error')
-            return redirect(url_for('technicians'))
-    t = Technician(code=next_code(Technician, 'Tech-', digits=3))
+            return _fail(msg2)
+    t = existing or Technician(code=raw_code or next_code(Technician, 'Tech-', digits=3))
     try:
         _apply_technician_form(t, request.form)
-        assign_organization(t)
-        db.session.add(t)
-        db.session.flush()
+        if existing is None:
+            assign_organization(t)
+            db.session.add(t)
+            db.session.flush()
         _save_technician_photo(t, request.files.get('photo'))
         _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
         _save_technician_documents(
@@ -7100,9 +7135,10 @@ def technician_add():
         db.session.commit()
     except (ValueError, KeyError) as exc:
         db.session.rollback()
-        flash(str(exc) or 'تعذّر حفظ الفني', 'error')
-        return redirect(url_for('technicians'))
-    flash('تم إضافة الفني بنجاح', 'success')
+        return _fail(str(exc) or 'تعذّر حفظ الفني')
+    if wants_json:
+        return jsonify({'ok': True, 'id': t.id, 'code': t.code})
+    flash('تم إضافة الفني بنجاح' if existing is None else 'تم تحديث بيانات الفني بنجاح', 'success')
     return redirect(url_for('technicians'))
 
 

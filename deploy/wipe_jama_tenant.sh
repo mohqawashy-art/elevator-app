@@ -3,10 +3,11 @@
 #
 # Usage (GCP SSH):
 #   cd ~/liftcore/elevator-app && git pull --ff-only origin main
-#   bash deploy/wipe_jama_tenant.sh --confirm JAMA_WIPE
-#   bash deploy/wipe_jama_tenant.sh --confirm JAMA_WIPE --kickoff
+#   bash deploy/wipe_jama_tenant.sh --keep-users --confirm JAMA_WIPE
+#   bash deploy/wipe_jama_tenant.sh --keep-users --confirm JAMA_WIPE --kickoff
 #   bash deploy/wipe_jama_tenant.sh --print-only
 #
+# --keep-users يبقي حسابات الدخول (admin / Data). بدونها تُحذف كل المستخدمين.
 # ملاحظة: لا يمسّ app/default. للمستأجر jama فقط.
 
 set -euo pipefail
