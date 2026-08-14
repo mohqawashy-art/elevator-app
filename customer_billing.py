@@ -57,7 +57,8 @@ def split_vat_amounts(
     tax_pct: float = 15,
 ) -> tuple[float, float, float]:
     """تقسيم المبلغ / الضريبة / الإجمالي دون انحراف 1599.99 عند الإدخال الشامل."""
-    rate = Decimal(str(float(tax_pct or 15) / 100))
+    pct = 15.0 if tax_pct is None else float(tax_pct)
+    rate = Decimal(str(pct / 100))
     has_total = total_incl_vat not in (None, '')
 
     if has_total:

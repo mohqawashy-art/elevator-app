@@ -105,9 +105,15 @@ def _link_elevators(contract, el_codes: list[str], *, dry_run: bool) -> int:
 
 def _load_rows(path: str) -> pd.DataFrame:
     xl = pd.ExcelFile(path)
-    sheet = xl.sheet_names[0]
+    preferred = []
     for name in xl.sheet_names:
-        if 'استيراد' in str(name) or str(name).lower() in ('sheet1', 'contracts'):
+        preview = pd.read_excel(path, sheet_name=name, nrows=0)
+        cols = ' '.join(str(c) for c in preview.columns)
+        if any(k in cols for k in ('رقم العقد', 'اسم العميل', 'العملاء', 'كود العميل')):
+            preferred.append(name)
+    sheet = preferred[0] if preferred else xl.sheet_names[0]
+    for name in preferred:
+        if name in ('العقود', 'استيراد_جما', 'نموذج_الواجهة') or 'استيراد' in str(name):
             sheet = name
             break
     return pd.read_excel(path, sheet_name=sheet)
@@ -211,7 +217,17 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
 
         paid = _f(_cell(r, 'المبلغ المسدد'))
         val = annual
-        tax = round(val * 0.15, 2)
+        tax_raw = _cell(r, 'نسبة الضريبة %', 'نسبة الضريبة', 'tax_pct')
+        total_raw = _cell(r, 'الإجمالي شامل الضريبة', 'الإجمالي')
+        tax_pct = _f(tax_raw) if tax_raw not in (None, '') else 0.0
+        if tax_pct > 0:
+            tax = round(val * tax_pct / 100.0, 2)
+            total = round(val + tax, 2)
+        else:
+            tax = 0.0
+            total = val
+            if total_raw not in (None, '') and _f(total_raw) > 0:
+                total = round(_f(total_raw), 2)
         raw_type = _str(_cell(r, 'نوع العقد'))
         payload = dict(
             customer_id=customer.id,
@@ -226,12 +242,12 @@ def import_contracts(path: str, *, dry_run: bool = False) -> dict[str, int]:
             maint_frequency=_str(_cell(r, 'برنامج الصيانة', 'تكرار الصيانة')) or 'سنوي',
             visits_per_month=1,
             value=val,
-            tax_pct=15,
+            tax_pct=tax_pct,
             tax_amount=tax,
-            total=round(val + tax, 2),
+            total=total,
             payment_terms=_str(_cell(r, 'شروط الدفع')) or 'دفعة واحدة',
             paid_amount=paid,
-            invoice_status=_invoice_status(val, paid),
+            invoice_status=_invoice_status(total, paid),
             status=_norm_contract_status(_cell(r, 'حالة العقد')),
             reminder_date=end - timedelta(days=30),
             city=customer.city or _str(_cell(r, 'المنطقة')),

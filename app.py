@@ -5827,9 +5827,13 @@ def _sync_contract_elevators(contract_id, elevator_ids):
             db.session.add(link)
 
 
-def _purge_contract_dependencies(contract_id):
+def _purge_contract_dependencies(contract_id, *, keep_visits=False):
     """إزالة الارتباطات التي تمنع حذف العقد."""
-    tenant_query(MaintenanceVisit).filter_by(contract_id=contract_id).delete(synchronize_session=False)
+    visits_q = tenant_query(MaintenanceVisit).filter_by(contract_id=contract_id)
+    if keep_visits:
+        visits_q.update({MaintenanceVisit.contract_id: None}, synchronize_session=False)
+    else:
+        visits_q.delete(synchronize_session=False)
     tenant_query(ContractElevator).filter_by(contract_id=contract_id).delete(synchronize_session=False)
     tenant_query(Invoice).filter_by(contract_id=contract_id).update(
         {Invoice.contract_id: None}, synchronize_session=False
@@ -5844,7 +5848,8 @@ def _purge_contract_dependencies(contract_id):
 
 def _apply_contract_form(c, form):
     from customer_billing import split_vat_amounts
-    tax_pct = _money_round(form.get('tax_pct', 15) or 15)
+    raw_tax = form.get('tax_pct')
+    tax_pct = 15 if raw_tax in (None, '') else _money_round(raw_tax)
     total_raw = form.get('total')
     value_raw = form.get('value', 0)
     if total_raw not in (None, ''):

@@ -2,6 +2,8 @@
 # استيراد عقود جما من Excel إلى المستأجر jama (PostgreSQL)
 # Usage (GCP SSH):
 #   cd ~/liftcore/elevator-app
+#   python3 scripts/delete_jama_contracts.py --slug jama --all --dry-run
+#   python3 scripts/delete_jama_contracts.py --slug jama --all --yes
 #   bash deploy/import_jama_contracts_tenant.sh --dry-run
 #   bash deploy/import_jama_contracts_tenant.sh
 #
@@ -28,6 +30,7 @@ done
 pick_file() {
   local candidate
   for candidate in \
+    "$DATA_DIR/jama_handover_contracts_1_11_2025.xlsx" \
     "$DATA_DIR/عقود_تسليم_1_11_2025.xlsx" \
     "$DATA_DIR/العقود 14_8_2026.xlsx" \
     "$DATA_DIR/العقود 10_7_2026.xlsx" \

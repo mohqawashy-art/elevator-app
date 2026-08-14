@@ -2295,15 +2295,37 @@ function pickImportRow(row, keys) {
   return '';
 }
 
+function normImportName(s) {
+  return String(s || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي');
+}
+
+function customerCodeFromContract(code) {
+  var m = String(code || '').match(/(?:CN|CI)-(\d+)/i);
+  if (!m) return '';
+  var n = String(parseInt(m[1], 10));
+  while (n.length < 4) n = '0' + n;
+  return 'C-' + n;
+}
+
 function resolveImportCustomer(row) {
   var code = pickImportRow(row, ['كود العميل', 'customer_code', 'Client Code']);
+  if (!code) code = customerCodeFromContract(pickImportRow(row, ['رقم العقد', 'contract_code', 'code']));
   if (code) {
-    var byCode = CUSTOMERS.find(function(c) { return String(c.code).toLowerCase() === code.toLowerCase(); });
+    var want = code.toLowerCase();
+    var byCode = CUSTOMERS.find(function(c) { return String(c.code || '').toLowerCase() === want; });
     if (byCode) return byCode;
   }
   var name = pickImportRow(row, ['اسم العميل', 'العملاء', 'العميل', 'customer', 'Customer']);
   if (name) {
     var byName = CUSTOMERS.find(function(c) { return c.name === name; });
+    if (byName) return byName;
+    var nn = normImportName(name);
+    byName = CUSTOMERS.find(function(c) { return normImportName(c.name) === nn; });
     if (byName) return byName;
   }
   return null;
@@ -2365,25 +2387,62 @@ function handleContractImport(input) {
   }
 }
 
+function isContractHeaderRow(cells) {
+  return (cells || []).some(function(v) {
+    var s = String(v || '');
+    return s.includes('كود العميل') || s.includes('اسم العميل') || s.includes('العملاء')
+      || s.includes('رقم العقد') || s.toLowerCase().includes('customer');
+  });
+}
+
+function rowsFromSheet(wb, sheetName) {
+  var ws = wb.Sheets[sheetName];
+  if (!ws) return [];
+  return XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+}
+
 function processContractImportXLSX(data) {
   var wb = XLSX.read(data, { type: 'array' });
-  var ws = wb.Sheets[wb.SheetNames[0]];
-  var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
-  var hi = 0;
-  for (var i = 0; i < rows.length; i++) {
-    if (rows[i].some(function(v) {
-      var s = String(v || '');
-      return s.includes('كود العميل') || s.includes('اسم العميل') || s.toLowerCase().includes('customer');
-    })) { hi = i; break; }
+  var best = { sheet: wb.SheetNames[0], rows: [], hi: 0, hits: -1 };
+  wb.SheetNames.forEach(function(name) {
+    var rows = rowsFromSheet(wb, name);
+    var hi = -1;
+    for (var i = 0; i < rows.length; i++) {
+      if (isContractHeaderRow(rows[i])) { hi = i; break; }
+    }
+    if (hi < 0) return;
+    var headers = rows[hi].map(function(h) { return String(h || '').trim(); });
+    var hits = 0;
+    for (var j = hi + 1; j < rows.length; j++) {
+      var row = {};
+      headers.forEach(function(h, k) { row[h] = String(rows[j][k] || '').trim(); });
+      if (resolveImportCustomer(row)) hits++;
+    }
+    if (hits > best.hits) best = { sheet: name, rows: rows, hi: hi, hits: hits };
+  });
+  if (best.hits < 0) {
+    contractImportData = [];
+    showContractImportPreview([]);
+    alert('لم يُعثر على صف عناوين في الملف. يلزم عمود اسم العميل أو العملاء أو رقم العقد.');
+    return;
   }
-  var headers = rows[hi].map(function(h) { return String(h || '').trim(); });
+  var headers = best.rows[best.hi].map(function(h) { return String(h || '').trim(); });
   contractImportData = [];
-  for (var j = hi + 1; j < rows.length; j++) {
+  var unmatched = 0;
+  for (var j = best.hi + 1; j < best.rows.length; j++) {
     var row = {};
-    headers.forEach(function(h, k) { row[h] = String(rows[j][k] || '').trim(); });
+    headers.forEach(function(h, k) { row[h] = String(best.rows[j][k] || '').trim(); });
+    if (!pickImportRow(row, ['رقم العقد', 'اسم العميل', 'العملاء', 'كود العميل'])) continue;
     if (resolveImportCustomer(row)) contractImportData.push(row);
+    else unmatched++;
   }
   showContractImportPreview(headers.filter(function(h) { return h; }));
+  if (!contractImportData.length) {
+    alert('لم يُقرأ أي عقد مرتبط بعميل موجود. تطابق الاسم غير حرفي، أو أضف كود العميل C-0001.');
+  } else if (unmatched) {
+    var st = document.getElementById('import-status');
+    if (st) st.textContent = 'تم قراءة ' + contractImportData.length + ' عقد — تُخطّي ' + unmatched + ' بدون عميل مطابق';
+  }
 }
 
 function parseContractImportCSV(text) {
@@ -2448,7 +2507,8 @@ async function confirmContractImport() {
     fd.append('maint_frequency', pickImportRow(row, ['تكرار الصيانة', 'برنامج الصيانة', 'maint_frequency']) || 'شهري');
     fd.append('visits_per_month', '1');
     fd.append('value', pickImportRow(row, ['قيمة العقد قبل الضريبة', 'قيمة العقد', 'value', 'القيمة']) || '0');
-    fd.append('tax_pct', pickImportRow(row, ['نسبة الضريبة %', 'tax_pct', 'نسبة الضريبة']) || '15');
+    var taxPct = pickImportRow(row, ['نسبة الضريبة %', 'tax_pct', 'نسبة الضريبة']);
+    fd.append('tax_pct', taxPct === '' ? '0' : taxPct);
     var total = pickImportRow(row, ['الإجمالي شامل الضريبة', 'total', 'الإجمالي']);
     if (total) fd.append('total', total);
     var paid = pickImportRow(row, ['المبلغ المسدد', 'paid_amount']);
@@ -2457,12 +2517,17 @@ async function confirmContractImport() {
     fd.append('status', pickImportRow(row, ['حالة العقد', 'status']) || 'نشط');
     fd.append('notes', pickImportRow(row, ['ملاحظات', 'notes']));
     resolveImportElevatorIds(
-      pickImportRow(row, ['أكواد المصاعد', 'elevator_codes', 'المصاعد']),
+      pickImportRow(row, ['أكواد المصاعد', 'رقم المصعد', 'elevator_codes', 'المصاعد']),
       customer.id
     ).forEach(function(id) { fd.append('elevator_ids', id); });
     try {
-      var res = await fetch('/contracts/add', { method: 'POST', body: fd, credentials: 'same-origin' });
-      if (res.redirected || res.ok) ok++;
+      var res = await fetch('/contracts/add', {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+      });
+      if (res.ok) ok++;
       else skip++;
     } catch (e) {
       skip++;
