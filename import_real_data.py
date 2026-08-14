@@ -208,12 +208,15 @@ def _norm_contract_status(val) -> str:
     s = _str(val).strip()
     if not s:
         return 'نشط'
+    if s in ('تم تجديده', 'مجدد', 'مُجدَّد') or 'تجديده' in s:
+        return 'تم تجديده'
     m = {
         'ساري': 'نشط',
         'أوشك على الانتهاء': 'على وشك الانتهاء',
         'على وشك': 'على وشك الانتهاء',
         'منتهي': 'منتهي',
         'ملغي': 'ملغي',
+        'نشط': 'نشط',
     }
     for key, status in m.items():
         if key in s:

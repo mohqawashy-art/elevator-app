@@ -12,6 +12,27 @@ CONTRACT_PREFIX_INSTALLATION = 'CI-'
 
 # CN-00042 أو CI-00003 أو CN-00042-2026 أو CN-00042/2026 أو CN-00042-2026-2
 _YEAR_SUFFIX = re.compile(r'^(.+?)[-/](20\d{2})(?:-(\d+))?$', re.IGNORECASE)
+_PADDED_CODE = re.compile(
+    r'^(CN|CI)-(\d+)(?:[-/](20\d{2})(?:-(\d+))?)?$',
+    re.IGNORECASE,
+)
+
+
+def normalize_contract_code(code: Optional[str]) -> str:
+    """تطبيع رقم العقد مع الإبقاء على لاحقة سنة التجديد."""
+    raw = (code or '').strip().upper().replace(' ', '')
+    if not raw:
+        return ''
+    m = _PADDED_CODE.match(raw)
+    if not m:
+        return raw
+    prefix, num, year, suf = m.group(1).upper(), int(m.group(2)), m.group(3), m.group(4)
+    out = f'{prefix}-{num:05d}'
+    if year:
+        out = f'{out}-{year}'
+        if suf:
+            out = f'{out}-{suf}'
+    return out
 
 
 def contract_prefix_for_type(contract_type: Optional[str]) -> str:

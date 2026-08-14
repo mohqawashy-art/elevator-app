@@ -6183,8 +6183,15 @@ def contract_add():
 
     renew_from_id = request.form.get('renew_from_id', type=int)
     renew_src = tenant_get_or_404(Contract, renew_from_id) if renew_from_id else None
+    existing = None
 
-    if renew_src:
+    import_code = (request.form.get('code') or '').strip()
+    if import_code:
+        from contract_codes import normalize_contract_code
+        import_code = normalize_contract_code(import_code)
+        existing = tenant_query(Contract).filter_by(code=import_code).first()
+        code = import_code
+    elif renew_src:
         start_raw = (request.form.get('start_date') or '').strip()
         try:
             year = int(start_raw[:4]) if start_raw else date.today().year
@@ -6207,12 +6214,29 @@ def contract_add():
         prefix = contract_prefix_for_type(request.form.get('contract_type'))
         code = next_code(Contract, prefix, digits=CONTRACT_CODE_DIGITS)
 
-    c = Contract(code=code)
+    if import_code and len(code) > 20:
+        msg = 'رقم العقد الناتج أطول من المسموح'
+        if wants_json:
+            return jsonify({'ok': False, 'message': msg}), 400
+        flash(msg, 'error')
+        return redirect(url_for('contracts'))
+
+    c = existing or Contract(code=code)
     try:
         _apply_contract_form(c, request.form)
-        assign_organization(c)
-        db.session.add(c)
-        db.session.flush()
+        paid_raw = (request.form.get('paid_amount') or '').strip()
+        if paid_raw != '':
+            try:
+                paid_val = float(paid_raw)
+            except (TypeError, ValueError):
+                paid_val = 0.0
+            c.paid_amount = paid_val
+            from import_real_data import _invoice_status
+            c.invoice_status = _invoice_status(c.value, paid_val)
+        if existing is None:
+            assign_organization(c)
+            db.session.add(c)
+            db.session.flush()
         if renew_src and (renew_src.status or '') not in ('تم تجديده', 'ملغي'):
             renew_src.status = 'تم تجديده'
         _save_contract_file(c, request.files.get('contract_file'))

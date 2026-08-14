@@ -2301,7 +2301,7 @@ function resolveImportCustomer(row) {
     var byCode = CUSTOMERS.find(function(c) { return String(c.code).toLowerCase() === code.toLowerCase(); });
     if (byCode) return byCode;
   }
-  var name = pickImportRow(row, ['اسم العميل', 'العميل', 'customer', 'Customer']);
+  var name = pickImportRow(row, ['اسم العميل', 'العملاء', 'العميل', 'customer', 'Customer']);
   if (name) {
     var byName = CUSTOMERS.find(function(c) { return c.name === name; });
     if (byName) return byName;
@@ -2435,20 +2435,24 @@ async function confirmContractImport() {
     var row = contractImportData[i];
     var customer = resolveImportCustomer(row);
     if (!customer) { skip++; continue; }
-    var startDate = importDate(pickImportRow(row, ['تاريخ البداية', 'start_date', 'Start Date']));
-    var endDate = importDate(pickImportRow(row, ['تاريخ الانتهاء', 'end_date', 'End Date']));
+    var startDate = importDate(pickImportRow(row, ['تاريخ البداية', 'تاريخ بداية العقد', 'start_date', 'Start Date']));
+    var endDate = importDate(pickImportRow(row, ['تاريخ الانتهاء', 'تاريخ انتهاء العقد', 'end_date', 'End Date']));
     if (!startDate || !endDate) { skip++; continue; }
     var fd = new FormData();
     fd.append('customer_id', customer.id);
+    var importCode = pickImportRow(row, ['رقم العقد', 'contract_code', 'code']);
+    if (importCode) fd.append('code', importCode);
     fd.append('contract_type', pickImportRow(row, ['نوع العقد', 'contract_type']) || 'عقد صيانة');
     fd.append('start_date', startDate);
     fd.append('end_date', endDate);
-    fd.append('maint_frequency', pickImportRow(row, ['تكرار الصيانة', 'maint_frequency']) || 'شهري');
+    fd.append('maint_frequency', pickImportRow(row, ['تكرار الصيانة', 'برنامج الصيانة', 'maint_frequency']) || 'شهري');
     fd.append('visits_per_month', '1');
-    fd.append('value', pickImportRow(row, ['قيمة العقد قبل الضريبة', 'value', 'القيمة']) || '0');
+    fd.append('value', pickImportRow(row, ['قيمة العقد قبل الضريبة', 'قيمة العقد', 'value', 'القيمة']) || '0');
     fd.append('tax_pct', pickImportRow(row, ['نسبة الضريبة %', 'tax_pct', 'نسبة الضريبة']) || '15');
     var total = pickImportRow(row, ['الإجمالي شامل الضريبة', 'total', 'الإجمالي']);
     if (total) fd.append('total', total);
+    var paid = pickImportRow(row, ['المبلغ المسدد', 'paid_amount']);
+    if (paid) fd.append('paid_amount', paid);
     fd.append('payment_terms', pickImportRow(row, ['شروط الدفع', 'payment_terms']) || 'دفعة واحدة');
     fd.append('status', pickImportRow(row, ['حالة العقد', 'status']) || 'نشط');
     fd.append('notes', pickImportRow(row, ['ملاحظات', 'notes']));
