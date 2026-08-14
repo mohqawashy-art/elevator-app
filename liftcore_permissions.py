@@ -180,6 +180,7 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/api/parts-billing', 'parts_billing'),
     ('/elevator-estimates', 'elevator_estimates'),
     ('/installation', 'installation_projects'),
+    ('/api/revenues', 'revenues'),
     ('/revenues', 'revenues'),
     ('/expenses', 'expenses'),
     ('/invoices', 'invoices'),

@@ -212,6 +212,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <div class="page-title">الإيرادات <span id="rev-count" data-i18n-skip></span></div>
       <div class="page-actions">
         {% with report_url=url_for('report_revenues'), report_label='تقرير الإيرادات' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
+        <button class="btn btn-secondary btn-sm" onclick="showAllUncollected()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3h10M2 7h10M2 11h6"/></svg>
+          مستحقات غير محصّلة
+        </button>
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير Excel
@@ -272,18 +276,22 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div>
           <div style="font-size:14px;font-weight:600;color:var(--text1)">مستحقات غير محصّلة</div>
-          <div id="rev-pending-hint" style="font-size:11px;color:var(--warning);margin-top:4px">اختر العميل لعرض ما لم يُحصّل — ثم اضغط صفاً أو «إضافة إيراد»</div>
+          <div id="rev-pending-hint" style="font-size:11px;color:var(--warning);margin-top:4px">كل من لم يُحصّل منه — اضغط صفاً للتحصيل</div>
         </div>
-        <div class="field" style="min-width:280px;flex:1;max-width:420px;margin:0">
-          <label style="font-size:11px;color:var(--text3);margin-bottom:4px;display:block">العميل</label>
-          <select id="f-pending-customer"><option value="">اختر العميل...</option></select>
+        <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+          <div class="field" style="min-width:240px;flex:1;max-width:360px;margin:0">
+            <label style="font-size:11px;color:var(--text3);margin-bottom:4px;display:block">تصفية بعميل (اختياري)</label>
+            <select id="f-pending-customer"><option value="">كل العملاء</option></select>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="showAllUncollected()">الكل</button>
         </div>
       </div>
       <div class="table-scroll">
-        <div id="rev-pending-empty" style="padding:20px;color:var(--text3);font-size:13px;text-align:center">اختر عميلاً من القائمة لعرض المستحقات</div>
+        <div id="rev-pending-empty" style="padding:20px;color:var(--text3);font-size:13px;text-align:center">جاري التحميل...</div>
         <table id="rev-pending-table" style="display:none">
           <thead>
             <tr>
+              <th>العميل</th>
               <th>الكود</th>
               <th>التاريخ</th>
               <th>الاستحقاق</th>
@@ -598,8 +606,85 @@ const REV_TYPE_BY_SOURCE = {
 };
 
 let pendingOps = [];
+let allPendingOps = [];
 let pendingLoadToken = 0;
 let syncingCustomers = false;
+
+function pendingRemainingTotal(ops) {
+  return (ops || []).reduce(function (s, op) { return s + Number(op.remaining || 0); }, 0);
+}
+
+function updatePendingHint() {
+  const mainHint = document.getElementById('rev-pending-hint');
+  if (!mainHint) return;
+  const cid = document.getElementById('f-pending-customer')?.value;
+  const n = pendingOps.length;
+  const total = pendingRemainingTotal(pendingOps);
+  if (!n) {
+    mainHint.textContent = cid
+      ? 'لا توجد مستحقات غير محصّلة لهذا العميل'
+      : 'لا توجد مستحقات غير محصّلة';
+    return;
+  }
+  mainHint.textContent = (cid ? 'هذا العميل: ' : 'كل العملاء: ')
+    + n + ' بند — المتبقي ' + total.toLocaleString('en-US') + ' ⃁';
+}
+
+function showAllUncollected() {
+  const panel = document.getElementById('rev-pending-panel');
+  if (typeof LcClientSelect !== 'undefined') {
+    syncingCustomers = true;
+    LcClientSelect.setCustomers('f-pending-customer', CUSTOMERS, '');
+    syncingCustomers = false;
+  } else {
+    const sel = document.getElementById('f-pending-customer');
+    if (sel) sel.value = '';
+  }
+  applyPendingFilter();
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function applyPendingFilter() {
+  const cid = document.getElementById('f-pending-customer')?.value;
+  pendingOps = cid
+    ? allPendingOps.filter(function (op) { return String(op.customer_id) === String(cid); })
+    : allPendingOps.slice();
+  updatePendingHint();
+  renderRevenuePendingMainTable();
+}
+
+function loadAllUncollectedOps() {
+  const token = ++pendingLoadToken;
+  const mainEmpty = document.getElementById('rev-pending-empty');
+  const mainTable = document.getElementById('rev-pending-table');
+  if (mainEmpty) {
+    mainEmpty.style.display = '';
+    mainEmpty.style.color = 'var(--text3)';
+    mainEmpty.textContent = 'جاري التحميل...';
+  }
+  if (mainTable) mainTable.style.display = 'none';
+  fetch('/api/revenues/uncollected-ops', { credentials: 'same-origin' })
+    .then(function (r) {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    })
+    .then(function (data) {
+      if (token !== pendingLoadToken) return;
+      allPendingOps = data.operations || [];
+      applyPendingFilter();
+    })
+    .catch(function () {
+      if (token !== pendingLoadToken) return;
+      allPendingOps = [];
+      pendingOps = [];
+      if (mainEmpty) {
+        mainEmpty.style.display = '';
+        mainEmpty.style.color = 'var(--danger)';
+        mainEmpty.textContent = 'تعذّر تحميل المستحقات — حدّث الصفحة وحاول مرة أخرى';
+      }
+      if (mainTable) mainTable.style.display = 'none';
+    });
+}
 
 function initRevenueClientSelects() {
   if (typeof LcClientSelect === 'undefined') return;
@@ -609,6 +694,7 @@ function initRevenueClientSelects() {
   });
   LcClientSelect.upgradeSelect('f-pending-customer', {
     customers: CUSTOMERS,
+    placeholder: 'كل العملاء',
     onChange: onPendingCustomerChange,
   });
 }
@@ -629,11 +715,7 @@ function syncRevenueCustomerSelectors(cid) {
 
 function onPendingCustomerChange() {
   if (syncingCustomers) return;
-  const cid = document.getElementById('f-pending-customer')?.value;
-  if (document.getElementById('modal-add')?.classList.contains('open') && !document.getElementById('modal-add')?.dataset.editId) {
-    syncRevenueCustomerSelectors(cid);
-  }
-  loadUncollectedOps(cid);
+  applyPendingFilter();
 }
 
 function onRevenueCustomerChange() {
@@ -641,67 +723,61 @@ function onRevenueCustomerChange() {
   const editId = document.getElementById('modal-add')?.dataset.editId;
   if (editId) return;
   const cid = document.getElementById('f-customer-sel')?.value;
-  syncRevenueCustomerSelectors(cid);
-  loadUncollectedOps(cid);
+  loadModalUncollectedOps(cid);
 }
 
 function loadUncollectedOps(cid, opts) {
+  loadModalUncollectedOps(cid, opts);
+}
+
+function loadModalUncollectedOps(cid, opts) {
   opts = opts || {};
   const wrap = document.getElementById('rev-billable-wrap');
   const list = document.getElementById('rev-billable-list');
   const hint = document.getElementById('rev-billable-hint');
-  const mainHint = document.getElementById('rev-pending-hint');
-  const mainEmpty = document.getElementById('rev-pending-empty');
-  const mainTable = document.getElementById('rev-pending-table');
-  const mainBody = document.getElementById('rev-pending-tbody');
   clearRevenueSource();
-  pendingOps = [];
 
   if (!cid) {
     if (wrap) wrap.style.display = 'none';
-    if (mainEmpty) { mainEmpty.style.display = ''; mainEmpty.textContent = 'اختر عميلاً من القائمة لعرض المستحقات'; }
-    if (mainTable) mainTable.style.display = 'none';
-    if (mainBody) mainBody.innerHTML = '';
-    if (mainHint) mainHint.textContent = 'اختر العميل لعرض ما لم يُحصّل — ثم اضغط صفاً أو «إضافة إيراد»';
     return;
   }
 
-  const token = ++pendingLoadToken;
-  if (wrap) wrap.style.display = 'block';
-  if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
-  if (mainEmpty) { mainEmpty.style.display = ''; mainEmpty.textContent = 'جاري التحميل...'; }
-  if (mainTable) mainTable.style.display = 'none';
+  function applyModalOps(modalOps) {
+    if (wrap) wrap.style.display = 'block';
+    if (hint) hint.textContent = modalOps.length
+      ? ('يوجد ' + modalOps.length + ' عملية غير محصّلة — اختر صفاً من الجدول')
+      : 'لا توجد عمليات غير محصّلة لهذا العميل — يمكنك إدخال الإيراد يدوياً';
+    const saved = pendingOps;
+    pendingOps = modalOps;
+    renderRevenuePendingOps();
+    if (opts.source_type && opts.source_id) {
+      const idx = modalOps.findIndex(function (op) {
+        return op.source_type === opts.source_type && String(op.source_id) === String(opts.source_id);
+      });
+      if (idx >= 0) selectRevenuePendingOp(idx);
+      else pendingOps = saved;
+    } else {
+      pendingOps = saved;
+    }
+  }
 
+  const cached = allPendingOps.filter(function (op) {
+    return String(op.customer_id) === String(cid);
+  });
+  if (allPendingOps.length) {
+    applyModalOps(cached);
+    return;
+  }
+  if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
+  if (wrap) wrap.style.display = 'block';
   fetch('/api/customers/' + cid + '/uncollected-ops', { credentials: 'same-origin' })
-    .then(r => {
+    .then(function (r) {
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
     })
-    .then(data => {
-      if (token !== pendingLoadToken) return;
-      pendingOps = data.operations || [];
-      const msg = pendingOps.length
-        ? ('يوجد ' + pendingOps.length + ' عملية غير محصّلة')
-        : 'لا توجد عمليات غير محصّلة لهذا العميل';
-      if (hint) hint.textContent = pendingOps.length
-        ? (msg + ' — اختر صفاً من الجدول')
-        : msg + ' — يمكنك إدخال الإيراد يدوياً';
-      if (mainHint) mainHint.textContent = msg;
-      renderRevenuePendingOps();
-      renderRevenuePendingMainTable();
-      if (opts.source_type && opts.source_id) {
-        const idx = pendingOps.findIndex(function (op) {
-          return op.source_type === opts.source_type && String(op.source_id) === String(opts.source_id);
-        });
-        if (idx >= 0) selectRevenuePendingOp(idx);
-      }
-    })
-    .catch(() => {
-      if (token !== pendingLoadToken) return;
-      const err = 'تعذّر تحميل العمليات — حدّث الصفحة وحاول مرة أخرى';
-      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">' + err + '</p>';
-      if (mainEmpty) { mainEmpty.style.display = ''; mainEmpty.textContent = err; mainEmpty.style.color = 'var(--danger)'; }
-      if (mainTable) mainTable.style.display = 'none';
+    .then(function (data) { applyModalOps(data.operations || []); })
+    .catch(function () {
+      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل العمليات</p>';
     });
 }
 
@@ -714,7 +790,10 @@ function renderRevenuePendingMainTable() {
     if (mainEmpty) {
       mainEmpty.style.display = '';
       mainEmpty.style.color = 'var(--text3)';
-      mainEmpty.textContent = 'لا توجد عمليات غير محصّلة لهذا العميل.';
+      const cid = document.getElementById('f-pending-customer')?.value;
+      mainEmpty.textContent = cid
+        ? 'لا توجد عمليات غير محصّلة لهذا العميل.'
+        : 'لا توجد مستحقات غير محصّلة.';
     }
     mainTable.style.display = 'none';
     mainBody.innerHTML = '';
@@ -724,6 +803,7 @@ function renderRevenuePendingMainTable() {
   mainTable.style.display = '';
   mainBody.innerHTML = pendingOps.map((op, idx) => `
     <tr class="lc-op-row" data-op-idx="${idx}" style="cursor:pointer" onclick="pickPendingOp(${idx})">
+      <td>${escHtml(op.customer || '—')}${op.customer_code ? ' <span class="td-code">' + escHtml(op.customer_code) + '</span>' : ''}</td>
       <td class="td-code">${escHtml(op.code)}</td>
       <td class="lc-date">${escHtml(op.date)}</td>
       <td class="lc-date">${escHtml(op.due_date || '—')}</td>
@@ -738,7 +818,8 @@ function renderRevenuePendingMainTable() {
 }
 
 function pickPendingOp(idx) {
-  const cid = document.getElementById('f-pending-customer')?.value;
+  const op = pendingOps[idx];
+  const cid = (op && op.customer_id) || document.getElementById('f-pending-customer')?.value;
   openAddModal(cid || null, { keepPendingOps: true });
   selectRevenuePendingOp(idx);
 }
@@ -1095,6 +1176,7 @@ function initRevenuesPage() {
   if (tableSort) tableSort.bindHeaders();
   initRevenueClientSelects();
   renderTable(REVENUES);
+  loadAllUncollectedOps();
   var params = new URLSearchParams(window.location.search);
   if (params.get('action') === 'add') {
     openAddModal(params.get('customer_id'), {

@@ -4642,14 +4642,32 @@ def api_customer_invoicable_revenues(customer_id):
     })
 
 
+@app.route('/api/revenues/uncollected-ops')
+def api_revenues_uncollected_ops():
+    from customer_billing import tenant_uncollected_ops
+
+    raw_cid = (request.args.get('customer_id') or '').strip()
+    customer_id = int(raw_cid) if raw_cid.isdigit() else None
+    if customer_id:
+        tenant_get_or_404(Customer, customer_id)
+    ops = tenant_uncollected_ops(customer_id=customer_id)
+    return jsonify({
+        'customer_id': customer_id,
+        'count': len(ops),
+        'remaining_total': round(sum(float(op.get('remaining') or 0) for op in ops), 2),
+        'operations': ops,
+    })
+
+
 @app.route('/api/customers/<int:customer_id>/uncollected-ops')
 def api_customer_uncollected_ops(customer_id):
     from customer_billing import customer_uncollected_ops
 
     tenant_get_or_404(Customer, customer_id)
+    ops = customer_uncollected_ops(customer_id)
     return jsonify({
         'customer_id': customer_id,
-        'operations': customer_uncollected_ops(customer_id),
+        'operations': ops,
     })
 
 

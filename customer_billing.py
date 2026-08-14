@@ -596,21 +596,22 @@ def tenant_outstanding_collectible(*, today: date | None = None) -> dict:
     }
 
 
-def customer_uncollected_ops(customer_id: int) -> list[dict]:
-    """عمليات العميل غير المحصّلة بالكامل."""
+def tenant_uncollected_ops(*, customer_id: int | None = None) -> list[dict]:
+    """المستحقات غير المحصّلة للمستأجر — اختيارياً لعميل واحد."""
+    from sqlalchemy.orm import joinedload
+
     rows: list[dict] = []
     today = date.today()
 
-    contracts = (
-        tenant_query(Contract).filter_by(customer_id=customer_id)
-        .order_by(Contract.start_date.desc())
-        .all()
-    )
-    for c in contracts:
+    cq = tenant_query(Contract).options(joinedload(Contract.customer))
+    if customer_id:
+        cq = cq.filter_by(customer_id=customer_id)
+    for c in cq.order_by(Contract.start_date.desc()).all():
         remaining = contract_remaining(c)
         if remaining <= 0.01 or not _contract_is_collectible(c, today):
             continue
         paid = contract_paid_amount(c.id)
+        cust = c.customer
         rows.append({
             'source_type': 'contract',
             'source_id': c.id,
@@ -624,22 +625,24 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'remaining': remaining,
             'amount_before_tax': _before_tax_from_inclusive(remaining),
             'contract_id': c.id,
+            'customer_id': c.customer_id,
+            'customer': cust.name if cust else '—',
+            'customer_code': cust.code if cust else '',
             'status': c.invoice_status or 'غير مدفوع',
             'collected': False,
             'hint': f'غير محصّل — المتبقي {_round_money(remaining)}',
         })
 
-    invoices = (
-        tenant_query(Invoice).filter_by(customer_id=customer_id)
-        .order_by(Invoice.invoice_date.desc())
-        .all()
-    )
-    for inv in invoices:
+    iq = tenant_query(Invoice).options(joinedload(Invoice.customer))
+    if customer_id:
+        iq = iq.filter_by(customer_id=customer_id)
+    for inv in iq.order_by(Invoice.invoice_date.desc()).all():
         remaining = invoice_remaining(inv)
         if remaining <= 0.01:
             continue
         if inv.status in PAID_INVOICE_STATUSES and remaining <= 0.01:
             continue
+        cust = inv.customer
         rows.append({
             'source_type': 'invoice',
             'source_id': inv.id,
@@ -653,22 +656,28 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'remaining': remaining,
             'amount_before_tax': _before_tax_from_inclusive(remaining),
             'contract_id': inv.contract_id,
+            'customer_id': inv.customer_id,
+            'customer': cust.name if cust else '—',
+            'customer_code': cust.code if cust else '',
             'status': inv.status or 'غير مدفوعة',
             'collected': False,
             'hint': f'غير محصّل — المتبقي {_round_money(remaining)}',
         })
 
-    parts = (
-        tenant_query(PartsBilling).filter_by(customer_id=customer_id)
-        .order_by(PartsBilling.billing_date.desc())
-        .all()
+    pq = tenant_query(PartsBilling).options(
+        joinedload(PartsBilling.customer),
+        joinedload(PartsBilling.fault),
+        joinedload(PartsBilling.visit),
     )
-    for pb in parts:
+    if customer_id:
+        pq = pq.filter_by(customer_id=customer_id)
+    for pb in pq.order_by(PartsBilling.billing_date.desc()).all():
         if (pb.status or '') not in UNPAID_PARTS_STATUSES and parts_remaining(pb) <= 0.01:
             continue
         remaining = parts_remaining(pb)
         if remaining <= 0.01:
             continue
+        cust = pb.customer
         rows.append({
             'source_type': 'parts_billing',
             'source_id': pb.id,
@@ -682,6 +691,9 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'remaining': remaining,
             'amount_before_tax': _before_tax_from_inclusive(remaining),
             'contract_id': pb.contract_id,
+            'customer_id': pb.customer_id,
+            'customer': cust.name if cust else '—',
+            'customer_code': cust.code if cust else '',
             'status': pb.status or 'غير محصل',
             'fault_code': pb.fault.code if pb.fault else '',
             'visit_code': pb.visit.code if pb.visit else '',
@@ -689,8 +701,13 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
             'hint': f'غير محصّل — المتبقي {_round_money(remaining)}',
         })
 
-    rows.sort(key=lambda x: (x['date'], x['code']), reverse=True)
+    rows.sort(key=lambda x: (x['remaining'], x['date'], x['code'] or ''), reverse=True)
     return rows
+
+
+def customer_uncollected_ops(customer_id: int) -> list[dict]:
+    """عمليات العميل غير المحصّلة بالكامل."""
+    return tenant_uncollected_ops(customer_id=customer_id)
 
 
 def apply_payment_to_source(
