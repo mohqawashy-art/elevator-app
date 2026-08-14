@@ -1164,7 +1164,7 @@ def expense_to_js_dict(e):
 def revenue_to_js_dict(r):
     return {
         'id': r.id,
-        'code': r.code,
+        'code': r.code or '',
         'customer_id': r.customer_id,
         'contract_id': r.contract_id,
         'customer': r.customer.name if r.customer else '—',
