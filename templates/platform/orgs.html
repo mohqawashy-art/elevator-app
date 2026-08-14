@@ -55,7 +55,9 @@
       <tr>
         <th>#</th>
         <th>المؤسسة</th>
+        <th>التشغيل</th>
         <th>الحالة</th>
+        <th>المستخدمون</th>
         <th>الباقة</th>
         <th>البريد</th>
         <th>إنشاء</th>
@@ -64,17 +66,25 @@
     </thead>
     <tbody>
       {% for o in orgs %}
+      {% set op = ops.get(o.id|string) if ops is defined else none %}
       <tr>
         <td>{{ o.id }}</td>
         <td><strong>{{ o.name }}</strong><br><code>{{ o.slug }}</code></td>
+        <td><span class="badge badge-{{ op.runtime_key if op else 'running' }}">{{ op.runtime_label if op else 'يعمل' }}</span></td>
         <td><span class="badge badge-{{ o.status }}">{{ o.status }}</span></td>
+        <td>
+          {{ op.users_total if op else 0 }} مكتبي
+          {% if op and op.technicians %} · {{ op.technicians }} فني{% endif %}
+          {% if op and op.users_online %}<br><span class="badge badge-online">{{ op.users_online }} متصل</span>{% endif %}
+          {% if op and op.last_login_label != '—' %}<div class="muted">آخر دخول {{ op.last_login_label }}</div>{% endif %}
+        </td>
         <td>{{ o.plan }}</td>
         <td>{{ o.admin_email or '—' }}</td>
         <td class="muted">{{ o.created_at }}</td>
         <td><a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ o.id }}">إدارة</a></td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="muted">لا نتائج.</td></tr>
+      <tr><td colspan="9" class="muted">لا نتائج.</td></tr>
       {% endfor %}
     </tbody>
   </table>

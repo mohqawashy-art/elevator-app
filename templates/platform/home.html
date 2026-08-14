@@ -5,10 +5,33 @@
 <p class="sub">إدارة عملاء LiftCore بشكل منفصل عن برنامج التشغيل اليومي للشركات.</p>
 <p class="live-hint">تحديث تلقائي كل 4 ثوانٍ · يتوقف مؤقتاً أثناء التعديل على الحقول</p>
 
-<div class="stats">
+{% if server %}
+<div class="card">
+  <div class="server-head">
+    <div class="h"><span class="dot dot-{{ server.level }}"></span> حالة السيرفر — {{ server.label }}</div>
+    <a class="btn btn-secondary btn-sm" href="/platform/ops">التفاصيل</a>
+  </div>
+  <div class="server-grid">
+    <div class="kv"><div class="k">الجهاز</div><div class="v"><code>{{ server.hostname }}</code></div></div>
+    <div class="kv"><div class="k">المعالج / الحمل</div><div class="v">{{ server.cpu_count }} أنوية{% if server.load1 is not none %} · {{ server.load1 }}{% endif %}</div></div>
+    <div class="kv"><div class="k">الذاكرة</div><div class="v">متاح {{ server.memory_available }} من {{ server.memory_total }}{% if server.memory_used_pct is not none %} · {{ server.memory_used_pct }}%{% endif %}</div></div>
+    <div class="kv"><div class="k">القرص</div><div class="v">متاح {{ server.disk_free }} من {{ server.disk_total }}</div></div>
+    <div class="kv"><div class="k">القاعدة</div><div class="v">{{ server.db_backend }}{% if server.db_ok %} · تعمل{% else %} · لا ترد{% endif %}</div></div>
+    <div class="kv"><div class="k">مدة التشغيل</div><div class="v">{{ server.uptime }}</div></div>
+    <div class="kv"><div class="k">خدمة liftcore</div><div class="v">{{ server.service_liftcore or 'هذا التطبيق يعمل' }}</div></div>
+    <div class="kv"><div class="k">مستخدمو السيرفر</div><div class="v">{{ stats.users_total or 0 }} حساباً{% if stats.users_online %} · {{ stats.users_online }} متصل{% endif %}</div></div>
+  </div>
+  {% if server.warnings %}
+  <p class="muted" style="margin-top:10px;color:var(--warn)">{{ server.warnings|join(' · ') }}</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="stats stats-6">
   <div class="stat"><div class="n">{{ stats.total }}</div><div class="l">إجمالي المؤسسات</div></div>
   <div class="stat"><div class="n">{{ stats.active }}</div><div class="l">نشطة</div></div>
   <div class="stat"><div class="n">{{ stats.trial }}</div><div class="l">تجريبية</div></div>
+  <div class="stat"><div class="n">{{ stats.users_total or 0 }}</div><div class="l">مستخدمون على السيرفر</div></div>
   <div class="stat"><div class="n">{{ stats.leads_new or 0 }}</div><div class="l">طلبات مبيعات جديدة</div></div>
   <div class="stat"><div class="n">{{ stats.invites_open }}</div><div class="l">دعوات مفتوحة</div></div>
 </div>
@@ -23,25 +46,32 @@
       <tr>
         <th>#</th>
         <th>المؤسسة</th>
+        <th>التشغيل</th>
         <th>الحالة</th>
+        <th>المستخدمون</th>
         <th>الباقة</th>
         <th>البريد</th>
-        <th>تاريخ الإنشاء</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
       {% for o in orgs %}
+      {% set op = ops.get(o.id|string) if ops is defined else none %}
       <tr>
         <td>{{ o.id }}</td>
         <td>
           <strong>{{ o.name }}</strong><br>
           <span class="muted"><code>{{ o.slug }}</code></span>
         </td>
+        <td><span class="badge badge-{{ op.runtime_key if op else 'running' }}">{{ op.runtime_label if op else 'يعمل' }}</span></td>
         <td><span class="badge badge-{{ o.status }}">{{ o.status }}</span></td>
+        <td>
+          {{ op.users_total if op else 0 }} مكتبي
+          {% if op and op.technicians %} · {{ op.technicians }} فني{% endif %}
+          {% if op and op.users_online %}<br><span class="badge badge-online">{{ op.users_online }} متصل</span>{% endif %}
+        </td>
         <td>{{ o.plan }}</td>
         <td>{{ o.admin_email or '—' }}</td>
-        <td class="muted">{{ o.created_at }}</td>
         <td><a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ o.id }}">إدارة</a></td>
       </tr>
       {% endfor %}

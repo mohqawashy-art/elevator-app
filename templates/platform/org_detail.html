@@ -320,7 +320,7 @@
 <div class="card">
   <div class="section">المستخدمون</div>
   <table class="table">
-    <thead><tr><th>#</th><th>المستخدم</th><th>الدور</th><th>البريد</th><th>نشط</th></tr></thead>
+    <thead><tr><th>#</th><th>المستخدم</th><th>الدور</th><th>البريد</th><th>نشط</th><th>آخر دخول</th></tr></thead>
     <tbody>
       {% for u in users %}
       <tr>
@@ -329,9 +329,10 @@
         <td>{{ u.role }}</td>
         <td>{{ u.email or '—' }}</td>
         <td>{{ 'نعم' if u.is_active else 'لا' }}</td>
+        <td class="muted">{{ u.last_login.strftime('%Y-%m-%d %H:%M') if u.last_login else '—' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="muted">لا مستخدمين.</td></tr>
+      <tr><td colspan="6" class="muted">لا مستخدمين.</td></tr>
       {% endfor %}
     </tbody>
   </table>

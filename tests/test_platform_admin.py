@@ -63,8 +63,35 @@ def test_admin_host_login_and_home():
     body = r.get_data(as_text=True)
     assert 'لوحة إدارة المنصة' in body
     assert 'Acme' in body
+    assert 'حالة السيرفر' in body
+    assert 'مستخدمون على السيرفر' in body
     assert 'liftcore-header-logo.png' in body or 'liftcore-brand-logo.png' in body
     assert 'PLATFORM' in body or 'Platform Admin' in body or 'إدارة المنصة' in body
+
+
+def test_platform_ops_shows_server_and_tenant_users():
+    client = _client()
+    client.post(
+        '/login',
+        data={'username': 'opsadmin', 'password': 'OpsPass123!'},
+        base_url=ADMIN_URL,
+        follow_redirects=False,
+    )
+    r = client.get('/platform/ops', base_url=ADMIN_URL)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'حالة التشغيل' in body
+    assert 'حالة السيرفر' in body
+    assert 'Acme' in body
+    assert 'acmeco' in body
+    assert 'مستخدمو المكتب' in body
+    assert 'يعمل' in body
+
+    r = client.get('/platform/orgs', base_url=ADMIN_URL)
+    assert r.status_code == 200
+    orgs_body = r.get_data(as_text=True)
+    assert 'التشغيل' in orgs_body
+    assert 'مكتبي' in orgs_body
 
 
 def test_platform_leads_page_shows_sales_request():

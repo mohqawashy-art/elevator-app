@@ -3084,7 +3084,7 @@ def operator_onboarding_cancel(invite_id):
 @app.route('/platform')
 @app.route('/platform/')
 def platform_home():
-    from platform_admin import is_admin_host, list_organizations, org_stats, recent_invites
+    from platform_admin import is_admin_host, list_organizations, org_stats, recent_invites, server_status, tenant_ops_by_id
     from sales_leads import list_sales_leads, sales_lead_stats
 
     if not is_admin_host():
@@ -3095,11 +3095,14 @@ def platform_home():
     lead_stats = sales_lead_stats()
     stats = org_stats()
     stats['leads_new'] = lead_stats.get('new', 0)
+    orgs = list_organizations(limit=12)
     return render_template(
         'platform/home.html',
         nav='home',
         stats=stats,
-        orgs=list_organizations(limit=12),
+        server=server_status(),
+        orgs=orgs,
+        ops=tenant_ops_by_id(orgs),
         invites=recent_invites(12),
         leads=list_sales_leads(limit=12),
         notice=session.pop('plat_notice', None),
@@ -3283,7 +3286,7 @@ def platform_leads_clear():
 @app.route('/platform/orgs')
 def platform_orgs():
     from demo_provisioning import demo_days_default
-    from platform_admin import is_admin_host, list_organizations
+    from platform_admin import is_admin_host, list_organizations, server_status, tenant_ops_by_id
 
     if not is_admin_host():
         abort(404)
@@ -3292,13 +3295,39 @@ def platform_orgs():
         return redirect(url_for('login'))
     q = (request.args.get('q') or '').strip()
     status = (request.args.get('status') or '').strip()
+    orgs = list_organizations(q=q, status=status, limit=300)
     return render_template(
         'platform/orgs.html',
         nav='orgs',
-        orgs=list_organizations(q=q, status=status, limit=300),
+        orgs=orgs,
+        ops=tenant_ops_by_id(orgs),
+        server=server_status(),
         q=q,
         status=status,
         demo_days=demo_days_default(),
+        notice=session.pop('plat_notice', None),
+        notice_type=session.pop('plat_notice_type', None),
+    )
+
+
+@app.route('/platform/ops')
+def platform_ops():
+    from platform_admin import is_admin_host, list_organizations, org_stats, server_status, tenant_ops_by_id
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+    orgs = list_organizations(limit=300)
+    stats = org_stats()
+    return render_template(
+        'platform/ops.html',
+        nav='ops',
+        server=server_status(),
+        stats=stats,
+        orgs=orgs,
+        ops=tenant_ops_by_id(orgs),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
     )

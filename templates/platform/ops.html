@@ -1,0 +1,86 @@
+{% extends 'platform/base.html' %}
+{% block title %}حالة التشغيل — LiftCore Platform{% endblock %}
+{% block content %}
+<div class="h1">حالة التشغيل</div>
+<p class="sub">حالة سيرفر جوجل، وتشغيل كل مستأجر، والمستخدمون على هذا الجهاز.</p>
+<p class="live-hint">تحديث تلقائي كل 4 ثوانٍ</p>
+
+<div class="card">
+  <div class="server-head">
+    <div class="h"><span class="dot dot-{{ server.level }}"></span> حالة السيرفر — {{ server.label }}</div>
+    <span class="muted">{{ server.checked_at }}</span>
+  </div>
+  <div class="server-grid">
+    <div class="kv"><div class="k">اسم الجهاز</div><div class="v"><code>{{ server.hostname }}</code></div></div>
+    <div class="kv"><div class="k">المعالج</div><div class="v">{{ server.cpu_count }} أنوية{% if server.load1 is not none %} · حمل {{ server.load1 }}{% endif %}</div></div>
+    <div class="kv"><div class="k">الذاكرة</div><div class="v">متاح {{ server.memory_available }} من {{ server.memory_total }}{% if server.memory_used_pct is not none %} · مستخدم {{ server.memory_used_pct }}%{% endif %}</div></div>
+    <div class="kv"><div class="k">القرص</div><div class="v">متاح {{ server.disk_free }} من {{ server.disk_total }}{% if server.disk_used_pct is not none %} · {{ server.disk_used_pct }}%{% endif %}</div></div>
+    <div class="kv"><div class="k">مدة التشغيل</div><div class="v">{{ server.uptime }}</div></div>
+    <div class="kv"><div class="k">قاعدة البيانات</div><div class="v">{{ server.db_backend }}{% if server.db_name %} / {{ server.db_name }}{% endif %}{% if server.db_ok %} · تعمل{% else %} · لا ترد{% endif %}</div></div>
+    <div class="kv"><div class="k">خدمة liftcore</div><div class="v">{{ server.service_liftcore or 'هذا التطبيق يعمل' }}</div></div>
+    <div class="kv"><div class="k">خدمة liftcore-jama</div><div class="v">{{ server.service_jama or 'غير مستخدمة (المستأجرون على النسخة الموحّدة)' }}</div></div>
+  </div>
+  {% if server.warnings %}
+  <p class="muted" style="margin-top:12px;color:var(--warn)">{{ server.warnings|join(' · ') }}</p>
+  {% endif %}
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="n">{{ stats.total }}</div><div class="l">مستأجرون</div></div>
+  <div class="stat"><div class="n">{{ stats.active }}</div><div class="l">نشط</div></div>
+  <div class="stat"><div class="n">{{ stats.trial }}</div><div class="l">تجريبي</div></div>
+  <div class="stat"><div class="n">{{ stats.users_total or 0 }}</div><div class="l">مستخدمون على السيرفر</div></div>
+  <div class="stat"><div class="n">{{ stats.users_online or 0 }}</div><div class="l">متصلون الآن (15 د)</div></div>
+</div>
+
+<div class="card">
+  <div class="section">تشغيل المستأجرين على هذا السيرفر</div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>المستأجر</th>
+        <th>التشغيل</th>
+        <th>الاشتراك</th>
+        <th>مستخدمو المكتب</th>
+        <th>فنيون</th>
+        <th>متصل</th>
+        <th>آخر دخول</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orgs %}
+      {% set op = ops.get(o.id|string) if ops is defined else none %}
+      <tr>
+        <td>{{ o.id }}</td>
+        <td>
+          <strong>{{ o.name }}</strong><br>
+          <code>{{ o.slug }}</code>
+        </td>
+        <td><span class="badge badge-{{ op.runtime_key if op else 'running' }}">{{ op.runtime_label if op else 'يعمل' }}</span></td>
+        <td><span class="badge badge-{{ o.status }}">{{ o.status }}</span></td>
+        <td>{{ op.users_active if op else 0 }} / {{ op.users_total if op else 0 }}</td>
+        <td>{{ op.technicians if op else 0 }}</td>
+        <td>{% if op and op.users_online %}<span class="badge badge-online">{{ op.users_online }}</span>{% else %}0{% endif %}</td>
+        <td class="muted">{{ op.last_login_label if op else '—' }}</td>
+        <td><a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ o.id }}">إدارة</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="muted">لا مستأجرين على هذا السيرفر.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  setInterval(function () {
+    var active = document.activeElement;
+    if (active && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(active.tagName)) return;
+    window.location.reload();
+  }, 4000);
+})();
+</script>
+{% endblock %}
