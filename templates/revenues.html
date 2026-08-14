@@ -278,12 +278,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <div style="font-size:14px;font-weight:600;color:var(--text1)">مستحقات غير محصّلة</div>
           <div id="rev-pending-hint" style="font-size:11px;color:var(--warning);margin-top:4px">كل من لم يُحصّل منه — اضغط صفاً للتحصيل</div>
         </div>
-        <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
-          <div class="field" style="min-width:240px;flex:1;max-width:360px;margin:0">
-            <label style="font-size:11px;color:var(--text3);margin-bottom:4px;display:block">تصفية بعميل (اختياري)</label>
-            <select id="f-pending-customer"><option value="">كل العملاء</option></select>
-          </div>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="showAllUncollected()">الكل</button>
+        <div class="search-wrap" style="min-width:220px;max-width:320px;flex:1;margin:0">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+          <input class="search-input" type="text" id="f-pending-search" placeholder="بحث في القائمة..." oninput="applyPendingFilter()">
         </div>
       </div>
       <div class="table-scroll">
@@ -617,38 +614,35 @@ function pendingRemainingTotal(ops) {
 function updatePendingHint() {
   const mainHint = document.getElementById('rev-pending-hint');
   if (!mainHint) return;
-  const cid = document.getElementById('f-pending-customer')?.value;
+  const q = (document.getElementById('f-pending-search')?.value || '').trim();
   const n = pendingOps.length;
   const total = pendingRemainingTotal(pendingOps);
   if (!n) {
-    mainHint.textContent = cid
-      ? 'لا توجد مستحقات غير محصّلة لهذا العميل'
+    mainHint.textContent = q
+      ? 'لا نتائج في البحث'
       : 'لا توجد مستحقات غير محصّلة';
     return;
   }
-  mainHint.textContent = (cid ? 'هذا العميل: ' : 'كل العملاء: ')
-    + n + ' بند — المتبقي ' + total.toLocaleString('en-US') + ' ⃁';
+  mainHint.textContent = n + ' بند — المتبقي ' + total.toLocaleString('en-US') + ' ⃁';
 }
 
 function showAllUncollected() {
   const panel = document.getElementById('rev-pending-panel');
-  if (typeof LcClientSelect !== 'undefined') {
-    syncingCustomers = true;
-    LcClientSelect.setCustomers('f-pending-customer', CUSTOMERS, '');
-    syncingCustomers = false;
-  } else {
-    const sel = document.getElementById('f-pending-customer');
-    if (sel) sel.value = '';
-  }
+  const search = document.getElementById('f-pending-search');
+  if (search) search.value = '';
   applyPendingFilter();
   if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function applyPendingFilter() {
-  const cid = document.getElementById('f-pending-customer')?.value;
-  pendingOps = cid
-    ? allPendingOps.filter(function (op) { return String(op.customer_id) === String(cid); })
-    : allPendingOps.slice();
+  const q = (document.getElementById('f-pending-search')?.value || '').trim().toLowerCase();
+  pendingOps = !q ? allPendingOps.slice() : allPendingOps.filter(function (op) {
+    return String(op.customer || '').toLowerCase().includes(q)
+      || String(op.customer_code || '').toLowerCase().includes(q)
+      || String(op.code || '').toLowerCase().includes(q)
+      || String(op.title || '').toLowerCase().includes(q)
+      || String(op.description || '').toLowerCase().includes(q);
+  });
   updatePendingHint();
   renderRevenuePendingMainTable();
 }
@@ -692,30 +686,16 @@ function initRevenueClientSelects() {
     customers: CUSTOMERS,
     onChange: onRevenueCustomerChange,
   });
-  LcClientSelect.upgradeSelect('f-pending-customer', {
-    customers: CUSTOMERS,
-    placeholder: 'كل العملاء',
-    onChange: onPendingCustomerChange,
-  });
 }
 
 function syncRevenueCustomerSelectors(cid) {
   if (typeof LcClientSelect === 'undefined') return;
   syncingCustomers = true;
   const modalEl = document.getElementById('f-customer-sel');
-  const pendingEl = document.getElementById('f-pending-customer');
   if (modalEl && String(modalEl.value || '') !== String(cid || '')) {
     LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, cid || '');
   }
-  if (pendingEl && String(pendingEl.value || '') !== String(cid || '')) {
-    LcClientSelect.setCustomers('f-pending-customer', CUSTOMERS, cid || '');
-  }
   syncingCustomers = false;
-}
-
-function onPendingCustomerChange() {
-  if (syncingCustomers) return;
-  applyPendingFilter();
 }
 
 function onRevenueCustomerChange() {
@@ -790,9 +770,9 @@ function renderRevenuePendingMainTable() {
     if (mainEmpty) {
       mainEmpty.style.display = '';
       mainEmpty.style.color = 'var(--text3)';
-      const cid = document.getElementById('f-pending-customer')?.value;
-      mainEmpty.textContent = cid
-        ? 'لا توجد عمليات غير محصّلة لهذا العميل.'
+      const q = (document.getElementById('f-pending-search')?.value || '').trim();
+      mainEmpty.textContent = q
+        ? 'لا نتائج في البحث.'
         : 'لا توجد مستحقات غير محصّلة.';
     }
     mainTable.style.display = 'none';
@@ -819,7 +799,7 @@ function renderRevenuePendingMainTable() {
 
 function pickPendingOp(idx) {
   const op = pendingOps[idx];
-  const cid = (op && op.customer_id) || document.getElementById('f-pending-customer')?.value;
+  const cid = (op && op.customer_id) || '';
   openAddModal(cid || null, { keepPendingOps: true });
   selectRevenuePendingOp(idx);
 }
@@ -915,7 +895,7 @@ function openAddModal(preselectedCustomerId, opts) {
   document.getElementById('modal-title').textContent = 'إضافة إيراد جديد';
   document.getElementById('modal-add').dataset.editId = '';
   initRevenueClientSelects();
-  const cid = preselectedCustomerId || document.getElementById('f-pending-customer')?.value || '';
+  const cid = preselectedCustomerId || '';
   syncRevenueCustomerSelectors(cid);
   ['f-reference', 'f-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   var proofInp = document.getElementById('f-proof');
