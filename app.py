@@ -6,6 +6,7 @@ app.py
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort, make_response, has_app_context
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice, Account
+from models import JournalEntry, JournalLine
 from models import MaintenanceTeam
 from models import VisitTechnician, FaultTechnician, WhatsAppInbox
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
@@ -1534,6 +1535,12 @@ def _startup_schema_and_data_sync():
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Chart of accounts schema ensure skip: %s', exc)
+    try:
+        from accounting_journals import ensure_journal_schema
+        ensure_journal_schema()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Journal schema ensure skip: %s', exc)
     try:
         from liftcore_permissions import ensure_permissions_schema
         ensure_permissions_schema(db.session, db.engine)
@@ -9148,6 +9155,11 @@ def revenue_edit(id):
     sync_contract_invoice_status(r.contract_id)
     if old_contract_id and old_contract_id != r.contract_id:
         sync_contract_invoice_status(old_contract_id)
+    try:
+        from accounting_journals import post_revenue_journal
+        post_revenue_journal(r)
+    except Exception:
+        app.logger.exception('post_revenue_journal on edit failed')
     db.session.commit()
     if receipt:
         flash(f'تم إنشاء سند قبض {receipt.code} تلقائياً', 'success')
@@ -9169,6 +9181,11 @@ def revenue_add():
     if (r.status or '') in COLLECTED_REVENUE_STATUSES:
         receipt = create_receipt_voucher_for_revenue(r)
     sync_contract_invoice_status(r.contract_id)
+    try:
+        from accounting_journals import post_revenue_journal
+        post_revenue_journal(r)
+    except Exception:
+        app.logger.exception('post_revenue_journal on add failed')
     db.session.commit()
     if receipt:
         flash(f'تم إنشاء سند قبض {receipt.code} تلقائياً', 'success')
@@ -9181,6 +9198,11 @@ def revenue_delete(id):
         return err
     r = tenant_get_or_404(Revenue, id)
     contract_id = r.contract_id
+    try:
+        from accounting_journals import void_revenue_journal
+        void_revenue_journal(r.id)
+    except Exception:
+        app.logger.exception('void_revenue_journal failed')
     # سند القبض يشير للإيراد (FK) — احذفه أولاً وإلا يفشل الحذف
     for inv in tenant_query(Invoice).filter_by(revenue_id=r.id).all():
         db.session.delete(inv)
@@ -9265,6 +9287,197 @@ def accounts_backfill():
 
 
 # =============================================
+# القيود / دفتر الأستاذ / التقارير المحاسبية (مرحلة 2)
+# =============================================
+def _parse_iso_date(raw, default=None):
+    raw = (raw or '').strip()
+    if not raw:
+        return default
+    try:
+        return datetime.strptime(raw, '%Y-%m-%d').date()
+    except ValueError:
+        return default
+
+
+@app.route('/journals')
+def journals():
+    from accounting_journals import ensure_journal_schema
+    from sqlalchemy.orm import joinedload
+
+    _ensure_tenant_chart()
+    ensure_journal_schema()
+    rows = (
+        tenant_query(JournalEntry)
+        .options(joinedload(JournalEntry.lines))
+        .order_by(JournalEntry.entry_date.desc(), JournalEntry.id.desc())
+        .limit(500)
+        .all()
+    )
+    journals_view = []
+    posted_count = void_count = 0
+    for j in rows:
+        td = sum(float(l.debit or 0) for l in j.lines)
+        tc = sum(float(l.credit or 0) for l in j.lines)
+        if j.status == 'posted':
+            posted_count += 1
+        else:
+            void_count += 1
+        journals_view.append({
+            'id': j.id,
+            'code': j.code,
+            'entry_date': j.entry_date,
+            'memo': j.memo,
+            'source_type': j.source_type,
+            'source_id': j.source_id,
+            'status': j.status,
+            'total_debit': round(td, 2),
+            'total_credit': round(tc, 2),
+        })
+    return render_template(
+        'journals.html',
+        journals=journals_view,
+        posted_count=posted_count,
+        void_count=void_count,
+    )
+
+
+@app.route('/journals/backfill', methods=['POST'])
+def journals_backfill():
+    from accounting_journals import backfill_journals
+
+    _ensure_tenant_chart()
+    try:
+        stats = backfill_journals()
+        flash(
+            f"تم الترحيل: {stats.get('revenues', 0)} إيراد · {stats.get('expenses', 0)} مصروف"
+            + (f" · تخطي {stats.get('skipped', 0)}" if stats.get('skipped') else ''),
+            'success',
+        )
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('journals_backfill failed')
+        flash(f'تعذّر الترحيل: {exc}', 'danger')
+    return redirect(url_for('journals'))
+
+
+@app.route('/journals/<int:id>')
+def journal_detail(id):
+    from accounting_journals import ensure_journal_schema
+    from sqlalchemy.orm import joinedload
+
+    _ensure_tenant_chart()
+    ensure_journal_schema()
+    j = (
+        tenant_query(JournalEntry)
+        .options(joinedload(JournalEntry.lines).joinedload(JournalLine.account))
+        .filter_by(id=id)
+        .first_or_404()
+    )
+    lines = []
+    total_debit = total_credit = 0.0
+    for line in j.lines:
+        d = float(line.debit or 0)
+        c = float(line.credit or 0)
+        total_debit += d
+        total_credit += c
+        acc = line.account
+        lines.append({
+            'account_code': acc.code if acc else '—',
+            'account_name': acc.name if acc else '—',
+            'line_memo': line.line_memo,
+            'debit': round(d, 2),
+            'credit': round(c, 2),
+        })
+    return render_template(
+        'journal_detail.html',
+        journal=j,
+        lines=lines,
+        total_debit=round(total_debit, 2),
+        total_credit=round(total_credit, 2),
+    )
+
+
+@app.route('/ledger')
+def ledger():
+    from accounting_journals import ensure_journal_schema, ledger_lines
+
+    _ensure_tenant_chart()
+    ensure_journal_schema()
+    accounts = (
+        tenant_query(Account)
+        .filter_by(is_postable=True, is_active=True)
+        .order_by(Account.code.asc())
+        .all()
+    )
+    account_id = request.args.get('account_id', type=int)
+    date_from = _parse_iso_date(request.args.get('from'))
+    date_to = _parse_iso_date(request.args.get('to'))
+    account = None
+    lines = []
+    running = 0.0
+    if account_id:
+        account, lines, running = ledger_lines(account_id, date_from, date_to)
+    return render_template(
+        'ledger.html',
+        accounts=accounts,
+        account=account,
+        lines=lines,
+        running=running,
+        date_from=date_from.isoformat() if date_from else '',
+        date_to=date_to.isoformat() if date_to else '',
+    )
+
+
+@app.route('/trial-balance')
+def trial_balance():
+    from accounting_journals import ensure_journal_schema, trial_balance_rows
+
+    _ensure_tenant_chart()
+    ensure_journal_schema()
+    date_to = _parse_iso_date(request.args.get('to'))
+    rows, total_debit, total_credit = trial_balance_rows(date_to=date_to)
+    return render_template(
+        'trial_balance.html',
+        rows=rows,
+        total_debit=total_debit,
+        total_credit=total_credit,
+        date_to=date_to.isoformat() if date_to else '',
+    )
+
+
+@app.route('/pnl')
+def pnl():
+    from accounting_journals import ensure_journal_schema, income_statement
+
+    _ensure_tenant_chart()
+    ensure_journal_schema()
+    date_from = _parse_iso_date(request.args.get('from'))
+    date_to = _parse_iso_date(request.args.get('to'))
+    report = income_statement(date_from=date_from, date_to=date_to)
+    return render_template(
+        'pnl.html',
+        report=report,
+        date_from=date_from.isoformat() if date_from else '',
+        date_to=date_to.isoformat() if date_to else '',
+    )
+
+
+@app.route('/balance-sheet')
+def balance_sheet():
+    from accounting_journals import balance_sheet as build_bs, ensure_journal_schema
+
+    _ensure_tenant_chart()
+    ensure_journal_schema()
+    date_to = _parse_iso_date(request.args.get('to'))
+    report = build_bs(as_of=date_to)
+    return render_template(
+        'balance_sheet.html',
+        report=report,
+        date_to=date_to.isoformat() if date_to else '',
+    )
+
+
+# =============================================
 # المصروفات
 # =============================================
 @app.route('/expenses')
@@ -9295,6 +9508,11 @@ def expense_edit(id):
         except Exception:
             pass
         _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)
+        try:
+            from accounting_journals import post_expense_journal
+            post_expense_journal(e)
+        except Exception:
+            app.logger.exception('post_expense_journal on edit failed')
         db.session.commit()
     except (ValueError, KeyError) as exc:
         db.session.rollback()
@@ -9327,6 +9545,11 @@ def expense_add():
         db.session.add(e)
         db.session.flush()
         _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)
+        try:
+            from accounting_journals import post_expense_journal
+            post_expense_journal(e)
+        except Exception:
+            app.logger.exception('post_expense_journal on add failed')
         db.session.commit()
     except (ValueError, KeyError) as exc:
         db.session.rollback()
@@ -9340,6 +9563,11 @@ def expense_delete(id):
     if err:
         return err
     e = tenant_get_or_404(Expense, id)
+    try:
+        from accounting_journals import void_expense_journal
+        void_expense_journal(e.id)
+    except Exception:
+        app.logger.exception('void_expense_journal failed')
     _remove_fin_proof(e)
     db.session.delete(e)
     db.session.commit()

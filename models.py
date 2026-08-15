@@ -640,6 +640,57 @@ class Account(TenantMixin, db.Model):
 
 
 # =============================================
+# 7c. القيود اليومية (مرحلة 2)
+# =============================================
+class JournalEntry(TenantMixin, db.Model):
+    __tablename__ = 'journal_entries'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_journal_org_code'),
+        db.Index('ix_journal_source', 'organization_id', 'source_type', 'source_id'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)  # JE-0001
+    entry_date = db.Column(db.Date, nullable=False)
+    memo = db.Column(db.String(400))
+    # revenue | expense | manual
+    source_type = db.Column(db.String(30), index=True)
+    source_id = db.Column(db.Integer, index=True)
+    # posted | void
+    status = db.Column(db.String(20), default='posted', index=True)
+    created_by_user_id = db.Column(db.Integer)
+    created_by_name = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    lines = db.relationship(
+        'JournalLine',
+        back_populates='journal',
+        cascade='all, delete-orphan',
+        order_by='JournalLine.id',
+    )
+
+    def __repr__(self):
+        return f'<JournalEntry {self.code}>'
+
+
+class JournalLine(TenantMixin, db.Model):
+    __tablename__ = 'journal_lines'
+
+    id = db.Column(db.Integer, primary_key=True)
+    journal_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'), nullable=False, index=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False, index=True)
+    debit = db.Column(db.Float, default=0)
+    credit = db.Column(db.Float, default=0)
+    line_memo = db.Column(db.String(300))
+
+    journal = db.relationship('JournalEntry', back_populates='lines')
+    account = db.relationship('Account', foreign_keys=[account_id])
+
+    def __repr__(self):
+        return f'<JournalLine j={self.journal_id} a={self.account_id}>'
+
+
+# =============================================
 # 8. المصروفات
 # =============================================
 class Expense(TenantMixin, db.Model):

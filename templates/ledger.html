@@ -1,0 +1,66 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'دفتر الأستاذ' %}
+{% set accounting_tab = 'ledger' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">دفتر الأستاذ {% if account %}<span>{{ account.code }} — {{ account.name }}</span>{% endif %}</div>
+</div>
+<form class="filters-bar" method="get" action="{{ url_for('ledger') }}">
+  <div class="filter-group" style="min-width:260px;flex:1">
+    <label class="filter-label">الحساب</label>
+    <select class="filter-select" name="account_id" required>
+      <option value="">اختر حساباً</option>
+      {% for a in accounts %}
+      <option value="{{ a.id }}" {% if account and account.id==a.id %}selected{% endif %}>{{ a.code }} — {{ a.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">من</label>
+    <input class="filter-input" type="date" name="from" value="{{ date_from or '' }}">
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">إلى</label>
+    <input class="filter-input" type="date" name="to" value="{{ date_to or '' }}">
+  </div>
+  <button class="btn btn-primary btn-sm" type="submit">عرض</button>
+</form>
+
+{% if account %}
+<div class="stats-row" style="grid-template-columns:1fr">
+  <div class="stat-card"><div class="stat-label">الرصيد الحالي</div><div class="stat-value blue">{{ '%.2f'|format(running) }}</div></div>
+</div>
+<div class="table-wrap">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>التاريخ</th>
+          <th>القيد</th>
+          <th>البيان</th>
+          <th>مدين</th>
+          <th>دائن</th>
+          <th>الرصيد</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in lines %}
+        <tr>
+          <td>{{ row.date }}</td>
+          <td class="td-code td-link"><a href="{{ url_for('journal_detail', id=row.journal_id) }}">{{ row.journal_code }}</a></td>
+          <td class="td-name">{{ row.memo }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.debit) if row.debit else '—' }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.credit) if row.credit else '—' }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.balance) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:28px">لا حركات على هذا الحساب</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<p class="hint">اختر حساباً لعرض حركاته ورصيده الجاري.</p>
+{% endif %}
+{% endblock %}

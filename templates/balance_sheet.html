@@ -1,0 +1,58 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'المركز المالي' %}
+{% set accounting_tab = 'bs' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">المركز المالي</div>
+</div>
+<form class="filters-bar" method="get" action="{{ url_for('balance_sheet') }}">
+  <div class="filter-group">
+    <label class="filter-label">كما في</label>
+    <input class="filter-input" type="date" name="to" value="{{ date_to or '' }}">
+  </div>
+  <button class="btn btn-primary btn-sm" type="submit">تحديث</button>
+</form>
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat-card"><div class="stat-label">الأصول</div><div class="stat-value blue">{{ '%.2f'|format(report.total_assets) }}</div></div>
+  <div class="stat-card"><div class="stat-label">الخصوم</div><div class="stat-value" style="color:#e090c8">{{ '%.2f'|format(report.total_liabilities) }}</div></div>
+  <div class="stat-card"><div class="stat-label">حقوق الملكية</div><div class="stat-value gold">{{ '%.2f'|format(report.total_equity) }}</div></div>
+</div>
+<div class="two-col">
+  <div class="panel">
+    <div class="panel-h">الأصول</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>الحساب</th><th>الرصيد</th></tr></thead>
+        <tbody>
+          {% for line in report.assets %}
+          <tr><td class="td-name"><span class="td-code">{{ line.code }}</span> {{ line.name }}</td><td class="td-num">{{ '%.2f'|format(line.amount) }}</td></tr>
+          {% else %}
+          <tr><td colspan="2" style="text-align:center;color:var(--text3);padding:20px">—</td></tr>
+          {% endfor %}
+          <tr class="total-row"><td>إجمالي الأصول</td><td class="td-num">{{ '%.2f'|format(report.total_assets) }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-h">الخصوم وحقوق الملكية</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>الحساب</th><th>الرصيد</th></tr></thead>
+        <tbody>
+          {% for line in report.liabilities %}
+          <tr><td class="td-name"><span class="td-code">{{ line.code }}</span> {{ line.name }}</td><td class="td-num">{{ '%.2f'|format(line.amount) }}</td></tr>
+          {% endfor %}
+          {% for line in report.equity %}
+          <tr><td class="td-name"><span class="td-code">{{ line.code }}</span> {{ line.name }}</td><td class="td-num">{{ '%.2f'|format(line.amount) }}</td></tr>
+          {% endfor %}
+          {% if not report.liabilities and not report.equity %}
+          <tr><td colspan="2" style="text-align:center;color:var(--text3);padding:20px">—</td></tr>
+          {% endif %}
+          <tr class="total-row"><td>إجمالي الخصوم + حقوق الملكية</td><td class="td-num">{{ '%.2f'|format(report.total_liab_equity) }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

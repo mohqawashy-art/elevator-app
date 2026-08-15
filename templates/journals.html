@@ -1,0 +1,63 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'القيود اليومية' %}
+{% set accounting_tab = 'journals' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">القيود اليومية <span>{{ journals|length }} قيد</span></div>
+  <div class="page-actions">
+    <form method="post" action="{{ url_for('journals_backfill') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary btn-sm" type="submit">ترحيل الإيرادات/المصروفات للقيود</button>
+    </form>
+  </div>
+</div>
+<p class="hint">
+  يُنشأ قيد متوازن تلقائياً عند تسجيل إيراد محصّل أو مصروف
+  (مدين نقدية / دائن إيراد±ضريبة، أو مدين مصروف / دائن نقدية).
+  استخدم زر الترحيل لبناء القيود للسجلات السابقة.
+</p>
+<div class="table-wrap">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>التاريخ</th>
+          <th>البيان</th>
+          <th>المصدر</th>
+          <th>مدين</th>
+          <th>دائن</th>
+          <th>الحالة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in journals %}
+        <tr>
+          <td class="td-code td-link"><a href="{{ url_for('journal_detail', id=j.id) }}">{{ j.code }}</a></td>
+          <td>{{ j.entry_date }}</td>
+          <td class="td-name">{{ j.memo or '—' }}</td>
+          <td>
+            {% if j.source_type == 'revenue' %}إيراد{% elif j.source_type == 'expense' %}مصروف{% else %}{{ j.source_type or '—' }}{% endif %}
+            {% if j.source_id %}<span style="color:var(--text3);font-family:var(--font-en)"> #{{ j.source_id }}</span>{% endif %}
+          </td>
+          <td class="td-num debit">{{ '%.2f'|format(j.total_debit) }}</td>
+          <td class="td-num credit">{{ '%.2f'|format(j.total_credit) }}</td>
+          <td>
+            {% if j.status == 'posted' %}
+            <span class="badge badge-green">مرحّل</span>
+            {% else %}
+            <span class="badge badge-gray">ملغى</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:28px">لا توجد قيود بعد — سجّل إيراداً أو اضغط «ترحيل»</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="table-footer">
+    <div>مرحّل: {{ posted_count }} · ملغى: {{ void_count }}</div>
+  </div>
+</div>
+{% endblock %}

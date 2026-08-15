@@ -1,0 +1,55 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'ميزان المراجعة' %}
+{% set accounting_tab = 'trial' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">ميزان المراجعة</div>
+</div>
+<form class="filters-bar" method="get" action="{{ url_for('trial_balance') }}">
+  <div class="filter-group">
+    <label class="filter-label">حتى تاريخ</label>
+    <input class="filter-input" type="date" name="to" value="{{ date_to or '' }}">
+  </div>
+  <button class="btn btn-primary btn-sm" type="submit">تحديث</button>
+</form>
+<div class="stats-row" style="grid-template-columns:repeat(2,1fr)">
+  <div class="stat-card"><div class="stat-label">إجمالي المدين</div><div class="stat-value blue">{{ '%.2f'|format(total_debit) }}</div></div>
+  <div class="stat-card"><div class="stat-label">إجمالي الدائن</div><div class="stat-value gold">{{ '%.2f'|format(total_credit) }}</div></div>
+</div>
+<div class="table-wrap">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>الحساب</th>
+          <th>مدين</th>
+          <th>دائن</th>
+          <th>الرصيد</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="td-code td-link"><a href="{{ url_for('ledger', account_id=r.account_id) }}">{{ r.code }}</a></td>
+          <td class="td-name">{{ r.name }}</td>
+          <td class="td-num">{{ '%.2f'|format(r.debit) if r.debit else '—' }}</td>
+          <td class="td-num">{{ '%.2f'|format(r.credit) if r.credit else '—' }}</td>
+          <td class="td-num">{{ '%.2f'|format(r.balance) }} {% if r.balance_side=='debit' %}م{% else %}د{% endif %}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:28px">لا بيانات — رحّل القيود أولاً</td></tr>
+        {% endfor %}
+        {% if rows %}
+        <tr class="total-row">
+          <td colspan="2">الإجمالي</td>
+          <td class="td-num">{{ '%.2f'|format(total_debit) }}</td>
+          <td class="td-num">{{ '%.2f'|format(total_credit) }}</td>
+          <td></td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

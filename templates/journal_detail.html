@@ -1,0 +1,45 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'تفاصيل القيد ' ~ journal.code %}
+{% set accounting_tab = 'journals' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">{{ journal.code }} <span>{{ journal.entry_date }} · {{ journal.memo or '' }}</span></div>
+  <div class="page-actions">
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('journals') }}">عودة للقيود</a>
+  </div>
+</div>
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat-card"><div class="stat-label">الحالة</div><div class="stat-value" style="font-size:16px;font-family:var(--font-ar)">{{ 'مرحّل' if journal.status=='posted' else 'ملغى' }}</div></div>
+  <div class="stat-card"><div class="stat-label">إجمالي المدين</div><div class="stat-value blue">{{ '%.2f'|format(total_debit) }}</div></div>
+  <div class="stat-card"><div class="stat-label">إجمالي الدائن</div><div class="stat-value gold">{{ '%.2f'|format(total_credit) }}</div></div>
+</div>
+<div class="table-wrap">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>الحساب</th>
+          <th>البيان</th>
+          <th>مدين</th>
+          <th>دائن</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+        <tr>
+          <td class="td-name"><span class="td-code">{{ line.account_code }}</span> {{ line.account_name }}</td>
+          <td>{{ line.line_memo or '—' }}</td>
+          <td class="td-num">{{ '%.2f'|format(line.debit) if line.debit else '—' }}</td>
+          <td class="td-num">{{ '%.2f'|format(line.credit) if line.credit else '—' }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+          <td colspan="2">الإجمالي</td>
+          <td class="td-num">{{ '%.2f'|format(total_debit) }}</td>
+          <td class="td-num">{{ '%.2f'|format(total_credit) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

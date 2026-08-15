@@ -1,0 +1,56 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'قائمة الدخل' %}
+{% set accounting_tab = 'pnl' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">قائمة الدخل</div>
+</div>
+<form class="filters-bar" method="get" action="{{ url_for('pnl') }}">
+  <div class="filter-group">
+    <label class="filter-label">من</label>
+    <input class="filter-input" type="date" name="from" value="{{ date_from or '' }}">
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">إلى</label>
+    <input class="filter-input" type="date" name="to" value="{{ date_to or '' }}">
+  </div>
+  <button class="btn btn-primary btn-sm" type="submit">تحديث</button>
+</form>
+<div class="stats-row">
+  <div class="stat-card"><div class="stat-label">الإيرادات</div><div class="stat-value green">{{ '%.2f'|format(report.revenue) }}</div></div>
+  <div class="stat-card"><div class="stat-label">المصروفات</div><div class="stat-value red">{{ '%.2f'|format(report.expense) }}</div></div>
+  <div class="stat-card"><div class="stat-label">صافي الدخل</div><div class="stat-value {{ 'green' if report.net>=0 else 'red' }}">{{ '%.2f'|format(report.net) }}</div></div>
+</div>
+<div class="two-col">
+  <div class="panel">
+    <div class="panel-h">الإيرادات</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>الحساب</th><th>المبلغ</th></tr></thead>
+        <tbody>
+          {% for line in report.revenue_lines %}
+          <tr><td class="td-name"><span class="td-code">{{ line.code }}</span> {{ line.name }}</td><td class="td-num">{{ '%.2f'|format(line.amount) }}</td></tr>
+          {% else %}
+          <tr><td colspan="2" style="text-align:center;color:var(--text3);padding:20px">لا إيرادات في الفترة</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-h">المصروفات</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>الحساب</th><th>المبلغ</th></tr></thead>
+        <tbody>
+          {% for line in report.expense_lines %}
+          <tr><td class="td-name"><span class="td-code">{{ line.code }}</span> {{ line.name }}</td><td class="td-num">{{ '%.2f'|format(line.amount) }}</td></tr>
+          {% else %}
+          <tr><td colspan="2" style="text-align:center;color:var(--text3);padding:20px">لا مصروفات في الفترة</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
