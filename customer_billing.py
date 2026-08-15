@@ -16,16 +16,28 @@ UNPAID_INVOICE_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخ
 PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل', 'محصل']
 UNPAID_PARTS_STATUSES = ('غير محصل', 'معلقة', 'بانتظار موافقة العميل', 'بانتظار التوريد')
 CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد')
-_CONTRACT_CODE_RE = re.compile(r'(CN|CI)-?\s*(\d+)', re.I)
+# يدعم CN-00042 و CN-00042-2026 و CN-00042-2026-2 (لا تقطع لاحقة التجديد)
+_CONTRACT_CODE_RE = re.compile(
+    r'(CN|CI)-?\s*(\d+)(?:\s*[-/]\s*(20\d{2})(?:\s*-\s*(\d+))?)?',
+    re.I,
+)
+_NON_COLLECTIBLE_STATUSES = frozenset({
+    'ملغي', 'ملغى', 'تم تجديده', 'مجدّد', 'مجدد',
+})
 
 
 def _normalize_contract_code(code: str | None) -> str | None:
-    raw = (code or '').strip().upper()
+    raw = (code or '').strip().upper().replace(' ', '')
     if not raw:
         return None
     m = _CONTRACT_CODE_RE.search(raw)
     if m:
-        return f'{m.group(1).upper()}-{int(m.group(2)):05d}'
+        out = f'{m.group(1).upper()}-{int(m.group(2)):05d}'
+        if m.group(3):
+            out = f'{out}-{m.group(3)}'
+            if m.group(4):
+                out = f'{out}-{m.group(4)}'
+        return out
     m2 = re.fullmatch(r'(\d+)', raw)
     if m2:
         return f'CN-{int(m2.group(1)):05d}'
@@ -33,12 +45,47 @@ def _normalize_contract_code(code: str | None) -> str | None:
 
 
 def _extract_contract_code(*texts) -> str | None:
+    """استخراج أكمل رقم عقد من النص (يفضّل نسخة التجديد ذات السنة)."""
+    best = None
+    best_len = -1
     for text in texts:
         if not text:
             continue
-        match = _CONTRACT_CODE_RE.search(str(text))
-        if match:
-            return f'{match.group(1).upper()}-{int(match.group(2)):05d}'
+        for match in _CONTRACT_CODE_RE.finditer(str(text)):
+            code = _normalize_contract_code(match.group(0))
+            if not code:
+                continue
+            if len(code) > best_len:
+                best = code
+                best_len = len(code)
+    return best
+
+
+def _text_mentions_exact_contract_code(text: str, code: str) -> bool:
+    """مطابقة دقيقة لكود العقد — لا تلتقط CN-00002 من داخل CN-00002-2026."""
+    target = _normalize_contract_code(code)
+    if not target or not text:
+        return False
+    for match in _CONTRACT_CODE_RE.finditer(str(text)):
+        found = _normalize_contract_code(match.group(0))
+        if found == target:
+            return True
+    return False
+
+
+def _find_contract_by_code(customer_id: int, code: str | None) -> Contract | None:
+    """ابحث بالكود الكامل أولاً ثم بالأساس إن لزم."""
+    norm = _normalize_contract_code(code)
+    if not norm or not customer_id:
+        return None
+    q = tenant_query(Contract).filter_by(customer_id=customer_id)
+    exact = q.filter(Contract.code == norm).first()
+    if exact:
+        return exact
+    # محاولة تطبيع أكواد مخزّنة بصيغ مختلفة
+    for c in q.all():
+        if _normalize_contract_code(c.code) == norm:
+            return c
     return None
 
 
@@ -111,7 +158,7 @@ def resolve_contract_id(
 
     code = _extract_contract_code(reference, notes, description)
     if code:
-        contract = tenant_query(Contract).filter_by(code=code, customer_id=customer_id).first()
+        contract = _find_contract_by_code(customer_id, code)
         if contract:
             return contract.id
 
@@ -127,9 +174,7 @@ def resolve_contract_id(
                 if inv:
                     inv_code = _extract_contract_code(inv.description, inv.notes)
                     if inv_code:
-                        contract = tenant_query(Contract).filter_by(
-                            code=inv_code, customer_id=customer_id
-                        ).first()
+                        contract = _find_contract_by_code(customer_id, inv_code)
                         if contract:
                             return contract.id
 
@@ -140,6 +185,7 @@ def resolve_contract_id(
             .all()
             if _contract_is_collectible(c)
         ]
+        # عند وجود أكثر من عقد قابل للتحصيل لا نخمن — يجب تحديد الكود صراحةً
         if len(active) == 1:
             return active[0].id
 
@@ -147,13 +193,22 @@ def resolve_contract_id(
 
 
 def repair_contract_payment_links(commit: bool = True) -> int:
-    """إصلاح الربط الناقص بين الإيرادات/الفواتير والعقود."""
+    """إصلاح الربط الناقص/الخاطئ بين الإيرادات/الفواتير والعقود."""
     changed = 0
 
     for rev in tenant_query(Revenue).filter(
-        Revenue.contract_id.is_(None),
         Revenue.customer_id.isnot(None),
     ).all():
+        # أعد الربط إن وُجد كود أوضح في الملاحظات (مثل CN-00002-2026 بدل الأساس)
+        hinted = _extract_contract_code(rev.reference or '', rev.notes or '')
+        if hinted and rev.customer_id:
+            target = _find_contract_by_code(rev.customer_id, hinted)
+            if target and rev.contract_id != target.id:
+                rev.contract_id = target.id
+                changed += 1
+                continue
+        if rev.contract_id:
+            continue
         cid = resolve_contract_id(
             rev.customer_id,
             rev.reference or '',
@@ -262,7 +317,9 @@ def contract_paid_amount(contract_id: int) -> float:
         if matched == contract_id:
             rev_paid += amount
             continue
-        if code and code in f'{rev.reference or ""} {rev.notes or ""}':
+        if code and _text_mentions_exact_contract_code(
+            f'{rev.reference or ""} {rev.notes or ""}', code
+        ):
             rev_paid += amount
 
     orphan_invs = tenant_query(Invoice).filter(
@@ -284,7 +341,9 @@ def contract_paid_amount(contract_id: int) -> float:
         if matched == contract_id:
             inv_extra += inv_paid
             continue
-        if code and code in f'{inv.description or ""} {inv.notes or ""}':
+        if code and _text_mentions_exact_contract_code(
+            f'{inv.description or ""} {inv.notes or ""}', code
+        ):
             inv_extra += inv_paid
 
     return _round_money(rev_paid + inv_extra)
@@ -296,7 +355,8 @@ def contract_remaining(contract: Contract) -> float:
 
 def _contract_is_collectible(contract: Contract, today: date | None = None) -> bool:
     today = today or date.today()
-    if (contract.status or '').strip() in ('ملغي', 'ملغى'):
+    status = (contract.status or '').strip()
+    if status in _NON_COLLECTIBLE_STATUSES:
         return False
     if contract.end_date and contract.end_date < today:
         return False
