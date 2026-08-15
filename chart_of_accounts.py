@@ -1,0 +1,242 @@
+"""شجرة حسابات افتراضية لشركات صيانة/تركيب المصاعد + ربط تشغيلي."""
+from __future__ import annotations
+
+from models import Account, db
+from tenant_scope import tenant_query
+
+# (code, name_ar, name_en, type, parent_code|None, map_key|None, postable, sort)
+DEFAULT_CHART: list[tuple] = [
+    ('1000', 'الأصول', 'Assets', 'asset', None, None, False, 100),
+    ('1100', 'النقدية والبنوك', 'Cash & Banks', 'asset', '1000', 'cash', True, 110),
+    ('1200', 'الذمم المدينة — عملاء', 'Accounts Receivable', 'asset', '1000', 'ar', True, 120),
+    ('1300', 'مخزون قطع الغيار', 'Spare Parts Inventory', 'asset', '1000', 'inventory', True, 130),
+
+    ('2000', 'الخصوم', 'Liabilities', 'liability', None, None, False, 200),
+    ('2100', 'ضريبة القيمة المضافة المستحقة', 'VAT Payable', 'liability', '2000', 'vat_payable', True, 210),
+    ('2200', 'الذمم الدائنة — موردين', 'Accounts Payable', 'liability', '2000', 'ap', True, 220),
+
+    ('3000', 'حقوق الملكية', 'Equity', 'equity', None, None, False, 300),
+    ('3100', 'رأس المال', 'Capital', 'equity', '3000', 'capital', True, 310),
+
+    ('4000', 'الإيرادات', 'Revenue', 'revenue', None, None, False, 400),
+    ('4100', 'إيراد عقود صيانة', 'Maintenance Contracts', 'revenue', '4000', 'revenue:عقد صيانة', True, 410),
+    ('4110', 'إيراد تجديد عقود', 'Contract Renewals', 'revenue', '4000', 'revenue:تجديد عقد', True, 411),
+    ('4120', 'إيراد عقود جديدة / تركيب', 'New / Installation Contracts', 'revenue', '4000', 'revenue:عقد جديد', True, 412),
+    ('4200', 'إيراد قطع غيار', 'Spare Parts Revenue', 'revenue', '4000', 'revenue:قطع غيار', True, 420),
+    ('4300', 'إيراد أعمال إضافية', 'Additional Works', 'revenue', '4000', 'revenue:أعمال إضافية', True, 430),
+    ('4900', 'تسوية تحصيل مالك سابق', 'Prior-owner Settlement', 'revenue', '4000', 'revenue:تسوية مالك سابق', True, 490),
+
+    ('5000', 'المصروفات', 'Expenses', 'expense', None, None, False, 500),
+    ('5100', 'رواتب وأجور', 'Salaries', 'expense', '5000', 'expense:رواتب', True, 510),
+    ('5200', 'قطع غيار ومشتريات', 'Parts Purchases', 'expense', '5000', 'expense:قطع غيار', True, 520),
+    ('5300', 'محروقات', 'Fuel', 'expense', '5000', 'expense:محروقات', True, 530),
+    ('5400', 'صيانة سيارات', 'Vehicle Maintenance', 'expense', '5000', 'expense:صيانة سيارات', True, 540),
+    ('5500', 'أدوات ومستلزمات', 'Tools & Supplies', 'expense', '5000', 'expense:أدوات', True, 550),
+    ('5600', 'إيجارات', 'Rent', 'expense', '5000', 'expense:إيجار', True, 560),
+    ('5900', 'مصروفات تشغيلية أخرى', 'Other Operating Expenses', 'expense', '5000', 'expense:أخرى', True, 590),
+]
+
+ACCOUNT_TYPE_LABELS = {
+    'asset': 'أصول',
+    'liability': 'خصوم',
+    'equity': 'حقوق ملكية',
+    'revenue': 'إيرادات',
+    'expense': 'مصروفات',
+}
+
+_REVENUE_TYPE_ALIASES = {
+    'عقد صيانة': 'revenue:عقد صيانة',
+    'صيانة': 'revenue:عقد صيانة',
+    'تجديد عقد': 'revenue:تجديد عقد',
+    'تجديد': 'revenue:تجديد عقد',
+    'عقد جديد': 'revenue:عقد جديد',
+    'ضمان': 'revenue:عقد صيانة',
+    'قطع غيار': 'revenue:قطع غيار',
+    'بيع قطع غيار': 'revenue:قطع غيار',
+    'أعمال إضافية': 'revenue:أعمال إضافية',
+    'زيارة': 'revenue:أعمال إضافية',
+    'أخرى': 'revenue:أعمال إضافية',
+}
+
+_EXPENSE_TYPE_ALIASES = {
+    'محروقات': 'expense:محروقات',
+    'وقود': 'expense:محروقات',
+    'قطع غيار': 'expense:قطع غيار',
+    'صيانة سيارات': 'expense:صيانة سيارات',
+    'رواتب': 'expense:رواتب',
+    'أجور': 'expense:رواتب',
+    'أدوات': 'expense:أدوات',
+    'إيجار': 'expense:إيجار',
+    'ايجار': 'expense:إيجار',
+}
+
+
+def _is_prior_owner_note(notes: str | None) -> bool:
+    text = notes or ''
+    return 'مالك سابق' in text or 'تحصيل مالك سابق' in text or 'قبل استلام جما' in text
+
+
+def ensure_chart_for_org(organization_id: int | None) -> int:
+    """إنشاء الشجرة الافتراضية للمستأجر إن لم تكن موجودة. يرجع عدد الحسابات المضافة."""
+    if not organization_id:
+        return 0
+    existing = {
+        (a.code or '').strip(): a
+        for a in (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=organization_id)
+            .all()
+        )
+    }
+    if existing:
+        # أكمل الحسابات الناقصة فقط (لا تكرر)
+        added = 0
+        code_to_id = {c: a.id for c, a in existing.items()}
+        for code, name, name_en, atype, parent_code, map_key, postable, sort in DEFAULT_CHART:
+            if code in existing:
+                continue
+            parent_id = code_to_id.get(parent_code) if parent_code else None
+            acc = Account(
+                organization_id=organization_id,
+                code=code,
+                name=name,
+                name_en=name_en,
+                account_type=atype,
+                parent_id=parent_id,
+                map_key=map_key,
+                is_postable=postable,
+                is_system=True,
+                is_active=True,
+                sort_order=sort,
+            )
+            db.session.add(acc)
+            db.session.flush()
+            code_to_id[code] = acc.id
+            existing[code] = acc
+            added += 1
+        if added:
+            db.session.commit()
+        return added
+
+    code_to_id: dict[str, int] = {}
+    for code, name, name_en, atype, parent_code, map_key, postable, sort in DEFAULT_CHART:
+        parent_id = code_to_id.get(parent_code) if parent_code else None
+        acc = Account(
+            organization_id=organization_id,
+            code=code,
+            name=name,
+            name_en=name_en,
+            account_type=atype,
+            parent_id=parent_id,
+            map_key=map_key,
+            is_postable=postable,
+            is_system=True,
+            is_active=True,
+            sort_order=sort,
+        )
+        db.session.add(acc)
+        db.session.flush()
+        code_to_id[code] = acc.id
+    db.session.commit()
+    return len(DEFAULT_CHART)
+
+
+def account_by_map_key(map_key: str | None) -> Account | None:
+    if not map_key:
+        return None
+    return (
+        tenant_query(Account)
+        .filter_by(map_key=map_key, is_active=True)
+        .order_by(Account.sort_order.asc())
+        .first()
+    )
+
+
+def resolve_revenue_account_id(revenue_type: str | None, notes: str | None = None) -> int | None:
+    if _is_prior_owner_note(notes):
+        acc = account_by_map_key('revenue:تسوية مالك سابق')
+        if acc:
+            return acc.id
+    raw = (revenue_type or '').strip()
+    key = _REVENUE_TYPE_ALIASES.get(raw)
+    if not key:
+        for alias, mk in _REVENUE_TYPE_ALIASES.items():
+            if alias in raw:
+                key = mk
+                break
+    if not key:
+        key = 'revenue:أعمال إضافية'
+    acc = account_by_map_key(key)
+    return acc.id if acc else None
+
+
+def resolve_expense_account_id(expense_type: str | None) -> int | None:
+    raw = (expense_type or '').strip()
+    key = _EXPENSE_TYPE_ALIASES.get(raw)
+    if not key:
+        for alias, mk in _EXPENSE_TYPE_ALIASES.items():
+            if alias in raw:
+                key = mk
+                break
+    if not key:
+        key = 'expense:أخرى'
+    acc = account_by_map_key(key)
+    return acc.id if acc else None
+
+
+def accounts_tree_rows(organization_id: int | None = None) -> list[dict]:
+    """صفوف مسطّحة مرتبة للعرض الشجري."""
+    if organization_id is None:
+        q = tenant_query(Account)
+    else:
+        q = Account.query.execution_options(skip_tenant=True).filter_by(
+            organization_id=organization_id
+        )
+    accounts = q.order_by(Account.sort_order.asc(), Account.code.asc()).all()
+    by_parent: dict[int | None, list[Account]] = {}
+    for a in accounts:
+        by_parent.setdefault(a.parent_id, []).append(a)
+
+    rows: list[dict] = []
+
+    def walk(parent_id: int | None, depth: int):
+        for a in by_parent.get(parent_id, []):
+            rows.append({
+                'id': a.id,
+                'code': a.code,
+                'name': a.name,
+                'name_en': a.name_en or '',
+                'account_type': a.account_type,
+                'type_label': ACCOUNT_TYPE_LABELS.get(a.account_type or '', a.account_type or ''),
+                'map_key': a.map_key or '',
+                'is_postable': bool(a.is_postable),
+                'is_system': bool(a.is_system),
+                'is_active': bool(a.is_active),
+                'parent_id': a.parent_id,
+                'depth': depth,
+                'sort_order': a.sort_order or 0,
+            })
+            walk(a.id, depth + 1)
+
+    walk(None, 0)
+    return rows
+
+
+def backfill_missing_account_links(limit: int = 5000) -> dict[str, int]:
+    """يربط الإيرادات/المصروفات القديمة بالحساب المناسب إن كان account_id فارغاً."""
+    from models import Expense, Revenue
+
+    stats = {'revenues': 0, 'expenses': 0}
+    for rev in tenant_query(Revenue).filter(Revenue.account_id.is_(None)).limit(limit).all():
+        aid = resolve_revenue_account_id(rev.revenue_type, rev.notes)
+        if aid:
+            rev.account_id = aid
+            stats['revenues'] += 1
+    for exp in tenant_query(Expense).filter(Expense.account_id.is_(None)).limit(limit).all():
+        aid = resolve_expense_account_id(exp.expense_type)
+        if aid:
+            exp.account_id = aid
+            stats['expenses'] += 1
+    if stats['revenues'] or stats['expenses']:
+        db.session.commit()
+    return stats

@@ -182,6 +182,7 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/installation', 'installation_projects'),
     ('/api/revenues', 'revenues'),
     ('/revenues', 'revenues'),
+    ('/accounts', 'revenues'),
     ('/expenses', 'expenses'),
     ('/invoices', 'invoices'),
     ('/inventory', 'inventory'),

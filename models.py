@@ -593,6 +593,7 @@ class Revenue(TenantMixin, db.Model):
     reference       = db.Column(db.String(500))  # رقم الشيك أو التحويل / مرفقات
     proof_path      = db.Column(db.String(300))  # إثبات الدفع (صورة/PDF)
     notes           = db.Column(db.Text)
+    account_id      = db.Column(db.Integer, db.ForeignKey('accounts.id'), index=True)
     created_by_user_id = db.Column(db.Integer)
     created_by_name = db.Column(db.String(100))  # اسم من سجّل العملية (لقطة عند الإنشاء)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
@@ -601,9 +602,41 @@ class Revenue(TenantMixin, db.Model):
     contract        = db.relationship('Contract', foreign_keys=[contract_id])
     invoice         = db.relationship('Invoice', foreign_keys=[invoice_id])
     parts_billing   = db.relationship('PartsBilling', foreign_keys=[parts_billing_id])
+    account         = db.relationship('Account', foreign_keys=[account_id])
 
     def __repr__(self):
         return f'<Revenue {self.code}>'
+
+
+# =============================================
+# 7b. شجرة الحسابات (محاسبة تشغيلية للمصاعد)
+# =============================================
+class Account(TenantMixin, db.Model):
+    __tablename__ = 'accounts'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_account_org_code'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)  # 1100, 4100, ...
+    name = db.Column(db.String(200), nullable=False)
+    name_en = db.Column(db.String(200))
+    # asset | liability | equity | revenue | expense
+    account_type = db.Column(db.String(20), nullable=False, default='expense')
+    parent_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), index=True)
+    # مفتاح ربط تشغيلي: revenue:تجديد عقد | expense:محروقات | cash | ar | ...
+    map_key = db.Column(db.String(80), index=True)
+    is_postable = db.Column(db.Boolean, default=True)  # الحسابات الورقية = False
+    is_system = db.Column(db.Boolean, default=False)  # من القالب — لا يُحذف
+    is_active = db.Column(db.Boolean, default=True)
+    sort_order = db.Column(db.Integer, default=0)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    parent = db.relationship('Account', remote_side=[id], backref='children')
+
+    def __repr__(self):
+        return f'<Account {self.code} {self.name}>'
 
 
 # =============================================
@@ -626,9 +659,12 @@ class Expense(TenantMixin, db.Model):
     reference       = db.Column(db.String(500))
     proof_path      = db.Column(db.String(300))  # إثبات الصرف (صورة/PDF)
     notes           = db.Column(db.Text)
+    account_id      = db.Column(db.Integer, db.ForeignKey('accounts.id'), index=True)
     created_by_user_id = db.Column(db.Integer)
     created_by_name = db.Column(db.String(100))  # اسم من سجّل العملية (لقطة عند الإنشاء)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    account         = db.relationship('Account', foreign_keys=[account_id])
 
     def __repr__(self):
         return f'<Expense {self.code}>'

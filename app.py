@@ -5,7 +5,7 @@ app.py
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort, make_response, has_app_context
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
-from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice
+from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice, Account
 from models import MaintenanceTeam
 from models import VisitTechnician, FaultTechnician, WhatsAppInbox
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
@@ -1382,9 +1382,11 @@ def _sqlite_legacy_schema_patches():
                 ('invoice_id', 'INTEGER'),
                 ('parts_billing_id', 'INTEGER'),
                 ('proof_path', 'VARCHAR(300)'),
+                ('account_id', 'INTEGER'),
             ],
             'expenses': [
                 ('proof_path', 'VARCHAR(300)'),
+                ('account_id', 'INTEGER'),
             ],
             'technicians': [
                 ('team', 'VARCHAR(30)'),
@@ -9031,6 +9033,7 @@ def revenues():
     from sqlalchemy.orm import joinedload
     from customer_billing import tenant_outstanding_collectible
 
+    _ensure_tenant_chart()
     revs = (
         tenant_query(Revenue)
         .options(joinedload(Revenue.customer), joinedload(Revenue.contract))
@@ -9103,6 +9106,12 @@ def _revenue_from_form(form, existing: Revenue | None = None):
         'reference': form.get('reference', ''),
         'notes': notes,
     }
+    try:
+        from chart_of_accounts import resolve_revenue_account_id
+        _ensure_tenant_chart()
+        data['account_id'] = resolve_revenue_account_id(revenue_type, notes)
+    except Exception:
+        pass
     if existing:
         for key, val in data.items():
             setattr(existing, key, val)
@@ -9191,10 +9200,58 @@ def revenue_remove_proof(id):
 
 
 # =============================================
+# شجرة الحسابات (مرحلة 1)
+# =============================================
+def _ensure_tenant_chart():
+    from chart_of_accounts import ensure_chart_for_org
+    oid = getattr(g, 'organization_id', None)
+    if oid:
+        ensure_chart_for_org(oid)
+
+
+@app.route('/accounts')
+def accounts():
+    from chart_of_accounts import ACCOUNT_TYPE_LABELS, accounts_tree_rows
+
+    _ensure_tenant_chart()
+    rows = accounts_tree_rows()
+    counts = {k: 0 for k in ACCOUNT_TYPE_LABELS}
+    for r in rows:
+        counts[r['account_type']] = counts.get(r['account_type'], 0) + 1
+    return render_template('accounts.html', accounts=rows, counts=counts)
+
+
+@app.route('/accounts/seed', methods=['POST'])
+def accounts_seed():
+    from chart_of_accounts import ensure_chart_for_org
+
+    oid = getattr(g, 'organization_id', None)
+    added = ensure_chart_for_org(oid) if oid else 0
+    flash(f'تم تحديث شجرة الحسابات ({added} حساب جديد)' if added else 'الشجرة محدّثة مسبقاً', 'success')
+    return redirect(url_for('accounts'))
+
+
+@app.route('/accounts/backfill', methods=['POST'])
+def accounts_backfill():
+    from chart_of_accounts import backfill_missing_account_links, ensure_chart_for_org
+
+    oid = getattr(g, 'organization_id', None)
+    if oid:
+        ensure_chart_for_org(oid)
+    stats = backfill_missing_account_links()
+    flash(
+        f"تم الربط: {stats.get('revenues', 0)} إيراد · {stats.get('expenses', 0)} مصروف",
+        'success',
+    )
+    return redirect(url_for('accounts'))
+
+
+# =============================================
 # المصروفات
 # =============================================
 @app.route('/expenses')
 def expenses():
+    _ensure_tenant_chart()
     exps = tenant_query(Expense).order_by(Expense.expense_date.desc()).all()
     return render_template(
         'expenses.html',
@@ -9213,6 +9270,12 @@ def expense_edit(id):
         e.amount         = float(request.form.get('amount', 0))
         e.reference      = request.form.get('reference','')
         e.notes          = request.form.get('notes','')
+        try:
+            from chart_of_accounts import resolve_expense_account_id
+            _ensure_tenant_chart()
+            e.account_id = resolve_expense_account_id(e.expense_type)
+        except Exception:
+            pass
         _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)
         db.session.commit()
     except (ValueError, KeyError) as exc:
@@ -9235,6 +9298,12 @@ def expense_add():
             reference      = request.form.get('reference',''),
             notes          = request.form.get('notes',''),
         )
+        try:
+            from chart_of_accounts import resolve_expense_account_id
+            _ensure_tenant_chart()
+            e.account_id = resolve_expense_account_id(e.expense_type)
+        except Exception:
+            pass
         assign_organization(e)
         stamp_created_by(e)
         db.session.add(e)
