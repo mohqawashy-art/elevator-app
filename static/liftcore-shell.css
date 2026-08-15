@@ -773,6 +773,40 @@ html.lc-fullscreen .main {
     width: 100%;
     margin: 0;
     justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.35;
+    white-space: nowrap;
+    color: var(--text2, #8a9bb8);
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item svg,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item:hover,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item:hover,
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item.active,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item.active {
+    background: rgba(42, 127, 255, 0.1);
+    color: var(--accent, #2a7fff);
+  }
+
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item.active::before,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item.active::before {
+    display: none !important;
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-menu-section,
@@ -836,6 +870,13 @@ html.lc-fullscreen .main {
   html[dir="ltr"] body:has(#sidebar):has(.main) .sidebar .nav-item.active::before {
     left: 10px;
     right: 10px;
+  }
+
+  /* القوائم المنسدلة: صف موحّد بدون شريط تبويب سفلي على العنصر النشط */
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item.active::before,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item.active::before {
+    content: none !important;
+    display: none !important;
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-badge,
@@ -1404,6 +1445,13 @@ html:not([data-theme="light"]) .sidebar .nav-item.active::before,
 html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-item.active::before,
 html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item.active::before {
   background: #e8cd86 !important;
+}
+
+html:not([data-theme="light"]) #sidebar .nav-group-menu .nav-item.active::before,
+html:not([data-theme="light"]) .sidebar .nav-group-menu .nav-item.active::before,
+html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-group-menu .nav-item.active::before,
+html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-group-menu .nav-item.active::before {
+  display: none !important;
 }
 
 html:not([data-theme="light"]) #sidebar .nav-item svg,
