@@ -75,6 +75,12 @@ html[data-theme="light"] .nav-item:hover {
   background: var(--bg3);
 }
 
+html[data-theme="light"] .nav-group-menu .nav-item:hover,
+html[data-theme="light"] .nav-group-menu .nav-item.active {
+  background: rgba(42, 127, 255, 0.1);
+  color: var(--accent);
+}
+
 html[data-theme="light"] .stat-card,
 html[data-theme="light"] .panel,
 html[data-theme="light"] .quick-card,

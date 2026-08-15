@@ -742,7 +742,7 @@ html.lc-fullscreen .main {
     background: var(--bg2, #111720);
     border: 1px solid var(--border, rgba(100, 160, 255, 0.15));
     border-radius: 10px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
     z-index: 250;
   }
 
@@ -768,44 +768,55 @@ html.lc-fullscreen .main {
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item,
-  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item {
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu .nav-item {
     display: flex !important;
-    width: 100%;
-    margin: 0;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 8px;
-    box-shadow: none;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.35;
-    white-space: nowrap;
-    color: var(--text2, #8a9bb8);
-    background: transparent;
-    position: relative;
-    overflow: hidden;
+    flex-direction: row !important;
+    width: 100% !important;
+    margin: 0 !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    line-height: 1.35 !important;
+    white-space: nowrap !important;
+    color: var(--text2, #8a9bb8) !important;
+    background: transparent !important;
+    position: relative !important;
+    overflow: hidden !important;
+    transform: none !important;
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item svg,
-  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item svg {
-    width: 15px;
-    height: 15px;
-    flex-shrink: 0;
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item svg,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu .nav-item svg {
+    width: 15px !important;
+    height: 15px !important;
+    flex-shrink: 0 !important;
+    opacity: 1 !important;
+    color: inherit !important;
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item:hover,
   body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item:hover,
   body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item.active,
-  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item.active {
-    background: rgba(42, 127, 255, 0.1);
-    color: var(--accent, #2a7fff);
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item.active,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu .nav-item:hover,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu .nav-item.active {
+    background: rgba(42, 127, 255, 0.1) !important;
+    color: var(--accent, #2a7fff) !important;
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item.active::before,
-  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item.active::before {
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item.active::before,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu .nav-item.active::before,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu .nav-item.active::after {
+    content: none !important;
     display: none !important;
   }
 

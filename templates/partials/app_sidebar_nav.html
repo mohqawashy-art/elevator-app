@@ -81,7 +81,10 @@
     {% if has_perm('expenses.read') %}<a href="/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>المصروفات</a>{% endif %}
     {% if has_any_perm('revenues.read', 'expenses.read') %}<a href="/accounts" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M4 6h16M4 12h16M4 18h10"/><path d="M14 16l4 4 4-4"/></svg>شجرة الحسابات</a>{% endif %}
     {% if has_any_perm('revenues.read', 'expenses.read') %}<a href="/journals" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>القيود اليومية</a>{% endif %}
+    {% if has_any_perm('revenues.read', 'expenses.read') %}<a href="/ledger" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M8 7h8M8 11h8"/></svg>دفتر الأستاذ</a>{% endif %}
     {% if has_any_perm('revenues.read', 'expenses.read') %}<a href="/trial-balance" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 3v18h18"/><path d="M7 16V8M12 16v-5M17 16V6"/></svg>ميزان المراجعة</a>{% endif %}
+    {% if has_any_perm('revenues.read', 'expenses.read') %}<a href="/pnl" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>قائمة الدخل</a>{% endif %}
+    {% if has_any_perm('revenues.read', 'expenses.read') %}<a href="/balance-sheet" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>المركز المالي</a>{% endif %}
     {% if has_perm('invoices.read') %}<a href="/invoices" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>الفواتير</a>{% endif %}
   </div>
 </div>
@@ -108,7 +111,7 @@
     <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M3 4.5l3 3 3-3"/></svg>
   </button>
   <div class="nav-group-menu nav-group-menu--reports">
-    {% if has_perm('reports_home.read') %}<a href="/reports" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" width="16" height="16"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 1.5"/></svg>كل التقارير</a>{% endif %}
+    {% if has_perm('reports_home.read') %}<a href="/reports" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>كل التقارير</a>{% endif %}
 
     <div class="nav-menu-section">تقارير إدارية</div>
     {% if has_perm('report_dashboard.read') %}<a href="/reports/dashboard" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>تقرير الداشبورد</a>{% endif %}
@@ -130,7 +133,7 @@
     {% if has_perm('report_customer_statement.read') %}<a href="/reports/customer-statement" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>كشف حساب عميل</a>{% endif %}
     {% if has_perm('report_revenues.read') %}<a href="/reports/revenues" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تقرير الإيرادات</a>{% endif %}
     {% if has_perm('report_expenses.read') %}<a href="/reports/expenses" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>تقرير المصروفات</a>{% endif %}
-    {% if has_perm('report_invoices.read') %}<a href="/reports/invoices" class="nav-item"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" width="16" height="16"><path d="M2 3h12v2H2zM3 5v8a1 1 0 001 1h8a1 1 0 001-1V5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>تقرير الفواتير</a>{% endif %}
+    {% if has_perm('report_invoices.read') %}<a href="/reports/invoices" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>تقرير الفواتير</a>{% endif %}
     {% endif %}
 
     {% if has_any_perm('report_inventory.read', 'report_stock.read') %}
