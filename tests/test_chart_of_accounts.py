@@ -2,10 +2,24 @@
 from chart_of_accounts import (
     DEFAULT_CHART,
     ensure_chart_for_org,
+    ensure_chart_schema,
     resolve_expense_account_id,
     resolve_revenue_account_id,
 )
 from models import Account, Organization, db
+from sqlalchemy import inspect
+
+
+def test_ensure_chart_schema_is_idempotent(client):
+    with client.application.app_context():
+        ensure_chart_schema()
+        ensure_chart_schema()
+        insp = inspect(db.engine)
+        assert 'accounts' in insp.get_table_names()
+        rev_cols = {c['name'] for c in insp.get_columns('revenues')}
+        exp_cols = {c['name'] for c in insp.get_columns('expenses')}
+        assert 'account_id' in rev_cols
+        assert 'account_id' in exp_cols
 
 
 def test_ensure_chart_creates_default_accounts(client):

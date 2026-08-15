@@ -1529,6 +1529,12 @@ def _startup_schema_and_data_sync():
         db.session.rollback()
         app.logger.warning('extra_phones column ensure skip: %s', exc)
     try:
+        from chart_of_accounts import ensure_chart_schema
+        ensure_chart_schema()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Chart of accounts schema ensure skip: %s', exc)
+    try:
         from liftcore_permissions import ensure_permissions_schema
         ensure_permissions_schema(db.session, db.engine)
     except Exception as exc:
@@ -9203,8 +9209,15 @@ def revenue_remove_proof(id):
 # شجرة الحسابات (مرحلة 1)
 # =============================================
 def _ensure_tenant_chart():
-    from chart_of_accounts import ensure_chart_for_org
-    oid = getattr(g, 'organization_id', None)
+    from chart_of_accounts import ensure_chart_for_org, ensure_chart_schema
+    from tenant_scope import effective_organization_id
+
+    try:
+        ensure_chart_schema()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('ensure_chart_schema: %s', exc)
+    oid = getattr(g, 'organization_id', None) or effective_organization_id()
     if oid:
         ensure_chart_for_org(oid)
 
@@ -9224,8 +9237,10 @@ def accounts():
 @app.route('/accounts/seed', methods=['POST'])
 def accounts_seed():
     from chart_of_accounts import ensure_chart_for_org
+    from tenant_scope import effective_organization_id
 
-    oid = getattr(g, 'organization_id', None)
+    _ensure_tenant_chart()
+    oid = getattr(g, 'organization_id', None) or effective_organization_id()
     added = ensure_chart_for_org(oid) if oid else 0
     flash(f'تم تحديث شجرة الحسابات ({added} حساب جديد)' if added else 'الشجرة محدّثة مسبقاً', 'success')
     return redirect(url_for('accounts'))
@@ -9233,16 +9248,19 @@ def accounts_seed():
 
 @app.route('/accounts/backfill', methods=['POST'])
 def accounts_backfill():
-    from chart_of_accounts import backfill_missing_account_links, ensure_chart_for_org
+    from chart_of_accounts import backfill_missing_account_links
 
-    oid = getattr(g, 'organization_id', None)
-    if oid:
-        ensure_chart_for_org(oid)
-    stats = backfill_missing_account_links()
-    flash(
-        f"تم الربط: {stats.get('revenues', 0)} إيراد · {stats.get('expenses', 0)} مصروف",
-        'success',
-    )
+    _ensure_tenant_chart()
+    try:
+        stats = backfill_missing_account_links()
+        flash(
+            f"تم الربط: {stats.get('revenues', 0)} إيراد · {stats.get('expenses', 0)} مصروف",
+            'success',
+        )
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('accounts_backfill failed')
+        flash(f'تعذّر الربط: {exc}', 'danger')
     return redirect(url_for('accounts'))
 
 

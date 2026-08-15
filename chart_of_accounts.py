@@ -1,8 +1,34 @@
 """شجرة حسابات افتراضية لشركات صيانة/تركيب المصاعد + ربط تشغيلي."""
 from __future__ import annotations
 
+from sqlalchemy import inspect, text
+
 from models import Account, db
 from tenant_scope import tenant_query
+
+
+def ensure_chart_schema() -> None:
+    """يضمن جدول الحسابات وعمود account_id (Postgres لا يشغّل ALTER اليدوي لـ SQLite)."""
+    insp = inspect(db.engine)
+    tables = set(insp.get_table_names())
+    if 'accounts' not in tables:
+        Account.__table__.create(bind=db.engine, checkfirst=True)
+        tables.add('accounts')
+    for table in ('revenues', 'expenses'):
+        if table not in tables:
+            continue
+        cols = {c['name'] for c in insp.get_columns(table)}
+        if 'account_id' in cols:
+            continue
+        db.session.execute(text(f'ALTER TABLE {table} ADD COLUMN account_id INTEGER'))
+        db.session.commit()
+        try:
+            db.session.execute(
+                text(f'CREATE INDEX IF NOT EXISTS ix_{table}_account_id ON {table} (account_id)')
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 # (code, name_ar, name_en, type, parent_code|None, map_key|None, postable, sort)
 DEFAULT_CHART: list[tuple] = [
