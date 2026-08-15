@@ -790,6 +790,8 @@ html.lc-fullscreen .main {
     position: relative !important;
     overflow: hidden !important;
     transform: none !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item svg,
@@ -810,6 +812,8 @@ html.lc-fullscreen .main {
   html.lc-shell-ready body:has(#sidebar) .nav-group-menu .nav-item.active {
     background: rgba(42, 127, 255, 0.1) !important;
     color: var(--accent, #2a7fff) !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item.active::before,
@@ -866,8 +870,8 @@ html.lc-fullscreen .main {
     height: 15px;
   }
 
-  body:has(#sidebar):has(.main) #sidebar .nav-item.active::before,
-  body:has(#sidebar):has(.main) .sidebar .nav-item.active::before {
+  body:has(#sidebar):has(.main) #sidebar .nav-item-single.active::before,
+  body:has(#sidebar):has(.main) .sidebar .nav-item-single.active::before {
     right: 10px;
     left: 10px;
     top: auto;
@@ -877,17 +881,25 @@ html.lc-fullscreen .main {
     transform: none;
   }
 
-  html[dir="ltr"] body:has(#sidebar):has(.main) #sidebar .nav-item.active::before,
-  html[dir="ltr"] body:has(#sidebar):has(.main) .sidebar .nav-item.active::before {
+  html[dir="ltr"] body:has(#sidebar):has(.main) #sidebar .nav-item-single.active::before,
+  html[dir="ltr"] body:has(#sidebar):has(.main) .sidebar .nav-item-single.active::before {
     left: 10px;
     right: 10px;
   }
 
-  /* القوائم المنسدلة: صف موحّد بدون شريط تبويب سفلي على العنصر النشط */
-  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item.active::before,
-  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item.active::before {
+  /* لا شريط سفلي ولا تسطير داخل القوائم المنسدلة */
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item::before,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item::before,
+  body:has(#sidebar):has(.main) #sidebar .nav-group-menu .nav-item::after,
+  body:has(#sidebar):has(.main) .sidebar .nav-group-menu .nav-item::after,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu .nav-item::before,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-menu .nav-item::after {
     content: none !important;
     display: none !important;
+    background: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    border: 0 !important;
   }
 
   body:has(#sidebar):has(.main) #sidebar .nav-badge,
