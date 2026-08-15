@@ -23,78 +23,62 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;font-
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
 .content{flex:1;padding:24px;overflow-y:auto}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
-.page-title{font-size:18px;font-weight:600}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
 .page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
-.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:inherit}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar)}
 .btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
 .btn-sm{padding:5px 10px;font-size:12px}
-.hint{font-size:12px;color:var(--text3);line-height:1.7;margin-bottom:16px;max-width:720px}
+.hint{font-size:12px;color:var(--text3);line-height:1.8;margin-bottom:16px;max-width:760px}
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
 .stat-label{font-size:11px;color:var(--text3);margin-bottom:6px}
-.stat-value{font-size:18px;font-weight:600;font-family:var(--font-en)}
-.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:auto}
-table.coa{width:100%;border-collapse:collapse;table-layout:fixed}
-.coa th{text-align:right;padding:11px 14px;font-size:11px;font-weight:500;color:var(--text3);border-bottom:1px solid var(--border);background:var(--bg3);white-space:nowrap}
-.coa td{padding:11px 14px;font-size:13px;line-height:1.55;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text1)}
-.coa tr:last-child td{border-bottom:none}
-.coa .col-code{width:88px}
-.coa .col-type{width:110px}
-.coa .col-map{width:200px}
-.coa .col-post{width:100px}
-.coa .code{
-  font-family:var(--font-en);
-  font-variant-numeric:tabular-nums;
-  direction:ltr;
-  unicode-bidi:isolate;
-  text-align:center;
-  color:var(--accent);
-  font-weight:600;
-  letter-spacing:.02em;
-  white-space:nowrap;
-}
-.coa .acc-cell{min-width:0}
-.coa .acc-block{padding-inline-start:calc(var(--depth, 0) * 1.15rem)}
-.coa .acc-name{display:block;font-size:13.5px;font-weight:500;color:var(--text1);word-break:break-word}
-.coa .acc-en{
-  display:block;
-  margin-top:2px;
-  font-family:var(--font-en);
-  font-size:11.5px;
-  font-weight:400;
-  color:var(--text3);
-  direction:ltr;
-  unicode-bidi:isolate;
-  text-align:start;
-  line-height:1.4;
-}
-.coa .map-key{
-  font-family:var(--font-en);
-  font-size:12px;
-  color:var(--text2);
-  direction:ltr;
-  unicode-bidi:isolate;
-  text-align:start;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.coa .map-empty{color:var(--text3);font-family:var(--font-ar)}
-.coa .post-label{font-size:12.5px;color:var(--text2);white-space:nowrap}
-.coa .post-label.is-group{color:var(--text3)}
-.badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:500;background:var(--bg3);color:var(--text2);border:1px solid var(--border);white-space:nowrap}
-.badge.rev{color:#7dd3a0;border-color:rgba(29,184,122,.35)}
-.badge.exp{color:#f0a070;border-color:rgba(224,144,48,.35)}
-.badge.ast{color:#7eb6ff;border-color:rgba(42,127,255,.35)}
-.badge.lia{color:#e090c8;border-color:rgba(200,100,180,.35)}
-.badge.eq{color:var(--gold);border-color:rgba(200,160,85,.35)}
-.parent-row td{background:rgba(255,255,255,.025)}
-.parent-row .acc-name{font-weight:600;font-size:14px}
+.stat-value{font-size:20px;font-weight:600;color:var(--text1);font-family:var(--font-en)}
+.stat-value.blue{color:var(--accent)}
+.stat-value.purple{color:#e090c8}
+.stat-value.gold{color:var(--gold)}
+.stat-value.green{color:var(--success)}
+.stat-value.orange{color:var(--warning)}
+
+/* نفس أسلوب جداول الإيرادات/المصروفات */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap;letter-spacing:.04em}
+tbody tr{border-bottom:1px solid rgba(100,160,255,.05)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(42,127,255,.04)}
+tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
+.td-code{width:96px;font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500;white-space:nowrap;text-align:right}
+.td-name{color:var(--text1);font-weight:500;white-space:normal;line-height:1.5;min-width:220px}
+.td-name .tree{display:inline-block;color:var(--text3);margin-left:6px;font-family:var(--font-en);font-size:11px;opacity:.7}
+.td-type{white-space:nowrap}
+.td-map{color:var(--text2);font-size:12.5px;white-space:nowrap}
+.td-map.empty{color:var(--text3)}
+.td-post{white-space:nowrap}
+.row-group{background:rgba(255,255,255,.02)}
+.row-group .td-name{font-weight:600;color:var(--text1)}
+.row-group .td-code{font-weight:600}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-blue{background:rgba(42,127,255,.12);color:var(--accent)}
+.badge-green{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-gold{background:rgba(200,160,85,.12);color:var(--gold)}
+.badge-red{background:rgba(224,72,72,.1);color:var(--danger)}
+.badge-gray{background:rgba(138,155,184,.1);color:var(--text2)}
+.badge-purple{background:rgba(150,100,255,.12);color:#9664ff}
+.badge-orange{background:rgba(224,144,48,.12);color:var(--warning)}
+
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2)}
+.table-info{font-size:12px;color:var(--text3)}
+
 @media(max-width:900px){
   .stats-row{grid-template-columns:1fr 1fr}
-  .coa .col-map,.coa .col-post{width:auto}
-  .coa .map-key{white-space:normal;overflow:visible;text-overflow:clip}
+  .content{padding:16px}
 }
 </style>
 {% include 'partials/liftcore_head.html' %}
@@ -115,12 +99,12 @@ table.coa{width:100%;border-collapse:collapse;table-layout:fixed}
 
     <div class="page-header">
       <div class="page-title">شجرة الحسابات <span>{{ accounts|length }} حساب</span></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <form method="post" action="{{ url_for('accounts_seed') }}" style="display:inline">
+      <div class="page-actions">
+        <form method="post" action="{{ url_for('accounts_seed') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-secondary btn-sm" type="submit">تحديث القالب الافتراضي</button>
         </form>
-        <form method="post" action="{{ url_for('accounts_backfill') }}" style="display:inline">
+        <form method="post" action="{{ url_for('accounts_backfill') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-primary btn-sm" type="submit">ربط الإيرادات/المصروفات بالحسابات</button>
         </form>
@@ -128,60 +112,72 @@ table.coa{width:100%;border-collapse:collapse;table-layout:fixed}
     </div>
 
     <p class="hint">
-      دليل حسابات مخصص لشركات المصاعد. عند تسجيل إيراد أو مصروف يُربط تلقائياً بالحساب المناسب
-      (مثال: تجديد عقد → 4110، محروقات → 5300، تسوية مالك سابق → 4900).
-      المرحلة الحالية: الشجرة + الربط التشغيلي. القيود اليومية ودفتر الأستاذ في مرحلة لاحقة.
+      دليل حسابات لشركات المصاعد. عند تسجيل إيراد أو مصروف يُربط تلقائياً بالحساب المناسب
+      (تجديد عقد ← 4110، محروقات ← 5300، تسوية مالك سابق ← 4900).
     </p>
 
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-label">أصول</div><div class="stat-value" style="color:var(--accent)">{{ counts.asset }}</div></div>
-      <div class="stat-card"><div class="stat-label">خصوم</div><div class="stat-value" style="color:#e090c8">{{ counts.liability }}</div></div>
-      <div class="stat-card"><div class="stat-label">حقوق ملكية</div><div class="stat-value" style="color:var(--gold)">{{ counts.equity }}</div></div>
-      <div class="stat-card"><div class="stat-label">إيرادات</div><div class="stat-value" style="color:var(--success)">{{ counts.revenue }}</div></div>
-      <div class="stat-card"><div class="stat-label">مصروفات</div><div class="stat-value" style="color:var(--warning)">{{ counts.expense }}</div></div>
+      <div class="stat-card"><div class="stat-label">أصول</div><div class="stat-value blue">{{ counts.asset }}</div></div>
+      <div class="stat-card"><div class="stat-label">خصوم</div><div class="stat-value purple">{{ counts.liability }}</div></div>
+      <div class="stat-card"><div class="stat-label">حقوق ملكية</div><div class="stat-value gold">{{ counts.equity }}</div></div>
+      <div class="stat-card"><div class="stat-label">إيرادات</div><div class="stat-value green">{{ counts.revenue }}</div></div>
+      <div class="stat-card"><div class="stat-label">مصروفات</div><div class="stat-value orange">{{ counts.expense }}</div></div>
     </div>
 
     <div class="table-wrap">
-      <table class="coa">
-        <thead>
-          <tr>
-            <th class="col-code">الكود</th>
-            <th>اسم الحساب</th>
-            <th class="col-type">النوع</th>
-            <th class="col-map">الربط التشغيلي</th>
-            <th class="col-post">قابل للترحيل</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for a in accounts %}
-          <tr class="{{ 'parent-row' if not a.is_postable else '' }}">
-            <td class="code">{{ a.code }}</td>
-            <td class="acc-cell">
-              <div class="acc-block" style="--depth:{{ a.depth }}">
-                <span class="acc-name">{{ a.name }}</span>
-                {% if a.name_en %}<span class="acc-en">{{ a.name_en }}</span>{% endif %}
-              </div>
-            </td>
-            <td>
-              {% set t = a.account_type %}
-              <span class="badge {{ 'ast' if t=='asset' else 'lia' if t=='liability' else 'eq' if t=='equity' else 'rev' if t=='revenue' else 'exp' }}">{{ a.type_label }}</span>
-            </td>
-            <td>
-              {% if a.map_key %}
-              <span class="map-key" title="{{ a.map_key }}">{{ a.map_key }}</span>
-              {% else %}
-              <span class="map-empty">—</span>
-              {% endif %}
-            </td>
-            <td>
-              <span class="post-label {{ '' if a.is_postable else 'is-group' }}">{{ 'نعم' if a.is_postable else 'مجموعة' }}</span>
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:28px">لا توجد حسابات — اضغط «تحديث القالب الافتراضي»</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>الكود</th>
+              <th>اسم الحساب</th>
+              <th>النوع</th>
+              <th>الربط التشغيلي</th>
+              <th>الترحيل</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in accounts %}
+            {% set t = a.account_type %}
+            {% set badge = 'badge-blue' if t=='asset' else 'badge-purple' if t=='liability' else 'badge-gold' if t=='equity' else 'badge-green' if t=='revenue' else 'badge-orange' %}
+            {% set map_label = a.map_key.split(':')[1] if a.map_key and ':' in a.map_key else (a.map_key or '') %}
+            {% set map_labels = {
+              'cash': 'نقدية وبنوك',
+              'ar': 'ذمم مدينة',
+              'inventory': 'مخزون',
+              'vat_payable': 'ضريبة مستحقة',
+              'ap': 'ذمم دائنة',
+              'capital': 'رأس المال'
+            } %}
+            {% if map_label in map_labels %}{% set map_label = map_labels[map_label] %}{% endif %}
+            <tr class="{{ 'row-group' if not a.is_postable else '' }}">
+              <td class="td-code">{{ a.code }}</td>
+              <td class="td-name" style="padding-right:{{ 14 + (a.depth * 22) }}px">
+                {% if a.depth > 0 %}<span class="tree">└</span>{% endif %}{{ a.name }}
+              </td>
+              <td class="td-type"><span class="badge {{ badge }}">{{ a.type_label }}</span></td>
+              <td class="td-map {{ 'empty' if not map_label else '' }}">{{ map_label if map_label else '—' }}</td>
+              <td class="td-post">
+                {% if a.is_postable %}
+                <span class="badge badge-green">قابل للترحيل</span>
+                {% else %}
+                <span class="badge badge-gray">مجموعة</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" style="text-align:center;color:var(--text3);padding:28px">
+                لا توجد حسابات — اضغط «تحديث القالب الافتراضي»
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div class="table-info">عرض {{ accounts|length }} حساباً في الشجرة</div>
+      </div>
     </div>
   </div>
 </div>
