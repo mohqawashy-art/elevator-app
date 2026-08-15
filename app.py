@@ -9029,6 +9029,7 @@ def fault_delete(id):
 @app.route('/revenues')
 def revenues():
     from sqlalchemy.orm import joinedload
+    from customer_billing import tenant_outstanding_collectible
 
     revs = (
         tenant_query(Revenue)
@@ -9037,12 +9038,16 @@ def revenues():
         .all()
     )
     customers = tenant_query(Customer).order_by(Customer.name).all()
+    outstanding = tenant_outstanding_collectible()
     return render_template(
         'revenues.html',
         revenues=revs,
         customers=customers,
         revenues_js=[revenue_to_js_dict(r) for r in revs],
         customers_js=[{'id': c.id, 'name': c.name, 'code': c.code} for c in customers],
+        outstanding_total=outstanding.get('total') or 0,
+        outstanding_count=outstanding.get('items_count') or 0,
+        outstanding_contracts=outstanding.get('contracts_count') or 0,
     )
 
 def _revenue_from_form(form, existing: Revenue | None = None):

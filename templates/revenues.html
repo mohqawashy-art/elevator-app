@@ -204,10 +204,17 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="stat-value green" id="s-new">0</div>
         <div class="stat-sub" id="s-new-sub">0 عملية</div>
       </div>
-      <div class="stat-card" data-stat="pending" role="button" tabindex="0" aria-pressed="false" title="عرض الإيرادات غير المحصلة" onclick="filterByStat('pending')" onkeydown="statCardKey(event,'pending')">
+      <div class="stat-card" data-stat="pending" role="button" tabindex="0" aria-pressed="false" title="متبقي العقود + فواتير/قطع غير محصّلة — اضغط لفتح العقود" onclick="window.location.href='/contracts'" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='/contracts'}">
         <div class="stat-label">غير محصل</div>
-        <div class="stat-value red" id="s-pending">0</div>
-        <div class="stat-sub" id="s-pending-sub">0 عملية</div>
+        <div class="stat-value red" id="s-pending">{{ '{:,.0f}'.format(outstanding_total or 0) }}</div>
+        <div class="stat-sub" id="s-pending-sub">
+          {%- if outstanding_contracts -%}
+            {{ outstanding_contracts }} عقود بمتبقي
+            {%- if outstanding_count and outstanding_count != outstanding_contracts %} · {{ outstanding_count }} بند{%- endif -%}
+          {%- else -%}
+            {{ outstanding_count or 0 }} بند مستحق
+          {%- endif -%}
+        </div>
       </div>
     </div>
 
@@ -422,13 +429,16 @@ function setText(id, val) {
 }
 
 // ===== إحصائيات =====
+var OUTSTANDING_TOTAL = {{ (outstanding_total or 0)|tojson }};
+var OUTSTANDING_COUNT = {{ (outstanding_count or 0)|tojson }};
+var OUTSTANDING_CONTRACTS = {{ (outstanding_contracts or 0)|tojson }};
+
 function updateStats() {
   const sum = (rows) => rows.reduce((s, r) => s + r.total, 0);
   const cnt = (rows) => (window.LiftCoreDisplay ? LiftCoreDisplay.fmtTransactionsCount(rows.length) : rows.length + ' عملية');
   const renewal = REVENUES.filter(r => r.revenue_type === 'تجديد عقد');
   const parts = REVENUES.filter(r => (r.revenue_type || '').includes('قطع غيار'));
   const newContracts = REVENUES.filter(r => r.revenue_type === 'عقد جديد');
-  const pending = REVENUES.filter(r => !['محصّل', 'محصل'].includes(r.status));
   setText('s-total', sum(REVENUES).toLocaleString('ar-SA'));
   setText('s-total-sub', cnt(REVENUES));
   setText('s-renewal', sum(renewal).toLocaleString('ar-SA'));
@@ -437,8 +447,18 @@ function updateStats() {
   setText('s-parts-sub', cnt(parts));
   setText('s-new', sum(newContracts).toLocaleString('ar-SA'));
   setText('s-new-sub', cnt(newContracts));
-  setText('s-pending', sum(pending).toLocaleString('ar-SA'));
-  setText('s-pending-sub', cnt(pending));
+  // غير محصل = متبقي العقود/الفواتير/القطع (مش إيرادات معلّقة فقط)
+  setText('s-pending', Number(OUTSTANDING_TOTAL || 0).toLocaleString('ar-SA'));
+  var sub = '';
+  if (OUTSTANDING_CONTRACTS) {
+    sub = OUTSTANDING_CONTRACTS + ' عقود بمتبقي';
+    if (OUTSTANDING_COUNT && OUTSTANDING_COUNT !== OUTSTANDING_CONTRACTS) {
+      sub += ' · ' + OUTSTANDING_COUNT + ' بند';
+    }
+  } else {
+    sub = (OUTSTANDING_COUNT || 0) + ' بند مستحق';
+  }
+  setText('s-pending-sub', sub);
   setText('rev-count', REVENUES.length + ' سجل');
 }
 
