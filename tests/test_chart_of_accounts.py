@@ -330,3 +330,98 @@ def test_accounts_edit_route(client):
         acc = db.session.get(Account, acc_id)
         assert acc.name == 'إيراد صيانة معدّل'
         assert acc.parent_id is None
+
+
+def test_wipe_chart_for_org_clears_accounts_only(client):
+    from models import JournalEntry, JournalLine, Revenue
+
+    with client.application.app_context():
+        from chart_of_accounts import wipe_chart_for_org
+
+        org = Organization(slug='coa-wipe', name='مسح شجرة', status='active')
+        other = Organization(slug='coa-keep', name='لا تُمسح', status='active')
+        db.session.add_all([org, other])
+        db.session.commit()
+        ensure_chart_for_org(org.id)
+        ensure_chart_for_org(other.id)
+
+        rev = Revenue(
+            code='REV-W1',
+            revenue_date=__import__('datetime').date.today(),
+            amount=100,
+            total=100,
+            organization_id=org.id,
+        )
+        db.session.add(rev)
+        db.session.flush()
+        cash = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1100')
+            .first()
+        )
+        rev.account_id = cash.id
+        je = JournalEntry(
+            code='JE-W1',
+            entry_date=__import__('datetime').date.today(),
+            memo='قيد اختبار',
+            source_type='manual',
+            status='posted',
+            organization_id=org.id,
+        )
+        db.session.add(je)
+        db.session.flush()
+        db.session.add(JournalLine(
+            journal_id=je.id,
+            account_id=cash.id,
+            debit=100,
+            credit=0,
+            organization_id=org.id,
+        ))
+        db.session.commit()
+
+        stats = wipe_chart_for_org(org.id)
+        assert stats['accounts'] > 0
+        assert (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id)
+            .count()
+        ) == 0
+        assert (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=other.id)
+            .count()
+        ) == len(DEFAULT_CHART)
+        assert (
+            JournalEntry.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id)
+            .count()
+        ) == 0
+        leftover = db.session.get(Revenue, rev.id)
+        assert leftover is not None
+        assert leftover.account_id is None
+
+
+def test_accounts_wipe_route(client):
+    from tests.conftest import ensure_test_organization, login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        ensure_chart_for_org(oid)
+        assert (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid)
+            .count()
+        ) > 0
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+    resp = client.post('/accounts/wipe', data={'csrf_token': 'test-csrf'})
+    assert resp.status_code in (302, 303)
+
+    with client.application.app_context():
+        assert (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid)
+            .count()
+        ) == 0

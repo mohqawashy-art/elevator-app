@@ -512,3 +512,57 @@ def update_account(
     acc.sort_order = _sort_order_from_code(code)
     db.session.flush()
     return acc
+
+
+def wipe_chart_for_org(organization_id: int | None) -> dict[str, int]:
+    """حذف شجرة الحسابات والقيود للمستأجر فقط. الإيرادات/المصروفات تبقى مع فك الربط."""
+    from models import Expense, JournalEntry, JournalLine, Revenue
+
+    if not organization_id:
+        return {'accounts': 0, 'journals': 0, 'lines': 0}
+
+    ensure_chart_schema()
+    skip = {'synchronize_session': False}
+    insp = inspect(db.engine)
+    tables = set(insp.get_table_names())
+
+    n_lines = 0
+    n_journals = 0
+    if 'journal_lines' in tables:
+        n_lines = (
+            JournalLine.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=organization_id)
+            .delete(**skip)
+        )
+    if 'journal_entries' in tables:
+        n_journals = (
+            JournalEntry.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=organization_id)
+            .delete(**skip)
+        )
+    (
+        Revenue.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=organization_id)
+        .update({Revenue.account_id: None}, **skip)
+    )
+    (
+        Expense.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=organization_id)
+        .update({Expense.account_id: None}, **skip)
+    )
+    (
+        Account.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=organization_id)
+        .update({Account.parent_id: None}, **skip)
+    )
+    n_accounts = (
+        Account.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=organization_id)
+        .delete(**skip)
+    )
+    db.session.commit()
+    return {
+        'accounts': int(n_accounts or 0),
+        'journals': int(n_journals or 0),
+        'lines': int(n_lines or 0),
+    }

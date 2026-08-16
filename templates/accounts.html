@@ -32,6 +32,8 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;font-
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
 .btn-sm{padding:5px 10px;font-size:12px}
+.btn-danger{background:transparent;color:var(--danger);border:1px solid rgba(224,72,72,.35)}
+.btn-danger:hover{background:rgba(224,72,72,.12);color:#ff7a7a}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-overlay.open{opacity:1;pointer-events:all}
 .modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column}
@@ -141,6 +143,12 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-secondary btn-sm" type="submit">ربط الإيرادات/المصروفات بالحسابات</button>
         </form>
+        {% if can_write %}
+        <form method="post" action="{{ url_for('accounts_wipe') }}" onsubmit="return confirm('سيتم حذف كل الحسابات وكل القيود اليومية لهذه المؤسسة.\nالإيرادات والمصروفات تبقى، لكن يُفك ربطها بالحسابات.\nمتابعة مسح الشجرة؟');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-danger btn-sm" type="submit">مسح الشجرة بالكامل</button>
+        </form>
+        {% endif %}
       </div>
       {% endif %}
     </div>

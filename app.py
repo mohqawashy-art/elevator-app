@@ -9359,6 +9359,27 @@ def accounts_edit(id):
     return redirect(url_for('accounts'))
 
 
+@app.route('/accounts/wipe', methods=['POST'])
+def accounts_wipe():
+    from chart_of_accounts import wipe_chart_for_org
+    from tenant_scope import effective_organization_id
+
+    _ensure_tenant_chart()
+    oid = getattr(g, 'organization_id', None) or effective_organization_id()
+    try:
+        stats = wipe_chart_for_org(oid) if oid else {'accounts': 0, 'journals': 0}
+        flash(
+            f"تم مسح الشجرة: {stats.get('accounts', 0)} حساب"
+            f" و{stats.get('journals', 0)} قيد. يمكنك إنشاء شجرتك الآن.",
+            'success',
+        )
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('accounts_wipe failed')
+        flash(f'تعذّر مسح الشجرة: {exc}', 'danger')
+    return redirect(url_for('accounts'))
+
+
 # =============================================
 # القيود / دفتر الأستاذ / التقارير المحاسبية (مرحلة 2–3)
 # =============================================
