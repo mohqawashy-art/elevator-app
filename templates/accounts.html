@@ -83,6 +83,7 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
 tr.has-kids.collapsed .tree-toggle svg{transform:rotate(90deg)}
 .tree-leaf{width:18px;flex:0 0 18px;display:inline-block}
 .tree-label{display:inline}
+.tree-en{display:block;font-size:11px;font-weight:400;color:var(--text3);font-family:var(--font-en);direction:ltr;text-align:right;margin-top:2px}
 tr.has-kids{cursor:pointer}
 tr.has-kids:hover .tree-label{color:var(--accent)}
 tr.tree-hidden{display:none}
@@ -220,7 +221,7 @@ tr.tree-hidden{display:none}
                   {% else %}
                   <span class="tree-leaf"></span>
                   {% endif %}
-                  <span class="tree-label">{{ a.name }}</span>
+                  <span class="tree-label">{{ a.name }}{% if a.name_en %}<span class="tree-en">{{ a.name_en }}</span>{% endif %}</span>
                 </span>
               </td>
               <td class="td-type"><span class="badge {{ badge }}">{{ a.type_label }}</span></td>
@@ -271,15 +272,15 @@ tr.tree-hidden{display:none}
         </div>
         <div class="empty-card">
           <h3>مجموعات أساسية فقط</h3>
-          <p>أصول، خصوم، حقوق ملكية، إيرادات، ومصروفات — ثم تكمل الفروع أنت.</p>
+          <p>أصول، خصوم، حقوق ملكية، إيرادات، تكلفة إيراد، ومصروفات تشغيل — ثم تكمل الفروع أنت.</p>
           <form method="post" action="{{ url_for('accounts_seed_roots') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-secondary" type="submit">إنشاء المجموعات الخمس</button>
+            <button class="btn btn-secondary" type="submit">إنشاء المجموعات الست</button>
           </form>
         </div>
         <div class="empty-card">
           <h3>قالب شركات المصاعد</h3>
-          <p>الشجرة الجاهزة للصيانة والتركيب (نقدية، عقود، قطع غيار، رواتب…).</p>
+          <p>الشجرة الكاملة عربي/إنجليزي للصيانة والتركيب (أصول ثابتة، عقود، قطع، أسطول…).</p>
           <form method="post" action="{{ url_for('accounts_seed') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn btn-secondary" type="submit">استخدام القالب</button>
@@ -328,7 +329,7 @@ tr.tree-hidden{display:none}
             <select name="parent_id" id="acc-parent">
               <option value="">— بدون أب (مستوى أول) —</option>
               {% for a in accounts %}
-              <option value="{{ a.id }}" data-type="{{ a.account_type }}" data-parent="{{ a.parent_id or '' }}">{{ a.code }} — {{ a.name }}</option>
+              <option value="{{ a.id }}" data-type="{{ a.account_type }}" data-parent="{{ a.parent_id or '' }}">{{ a.code }} — {{ a.name }}{% if a.name_en %} / {{ a.name_en }}{% endif %}</option>
               {% endfor %}
             </select>
           </div>

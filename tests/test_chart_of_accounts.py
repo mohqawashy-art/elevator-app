@@ -57,15 +57,15 @@ def test_resolve_revenue_and_expense_map_keys(client):
 
         renew_id = resolve_revenue_account_id('تجديد عقد')
         acc = db.session.get(Account, renew_id)
-        assert acc and acc.code == '4110'
+        assert acc and acc.code == '4120'
 
         prior_id = resolve_revenue_account_id('عقد صيانة', 'تحصيل مالك سابق — قبل استلام جما')
         prior = db.session.get(Account, prior_id)
-        assert prior and prior.code == '4900'
+        assert prior and prior.code == '4910'
 
         fuel_id = resolve_expense_account_id('محروقات')
         fuel = db.session.get(Account, fuel_id)
-        assert fuel and fuel.code == '5300'
+        assert fuel and fuel.code == '6210'
 
 
 def test_create_custom_account_under_parent(client):
@@ -185,7 +185,7 @@ def test_seed_root_groups_only(client):
             .order_by(Account.code.asc())
             .all()
         )
-        assert [a.code for a in rows] == ['1000', '2000', '3000', '4000', '5000']
+        assert [a.code for a in rows] == ['1000', '2000', '3000', '4000', '5000', '6000']
         assert all(not a.is_postable and a.parent_id is None for a in rows)
         assert seed_root_groups_for_org(org.id) == 0
 
@@ -231,7 +231,7 @@ def test_accounts_seed_roots_route(client):
             .filter_by(organization_id=oid)
             .all()
         }
-        assert codes == {'1000', '2000', '3000', '4000', '5000'}
+        assert codes == {'1000', '2000', '3000', '4000', '5000', '6000'}
 
 
 def test_update_account_renames_and_moves(client):
@@ -357,7 +357,7 @@ def test_wipe_chart_for_org_clears_accounts_only(client):
         db.session.flush()
         cash = (
             Account.query.execution_options(skip_tenant=True)
-            .filter_by(organization_id=org.id, code='1100')
+            .filter_by(organization_id=org.id, code='1120')
             .first()
         )
         rev.account_id = cash.id
@@ -473,7 +473,7 @@ def test_accounts_delete_route(client):
         ensure_chart_for_org(oid)
         acc = (
             Account.query.execution_options(skip_tenant=True)
-            .filter_by(organization_id=oid, code='5900')
+            .filter_by(organization_id=oid, code='6910')
             .first()
         )
         acc_id = acc.id
