@@ -5968,6 +5968,32 @@ def _apply_contract_form(c, form):
     c.address = form.get('address', '')
     c.notes = form.get('notes', '')
     _apply_contract_paid_from_form(c, form)
+    _sync_customer_location_from_contract_form(c.customer_id, form)
+
+
+def _sync_customer_location_from_contract_form(customer_id, form):
+    """حفظ إحداثيات خريطة العقد على العميل حتى لا ترجع الدبوس لإحداثيات الحرم الافتراضية."""
+    if not customer_id:
+        return
+    lat = (form.get('lat') or '').strip().replace(',', '.')
+    lng = (form.get('lng') or '').strip().replace(',', '.')
+    maps_url = (form.get('maps_url') or '').strip()
+    try:
+        la = float(lat)
+        ln = float(lng)
+    except (TypeError, ValueError):
+        return
+    if la == 0 and ln == 0:
+        return
+    if abs(la - 21.4225) < 0.0012 and abs(ln - 39.8262) < 0.0012:
+        return
+    cust = tenant_query(Customer).filter_by(id=int(customer_id)).first()
+    if not cust:
+        return
+    cust.lat = str(la)
+    cust.lng = str(ln)
+    if maps_url:
+        cust.maps_url = maps_url[:500]
 
 
 def _fin_proof_upload_dir(kind, row_id):

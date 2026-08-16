@@ -23,6 +23,9 @@
   }
 
   function hasGps(c) {
+    if (global.LiftCoreLocation && LiftCoreLocation.hasCoordinates) {
+      return LiftCoreLocation.hasCoordinates(c);
+    }
     if (global.LiftCoreLocation && LiftCoreLocation.parseCoords) {
       return !!LiftCoreLocation.parseCoords(c.lat, c.lng);
     }

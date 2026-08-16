@@ -15,7 +15,9 @@
   }
 
   function hasCoordinates(c) {
-    return !!parseCoords(c && c.lat, c && c.lng);
+    var parsed = parseCoords(c && c.lat, c && c.lng);
+    if (!parsed) return false;
+    return !isHaramDefaultPin(parsed.lat, parsed.lng);
   }
 
   /** تحليل lat/lng مع تصحيح الانقلاب الشائع في السعودية */
@@ -36,6 +38,10 @@
     if (inSaudi(la, ln)) return { lat: la, lng: ln };
     if (inSaudi(ln, la)) return { lat: ln, lng: la };
     return { lat: la, lng: ln };
+  }
+
+  function isHaramDefaultPin(la, ln) {
+    return Math.abs(la - 21.4225) < 0.0012 && Math.abs(ln - 39.8262) < 0.0012;
   }
 
   var CITY_COORDS = {
@@ -72,7 +78,9 @@
   function coordsForCustomer(c) {
     if (!c) return null;
     var parsed = parseCoords(c.lat, c.lng);
-    if (parsed) return { lat: parsed.lat, lng: parsed.lng, exact: true };
+    if (parsed && !isHaramDefaultPin(parsed.lat, parsed.lng)) {
+      return { lat: parsed.lat, lng: parsed.lng, exact: true };
+    }
     var city = resolveCityCoords(c.city);
     if (city) return { lat: city.lat, lng: city.lng, exact: false };
     return null;
@@ -281,6 +289,7 @@
   global.LiftCoreLocation = {
     formatAddress: formatAddress,
     parseCoords: parseCoords,
+    hasCoordinates: hasCoordinates,
     resolveCityCoords: resolveCityCoords,
     coordsForCustomer: coordsForCustomer,
     CITY_COORDS: CITY_COORDS,
