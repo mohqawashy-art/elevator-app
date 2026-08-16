@@ -10230,7 +10230,14 @@ def purchase_orders_save():
     order.lines.clear()
     total = 0.0
     for row in lines_data:
-        order.lines.append(PurchaseOrderLine(**row))
+        line = PurchaseOrderLine(
+            item_id=row['item_id'],
+            quantity=row['quantity'],
+            unit_price=row['unit_price'],
+            line_total=row['line_total'],
+        )
+        assign_organization(line)
+        order.lines.append(line)
         total += row['line_total']
     order.total_amount = total
     if order.status == 'مستلم' and old_status != 'مستلم':
@@ -10519,8 +10526,23 @@ def elevator_estimates_save():
 
     est.lines.clear()
     for row in lines_data:
-        est.lines.append(ElevatorEstimateLine(**row))
-    db.session.commit()
+        line = ElevatorEstimateLine(
+            category=row.get('category'),
+            description=row.get('description'),
+            quantity=row.get('quantity') or 0,
+            unit=row.get('unit'),
+            unit_price=row.get('unit_price') or 0,
+            line_total=row.get('line_total') or 0,
+        )
+        assign_organization(line)
+        est.lines.append(line)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('elevator_estimates_save failed')
+        flash('تعذّر حفظ التقدير — تحقق من البنود وحاول مرة أخرى', 'error')
+        return redirect(url_for('elevator_estimates'))
     return redirect(url_for('elevator_estimate_print', estimate_id=est.id))
 
 
