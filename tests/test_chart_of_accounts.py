@@ -3,6 +3,7 @@ from chart_of_accounts import (
     DEFAULT_CHART,
     ROOT_GROUPS,
     create_custom_account,
+    delete_account,
     ensure_chart_for_org,
     ensure_chart_schema,
     resolve_expense_account_id,
@@ -425,3 +426,62 @@ def test_accounts_wipe_route(client):
             .filter_by(organization_id=oid)
             .count()
         ) == 0
+
+
+def test_delete_account_leaf_and_reject_parent(client):
+    with client.application.app_context():
+        org = Organization(slug='coa-del', name='حذف حساب', status='active')
+        db.session.add(org)
+        db.session.commit()
+        ensure_chart_for_org(org.id)
+        from flask import g
+        g.organization_id = org.id
+        g.organization = org
+
+        parent = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='5000')
+            .first()
+        )
+        try:
+            delete_account(parent.id)
+            assert False, 'expected parent reject'
+        except ValueError as exc:
+            assert 'فروع' in str(exc)
+
+        fuel = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='5300')
+            .first()
+        )
+        code, name = delete_account(fuel.id)
+        db.session.commit()
+        assert code == '5300'
+        assert (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='5300')
+            .first()
+        ) is None
+
+
+def test_accounts_delete_route(client):
+    from tests.conftest import ensure_test_organization, login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        ensure_chart_for_org(oid)
+        acc = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid, code='5900')
+            .first()
+        )
+        acc_id = acc.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+    resp = client.post(f'/accounts/{acc_id}/delete', data={'csrf_token': 'test-csrf'})
+    assert resp.status_code in (302, 303)
+
+    with client.application.app_context():
+        assert db.session.get(Account, acc_id) is None

@@ -9359,6 +9359,25 @@ def accounts_edit(id):
     return redirect(url_for('accounts'))
 
 
+@app.route('/accounts/<int:id>/delete', methods=['POST'])
+def accounts_delete(id):
+    from chart_of_accounts import delete_account
+
+    _ensure_tenant_chart()
+    try:
+        code, name = delete_account(id)
+        db.session.commit()
+        flash(f'تم حذف الحساب {code} — {name}', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'danger')
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('accounts_delete failed')
+        flash(f'تعذّر حذف الحساب: {exc}', 'danger')
+    return redirect(url_for('accounts'))
+
+
 @app.route('/accounts/wipe', methods=['POST'])
 def accounts_wipe():
     from chart_of_accounts import wipe_chart_for_org

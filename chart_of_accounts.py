@@ -515,6 +515,61 @@ def update_account(
     return acc
 
 
+def delete_account(account_id: int) -> tuple[str, str]:
+    """حذف حساب واحد. يُرفض إن كان له فروع أو قيود مرحّلة."""
+    from models import Expense, JournalLine, Revenue
+    from tenant_scope import effective_organization_id
+
+    ensure_chart_schema()
+    oid = effective_organization_id()
+    if not oid:
+        raise ValueError('المؤسسة غير معروفة')
+
+    acc = (
+        Account.query.execution_options(skip_tenant=True)
+        .filter_by(id=account_id, organization_id=oid)
+        .first()
+    )
+    if not acc:
+        raise ValueError('الحساب غير موجود')
+
+    has_children = (
+        Account.query.execution_options(skip_tenant=True)
+        .filter_by(parent_id=acc.id, organization_id=oid)
+        .first()
+        is not None
+    )
+    if has_children:
+        raise ValueError('لا يمكن حذف حساب له فروع — احذف الفروع أولاً')
+
+    insp = inspect(db.engine)
+    if 'journal_lines' in set(insp.get_table_names()):
+        has_lines = (
+            JournalLine.query.execution_options(skip_tenant=True)
+            .filter_by(account_id=acc.id, organization_id=oid)
+            .first()
+        )
+        if has_lines:
+            raise ValueError('لا يمكن حذف حساب عليه قيود يومية')
+
+    skip = {'synchronize_session': False}
+    (
+        Revenue.query.execution_options(skip_tenant=True)
+        .filter_by(account_id=acc.id, organization_id=oid)
+        .update({Revenue.account_id: None}, **skip)
+    )
+    (
+        Expense.query.execution_options(skip_tenant=True)
+        .filter_by(account_id=acc.id, organization_id=oid)
+        .update({Expense.account_id: None}, **skip)
+    )
+
+    code, name = acc.code, acc.name
+    db.session.delete(acc)
+    db.session.flush()
+    return code, name
+
+
 def wipe_chart_for_org(organization_id: int | None) -> dict[str, int]:
     """حذف شجرة الحسابات والقيود للمستأجر فقط. الإيرادات/المصروفات تبقى مع فك الربط."""
     from models import Expense, JournalEntry, JournalLine, Revenue

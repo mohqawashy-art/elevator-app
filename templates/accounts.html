@@ -91,9 +91,12 @@ tr.tree-hidden{display:none}
 .td-map.empty{color:var(--text3)}
 .td-post{white-space:nowrap}
 .row-inactive{opacity:.55}
-.td-actions{white-space:nowrap;width:72px}
+.td-actions{white-space:nowrap;width:auto}
+.td-actions form{display:inline}
 .btn-linkish{background:transparent;border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:var(--r-sm);font-size:12px;cursor:pointer;font-family:var(--font-ar)}
 .btn-linkish:hover{color:var(--text1);border-color:var(--border2);background:var(--bg4)}
+.btn-del{color:var(--danger);border-color:rgba(224,72,72,.35);margin-right:6px}
+.btn-del:hover{color:#ff7a7a;border-color:rgba(224,72,72,.55);background:rgba(224,72,72,.12)}
 .row-group .td-name{font-weight:600;color:var(--text1)}
 .row-group .td-code{font-weight:600}
 
@@ -234,6 +237,10 @@ tr.tree-hidden{display:none}
               {% if can_write %}
               <td class="td-actions">
                 <button class="btn-linkish" type="button" onclick="event.stopPropagation();openAccountModal({{ a.id }})">تعديل</button>
+                <form method="post" action="{{ url_for('accounts_delete', id=a.id) }}" onclick="event.stopPropagation()" onsubmit="return confirm('حذف الحساب {{ a.code }} — {{ a.name }}؟');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn-linkish btn-del" type="submit">حذف</button>
+                </form>
               </td>
               {% endif %}
             </tr>
