@@ -76,7 +76,10 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
 .td-map{color:var(--text2);font-size:12.5px;white-space:nowrap}
 .td-map.empty{color:var(--text3)}
 .td-post{white-space:nowrap}
-.row-group{background:rgba(255,255,255,.02)}
+.row-inactive{opacity:.55}
+.td-actions{white-space:nowrap;width:72px}
+.btn-linkish{background:transparent;border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:var(--r-sm);font-size:12px;cursor:pointer;font-family:var(--font-ar)}
+.btn-linkish:hover{color:var(--text1);border-color:var(--border2);background:var(--bg4)}
 .row-group .td-name{font-weight:600;color:var(--text1)}
 .row-group .td-code{font-weight:600}
 
@@ -144,7 +147,7 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
 
     {% if accounts %}
     <p class="hint">
-      هذه شجرة حسابات مؤسستك. أضف فروعاً من «حساب جديد»، أو أكمل الناقص من قالب شركات المصاعد ثم اربط الإيرادات والمصروفات.
+      هذه شجرة حسابات مؤسستك. أضف فروعاً من «حساب جديد»، أو عدّل أي حساب من زر التعديل.
     </p>
 
     <div class="stats-row">
@@ -165,6 +168,7 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
               <th>النوع</th>
               <th>الربط التشغيلي</th>
               <th>الترحيل</th>
+              {% if can_write %}<th></th>{% endif %}
             </tr>
           </thead>
           <tbody>
@@ -181,7 +185,7 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
               'capital': 'رأس المال'
             } %}
             {% if map_label in map_labels %}{% set map_label = map_labels[map_label] %}{% endif %}
-            <tr class="{{ 'row-group' if not a.is_postable else '' }}">
+            <tr class="{{ 'row-group' if not a.is_postable else '' }}{{ ' row-inactive' if not a.is_active else '' }}">
               <td class="td-code">{{ a.code }}</td>
               <td class="td-name" style="padding-right:{{ 14 + (a.depth * 22) }}px">
                 {% if a.depth > 0 %}<span class="tree">└</span>{% endif %}{{ a.name }}
@@ -189,12 +193,19 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
               <td class="td-type"><span class="badge {{ badge }}">{{ a.type_label }}</span></td>
               <td class="td-map {{ 'empty' if not map_label else '' }}">{{ map_label if map_label else '—' }}</td>
               <td class="td-post">
-                {% if a.is_postable %}
+                {% if not a.is_active %}
+                <span class="badge badge-gray">موقوف</span>
+                {% elif a.is_postable %}
                 <span class="badge badge-green">قابل للترحيل</span>
                 {% else %}
                 <span class="badge badge-gray">مجموعة</span>
                 {% endif %}
               </td>
+              {% if can_write %}
+              <td class="td-actions">
+                <button class="btn-linkish" type="button" onclick="openAccountModal({{ a.id }})">تعديل</button>
+              </td>
+              {% endif %}
             </tr>
             {% endfor %}
           </tbody>
@@ -246,16 +257,16 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
 <div class="modal-overlay" id="account-modal" onclick="if(event.target===this)closeAccountModal()">
   <div class="modal">
     <div class="modal-head">
-      <div class="modal-title">حساب جديد</div>
+      <div class="modal-title" id="account-modal-title">حساب جديد</div>
       <button type="button" class="modal-close" onclick="closeAccountModal()">×</button>
     </div>
-    <form method="post" action="{{ url_for('accounts_add') }}">
+    <form method="post" action="{{ url_for('accounts_add') }}" id="account-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="modal-body">
         <div class="form-grid">
           <div class="field">
             <label>الكود <span>*</span></label>
-            <input name="code" required maxlength="20" placeholder="مثال: 5310" dir="ltr">
+            <input name="code" id="acc-code" required maxlength="20" placeholder="مثال: 5310" dir="ltr">
           </div>
           <div class="field">
             <label>النوع <span>*</span></label>
@@ -269,43 +280,96 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
           </div>
           <div class="field form-full">
             <label>اسم الحساب <span>*</span></label>
-            <input name="name" required maxlength="200" placeholder="مثال: صيانة معدات">
+            <input name="name" id="acc-name" required maxlength="200" placeholder="مثال: صيانة معدات">
           </div>
           <div class="field form-full">
             <label>الحساب الأب</label>
             <select name="parent_id" id="acc-parent">
               <option value="">— بدون أب (مستوى أول) —</option>
               {% for a in accounts %}
-              <option value="{{ a.id }}" data-type="{{ a.account_type }}">{{ a.code }} — {{ a.name }}</option>
+              <option value="{{ a.id }}" data-type="{{ a.account_type }}" data-parent="{{ a.parent_id or '' }}">{{ a.code }} — {{ a.name }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="field form-full">
             <label>الاسم بالإنجليزية</label>
-            <input name="name_en" maxlength="200" dir="ltr" placeholder="Optional">
+            <input name="name_en" id="acc-name-en" maxlength="200" dir="ltr" placeholder="Optional">
           </div>
           <div class="field form-full">
             <label>ملاحظات</label>
-            <textarea name="notes" maxlength="500"></textarea>
+            <textarea name="notes" id="acc-notes" maxlength="500"></textarea>
           </div>
           <div class="field form-full">
             <label class="check">
-              <input type="checkbox" name="is_postable" value="1" checked>
+              <input type="checkbox" name="is_postable" id="acc-postable" value="1" checked>
               قابل للترحيل (حساب تفصيلي وليس مجموعة)
+            </label>
+          </div>
+          <div class="field form-full" id="acc-active-wrap" hidden>
+            <label class="check">
+              <input type="checkbox" name="is_active" id="acc-active" value="1" checked>
+              الحساب نشط (إلغاء التفعيل يخفيه من القيود الجديدة)
             </label>
           </div>
         </div>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-secondary" onclick="closeAccountModal()">إلغاء</button>
-        <button type="submit" class="btn btn-primary">إنشاء الحساب</button>
+        <button type="submit" class="btn btn-primary" id="account-submit">إنشاء الحساب</button>
       </div>
     </form>
   </div>
 </div>
 <script>
-function openAccountModal(){ document.getElementById('account-modal').classList.add('open'); }
+window.__ACCOUNTS = {{ accounts | tojson }};
+var ACCOUNT_ADD_URL = {{ url_for('accounts_add') | tojson }};
 function closeAccountModal(){ document.getElementById('account-modal').classList.remove('open'); }
+function openAccountModal(id){
+  var form = document.getElementById('account-form');
+  var title = document.getElementById('account-modal-title');
+  var submit = document.getElementById('account-submit');
+  var activeWrap = document.getElementById('acc-active-wrap');
+  var parent = document.getElementById('acc-parent');
+  var acc = null;
+  if (id) {
+    for (var i = 0; i < (window.__ACCOUNTS || []).length; i++) {
+      if (window.__ACCOUNTS[i].id === id) { acc = window.__ACCOUNTS[i]; break; }
+    }
+  }
+  form.action = acc ? ('/accounts/' + acc.id + '/edit') : ACCOUNT_ADD_URL;
+  title.textContent = acc ? ('تعديل: ' + acc.code) : 'حساب جديد';
+  submit.textContent = acc ? 'حفظ التعديل' : 'إنشاء الحساب';
+  activeWrap.hidden = !acc;
+  document.getElementById('acc-code').value = acc ? acc.code : '';
+  document.getElementById('acc-name').value = acc ? acc.name : '';
+  document.getElementById('acc-name-en').value = acc ? (acc.name_en || '') : '';
+  document.getElementById('acc-notes').value = acc ? (acc.notes || '') : '';
+  document.getElementById('acc-type').value = acc ? acc.account_type : 'expense';
+  document.getElementById('acc-postable').checked = acc ? !!acc.is_postable : true;
+  document.getElementById('acc-active').checked = acc ? acc.is_active !== false : true;
+  var parentById = {};
+  (window.__ACCOUNTS || []).forEach(function(a){ parentById[a.id] = a.parent_id; });
+  for (var o = 0; o < parent.options.length; o++) {
+    var opt = parent.options[o];
+    var optId = parseInt(opt.value, 10);
+    var blocked = false;
+    if (acc && opt.value) {
+      if (optId === acc.id) blocked = true;
+      var walk = optId;
+      var guard = 0;
+      while (walk && guard < 80) {
+        if (walk === acc.id) { blocked = true; break; }
+        walk = parentById[walk];
+        guard++;
+      }
+    }
+    opt.hidden = blocked;
+    opt.disabled = blocked;
+  }
+  parent.value = acc && acc.parent_id ? String(acc.parent_id) : '';
+  document.getElementById('account-modal').classList.add('open');
+  document.getElementById('acc-code').focus();
+}
 (function(){
   var parent = document.getElementById('acc-parent');
   var typeEl = document.getElementById('acc-type');

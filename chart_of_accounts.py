@@ -280,6 +280,7 @@ def accounts_tree_rows(organization_id: int | None = None) -> list[dict]:
                 'parent_id': a.parent_id,
                 'depth': depth,
                 'sort_order': a.sort_order or 0,
+                'notes': a.notes or '',
             })
             walk(a.id, depth + 1)
 
@@ -381,5 +382,133 @@ def create_custom_account(
     )
     assign_organization(acc)
     db.session.add(acc)
+    db.session.flush()
+    return acc
+
+
+def _sort_order_from_code(code: str) -> int:
+    digits = ''.join(ch for ch in code if ch.isdigit())
+    try:
+        return int(digits) if digits else 9000
+    except ValueError:
+        return 9000
+
+
+def _descendant_ids(account_id: int, organization_id: int) -> set[int]:
+    children_by_parent: dict[int | None, list[int]] = {}
+    for row in (
+        Account.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=organization_id)
+        .all()
+    ):
+        children_by_parent.setdefault(row.parent_id, []).append(row.id)
+    found: set[int] = set()
+    stack = list(children_by_parent.get(account_id, []))
+    while stack:
+        cid = stack.pop()
+        if cid in found:
+            continue
+        found.add(cid)
+        stack.extend(children_by_parent.get(cid, []))
+    return found
+
+
+def update_account(
+    account_id: int,
+    *,
+    code: str,
+    name: str,
+    account_type: str,
+    parent_id: int | None = None,
+    is_postable: bool = True,
+    is_active: bool = True,
+    name_en: str = '',
+    notes: str = '',
+) -> Account:
+    """تعديل حساب في شجرة المستأجر الحالي."""
+    from tenant_scope import effective_organization_id
+
+    ensure_chart_schema()
+    oid = effective_organization_id()
+    if not oid:
+        raise ValueError('المؤسسة غير معروفة')
+
+    acc = (
+        Account.query.execution_options(skip_tenant=True)
+        .filter_by(id=account_id, organization_id=oid)
+        .first()
+    )
+    if not acc:
+        raise ValueError('الحساب غير موجود')
+
+    code = (code or '').strip()
+    name = (name or '').strip()
+    name_en = (name_en or '').strip()[:200]
+    notes = (notes or '').strip() or None
+    account_type = (account_type or '').strip()
+
+    if not code:
+        raise ValueError('كود الحساب مطلوب')
+    if len(code) > 20:
+        raise ValueError('كود الحساب طويل جداً')
+    if not name:
+        raise ValueError('اسم الحساب مطلوب')
+    if account_type not in ACCOUNT_TYPE_LABELS:
+        raise ValueError('نوع الحساب غير صالح')
+
+    dup = (
+        Account.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=oid, code=code)
+        .filter(Account.id != acc.id)
+        .first()
+    )
+    if dup:
+        raise ValueError(f'الكود {code} مستخدم مسبقاً')
+
+    parent = None
+    if parent_id:
+        if int(parent_id) == acc.id:
+            raise ValueError('لا يمكن أن يكون الحساب أباً لنفسه')
+        if int(parent_id) in _descendant_ids(acc.id, oid):
+            raise ValueError('لا يمكن نقل الحساب تحت أحد فروعه')
+        parent = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(id=parent_id, organization_id=oid)
+            .first()
+        )
+        if not parent:
+            raise ValueError('الحساب الأب غير موجود')
+        if parent.account_type != account_type:
+            raise ValueError('نوع الحساب يجب أن يطابق الحساب الأب')
+
+    has_children = (
+        Account.query.execution_options(skip_tenant=True)
+        .filter_by(parent_id=acc.id, organization_id=oid)
+        .first()
+        is not None
+    )
+    if has_children and account_type != acc.account_type:
+        raise ValueError('لا يمكن تغيير النوع لحساب له فروع')
+
+    if account_type != acc.account_type:
+        from models import JournalLine
+
+        has_lines = (
+            JournalLine.query.execution_options(skip_tenant=True)
+            .filter_by(account_id=acc.id, organization_id=oid)
+            .first()
+        )
+        if has_lines:
+            raise ValueError('لا يمكن تغيير النوع بعد ترحيل قيود على هذا الحساب')
+
+    acc.code = code
+    acc.name = name[:200]
+    acc.name_en = name_en or None
+    acc.account_type = account_type
+    acc.parent_id = parent.id if parent else None
+    acc.is_postable = bool(is_postable)
+    acc.is_active = bool(is_active)
+    acc.notes = notes
+    acc.sort_order = _sort_order_from_code(code)
     db.session.flush()
     return acc

@@ -9328,6 +9328,37 @@ def accounts_add():
     return redirect(url_for('accounts'))
 
 
+@app.route('/accounts/<int:id>/edit', methods=['POST'])
+def accounts_edit(id):
+    from chart_of_accounts import update_account
+
+    _ensure_tenant_chart()
+    try:
+        parent_raw = (request.form.get('parent_id') or '').strip()
+        parent_id = int(parent_raw) if parent_raw else None
+        acc = update_account(
+            id,
+            code=request.form.get('code', ''),
+            name=request.form.get('name', ''),
+            account_type=request.form.get('account_type', ''),
+            parent_id=parent_id,
+            is_postable=request.form.get('is_postable') == '1',
+            is_active=request.form.get('is_active') == '1',
+            name_en=request.form.get('name_en', ''),
+            notes=request.form.get('notes', ''),
+        )
+        db.session.commit()
+        flash(f'تم تعديل الحساب {acc.code} — {acc.name}', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'danger')
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('accounts_edit failed')
+        flash(f'تعذّر تعديل الحساب: {exc}', 'danger')
+    return redirect(url_for('accounts'))
+
+
 # =============================================
 # القيود / دفتر الأستاذ / التقارير المحاسبية (مرحلة 2–3)
 # =============================================

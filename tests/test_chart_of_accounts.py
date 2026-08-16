@@ -8,6 +8,7 @@ from chart_of_accounts import (
     resolve_expense_account_id,
     resolve_revenue_account_id,
     seed_root_groups_for_org,
+    update_account,
 )
 from models import Account, Organization, db
 from sqlalchemy import inspect
@@ -230,3 +231,102 @@ def test_accounts_seed_roots_route(client):
             .all()
         }
         assert codes == {'1000', '2000', '3000', '4000', '5000'}
+
+
+def test_update_account_renames_and_moves(client):
+    with client.application.app_context():
+        org = Organization(slug='coa-edit', name='تعديل حساب', status='active')
+        db.session.add(org)
+        db.session.commit()
+        ensure_chart_for_org(org.id)
+        from flask import g
+        g.organization_id = org.id
+        g.organization = org
+
+        fuel = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='5300')
+            .first()
+        )
+        other = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='5000')
+            .first()
+        )
+        updated = update_account(
+            fuel.id,
+            code='5350',
+            name='وقود وزيوت',
+            account_type='expense',
+            parent_id=other.id,
+            is_postable=True,
+            is_active=True,
+        )
+        db.session.commit()
+        assert updated.code == '5350'
+        assert updated.name == 'وقود وزيوت'
+
+        assets = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1000')
+            .first()
+        )
+        try:
+            update_account(
+                fuel.id,
+                code='5350',
+                name='وقود وزيوت',
+                account_type='expense',
+                parent_id=assets.id,
+                is_postable=True,
+            )
+            assert False, 'expected parent type mismatch'
+        except ValueError as exc:
+            db.session.rollback()
+            assert 'الأب' in str(exc)
+
+        try:
+            update_account(
+                other.id,
+                code='5000',
+                name=other.name,
+                account_type='expense',
+                parent_id=fuel.id,
+                is_postable=False,
+            )
+            assert False, 'expected cycle'
+        except ValueError as exc:
+            assert 'فروع' in str(exc) or 'نفسه' in str(exc)
+
+
+def test_accounts_edit_route(client):
+    from tests.conftest import ensure_test_organization, login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        ensure_chart_for_org(oid)
+        acc = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid, code='4100')
+            .first()
+        )
+        acc_id = acc.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+    resp = client.post(f'/accounts/{acc_id}/edit', data={
+        'csrf_token': 'test-csrf',
+        'code': '4100',
+        'name': 'إيراد صيانة معدّل',
+        'account_type': 'revenue',
+        'parent_id': '',
+        'is_postable': '1',
+        'is_active': '1',
+    })
+    assert resp.status_code in (302, 303)
+
+    with client.application.app_context():
+        acc = db.session.get(Account, acc_id)
+        assert acc.name == 'إيراد صيانة معدّل'
+        assert acc.parent_id is None
