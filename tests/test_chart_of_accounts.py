@@ -1,10 +1,13 @@
 """اختبارات شجرة الحسابات — المرحلة 1."""
 from chart_of_accounts import (
     DEFAULT_CHART,
+    ROOT_GROUPS,
+    create_custom_account,
     ensure_chart_for_org,
     ensure_chart_schema,
     resolve_expense_account_id,
     resolve_revenue_account_id,
+    seed_root_groups_for_org,
 )
 from models import Account, Organization, db
 from sqlalchemy import inspect
@@ -61,3 +64,169 @@ def test_resolve_revenue_and_expense_map_keys(client):
         fuel_id = resolve_expense_account_id('محروقات')
         fuel = db.session.get(Account, fuel_id)
         assert fuel and fuel.code == '5300'
+
+
+def test_create_custom_account_under_parent(client):
+    with client.application.app_context():
+        org = Organization(slug='coa-add', name='حساب جديد', status='active')
+        db.session.add(org)
+        db.session.commit()
+        ensure_chart_for_org(org.id)
+        from flask import g
+        g.organization_id = org.id
+        g.organization = org
+
+        parent = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='5000')
+            .first()
+        )
+        acc = create_custom_account(
+            code='5310',
+            name='صيانة معدات',
+            account_type='expense',
+            parent_id=parent.id,
+            is_postable=True,
+        )
+        db.session.commit()
+        assert acc.id
+        assert not acc.is_system
+        assert acc.parent_id == parent.id
+
+        try:
+            create_custom_account(
+                code='5310',
+                name='مكرر',
+                account_type='expense',
+                parent_id=parent.id,
+            )
+            assert False, 'expected duplicate code'
+        except ValueError as exc:
+            assert 'مستخدم' in str(exc)
+
+
+def test_accounts_add_route_creates_account(client):
+    from tests.conftest import ensure_test_organization, login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        ensure_chart_for_org(oid)
+        parent = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid, code='4000')
+            .first()
+        )
+        parent_id = parent.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+    resp = client.post('/accounts/add', data={
+        'csrf_token': 'test-csrf',
+        'code': '4400',
+        'name': 'إيراد تدريب',
+        'account_type': 'revenue',
+        'parent_id': str(parent_id),
+        'is_postable': '1',
+    })
+    assert resp.status_code in (302, 303)
+
+    with client.application.app_context():
+        acc = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid, code='4400')
+            .first()
+        )
+        assert acc is not None
+        assert acc.name == 'إيراد تدريب'
+        assert acc.account_type == 'revenue'
+
+
+def test_accounts_page_does_not_auto_seed(client):
+    from tests.conftest import ensure_test_organization, login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        before = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid)
+            .count()
+        )
+        assert before == 0
+
+    resp = client.get('/accounts')
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert 'ابدأ شجرة حسابات مؤسستك' in html
+    assert 'أنشئ شجرتك' in html
+
+    with client.application.app_context():
+        after = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid)
+            .count()
+        )
+        assert after == 0
+
+
+def test_seed_root_groups_only(client):
+    with client.application.app_context():
+        org = Organization(slug='coa-roots', name='مجموعات فقط', status='active')
+        db.session.add(org)
+        db.session.commit()
+        added = seed_root_groups_for_org(org.id)
+        assert added == len(ROOT_GROUPS)
+        rows = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id)
+            .order_by(Account.code.asc())
+            .all()
+        )
+        assert [a.code for a in rows] == ['1000', '2000', '3000', '4000', '5000']
+        assert all(not a.is_postable and a.parent_id is None for a in rows)
+        assert seed_root_groups_for_org(org.id) == 0
+
+
+def test_create_root_account_without_parent(client):
+    with client.application.app_context():
+        org = Organization(slug='coa-root-acc', name='جذر مخصص', status='active')
+        db.session.add(org)
+        db.session.commit()
+        from flask import g
+        g.organization_id = org.id
+        g.organization = org
+
+        acc = create_custom_account(
+            code='100',
+            name='أصول الشركة',
+            account_type='asset',
+            parent_id=None,
+            is_postable=False,
+        )
+        db.session.commit()
+        assert acc.parent_id is None
+        assert not acc.is_postable
+        assert not acc.is_system
+
+
+def test_accounts_seed_roots_route(client):
+    from tests.conftest import ensure_test_organization, login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+    resp = client.post('/accounts/seed-roots', data={'csrf_token': 'test-csrf'})
+    assert resp.status_code in (302, 303)
+
+    with client.application.app_context():
+        codes = {
+            a.code
+            for a in Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid)
+            .all()
+        }
+        assert codes == {'1000', '2000', '3000', '4000', '5000'}

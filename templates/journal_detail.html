@@ -6,6 +6,12 @@
   <div class="page-title">{{ journal.code }} <span>{{ journal.entry_date }} · {{ journal.memo or '' }}</span></div>
   <div class="page-actions">
     <a class="btn btn-secondary btn-sm" href="{{ url_for('journals') }}">عودة للقيود</a>
+    {% if can_write and can_void %}
+    <form method="post" action="{{ url_for('journal_void', id=journal.id) }}" onsubmit="return confirm('إلغاء هذا القيد؟ سيختفي من الميزان ودفتر الأستاذ.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-secondary btn-sm" type="submit" style="color:var(--danger);border-color:rgba(224,72,72,.35)">إلغاء القيد</button>
+    </form>
+    {% endif %}
   </div>
 </div>
 <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">

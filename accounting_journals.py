@@ -1,4 +1,4 @@
-"""قيود يومية تلقائية + دفتر أستاذ + ميزان مراجعة (مرحلة 2)."""
+"""قيود يومية تلقائية + قيود يدوية (مرحلة 3) + دفتر أستاذ + ميزان مراجعة."""
 from __future__ import annotations
 
 from datetime import date
@@ -10,7 +10,6 @@ from tenant_scope import assign_organization, effective_organization_id, tenant_
 
 from chart_of_accounts import (
     account_by_map_key,
-    ensure_chart_for_org,
     ensure_chart_schema,
     resolve_expense_account_id,
     resolve_revenue_account_id,
@@ -92,7 +91,8 @@ def _create_entry(
     if not cleaned or total_d <= 0 or total_d != total_c:
         return None
 
-    _void_source_journals(source_type, source_id)
+    if source_id:
+        _void_source_journals(source_type, source_id)
     je = JournalEntry(
         code=_next_journal_code(),
         entry_date=entry_date,
@@ -140,7 +140,7 @@ def post_revenue_journal(revenue: Revenue) -> JournalEntry | None:
     oid = getattr(revenue, 'organization_id', None) or effective_organization_id()
     if oid:
         with db.session.no_autoflush:
-            ensure_chart_for_org(oid)
+            ensure_chart_schema()
 
     if (revenue.status or '') not in COLLECTED_REVENUE_STATUSES:
         _void_source_journals('revenue', revenue.id)
@@ -198,7 +198,7 @@ def post_expense_journal(expense: Expense) -> JournalEntry | None:
     oid = getattr(expense, 'organization_id', None) or effective_organization_id()
     if oid:
         with db.session.no_autoflush:
-            ensure_chart_for_org(oid)
+            ensure_chart_schema()
 
     cash = account_by_map_key('cash')
     exp_id = expense.account_id or resolve_expense_account_id(expense.expense_type)
@@ -230,12 +230,48 @@ def void_expense_journal(expense_id: int) -> int:
     return _void_source_journals('expense', expense_id)
 
 
+MANUAL_SOURCE_TYPES = frozenset({'manual', 'opening'})
+
+
+def create_manual_journal(
+    *,
+    entry_date: date,
+    memo: str,
+    lines: list[tuple[int, float, float, str | None]],
+    kind: str = 'manual',
+) -> JournalEntry | None:
+    """قيد يدوي متوازن. kind: manual | opening."""
+    ensure_journal_schema()
+    oid = effective_organization_id()
+    if oid:
+        with db.session.no_autoflush:
+            ensure_chart_schema()
+    source_type = kind if kind in MANUAL_SOURCE_TYPES else 'manual'
+    return _create_entry(
+        entry_date=entry_date or date.today(),
+        memo=memo or ('رصيد افتتاحي' if source_type == 'opening' else 'قيد يدوي'),
+        source_type=source_type,
+        source_id=None,
+        lines=lines,
+    )
+
+
+def void_manual_journal(journal_id: int) -> bool:
+    """إلغاء قيد يدوي/افتتاحي مرحّل فقط — لا يمس قيود الإيراد/المصروف التلقائية."""
+    ensure_journal_schema()
+    je = tenant_query(JournalEntry).filter_by(id=journal_id).first()
+    if not je or je.status != 'posted' or (je.source_type or '') not in MANUAL_SOURCE_TYPES:
+        return False
+    je.status = 'void'
+    return True
+
+
 def backfill_journals(limit: int = 5000) -> dict[str, int]:
     """ترحيل قيود للإيرادات/المصروفات التي بلا قيد مرحّل."""
     ensure_journal_schema()
     oid = effective_organization_id()
     if oid:
-        ensure_chart_for_org(oid)
+        ensure_chart_schema()
 
     posted_rev = {
         je.source_id

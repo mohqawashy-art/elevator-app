@@ -5,16 +5,18 @@
 <div class="page-header">
   <div class="page-title">القيود اليومية <span>{{ journals|length }} قيد</span></div>
   <div class="page-actions">
+    {% if can_write %}
+    <a class="btn btn-primary btn-sm" href="{{ url_for('journal_new') }}">قيد يدوي جديد</a>
+    {% endif %}
     <form method="post" action="{{ url_for('journals_backfill') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button class="btn btn-primary btn-sm" type="submit">ترحيل الإيرادات/المصروفات للقيود</button>
+      <button class="btn btn-secondary btn-sm" type="submit">ترحيل الإيرادات/المصروفات للقيود</button>
     </form>
   </div>
 </div>
 <p class="hint">
-  يُنشأ قيد متوازن تلقائياً عند تسجيل إيراد محصّل أو مصروف
-  (مدين نقدية / دائن إيراد±ضريبة، أو مدين مصروف / دائن نقدية).
-  استخدم زر الترحيل لبناء القيود للسجلات السابقة.
+  يُنشأ قيد متوازن تلقائياً عند تسجيل إيراد محصّل أو مصروف.
+  القيد اليدوي للتسويات والأرصدة الافتتاحية والتحويل بين الحسابات.
 </p>
 <div class="table-wrap">
   <div class="table-scroll">
@@ -37,7 +39,11 @@
           <td>{{ j.entry_date }}</td>
           <td class="td-name">{{ j.memo or '—' }}</td>
           <td>
-            {% if j.source_type == 'revenue' %}إيراد{% elif j.source_type == 'expense' %}مصروف{% else %}{{ j.source_type or '—' }}{% endif %}
+            {% if j.source_type == 'revenue' %}إيراد
+            {% elif j.source_type == 'expense' %}مصروف
+            {% elif j.source_type == 'opening' %}افتتاحي
+            {% elif j.source_type == 'manual' %}يدوي
+            {% else %}{{ j.source_type or '—' }}{% endif %}
             {% if j.source_id %}<span style="color:var(--text3);font-family:var(--font-en)"> #{{ j.source_id }}</span>{% endif %}
           </td>
           <td class="td-num debit">{{ '%.2f'|format(j.total_debit) }}</td>

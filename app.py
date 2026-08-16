@@ -9231,17 +9231,13 @@ def revenue_remove_proof(id):
 # شجرة الحسابات (مرحلة 1)
 # =============================================
 def _ensure_tenant_chart():
-    from chart_of_accounts import ensure_chart_for_org, ensure_chart_schema
-    from tenant_scope import effective_organization_id
+    from chart_of_accounts import ensure_chart_schema
 
     try:
         ensure_chart_schema()
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('ensure_chart_schema: %s', exc)
-    oid = getattr(g, 'organization_id', None) or effective_organization_id()
-    if oid:
-        ensure_chart_for_org(oid)
 
 
 @app.route('/accounts')
@@ -9268,6 +9264,23 @@ def accounts_seed():
     return redirect(url_for('accounts'))
 
 
+@app.route('/accounts/seed-roots', methods=['POST'])
+def accounts_seed_roots():
+    from chart_of_accounts import seed_root_groups_for_org
+    from tenant_scope import effective_organization_id
+
+    _ensure_tenant_chart()
+    oid = getattr(g, 'organization_id', None) or effective_organization_id()
+    added = seed_root_groups_for_org(oid) if oid else 0
+    flash(
+        f'تم إنشاء المجموعات الأساسية ({added} مجموعة). أكمل الشجرة بحساباتك.'
+        if added else
+        'المجموعات الأساسية موجودة مسبقاً',
+        'success',
+    )
+    return redirect(url_for('accounts'))
+
+
 @app.route('/accounts/backfill', methods=['POST'])
 def accounts_backfill():
     from chart_of_accounts import backfill_missing_account_links
@@ -9286,8 +9299,37 @@ def accounts_backfill():
     return redirect(url_for('accounts'))
 
 
+@app.route('/accounts/add', methods=['POST'])
+def accounts_add():
+    from chart_of_accounts import create_custom_account
+
+    _ensure_tenant_chart()
+    try:
+        parent_raw = (request.form.get('parent_id') or '').strip()
+        parent_id = int(parent_raw) if parent_raw else None
+        acc = create_custom_account(
+            code=request.form.get('code', ''),
+            name=request.form.get('name', ''),
+            account_type=request.form.get('account_type', ''),
+            parent_id=parent_id,
+            is_postable=request.form.get('is_postable') == '1',
+            name_en=request.form.get('name_en', ''),
+            notes=request.form.get('notes', ''),
+        )
+        db.session.commit()
+        flash(f'تم إنشاء الحساب {acc.code} — {acc.name}', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'danger')
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('accounts_add failed')
+        flash(f'تعذّر إنشاء الحساب: {exc}', 'danger')
+    return redirect(url_for('accounts'))
+
+
 # =============================================
-# القيود / دفتر الأستاذ / التقارير المحاسبية (مرحلة 2)
+# القيود / دفتر الأستاذ / التقارير المحاسبية (مرحلة 2–3)
 # =============================================
 def _parse_iso_date(raw, default=None):
     raw = (raw or '').strip()
@@ -9360,6 +9402,93 @@ def journals_backfill():
     return redirect(url_for('journals'))
 
 
+def _postable_accounts():
+    return (
+        tenant_query(Account)
+        .filter_by(is_postable=True, is_active=True)
+        .order_by(Account.code.asc())
+        .all()
+    )
+
+
+def _parse_manual_journal_lines(accounts):
+    allowed = {a.id for a in accounts}
+
+    def _fnum(values, idx):
+        try:
+            return float((values[idx] if idx < len(values) else '') or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    account_ids = request.form.getlist('account_id')
+    debits = request.form.getlist('debit')
+    credits = request.form.getlist('credit')
+    memos = request.form.getlist('line_memo')
+    n = max(len(account_ids), len(debits), len(credits), len(memos))
+    lines = []
+    for i in range(n):
+        raw = account_ids[i] if i < len(account_ids) else ''
+        try:
+            acc_id = int(raw) if raw else 0
+        except ValueError:
+            acc_id = 0
+        if not acc_id or acc_id not in allowed:
+            continue
+        memo = (memos[i] if i < len(memos) else '') or None
+        if memo:
+            memo = memo.strip()[:300] or None
+        lines.append((acc_id, _fnum(debits, i), _fnum(credits, i), memo))
+    return lines
+
+
+@app.route('/journals/new', methods=['GET', 'POST'])
+def journal_new():
+    from accounting_journals import create_manual_journal, ensure_journal_schema
+
+    _ensure_tenant_chart()
+    ensure_journal_schema()
+    accounts = _postable_accounts()
+    if request.method == 'POST':
+        kind = (request.form.get('kind') or 'manual').strip()
+        if kind not in ('manual', 'opening'):
+            kind = 'manual'
+        entry_date = _parse_iso_date(request.form.get('entry_date'), default=date.today())
+        memo = (request.form.get('memo') or '').strip()[:400]
+        lines = _parse_manual_journal_lines(accounts)
+        je = create_manual_journal(
+            entry_date=entry_date,
+            memo=memo,
+            lines=lines,
+            kind=kind,
+        )
+        if not je:
+            flash('القيد غير متوازن أو ناقص — أدخل سطرين على الأقل بتساوي المدين والدائن.', 'danger')
+            return render_template(
+                'journal_form.html',
+                accounts=accounts,
+                form=request.form,
+            )
+        db.session.commit()
+        flash(f'تم ترحيل القيد {je.code}', 'success')
+        return redirect(url_for('journal_detail', id=je.id))
+    return render_template('journal_form.html', accounts=accounts, form=None)
+
+
+@app.route('/journals/<int:id>/void', methods=['POST'])
+def journal_void(id):
+    from accounting_journals import ensure_journal_schema, void_manual_journal
+
+    _ensure_tenant_chart()
+    ensure_journal_schema()
+    ok = void_manual_journal(id)
+    if ok:
+        db.session.commit()
+        flash('تم إلغاء القيد', 'success')
+    else:
+        flash('لا يمكن إلغاء هذا القيد — يُلغى القيد اليدوي/الافتتاحي المرحّل فقط.', 'danger')
+    return redirect(url_for('journal_detail', id=id))
+
+
 @app.route('/journals/<int:id>')
 def journal_detail(id):
     from accounting_journals import ensure_journal_schema
@@ -9394,6 +9523,7 @@ def journal_detail(id):
         lines=lines,
         total_debit=round(total_debit, 2),
         total_credit=round(total_credit, 2),
+        can_void=(j.status == 'posted' and (j.source_type or '') in ('manual', 'opening')),
     )
 
 

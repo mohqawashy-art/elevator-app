@@ -167,6 +167,45 @@ def ensure_chart_for_org(organization_id: int | None) -> int:
     return len(DEFAULT_CHART)
 
 
+ROOT_GROUPS = [row for row in DEFAULT_CHART if row[4] is None]
+
+
+def seed_root_groups_for_org(organization_id: int | None) -> int:
+    """ينشئ مجموعات المستوى الأول فقط (أصول/خصوم/ملكية/إيرادات/مصروفات) دون الحسابات التفصيلية."""
+    if not organization_id:
+        return 0
+    existing = {
+        (a.code or '').strip()
+        for a in (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=organization_id)
+            .all()
+        )
+    }
+    added = 0
+    for code, name, name_en, atype, _parent, map_key, postable, sort in ROOT_GROUPS:
+        if code in existing:
+            continue
+        db.session.add(Account(
+            organization_id=organization_id,
+            code=code,
+            name=name,
+            name_en=name_en,
+            account_type=atype,
+            parent_id=None,
+            map_key=map_key,
+            is_postable=postable,
+            is_system=True,
+            is_active=True,
+            sort_order=sort,
+        ))
+        existing.add(code)
+        added += 1
+    if added:
+        db.session.commit()
+    return added
+
+
 def account_by_map_key(map_key: str | None) -> Account | None:
     if not map_key:
         return None
@@ -266,3 +305,81 @@ def backfill_missing_account_links(limit: int = 5000) -> dict[str, int]:
     if stats['revenues'] or stats['expenses']:
         db.session.commit()
     return stats
+
+
+def create_custom_account(
+    *,
+    code: str,
+    name: str,
+    account_type: str,
+    parent_id: int | None = None,
+    is_postable: bool = True,
+    name_en: str = '',
+    notes: str = '',
+) -> Account:
+    """إنشاء حساب جديد في شجرة المستأجر الحالي."""
+    from tenant_scope import assign_organization, effective_organization_id
+
+    ensure_chart_schema()
+    oid = effective_organization_id()
+    if not oid:
+        raise ValueError('المؤسسة غير معروفة')
+
+    code = (code or '').strip()
+    name = (name or '').strip()
+    name_en = (name_en or '').strip()[:200]
+    notes = (notes or '').strip() or None
+    account_type = (account_type or '').strip()
+
+    if not code:
+        raise ValueError('كود الحساب مطلوب')
+    if len(code) > 20:
+        raise ValueError('كود الحساب طويل جداً')
+    if not name:
+        raise ValueError('اسم الحساب مطلوب')
+    if account_type not in ACCOUNT_TYPE_LABELS:
+        raise ValueError('نوع الحساب غير صالح')
+
+    dup = (
+        Account.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=oid, code=code)
+        .first()
+    )
+    if dup:
+        raise ValueError(f'الكود {code} مستخدم مسبقاً')
+
+    parent = None
+    if parent_id:
+        parent = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(id=parent_id, organization_id=oid)
+            .first()
+        )
+        if not parent:
+            raise ValueError('الحساب الأب غير موجود')
+        if parent.account_type != account_type:
+            raise ValueError('نوع الحساب يجب أن يطابق الحساب الأب')
+
+    digits = ''.join(ch for ch in code if ch.isdigit())
+    try:
+        sort_order = int(digits) if digits else 9000
+    except ValueError:
+        sort_order = 9000
+
+    acc = Account(
+        code=code,
+        name=name[:200],
+        name_en=name_en or None,
+        account_type=account_type,
+        parent_id=parent.id if parent else None,
+        map_key=None,
+        is_postable=bool(is_postable),
+        is_system=False,
+        is_active=True,
+        sort_order=sort_order,
+        notes=notes,
+    )
+    assign_organization(acc)
+    db.session.add(acc)
+    db.session.flush()
+    return acc

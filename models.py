@@ -653,7 +653,7 @@ class JournalEntry(TenantMixin, db.Model):
     code = db.Column(db.String(20), nullable=False)  # JE-0001
     entry_date = db.Column(db.Date, nullable=False)
     memo = db.Column(db.String(400))
-    # revenue | expense | manual
+    # revenue | expense | manual | opening
     source_type = db.Column(db.String(30), index=True)
     source_id = db.Column(db.Integer, index=True)
     # posted | void

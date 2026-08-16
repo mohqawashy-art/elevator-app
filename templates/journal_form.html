@@ -1,0 +1,166 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'قيد يدوي جديد' %}
+{% set accounting_tab = 'journals' %}
+{% block accounting_body %}
+<style>
+.jl-meta{display:grid;grid-template-columns:160px 180px 1fr;gap:12px;margin-bottom:16px}
+.jl-table input,.jl-table select{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-size:12px;font-family:var(--font-ar);outline:none}
+.jl-table input.td-num{font-family:var(--font-en);text-align:left;direction:ltr}
+.jl-foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2)}
+.jl-totals{display:flex;gap:18px;font-size:13px;color:var(--text2)}
+.jl-totals strong{font-family:var(--font-en);color:var(--text1)}
+.jl-totals .ok{color:var(--success)}
+.jl-totals .bad{color:var(--danger)}
+.jl-remove{width:30px;height:30px;border:none;border-radius:var(--r-sm);background:transparent;color:var(--text3);cursor:pointer;font-size:16px}
+.jl-remove:hover{color:var(--danger);background:rgba(224,72,72,.08)}
+@media(max-width:900px){.jl-meta{grid-template-columns:1fr}}
+</style>
+<div class="page-header">
+  <div class="page-title">قيد يدوي جديد</div>
+  <div class="page-actions">
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('journals') }}">إلغاء</a>
+  </div>
+</div>
+<p class="hint">
+  أدخل سطرين على الأقل. يجب أن يتساوى إجمالي المدين مع إجمالي الدائن حتى يُرحَّل القيد.
+  استخدم «افتتاحي» لأرصدة بداية الفترة.
+</p>
+<form method="post" action="{{ url_for('journal_new') }}" id="jl-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="jl-meta">
+    <div class="filter-group">
+      <label class="filter-label">التاريخ</label>
+      <input class="filter-input" type="date" name="entry_date" required value="{{ form.get('entry_date') if form else '' }}">
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">نوع القيد</label>
+      <select class="filter-select" name="kind">
+        <option value="manual" {{ 'selected' if form and form.get('kind')=='manual' else '' }}>يدوي / تسوية</option>
+        <option value="opening" {{ 'selected' if form and form.get('kind')=='opening' else '' }}>افتتاحي</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">البيان</label>
+      <input class="filter-input" type="text" name="memo" maxlength="400" placeholder="مثال: تحويل من الصندوق للبنك" value="{{ form.get('memo') if form else '' }}">
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table class="jl-table" id="jl-table">
+        <thead>
+          <tr>
+            <th>الحساب</th>
+            <th>البيان</th>
+            <th>مدين</th>
+            <th>دائن</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="jl-body">
+          <tr class="jl-row">
+            <td>
+              <select name="account_id">
+                <option value="">— اختر حساباً —</option>
+                {% for a in accounts %}
+                <option value="{{ a.id }}">{{ a.code }} — {{ a.name }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input type="text" name="line_memo" maxlength="300"></td>
+            <td><input class="td-num jl-debit" type="number" name="debit" min="0" step="0.01" value=""></td>
+            <td><input class="td-num jl-credit" type="number" name="credit" min="0" step="0.01" value=""></td>
+            <td><button type="button" class="jl-remove" title="حذف السطر">×</button></td>
+          </tr>
+          <tr class="jl-row">
+            <td>
+              <select name="account_id">
+                <option value="">— اختر حساباً —</option>
+                {% for a in accounts %}
+                <option value="{{ a.id }}">{{ a.code }} — {{ a.name }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input type="text" name="line_memo" maxlength="300"></td>
+            <td><input class="td-num jl-debit" type="number" name="debit" min="0" step="0.01" value=""></td>
+            <td><input class="td-num jl-credit" type="number" name="credit" min="0" step="0.01" value=""></td>
+            <td><button type="button" class="jl-remove" title="حذف السطر">×</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="jl-foot">
+      <button type="button" class="btn btn-secondary btn-sm" id="jl-add">+ سطر</button>
+      <div class="jl-totals">
+        <span>مدين <strong id="jl-td">0.00</strong></span>
+        <span>دائن <strong id="jl-tc">0.00</strong></span>
+        <span id="jl-bal">غير متوازن</span>
+      </div>
+      <button class="btn btn-primary" type="submit" id="jl-submit">ترحيل القيد</button>
+    </div>
+  </div>
+</form>
+<template id="jl-row-tpl">
+  <tr class="jl-row">
+    <td>
+      <select name="account_id">
+        <option value="">— اختر حساباً —</option>
+        {% for a in accounts %}
+        <option value="{{ a.id }}">{{ a.code }} — {{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </td>
+    <td><input type="text" name="line_memo" maxlength="300"></td>
+    <td><input class="td-num jl-debit" type="number" name="debit" min="0" step="0.01" value=""></td>
+    <td><input class="td-num jl-credit" type="number" name="credit" min="0" step="0.01" value=""></td>
+    <td><button type="button" class="jl-remove" title="حذف السطر">×</button></td>
+  </tr>
+</template>
+<script>
+(function () {
+  var body = document.getElementById('jl-body');
+  var tpl = document.getElementById('jl-row-tpl');
+  var tdEl = document.getElementById('jl-td');
+  var tcEl = document.getElementById('jl-tc');
+  var balEl = document.getElementById('jl-bal');
+  var form = document.getElementById('jl-form');
+  function num(el) { return parseFloat(el && el.value ? el.value : 0) || 0; }
+  function round2(n) { return Math.round(n * 100) / 100; }
+  function totals() {
+    var d = 0, c = 0;
+    body.querySelectorAll('.jl-debit').forEach(function (el) { d += num(el); });
+    body.querySelectorAll('.jl-credit').forEach(function (el) { c += num(el); });
+    d = round2(d); c = round2(c);
+    tdEl.textContent = d.toFixed(2);
+    tcEl.textContent = c.toFixed(2);
+    var ok = d > 0 && d === c;
+    balEl.textContent = ok ? 'متوازن' : 'غير متوازن';
+    balEl.className = ok ? 'ok' : 'bad';
+    return ok;
+  }
+  body.addEventListener('input', totals);
+  body.addEventListener('click', function (e) {
+    var btn = e.target.closest('.jl-remove');
+    if (!btn) return;
+    if (body.querySelectorAll('.jl-row').length < 3) return;
+    btn.closest('tr').remove();
+    totals();
+  });
+  document.getElementById('jl-add').addEventListener('click', function () {
+    body.appendChild(tpl.content.cloneNode(true));
+    totals();
+  });
+  form.addEventListener('submit', function (e) {
+    if (!totals()) {
+      e.preventDefault();
+      alert('يجب أن يتساوى المدين والدائن وأن يكون المبلغ أكبر من صفر.');
+    }
+  });
+  var dateEl = form.querySelector('input[name="entry_date"]');
+  if (dateEl && !dateEl.value) {
+    var t = new Date();
+    dateEl.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+  }
+  totals();
+})();
+</script>
+{% endblock %}

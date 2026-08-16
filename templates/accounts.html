@@ -32,6 +32,22 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;font-
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
 .btn-sm{padding:5px 10px;font-size:12px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:600;color:var(--text1)}
+.modal-close{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer}
+.modal-body{flex:1;overflow-y:auto;padding:22px}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field label span{color:var(--danger)}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;font-family:var(--font-ar);padding:9px 12px;width:100%}
+.field textarea{resize:vertical;min-height:64px}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
 .hint{font-size:12px;color:var(--text3);line-height:1.8;margin-bottom:16px;max-width:760px}
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
@@ -76,8 +92,18 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
 .table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2)}
 .table-info{font-size:12px;color:var(--text3)}
 
+.empty-chart{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:36px 28px;text-align:center;max-width:920px;margin:8px auto 0}
+.empty-chart h2{font-size:18px;font-weight:600;margin-bottom:8px}
+.empty-chart p{font-size:13px;color:var(--text2);line-height:1.8;max-width:560px;margin:0 auto 24px}
+.empty-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;text-align:right}
+.empty-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:18px 16px;display:flex;flex-direction:column;gap:10px}
+.empty-card h3{font-size:14px;font-weight:600;color:var(--text1)}
+.empty-card p{font-size:12px;color:var(--text3);line-height:1.7;margin:0;max-width:none}
+.empty-card .btn{justify-content:center;width:100%;margin-top:auto}
+
 @media(max-width:900px){
   .stats-row{grid-template-columns:1fr 1fr}
+  .empty-choices{grid-template-columns:1fr}
   .content{padding:16px}
 }
 </style>
@@ -99,21 +125,26 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
 
     <div class="page-header">
       <div class="page-title">شجرة الحسابات <span>{{ accounts|length }} حساب</span></div>
+      {% if accounts %}
       <div class="page-actions">
+        {% if can_write %}
+        <button class="btn btn-primary btn-sm" type="button" onclick="openAccountModal()">حساب جديد</button>
+        {% endif %}
         <form method="post" action="{{ url_for('accounts_seed') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-secondary btn-sm" type="submit">تحديث القالب الافتراضي</button>
+          <button class="btn btn-secondary btn-sm" type="submit">تحديث قالب المصاعد</button>
         </form>
         <form method="post" action="{{ url_for('accounts_backfill') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-primary btn-sm" type="submit">ربط الإيرادات/المصروفات بالحسابات</button>
+          <button class="btn btn-secondary btn-sm" type="submit">ربط الإيرادات/المصروفات بالحسابات</button>
         </form>
       </div>
+      {% endif %}
     </div>
 
+    {% if accounts %}
     <p class="hint">
-      دليل حسابات لشركات المصاعد. عند تسجيل إيراد أو مصروف يُربط تلقائياً بالحساب المناسب
-      (تجديد عقد ← 4110، محروقات ← 5300، تسوية مالك سابق ← 4900).
+      هذه شجرة حسابات مؤسستك. أضف فروعاً من «حساب جديد»، أو أكمل الناقص من قالب شركات المصاعد ثم اربط الإيرادات والمصروفات.
     </p>
 
     <div class="stats-row">
@@ -165,12 +196,6 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
                 {% endif %}
               </td>
             </tr>
-            {% else %}
-            <tr>
-              <td colspan="5" style="text-align:center;color:var(--text3);padding:28px">
-                لا توجد حسابات — اضغط «تحديث القالب الافتراضي»
-              </td>
-            </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -179,7 +204,119 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
         <div class="table-info">عرض {{ accounts|length }} حساباً في الشجرة</div>
       </div>
     </div>
+    {% else %}
+    <div class="empty-chart">
+      <h2>ابدأ شجرة حسابات مؤسستك</h2>
+      <p>
+        المستأجر الجديد ينشئ دليله بنفسه. لا تُنشأ شجرة جاهزة تلقائياً — اختر طريقة البدء المناسبة لك.
+      </p>
+      {% if can_write %}
+      <div class="empty-choices">
+        <div class="empty-card">
+          <h3>أنشئ شجرتك</h3>
+          <p>أضف حسابات الجذر والفروع بنفسك بالكود والأسماء التي تستخدمها في شركتك.</p>
+          <button class="btn btn-primary" type="button" onclick="openAccountModal()">حساب جديد</button>
+        </div>
+        <div class="empty-card">
+          <h3>مجموعات أساسية فقط</h3>
+          <p>أصول، خصوم، حقوق ملكية، إيرادات، ومصروفات — ثم تكمل الفروع أنت.</p>
+          <form method="post" action="{{ url_for('accounts_seed_roots') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-secondary" type="submit">إنشاء المجموعات الخمس</button>
+          </form>
+        </div>
+        <div class="empty-card">
+          <h3>قالب شركات المصاعد</h3>
+          <p>الشجرة الجاهزة للصيانة والتركيب (نقدية، عقود، قطع غيار، رواتب…).</p>
+          <form method="post" action="{{ url_for('accounts_seed') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-secondary" type="submit">استخدام القالب</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <p>لا توجد حسابات بعد. اطلب من مدير المؤسسة إنشاء الشجرة.</p>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
 </div>
+
+{% if can_write %}
+<div class="modal-overlay" id="account-modal" onclick="if(event.target===this)closeAccountModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">حساب جديد</div>
+      <button type="button" class="modal-close" onclick="closeAccountModal()">×</button>
+    </div>
+    <form method="post" action="{{ url_for('accounts_add') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>الكود <span>*</span></label>
+            <input name="code" required maxlength="20" placeholder="مثال: 5310" dir="ltr">
+          </div>
+          <div class="field">
+            <label>النوع <span>*</span></label>
+            <select name="account_type" id="acc-type" required>
+              <option value="asset">أصول</option>
+              <option value="liability">خصوم</option>
+              <option value="equity">حقوق ملكية</option>
+              <option value="revenue">إيرادات</option>
+              <option value="expense" selected>مصروفات</option>
+            </select>
+          </div>
+          <div class="field form-full">
+            <label>اسم الحساب <span>*</span></label>
+            <input name="name" required maxlength="200" placeholder="مثال: صيانة معدات">
+          </div>
+          <div class="field form-full">
+            <label>الحساب الأب</label>
+            <select name="parent_id" id="acc-parent">
+              <option value="">— بدون أب (مستوى أول) —</option>
+              {% for a in accounts %}
+              <option value="{{ a.id }}" data-type="{{ a.account_type }}">{{ a.code }} — {{ a.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field form-full">
+            <label>الاسم بالإنجليزية</label>
+            <input name="name_en" maxlength="200" dir="ltr" placeholder="Optional">
+          </div>
+          <div class="field form-full">
+            <label>ملاحظات</label>
+            <textarea name="notes" maxlength="500"></textarea>
+          </div>
+          <div class="field form-full">
+            <label class="check">
+              <input type="checkbox" name="is_postable" value="1" checked>
+              قابل للترحيل (حساب تفصيلي وليس مجموعة)
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary" onclick="closeAccountModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary">إنشاء الحساب</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function openAccountModal(){ document.getElementById('account-modal').classList.add('open'); }
+function closeAccountModal(){ document.getElementById('account-modal').classList.remove('open'); }
+(function(){
+  var parent = document.getElementById('acc-parent');
+  var typeEl = document.getElementById('acc-type');
+  if (!parent || !typeEl) return;
+  parent.addEventListener('change', function(){
+    var opt = parent.options[parent.selectedIndex];
+    var t = opt && opt.getAttribute('data-type');
+    if (t) typeEl.value = t;
+  });
+})();
+</script>
+{% endif %}
 </body>
 </html>
