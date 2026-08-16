@@ -73,7 +73,19 @@ tbody tr:hover{background:rgba(42,127,255,.04)}
 tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
 .td-code{width:96px;font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:500;white-space:nowrap;text-align:right}
 .td-name{color:var(--text1);font-weight:500;white-space:normal;line-height:1.5;min-width:220px}
-.td-name .tree{display:inline-block;color:var(--text3);margin-left:6px;font-family:var(--font-en);font-size:11px;opacity:.7}
+.td-name .tree-row{display:inline-flex;align-items:center;gap:6px}
+.tree-toggle{
+  width:18px;height:18px;flex:0 0 18px;border:none;background:transparent;color:var(--text3);
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;padding:0;
+}
+.tree-toggle:hover{background:rgba(42,127,255,.12);color:var(--accent)}
+.tree-toggle svg{width:12px;height:12px;transition:transform .15s ease}
+tr.has-kids.collapsed .tree-toggle svg{transform:rotate(90deg)}
+.tree-leaf{width:18px;flex:0 0 18px;display:inline-block}
+.tree-label{display:inline}
+tr.has-kids{cursor:pointer}
+tr.has-kids:hover .tree-label{color:var(--accent)}
+tr.tree-hidden{display:none}
 .td-type{white-space:nowrap}
 .td-map{color:var(--text2);font-size:12.5px;white-space:nowrap}
 .td-map.empty{color:var(--text3)}
@@ -155,7 +167,7 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
 
     {% if accounts %}
     <p class="hint">
-      هذه شجرة حسابات مؤسستك. أضف فروعاً من «حساب جديد»، أو عدّل أي حساب من زر التعديل.
+      اضغط على الحساب الأب (مثل الأصول) لإظهار ما تحته أو إخفائه. نفس السلوك لكل مستوى في الشجرة.
     </p>
 
     <div class="stats-row">
@@ -179,7 +191,7 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
               {% if can_write %}<th></th>{% endif %}
             </tr>
           </thead>
-          <tbody>
+          <tbody id="coa-body">
             {% for a in accounts %}
             {% set t = a.account_type %}
             {% set badge = 'badge-blue' if t=='asset' else 'badge-purple' if t=='liability' else 'badge-gold' if t=='equity' else 'badge-green' if t=='revenue' else 'badge-orange' %}
@@ -193,10 +205,20 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
               'capital': 'رأس المال'
             } %}
             {% if map_label in map_labels %}{% set map_label = map_labels[map_label] %}{% endif %}
-            <tr class="{{ 'row-group' if not a.is_postable else '' }}{{ ' row-inactive' if not a.is_active else '' }}">
+            <tr class="{{ 'row-group' if not a.is_postable else '' }}{{ ' row-inactive' if not a.is_active else '' }}{{ ' has-kids collapsed' if a.has_children else '' }}"
+                data-id="{{ a.id }}" data-parent="{{ a.parent_id or '' }}">
               <td class="td-code">{{ a.code }}</td>
               <td class="td-name" style="padding-right:{{ 14 + (a.depth * 22) }}px">
-                {% if a.depth > 0 %}<span class="tree">└</span>{% endif %}{{ a.name }}
+                <span class="tree-row">
+                  {% if a.has_children %}
+                  <button type="button" class="tree-toggle" aria-label="فتح أو طي الفروع">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 4.5l3 3 3-3"/></svg>
+                  </button>
+                  {% else %}
+                  <span class="tree-leaf"></span>
+                  {% endif %}
+                  <span class="tree-label">{{ a.name }}</span>
+                </span>
               </td>
               <td class="td-type"><span class="badge {{ badge }}">{{ a.type_label }}</span></td>
               <td class="td-map {{ 'empty' if not map_label else '' }}">{{ map_label if map_label else '—' }}</td>
@@ -211,7 +233,7 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
               </td>
               {% if can_write %}
               <td class="td-actions">
-                <button class="btn-linkish" type="button" onclick="openAccountModal({{ a.id }})">تعديل</button>
+                <button class="btn-linkish" type="button" onclick="event.stopPropagation();openAccountModal({{ a.id }})">تعديل</button>
               </td>
               {% endif %}
             </tr>
@@ -221,6 +243,10 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
       </div>
       <div class="table-footer">
         <div class="table-info">عرض {{ accounts|length }} حساباً في الشجرة</div>
+        <div class="page-actions">
+          <button class="btn btn-secondary btn-sm" type="button" onclick="expandAllAccounts()">توسيع الكل</button>
+          <button class="btn btn-secondary btn-sm" type="button" onclick="collapseAllAccounts()">طي الكل</button>
+        </div>
       </div>
     </div>
     {% else %}
@@ -390,5 +416,72 @@ function openAccountModal(id){
 })();
 </script>
 {% endif %}
+<script>
+(function(){
+  var body = document.getElementById('coa-body');
+  if (!body) return;
+  var KEY = 'liftcore-coa-expanded';
+  function rows(){ return Array.prototype.slice.call(body.querySelectorAll('tr[data-id]')); }
+  function save(){
+    var ids = rows().filter(function(r){ return r.classList.contains('has-kids') && !r.classList.contains('collapsed'); })
+      .map(function(r){ return r.getAttribute('data-id'); });
+    try { sessionStorage.setItem(KEY, JSON.stringify(ids)); } catch (e) {}
+  }
+  function applyVisibility(){
+    var collapsed = {};
+    rows().forEach(function(r){
+      if (r.classList.contains('collapsed')) collapsed[r.getAttribute('data-id')] = true;
+    });
+    rows().forEach(function(r){
+      var pid = r.getAttribute('data-parent');
+      var hide = false;
+      var guard = 0;
+      while (pid && guard < 80) {
+        if (collapsed[pid]) { hide = true; break; }
+        var parent = body.querySelector('tr[data-id="' + pid + '"]');
+        pid = parent ? parent.getAttribute('data-parent') : '';
+        guard++;
+      }
+      r.classList.toggle('tree-hidden', hide);
+    });
+  }
+  function restore(){
+    var expanded = [];
+    try { expanded = JSON.parse(sessionStorage.getItem(KEY) || '[]') || []; } catch (e) { expanded = []; }
+    if (!expanded.length) { applyVisibility(); return; }
+    var set = {};
+    expanded.forEach(function(id){ set[String(id)] = true; });
+    rows().forEach(function(r){
+      if (!r.classList.contains('has-kids')) return;
+      r.classList.toggle('collapsed', !set[r.getAttribute('data-id')]);
+    });
+    applyVisibility();
+  }
+  window.toggleAccountTree = function(id){
+    var row = body.querySelector('tr[data-id="' + id + '"]');
+    if (!row || !row.classList.contains('has-kids')) return;
+    row.classList.toggle('collapsed');
+    applyVisibility();
+    save();
+  };
+  window.expandAllAccounts = function(){
+    rows().forEach(function(r){ r.classList.remove('collapsed'); });
+    applyVisibility();
+    save();
+  };
+  window.collapseAllAccounts = function(){
+    rows().forEach(function(r){ if (r.classList.contains('has-kids')) r.classList.add('collapsed'); });
+    applyVisibility();
+    save();
+  };
+  body.addEventListener('click', function(e){
+    if (e.target.closest('.td-actions, .btn-linkish, a, input, select, textarea')) return;
+    var tr = e.target.closest('tr.has-kids');
+    if (!tr) return;
+    window.toggleAccountTree(tr.getAttribute('data-id'));
+  });
+  restore();
+})();
+</script>
 </body>
 </html>

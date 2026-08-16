@@ -281,6 +281,7 @@ def accounts_tree_rows(organization_id: int | None = None) -> list[dict]:
                 'depth': depth,
                 'sort_order': a.sort_order or 0,
                 'notes': a.notes or '',
+                'has_children': bool(by_parent.get(a.id)),
             })
             walk(a.id, depth + 1)
 
