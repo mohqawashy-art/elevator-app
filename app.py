@@ -1851,6 +1851,20 @@ def _legacy_global_code_unique(table_name: str) -> bool:
 # =============================================
 # تسجيل الدخول
 # =============================================
+def _git_commit_short():
+    """أحدث commit في مجلد التطبيق — أدق من LIFTCORE_VERSION الثابت."""
+    try:
+        import subprocess
+        return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            cwd=app.root_path,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+        ).decode('utf-8', errors='ignore').strip() or None
+    except Exception:
+        return None
+
+
 @app.route('/api/version')
 def api_version():
     """تحقق سريع من إصدار الكود على السيرفر (بدون تسجيل دخول)."""
@@ -1866,8 +1880,11 @@ def api_version():
         if db_path and os.path.isfile(db_path):
             db_info['file'] = os.path.basename(os.path.dirname(db_path)) + '/' + os.path.basename(db_path)
             db_info['bytes'] = os.path.getsize(db_path)
+    git_commit = _git_commit_short()
     return jsonify(
-        version=APP_VERSION,
+        version=git_commit or APP_VERSION,
+        env_version=APP_VERSION,
+        git_commit=git_commit,
         db=db_info,
         checks={
             'settings_full': os.path.isfile(os.path.join(root, 'templates/partials/app_header.html')),

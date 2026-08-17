@@ -36,6 +36,35 @@ def test_leads_list_recovers_missing_contract_value(client):
     assert 'فرص البيع' in resp.data.decode('utf-8', errors='ignore')
 
 
+def test_leads_add_creates_opportunity(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        from models import Customer
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-LEADADD',
+            name='عميل فرصة',
+            status='نشط',
+            phone='0500000000',
+        )
+        db.session.add(cust)
+        db.session.commit()
+        cid = cust.id
+        with client.session_transaction() as sess:
+            sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post('/installation/leads/add', data={
+        'csrf_token': 'test-csrf',
+        'customer_id': cid,
+        'source': 'اتصال',
+        'status': 'جديد',
+    }, follow_redirects=True)
+    assert resp.status_code == 200
+    body = resp.data.decode('utf-8', errors='ignore')
+    assert 'تم إنشاء الفرصة' in body or 'LD-' in body
+
+
 def test_project_card_costs_and_receipts(client):
     login_as(client, role='admin')
     with client.application.app_context():

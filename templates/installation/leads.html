@@ -137,13 +137,15 @@
               {% else %}<span class="badge badge-warn">{{ l.status }}</span>{% endif %}
             </td>
             <td style="font-family:var(--font-en)">
-              {% if l.project %}
-              <a href="/installation/projects/{{ l.project.id }}">{{ l.project.code }}</a>
+              {% set p = project_by_lead.get(l.id) if project_by_lead is defined else none %}
+              {% if p %}
+              <a href="/installation/projects/{{ p.id }}">{{ p.code }}</a>
               {% else %}—{% endif %}
             </td>
             <td>
-              {% if l.project %}
-              <a href="/installation/projects/{{ l.project.id }}/quote" class="btn btn-primary btn-sm">تسعير</a>
+              {% set p = project_by_lead.get(l.id) if project_by_lead is defined else none %}
+              {% if p %}
+              <a href="/installation/projects/{{ p.id }}/quote" class="btn btn-primary btn-sm">تسعير</a>
               {% elif l.status != 'ملغي' %}
               <form method="post" action="{{ url_for('installation.leads_convert', lead_id=l.id) }}" style="display:inline">
                 <button type="submit" class="btn btn-secondary btn-sm">تحويل لمشروع</button>

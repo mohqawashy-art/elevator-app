@@ -897,20 +897,47 @@ def quote_print(quotation_id):
     )
 
 
+def _projects_by_lead_id(leads):
+    """خريطة lead_id → مشروع بدون علاقة one-to-one (تتجنب MultipleResultsFound)."""
+    ids = [l.id for l in leads if l and l.id]
+    if not ids:
+        return {}
+    rows = (
+        tenant_query(InstallProject)
+        .filter(InstallProject.lead_id.in_(ids))
+        .order_by(InstallProject.id.asc())
+        .all()
+    )
+    out = {}
+    for p in rows:
+        if p.lead_id not in out:
+            out[p.lead_id] = p
+    return out
+
+
 @install_bp.route('/leads')
 def leads_list():
-    leads = tenant_query(InstallLead).order_by(InstallLead.created_at.desc()).all()
-    customers = _active_customers()
-    return render_template(
-        'installation/leads.html',
-        leads=leads,
-        customers=customers,
-        customers_js=[_customer_to_js(c) for c in customers],
-        statuses=LEAD_STATUSES,
-        sources=LEAD_SOURCES,
-        next_lead_code=_next_code(InstallLead, 'LD-', 4),
-        page_title='فرص البيع — تركيب',
-    )
+    try:
+        leads = tenant_query(InstallLead).order_by(InstallLead.created_at.desc()).all()
+        customers = _active_customers()
+        project_by_lead = _projects_by_lead_id(leads)
+        return render_template(
+            'installation/leads.html',
+            leads=leads,
+            project_by_lead=project_by_lead,
+            customers=customers,
+            customers_js=[_customer_to_js(c) for c in customers],
+            statuses=LEAD_STATUSES,
+            sources=LEAD_SOURCES,
+            next_lead_code=_next_code(InstallLead, 'LD-', 4),
+            page_title='فرص البيع — تركيب',
+        )
+    except Exception as exc:
+        db.session.rollback()
+        import logging
+        logging.getLogger('liftcore').exception('installation leads_list failed')
+        flash(f'تعذّر فتح فرص البيع: {exc}', 'error')
+        return redirect(url_for('installation.index'))
 
 
 @install_bp.route('/leads/add', methods=['POST'])
@@ -923,28 +950,34 @@ def leads_add():
     if not customer:
         flash('العميل غير موجود — أضفه من صفحة العملاء', 'error')
         return redirect(url_for('installation.leads_list'))
-    snapshot = _customer_snapshot(customer)
-    lead = InstallLead(
-        code=_next_code(InstallLead, 'LD-', 4),
-        inquiry_date=_parse_date(request.form.get('inquiry_date')) or datetime.utcnow().date(),
-        customer_id=customer.id,
-        client_name=snapshot['client_name'],
-        phone=snapshot['client_phone'],
-        email=(customer.email or '').strip(),
-        city=(customer.city or '').strip(),
-        district=(customer.district or '').strip(),
-        address=snapshot['client_address'],
-        source=(request.form.get('source') or '').strip(),
-        building_type=(request.form.get('building_type') or '').strip(),
-        notes=(request.form.get('notes') or '').strip(),
-        status=(request.form.get('status') or 'جديد').strip(),
-    )
-    if lead.status not in LEAD_STATUSES:
-        lead.status = 'جديد'
-    assign_organization(lead)
-    db.session.add(lead)
-    db.session.commit()
-    flash(f'تم إنشاء الفرصة {lead.code}', 'success')
+    try:
+        snapshot = _customer_snapshot(customer)
+        lead = InstallLead(
+            code=_next_code(InstallLead, 'LD-', 4),
+            inquiry_date=_parse_date(request.form.get('inquiry_date')) or datetime.utcnow().date(),
+            customer_id=customer.id,
+            client_name=snapshot['client_name'],
+            phone=snapshot['client_phone'],
+            email=(customer.email or '').strip(),
+            city=(customer.city or '').strip(),
+            district=(customer.district or '').strip(),
+            address=snapshot['client_address'],
+            source=(request.form.get('source') or '').strip(),
+            building_type=(request.form.get('building_type') or '').strip(),
+            notes=(request.form.get('notes') or '').strip(),
+            status=(request.form.get('status') or 'جديد').strip(),
+        )
+        if lead.status not in LEAD_STATUSES:
+            lead.status = 'جديد'
+        assign_organization(lead)
+        db.session.add(lead)
+        db.session.commit()
+        flash(f'تم إنشاء الفرصة {lead.code}', 'success')
+    except Exception as exc:
+        db.session.rollback()
+        import logging
+        logging.getLogger('liftcore').exception('installation leads_add failed')
+        flash(f'فشل حفظ الفرصة: {exc}', 'error')
     return redirect(url_for('installation.leads_list'))
 
 
@@ -964,7 +997,8 @@ def leads_cancel(lead_id):
     if lead.status == 'ملغي':
         flash('هذه الفرصة ملغاة مسبقاً', 'error')
         return redirect(url_for('installation.leads_list'))
-    if lead.status == 'تم تحويله لمشروع' or lead.project:
+    linked = _projects_by_lead_id([lead]).get(lead.id)
+    if lead.status == 'تم تحويله لمشروع' or linked:
         flash('لا يمكن إلغاء فرصة مُحوّلة لمشروع', 'error')
         return redirect(url_for('installation.leads_list'))
     lead.status = 'ملغي'
@@ -976,9 +1010,10 @@ def leads_cancel(lead_id):
 @install_bp.route('/leads/<int:lead_id>/convert', methods=['POST'])
 def leads_convert(lead_id):
     lead = tenant_get_or_404(InstallLead, lead_id)
-    if lead.status == 'تم تحويله لمشروع' and lead.project:
+    linked = _projects_by_lead_id([lead]).get(lead.id)
+    if lead.status == 'تم تحويله لمشروع' and linked:
         flash('هذه الفرصة مُحوّلة مسبقاً', 'error')
-        return redirect(url_for('installation.project_detail', project_id=lead.project.id))
+        return redirect(url_for('installation.project_detail', project_id=linked.id))
     project = InstallProject(
         code=_next_code(InstallProject, 'PRJ-', 4),
         title=lead.client_display,
