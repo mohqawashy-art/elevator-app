@@ -1,0 +1,14 @@
+---
+description: Canonical desktop index of Cursor chats and projects
+alwaysApply: true
+---
+
+# فهرس المكتب
+
+الملف المعتمد لكل محادثات ومشروعات جهاز المكتب:
+
+`C:\Users\HOME\OneDrive\Desktop\محادثات-ومشروعات-Cursor.md`
+
+- اقرأه عند الحاجة لسياق عبر المشروعات أو المحادثات القديمة.
+- بعد عمل مهم (ميزة، مسار مشروع، محادثة جديدة ذات عنوان): حدّث ذلك الملف على سطح المكتب — لا تضعه في git.
+- مسار LiftCore الحالي على هذا الجهاز: `D:\New folder\elevator-app`.
