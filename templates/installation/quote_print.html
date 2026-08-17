@@ -27,7 +27,28 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
 .totals .r{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e8f0}
 .totals .g{background:#0a2647;color:#c9a14a;font-weight:800;padding:9px 12px;border-radius:8px;margin-top:6px;display:flex;justify-content:space-between}
 .terms{font-size:12px;line-height:1.9;margin-top:12px}
-@media print{.toolbar{display:none}body{background:#fff;padding:0}.sheet{border-radius:0;max-width:100%}}
+@media print{
+  .toolbar{display:none!important}
+  html,body{background:#fff!important;padding:0!important;margin:0!important}
+  .sheet{
+    border-radius:0!important;
+    max-width:100%!important;
+    width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    font-size:15px!important;
+  }
+  .q-head .brand img{width:auto!important;max-width:240px!important;max-height:78px!important}
+  .q-meta{font-size:13px!important}
+  .q-title{font-size:22px!important}
+  .q-sec h3{font-size:15px!important}
+  table{font-size:14px!important}
+  th,td{padding:10px 12px!important}
+  .totals{width:340px!important;font-size:15px!important}
+  .totals .g{font-size:17px!important}
+  .terms{font-size:13px!important}
+  @page{size:A4;margin:8mm}
+}
 </style>
 </head>
 <body>

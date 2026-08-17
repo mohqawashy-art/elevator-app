@@ -1,0 +1,22 @@
+---
+description: Auto commit and push to main after completing work; give deploy SSH snippet
+alwaysApply: true
+---
+
+# رفع تلقائي
+
+بعد إنجاز أي تعديل على الكود (ميزة، إصلاح، تحسين UI):
+
+1. **ارفع تلقائياً** إلى `origin/main` دون انتظار طلب المستخدم «ارفع».
+2. اتبع بروتوكول git المعتاد: status + diff + log، ثم add للملفات ذات الصلة فقط، commit برسالة واضحة، ثم `git push origin main` (مع موافقة smart-mode عند الحاجة).
+3. لا ترفع أسراراً أو `.env` أو ملفات بيانات/أدوات غير مرتبطة (`.venv`، `deploy/data`، `tools/ffmpeg`، إلخ).
+4. بعد نجاح الرفع، أعطِ المستخدم كود النشر على السيرفر مباشرة:
+
+```bash
+cd ~/liftcore/elevator-app && \
+rm -f .git/refs/remotes/origin/main.lock .git/refs/heads/main.lock 2>/dev/null; \
+git fetch origin main && git reset --hard origin/main && \
+sudo systemctl restart liftcore
+```
+
+5. إن فشل الرفع، أخبر المستخدم بسبب الفشل باختصار ولا تعتبر المهمة منتهية.
