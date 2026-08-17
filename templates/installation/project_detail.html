@@ -92,12 +92,12 @@
         <form method="post" action="/installation/projects/{{ project.id }}/card/link-contract" class="pc-contract-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div>
-            <label>ربط بعقد LiftCore</label>
+            <label>ربط بعقد تركيب</label>
             <select name="contract_id">
               <option value="">— بدون ربط —</option>
               {% for c in customer_contracts %}
               <option value="{{ c.id }}" {% if project.contract_id == c.id %}selected{% endif %}>
-                {{ c.code }} — {{ c.contract_type or 'عقد' }} — {{ '{:,.0f}'.format(c.total or c.value or 0) }} ر.س
+                {{ c.code }} — {{ c.contract_type or 'عقد تركيب' }} — {{ '{:,.0f}'.format(c.total or c.value or 0) }} ر.س
               </option>
               {% endfor %}
             </select>
@@ -112,7 +112,7 @@
           {% endif %}
         </form>
         {% if not customer_contracts %}
-        <p class="pc-hint" style="margin:8px 0 0">لا عقود لهذا العميل بعد — أنشئ عقداً من صفحة العقود ثم اربطه هنا.</p>
+        <p class="pc-hint" style="margin:8px 0 0">لا عقود تركيب/تحديث لهذا العميل — أنشئ عقد تركيب من صفحة العقود ثم اربطه هنا (عقود الصيانة لا تظهر).</p>
         {% endif %}
       </div>
 

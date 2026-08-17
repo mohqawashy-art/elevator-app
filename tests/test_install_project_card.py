@@ -224,9 +224,9 @@ def test_project_card_link_contract(client):
         db.session.flush()
         contract = Contract(
             organization_id=org.id,
-            code='CN-CARD1',
+            code='CI-CARD1',
             customer_id=cust.id,
-            contract_type='تركيب',
+            contract_type='عقد تركيب',
             start_date=date.today(),
             end_date=date.today(),
             value=40000,
@@ -258,3 +258,80 @@ def test_project_card_link_contract(client):
         p = db.session.get(InstallProject, pid)
         assert p.contract_id == cid
         assert float(p.contract_value or 0) == 40000
+
+
+def test_project_card_rejects_maintenance_contract_link(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        from models import Customer, Contract
+        ensure_project_card_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-CARD-MN',
+            name='عميل صيانة',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        maint = Contract(
+            organization_id=org.id,
+            code='CN-CARD-MN',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=12000,
+            total=12000,
+            status='نشط',
+        )
+        install = Contract(
+            organization_id=org.id,
+            code='CI-CARD-IN',
+            customer_id=cust.id,
+            contract_type='عقد تركيب',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=50000,
+            total=50000,
+            status='نشط',
+        )
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-CARD-MN',
+            title='مشروع بدون صيانة',
+            status='عقد',
+            customer_id=cust.id,
+        )
+        db.session.add_all([maint, install, project])
+        db.session.commit()
+        pid, mid, iid = project.id, maint.id, install.id
+        with client.session_transaction() as sess:
+            sess['_csrf_token'] = 'test-csrf'
+
+    detail = client.get(f'/installation/projects/{pid}')
+    assert detail.status_code == 200
+    body = detail.data.decode('utf-8', errors='ignore')
+    assert 'CI-CARD-IN' in body
+    assert 'CN-CARD-MN' not in body
+
+    resp = client.post(
+        f'/installation/projects/{pid}/card/link-contract',
+        data={'csrf_token': 'test-csrf', 'contract_id': mid, 'sync_value': '1'},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert 'عقود التركيب' in resp.data.decode('utf-8', errors='ignore')
+    with client.application.app_context():
+        p = db.session.get(InstallProject, pid)
+        assert p.contract_id is None
+
+    ok = client.post(
+        f'/installation/projects/{pid}/card/link-contract',
+        data={'csrf_token': 'test-csrf', 'contract_id': iid, 'sync_value': '1'},
+        follow_redirects=True,
+    )
+    assert ok.status_code == 200
+    with client.application.app_context():
+        p = db.session.get(InstallProject, pid)
+        assert p.contract_id == iid

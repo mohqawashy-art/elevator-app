@@ -292,22 +292,21 @@ def project_detail(project_id):
         card['schema_error'] = str(exc)
 
     customer_contracts = []
-    if project.customer_id:
-        customer_contracts = (
+    if project.customer_id or (project.customer and project.customer.id):
+        from contract_codes import is_installation_contract_type
+
+        cid = project.customer_id or project.customer.id
+        raw_contracts = (
             tenant_query(Contract)
-            .filter_by(customer_id=project.customer_id)
+            .filter_by(customer_id=cid)
             .order_by(Contract.created_at.desc())
-            .limit(50)
+            .limit(100)
             .all()
         )
-    elif project.customer:
-        customer_contracts = (
-            tenant_query(Contract)
-            .filter_by(customer_id=project.customer.id)
-            .order_by(Contract.created_at.desc())
-            .limit(50)
-            .all()
-        )
+        customer_contracts = [
+            c for c in raw_contracts
+            if is_installation_contract_type(c.contract_type)
+        ][:50]
 
     return render_template(
         'installation/project_detail.html',
@@ -372,6 +371,11 @@ def project_card_link_contract(project_id):
     contract = tenant_query(Contract).filter_by(id=cid).first()
     if not contract:
         flash('العقد غير موجود', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    from contract_codes import is_installation_contract_type
+    if not is_installation_contract_type(contract.contract_type):
+        flash('يُسمح بالربط بعقود التركيب أو التحديث فقط (وليس عقود الصيانة)', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
 
     if project.customer_id and contract.customer_id != project.customer_id:
