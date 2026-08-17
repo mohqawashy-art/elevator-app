@@ -24,7 +24,7 @@
       </div>
       <div class="stat-card">
         <div class="stat-val" style="font-size:14px;font-family:var(--font-en)">{{ project.customer.code if project.customer else '—' }}</div>
-        <div class="stat-label">عميل LiftCore</div>
+        <div class="stat-label">العميل</div>
       </div>
     </div>
 
@@ -287,7 +287,7 @@
 
     <div class="panel">
       <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <span>العميل المرتبط (LiftCore)</span>
+        <span>العميل المرتبط</span>
         <a href="/installation/projects/{{ project.id }}/quote" class="btn btn-secondary btn-sm">{{ 'تغيير العميل' if project.customer else 'ربط عند التسعير' }}</a>
       </div>
       {% if project.customer %}
