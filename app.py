@@ -1548,6 +1548,12 @@ def _startup_schema_and_data_sync():
         db.session.rollback()
         app.logger.warning('Install project card schema ensure skip: %s', exc)
     try:
+        from installation.schema import ensure_install_tenant_uniques
+        ensure_install_tenant_uniques()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Install tenant unique constraints ensure skip: %s', exc)
+    try:
         from liftcore_permissions import ensure_permissions_schema
         ensure_permissions_schema(db.session, db.engine)
     except Exception as exc:

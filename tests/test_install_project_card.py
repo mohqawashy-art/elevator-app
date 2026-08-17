@@ -65,6 +65,52 @@ def test_leads_add_creates_opportunity(client):
     assert 'تم إنشاء الفرصة' in body or 'LD-' in body
 
 
+def test_two_orgs_can_reuse_lead_code(client):
+    """قيود code العالمية كانت تمنع LD-0001 لمستأجر ثانٍ."""
+    from installation.schema import ensure_install_tenant_uniques
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        ensure_install_tenant_uniques()
+        org_a = Organization.query.filter_by(slug='default').first()
+        org_b = Organization.query.filter_by(slug='beta').first()
+        if not org_b:
+            org_b = Organization(slug='beta', name='Beta', status='active')
+            db.session.add(org_b)
+            db.session.commit()
+
+        for org in (org_a, org_b):
+            existing = (
+                InstallLead.query.execution_options(skip_tenant=True)
+                .filter_by(organization_id=org.id, code='LD-0001')
+                .first()
+            )
+            if existing:
+                db.session.delete(existing)
+        db.session.commit()
+
+        db.session.add(InstallLead(
+            organization_id=org_a.id,
+            code='LD-0001',
+            client_name='عميل أ',
+            status='جديد',
+        ))
+        db.session.commit()
+        db.session.add(InstallLead(
+            organization_id=org_b.id,
+            code='LD-0001',
+            client_name='عميل مستأجر آخر',
+            status='جديد',
+        ))
+        db.session.commit()
+        total = (
+            InstallLead.query.execution_options(skip_tenant=True)
+            .filter_by(code='LD-0001')
+            .count()
+        )
+        assert total >= 2
+
+
 def test_project_card_costs_and_receipts(client):
     login_as(client, role='admin')
     with client.application.app_context():

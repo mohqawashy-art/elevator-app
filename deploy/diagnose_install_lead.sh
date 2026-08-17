@@ -43,6 +43,8 @@ with app.app_context():
         db.session.rollback()
 
     insp = inspect(db.engine)
+    dialect = (db.engine.dialect.name or '').lower()
+    print('dialect:', dialect)
     for t in ('installation_leads', 'installation_projects', 'installation_project_costs', 'installation_project_receipts'):
         if t not in insp.get_table_names():
             print(f'TABLE MISSING: {t}')
@@ -69,6 +71,36 @@ with app.app_context():
         ORDER BY c DESC LIMIT 10
     '''), {'oid': org.id}).fetchall()
     print('duplicate lead_id projects:', dups or 'none')
+
+    # قيود فريدة على code
+    try:
+        from installation.schema import ensure_install_tenant_uniques
+        ensure_install_tenant_uniques()
+        print('ensure_install_tenant_uniques: OK')
+    except Exception as e:
+        print('ensure_install_tenant_uniques FAIL:', e)
+        traceback.print_exc()
+        db.session.rollback()
+
+    if dialect == 'postgresql':
+        rows = db.session.execute(text('''
+            SELECT c.conname, pg_get_constraintdef(c.oid)
+            FROM pg_constraint c
+            JOIN pg_class t ON c.conrelid = t.oid
+            WHERE t.relname = 'installation_leads' AND c.contype = 'u'
+        ''')).fetchall()
+        print('installation_leads unique constraints:', rows)
+        idxs = db.session.execute(text('''
+            SELECT indexname, indexdef FROM pg_indexes
+            WHERE tablename = 'installation_leads' AND indexdef ILIKE '%UNIQUE%'
+        ''')).fetchall()
+        print('installation_leads unique indexes:', idxs)
+
+    # هل LD-0001 مستخدم عند مستأجر آخر؟
+    other = InstallLead.query.filter_by(code='LD-0001').all()
+    print('existing LD-0001 rows:', [
+        (x.id, x.organization_id, x.client_name) for x in other
+    ])
 
     try:
         from flask import g

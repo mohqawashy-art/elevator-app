@@ -60,13 +60,15 @@ _schema_ensured = False
 
 @install_bp.before_request
 def _ensure_install_schema():
-    """ضمان أعمدة/جداول كارت المشروع قبل أي صفحة تركيب (يمنع 500 على الفرص)."""
+    """ضمان أعمدة/جداول/قيود التركيب قبل أي صفحة (يمنع 500 على الفرص)."""
     global _schema_ensured
     if _schema_ensured:
         return
     try:
         from installation.project_card import ensure_project_card_schema
+        from installation.schema import ensure_install_tenant_uniques
         ensure_project_card_schema()
+        ensure_install_tenant_uniques()
         _schema_ensured = True
     except Exception:
         db.session.rollback()
@@ -977,7 +979,11 @@ def leads_add():
         db.session.rollback()
         import logging
         logging.getLogger('liftcore').exception('installation leads_add failed')
-        flash(f'فشل حفظ الفرصة: {exc}', 'error')
+        orig = getattr(exc, 'orig', None)
+        detail = str(orig or exc).strip()
+        if len(detail) > 280:
+            detail = detail[:277] + '…'
+        flash(f'فشل حفظ الفرصة: {detail}', 'error')
     return redirect(url_for('installation.leads_list'))
 
 
