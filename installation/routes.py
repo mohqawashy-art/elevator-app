@@ -2,7 +2,7 @@
 
 import json
 import re
-from datetime import datetime
+from datetime import datetime, date
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 
@@ -13,11 +13,15 @@ from installation.models import (
     InstallQuotation,
     InstallQuotationLine,
     InstallTimelineStep,
+    InstallProjectCostItem,
+    InstallProjectReceipt,
     LEAD_STATUSES,
     LEAD_SOURCES,
     PROJECT_STATUSES,
     QUOTE_STATUSES,
     TIMELINE_STEP_STATUSES,
+    COST_CATEGORIES,
+    RECEIPT_STATUSES,
 )
 from installation.timeline import (
     create_execution_timeline,
@@ -235,12 +239,16 @@ def projects_list():
 
 @install_bp.route('/projects/<int:project_id>')
 def project_detail(project_id):
+    from installation.project_card import build_project_card, ensure_project_card_schema
+
+    ensure_project_card_schema()
     project = tenant_get_or_404(InstallProject, project_id)
     quotations = project.quotations.order_by(InstallQuotation.created_at.desc()).all()
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
     progress = timeline_progress(steps) if project.execution_active else 0
     execution_complete = is_execution_complete(steps) if project.execution_active else False
     latest_draft = _latest_editable_quotation(project) if not project.execution_active else None
+    card = build_project_card(project)
     return render_template(
         'installation/project_detail.html',
         project=project,
@@ -249,8 +257,133 @@ def project_detail(project_id):
         execution_progress=progress,
         execution_complete=execution_complete,
         quote_statuses=QUOTE_STATUSES,
+        card=card,
+        cost_categories=COST_CATEGORIES,
+        receipt_statuses=RECEIPT_STATUSES,
+        today=date.today().isoformat(),
         page_title=f'مشروع {project.code}',
     )
+
+
+@install_bp.route('/projects/<int:project_id>/card/value', methods=['POST'])
+def project_card_set_value(project_id):
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    raw = (request.form.get('contract_value') or '').strip()
+    if not raw:
+        project.contract_value = None
+    else:
+        try:
+            project.contract_value = float(raw)
+        except ValueError:
+            flash('قيمة المشروع غير صحيحة', 'error')
+            return redirect(url_for('installation.project_detail', project_id=project.id))
+    db.session.commit()
+    flash('تم تحديث قيمة المشروع', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/costs/add', methods=['POST'])
+def project_card_cost_add(project_id):
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    title = (request.form.get('title') or '').strip()
+    category = (request.form.get('category') or 'أخرى').strip()
+    if category not in COST_CATEGORIES:
+        category = 'أخرى'
+    try:
+        amount = float(request.form.get('amount') or 0)
+    except ValueError:
+        amount = 0
+    if not title or amount <= 0:
+        flash('أدخل وصف البند ومبلغاً أكبر من صفر', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+    date_raw = (request.form.get('cost_date') or '').strip()
+    try:
+        cost_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date.today()
+    except ValueError:
+        cost_date = date.today()
+    inst_raw = (request.form.get('installment_no') or '').strip()
+    installment_no = int(inst_raw) if inst_raw.isdigit() else None
+    item = InstallProjectCostItem(
+        project_id=project.id,
+        category=category,
+        title=title,
+        amount=amount,
+        cost_date=cost_date,
+        installment_no=installment_no,
+        notes=(request.form.get('notes') or '').strip() or None,
+    )
+    assign_organization(item)
+    db.session.add(item)
+    db.session.commit()
+    flash('تمت إضافة بند التكلفة', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/costs/<int:item_id>/delete', methods=['POST'])
+def project_card_cost_delete(project_id, item_id):
+    project = tenant_get_or_404(InstallProject, project_id)
+    item = tenant_query(InstallProjectCostItem).filter_by(id=item_id, project_id=project.id).first_or_404()
+    db.session.delete(item)
+    db.session.commit()
+    flash('تم حذف بند التكلفة', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/receipts/add', methods=['POST'])
+def project_card_receipt_add(project_id):
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    try:
+        amount = float(request.form.get('amount') or 0)
+    except ValueError:
+        amount = 0
+    inst_raw = (request.form.get('installment_no') or '').strip()
+    installment_no = int(inst_raw) if inst_raw.isdigit() else (len(project.receipts) + 1)
+    if amount <= 0:
+        flash('أدخل مبلغ دفعة أكبر من صفر', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+    date_raw = (request.form.get('received_date') or '').strip()
+    try:
+        received_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date.today()
+    except ValueError:
+        received_date = date.today()
+    status = (request.form.get('status') or 'مستلمة').strip()
+    if status not in RECEIPT_STATUSES:
+        status = 'مستلمة'
+    label = (request.form.get('label') or '').strip() or f'دفعة رقم {installment_no}'
+    receipt = InstallProjectReceipt(
+        project_id=project.id,
+        installment_no=installment_no,
+        label=label,
+        amount=amount,
+        received_date=received_date,
+        payment_method=(request.form.get('payment_method') or '').strip() or None,
+        status=status,
+        notes=(request.form.get('notes') or '').strip() or None,
+    )
+    assign_organization(receipt)
+    db.session.add(receipt)
+    db.session.commit()
+    flash(f'تم تسجيل {label}', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/receipts/<int:receipt_id>/delete', methods=['POST'])
+def project_card_receipt_delete(project_id, receipt_id):
+    project = tenant_get_or_404(InstallProject, project_id)
+    receipt = tenant_query(InstallProjectReceipt).filter_by(id=receipt_id, project_id=project.id).first_or_404()
+    db.session.delete(receipt)
+    db.session.commit()
+    flash('تم حذف الدفعة', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
 
 
 @install_bp.route('/projects/<int:project_id>/quote')

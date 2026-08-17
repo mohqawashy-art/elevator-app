@@ -1542,6 +1542,12 @@ def _startup_schema_and_data_sync():
         db.session.rollback()
         app.logger.warning('Journal schema ensure skip: %s', exc)
     try:
+        from installation.project_card import ensure_project_card_schema
+        ensure_project_card_schema()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Install project card schema ensure skip: %s', exc)
+    try:
         from liftcore_permissions import ensure_permissions_schema
         ensure_permissions_schema(db.session, db.engine)
     except Exception as exc:
