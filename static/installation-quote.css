@@ -81,10 +81,32 @@ table.q-tbl tr.q-stage td{background:#f3e8cf;font-weight:800;color:#0a2647}
 .q-sign .s{text-align:center;width:42%}
 .q-sign .s .ln{border-top:1.5px solid #0a2647;margin-top:40px;padding-top:6px;font-weight:700;color:#0a2647}
 @media print{
-  body *{visibility:hidden}
-  #quoteOverlay,#quoteOverlay *{visibility:visible}
-  #quoteOverlay{position:absolute;inset:0;background:#fff;padding:0}
-  .q-toolbar{display:none}
-  .quote-sheet{box-shadow:none;border-radius:0;max-width:100%;padding:10mm 12mm}
-  @page{size:A4;margin:8mm}
+  /* إخفاء الصفحة بالكامل بدون حجز مساحة (يمنع الصفحات الفارغة) */
+  body > *:not(#quoteOverlay){display:none!important}
+  html,body{background:#fff!important;height:auto!important;overflow:visible!important}
+  #quoteOverlay{
+    display:block!important;
+    position:static!important;
+    inset:auto!important;
+    background:#fff!important;
+    padding:0!important;
+    margin:0!important;
+    overflow:visible!important;
+    height:auto!important;
+    min-height:0!important;
+    z-index:auto!important;
+  }
+  .q-toolbar{display:none!important}
+  .quote-sheet{
+    box-shadow:none!important;
+    border-radius:0!important;
+    max-width:100%!important;
+    width:100%!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .q-head .brand img{max-height:56px!important;width:auto!important;max-width:180px!important}
+  .q-sign{page-break-inside:avoid}
+  .q-totals{page-break-inside:avoid}
+  @page{size:A4;margin:10mm}
 }
