@@ -1868,6 +1868,22 @@ def _git_commit_short():
             timeout=2,
         ).decode('utf-8', errors='ignore').strip() or None
     except Exception:
+        pass
+    # الخدمة غالباً بلا git في PATH — اقرأ .git مباشرة
+    try:
+        git_dir = os.path.join(app.root_path, '.git')
+        head_path = os.path.join(git_dir, 'HEAD')
+        if not os.path.isfile(head_path):
+            return None
+        head = open(head_path, encoding='utf-8').read().strip()
+        if head.startswith('ref:'):
+            ref = head.split(' ', 1)[1].strip()
+            ref_path = os.path.join(git_dir, *ref.split('/'))
+            if os.path.isfile(ref_path):
+                return open(ref_path, encoding='utf-8').read().strip()[:7]
+            return None
+        return head[:7]
+    except Exception:
         return None
 
 
