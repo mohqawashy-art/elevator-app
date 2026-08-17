@@ -1005,6 +1005,7 @@ def quote_print(quotation_id):
         'cabin_w': _dim_to_cm(spec.get('cabin_width')),
         'cabin_d': _dim_to_cm(spec.get('cabin_depth')),
     }
+    stage_blocks, labor_sell = _quote_stage_blocks(q)
     return render_template(
         'installation/quote_print.html',
         quotation=q,
@@ -1016,8 +1017,78 @@ def quote_print(quotation_id):
         panel_origin_label=origin_label_from_spec(spec, 'panel_origin', 'panel_origin_country'),
         panel_brand=spec.get('panel_brand') or '—',
         customer_code=q.customer.code if q.customer else (q.project.customer.code if q.project.customer else '—'),
+        stage_blocks=stage_blocks,
+        labor_sell=labor_sell,
+        quote_type=q.quote_type or 'new',
         page_title=f'عرض سعر {q.code}',
     )
+
+
+def _quote_stage_blocks(quotation):
+    """تجميع بنود العرض حسب مرحلة التركيب + توزيع الأجور."""
+    factor = 1 + float(quotation.profit_pct or 0) / 100.0
+    labor_pool = (
+        float(quotation.labor or 0)
+        + float(quotation.transport or 0)
+        + float(quotation.other_costs or 0)
+    )
+    labor_sell = round(labor_pool * factor, 2)
+    shares = [
+        ('مرحلة 1 — سكك وأبواب', 'أجور وتركيب — سكك وأبواب', 0.30),
+        ('مرحلة 2 — تركيب كبينة وأحبال وماكينة', 'أجور وتركيب — كبينة وأحبال وماكينة', 0.45),
+        ('مرحلة 3 — تركيب كنترول وتشغيل', 'أجور وتركيب — كنترول وتشغيل', 0.25),
+    ]
+    labor_by_stage = {}
+    used = 0.0
+    is_new = (quotation.quote_type or 'new') != 'upgrade'
+    if is_new and labor_pool > 0:
+        for i, (stage, label, share) in enumerate(shares):
+            if i == len(shares) - 1:
+                amt = round(labor_pool - used, 2)
+            else:
+                amt = round(labor_pool * share, 2)
+                used += amt
+            labor_by_stage[stage] = (label, round(amt * factor, 2))
+
+    ordered = []
+    seen = set()
+    by_stage = {}
+    for ln in quotation.lines:
+        st = (ln.stage or '—').strip() or '—'
+        if st not in by_stage:
+            by_stage[st] = []
+            ordered.append(st)
+        by_stage[st].append(ln)
+        seen.add(st)
+
+    # أظهر المراحل المعروفة بالترتيب حتى لو فارغة من البنود لكن عليها أجور
+    preferred = [s[0] for s in shares]
+    final_order = [s for s in preferred if s in by_stage or s in labor_by_stage]
+    for st in ordered:
+        if st not in final_order:
+            final_order.append(st)
+
+    blocks = []
+    for st in final_order:
+        lines = by_stage.get(st, [])
+        lines_total = round(sum(float(ln.line_total or 0) * factor for ln in lines), 2)
+        labor_label, labor_amt = labor_by_stage.get(st, (None, 0))
+        blocks.append({
+            'stage': st,
+            'lines': [
+                {
+                    'name': ln.name,
+                    'qty': ln.qty,
+                    'unit_price': round(float(ln.unit_price or 0) * factor, 2),
+                    'line_total': round(float(ln.line_total or 0) * factor, 2),
+                }
+                for ln in lines
+            ],
+            'labor_label': labor_label if is_new else None,
+            'labor_amount': labor_amt if is_new else 0,
+            'total': round(lines_total + (labor_amt if is_new else 0), 2),
+        })
+    return blocks, labor_sell
 
 
 def _projects_by_lead_id(leads):

@@ -490,19 +490,39 @@ document.addEventListener('DOMContentLoaded', function () {
     var grand = before + vat;
     var dateStr = new Date().toLocaleDateString('ar-SA');
     var validDays = P.num(el('cValid').value) || 30;
+    var laborByStage = {};
+    if (!isUpg && typeof P.splitLaborByStage === 'function') {
+      var laborParts = P.splitLaborByStage(labor + trans + other);
+      for (i = 0; i < laborParts.length; i++) {
+        laborByStage[laborParts[i].stage] = {
+          label: laborParts[i].label,
+          amount: laborParts[i].amount * factor,
+        };
+      }
+    }
     var tbl = '<table class="q-tbl"><thead><tr><th style="width:55%">البيان</th><th>الكمية</th><th>الإجمالي (ر.س)</th></tr></thead><tbody>';
     for (i = 0; i < stagesOrder.length; i++) {
       var st2 = stagesOrder[i];
-      tbl += '<tr class="q-stage"><td>' + st2 + '</td><td></td><td>' + (detailed ? '' : fmt(stageSums[st2])) + '</td></tr>';
+      var stageTotal = stageSums[st2] || 0;
+      if (laborByStage[st2]) stageTotal += laborByStage[st2].amount;
+      tbl += '<tr class="q-stage"><td>' + st2 + '</td><td></td><td>' + (detailed ? '' : fmt(stageTotal)) + '</td></tr>';
       if (detailed) {
         var k, its = itemsByStage[st2];
         for (k = 0; k < its.length; k++) {
           tbl += '<tr><td style="padding-right:22px">' + its[k].name + '</td><td>' + its[k].qty + '</td><td>' + fmt(its[k].total) + '</td></tr>';
         }
-        tbl += '<tr class="q-stage"><td style="padding-right:22px">إجمالي ' + st2 + '</td><td></td><td>' + fmt(stageSums[st2]) + '</td></tr>';
+        if (laborByStage[st2]) {
+          tbl += '<tr><td style="padding-right:22px">' + laborByStage[st2].label + '</td><td>1</td><td>' + fmt(laborByStage[st2].amount) + '</td></tr>';
+        }
+        tbl += '<tr class="q-stage"><td style="padding-right:22px">إجمالي ' + st2 + '</td><td></td><td>' + fmt(stageTotal) + '</td></tr>';
+      } else if (laborByStage[st2]) {
+        tbl += '<tr><td style="padding-right:22px">' + laborByStage[st2].label + '</td><td></td><td>' + fmt(laborByStage[st2].amount) + '</td></tr>';
       }
     }
-    tbl += '<tr class="q-stage"><td>أعمال التركيب والتشغيل والتسليم</td><td></td><td>' + fmt(laborSell) + '</td></tr></tbody></table>';
+    if (isUpg) {
+      tbl += '<tr class="q-stage"><td>أعمال التركيب والتشغيل والتسليم</td><td></td><td>' + fmt(laborSell) + '</td></tr>';
+    }
+    tbl += '</tbody></table>';
     var specs = '';
     if (!isUpg) {
       var spec = getNewSpec();

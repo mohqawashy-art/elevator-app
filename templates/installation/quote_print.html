@@ -105,25 +105,35 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
   {% endif %}
 
   <div class="q-sec">
-    <h3>بنود العرض</h3>
+    <h3>بنود العرض — حسب مراحل التركيب</h3>
     <table>
-      <thead><tr><th>البيان</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي (تكلفة)</th></tr></thead>
+      <thead><tr><th>البيان</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
       <tbody>
-        {% set ns = namespace(stage='') %}
-        {% for line in quotation.lines %}
-          {% if line.stage != ns.stage %}
-            {% set ns.stage = line.stage %}
-            <tr class="stage"><td colspan="4">{{ line.stage }}</td></tr>
-          {% endif %}
-          <tr>
-            <td style="padding-right:18px">{{ line.name }}</td>
-            <td>{{ line.qty }}</td>
-            <td>{{ '{:,.0f}'.format(line.unit_price) }}</td>
-            <td>{{ '{:,.0f}'.format(line.line_total) }}</td>
-          </tr>
+        {% for block in stage_blocks %}
+        <tr class="stage"><td colspan="4">{{ block.stage }}</td></tr>
+        {% for line in block.lines %}
+        <tr>
+          <td style="padding-right:18px">{{ line.name }}</td>
+          <td>{{ line.qty }}</td>
+          <td>{{ '{:,.0f}'.format(line.unit_price) }}</td>
+          <td>{{ '{:,.0f}'.format(line.line_total) }}</td>
+        </tr>
         {% endfor %}
+        {% if block.labor_label and block.labor_amount %}
+        <tr>
+          <td style="padding-right:18px">{{ block.labor_label }}</td>
+          <td>1</td>
+          <td>{{ '{:,.0f}'.format(block.labor_amount) }}</td>
+          <td>{{ '{:,.0f}'.format(block.labor_amount) }}</td>
+        </tr>
+        {% endif %}
+        <tr class="stage"><td colspan="3">إجمالي {{ block.stage }}</td>
+          <td>{{ '{:,.0f}'.format(block.total) }}</td></tr>
+        {% endfor %}
+        {% if quote_type == 'upgrade' and labor_sell %}
         <tr class="stage"><td colspan="3">أعمال التركيب والتشغيل والتسليم</td>
-          <td>{{ '{:,.0f}'.format((quotation.labor + quotation.transport + quotation.other_costs) * (1 + quotation.profit_pct / 100)) }}</td></tr>
+          <td>{{ '{:,.0f}'.format(labor_sell) }}</td></tr>
+        {% endif %}
       </tbody>
     </table>
   </div>

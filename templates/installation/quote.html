@@ -157,7 +157,13 @@
         </div>
 
         <div class="pricing-card">
-          <h3><span class="step-no">٤</span> قائمة البنود <span class="pricing-hint" style="font-weight:400">— عدّل السعر والكمية</span></h3>
+          <h3><span class="step-no">٤</span> قائمة البنود <span class="pricing-hint" style="font-weight:400">— حسب مراحل التركيب</span></h3>
+          <div class="pricing-hint" style="margin-bottom:10px;line-height:1.7">
+            التسعير على 3 مراحل:
+            <b>١) سكك وأبواب</b> ·
+            <b>٢) كبينة وأحبال وماكينة</b> ·
+            <b>٣) كنترول وتشغيل</b>
+          </div>
           <div style="overflow-x:auto">
             <table class="pricing-items">
               <thead><tr><th style="width:34%">البند</th><th>الوحدة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th></tr></thead>
@@ -230,7 +236,7 @@ window.__INSTALL_QUOTE__ = {
   defaultCustomerId: {{ default_customer_id | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=stages3"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=stages3"></script>
 </body>
 </html>

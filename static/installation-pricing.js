@@ -53,10 +53,16 @@
   var SHAFT_MARGIN_D = 20;
   var DIM_UNIT = 'سم';
 
-  var STAGE_SUPPLY = 'توريد المعدات';
-  var STAGE_ELEC = 'الكهربائيات والاستدعاء';
-  var STAGE_INST = 'مستلزمات التركيب';
+  var STAGE_RAILS = 'مرحلة 1 — سكك وأبواب';
+  var STAGE_CABIN = 'مرحلة 2 — تركيب كبينة وأحبال وماكينة';
+  var STAGE_CTRL = 'مرحلة 3 — تركيب كنترول وتشغيل';
   var STAGE_UPG = 'أعمال التحديث';
+  // نسب توزيع أجور التركيب على المراحل الثلاث (للعرض والطباعة)
+  var STAGE_LABOR_SHARE = [
+    { stage: STAGE_RAILS, share: 0.30 },
+    { stage: STAGE_CABIN, share: 0.45 },
+    { stage: STAGE_CTRL, share: 0.25 },
+  ];
 
   var UPG = [
     { id: 'panel', name: 'لوحة تحكم + إنفرتر جديد', unit: 'قطعة', qty: function () { return 1; }, price: function (s, cap, spec) { return applyPanelOrigin(PANEL_BASE_PRICE, spec); }, desc: 'استبدال اللوحة القديمة بنظام حديث' },
@@ -226,38 +232,44 @@
     }
 
     var machineBase = MACHINE_PRICES[machine][cap];
-    add(STAGE_SUPPLY, 'ماكينة ' + (machine === 'gearless' ? 'جيرلس MRL' : 'جير') + ' — ' + cap + ' كجم / ' + speed + ' م/ث' + machineSuffix, 'قطعة', 1, applyOrigin(machineBase, spec, 'full'));
-    add(STAGE_SUPPLY, 'لوحة تحكم + إنفرتر' + panelLabel, 'قطعة', 1, applyPanelOrigin(PANEL_BASE_PRICE, spec));
-    add(STAGE_SUPPLY, 'سكك كبينة T89 (بالمتر)', 'متر', railM, 70);
-    add(STAGE_SUPPLY, 'سكك ثقل T50 (بالمتر)', 'متر', railM, 45);
-    add(STAGE_SUPPLY, cabinDesc, 'قطعة', 1, cabinPrice);
-    add(STAGE_SUPPLY, 'باب كبينة أوتوماتيك + مشغل (Operator)' + machineSuffix, 'قطعة', 1, applyOrigin(4500, spec, 'light'));
-    add(STAGE_SUPPLY, DOOR_NAMES[door] + machineSuffix, 'باب', doorsQty, applyOrigin(DOOR_PRICES[door], spec, 'light'));
-    add(STAGE_SUPPLY, 'شاسيه كبينة + باراشوت (Safety Gear)', 'طقم', 1, 6500);
-    add(STAGE_SUPPLY, 'إطار ثقل موازن + بلوكات', 'طقم', 1, 3500);
-    add(STAGE_SUPPLY, 'حبال جر 8 مم (بالمتر)', 'متر', ropesM, 12);
-    add(STAGE_SUPPLY, 'منظم سرعة (Governor) + بكرة شد', 'طقم', 1, 1800);
-    add(STAGE_SUPPLY, 'بوفرات', 'قطعة', 2, 900);
 
-    add(STAGE_ELEC, 'ترافلينج كيبل (بالمتر)', 'متر', travCable, 18);
-    add(STAGE_ELEC, 'مفاتيح حدود + ممرات مغناطيسية', 'طقم', 1, 800);
-    add(STAGE_ELEC, 'لوحة كبينة COP', 'قطعة', 1, 1200);
-    add(STAGE_ELEC, 'أزرار استدعاء الأدوار LOP', 'قطعة', stops, 250);
-    add(STAGE_ELEC, 'فوتوسيل (ستارة ضوئية)', 'قطعة', 1, 350);
-    add(STAGE_ELEC, 'إنتركم + جرس إنذار', 'طقم', 1, 600);
-    add(STAGE_ELEC, 'إنارة وتهوية كبينة', 'طقم', 1, 700);
-
-    add(STAGE_INST, 'شيكالات تثبيت السكك', 'طقم', brackets, 120);
-    add(STAGE_INST, 'مسامير وزوايا ومتفرقات تثبيت', 'مقطوع', 1, 1500);
+    // مرحلة 1 — سكك وأبواب
+    add(STAGE_RAILS, 'سكك كبينة T89 (بالمتر)', 'متر', railM, 70);
+    add(STAGE_RAILS, 'سكك ثقل T50 (بالمتر)', 'متر', railM, 45);
+    add(STAGE_RAILS, DOOR_NAMES[door] + machineSuffix, 'باب', doorsQty, applyOrigin(DOOR_PRICES[door], spec, 'light'));
+    add(STAGE_RAILS, 'شيكالات تثبيت السكك', 'طقم', brackets, 120);
+    add(STAGE_RAILS, 'مسامير وزوايا ومتفرقات تثبيت السكك', 'مقطوع', 1, 1500);
     if (shaft === 'steel') {
-      add(STAGE_INST, 'هيكل حديد + تكسية (يُسعَّر من حاسبة الهيكل)', 'مقطوع', 1, 0);
+      add(STAGE_RAILS, 'هيكل حديد + تكسية (يُسعَّر من حاسبة الهيكل)', 'مقطوع', 1, 0);
     }
+
+    // مرحلة 2 — كبينة وأحبال وماكينة
+    add(STAGE_CABIN, 'ماكينة ' + (machine === 'gearless' ? 'جيرلس MRL' : 'جير') + ' — ' + cap + ' كجم / ' + speed + ' م/ث' + machineSuffix, 'قطعة', 1, applyOrigin(machineBase, spec, 'full'));
+    add(STAGE_CABIN, cabinDesc, 'قطعة', 1, cabinPrice);
+    add(STAGE_CABIN, 'باب كبينة أوتوماتيك + مشغل (Operator)' + machineSuffix, 'قطعة', 1, applyOrigin(4500, spec, 'light'));
+    add(STAGE_CABIN, 'شاسيه كبينة + باراشوت (Safety Gear)', 'طقم', 1, 6500);
+    add(STAGE_CABIN, 'إطار ثقل موازن + بلوكات', 'طقم', 1, 3500);
+    add(STAGE_CABIN, 'حبال جر 8 مم (بالمتر)', 'متر', ropesM, 12);
+    add(STAGE_CABIN, 'منظم سرعة (Governor) + بكرة شد', 'طقم', 1, 1800);
+    add(STAGE_CABIN, 'بوفرات', 'قطعة', 2, 900);
+
+    // مرحلة 3 — كنترول وتشغيل
+    add(STAGE_CTRL, 'لوحة تحكم + إنفرتر' + panelLabel, 'قطعة', 1, applyPanelOrigin(PANEL_BASE_PRICE, spec));
+    add(STAGE_CTRL, 'ترافلينج كيبل (بالمتر)', 'متر', travCable, 18);
+    add(STAGE_CTRL, 'مفاتيح حدود + ممرات مغناطيسية', 'طقم', 1, 800);
+    add(STAGE_CTRL, 'لوحة كبينة COP', 'قطعة', 1, 1200);
+    add(STAGE_CTRL, 'أزرار استدعاء الأدوار LOP', 'قطعة', stops, 250);
+    add(STAGE_CTRL, 'فوتوسيل (ستارة ضوئية)', 'قطعة', 1, 350);
+    add(STAGE_CTRL, 'إنتركم + جرس إنذار', 'طقم', 1, 600);
+    add(STAGE_CTRL, 'إنارة وتهوية كبينة', 'طقم', 1, 700);
+    add(STAGE_CTRL, 'ضبط وبرمجة واختبارات تشغيل وتسليم', 'مقطوع', 1, 2000);
 
     return {
       rows: rows,
       labor: 5000 + (1200 * stops),
       quote_type: 'new',
       cabin_calc: cabinCalc,
+      stages: [STAGE_RAILS, STAGE_CABIN, STAGE_CTRL],
     };
   }
 
@@ -320,6 +332,10 @@
     ORIGIN_LABELS: ORIGIN_LABELS,
     DOOR_NAMES: DOOR_NAMES,
     CABIN_NAMES: CABIN_NAMES,
+    STAGE_RAILS: STAGE_RAILS,
+    STAGE_CABIN: STAGE_CABIN,
+    STAGE_CTRL: STAGE_CTRL,
+    STAGE_LABOR_SHARE: STAGE_LABOR_SHARE,
     UPG: UPG,
     buildNewBOM: buildNewBOM,
     buildUpgradeBOM: buildUpgradeBOM,
@@ -330,5 +346,24 @@
     toCm: toCm,
     CUSTOM_ORIGIN_OPTION: CUSTOM_ORIGIN_OPTION,
     num: num,
+    splitLaborByStage: function (laborTotal) {
+      var total = num(laborTotal);
+      var out = [];
+      var i, amount, used = 0;
+      for (i = 0; i < STAGE_LABOR_SHARE.length; i++) {
+        if (i === STAGE_LABOR_SHARE.length - 1) {
+          amount = Math.round(total - used);
+        } else {
+          amount = Math.round(total * STAGE_LABOR_SHARE[i].share);
+          used += amount;
+        }
+        out.push({
+          stage: STAGE_LABOR_SHARE[i].stage,
+          label: 'أجور وتركيب — ' + STAGE_LABOR_SHARE[i].stage.replace(/^مرحلة \d+ — /, ''),
+          amount: amount,
+        });
+      }
+      return out;
+    },
   };
 })(typeof window !== 'undefined' ? window : this);
