@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>تقرير مشروع {{ project.code }} — LiftCore</title>
+<title>تقرير مشروع {{ project.code }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f6fa;color:#1c2738;font-size:14px;padding:20px}
@@ -10,10 +10,12 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f6fa;color:#1c2738;f
 .btn{padding:8px 16px;border-radius:8px;border:1px solid #e3e8f0;background:#fff;cursor:pointer;font-size:13px;text-decoration:none;color:#0a2647}
 .btn-primary{background:#0a2647;color:#fff;border-color:#0a2647}
 .sheet{background:#fff;max-width:900px;margin:0 auto;padding:34px 40px;border-radius:10px}
-.r-head{display:flex;justify-content:space-between;border-bottom:3px solid #c9a14a;padding-bottom:16px;margin-bottom:16px}
-.r-head .nm{font-size:22px;font-weight:800;color:#0a2647}
+.r-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c9a14a;padding-bottom:16px;margin-bottom:16px;gap:16px}
+.r-head .brand{display:flex;align-items:center;gap:14px;min-width:0}
+.r-head .brand img{width:{{ logo_width_report or 150 }}px;max-height:72px;object-fit:contain;display:block}
+.r-head .nm{font-size:20px;font-weight:800;color:#0a2647}
 .r-head .sub{font-size:12px;color:#6b7a90}
-.r-meta{text-align:left;font-size:12px;color:#6b7a90}
+.r-meta{text-align:left;font-size:12px;color:#6b7a90;flex-shrink:0}
 .r-title{text-align:center;font-size:18px;font-weight:800;color:#0a2647;margin:12px 0}
 .r-sec{margin-top:16px}
 .r-sec h3{font-size:14px;font-weight:800;color:#0a2647;border-right:4px solid #c9a14a;padding-right:8px;margin-bottom:8px}
@@ -36,6 +38,8 @@ tr.done td{background:#f8fdf9}
 </style>
 </head>
 <body>
+{% set co = company_settings %}
+{% set doc_name = (co.company_name if co and co.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة') %}
 <div class="toolbar">
   <button class="btn btn-primary" onclick="window.print()">طباعة / PDF</button>
   <a class="btn" href="/installation/projects/{{ project.id }}/handover">محضر استلام العميل</a>
@@ -46,9 +50,12 @@ tr.done td{background:#f8fdf9}
 </div>
 <div class="sheet">
   <div class="r-head">
-    <div>
-      <div class="nm">LiftCore</div>
-      <div class="sub">تقرير مشروع تركيب مصاعد</div>
+    <div class="brand">
+      <img src="{{ brand_logo_url }}" alt="{{ doc_name }}">
+      <div>
+        <div class="nm">{{ doc_name }}</div>
+        <div class="sub">تقرير مشروع تركيب مصاعد</div>
+      </div>
     </div>
     <div class="r-meta">
       المشروع: <b>{{ project.code }}</b><br>
@@ -214,7 +221,7 @@ tr.done td{background:#f8fdf9}
   {% endif %}
 
   <div class="r-sec" style="margin-top:24px;font-size:12px;color:#6b7a90;text-align:center">
-    تقرير صادر من LiftCore · {{ report_date.strftime('%Y-%m-%d') }}
+    تقرير صادر من {{ doc_name }} · {{ report_date.strftime('%Y-%m-%d') }}
   </div>
 </div>
 </body>

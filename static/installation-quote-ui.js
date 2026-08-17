@@ -15,6 +15,20 @@ document.addEventListener('DOMContentLoaded', function () {
   var customOriginOpt = cfg.customOriginOption || '__custom__';
   var noneOpt = cfg.noneOption || '__none__';
   var machineOrigins = cfg.machineOrigins || [];
+  var companyName = cfg.companyName || 'الشركة';
+  var companyLogoUrl = cfg.companyLogoUrl || '';
+  var logoWidth = cfg.logoWidth || 150;
+  function companySubLine() {
+    var parts = [];
+    if (cfg.companyNameEn) parts.push(cfg.companyNameEn);
+    if (cfg.companyPhone) parts.push(cfg.companyPhone);
+    if (cfg.companyCity) parts.push(cfg.companyCity);
+    var line = parts.join(' · ');
+    if (cfg.companyVat) {
+      line += (line ? '<br>' : '') + 'الرقم الضريبي: ' + cfg.companyVat;
+    }
+    return line;
+  }
   var currentMode = 'new';
   var upgSelected = { commission: true };
   var hasBuiltRows = false;
@@ -744,8 +758,14 @@ document.addEventListener('DOMContentLoaded', function () {
         + (el('uElevCount') ? el('uElevCount').value : 1) + ' مصعد — '
         + el('uStops').value + ' وقفات.</div></div>';
     }
+    var brandBlock = '<div class="brand">'
+      + (companyLogoUrl
+        ? '<img src="' + companyLogoUrl + '" alt="' + String(companyName).replace(/"/g, '&quot;') + '" style="width:' + logoWidth + 'px;max-height:72px;object-fit:contain">'
+        : '')
+      + '<div><div class="nm">' + companyName + '</div>'
+      + '<div class="sub">' + companySubLine() + '</div></div></div>';
     el('quoteSheet').innerHTML = ''
-      + '<div class="q-head"><div class="co"><div class="nm">LiftCore</div><div class="sub">شركة تركيب وصيانة وتحديث المصاعد</div></div>'
+      + '<div class="q-head">' + brandBlock
       + '<div class="q-meta">رقم العرض: <b>' + quoteCode + '</b><br>التاريخ: <b>' + dateStr + '</b><br>الصلاحية: <b>' + validDays + ' يوم</b></div></div>'
       + '<div class="q-title">عرض سعر — ' + (isUpg ? 'تحديث مصعد قائم' : 'توريد وتركيب مصعد جديد') + '</div>'
       + '<div class="q-sec"><h3>بيانات العميل</h3><div class="q-terms">'
