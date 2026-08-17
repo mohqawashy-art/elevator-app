@@ -41,12 +41,12 @@
             </td>
             <td><span class="badge badge-new">{{ p.status }}</span></td>
             <td style="font-family:var(--font-en)">{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '—' }}</td>
-            <td>
-              <a href="/installation/projects/{{ p.id }}" class="btn btn-secondary btn-sm">فتح</a>
+            <td style="white-space:nowrap">
+              <a href="/installation/projects/{{ p.id }}#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
               {% if p.execution_active %}
-              <a href="/installation/projects/{{ p.id }}/execution" class="btn btn-primary btn-sm">تنفيذ</a>
+              <a href="/installation/projects/{{ p.id }}/execution" class="btn btn-secondary btn-sm">تنفيذ</a>
               {% else %}
-              <a href="/installation/projects/{{ p.id }}" class="btn btn-primary btn-sm">فتح المشروع</a>
+              <a href="/installation/projects/{{ p.id }}" class="btn btn-secondary btn-sm">فتح</a>
               {% endif %}
             </td>
           </tr>

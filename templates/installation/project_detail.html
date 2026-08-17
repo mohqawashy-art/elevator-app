@@ -38,6 +38,7 @@
       <div class="page-title">{{ project.code }} — {{ project.client_display }}</div>
       <div class="page-actions">
         <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
+        <a href="#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
         {% if project.execution_active %}
         <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm">محضر استلام</a>
         <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير المشروع</a>
@@ -80,6 +81,9 @@
           مصدر القيمة: {{ card.value_source }}{% if card.quote_code %} · {{ card.quote_code }}{% endif %}
         </span>
       </div>
+      {% if card.schema_error %}
+      <p style="font-size:13px;color:var(--danger);margin:0 0 12px">تعذّر تحميل جداول الكارت: {{ card.schema_error }}</p>
+      {% endif %}
 
       <div class="stat-grid" style="margin-bottom:16px">
         <div class="stat-card">

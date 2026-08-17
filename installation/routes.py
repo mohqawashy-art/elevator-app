@@ -241,14 +241,33 @@ def projects_list():
 def project_detail(project_id):
     from installation.project_card import build_project_card, ensure_project_card_schema
 
-    ensure_project_card_schema()
     project = tenant_get_or_404(InstallProject, project_id)
     quotations = project.quotations.order_by(InstallQuotation.created_at.desc()).all()
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
     progress = timeline_progress(steps) if project.execution_active else 0
     execution_complete = is_execution_complete(steps) if project.execution_active else False
     latest_draft = _latest_editable_quotation(project) if not project.execution_active else None
-    card = build_project_card(project)
+    card = {
+        'contract_value': 0,
+        'received': 0,
+        'pending_receipts': 0,
+        'client_remaining': 0,
+        'total_cost': 0,
+        'profit': 0,
+        'receipts': [],
+        'cost_groups': [],
+        'cost_count': 0,
+        'quote_code': None,
+        'value_source': '—',
+        'schema_error': None,
+    }
+    try:
+        ensure_project_card_schema()
+        card = build_project_card(project)
+        card['schema_error'] = None
+    except Exception as exc:
+        db.session.rollback()
+        card['schema_error'] = str(exc)
     return render_template(
         'installation/project_detail.html',
         project=project,
