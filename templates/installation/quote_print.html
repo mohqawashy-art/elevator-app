@@ -29,25 +29,34 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
 .terms{font-size:12px;line-height:1.9;margin-top:12px}
 @media print{
   .toolbar{display:none!important}
-  html,body{background:#fff!important;padding:0!important;margin:0!important}
+  @page{size:A4 portrait;margin:0}
+  html,body{
+    background:#fff!important;
+    width:210mm!important;
+    max-width:210mm!important;
+    min-width:210mm!important;
+    padding:0!important;
+    margin:0!important;
+  }
   .sheet{
     border-radius:0!important;
-    max-width:100%!important;
-    width:100%!important;
+    width:210mm!important;
+    max-width:210mm!important;
+    min-width:210mm!important;
     margin:0!important;
-    padding:0!important;
-    font-size:15px!important;
+    padding:8mm 10mm!important;
+    box-sizing:border-box!important;
+    font-size:16px!important;
   }
-  .q-head .brand img{width:auto!important;max-width:240px!important;max-height:78px!important}
-  .q-meta{font-size:13px!important}
-  .q-title{font-size:22px!important}
-  .q-sec h3{font-size:15px!important}
-  table{font-size:14px!important}
-  th,td{padding:10px 12px!important}
-  .totals{width:340px!important;font-size:15px!important}
-  .totals .g{font-size:17px!important}
-  .terms{font-size:13px!important}
-  @page{size:A4;margin:8mm}
+  .q-head .brand img{width:auto!important;max-width:260px!important;max-height:88px!important}
+  .q-meta{font-size:14px!important}
+  .q-title{font-size:24px!important}
+  .q-sec h3{font-size:16px!important}
+  table{font-size:15px!important;width:100%!important}
+  th,td{padding:11px 12px!important}
+  .totals{width:48%!important;max-width:420px!important;font-size:16px!important}
+  .totals .g{font-size:18px!important}
+  .terms{font-size:14px!important}
 }
 </style>
 </head>
