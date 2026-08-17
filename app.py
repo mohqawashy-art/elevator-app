@@ -1523,18 +1523,30 @@ def _startup_schema_and_data_sync():
             'LiftCore DB backend=%s — Alembic migrations; skip SQLite legacy ALTER',
             database_backend(app.config.get('SQLALCHEMY_DATABASE_URI')),
         )
-    # عمود الأرقام الإضافية — يُضاف تلقائياً إن غاب (SQLite/Postgres)
+    # أعمدة تُضاف تلقائياً إن غابت (SQLite/Postgres) — لا تعتمد على Alembic وحده
     try:
         insp = inspect(db.engine)
-        if 'customers' in insp.get_table_names():
+        tables = set(insp.get_table_names())
+        if 'customers' in tables:
             cust_cols = {c['name'] for c in insp.get_columns('customers')}
             if 'extra_phones' not in cust_cols:
                 db.session.execute(text('ALTER TABLE customers ADD COLUMN extra_phones TEXT'))
                 db.session.commit()
                 app.logger.info('Added customers.extra_phones column')
+        if 'settings' in tables:
+            settings_cols = {c['name'] for c in insp.get_columns('settings')}
+            for col_name in ('company_stamp_path', 'company_sign_path'):
+                if col_name in settings_cols:
+                    continue
+                db.session.execute(text(
+                    f'ALTER TABLE settings ADD COLUMN {col_name} VARCHAR(300)'
+                ))
+                db.session.commit()
+                app.logger.info('Added settings.%s column', col_name)
+                settings_cols.add(col_name)
     except Exception as exc:
         db.session.rollback()
-        app.logger.warning('extra_phones column ensure skip: %s', exc)
+        app.logger.warning('settings/customers column ensure skip: %s', exc)
     try:
         from chart_of_accounts import ensure_chart_schema
         ensure_chart_schema()
