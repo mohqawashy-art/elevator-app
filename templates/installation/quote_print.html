@@ -64,17 +64,20 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
     <h3>المواصفات الفنية</h3>
     <table>
       <tbody>
-        {% if spec.stops or spec.capacity %}
         <tr>
+          <td><b>عدد المصاعد</b></td><td>{{ spec.elevator_count or 1 }}</td>
           <td><b>عدد الوقفات</b></td><td>{{ spec.stops or '—' }} وقفات</td>
+        </tr>
+        {% if spec.capacity or spec.speed %}
+        <tr>
           <td><b>الحمولة</b></td><td>{{ spec.capacity or '—' }} كجم</td>
+          <td><b>السرعة</b></td><td>{{ spec.speed or '—' }} م/ث</td>
         </tr>
         {% endif %}
-        {% if spec.machine or spec.speed %}
+        {% if spec.machine %}
         <tr>
           <td><b>نوع الماكينة</b></td>
-          <td>{{ 'جيرلس MRL' if spec.machine == 'gearless' else ('جير بغرفة ماكينة' if spec.machine == 'geared' else '—') }}</td>
-          <td><b>السرعة</b></td><td>{{ spec.speed or '—' }} م/ث</td>
+          <td colspan="3">{{ 'جيرلس MRL' if spec.machine == 'gearless' else ('جير بغرفة ماكينة' if spec.machine == 'geared' else '—') }}</td>
         </tr>
         {% endif %}
         {% if origin_label != '—' or machine_brand != '—' or panel_origin_label != '—' or panel_brand != '—' %}
