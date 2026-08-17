@@ -197,3 +197,64 @@ def test_project_card_costs_and_receipts(client):
     assert 'مدفوعة' in body
     assert 'إمكانية فاتورة قطع غيار' in body
     assert 'pc-sheet' in body
+    assert 'طباعة الكارت' in body
+    assert 'ربط بعقد' in body
+
+    resp_print = client.get(f'/installation/projects/{pid}/card/print')
+    assert resp_print.status_code == 200
+    print_body = resp_print.data.decode('utf-8', errors='ignore')
+    assert 'كارت مشروع' in print_body
+    assert 'دفعة أولى' in print_body
+    assert 'window.print' in print_body
+
+
+def test_project_card_link_contract(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        from models import Customer, Contract
+        ensure_project_card_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-CARD-CN',
+            name='عميل عقد',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CN-CARD1',
+            customer_id=cust.id,
+            contract_type='تركيب',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=40000,
+            total=40000,
+            status='نشط',
+        )
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-CARD-CN',
+            title='مشروع مربوط بعقد',
+            status='عقد',
+            customer_id=cust.id,
+        )
+        db.session.add(contract)
+        db.session.add(project)
+        db.session.commit()
+        pid, cid = project.id, contract.id
+        with client.session_transaction() as sess:
+            sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        f'/installation/projects/{pid}/card/link-contract',
+        data={'csrf_token': 'test-csrf', 'contract_id': cid, 'sync_value': '1'},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert 'تم ربط الكارت بالعقد' in resp.data.decode('utf-8', errors='ignore')
+    with client.application.app_context():
+        p = db.session.get(InstallProject, pid)
+        assert p.contract_id == cid
+        assert float(p.contract_value or 0) == 40000

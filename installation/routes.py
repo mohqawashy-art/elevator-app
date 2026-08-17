@@ -6,7 +6,7 @@ from datetime import datetime, date
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 
-from models import db, Customer
+from models import db, Customer, Contract
 from installation.models import (
     InstallLead,
     InstallProject,
@@ -275,8 +275,11 @@ def project_detail(project_id):
         'profit': 0,
         'receipts': [],
         'cost_groups': [],
+        'sheet_rows': [],
         'cost_count': 0,
         'quote_code': None,
+        'contract': None,
+        'contract_code': None,
         'value_source': '—',
         'schema_error': None,
     }
@@ -287,6 +290,25 @@ def project_detail(project_id):
     except Exception as exc:
         db.session.rollback()
         card['schema_error'] = str(exc)
+
+    customer_contracts = []
+    if project.customer_id:
+        customer_contracts = (
+            tenant_query(Contract)
+            .filter_by(customer_id=project.customer_id)
+            .order_by(Contract.created_at.desc())
+            .limit(50)
+            .all()
+        )
+    elif project.customer:
+        customer_contracts = (
+            tenant_query(Contract)
+            .filter_by(customer_id=project.customer.id)
+            .order_by(Contract.created_at.desc())
+            .limit(50)
+            .all()
+        )
+
     return render_template(
         'installation/project_detail.html',
         project=project,
@@ -296,6 +318,7 @@ def project_detail(project_id):
         execution_complete=execution_complete,
         quote_statuses=QUOTE_STATUSES,
         card=card,
+        customer_contracts=customer_contracts,
         cost_categories=COST_CATEGORIES,
         cost_payment_statuses=COST_PAYMENT_STATUSES,
         receipt_statuses=RECEIPT_STATUSES,
@@ -322,6 +345,73 @@ def project_card_set_value(project_id):
     db.session.commit()
     flash('تم تحديث قيمة المشروع', 'success')
     return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/link-contract', methods=['POST'])
+def project_card_link_contract(project_id):
+    """ربط كارت المشروع بعقد LiftCore وحفظ القيمة من العقد إن طُلب."""
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    raw_id = (request.form.get('contract_id') or '').strip()
+    sync_value = (request.form.get('sync_value') or '').strip() in ('1', 'on', 'true', 'yes')
+
+    if not raw_id:
+        project.contract_id = None
+        db.session.commit()
+        flash('تم فك ربط العقد عن كارت المشروع', 'success')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    try:
+        cid = int(raw_id)
+    except ValueError:
+        flash('عقد غير صالح', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    contract = tenant_query(Contract).filter_by(id=cid).first()
+    if not contract:
+        flash('العقد غير موجود', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    if project.customer_id and contract.customer_id != project.customer_id:
+        flash('العقد لا يخص عميل هذا المشروع', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    project.contract_id = contract.id
+    if not project.customer_id:
+        project.customer_id = contract.customer_id
+    if sync_value:
+        amount = float(contract.total or contract.value or 0)
+        if amount > 0:
+            project.contract_value = amount
+    db.session.commit()
+    flash(f'تم ربط الكارت بالعقد {contract.code}', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/print')
+def project_card_print(project_id):
+    """صفحة طباعة كارت المشروع."""
+    from installation.project_card import build_project_card, ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    card = build_project_card(project)
+    settings = None
+    try:
+        from models import Settings
+        settings = tenant_query(Settings).first()
+    except Exception:
+        db.session.rollback()
+    return render_template(
+        'installation/project_card_print.html',
+        project=project,
+        card=card,
+        settings=settings,
+        print_date=date.today(),
+        page_title=f'كارت مشروع {project.code}',
+    )
 
 
 @install_bp.route('/projects/<int:project_id>/card/costs/add', methods=['POST'])

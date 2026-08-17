@@ -1433,6 +1433,8 @@ def _sqlite_legacy_schema_patches():
             'installation_projects': [
                 ('accepted_quotation_id', 'INTEGER'),
                 ('execution_started_at', 'DATETIME'),
+                ('contract_value', 'FLOAT'),
+                ('contract_id', 'INTEGER'),
             ],
             'installation_leads': [
                 ('customer_id', 'INTEGER'),

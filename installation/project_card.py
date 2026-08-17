@@ -60,6 +60,25 @@ def ensure_project_card_schema() -> None:
                 sql = 'ALTER TABLE installation_projects ADD COLUMN contract_value FLOAT'
             db.session.execute(text(sql))
             db.session.commit()
+        if 'contract_id' not in cols:
+            if dialect == 'postgresql':
+                sql = (
+                    'ALTER TABLE installation_projects '
+                    'ADD COLUMN IF NOT EXISTS contract_id INTEGER'
+                )
+            else:
+                sql = 'ALTER TABLE installation_projects ADD COLUMN contract_id INTEGER'
+            db.session.execute(text(sql))
+            db.session.commit()
+            try:
+                # فهرس فقط — FK اختياري لتفادي فشل على قواعد قديمة
+                db.session.execute(text(
+                    'CREATE INDEX IF NOT EXISTS ix_installation_projects_contract_id '
+                    'ON installation_projects (contract_id)'
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
     if 'installation_project_costs' in set(inspect(db.engine).get_table_names()):
         try:
@@ -82,6 +101,12 @@ def ensure_project_card_schema() -> None:
 def project_contract_value(project: InstallProject) -> float:
     if project.contract_value is not None and float(project.contract_value) > 0:
         return round(float(project.contract_value), 2)
+    linked = getattr(project, 'contract', None)
+    if linked:
+        for attr in ('total', 'value'):
+            raw = getattr(linked, attr, None)
+            if raw is not None and float(raw) > 0:
+                return round(float(raw), 2)
     q = project.accepted_quotation
     if q and q.grand_total:
         return round(float(q.grand_total), 2)
@@ -249,6 +274,16 @@ def build_project_card(project: InstallProject) -> dict:
         'category': None,
     })
 
+    linked_contract = getattr(project, 'contract', None)
+    if project.contract_value is not None and float(project.contract_value or 0) > 0:
+        value_source = 'يدوي'
+    elif linked_contract:
+        value_source = f'عقد {linked_contract.code}'
+    elif project.accepted_quotation_id:
+        value_source = 'عرض معتمد'
+    else:
+        value_source = 'عرض محفوظ'
+
     return {
         'contract_value': value,
         'received': received,
@@ -261,8 +296,7 @@ def build_project_card(project: InstallProject) -> dict:
         'sheet_rows': sheet_rows,
         'cost_count': len(costs),
         'quote_code': project.accepted_quotation.code if project.accepted_quotation else None,
-        'value_source': (
-            'يدوي' if project.contract_value is not None and float(project.contract_value or 0) > 0
-            else ('عرض معتمد' if project.accepted_quotation_id else 'عرض محفوظ')
-        ),
+        'contract': linked_contract,
+        'contract_code': linked_contract.code if linked_contract else None,
+        'value_source': value_source,
     }
