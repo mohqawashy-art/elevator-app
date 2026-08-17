@@ -99,6 +99,10 @@
           <div class="pricing-card">
             <h3><span class="step-no">٣</span> مواصفات المصعد</h3>
             <div class="pricing-grid">
+              <div class="field"><label>عدد المصاعد</label>
+                <input type="number" id="sElevCount" value="1" min="1" max="50" step="1">
+                <div class="pricing-hint">يُضاعف كل البنود والأجور بعدد المصاعد</div>
+              </div>
               <div class="field"><label>عدد الوقفات</label><select id="sStops"></select></div>
               <div class="field"><label>الحمولة</label>
                 <select id="sCap">
@@ -144,6 +148,9 @@
           <div class="pricing-card">
             <h3><span class="step-no">٣</span> مكونات التحديث</h3>
             <div class="pricing-grid" style="margin-bottom:12px">
+              <div class="field"><label>عدد المصاعد</label>
+                <input type="number" id="uElevCount" value="1" min="1" max="50" step="1">
+              </div>
               <div class="field"><label>عدد الوقفات</label><select id="uStops"></select></div>
               <div class="field"><label>الحمولة</label>
                 <select id="uCap"><option value="320">320</option><option value="450">450</option>
@@ -237,7 +244,7 @@ window.__INSTALL_QUOTE__ = {
   defaultCustomerId: {{ default_customer_id | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=stages3b"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=nodraftreload1"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=elevcount1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=elevcount1"></script>
 </body>
 </html>

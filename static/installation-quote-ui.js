@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var machineOrigin = resolveOrigin('sOrigin', 'sOriginCustom');
     var panelOrigin = resolveOrigin('sPanelOrigin', 'sPanelOriginCustom');
     var spec = {
+      elevator_count: el('sElevCount') ? el('sElevCount').value : 1,
       stops: el('sStops').value,
       capacity: el('sCap').value,
       machine: el('sMachine').value,
@@ -284,6 +285,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var machineOrigin = resolveOrigin('sOrigin', 'sOriginCustom');
     var panelOrigin = resolveOrigin('sPanelOrigin', 'sPanelOriginCustom');
     return {
+      elevator_count: el('uElevCount') ? el('uElevCount').value : 1,
       stops: el('uStops').value,
       capacity: el('uCap').value,
       machine_origin: machineOrigin.id,
@@ -598,15 +600,18 @@ document.addEventListener('DOMContentLoaded', function () {
       var shaftDcm = P.toCm(spec.shaft_depth);
       var shaftTxt = (shaftWcm && shaftDcm) ? (shaftWcm + '×' + shaftDcm + ' سم') : '—';
       specs = '<div class="q-sec"><h3>المواصفات الفنية</h3><table class="q-tbl"><tbody>'
-        + '<tr><td>عدد الوقفات</td><td>' + spec.stops + ' وقفات</td><td>الحمولة</td><td>' + spec.capacity + ' كجم</td></tr>'
-        + '<tr><td>نوع الماكينة</td><td>' + (spec.machine === 'gearless' ? 'جيرلس MRL' : 'جير بغرفة ماكينة') + '</td><td>السرعة</td><td>' + spec.speed + ' م/ث</td></tr>'
-        + '<tr><td>بلد منشئ الماكينة</td><td>' + P.originDisplay(spec, 'machine_origin', 'machine_origin_country') + ' ' + (spec.machine_brand || '') + '</td>'
-        + '<td>بلد منشئ اللوحة</td><td>' + P.originDisplay(spec, 'panel_origin', 'panel_origin_country') + ' ' + (spec.panel_brand || '') + '</td></tr>'
-        + '<tr><td>البئر الداخلي</td><td>' + shaftTxt + '</td><td>مقاس الكبينة</td><td>' + (cabinCalc.label || '—') + '</td></tr>'
-        + '<tr><td>تشطيب الكبينة</td><td colspan="3">' + P.CABIN_NAMES[spec.cabin] + '</td></tr>'
+        + '<tr><td>عدد المصاعد</td><td>' + (spec.elevator_count || 1) + '</td><td>عدد الوقفات</td><td>' + spec.stops + ' وقفات</td></tr>'
+        + '<tr><td>الحمولة</td><td>' + spec.capacity + ' كجم</td><td>السرعة</td><td>' + spec.speed + ' م/ث</td></tr>'
+        + '<tr><td>نوع الماكينة</td><td>' + (spec.machine === 'gearless' ? 'جيرلس MRL' : 'جير بغرفة ماكينة') + '</td>'
+        + '<td>بلد منشئ الماكينة</td><td>' + P.originDisplay(spec, 'machine_origin', 'machine_origin_country') + ' ' + (spec.machine_brand || '') + '</td></tr>'
+        + '<tr><td>بلد منشئ اللوحة</td><td>' + P.originDisplay(spec, 'panel_origin', 'panel_origin_country') + ' ' + (spec.panel_brand || '') + '</td>'
+        + '<td>البئر الداخلي</td><td>' + shaftTxt + '</td></tr>'
+        + '<tr><td>مقاس الكبينة</td><td>' + (cabinCalc.label || '—') + '</td><td>تشطيب الكبينة</td><td>' + P.CABIN_NAMES[spec.cabin] + '</td></tr>'
         + '</tbody></table></div>';
     } else {
-      specs = '<div class="q-sec"><h3>نطاق العمل</h3><div class="q-terms">تحديث مصعد قائم — ' + el('uStops').value + ' وقفات.</div></div>';
+      specs = '<div class="q-sec"><h3>نطاق العمل</h3><div class="q-terms">تحديث مصعد قائم — '
+        + (el('uElevCount') ? el('uElevCount').value : 1) + ' مصعد — '
+        + el('uStops').value + ' وقفات.</div></div>';
     }
     el('quoteSheet').innerHTML = ''
       + '<div class="q-head"><div class="co"><div class="nm">LiftCore</div><div class="sub">شركة تركيب وصيانة وتحديث المصاعد</div></div>'
@@ -709,6 +714,8 @@ document.addEventListener('DOMContentLoaded', function () {
       fillBrandSelect('sBrand', 'sBrandCustom', machineBrands, s.spec.machine_origin || 'chinese', s.spec.machine_brand || '');
       initOriginSelect('sPanelOrigin', 'sPanelOriginCustom', s.spec.panel_origin || 'chinese', s.spec.panel_origin_country || '');
       fillBrandSelect('sPanelBrand', 'sPanelBrandCustom', panelBrands, s.spec.panel_origin || 'chinese', s.spec.panel_brand || '');
+      if (el('sElevCount') && s.spec.elevator_count) el('sElevCount').value = s.spec.elevator_count;
+      if (el('uElevCount') && s.spec.elevator_count) el('uElevCount').value = s.spec.elevator_count;
       if (el('sStops') && s.spec.stops) el('sStops').value = s.spec.stops;
       if (el('sCap') && s.spec.capacity) el('sCap').value = s.spec.capacity;
       if (el('sMachine') && s.spec.machine) el('sMachine').value = s.spec.machine;
@@ -769,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   if (el('sBrandCustom')) el('sBrandCustom').addEventListener('input', maybeRebuildBOM);
   if (el('sPanelBrandCustom')) el('sPanelBrandCustom').addEventListener('input', maybeRebuildBOM);
-  ['sShaftW', 'sShaftD', 'sCap'].forEach(function (id) {
+  ['sShaftW', 'sShaftD', 'sCap', 'sElevCount', 'uElevCount'].forEach(function (id) {
     if (el(id)) el(id).addEventListener('input', function () { updateCabinHint(); maybeRebuildBOM(); });
   });
   updateCabinHint();

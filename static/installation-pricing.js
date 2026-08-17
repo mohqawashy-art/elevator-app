@@ -196,6 +196,7 @@
 
   function buildNewBOM(spec) {
     var stops = num(spec.stops);
+    var elevators = Math.max(1, Math.round(num(spec.elevator_count) || 1));
     var cap = num(spec.capacity);
     var machine = spec.machine || 'gearless';
     var door = spec.door || 'tele';
@@ -226,9 +227,16 @@
     var cabinBase = CABIN_PRICES[cabin];
     var cabinPrice = Math.round(applyOrigin(cabinBase, spec, 'light') * cabinCalc.priceFactor);
     var cabinDesc = CABIN_NAMES[cabin] + ' ' + cabinCalc.label + machineSuffix;
+    var elevNote = elevators > 1 ? (' × ' + elevators + ' مصعد') : '';
 
     function add(stage, name, unit, qty, price) {
-      rows.push({ stage: stage, name: name, unit: unit, qty: qty, price: price });
+      rows.push({
+        stage: stage,
+        name: name + elevNote,
+        unit: unit,
+        qty: qty * elevators,
+        price: price,
+      });
     }
 
     var machineBase = MACHINE_PRICES[machine][cap];
@@ -266,16 +274,19 @@
 
     return {
       rows: rows,
-      labor: 5000 + (1200 * stops),
+      labor: (5000 + (1200 * stops)) * elevators,
       quote_type: 'new',
       cabin_calc: cabinCalc,
+      elevator_count: elevators,
       stages: [STAGE_RAILS, STAGE_CABIN, STAGE_CTRL],
     };
   }
 
   function buildUpgradeBOM(spec, selected) {
     var stops = num(spec.stops);
+    var elevators = Math.max(1, Math.round(num(spec.elevator_count) || 1));
     var cap = num(spec.capacity) || 630;
+    var elevNote = elevators > 1 ? (' × ' + elevators + ' مصعد') : '';
     var rows = [];
     var i, u, count = 0;
     for (i = 0; i < UPG.length; i++) {
@@ -283,9 +294,9 @@
       if (selected[u.id]) {
         rows.push({
           stage: STAGE_UPG,
-          name: u.name,
+          name: u.name + elevNote,
           unit: u.unit,
-          qty: u.qty(stops),
+          qty: u.qty(stops) * elevators,
           price: u.price(stops, cap, spec),
         });
         count++;
@@ -296,8 +307,9 @@
     }
     return {
       rows: rows,
-      labor: 2000 + (400 * stops),
+      labor: (2000 + (400 * stops)) * elevators,
       quote_type: 'upgrade',
+      elevator_count: elevators,
     };
   }
 
