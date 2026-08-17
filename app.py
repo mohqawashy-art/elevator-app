@@ -908,6 +908,8 @@ def inject_global_template_vars():
         'google_maps_key_source': google_maps_key_source(s),
         'brand_logo_url': brand_logo_url(s),
         'liftcore_logo_url': liftcore_header_logo_url(s),
+        'company_stamp_url': upload_url(getattr(s, 'company_stamp_path', None)) if s else '',
+        'company_sign_url': upload_url(getattr(s, 'company_sign_path', None)) if s else '',
         'logo_width_sidebar': (getattr(s, 'logo_width_sidebar', None) or 150) if s else 150,
         'logo_width_report': (getattr(s, 'logo_width_report', None) or 150) if s else 150,
         'logo_width_login': (getattr(s, 'logo_width_login', None) or 180) if s else 180,
@@ -1316,6 +1318,8 @@ def _sqlite_legacy_schema_patches():
                 ('logo_width_sidebar', 'INTEGER'),
                 ('logo_width_report', 'INTEGER'),
                 ('logo_width_login', 'INTEGER'),
+                ('company_stamp_path', 'VARCHAR(300)'),
+                ('company_sign_path', 'VARCHAR(300)'),
                 ('address_en', 'TEXT'),
                 ('company_website', 'VARCHAR(200)'),
                 ('bank_name', 'VARCHAR(100)'),
@@ -1433,6 +1437,8 @@ def _sqlite_legacy_schema_patches():
             'installation_projects': [
                 ('accepted_quotation_id', 'INTEGER'),
                 ('execution_started_at', 'DATETIME'),
+                ('contract_value', 'FLOAT'),
+                ('contract_id', 'INTEGER'),
             ],
             'installation_leads': [
                 ('customer_id', 'INTEGER'),
@@ -1517,18 +1523,30 @@ def _startup_schema_and_data_sync():
             'LiftCore DB backend=%s — Alembic migrations; skip SQLite legacy ALTER',
             database_backend(app.config.get('SQLALCHEMY_DATABASE_URI')),
         )
-    # عمود الأرقام الإضافية — يُضاف تلقائياً إن غاب (SQLite/Postgres)
+    # أعمدة تُضاف تلقائياً إن غابت (SQLite/Postgres) — لا تعتمد على Alembic وحده
     try:
         insp = inspect(db.engine)
-        if 'customers' in insp.get_table_names():
+        tables = set(insp.get_table_names())
+        if 'customers' in tables:
             cust_cols = {c['name'] for c in insp.get_columns('customers')}
             if 'extra_phones' not in cust_cols:
                 db.session.execute(text('ALTER TABLE customers ADD COLUMN extra_phones TEXT'))
                 db.session.commit()
                 app.logger.info('Added customers.extra_phones column')
+        if 'settings' in tables:
+            settings_cols = {c['name'] for c in insp.get_columns('settings')}
+            for col_name in ('company_stamp_path', 'company_sign_path'):
+                if col_name in settings_cols:
+                    continue
+                db.session.execute(text(
+                    f'ALTER TABLE settings ADD COLUMN {col_name} VARCHAR(300)'
+                ))
+                db.session.commit()
+                app.logger.info('Added settings.%s column', col_name)
+                settings_cols.add(col_name)
     except Exception as exc:
         db.session.rollback()
-        app.logger.warning('extra_phones column ensure skip: %s', exc)
+        app.logger.warning('settings/customers column ensure skip: %s', exc)
     try:
         from chart_of_accounts import ensure_chart_schema
         ensure_chart_schema()
@@ -1541,6 +1559,18 @@ def _startup_schema_and_data_sync():
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Journal schema ensure skip: %s', exc)
+    try:
+        from installation.project_card import ensure_project_card_schema
+        ensure_project_card_schema()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Install project card schema ensure skip: %s', exc)
+    try:
+        from installation.schema import ensure_install_tenant_uniques
+        ensure_install_tenant_uniques()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Install tenant unique constraints ensure skip: %s', exc)
     try:
         from liftcore_permissions import ensure_permissions_schema
         ensure_permissions_schema(db.session, db.engine)
@@ -1845,6 +1875,36 @@ def _legacy_global_code_unique(table_name: str) -> bool:
 # =============================================
 # تسجيل الدخول
 # =============================================
+def _git_commit_short():
+    """أحدث commit في مجلد التطبيق — أدق من LIFTCORE_VERSION الثابت."""
+    try:
+        import subprocess
+        return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            cwd=app.root_path,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+        ).decode('utf-8', errors='ignore').strip() or None
+    except Exception:
+        pass
+    # الخدمة غالباً بلا git في PATH — اقرأ .git مباشرة
+    try:
+        git_dir = os.path.join(app.root_path, '.git')
+        head_path = os.path.join(git_dir, 'HEAD')
+        if not os.path.isfile(head_path):
+            return None
+        head = open(head_path, encoding='utf-8').read().strip()
+        if head.startswith('ref:'):
+            ref = head.split(' ', 1)[1].strip()
+            ref_path = os.path.join(git_dir, *ref.split('/'))
+            if os.path.isfile(ref_path):
+                return open(ref_path, encoding='utf-8').read().strip()[:7]
+            return None
+        return head[:7]
+    except Exception:
+        return None
+
+
 @app.route('/api/version')
 def api_version():
     """تحقق سريع من إصدار الكود على السيرفر (بدون تسجيل دخول)."""
@@ -1860,8 +1920,11 @@ def api_version():
         if db_path and os.path.isfile(db_path):
             db_info['file'] = os.path.basename(os.path.dirname(db_path)) + '/' + os.path.basename(db_path)
             db_info['bytes'] = os.path.getsize(db_path)
+    git_commit = _git_commit_short()
     return jsonify(
-        version=APP_VERSION,
+        version=git_commit or APP_VERSION,
+        env_version=APP_VERSION,
+        git_commit=git_commit,
         db=db_info,
         checks={
             'settings_full': os.path.isfile(os.path.join(root, 'templates/partials/app_header.html')),
@@ -11384,6 +11447,37 @@ def _save_company_logo(settings_row, file_storage):
     return True, 'تم تحديث شعار الشركة.'
 
 
+def _save_company_image_asset(settings_row, file_storage, *, attr_name: str, prefix: str, label_ar: str):
+    """يحفظ ختم/توقيع الشركة للطباعة. يرجع (ok, message_ar|None)."""
+    if not file_storage or not file_storage.filename:
+        return True, None
+    if not _ext_ok(file_storage.filename, ALLOWED_LOGO_EXT):
+        return False, f'نوع ملف {label_ar} غير مدعوم — استخدم PNG أو JPG أو WEBP أو SVG.'
+    ok_up, err_up = _upload_ok(file_storage, ALLOWED_LOGO_EXT)
+    if not ok_up:
+        return False, err_up or f'تعذّر قبول ملف {label_ar}.'
+
+    org_id = getattr(settings_row, 'organization_id', None) or 0
+    dest_dir = os.path.join(COMPANY_UPLOAD_ROOT, str(org_id))
+    os.makedirs(dest_dir, exist_ok=True)
+    ext = file_storage.filename.rsplit('.', 1)[1].lower()
+    if ext == 'jpeg':
+        ext = 'jpg'
+    filename = f'{prefix}-{int(time.time())}.{ext}'
+    for old in os.listdir(dest_dir):
+        if old.startswith(prefix):
+            try:
+                os.remove(os.path.join(dest_dir, old))
+            except OSError:
+                pass
+    dest = os.path.join(dest_dir, filename)
+    file_storage.save(dest)
+    if not os.path.isfile(dest):
+        return False, f'فشل حفظ ملف {label_ar} على السيرفر.'
+    setattr(settings_row, attr_name, f'uploads/company/{org_id}/{filename}')
+    return True, f'تم تحديث {label_ar}.'
+
+
 def _clamp_logo_width(value, default=150, min_w=60, max_w=400):
     try:
         n = int(value)
@@ -11733,15 +11827,36 @@ def settings_save():
     s.logo_width_report  = _clamp_logo_width(request.form.get('logo_width_report'), 150)
     s.logo_width_login   = _clamp_logo_width(request.form.get('logo_width_login'), 180, min_w=80, max_w=500)
     logo_ok, logo_msg = _save_company_logo(s, request.files.get('logo'))
+    stamp_ok, stamp_msg = _save_company_image_asset(
+        s, request.files.get('company_stamp'),
+        attr_name='company_stamp_path', prefix='stamp', label_ar='ختم الشركة',
+    )
+    sign_ok, sign_msg = _save_company_image_asset(
+        s, request.files.get('company_sign'),
+        attr_name='company_sign_path', prefix='sign', label_ar='توقيع الشركة',
+    )
     from zatca_phase2 import sync_zatca_credentials_from_settings
     sync_zatca_credentials_from_settings(s)
     db.session.commit()
+    notices = []
     if not logo_ok:
-        session['settings_notice'] = logo_msg or 'تعذّر حفظ الشعار.'
+        notices.append(logo_msg or 'تعذّر حفظ الشعار.')
     elif logo_msg:
-        session['settings_notice'] = 'تم حفظ بيانات الشركة. ' + logo_msg
-    else:
+        notices.append(logo_msg)
+    if not stamp_ok:
+        notices.append(stamp_msg or 'تعذّر حفظ الختم.')
+    elif stamp_msg:
+        notices.append(stamp_msg)
+    if not sign_ok:
+        notices.append(sign_msg or 'تعذّر حفظ التوقيع.')
+    elif sign_msg:
+        notices.append(sign_msg)
+    if not notices:
         session['settings_notice'] = 'تم حفظ بيانات الشركة بنجاح.'
+    elif logo_ok and stamp_ok and sign_ok:
+        session['settings_notice'] = 'تم حفظ بيانات الشركة. ' + ' '.join(notices)
+    else:
+        session['settings_notice'] = ' '.join(notices)
     return _settings_redirect('company', saved=1)
 
 

@@ -1,0 +1,19 @@
+{# ختم وتوقيع الشركة على المستندات المطبوعة — يعتمد company_stamp_url / company_sign_url #}
+{% set show_stamp = company_stamp_url %}
+{% set show_sign = company_sign_url %}
+{% if show_stamp or show_sign %}
+<div class="doc-company-seal {{ seal_class|default('') }}">
+  {% if show_stamp %}
+  <div class="doc-seal-item">
+    <img src="{{ company_stamp_url }}" alt="ختم الشركة" class="doc-seal-stamp">
+    <div class="doc-seal-caption">ختم الشركة</div>
+  </div>
+  {% endif %}
+  {% if show_sign %}
+  <div class="doc-seal-item">
+    <img src="{{ company_sign_url }}" alt="توقيع الشركة" class="doc-seal-sign">
+    <div class="doc-seal-caption">توقيع الشركة</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}

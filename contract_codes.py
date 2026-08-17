@@ -59,6 +59,11 @@ def contract_prefix_for_type(contract_type: Optional[str]) -> str:
     return CONTRACT_PREFIX_MAINTENANCE
 
 
+def is_installation_contract_type(contract_type: Optional[str]) -> bool:
+    """True لعقود التركيب/التحديث فقط (ليست صيانة أو ضمان)."""
+    return contract_prefix_for_type(contract_type) == CONTRACT_PREFIX_INSTALLATION
+
+
 def contract_base_code(code: Optional[str]) -> str:
     """يعيد أساس رقم العقد بدون سنة التجديد."""
     raw = (code or '').strip()

@@ -3,6 +3,7 @@ from contract_codes import (
     contract_base_code,
     contract_prefix_for_type,
     contract_year_from_code,
+    is_installation_contract_type,
     renewal_contract_code,
     unique_renewal_contract_code,
 )
@@ -19,6 +20,16 @@ def test_contract_prefix_for_type():
     assert contract_prefix_for_type('Upgrade') == 'CI-'
     assert contract_prefix_for_type('') == 'CN-'
     assert contract_prefix_for_type(None) == 'CN-'
+
+
+def test_is_installation_contract_type():
+    assert is_installation_contract_type('عقد تركيب')
+    assert is_installation_contract_type('تركيب')
+    assert is_installation_contract_type('عقد تحديث')
+    assert not is_installation_contract_type('عقد صيانة')
+    assert not is_installation_contract_type('صيانة')
+    assert not is_installation_contract_type('')
+    assert not is_installation_contract_type(None)
 
 
 def test_contract_base_code_strips_year():

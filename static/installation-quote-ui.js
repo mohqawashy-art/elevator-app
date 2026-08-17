@@ -13,12 +13,82 @@ document.addEventListener('DOMContentLoaded', function () {
   var panelBrands = cfg.panelBrands || machineBrands;
   var customBrandOpt = cfg.customBrandOption || '__custom__';
   var customOriginOpt = cfg.customOriginOption || '__custom__';
+  var noneOpt = cfg.noneOption || '__none__';
   var machineOrigins = cfg.machineOrigins || [];
+  var companyLogoUrl = cfg.companyLogoUrl || '';
+  var logoWidth = cfg.logoWidth || 150;
+  var companyName = cfg.companyName || 'الشركة';
   var currentMode = 'new';
   var upgSelected = { commission: true };
   var hasBuiltRows = false;
+  var draftKey = 'lc_install_quote_draft_' + (cfg.projectId || '0') + '_' + (cfg.quotationId || 'new');
+  var draftTimer = null;
 
   function el(id) { return document.getElementById(id); }
+
+  function markDrafting(on) {
+    try {
+      document.documentElement.setAttribute('data-lc-drafting', on ? '1' : '0');
+    } catch (e) { /* ignore */ }
+  }
+
+  function collectDraft() {
+    return {
+      mode: currentMode,
+      customer_id: el('cCustomer') ? el('cCustomer').value : '',
+      valid_days: el('cValid') ? el('cValid').value : 30,
+      labor: el('sumLabor') ? el('sumLabor').value : 0,
+      transport: el('sumTrans') ? el('sumTrans').value : 0,
+      other_costs: el('sumOther') ? el('sumOther').value : 0,
+      profit_pct: el('sumProfitP') ? el('sumProfitP').value : 20,
+      pay_advance_pct: el('payAdvance') ? el('payAdvance').value : 50,
+      pay_supply_pct: el('paySupply') ? el('paySupply').value : 40,
+      pay_final_pct: el('payFinal') ? el('payFinal').value : 10,
+      spec: currentMode === 'new' ? getNewSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected }),
+      lines: collectRows(),
+      quote_type: currentMode,
+      code: quoteCode,
+      savedAt: Date.now(),
+    };
+  }
+
+  function persistDraft() {
+    try {
+      var draft = collectDraft();
+      if (!draft.lines || !draft.lines.length) return;
+      sessionStorage.setItem(draftKey, JSON.stringify(draft));
+      markDrafting(true);
+    } catch (e) { /* ignore */ }
+  }
+
+  function scheduleDraftSave() {
+    markDrafting(true);
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(persistDraft, 400);
+  }
+
+  function clearDraft() {
+    try { sessionStorage.removeItem(draftKey); } catch (e) { /* ignore */ }
+    markDrafting(false);
+  }
+
+  function restoreDraftIfNeeded() {
+    try {
+      var raw = sessionStorage.getItem(draftKey);
+      if (!raw) return false;
+      var s = JSON.parse(raw);
+      if (!s || !s.lines || !s.lines.length) return false;
+      if (s.savedAt && (Date.now() - s.savedAt) > 12 * 60 * 60 * 1000) {
+        clearDraft();
+        return false;
+      }
+      cfg.saved = s;
+      markDrafting(true);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 
   function toStoredCm(val) {
     var n = parseFloat(val);
@@ -85,27 +155,34 @@ document.addEventListener('DOMContentLoaded', function () {
     if (el('cAddr')) el('cAddr').value = c ? c.address : '';
   }
 
+  function isNoneVal(v) {
+    return P.isNone ? P.isNone(v) : (v === noneOpt || v === 'بدون');
+  }
+
   function initOriginSelect(selectId, customId, selectedOriginId, selectedCountry) {
     var sel = el(selectId);
     if (!sel) return;
-    var html = '';
+    var pick = selectedOriginId || 'chinese';
+    var html = '<option value="' + noneOpt + '"' + (pick === noneOpt ? ' selected' : '') + '>بدون</option>';
     var i, isCustom = selectedOriginId === customOriginOpt;
     for (i = 0; i < machineOrigins.length; i++) {
       var o = machineOrigins[i];
-      html += '<option value="' + o.id + '"' + (o.id === selectedOriginId ? ' selected' : '') + '>' + o.label + '</option>';
+      html += '<option value="' + o.id + '"' + (o.id === pick ? ' selected' : '') + '>' + o.label + '</option>';
     }
-    if (isCustom || (selectedCountry && !isKnownOrigin(selectedOriginId))) {
+    if (isCustom || (selectedCountry && !isKnownOrigin(selectedOriginId) && !isNoneVal(selectedOriginId))) {
       isCustom = true;
       html += '<option value="' + customOriginOpt + '" selected>+ بلد آخر...</option>';
     } else {
       html += '<option value="' + customOriginOpt + '">+ بلد آخر...</option>';
     }
     sel.innerHTML = html;
+    if (pick === noneOpt) sel.value = noneOpt;
     toggleCustomOrigin(selectId, customId, isCustom ? selectedCountry : '');
   }
 
   function isKnownOrigin(originId) {
     var i;
+    if (isNoneVal(originId) || originId === customOriginOpt) return false;
     for (i = 0; i < machineOrigins.length; i++) {
       if (machineOrigins[i].id === originId) return true;
     }
@@ -125,6 +202,9 @@ document.addEventListener('DOMContentLoaded', function () {
   function resolveOrigin(selectId, customId) {
     var sel = el(selectId);
     if (!sel) return { id: 'chinese', country: '' };
+    if (sel.value === noneOpt) {
+      return { id: noneOpt, country: '' };
+    }
     if (sel.value === customOriginOpt) {
       return { id: customOriginOpt, country: (el(customId) && el(customId).value.trim()) || '' };
     }
@@ -134,17 +214,32 @@ document.addEventListener('DOMContentLoaded', function () {
   function fillBrandSelect(selectId, customId, brandsMap, originId, selectedBrand) {
     var sel = el(selectId);
     if (!sel) return;
+    if (isNoneVal(originId)) {
+      sel.innerHTML = '<option value="' + noneOpt + '" selected>بدون</option>';
+      toggleCustomBrand(selectId, customId, '');
+      return;
+    }
     var brands = brandsMap[originId] || brandsMap.chinese || [];
     var html = '';
-    var i, isCustom = false;
-    for (i = 0; i < brands.length; i++) {
-      html += '<option value="' + brands[i] + '"' + (brands[i] === selectedBrand ? ' selected' : '') + '>' + brands[i] + '</option>';
+    var i, isCustom = false, matched = false;
+    if (selectedBrand === noneOpt) {
+      matched = true;
     }
-    if (selectedBrand && brands.indexOf(selectedBrand) < 0) {
+    html += '<option value="' + noneOpt + '"' + (selectedBrand === noneOpt ? ' selected' : '') + '>بدون</option>';
+    for (i = 0; i < brands.length; i++) {
+      var pick = brands[i] === selectedBrand || (!selectedBrand && i === 0);
+      if (brands[i] === selectedBrand) matched = true;
+      html += '<option value="' + brands[i] + '"' + (pick && selectedBrand !== noneOpt ? ' selected' : '') + '>' + brands[i] + '</option>';
+    }
+    if (selectedBrand && selectedBrand !== noneOpt && brands.indexOf(selectedBrand) < 0 && selectedBrand !== customBrandOpt) {
       isCustom = true;
+      matched = true;
     }
     html += '<option value="' + customBrandOpt + '"' + (isCustom ? ' selected' : '') + '>+ شركة أخرى...</option>';
     sel.innerHTML = html;
+    if (!matched && brands.length && selectedBrand !== noneOpt) {
+      sel.value = brands[0];
+    }
     toggleCustomBrand(selectId, customId, isCustom ? selectedBrand : '');
   }
 
@@ -161,6 +256,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function resolveBrand(selectId, customId) {
     var sel = el(selectId);
     if (!sel) return '';
+    if (sel.value === noneOpt) return noneOpt;
     if (sel.value === customBrandOpt) {
       return (el(customId) && el(customId).value.trim()) || '';
     }
@@ -188,6 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var machineOrigin = resolveOrigin('sOrigin', 'sOriginCustom');
     var panelOrigin = resolveOrigin('sPanelOrigin', 'sPanelOriginCustom');
     var spec = {
+      elevator_count: el('sElevCount') ? el('sElevCount').value : 1,
       stops: el('sStops').value,
       capacity: el('sCap').value,
       machine: el('sMachine').value,
@@ -218,6 +315,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var machineOrigin = resolveOrigin('sOrigin', 'sOriginCustom');
     var panelOrigin = resolveOrigin('sPanelOrigin', 'sPanelOriginCustom');
     return {
+      elevator_count: el('uElevCount') ? el('uElevCount').value : 1,
       stops: el('uStops').value,
       capacity: el('uCap').value,
       machine_origin: machineOrigin.id,
@@ -229,10 +327,58 @@ document.addEventListener('DOMContentLoaded', function () {
     };
   }
 
+  var UNIT_OPTIONS = ['قطعة', 'متر', 'عدد', 'طقم', 'مقطوع', 'باب', 'كجم', 'م²', 'لفة', 'يوم', 'ساعة'];
+
+  function escapeAttr(s) {
+    return String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function unitCellHTML(current) {
+    var cur = String(current == null ? 'قطعة' : current).trim() || 'قطعة';
+    var opts = UNIT_OPTIONS.slice();
+    var i, html;
+    if (cur && opts.indexOf(cur) < 0 && cur !== '__custom__') {
+      opts.unshift(cur);
+    }
+    html = '<div class="unit-cell">'
+      + '<select class="f-unit" title="اختر الوحدة — أو أخرى لكتابة وحدة منطقتك">';
+    for (i = 0; i < opts.length; i++) {
+      html += '<option value="' + escapeAttr(opts[i]) + '"'
+        + (opts[i] === cur ? ' selected' : '') + '>' + opts[i] + '</option>';
+    }
+    html += '<option value="__custom__">أخرى…</option>'
+      + '</select>'
+      + '<input class="f-unit-custom" type="text" placeholder="اكتب الوحدة" value="" style="display:none">'
+      + '</div>';
+    return html;
+  }
+
+  function readUnit(tr) {
+    var sel = tr.querySelector('.f-unit');
+    var custom = tr.querySelector('.f-unit-custom');
+    if (!sel) return 'قطعة';
+    if (sel.value === '__custom__') {
+      return ((custom && custom.value) || '').trim() || 'قطعة';
+    }
+    return (sel.value || 'قطعة').trim();
+  }
+
+  function syncUnitCustomVisibility(tr, focusCustom) {
+    var sel = tr.querySelector('.f-unit');
+    var custom = tr.querySelector('.f-unit-custom');
+    if (!sel || !custom) return;
+    if (sel.value === '__custom__') {
+      custom.style.display = 'block';
+      if (focusCustom && !custom.value) custom.focus();
+    } else {
+      custom.style.display = 'none';
+    }
+  }
+
   function rowHTML(r) {
-    return '<tr class="item-row" data-stage="' + r.stage + '">'
-      + '<td><input class="w-name f-name" type="text" value="' + String(r.name).replace(/"/g, '&quot;') + '"></td>'
-      + '<td style="color:var(--text3);font-size:12px">' + r.unit + '</td>'
+    return '<tr class="item-row" data-stage="' + escapeAttr(r.stage) + '">'
+      + '<td><input class="w-name f-name" type="text" value="' + escapeAttr(r.name) + '"></td>'
+      + '<td>' + unitCellHTML(r.unit) + '</td>'
       + '<td><input class="f-qty" type="number" min="0" step="any" value="' + r.qty + '"></td>'
       + '<td><input class="f-price" type="number" min="0" step="any" value="' + r.price + '"></td>'
       + '<td class="line-total">0</td>'
@@ -262,8 +408,22 @@ document.addEventListener('DOMContentLoaded', function () {
   function bindTable() {
     var body = el('itemsBody');
     var inputs = body.querySelectorAll('input');
+    var selects = body.querySelectorAll('select.f-unit');
     var i;
-    for (i = 0; i < inputs.length; i++) { inputs[i].addEventListener('input', recalc); }
+    for (i = 0; i < inputs.length; i++) {
+      inputs[i].addEventListener('input', function () {
+        scheduleDraftSave();
+        recalc();
+      });
+    }
+    for (i = 0; i < selects.length; i++) {
+      selects[i].addEventListener('change', function () {
+        var tr = this.closest('tr');
+        syncUnitCustomVisibility(tr, true);
+        scheduleDraftSave();
+        recalc();
+      });
+    }
     var dels = body.querySelectorAll('.pricing-del');
     for (i = 0; i < dels.length; i++) {
       dels[i].addEventListener('click', function () {
@@ -271,6 +431,8 @@ document.addEventListener('DOMContentLoaded', function () {
         recalc();
       });
     }
+    var rows = body.querySelectorAll('tr.item-row');
+    for (i = 0; i < rows.length; i++) syncUnitCustomVisibility(rows[i]);
   }
 
   function collectRows() {
@@ -280,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function () {
       out.push({
         stage: rows[i].getAttribute('data-stage') || '',
         name: rows[i].querySelector('.f-name').value || 'بند',
-        unit: rows[i].cells[1] ? rows[i].cells[1].textContent.trim() : '—',
+        unit: readUnit(rows[i]),
         qty: P.num(rows[i].querySelector('.f-qty').value),
         price: P.num(rows[i].querySelector('.f-price').value),
       });
@@ -374,6 +536,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
       warn.style.display = 'none';
     }
+    if (hasBuiltRows || rows.length) scheduleDraftSave();
   }
 
   function buildNewBOM() {
@@ -432,7 +595,7 @@ document.addEventListener('DOMContentLoaded', function () {
     tr.className = 'item-row';
     tr.setAttribute('data-stage', 'بنود إضافية');
     tr.innerHTML = '<td><input class="w-name f-name" type="text" placeholder="اسم البند"></td>'
-      + '<td style="color:var(--text3)">—</td>'
+      + '<td>' + unitCellHTML('قطعة') + '</td>'
       + '<td><input class="f-qty" type="number" min="0" step="any" value="1"></td>'
       + '<td><input class="f-price" type="number" min="0" step="any" value="0"></td>'
       + '<td class="line-total">0</td>'
@@ -492,39 +655,107 @@ document.addEventListener('DOMContentLoaded', function () {
     var grand = before + vat;
     var dateStr = new Date().toLocaleDateString('ar-SA');
     var validDays = P.num(el('cValid').value) || 30;
+    var laborByStage = {};
+    if (!isUpg && typeof P.splitLaborByStage === 'function') {
+      var laborParts = P.splitLaborByStage(labor + trans + other);
+      for (i = 0; i < laborParts.length; i++) {
+        laborByStage[laborParts[i].stage] = {
+          label: laborParts[i].label,
+          amount: laborParts[i].amount * factor,
+        };
+      }
+    }
     var tbl = '<table class="q-tbl"><thead><tr><th style="width:55%">البيان</th><th>الكمية</th><th>الإجمالي (ر.س)</th></tr></thead><tbody>';
     for (i = 0; i < stagesOrder.length; i++) {
       var st2 = stagesOrder[i];
-      tbl += '<tr class="q-stage"><td>' + st2 + '</td><td></td><td>' + (detailed ? '' : fmt(stageSums[st2])) + '</td></tr>';
+      var stageTotal = stageSums[st2] || 0;
+      if (laborByStage[st2]) stageTotal += laborByStage[st2].amount;
+      tbl += '<tr class="q-stage"><td>' + st2 + '</td><td></td><td>' + (detailed ? '' : fmt(stageTotal)) + '</td></tr>';
       if (detailed) {
         var k, its = itemsByStage[st2];
         for (k = 0; k < its.length; k++) {
           tbl += '<tr><td style="padding-right:22px">' + its[k].name + '</td><td>' + its[k].qty + '</td><td>' + fmt(its[k].total) + '</td></tr>';
         }
-        tbl += '<tr class="q-stage"><td style="padding-right:22px">إجمالي ' + st2 + '</td><td></td><td>' + fmt(stageSums[st2]) + '</td></tr>';
+        if (laborByStage[st2]) {
+          tbl += '<tr><td style="padding-right:22px">' + laborByStage[st2].label + '</td><td>1</td><td>' + fmt(laborByStage[st2].amount) + '</td></tr>';
+        }
+        tbl += '<tr class="q-stage"><td style="padding-right:22px">إجمالي ' + st2 + '</td><td></td><td>' + fmt(stageTotal) + '</td></tr>';
+      } else if (laborByStage[st2]) {
+        tbl += '<tr><td style="padding-right:22px">' + laborByStage[st2].label + '</td><td></td><td>' + fmt(laborByStage[st2].amount) + '</td></tr>';
       }
     }
-    tbl += '<tr class="q-stage"><td>أعمال التركيب والتشغيل والتسليم</td><td></td><td>' + fmt(laborSell) + '</td></tr></tbody></table>';
+    if (isUpg) {
+      tbl += '<tr class="q-stage"><td>أعمال التركيب والتشغيل والتسليم</td><td></td><td>' + fmt(laborSell) + '</td></tr>';
+    }
+    tbl += '</tbody></table>';
     var specs = '';
     if (!isUpg) {
       var spec = getNewSpec();
-      var cabinCalc = P.calcCabinFromShaft(spec);
+      var cabinCalc = P.calcCabinFromShaft(Object.assign({}, spec, {
+        capacity: isNoneVal(spec.capacity) ? 630 : spec.capacity,
+      }));
       var shaftWcm = P.toCm(spec.shaft_width);
       var shaftDcm = P.toCm(spec.shaft_depth);
-      var shaftTxt = (shaftWcm && shaftDcm) ? (shaftWcm + '×' + shaftDcm + ' سم') : '—';
-      specs = '<div class="q-sec"><h3>المواصفات الفنية</h3><table class="q-tbl"><tbody>'
-        + '<tr><td>عدد الوقفات</td><td>' + spec.stops + ' وقفات</td><td>الحمولة</td><td>' + spec.capacity + ' كجم</td></tr>'
-        + '<tr><td>نوع الماكينة</td><td>' + (spec.machine === 'gearless' ? 'جيرلس MRL' : 'جير بغرفة ماكينة') + '</td><td>السرعة</td><td>' + spec.speed + ' م/ث</td></tr>'
-        + '<tr><td>بلد منشئ الماكينة</td><td>' + P.originDisplay(spec, 'machine_origin', 'machine_origin_country') + ' ' + (spec.machine_brand || '') + '</td>'
-        + '<td>بلد منشئ اللوحة</td><td>' + P.originDisplay(spec, 'panel_origin', 'panel_origin_country') + ' ' + (spec.panel_brand || '') + '</td></tr>'
-        + '<tr><td>البئر الداخلي</td><td>' + shaftTxt + '</td><td>مقاس الكبينة</td><td>' + (cabinCalc.label || '—') + '</td></tr>'
-        + '<tr><td>تشطيب الكبينة</td><td colspan="3">' + P.CABIN_NAMES[spec.cabin] + '</td></tr>'
-        + '</tbody></table></div>';
+      var shaftTxt = (shaftWcm && shaftDcm) ? (shaftWcm + '×' + shaftDcm + ' سم') : '';
+      var showCap = !isNoneVal(spec.capacity);
+      var showSpeed = !isNoneVal(spec.speed);
+      var showMachine = !isNoneVal(spec.machine);
+      var showMachineOrigin = !isNoneVal(spec.machine_origin);
+      var showPanelOrigin = !isNoneVal(spec.panel_origin);
+      var showCabin = !isNoneVal(spec.cabin);
+      var machineBrandTxt = isNoneVal(spec.machine_brand) ? '' : (spec.machine_brand || '');
+      var panelBrandTxt = isNoneVal(spec.panel_brand) ? '' : (spec.panel_brand || '');
+      var machineOriginTxt = showMachineOrigin
+        ? (P.originDisplay(spec, 'machine_origin', 'machine_origin_country') + (machineBrandTxt ? (' ' + machineBrandTxt) : '')).trim()
+        : '';
+      var panelOriginTxt = showPanelOrigin
+        ? (P.originDisplay(spec, 'panel_origin', 'panel_origin_country') + (panelBrandTxt ? (' ' + panelBrandTxt) : '')).trim()
+        : '';
+      var cells = [];
+      function pushPair(label, value) {
+        if (!value && value !== 0) return;
+        cells.push({ label: label, value: value });
+      }
+      pushPair('عدد المصاعد', spec.elevator_count || 1);
+      pushPair('عدد الوقفات', spec.stops + ' وقفات');
+      if (showCap) pushPair('الحمولة', spec.capacity + ' كجم');
+      if (showSpeed) pushPair('السرعة', spec.speed + ' م/ث');
+      if (showMachine) {
+        pushPair('نوع الماكينة', spec.machine === 'gearless' ? 'جيرلس MRL' : 'جير بغرفة ماكينة');
+      }
+      if (machineOriginTxt) pushPair('بلد منشئ الماكينة', machineOriginTxt);
+      if (panelOriginTxt) pushPair('بلد منشئ اللوحة', panelOriginTxt);
+      if (shaftTxt) pushPair('البئر الداخلي', shaftTxt);
+      if (showCabin && cabinCalc && cabinCalc.label) pushPair('مقاس الكبينة', cabinCalc.label);
+      if (showCabin && P.CABIN_NAMES[spec.cabin]) pushPair('تشطيب الكبينة', P.CABIN_NAMES[spec.cabin]);
+      var specRows = '';
+      var ci;
+      for (ci = 0; ci < cells.length; ci += 2) {
+        specRows += '<tr>';
+        specRows += '<td>' + cells[ci].label + '</td><td>' + cells[ci].value + '</td>';
+        if (cells[ci + 1]) {
+          specRows += '<td>' + cells[ci + 1].label + '</td><td>' + cells[ci + 1].value + '</td>';
+        } else {
+          specRows += '<td></td><td></td>';
+        }
+        specRows += '</tr>';
+      }
+      if (specRows) {
+        specs = '<div class="q-sec"><h3>المواصفات الفنية</h3><table class="q-tbl"><tbody>'
+          + specRows + '</tbody></table></div>';
+      }
     } else {
-      specs = '<div class="q-sec"><h3>نطاق العمل</h3><div class="q-terms">تحديث مصعد قائم — ' + el('uStops').value + ' وقفات.</div></div>';
+      specs = '<div class="q-sec"><h3>نطاق العمل</h3><div class="q-terms">تحديث مصعد قائم — '
+        + (el('uElevCount') ? el('uElevCount').value : 1) + ' مصعد — '
+        + el('uStops').value + ' وقفات.</div></div>';
     }
+    var brandBlock = '<div class="brand">'
+      + (companyLogoUrl
+        ? '<img src="' + companyLogoUrl + '" alt="' + String(companyName).replace(/"/g, '&quot;') + '" style="width:' + logoWidth + 'px;max-height:72px;object-fit:contain">'
+        : '')
+      + '</div>';
     el('quoteSheet').innerHTML = ''
-      + '<div class="q-head"><div class="co"><div class="nm">LiftCore</div><div class="sub">شركة تركيب وصيانة وتحديث المصاعد</div></div>'
+      + '<div class="q-head">' + brandBlock
       + '<div class="q-meta">رقم العرض: <b>' + quoteCode + '</b><br>التاريخ: <b>' + dateStr + '</b><br>الصلاحية: <b>' + validDays + ' يوم</b></div></div>'
       + '<div class="q-title">عرض سعر — ' + (isUpg ? 'تحديث مصعد قائم' : 'توريد وتركيب مصعد جديد') + '</div>'
       + '<div class="q-sec"><h3>بيانات العميل</h3><div class="q-terms">'
@@ -538,8 +769,24 @@ document.addEventListener('DOMContentLoaded', function () {
       + paymentTermsText(getPaymentPcts(), grand) + '<br>'
       + '<b>الضمان:</b> سنة على أعمال التركيب + صيانة مجانية 12 شهراً.'
       + '</div></div>'
-      + '<div class="q-sign"><div class="s"><div class="ln">ختم وتوقيع الشركة</div></div><div class="s"><div class="ln">موافقة العميل</div></div></div>';
+      + '<div class="q-sign"><div class="s">'
+      + companySealHtml()
+      + '<div class="ln">ختم وتوقيع الشركة</div></div><div class="s"><div class="ln">موافقة العميل</div></div></div>';
     el('quoteOverlay').classList.add('open');
+  }
+
+  function companySealHtml() {
+    var stamp = cfg.companyStampUrl || '';
+    var sign = cfg.companySignUrl || '';
+    if (!stamp && !sign) return '';
+    var html = '<div class="doc-company-seal q-company-seal">';
+    if (stamp) {
+      html += '<div class="doc-seal-item"><img src="' + stamp + '" alt="ختم الشركة" class="doc-seal-stamp"><div class="doc-seal-caption">ختم الشركة</div></div>';
+    }
+    if (sign) {
+      html += '<div class="doc-seal-item"><img src="' + sign + '" alt="توقيع الشركة" class="doc-seal-sign"><div class="doc-seal-caption">توقيع الشركة</div></div>';
+    }
+    return html + '</div>';
   }
 
   function saveQuote() {
@@ -583,6 +830,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (data.ok) {
           quoteCode = data.code;
           cfg.quotationId = data.id;
+          clearDraft();
           alert('تم حفظ العرض ' + data.code);
           if (window.history && window.location) {
             var u = new URL(window.location.href);
@@ -623,6 +871,8 @@ document.addEventListener('DOMContentLoaded', function () {
       fillBrandSelect('sBrand', 'sBrandCustom', machineBrands, s.spec.machine_origin || 'chinese', s.spec.machine_brand || '');
       initOriginSelect('sPanelOrigin', 'sPanelOriginCustom', s.spec.panel_origin || 'chinese', s.spec.panel_origin_country || '');
       fillBrandSelect('sPanelBrand', 'sPanelBrandCustom', panelBrands, s.spec.panel_origin || 'chinese', s.spec.panel_brand || '');
+      if (el('sElevCount') && s.spec.elevator_count) el('sElevCount').value = s.spec.elevator_count;
+      if (el('uElevCount') && s.spec.elevator_count) el('uElevCount').value = s.spec.elevator_count;
       if (el('sStops') && s.spec.stops) el('sStops').value = s.spec.stops;
       if (el('sCap') && s.spec.capacity) el('sCap').value = s.spec.capacity;
       if (el('sMachine') && s.spec.machine) el('sMachine').value = s.spec.machine;
@@ -683,7 +933,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   if (el('sBrandCustom')) el('sBrandCustom').addEventListener('input', maybeRebuildBOM);
   if (el('sPanelBrandCustom')) el('sPanelBrandCustom').addEventListener('input', maybeRebuildBOM);
-  ['sShaftW', 'sShaftD', 'sCap'].forEach(function (id) {
+  ['sShaftW', 'sShaftD', 'sCap', 'sElevCount', 'uElevCount'].forEach(function (id) {
     if (el(id)) el(id).addEventListener('input', function () { updateCabinHint(); maybeRebuildBOM(); });
   });
   updateCabinHint();
@@ -702,14 +952,19 @@ document.addEventListener('DOMContentLoaded', function () {
     if (el(id)) el(id).addEventListener('input', recalc);
   });
 
-  loadSaved();
-  if (!cfg.saved && cfg.prefill && cfg.prefill.customer_id) {
+  var restored = restoreDraftIfNeeded();
+  if (cfg.saved) {
+    loadSaved();
+  } else if (cfg.prefill && cfg.prefill.customer_id) {
     if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
       LcClientSelect.setCustomers('cCustomer', customers, cfg.prefill.customer_id);
     } else if (el('cCustomer')) {
       el('cCustomer').value = String(cfg.prefill.customer_id);
     }
     onCustomerChange();
+  }
+  if (restored) {
+    markDrafting(true);
   }
   recalc();
 });

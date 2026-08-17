@@ -2,22 +2,27 @@
 
 import json
 import re
-from datetime import datetime
+from datetime import datetime, date
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 
-from models import db, Customer
+from models import db, Customer, Contract
 from installation.models import (
     InstallLead,
     InstallProject,
     InstallQuotation,
     InstallQuotationLine,
     InstallTimelineStep,
+    InstallProjectCostItem,
+    InstallProjectReceipt,
     LEAD_STATUSES,
     LEAD_SOURCES,
     PROJECT_STATUSES,
     QUOTE_STATUSES,
     TIMELINE_STEP_STATUSES,
+    COST_CATEGORIES,
+    COST_PAYMENT_STATUSES,
+    RECEIPT_STATUSES,
 )
 from installation.timeline import (
     create_execution_timeline,
@@ -50,6 +55,24 @@ from installation.catalog import (
 from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
 install_bp = Blueprint('installation', __name__, url_prefix='/installation')
+
+_schema_ensured = False
+
+
+@install_bp.before_request
+def _ensure_install_schema():
+    """ضمان أعمدة/جداول/قيود التركيب قبل أي صفحة (يمنع 500 على الفرص)."""
+    global _schema_ensured
+    if _schema_ensured:
+        return
+    try:
+        from installation.project_card import ensure_project_card_schema
+        from installation.schema import ensure_install_tenant_uniques
+        ensure_project_card_schema()
+        ensure_install_tenant_uniques()
+        _schema_ensured = True
+    except Exception:
+        db.session.rollback()
 
 
 def _next_code(model, prefix, digits=4):
@@ -235,12 +258,56 @@ def projects_list():
 
 @install_bp.route('/projects/<int:project_id>')
 def project_detail(project_id):
+    from installation.project_card import build_project_card, ensure_project_card_schema
+
     project = tenant_get_or_404(InstallProject, project_id)
     quotations = project.quotations.order_by(InstallQuotation.created_at.desc()).all()
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
     progress = timeline_progress(steps) if project.execution_active else 0
     execution_complete = is_execution_complete(steps) if project.execution_active else False
     latest_draft = _latest_editable_quotation(project) if not project.execution_active else None
+    card = {
+        'contract_value': 0,
+        'received': 0,
+        'pending_receipts': 0,
+        'client_remaining': 0,
+        'total_cost': 0,
+        'profit': 0,
+        'receipts': [],
+        'cost_groups': [],
+        'sheet_rows': [],
+        'cost_count': 0,
+        'quote_code': None,
+        'contract': None,
+        'contract_code': None,
+        'value_source': '—',
+        'schema_error': None,
+    }
+    try:
+        ensure_project_card_schema()
+        card = build_project_card(project)
+        card['schema_error'] = None
+    except Exception as exc:
+        db.session.rollback()
+        card['schema_error'] = str(exc)
+
+    customer_contracts = []
+    if project.customer_id or (project.customer and project.customer.id):
+        from contract_codes import is_installation_contract_type
+
+        cid = project.customer_id or project.customer.id
+        raw_contracts = (
+            tenant_query(Contract)
+            .filter_by(customer_id=cid)
+            .order_by(Contract.created_at.desc())
+            .limit(100)
+            .all()
+        )
+        customer_contracts = [
+            c for c in raw_contracts
+            if is_installation_contract_type(c.contract_type)
+        ][:50]
+
     return render_template(
         'installation/project_detail.html',
         project=project,
@@ -249,8 +316,236 @@ def project_detail(project_id):
         execution_progress=progress,
         execution_complete=execution_complete,
         quote_statuses=QUOTE_STATUSES,
+        card=card,
+        customer_contracts=customer_contracts,
+        cost_categories=COST_CATEGORIES,
+        cost_payment_statuses=COST_PAYMENT_STATUSES,
+        receipt_statuses=RECEIPT_STATUSES,
+        today=date.today().isoformat(),
         page_title=f'مشروع {project.code}',
     )
+
+
+@install_bp.route('/projects/<int:project_id>/card/value', methods=['POST'])
+def project_card_set_value(project_id):
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    raw = (request.form.get('contract_value') or '').strip()
+    if not raw:
+        project.contract_value = None
+    else:
+        try:
+            project.contract_value = float(raw)
+        except ValueError:
+            flash('قيمة المشروع غير صحيحة', 'error')
+            return redirect(url_for('installation.project_detail', project_id=project.id))
+    db.session.commit()
+    flash('تم تحديث قيمة المشروع', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/link-contract', methods=['POST'])
+def project_card_link_contract(project_id):
+    """ربط كارت المشروع بعقد LiftCore وحفظ القيمة من العقد إن طُلب."""
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    raw_id = (request.form.get('contract_id') or '').strip()
+    sync_value = (request.form.get('sync_value') or '').strip() in ('1', 'on', 'true', 'yes')
+
+    if not raw_id:
+        project.contract_id = None
+        db.session.commit()
+        flash('تم فك ربط العقد عن كارت المشروع', 'success')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    try:
+        cid = int(raw_id)
+    except ValueError:
+        flash('عقد غير صالح', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    contract = tenant_query(Contract).filter_by(id=cid).first()
+    if not contract:
+        flash('العقد غير موجود', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    from contract_codes import is_installation_contract_type
+    if not is_installation_contract_type(contract.contract_type):
+        flash('يُسمح بالربط بعقود التركيب أو التحديث فقط (وليس عقود الصيانة)', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    if project.customer_id and contract.customer_id != project.customer_id:
+        flash('العقد لا يخص عميل هذا المشروع', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+    project.contract_id = contract.id
+    if not project.customer_id:
+        project.customer_id = contract.customer_id
+    if sync_value:
+        amount = float(contract.total or contract.value or 0)
+        if amount > 0:
+            project.contract_value = amount
+    db.session.commit()
+    flash(f'تم ربط الكارت بالعقد {contract.code}', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/print')
+def project_card_print(project_id):
+    """صفحة طباعة كارت المشروع."""
+    from installation.project_card import build_project_card, ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    card = build_project_card(project)
+    settings = None
+    try:
+        from models import Settings
+        settings = tenant_query(Settings).first()
+    except Exception:
+        db.session.rollback()
+    return render_template(
+        'installation/project_card_print.html',
+        project=project,
+        card=card,
+        settings=settings,
+        print_date=date.today(),
+        page_title=f'كارت مشروع {project.code}',
+    )
+
+
+@install_bp.route('/projects/<int:project_id>/card/costs/add', methods=['POST'])
+def project_card_cost_add(project_id):
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    title = (request.form.get('title') or '').strip()
+    category = (request.form.get('category') or 'أخرى').strip()
+    if category not in COST_CATEGORIES:
+        category = 'أخرى'
+    try:
+        amount = float(request.form.get('amount') or 0)
+    except ValueError:
+        amount = 0
+    date_raw = (request.form.get('cost_date') or '').strip()
+    try:
+        cost_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date.today()
+    except ValueError:
+        cost_date = date.today()
+    inst_raw = (request.form.get('installment_no') or '').strip()
+    installment_no = int(inst_raw) if inst_raw.isdigit() else None
+    pay_status = (request.form.get('payment_status') or '').strip()
+    if pay_status not in COST_PAYMENT_STATUSES:
+        pay_status = 'غير مدفوعة' if installment_no or category == 'عمالة' else None
+    if not title:
+        if category == 'عمالة' and installment_no:
+            from installation.project_card import installment_label
+            title = installment_label(installment_no)
+        elif installment_no:
+            title = f'دفعة {installment_no}'
+        else:
+            title = category
+    if amount <= 0:
+        flash('أدخل مبلغاً أكبر من صفر', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+    item = InstallProjectCostItem(
+        project_id=project.id,
+        category=category,
+        title=title,
+        amount=amount,
+        cost_date=cost_date,
+        installment_no=installment_no,
+        payment_status=pay_status,
+        notes=(request.form.get('notes') or '').strip() or None,
+    )
+    assign_organization(item)
+    db.session.add(item)
+    db.session.commit()
+    flash('تمت إضافة بند التكلفة', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/costs/<int:item_id>/status', methods=['POST'])
+def project_card_cost_status(project_id, item_id):
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    item = tenant_query(InstallProjectCostItem).filter_by(id=item_id, project_id=project.id).first_or_404()
+    status = (request.form.get('payment_status') or '').strip()
+    if status not in COST_PAYMENT_STATUSES:
+        flash('حالة السداد غير صحيحة', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+    item.payment_status = status
+    db.session.commit()
+    flash('تم تحديث حالة الدفعة', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/costs/<int:item_id>/delete', methods=['POST'])
+def project_card_cost_delete(project_id, item_id):
+    project = tenant_get_or_404(InstallProject, project_id)
+    item = tenant_query(InstallProjectCostItem).filter_by(id=item_id, project_id=project.id).first_or_404()
+    db.session.delete(item)
+    db.session.commit()
+    flash('تم حذف بند التكلفة', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/receipts/add', methods=['POST'])
+def project_card_receipt_add(project_id):
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    try:
+        amount = float(request.form.get('amount') or 0)
+    except ValueError:
+        amount = 0
+    inst_raw = (request.form.get('installment_no') or '').strip()
+    installment_no = int(inst_raw) if inst_raw.isdigit() else (len(project.receipts) + 1)
+    if amount <= 0:
+        flash('أدخل مبلغ دفعة أكبر من صفر', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+    date_raw = (request.form.get('received_date') or '').strip()
+    try:
+        received_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date.today()
+    except ValueError:
+        received_date = date.today()
+    status = (request.form.get('status') or 'مستلمة').strip()
+    if status not in RECEIPT_STATUSES:
+        status = 'مستلمة'
+    label = (request.form.get('label') or '').strip() or f'دفعة رقم {installment_no}'
+    receipt = InstallProjectReceipt(
+        project_id=project.id,
+        installment_no=installment_no,
+        label=label,
+        amount=amount,
+        received_date=received_date,
+        payment_method=(request.form.get('payment_method') or '').strip() or None,
+        status=status,
+        notes=(request.form.get('notes') or '').strip() or None,
+    )
+    assign_organization(receipt)
+    db.session.add(receipt)
+    db.session.commit()
+    flash(f'تم تسجيل {label}', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/receipts/<int:receipt_id>/delete', methods=['POST'])
+def project_card_receipt_delete(project_id, receipt_id):
+    project = tenant_get_or_404(InstallProject, project_id)
+    receipt = tenant_query(InstallProjectReceipt).filter_by(id=receipt_id, project_id=project.id).first_or_404()
+    db.session.delete(receipt)
+    db.session.commit()
+    flash('تم حذف الدفعة', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
 
 
 @install_bp.route('/projects/<int:project_id>/quote')
@@ -714,6 +1009,7 @@ def quote_print(quotation_id):
         'cabin_w': _dim_to_cm(spec.get('cabin_width')),
         'cabin_d': _dim_to_cm(spec.get('cabin_depth')),
     }
+    stage_blocks, labor_sell = _quote_stage_blocks(q)
     return render_template(
         'installation/quote_print.html',
         quotation=q,
@@ -725,24 +1021,121 @@ def quote_print(quotation_id):
         panel_origin_label=origin_label_from_spec(spec, 'panel_origin', 'panel_origin_country'),
         panel_brand=spec.get('panel_brand') or '—',
         customer_code=q.customer.code if q.customer else (q.project.customer.code if q.project.customer else '—'),
+        stage_blocks=stage_blocks,
+        labor_sell=labor_sell,
+        quote_type=q.quote_type or 'new',
         page_title=f'عرض سعر {q.code}',
     )
 
 
+def _quote_stage_blocks(quotation):
+    """تجميع بنود العرض حسب مرحلة التركيب + توزيع الأجور."""
+    factor = 1 + float(quotation.profit_pct or 0) / 100.0
+    labor_pool = (
+        float(quotation.labor or 0)
+        + float(quotation.transport or 0)
+        + float(quotation.other_costs or 0)
+    )
+    labor_sell = round(labor_pool * factor, 2)
+    shares = [
+        ('مرحلة 1 — سكك وأبواب', 'أجور وتركيب — سكك وأبواب', 0.30),
+        ('مرحلة 2 — تركيب كبينة وأحبال وماكينة', 'أجور وتركيب — كبينة وأحبال وماكينة', 0.45),
+        ('مرحلة 3 — تركيب كنترول وتشغيل', 'أجور وتركيب — كنترول وتشغيل', 0.25),
+    ]
+    labor_by_stage = {}
+    used = 0.0
+    is_new = (quotation.quote_type or 'new') != 'upgrade'
+    if is_new and labor_pool > 0:
+        for i, (stage, label, share) in enumerate(shares):
+            if i == len(shares) - 1:
+                amt = round(labor_pool - used, 2)
+            else:
+                amt = round(labor_pool * share, 2)
+                used += amt
+            labor_by_stage[stage] = (label, round(amt * factor, 2))
+
+    ordered = []
+    seen = set()
+    by_stage = {}
+    for ln in quotation.lines:
+        st = (ln.stage or '—').strip() or '—'
+        if st not in by_stage:
+            by_stage[st] = []
+            ordered.append(st)
+        by_stage[st].append(ln)
+        seen.add(st)
+
+    # أظهر المراحل المعروفة بالترتيب حتى لو فارغة من البنود لكن عليها أجور
+    preferred = [s[0] for s in shares]
+    final_order = [s for s in preferred if s in by_stage or s in labor_by_stage]
+    for st in ordered:
+        if st not in final_order:
+            final_order.append(st)
+
+    blocks = []
+    for st in final_order:
+        lines = by_stage.get(st, [])
+        lines_total = round(sum(float(ln.line_total or 0) * factor for ln in lines), 2)
+        labor_label, labor_amt = labor_by_stage.get(st, (None, 0))
+        blocks.append({
+            'stage': st,
+            'lines': [
+                {
+                    'name': ln.name,
+                    'qty': ln.qty,
+                    'unit_price': round(float(ln.unit_price or 0) * factor, 2),
+                    'line_total': round(float(ln.line_total or 0) * factor, 2),
+                }
+                for ln in lines
+            ],
+            'labor_label': labor_label if is_new else None,
+            'labor_amount': labor_amt if is_new else 0,
+            'total': round(lines_total + (labor_amt if is_new else 0), 2),
+        })
+    return blocks, labor_sell
+
+
+def _projects_by_lead_id(leads):
+    """خريطة lead_id → مشروع بدون علاقة one-to-one (تتجنب MultipleResultsFound)."""
+    ids = [l.id for l in leads if l and l.id]
+    if not ids:
+        return {}
+    rows = (
+        tenant_query(InstallProject)
+        .filter(InstallProject.lead_id.in_(ids))
+        .order_by(InstallProject.id.asc())
+        .all()
+    )
+    out = {}
+    for p in rows:
+        if p.lead_id not in out:
+            out[p.lead_id] = p
+    return out
+
+
 @install_bp.route('/leads')
 def leads_list():
-    leads = tenant_query(InstallLead).order_by(InstallLead.created_at.desc()).all()
-    customers = _active_customers()
-    return render_template(
-        'installation/leads.html',
-        leads=leads,
-        customers=customers,
-        customers_js=[_customer_to_js(c) for c in customers],
-        statuses=LEAD_STATUSES,
-        sources=LEAD_SOURCES,
-        next_lead_code=_next_code(InstallLead, 'LD-', 4),
-        page_title='فرص البيع — تركيب',
-    )
+    try:
+        leads = tenant_query(InstallLead).order_by(InstallLead.created_at.desc()).all()
+        customers = _active_customers()
+        project_by_lead = _projects_by_lead_id(leads)
+        return render_template(
+            'installation/leads.html',
+            leads=leads,
+            project_by_lead=project_by_lead,
+            customers=customers,
+            customers_js=[_customer_to_js(c) for c in customers],
+            statuses=LEAD_STATUSES,
+            sources=LEAD_SOURCES,
+            next_lead_code=_next_code(InstallLead, 'LD-', 4),
+            page_title='فرص البيع — تركيب',
+        )
+    except Exception as exc:
+        db.session.rollback()
+        import logging
+        logging.getLogger('liftcore').exception('installation leads_list failed')
+        flash(f'تعذّر فتح فرص البيع: {exc}', 'error')
+        return redirect(url_for('installation.index'))
 
 
 @install_bp.route('/leads/add', methods=['POST'])
@@ -755,28 +1148,38 @@ def leads_add():
     if not customer:
         flash('العميل غير موجود — أضفه من صفحة العملاء', 'error')
         return redirect(url_for('installation.leads_list'))
-    snapshot = _customer_snapshot(customer)
-    lead = InstallLead(
-        code=_next_code(InstallLead, 'LD-', 4),
-        inquiry_date=_parse_date(request.form.get('inquiry_date')) or datetime.utcnow().date(),
-        customer_id=customer.id,
-        client_name=snapshot['client_name'],
-        phone=snapshot['client_phone'],
-        email=(customer.email or '').strip(),
-        city=(customer.city or '').strip(),
-        district=(customer.district or '').strip(),
-        address=snapshot['client_address'],
-        source=(request.form.get('source') or '').strip(),
-        building_type=(request.form.get('building_type') or '').strip(),
-        notes=(request.form.get('notes') or '').strip(),
-        status=(request.form.get('status') or 'جديد').strip(),
-    )
-    if lead.status not in LEAD_STATUSES:
-        lead.status = 'جديد'
-    assign_organization(lead)
-    db.session.add(lead)
-    db.session.commit()
-    flash(f'تم إنشاء الفرصة {lead.code}', 'success')
+    try:
+        snapshot = _customer_snapshot(customer)
+        lead = InstallLead(
+            code=_next_code(InstallLead, 'LD-', 4),
+            inquiry_date=_parse_date(request.form.get('inquiry_date')) or datetime.utcnow().date(),
+            customer_id=customer.id,
+            client_name=snapshot['client_name'],
+            phone=snapshot['client_phone'],
+            email=(customer.email or '').strip(),
+            city=(customer.city or '').strip(),
+            district=(customer.district or '').strip(),
+            address=snapshot['client_address'],
+            source=(request.form.get('source') or '').strip(),
+            building_type=(request.form.get('building_type') or '').strip(),
+            notes=(request.form.get('notes') or '').strip(),
+            status=(request.form.get('status') or 'جديد').strip(),
+        )
+        if lead.status not in LEAD_STATUSES:
+            lead.status = 'جديد'
+        assign_organization(lead)
+        db.session.add(lead)
+        db.session.commit()
+        flash(f'تم إنشاء الفرصة {lead.code}', 'success')
+    except Exception as exc:
+        db.session.rollback()
+        import logging
+        logging.getLogger('liftcore').exception('installation leads_add failed')
+        orig = getattr(exc, 'orig', None)
+        detail = str(orig or exc).strip()
+        if len(detail) > 280:
+            detail = detail[:277] + '…'
+        flash(f'فشل حفظ الفرصة: {detail}', 'error')
     return redirect(url_for('installation.leads_list'))
 
 
@@ -796,7 +1199,8 @@ def leads_cancel(lead_id):
     if lead.status == 'ملغي':
         flash('هذه الفرصة ملغاة مسبقاً', 'error')
         return redirect(url_for('installation.leads_list'))
-    if lead.status == 'تم تحويله لمشروع' or lead.project:
+    linked = _projects_by_lead_id([lead]).get(lead.id)
+    if lead.status == 'تم تحويله لمشروع' or linked:
         flash('لا يمكن إلغاء فرصة مُحوّلة لمشروع', 'error')
         return redirect(url_for('installation.leads_list'))
     lead.status = 'ملغي'
@@ -808,9 +1212,10 @@ def leads_cancel(lead_id):
 @install_bp.route('/leads/<int:lead_id>/convert', methods=['POST'])
 def leads_convert(lead_id):
     lead = tenant_get_or_404(InstallLead, lead_id)
-    if lead.status == 'تم تحويله لمشروع' and lead.project:
+    linked = _projects_by_lead_id([lead]).get(lead.id)
+    if lead.status == 'تم تحويله لمشروع' and linked:
         flash('هذه الفرصة مُحوّلة مسبقاً', 'error')
-        return redirect(url_for('installation.project_detail', project_id=lead.project.id))
+        return redirect(url_for('installation.project_detail', project_id=linked.id))
     project = InstallProject(
         code=_next_code(InstallProject, 'PRJ-', 4),
         title=lead.client_display,

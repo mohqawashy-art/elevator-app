@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=seal1">
+<link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=1">
 </head>
 <body>
 {% include 'installation/_sidebar.html' %}
@@ -40,7 +41,7 @@
     <div class="pricing-layout">
       <div>
         <div class="pricing-card">
-          <h3><span class="step-no">١</span> العميل من LiftCore <span class="pricing-hint" style="font-weight:400">— يجب تسجيله في العملاء أولاً</span></h3>
+          <h3><span class="step-no">١</span> العميل <span class="pricing-hint" style="font-weight:400">— يجب تسجيله في العملاء أولاً</span></h3>
           <div class="pricing-grid">
             <div class="field form-full" style="grid-column:1/-1">
               <label>اختر العميل *</label>
@@ -98,17 +99,31 @@
         <div id="paneNew">
           <div class="pricing-card">
             <h3><span class="step-no">٣</span> مواصفات المصعد</h3>
+            <div class="pricing-hint" style="margin-bottom:10px">اختر <b>بدون</b> لأي مواصفة لإخفائها من عرض السعر (وعدم إدراج بندها إن كانت معدّة/لوحة/كبينة/أبواب).</div>
             <div class="pricing-grid">
+              <div class="field"><label>عدد المصاعد</label>
+                <input type="number" id="sElevCount" value="1" min="1" max="50" step="1">
+                <div class="pricing-hint">يُضاعف كل البنود والأجور بعدد المصاعد</div>
+              </div>
               <div class="field"><label>عدد الوقفات</label><select id="sStops"></select></div>
               <div class="field"><label>الحمولة</label>
                 <select id="sCap">
+                  <option value="__none__">بدون</option>
                   <option value="320">320 كجم</option><option value="450">450 كجم</option>
                   <option value="630" selected>630 كجم</option><option value="800">800 كجم</option><option value="1000">1000 كجم</option>
                 </select></div>
               <div class="field"><label>نوع الماكينة</label>
-                <select id="sMachine"><option value="gearless" selected>جيرلس MRL</option><option value="geared">جير</option></select></div>
+                <select id="sMachine">
+                  <option value="__none__">بدون</option>
+                  <option value="gearless" selected>جيرلس MRL</option>
+                  <option value="geared">جير</option>
+                </select></div>
               <div class="field"><label>السرعة</label>
-                <select id="sSpeed"><option value="1.0" selected>1.0 م/ث</option><option value="1.6">1.6 م/ث</option></select></div>
+                <select id="sSpeed">
+                  <option value="__none__">بدون</option>
+                  <option value="1.0" selected>1.0 م/ث</option>
+                  <option value="1.6">1.6 م/ث</option>
+                </select></div>
 
               <div class="field form-full" style="grid-column:1/-1;margin-top:4px">
                 <div style="font-size:12px;font-weight:700;color:var(--text2)">البئر والكبينة</div>
@@ -123,16 +138,34 @@
                 <div class="pricing-hint" id="cabinCalcHint" style="padding:8px 10px;background:var(--bg2);border-radius:8px">أدخل أبعاد البئر لحساب مقاس الكبينة والسعر</div>
               </div>
               <div class="field"><label>تشطيب الكبينة</label>
-                <select id="sCabin"><option value="paint">دهان</option><option value="steel" selected>ستانلس</option><option value="pano">بانوراما</option></select></div>
+                <select id="sCabin">
+                  <option value="__none__">بدون</option>
+                  <option value="paint">دهان</option>
+                  <option value="steel" selected>ستانلس</option>
+                  <option value="pano">بانوراما</option>
+                </select></div>
               <div class="field"><label>أبواب الأدوار</label>
-                <select id="sDoor"><option value="tele" selected>تليسكوبي</option><option value="center">سنتر</option><option value="semi">نص أوتوماتيك</option></select></div>
+                <select id="sDoor">
+                  <option value="__none__">بدون</option>
+                  <option value="tele" selected>تليسكوبي</option>
+                  <option value="center">سنتر</option>
+                  <option value="semi">نص أوتوماتيك</option>
+                </select></div>
               <div class="field"><label>المداخل</label>
-                <select id="sEntr"><option value="1" selected>واحد</option><option value="2">اثنان</option></select></div>
+                <select id="sEntr">
+                  <option value="__none__">بدون</option>
+                  <option value="1" selected>واحد</option>
+                  <option value="2">اثنان</option>
+                </select></div>
               <div class="field"><label>ارتفاع الدور (سم)</label>
                 <input type="number" id="sFloorH" value="300" min="250" max="600" step="5">
                 <div class="pricing-hint">يُحسب منه السكك والحبال</div></div>
               <div class="field"><label>حالة البئر</label>
-                <select id="sShaft"><option value="ready" selected>بئر جاهز</option><option value="steel">هيكل حديد</option></select></div>
+                <select id="sShaft">
+                  <option value="__none__">بدون</option>
+                  <option value="ready" selected>بئر جاهز</option>
+                  <option value="steel">هيكل حديد</option>
+                </select></div>
             </div>
             <div class="pricing-actions">
               <button type="button" class="btn btn-primary btn-sm" id="buildBtn">بناء قائمة القطع</button>
@@ -144,10 +177,16 @@
           <div class="pricing-card">
             <h3><span class="step-no">٣</span> مكونات التحديث</h3>
             <div class="pricing-grid" style="margin-bottom:12px">
+              <div class="field"><label>عدد المصاعد</label>
+                <input type="number" id="uElevCount" value="1" min="1" max="50" step="1">
+              </div>
               <div class="field"><label>عدد الوقفات</label><select id="uStops"></select></div>
               <div class="field"><label>الحمولة</label>
-                <select id="uCap"><option value="320">320</option><option value="450">450</option>
-                  <option value="630" selected>630</option><option value="800">800</option><option value="1000">1000</option></select></div>
+                <select id="uCap">
+                  <option value="__none__">بدون</option>
+                  <option value="320">320</option><option value="450">450</option>
+                  <option value="630" selected>630</option><option value="800">800</option><option value="1000">1000</option>
+                </select></div>
             </div>
             <div class="upg-grid" id="upgGrid"></div>
             <div class="pricing-actions">
@@ -157,7 +196,14 @@
         </div>
 
         <div class="pricing-card">
-          <h3><span class="step-no">٤</span> قائمة البنود <span class="pricing-hint" style="font-weight:400">— عدّل السعر والكمية</span></h3>
+          <h3><span class="step-no">٤</span> قائمة البنود <span class="pricing-hint" style="font-weight:400">— حسب مراحل التركيب</span></h3>
+          <div class="pricing-hint" style="margin-bottom:10px;line-height:1.7">
+            التسعير على 3 مراحل:
+            <b>١) سكك وأبواب</b> ·
+            <b>٢) كبينة وأحبال وماكينة</b> ·
+            <b>٣) كنترول وتشغيل</b>
+            <br>الوحدة اختيارية لكل بند: قطعة / متر / عدد / طقم / مقطوع… أو «أخرى» لكتابة وحدة منطقتك.
+          </div>
           <div style="overflow-x:auto">
             <table class="pricing-items">
               <thead><tr><th style="width:34%">البند</th><th>الوحدة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th></tr></thead>
@@ -217,6 +263,7 @@
 <script>
 window.__INSTALL_QUOTE__ = {
   saveUrl: {{ url_for('installation.project_quote_save', project_id=project.id) | tojson }},
+  projectId: {{ project.id | tojson }},
   quoteCode: {{ next_quote_code | tojson }},
   prefill: {{ prefill | tojson }},
   saved: {{ saved_json | safe }},
@@ -226,11 +273,17 @@ window.__INSTALL_QUOTE__ = {
   panelBrands: {{ panel_brands | tojson }},
   customBrandOption: '__custom__',
   customOriginOption: '__custom__',
+  noneOption: '__none__',
   machineOrigins: {{ machine_origins | tojson }},
-  defaultCustomerId: {{ default_customer_id | tojson }}
+  defaultCustomerId: {{ default_customer_id | tojson }},
+  companyName: {{ ((company_settings.company_name if company_settings and company_settings.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة')) | tojson }},
+  companyLogoUrl: {{ brand_logo_url | tojson }},
+  logoWidth: {{ (logo_width_report or 150) | tojson }},
+  companyStampUrl: {{ (company_stamp_url or '') | tojson }},
+  companySignUrl: {{ (company_sign_url or '') | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=logoonly1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=seal1"></script>
 </body>
 </html>

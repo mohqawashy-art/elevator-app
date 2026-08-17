@@ -49,14 +49,12 @@ def init_tenant_scope(database):
         )
 
     @event.listens_for(database.session, 'before_flush')
-    def _assign_default_org_in_tests(session, _flush_context, _instances):
-        """اختبارات فقط — يملأ organization_id الناقص من المؤسسة الافتراضية."""
+    def _assign_org_on_new_tenant_rows(session, _flush_context, _instances):
+        """يملأ organization_id الناقص من سياق الطلب (أو default في الاختبارات)."""
         from flask import current_app
 
-        if not current_app.config.get('TESTING'):
-            return
         oid = getattr(g, 'organization_id', None)
-        if not oid:
+        if not oid and current_app.config.get('TESTING'):
             from models import Organization
 
             org = Organization.query.filter_by(slug='default').first()

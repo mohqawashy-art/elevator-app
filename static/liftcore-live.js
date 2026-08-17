@@ -19,8 +19,35 @@
     if (path.indexOf('/print') >= 0 || path.indexOf('/report') >= 0) return null;
     if (path.indexOf('/field') === 0) return null;
     if (path.indexOf('visit-report') >= 0 || path.indexOf('fault-report') >= 0) return null;
+    // صفحات تحرير طويلة — لا إعادة تحميل أثناء العمل (مثل تسعير التركيب)
+    if (path.indexOf('/installation/') >= 0 && (
+      path.indexOf('/quote') >= 0
+      || path.indexOf('/card/') >= 0
+      || /\/timeline\/\d+\/edit/.test(path)
+    )) {
+      return null;
+    }
     if (path === '/') return 'dashboard';
     return path.replace(/^\//, '').split('/')[0];
+  }
+
+  function hasOpenDraft() {
+    if (global.document.documentElement
+      && global.document.documentElement.getAttribute('data-lc-no-live-reload') === '1') {
+      return true;
+    }
+    if (global.document.querySelector('[data-lc-drafting="1"]')) return true;
+    var ae = global.document.activeElement;
+    if (!ae) return false;
+    var tag = (ae.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || ae.isContentEditable) {
+      // لا تعِد تحميل الصفحة بينما المستخدم يكتب في حقل
+      if (ae.type === 'checkbox' || ae.type === 'radio' || ae.type === 'button' || ae.type === 'submit') {
+        return false;
+      }
+      return true;
+    }
+    return false;
   }
 
   function sessionLockedUi() {
@@ -42,6 +69,7 @@
 
   function canSyncNow() {
     if (sessionLockedUi()) return false;
+    if (hasOpenDraft()) return false;
     if (global.document.querySelector('.modal-overlay.open')) return false;
     var ae = global.document.activeElement;
     if (ae && ae.closest && ae.closest('.modal-overlay.open')) return false;

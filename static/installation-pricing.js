@@ -10,6 +10,7 @@
   };
   var PANEL_BASE_PRICE = 8000;
   var CUSTOM_ORIGIN_OPTION = '__custom__';
+  var NONE_OPTION = '__none__';
   var ORIGIN_FACTORS = {
     chinese: 1.00,
     turkish: 1.15,
@@ -53,10 +54,16 @@
   var SHAFT_MARGIN_D = 20;
   var DIM_UNIT = 'سم';
 
-  var STAGE_SUPPLY = 'توريد المعدات';
-  var STAGE_ELEC = 'الكهربائيات والاستدعاء';
-  var STAGE_INST = 'مستلزمات التركيب';
+  var STAGE_RAILS = 'مرحلة 1 — سكك وأبواب';
+  var STAGE_CABIN = 'مرحلة 2 — تركيب كبينة وأحبال وماكينة';
+  var STAGE_CTRL = 'مرحلة 3 — تركيب كنترول وتشغيل';
   var STAGE_UPG = 'أعمال التحديث';
+  // نسب توزيع أجور التركيب على المراحل الثلاث (للعرض والطباعة)
+  var STAGE_LABOR_SHARE = [
+    { stage: STAGE_RAILS, share: 0.30 },
+    { stage: STAGE_CABIN, share: 0.45 },
+    { stage: STAGE_CTRL, share: 0.25 },
+  ];
 
   var UPG = [
     { id: 'panel', name: 'لوحة تحكم + إنفرتر جديد', unit: 'قطعة', qty: function () { return 1; }, price: function (s, cap, spec) { return applyPanelOrigin(PANEL_BASE_PRICE, spec); }, desc: 'استبدال اللوحة القديمة بنظام حديث' },
@@ -76,9 +83,14 @@
     return isNaN(n) ? 0 : n;
   }
 
+  function isNone(v) {
+    return v === NONE_OPTION || v === 'بدون';
+  }
+
   function originDisplay(spec, originKey, countryKey) {
     if (!spec) return '—';
     var id = spec[originKey] || 'chinese';
+    if (isNone(id)) return '';
     if (id === CUSTOM_ORIGIN_OPTION) {
       return (spec[countryKey] || '').trim() || 'أخرى';
     }
@@ -87,7 +99,7 @@
 
   function originFactorByKey(spec, key) {
     var id = (spec && spec[key]) || 'chinese';
-    if (id === CUSTOM_ORIGIN_OPTION) {
+    if (isNone(id) || id === CUSTOM_ORIGIN_OPTION) {
       return 1.0;
     }
     return ORIGIN_FACTORS[id] || 1.0;
@@ -117,8 +129,10 @@
   }
 
   function equipmentSuffix(originKey, countryKey, brandKey, spec) {
+    if (!spec || isNone(spec[originKey])) return '';
     var label = originDisplay(spec, originKey, countryKey);
     var brand = (spec && spec[brandKey]) || '';
+    if (isNone(brand)) brand = '';
     if (label && brand) return ' — ' + label + ' ' + brand;
     if (label) return ' — ' + label;
     return '';
@@ -190,19 +204,24 @@
 
   function buildNewBOM(spec) {
     var stops = num(spec.stops);
-    var cap = num(spec.capacity);
-    var machine = spec.machine || 'gearless';
-    var door = spec.door || 'tele';
-    var cabin = spec.cabin || 'steel';
-    var entr = num(spec.entrances) || 1;
+    var elevators = Math.max(1, Math.round(num(spec.elevator_count) || 1));
+    var capRaw = spec.capacity;
+    var cap = isNone(capRaw) ? 630 : (num(capRaw) || 630);
+    var machine = isNone(spec.machine) ? '' : (spec.machine || 'gearless');
+    var door = isNone(spec.door) ? '' : (spec.door || 'tele');
+    var cabin = isNone(spec.cabin) ? '' : (spec.cabin || 'steel');
+    var entrRaw = spec.entrances;
+    var entr = isNone(entrRaw) ? 1 : (num(entrRaw) || 1);
     var floorH = toCm(spec.floor_height) || 300;
-    var speed = spec.speed || '1.0';
-    var shaft = spec.shaft || 'ready';
+    var speed = isNone(spec.speed) ? '' : (spec.speed || '1.0');
+    var shaft = isNone(spec.shaft) ? '' : (spec.shaft || 'ready');
+    var includeMachine = !!machine;
+    var includePanel = !isNone(spec.panel_origin);
     var machineSuffix = originSuffix(spec);
     var panelLabel = panelSuffix(spec);
-    var cabinCalc = calcCabinFromShaft(spec);
+    var cabinCalc = calcCabinFromShaft(Object.assign({}, spec, { capacity: cap }));
 
-    if (cabinCalc.error) {
+    if (cabinCalc.error && cabin) {
       return { error: cabinCalc.error };
     }
 
@@ -217,53 +236,79 @@
     var travCable = Math.ceil(travelM + 15);
     var doorsQty = stops * entr;
     var rows = [];
-    var cabinBase = CABIN_PRICES[cabin];
-    var cabinPrice = Math.round(applyOrigin(cabinBase, spec, 'light') * cabinCalc.priceFactor);
-    var cabinDesc = CABIN_NAMES[cabin] + ' ' + cabinCalc.label + machineSuffix;
+    var elevNote = elevators > 1 ? (' × ' + elevators + ' مصعد') : '';
 
     function add(stage, name, unit, qty, price) {
-      rows.push({ stage: stage, name: name, unit: unit, qty: qty, price: price });
+      rows.push({
+        stage: stage,
+        name: name + elevNote,
+        unit: unit,
+        qty: qty * elevators,
+        price: price,
+      });
     }
 
-    var machineBase = MACHINE_PRICES[machine][cap];
-    add(STAGE_SUPPLY, 'ماكينة ' + (machine === 'gearless' ? 'جيرلس MRL' : 'جير') + ' — ' + cap + ' كجم / ' + speed + ' م/ث' + machineSuffix, 'قطعة', 1, applyOrigin(machineBase, spec, 'full'));
-    add(STAGE_SUPPLY, 'لوحة تحكم + إنفرتر' + panelLabel, 'قطعة', 1, applyPanelOrigin(PANEL_BASE_PRICE, spec));
-    add(STAGE_SUPPLY, 'سكك كبينة T89 (بالمتر)', 'متر', railM, 70);
-    add(STAGE_SUPPLY, 'سكك ثقل T50 (بالمتر)', 'متر', railM, 45);
-    add(STAGE_SUPPLY, cabinDesc, 'قطعة', 1, cabinPrice);
-    add(STAGE_SUPPLY, 'باب كبينة أوتوماتيك + مشغل (Operator)' + machineSuffix, 'قطعة', 1, applyOrigin(4500, spec, 'light'));
-    add(STAGE_SUPPLY, DOOR_NAMES[door] + machineSuffix, 'باب', doorsQty, applyOrigin(DOOR_PRICES[door], spec, 'light'));
-    add(STAGE_SUPPLY, 'شاسيه كبينة + باراشوت (Safety Gear)', 'طقم', 1, 6500);
-    add(STAGE_SUPPLY, 'إطار ثقل موازن + بلوكات', 'طقم', 1, 3500);
-    add(STAGE_SUPPLY, 'حبال جر 8 مم (بالمتر)', 'متر', ropesM, 12);
-    add(STAGE_SUPPLY, 'منظم سرعة (Governor) + بكرة شد', 'طقم', 1, 1800);
-    add(STAGE_SUPPLY, 'بوفرات', 'قطعة', 2, 900);
-
-    add(STAGE_ELEC, 'ترافلينج كيبل (بالمتر)', 'متر', travCable, 18);
-    add(STAGE_ELEC, 'مفاتيح حدود + ممرات مغناطيسية', 'طقم', 1, 800);
-    add(STAGE_ELEC, 'لوحة كبينة COP', 'قطعة', 1, 1200);
-    add(STAGE_ELEC, 'أزرار استدعاء الأدوار LOP', 'قطعة', stops, 250);
-    add(STAGE_ELEC, 'فوتوسيل (ستارة ضوئية)', 'قطعة', 1, 350);
-    add(STAGE_ELEC, 'إنتركم + جرس إنذار', 'طقم', 1, 600);
-    add(STAGE_ELEC, 'إنارة وتهوية كبينة', 'طقم', 1, 700);
-
-    add(STAGE_INST, 'شيكالات تثبيت السكك', 'طقم', brackets, 120);
-    add(STAGE_INST, 'مسامير وزوايا ومتفرقات تثبيت', 'مقطوع', 1, 1500);
+    // مرحلة 1 — سكك وأبواب
+    add(STAGE_RAILS, 'سكك كبينة T89 (بالمتر)', 'متر', railM, 70);
+    add(STAGE_RAILS, 'سكك ثقل T50 (بالمتر)', 'متر', railM, 45);
+    if (door && DOOR_NAMES[door]) {
+      add(STAGE_RAILS, DOOR_NAMES[door] + machineSuffix, 'باب', doorsQty, applyOrigin(DOOR_PRICES[door], spec, 'light'));
+    }
+    add(STAGE_RAILS, 'شيكالات تثبيت السكك', 'طقم', brackets, 120);
+    add(STAGE_RAILS, 'مسامير وزوايا ومتفرقات تثبيت السكك', 'مقطوع', 1, 1500);
     if (shaft === 'steel') {
-      add(STAGE_INST, 'هيكل حديد + تكسية (يُسعَّر من حاسبة الهيكل)', 'مقطوع', 1, 0);
+      add(STAGE_RAILS, 'هيكل حديد + تكسية (يُسعَّر من حاسبة الهيكل)', 'مقطوع', 1, 0);
     }
+
+    // مرحلة 2 — كبينة وأحبال وماكينة
+    if (includeMachine && MACHINE_PRICES[machine]) {
+      var machineBase = MACHINE_PRICES[machine][cap] || MACHINE_PRICES[machine][630];
+      var machineName = 'ماكينة ' + (machine === 'gearless' ? 'جيرلس MRL' : 'جير') + ' — ' + cap + ' كجم';
+      if (speed) machineName += ' / ' + speed + ' م/ث';
+      machineName += machineSuffix;
+      add(STAGE_CABIN, machineName, 'قطعة', 1, applyOrigin(machineBase, spec, 'full'));
+    }
+    if (cabin && CABIN_NAMES[cabin]) {
+      var cabinBase = CABIN_PRICES[cabin];
+      var cabinPrice = Math.round(applyOrigin(cabinBase, spec, 'light') * (cabinCalc.priceFactor || 1));
+      var cabinDesc = CABIN_NAMES[cabin] + ' ' + (cabinCalc.label || '') + machineSuffix;
+      add(STAGE_CABIN, cabinDesc, 'قطعة', 1, cabinPrice);
+    }
+    add(STAGE_CABIN, 'باب كبينة أوتوماتيك + مشغل (Operator)' + machineSuffix, 'قطعة', 1, applyOrigin(4500, spec, 'light'));
+    add(STAGE_CABIN, 'شاسيه كبينة + باراشوت (Safety Gear)', 'طقم', 1, 6500);
+    add(STAGE_CABIN, 'إطار ثقل موازن + بلوكات', 'طقم', 1, 3500);
+    add(STAGE_CABIN, 'حبال جر 8 مم (بالمتر)', 'متر', ropesM, 12);
+    add(STAGE_CABIN, 'منظم سرعة (Governor) + بكرة شد', 'طقم', 1, 1800);
+    add(STAGE_CABIN, 'بوفرات', 'قطعة', 2, 900);
+
+    // مرحلة 3 — كنترول وتشغيل
+    if (includePanel) {
+      add(STAGE_CTRL, 'لوحة تحكم + إنفرتر' + panelLabel, 'قطعة', 1, applyPanelOrigin(PANEL_BASE_PRICE, spec));
+    }
+    add(STAGE_CTRL, 'ترافلينج كيبل (بالمتر)', 'متر', travCable, 18);
+    add(STAGE_CTRL, 'مفاتيح حدود + ممرات مغناطيسية', 'طقم', 1, 800);
+    add(STAGE_CTRL, 'لوحة كبينة COP', 'قطعة', 1, 1200);
+    add(STAGE_CTRL, 'أزرار استدعاء الأدوار LOP', 'قطعة', stops, 250);
+    add(STAGE_CTRL, 'فوتوسيل (ستارة ضوئية)', 'قطعة', 1, 350);
+    add(STAGE_CTRL, 'إنتركم + جرس إنذار', 'طقم', 1, 600);
+    add(STAGE_CTRL, 'إنارة وتهوية كبينة', 'طقم', 1, 700);
+    add(STAGE_CTRL, 'ضبط وبرمجة واختبارات تشغيل وتسليم', 'مقطوع', 1, 2000);
 
     return {
       rows: rows,
-      labor: 5000 + (1200 * stops),
+      labor: (5000 + (1200 * stops)) * elevators,
       quote_type: 'new',
       cabin_calc: cabinCalc,
+      elevator_count: elevators,
+      stages: [STAGE_RAILS, STAGE_CABIN, STAGE_CTRL],
     };
   }
 
   function buildUpgradeBOM(spec, selected) {
     var stops = num(spec.stops);
+    var elevators = Math.max(1, Math.round(num(spec.elevator_count) || 1));
     var cap = num(spec.capacity) || 630;
+    var elevNote = elevators > 1 ? (' × ' + elevators + ' مصعد') : '';
     var rows = [];
     var i, u, count = 0;
     for (i = 0; i < UPG.length; i++) {
@@ -271,9 +316,9 @@
       if (selected[u.id]) {
         rows.push({
           stage: STAGE_UPG,
-          name: u.name,
+          name: u.name + elevNote,
           unit: u.unit,
-          qty: u.qty(stops),
+          qty: u.qty(stops) * elevators,
           price: u.price(stops, cap, spec),
         });
         count++;
@@ -284,8 +329,9 @@
     }
     return {
       rows: rows,
-      labor: 2000 + (400 * stops),
+      labor: (2000 + (400 * stops)) * elevators,
       quote_type: 'upgrade',
+      elevator_count: elevators,
     };
   }
 
@@ -320,6 +366,10 @@
     ORIGIN_LABELS: ORIGIN_LABELS,
     DOOR_NAMES: DOOR_NAMES,
     CABIN_NAMES: CABIN_NAMES,
+    STAGE_RAILS: STAGE_RAILS,
+    STAGE_CABIN: STAGE_CABIN,
+    STAGE_CTRL: STAGE_CTRL,
+    STAGE_LABOR_SHARE: STAGE_LABOR_SHARE,
     UPG: UPG,
     buildNewBOM: buildNewBOM,
     buildUpgradeBOM: buildUpgradeBOM,
@@ -329,6 +379,27 @@
     originDisplay: originDisplay,
     toCm: toCm,
     CUSTOM_ORIGIN_OPTION: CUSTOM_ORIGIN_OPTION,
+    NONE_OPTION: NONE_OPTION,
+    isNone: isNone,
     num: num,
+    splitLaborByStage: function (laborTotal) {
+      var total = num(laborTotal);
+      var out = [];
+      var i, amount, used = 0;
+      for (i = 0; i < STAGE_LABOR_SHARE.length; i++) {
+        if (i === STAGE_LABOR_SHARE.length - 1) {
+          amount = Math.round(total - used);
+        } else {
+          amount = Math.round(total * STAGE_LABOR_SHARE[i].share);
+          used += amount;
+        }
+        out.push({
+          stage: STAGE_LABOR_SHARE[i].stage,
+          label: 'أجور وتركيب — ' + STAGE_LABOR_SHARE[i].stage.replace(/^مرحلة \d+ — /, ''),
+          amount: amount,
+        });
+      }
+      return out;
+    },
   };
 })(typeof window !== 'undefined' ? window : this);

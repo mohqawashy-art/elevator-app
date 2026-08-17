@@ -283,6 +283,32 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
       <div class="preview-box">معاينة الهيدر<br><img id="prev-sidebar" src="{{ brand_logo_url }}" alt=""></div>
       <div class="preview-box">معاينة التقرير<br><img id="prev-report" src="{{ brand_logo_url }}" alt=""></div>
     </div>
+
+    <div class="section" style="margin-top:22px">ختم وتوقيع الشركة على المستندات</div>
+    <p class="hint" style="margin-bottom:12px">تظهر تلقائياً في عروض الأسعار ومحاضر الاستلام والتقارير عند الطباعة. يُفضّل PNG بخلفية شفافة.</p>
+    <div class="logo-upload" style="gap:24px;flex-wrap:wrap">
+      <div class="logo-preview-wrap">
+        {% if company_stamp_url %}
+        <img class="logo-preview" src="{{ company_stamp_url }}" alt="ختم الشركة" style="max-height:120px;object-fit:contain">
+        {% else %}
+        <div class="logo-preview" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;min-height:100px;border:1px dashed var(--border)">لا يوجد ختم</div>
+        {% endif %}
+        <p class="hint" style="margin-top:8px">الختم الحالي</p>
+        <label style="margin-top:8px;display:block">رفع ختم جديد</label>
+        <input type="file" name="company_stamp" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+      </div>
+      <div class="logo-preview-wrap">
+        {% if company_sign_url %}
+        <img class="logo-preview" src="{{ company_sign_url }}" alt="توقيع الشركة" style="max-height:120px;object-fit:contain">
+        {% else %}
+        <div class="logo-preview" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;min-height:100px;border:1px dashed var(--border)">لا يوجد توقيع</div>
+        {% endif %}
+        <p class="hint" style="margin-top:8px">التوقيع الحالي</p>
+        <label style="margin-top:8px;display:block">رفع توقيع جديد</label>
+        <input type="file" name="company_sign" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+      </div>
+    </div>
+
     <div class="actions">
       <button type="submit" class="btn btn-primary">حفظ بيانات الشركة</button>
     </div>

@@ -112,12 +112,17 @@ class InstallProject(TenantMixin, db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True)
     lead_id = db.Column(db.Integer, db.ForeignKey('installation_leads.id'), nullable=True)
     accepted_quotation_id = db.Column(db.Integer, db.ForeignKey('installation_quotations.id'), nullable=True)
+    # ربط بعقد تركيب/تحديث LiftCore لحفظ القيمة المرجعية والطباعة
+    contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=True, index=True)
     execution_started_at = db.Column(db.DateTime, nullable=True)
+    # قيمة العقد الفعلية (إن وُجدت؛ وإلا يُستخدم إجمالي العرض المعتمد)
+    contract_value = db.Column(db.Float, nullable=True)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     customer = db.relationship('Customer', backref='installation_projects')
+    contract = db.relationship('Contract', foreign_keys=[contract_id], uselist=False)
     accepted_quotation = db.relationship(
         'InstallQuotation',
         foreign_keys=[accepted_quotation_id],
@@ -141,6 +146,18 @@ class InstallProject(TenantMixin, db.Model):
         back_populates='project',
         cascade='all, delete-orphan',
         order_by='InstallTimelineStep.sort_order',
+    )
+    cost_items = db.relationship(
+        'InstallProjectCostItem',
+        back_populates='project',
+        cascade='all, delete-orphan',
+        order_by='InstallProjectCostItem.cost_date.desc(), InstallProjectCostItem.id.desc()',
+    )
+    receipts = db.relationship(
+        'InstallProjectReceipt',
+        back_populates='project',
+        cascade='all, delete-orphan',
+        order_by='InstallProjectReceipt.installment_no.asc(), InstallProjectReceipt.id.asc()',
     )
 
     @property
@@ -288,3 +305,63 @@ class InstallTimelineStep(TenantMixin, db.Model):
     __table_args__ = (
         db.UniqueConstraint('project_id', 'step_key', name='uq_install_timeline_step'),
     )
+
+
+# =============================================
+# كارت المشروع — مصروفات بنود + دفعات العميل
+# =============================================
+COST_CATEGORIES = (
+    'قطع غيار',
+    'عمالة',
+    'نقل',
+    'موردين',
+    'أخرى',
+)
+
+COST_PAYMENT_STATUSES = (
+    'مدفوعة',
+    'غير مدفوعة',
+)
+
+RECEIPT_STATUSES = (
+    'مستلمة',
+    'معلقة',
+)
+
+
+class InstallProjectCostItem(TenantMixin, db.Model):
+    """بند تكلفة على مشروع تركيب (قطع / عمالة / نقل / …)."""
+    __tablename__ = 'installation_project_costs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('installation_projects.id'), nullable=False, index=True)
+    category = db.Column(db.String(50), nullable=False, default='أخرى')
+    title = db.Column(db.String(300), nullable=False)
+    amount = db.Column(db.Float, nullable=False, default=0)
+    cost_date = db.Column(db.Date, default=date.today)
+    # لعمالة بالدفعات أو أي بند مقسّم: رقم الدفعة
+    installment_no = db.Column(db.Integer, nullable=True)
+    # حالة سداد بند العمالة/الدفعة: مدفوعة | غير مدفوعة
+    payment_status = db.Column(db.String(30), nullable=True)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    project = db.relationship('InstallProject', back_populates='cost_items')
+
+
+class InstallProjectReceipt(TenantMixin, db.Model):
+    """دفعة مستلمة من العميل على قيمة المشروع."""
+    __tablename__ = 'installation_project_receipts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('installation_projects.id'), nullable=False, index=True)
+    installment_no = db.Column(db.Integer, nullable=False, default=1)
+    label = db.Column(db.String(200))  # مثال: دفعة مقدمة / عند التوريد
+    amount = db.Column(db.Float, nullable=False, default=0)
+    received_date = db.Column(db.Date, default=date.today)
+    payment_method = db.Column(db.String(50))
+    status = db.Column(db.String(30), default='مستلمة')
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    project = db.relationship('InstallProject', back_populates='receipts')
