@@ -172,6 +172,13 @@ def test_company_seal_size_and_offsets_save_and_render(client):
     assert '--doc-seal-width:300px;--doc-seal-x:-200px;--doc-seal-y:35px' in html
     assert '--doc-seal-width:40px;--doc-seal-x:42px;--doc-seal-y:200px' in html
 
+    if ids.get('install_quote_id'):
+        quote_print = client.get(f'/installation/quotes/{ids["install_quote_id"]}/print')
+        assert quote_print.status_code == 200
+        quote_print_html = quote_print.get_data(as_text=True)
+        assert '<div class="q-sign-box">' in quote_print_html
+        assert 'position:absolute;right:0;left:0;bottom:24px' in quote_print_html
+
     if ids.get('install_project_id'):
         quote = client.get(
             f'/installation/projects/{ids["install_project_id"]}/quote'

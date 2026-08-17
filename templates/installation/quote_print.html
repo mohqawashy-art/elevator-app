@@ -29,6 +29,12 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
 .terms{font-size:12px;line-height:1.9;margin-top:12px}
 .q-pay-list{margin:4px 0 8px}
 .q-pay-list div{padding:1px 0}
+.q-sign{display:flex;justify-content:space-between;margin-top:28px;font-size:12px;gap:24px}
+.q-sign-box{position:relative;width:42%;height:110px;text-align:center}
+.q-sign-line{position:absolute;right:0;left:0;bottom:0;border-top:1.5px solid #0a2647;padding-top:6px;font-weight:700}
+.q-sign-box .q-company-seal{position:absolute;right:0;left:0;bottom:24px;display:flex;justify-content:center;align-items:flex-end;gap:0;margin:0;flex-wrap:nowrap;pointer-events:none}
+.q-sign-box .q-company-seal .doc-seal-item{min-width:0}
+.q-sign-box .q-company-seal .doc-seal-caption{display:none}
 @media print{
   .toolbar{display:none!important}
   @page{size:A4 portrait;margin:0}
@@ -216,10 +222,14 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
     </div>
   </div>
   <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
-  {% include 'partials/document_company_seal.html' %}
-  <div style="display:flex;justify-content:space-between;margin-top:28px;font-size:12px;gap:24px">
-    <div style="text-align:center;width:42%"><div style="border-top:1.5px solid #0a2647;margin-top:36px;padding-top:6px;font-weight:700">ختم وتوقيع الشركة</div></div>
-    <div style="text-align:center;width:42%"><div style="border-top:1.5px solid #0a2647;margin-top:36px;padding-top:6px;font-weight:700">موافقة العميل</div></div>
+  <div class="q-sign">
+    <div class="q-sign-box">
+      {% with seal_class='q-company-seal' %}
+      {% include 'partials/document_company_seal.html' %}
+      {% endwith %}
+      <div class="q-sign-line">ختم وتوقيع الشركة</div>
+    </div>
+    <div class="q-sign-box"><div class="q-sign-line">موافقة العميل</div></div>
   </div>
 </div>
 </body>

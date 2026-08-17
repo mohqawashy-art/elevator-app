@@ -80,9 +80,10 @@ table.q-tbl tr.q-stage td{background:#f3e8cf;font-weight:800;color:#0a2647}
 .q-pay-list{margin:4px 0 8px}
 .q-pay-list div{padding:1px 0}
 .q-sign{display:flex;justify-content:space-between;margin-top:32px;font-size:12px}
-.q-sign .s{text-align:center;width:42%}
-.q-sign .s .ln{border-top:1.5px solid #0a2647;margin-top:40px;padding-top:6px;font-weight:700;color:#0a2647}
-.q-sign .q-company-seal{justify-content:center;margin:0 0 8px;gap:16px}
+.q-sign .s{position:relative;text-align:center;width:42%;height:110px}
+.q-sign .s .ln{position:absolute;right:0;left:0;bottom:0;border-top:1.5px solid #0a2647;margin:0;padding-top:6px;font-weight:700;color:#0a2647}
+.q-sign .q-company-seal{position:absolute;right:0;left:0;bottom:24px;justify-content:center;margin:0;gap:0;flex-wrap:nowrap;pointer-events:none}
+.q-sign .q-company-seal .doc-seal-item{min-width:0}
 .q-sign .q-company-seal .doc-seal-caption{display:none}
 @media print{
   /* إخفاء الصفحة بالكامل بدون حجز مساحة (يمنع الصفحات الفارغة) */
