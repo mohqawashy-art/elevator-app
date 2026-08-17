@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=unitselect1">
 </head>
 <body>
 {% include 'installation/_sidebar.html' %}
@@ -170,6 +170,7 @@
             <b>١) سكك وأبواب</b> ·
             <b>٢) كبينة وأحبال وماكينة</b> ·
             <b>٣) كنترول وتشغيل</b>
+            <br>الوحدة اختيارية لكل بند: قطعة / متر / عدد / طقم / مقطوع… أو «أخرى» لكتابة وحدة منطقتك.
           </div>
           <div style="overflow-x:auto">
             <table class="pricing-items">
@@ -245,6 +246,6 @@ window.__INSTALL_QUOTE__ = {
 };
 </script>
 <script src="{{ url_for('static', filename='installation-pricing.js') }}?v=elevcount1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=elevcount1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=unitselect1"></script>
 </body>
 </html>

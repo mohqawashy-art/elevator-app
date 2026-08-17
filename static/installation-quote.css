@@ -21,6 +21,14 @@ table.pricing-items tr.stage-total td{background:var(--bg3);font-weight:600}
 table.pricing-items input{width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);color:var(--text1);font-family:inherit;font-size:12px;text-align:center}
 table.pricing-items input.w-name{width:100%;text-align:right}
 html[dir="ltr"] table.pricing-items input.w-name{text-align:left}
+table.pricing-items .unit-cell{min-width:96px}
+table.pricing-items select.f-unit{
+  width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r-sm);
+  background:var(--bg3);color:var(--text1);font-family:inherit;font-size:12px
+}
+table.pricing-items input.f-unit-custom{
+  width:100%;margin-top:4px;text-align:right
+}
 .pricing-del{background:rgba(224,72,72,.12);color:var(--danger);border:none;border-radius:5px;width:24px;height:24px;cursor:pointer;font-weight:700}
 .pricing-empty{text-align:center;color:var(--text3);padding:24px;font-size:13px}
 .upg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}

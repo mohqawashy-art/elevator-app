@@ -297,10 +297,58 @@ document.addEventListener('DOMContentLoaded', function () {
     };
   }
 
+  var UNIT_OPTIONS = ['قطعة', 'متر', 'عدد', 'طقم', 'مقطوع', 'باب', 'كجم', 'م²', 'لفة', 'يوم', 'ساعة'];
+
+  function escapeAttr(s) {
+    return String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function unitCellHTML(current) {
+    var cur = String(current == null ? 'قطعة' : current).trim() || 'قطعة';
+    var opts = UNIT_OPTIONS.slice();
+    var i, html;
+    if (cur && opts.indexOf(cur) < 0 && cur !== '__custom__') {
+      opts.unshift(cur);
+    }
+    html = '<div class="unit-cell">'
+      + '<select class="f-unit" title="اختر الوحدة — أو أخرى لكتابة وحدة منطقتك">';
+    for (i = 0; i < opts.length; i++) {
+      html += '<option value="' + escapeAttr(opts[i]) + '"'
+        + (opts[i] === cur ? ' selected' : '') + '>' + opts[i] + '</option>';
+    }
+    html += '<option value="__custom__">أخرى…</option>'
+      + '</select>'
+      + '<input class="f-unit-custom" type="text" placeholder="اكتب الوحدة" value="" style="display:none">'
+      + '</div>';
+    return html;
+  }
+
+  function readUnit(tr) {
+    var sel = tr.querySelector('.f-unit');
+    var custom = tr.querySelector('.f-unit-custom');
+    if (!sel) return 'قطعة';
+    if (sel.value === '__custom__') {
+      return ((custom && custom.value) || '').trim() || 'قطعة';
+    }
+    return (sel.value || 'قطعة').trim();
+  }
+
+  function syncUnitCustomVisibility(tr, focusCustom) {
+    var sel = tr.querySelector('.f-unit');
+    var custom = tr.querySelector('.f-unit-custom');
+    if (!sel || !custom) return;
+    if (sel.value === '__custom__') {
+      custom.style.display = 'block';
+      if (focusCustom && !custom.value) custom.focus();
+    } else {
+      custom.style.display = 'none';
+    }
+  }
+
   function rowHTML(r) {
-    return '<tr class="item-row" data-stage="' + r.stage + '">'
-      + '<td><input class="w-name f-name" type="text" value="' + String(r.name).replace(/"/g, '&quot;') + '"></td>'
-      + '<td style="color:var(--text3);font-size:12px">' + r.unit + '</td>'
+    return '<tr class="item-row" data-stage="' + escapeAttr(r.stage) + '">'
+      + '<td><input class="w-name f-name" type="text" value="' + escapeAttr(r.name) + '"></td>'
+      + '<td>' + unitCellHTML(r.unit) + '</td>'
       + '<td><input class="f-qty" type="number" min="0" step="any" value="' + r.qty + '"></td>'
       + '<td><input class="f-price" type="number" min="0" step="any" value="' + r.price + '"></td>'
       + '<td class="line-total">0</td>'
@@ -330,8 +378,22 @@ document.addEventListener('DOMContentLoaded', function () {
   function bindTable() {
     var body = el('itemsBody');
     var inputs = body.querySelectorAll('input');
+    var selects = body.querySelectorAll('select.f-unit');
     var i;
-    for (i = 0; i < inputs.length; i++) { inputs[i].addEventListener('input', recalc); }
+    for (i = 0; i < inputs.length; i++) {
+      inputs[i].addEventListener('input', function () {
+        scheduleDraftSave();
+        recalc();
+      });
+    }
+    for (i = 0; i < selects.length; i++) {
+      selects[i].addEventListener('change', function () {
+        var tr = this.closest('tr');
+        syncUnitCustomVisibility(tr, true);
+        scheduleDraftSave();
+        recalc();
+      });
+    }
     var dels = body.querySelectorAll('.pricing-del');
     for (i = 0; i < dels.length; i++) {
       dels[i].addEventListener('click', function () {
@@ -339,6 +401,8 @@ document.addEventListener('DOMContentLoaded', function () {
         recalc();
       });
     }
+    var rows = body.querySelectorAll('tr.item-row');
+    for (i = 0; i < rows.length; i++) syncUnitCustomVisibility(rows[i]);
   }
 
   function collectRows() {
@@ -348,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
       out.push({
         stage: rows[i].getAttribute('data-stage') || '',
         name: rows[i].querySelector('.f-name').value || 'بند',
-        unit: rows[i].cells[1] ? rows[i].cells[1].textContent.trim() : '—',
+        unit: readUnit(rows[i]),
         qty: P.num(rows[i].querySelector('.f-qty').value),
         price: P.num(rows[i].querySelector('.f-price').value),
       });
@@ -499,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function () {
     tr.className = 'item-row';
     tr.setAttribute('data-stage', 'بنود إضافية');
     tr.innerHTML = '<td><input class="w-name f-name" type="text" placeholder="اسم البند"></td>'
-      + '<td style="color:var(--text3)">—</td>'
+      + '<td>' + unitCellHTML('قطعة') + '</td>'
       + '<td><input class="f-qty" type="number" min="0" step="any" value="1"></td>'
       + '<td><input class="f-price" type="number" min="0" step="any" value="0"></td>'
       + '<td class="line-total">0</td>'
