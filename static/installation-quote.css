@@ -117,25 +117,25 @@ table.q-tbl tr.q-stage td{background:#f3e8cf;font-weight:800;color:#0a2647}
     max-width:210mm!important;
     min-width:210mm!important;
     margin:0!important;
-    padding:8mm 10mm!important;
+    padding:6mm 8mm!important;
     box-sizing:border-box!important;
-    font-size:16px!important;
+    font-size:12px!important;
     color:#1c2738!important;
   }
-  .q-head{padding-bottom:14px!important;margin-bottom:4px!important;width:100%!important}
-  .q-head .brand img{max-height:88px!important;width:auto!important;max-width:260px!important}
-  .q-meta{font-size:14px!important;line-height:1.8!important}
-  .q-title{font-size:24px!important;margin:16px 0 12px!important}
-  .q-sec{margin-top:18px!important;width:100%!important}
-  .q-sec h3{font-size:16px!important;margin-bottom:10px!important}
-  table.q-tbl{font-size:15px!important;width:100%!important}
-  table.q-tbl th{padding:11px 12px!important;font-size:14px!important}
-  table.q-tbl td{padding:11px 12px!important}
-  .q-totals{width:48%!important;max-width:420px!important;font-size:16px!important;margin-top:18px!important}
-  .q-totals .r{padding:8px 0!important}
-  .q-totals .g{font-size:18px!important;padding:14px 16px!important}
-  .q-terms{font-size:14px!important;line-height:2!important}
-  .q-sign{margin-top:44px!important;font-size:14px!important;width:100%!important}
-  .q-sign .s .ln{margin-top:52px!important}
+  .q-head{padding-bottom:8px!important;margin-bottom:2px!important;width:100%!important}
+  .q-head .brand img{max-height:56px!important;width:auto!important;max-width:160px!important}
+  .q-meta{font-size:11px!important;line-height:1.55!important}
+  .q-title{font-size:16px!important;margin:8px 0 6px!important}
+  .q-sec{margin-top:10px!important;width:100%!important}
+  .q-sec h3{font-size:12px!important;margin-bottom:6px!important}
+  table.q-tbl{font-size:11px!important;width:100%!important}
+  table.q-tbl th{padding:5px 7px!important;font-size:11px!important}
+  table.q-tbl td{padding:5px 7px!important}
+  .q-totals{width:42%!important;max-width:280px!important;font-size:12px!important;margin-top:10px!important}
+  .q-totals .r{padding:4px 0!important}
+  .q-totals .g{font-size:13px!important;padding:8px 10px!important}
+  .q-terms{font-size:11px!important;line-height:1.65!important;margin-top:8px!important}
+  .q-sign{margin-top:22px!important;font-size:11px!important;width:100%!important}
+  .q-sign .s .ln{margin-top:28px!important;padding-top:4px!important}
   .q-sign,.q-totals{page-break-inside:avoid}
 }
