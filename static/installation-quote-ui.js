@@ -767,8 +767,24 @@ document.addEventListener('DOMContentLoaded', function () {
       + paymentTermsText(getPaymentPcts(), grand) + '<br>'
       + '<b>الضمان:</b> سنة على أعمال التركيب + صيانة مجانية 12 شهراً.'
       + '</div></div>'
-      + '<div class="q-sign"><div class="s"><div class="ln">ختم وتوقيع الشركة</div></div><div class="s"><div class="ln">موافقة العميل</div></div></div>';
+      + '<div class="q-sign"><div class="s">'
+      + companySealHtml()
+      + '<div class="ln">ختم وتوقيع الشركة</div></div><div class="s"><div class="ln">موافقة العميل</div></div></div>';
     el('quoteOverlay').classList.add('open');
+  }
+
+  function companySealHtml() {
+    var stamp = cfg.companyStampUrl || '';
+    var sign = cfg.companySignUrl || '';
+    if (!stamp && !sign) return '';
+    var html = '<div class="doc-company-seal q-company-seal">';
+    if (stamp) {
+      html += '<div class="doc-seal-item"><img src="' + stamp + '" alt="ختم الشركة" class="doc-seal-stamp"><div class="doc-seal-caption">ختم الشركة</div></div>';
+    }
+    if (sign) {
+      html += '<div class="doc-seal-item"><img src="' + sign + '" alt="توقيع الشركة" class="doc-seal-sign"><div class="doc-seal-caption">توقيع الشركة</div></div>';
+    }
+    return html + '</div>';
   }
 
   function saveQuote() {

@@ -2,7 +2,8 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=printcompact1">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=seal1">
+<link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=1">
 </head>
 <body>
 {% include 'installation/_sidebar.html' %}
@@ -277,10 +278,12 @@ window.__INSTALL_QUOTE__ = {
   defaultCustomerId: {{ default_customer_id | tojson }},
   companyName: {{ ((company_settings.company_name if company_settings and company_settings.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة')) | tojson }},
   companyLogoUrl: {{ brand_logo_url | tojson }},
-  logoWidth: {{ (logo_width_report or 150) | tojson }}
+  logoWidth: {{ (logo_width_report or 150) | tojson }},
+  companyStampUrl: {{ (company_stamp_url or '') | tojson }},
+  companySignUrl: {{ (company_sign_url or '') | tojson }}
 };
 </script>
 <script src="{{ url_for('static', filename='installation-pricing.js') }}?v=logoonly1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=logoonly1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=seal1"></script>
 </body>
 </html>

@@ -80,6 +80,8 @@ table.q-tbl tr.q-stage td{background:#f3e8cf;font-weight:800;color:#0a2647}
 .q-sign{display:flex;justify-content:space-between;margin-top:32px;font-size:12px}
 .q-sign .s{text-align:center;width:42%}
 .q-sign .s .ln{border-top:1.5px solid #0a2647;margin-top:40px;padding-top:6px;font-weight:700;color:#0a2647}
+.q-sign .q-company-seal{justify-content:center;margin:0 0 8px;gap:16px}
+.q-sign .q-company-seal .doc-seal-caption{display:none}
 @media print{
   /* إخفاء الصفحة بالكامل بدون حجز مساحة (يمنع الصفحات الفارغة) */
   body > *:not(#quoteOverlay){display:none!important}

@@ -1018,6 +1018,8 @@ class Settings(TenantMixin, db.Model):
     currency        = db.Column(db.String(10), default='SAR')
     language        = db.Column(db.String(10), default='ar')
     logo_path       = db.Column(db.String(300))
+    company_stamp_path = db.Column(db.String(300))  # ختم الشركة للمستندات
+    company_sign_path  = db.Column(db.String(300))  # توقيع الشركة المطبوع على المستندات
     logo_width_sidebar = db.Column(db.Integer, default=150)
     logo_width_report  = db.Column(db.Integer, default=150)
     logo_width_login   = db.Column(db.Integer, default=180)

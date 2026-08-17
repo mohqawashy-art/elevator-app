@@ -390,11 +390,18 @@ body.page-a5 .qr-side img{width:85px;height:85px}
     <div class="footer-box" {% if not show_bank %}style="grid-column:1/-1"{% endif %}>
       <h4>ملاحظات</h4>
       <ul>
+        {% if company_stamp_url or company_sign_url %}
+        <li>جميع الأسعار بالريال السعودي{% if is_tax_invoice %} شاملة ضريبة القيمة المضافة{% endif %}.</li>
+        {% else %}
         <li>هذه الفاتورة صادرة إلكترونياً ولا تحتاج إلى توقيع أو ختم.</li>
         <li>جميع الأسعار بالريال السعودي{% if is_tax_invoice %} شاملة ضريبة القيمة المضافة{% endif %}.</li>
+        {% endif %}
       </ul>
     </div>
   </div>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=1">
+  {% include 'partials/document_company_seal.html' %}
 
 </div><!-- doc-body -->
 

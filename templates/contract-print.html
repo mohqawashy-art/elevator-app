@@ -198,11 +198,15 @@ body{
 <p class="w-body">22ـ حرر هذا العقد من نسختين وتم توقيع الطرفين على جميع صفحاتها وبيد كل طرف نسخة للمعمل بموجبها ولإبرازه عند اللزوم لجهات الاختصاص في أي نزاع لا قدر الله قد ينشأ بين الطرفين. </p>
 <p class="w-empty">&nbsp;</p>
 
+<link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=1">
 <div class="signatures-block">
   <div class="signatures-row">
     <div class="sig-col sig-first">
       <div class="sig-title">الطرف الأول</div>
       <div class="sig-party-name">{{ company.company_name }}</div>
+      {% with seal_class='doc-seal-contract' %}
+      {% include 'partials/document_company_seal.html' %}
+      {% endwith %}
       <div class="sig-label">التوقيع /</div>
       <div class="sig-pad"></div>
     </div>

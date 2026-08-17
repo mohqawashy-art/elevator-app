@@ -597,6 +597,9 @@ html[dir="ltr"] .head-doc{text-align:right}
 
       <div class="sig-label">{{ bi(po_ar.sig_auth, po_en.sig_auth) }} — {% if en_only %}{{ po_company_display }}{% else %}{{ po_company_name_ar }}{% if po_company_name_en %} <span class="bi-en">/ {{ po_company_name_en }}</span>{% endif %}{% endif %}</div>
 
+      <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=1">
+      {% include 'partials/document_company_seal.html' %}
+
       <img class="sig-print-img" id="sig-print-img" alt="{{ po_en.sig_alt if en_only else po_ar.sig_alt }}" {% if not order.signature_data %}style="display:none"{% endif %}
 
            {% if order.signature_data %}src="{{ order.signature_data }}"{% endif %}>
