@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}">
@@ -223,6 +223,7 @@
 <script>
 window.__INSTALL_QUOTE__ = {
   saveUrl: {{ url_for('installation.project_quote_save', project_id=project.id) | tojson }},
+  projectId: {{ project.id | tojson }},
   quoteCode: {{ next_quote_code | tojson }},
   prefill: {{ prefill | tojson }},
   saved: {{ saved_json | safe }},
@@ -236,7 +237,7 @@ window.__INSTALL_QUOTE__ = {
   defaultCustomerId: {{ default_customer_id | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=stages3"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=stages3"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=stages3b"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=nodraftreload1"></script>
 </body>
 </html>

@@ -17,8 +17,74 @@ document.addEventListener('DOMContentLoaded', function () {
   var currentMode = 'new';
   var upgSelected = { commission: true };
   var hasBuiltRows = false;
+  var draftKey = 'lc_install_quote_draft_' + (cfg.projectId || '0') + '_' + (cfg.quotationId || 'new');
+  var draftTimer = null;
 
   function el(id) { return document.getElementById(id); }
+
+  function markDrafting(on) {
+    try {
+      document.documentElement.setAttribute('data-lc-drafting', on ? '1' : '0');
+    } catch (e) { /* ignore */ }
+  }
+
+  function collectDraft() {
+    return {
+      mode: currentMode,
+      customer_id: el('cCustomer') ? el('cCustomer').value : '',
+      valid_days: el('cValid') ? el('cValid').value : 30,
+      labor: el('sumLabor') ? el('sumLabor').value : 0,
+      transport: el('sumTrans') ? el('sumTrans').value : 0,
+      other_costs: el('sumOther') ? el('sumOther').value : 0,
+      profit_pct: el('sumProfitP') ? el('sumProfitP').value : 20,
+      pay_advance_pct: el('payAdvance') ? el('payAdvance').value : 50,
+      pay_supply_pct: el('paySupply') ? el('paySupply').value : 40,
+      pay_final_pct: el('payFinal') ? el('payFinal').value : 10,
+      spec: currentMode === 'new' ? getNewSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected }),
+      lines: collectRows(),
+      quote_type: currentMode,
+      code: quoteCode,
+      savedAt: Date.now(),
+    };
+  }
+
+  function persistDraft() {
+    try {
+      var draft = collectDraft();
+      if (!draft.lines || !draft.lines.length) return;
+      sessionStorage.setItem(draftKey, JSON.stringify(draft));
+      markDrafting(true);
+    } catch (e) { /* ignore */ }
+  }
+
+  function scheduleDraftSave() {
+    markDrafting(true);
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(persistDraft, 400);
+  }
+
+  function clearDraft() {
+    try { sessionStorage.removeItem(draftKey); } catch (e) { /* ignore */ }
+    markDrafting(false);
+  }
+
+  function restoreDraftIfNeeded() {
+    try {
+      var raw = sessionStorage.getItem(draftKey);
+      if (!raw) return false;
+      var s = JSON.parse(raw);
+      if (!s || !s.lines || !s.lines.length) return false;
+      if (s.savedAt && (Date.now() - s.savedAt) > 12 * 60 * 60 * 1000) {
+        clearDraft();
+        return false;
+      }
+      cfg.saved = s;
+      markDrafting(true);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 
   function toStoredCm(val) {
     var n = parseFloat(val);
@@ -372,6 +438,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
       warn.style.display = 'none';
     }
+    if (hasBuiltRows || rows.length) scheduleDraftSave();
   }
 
   function buildNewBOM() {
@@ -601,6 +668,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (data.ok) {
           quoteCode = data.code;
           cfg.quotationId = data.id;
+          clearDraft();
           alert('تم حفظ العرض ' + data.code);
           if (window.history && window.location) {
             var u = new URL(window.location.href);
@@ -720,14 +788,19 @@ document.addEventListener('DOMContentLoaded', function () {
     if (el(id)) el(id).addEventListener('input', recalc);
   });
 
-  loadSaved();
-  if (!cfg.saved && cfg.prefill && cfg.prefill.customer_id) {
+  var restored = restoreDraftIfNeeded();
+  if (cfg.saved) {
+    loadSaved();
+  } else if (cfg.prefill && cfg.prefill.customer_id) {
     if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
       LcClientSelect.setCustomers('cCustomer', customers, cfg.prefill.customer_id);
     } else if (el('cCustomer')) {
       el('cCustomer').value = String(cfg.prefill.customer_id);
     }
     onCustomerChange();
+  }
+  if (restored) {
+    markDrafting(true);
   }
   recalc();
 });
