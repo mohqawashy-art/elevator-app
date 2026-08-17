@@ -247,11 +247,13 @@ def create_execution_timeline(project, db_session):
     from installation.models import InstallTimelineStep
 
     existing = {s.step_key for s in project.timeline_steps}
+    org_id = getattr(project, 'organization_id', None)
     created = 0
     for i, tpl in enumerate(EXECUTION_STEP_TEMPLATES):
         if tpl['key'] in existing:
             continue
         db_step = InstallTimelineStep(
+            organization_id=org_id,
             project_id=project.id,
             step_key=tpl['key'],
             title=tpl['title'],
@@ -262,6 +264,7 @@ def create_execution_timeline(project, db_session):
             has_amount=bool(tpl.get('has_amount')),
         )
         db_session.add(db_step)
+        project.timeline_steps.append(db_step)
         created += 1
     if created:
         db_session.flush()

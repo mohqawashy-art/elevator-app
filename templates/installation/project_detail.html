@@ -361,12 +361,15 @@
               <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm">طباعة</a>
               {% if q.status not in ('مقبول', 'مرفوض') and not project.execution_active %}
               <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/send" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-secondary btn-sm">مُرسل</button>
               </form>
               <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('تأكيد موافقة العميل وبدء التنفيذ؟')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-primary btn-sm">✓ قبول العميل</button>
               </form>
               <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/cancel" style="display:inline" onsubmit="return confirm('إلغاء عرض السعر {{ q.code }}؟')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger)">إلغاء العرض</button>
               </form>
               {% elif q.status == 'مقبول' %}
