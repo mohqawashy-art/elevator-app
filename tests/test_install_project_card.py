@@ -1,10 +1,39 @@
 """اختبارات كارت مشروع التركيب."""
 from datetime import date
 
-from installation.models import InstallProject, InstallProjectCostItem, InstallProjectReceipt
+from sqlalchemy import text
+
+from installation.models import InstallLead, InstallProject, InstallProjectCostItem, InstallProjectReceipt
 from installation.project_card import build_project_card, ensure_project_card_schema
 from models import Organization, db
 from tests.conftest import login_as
+
+
+def test_leads_list_recovers_missing_contract_value(client):
+    """قائمة الفرص كانت تفشل 500 إذا غاب contract_value عن installation_projects."""
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        lead = InstallLead(
+            organization_id=org.id,
+            code='LD-MISSCOL',
+            client_name='عميل اختبار',
+            status='جديد',
+        )
+        db.session.add(lead)
+        db.session.commit()
+        # محاكاة إنتاج بلا عمود القيمة
+        try:
+            db.session.execute(text('ALTER TABLE installation_projects DROP COLUMN contract_value'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        import installation.routes as install_routes
+        install_routes._schema_ensured = False
+
+    resp = client.get('/installation/leads')
+    assert resp.status_code == 200
+    assert 'فرص البيع' in resp.data.decode('utf-8', errors='ignore')
 
 
 def test_project_card_costs_and_receipts(client):

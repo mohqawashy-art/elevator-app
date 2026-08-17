@@ -10,10 +10,18 @@ from models import db
 
 
 def ensure_project_card_schema() -> None:
-    """إنشاء جداول الكارت وعمود قيمة العقد إن غابا."""
+    """إنشاء جداول الكارت وعمود قيمة العقد إن غابا.
+
+    يجب استدعاؤه قبل أي مسار يحمّل InstallProject (مثل قائمة الفرص عبر lead.project)،
+    وإلا يفشل الاستعلام بـ 500 عند غياب العمود في Postgres/SQLite.
+    """
     from installation.models import InstallProjectCostItem, InstallProjectReceipt
 
     insp = inspect(db.engine)
+    try:
+        insp.clear_cache()
+    except Exception:
+        pass
     tables = set(insp.get_table_names())
     if 'installation_project_costs' not in tables:
         InstallProjectCostItem.__table__.create(bind=db.engine, checkfirst=True)
@@ -22,8 +30,20 @@ def ensure_project_card_schema() -> None:
     if 'installation_projects' in tables:
         cols = {c['name'] for c in insp.get_columns('installation_projects')}
         if 'contract_value' not in cols:
-            db.session.execute(text('ALTER TABLE installation_projects ADD COLUMN contract_value FLOAT'))
+            dialect = (db.engine.dialect.name or '').lower()
+            if dialect == 'postgresql':
+                sql = (
+                    'ALTER TABLE installation_projects '
+                    'ADD COLUMN IF NOT EXISTS contract_value DOUBLE PRECISION'
+                )
+            else:
+                sql = 'ALTER TABLE installation_projects ADD COLUMN contract_value FLOAT'
+            db.session.execute(text(sql))
             db.session.commit()
+            try:
+                insp.clear_cache()
+            except Exception:
+                pass
 
 
 def project_contract_value(project: InstallProject) -> float:

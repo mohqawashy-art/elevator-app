@@ -55,6 +55,22 @@ from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
 install_bp = Blueprint('installation', __name__, url_prefix='/installation')
 
+_schema_ensured = False
+
+
+@install_bp.before_request
+def _ensure_install_schema():
+    """ضمان أعمدة/جداول كارت المشروع قبل أي صفحة تركيب (يمنع 500 على الفرص)."""
+    global _schema_ensured
+    if _schema_ensured:
+        return
+    try:
+        from installation.project_card import ensure_project_card_schema
+        ensure_project_card_schema()
+        _schema_ensured = True
+    except Exception:
+        db.session.rollback()
+
 
 def _next_code(model, prefix, digits=4):
     max_num = 0
