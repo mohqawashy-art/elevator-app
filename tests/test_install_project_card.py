@@ -121,7 +121,7 @@ def test_project_card_costs_and_receipts(client):
             code='PRJ-CARD1',
             title='مشروع كارت',
             status='عقد',
-            contract_value=100000,
+            contract_value=40000,
         )
         db.session.add(project)
         db.session.flush()
@@ -129,17 +129,38 @@ def test_project_card_costs_and_receipts(client):
             organization_id=org.id,
             project_id=project.id,
             category='قطع غيار',
-            title='سكك',
-            amount=15000,
+            title='قطع غيار',
+            amount=23000,
             cost_date=date.today(),
         ))
         db.session.add(InstallProjectCostItem(
             organization_id=org.id,
             project_id=project.id,
             category='عمالة',
-            title='دفعة عمالة 1',
-            amount=8000,
+            title='دفعة أولى',
+            amount=2000,
             installment_no=1,
+            payment_status='مدفوعة',
+            cost_date=date.today(),
+        ))
+        db.session.add(InstallProjectCostItem(
+            organization_id=org.id,
+            project_id=project.id,
+            category='عمالة',
+            title='دفعة ثانية',
+            amount=2000,
+            installment_no=2,
+            payment_status='غير مدفوعة',
+            cost_date=date.today(),
+        ))
+        db.session.add(InstallProjectCostItem(
+            organization_id=org.id,
+            project_id=project.id,
+            category='عمالة',
+            title='دفعة ثالثة',
+            amount=1600,
+            installment_no=3,
+            payment_status='غير مدفوعة',
             cost_date=date.today(),
         ))
         db.session.add(InstallProjectReceipt(
@@ -147,7 +168,7 @@ def test_project_card_costs_and_receipts(client):
             project_id=project.id,
             installment_no=1,
             label='دفعة رقم 1',
-            amount=40000,
+            amount=10000,
             status='مستلمة',
             received_date=date.today(),
         ))
@@ -155,16 +176,24 @@ def test_project_card_costs_and_receipts(client):
         pid = project.id
 
         card = build_project_card(db.session.get(InstallProject, pid))
-        assert card['contract_value'] == 100000
-        assert card['total_cost'] == 23000
-        assert card['received'] == 40000
-        assert card['client_remaining'] == 60000
-        assert card['profit'] == 77000
-        assert len(card['cost_groups']) == 2
+        assert card['contract_value'] == 40000
+        assert card['total_cost'] == 28600
+        assert card['received'] == 10000
+        assert card['profit'] == 11400
+        labels = [r['label'] for r in card['sheet_rows']]
+        assert 'قيمة المشروع' in labels
+        assert 'تكاليف المشروع' in labels
+        assert 'قطع غيار' in labels
+        assert 'عمالة' in labels
+        assert 'دفعة أولى' in labels
+        assert 'دفعة ثانية' in labels
+        assert 'دفعة ثالثة' in labels
 
     resp = client.get(f'/installation/projects/{pid}')
     assert resp.status_code == 200
     body = resp.data.decode('utf-8', errors='ignore')
     assert 'كارت المشروع' in body
-    assert 'دفعة رقم 1' in body
-    assert 'سكك' in body
+    assert 'دفعة أولى' in body
+    assert 'مدفوعة' in body
+    assert 'إمكانية فاتورة قطع غيار' in body
+    assert 'pc-sheet' in body

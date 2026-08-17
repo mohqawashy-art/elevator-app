@@ -21,6 +21,7 @@ from installation.models import (
     QUOTE_STATUSES,
     TIMELINE_STEP_STATUSES,
     COST_CATEGORIES,
+    COST_PAYMENT_STATUSES,
     RECEIPT_STATUSES,
 )
 from installation.timeline import (
@@ -296,6 +297,7 @@ def project_detail(project_id):
         quote_statuses=QUOTE_STATUSES,
         card=card,
         cost_categories=COST_CATEGORIES,
+        cost_payment_statuses=COST_PAYMENT_STATUSES,
         receipt_statuses=RECEIPT_STATUSES,
         today=date.today().isoformat(),
         page_title=f'مشروع {project.code}',
@@ -336,9 +338,6 @@ def project_card_cost_add(project_id):
         amount = float(request.form.get('amount') or 0)
     except ValueError:
         amount = 0
-    if not title or amount <= 0:
-        flash('أدخل وصف البند ومبلغاً أكبر من صفر', 'error')
-        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
     date_raw = (request.form.get('cost_date') or '').strip()
     try:
         cost_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date.today()
@@ -346,6 +345,20 @@ def project_card_cost_add(project_id):
         cost_date = date.today()
     inst_raw = (request.form.get('installment_no') or '').strip()
     installment_no = int(inst_raw) if inst_raw.isdigit() else None
+    pay_status = (request.form.get('payment_status') or '').strip()
+    if pay_status not in COST_PAYMENT_STATUSES:
+        pay_status = 'غير مدفوعة' if installment_no or category == 'عمالة' else None
+    if not title:
+        if category == 'عمالة' and installment_no:
+            from installation.project_card import installment_label
+            title = installment_label(installment_no)
+        elif installment_no:
+            title = f'دفعة {installment_no}'
+        else:
+            title = category
+    if amount <= 0:
+        flash('أدخل مبلغاً أكبر من صفر', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
     item = InstallProjectCostItem(
         project_id=project.id,
         category=category,
@@ -353,12 +366,30 @@ def project_card_cost_add(project_id):
         amount=amount,
         cost_date=cost_date,
         installment_no=installment_no,
+        payment_status=pay_status,
         notes=(request.form.get('notes') or '').strip() or None,
     )
     assign_organization(item)
     db.session.add(item)
     db.session.commit()
     flash('تمت إضافة بند التكلفة', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/costs/<int:item_id>/status', methods=['POST'])
+def project_card_cost_status(project_id, item_id):
+    from installation.project_card import ensure_project_card_schema
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    item = tenant_query(InstallProjectCostItem).filter_by(id=item_id, project_id=project.id).first_or_404()
+    status = (request.form.get('payment_status') or '').strip()
+    if status not in COST_PAYMENT_STATUSES:
+        flash('حالة السداد غير صحيحة', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+    item.payment_status = status
+    db.session.commit()
+    flash('تم تحديث حالة الدفعة', 'success')
     return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
 
 

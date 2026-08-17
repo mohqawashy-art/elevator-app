@@ -73,7 +73,7 @@
     </div>
     {% endif %}
 
-    {# —— كارت المشروع المالي —— #}
+    {# —— كارت المشروع المالي (نمط جدول Excel) —— #}
     <div class="panel" id="project-card" style="border-color:rgba(200,160,85,.35)">
       <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <span>كارت المشروع</span>
@@ -85,180 +85,168 @@
       <p style="font-size:13px;color:var(--danger);margin:0 0 12px">تعذّر تحميل جداول الكارت: {{ card.schema_error }}</p>
       {% endif %}
 
-      <div class="stat-grid" style="margin-bottom:16px">
-        <div class="stat-card">
-          <div class="stat-val" style="font-family:var(--font-en);font-size:18px;color:var(--accent)">{{ '{:,.0f}'.format(card.contract_value) }}</div>
-          <div class="stat-label">قيمة المشروع</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" style="font-family:var(--font-en);font-size:18px;color:var(--success)">{{ '{:,.0f}'.format(card.received) }}</div>
-          <div class="stat-label">محصّل من العميل</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" style="font-family:var(--font-en);font-size:18px;color:var(--warning)">{{ '{:,.0f}'.format(card.client_remaining) }}</div>
-          <div class="stat-label">متبقي على العميل</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" style="font-family:var(--font-en);font-size:18px;color:var(--danger)">{{ '{:,.0f}'.format(card.total_cost) }}</div>
-          <div class="stat-label">تكلفة المشروع</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" style="font-family:var(--font-en);font-size:18px;color:{% if card.profit >= 0 %}var(--success){% else %}var(--danger){% endif %}">{{ '{:,.0f}'.format(card.profit) }}</div>
-          <div class="stat-label">الربح التقديري</div>
-        </div>
-      </div>
-
-      <form method="post" action="/installation/projects/{{ project.id }}/card/value" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:20px">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <label style="font-size:11px;color:var(--text3)">تعديل قيمة المشروع (ر.س) — اتركه فارغاً لاستخدام العرض</label>
-          <input type="number" step="0.01" name="contract_value" value="{{ project.contract_value if project.contract_value is not none else '' }}" placeholder="{{ '{:.0f}'.format(card.contract_value) if card.contract_value else '' }}" style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-en);min-width:160px">
-        </div>
-        <button type="submit" class="btn btn-secondary btn-sm">حفظ القيمة</button>
-      </form>
-
-      <div class="card-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;min-width:0">
-          <div style="font-size:13px;font-weight:600;margin-bottom:10px">دفعات العميل</div>
-          <div style="overflow-x:auto">
-          <table style="margin-bottom:12px">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>البيان</th>
-                <th>المبلغ</th>
-                <th>التاريخ</th>
-                <th>الحالة</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for r in card.receipts %}
-              <tr>
-                <td style="font-family:var(--font-en)">{{ r.installment_no }}</td>
-                <td>{{ r.label or ('دفعة رقم ' ~ r.installment_no) }}</td>
-                <td style="font-family:var(--font-en)">{{ '{:,.0f}'.format(r.amount or 0) }}</td>
-                <td style="font-family:var(--font-en)">{{ r.received_date }}</td>
-                <td><span class="badge {{ 'badge-ok' if r.status=='مستلمة' else 'badge-warn' }}">{{ r.status }}</span></td>
-                <td>
-                  <form method="post" action="/installation/projects/{{ project.id }}/card/receipts/{{ r.id }}/delete" onsubmit="return confirm('حذف الدفعة؟')" style="display:inline">
+      <div class="pc-sheet-wrap" style="overflow-x:auto;margin-bottom:16px">
+        <table class="pc-sheet">
+          <thead>
+            <tr>
+              <th style="width:44%">البند</th>
+              <th style="width:22%">المبلغ</th>
+              <th style="width:34%">الحالة / ملاحظة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in card.sheet_rows %}
+            <tr class="pc-row-{{ row.kind }}">
+              <td class="pc-label{% if row.kind == 'line' or row.kind == 'receipt' %} pc-indent{% endif %}">
+                {{ row.label }}
+              </td>
+              <td class="pc-amount" style="font-family:var(--font-en);direction:ltr">
+                {% if row.amount is not none %}{{ '{:,.0f}'.format(row.amount) }}{% else %}—{% endif %}
+              </td>
+              <td class="pc-status">
+                {% if row.kind == 'value' %}
+                <form method="post" action="/installation/projects/{{ project.id }}/card/value" class="pc-inline-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="number" step="0.01" name="contract_value" value="{{ project.contract_value if project.contract_value is not none else '' }}" placeholder="قيمة يدوية" title="اتركه فارغاً لاستخدام العرض">
+                  <button type="submit" class="btn btn-secondary btn-sm">حفظ</button>
+                </form>
+                {% elif row.kind == 'category' and row.note %}
+                <span class="pc-note">{{ row.note }}</span>
+                {% elif row.kind == 'line' and row.item %}
+                <div class="pc-status-actions">
+                  {% if row.status %}
+                  <form method="post" action="/installation/projects/{{ project.id }}/card/costs/{{ row.item.id }}/status" class="pc-inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="payment_status" onchange="this.form.submit()">
+                      {% for s in cost_payment_statuses %}
+                      <option value="{{ s }}" {% if row.status == s %}selected{% endif %}>{{ s }}</option>
+                      {% endfor %}
+                    </select>
+                  </form>
+                  {% endif %}
+                  <form method="post" action="/installation/projects/{{ project.id }}/card/costs/{{ row.item.id }}/delete" onsubmit="return confirm('حذف البند؟')" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger)">حذف</button>
                   </form>
-                </td>
-              </tr>
-              {% else %}
-              <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:14px">لا دفعات بعد</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          </div>
-          <form method="post" action="/installation/projects/{{ project.id }}/card/receipts/add" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div>
-              <label style="font-size:10px;color:var(--text3);display:block">رقم</label>
-              <input type="number" name="installment_no" min="1" value="{{ (card.receipts|length) + 1 }}" style="width:64px;padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:var(--font-en)">
-            </div>
-            <div style="flex:1;min-width:120px">
-              <label style="font-size:10px;color:var(--text3);display:block">البيان</label>
-              <input type="text" name="label" placeholder="دفعة رقم …" style="width:100%;padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1)">
-            </div>
-            <div>
-              <label style="font-size:10px;color:var(--text3);display:block">المبلغ</label>
-              <input type="number" step="0.01" name="amount" required style="width:100px;padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:var(--font-en)">
-            </div>
-            <div>
-              <label style="font-size:10px;color:var(--text3);display:block">التاريخ</label>
-              <input type="date" name="received_date" value="{{ today }}" style="padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1)">
-            </div>
-            <div>
-              <label style="font-size:10px;color:var(--text3);display:block">الحالة</label>
-              <select name="status" style="padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1)">
-                {% for s in receipt_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
-              </select>
-            </div>
-            <button type="submit" class="btn btn-primary btn-sm">+ دفعة</button>
-          </form>
-        </div>
+                </div>
+                {% elif row.kind == 'receipt' and row.item %}
+                <div class="pc-status-actions">
+                  <span class="badge {{ 'badge-ok' if row.status == 'مدفوعة' else 'badge-warn' }}">{{ row.status }}</span>
+                  <form method="post" action="/installation/projects/{{ project.id }}/card/receipts/{{ row.item.id }}/delete" onsubmit="return confirm('حذف الدفعة؟')" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger)">حذف</button>
+                  </form>
+                </div>
+                {% elif row.status %}
+                <span class="badge {{ 'badge-ok' if row.status == 'مدفوعة' else 'badge-warn' }}">{{ row.status }}</span>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
-        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;min-width:0">
-          <div style="font-size:13px;font-weight:600;margin-bottom:10px">إضافة بند تكلفة</div>
-          <form method="post" action="/installation/projects/{{ project.id }}/card/costs/add" style="display:flex;flex-direction:column;gap:8px">
+      <div class="pc-add-grid">
+        <div class="pc-add-box">
+          <div class="pc-add-title">إضافة بند تكلفة / دفعة عمالة</div>
+          <form method="post" action="/installation/projects/{{ project.id }}/card/costs/add" class="pc-add-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="pc-fields">
               <div>
-                <label style="font-size:10px;color:var(--text3);display:block">الفئة</label>
-                <select name="category" style="width:100%;padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1)">
+                <label>الفئة</label>
+                <select name="category" id="pcCat">
                   {% for c in cost_categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
                 </select>
               </div>
               <div>
-                <label style="font-size:10px;color:var(--text3);display:block">رقم دفعة (عمالة…)</label>
-                <input type="number" name="installment_no" min="1" placeholder="اختياري" style="width:100%;padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:var(--font-en)">
-              </div>
-            </div>
-            <div>
-              <label style="font-size:10px;color:var(--text3);display:block">وصف البند</label>
-              <input type="text" name="title" required placeholder="سكك / دفعة عمالة 1 / نقل" style="width:100%;padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1)">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <div>
-                <label style="font-size:10px;color:var(--text3);display:block">المبلغ</label>
-                <input type="number" step="0.01" name="amount" required style="width:100%;padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:var(--font-en)">
+                <label>رقم الدفعة</label>
+                <input type="number" name="installment_no" min="1" placeholder="1 / 2 / 3">
               </div>
               <div>
-                <label style="font-size:10px;color:var(--text3);display:block">التاريخ</label>
-                <input type="date" name="cost_date" value="{{ today }}" style="width:100%;padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1)">
+                <label>الوصف (اختياري)</label>
+                <input type="text" name="title" placeholder="سكك أو اتركه لدفعة أولى…">
+              </div>
+              <div>
+                <label>المبلغ</label>
+                <input type="number" step="0.01" name="amount" required>
+              </div>
+              <div>
+                <label>الحالة</label>
+                <select name="payment_status">
+                  {% for s in cost_payment_statuses %}<option value="{{ s }}" {% if s == 'غير مدفوعة' %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                </select>
+              </div>
+              <div>
+                <label>التاريخ</label>
+                <input type="date" name="cost_date" value="{{ today }}">
               </div>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-start">+ إضافة بند</button>
+            <button type="submit" class="btn btn-primary btn-sm">+ إضافة بند</button>
+          </form>
+          <p class="pc-hint">مثال: فئة «عمالة» + رقم دفعة 1 + مبلغ 2000 + حالة مدفوعة ← يظهر كـ «دفعة أولى».</p>
+        </div>
+
+        <div class="pc-add-box">
+          <div class="pc-add-title">إضافة تحصيل من العميل</div>
+          <form method="post" action="/installation/projects/{{ project.id }}/card/receipts/add" class="pc-add-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="pc-fields">
+              <div>
+                <label>رقم</label>
+                <input type="number" name="installment_no" min="1" value="{{ (card.receipts|length) + 1 }}">
+              </div>
+              <div>
+                <label>البيان</label>
+                <input type="text" name="label" placeholder="دفعة أولى من العميل">
+              </div>
+              <div>
+                <label>المبلغ</label>
+                <input type="number" step="0.01" name="amount" required>
+              </div>
+              <div>
+                <label>الحالة</label>
+                <select name="status">
+                  {% for s in receipt_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+                </select>
+              </div>
+              <div>
+                <label>التاريخ</label>
+                <input type="date" name="received_date" value="{{ today }}">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">+ تحصيل</button>
           </form>
         </div>
       </div>
-
-      <div style="margin-top:18px">
-        <div style="font-size:13px;font-weight:600;margin-bottom:10px">تفصيل التكلفة حسب الفئة ({{ card.cost_count }} بند)</div>
-        {% for group in card.cost_groups %}
-        <div style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden">
-          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg3);font-size:13px">
-            <span>{{ group.category }}</span>
-            <span style="font-family:var(--font-en);color:var(--gold)">{{ '{:,.0f}'.format(group.total) }} ر.س</span>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>البند</th>
-                <th>دفعة</th>
-                <th>المبلغ</th>
-                <th>التاريخ</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in group.lines %}
-              <tr>
-                <td>{{ item.title }}</td>
-                <td style="font-family:var(--font-en)">{{ item.installment_no or '—' }}</td>
-                <td style="font-family:var(--font-en)">{{ '{:,.0f}'.format(item.amount or 0) }}</td>
-                <td style="font-family:var(--font-en)">{{ item.cost_date or '—' }}</td>
-                <td>
-                  <form method="post" action="/installation/projects/{{ project.id }}/card/costs/{{ item.id }}/delete" onsubmit="return confirm('حذف البند؟')" style="display:inline">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger)">حذف</button>
-                  </form>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-        <p style="font-size:13px;color:var(--text3);margin:0">لا بنود تكلفة بعد — أضف قطعاً أو عمالة أو نقلاً حسب ظروف المشروع.</p>
-        {% endfor %}
-      </div>
     </div>
     <style>
-    @media(max-width:900px){.card-two-col{grid-template-columns:1fr!important}}
+    .pc-sheet{width:100%;border-collapse:collapse;font-size:13px;background:var(--bg2)}
+    .pc-sheet th,.pc-sheet td{border:1px solid var(--border2);padding:10px 12px;text-align:right}
+    .pc-sheet thead th{background:var(--bg3);color:var(--text2);font-weight:600;font-size:12px}
+    .pc-row-value td,.pc-row-profit td{background:rgba(42,127,255,.08);font-weight:600}
+    .pc-row-section td{background:rgba(200,160,85,.12);font-weight:600;color:var(--gold)}
+    .pc-row-category td{background:var(--bg3);font-weight:600}
+    .pc-row-empty td{color:var(--text3);font-style:italic}
+    .pc-indent{padding-right:28px!important;color:var(--text2)}
+    .pc-note{font-size:12px;color:var(--text3)}
+    .pc-inline-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .pc-inline-form input[type=number],.pc-inline-form select{
+      padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:var(--font-en);max-width:140px
+    }
+    .pc-status-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .pc-add-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .pc-add-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+    .pc-add-title{font-size:13px;font-weight:600;margin-bottom:10px}
+    .pc-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+    .pc-fields label{display:block;font-size:10px;color:var(--text3);margin-bottom:3px}
+    .pc-fields input,.pc-fields select{
+      width:100%;padding:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:inherit
+    }
+    .pc-hint{font-size:11px;color:var(--text3);margin:8px 0 0;line-height:1.5}
+    @media(max-width:900px){
+      .pc-add-grid,.pc-fields{grid-template-columns:1fr!important}
+    }
     </style>
 
     <div class="panel">

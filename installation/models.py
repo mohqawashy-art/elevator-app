@@ -315,6 +315,11 @@ COST_CATEGORIES = (
     'أخرى',
 )
 
+COST_PAYMENT_STATUSES = (
+    'مدفوعة',
+    'غير مدفوعة',
+)
+
 RECEIPT_STATUSES = (
     'مستلمة',
     'معلقة',
@@ -333,6 +338,8 @@ class InstallProjectCostItem(TenantMixin, db.Model):
     cost_date = db.Column(db.Date, default=date.today)
     # لعمالة بالدفعات أو أي بند مقسّم: رقم الدفعة
     installment_no = db.Column(db.Integer, nullable=True)
+    # حالة سداد بند العمالة/الدفعة: مدفوعة | غير مدفوعة
+    payment_status = db.Column(db.String(30), nullable=True)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
