@@ -12,6 +12,8 @@ MACHINE_ORIGINS = [
 ]
 
 CUSTOM_ORIGIN_OPTION = '__custom__'
+NONE_OPTION = '__none__'
+NONE_LABEL = 'بدون'
 
 MACHINE_BRANDS = {
     'chinese': ['Monarch', 'Hosting', 'Generic OEM'],
@@ -41,7 +43,13 @@ DEFAULT_MACHINE_ORIGIN = 'chinese'
 DEFAULT_PANEL_ORIGIN = 'chinese'
 
 
+def is_none_option(value):
+    return value in (NONE_OPTION, 'بدون')
+
+
 def origin_factor(origin_id):
+    if is_none_option(origin_id) or origin_id == CUSTOM_ORIGIN_OPTION:
+        return 1.0
     for o in MACHINE_ORIGINS:
         if o['id'] == origin_id:
             return o['factor']
@@ -49,7 +57,9 @@ def origin_factor(origin_id):
 
 
 def origin_label(origin_id):
-    if not origin_id or origin_id == CUSTOM_ORIGIN_OPTION:
+    if is_none_option(origin_id):
+        return ''
+    if origin_id == CUSTOM_ORIGIN_OPTION:
         return '—'
     for o in MACHINE_ORIGINS:
         if o['id'] == origin_id:
@@ -61,6 +71,8 @@ def origin_label_from_spec(spec, origin_key='machine_origin', country_key='machi
     if not spec:
         return '—'
     origin_id = spec.get(origin_key, '')
+    if is_none_option(origin_id):
+        return ''
     if origin_id == CUSTOM_ORIGIN_OPTION:
         return (spec.get(country_key) or '').strip() or '—'
     return origin_label(origin_id)

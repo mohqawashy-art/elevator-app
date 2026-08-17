@@ -10,6 +10,7 @@
   };
   var PANEL_BASE_PRICE = 8000;
   var CUSTOM_ORIGIN_OPTION = '__custom__';
+  var NONE_OPTION = '__none__';
   var ORIGIN_FACTORS = {
     chinese: 1.00,
     turkish: 1.15,
@@ -82,9 +83,14 @@
     return isNaN(n) ? 0 : n;
   }
 
+  function isNone(v) {
+    return v === NONE_OPTION || v === 'بدون';
+  }
+
   function originDisplay(spec, originKey, countryKey) {
     if (!spec) return '—';
     var id = spec[originKey] || 'chinese';
+    if (isNone(id)) return '';
     if (id === CUSTOM_ORIGIN_OPTION) {
       return (spec[countryKey] || '').trim() || 'أخرى';
     }
@@ -93,7 +99,7 @@
 
   function originFactorByKey(spec, key) {
     var id = (spec && spec[key]) || 'chinese';
-    if (id === CUSTOM_ORIGIN_OPTION) {
+    if (isNone(id) || id === CUSTOM_ORIGIN_OPTION) {
       return 1.0;
     }
     return ORIGIN_FACTORS[id] || 1.0;
@@ -123,8 +129,10 @@
   }
 
   function equipmentSuffix(originKey, countryKey, brandKey, spec) {
+    if (!spec || isNone(spec[originKey])) return '';
     var label = originDisplay(spec, originKey, countryKey);
     var brand = (spec && spec[brandKey]) || '';
+    if (isNone(brand)) brand = '';
     if (label && brand) return ' — ' + label + ' ' + brand;
     if (label) return ' — ' + label;
     return '';
@@ -197,19 +205,23 @@
   function buildNewBOM(spec) {
     var stops = num(spec.stops);
     var elevators = Math.max(1, Math.round(num(spec.elevator_count) || 1));
-    var cap = num(spec.capacity);
-    var machine = spec.machine || 'gearless';
-    var door = spec.door || 'tele';
-    var cabin = spec.cabin || 'steel';
-    var entr = num(spec.entrances) || 1;
+    var capRaw = spec.capacity;
+    var cap = isNone(capRaw) ? 630 : (num(capRaw) || 630);
+    var machine = isNone(spec.machine) ? '' : (spec.machine || 'gearless');
+    var door = isNone(spec.door) ? '' : (spec.door || 'tele');
+    var cabin = isNone(spec.cabin) ? '' : (spec.cabin || 'steel');
+    var entrRaw = spec.entrances;
+    var entr = isNone(entrRaw) ? 1 : (num(entrRaw) || 1);
     var floorH = toCm(spec.floor_height) || 300;
-    var speed = spec.speed || '1.0';
-    var shaft = spec.shaft || 'ready';
+    var speed = isNone(spec.speed) ? '' : (spec.speed || '1.0');
+    var shaft = isNone(spec.shaft) ? '' : (spec.shaft || 'ready');
+    var includeMachine = !!machine;
+    var includePanel = !isNone(spec.panel_origin);
     var machineSuffix = originSuffix(spec);
     var panelLabel = panelSuffix(spec);
-    var cabinCalc = calcCabinFromShaft(spec);
+    var cabinCalc = calcCabinFromShaft(Object.assign({}, spec, { capacity: cap }));
 
-    if (cabinCalc.error) {
+    if (cabinCalc.error && cabin) {
       return { error: cabinCalc.error };
     }
 
@@ -224,9 +236,6 @@
     var travCable = Math.ceil(travelM + 15);
     var doorsQty = stops * entr;
     var rows = [];
-    var cabinBase = CABIN_PRICES[cabin];
-    var cabinPrice = Math.round(applyOrigin(cabinBase, spec, 'light') * cabinCalc.priceFactor);
-    var cabinDesc = CABIN_NAMES[cabin] + ' ' + cabinCalc.label + machineSuffix;
     var elevNote = elevators > 1 ? (' × ' + elevators + ' مصعد') : '';
 
     function add(stage, name, unit, qty, price) {
@@ -239,12 +248,12 @@
       });
     }
 
-    var machineBase = MACHINE_PRICES[machine][cap];
-
     // مرحلة 1 — سكك وأبواب
     add(STAGE_RAILS, 'سكك كبينة T89 (بالمتر)', 'متر', railM, 70);
     add(STAGE_RAILS, 'سكك ثقل T50 (بالمتر)', 'متر', railM, 45);
-    add(STAGE_RAILS, DOOR_NAMES[door] + machineSuffix, 'باب', doorsQty, applyOrigin(DOOR_PRICES[door], spec, 'light'));
+    if (door && DOOR_NAMES[door]) {
+      add(STAGE_RAILS, DOOR_NAMES[door] + machineSuffix, 'باب', doorsQty, applyOrigin(DOOR_PRICES[door], spec, 'light'));
+    }
     add(STAGE_RAILS, 'شيكالات تثبيت السكك', 'طقم', brackets, 120);
     add(STAGE_RAILS, 'مسامير وزوايا ومتفرقات تثبيت السكك', 'مقطوع', 1, 1500);
     if (shaft === 'steel') {
@@ -252,8 +261,19 @@
     }
 
     // مرحلة 2 — كبينة وأحبال وماكينة
-    add(STAGE_CABIN, 'ماكينة ' + (machine === 'gearless' ? 'جيرلس MRL' : 'جير') + ' — ' + cap + ' كجم / ' + speed + ' م/ث' + machineSuffix, 'قطعة', 1, applyOrigin(machineBase, spec, 'full'));
-    add(STAGE_CABIN, cabinDesc, 'قطعة', 1, cabinPrice);
+    if (includeMachine && MACHINE_PRICES[machine]) {
+      var machineBase = MACHINE_PRICES[machine][cap] || MACHINE_PRICES[machine][630];
+      var machineName = 'ماكينة ' + (machine === 'gearless' ? 'جيرلس MRL' : 'جير') + ' — ' + cap + ' كجم';
+      if (speed) machineName += ' / ' + speed + ' م/ث';
+      machineName += machineSuffix;
+      add(STAGE_CABIN, machineName, 'قطعة', 1, applyOrigin(machineBase, spec, 'full'));
+    }
+    if (cabin && CABIN_NAMES[cabin]) {
+      var cabinBase = CABIN_PRICES[cabin];
+      var cabinPrice = Math.round(applyOrigin(cabinBase, spec, 'light') * (cabinCalc.priceFactor || 1));
+      var cabinDesc = CABIN_NAMES[cabin] + ' ' + (cabinCalc.label || '') + machineSuffix;
+      add(STAGE_CABIN, cabinDesc, 'قطعة', 1, cabinPrice);
+    }
     add(STAGE_CABIN, 'باب كبينة أوتوماتيك + مشغل (Operator)' + machineSuffix, 'قطعة', 1, applyOrigin(4500, spec, 'light'));
     add(STAGE_CABIN, 'شاسيه كبينة + باراشوت (Safety Gear)', 'طقم', 1, 6500);
     add(STAGE_CABIN, 'إطار ثقل موازن + بلوكات', 'طقم', 1, 3500);
@@ -262,7 +282,9 @@
     add(STAGE_CABIN, 'بوفرات', 'قطعة', 2, 900);
 
     // مرحلة 3 — كنترول وتشغيل
-    add(STAGE_CTRL, 'لوحة تحكم + إنفرتر' + panelLabel, 'قطعة', 1, applyPanelOrigin(PANEL_BASE_PRICE, spec));
+    if (includePanel) {
+      add(STAGE_CTRL, 'لوحة تحكم + إنفرتر' + panelLabel, 'قطعة', 1, applyPanelOrigin(PANEL_BASE_PRICE, spec));
+    }
     add(STAGE_CTRL, 'ترافلينج كيبل (بالمتر)', 'متر', travCable, 18);
     add(STAGE_CTRL, 'مفاتيح حدود + ممرات مغناطيسية', 'طقم', 1, 800);
     add(STAGE_CTRL, 'لوحة كبينة COP', 'قطعة', 1, 1200);
@@ -357,6 +379,8 @@
     originDisplay: originDisplay,
     toCm: toCm,
     CUSTOM_ORIGIN_OPTION: CUSTOM_ORIGIN_OPTION,
+    NONE_OPTION: NONE_OPTION,
+    isNone: isNone,
     num: num,
     splitLaborByStage: function (laborTotal) {
       var total = num(laborTotal);

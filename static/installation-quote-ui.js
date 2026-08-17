@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var panelBrands = cfg.panelBrands || machineBrands;
   var customBrandOpt = cfg.customBrandOption || '__custom__';
   var customOriginOpt = cfg.customOriginOption || '__custom__';
+  var noneOpt = cfg.noneOption || '__none__';
   var machineOrigins = cfg.machineOrigins || [];
   var currentMode = 'new';
   var upgSelected = { commission: true };
@@ -151,27 +152,34 @@ document.addEventListener('DOMContentLoaded', function () {
     if (el('cAddr')) el('cAddr').value = c ? c.address : '';
   }
 
+  function isNoneVal(v) {
+    return P.isNone ? P.isNone(v) : (v === noneOpt || v === 'بدون');
+  }
+
   function initOriginSelect(selectId, customId, selectedOriginId, selectedCountry) {
     var sel = el(selectId);
     if (!sel) return;
-    var html = '';
+    var pick = selectedOriginId || 'chinese';
+    var html = '<option value="' + noneOpt + '"' + (pick === noneOpt ? ' selected' : '') + '>بدون</option>';
     var i, isCustom = selectedOriginId === customOriginOpt;
     for (i = 0; i < machineOrigins.length; i++) {
       var o = machineOrigins[i];
-      html += '<option value="' + o.id + '"' + (o.id === selectedOriginId ? ' selected' : '') + '>' + o.label + '</option>';
+      html += '<option value="' + o.id + '"' + (o.id === pick ? ' selected' : '') + '>' + o.label + '</option>';
     }
-    if (isCustom || (selectedCountry && !isKnownOrigin(selectedOriginId))) {
+    if (isCustom || (selectedCountry && !isKnownOrigin(selectedOriginId) && !isNoneVal(selectedOriginId))) {
       isCustom = true;
       html += '<option value="' + customOriginOpt + '" selected>+ بلد آخر...</option>';
     } else {
       html += '<option value="' + customOriginOpt + '">+ بلد آخر...</option>';
     }
     sel.innerHTML = html;
+    if (pick === noneOpt) sel.value = noneOpt;
     toggleCustomOrigin(selectId, customId, isCustom ? selectedCountry : '');
   }
 
   function isKnownOrigin(originId) {
     var i;
+    if (isNoneVal(originId) || originId === customOriginOpt) return false;
     for (i = 0; i < machineOrigins.length; i++) {
       if (machineOrigins[i].id === originId) return true;
     }
@@ -191,6 +199,9 @@ document.addEventListener('DOMContentLoaded', function () {
   function resolveOrigin(selectId, customId) {
     var sel = el(selectId);
     if (!sel) return { id: 'chinese', country: '' };
+    if (sel.value === noneOpt) {
+      return { id: noneOpt, country: '' };
+    }
     if (sel.value === customOriginOpt) {
       return { id: customOriginOpt, country: (el(customId) && el(customId).value.trim()) || '' };
     }
@@ -200,17 +211,32 @@ document.addEventListener('DOMContentLoaded', function () {
   function fillBrandSelect(selectId, customId, brandsMap, originId, selectedBrand) {
     var sel = el(selectId);
     if (!sel) return;
+    if (isNoneVal(originId)) {
+      sel.innerHTML = '<option value="' + noneOpt + '" selected>بدون</option>';
+      toggleCustomBrand(selectId, customId, '');
+      return;
+    }
     var brands = brandsMap[originId] || brandsMap.chinese || [];
     var html = '';
-    var i, isCustom = false;
-    for (i = 0; i < brands.length; i++) {
-      html += '<option value="' + brands[i] + '"' + (brands[i] === selectedBrand ? ' selected' : '') + '>' + brands[i] + '</option>';
+    var i, isCustom = false, matched = false;
+    if (selectedBrand === noneOpt) {
+      matched = true;
     }
-    if (selectedBrand && brands.indexOf(selectedBrand) < 0) {
+    html += '<option value="' + noneOpt + '"' + (selectedBrand === noneOpt ? ' selected' : '') + '>بدون</option>';
+    for (i = 0; i < brands.length; i++) {
+      var pick = brands[i] === selectedBrand || (!selectedBrand && i === 0);
+      if (brands[i] === selectedBrand) matched = true;
+      html += '<option value="' + brands[i] + '"' + (pick && selectedBrand !== noneOpt ? ' selected' : '') + '>' + brands[i] + '</option>';
+    }
+    if (selectedBrand && selectedBrand !== noneOpt && brands.indexOf(selectedBrand) < 0 && selectedBrand !== customBrandOpt) {
       isCustom = true;
+      matched = true;
     }
     html += '<option value="' + customBrandOpt + '"' + (isCustom ? ' selected' : '') + '>+ شركة أخرى...</option>';
     sel.innerHTML = html;
+    if (!matched && brands.length && selectedBrand !== noneOpt) {
+      sel.value = brands[0];
+    }
     toggleCustomBrand(selectId, customId, isCustom ? selectedBrand : '');
   }
 
@@ -227,6 +253,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function resolveBrand(selectId, customId) {
     var sel = el(selectId);
     if (!sel) return '';
+    if (sel.value === noneOpt) return noneOpt;
     if (sel.value === customBrandOpt) {
       return (el(customId) && el(customId).value.trim()) || '';
     }
@@ -659,19 +686,59 @@ document.addEventListener('DOMContentLoaded', function () {
     var specs = '';
     if (!isUpg) {
       var spec = getNewSpec();
-      var cabinCalc = P.calcCabinFromShaft(spec);
+      var cabinCalc = P.calcCabinFromShaft(Object.assign({}, spec, {
+        capacity: isNoneVal(spec.capacity) ? 630 : spec.capacity,
+      }));
       var shaftWcm = P.toCm(spec.shaft_width);
       var shaftDcm = P.toCm(spec.shaft_depth);
-      var shaftTxt = (shaftWcm && shaftDcm) ? (shaftWcm + '×' + shaftDcm + ' سم') : '—';
-      specs = '<div class="q-sec"><h3>المواصفات الفنية</h3><table class="q-tbl"><tbody>'
-        + '<tr><td>عدد المصاعد</td><td>' + (spec.elevator_count || 1) + '</td><td>عدد الوقفات</td><td>' + spec.stops + ' وقفات</td></tr>'
-        + '<tr><td>الحمولة</td><td>' + spec.capacity + ' كجم</td><td>السرعة</td><td>' + spec.speed + ' م/ث</td></tr>'
-        + '<tr><td>نوع الماكينة</td><td>' + (spec.machine === 'gearless' ? 'جيرلس MRL' : 'جير بغرفة ماكينة') + '</td>'
-        + '<td>بلد منشئ الماكينة</td><td>' + P.originDisplay(spec, 'machine_origin', 'machine_origin_country') + ' ' + (spec.machine_brand || '') + '</td></tr>'
-        + '<tr><td>بلد منشئ اللوحة</td><td>' + P.originDisplay(spec, 'panel_origin', 'panel_origin_country') + ' ' + (spec.panel_brand || '') + '</td>'
-        + '<td>البئر الداخلي</td><td>' + shaftTxt + '</td></tr>'
-        + '<tr><td>مقاس الكبينة</td><td>' + (cabinCalc.label || '—') + '</td><td>تشطيب الكبينة</td><td>' + P.CABIN_NAMES[spec.cabin] + '</td></tr>'
-        + '</tbody></table></div>';
+      var shaftTxt = (shaftWcm && shaftDcm) ? (shaftWcm + '×' + shaftDcm + ' سم') : '';
+      var showCap = !isNoneVal(spec.capacity);
+      var showSpeed = !isNoneVal(spec.speed);
+      var showMachine = !isNoneVal(spec.machine);
+      var showMachineOrigin = !isNoneVal(spec.machine_origin);
+      var showPanelOrigin = !isNoneVal(spec.panel_origin);
+      var showCabin = !isNoneVal(spec.cabin);
+      var machineBrandTxt = isNoneVal(spec.machine_brand) ? '' : (spec.machine_brand || '');
+      var panelBrandTxt = isNoneVal(spec.panel_brand) ? '' : (spec.panel_brand || '');
+      var machineOriginTxt = showMachineOrigin
+        ? (P.originDisplay(spec, 'machine_origin', 'machine_origin_country') + (machineBrandTxt ? (' ' + machineBrandTxt) : '')).trim()
+        : '';
+      var panelOriginTxt = showPanelOrigin
+        ? (P.originDisplay(spec, 'panel_origin', 'panel_origin_country') + (panelBrandTxt ? (' ' + panelBrandTxt) : '')).trim()
+        : '';
+      var cells = [];
+      function pushPair(label, value) {
+        if (!value && value !== 0) return;
+        cells.push({ label: label, value: value });
+      }
+      pushPair('عدد المصاعد', spec.elevator_count || 1);
+      pushPair('عدد الوقفات', spec.stops + ' وقفات');
+      if (showCap) pushPair('الحمولة', spec.capacity + ' كجم');
+      if (showSpeed) pushPair('السرعة', spec.speed + ' م/ث');
+      if (showMachine) {
+        pushPair('نوع الماكينة', spec.machine === 'gearless' ? 'جيرلس MRL' : 'جير بغرفة ماكينة');
+      }
+      if (machineOriginTxt) pushPair('بلد منشئ الماكينة', machineOriginTxt);
+      if (panelOriginTxt) pushPair('بلد منشئ اللوحة', panelOriginTxt);
+      if (shaftTxt) pushPair('البئر الداخلي', shaftTxt);
+      if (showCabin && cabinCalc && cabinCalc.label) pushPair('مقاس الكبينة', cabinCalc.label);
+      if (showCabin && P.CABIN_NAMES[spec.cabin]) pushPair('تشطيب الكبينة', P.CABIN_NAMES[spec.cabin]);
+      var specRows = '';
+      var ci;
+      for (ci = 0; ci < cells.length; ci += 2) {
+        specRows += '<tr>';
+        specRows += '<td>' + cells[ci].label + '</td><td>' + cells[ci].value + '</td>';
+        if (cells[ci + 1]) {
+          specRows += '<td>' + cells[ci + 1].label + '</td><td>' + cells[ci + 1].value + '</td>';
+        } else {
+          specRows += '<td></td><td></td>';
+        }
+        specRows += '</tr>';
+      }
+      if (specRows) {
+        specs = '<div class="q-sec"><h3>المواصفات الفنية</h3><table class="q-tbl"><tbody>'
+          + specRows + '</tbody></table></div>';
+      }
     } else {
       specs = '<div class="q-sec"><h3>نطاق العمل</h3><div class="q-terms">تحديث مصعد قائم — '
         + (el('uElevCount') ? el('uElevCount').value : 1) + ' مصعد — '

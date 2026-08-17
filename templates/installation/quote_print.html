@@ -60,6 +60,15 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
   </div>
 
   {% if quotation.quote_type == 'new' and spec %}
+  {% set none_vals = ['__none__', 'بدون'] %}
+  {% set show_cap = spec.capacity and spec.capacity not in none_vals %}
+  {% set show_speed = spec.speed and spec.speed not in none_vals %}
+  {% set show_machine = spec.machine and spec.machine not in none_vals %}
+  {% set show_m_origin = origin_label and origin_label != '—' %}
+  {% set show_p_origin = panel_origin_label and panel_origin_label != '—' %}
+  {% set show_cabin = (not spec.cabin) or (spec.cabin not in none_vals) %}
+  {% set m_brand = '' if (not machine_brand or machine_brand in none_vals or machine_brand == '—') else machine_brand %}
+  {% set p_brand = '' if (not panel_brand or panel_brand in none_vals or panel_brand == '—') else panel_brand %}
   <div class="q-sec">
     <h3>المواصفات الفنية</h3>
     <table>
@@ -68,27 +77,31 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
           <td><b>عدد المصاعد</b></td><td>{{ spec.elevator_count or 1 }}</td>
           <td><b>عدد الوقفات</b></td><td>{{ spec.stops or '—' }} وقفات</td>
         </tr>
-        {% if spec.capacity or spec.speed %}
+        {% if show_cap or show_speed %}
         <tr>
-          <td><b>الحمولة</b></td><td>{{ spec.capacity or '—' }} كجم</td>
-          <td><b>السرعة</b></td><td>{{ spec.speed or '—' }} م/ث</td>
+          {% if show_cap %}<td><b>الحمولة</b></td><td>{{ spec.capacity }} كجم</td>{% else %}<td></td><td></td>{% endif %}
+          {% if show_speed %}<td><b>السرعة</b></td><td>{{ spec.speed }} م/ث</td>{% else %}<td></td><td></td>{% endif %}
         </tr>
         {% endif %}
-        {% if spec.machine %}
+        {% if show_machine %}
         <tr>
           <td><b>نوع الماكينة</b></td>
           <td colspan="3">{{ 'جيرلس MRL' if spec.machine == 'gearless' else ('جير بغرفة ماكينة' if spec.machine == 'geared' else '—') }}</td>
         </tr>
         {% endif %}
-        {% if origin_label != '—' or machine_brand != '—' or panel_origin_label != '—' or panel_brand != '—' %}
+        {% if show_m_origin or show_p_origin %}
         <tr>
+          {% if show_m_origin %}
           <td><b>بلد منشئ الماكينة</b></td>
-          <td>{{ origin_label }}{% if machine_brand != '—' %} — {{ machine_brand }}{% endif %}</td>
+          <td>{{ origin_label }}{% if m_brand %} — {{ m_brand }}{% endif %}</td>
+          {% else %}<td></td><td></td>{% endif %}
+          {% if show_p_origin %}
           <td><b>بلد منشئ اللوحة</b></td>
-          <td>{{ panel_origin_label }}{% if panel_brand != '—' %} — {{ panel_brand }}{% endif %}</td>
+          <td>{{ panel_origin_label }}{% if p_brand %} — {{ p_brand }}{% endif %}</td>
+          {% else %}<td></td><td></td>{% endif %}
         </tr>
         {% endif %}
-        {% if dims.shaft_w or dims.shaft_d or dims.cabin_w or dims.cabin_d %}
+        {% if dims.shaft_w or dims.shaft_d or (show_cabin and dims.cabin_w and dims.cabin_d) %}
         <tr>
           <td><b>البئر الداخلي</b></td>
           <td>
@@ -96,7 +109,7 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
           </td>
           <td><b>مقاس الكبينة</b></td>
           <td>
-            {% if dims.cabin_w and dims.cabin_d %}
+            {% if show_cabin and dims.cabin_w and dims.cabin_d %}
               {{ dims.cabin_w }}×{{ dims.cabin_d }} سم
             {% else %}—{% endif %}
           </td>
