@@ -25,6 +25,8 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
 .totals .r{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e8f0}
 .totals .g{background:#0a2647;color:#c9a14a;font-weight:800;padding:9px 12px;border-radius:8px;margin-top:6px;display:flex;justify-content:space-between}
 .terms{font-size:12px;line-height:1.9;margin-top:12px}
+.q-pay-list{margin:4px 0 8px}
+.q-pay-list div{padding:1px 0}
 @media print{.toolbar{display:none}body{background:#fff;padding:0}.sheet{border-radius:0;max-width:100%}}
 </style>
 </head>
@@ -144,9 +146,11 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
     <h3>الشروط</h3>
     <div class="terms">
       <b>شروط الدفع:</b>
-      {{ '{:.0f}'.format(sched.advance_pct) }}% دفعة مقدمة ({{ '{:,.0f}'.format(adv_amt or 0) }} ر.س) —
-      {{ '{:.0f}'.format(sched.supply_pct) }}% عند التوريد ({{ '{:,.0f}'.format(sup_amt or 0) }} ر.س) —
-      {{ '{:.0f}'.format(sched.final_pct) }}% عند التسليم ({{ '{:,.0f}'.format(fin_amt or 0) }} ر.س).<br>
+      <div class="q-pay-list">
+        <div>{{ '{:.0f}'.format(sched.advance_pct) }}% دفعة مقدمة ({{ '{:,.0f}'.format(adv_amt or 0) }} ر.س)</div>
+        <div>{{ '{:.0f}'.format(sched.supply_pct) }}% عند التوريد ({{ '{:,.0f}'.format(sup_amt or 0) }} ر.س)</div>
+        <div>{{ '{:.0f}'.format(sched.final_pct) }}% عند التسليم ({{ '{:,.0f}'.format(fin_amt or 0) }} ر.س)</div>
+      </div>
       <b>الضمان:</b> سنة على أعمال التركيب + صيانة مجانية 12 شهراً.
     </div>
   </div>

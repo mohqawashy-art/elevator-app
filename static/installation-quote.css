@@ -69,6 +69,8 @@ table.q-tbl tr.q-stage td{background:#f3e8cf;font-weight:800;color:#0a2647}
 .q-totals .r{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e8f0}
 .q-totals .g{background:#0a2647;color:#c9a14a;font-weight:800;font-size:15px;padding:9px 12px;border-radius:8px;margin-top:6px;display:flex;justify-content:space-between}
 .q-terms{font-size:12px;line-height:1.9;margin-top:12px}
+.q-pay-list{margin:4px 0 8px}
+.q-pay-list div{padding:1px 0}
 .q-sign{display:flex;justify-content:space-between;margin-top:32px;font-size:12px}
 .q-sign .s{text-align:center;width:42%}
 .q-sign .s .ln{border-top:1.5px solid #0a2647;margin-top:40px;padding-top:6px;font-weight:700;color:#0a2647}

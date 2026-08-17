@@ -300,10 +300,12 @@ document.addEventListener('DOMContentLoaded', function () {
     var advAmt = Math.round(grand * pcts.advance / 100);
     var supAmt = Math.round(grand * pcts.supply / 100);
     var finAmt = Math.round(grand * pcts.final / 100);
-    return '<b>شروط الدفع:</b> '
-      + pcts.advance + '% دفعة مقدمة (' + fmt(advAmt) + ') — '
-      + pcts.supply + '% عند التوريد (' + fmt(supAmt) + ') — '
-      + pcts.final + '% عند التسليم (' + fmt(finAmt) + ').';
+    return '<b>شروط الدفع:</b>'
+      + '<div class="q-pay-list">'
+      + '<div>' + pcts.advance + '% دفعة مقدمة (' + fmt(advAmt) + ')</div>'
+      + '<div>' + pcts.supply + '% عند التوريد (' + fmt(supAmt) + ')</div>'
+      + '<div>' + pcts.final + '% عند التسليم (' + fmt(finAmt) + ')</div>'
+      + '</div>';
   }
 
   function recalcPaymentSchedule(grand) {
