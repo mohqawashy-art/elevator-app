@@ -57,6 +57,12 @@ input[type=range]{padding:0;background:transparent;border:none}
 .preview-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
 .preview-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;text-align:center;font-size:11px;color:var(--text3)}
 .preview-box img{object-fit:contain;margin-top:8px}
+.seal-settings-card{flex:1;min-width:300px}
+.seal-preview-stage{height:220px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px dashed var(--border);border-radius:var(--r-sm);background:#fff}
+.seal-preview-stage img{height:auto;max-width:none;max-height:none;transition:transform .08s linear}
+.seal-control{margin-top:10px;text-align:right}
+.seal-control label{display:flex;justify-content:space-between;gap:10px}
+.seal-control input[type=range]{width:100%}
 .theme-pick{display:flex;gap:12px;flex-wrap:wrap}
 .theme-card{flex:1;min-width:140px;padding:16px;border-radius:var(--r-sm);border:2px solid var(--border);cursor:pointer;text-align:center;background:var(--bg3)}
 .theme-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px rgba(42,127,255,.2)}
@@ -287,25 +293,55 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
     <div class="section" style="margin-top:22px">ختم وتوقيع الشركة على المستندات</div>
     <p class="hint" style="margin-bottom:12px">تظهر تلقائياً في عروض الأسعار ومحاضر الاستلام والتقارير عند الطباعة. يُفضّل PNG بخلفية شفافة.</p>
     <div class="logo-upload" style="gap:24px;flex-wrap:wrap">
-      <div class="logo-preview-wrap">
+      <div class="logo-preview-wrap seal-settings-card">
+        <div class="seal-preview-stage" id="company-stamp-stage">
         {% if company_stamp_url %}
-        <img class="logo-preview" src="{{ company_stamp_url }}" alt="ختم الشركة" style="max-height:120px;object-fit:contain">
+        <img id="company-stamp-preview" src="{{ company_stamp_url }}" alt="ختم الشركة">
         {% else %}
         <div class="logo-preview" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;min-height:100px;border:1px dashed var(--border)">لا يوجد ختم</div>
         {% endif %}
+        </div>
         <p class="hint" style="margin-top:8px">الختم الحالي</p>
         <label style="margin-top:8px;display:block">رفع ختم جديد</label>
-        <input type="file" name="company_stamp" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+        <input type="file" name="company_stamp" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="previewCompanyAsset(this,'company-stamp-preview')">
+        <div class="seal-control">
+          <label>الحجم <strong><span id="stamp-width-label">{{ settings.company_stamp_width or 110 }}</span> px</strong></label>
+          <input type="range" name="company_stamp_width" min="40" max="300" value="{{ settings.company_stamp_width or 110 }}" oninput="syncSealPreview('stamp')">
+        </div>
+        <div class="seal-control">
+          <label>تحريك أفقي <strong><span id="stamp-x-label">{{ settings.company_stamp_offset_x or 0 }}</span> px</strong></label>
+          <input type="range" name="company_stamp_offset_x" min="-200" max="200" value="{{ settings.company_stamp_offset_x or 0 }}" oninput="syncSealPreview('stamp')">
+        </div>
+        <div class="seal-control">
+          <label>تحريك رأسي <strong><span id="stamp-y-label">{{ settings.company_stamp_offset_y or 0 }}</span> px</strong></label>
+          <input type="range" name="company_stamp_offset_y" min="-200" max="200" value="{{ settings.company_stamp_offset_y or 0 }}" oninput="syncSealPreview('stamp')">
+        </div>
+        <button class="btn btn-secondary" type="button" style="margin-top:10px" onclick="resetSealControls('stamp',110)">إعادة ضبط الختم</button>
       </div>
-      <div class="logo-preview-wrap">
+      <div class="logo-preview-wrap seal-settings-card">
+        <div class="seal-preview-stage" id="company-sign-stage">
         {% if company_sign_url %}
-        <img class="logo-preview" src="{{ company_sign_url }}" alt="توقيع الشركة" style="max-height:120px;object-fit:contain">
+        <img id="company-sign-preview" src="{{ company_sign_url }}" alt="توقيع الشركة">
         {% else %}
         <div class="logo-preview" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;min-height:100px;border:1px dashed var(--border)">لا يوجد توقيع</div>
         {% endif %}
+        </div>
         <p class="hint" style="margin-top:8px">التوقيع الحالي</p>
         <label style="margin-top:8px;display:block">رفع توقيع جديد</label>
-        <input type="file" name="company_sign" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+        <input type="file" name="company_sign" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="previewCompanyAsset(this,'company-sign-preview')">
+        <div class="seal-control">
+          <label>الحجم <strong><span id="sign-width-label">{{ settings.company_sign_width or 140 }}</span> px</strong></label>
+          <input type="range" name="company_sign_width" min="40" max="320" value="{{ settings.company_sign_width or 140 }}" oninput="syncSealPreview('sign')">
+        </div>
+        <div class="seal-control">
+          <label>تحريك أفقي <strong><span id="sign-x-label">{{ settings.company_sign_offset_x or 0 }}</span> px</strong></label>
+          <input type="range" name="company_sign_offset_x" min="-200" max="200" value="{{ settings.company_sign_offset_x or 0 }}" oninput="syncSealPreview('sign')">
+        </div>
+        <div class="seal-control">
+          <label>تحريك رأسي <strong><span id="sign-y-label">{{ settings.company_sign_offset_y or 0 }}</span> px</strong></label>
+          <input type="range" name="company_sign_offset_y" min="-200" max="200" value="{{ settings.company_sign_offset_y or 0 }}" oninput="syncSealPreview('sign')">
+        </div>
+        <button class="btn btn-secondary" type="button" style="margin-top:10px" onclick="resetSealControls('sign',140)">إعادة ضبط التوقيع</button>
       </div>
     </div>
 
@@ -865,6 +901,46 @@ function syncLogoPreview() {
   if (rw && pr) pr.style.width = rw.value + 'px';
   if (sw && lp) lp.style.width = sw.value + 'px';
 }
+function previewCompanyAsset(input, previewId) {
+  if (!input.files || !input.files[0]) return;
+  var kind = previewId.indexOf('stamp') !== -1 ? 'stamp' : 'sign';
+  var stage = document.getElementById('company-' + kind + '-stage');
+  var image = document.getElementById(previewId);
+  if (!image && stage) {
+    stage.innerHTML = '<img id="' + previewId + '" alt="">';
+    image = document.getElementById(previewId);
+  }
+  if (image) image.src = URL.createObjectURL(input.files[0]);
+  syncSealPreview(kind);
+}
+function syncSealPreview(kind) {
+  var width = document.querySelector('input[name=company_' + kind + '_width]');
+  var offsetX = document.querySelector('input[name=company_' + kind + '_offset_x]');
+  var offsetY = document.querySelector('input[name=company_' + kind + '_offset_y]');
+  var image = document.getElementById('company-' + kind + '-preview');
+  if (!width || !offsetX || !offsetY) return;
+  var widthLabel = document.getElementById(kind + '-width-label');
+  var xLabel = document.getElementById(kind + '-x-label');
+  var yLabel = document.getElementById(kind + '-y-label');
+  if (widthLabel) widthLabel.textContent = width.value;
+  if (xLabel) xLabel.textContent = offsetX.value;
+  if (yLabel) yLabel.textContent = offsetY.value;
+  if (image) {
+    image.style.width = width.value + 'px';
+    image.style.transform = 'translate(' + offsetX.value + 'px,' + offsetY.value + 'px)';
+  }
+}
+function resetSealControls(kind, defaultWidth) {
+  var width = document.querySelector('input[name=company_' + kind + '_width]');
+  var offsetX = document.querySelector('input[name=company_' + kind + '_offset_x]');
+  var offsetY = document.querySelector('input[name=company_' + kind + '_offset_y]');
+  if (width) width.value = defaultWidth;
+  if (offsetX) offsetX.value = 0;
+  if (offsetY) offsetY.value = 0;
+  syncSealPreview(kind);
+}
+syncSealPreview('stamp');
+syncSealPreview('sign');
 function previewAvatar(input) {
   if (!input.files || !input.files[0]) return;
   var wrap = document.getElementById('avatar-preview-wrap');

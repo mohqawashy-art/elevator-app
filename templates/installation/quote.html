@@ -3,7 +3,7 @@
 <head>
 {% include 'installation/_layout_head.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=seal1">
-<link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 </head>
 <body>
 {% include 'installation/_sidebar.html' %}
@@ -280,10 +280,16 @@ window.__INSTALL_QUOTE__ = {
   companyLogoUrl: {{ brand_logo_url | tojson }},
   logoWidth: {{ (logo_width_report or 150) | tojson }},
   companyStampUrl: {{ (company_stamp_url or '') | tojson }},
-  companySignUrl: {{ (company_sign_url or '') | tojson }}
+  companyStampWidth: {{ (company_stamp_width or 110) | tojson }},
+  companyStampOffsetX: {{ (company_stamp_offset_x or 0) | tojson }},
+  companyStampOffsetY: {{ (company_stamp_offset_y or 0) | tojson }},
+  companySignUrl: {{ (company_sign_url or '') | tojson }},
+  companySignWidth: {{ (company_sign_width or 140) | tojson }},
+  companySignOffsetX: {{ (company_sign_offset_x or 0) | tojson }},
+  companySignOffsetY: {{ (company_sign_offset_y or 0) | tojson }}
 };
 </script>
 <script src="{{ url_for('static', filename='installation-pricing.js') }}?v=logoonly1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=seal1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=seal2"></script>
 </body>
 </html>

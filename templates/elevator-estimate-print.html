@@ -106,7 +106,7 @@ td.num{font-family:'DM Sans',sans-serif;direction:ltr;text-align:left}
   <div class="notes"><b>ملاحظات:</b> {{ est.notes }}</div>
   {% endif %}
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
   {% include 'partials/document_company_seal.html' %}
   <div class="foot">
     {{ company_settings.company_name if company_settings and company_settings.company_name else 'LiftCore' }}

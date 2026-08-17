@@ -910,6 +910,12 @@ def inject_global_template_vars():
         'liftcore_logo_url': liftcore_header_logo_url(s),
         'company_stamp_url': upload_url(getattr(s, 'company_stamp_path', None)) if s else '',
         'company_sign_url': upload_url(getattr(s, 'company_sign_path', None)) if s else '',
+        'company_stamp_width': (getattr(s, 'company_stamp_width', None) or 110) if s else 110,
+        'company_stamp_offset_x': (getattr(s, 'company_stamp_offset_x', None) or 0) if s else 0,
+        'company_stamp_offset_y': (getattr(s, 'company_stamp_offset_y', None) or 0) if s else 0,
+        'company_sign_width': (getattr(s, 'company_sign_width', None) or 140) if s else 140,
+        'company_sign_offset_x': (getattr(s, 'company_sign_offset_x', None) or 0) if s else 0,
+        'company_sign_offset_y': (getattr(s, 'company_sign_offset_y', None) or 0) if s else 0,
         'logo_width_sidebar': (getattr(s, 'logo_width_sidebar', None) or 150) if s else 150,
         'logo_width_report': (getattr(s, 'logo_width_report', None) or 150) if s else 150,
         'logo_width_login': (getattr(s, 'logo_width_login', None) or 180) if s else 180,
@@ -1320,6 +1326,12 @@ def _sqlite_legacy_schema_patches():
                 ('logo_width_login', 'INTEGER'),
                 ('company_stamp_path', 'VARCHAR(300)'),
                 ('company_sign_path', 'VARCHAR(300)'),
+                ('company_stamp_width', 'INTEGER DEFAULT 110'),
+                ('company_stamp_offset_x', 'INTEGER DEFAULT 0'),
+                ('company_stamp_offset_y', 'INTEGER DEFAULT 0'),
+                ('company_sign_width', 'INTEGER DEFAULT 140'),
+                ('company_sign_offset_x', 'INTEGER DEFAULT 0'),
+                ('company_sign_offset_y', 'INTEGER DEFAULT 0'),
                 ('address_en', 'TEXT'),
                 ('company_website', 'VARCHAR(200)'),
                 ('bank_name', 'VARCHAR(100)'),
@@ -1535,11 +1547,21 @@ def _startup_schema_and_data_sync():
                 app.logger.info('Added customers.extra_phones column')
         if 'settings' in tables:
             settings_cols = {c['name'] for c in insp.get_columns('settings')}
-            for col_name in ('company_stamp_path', 'company_sign_path'):
+            seal_columns = {
+                'company_stamp_path': 'VARCHAR(300)',
+                'company_sign_path': 'VARCHAR(300)',
+                'company_stamp_width': 'INTEGER DEFAULT 110',
+                'company_stamp_offset_x': 'INTEGER DEFAULT 0',
+                'company_stamp_offset_y': 'INTEGER DEFAULT 0',
+                'company_sign_width': 'INTEGER DEFAULT 140',
+                'company_sign_offset_x': 'INTEGER DEFAULT 0',
+                'company_sign_offset_y': 'INTEGER DEFAULT 0',
+            }
+            for col_name, column_type in seal_columns.items():
                 if col_name in settings_cols:
                     continue
                 db.session.execute(text(
-                    f'ALTER TABLE settings ADD COLUMN {col_name} VARCHAR(300)'
+                    f'ALTER TABLE settings ADD COLUMN {col_name} {column_type}'
                 ))
                 db.session.commit()
                 app.logger.info('Added settings.%s column', col_name)
@@ -11486,6 +11508,14 @@ def _clamp_logo_width(value, default=150, min_w=60, max_w=400):
     return max(min_w, min(max_w, n))
 
 
+def _clamp_document_asset_value(value, default=0, min_value=-200, max_value=200):
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(min_value, min(max_value, n))
+
+
 def _settings_redirect(tab='company', **kwargs):
     params = {'tab': tab, **kwargs}
     return redirect(url_for('settings', **params))
@@ -11826,6 +11856,24 @@ def settings_save():
     s.logo_width_sidebar = _clamp_logo_width(request.form.get('logo_width_sidebar'), 150)
     s.logo_width_report  = _clamp_logo_width(request.form.get('logo_width_report'), 150)
     s.logo_width_login   = _clamp_logo_width(request.form.get('logo_width_login'), 180, min_w=80, max_w=500)
+    s.company_stamp_width = _clamp_document_asset_value(
+        request.form.get('company_stamp_width'), 110, 40, 300,
+    )
+    s.company_stamp_offset_x = _clamp_document_asset_value(
+        request.form.get('company_stamp_offset_x'), 0,
+    )
+    s.company_stamp_offset_y = _clamp_document_asset_value(
+        request.form.get('company_stamp_offset_y'), 0,
+    )
+    s.company_sign_width = _clamp_document_asset_value(
+        request.form.get('company_sign_width'), 140, 40, 320,
+    )
+    s.company_sign_offset_x = _clamp_document_asset_value(
+        request.form.get('company_sign_offset_x'), 0,
+    )
+    s.company_sign_offset_y = _clamp_document_asset_value(
+        request.form.get('company_sign_offset_y'), 0,
+    )
     logo_ok, logo_msg = _save_company_logo(s, request.files.get('logo'))
     stamp_ok, stamp_msg = _save_company_image_asset(
         s, request.files.get('company_stamp'),

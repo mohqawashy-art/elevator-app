@@ -5,13 +5,15 @@
 <div class="doc-company-seal {{ seal_class|default('') }}">
   {% if show_stamp %}
   <div class="doc-seal-item">
-    <img src="{{ company_stamp_url }}" alt="ختم الشركة" class="doc-seal-stamp">
+    <img src="{{ company_stamp_url }}" alt="ختم الشركة" class="doc-seal-stamp"
+         style="--doc-seal-width:{{ company_stamp_width|default(110) }}px;--doc-seal-x:{{ company_stamp_offset_x|default(0) }}px;--doc-seal-y:{{ company_stamp_offset_y|default(0) }}px">
     <div class="doc-seal-caption">ختم الشركة</div>
   </div>
   {% endif %}
   {% if show_sign %}
   <div class="doc-seal-item">
-    <img src="{{ company_sign_url }}" alt="توقيع الشركة" class="doc-seal-sign">
+    <img src="{{ company_sign_url }}" alt="توقيع الشركة" class="doc-seal-sign"
+         style="--doc-seal-width:{{ company_sign_width|default(140) }}px;--doc-seal-x:{{ company_sign_offset_x|default(0) }}px;--doc-seal-y:{{ company_sign_offset_y|default(0) }}px">
     <div class="doc-seal-caption">توقيع الشركة</div>
   </div>
   {% endif %}

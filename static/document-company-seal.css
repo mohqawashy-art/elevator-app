@@ -4,11 +4,12 @@
   margin-top:18px;flex-wrap:wrap
 }
 .doc-seal-item{text-align:center;min-width:120px}
-.doc-seal-stamp{max-height:90px;max-width:120px;object-fit:contain;display:block;margin:0 auto 4px}
-.doc-seal-sign{max-height:56px;max-width:160px;object-fit:contain;display:block;margin:0 auto 4px}
+.doc-seal-stamp,.doc-seal-sign{
+  width:var(--doc-seal-width);height:auto;max-width:none;max-height:none;
+  object-fit:contain;display:block;margin:0 auto 4px;
+  transform:translate(var(--doc-seal-x,0),var(--doc-seal-y,0))
+}
 .doc-seal-caption{font-size:11px;color:#6b7a90;font-weight:600}
 @media print{
   .doc-company-seal{page-break-inside:avoid}
-  .doc-seal-stamp{max-height:80px;max-width:110px}
-  .doc-seal-sign{max-height:48px;max-width:140px}
 }

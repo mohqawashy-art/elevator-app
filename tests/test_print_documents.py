@@ -29,6 +29,8 @@ def _seed_print_documents():
     else:
         s.company_name = s.company_name or 'LiftCore Test'
         s.vat_number = s.vat_number or '300000000000003'
+    s.company_stamp_path = 'uploads/company/test-stamp.png'
+    s.company_sign_path = 'uploads/company/test-sign.png'
 
     cust = Customer(code='C-PR01', name='عميل طباعة', phone='512345678', status='نشط')
     db.session.add(cust)
@@ -82,12 +84,14 @@ def _seed_print_documents():
     db.session.flush()
 
     install_quote_id = None
+    install_project_id = None
     try:
         from installation.models import InstallProject, InstallQuotation
 
         proj = InstallProject(code='IP-PR01', title='مشروع طباعة', customer_id=cust.id)
         db.session.add(proj)
         db.session.flush()
+        install_project_id = proj.id
         quote = InstallQuotation(
             code='IQ-PR01',
             project_id=proj.id,
@@ -108,6 +112,7 @@ def _seed_print_documents():
         'po_id': po.id,
         'estimate_id': est.id,
         'install_quote_id': install_quote_id,
+        'install_project_id': install_project_id,
     }
 
 
@@ -134,6 +139,48 @@ def test_all_print_documents_smoke(client):
         html = r.get_data(as_text=True)
         for needle in needles:
             assert needle in html, f'{needle} missing in {path}'
+
+
+def test_company_seal_size_and_offsets_save_and_render(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        ids = _seed_print_documents()
+
+    response = client.post('/settings/save', data={
+        'company_name': 'LiftCore Test',
+        'company_stamp_width': '999',
+        'company_stamp_offset_x': '-999',
+        'company_stamp_offset_y': '35',
+        'company_sign_width': '25',
+        'company_sign_offset_x': '42',
+        'company_sign_offset_y': '999',
+    })
+    assert response.status_code == 302
+
+    with client.application.app_context():
+        settings = Settings.query.first()
+        assert settings.company_stamp_width == 300
+        assert settings.company_stamp_offset_x == -200
+        assert settings.company_stamp_offset_y == 35
+        assert settings.company_sign_width == 40
+        assert settings.company_sign_offset_x == 42
+        assert settings.company_sign_offset_y == 200
+
+    invoice = client.get(f'/invoices/{ids["invoice_id"]}/print')
+    assert invoice.status_code == 200
+    html = invoice.get_data(as_text=True)
+    assert '--doc-seal-width:300px;--doc-seal-x:-200px;--doc-seal-y:35px' in html
+    assert '--doc-seal-width:40px;--doc-seal-x:42px;--doc-seal-y:200px' in html
+
+    if ids.get('install_project_id'):
+        quote = client.get(
+            f'/installation/projects/{ids["install_project_id"]}/quote'
+            f'?quotation_id={ids["install_quote_id"]}'
+        )
+        assert quote.status_code == 200
+        quote_html = quote.get_data(as_text=True)
+        assert 'companyStampWidth: 300' in quote_html
+        assert 'companySignOffsetX: 42' in quote_html
 
 
 @pytest.mark.parametrize('path', [

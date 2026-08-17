@@ -97,7 +97,7 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
     <div>قيمة المشروع: {{ '{:,.0f}'.format(card.contract_value) }} · التكلفة: {{ '{:,.0f}'.format(card.total_cost) }} · الربح: {{ '{:,.0f}'.format(card.profit) }}</div>
     <div>محصّل من العميل: {{ '{:,.0f}'.format(card.received) }} · المتبقي: {{ '{:,.0f}'.format(card.client_remaining) }}</div>
   </div>
-  <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
   {% include 'partials/document_company_seal.html' %}
 </div>
 <script>

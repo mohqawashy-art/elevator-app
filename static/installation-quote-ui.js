@@ -779,12 +779,23 @@ document.addEventListener('DOMContentLoaded', function () {
     var stamp = cfg.companyStampUrl || '';
     var sign = cfg.companySignUrl || '';
     if (!stamp && !sign) return '';
+    function imageStyle(kind, defaultWidth) {
+      var width = Number(cfg['company' + kind + 'Width']) || defaultWidth;
+      var offsetX = Number(cfg['company' + kind + 'OffsetX']) || 0;
+      var offsetY = Number(cfg['company' + kind + 'OffsetY']) || 0;
+      return '--doc-seal-width:' + width + 'px;--doc-seal-x:' + offsetX
+        + 'px;--doc-seal-y:' + offsetY + 'px';
+    }
     var html = '<div class="doc-company-seal q-company-seal">';
     if (stamp) {
-      html += '<div class="doc-seal-item"><img src="' + stamp + '" alt="ختم الشركة" class="doc-seal-stamp"><div class="doc-seal-caption">ختم الشركة</div></div>';
+      html += '<div class="doc-seal-item"><img src="' + stamp
+        + '" alt="ختم الشركة" class="doc-seal-stamp" style="' + imageStyle('Stamp', 110)
+        + '"><div class="doc-seal-caption">ختم الشركة</div></div>';
     }
     if (sign) {
-      html += '<div class="doc-seal-item"><img src="' + sign + '" alt="توقيع الشركة" class="doc-seal-sign"><div class="doc-seal-caption">توقيع الشركة</div></div>';
+      html += '<div class="doc-seal-item"><img src="' + sign
+        + '" alt="توقيع الشركة" class="doc-seal-sign" style="' + imageStyle('Sign', 140)
+        + '"><div class="doc-seal-caption">توقيع الشركة</div></div>';
     }
     return html + '</div>';
   }
