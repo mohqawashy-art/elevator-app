@@ -48,10 +48,6 @@ th{background:#0a2647;color:#fff}
   <div class="h-head">
     <div class="brand">
       <img src="{{ brand_logo_url }}" alt="{{ doc_name }}">
-      <div>
-        <div class="nm">{{ doc_name }}</div>
-        <div class="sub">{% if co and co.company_name_en %}{{ co.company_name_en }}{% elif co and co.city %}{{ co.city }}{% else %}تركيب وصيانة المصاعد{% endif %}</div>
-      </div>
     </div>
     <div class="h-meta">
       المشروع: <b>{{ project.code }}</b><br>

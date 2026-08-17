@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=tenantbrand1">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=logoonly1">
 </head>
 <body>
 {% include 'installation/_sidebar.html' %}
@@ -276,15 +276,11 @@ window.__INSTALL_QUOTE__ = {
   machineOrigins: {{ machine_origins | tojson }},
   defaultCustomerId: {{ default_customer_id | tojson }},
   companyName: {{ ((company_settings.company_name if company_settings and company_settings.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة')) | tojson }},
-  companyNameEn: {{ (company_settings.company_name_en if company_settings else '') | tojson }},
-  companyPhone: {{ (company_settings.phone if company_settings else '') | tojson }},
-  companyCity: {{ (company_settings.city if company_settings else '') | tojson }},
-  companyVat: {{ (company_settings.vat_number if company_settings else '') | tojson }},
   companyLogoUrl: {{ brand_logo_url | tojson }},
   logoWidth: {{ (logo_width_report or 150) | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=tenantbrand1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=tenantbrand1"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=logoonly1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=logoonly1"></script>
 </body>
 </html>
