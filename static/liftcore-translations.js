@@ -3,6 +3,15 @@
  * كل النصوص تُضاف هنا؛ المحرك يطبّقها على كل الصفحات.
  */
 window.__LC_TRANSLATIONS = {
+  'الرئيسية': 'Home',
+  'مركز العمل': 'Work Center',
+  'الصيانة والأعطال': 'Maintenance & Faults',
+  'التركيبات والتحديث': 'Installations & Modernization',
+  'المخازن والمشتريات': 'Warehouses & Purchasing',
+  'شؤون العاملين والفنيين': 'Personnel & Technicians',
+  'الحسابات والمالية': 'Accounting & Finance',
+  'التبويبات': 'Pages',
+  'لا توجد أقسام متاحة لصلاحيات حسابك. راجع مدير النظام.': 'No sections are available for your account. Contact your administrator.',
   'قطع تركيب': 'Parts Installation',
   'عملاء نشطون': 'Active Clients',
   'بدون عقد': 'No Contract',

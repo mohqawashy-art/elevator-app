@@ -1,4 +1,6 @@
 {# القائمة الموحّدة — أقسام بقوائم منسدلة (مع صلاحيات اختيارية) #}
+<a href="/home" class="nav-item nav-item-single"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 11l9-8 9 8"/><path d="M5 10v11h14V10"/><path d="M9 21v-6h6v6"/></svg>الرئيسية</a>
+
 {% if has_perm('dashboard.read') %}
 <a href="/dashboard" class="nav-item nav-item-single"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
 {% endif %}

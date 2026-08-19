@@ -23,7 +23,7 @@ def _mail_from() -> str:
 
 def _ensure_mail_env() -> None:
     """أعد قراءة MAIL_* من platform.env قبل الإرسال (يتجاوز بيئة قديمة في Gunicorn)."""
-    path = '/etc/liftcore/platform.env'
+    path = (os.environ.get('LIFTCORE_ENV_FILE') or '/etc/liftcore/platform.env').strip()
     if not os.path.isfile(path):
         return
     try:

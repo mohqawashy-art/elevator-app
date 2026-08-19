@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function(){
   setTimeout(function(){
     document.body.classList.add('exit');
     setTimeout(function(){
-      window.location.href = {{ url_for('dashboard')|tojson }};
+      window.location.href = {{ url_for('home')|tojson }};
     }, 700);
   }, 7000);
 });

@@ -10,7 +10,7 @@ from urllib import request as urlrequest
 
 from platform_billing import effective_amount, record_payment
 
-_PLATFORM_ENV = '/etc/liftcore/platform.env'
+_DEFAULT_PLATFORM_ENV = '/etc/liftcore/platform.env'
 _MOYASAR_ENV_KEYS = (
     'MOYASAR_SECRET_KEY',
     'MOYASAR_PUBLISHABLE_KEY',
@@ -31,10 +31,11 @@ def _clean_secret(value: str) -> str:
 
 def _ensure_moyasar_env() -> None:
     """أعد قراءة مفاتيح Moyasar من platform.env قبل كل طلب."""
-    if not os.path.isfile(_PLATFORM_ENV):
+    platform_env = (os.environ.get('LIFTCORE_ENV_FILE') or _DEFAULT_PLATFORM_ENV).strip()
+    if not os.path.isfile(platform_env):
         return
     try:
-        with open(_PLATFORM_ENV, encoding='utf-8') as fh:
+        with open(platform_env, encoding='utf-8') as fh:
             for raw in fh:
                 line = raw.strip()
                 if not line or line.startswith('#') or '=' not in line:

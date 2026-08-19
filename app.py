@@ -32,16 +32,21 @@ import string
 
 def _load_env_file():
     """تحميل إعدادات المنصة — مرة واحدة لكل العملاء (LiftCore + جما + أي subdomain)."""
-    paths = [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'),
-        '/home/info/liftcore/.env',
-        '/etc/liftcore/platform.env',
-    ]
+    configured_path = (os.environ.get('LIFTCORE_ENV_FILE') or '').strip()
+    if configured_path:
+        # بيئات staging تستخدم ملفاً واحداً معزولاً ولا تقرأ أسرار الإنتاج.
+        paths = [configured_path]
+    else:
+        paths = [
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'),
+            '/home/info/liftcore/.env',
+            '/etc/liftcore/platform.env',
+        ]
     for path in paths:
         if not os.path.isfile(path):
             continue
         # platform.env دائماً يغلب (أسرار الإنتاج)
-        override = path.rstrip('/').endswith('platform.env')
+        override = bool(configured_path) or path.rstrip('/').endswith('platform.env')
         try:
             with open(path, encoding='utf-8') as fh:
                 for raw in fh:
@@ -2274,8 +2279,16 @@ def index():
         # الصفحة العامة: تعريف المنتج أولاً، ثم الأسعار
         return render_template('landing.html', **_pricing_context())
     if current_user():
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('home'))
     return redirect(url_for('login'))
+
+
+@app.route('/home')
+def home():
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+    return render_template('home.html')
 
 
 @app.route('/coming-soon')
@@ -2505,7 +2518,7 @@ def login():
         if admin_console and is_platform_operator(current_user()):
             return redirect(url_for('platform_home'))
         if not platform and not admin_console:
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('home'))
     if request.method == 'GET':
         ensure_csrf_token()
     if request.method == 'POST':
@@ -4054,7 +4067,7 @@ def welcome():
     if not user:
         return redirect(url_for('login'))
     if not session.pop('just_logged_in', False):
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('home'))
     display_name = session.get('username') or user.full_name or user.username
     return render_template('welcome.html', current_user_name=display_name)
 
