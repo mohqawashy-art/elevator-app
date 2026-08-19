@@ -41,6 +41,15 @@ def test_admin_sees_all_department_cards_and_sidebar_home(client):
     assert 'class="department-tabs"' in portal_html
     assert 'data-nav-group' not in portal_html
 
+    inner_page = client.get('/faults')
+    assert inner_page.status_code == 200
+    inner_html = inner_page.get_data(as_text=True)
+    assert 'كل الأقسام' in inner_html
+    assert 'عملاء الصيانة' in inner_html
+    assert 'عقود الصيانة' in inner_html
+    assert 'الحسابات والمالية' not in inner_html
+    assert 'إدارة المخازن' not in inner_html
+
 
 def test_custom_finance_user_only_sees_authorized_department(client):
     with client.application.app_context():

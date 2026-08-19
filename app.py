@@ -908,6 +908,19 @@ def inject_global_template_vars():
     except Exception:
         platform_op = False
     support = _platform_support_context(user=user, settings=s, lang=lang)
+    active_department = (session.get('active_department') or '').strip()
+    active_department_portal = None
+    if user and active_department:
+        try:
+            active_department_portal = next(
+                (
+                    portal for portal in _visible_department_portals()
+                    if portal['slug'] == active_department
+                ),
+                None,
+            )
+        except Exception:
+            active_department_portal = None
     return {
         'google_maps_api_key': resolve_google_maps_api_key(s),
         'google_maps_key_source': google_maps_key_source(s),
@@ -946,6 +959,8 @@ def inject_global_template_vars():
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
         'is_platform_operator': platform_op,
         'platform_admin_host': bool(getattr(g, 'platform_admin_host', False)),
+        'active_department': active_department if active_department_portal else '',
+        'active_department_portal': active_department_portal,
         **support,
     }
 
@@ -2288,6 +2303,7 @@ def home():
     user = require_login()
     if not user:
         return redirect(url_for('login'))
+    session.pop('active_department', None)
     return render_template('home.html', departments=_visible_department_portals())
 
 
@@ -2437,6 +2453,7 @@ def department_portal(department):
     portal = portals.get(department)
     if not portal:
         abort(403)
+    session['active_department'] = department
     return render_template('department_portal.html', portal=portal)
 
 
