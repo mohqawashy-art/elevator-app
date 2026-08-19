@@ -199,6 +199,25 @@ body:has(#sidebar .department-nav-marker) .content .table-wrap {
   box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
 }
 
+/* Premium theme must not leak its gold divider into department navigation. */
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) .lc-header,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) .header {
+  border-bottom-color: var(--lc-dept-border) !important;
+}
+
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) #sidebar,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) .sidebar,
+html[data-theme="premium"] .department-tabs-wrap {
+  border-color: var(--lc-dept-border) !important;
+}
+
+html[data-theme="premium"] .department-tab.active {
+  color: #68a7ff !important;
+  border-color: rgba(42, 127, 255, .7) !important;
+  background: rgba(42, 127, 255, .16) !important;
+  box-shadow: inset 0 0 0 1px rgba(42, 127, 255, .08);
+}
+
 @media (max-width: 560px) {
   body:has(#sidebar .department-nav-marker) .main > .content {
     padding: 14px;

@@ -286,6 +286,10 @@
       var current = new URLSearchParams(location.search || '');
       var matches = true;
       wanted.forEach(function (value, key) {
+        if (key === 'department' && !current.has(key)) {
+          var marker = document.querySelector('.department-nav-marker[data-department]');
+          if (marker && marker.dataset.department === value) return;
+        }
         if (current.get(key) !== value) matches = false;
       });
       return matches;
