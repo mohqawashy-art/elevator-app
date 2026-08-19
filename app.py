@@ -908,7 +908,12 @@ def inject_global_template_vars():
     except Exception:
         platform_op = False
     support = _platform_support_context(user=user, settings=s, lang=lang)
-    active_department = (session.get('active_department') or '').strip()
+    requested_department = (request.args.get('department') or '').strip()
+    if requested_department in DEPARTMENT_PORTALS:
+        session['active_department'] = requested_department
+    active_department = (
+        requested_department or session.get('active_department') or ''
+    ).strip()
     active_department_portal = None
     if user and active_department:
         try:
@@ -2434,7 +2439,11 @@ def _visible_department_portals():
                 if install_only and not install_enabled:
                     continue
                 if has_perm(permission):
-                    allowed.append({'label': label, 'href': href})
+                    separator = '&' if '?' in href else '?'
+                    allowed.append({
+                        'label': label,
+                        'href': f'{href}{separator}department={slug}',
+                    })
             portal[group] = allowed
         if portal['links'] or portal['reports']:
             visible.append(portal)
