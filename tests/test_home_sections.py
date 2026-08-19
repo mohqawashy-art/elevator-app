@@ -49,12 +49,20 @@ def test_admin_sees_all_department_cards_and_sidebar_home(client):
     assert 'عقود الصيانة' in inner_html
     assert 'الحسابات والمالية' not in inner_html
     assert 'إدارة المخازن' not in inner_html
+    assert 'class="department-nav-marker"' in inner_html
+    assert 'department-tab--report' in inner_html
 
     client.get('/home')
     explicit_page = client.get('/faults?department=maintenance')
     explicit_html = explicit_page.get_data(as_text=True)
     assert 'عملاء الصيانة' in explicit_html
     assert 'إدارة المخازن' not in explicit_html
+
+    installation_page = client.get('/installation/?department=installations')
+    assert installation_page.status_code == 200
+    installation_html = installation_page.get_data(as_text=True)
+    assert 'data-department="installations"' in installation_html
+    assert '← النظام الرئيسي' not in installation_html
 
 
 def test_custom_finance_user_only_sees_authorized_department(client):

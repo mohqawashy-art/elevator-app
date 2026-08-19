@@ -1,0 +1,211 @@
+/* Shared department workspace shell */
+:root {
+  --lc-dept-color: var(--portal, var(--accent, #2a7fff));
+  --lc-dept-bg: var(--bg2, #101620);
+  --lc-dept-card: var(--card, #131b27);
+  --lc-dept-border: var(--border, rgba(100, 160, 255, .13));
+  --lc-dept-muted: var(--text2, #8a9bb8);
+}
+
+.department-nav-marker {
+  display: none !important;
+}
+
+.department-tabs-wrap {
+  position: sticky;
+  top: var(--lc-header-h, 104px);
+  z-index: 180;
+  width: 100%;
+  background: var(--lc-dept-bg);
+  border-bottom: 1px solid var(--lc-dept-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .12);
+}
+
+.department-tabs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 9px 28px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.department-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 7px 11px;
+  color: var(--lc-dept-muted);
+  background: rgba(255, 255, 255, .02);
+  border: 1px solid var(--lc-dept-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color .15s ease, border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.department-tab:hover,
+.department-tab.active {
+  color: var(--lc-dept-color);
+  border-color: color-mix(in srgb, var(--lc-dept-color) 50%, transparent);
+  background: color-mix(in srgb, var(--lc-dept-color) 9%, transparent);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.department-tab--report {
+  border-style: dashed;
+}
+
+.department-tabs-label {
+  flex: 0 0 auto;
+  margin-inline-start: 8px;
+  color: var(--lc-dept-color);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Inner legacy pages become the same horizontal department bar. */
+body:has(#sidebar .department-nav-marker) {
+  --portal: var(--accent, #2a7fff);
+}
+
+@media (min-width: 1101px) {
+  body:has(#sidebar .department-nav-marker) #sidebar,
+  body:has(#sidebar .department-nav-marker) .sidebar {
+    justify-content: center !important;
+    gap: 7px !important;
+    padding: 9px 28px !important;
+    background: var(--lc-dept-bg) !important;
+    border-bottom-color: var(--lc-dept-border) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .12) !important;
+  }
+
+  body:has(#sidebar .department-nav-marker) #sidebar .sidebar-nav,
+  body:has(#sidebar .department-nav-marker) .sidebar .sidebar-nav,
+  body:has(#sidebar .department-nav-marker) #sidebar:not(:has(.sidebar-nav)) {
+    flex: 0 1 1380px !important;
+    justify-content: flex-start !important;
+    gap: 7px !important;
+    max-width: 1380px;
+  }
+
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tab,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab {
+    margin: 0 !important;
+    padding: 7px 11px !important;
+    color: var(--lc-dept-muted) !important;
+    background: rgba(255, 255, 255, .02) !important;
+    border: 1px solid var(--lc-dept-border) !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    gap: 0 !important;
+  }
+
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tab--report,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab--report {
+    border-style: dashed !important;
+  }
+
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tab:hover,
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tab.active,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab:hover,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab.active {
+    color: var(--lc-dept-color) !important;
+    border-color: color-mix(in srgb, var(--lc-dept-color) 50%, transparent) !important;
+    background: color-mix(in srgb, var(--lc-dept-color) 9%, transparent) !important;
+  }
+
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tab::before,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab::before {
+    content: none !important;
+    display: none !important;
+  }
+}
+
+/* Keep the department workspace visible as a compact horizontal rail on mobile. */
+@media (max-width: 1100px) {
+  body:has(#sidebar .department-nav-marker) .hamburger,
+  body:has(#sidebar .department-nav-marker) .mobile-overlay {
+    display: none !important;
+  }
+
+  body:has(#sidebar .department-nav-marker) #sidebar,
+  body:has(#sidebar .department-nav-marker) .sidebar {
+    position: sticky !important;
+    top: var(--lc-header-h, 60px) !important;
+    inset: auto !important;
+    z-index: 180 !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 8px 14px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    transform: none !important;
+    background: var(--lc-dept-bg) !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--lc-dept-border) !important;
+  }
+
+  body:has(#sidebar .department-nav-marker) #sidebar .sidebar-logo,
+  body:has(#sidebar .department-nav-marker) .sidebar .sidebar-logo {
+    display: none !important;
+  }
+
+  body:has(#sidebar .department-nav-marker) #sidebar .sidebar-nav,
+  body:has(#sidebar .department-nav-marker) .sidebar .sidebar-nav,
+  body:has(#sidebar .department-nav-marker) #sidebar:not(:has(.sidebar-nav)) {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 7px !important;
+    width: max-content !important;
+    min-width: 100% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body:has(#sidebar .department-nav-marker) .department-tab {
+    margin: 0 !important;
+    padding: 7px 11px !important;
+    font-size: 11px !important;
+    border: 1px solid var(--lc-dept-border) !important;
+  }
+
+  .department-tabs {
+    padding: 8px 14px;
+  }
+}
+
+/* Common inner-page rhythm without altering page-specific controls. */
+body:has(#sidebar .department-nav-marker) .main > .content {
+  width: 100%;
+  max-width: 1380px;
+  margin-inline: auto;
+  padding: 24px 28px;
+}
+
+body:has(#sidebar .department-nav-marker) .content .panel,
+body:has(#sidebar .department-nav-marker) .content .card,
+body:has(#sidebar .department-nav-marker) .content .table-wrap {
+  border-color: var(--lc-dept-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+}
+
+@media (max-width: 560px) {
+  body:has(#sidebar .department-nav-marker) .main > .content {
+    padding: 14px;
+  }
+}

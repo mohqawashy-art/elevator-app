@@ -278,11 +278,19 @@
     var raw = (linkHref || '').split('#')[0];
     var q = raw.indexOf('?');
     var hrefPath = (q >= 0 ? raw.slice(0, q) : raw).replace(/\/+$/, '') || '/';
-    var hrefQuery = q >= 0 ? raw.slice(q) : '';
+    var hrefQuery = q >= 0 ? raw.slice(q + 1) : '';
     var path = (location.pathname || '').replace(/\/+$/, '') || '/';
-    var search = location.search || '';
-    if (hrefQuery) return hrefPath === path && hrefQuery === search;
-    if (hrefPath === path) return !search;
+    if (hrefQuery) {
+      if (hrefPath !== path) return false;
+      var wanted = new URLSearchParams(hrefQuery);
+      var current = new URLSearchParams(location.search || '');
+      var matches = true;
+      wanted.forEach(function (value, key) {
+        if (current.get(key) !== value) matches = false;
+      });
+      return matches;
+    }
+    if (hrefPath === path) return true;
     return hrefPath !== '/' && path.indexOf(hrefPath) === 0;
   }
 
@@ -303,6 +311,11 @@
       }
     });
     document.querySelectorAll('#sidebar .nav-item-single[href], .sidebar .nav-item-single[href]').forEach(function (a) {
+      var active = matchNavHref(a.getAttribute('href'));
+      a.classList.toggle('active', active);
+      if (active) scrollNavItemIntoView(a);
+    });
+    document.querySelectorAll('.department-tabs-wrap .department-tab[href]').forEach(function (a) {
       var active = matchNavHref(a.getAttribute('href'));
       a.classList.toggle('active', active);
       if (active) scrollNavItemIntoView(a);

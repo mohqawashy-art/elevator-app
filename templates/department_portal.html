@@ -13,12 +13,6 @@
 body{margin:0;min-height:100vh;background:var(--p-bg);color:var(--p-text);font-family:'IBM Plex Sans Arabic',sans-serif;overflow-x:hidden}
 .main{width:100%;min-width:0;display:flex;flex-direction:column}
 .hamburger{display:none!important}
-.department-tabs-wrap{position:sticky;top:var(--lc-header-h,60px);z-index:80;background:#101620;border-bottom:1px solid var(--p-border);box-shadow:0 6px 18px rgba(0,0,0,.12)}
-.department-tabs{max-width:1380px;margin:0 auto;padding:9px 28px;display:flex;align-items:center;gap:7px;overflow-x:auto;scrollbar-width:thin}
-.department-tab{flex:0 0 auto;text-decoration:none;color:var(--p-muted);font-size:11px;padding:7px 11px;border:1px solid var(--p-border);border-radius:8px;background:rgba(255,255,255,.02);white-space:nowrap}
-.department-tab:hover{color:var(--portal);border-color:color-mix(in srgb,var(--portal) 50%,transparent);background:color-mix(in srgb,var(--portal) 8%,transparent)}
-.department-tab--report{border-style:dashed}
-.department-tabs-label{flex:0 0 auto;color:var(--portal);font-size:10px;font-weight:600;margin-inline-start:8px}
 .content{padding:28px;max-width:1380px;width:100%;margin:0 auto}
 .portal-back{display:inline-flex;align-items:center;gap:6px;color:var(--p-muted);text-decoration:none;font-size:12px;margin-bottom:14px}
 .portal-back:hover{color:var(--portal)}
@@ -39,7 +33,7 @@ body{margin:0;min-height:100vh;background:var(--p-bg);color:var(--p-text);font-f
 .portal-arrow{color:var(--portal);font-size:15px}
 .portal-empty{color:var(--p-muted);font-size:12px;padding:12px}
 @media(max-width:900px){.portal-columns{grid-template-columns:1fr}.content{padding:20px}}
-@media(max-width:560px){.content{padding:14px}.portal-hero{padding:22px 18px}.portal-links{grid-template-columns:1fr}.department-tabs{padding:8px 14px}}
+@media(max-width:560px){.content{padding:14px}.portal-hero{padding:22px 18px}.portal-links{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -48,16 +42,8 @@ body{margin:0;min-height:100vh;background:var(--p-bg);color:var(--p-text);font-f
   {% include 'partials/app_header.html' %}
   <nav class="department-tabs-wrap" aria-label="تبويبات {{ portal.short_title }}">
     <div class="department-tabs">
-      <a class="department-tab" href="{{ url_for('home') }}">كل الأقسام</a>
-      {% for item in portal.links %}
-      <a class="department-tab" href="{{ item.href }}">{{ item.label }}</a>
-      {% endfor %}
-      {% if portal.reports %}
-      <span class="department-tabs-label">التقارير</span>
-      {% for item in portal.reports %}
-      <a class="department-tab department-tab--report" href="{{ item.href }}">{{ item.label }}</a>
-      {% endfor %}
-      {% endif %}
+      {% set department_tabs_portal = portal %}
+      {% include 'partials/department_tabs.html' %}
     </div>
   </nav>
   <main class="content">

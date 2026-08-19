@@ -4,10 +4,15 @@
     <img src="{{ brand_logo_url }}" alt="LiftCore">
   </div>
   <nav class="sidebar-nav">
+    {% if active_department_portal %}
+    {% set department_tabs_sidebar = true %}
+    {% include 'partials/department_tabs.html' %}
+    {% else %}
     <a href="/installation/" class="nav-item{% if request.path == '/installation/' %} active{% endif %}">لوحة المشاريع</a>
     <a href="/installation/leads" class="nav-item{% if request.path.startswith('/installation/leads') %} active{% endif %}">فرص البيع</a>
     <a href="/installation/projects" class="nav-item{% if request.path.startswith('/installation/projects') or request.path.startswith('/installation/quotes') %} active{% endif %}">المشاريع والتسعير</a>
     <div class="nav-section">LiftCore</div>
     <a href="{{ url_for('dashboard') }}" class="nav-item">← النظام الرئيسي</a>
+    {% endif %}
   </nav>
 </aside>

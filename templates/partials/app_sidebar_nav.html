@@ -1,22 +1,7 @@
 {# القائمة الموحّدة — أقسام بقوائم منسدلة (مع صلاحيات اختيارية) #}
 {% if active_department_portal %}
-<a href="/home" class="nav-item nav-item-single"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 11l9-8 9 8"/><path d="M5 10v11h14V10"/><path d="M9 21v-6h6v6"/></svg>كل الأقسام</a>
-{% for item in active_department_portal.links %}
-<a href="{{ item.href }}" class="nav-item nav-item-single"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><circle cx="12" cy="12" r="8"/><path d="M9 12h6M13 9l3 3-3 3"/></svg>{{ item.label }}</a>
-{% endfor %}
-{% if active_department_portal.reports %}
-<div class="nav-group" data-nav-group>
-  <button type="button" class="nav-group-btn" aria-expanded="false" aria-haspopup="true">
-    <span class="nav-group-label">تقارير {{ active_department_portal.short_title }}</span>
-    <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M3 4.5l3 3 3-3"/></svg>
-  </button>
-  <div class="nav-group-menu nav-group-menu--reports">
-    {% for item in active_department_portal.reports %}
-    <a href="{{ item.href }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M4 4h16v16H4z"/><path d="M8 15l3-3 2 2 3-4"/></svg>{{ item.label }}</a>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
+{% set department_tabs_sidebar = true %}
+{% include 'partials/department_tabs.html' %}
 {% else %}
 <a href="/home" class="nav-item nav-item-single"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 11l9-8 9 8"/><path d="M5 10v11h14V10"/><path d="M9 21v-6h6v6"/></svg>الرئيسية</a>
 
