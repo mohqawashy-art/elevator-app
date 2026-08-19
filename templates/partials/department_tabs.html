@@ -1,14 +1,14 @@
 {% set tabs_portal = department_tabs_portal|default(active_department_portal|default(portal)) %}
 {% if tabs_portal %}
 <span class="department-nav-marker" data-department="{{ tabs_portal.slug }}" aria-hidden="true"></span>
-<a class="department-tab{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" style="--lc-dept-color:{{ tabs_portal.color }}" href="{{ url_for('home') }}">كل الأقسام</a>
+<a class="department-tab{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" href="{{ url_for('home') }}">كل الأقسام</a>
 {% for item in tabs_portal.links %}
-<a class="department-tab{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" style="--lc-dept-color:{{ tabs_portal.color }}" href="{{ item.href }}">{{ item.label }}</a>
+<a class="department-tab{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
 {% endfor %}
 {% if tabs_portal.reports %}
-<span class="department-tabs-label" style="--lc-dept-color:{{ tabs_portal.color }}">التقارير</span>
+<span class="department-tabs-label">التقارير</span>
 {% for item in tabs_portal.reports %}
-<a class="department-tab department-tab--report{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" style="--lc-dept-color:{{ tabs_portal.color }}" href="{{ item.href }}">{{ item.label }}</a>
+<a class="department-tab department-tab--report{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
 {% endfor %}
 {% endif %}
 {% endif %}

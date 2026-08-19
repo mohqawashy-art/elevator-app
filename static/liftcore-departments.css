@@ -1,9 +1,9 @@
 /* Shared department workspace shell */
 :root {
-  --lc-dept-color: var(--portal, var(--accent, #2a7fff));
+  --lc-dept-color: #2a7fff;
   --lc-dept-bg: var(--bg2, #101620);
   --lc-dept-card: var(--card, #131b27);
-  --lc-dept-border: var(--border, rgba(100, 160, 255, .13));
+  --lc-dept-border: rgba(100, 160, 255, .16);
   --lc-dept-muted: var(--text2, #8a9bb8);
 }
 
@@ -73,11 +73,6 @@
   font-size: 10px;
   font-weight: 600;
   white-space: nowrap;
-}
-
-/* Inner legacy pages become the same horizontal department bar. */
-body:has(#sidebar .department-nav-marker) {
-  --portal: var(--accent, #2a7fff);
 }
 
 @media (min-width: 1101px) {
