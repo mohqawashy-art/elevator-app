@@ -29,6 +29,7 @@ def test_admin_sees_all_department_cards_and_sidebar_home(client):
     assert 'href="/home"' in html
     assert 'href="/departments/maintenance"' in html
     assert 'href="/departments/installations"' in html
+    assert 'data-nav-group' not in html
 
     portal = client.get('/departments/maintenance')
     assert portal.status_code == 200
@@ -37,6 +38,8 @@ def test_admin_sees_all_department_cards_and_sidebar_home(client):
     assert 'عملاء الصيانة' in portal_html
     assert '/clients?scope=maintenance' in portal_html
     assert '/contracts?scope=maintenance' in portal_html
+    assert 'class="department-tabs"' in portal_html
+    assert 'data-nav-group' not in portal_html
 
 
 def test_custom_finance_user_only_sees_authorized_department(client):
