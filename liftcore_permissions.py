@@ -336,6 +336,63 @@ def check_path_permission(user, *, path: str, method: str, settings=None) -> str
     return None
 
 
+# أول مسار مناسب لكل slug (للتحويل بعد تسجيل الدخول / رفض الصلاحية)
+PAGE_HOME_PATHS: dict[str, str] = {
+    'dashboard': '/dashboard',
+    'clients': '/clients',
+    'contracts': '/contracts',
+    'elevators': '/elevators',
+    'technicians': '/technicians',
+    'maintenance_visits': '/maintenance-visits',
+    'faults': '/faults',
+    'whatsapp_inbox': '/support/whatsapp',
+    'parts_billing': '/parts-billing',
+    'elevator_estimates': '/elevator-estimates',
+    'installation_projects': '/installation',
+    'revenues': '/revenues',
+    'expenses': '/expenses',
+    'invoices': '/invoices',
+    'inventory': '/inventory',
+    'stock_movements': '/stock-movements',
+    'purchase_orders': '/purchase-orders',
+    'reports_home': '/reports',
+    'report_dashboard': '/reports/dashboard',
+    'report_client_annual': '/reports/client-annual',
+    'report_clients': '/reports/clients',
+    'report_elevators': '/reports/elevators',
+    'report_contracts': '/reports/contracts',
+    'report_technicians': '/reports/technicians',
+    'report_maintenance': '/reports/maintenance-visits',
+    'report_faults': '/reports/faults',
+    'report_financial': '/reports/financial',
+    'report_contract_forecast': '/reports/contract-forecast',
+    'report_financial_health': '/reports/financial-health',
+    'report_revenues': '/reports/revenues',
+    'report_expenses': '/reports/expenses',
+    'report_invoices': '/reports/invoices',
+    'report_customer_statement': '/reports/customer-statement',
+    'report_inventory': '/reports/inventory',
+    'report_stock': '/reports/stock-movements',
+}
+
+
+def first_allowed_path_for_user(user) -> str:
+    """يرجع أول مسار يملك المستخدم قراءته، أو /dashboard."""
+    if not user:
+        return '/dashboard'
+    if not is_custom_role(user):
+        return '/dashboard'
+    grants = effective_permissions(user)
+    # لوحة التحكم دائماً متاحة كصفحة هبوط
+    for page in PAGE_DEFS:
+        slug = page['slug']
+        if slug == 'dashboard':
+            continue
+        if any(page_perm(slug, a) in grants for a in PERM_ACTIONS):
+            return PAGE_HOME_PATHS.get(slug, '/dashboard')
+    return '/dashboard'
+
+
 def permission_groups_for_ui() -> list[dict[str, Any]]:
     groups: dict[str, list[dict[str, Any]]] = {}
     order: list[str] = []

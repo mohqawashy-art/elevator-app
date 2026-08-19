@@ -70,18 +70,38 @@ def role_is_admin(role: str | None) -> bool:
 
 
 def mutation_denied_response(*, as_json: bool, message_ar: str, message_en: str, lang: str = 'ar'):
-    from flask import jsonify, flash, redirect, url_for, request
+    from flask import flash, render_template, request
 
     msg = message_en if lang == 'en' else message_ar
     if as_json or (request.path or '').startswith('/api/'):
         from liftcore_api_i18n import api_error_payload
+        from flask import jsonify
         return jsonify(api_error_payload(
             'forbidden',
             message_ar=message_ar,
             message_en=message_en,
         )), 403
     flash(msg, 'error')
-    return redirect(request.referrer or url_for('dashboard')), 403
+    # لا نُرجع redirect مع status 403 — المتصفح يعرض صفحة Werkzeug
+    # «Redirecting...» ولا يتبع التحويل تلقائياً.
+    return render_template(
+        'permission_denied.html',
+        message=msg,
+        home_url=_safe_home_path(),
+    ), 403
+
+
+def _safe_home_path() -> str:
+    """أول صفحة مسموحة للمستخدم الحالي، أو لوحة التحكم."""
+    try:
+        from flask import g, url_for
+        from liftcore_permissions import first_allowed_path_for_user
+
+        user = getattr(g, 'user', None)
+        path = first_allowed_path_for_user(user)
+        return path or url_for('dashboard')
+    except Exception:
+        return '/dashboard'
 
 
 def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str = 'ar', settings=None):
@@ -92,14 +112,17 @@ def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str 
 
     ep = endpoint or ''
     role = user.role or ROLE_VIEWER
+    path = path or ''
+
+    # شاشة الترحيب ولوحة التحكم متاحتان لأي مستخدم مسجّل (هيكل التطبيق)
+    if path == '/welcome' or path == '/dashboard' or path.startswith('/api/dashboard'):
+        return None
 
     if method in MUTATING_METHODS and ep in SELF_SERVICE_POST_ENDPOINTS:
         return None
 
     from liftcore_permissions import (
-        ADMIN_ONLY_ENDPOINTS_PERMISSION,
         check_path_permission,
-        user_has_permission,
     )
 
     if role == ROLE_CUSTOM:
