@@ -21,12 +21,22 @@ def test_admin_sees_all_department_cards_and_sidebar_home(client):
         'الصيانة والأعطال',
         'التركيبات والتحديث',
         'المخازن والمشتريات',
-        'شؤون العاملين والفنيين',
+        'شؤون العاملين',
         'الحسابات والمالية',
+        'الإدارة والمتابعة',
     ):
         assert title in html
     assert 'href="/home"' in html
-    assert 'href="/dashboard"' in html
+    assert 'href="/departments/maintenance"' in html
+    assert 'href="/departments/installations"' in html
+
+    portal = client.get('/departments/maintenance')
+    assert portal.status_code == 200
+    portal_html = portal.get_data(as_text=True)
+    assert 'منصة الصيانة والأعطال' in portal_html
+    assert 'عملاء الصيانة' in portal_html
+    assert '/clients?scope=maintenance' in portal_html
+    assert '/contracts?scope=maintenance' in portal_html
 
 
 def test_custom_finance_user_only_sees_authorized_department(client):
@@ -44,14 +54,20 @@ def test_custom_finance_user_only_sees_authorized_department(client):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert 'الحسابات والمالية' in html
-    assert 'href="/revenues"' in html
-    assert 'href="/reports/revenues"' in html
+    assert 'href="/departments/accounting"' in html
     assert 'الصيانة والأعطال' not in html
     assert 'المخازن والمشتريات' not in html
     assert 'التركيبات والتحديث' not in html
-    assert 'شؤون العاملين والفنيين' not in html
-    assert 'href="/expenses"' not in html
-    assert 'href="/reports/expenses"' not in html
+    assert 'شؤون العاملين' not in html
+
+    portal = client.get('/departments/accounting')
+    assert portal.status_code == 200
+    portal_html = portal.get_data(as_text=True)
+    assert 'href="/revenues"' in portal_html
+    assert 'href="/reports/revenues"' in portal_html
+    assert 'href="/expenses"' not in portal_html
+    assert 'href="/reports/expenses"' not in portal_html
+    assert client.get('/departments/maintenance').status_code == 403
 
 
 def test_custom_user_without_grants_gets_safe_empty_state(client):
@@ -65,8 +81,8 @@ def test_custom_user_without_grants_gets_safe_empty_state(client):
     response = client.get('/home')
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert 'لا توجد أقسام متاحة لصلاحيات حسابك' in html
-    assert 'href="/dashboard"' not in html
+    assert 'لا توجد منصات متاحة لصلاحيات حسابك' in html
+    assert '/departments/' not in html
 
 
 def test_authenticated_root_redirects_to_home(client):
@@ -85,3 +101,17 @@ def test_authenticated_root_redirects_to_home(client):
     )
     assert response.status_code == 302
     assert '/home' in (response.headers.get('Location') or '')
+
+
+def test_department_customer_and_contract_scopes_are_labeled(client):
+    login_as(client, 'admin')
+
+    maintenance_clients = client.get('/clients?scope=maintenance')
+    assert maintenance_clients.status_code == 200
+    assert 'عملاء الصيانة' in maintenance_clients.get_data(as_text=True)
+
+    installation_contracts = client.get('/contracts?scope=installation&z=4')
+    assert installation_contracts.status_code == 200
+    contracts_html = installation_contracts.get_data(as_text=True)
+    assert 'عقود التركيبات والتحديث' in contracts_html
+    assert 'var CONTRACT_SCOPE = "installation"' in contracts_html

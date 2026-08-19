@@ -2288,7 +2288,156 @@ def home():
     user = require_login()
     if not user:
         return redirect(url_for('login'))
-    return render_template('home.html')
+    return render_template('home.html', departments=_visible_department_portals())
+
+
+DEPARTMENT_PORTALS = {
+    'maintenance': {
+        'title': 'منصة الصيانة والأعطال',
+        'short_title': 'الصيانة والأعطال',
+        'description': 'عملاء وعقود الصيانة والزيارات والبلاغات وقطع الغيار',
+        'color': '#2a7fff',
+        'links': (
+            ('عملاء الصيانة', '/clients?scope=maintenance', 'clients.read'),
+            ('عقود الصيانة', '/contracts?scope=maintenance', 'contracts.read'),
+            ('مصاعد الصيانة', '/elevators', 'elevators.read'),
+            ('زيارات الصيانة', '/maintenance-visits', 'maintenance_visits.read'),
+            ('الأعطال والبلاغات', '/faults', 'faults.read'),
+            ('وارد واتساب', '/support/whatsapp', 'whatsapp_inbox.read'),
+            ('تركيب قطع الغيار', '/parts-billing', 'parts_billing.read'),
+        ),
+        'reports': (
+            ('تقرير زيارات الصيانة', '/reports/maintenance-visits', 'report_maintenance.read'),
+            ('تقرير الأعطال', '/reports/faults', 'report_faults.read'),
+            ('تقرير العقود', '/reports/contracts', 'report_contracts.read'),
+            ('تقرير المصاعد', '/reports/elevators', 'report_elevators.read'),
+        ),
+    },
+    'installations': {
+        'title': 'منصة التركيبات والتحديث',
+        'short_title': 'التركيبات والتحديث',
+        'description': 'عملاء وعقود التركيبات والفرص والتسعير والمشروعات',
+        'color': '#c8a055',
+        'links': (
+            ('عملاء التركيبات', '/clients?scope=installation', 'clients.read'),
+            ('عقود التركيبات والتحديث', '/contracts?scope=installation', 'contracts.read'),
+            ('تقدير تكلفة مصعد', '/elevator-estimates', 'elevator_estimates.read'),
+            ('فرص البيع', '/installation/leads', 'installation_projects.read', True),
+            ('مشروعات التركيبات', '/installation/projects', 'installation_projects.read', True),
+            ('لوحة تنفيذ المشروعات', '/installation/', 'installation_projects.read', True),
+        ),
+        'reports': (
+            ('بطاقات وتقارير المشروعات', '/installation/projects', 'installation_projects.read', True),
+            ('تقرير العقود', '/reports/contracts', 'report_contracts.read'),
+        ),
+    },
+    'inventory': {
+        'title': 'منصة المخازن والمشتريات',
+        'short_title': 'المخازن والمشتريات',
+        'description': 'الأصناف وحركة المخزون وطلبات الشراء وتقارير المخازن',
+        'color': '#1fb87a',
+        'links': (
+            ('الأصناف', '/inventory', 'inventory.read'),
+            ('حركة المخزن', '/stock-movements', 'stock_movements.read'),
+            ('طلبات الشراء', '/purchase-orders', 'purchase_orders.read'),
+        ),
+        'reports': (
+            ('تقرير الأصناف', '/reports/inventory', 'report_inventory.read'),
+            ('تقرير حركة المخزن', '/reports/stock-movements', 'report_stock.read'),
+        ),
+    },
+    'personnel': {
+        'title': 'منصة شؤون العاملين والفنيين',
+        'short_title': 'شؤون العاملين',
+        'description': 'الفنيون وفرق الصيانة ومتابعة الأداء الفني',
+        'color': '#8c6cff',
+        'links': (
+            ('الفنيون', '/technicians', 'technicians.read'),
+            ('فرق الصيانة', '/technicians?tab=teams', 'technicians.read'),
+        ),
+        'reports': (
+            ('تقرير الفنيين', '/reports/technicians', 'report_technicians.read'),
+        ),
+    },
+    'accounting': {
+        'title': 'منصة الحسابات والمالية',
+        'short_title': 'الحسابات والمالية',
+        'description': 'الإيرادات والمصروفات والفواتير والحسابات والقيود',
+        'color': '#e09030',
+        'links': (
+            ('الإيرادات والتحصيل', '/revenues', 'revenues.read'),
+            ('المصروفات', '/expenses', 'expenses.read'),
+            ('الفواتير', '/invoices', 'invoices.read'),
+            ('شجرة الحسابات', '/accounts', 'revenues.read'),
+            ('القيود اليومية', '/journals', 'revenues.read'),
+            ('دفتر الأستاذ', '/ledger', 'revenues.read'),
+            ('ميزان المراجعة', '/trial-balance', 'revenues.read'),
+            ('قائمة الدخل', '/pnl', 'revenues.read'),
+            ('المركز المالي', '/balance-sheet', 'revenues.read'),
+        ),
+        'reports': (
+            ('التقرير المالي', '/reports/financial', 'report_financial.read'),
+            ('الصحة المالية', '/reports/financial-health', 'report_financial_health.read'),
+            ('توقعات التحصيل', '/reports/contract-forecast', 'report_contract_forecast.read'),
+            ('كشف حساب عميل', '/reports/customer-statement', 'report_customer_statement.read'),
+            ('تقرير الإيرادات', '/reports/revenues', 'report_revenues.read'),
+            ('تقرير المصروفات', '/reports/expenses', 'report_expenses.read'),
+            ('تقرير الفواتير', '/reports/invoices', 'report_invoices.read'),
+        ),
+    },
+    'management': {
+        'title': 'منصة الإدارة والمتابعة',
+        'short_title': 'الإدارة والمتابعة',
+        'description': 'لوحة المؤشرات والتقارير العامة وإعدادات النظام',
+        'color': '#e04f6f',
+        'links': (
+            ('لوحة المؤشرات العامة', '/dashboard', 'dashboard.read'),
+            ('كل التقارير', '/reports', 'reports_home.read'),
+            ('إعدادات الحساب والنظام', '/settings', 'dashboard.read'),
+        ),
+        'reports': (
+            ('تقرير الداشبورد', '/reports/dashboard', 'report_dashboard.read'),
+            ('التقرير السنوي للعميل', '/reports/client-annual', 'report_client_annual.read'),
+        ),
+    },
+}
+
+
+def _visible_department_portals():
+    """فلترة المنصات وروابطها قبل العرض وفق صلاحيات المستخدم والباقة."""
+    visible = []
+    install_enabled = install_module_enabled()
+    for slug, definition in DEPARTMENT_PORTALS.items():
+        portal = dict(definition)
+        portal['slug'] = slug
+        for group in ('links', 'reports'):
+            allowed = []
+            for item in definition[group]:
+                label, href, permission, *flags = item
+                install_only = bool(flags and flags[0])
+                if install_only and not install_enabled:
+                    continue
+                if has_perm(permission):
+                    allowed.append({'label': label, 'href': href})
+            portal[group] = allowed
+        if portal['links'] or portal['reports']:
+            visible.append(portal)
+    return visible
+
+
+@app.route('/departments/<department>')
+def department_portal(department):
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+    portals = {
+        portal['slug']: portal
+        for portal in _visible_department_portals()
+    }
+    portal = portals.get(department)
+    if not portal:
+        abort(403)
+    return render_template('department_portal.html', portal=portal)
 
 
 @app.route('/coming-soon')
@@ -4586,6 +4735,9 @@ def api_dashboard_drill(card_type):
 def clients():
     from sqlalchemy.orm import joinedload
 
+    client_scope = (request.args.get('scope') or '').strip().lower()
+    if client_scope not in ('maintenance', 'installation'):
+        client_scope = ''
     customers = (
         tenant_query(Customer)
         .options(joinedload(Customer.elevators), joinedload(Customer.contracts))
@@ -4597,6 +4749,12 @@ def clients():
         customers=customers,
         customers_js=[client_to_js_dict(c) for c in customers],
         next_client_code=next_code(Customer, 'C-', digits=4),
+        client_scope=client_scope,
+        clients_page_title=(
+            'عملاء الصيانة' if client_scope == 'maintenance'
+            else 'عملاء التركيبات' if client_scope == 'installation'
+            else 'العملاء'
+        ),
     )
 
 
@@ -6258,6 +6416,9 @@ def contracts():
         .all()
     )
     renewed_ids = _annotate_contract_renewals(contracts_list)
+    contract_scope = (request.args.get('scope') or '').strip().lower()
+    if contract_scope not in ('maintenance', 'installation'):
+        contract_scope = ''
     customers = tenant_query(Customer).order_by(Customer.name).all()
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
@@ -6274,6 +6435,12 @@ def contracts():
             'CI-': next_code(Contract, 'CI-', digits=5),
         },
         next_contract_code=next_code(Contract, 'CN-', digits=5),
+        contract_scope=contract_scope,
+        contracts_page_title=(
+            'عقود الصيانة' if contract_scope == 'maintenance'
+            else 'عقود التركيبات والتحديث' if contract_scope == 'installation'
+            else 'العقود'
+        ),
     ))
     # منع كاش المتصفح للنسخة القديمة من سكربت حفظ العقد
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LiftCore — {{ portal.title }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% include 'partials/liftcore_head.html' %}
+<style>
+*{box-sizing:border-box}
+:root{--portal:{{ portal.color }};--p-bg:#0b0f17;--p-card:#131b27;--p-border:rgba(100,160,255,.13);--p-text:#e7edf8;--p-muted:#8a9bb8}
+body{margin:0;min-height:100vh;background:var(--p-bg);color:var(--p-text);font-family:'IBM Plex Sans Arabic',sans-serif;display:flex;overflow-x:hidden}
+.sidebar{width:240px;min-width:240px;background:#111720;border-left:1px solid var(--p-border);height:100vh;position:sticky;top:0;z-index:100;overflow:hidden;display:flex;flex-direction:column}
+.sidebar-logo{min-height:60px;padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--p-border)}
+.sidebar-logo img{width:var(--logo-w-sidebar,150px);max-height:44px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.main{min-width:0;flex:1;display:flex;flex-direction:column}
+.content{padding:28px;max-width:1380px;width:100%;margin:0 auto}
+.portal-back{display:inline-flex;align-items:center;gap:6px;color:var(--p-muted);text-decoration:none;font-size:12px;margin-bottom:14px}
+.portal-back:hover{color:var(--portal)}
+.portal-hero{position:relative;overflow:hidden;padding:27px 29px;border:1px solid color-mix(in srgb,var(--portal) 30%,var(--p-border));border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--portal) 15%,var(--p-card)),var(--p-card));margin-bottom:20px}
+.portal-hero:after{content:"";position:absolute;width:230px;height:230px;border-radius:50%;left:-80px;top:-135px;background:color-mix(in srgb,var(--portal) 17%,transparent)}
+.portal-label{font-size:11px;color:var(--portal);font-weight:600;margin-bottom:5px}
+.portal-hero h1{font-size:25px;margin:0 0 7px}
+.portal-hero p{font-size:12px;color:var(--p-muted);margin:0}
+.portal-columns{display:grid;grid-template-columns:1.35fr .85fr;gap:17px}
+.portal-section{background:var(--p-card);border:1px solid var(--p-border);border-radius:16px;padding:19px}
+.portal-section-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:13px;margin-bottom:13px;border-bottom:1px solid var(--p-border)}
+.portal-section h2{font-size:15px;margin:0}
+.portal-count{font-size:10px;color:var(--p-muted)}
+.portal-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.portal-section--reports .portal-links{grid-template-columns:1fr}
+.portal-link{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;text-decoration:none;color:var(--p-text);font-size:12px;border:1px solid var(--p-border);border-radius:10px;background:rgba(255,255,255,.02);transition:.15s}
+.portal-link:hover{border-color:color-mix(in srgb,var(--portal) 50%,transparent);background:color-mix(in srgb,var(--portal) 8%,transparent);color:var(--portal);transform:translateY(-1px)}
+.portal-arrow{color:var(--portal);font-size:15px}
+.portal-empty{color:var(--p-muted);font-size:12px;padding:12px}
+.mobile-overlay{display:none}
+@media(max-width:900px){.portal-columns{grid-template-columns:1fr}.content{padding:20px}}
+@media(max-width:1100px){body{display:block}.sidebar{position:fixed;right:-270px;top:0;transition:right .2s}.sidebar.open{right:0}.main{width:100%}.mobile-overlay.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99}}
+@media(max-width:560px){.content{padding:14px}.portal-hero{padding:22px 18px}.portal-links{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="{{ brand_name }}"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+
+<div class="main">
+  {% set page_title = portal.short_title %}
+  {% include 'partials/app_header.html' %}
+  <main class="content">
+    <a class="portal-back" href="{{ url_for('home') }}">→ الرجوع إلى منصات العمل</a>
+    <section class="portal-hero">
+      <div class="portal-label">منصة متخصصة</div>
+      <h1>{{ portal.title }}</h1>
+      <p>{{ portal.description }}</p>
+    </section>
+
+    <div class="portal-columns">
+      <section class="portal-section">
+        <div class="portal-section-head"><h2>العمل والعمليات</h2><span class="portal-count">{{ portal.links|length }} تبويبات</span></div>
+        <div class="portal-links">
+          {% for item in portal.links %}
+          <a class="portal-link" href="{{ item.href }}"><span>{{ item.label }}</span><span class="portal-arrow">←</span></a>
+          {% else %}
+          <div class="portal-empty">لا توجد تبويبات متاحة لصلاحيات حسابك.</div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="portal-section portal-section--reports">
+        <div class="portal-section-head"><h2>تقارير المنصة</h2><span class="portal-count">{{ portal.reports|length }} تقارير</span></div>
+        <div class="portal-links">
+          {% for item in portal.reports %}
+          <a class="portal-link" href="{{ item.href }}"><span>{{ item.label }}</span><span class="portal-arrow">←</span></a>
+          {% else %}
+          <div class="portal-empty">لا توجد تقارير متاحة لصلاحيات حسابك.</div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -3,49 +3,41 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LiftCore — الرئيسية</title>
+<title>LiftCore — منصات العمل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 {% include 'partials/liftcore_head.html' %}
 <style>
 *{box-sizing:border-box}
-:root{--home-bg:#0b0f17;--home-card:#131b27;--home-card2:#101722;--home-border:rgba(100,160,255,.12);--home-text:#e4eaf5;--home-muted:#8a9bb8;--home-dim:#56657d;--home-blue:#2a7fff;--home-gold:#c8a055}
-body{margin:0;min-height:100vh;background:var(--home-bg);color:var(--home-text);font-family:'IBM Plex Sans Arabic',sans-serif;display:flex;overflow-x:hidden}
-.sidebar{width:240px;min-width:240px;background:#111720;border-left:1px solid var(--home-border);height:100vh;position:sticky;top:0;z-index:100;overflow:hidden;display:flex;flex-direction:column}
-.sidebar-logo{min-height:60px;padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--home-border)}
+:root{--hub-bg:#0b0f17;--hub-card:#131b27;--hub-border:rgba(100,160,255,.13);--hub-text:#e7edf8;--hub-muted:#8a9bb8}
+body{margin:0;min-height:100vh;background:var(--hub-bg);color:var(--hub-text);font-family:'IBM Plex Sans Arabic',sans-serif;display:flex;overflow-x:hidden}
+.sidebar{width:240px;min-width:240px;background:#111720;border-left:1px solid var(--hub-border);height:100vh;position:sticky;top:0;z-index:100;overflow:hidden;display:flex;flex-direction:column}
+.sidebar-logo{min-height:60px;padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--hub-border)}
 .sidebar-logo img{width:var(--logo-w-sidebar,150px);max-height:44px;object-fit:contain}
 .sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
 .main{min-width:0;flex:1;display:flex;flex-direction:column}
-.content{padding:28px;max-width:1500px;width:100%;margin:0 auto}
-.home-hero{position:relative;overflow:hidden;padding:28px 30px;border:1px solid var(--home-border);border-radius:18px;background:linear-gradient(135deg,rgba(42,127,255,.13),rgba(200,160,85,.07) 58%,var(--home-card));margin-bottom:22px}
-.home-hero:after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;left:-80px;top:-150px;background:rgba(42,127,255,.12);filter:blur(8px)}
-.home-kicker{font-size:12px;color:var(--home-gold);font-weight:600;margin-bottom:6px}
-.home-hero h1{font-size:25px;margin:0 0 8px;font-weight:700}
-.home-hero p{color:var(--home-muted);font-size:13px;margin:0;max-width:700px;line-height:1.8}
-.hero-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:17px;position:relative;z-index:1}
-.hero-link{display:inline-flex;align-items:center;gap:7px;color:#fff;text-decoration:none;padding:8px 14px;border-radius:8px;background:rgba(42,127,255,.16);border:1px solid rgba(42,127,255,.3);font-size:12px}
-.hero-link:hover{background:rgba(42,127,255,.25)}
-.departments-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.department-card{--dept:#2a7fff;position:relative;background:linear-gradient(180deg,var(--home-card),var(--home-card2));border:1px solid var(--home-border);border-radius:16px;padding:20px;overflow:hidden}
-.department-card:before{content:"";position:absolute;right:0;top:0;bottom:0;width:3px;background:var(--dept)}
-.department-head{display:flex;gap:13px;align-items:center;margin-bottom:17px}
-.department-icon{width:46px;height:46px;display:flex;align-items:center;justify-content:center;border-radius:13px;background:color-mix(in srgb,var(--dept) 14%,transparent);color:var(--dept);flex:0 0 auto}
-.department-icon svg{width:24px;height:24px}
-.department-title{font-size:17px;font-weight:700;margin:0}
-.department-desc{font-size:11px;color:var(--home-dim);margin-top:3px}
-.department-columns{display:grid;grid-template-columns:1fr 1fr;gap:13px}
-.department-group{border-top:1px solid var(--home-border);padding-top:12px}
-.department-group h3{font-size:11px;color:var(--home-muted);margin:0 0 9px;font-weight:600}
-.department-links{display:flex;flex-wrap:wrap;gap:7px}
-.department-link{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--home-text);font-size:11px;padding:6px 9px;border:1px solid var(--home-border);background:rgba(255,255,255,.025);border-radius:7px;transition:.15s}
-.department-link:hover{color:var(--dept);border-color:color-mix(in srgb,var(--dept) 45%,transparent);background:color-mix(in srgb,var(--dept) 8%,transparent)}
-.department-link.report{color:var(--home-muted)}
-.department-link svg{width:12px;height:12px;flex:0 0 auto}
-.empty-state{grid-column:1/-1;text-align:center;padding:45px;border:1px dashed var(--home-border);border-radius:14px;color:var(--home-muted)}
+.content{padding:30px;max-width:1420px;width:100%;margin:0 auto}
+.hub-head{text-align:center;margin:8px auto 29px}
+.hub-kicker{font-size:12px;color:#c8a055;font-weight:600;margin-bottom:7px}
+.hub-head h1{font-size:28px;margin:0 0 8px;font-weight:700}
+.hub-head p{font-size:13px;color:var(--hub-muted);margin:0}
+.platform-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.platform-button{--platform:#2a7fff;position:relative;min-height:220px;padding:23px;text-decoration:none;color:var(--hub-text);border:1px solid var(--hub-border);border-radius:20px;background:linear-gradient(145deg,color-mix(in srgb,var(--platform) 12%,var(--hub-card)),var(--hub-card) 55%);overflow:hidden;display:flex;flex-direction:column;transition:transform .18s,border-color .18s,box-shadow .18s}
+.platform-button:before{content:"";position:absolute;width:170px;height:170px;border-radius:50%;left:-75px;top:-85px;background:color-mix(in srgb,var(--platform) 16%,transparent);filter:blur(5px)}
+.platform-button:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--platform) 55%,transparent);box-shadow:0 18px 35px rgba(0,0,0,.2)}
+.platform-top{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+.platform-icon{width:54px;height:54px;border-radius:16px;background:color-mix(in srgb,var(--platform) 16%,transparent);color:var(--platform);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.platform-icon svg{width:28px;height:28px}
+.platform-title{font-size:18px;font-weight:700}
+.platform-desc{font-size:11px;color:var(--hub-muted);line-height:1.7;margin-top:3px}
+.platform-preview{display:flex;flex-wrap:wrap;gap:6px;margin-top:20px;position:relative;z-index:1}
+.platform-preview span{font-size:10px;padding:5px 8px;border:1px solid var(--hub-border);border-radius:7px;color:var(--hub-muted);background:rgba(255,255,255,.025)}
+.platform-enter{margin-top:auto;padding-top:17px;color:var(--platform);font-size:12px;font-weight:600;position:relative;z-index:1}
+.empty-state{grid-column:1/-1;text-align:center;padding:50px;border:1px dashed var(--hub-border);border-radius:16px;color:var(--hub-muted)}
 .mobile-overlay{display:none}
-@media(max-width:980px){.departments-grid{grid-template-columns:1fr}.content{padding:20px}.department-card{padding:17px}}
+@media(max-width:1180px){.platform-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:1100px){body{display:block}.sidebar{position:fixed;right:-270px;top:0;transition:right .2s}.sidebar.open{right:0}.main{width:100%}.mobile-overlay.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99}}
-@media(max-width:560px){.content{padding:14px}.home-hero{padding:22px 18px}.home-hero h1{font-size:21px}.department-columns{grid-template-columns:1fr}}
+@media(max-width:700px){.content{padding:18px 14px}.hub-head h1{font-size:23px}.platform-grid{grid-template-columns:1fr}.platform-button{min-height:195px}}
 </style>
 </head>
 <body>
@@ -56,142 +48,49 @@ body{margin:0;min-height:100vh;background:var(--home-bg);color:var(--home-text);
 </aside>
 
 <div class="main">
-  {% set page_title = 'الرئيسية' %}
+  {% set page_title = 'منصات العمل' %}
   {% include 'partials/app_header.html' %}
   <main class="content">
-    <section class="home-hero">
-      <div class="home-kicker">مركز العمل</div>
-      <h1>مرحباً {{ user_display_name or 'بك' }}</h1>
-      <p>اختر القسم الذي تريد العمل عليه. ستظهر داخل كل قسم الصفحات والتقارير المتاحة لك حسب صلاحيات حسابك.</p>
-      {% if has_perm('dashboard.read') %}
-      <div class="hero-actions">
-        <a class="hero-link" href="/dashboard">فتح لوحة المؤشرات العامة ←</a>
-      </div>
-      {% endif %}
+    <section class="hub-head">
+      <div class="hub-kicker">اختر القسم</div>
+      <h1>منصات LiftCore</h1>
+      <p>كل قسم له عملاؤه وعقوده وعملياته وتقاريره في مكان واحد.</p>
     </section>
 
-    <section class="departments-grid">
-      {% set maintenance_visible = has_any_perm('clients.read','contracts.read','elevators.read','maintenance_visits.read','faults.read','whatsapp_inbox.read','parts_billing.read','report_maintenance.read','report_faults.read','report_contracts.read','report_elevators.read') %}
-      {% if maintenance_visible %}
-      <article class="department-card" style="--dept:#2a7fff">
-        <div class="department-head">
-          <div class="department-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.7-3.7a6 6 0 01-7.9 7.9l-7 7a2.1 2.1 0 01-3-3l7-7a6 6 0 017.9-7.9z"/></svg></div>
-          <div><h2 class="department-title">الصيانة والأعطال</h2><div class="department-desc">العملاء والعقود والزيارات والبلاغات الميدانية</div></div>
-        </div>
-        <div class="department-columns">
-          <div class="department-group"><h3>التبويبات</h3><div class="department-links">
-            {% if has_perm('clients.read') %}<a class="department-link" href="/clients">العملاء</a>{% endif %}
-            {% if has_perm('contracts.read') %}<a class="department-link" href="/contracts">العقود</a>{% endif %}
-            {% if has_perm('elevators.read') %}<a class="department-link" href="/elevators">المصاعد</a>{% endif %}
-            {% if has_perm('maintenance_visits.read') %}<a class="department-link" href="/maintenance-visits">زيارات الصيانة</a>{% endif %}
-            {% if has_perm('faults.read') %}<a class="department-link" href="/faults">الأعطال</a>{% endif %}
-            {% if has_perm('whatsapp_inbox.read') %}<a class="department-link" href="/support/whatsapp">وارد واتساب</a>{% endif %}
-            {% if has_perm('parts_billing.read') %}<a class="department-link" href="/parts-billing">قطع الغيار</a>{% endif %}
-          </div></div>
-          <div class="department-group"><h3>التقارير</h3><div class="department-links">
-            {% if has_perm('report_maintenance.read') %}<a class="department-link report" href="/reports/maintenance-visits">تقرير الصيانة</a>{% endif %}
-            {% if has_perm('report_faults.read') %}<a class="department-link report" href="/reports/faults">تقرير الأعطال</a>{% endif %}
-            {% if has_perm('report_contracts.read') %}<a class="department-link report" href="/reports/contracts">تقرير العقود</a>{% endif %}
-            {% if has_perm('report_elevators.read') %}<a class="department-link report" href="/reports/elevators">تقرير المصاعد</a>{% endif %}
-          </div></div>
-        </div>
-      </article>
-      {% endif %}
-
-      {% set installation_visible = has_perm('elevator_estimates.read') or (install_module_enabled and has_perm('installation_projects.read')) %}
-      {% if installation_visible %}
-      <article class="department-card" style="--dept:#c8a055">
-        <div class="department-head">
-          <div class="department-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 20h20M6 20V10l6-6 6 6v10"/><path d="M9 20v-6h6v6"/></svg></div>
-          <div><h2 class="department-title">التركيبات والتحديث</h2><div class="department-desc">من فرصة البيع وعرض السعر حتى التنفيذ والتسليم</div></div>
-        </div>
-        <div class="department-columns">
-          <div class="department-group"><h3>التبويبات</h3><div class="department-links">
-            {% if has_perm('elevator_estimates.read') %}<a class="department-link" href="/elevator-estimates">تقدير تكلفة مصعد</a>{% endif %}
-            {% if install_module_enabled and has_perm('installation_projects.read') %}
-            <a class="department-link" href="/installation/">لوحة التركيبات</a>
-            <a class="department-link" href="/installation/leads">فرص البيع</a>
-            <a class="department-link" href="/installation/projects">المشروعات والتسعير</a>
+    <section class="platform-grid">
+      {% for department in departments %}
+      <a class="platform-button" href="{{ url_for('department_portal', department=department.slug) }}" style="--platform:{{ department.color }}">
+        <div class="platform-top">
+          <div class="platform-icon">
+            {% if department.slug == 'maintenance' %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.7-3.7a6 6 0 01-7.9 7.9l-7 7a2.1 2.1 0 01-3-3l7-7a6 6 0 017.9-7.9z"/></svg>
+            {% elif department.slug == 'installations' %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 20h20M6 20V10l6-6 6 6v10"/><path d="M9 20v-6h6v6"/></svg>
+            {% elif department.slug == 'inventory' %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 16V8a2 2 0 00-1-1.7l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.7l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>
+            {% elif department.slug == 'personnel' %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8"/></svg>
+            {% elif department.slug == 'accounting' %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            {% else %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
             {% endif %}
-          </div></div>
-          <div class="department-group"><h3>التقارير</h3><div class="department-links">
-            {% if install_module_enabled and has_perm('installation_projects.read') %}<a class="department-link report" href="/installation/projects">تقارير وبطاقات المشاريع</a>{% endif %}
-          </div></div>
+          </div>
+          <div>
+            <div class="platform-title">{{ department.short_title }}</div>
+            <div class="platform-desc">{{ department.description }}</div>
+          </div>
         </div>
-      </article>
-      {% endif %}
-
-      {% set inventory_visible = has_any_perm('inventory.read','stock_movements.read','purchase_orders.read','report_inventory.read','report_stock.read') %}
-      {% if inventory_visible %}
-      <article class="department-card" style="--dept:#1fb87a">
-        <div class="department-head">
-          <div class="department-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 16V8a2 2 0 00-1-1.7l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.7l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg></div>
-          <div><h2 class="department-title">المخازن والمشتريات</h2><div class="department-desc">الأصناف والحركات وطلبات الشراء ومتابعة المخزون</div></div>
+        <div class="platform-preview">
+          {% for item in (department.links + department.reports)[:4] %}
+          <span>{{ item.label }}</span>
+          {% endfor %}
         </div>
-        <div class="department-columns">
-          <div class="department-group"><h3>التبويبات</h3><div class="department-links">
-            {% if has_perm('inventory.read') %}<a class="department-link" href="/inventory">الأصناف</a>{% endif %}
-            {% if has_perm('stock_movements.read') %}<a class="department-link" href="/stock-movements">حركة المخزن</a>{% endif %}
-            {% if has_perm('purchase_orders.read') %}<a class="department-link" href="/purchase-orders">طلبات الشراء</a>{% endif %}
-          </div></div>
-          <div class="department-group"><h3>التقارير</h3><div class="department-links">
-            {% if has_perm('report_inventory.read') %}<a class="department-link report" href="/reports/inventory">تقرير الأصناف</a>{% endif %}
-            {% if has_perm('report_stock.read') %}<a class="department-link report" href="/reports/stock-movements">تقرير حركة المخزن</a>{% endif %}
-          </div></div>
-        </div>
-      </article>
-      {% endif %}
-
-      {% set personnel_visible = has_any_perm('technicians.read','report_technicians.read') %}
-      {% if personnel_visible %}
-      <article class="department-card" style="--dept:#8c6cff">
-        <div class="department-head">
-          <div class="department-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8"/></svg></div>
-          <div><h2 class="department-title">شؤون العاملين والفنيين</h2><div class="department-desc">الفنيون وفرق العمل وتقارير الأداء المتاحة حالياً</div></div>
-        </div>
-        <div class="department-columns">
-          <div class="department-group"><h3>التبويبات</h3><div class="department-links">
-            {% if has_perm('technicians.read') %}<a class="department-link" href="/technicians">الفنيون</a><a class="department-link" href="/technicians?tab=teams">فرق الصيانة</a>{% endif %}
-          </div></div>
-          <div class="department-group"><h3>التقارير</h3><div class="department-links">
-            {% if has_perm('report_technicians.read') %}<a class="department-link report" href="/reports/technicians">تقرير الفنيين</a>{% endif %}
-          </div></div>
-        </div>
-      </article>
-      {% endif %}
-
-      {% set accounting_visible = has_any_perm('revenues.read','expenses.read','invoices.read','report_financial.read','report_contract_forecast.read','report_financial_health.read','report_revenues.read','report_expenses.read','report_invoices.read','report_customer_statement.read') %}
-      {% if accounting_visible %}
-      <article class="department-card" style="--dept:#e09030">
-        <div class="department-head">
-          <div class="department-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
-          <div><h2 class="department-title">الحسابات والمالية</h2><div class="department-desc">التحصيل والمصروفات والفواتير والقيود والتقارير المالية</div></div>
-        </div>
-        <div class="department-columns">
-          <div class="department-group"><h3>التبويبات</h3><div class="department-links">
-            {% if has_perm('revenues.read') %}<a class="department-link" href="/revenues">الإيرادات</a>{% endif %}
-            {% if has_perm('expenses.read') %}<a class="department-link" href="/expenses">المصروفات</a>{% endif %}
-            {% if has_perm('invoices.read') %}<a class="department-link" href="/invoices">الفواتير</a>{% endif %}
-            {% if has_any_perm('revenues.read','expenses.read') %}
-            <a class="department-link" href="/accounts">شجرة الحسابات</a><a class="department-link" href="/journals">القيود اليومية</a><a class="department-link" href="/ledger">دفتر الأستاذ</a><a class="department-link" href="/trial-balance">ميزان المراجعة</a><a class="department-link" href="/pnl">قائمة الدخل</a><a class="department-link" href="/balance-sheet">المركز المالي</a>
-            {% endif %}
-          </div></div>
-          <div class="department-group"><h3>التقارير</h3><div class="department-links">
-            {% if has_perm('report_financial.read') %}<a class="department-link report" href="/reports/financial">التقرير المالي</a>{% endif %}
-            {% if has_perm('report_financial_health.read') %}<a class="department-link report" href="/reports/financial-health">الصحة المالية</a>{% endif %}
-            {% if has_perm('report_contract_forecast.read') %}<a class="department-link report" href="/reports/contract-forecast">توقعات التحصيل</a>{% endif %}
-            {% if has_perm('report_customer_statement.read') %}<a class="department-link report" href="/reports/customer-statement">كشف حساب عميل</a>{% endif %}
-            {% if has_perm('report_revenues.read') %}<a class="department-link report" href="/reports/revenues">تقرير الإيرادات</a>{% endif %}
-            {% if has_perm('report_expenses.read') %}<a class="department-link report" href="/reports/expenses">تقرير المصروفات</a>{% endif %}
-            {% if has_perm('report_invoices.read') %}<a class="department-link report" href="/reports/invoices">تقرير الفواتير</a>{% endif %}
-          </div></div>
-        </div>
-      </article>
-      {% endif %}
-
-      {% if not maintenance_visible and not installation_visible and not inventory_visible and not personnel_visible and not accounting_visible %}
-      <div class="empty-state">لا توجد أقسام متاحة لصلاحيات حسابك. راجع مدير النظام.</div>
-      {% endif %}
+        <div class="platform-enter">دخول المنصة ←</div>
+      </a>
+      {% else %}
+      <div class="empty-state">لا توجد منصات متاحة لصلاحيات حسابك.</div>
+      {% endfor %}
     </section>
   </main>
 </div>
