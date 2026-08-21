@@ -1,0 +1,23 @@
+[Unit]
+Description=LiftCore
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=info
+Group=info
+WorkingDirectory=/home/info/liftcore/elevator-app
+EnvironmentFile=/etc/liftcore/platform.env
+Environment=LIFTCORE_HTTPS=1
+Environment=LIFTCORE_INSTALL_MODULE=1
+Environment=LIFTCORE_ALEMBIC=1
+ExecStart=/home/info/liftcore/elevator-app/.venv/bin/gunicorn --workers 4 --bind 127.0.0.1:5001 --timeout 120 --access-logfile - --error-logfile - app:app
+Restart=on-failure
+RestartSec=4
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

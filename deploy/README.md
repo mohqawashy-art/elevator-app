@@ -5,7 +5,7 @@
 > **Onboarding:** `deploy/ONBOARDING.md`
 
 السيرفر: **https://app.liftcoreapp.com**  
-IP: `34.18.56.21`  
+IP الحالي (GCP): `34.18.56.21` — النقل إلى Hetzner: [`deploy/hetzner/README.md`](hetzner/README.md)  
 الكود على: **https://github.com/mohqawashy-art/elevator-app**
 
 ### تثبيت تطبيق الإدارة (جوال / تابلت)
