@@ -26,9 +26,9 @@
   align-items: center;
   gap: 7px;
   width: 100%;
-  max-width: 1380px;
+  max-width: none;
   margin: 0 auto;
-  padding: 9px 28px;
+  padding: 9px 18px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -114,7 +114,7 @@ body:has(.department-nav-marker) .department-tab.active {
   body:has(#sidebar .department-nav-marker) .sidebar {
     justify-content: center !important;
     gap: 7px !important;
-    padding: 9px 28px !important;
+    padding: 9px 18px !important;
     background: var(--lc-dept-bg) !important;
     border-bottom-color: var(--lc-dept-border) !important;
     box-shadow: 0 6px 18px rgba(0, 0, 0, .12) !important;
@@ -123,10 +123,11 @@ body:has(.department-nav-marker) .department-tab.active {
   body:has(#sidebar .department-nav-marker) #sidebar .sidebar-nav,
   body:has(#sidebar .department-nav-marker) .sidebar .sidebar-nav,
   body:has(#sidebar .department-nav-marker) #sidebar:not(:has(.sidebar-nav)) {
-    flex: 0 1 1380px !important;
+    flex: 1 1 auto !important;
     justify-content: flex-start !important;
     gap: 7px !important;
-    max-width: 1380px;
+    max-width: none;
+    width: 100%;
   }
 
   body:has(#sidebar .department-nav-marker) #sidebar .department-tab::before,
@@ -195,19 +196,45 @@ body:has(.department-nav-marker) .department-tab.active {
   }
 }
 
-/* Common inner-page rhythm without altering page-specific controls. */
+/* Inner pages use the full workspace so tables are not boxed into a narrow column. */
 body:has(#sidebar .department-nav-marker) .main > .content {
   width: 100%;
-  max-width: 1380px;
-  margin-inline: auto;
-  padding: 24px 28px;
+  max-width: none;
+  margin-inline: 0;
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body:has(#sidebar .department-nav-marker) .content > #tab-table,
+body:has(#sidebar .department-nav-marker) .content > .table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 body:has(#sidebar .department-nav-marker) .content .panel,
 body:has(#sidebar .department-nav-marker) .content .card,
 body:has(#sidebar .department-nav-marker) .content .table-wrap {
+  width: 100%;
   border-color: var(--lc-dept-border);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+}
+
+body:has(#sidebar .department-nav-marker) .content .table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+body:has(#sidebar .department-nav-marker) .content .table-wrap .table-scroll {
+  flex: 1 1 auto;
+  min-height: 52vh;
+  max-height: none !important;
+  height: 100%;
 }
 
 /* Premium theme must not leak its gold divider into department navigation. */

@@ -177,3 +177,15 @@ def test_department_customer_and_contract_scopes_are_labeled(client):
     contracts_html = installation_contracts.get_data(as_text=True)
     assert 'عقود التركيبات والتحديث' in contracts_html
     assert 'var CONTRACT_SCOPE = "installation"' in contracts_html
+
+
+def test_department_css_lets_tables_fill_the_workspace():
+    from pathlib import Path
+
+    css = Path('static/liftcore-departments.css').read_text(encoding='utf-8')
+    content_rule = css.split('body:has(#sidebar .department-nav-marker) .main > .content {', 1)[1]
+    content_rule = content_rule.split('}', 1)[0]
+    assert 'max-width: none' in content_rule
+    assert 'max-width: 1380px' not in content_rule
+    assert 'min-height: 52vh' in css
+    assert 'max-height: none !important' in css
