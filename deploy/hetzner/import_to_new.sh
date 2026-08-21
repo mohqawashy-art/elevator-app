@@ -98,12 +98,18 @@ KIND="$(tr -d '\r\n' < "$SRC/db-kind.txt" 2>/dev/null || echo sqlite)"
 _log "قاعدة: $KIND"
 MIGRATE_URL="$(printf '%s' "$NEW_DATABASE_URL" | sed -E 's/postgresql\+psycopg[0-9]*:/postgresql:/')"
 
+systemctl stop liftcore || true
+sleep 1
+sudo -u postgres psql -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='${NEW_PGDB}' AND pid <> pg_backend_pid();" >/dev/null || true
+
 if [ -f "$SRC/liftcore.dump" ]; then
   _log "pg_restore"
+  install -m 0640 -o postgres -g postgres "$SRC/liftcore.dump" /tmp/liftcore.dump
   sudo -u postgres dropdb --if-exists "$NEW_PGDB"
   sudo -u postgres createdb -O "$NEW_PGUSER" "$NEW_PGDB"
   sudo -u postgres pg_restore -d "$NEW_PGDB" --no-owner --role="$NEW_PGUSER" \
-    "$SRC/liftcore.dump" || true
+    /tmp/liftcore.dump || true
+  rm -f /tmp/liftcore.dump
 elif ls "$SRC"/*.db >/dev/null 2>&1; then
   SQLITE_FILE="$(ls "$SRC"/*liftcore.db "$SRC"/instance-liftcore.db 2>/dev/null | head -1 || true)"
   if [ -z "$SQLITE_FILE" ]; then
