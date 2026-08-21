@@ -52,6 +52,8 @@ def test_admin_sees_all_department_cards_and_sidebar_home(client):
     assert 'class="department-nav-marker"' in inner_html
     assert 'department-tabs-label' in inner_html
     assert 'department-tab--report' in inner_html
+    assert 'class="department-tabs-title"' in inner_html
+    assert 'الصيانة والأعطال' in inner_html
 
     client.get('/home')
     explicit_page = client.get('/faults?department=maintenance')
@@ -76,6 +78,14 @@ def test_all_department_portals_use_the_same_tab_chrome(client):
         'accounting': '/revenues?department=accounting',
         'management': '/dashboard?department=management',
     }
+    titles = {
+        'maintenance': 'الصيانة والأعطال',
+        'installations': 'التركيبات والتحديث',
+        'inventory': 'المخازن والمشتريات',
+        'personnel': 'شؤون العاملين',
+        'accounting': 'الحسابات والمالية',
+        'management': 'الإدارة والمتابعة',
+    }
     for slug, inner_url in inner_pages.items():
         portal = client.get(f'/departments/{slug}')
         assert portal.status_code == 200, slug
@@ -83,6 +93,8 @@ def test_all_department_portals_use_the_same_tab_chrome(client):
         assert 'class="department-tabs"' in portal_html, slug
         assert 'كل الأقسام' in portal_html, slug
         assert 'department-tabs-label' in portal_html, slug
+        assert 'class="department-tabs-title"' in portal_html, slug
+        assert titles[slug] in portal_html, slug
         assert f'data-department="{slug}"' in portal_html, slug
 
         inner = client.get(inner_url)
@@ -91,12 +103,16 @@ def test_all_department_portals_use_the_same_tab_chrome(client):
         assert 'class="department-nav-marker"' in inner_html, inner_url
         assert 'كل الأقسام' in inner_html, inner_url
         assert 'department-tabs-label' in inner_html, inner_url
+        assert 'class="department-tabs-title"' in inner_html, inner_url
+        assert titles[slug] in inner_html, inner_url
         assert f'data-department="{slug}"' in inner_html, inner_url
 
     settings_page = client.get('/settings?department=management')
     assert settings_page.status_code == 200
     settings_html = settings_page.get_data(as_text=True)
     assert 'class="department-tabs"' in settings_html
+    assert 'class="department-tabs-title"' in settings_html
+    assert 'الإدارة والمتابعة' in settings_html
     assert 'data-department="management"' in settings_html
     assert 'كل الأقسام' in settings_html
 
@@ -190,4 +206,5 @@ def test_department_css_lets_tables_fill_the_workspace():
     assert 'min-height: 52vh' in css
     assert 'max-height: none !important' in css
     assert 'body:not(:has(.department-nav-marker))' in Path('static/liftcore-shell.css').read_text(encoding='utf-8')
+    assert '.department-tabs-title' in css
     assert '#c9a14a' not in css

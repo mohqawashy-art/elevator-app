@@ -1,6 +1,7 @@
 {% set tabs_portal = department_tabs_portal|default(active_department_portal|default(portal)) %}
 {% if tabs_portal %}
 <span class="department-nav-marker" data-department="{{ tabs_portal.slug }}" aria-hidden="true"></span>
+<a class="department-tabs-title" href="{{ url_for('department_portal', department=tabs_portal.slug) }}">{{ tabs_portal.short_title }}</a>
 <a class="department-tab{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" href="{{ url_for('home') }}">كل الأقسام</a>
 {% for item in tabs_portal.links %}
 <a class="department-tab{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
