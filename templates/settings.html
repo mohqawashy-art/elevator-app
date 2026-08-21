@@ -82,6 +82,13 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
 {% set header_solo = true %}
 {% set page_title = 'الإعدادات' %}
 {% include 'partials/app_header.html' %}
+{% if active_department_portal %}
+<nav class="department-tabs-wrap" aria-label="تبويبات {{ active_department_portal.short_title }}">
+  <div class="department-tabs">
+    {% include 'partials/department_tabs.html' %}
+  </div>
+</nav>
+{% endif %}
 <div class="wrap">
   <h1 class="page-heading" data-i18n="settings">الإعدادات</h1>
 

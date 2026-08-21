@@ -66,6 +66,41 @@ def test_admin_sees_all_department_cards_and_sidebar_home(client):
     assert '← النظام الرئيسي' not in installation_html
 
 
+def test_all_department_portals_use_the_same_tab_chrome(client):
+    login_as(client, 'admin')
+    inner_pages = {
+        'maintenance': '/faults?department=maintenance',
+        'installations': '/installation/?department=installations',
+        'inventory': '/inventory?department=inventory',
+        'personnel': '/technicians?department=personnel',
+        'accounting': '/revenues?department=accounting',
+        'management': '/dashboard?department=management',
+    }
+    for slug, inner_url in inner_pages.items():
+        portal = client.get(f'/departments/{slug}')
+        assert portal.status_code == 200, slug
+        portal_html = portal.get_data(as_text=True)
+        assert 'class="department-tabs"' in portal_html, slug
+        assert 'كل الأقسام' in portal_html, slug
+        assert 'department-tabs-label' in portal_html, slug
+        assert f'data-department="{slug}"' in portal_html, slug
+
+        inner = client.get(inner_url)
+        assert inner.status_code == 200, inner_url
+        inner_html = inner.get_data(as_text=True)
+        assert 'class="department-nav-marker"' in inner_html, inner_url
+        assert 'كل الأقسام' in inner_html, inner_url
+        assert 'department-tabs-label' in inner_html, inner_url
+        assert f'data-department="{slug}"' in inner_html, inner_url
+
+    settings_page = client.get('/settings?department=management')
+    assert settings_page.status_code == 200
+    settings_html = settings_page.get_data(as_text=True)
+    assert 'class="department-tabs"' in settings_html
+    assert 'data-department="management"' in settings_html
+    assert 'كل الأقسام' in settings_html
+
+
 def test_custom_finance_user_only_sees_authorized_department(client):
     with client.application.app_context():
         user = db.session.get(User, client._user_ids['viewer'])
