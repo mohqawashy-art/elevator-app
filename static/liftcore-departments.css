@@ -34,7 +34,8 @@
   scrollbar-width: thin;
 }
 
-.department-tab {
+.department-tab,
+.department-tabs-label {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -47,32 +48,34 @@
   font-family: inherit;
   font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0;
   line-height: 1.35;
   text-decoration: none;
+  text-transform: none;
   white-space: nowrap;
+}
+
+.department-tab {
   transition: color .15s ease, border-color .15s ease, background .15s ease, transform .15s ease;
 }
 
 .department-tab:hover,
+.department-tab:focus,
+.department-tab:visited,
 .department-tab.active {
-  color: var(--lc-dept-color);
+  color: var(--lc-dept-muted);
+  text-decoration: none;
+}
+
+.department-tab:hover,
+.department-tab.active {
   border-color: color-mix(in srgb, var(--lc-dept-color) 50%, transparent);
   background: color-mix(in srgb, var(--lc-dept-color) 9%, transparent);
-  text-decoration: none;
   transform: translateY(-1px);
 }
 
 .department-tab--report {
-  border-style: dashed;
-}
-
-.department-tabs-label {
-  flex: 0 0 auto;
-  margin-inline-start: 8px;
-  color: var(--lc-dept-color);
-  font-size: 10px;
-  font-weight: 600;
-  white-space: nowrap;
+  border-style: solid;
 }
 
 @media (min-width: 1101px) {
@@ -96,27 +99,44 @@
   }
 
   body:has(#sidebar .department-nav-marker) #sidebar .department-tab,
-  body:has(#sidebar .department-nav-marker) .sidebar .department-tab {
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab,
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tabs-label,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tabs-label {
     margin: 0 !important;
     padding: 7px 11px !important;
     color: var(--lc-dept-muted) !important;
     background: rgba(255, 255, 255, .02) !important;
     border: 1px solid var(--lc-dept-border) !important;
     border-radius: 8px !important;
+    font-family: inherit !important;
     font-size: 11px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    line-height: 1.35 !important;
     gap: 0 !important;
   }
 
   body:has(#sidebar .department-nav-marker) #sidebar .department-tab--report,
   body:has(#sidebar .department-nav-marker) .sidebar .department-tab--report {
-    border-style: dashed !important;
+    border-style: solid !important;
+  }
+
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tab:hover,
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tab:focus,
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tab:visited,
+  body:has(#sidebar .department-nav-marker) #sidebar .department-tab.active,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab:hover,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab:focus,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab:visited,
+  body:has(#sidebar .department-nav-marker) .sidebar .department-tab.active {
+    color: var(--lc-dept-muted) !important;
+    text-decoration: none !important;
   }
 
   body:has(#sidebar .department-nav-marker) #sidebar .department-tab:hover,
   body:has(#sidebar .department-nav-marker) #sidebar .department-tab.active,
   body:has(#sidebar .department-nav-marker) .sidebar .department-tab:hover,
   body:has(#sidebar .department-nav-marker) .sidebar .department-tab.active {
-    color: var(--lc-dept-color) !important;
     border-color: color-mix(in srgb, var(--lc-dept-color) 50%, transparent) !important;
     background: color-mix(in srgb, var(--lc-dept-color) 9%, transparent) !important;
   }
@@ -172,10 +192,13 @@
     overflow: visible !important;
   }
 
-  body:has(#sidebar .department-nav-marker) .department-tab {
+  body:has(#sidebar .department-nav-marker) .department-tab,
+  body:has(#sidebar .department-nav-marker) .department-tabs-label {
     margin: 0 !important;
     padding: 7px 11px !important;
+    color: var(--lc-dept-muted) !important;
     font-size: 11px !important;
+    font-weight: 500 !important;
     border: 1px solid var(--lc-dept-border) !important;
   }
 
@@ -211,8 +234,24 @@ html[data-theme="premium"] .department-tabs-wrap {
   border-color: var(--lc-dept-border) !important;
 }
 
-html[data-theme="premium"] .department-tab.active {
-  color: #68a7ff !important;
+html[data-theme="premium"] .department-tab,
+html[data-theme="premium"] .department-tab:hover,
+html[data-theme="premium"] .department-tab:focus,
+html[data-theme="premium"] .department-tab:visited,
+html[data-theme="premium"] .department-tab.active,
+html[data-theme="premium"] .department-tabs-label,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) #sidebar .department-tab,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) #sidebar .department-tab:hover,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) #sidebar .department-tab.active,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) #sidebar .nav-item.department-tab,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) .sidebar .department-tab,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) .sidebar .department-tabs-label {
+  color: var(--lc-dept-muted) !important;
+}
+
+html[data-theme="premium"] .department-tab.active,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) #sidebar .department-tab.active,
+html[data-theme="premium"] body:has(#sidebar .department-nav-marker) .sidebar .department-tab.active {
   border-color: rgba(42, 127, 255, .7) !important;
   background: rgba(42, 127, 255, .16) !important;
   box-shadow: inset 0 0 0 1px rgba(42, 127, 255, .08);
