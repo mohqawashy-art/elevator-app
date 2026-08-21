@@ -76,6 +76,7 @@ html[data-theme="light"] .department-tabs-title:visited {
 .department-tabs {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 7px;
   width: 100%;
   max-width: none;
@@ -84,6 +85,26 @@ html[data-theme="light"] .department-tabs-title:visited {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
+}
+
+/* Align every department rail from the start (right in Arabic). */
+.department-tabs,
+.department-tabs-wrap .department-tabs,
+html.lc-layout-topnav body:has(#sidebar .department-nav-marker):has(.main) #sidebar,
+html.lc-layout-topnav body:has(#sidebar .department-nav-marker):has(.main) .sidebar,
+html.lc-layout-topnav body:has(#sidebar .department-nav-marker):has(.main) #sidebar .sidebar-nav,
+html.lc-layout-topnav body:has(#sidebar .department-nav-marker):has(.main) .sidebar .sidebar-nav,
+html.lc-layout-topnav body:has(#sidebar .department-nav-marker):has(.main) #sidebar:not(:has(.sidebar-nav)),
+html.lc-shell-ready body:has(#sidebar .department-nav-marker) #sidebar,
+html.lc-shell-ready body:has(#sidebar .department-nav-marker) .sidebar,
+html.lc-shell-ready body:has(#sidebar .department-nav-marker) .sidebar-nav,
+html.lc-shell-ready body:has(#sidebar .department-nav-marker) #sidebar .sidebar-nav,
+html.lc-shell-ready body:has(#sidebar .department-nav-marker) #sidebar:not(:has(.sidebar-nav)),
+body:has(#sidebar .department-nav-marker) #sidebar,
+body:has(#sidebar .department-nav-marker) .sidebar,
+body:has(#sidebar .department-nav-marker) #sidebar .sidebar-nav,
+body:has(#sidebar .department-nav-marker) .sidebar .sidebar-nav {
+  justify-content: flex-start !important;
 }
 
 .department-tab,
@@ -164,7 +185,7 @@ body:has(.department-nav-marker) .department-tab.active {
 @media (min-width: 1101px) {
   body:has(#sidebar .department-nav-marker) #sidebar,
   body:has(#sidebar .department-nav-marker) .sidebar {
-    justify-content: center !important;
+    justify-content: flex-start !important;
     gap: 7px !important;
     padding: 9px 18px !important;
     background: var(--lc-dept-bg) !important;
@@ -228,6 +249,7 @@ body:has(.department-nav-marker) .department-tab.active {
   body:has(#sidebar .department-nav-marker) #sidebar:not(:has(.sidebar-nav)) {
     display: flex !important;
     flex-direction: row !important;
+    justify-content: flex-start !important;
     gap: 7px !important;
     width: max-content !important;
     min-width: 100% !important;

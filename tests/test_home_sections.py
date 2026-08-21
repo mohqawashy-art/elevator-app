@@ -207,4 +207,7 @@ def test_department_css_lets_tables_fill_the_workspace():
     assert 'max-height: none !important' in css
     assert 'body:not(:has(.department-nav-marker))' in Path('static/liftcore-shell.css').read_text(encoding='utf-8')
     assert '.department-tabs-title' in css
+    assert 'html.lc-layout-topnav body:has(#sidebar .department-nav-marker)' in css
+    assert 'justify-content: flex-start !important' in css
+    assert 'justify-content: center' not in css
     assert '#c9a14a' not in css
