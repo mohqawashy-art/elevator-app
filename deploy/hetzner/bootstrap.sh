@@ -132,7 +132,7 @@ PGPASSWORD=${PG_PASSWORD}
 SENTRY_ENVIRONMENT=production
 GOOGLE_MAPS_API_KEY=
 MAIL_API_KEY=
-MAIL_FROM=LiftCore <noreply@liftcoreapp.com>
+MAIL_FROM="LiftCore <noreply@liftcoreapp.com>"
 SENTRY_DSN=
 EOF
 fi
