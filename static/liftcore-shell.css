@@ -1439,48 +1439,48 @@ tr.lc-row-flash > td {
   tr.lc-row-flash > td { animation: none; background: rgba(201, 161, 74, 0.16); }
 }
 
-/* ── LiftCore: تبويبات ذهبية — القائمة فقط ── */
-html:not([data-theme="light"]) #sidebar .nav-item,
-html:not([data-theme="light"]) .sidebar .nav-item,
-html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-item,
-html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item {
+/* ── LiftCore: تبويبات ذهبية — القائمة الجانبية فقط، وليس ألسنة الأقسام ── */
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) #sidebar .nav-item,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) .sidebar .nav-item,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) #sidebar .nav-item,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) .sidebar .nav-item {
   color: #c9a14a !important;
 }
 
-html:not([data-theme="light"]) #sidebar .nav-item:hover,
-html:not([data-theme="light"]) .sidebar .nav-item:hover,
-html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-item:hover,
-html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item:hover {
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) #sidebar .nav-item:hover,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) .sidebar .nav-item:hover,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) #sidebar .nav-item:hover,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) .sidebar .nav-item:hover {
   color: #e8cd86 !important;
   background: rgba(201, 161, 74, 0.08) !important;
 }
 
-html:not([data-theme="light"]) #sidebar .nav-item.active,
-html:not([data-theme="light"]) .sidebar .nav-item.active,
-html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-item.active,
-html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item.active {
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) #sidebar .nav-item.active,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) .sidebar .nav-item.active,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) #sidebar .nav-item.active,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) .sidebar .nav-item.active {
   color: #e8cd86 !important;
   background: rgba(201, 161, 74, 0.14) !important;
 }
 
-html:not([data-theme="light"]) #sidebar .nav-item.active::before,
-html:not([data-theme="light"]) .sidebar .nav-item.active::before,
-html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-item.active::before,
-html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item.active::before {
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) #sidebar .nav-item.active::before,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) .sidebar .nav-item.active::before,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) #sidebar .nav-item.active::before,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) .sidebar .nav-item.active::before {
   background: #e8cd86 !important;
 }
 
-html:not([data-theme="light"]) #sidebar .nav-group-menu .nav-item.active::before,
-html:not([data-theme="light"]) .sidebar .nav-group-menu .nav-item.active::before,
-html:not([data-theme="light"]) body:has(#sidebar) #sidebar .nav-group-menu .nav-item.active::before,
-html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-group-menu .nav-item.active::before {
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) #sidebar .nav-group-menu .nav-item.active::before,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) .sidebar .nav-group-menu .nav-item.active::before,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) #sidebar .nav-group-menu .nav-item.active::before,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) .sidebar .nav-group-menu .nav-item.active::before {
   display: none !important;
 }
 
-html:not([data-theme="light"]) #sidebar .nav-item svg,
-html:not([data-theme="light"]) .sidebar .nav-item svg,
-html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg,
-html:not([data-theme="light"]) body:has(#sidebar) .sidebar .nav-item svg {
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) #sidebar .nav-item svg,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)) .sidebar .nav-item svg,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) .sidebar .nav-item svg,
+html:not([data-theme="light"]) body:not(:has(.department-nav-marker)):has(#sidebar) #sidebar .nav-item svg {
   color: inherit !important;
   opacity: 0.92;
 }

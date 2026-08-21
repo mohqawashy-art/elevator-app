@@ -189,3 +189,5 @@ def test_department_css_lets_tables_fill_the_workspace():
     assert 'max-width: 1380px' not in content_rule
     assert 'min-height: 52vh' in css
     assert 'max-height: none !important' in css
+    assert 'body:not(:has(.department-nav-marker))' in Path('static/liftcore-shell.css').read_text(encoding='utf-8')
+    assert '#c9a14a' not in css

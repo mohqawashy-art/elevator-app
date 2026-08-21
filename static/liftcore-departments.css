@@ -251,10 +251,27 @@ html[data-theme="premium"] .department-tabs-wrap {
 
 html[data-theme="premium"] .department-tab.active,
 html[data-theme="premium"] .department-tabs-wrap .department-tab.active,
-html[data-theme="premium"] body:has(.department-nav-marker) .department-tab.active {
-  border-color: rgba(42, 127, 255, .7) !important;
-  background: rgba(42, 127, 255, .16) !important;
-  box-shadow: inset 0 0 0 1px rgba(42, 127, 255, .08);
+html[data-theme="premium"] body:has(.department-nav-marker) .department-tab.active,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) #sidebar .nav-item.department-tab,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) #sidebar .nav-item.department-tab:hover,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) #sidebar .nav-item.department-tab:focus,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) #sidebar .nav-item.department-tab:visited,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) #sidebar .nav-item.department-tab.active,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) .sidebar .nav-item.department-tab,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) .sidebar .nav-item.department-tab.active,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) #sidebar .department-tabs-label {
+  color: var(--lc-dept-muted) !important;
+  background: rgba(255, 255, 255, .02) !important;
+  border-color: var(--lc-dept-border) !important;
+}
+
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) #sidebar .nav-item.department-tab:hover,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) #sidebar .nav-item.department-tab.active,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) .sidebar .nav-item.department-tab:hover,
+html:not([data-theme="light"]) body:has(#sidebar .department-nav-marker) .sidebar .nav-item.department-tab.active {
+  color: var(--lc-dept-muted) !important;
+  border-color: color-mix(in srgb, var(--lc-dept-color) 50%, transparent) !important;
+  background: color-mix(in srgb, var(--lc-dept-color) 9%, transparent) !important;
 }
 
 @media (max-width: 560px) {
