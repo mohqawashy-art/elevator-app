@@ -636,9 +636,9 @@ def project_quote_save(project_id):
     q.client_address = snapshot['client_address']
     q.valid_days = int(data.get('valid_days') or 30)
     q.spec_json = json.dumps(data.get('spec') or {}, ensure_ascii=False)
-    q.labor = float(data.get('labor') or 0)
-    q.transport = float(data.get('transport') or 0)
-    q.other_costs = float(data.get('other_costs') or 0)
+    q.labor = round(float(data.get('labor') or 0))
+    q.transport = round(float(data.get('transport') or 0))
+    q.other_costs = round(float(data.get('other_costs') or 0))
     q.profit_pct = float(data.get('profit_pct') or 20)
     pay_adv = float(data.get('pay_advance_pct') if data.get('pay_advance_pct') is not None else 50)
     pay_sup = float(data.get('pay_supply_pct') if data.get('pay_supply_pct') is not None else 40)
@@ -655,8 +655,8 @@ def project_quote_save(project_id):
 
     materials = 0.0
     for i, row in enumerate(lines):
-        qty = float(row.get('qty') or 0)
-        price = float(row.get('price') or 0)
+        qty = round(float(row.get('qty') or 0))
+        price = round(float(row.get('price') or 0))
         materials += qty * price
         line = InstallQuotationLine(
             quotation=q,
@@ -674,12 +674,12 @@ def project_quote_save(project_id):
     profit = cost * q.profit_pct / 100
     before = cost + profit
     vat = before * 0.15
-    q.materials_total = materials
-    q.cost_total = cost
-    q.profit_amount = profit
-    q.before_tax = before
-    q.vat_amount = vat
-    q.grand_total = before + vat
+    q.materials_total = round(materials)
+    q.cost_total = round(cost)
+    q.profit_amount = round(profit)
+    q.before_tax = round(before)
+    q.vat_amount = round(vat)
+    q.grand_total = round(before + vat)
 
     if project.status in ('استفسار', 'معاينة', 'هندسة'):
         project.status = 'تسعير'

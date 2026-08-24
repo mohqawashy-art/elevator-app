@@ -83,6 +83,10 @@
     return isNaN(n) ? 0 : n;
   }
 
+  function moneyRound(v) {
+    return Math.round(num(v));
+  }
+
   function isNone(v) {
     return v === NONE_OPTION || v === 'بدون';
   }
@@ -351,12 +355,12 @@
     var vat = before * 0.15;
     var grand = before + vat;
     return {
-      materials_total: materials,
-      cost_total: cost,
-      profit_amount: profit,
-      before_tax: before,
-      vat_amount: vat,
-      grand_total: grand,
+      materials_total: moneyRound(materials),
+      cost_total: moneyRound(cost),
+      profit_amount: moneyRound(profit),
+      before_tax: moneyRound(before),
+      vat_amount: moneyRound(vat),
+      grand_total: moneyRound(grand),
     };
   }
 

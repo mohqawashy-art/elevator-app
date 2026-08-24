@@ -10749,8 +10749,8 @@ def _parse_estimate_lines(form):
         desc = (desc or '').strip()
         if not desc:
             continue
-        quantity = float(qty or 0)
-        unit_price = float(price or 0)
+        quantity = round(float(qty or 0))
+        unit_price = round(float(price or 0))
         if quantity <= 0:
             continue
         lines.append({
@@ -10759,7 +10759,7 @@ def _parse_estimate_lines(form):
             'quantity': quantity,
             'unit': (unit or '').strip() or 'وحدة',
             'unit_price': unit_price,
-            'line_total': round(quantity * unit_price, 2),
+            'line_total': round(quantity * unit_price),
         })
     return lines
 

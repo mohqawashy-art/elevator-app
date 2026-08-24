@@ -97,8 +97,8 @@ document.addEventListener('DOMContentLoaded', function () {
     return n;
   }
   function fmt(n) {
-    n = Math.round(n);
-    return n.toLocaleString('en-US') + ' ر.س';
+    n = Math.round(Number(n) || 0);
+    return n.toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' ر.س';
   }
 
   function fillStopsSelect(selId, def) {
@@ -379,8 +379,8 @@ document.addEventListener('DOMContentLoaded', function () {
     return '<tr class="item-row" data-stage="' + escapeAttr(r.stage) + '">'
       + '<td><input class="w-name f-name" type="text" value="' + escapeAttr(r.name) + '"></td>'
       + '<td>' + unitCellHTML(r.unit) + '</td>'
-      + '<td><input class="f-qty" type="number" min="0" step="any" value="' + r.qty + '"></td>'
-      + '<td><input class="f-price" type="number" min="0" step="any" value="' + r.price + '"></td>'
+      + '<td><input class="f-qty" type="number" min="0" step="1" value="' + Math.round(Number(r.qty) || 0) + '"></td>'
+      + '<td><input class="f-price" type="number" min="0" step="1" value="' + Math.round(Number(r.price) || 0) + '"></td>'
       + '<td class="line-total">0</td>'
       + '<td><button type="button" class="pricing-del" title="حذف">✕</button></td>'
       + '</tr>';
@@ -596,8 +596,8 @@ document.addEventListener('DOMContentLoaded', function () {
     tr.setAttribute('data-stage', 'بنود إضافية');
     tr.innerHTML = '<td><input class="w-name f-name" type="text" placeholder="اسم البند"></td>'
       + '<td>' + unitCellHTML('قطعة') + '</td>'
-      + '<td><input class="f-qty" type="number" min="0" step="any" value="1"></td>'
-      + '<td><input class="f-price" type="number" min="0" step="any" value="0"></td>'
+      + '<td><input class="f-qty" type="number" min="0" step="1" value="1"></td>'
+      + '<td><input class="f-price" type="number" min="0" step="1" value="0"></td>'
       + '<td class="line-total">0</td>'
       + '<td><button type="button" class="pricing-del">✕</button></td>';
     body.appendChild(tr);

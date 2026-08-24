@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=seal2">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=money1">
 <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 </head>
 <body>
@@ -220,15 +220,16 @@
         <div class="head">ملخص التكلفة</div>
         <div class="body">
           <div class="sum-row"><span class="lbl">المواد والقطع</span><b id="sumMat">0</b></div>
-          <div class="sum-row"><span class="lbl">المصنعيات</span><input type="number" id="sumLabor" value="0" min="0"></div>
-          <div class="sum-row"><span class="lbl">نقل ورافعة</span><input type="number" id="sumTrans" value="2000" min="0"></div>
-          <div class="sum-row"><span class="lbl">مصاريف أخرى</span><input type="number" id="sumOther" value="0" min="0"></div>
+          <div class="sum-row"><span class="lbl">المصنعيات</span><input type="number" id="sumLabor" value="0" min="0" step="1"></div>
+          <div class="sum-row"><span class="lbl">نقل ورافعة</span><input type="number" id="sumTrans" value="2000" min="0" step="1"></div>
+          <div class="sum-row"><span class="lbl">مصاريف أخرى</span><input type="number" id="sumOther" value="0" min="0" step="1"></div>
           <div class="sum-row sub"><span class="lbl">التكلفة قبل الربح</span><b id="sumCost">0</b></div>
           <div class="sum-row"><span class="lbl">هامش الربح %</span><input type="number" id="sumProfitP" value="20" min="0" max="100"></div>
           <div class="sum-row"><span class="lbl">قيمة الربح</span><b id="sumProfit">0</b></div>
           <div class="sum-row sub"><span class="lbl">قبل الضريبة</span><b id="sumBefore">0</b></div>
           <div class="sum-row"><span class="lbl">ض.ق.م 15%</span><b id="sumVat">0</b></div>
           <div class="sum-grand"><span>الإجمالي النهائي</span><span class="v" id="sumGrand">0 ر.س</span></div>
+          <div class="pricing-hint" style="margin-top:8px">الأرقام في الملخص مقربة لأقرب ريال — بدون كسور.</div>
 
           <div class="pay-schedule">
             <div class="pay-schedule-head">جدول الدفعات <span class="pay-schedule-note">المجموع 100%</span></div>
@@ -289,7 +290,7 @@ window.__INSTALL_QUOTE__ = {
   companySignOffsetY: {{ (company_sign_offset_y or 0) | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=logoonly1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=seal2"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=money1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=money1"></script>
 </body>
 </html>
