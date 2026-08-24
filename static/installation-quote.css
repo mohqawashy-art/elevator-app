@@ -58,7 +58,8 @@ table.pricing-items input.f-unit-custom{
 .sum-row.sub{font-weight:600}
 .sum-row .lbl{color:var(--text2);flex:1;min-width:0}
 .sum-row b,.sum-grand .v{font-variant-numeric:tabular-nums;white-space:nowrap;font-family:var(--font-en)}
-.sum-row input{width:88px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);color:var(--text1);text-align:center;font-family:var(--font-en);font-size:12px;flex-shrink:0}
+.sum-row input,.pay-schedule select{width:88px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);color:var(--text1);text-align:center;font-family:var(--font-en);font-size:12px;flex-shrink:0}
+.pay-schedule select{font-family:inherit;text-align:right}
 .sum-grand{background:linear-gradient(180deg,rgba(200,160,85,.18),rgba(42,127,255,.1));margin:12px -14px 0;padding:16px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;border-top:1px solid var(--border)}
 .sum-grand .k{font-size:12px;font-weight:700;color:var(--gold)}
 .sum-grand .v{font-size:26px;font-weight:800;color:var(--gold);font-family:var(--font-en);font-variant-numeric:tabular-nums;line-height:1.2}

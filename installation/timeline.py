@@ -248,10 +248,15 @@ def create_execution_timeline(project, db_session):
 
     existing = {s.step_key for s in project.timeline_steps}
     org_id = getattr(project, 'organization_id', None)
+    quotation = project.accepted_quotation
     created = 0
     for i, tpl in enumerate(EXECUTION_STEP_TEMPLATES):
         if tpl['key'] in existing:
             continue
+        if tpl['key'] in PAYMENT_STEP_KEYS and quotation:
+            pct = step_amount_pct(tpl['key'], quotation)
+            if pct is not None and float(pct) <= 0:
+                continue
         db_step = InstallTimelineStep(
             organization_id=org_id,
             project_id=project.id,

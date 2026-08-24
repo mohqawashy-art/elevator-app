@@ -212,18 +212,15 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
     <div class="g"><span>الإجمالي شامل الضريبة</span><span>{{ '{:,.0f}'.format(quotation.grand_total) }} ر.س</span></div>
   </div>
 
-  {% set sched = quotation.payment_schedule() %}
-  {% set adv_amt = quotation.payment_amount('advance_payment') %}
-  {% set sup_amt = quotation.payment_amount('payment_on_delivery') %}
-  {% set fin_amt = quotation.payment_amount('payment_final') %}
+  {% set pay_items = quotation.payment_items() %}
   <div class="q-sec">
     <h3>الشروط</h3>
     <div class="terms">
       <b>شروط الدفع:</b>
       <div class="q-pay-list">
-        <div>{{ '{:.0f}'.format(sched.advance_pct) }}% دفعة مقدمة ({{ '{:,.0f}'.format(adv_amt or 0) }} ر.س)</div>
-        <div>{{ '{:.0f}'.format(sched.supply_pct) }}% عند التوريد ({{ '{:,.0f}'.format(sup_amt or 0) }} ر.س)</div>
-        <div>{{ '{:.0f}'.format(sched.final_pct) }}% عند التسليم ({{ '{:,.0f}'.format(fin_amt or 0) }} ر.س)</div>
+        {% for it in pay_items %}
+        <div>{{ '{:.0f}'.format(it.pct) }}% {{ it.label }} ({{ '{:,.0f}'.format(it.amount or 0) }} ر.س)</div>
+        {% endfor %}
       </div>
       <b>الضمان:</b> سنة على أعمال التركيب + صيانة مجانية 12 شهراً.
     </div>

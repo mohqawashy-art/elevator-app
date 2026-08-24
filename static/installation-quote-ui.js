@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
       pay_advance_pct: el('payAdvance') ? el('payAdvance').value : 50,
       pay_supply_pct: el('paySupply') ? el('paySupply').value : 40,
       pay_final_pct: el('payFinal') ? el('payFinal').value : 10,
+      pay_count: getPayCount(),
       spec: currentMode === 'new' ? getNewSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected }),
       lines: collectRows(),
       quote_type: currentMode,
@@ -509,24 +510,59 @@ document.addEventListener('DOMContentLoaded', function () {
     return out;
   }
 
+  function getPayCount() {
+    var n = el('payCount') ? parseInt(el('payCount').value, 10) : 3;
+    return n === 2 ? 2 : 3;
+  }
+
+  function inferPayCount(s) {
+    if (s && s.pay_count === 2) return 2;
+    if (s && s.pay_count === 3) return 3;
+    if (s && P.num(s.pay_supply_pct) <= 0) return 2;
+    return 3;
+  }
+
+  function applyPayCount(count, preserve) {
+    count = count === 2 ? 2 : 3;
+    if (el('payCount')) el('payCount').value = String(count);
+    if (el('payRowSupply')) el('payRowSupply').style.display = count === 3 ? '' : 'none';
+    if (el('payFinalLabel')) {
+      el('payFinalLabel').textContent = count === 2 ? 'دفعة عند التسليم %' : 'دفعة نهائية %';
+    }
+    if (!preserve) {
+      if (count === 2) {
+        var adv = P.num(el('payAdvance') ? el('payAdvance').value : 50);
+        if (el('paySupply')) el('paySupply').value = 0;
+        if (el('payFinal')) el('payFinal').value = Math.max(0, 100 - adv);
+      } else if (el('paySupply') && P.num(el('paySupply').value) <= 0) {
+        if (el('payAdvance')) el('payAdvance').value = 50;
+        el('paySupply').value = 40;
+        if (el('payFinal')) el('payFinal').value = 10;
+      }
+    }
+  }
+
   function getPaymentPcts() {
-    return {
-      advance: P.num(el('payAdvance') ? el('payAdvance').value : 50),
-      supply: P.num(el('paySupply') ? el('paySupply').value : 40),
-      final: P.num(el('payFinal') ? el('payFinal').value : 10),
-    };
+    var count = getPayCount();
+    var advance = P.num(el('payAdvance') ? el('payAdvance').value : 50);
+    var supply = count === 3 ? P.num(el('paySupply') ? el('paySupply').value : 40) : 0;
+    var finalPct = P.num(el('payFinal') ? el('payFinal').value : (count === 2 ? 50 : 10));
+    return { count: count, advance: advance, supply: supply, final: finalPct };
   }
 
   function paymentTermsText(pcts, grand) {
-    var advAmt = Math.round(grand * pcts.advance / 100);
-    var supAmt = Math.round(grand * pcts.supply / 100);
-    var finAmt = Math.round(grand * pcts.final / 100);
-    return '<b>شروط الدفع:</b>'
-      + '<div class="q-pay-list">'
-      + '<div>' + pcts.advance + '% دفعة مقدمة (' + fmt(advAmt) + ')</div>'
-      + '<div>' + pcts.supply + '% عند التوريد (' + fmt(supAmt) + ')</div>'
-      + '<div>' + pcts.final + '% عند التسليم (' + fmt(finAmt) + ')</div>'
-      + '</div>';
+    var items = [];
+    items.push({ label: 'دفعة مقدمة', pct: pcts.advance });
+    if (pcts.count === 3) items.push({ label: 'عند التوريد', pct: pcts.supply });
+    items.push({ label: pcts.count === 2 ? 'عند التسليم' : 'دفعة نهائية', pct: pcts.final });
+    var html = '<b>شروط الدفع:</b><div class="q-pay-list">';
+    var i, amt;
+    for (i = 0; i < items.length; i++) {
+      if (items[i].pct <= 0) continue;
+      amt = Math.round(grand * items[i].pct / 100);
+      html += '<div>' + items[i].pct + '% ' + items[i].label + ' (' + fmt(amt) + ')</div>';
+    }
+    return html + '</div>';
   }
 
   function recalcPaymentSchedule(grand) {
@@ -540,9 +576,14 @@ document.addEventListener('DOMContentLoaded', function () {
       totalEl.style.color = total === 100 ? 'var(--text3)' : 'var(--danger)';
     }
     if (preview && grand > 0) {
-      preview.innerHTML = 'مقدمة: <span class="amt">' + fmt(Math.round(grand * pcts.advance / 100)) + '</span><br>'
-        + 'توريد: <span class="amt">' + fmt(Math.round(grand * pcts.supply / 100)) + '</span><br>'
-        + 'نهائية: <span class="amt">' + fmt(Math.round(grand * pcts.final / 100)) + '</span>';
+      var html = 'مقدمة: <span class="amt">' + fmt(Math.round(grand * pcts.advance / 100)) + '</span>';
+      if (pcts.count === 3) {
+        html += '<br>توريد: <span class="amt">' + fmt(Math.round(grand * pcts.supply / 100)) + '</span>';
+        html += '<br>نهائية: <span class="amt">' + fmt(Math.round(grand * pcts.final / 100)) + '</span>';
+      } else {
+        html += '<br>عند التسليم: <span class="amt">' + fmt(Math.round(grand * pcts.final / 100)) + '</span>';
+      }
+      preview.innerHTML = html;
     } else if (preview) {
       preview.innerHTML = 'أدخل البنود لحساب مبالغ الدفعات';
     }
@@ -872,7 +913,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     var pcts = getPaymentPcts();
     if (pcts.advance + pcts.supply + pcts.final !== 100) {
-      alert('مجموع نسب الدفعات يجب أن يساوي 100%.\nمقدمة + توريد + نهائية = ' + (pcts.advance + pcts.supply + pcts.final) + '%');
+      alert(
+        pcts.count === 2
+          ? 'مجموع نسب الدفعات يجب أن يساوي 100%.\nمقدمة + عند التسليم = ' + (pcts.advance + pcts.final) + '%'
+          : 'مجموع نسب الدفعات يجب أن يساوي 100%.\nمقدمة + توريد + نهائية = ' + (pcts.advance + pcts.supply + pcts.final) + '%'
+      );
       return;
     }
     var payload = {
@@ -891,6 +936,7 @@ document.addEventListener('DOMContentLoaded', function () {
       pay_advance_pct: pcts.advance,
       pay_supply_pct: pcts.supply,
       pay_final_pct: pcts.final,
+      pay_count: pcts.count,
       lines: rows,
     };
     fetch(saveUrl, {
@@ -937,6 +983,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (el('payAdvance')) el('payAdvance').value = s.pay_advance_pct != null ? s.pay_advance_pct : 50;
     if (el('paySupply')) el('paySupply').value = s.pay_supply_pct != null ? s.pay_supply_pct : 40;
     if (el('payFinal')) el('payFinal').value = s.pay_final_pct != null ? s.pay_final_pct : 10;
+    applyPayCount(inferPayCount(s), true);
     currentMode = s.quote_type || 'new';
     if (currentMode === 'upgrade') switchTab('upgrade');
     if (s.spec) {
@@ -1033,6 +1080,12 @@ document.addEventListener('DOMContentLoaded', function () {
   ['sumLabor', 'sumTrans', 'sumOther', 'sumProfitP', 'payAdvance', 'paySupply', 'payFinal'].forEach(function (id) {
     if (el(id)) el(id).addEventListener('input', recalc);
   });
+  if (el('payCount')) {
+    el('payCount').addEventListener('change', function () {
+      applyPayCount(getPayCount(), false);
+      recalc();
+    });
+  }
 
   var restored = restoreDraftIfNeeded();
   if (cfg.saved) {

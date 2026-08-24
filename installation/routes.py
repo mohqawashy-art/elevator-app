@@ -213,6 +213,7 @@ def _quotation_to_dict(q):
         'pay_advance_pct': q.pay_advance_pct if q.pay_advance_pct is not None else 50,
         'pay_supply_pct': q.pay_supply_pct if q.pay_supply_pct is not None else 40,
         'pay_final_pct': q.pay_final_pct if q.pay_final_pct is not None else 10,
+        'pay_count': q.payment_count(),
         'spec': spec,
         'lines': [
             {
@@ -643,10 +644,23 @@ def project_quote_save(project_id):
     pay_adv = float(data.get('pay_advance_pct') if data.get('pay_advance_pct') is not None else 50)
     pay_sup = float(data.get('pay_supply_pct') if data.get('pay_supply_pct') is not None else 40)
     pay_fin = float(data.get('pay_final_pct') if data.get('pay_final_pct') is not None else 10)
+    try:
+        pay_count = int(data.get('pay_count') or 0)
+    except (TypeError, ValueError):
+        pay_count = 0
+    if pay_count not in (2, 3):
+        pay_count = 2 if pay_sup <= 0 else 3
+    if pay_count == 2:
+        pay_sup = 0.0
     if pay_adv < 0 or pay_sup < 0 or pay_fin < 0:
         return jsonify({'ok': False, 'error': 'نسب الدفعات لا يمكن أن تكون سالبة'}), 400
     if round(pay_adv + pay_sup + pay_fin, 2) != 100:
-        return jsonify({'ok': False, 'error': 'مجموع نسب الدفعات (مقدمة + توريد + نهائية) يجب أن يساوي 100%'}), 400
+        msg = (
+            'مجموع نسب الدفعات (مقدمة + عند التسليم) يجب أن يساوي 100%'
+            if pay_count == 2
+            else 'مجموع نسب الدفعات (مقدمة + توريد + نهائية) يجب أن يساوي 100%'
+        )
+        return jsonify({'ok': False, 'error': msg}), 400
     q.pay_advance_pct = pay_adv
     q.pay_supply_pct = pay_sup
     q.pay_final_pct = pay_fin

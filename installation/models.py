@@ -235,13 +235,47 @@ class InstallQuotation(TenantMixin, db.Model):
         except (json.JSONDecodeError, TypeError):
             return {}
 
+    def payment_count(self):
+        """عدد دفعات العميل الظاهرة في العرض: 2 أو 3."""
+        if self.pay_supply_pct is None:
+            return 3
+        if self.pay_supply_pct <= 0:
+            return 2
+        return 3
+
     def payment_schedule(self):
         """نسب دفعات العميل المحددة في التسعير."""
         return {
             'advance_pct': self.pay_advance_pct if self.pay_advance_pct is not None else 50.0,
             'supply_pct': self.pay_supply_pct if self.pay_supply_pct is not None else 40.0,
             'final_pct': self.pay_final_pct if self.pay_final_pct is not None else 10.0,
+            'count': self.payment_count(),
         }
+
+    def payment_items(self):
+        """دفعات العرض ذات النسبة الأكبر من صفر — للطباعة والمعاينة."""
+        sched = self.payment_schedule()
+        two = sched['count'] == 2
+        items = [
+            {'key': 'advance', 'label': 'دفعة مقدمة', 'pct': sched['advance_pct']},
+        ]
+        if not two:
+            items.append({'key': 'supply', 'label': 'عند التوريد', 'pct': sched['supply_pct']})
+        items.append({
+            'key': 'final',
+            'label': 'عند التسليم' if two else 'دفعة نهائية',
+            'pct': sched['final_pct'],
+        })
+        gt = float(self.grand_total or 0)
+        out = []
+        for it in items:
+            pct = float(it['pct'] or 0)
+            if pct <= 0:
+                continue
+            it['pct'] = pct
+            it['amount'] = round(gt * pct / 100.0)
+            out.append(it)
+        return out
 
     def payment_amount(self, step_key, grand_total=None):
         """مبلغ دفعة من العقد حسب نوع الخطوة — الأساس: الإجمالي شامل الضريبة."""
