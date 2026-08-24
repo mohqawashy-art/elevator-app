@@ -115,7 +115,7 @@ tr.done td{background:#f8fdf9}
     <table style="margin-top:12px">
       <tbody>
         <tr>
-          <td><b>نوع المشروع</b></td><td>{{ 'تركيب جديد' if accepted_quote.quote_type == 'new' else 'تحديث' }}</td>
+          <td><b>نوع المشروع</b></td><td>{{ accepted_quote.quote_type_short }}</td>
           <td><b>تاريخ القبول</b></td><td>{{ accepted_quote.approved_at.strftime('%Y-%m-%d') if accepted_quote.approved_at else '—' }}</td>
         </tr>
         <tr>
@@ -140,6 +140,22 @@ tr.done td{background:#f8fdf9}
           <td><b>البئر / الكبينة</b></td>
           <td>{% if dims.shaft_w %}{{ dims.shaft_w }}×{{ dims.shaft_d }} سم{% else %}—{% endif %}
             {% if dims.cabin_w %} · كبينة {{ dims.cabin_w }}×{{ dims.cabin_d }} سم{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% elif accepted_quote.quote_type == 'extend' and spec %}
+  <div class="r-sec">
+    <h3>نطاق العمل — إضافة أدوار</h3>
+    <table>
+      <tbody>
+        <tr>
+          <td><b>الوقفات الحالية</b></td><td>{{ spec.current_stops or '—' }} وقفات</td>
+          <td><b>الأدوار المضافة</b></td><td>{{ spec.added_stops or '—' }} أدوار</td>
+        </tr>
+        <tr>
+          <td><b>بعد الإضافة</b></td><td>{{ spec.stops or '—' }} وقفات</td>
+          <td><b>الحمولة</b></td><td>{{ spec.capacity or '—' }} كجم</td>
         </tr>
       </tbody>
     </table>

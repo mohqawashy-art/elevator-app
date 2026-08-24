@@ -348,7 +348,7 @@
           {% for q in quotations %}
           <tr>
             <td style="font-family:var(--font-en)">{{ q.code }}</td>
-            <td>{{ 'تركيب جديد' if q.quote_type == 'new' else 'تحديث' }}</td>
+            <td>{{ q.quote_type_short }}</td>
             <td>
               <span class="badge {% if q.status == 'مقبول' %}badge-ok{% elif q.status == 'مُرسل' %}badge-new{% elif q.status == 'مرفوض' %}badge-warn{% else %}badge-muted{% endif %}">{{ q.status }}</span>
             </td>

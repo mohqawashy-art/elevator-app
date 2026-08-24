@@ -342,7 +342,80 @@
     };
   }
 
-  function buildUpgradeBOM(spec, selected) {
+    function buildExtendBOM(spec) {
+      var currentStops = Math.max(2, Math.round(num(spec.current_stops) || 3));
+      var addedStops = Math.max(1, Math.round(num(spec.added_stops) || 1));
+      var newStops = currentStops + addedStops;
+      var elevators = Math.max(1, Math.round(num(spec.elevator_count) || 1));
+      var door = isNone(spec.door) ? '' : (spec.door || 'tele');
+      var entrRaw = spec.entrances;
+      var entr = isNone(entrRaw) ? 1 : (num(entrRaw) || 1);
+      var floorH = toCm(spec.floor_height) || 300;
+      var machineSuffix = originSuffix(spec);
+      var wanted = selectedStages(spec);
+
+      if (floorH < 250 || floorH > 600) {
+        return { error: 'ارتفاع الدور يجب أن يكون بين 250 و 600 سم' };
+      }
+      if (newStops > 20) {
+        return { error: 'إجمالي الوقفات بعد الإضافة كبير جداً — راجع العدد' };
+      }
+
+      var addedTravelM = (addedStops * floorH) / 100;
+      var railM = Math.ceil(addedTravelM + 1);
+      var brackets = Math.ceil(addedTravelM / 1.5) + 1;
+      var ropesM = Math.ceil((addedTravelM + 5) * 5);
+      var travCable = Math.ceil(addedTravelM + 8);
+      var doorsQty = addedStops * entr;
+      var rows = [];
+      var elevNote = elevators > 1 ? (' × ' + elevators + ' مصعد') : '';
+      var rangeNote = ' (من ' + currentStops + ' إلى ' + newStops + ' وقفات)';
+
+      function add(stage, name, unit, qty, price) {
+        rows.push({
+          stage: stage,
+          name: name + elevNote,
+          unit: unit,
+          qty: qty * elevators,
+          price: price,
+        });
+      }
+
+      add(STAGE_RAILS, 'سكك كبينة T89 للأدوار المضافة' + rangeNote, 'متر', railM, 70);
+      add(STAGE_RAILS, 'سكك ثقل T50 للأدوار المضافة' + rangeNote, 'متر', railM, 45);
+      if (door && DOOR_NAMES[door]) {
+        add(STAGE_RAILS, DOOR_NAMES[door] + ' — أدوار جديدة' + machineSuffix, 'باب', doorsQty, applyOrigin(DOOR_PRICES[door], spec, 'light'));
+      }
+      add(STAGE_RAILS, 'شيكالات تثبيت السكك للأدوار المضافة', 'طقم', brackets, 120);
+      add(STAGE_RAILS, 'مسامير وزوايا ومتفرقات تمديد السكك', 'مقطوع', 1, 800);
+
+      add(STAGE_CABIN, 'تمديد حبال جر 8 مم للأدوار المضافة', 'متر', ropesM, 12);
+      add(STAGE_CABIN, 'بلوكات ثقل موازن إضافية', 'طقم', 1, 1800);
+      add(STAGE_CABIN, 'بوفرات / تعديلات نهاية البئر', 'طقم', 1, 900);
+
+      add(STAGE_CTRL, 'تمديد ترافلينج كيبل للأدوار المضافة', 'متر', travCable, 18);
+      add(STAGE_CTRL, 'أزرار استدعاء الأدوار الجديدة LOP', 'قطعة', addedStops * entr, 250);
+      add(STAGE_CTRL, 'تعديل برمجة اللوحة وإضافة المحطات الجديدة', 'مقطوع', 1, 1500);
+      add(STAGE_CTRL, 'اختبارات تشغيل وتسليم بعد إضافة الأدوار', 'مقطوع', 1, 1200);
+
+      rows = rows.filter(function (r) { return wanted.indexOf(r.stage) >= 0; });
+      if (!rows.length) {
+        return { error: 'اختر مرحلة واحدة على الأقل' };
+      }
+
+      return {
+        rows: rows,
+        labor: Math.round((3500 + (1800 * addedStops)) * elevators * laborShareForStages(wanted)),
+        quote_type: 'extend',
+        elevator_count: elevators,
+        current_stops: currentStops,
+        added_stops: addedStops,
+        stops: newStops,
+        stages: wanted,
+      };
+    }
+
+    function buildUpgradeBOM(spec, selected) {
     var stops = num(spec.stops);
     var elevators = Math.max(1, Math.round(num(spec.elevator_count) || 1));
     var cap = num(spec.capacity) || 630;
@@ -411,6 +484,7 @@
     selectedStages: selectedStages,
     UPG: UPG,
     buildNewBOM: buildNewBOM,
+    buildExtendBOM: buildExtendBOM,
     buildUpgradeBOM: buildUpgradeBOM,
     calcTotals: calcTotals,
     calcCabinFromShaft: calcCabinFromShaft,

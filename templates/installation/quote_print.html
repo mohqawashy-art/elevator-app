@@ -88,7 +88,7 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
       الصلاحية: <b>{{ quotation.valid_days }} يوم</b>
     </div>
   </div>
-  <div class="q-title">عرض سعر — {{ 'توريد وتركيب مصعد جديد' if quotation.quote_type == 'new' else 'تحديث مصعد قائم' }}</div>
+  <div class="q-title">عرض سعر — {{ quotation.quote_type_label }}</div>
 
   <div class="q-sec">
     <h3>بيانات العميل</h3>
@@ -156,6 +156,35 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
               {{ dims.cabin_w }}×{{ dims.cabin_d }} سم
             {% else %}—{% endif %}
           </td>
+        </tr>
+        {% endif %}
+        {% set inc_stages = spec.include_stages or [] %}
+        {% if inc_stages and inc_stages|length and inc_stages|length < 3 %}
+        <tr>
+          <td><b>نطاق العمل</b></td>
+          <td colspan="3">{{ inc_stages|join(' · ') }}</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% elif quotation.quote_type == 'extend' and spec %}
+  <div class="q-sec">
+    <h3>نطاق العمل — إضافة أدوار</h3>
+    <table>
+      <tbody>
+        <tr>
+          <td><b>عدد المصاعد</b></td><td>{{ spec.elevator_count or 1 }}</td>
+          <td><b>الوقفات الحالية</b></td><td>{{ spec.current_stops or '—' }} وقفات</td>
+        </tr>
+        <tr>
+          <td><b>الأدوار المضافة</b></td><td>{{ spec.added_stops or '—' }} أدوار</td>
+          <td><b>بعد الإضافة</b></td><td>{{ spec.stops or '—' }} وقفات</td>
+        </tr>
+        {% if spec.capacity and spec.capacity not in ['__none__', 'بدون'] %}
+        <tr>
+          <td><b>الحمولة</b></td><td>{{ spec.capacity }} كجم</td>
+          <td></td><td></td>
         </tr>
         {% endif %}
         {% set inc_stages = spec.include_stages or [] %}

@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
       profit_pct: el('sumProfitP') ? el('sumProfitP').value : 20,
       pay_count: getPayCount(),
       pay_installments: collectPayInstallments(),
-      spec: currentMode === 'new' ? getNewSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected }),
+      spec: currentMode === 'new' ? getNewSpec() : (currentMode === 'extend' ? getExtendSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected })),
       lines: collectRows(),
       quote_type: currentMode,
       code: quoteCode,
@@ -111,6 +111,17 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   fillStopsSelect('sStops', cfg.stops || 6);
   fillStopsSelect('uStops', cfg.stops || 6);
+  fillStopsSelect('eCurrentStops', 3);
+  function fillAddedStopsSelect(def) {
+    var sel = el('eAddedStops');
+    if (!sel) return;
+    var i, opts = '', pick = def || 2;
+    for (i = 1; i <= 10; i++) {
+      opts += '<option value="' + i + '"' + (i === pick ? ' selected' : '') + '>' + i + (i === 1 ? ' دور' : ' أدوار') + '</option>';
+    }
+    sel.innerHTML = opts;
+  }
+  fillAddedStopsSelect(2);
 
   function fillCustomerSelect() {
     if (typeof LcClientSelect !== 'undefined') {
@@ -279,12 +290,23 @@ document.addEventListener('DOMContentLoaded', function () {
       + (adj ? ' (تأثير السعر' + adj + ')' : ' (قياس قياسي)');
   }
 
-  function getSelectedStages() {
-    var checks = [
+  function stageCheckIds() {
+    if (currentMode === 'extend') {
+      return [
+        { id: 'eStgRails', stage: P.STAGE_RAILS },
+        { id: 'eStgCabin', stage: P.STAGE_CABIN },
+        { id: 'eStgCtrl', stage: P.STAGE_CTRL },
+      ];
+    }
+    return [
       { id: 'stgRails', stage: P.STAGE_RAILS },
       { id: 'stgCabin', stage: P.STAGE_CABIN },
       { id: 'stgCtrl', stage: P.STAGE_CTRL },
     ];
+  }
+
+  function getSelectedStages() {
+    var checks = stageCheckIds();
     var out = [];
     var i, box;
     for (i = 0; i < checks.length; i++) {
@@ -295,11 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function setSelectedStages(stages) {
-    var checks = [
-      { id: 'stgRails', stage: P.STAGE_RAILS },
-      { id: 'stgCabin', stage: P.STAGE_CABIN },
-      { id: 'stgCtrl', stage: P.STAGE_CTRL },
-    ];
+    var checks = stageCheckIds();
     var wanted = stages && stages.length ? stages : checks.map(function (c) { return c.stage; });
     var i, box;
     for (i = 0; i < checks.length; i++) {
@@ -321,8 +339,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function syncStagePickStyles() {
-    var picks = document.querySelectorAll('#stagePicks .stage-pick');
-    picks.forEach(function (lab) {
+    document.querySelectorAll('.stage-picks .stage-pick').forEach(function (lab) {
       var box = lab.querySelector('input');
       lab.classList.toggle('on', !!(box && box.checked));
     });
@@ -367,6 +384,38 @@ document.addEventListener('DOMContentLoaded', function () {
       spec.cabin_depth = cabinCalc.depth;
     }
     return spec;
+  }
+
+  function getExtendSpec() {
+    var machineOrigin = resolveOrigin('sOrigin', 'sOriginCustom');
+    var panelOrigin = resolveOrigin('sPanelOrigin', 'sPanelOriginCustom');
+    var currentStops = el('eCurrentStops') ? P.num(el('eCurrentStops').value) : 3;
+    var addedStops = el('eAddedStops') ? P.num(el('eAddedStops').value) : 2;
+    return {
+      elevator_count: el('eElevCount') ? el('eElevCount').value : 1,
+      current_stops: currentStops,
+      added_stops: addedStops,
+      stops: currentStops + addedStops,
+      capacity: el('eCap') ? el('eCap').value : '630',
+      door: el('eDoor') ? el('eDoor').value : 'tele',
+      entrances: el('eEntr') ? el('eEntr').value : 1,
+      floor_height: el('eFloorH') ? el('eFloorH').value : 300,
+      machine_origin: machineOrigin.id,
+      machine_origin_country: machineOrigin.country,
+      machine_brand: resolveBrand('sBrand', 'sBrandCustom'),
+      panel_origin: panelOrigin.id,
+      panel_origin_country: panelOrigin.country,
+      panel_brand: resolveBrand('sPanelBrand', 'sPanelBrandCustom'),
+      include_stages: getSelectedStages(),
+    };
+  }
+
+  function updateExtendHint() {
+    var hint = el('extendHint');
+    if (!hint) return;
+    var cur = el('eCurrentStops') ? P.num(el('eCurrentStops').value) : 3;
+    var add = el('eAddedStops') ? P.num(el('eAddedStops').value) : 2;
+    hint.innerHTML = cur + ' وقفات قائمة + ' + add + ' دور = <b>' + (cur + add) + ' وقفات</b>';
   }
 
   function getUpgSpec() {
@@ -708,6 +757,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function maybeRebuildBOM() {
     if (!hasBuiltRows) return;
     if (currentMode === 'new') buildNewBOM();
+    else if (currentMode === 'extend') buildExtendBOM();
     else if (currentMode === 'upgrade') buildUpgBOM();
   }
 
@@ -741,6 +791,18 @@ document.addEventListener('DOMContentLoaded', function () {
     recalc();
   }
 
+  function buildExtendBOM() {
+    updateExtendHint();
+    if (typeof P.buildExtendBOM !== 'function') { alert('حدّث الصفحة (Ctrl+F5)'); return; }
+    var result = P.buildExtendBOM(getExtendSpec());
+    if (result.error) { alert(result.error); return; }
+    currentMode = 'extend';
+    renderRows(result.rows);
+    el('sumLabor').value = result.labor;
+    el('sumTrans').value = el('sumTrans').value || 1500;
+    recalc();
+  }
+
   function addManualRow() {
     var body = el('itemsBody');
     var note = body.querySelector('.pricing-empty');
@@ -761,17 +823,21 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function switchTab(mode) {
-    var isNew = mode === 'new';
-    el('paneNew').style.display = isNew ? '' : 'none';
-    el('paneUpg').style.display = isNew ? 'none' : '';
-    el('tabNewBtn').className = 'pricing-tab' + (isNew ? ' active' : '');
-    el('tabUpgBtn').className = 'pricing-tab' + (isNew ? '' : ' active');
+    el('paneNew').style.display = mode === 'new' ? '' : 'none';
+    el('paneExtend').style.display = mode === 'extend' ? '' : 'none';
+    el('paneUpg').style.display = mode === 'upgrade' ? '' : 'none';
+    el('tabNewBtn').className = 'pricing-tab' + (mode === 'new' ? ' active' : '');
+    if (el('tabExtendBtn')) el('tabExtendBtn').className = 'pricing-tab' + (mode === 'extend' ? ' active' : '');
+    el('tabUpgBtn').className = 'pricing-tab' + (mode === 'upgrade' ? ' active' : '');
     currentMode = mode;
     hasBuiltRows = false;
-    el('itemsBody').innerHTML = '<tr><td colspan="6" class="pricing-empty">' + (isNew
-      ? 'حدد المواصفات ثم اضغط «بناء قائمة القطع»'
-      : 'اختر مكونات التحديث ثم اضغط «بناء قائمة التحديث»') + '</td></tr>';
+    var empty = 'حدد المواصفات ثم اضغط «بناء قائمة القطع»';
+    if (mode === 'extend') empty = 'حدد الوقفات الحالية والأدوار المضافة ثم اضغط «بناء قائمة إضافة الأدوار»';
+    if (mode === 'upgrade') empty = 'اختر مكونات التحديث ثم اضغط «بناء قائمة التحديث»';
+    el('itemsBody').innerHTML = '<tr><td colspan="6" class="pricing-empty">' + empty + '</td></tr>';
     el('sumLabor').value = 0;
+    syncStagePickStyles();
+    if (mode === 'extend') updateExtendHint();
     recalc();
   }
 
@@ -844,7 +910,38 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     tbl += '</tbody></table>';
     var specs = '';
-    if (!isUpg) {
+    var quoteTitle = 'توريد وتركيب مصعد جديد';
+    if (currentMode === 'upgrade') quoteTitle = 'تحديث مصعد قائم';
+    if (currentMode === 'extend') quoteTitle = 'إضافة أدوار لمصعد قائم';
+    if (currentMode === 'extend') {
+      var spec = getExtendSpec();
+      var cells = [];
+      function pushPair(label, value) {
+        if (!value && value !== 0) return;
+        cells.push({ label: label, value: value });
+      }
+      pushPair('عدد المصاعد', spec.elevator_count || 1);
+      pushPair('الوقفات الحالية', spec.current_stops + ' وقفات');
+      pushPair('الأدوار المضافة', spec.added_stops + ' أدوار');
+      pushPair('بعد الإضافة', spec.stops + ' وقفات');
+      if (!isNoneVal(spec.capacity)) pushPair('الحمولة', spec.capacity + ' كجم');
+      if (spec.include_stages && spec.include_stages.length && spec.include_stages.length < 3) {
+        pushPair('نطاق العمل', spec.include_stages.join(' · '));
+      }
+      var specRows = '';
+      var ci;
+      for (ci = 0; ci < cells.length; ci += 2) {
+        specRows += '<tr>';
+        specRows += '<td>' + cells[ci].label + '</td><td>' + cells[ci].value + '</td>';
+        if (cells[ci + 1]) {
+          specRows += '<td>' + cells[ci + 1].label + '</td><td>' + cells[ci + 1].value + '</td>';
+        } else {
+          specRows += '<td></td><td></td>';
+        }
+        specRows += '</tr>';
+      }
+      specs = '<div class="q-sec"><h3>نطاق العمل</h3><table class="q-tbl"><tbody>' + specRows + '</tbody></table></div>';
+    } else if (!isUpg) {
       var spec = getNewSpec();
       var cabinCalc = P.calcCabinFromShaft(Object.assign({}, spec, {
         capacity: isNoneVal(spec.capacity) ? 630 : spec.capacity,
@@ -915,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', function () {
     el('quoteSheet').innerHTML = ''
       + '<div class="q-head">' + brandBlock
       + '<div class="q-meta">رقم العرض: <b>' + quoteCode + '</b><br>التاريخ: <b>' + dateStr + '</b><br>الصلاحية: <b>' + validDays + ' يوم</b></div></div>'
-      + '<div class="q-title">عرض سعر — ' + (isUpg ? 'تحديث مصعد قائم' : 'توريد وتركيب مصعد جديد') + '</div>'
+      + '<div class="q-title">عرض سعر — ' + quoteTitle + '</div>'
       + '<div class="q-sec"><h3>بيانات العميل</h3><div class="q-terms">'
       + (custCode ? '<b>كود العميل:</b> ' + custCode + ' &nbsp; ' : '')
       + '<b>الاسم:</b> ' + (el('cName').value || '—') + ' &nbsp; <b>الجوال:</b> ' + (el('cPhone').value || '—') + ' &nbsp; <b>الموقع:</b> ' + (el('cAddr').value || '—') + '</div></div>'
@@ -981,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', function () {
       client_phone: el('cPhone').value,
       client_address: el('cAddr').value,
       valid_days: P.num(el('cValid').value) || 30,
-      spec: currentMode === 'new' ? getNewSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected }),
+      spec: currentMode === 'new' ? getNewSpec() : (currentMode === 'extend' ? getExtendSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected })),
       labor: P.num(el('sumLabor').value),
       transport: P.num(el('sumTrans').value),
       other_costs: P.num(el('sumOther').value),
@@ -1039,6 +1136,7 @@ document.addEventListener('DOMContentLoaded', function () {
     renderPayRows(payItems);
     currentMode = s.quote_type || 'new';
     if (currentMode === 'upgrade') switchTab('upgrade');
+    if (currentMode === 'extend') switchTab('extend');
     if (s.spec) {
       initOriginSelect('sOrigin', 'sOriginCustom', s.spec.machine_origin || 'chinese', s.spec.machine_origin_country || '');
       fillBrandSelect('sBrand', 'sBrandCustom', machineBrands, s.spec.machine_origin || 'chinese', s.spec.machine_brand || '');
@@ -1046,6 +1144,13 @@ document.addEventListener('DOMContentLoaded', function () {
       fillBrandSelect('sPanelBrand', 'sPanelBrandCustom', panelBrands, s.spec.panel_origin || 'chinese', s.spec.panel_brand || '');
       if (el('sElevCount') && s.spec.elevator_count) el('sElevCount').value = s.spec.elevator_count;
       if (el('uElevCount') && s.spec.elevator_count) el('uElevCount').value = s.spec.elevator_count;
+      if (el('eElevCount') && s.spec.elevator_count) el('eElevCount').value = s.spec.elevator_count;
+      if (el('eCurrentStops') && s.spec.current_stops) el('eCurrentStops').value = s.spec.current_stops;
+      if (el('eAddedStops') && s.spec.added_stops) el('eAddedStops').value = s.spec.added_stops;
+      if (el('eCap') && s.spec.capacity) el('eCap').value = s.spec.capacity;
+      if (el('eDoor') && s.spec.door) el('eDoor').value = s.spec.door;
+      if (el('eEntr') && s.spec.entrances) el('eEntr').value = s.spec.entrances;
+      if (el('eFloorH') && s.spec.floor_height) el('eFloorH').value = toStoredCm(s.spec.floor_height);
       if (el('sStops') && s.spec.stops) el('sStops').value = s.spec.stops;
       if (el('sCap') && s.spec.capacity) el('sCap').value = s.spec.capacity;
       if (el('sMachine') && s.spec.machine) el('sMachine').value = s.spec.machine;
@@ -1064,6 +1169,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       if (s.spec.upg_selected) upgSelected = s.spec.upg_selected;
     }
+    if (currentMode === 'extend') updateExtendHint();
     if (s.lines && s.lines.length) renderRows(s.lines);
     quoteCode = s.code || quoteCode;
   }
@@ -1111,16 +1217,23 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   if (el('sBrandCustom')) el('sBrandCustom').addEventListener('input', maybeRebuildBOM);
   if (el('sPanelBrandCustom')) el('sPanelBrandCustom').addEventListener('input', maybeRebuildBOM);
-  ['sShaftW', 'sShaftD', 'sCap', 'sElevCount', 'uElevCount'].forEach(function (id) {
+  ['sShaftW', 'sShaftD', 'sCap', 'sElevCount', 'uElevCount', 'eElevCount'].forEach(function (id) {
     if (el(id)) el(id).addEventListener('input', function () { updateCabinHint(); maybeRebuildBOM(); });
   });
+  ['eCurrentStops', 'eAddedStops', 'eCap', 'eDoor', 'eEntr', 'eFloorH'].forEach(function (id) {
+    if (el(id)) el(id).addEventListener('change', function () { updateExtendHint(); maybeRebuildBOM(); });
+  });
+  if (el('eFloorH')) el('eFloorH').addEventListener('input', function () { updateExtendHint(); maybeRebuildBOM(); });
   updateCabinHint();
+  updateExtendHint();
 
   el('tabNewBtn').addEventListener('click', function () { switchTab('new'); });
+  if (el('tabExtendBtn')) el('tabExtendBtn').addEventListener('click', function () { switchTab('extend'); });
   el('tabUpgBtn').addEventListener('click', function () { switchTab('upgrade'); });
   el('buildBtn').addEventListener('click', buildNewBOM);
+  if (el('buildExtBtn')) el('buildExtBtn').addEventListener('click', buildExtendBOM);
   el('buildUpgBtn').addEventListener('click', buildUpgBOM);
-  ['stgRails', 'stgCabin', 'stgCtrl'].forEach(function (id) {
+  ['stgRails', 'stgCabin', 'stgCtrl', 'eStgRails', 'eStgCabin', 'eStgCtrl'].forEach(function (id) {
     if (el(id)) el(id).addEventListener('change', onStagePickChange);
   });
   syncStagePickStyles();

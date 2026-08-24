@@ -38,6 +38,18 @@ PROJECT_STATUSES = (
     'مغلق',
 )
 
+QUOTE_TYPE_LABELS = {
+    'new': 'توريد وتركيب مصعد جديد',
+    'upgrade': 'تحديث مصعد قائم',
+    'extend': 'إضافة أدوار لمصعد قائم',
+}
+
+QUOTE_TYPE_SHORT = {
+    'new': 'تركيب جديد',
+    'upgrade': 'تحديث',
+    'extend': 'إضافة أدوار',
+}
+
 QUOTE_STATUSES = (
     'مسودة',
     'مُرسل',
@@ -289,7 +301,7 @@ class InstallQuotation(TenantMixin, db.Model):
     code = db.Column(db.String(20), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('installation_projects.id'), nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True)
-    quote_type = db.Column(db.String(20), default='new')  # new | upgrade
+    quote_type = db.Column(db.String(20), default='new')  # new | upgrade | extend
     status = db.Column(db.String(30), default='مسودة')
 
     client_name = db.Column(db.String(200))
@@ -332,6 +344,12 @@ class InstallQuotation(TenantMixin, db.Model):
         cascade='all, delete-orphan',
         order_by='InstallQuotationLine.sort_order',
     )
+
+    def quote_type_label(self):
+        return QUOTE_TYPE_LABELS.get(self.quote_type or 'new', QUOTE_TYPE_LABELS['new'])
+
+    def quote_type_short(self):
+        return QUOTE_TYPE_SHORT.get(self.quote_type or 'new', QUOTE_TYPE_SHORT['new'])
 
     def spec(self):
         if not self.spec_json:

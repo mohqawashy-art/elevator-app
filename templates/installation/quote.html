@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=pay8">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=extend2">
 <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 </head>
 <body>
@@ -35,6 +35,7 @@
 
     <div class="pricing-tabs">
       <button type="button" class="pricing-tab active" id="tabNewBtn">تركيب مصعد جديد<span class="tag">مواصفات → BOM تلقائي</span></button>
+      <button type="button" class="pricing-tab" id="tabExtendBtn">إضافة أدوار<span class="tag">قائم + أدوار جديدة</span></button>
       <button type="button" class="pricing-tab" id="tabUpgBtn">تحديث مصعد قائم<span class="tag">اختر المكونات</span></button>
     </div>
 
@@ -180,6 +181,63 @@
           </div>
         </div>
 
+        <div id="paneExtend" style="display:none">
+          <div class="pricing-card">
+            <h3><span class="step-no">٣</span> إضافة أدوار لمصعد قائم</h3>
+            <div class="pricing-hint" style="margin-bottom:10px">مثال: مصعد راكب 3 أدوار ويحتاج رفع دورين ليصبح 5 — تُسعَّر أعمال التمديد فقط وليس المصعد كاملاً.</div>
+            <div class="pricing-grid">
+              <div class="field"><label>عدد المصاعد</label>
+                <input type="number" id="eElevCount" value="1" min="1" max="50" step="1">
+              </div>
+              <div class="field"><label>الوقفات الحالية</label>
+                <select id="eCurrentStops"></select>
+                <div class="pricing-hint">كم دور يخدم المصعد الآن</div>
+              </div>
+              <div class="field"><label>الأدوار المطلوب إضافتها</label>
+                <select id="eAddedStops"></select>
+                <div class="pricing-hint">كم دور سيُرفع</div>
+              </div>
+              <div class="field"><label>الحمولة</label>
+                <select id="eCap">
+                  <option value="__none__">بدون</option>
+                  <option value="320">320 كجم</option><option value="450">450 كجم</option>
+                  <option value="630" selected>630 كجم</option><option value="800">800 كجم</option><option value="1000">1000 كجم</option>
+                </select>
+              </div>
+              <div class="field form-full" style="grid-column:1/-1">
+                <div class="pricing-hint" id="extendHint" style="padding:8px 10px;background:var(--bg2);border-radius:8px">3 وقفات قائمة + 2 دور = <b>5 وقفات</b></div>
+              </div>
+              <div class="field"><label>أبواب الأدوار الجديدة</label>
+                <select id="eDoor">
+                  <option value="__none__">بدون</option>
+                  <option value="tele" selected>تليسكوبي</option>
+                  <option value="center">سنتر</option>
+                  <option value="semi">نص أوتوماتيك</option>
+                </select>
+              </div>
+              <div class="field"><label>المداخل</label>
+                <select id="eEntr">
+                  <option value="1" selected>واحد</option>
+                  <option value="2">اثنان</option>
+                </select>
+              </div>
+              <div class="field"><label>ارتفاع الدور (سم)</label>
+                <input type="number" id="eFloorH" value="300" min="250" max="600" step="5">
+                <div class="pricing-hint">لحساب امتداد السكك والحبال</div>
+              </div>
+            </div>
+            <div style="font-size:12px;font-weight:700;color:var(--text2);margin:12px 0 0">نطاق العمل — المراحل المطلوبة</div>
+            <div class="stage-picks" id="eStagePicks">
+              <label class="stage-pick on"><input type="checkbox" id="eStgRails" checked> <span><b>مرحلة 1</b><small>سكك وأبواب الأدوار الجديدة</small></span></label>
+              <label class="stage-pick on"><input type="checkbox" id="eStgCabin" checked> <span><b>مرحلة 2</b><small>أحبال وثقل</small></span></label>
+              <label class="stage-pick on"><input type="checkbox" id="eStgCtrl" checked> <span><b>مرحلة 3</b><small>كنترول وبرمجة وتشغيل</small></span></label>
+            </div>
+            <div class="pricing-actions">
+              <button type="button" class="btn btn-primary btn-sm" id="buildExtBtn">بناء قائمة إضافة الأدوار</button>
+            </div>
+          </div>
+        </div>
+
         <div id="paneUpg" style="display:none">
           <div class="pricing-card">
             <h3><span class="step-no">٣</span> مكونات التحديث</h3>
@@ -311,7 +369,7 @@ window.__INSTALL_QUOTE__ = {
   companySignOffsetY: {{ (company_sign_offset_y or 0) | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=stages2"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=pay8"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=extend2"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=extend2"></script>
 </body>
 </html>

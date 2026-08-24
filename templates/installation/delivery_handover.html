@@ -83,7 +83,7 @@ th{background:#0a2647;color:#fff}
       <tbody>
         <tr>
           <td><b>نوع المشروع</b></td>
-          <td>{{ 'توريد وتركيب مصعد جديد' if accepted_quote.quote_type == 'new' else 'تحديث مصعد قائم' }}</td>
+          <td>{{ accepted_quote.quote_type_label }}</td>
           <td><b>قيمة العقد</b></td>
           <td>{{ '{:,.0f}'.format(accepted_quote.grand_total) }} ر.س (شامل الضريبة)</td>
         </tr>
@@ -108,6 +108,19 @@ th{background:#0a2647;color:#fff}
           <td>{% if dims.cabin_w %}{{ dims.cabin_w }}×{{ dims.cabin_d }} سم{% else %}—{% endif %}</td>
         </tr>
         {% endif %}
+        {% elif accepted_quote.quote_type == 'extend' %}
+        <tr>
+          <td><b>الوقفات الحالية</b></td>
+          <td>{{ spec.current_stops or '—' }} وقفات</td>
+          <td><b>الأدوار المضافة</b></td>
+          <td>{{ spec.added_stops or '—' }} أدوار</td>
+        </tr>
+        <tr>
+          <td><b>بعد الإضافة</b></td>
+          <td>{{ spec.stops or '—' }} وقفات</td>
+          <td><b>الحمولة</b></td>
+          <td>{{ spec.capacity or '—' }} كجم</td>
+        </tr>
         {% endif %}
       </tbody>
     </table>

@@ -19,6 +19,7 @@ from installation.models import (
     LEAD_SOURCES,
     PROJECT_STATUSES,
     QUOTE_STATUSES,
+    QUOTE_TYPE_LABELS,
     TIMELINE_STEP_STATUSES,
     COST_CATEGORIES,
     COST_PAYMENT_STATUSES,
@@ -636,7 +637,8 @@ def project_quote_save(project_id):
         db.session.add(q)
 
     q.customer_id = customer.id
-    q.quote_type = data.get('quote_type') or 'new'
+    quote_type = data.get('quote_type') or 'new'
+    q.quote_type = quote_type if quote_type in QUOTE_TYPE_LABELS else 'new'
     q.client_name = snapshot['client_name']
     q.client_phone = snapshot['client_phone']
     q.client_address = snapshot['client_address']

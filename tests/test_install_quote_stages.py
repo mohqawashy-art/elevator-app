@@ -135,3 +135,23 @@ def test_quote_stage_blocks_single_stage_gets_all_labor(client):
         assert blocks[0]['stage'].startswith('مرحلة 1')
         assert blocks[0]['labor_amount'] == 10000
         assert blocks[0]['total'] == 1000 + 10000
+
+
+def test_extend_floors_quote_type_assets():
+    from pathlib import Path
+
+    from installation.models import QUOTE_TYPE_LABELS, QUOTE_TYPE_SHORT
+
+    js = Path('static/installation-pricing.js').read_text(encoding='utf-8')
+    ui = Path('static/installation-quote-ui.js').read_text(encoding='utf-8')
+    html = Path('templates/installation/quote.html').read_text(encoding='utf-8')
+    assert 'function buildExtendBOM' in js
+    assert "quote_type: 'extend'" in js
+    assert 'سكك كبينة T89 للأدوار المضافة' in js
+    assert 'tabExtendBtn' in html
+    assert 'eCurrentStops' in html
+    assert 'eAddedStops' in html
+    assert 'getExtendSpec' in ui
+    assert "switchTab('extend')" in ui
+    assert QUOTE_TYPE_LABELS['extend'] == 'إضافة أدوار لمصعد قائم'
+    assert QUOTE_TYPE_SHORT['extend'] == 'إضافة أدوار'
