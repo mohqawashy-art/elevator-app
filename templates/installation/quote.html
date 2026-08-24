@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=money1">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=money2">
 <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 </head>
 <body>
@@ -228,8 +228,11 @@
           <div class="sum-row"><span class="lbl">قيمة الربح</span><b id="sumProfit">0</b></div>
           <div class="sum-row sub"><span class="lbl">قبل الضريبة</span><b id="sumBefore">0</b></div>
           <div class="sum-row"><span class="lbl">ض.ق.م 15%</span><b id="sumVat">0</b></div>
-          <div class="sum-grand"><span>الإجمالي النهائي</span><span class="v" id="sumGrand">0 ر.س</span></div>
-          <div class="pricing-hint" style="margin-top:8px">الأرقام في الملخص مقربة لأقرب ريال — بدون كسور.</div>
+          <div class="sum-grand">
+            <span class="k">سقف العرض التقريبي</span>
+            <span class="v" id="sumGrand">0 ر.س</span>
+            <span class="hint">مقرب لأقرب 10 ريال — بدون كسور عشرية</span>
+          </div>
 
           <div class="pay-schedule">
             <div class="pay-schedule-head">جدول الدفعات <span class="pay-schedule-note">المجموع 100%</span></div>
@@ -290,7 +293,7 @@ window.__INSTALL_QUOTE__ = {
   companySignOffsetY: {{ (company_sign_offset_y or 0) | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=money1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=money1"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=money2"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=money2"></script>
 </body>
 </html>

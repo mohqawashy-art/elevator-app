@@ -84,7 +84,7 @@
   }
 
   function moneyRound(v) {
-    return Math.round(num(v));
+    return Math.round(num(v) / 10) * 10;
   }
 
   function isNone(v) {

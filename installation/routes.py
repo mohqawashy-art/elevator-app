@@ -674,12 +674,12 @@ def project_quote_save(project_id):
     profit = cost * q.profit_pct / 100
     before = cost + profit
     vat = before * 0.15
-    q.materials_total = round(materials)
-    q.cost_total = round(cost)
-    q.profit_amount = round(profit)
-    q.before_tax = round(before)
-    q.vat_amount = round(vat)
-    q.grand_total = round(before + vat)
+    q.materials_total = int(round(round(materials) / 10.0) * 10)
+    q.cost_total = int(round(round(cost) / 10.0) * 10)
+    q.profit_amount = int(round(round(profit) / 10.0) * 10)
+    q.before_tax = int(round(round(before) / 10.0) * 10)
+    q.vat_amount = int(round(round(vat) / 10.0) * 10)
+    q.grand_total = int(round(round(before + vat) / 10.0) * 10)
 
     if project.status in ('استفسار', 'معاينة', 'هندسة'):
         project.status = 'تسعير'
