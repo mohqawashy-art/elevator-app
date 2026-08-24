@@ -15,6 +15,8 @@ def test_new_bom_uses_three_install_stages():
     assert 'مرحلة 1 — سكك وأبواب' in js
     assert 'مرحلة 2 — تركيب كبينة وأحبال وماكينة' in js
     assert 'مرحلة 3 — تركيب كنترول وتشغيل' in js
+    assert 'function selectedStages' in js
+    assert 'include_stages' in js
 
 
 def test_quote_stage_blocks_split_labor(client):
@@ -86,3 +88,50 @@ def test_quote_stage_blocks_split_labor(client):
         assert blocks[0]['total'] == 1000 + 3000
         assert blocks[1]['total'] == 20000 + 4500
         assert blocks[2]['total'] == 8000 + 2500
+
+
+def test_quote_stage_blocks_single_stage_gets_all_labor(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-ONE-STAGE',
+            title='مرحلة واحدة',
+            status='تسعير',
+        )
+        db.session.add(project)
+        db.session.flush()
+        q = InstallQuotation(
+            organization_id=org.id,
+            code='QT-ONE-STAGE',
+            project_id=project.id,
+            quote_type='new',
+            status='مسودة',
+            labor=10000,
+            transport=0,
+            other_costs=0,
+            profit_pct=0,
+            before_tax=11000,
+            vat_amount=1650,
+            grand_total=12650,
+        )
+        db.session.add(q)
+        db.session.flush()
+        db.session.add(InstallQuotationLine(
+            organization_id=org.id,
+            quotation_id=q.id,
+            stage='مرحلة 1 — سكك وأبواب',
+            name='سكك',
+            unit='متر',
+            qty=10,
+            unit_price=100,
+            sort_order=1,
+        ))
+        db.session.commit()
+        blocks, labor_sell = _quote_stage_blocks(q)
+        assert labor_sell == 10000
+        assert len(blocks) == 1
+        assert blocks[0]['stage'].startswith('مرحلة 1')
+        assert blocks[0]['labor_amount'] == 10000
+        assert blocks[0]['total'] == 1000 + 10000

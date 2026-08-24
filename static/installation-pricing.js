@@ -91,6 +91,34 @@
     return v === NONE_OPTION || v === 'بدون';
   }
 
+  function allInstallStages() {
+    return [STAGE_RAILS, STAGE_CABIN, STAGE_CTRL];
+  }
+
+  function selectedStages(spec) {
+    var all = allInstallStages();
+    var raw = spec && spec.include_stages;
+    var wanted = [];
+    var i;
+    if (!raw || !raw.length) return all.slice();
+    for (i = 0; i < all.length; i++) {
+      if (raw.indexOf(all[i]) >= 0) wanted.push(all[i]);
+    }
+    return wanted.length ? wanted : all.slice();
+  }
+
+  function laborShareForStages(stageNames) {
+    var wanted = stageNames && stageNames.length ? stageNames : allInstallStages();
+    var share = 0;
+    var i;
+    for (i = 0; i < STAGE_LABOR_SHARE.length; i++) {
+      if (wanted.indexOf(STAGE_LABOR_SHARE[i].stage) >= 0) {
+        share += STAGE_LABOR_SHARE[i].share;
+      }
+    }
+    return share > 0 ? share : 1;
+  }
+
   function originDisplay(spec, originKey, countryKey) {
     if (!spec) return '—';
     var id = spec[originKey] || 'chinese';
@@ -223,9 +251,10 @@
     var includePanel = !isNone(spec.panel_origin);
     var machineSuffix = originSuffix(spec);
     var panelLabel = panelSuffix(spec);
+    var wanted = selectedStages(spec);
     var cabinCalc = calcCabinFromShaft(Object.assign({}, spec, { capacity: cap }));
 
-    if (cabinCalc.error && cabin) {
+    if (cabinCalc.error && cabin && wanted.indexOf(STAGE_CABIN) >= 0) {
       return { error: cabinCalc.error };
     }
 
@@ -298,13 +327,18 @@
     add(STAGE_CTRL, 'إنارة وتهوية كبينة', 'طقم', 1, 700);
     add(STAGE_CTRL, 'ضبط وبرمجة واختبارات تشغيل وتسليم', 'مقطوع', 1, 2000);
 
+    rows = rows.filter(function (r) { return wanted.indexOf(r.stage) >= 0; });
+    if (!rows.length) {
+      return { error: 'اختر مرحلة واحدة على الأقل' };
+    }
+
     return {
       rows: rows,
-      labor: (5000 + (1200 * stops)) * elevators,
+      labor: Math.round((5000 + (1200 * stops)) * elevators * laborShareForStages(wanted)),
       quote_type: 'new',
       cabin_calc: cabinCalc,
       elevator_count: elevators,
-      stages: [STAGE_RAILS, STAGE_CABIN, STAGE_CTRL],
+      stages: wanted,
     };
   }
 
@@ -374,6 +408,7 @@
     STAGE_CABIN: STAGE_CABIN,
     STAGE_CTRL: STAGE_CTRL,
     STAGE_LABOR_SHARE: STAGE_LABOR_SHARE,
+    selectedStages: selectedStages,
     UPG: UPG,
     buildNewBOM: buildNewBOM,
     buildUpgradeBOM: buildUpgradeBOM,
@@ -386,20 +421,32 @@
     NONE_OPTION: NONE_OPTION,
     isNone: isNone,
     num: num,
-    splitLaborByStage: function (laborTotal) {
+    splitLaborByStage: function (laborTotal, stageFilter) {
       var total = num(laborTotal);
+      var parts = STAGE_LABOR_SHARE;
       var out = [];
-      var i, amount, used = 0;
-      for (i = 0; i < STAGE_LABOR_SHARE.length; i++) {
-        if (i === STAGE_LABOR_SHARE.length - 1) {
+      var i, amount, used = 0, shareSum = 0;
+      if (stageFilter && stageFilter.length) {
+        parts = [];
+        for (i = 0; i < STAGE_LABOR_SHARE.length; i++) {
+          if (stageFilter.indexOf(STAGE_LABOR_SHARE[i].stage) >= 0) {
+            parts.push(STAGE_LABOR_SHARE[i]);
+          }
+        }
+      }
+      if (!parts.length) parts = STAGE_LABOR_SHARE;
+      for (i = 0; i < parts.length; i++) shareSum += parts[i].share;
+      if (shareSum <= 0) shareSum = 1;
+      for (i = 0; i < parts.length; i++) {
+        if (i === parts.length - 1) {
           amount = Math.round(total - used);
         } else {
-          amount = Math.round(total * STAGE_LABOR_SHARE[i].share);
+          amount = Math.round(total * (parts[i].share / shareSum));
           used += amount;
         }
         out.push({
-          stage: STAGE_LABOR_SHARE[i].stage,
-          label: 'أجور وتركيب — ' + STAGE_LABOR_SHARE[i].stage.replace(/^مرحلة \d+ — /, ''),
+          stage: parts[i].stage,
+          label: 'أجور وتركيب — ' + parts[i].stage.replace(/^مرحلة \d+ — /, ''),
           amount: amount,
         });
       }

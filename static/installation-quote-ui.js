@@ -280,6 +280,64 @@ document.addEventListener('DOMContentLoaded', function () {
       + (adj ? ' (تأثير السعر' + adj + ')' : ' (قياس قياسي)');
   }
 
+  function getSelectedStages() {
+    var checks = [
+      { id: 'stgRails', stage: P.STAGE_RAILS },
+      { id: 'stgCabin', stage: P.STAGE_CABIN },
+      { id: 'stgCtrl', stage: P.STAGE_CTRL },
+    ];
+    var out = [];
+    var i, box;
+    for (i = 0; i < checks.length; i++) {
+      box = el(checks[i].id);
+      if (box && box.checked) out.push(checks[i].stage);
+    }
+    return out;
+  }
+
+  function setSelectedStages(stages) {
+    var checks = [
+      { id: 'stgRails', stage: P.STAGE_RAILS },
+      { id: 'stgCabin', stage: P.STAGE_CABIN },
+      { id: 'stgCtrl', stage: P.STAGE_CTRL },
+    ];
+    var wanted = stages && stages.length ? stages : checks.map(function (c) { return c.stage; });
+    var i, box;
+    for (i = 0; i < checks.length; i++) {
+      box = el(checks[i].id);
+      if (box) box.checked = wanted.indexOf(checks[i].stage) >= 0;
+    }
+    syncStagePickStyles();
+  }
+
+  function inferStagesFromLines(lines) {
+    var known = [P.STAGE_RAILS, P.STAGE_CABIN, P.STAGE_CTRL];
+    var found = [];
+    var i, st;
+    for (i = 0; i < lines.length; i++) {
+      st = lines[i] && lines[i].stage;
+      if (st && known.indexOf(st) >= 0 && found.indexOf(st) < 0) found.push(st);
+    }
+    return found;
+  }
+
+  function syncStagePickStyles() {
+    var picks = document.querySelectorAll('#stagePicks .stage-pick');
+    picks.forEach(function (lab) {
+      var box = lab.querySelector('input');
+      lab.classList.toggle('on', !!(box && box.checked));
+    });
+  }
+
+  function onStagePickChange(ev) {
+    if (!getSelectedStages().length) {
+      if (ev && ev.target) ev.target.checked = true;
+      alert('اختر مرحلة واحدة على الأقل');
+    }
+    syncStagePickStyles();
+    maybeRebuildBOM();
+  }
+
   function getNewSpec() {
     var machineOrigin = resolveOrigin('sOrigin', 'sOriginCustom');
     var panelOrigin = resolveOrigin('sPanelOrigin', 'sPanelOriginCustom');
@@ -302,6 +360,7 @@ document.addEventListener('DOMContentLoaded', function () {
       panel_origin: panelOrigin.id,
       panel_origin_country: panelOrigin.country,
       panel_brand: resolveBrand('sPanelBrand', 'sPanelBrandCustom'),
+      include_stages: getSelectedStages(),
     };
     var cabinCalc = P.calcCabinFromShaft(spec);
     if (cabinCalc && !cabinCalc.error) {
@@ -657,7 +716,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var validDays = P.num(el('cValid').value) || 30;
     var laborByStage = {};
     if (!isUpg && typeof P.splitLaborByStage === 'function') {
-      var laborParts = P.splitLaborByStage(labor + trans + other);
+      var laborParts = P.splitLaborByStage(labor + trans + other, stagesOrder);
       for (i = 0; i < laborParts.length; i++) {
         laborByStage[laborParts[i].stage] = {
           label: laborParts[i].label,
@@ -728,6 +787,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (shaftTxt) pushPair('البئر الداخلي', shaftTxt);
       if (showCabin && cabinCalc && cabinCalc.label) pushPair('مقاس الكبينة', cabinCalc.label);
       if (showCabin && P.CABIN_NAMES[spec.cabin]) pushPair('تشطيب الكبينة', P.CABIN_NAMES[spec.cabin]);
+      if (spec.include_stages && spec.include_stages.length && spec.include_stages.length < 3) {
+        pushPair('نطاق العمل', spec.include_stages.join(' · '));
+      }
       var specRows = '';
       var ci;
       for (ci = 0; ci < cells.length; ci += 2) {
@@ -895,6 +957,11 @@ document.addEventListener('DOMContentLoaded', function () {
       if (el('sShaft') && s.spec.shaft) el('sShaft').value = s.spec.shaft;
       if (el('sShaftW') && s.spec.shaft_width) el('sShaftW').value = toStoredCm(s.spec.shaft_width);
       if (el('sShaftD') && s.spec.shaft_depth) el('sShaftD').value = toStoredCm(s.spec.shaft_depth);
+      if (s.spec.include_stages && s.spec.include_stages.length) {
+        setSelectedStages(s.spec.include_stages);
+      } else if (s.lines && s.lines.length && currentMode !== 'upgrade') {
+        setSelectedStages(inferStagesFromLines(s.lines));
+      }
       if (s.spec.upg_selected) upgSelected = s.spec.upg_selected;
     }
     if (s.lines && s.lines.length) renderRows(s.lines);
@@ -953,6 +1020,10 @@ document.addEventListener('DOMContentLoaded', function () {
   el('tabUpgBtn').addEventListener('click', function () { switchTab('upgrade'); });
   el('buildBtn').addEventListener('click', buildNewBOM);
   el('buildUpgBtn').addEventListener('click', buildUpgBOM);
+  ['stgRails', 'stgCabin', 'stgCtrl'].forEach(function (id) {
+    if (el(id)) el(id).addEventListener('change', onStagePickChange);
+  });
+  syncStagePickStyles();
   el('addRowBtn').addEventListener('click', addManualRow);
   el('previewBtn').addEventListener('click', buildQuote);
   el('saveBtn').addEventListener('click', saveQuote);

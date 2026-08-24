@@ -1029,7 +1029,7 @@ def quote_print(quotation_id):
 
 
 def _quote_stage_blocks(quotation):
-    """تجميع بنود العرض حسب مرحلة التركيب + توزيع الأجور."""
+    """تجميع بنود العرض حسب مرحلة التركيب + توزيع الأجور على المراحل الموجودة فقط."""
     factor = 1 + float(quotation.profit_pct or 0) / 100.0
     labor_pool = (
         float(quotation.labor or 0)
@@ -1042,20 +1042,8 @@ def _quote_stage_blocks(quotation):
         ('مرحلة 2 — تركيب كبينة وأحبال وماكينة', 'أجور وتركيب — كبينة وأحبال وماكينة', 0.45),
         ('مرحلة 3 — تركيب كنترول وتشغيل', 'أجور وتركيب — كنترول وتشغيل', 0.25),
     ]
-    labor_by_stage = {}
-    used = 0.0
-    is_new = (quotation.quote_type or 'new') != 'upgrade'
-    if is_new and labor_pool > 0:
-        for i, (stage, label, share) in enumerate(shares):
-            if i == len(shares) - 1:
-                amt = round(labor_pool - used, 2)
-            else:
-                amt = round(labor_pool * share, 2)
-                used += amt
-            labor_by_stage[stage] = (label, round(amt * factor, 2))
 
     ordered = []
-    seen = set()
     by_stage = {}
     for ln in quotation.lines:
         st = (ln.stage or '—').strip() or '—'
@@ -1063,11 +1051,23 @@ def _quote_stage_blocks(quotation):
             by_stage[st] = []
             ordered.append(st)
         by_stage[st].append(ln)
-        seen.add(st)
 
-    # أظهر المراحل المعروفة بالترتيب حتى لو فارغة من البنود لكن عليها أجور
+    labor_by_stage = {}
+    used = 0.0
+    is_new = (quotation.quote_type or 'new') != 'upgrade'
+    active_shares = [s for s in shares if s[0] in by_stage]
+    if is_new and labor_pool > 0 and active_shares:
+        share_sum = sum(s[2] for s in active_shares) or 1.0
+        for i, (stage, label, share) in enumerate(active_shares):
+            if i == len(active_shares) - 1:
+                amt = round(labor_pool - used, 2)
+            else:
+                amt = round(labor_pool * (share / share_sum), 2)
+                used += amt
+            labor_by_stage[stage] = (label, round(amt * factor, 2))
+
     preferred = [s[0] for s in shares]
-    final_order = [s for s in preferred if s in by_stage or s in labor_by_stage]
+    final_order = [s for s in preferred if s in by_stage]
     for st in ordered:
         if st not in final_order:
             final_order.append(st)

@@ -158,6 +158,13 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
           </td>
         </tr>
         {% endif %}
+        {% set inc_stages = spec.include_stages or [] %}
+        {% if inc_stages and inc_stages|length and inc_stages|length < 3 %}
+        <tr>
+          <td><b>نطاق العمل</b></td>
+          <td colspan="3">{{ inc_stages|join(' · ') }}</td>
+        </tr>
+        {% endif %}
       </tbody>
     </table>
   </div>
