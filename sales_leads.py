@@ -1,9 +1,55 @@
 """طلبات التجربة وعروض السعر من صفحات التسويق — حفظ وعرض في المنصة."""
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from models import SalesLead, db
+
+_SPAM_COMPANIES = frozenset({
+    'roberthob',
+    'hiltonconge',
+})
+_ARABIC_RE = re.compile(r'[\u0600-\u06FF]')
+_REPEAT_CHAR_RE = re.compile(r'(.)\1{6,}')
+
+
+def is_spam_sales_lead(
+    *,
+    company_name: str,
+    contact_name: str,
+    contact_email: str,
+    phone: str = '',
+    city: str = '',
+    notes: str = '',
+) -> bool:
+    """يصد طلبات البوت المتكررة دون منع عميل سعودي حقيقي."""
+    company = (company_name or '').strip().lower()
+    name = (contact_name or '').strip().lower()
+    email = (contact_email or '').strip().lower()
+    note = (notes or '').strip()
+    if company in _SPAM_COMPANIES or name in _SPAM_COMPANIES:
+        return True
+    blob = f'{company} {name} {note} {email}'
+    if _REPEAT_CHAR_RE.search(blob):
+        return True
+    tokens = re.findall(r'\S+', note)
+    if len(note) >= 40 and tokens:
+        short = sum(1 for t in tokens if len(t) <= 2)
+        if short / len(tokens) >= 0.45:
+            return True
+    combined = f'{company_name or ""}{contact_name or ""}{city or ""}'
+    has_ar = bool(_ARABIC_RE.search(combined))
+    phone_digits = re.sub(r'\D', '', phone or '')
+    if (
+        not has_ar
+        and company
+        and company == name
+        and phone_digits.startswith('8')
+        and len(phone_digits) >= 10
+    ):
+        return True
+    return False
 
 
 REQUEST_TYPES = {

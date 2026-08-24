@@ -129,6 +129,69 @@ def test_demo_request_posts_to_sales_mail(monkeypatch):
         assert lead.status == 'new'
 
 
+def test_spam_sales_lead_detector():
+    from sales_leads import is_spam_sales_lead
+
+    assert is_spam_sales_lead(
+        company_name='العالمية',
+        contact_name='محمد',
+        contact_email='mohqawashy@gmail.com',
+        phone='0555076078',
+        city='مكة المكرمة',
+        notes='باقة Plus',
+    ) is False
+    assert is_spam_sales_lead(
+        company_name='Roberthob',
+        contact_name='Roberthob',
+        contact_email='henrydixon487@gmail.com',
+        phone='81711295868',
+        city='Mtskheta',
+    ) is True
+    assert is_spam_sales_lead(
+        company_name='HiltonConge',
+        contact_name='HiltonConge',
+        contact_email='dylan-wood32pjfj@gmx.us',
+        phone='89164113831',
+        city='Piran',
+        notes='Egijnjm fnefjwdifj fkm dkdw d w k d w jj fkm fkengjkfmsdnfejfk mkfm kdm w jefnejfem liftcoreapp.com',
+    ) is True
+
+
+def test_spam_demo_request_is_dropped(monkeypatch):
+    captured = []
+
+    def fake_send(**kwargs):
+        captured.append(kwargs)
+        return {'ok': True, 'reason': 'sent'}
+
+    monkeypatch.setattr('liftcore_mail.send_demo_request_email', fake_send)
+    client = app.test_client()
+    app.config['TESTING'] = True
+    with app.app_context():
+        from models import SalesLead, db
+        db.create_all()
+
+    r = client.post(
+        '/demo-request',
+        data={
+            'company_name': 'Roberthob',
+            'contact_name': 'Roberthob',
+            'contact_email': 'henrydixon487@gmail.com',
+            'phone': '81711295868',
+            'city': 'Mtskheta',
+            'request_type': 'quote',
+            'next': '/',
+        },
+        base_url=PUBLIC,
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    assert captured == []
+    with app.app_context():
+        from models import SalesLead
+        assert SalesLead.query.filter_by(contact_email='henrydixon487@gmail.com').count() == 0
+
+
 def test_ads_landing_and_conversion_flow(monkeypatch):
     monkeypatch.setattr(
         'liftcore_mail.send_demo_request_email',

@@ -45,6 +45,7 @@ ALLOWED_UPLOAD_MIME = frozenset({
 _rate_lock = Lock()
 _login_attempts: dict[str, list[float]] = defaultdict(list)
 _field_pin_attempts: dict[str, list[float]] = defaultdict(list)
+_demo_request_attempts: dict[str, list[float]] = defaultdict(list)
 _db_store_disabled = False  # يُعطّل تلقائياً إن فشل الجدول/الاتصال
 
 LOGIN_MAX_ATTEMPTS = int(os.environ.get('LIFTCORE_LOGIN_MAX_ATTEMPTS', '5'))
@@ -57,6 +58,11 @@ FIELD_PIN_LOCKOUT_SEC = int(os.environ.get('LIFTCORE_FIELD_PIN_LOCKOUT_SEC', '90
 
 RATE_SCOPE_LOGIN = 'login'
 RATE_SCOPE_FIELD_PIN = 'field_pin'
+RATE_SCOPE_DEMO = 'demo_request'
+
+DEMO_MAX_ATTEMPTS = int(os.environ.get('LIFTCORE_DEMO_MAX_ATTEMPTS', '3'))
+DEMO_WINDOW_SEC = int(os.environ.get('LIFTCORE_DEMO_WINDOW_SEC', '3600'))
+DEMO_LOCKOUT_SEC = int(os.environ.get('LIFTCORE_DEMO_LOCKOUT_SEC', '3600'))
 
 
 def is_production_env() -> bool:
@@ -405,6 +411,21 @@ def record_field_pin_failure(login_id: str) -> None:
 def clear_field_pin_attempts(login_id: str) -> None:
     key = f'{_client_ip()}:{(login_id or "").strip().lower()}'
     _clear_attempts(_field_pin_attempts, key, scope=RATE_SCOPE_FIELD_PIN)
+
+
+def check_demo_request_rate_limit() -> tuple[bool, int]:
+    return _rate_limit_check(
+        _demo_request_attempts,
+        _client_ip(),
+        scope=RATE_SCOPE_DEMO,
+        max_attempts=DEMO_MAX_ATTEMPTS,
+        window_sec=DEMO_WINDOW_SEC,
+        lockout_sec=DEMO_LOCKOUT_SEC,
+    )
+
+
+def record_demo_request_attempt() -> None:
+    _record_failure(_demo_request_attempts, _client_ip(), scope=RATE_SCOPE_DEMO)
 
 
 # ── Upload validation ──────────────────────────────────────────────

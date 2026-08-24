@@ -2148,9 +2148,14 @@ def demo_request():
     """طلب تجربة أو عرض سعر — يُحفظ في المنصة ويُرسل إيميل للمبيعات."""
     import time
     from liftcore_mail import send_demo_request_email
-    from liftcore_security import ensure_csrf_token, validate_csrf
+    from liftcore_security import (
+        check_demo_request_rate_limit,
+        ensure_csrf_token,
+        record_demo_request_attempt,
+        validate_csrf,
+    )
     from marketing_site import marketing_page_context
-    from sales_leads import create_sales_lead, mark_lead_email_result
+    from sales_leads import create_sales_lead, is_spam_sales_lead, mark_lead_email_result
 
     ensure_csrf_token()
     if not app.config.get('TESTING'):
@@ -2176,6 +2181,11 @@ def demo_request():
             return redirect('/start')
         return redirect(redirect_to)
 
+    allowed, _retry = check_demo_request_rate_limit()
+    if not allowed:
+        flash('انتظر قليلاً ثم أعد المحاولة.', 'warn')
+        return redirect(redirect_to if next_url != '/start' else '/start#contact')
+
     now = time.time()
     last = float(session.get('demo_request_at') or 0)
     if last and (now - last) < 60:
@@ -2189,6 +2199,19 @@ def demo_request():
     city = (request.form.get('city') or '').strip()
     elevators = (request.form.get('elevators') or '').strip()
     notes = (request.form.get('notes') or '').strip()
+    record_demo_request_attempt()
+    if is_spam_sales_lead(
+        company_name=company,
+        contact_name=name,
+        contact_email=email,
+        phone=phone,
+        city=city,
+        notes=notes,
+    ):
+        flash('تم استلام طلبك. سنتواصل معك قريباً.', 'ok')
+        if next_url == '/start':
+            return redirect('/start')
+        return redirect(redirect_to)
     request_type = (request.form.get('request_type') or 'demo').strip().lower()
     utm_source = (request.form.get('utm_source') or session.get('utm_source') or '').strip()
     utm_medium = (request.form.get('utm_medium') or session.get('utm_medium') or '').strip()
