@@ -32,6 +32,9 @@ if [ -z "${BASIC_PASSWORD:-}" ]; then
   echo "ERROR: set BASIC_PASSWORD (or run interactively)"
   exit 1
 fi
+# PowerShell Set-Content -Encoding utf8 prefixes a BOM that breaks browser login.
+BASIC_PASSWORD="${BASIC_PASSWORD#$'\xef\xbb\xbf'}"
+BASIC_PASSWORD="$(printf '%s' "$BASIC_PASSWORD" | tr -d '\r')"
 
 id "$SERVICE_USER" >/dev/null 2>&1 || \
   useradd --system --home /var/lib/liftcore-staging --shell /usr/sbin/nologin "$SERVICE_USER"
