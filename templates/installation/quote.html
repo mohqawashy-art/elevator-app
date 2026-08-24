@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=pay2">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=pay8">
 <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 </head>
 <body>
@@ -242,17 +242,21 @@
           </div>
 
           <div class="pay-schedule">
-            <div class="pay-schedule-head">جدول الدفعات <span class="pay-schedule-note">اختر العدد ثم النسب — المجموع 100%</span></div>
+            <div class="pay-schedule-head">جدول الدفعات <span class="pay-schedule-note">حسب الاتفاق — المجموع 100%</span></div>
             <div class="sum-row">
               <span class="lbl">عدد الدفعات</span>
               <select id="payCount">
+                <option value="1">دفعة واحدة</option>
                 <option value="2">دفعتان</option>
                 <option value="3" selected>ثلاث دفعات</option>
+                <option value="4">أربع دفعات</option>
+                <option value="5">خمس دفعات</option>
+                <option value="6">ست دفعات</option>
+                <option value="7">سبع دفعات</option>
+                <option value="8">ثمان دفعات</option>
               </select>
             </div>
-            <div class="sum-row" id="payRowAdvance"><span class="lbl">دفعة مقدمة %</span><input type="number" id="payAdvance" value="50" min="0" max="100" step="1"></div>
-            <div class="sum-row" id="payRowSupply"><span class="lbl">دفعة التوريد %</span><input type="number" id="paySupply" value="40" min="0" max="100" step="1"></div>
-            <div class="sum-row" id="payRowFinal"><span class="lbl" id="payFinalLabel">دفعة نهائية %</span><input type="number" id="payFinal" value="10" min="0" max="100" step="1"></div>
+            <div id="payRows"></div>
             <div class="pay-schedule-total" id="payPctTotal">المجموع: <b>100%</b></div>
             <div class="pay-schedule-preview" id="payPreview"></div>
           </div>
@@ -308,6 +312,6 @@ window.__INSTALL_QUOTE__ = {
 };
 </script>
 <script src="{{ url_for('static', filename='installation-pricing.js') }}?v=stages2"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=pay2"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=pay8"></script>
 </body>
 </html>

@@ -1445,6 +1445,7 @@ def _sqlite_legacy_schema_patches():
                 ('pay_advance_pct', 'FLOAT'),
                 ('pay_supply_pct', 'FLOAT'),
                 ('pay_final_pct', 'FLOAT'),
+                ('pay_schedule_json', 'TEXT'),
             ],
             'installation_projects': [
                 ('accepted_quotation_id', 'INTEGER'),

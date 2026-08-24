@@ -23,6 +23,8 @@ from installation.models import (
     COST_CATEGORIES,
     COST_PAYMENT_STATUSES,
     RECEIPT_STATUSES,
+    normalize_pay_installments,
+    legacy_pcts_from_items,
 )
 from installation.timeline import (
     create_execution_timeline,
@@ -214,6 +216,9 @@ def _quotation_to_dict(q):
         'pay_supply_pct': q.pay_supply_pct if q.pay_supply_pct is not None else 40,
         'pay_final_pct': q.pay_final_pct if q.pay_final_pct is not None else 10,
         'pay_count': q.payment_count(),
+        'pay_installments': [
+            {'label': it['label'], 'pct': it['pct']} for it in q.payment_items()
+        ],
         'spec': spec,
         'lines': [
             {
@@ -641,29 +646,36 @@ def project_quote_save(project_id):
     q.transport = round(float(data.get('transport') or 0))
     q.other_costs = round(float(data.get('other_costs') or 0))
     q.profit_pct = float(data.get('profit_pct') or 20)
-    pay_adv = float(data.get('pay_advance_pct') if data.get('pay_advance_pct') is not None else 50)
-    pay_sup = float(data.get('pay_supply_pct') if data.get('pay_supply_pct') is not None else 40)
-    pay_fin = float(data.get('pay_final_pct') if data.get('pay_final_pct') is not None else 10)
-    try:
-        pay_count = int(data.get('pay_count') or 0)
-    except (TypeError, ValueError):
-        pay_count = 0
-    if pay_count not in (2, 3):
-        pay_count = 2 if pay_sup <= 0 else 3
-    if pay_count == 2:
-        pay_sup = 0.0
-    if pay_adv < 0 or pay_sup < 0 or pay_fin < 0:
-        return jsonify({'ok': False, 'error': 'نسب الدفعات لا يمكن أن تكون سالبة'}), 400
-    if round(pay_adv + pay_sup + pay_fin, 2) != 100:
-        msg = (
-            'مجموع نسب الدفعات (مقدمة + عند التسليم) يجب أن يساوي 100%'
-            if pay_count == 2
-            else 'مجموع نسب الدفعات (مقدمة + توريد + نهائية) يجب أن يساوي 100%'
-        )
-        return jsonify({'ok': False, 'error': msg}), 400
+    raw_pays = data.get('pay_installments')
+    if raw_pays:
+        try:
+            pay_items = normalize_pay_installments(raw_pays)
+        except ValueError as exc:
+            return jsonify({'ok': False, 'error': str(exc)}), 400
+    else:
+        pay_adv = float(data.get('pay_advance_pct') if data.get('pay_advance_pct') is not None else 50)
+        pay_sup = float(data.get('pay_supply_pct') if data.get('pay_supply_pct') is not None else 40)
+        pay_fin = float(data.get('pay_final_pct') if data.get('pay_final_pct') is not None else 10)
+        try:
+            pay_count = int(data.get('pay_count') or 0)
+        except (TypeError, ValueError):
+            pay_count = 0
+        if pay_count == 2:
+            pay_sup = 0.0
+        fallback = [{'label': 'دفعة مقدمة', 'pct': pay_adv}]
+        if pay_sup > 0:
+            fallback.append({'label': 'عند التوريد', 'pct': pay_sup})
+        if pay_fin > 0:
+            fallback.append({'label': 'عند التسليم' if pay_sup <= 0 else 'دفعة نهائية', 'pct': pay_fin})
+        try:
+            pay_items = normalize_pay_installments(fallback)
+        except ValueError as exc:
+            return jsonify({'ok': False, 'error': str(exc)}), 400
+    pay_adv, pay_sup, pay_fin = legacy_pcts_from_items(pay_items)
     q.pay_advance_pct = pay_adv
     q.pay_supply_pct = pay_sup
     q.pay_final_pct = pay_fin
+    q.pay_schedule_json = json.dumps(pay_items, ensure_ascii=False)
     if q.status != 'مقبول':
         q.status = 'مسودة'
 

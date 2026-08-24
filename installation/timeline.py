@@ -118,25 +118,75 @@ EXECUTION_STEP_TEMPLATES = [
 PAYMENT_STEP_KEYS = frozenset({'advance_payment', 'payment_on_delivery', 'payment_final'})
 
 
+def is_client_payment_step(step_key):
+    key = str(step_key or '')
+    return key in PAYMENT_STEP_KEYS or key.startswith('client_payment_')
+
+
 def step_template(step_key):
-    return next((t for t in EXECUTION_STEP_TEMPLATES if t['key'] == step_key), None)
+    found = next((t for t in EXECUTION_STEP_TEMPLATES if t['key'] == step_key), None)
+    if found:
+        return found
+    if is_client_payment_step(step_key):
+        return {
+            'key': step_key,
+            'group': 'توريد',
+            'has_amount': True,
+            'project_status': 'توريد',
+        }
+    return None
 
 
 def step_has_auto_amount(step_key):
-    return step_key in PAYMENT_STEP_KEYS
+    return is_client_payment_step(step_key)
 
 
 def step_amount_pct(step_key, quotation=None):
     """نسبة الدفعة من العرض المعتمد (0–100)."""
-    if step_key not in PAYMENT_STEP_KEYS or not quotation:
+    if not quotation or not is_client_payment_step(step_key):
         return None
-    sched = quotation.payment_schedule()
-    key_map = {
-        'advance_payment': sched['advance_pct'],
-        'payment_on_delivery': sched['supply_pct'],
-        'payment_final': sched['final_pct'],
+    for it in quotation.payment_items():
+        if it.get('key') == step_key:
+            return float(it['pct'])
+    return None
+
+
+def _pay_step_template(item, group, project_status):
+    label = (item.get('label') or 'دفعة').strip() or 'دفعة'
+    pct = float(item.get('pct') or 0)
+    title = label if label.startswith('استلام') else f'استلام {label}'
+    return {
+        'key': item['key'],
+        'group': group,
+        'title': title,
+        'hint': f'{pct:.0f}% من قيمة العقد',
+        'has_amount': True,
+        'project_status': project_status,
     }
-    return key_map.get(step_key)
+
+
+def execution_step_templates_for(quotation=None):
+    """قالب التنفيذ مع دفعات العميل كما حُددت في العرض."""
+    items = quotation.payment_items() if quotation else []
+    if not items:
+        return list(EXECUTION_STEP_TEMPLATES)
+    out = []
+    for tpl in EXECUTION_STEP_TEMPLATES:
+        key = tpl['key']
+        if key == 'advance_payment':
+            out.append(_pay_step_template(items[0], 'عقد', 'عقد'))
+            continue
+        if key == 'payment_on_delivery':
+            middles = items[1:-1] if len(items) >= 2 else []
+            for mid in middles:
+                out.append(_pay_step_template(mid, 'توريد', 'توريد'))
+            continue
+        if key == 'payment_final':
+            if len(items) >= 2:
+                out.append(_pay_step_template(items[-1], 'تسليم', 'تسليم'))
+            continue
+        out.append(tpl)
+    return out
 
 
 def calculate_step_amount(grand_total, step_key, quotation=None):
@@ -164,12 +214,11 @@ def sync_payment_step_hints(project):
     accepted = project.accepted_quotation
     if not accepted:
         return 0
-    sched = accepted.payment_schedule()
-    hints = {
-        'advance_payment': f'{sched["advance_pct"]:.0f}% من قيمة العقد',
-        'payment_on_delivery': f'{sched["supply_pct"]:.0f}% من قيمة العقد بعد التوريد',
-        'payment_final': f'{sched["final_pct"]:.0f}% من قيمة العقد عند التسليم',
-    }
+    hints = {}
+    for it in accepted.payment_items():
+        key = it.get('key')
+        if key:
+            hints[key] = f'{it["pct"]:.0f}% من قيمة العقد'
     updated = 0
     for step in project.timeline_steps:
         hint = hints.get(step.step_key)
@@ -225,7 +274,7 @@ def sync_timeline_from_templates(project):
     """مزامنة ترتيب ومرحلة الخطوات مع القالب (للمشاريع القائمة)."""
     by_key = {s.step_key: s for s in project.timeline_steps}
     updated = 0
-    for i, tpl in enumerate(EXECUTION_STEP_TEMPLATES):
+    for i, tpl in enumerate(execution_step_templates_for(project.accepted_quotation)):
         step = by_key.get(tpl['key'])
         if not step:
             continue
@@ -249,11 +298,12 @@ def create_execution_timeline(project, db_session):
     existing = {s.step_key for s in project.timeline_steps}
     org_id = getattr(project, 'organization_id', None)
     quotation = project.accepted_quotation
+    templates = execution_step_templates_for(quotation)
     created = 0
-    for i, tpl in enumerate(EXECUTION_STEP_TEMPLATES):
+    for i, tpl in enumerate(templates):
         if tpl['key'] in existing:
             continue
-        if tpl['key'] in PAYMENT_STEP_KEYS and quotation:
+        if is_client_payment_step(tpl['key']) and quotation:
             pct = step_amount_pct(tpl['key'], quotation)
             if pct is not None and float(pct) <= 0:
                 continue
@@ -289,7 +339,7 @@ def sync_project_status_from_timeline(project):
             last_done = step
     if not last_done:
         return
-    tpl = next((t for t in EXECUTION_STEP_TEMPLATES if t['key'] == last_done.step_key), None)
+    tpl = step_template(last_done.step_key)
     if tpl and tpl.get('project_status'):
         project.status = tpl['project_status']
 
@@ -441,17 +491,16 @@ def upcoming_timeline_steps(active_steps, current_step, limit=5):
 
 
 def payment_totals(steps, quotation=None):
-    client_keys = {'advance_payment', 'payment_on_delivery', 'payment_final'}
     supplier_keys = {'supplier_payment'}
     client_paid = 0.0
     supplier_paid = 0.0
     client_due = 0.0
     for step in steps:
-        if step.step_key in client_keys and quotation and step_has_auto_amount(step.step_key):
+        if quotation and is_client_payment_step(step.step_key):
             client_due += client_payment_amount(step, quotation)
         if step.status != 'مكتمل':
             continue
-        if step.step_key in client_keys:
+        if is_client_payment_step(step.step_key):
             client_paid += client_payment_amount(step, quotation)
         elif step.step_key in supplier_keys and step.amount:
             supplier_paid += step.amount

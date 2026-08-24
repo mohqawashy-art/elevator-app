@@ -41,10 +41,8 @@ document.addEventListener('DOMContentLoaded', function () {
       transport: el('sumTrans') ? el('sumTrans').value : 0,
       other_costs: el('sumOther') ? el('sumOther').value : 0,
       profit_pct: el('sumProfitP') ? el('sumProfitP').value : 20,
-      pay_advance_pct: el('payAdvance') ? el('payAdvance').value : 50,
-      pay_supply_pct: el('paySupply') ? el('paySupply').value : 40,
-      pay_final_pct: el('payFinal') ? el('payFinal').value : 10,
       pay_count: getPayCount(),
+      pay_installments: collectPayInstallments(),
       spec: currentMode === 'new' ? getNewSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected }),
       lines: collectRows(),
       quote_type: currentMode,
@@ -510,64 +508,122 @@ document.addEventListener('DOMContentLoaded', function () {
     return out;
   }
 
+  var PAY_MAX = 8;
+  var PAY_PRESETS = {
+    1: [{ label: 'دفعة واحدة', pct: 100 }],
+    2: [{ label: 'دفعة مقدمة', pct: 50 }, { label: 'عند التسليم', pct: 50 }],
+    3: [{ label: 'دفعة مقدمة', pct: 50 }, { label: 'عند التوريد', pct: 40 }, { label: 'دفعة نهائية', pct: 10 }],
+    4: [{ label: 'دفعة مقدمة', pct: 40 }, { label: 'عند التوريد', pct: 30 }, { label: 'بعد التركيب', pct: 20 }, { label: 'دفعة نهائية', pct: 10 }],
+  };
+
+  function defaultPayItems(count) {
+    count = Math.max(1, Math.min(PAY_MAX, parseInt(count, 10) || 3));
+    var i, each, labels, items;
+    if (PAY_PRESETS[count]) {
+      return PAY_PRESETS[count].map(function (r) { return { label: r.label, pct: r.pct }; });
+    }
+    labels = ['دفعة مقدمة'];
+    for (i = 2; i < count; i++) labels.push('دفعة ' + i);
+    labels.push('دفعة نهائية');
+    each = Math.floor(100 / count);
+    items = [];
+    for (i = 0; i < count; i++) {
+      items.push({
+        label: labels[i],
+        pct: i === count - 1 ? (100 - each * (count - 1)) : each,
+      });
+    }
+    return items;
+  }
+
   function getPayCount() {
     var n = el('payCount') ? parseInt(el('payCount').value, 10) : 3;
-    return n === 2 ? 2 : 3;
+    if (isNaN(n) || n < 1) n = 3;
+    if (n > PAY_MAX) n = PAY_MAX;
+    return n;
   }
 
-  function inferPayCount(s) {
-    if (s && s.pay_count === 2) return 2;
-    if (s && s.pay_count === 3) return 3;
-    if (s && P.num(s.pay_supply_pct) <= 0) return 2;
-    return 3;
+  function collectPayInstallments() {
+    var box = el('payRows');
+    if (!box) return defaultPayItems(getPayCount());
+    var rows = box.querySelectorAll('.pay-install-row');
+    var out = [], i, lab, pctEl;
+    for (i = 0; i < rows.length; i++) {
+      lab = rows[i].querySelector('.pay-label');
+      pctEl = rows[i].querySelector('.pay-pct');
+      out.push({
+        label: lab ? String(lab.value || '').trim() : ('دفعة ' + (i + 1)),
+        pct: P.num(pctEl ? pctEl.value : 0),
+      });
+    }
+    return out;
   }
 
-  function applyPayCount(count, preserve) {
-    count = count === 2 ? 2 : 3;
+  function renderPayRows(items) {
+    var box = el('payRows');
+    if (!box) return;
+    items = items && items.length ? items : defaultPayItems(3);
+    var html = '', i;
+    for (i = 0; i < items.length; i++) {
+      html += '<div class="pay-install-row">'
+        + '<input class="pay-label" type="text" value="' + escapeAttr(items[i].label || ('دفعة ' + (i + 1))) + '" placeholder="اسم الدفعة">'
+        + '<input class="pay-pct" type="number" min="0" max="100" step="1" value="' + (items[i].pct || 0) + '">'
+        + '</div>';
+    }
+    box.innerHTML = html;
+    var inputs = box.querySelectorAll('input');
+    for (i = 0; i < inputs.length; i++) {
+      inputs[i].addEventListener('input', recalc);
+    }
+  }
+
+  function applyPayCount(count) {
+    count = Math.max(1, Math.min(PAY_MAX, parseInt(count, 10) || 3));
     if (el('payCount')) el('payCount').value = String(count);
-    if (el('payRowSupply')) el('payRowSupply').style.display = count === 3 ? '' : 'none';
-    if (el('payFinalLabel')) {
-      el('payFinalLabel').textContent = count === 2 ? 'دفعة عند التسليم %' : 'دفعة نهائية %';
-    }
-    if (!preserve) {
-      if (count === 2) {
-        var adv = P.num(el('payAdvance') ? el('payAdvance').value : 50);
-        if (el('paySupply')) el('paySupply').value = 0;
-        if (el('payFinal')) el('payFinal').value = Math.max(0, 100 - adv);
-      } else if (el('paySupply') && P.num(el('paySupply').value) <= 0) {
-        if (el('payAdvance')) el('payAdvance').value = 50;
-        el('paySupply').value = 40;
-        if (el('payFinal')) el('payFinal').value = 10;
-      }
-    }
+    renderPayRows(defaultPayItems(count));
+  }
+
+  function itemsFromSaved(s) {
+    if (s && s.pay_installments && s.pay_installments.length) return s.pay_installments;
+    var adv = P.num(s && s.pay_advance_pct != null ? s.pay_advance_pct : 50);
+    var sup = P.num(s && s.pay_supply_pct != null ? s.pay_supply_pct : 40);
+    var fin = P.num(s && s.pay_final_pct != null ? s.pay_final_pct : 10);
+    var items = [{ label: 'دفعة مقدمة', pct: adv }];
+    if (sup > 0) items.push({ label: 'عند التوريد', pct: sup });
+    if (fin > 0) items.push({ label: sup > 0 ? 'دفعة نهائية' : 'عند التسليم', pct: fin });
+    return items;
   }
 
   function getPaymentPcts() {
-    var count = getPayCount();
-    var advance = P.num(el('payAdvance') ? el('payAdvance').value : 50);
-    var supply = count === 3 ? P.num(el('paySupply') ? el('paySupply').value : 40) : 0;
-    var finalPct = P.num(el('payFinal') ? el('payFinal').value : (count === 2 ? 50 : 10));
-    return { count: count, advance: advance, supply: supply, final: finalPct };
+    var items = collectPayInstallments();
+    var n = items.length;
+    var supply = 0, i;
+    for (i = 1; i < n - 1; i++) supply += items[i].pct;
+    return {
+      count: n,
+      advance: n ? items[0].pct : 0,
+      supply: supply,
+      final: n >= 2 ? items[n - 1].pct : 0,
+      items: items,
+    };
   }
 
   function paymentTermsText(pcts, grand) {
-    var items = [];
-    items.push({ label: 'دفعة مقدمة', pct: pcts.advance });
-    if (pcts.count === 3) items.push({ label: 'عند التوريد', pct: pcts.supply });
-    items.push({ label: pcts.count === 2 ? 'عند التسليم' : 'دفعة نهائية', pct: pcts.final });
+    var items = (pcts && pcts.items) ? pcts.items : collectPayInstallments();
     var html = '<b>شروط الدفع:</b><div class="q-pay-list">';
     var i, amt;
     for (i = 0; i < items.length; i++) {
       if (items[i].pct <= 0) continue;
       amt = Math.round(grand * items[i].pct / 100);
-      html += '<div>' + items[i].pct + '% ' + items[i].label + ' (' + fmt(amt) + ')</div>';
+      html += '<div>' + items[i].pct + '% ' + (items[i].label || ('دفعة ' + (i + 1))) + ' (' + fmt(amt) + ')</div>';
     }
     return html + '</div>';
   }
 
   function recalcPaymentSchedule(grand) {
-    var pcts = getPaymentPcts();
-    var total = pcts.advance + pcts.supply + pcts.final;
+    var items = collectPayInstallments();
+    var total = 0, i;
+    for (i = 0; i < items.length; i++) total += items[i].pct;
     var totalEl = el('payPctTotal');
     var preview = el('payPreview');
     var payWarn = el('payWarnBox');
@@ -576,14 +632,13 @@ document.addEventListener('DOMContentLoaded', function () {
       totalEl.style.color = total === 100 ? 'var(--text3)' : 'var(--danger)';
     }
     if (preview && grand > 0) {
-      var html = 'مقدمة: <span class="amt">' + fmt(Math.round(grand * pcts.advance / 100)) + '</span>';
-      if (pcts.count === 3) {
-        html += '<br>توريد: <span class="amt">' + fmt(Math.round(grand * pcts.supply / 100)) + '</span>';
-        html += '<br>نهائية: <span class="amt">' + fmt(Math.round(grand * pcts.final / 100)) + '</span>';
-      } else {
-        html += '<br>عند التسليم: <span class="amt">' + fmt(Math.round(grand * pcts.final / 100)) + '</span>';
+      var html = '';
+      for (i = 0; i < items.length; i++) {
+        if (items[i].pct <= 0) continue;
+        html += (html ? '<br>' : '') + escapeAttr(items[i].label || ('دفعة ' + (i + 1)))
+          + ': <span class="amt">' + fmt(Math.round(grand * items[i].pct / 100)) + '</span>';
       }
-      preview.innerHTML = html;
+      preview.innerHTML = html || 'أدخل نسب الدفعات';
     } else if (preview) {
       preview.innerHTML = 'أدخل البنود لحساب مبالغ الدفعات';
     }
@@ -912,12 +967,10 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
     var pcts = getPaymentPcts();
-    if (pcts.advance + pcts.supply + pcts.final !== 100) {
-      alert(
-        pcts.count === 2
-          ? 'مجموع نسب الدفعات يجب أن يساوي 100%.\nمقدمة + عند التسليم = ' + (pcts.advance + pcts.final) + '%'
-          : 'مجموع نسب الدفعات يجب أن يساوي 100%.\nمقدمة + توريد + نهائية = ' + (pcts.advance + pcts.supply + pcts.final) + '%'
-      );
+    var payTotal = 0, pi;
+    for (pi = 0; pi < pcts.items.length; pi++) payTotal += pcts.items[pi].pct;
+    if (payTotal !== 100) {
+      alert('مجموع نسب الدفعات يجب أن يساوي 100% (حالياً ' + payTotal + '%).');
       return;
     }
     var payload = {
@@ -937,6 +990,7 @@ document.addEventListener('DOMContentLoaded', function () {
       pay_supply_pct: pcts.supply,
       pay_final_pct: pcts.final,
       pay_count: pcts.count,
+      pay_installments: pcts.items,
       lines: rows,
     };
     fetch(saveUrl, {
@@ -980,10 +1034,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (el('sumTrans')) el('sumTrans').value = s.transport || 2000;
     if (el('sumOther')) el('sumOther').value = s.other_costs || 0;
     if (el('sumProfitP')) el('sumProfitP').value = s.profit_pct || 20;
-    if (el('payAdvance')) el('payAdvance').value = s.pay_advance_pct != null ? s.pay_advance_pct : 50;
-    if (el('paySupply')) el('paySupply').value = s.pay_supply_pct != null ? s.pay_supply_pct : 40;
-    if (el('payFinal')) el('payFinal').value = s.pay_final_pct != null ? s.pay_final_pct : 10;
-    applyPayCount(inferPayCount(s), true);
+    var payItems = itemsFromSaved(s);
+    if (el('payCount')) el('payCount').value = String(payItems.length || 3);
+    renderPayRows(payItems);
     currentMode = s.quote_type || 'new';
     if (currentMode === 'upgrade') switchTab('upgrade');
     if (s.spec) {
@@ -1077,15 +1130,16 @@ document.addEventListener('DOMContentLoaded', function () {
   el('printBtn').addEventListener('click', function () { window.print(); });
   el('closeQuoteBtn').addEventListener('click', function () { el('quoteOverlay').classList.remove('open'); });
   el('qDetailed').addEventListener('change', buildQuote);
-  ['sumLabor', 'sumTrans', 'sumOther', 'sumProfitP', 'payAdvance', 'paySupply', 'payFinal'].forEach(function (id) {
+  ['sumLabor', 'sumTrans', 'sumOther', 'sumProfitP'].forEach(function (id) {
     if (el(id)) el(id).addEventListener('input', recalc);
   });
   if (el('payCount')) {
     el('payCount').addEventListener('change', function () {
-      applyPayCount(getPayCount(), false);
+      applyPayCount(getPayCount());
       recalc();
     });
   }
+  renderPayRows(defaultPayItems(el('payCount') ? el('payCount').value : 3));
 
   var restored = restoreDraftIfNeeded();
   if (cfg.saved) {

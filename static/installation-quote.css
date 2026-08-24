@@ -70,7 +70,10 @@ table.pricing-items input.f-unit-custom{
 .pay-schedule-total{font-size:11px;color:var(--text3);margin-top:4px}
 .pay-schedule-total b{font-family:var(--font-en);color:var(--text1)}
 .pay-schedule-preview{margin-top:8px;font-size:11px;color:var(--text2);line-height:1.7;background:var(--bg3);border-radius:var(--r-sm);padding:8px 10px}
-.pay-schedule-preview .amt{font-family:var(--font-en);font-weight:700;color:var(--gold)}
+.pay-install-row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border)}
+.pay-install-row input{padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);color:var(--text1);font-size:12px}
+.pay-install-row .pay-label{flex:1;min-width:0;width:auto;text-align:right;font-family:inherit}
+.pay-install-row .pay-pct{width:72px;flex-shrink:0;text-align:center;font-family:var(--font-en)}
 .pricing-warn{background:rgba(224,144,48,.12);color:var(--warning);border-radius:var(--r-sm);padding:8px 10px;font-size:12px;margin-top:10px;display:none}
 #quoteOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;overflow:auto;padding:24px}
 #quoteOverlay.open{display:block}
