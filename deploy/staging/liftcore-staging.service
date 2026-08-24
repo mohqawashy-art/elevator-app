@@ -1,0 +1,28 @@
+[Unit]
+Description=LiftCore staging
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=liftcore-staging
+Group=liftcore-staging
+WorkingDirectory=/opt/liftcore-staging/current
+EnvironmentFile=/etc/liftcore/staging.env
+Environment=LIFTCORE_ENV_FILE=/etc/liftcore/staging.env
+Environment=LIFTCORE_ALEMBIC=1
+Environment=LIFTCORE_INSTALL_MODULE=1
+ExecStart=/opt/liftcore-staging/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:5003 --timeout 120 --access-logfile - --error-logfile - app:app
+Restart=on-failure
+RestartSec=4
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+InaccessiblePaths=-/etc/liftcore/platform.env -/home/info/liftcore/.env
+ReadWritePaths=/var/lib/liftcore-staging /var/backups/liftcore-staging
+UMask=0027
+MemoryMax=900M
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target
