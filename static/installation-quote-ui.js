@@ -1237,6 +1237,37 @@ document.addEventListener('DOMContentLoaded', function () {
   el('tabNewBtn').addEventListener('click', function () { switchTab('new'); });
   if (el('tabExtendBtn')) el('tabExtendBtn').addEventListener('click', function () { switchTab('extend'); });
   el('tabUpgBtn').addEventListener('click', function () { switchTab('upgrade'); });
+  if (el('btnQuickCustomer')) {
+    el('btnQuickCustomer').addEventListener('click', function () {
+      if (!window.LiftCoreQuickCustomer) return;
+      window.LiftCoreQuickCustomer.open({
+        onCreated: function (cust) {
+          if (!cust || !cust.id) return;
+          var row = {
+            id: cust.id,
+            code: cust.code || '',
+            name: cust.name || '',
+            phone: cust.phone || '',
+            email: cust.email || '',
+            address: cust.address_display || cust.address || '',
+            city: cust.city || '',
+            district: cust.district || '',
+          };
+          customers.push(row);
+          if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
+            LcClientSelect.setCustomers('cCustomer', customers, cust.id);
+          } else if (el('cCustomer')) {
+            var opt = document.createElement('option');
+            opt.value = String(cust.id);
+            opt.textContent = (row.code || '') + ' — ' + (row.name || '');
+            el('cCustomer').appendChild(opt);
+            el('cCustomer').value = String(cust.id);
+          }
+          onCustomerChange();
+        },
+      });
+    });
+  }
   el('buildBtn').addEventListener('click', buildNewBOM);
   if (el('buildExtBtn')) el('buildExtBtn').addEventListener('click', buildExtendBOM);
   el('buildUpgBtn').addEventListener('click', buildUpgBOM);

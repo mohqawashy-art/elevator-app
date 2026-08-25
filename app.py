@@ -5434,6 +5434,69 @@ def api_clients():
     customers = tenant_query(Customer).all()
     return jsonify([{'id':c.id,'code':c.code,'name':c.name,'city':c.city} for c in customers])
 
+
+@app.route('/api/clients/quick', methods=['POST'])
+def api_clients_quick():
+    """إنشاء عميل سريع من شاشات المبيعات (تركيب / صيانة)."""
+    from form_validation import customer_name_error
+
+    data = request.get_json(silent=True) or request.form
+    name_err = customer_name_error(data.get('name'))
+    if name_err:
+        return jsonify(ok=False, error=name_err), 400
+    phone_raw = data.get('phone') or ''
+    phone_err = client_phone_error(phone_raw)
+    if phone_err:
+        return jsonify(ok=False, error=phone_err), 400
+    phone = format_phone_storage(phone_raw)
+    taken, msg = phone_taken(phone)
+    if taken:
+        return jsonify(ok=False, error=msg), 400
+
+    wa_raw = (data.get('phone2') or '').strip()
+    wa = ''
+    if wa_raw:
+        wa_err = client_phone_error(wa_raw)
+        if wa_err:
+            return jsonify(ok=False, error='واتساب: ' + wa_err), 400
+        wa = format_phone_storage(wa_raw)
+        if phone_key(wa) != phone_key(phone):
+            taken2, msg2 = phone_taken(wa)
+            if taken2:
+                return jsonify(ok=False, error=msg2), 400
+
+    city = (data.get('city') or '').strip() or 'مكة المكرمة'
+    c = Customer(
+        code=next_code(Customer, 'C-', digits=4),
+        name=(data.get('name') or '').strip(),
+        city=city,
+        district=(data.get('district') or '').strip(),
+        address=(data.get('address') or '').strip(),
+        phone=phone,
+        phone2=wa,
+        email=(data.get('email') or '').strip(),
+        contact_person=(data.get('contact_person') or '').strip(),
+        entity_type=(data.get('entity_type') or 'فرد').strip() or 'فرد',
+        status='نشط',
+    )
+    assign_organization(c)
+    db.session.add(c)
+    db.session.commit()
+    return jsonify(
+        ok=True,
+        customer={
+            'id': c.id,
+            'code': c.code,
+            'name': c.name,
+            'phone': c.phone or c.phone2 or '',
+            'email': c.email or '',
+            'address': c.address or '',
+            'address_display': ' — '.join([x for x in [c.city, c.district, c.address] if x]),
+            'city': c.city or '',
+            'district': c.district or '',
+        },
+    )
+
 # =============================================
 # المصاعد
 # =============================================

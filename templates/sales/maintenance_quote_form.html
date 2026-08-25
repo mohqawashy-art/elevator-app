@@ -69,17 +69,22 @@
         <div class="mq-grid">
           <div class="field full">
             <label>العميل *</label>
-            <select name="customer_id" id="customer_id" required {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
-              <option value="">— اختر عميلاً مسجّلاً —</option>
-              {% for c in customers %}
-              <option value="{{ c.id }}"
-                data-city="{{ c.city or '' }}"
-                data-district="{{ c.district or '' }}"
-                data-address="{{ c.address or '' }}"
-                {% if quote and quote.customer_id==c.id %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
-              {% endfor %}
-            </select>
-            <div class="hint">يجب تسجيل العميل أولاً في العملاء. تُصفّى المصاعد حسب العميل المختار.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:stretch">
+              <select name="customer_id" id="customer_id" required style="flex:1;min-width:200px" {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+                <option value="">— اختر عميلاً مسجّلاً —</option>
+                {% for c in customers %}
+                <option value="{{ c.id }}"
+                  data-city="{{ c.city or '' }}"
+                  data-district="{{ c.district or '' }}"
+                  data-address="{{ c.address or '' }}"
+                  {% if quote and quote.customer_id==c.id %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
+                {% endfor %}
+              </select>
+              {% if not quote or quote.status != 'مقبول' %}
+              <button type="button" class="btn btn-secondary btn-sm" id="btnQuickCustomerMaint">+ عميل جديد</button>
+              {% endif %}
+            </div>
+            <div class="hint">يمكن إضافة عميل جديد مباشرة دون مغادرة العرض. تُصفّى المصاعد حسب العميل.</div>
           </div>
           <div class="field">
             <label>المدينة</label>
@@ -349,7 +354,30 @@
   visitsHint();
   if(!document.getElementById('end_date').value) syncEnd();
   recalcTotals();
+
+  var btnQc = document.getElementById('btnQuickCustomerMaint');
+  if (btnQc && window.LiftCoreQuickCustomer) {
+    btnQc.addEventListener('click', function () {
+      window.LiftCoreQuickCustomer.open({
+        onCreated: function (cust) {
+          if (!cust || !cust.id) return;
+          var sel = document.getElementById('customer_id');
+          if (!sel) return;
+          var opt = document.createElement('option');
+          opt.value = String(cust.id);
+          opt.textContent = (cust.code || '') + ' — ' + (cust.name || '');
+          opt.setAttribute('data-city', cust.city || '');
+          opt.setAttribute('data-district', cust.district || '');
+          opt.setAttribute('data-address', cust.address || '');
+          sel.appendChild(opt);
+          sel.value = String(cust.id);
+          sel.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+  }
 })();
 </script>
+{% include 'partials/quick_customer_modal.html' %}
 </body>
 </html>

@@ -45,7 +45,7 @@
     <div class="pricing-layout">
       <div>
         <div class="pricing-card">
-          <h3><span class="step-no">١</span> العميل <span class="pricing-hint" style="font-weight:400">— يجب تسجيله في العملاء أولاً</span></h3>
+          <h3><span class="step-no">١</span> العميل</h3>
           <div class="pricing-grid">
             <div class="field form-full" style="grid-column:1/-1">
               <label>اختر العميل *</label>
@@ -53,7 +53,7 @@
                 <select id="cCustomer" style="flex:1;min-width:200px" required>
                   <option value="">— اختر عميلاً —</option>
                 </select>
-                <a href="/clients" target="_blank" class="btn btn-secondary btn-sm">+ عميل جديد</a>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnQuickCustomer">+ عميل جديد</button>
               </div>
             </div>
             <div class="field"><label>اسم العميل</label><input type="text" id="cName" readonly style="opacity:.85"></div>
@@ -397,6 +397,7 @@ window.__INSTALL_QUOTE__ = {
 };
 </script>
 <script src="{{ url_for('static', filename='installation-pricing.js') }}?v=market1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=market1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=market2"></script>
+{% include 'partials/quick_customer_modal.html' %}
 </body>
 </html>
