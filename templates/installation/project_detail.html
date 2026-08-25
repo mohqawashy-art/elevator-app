@@ -37,18 +37,12 @@
     <div class="page-header">
       <div class="page-title">{{ project.code }} — {{ project.client_display }}</div>
       <div class="page-actions">
-        <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
         <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
         <a href="#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
         {% if project.execution_active %}
         <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">تنفيذ المشروع</a>
         <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm">محضر استلام</a>
         <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير</a>
-        {% elif latest_draft %}
-        <a href="/installation/projects/{{ project.id }}/quote?quotation_id={{ latest_draft.id }}" class="btn btn-primary btn-sm">متابعة العرض ({{ latest_draft.code }})</a>
-        <a href="/installation/projects/{{ project.id }}/quote?new=1" class="btn btn-secondary btn-sm">+ عرض جديد</a>
-        {% else %}
-        <a href="/installation/projects/{{ project.id }}/quote" class="btn btn-primary btn-sm">+ تسعير وعرض سعر</a>
         {% endif %}
       </div>
     </div>
@@ -289,7 +283,6 @@
     <div class="panel">
       <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <span>العميل المرتبط</span>
-        <a href="/installation/projects/{{ project.id }}/quote" class="btn btn-secondary btn-sm">{{ 'تغيير العميل' if project.customer else 'ربط عند التسعير' }}</a>
       </div>
       {% if project.customer %}
       <div class="form-grid" style="font-size:13px">
@@ -322,18 +315,18 @@
 
     {% if latest_draft and not project.execution_active %}
     <div class="panel" style="border-color:rgba(42,127,255,.35)">
-      <div class="panel-title">متابعة العمل المحفوظ</div>
+      <div class="panel-title">عرض قيد البيع</div>
       <p style="font-size:13px;color:var(--text2);margin:0 0 12px">
-        آخر عرض: <b style="font-family:var(--font-en)">{{ latest_draft.code }}</b>
-        — الحالة: <b>{{ latest_draft.status }}</b>
-        — الإجمالي: <b style="font-family:var(--font-en)">{{ '{:,.0f}'.format(latest_draft.grand_total) }}</b> ر.س
+        العرض <b style="font-family:var(--font-en)">{{ latest_draft.code }}</b>
+        ما زال في المبيعات ({{ latest_draft.status }}).
+        كارت المشروع والتنفيذ يظهران بعد موافقة العميل من قسم المبيعات.
       </p>
-      <a href="/installation/projects/{{ project.id }}/quote?quotation_id={{ latest_draft.id }}" class="btn btn-primary btn-sm">فتح التسعير والمتابعة</a>
+      <a href="{{ url_for('sales.quotes_inbox', kind='install') }}" class="btn btn-secondary btn-sm">فتح في المبيعات</a>
     </div>
     {% endif %}
 
     <div class="panel">
-      <div class="panel-title">عروض الأسعار المحفوظة</div>
+      <div class="panel-title">العرض المعتمد</div>
       <table>
         <thead>
           <tr>
@@ -341,52 +334,29 @@
             <th>النوع</th>
             <th>الحالة</th>
             <th>الإجمالي</th>
-            <th>التاريخ</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          {% for q in quotations %}
+          {% for q in quotations if q.status == 'مقبول' %}
           <tr>
             <td style="font-family:var(--font-en)">{{ q.code }}</td>
             <td>{{ q.quote_type_short }}</td>
-            <td>
-              <span class="badge {% if q.status == 'مقبول' %}badge-ok{% elif q.status == 'مُرسل' %}badge-new{% elif q.status == 'مرفوض' %}badge-warn{% else %}badge-muted{% endif %}">{{ q.status }}</span>
-            </td>
+            <td><span class="badge badge-ok">{{ q.status }}</span></td>
             <td style="font-family:var(--font-en)">{{ '{:,.0f}'.format(q.grand_total) }} ر.س</td>
-            <td style="font-family:var(--font-en)">{{ q.created_at.strftime('%Y-%m-%d') if q.created_at else '—' }}</td>
             <td style="white-space:nowrap">
-              {% if q.status not in ('مقبول', 'مرفوض') %}
-              <a href="/installation/projects/{{ project.id }}/quote?quotation_id={{ q.id }}" class="btn btn-secondary btn-sm">تعديل</a>
-              {% endif %}
               <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm">طباعة</a>
-              {% if q.status not in ('مقبول', 'مرفوض') and not project.execution_active %}
-              <a href="{{ url_for('sales.install_quote_deliver', quotation_id=q.id, channel='whatsapp') }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">واتساب</a>
-              <a href="{{ url_for('sales.install_quote_deliver', quotation_id=q.id, channel='email') }}" class="btn btn-secondary btn-sm">إيميل</a>
-              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('تأكيد موافقة العميل وتحويل العرض إلى مشروع؟')">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-primary btn-sm">✓ موافقة العميل → مشروع</button>
-              </form>
-              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/cancel" style="display:inline" onsubmit="return confirm('إلغاء عرض السعر {{ q.code }}؟')">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger)">إلغاء العرض</button>
-              </form>
-              {% elif q.status == 'مقبول' %}
               <a href="#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
+              {% if project.execution_active %}
               <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-secondary btn-sm">تنفيذ المشروع</a>
               {% endif %}
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">لا توجد عروض — اضغط «تسعير وعرض سعر»</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">لا يوجد عرض معتمد بعد — تتم الموافقة من قسم المبيعات</td></tr>
           {% endfor %}
         </tbody>
       </table>
-      {% if not project.execution_active %}
-      <p style="font-size:12px;color:var(--text3);margin:12px 0 0">
-        أرسل العرض واتساب أو إيميل. بعد موافقة العميل يتحول لمشروع — ثم افتح <b>كارت المشروع</b> للمالية أو <b>تنفيذ المشروع</b> للمراحل الميدانية (منفصلان).
-      </p>
-      {% endif %}
     </div>
   </div>
 </div>

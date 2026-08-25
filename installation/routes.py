@@ -789,9 +789,12 @@ def quote_approve(project_id, quotation_id):
         apply_auto_amount(steps[0], q, force=True)
     db.session.commit()
     flash(
-        f'تم قبول العرض {q.code} — المشروع جاهز. افتح كارت المشروع للمالية أو التنفيذ للمراحل الميدانية.',
+        f'تم قبول العرض {q.code} — حُوِّل لقسم المشاريع (كارت المشروع / التنفيذ).',
         'success',
     )
+    next_dest = (request.form.get('next') or request.args.get('next') or '').strip().lower()
+    if next_dest == 'sales':
+        return redirect(url_for('sales.quotes_inbox', kind='install'))
     return redirect(url_for('installation.project_detail', project_id=project.id))
 
 

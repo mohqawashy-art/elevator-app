@@ -4,9 +4,9 @@
     <img src="{{ brand_logo_url }}" alt="LiftCore">
   </div>
   <nav class="sidebar-nav">
+    <div class="nav-section">المشاريع</div>
+    <a href="/installation/projects" class="nav-item{% if request.path.startswith('/installation/projects') and '/quote' not in request.path and '/execution' not in request.path %} active{% endif %}">قائمة المشاريع</a>
     <a href="/installation/" class="nav-item{% if request.path == '/installation/' %} active{% endif %}">لوحة المشاريع</a>
-    <a href="/installation/projects" class="nav-item{% if request.path.startswith('/installation/projects') or request.path.startswith('/installation/quotes') %} active{% endif %}">المشاريع والتنفيذ</a>
-    <a href="{{ url_for('sales.hub') }}" class="nav-item">← المبيعات</a>
     <div class="nav-section">LiftCore</div>
     <a href="{{ url_for('dashboard') }}" class="nav-item">← النظام الرئيسي</a>
   </nav>

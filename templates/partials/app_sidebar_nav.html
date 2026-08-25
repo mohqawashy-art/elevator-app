@@ -55,16 +55,14 @@
 </div>
 {% endif %}
 
-{% if has_any_perm('sales_quotes.read', 'elevator_estimates.read', 'installation_projects.read') %}
+{% if has_any_perm('sales_quotes.read', 'elevator_estimates.read') or (install_module_enabled and has_perm('installation_projects.read')) %}
 <div class="nav-group" data-nav-group>
   <button type="button" class="nav-group-btn" aria-expanded="false" aria-haspopup="true">
     <span class="nav-group-label">المبيعات</span>
     <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M3 4.5l3 3 3-3"/></svg>
   </button>
   <div class="nav-group-menu">
-    {% if has_any_perm('sales_quotes.read', 'installation_projects.read', 'elevator_estimates.read') %}
     <a href="{{ url_for('sales.hub') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>لوحة المبيعات</a>
-    {% endif %}
     <div class="nav-item" style="opacity:.65;font-size:11px;pointer-events:none;padding-top:10px">تركيبات</div>
     {% if install_module_enabled and has_perm('installation_projects.read') %}
     <a href="{{ url_for('sales.install_quote_new') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>عرض تركيب جديد</a>
@@ -82,12 +80,13 @@
 {% if has_any_perm('installation_projects.read') %}
 <div class="nav-group" data-nav-group>
   <button type="button" class="nav-group-btn" aria-expanded="false" aria-haspopup="true">
-    <span class="nav-group-label">التركيب</span>
+    <span class="nav-group-label">المشاريع</span>
     <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M3 4.5l3 3 3-3"/></svg>
   </button>
   <div class="nav-group-menu">
     {% if install_module_enabled and has_perm('installation_projects.read') %}
-    <a href="/installation/" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M2 20h20M6 20V10l6-6 6 6v10"/><path d="M10 20v-6h4v6"/></svg>مشاريع وتنفيذ التركيب</a>
+    <a href="/installation/projects" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M2 20h20M6 20V10l6-6 6 6v10"/><path d="M10 20v-6h4v6"/></svg>قائمة المشاريع</a>
+    <a href="/installation/" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>كارت وتنفيذ التركيب</a>
     {% endif %}
   </div>
 </div>

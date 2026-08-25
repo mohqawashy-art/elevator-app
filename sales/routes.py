@@ -128,12 +128,13 @@ def install_quote_new():
     assign_organization(project)
     db.session.add(project)
     db.session.commit()
-    flash('تم إنشاء المشروع — أكمل مواصفات العرض ثم أرسله للعميل', 'success')
+    flash('تم إنشاء العرض — أكمل المواصفات ثم أرسله للعميل من المبيعات', 'success')
     return redirect(url_for(
         'installation.project_quote',
         project_id=project.id,
         new=1,
         quote_type=quote_kind,
+        **{'from': 'sales'},
     ))
 
 
@@ -299,8 +300,20 @@ def quotes_inbox():
                 'installation.project_quote',
                 project_id=q.project_id,
                 quotation_id=q.id,
-            ) if q.project_id else '#',
+                **{'from': 'sales'},
+            ) if q.project_id and q.status not in ('مقبول',) else (
+                url_for('installation.project_detail', project_id=q.project_id) if q.project_id else '#'
+            ),
             'print_url': url_for('installation.quote_print', quotation_id=q.id),
+            'project_id': q.project_id,
+            'project_url': url_for('installation.project_detail', project_id=q.project_id) if q.project_id else None,
+            'deliver_wa': url_for('sales.install_quote_deliver', quotation_id=q.id, channel='whatsapp'),
+            'deliver_email': url_for('sales.install_quote_deliver', quotation_id=q.id, channel='email'),
+            'approve_url': url_for(
+                'installation.quote_approve',
+                project_id=q.project_id,
+                quotation_id=q.id,
+            ) if q.project_id else None,
             'contract_id': None,
         })
     rows.sort(key=lambda r: r['created_at'] or datetime.min, reverse=True)
