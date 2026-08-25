@@ -5435,7 +5435,7 @@ def api_clients():
     return jsonify([{'id':c.id,'code':c.code,'name':c.name,'city':c.city} for c in customers])
 
 
-@app.route('/api/clients/quick', methods=['POST'])
+@app.route('/api/clients/create', methods=['POST'])
 def api_clients_quick():
     """إنشاء عميل سريع من شاشات المبيعات (تركيب / صيانة)."""
     from form_validation import customer_name_error

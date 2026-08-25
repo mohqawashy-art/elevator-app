@@ -131,7 +131,7 @@ window.LiftCoreQuickCustomer = (function () {
     var btn = document.getElementById('qc-save');
     if (btn) btn.disabled = true;
     errEl.style.display = 'none';
-    fetch('/api/clients/quick', {
+    fetch('/api/clients/create', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
