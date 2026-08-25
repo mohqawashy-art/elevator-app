@@ -135,11 +135,10 @@
 
     {% if quote and quote.status != 'مقبول' %}
     <div class="actions">
-      {% if quote.status != 'مُرسل' %}
-      <form method="post" action="{{ url_for('sales.maintenance_quote_send', quote_id=quote.id) }}"><button class="btn btn-secondary" type="submit">تعليم كـ مُرسل للعميل</button></form>
-      {% endif %}
+      <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quote_deliver', quote_id=quote.id, channel='whatsapp') }}" target="_blank" rel="noopener">إرسال واتساب</a>
+      <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quote_deliver', quote_id=quote.id, channel='email') }}">إرسال إيميل</a>
       <form method="post" action="{{ url_for('sales.maintenance_quote_approve', quote_id=quote.id) }}" onsubmit="return confirm('تأكيد موافقة العميل وتحويل العرض لعقد صيانة؟')">
-        <button class="btn btn-gold" type="submit">موافقة العميل → تحويل لعقد صيانة</button>
+        <button class="btn btn-gold" type="submit">موافقة العميل → عقد صيانة</button>
       </form>
       <form method="post" action="{{ url_for('sales.maintenance_quote_reject', quote_id=quote.id) }}" onsubmit="return confirm('رفض العرض؟')">
         <button class="btn btn-secondary" type="submit">رفض</button>

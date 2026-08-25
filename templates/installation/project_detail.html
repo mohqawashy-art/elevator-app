@@ -19,12 +19,12 @@
         <div class="stat-label">عروض أسعار</div>
       </div>
       <div class="stat-card">
-        <div class="stat-val" style="font-size:14px">{{ project.lead.code if project.lead else '—' }}</div>
-        <div class="stat-label">فرصة البيع</div>
-      </div>
-      <div class="stat-card">
         <div class="stat-val" style="font-size:14px;font-family:var(--font-en)">{{ project.customer.code if project.customer else '—' }}</div>
         <div class="stat-label">العميل</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="font-size:14px">{% if project.execution_active %}تنفيذ{% else %}تسعير{% endif %}</div>
+        <div class="stat-label">المرحلة</div>
       </div>
     </div>
 
@@ -37,14 +37,15 @@
     <div class="page-header">
       <div class="page-title">{{ project.code }} — {{ project.client_display }}</div>
       <div class="page-actions">
+        <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
         <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
         <a href="#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
         {% if project.execution_active %}
+        <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">تنفيذ المشروع</a>
         <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm">محضر استلام</a>
-        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير المشروع</a>
-        <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">{% if execution_complete %}مكتمل{% else %}جدول التنفيذ ({{ execution_progress }}%){% endif %}</a>
+        <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير</a>
         {% elif latest_draft %}
-        <a href="/installation/projects/{{ project.id }}/quote?quotation_id={{ latest_draft.id }}" class="btn btn-primary btn-sm">متابعة التسعير ({{ latest_draft.code }})</a>
+        <a href="/installation/projects/{{ project.id }}/quote?quotation_id={{ latest_draft.id }}" class="btn btn-primary btn-sm">متابعة العرض ({{ latest_draft.code }})</a>
         <a href="/installation/projects/{{ project.id }}/quote?new=1" class="btn btn-secondary btn-sm">+ عرض جديد</a>
         {% else %}
         <a href="/installation/projects/{{ project.id }}/quote" class="btn btn-primary btn-sm">+ تسعير وعرض سعر</a>
@@ -360,20 +361,19 @@
               {% endif %}
               <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm">طباعة</a>
               {% if q.status not in ('مقبول', 'مرفوض') and not project.execution_active %}
-              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/send" style="display:inline">
+              <a href="{{ url_for('sales.install_quote_deliver', quotation_id=q.id, channel='whatsapp') }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">واتساب</a>
+              <a href="{{ url_for('sales.install_quote_deliver', quotation_id=q.id, channel='email') }}" class="btn btn-secondary btn-sm">إيميل</a>
+              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('تأكيد موافقة العميل وتحويل العرض إلى مشروع؟')">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-secondary btn-sm">مُرسل</button>
-              </form>
-              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('تأكيد موافقة العميل وبدء التنفيذ؟')">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-primary btn-sm">✓ قبول العميل</button>
+                <button type="submit" class="btn btn-primary btn-sm">✓ موافقة العميل → مشروع</button>
               </form>
               <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/cancel" style="display:inline" onsubmit="return confirm('إلغاء عرض السعر {{ q.code }}؟')">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger)">إلغاء العرض</button>
               </form>
               {% elif q.status == 'مقبول' %}
-              <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">التنفيذ</a>
+              <a href="#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
+              <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-secondary btn-sm">تنفيذ المشروع</a>
               {% endif %}
             </td>
           </tr>
@@ -384,7 +384,7 @@
       </table>
       {% if not project.execution_active %}
       <p style="font-size:12px;color:var(--text3);margin:12px 0 0">
-        بعد موافقة العميل اضغط «قبول العميل» لإنشاء جدول التنفيذ (دفعة مقدمة → موردين → توريد → تركيب → تسليم).
+        أرسل العرض واتساب أو إيميل. بعد موافقة العميل يتحول لمشروع — ثم افتح <b>كارت المشروع</b> للمالية أو <b>تنفيذ المشروع</b> للمراحل الميدانية (منفصلان).
       </p>
       {% endif %}
     </div>

@@ -598,6 +598,7 @@ def project_quote(project_id):
         machine_brands=MACHINE_BRANDS,
         panel_brands=CONTROL_PANEL_BRANDS,
         default_customer_id=default_customer_id,
+        preferred_quote_type=(request.args.get('quote_type') or '').strip() or None,
         page_title=f'تسعير — {project.code}',
     )
 
@@ -787,8 +788,11 @@ def quote_approve(project_id, quotation_id):
         steps[0].started_at = project.execution_started_at or datetime.utcnow()
         apply_auto_amount(steps[0], q, force=True)
     db.session.commit()
-    flash(f'تم قبول العرض {q.code} — تحوّل لإدارة مشروعات التركيب', 'success')
-    return redirect(url_for('installation.project_execution', project_id=project.id))
+    flash(
+        f'تم قبول العرض {q.code} — المشروع جاهز. افتح كارت المشروع للمالية أو التنفيذ للمراحل الميدانية.',
+        'success',
+    )
+    return redirect(url_for('installation.project_detail', project_id=project.id))
 
 
 @install_bp.route('/projects/<int:project_id>/execution')
@@ -1150,118 +1154,26 @@ def _projects_by_lead_id(leads):
 
 @install_bp.route('/leads')
 def leads_list():
-    try:
-        leads = tenant_query(InstallLead).order_by(InstallLead.created_at.desc()).all()
-        customers = _active_customers()
-        project_by_lead = _projects_by_lead_id(leads)
-        return render_template(
-            'installation/leads.html',
-            leads=leads,
-            project_by_lead=project_by_lead,
-            customers=customers,
-            customers_js=[_customer_to_js(c) for c in customers],
-            statuses=LEAD_STATUSES,
-            sources=LEAD_SOURCES,
-            next_lead_code=_next_code(InstallLead, 'LD-', 4),
-            page_title='فرص البيع — تركيب',
-        )
-    except Exception as exc:
-        db.session.rollback()
-        import logging
-        logging.getLogger('liftcore').exception('installation leads_list failed')
-        flash(f'تعذّر فتح فرص البيع: {exc}', 'error')
-        return redirect(url_for('installation.index'))
+    flash('تم إلغاء مسار «فرصة البيع» — ابدأ بعرض تركيب من المبيعات', 'success')
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @install_bp.route('/leads/add', methods=['POST'])
 def leads_add():
-    customer_id = request.form.get('customer_id', type=int)
-    if not customer_id:
-        flash('اختر عميلاً مسجّلاً من جدول العملاء أولاً', 'error')
-        return redirect(url_for('installation.leads_list'))
-    customer = tenant_query(Customer).filter_by(id=customer_id).first()
-    if not customer:
-        flash('العميل غير موجود — أضفه من صفحة العملاء', 'error')
-        return redirect(url_for('installation.leads_list'))
-    try:
-        snapshot = _customer_snapshot(customer)
-        lead = InstallLead(
-            code=_next_code(InstallLead, 'LD-', 4),
-            inquiry_date=_parse_date(request.form.get('inquiry_date')) or datetime.utcnow().date(),
-            customer_id=customer.id,
-            client_name=snapshot['client_name'],
-            phone=snapshot['client_phone'],
-            email=(customer.email or '').strip(),
-            city=(customer.city or '').strip(),
-            district=(customer.district or '').strip(),
-            address=snapshot['client_address'],
-            source=(request.form.get('source') or '').strip(),
-            building_type=(request.form.get('building_type') or '').strip(),
-            notes=(request.form.get('notes') or '').strip(),
-            status=(request.form.get('status') or 'جديد').strip(),
-        )
-        if lead.status not in LEAD_STATUSES:
-            lead.status = 'جديد'
-        assign_organization(lead)
-        db.session.add(lead)
-        db.session.commit()
-        flash(f'تم إنشاء الفرصة {lead.code}', 'success')
-    except Exception as exc:
-        db.session.rollback()
-        import logging
-        logging.getLogger('liftcore').exception('installation leads_add failed')
-        orig = getattr(exc, 'orig', None)
-        detail = str(orig or exc).strip()
-        if len(detail) > 280:
-            detail = detail[:277] + '…'
-        flash(f'فشل حفظ الفرصة: {detail}', 'error')
-    return redirect(url_for('installation.leads_list'))
+    flash('تم إلغاء مسار «فرصة البيع» — استخدم عرض تركيب جديد', 'error')
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @install_bp.route('/leads/<int:lead_id>/status', methods=['POST'])
 def leads_status(lead_id):
-    lead = tenant_get_or_404(InstallLead, lead_id)
-    status = (request.form.get('status') or '').strip()
-    if status in LEAD_STATUSES:
-        lead.status = status
-        db.session.commit()
-    return redirect(url_for('installation.leads_list'))
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @install_bp.route('/leads/<int:lead_id>/cancel', methods=['POST'])
 def leads_cancel(lead_id):
-    lead = tenant_get_or_404(InstallLead, lead_id)
-    if lead.status == 'ملغي':
-        flash('هذه الفرصة ملغاة مسبقاً', 'error')
-        return redirect(url_for('installation.leads_list'))
-    linked = _projects_by_lead_id([lead]).get(lead.id)
-    if lead.status == 'تم تحويله لمشروع' or linked:
-        flash('لا يمكن إلغاء فرصة مُحوّلة لمشروع', 'error')
-        return redirect(url_for('installation.leads_list'))
-    lead.status = 'ملغي'
-    db.session.commit()
-    flash(f'تم إلغاء الفرصة {lead.code}', 'success')
-    return redirect(url_for('installation.leads_list'))
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @install_bp.route('/leads/<int:lead_id>/convert', methods=['POST'])
 def leads_convert(lead_id):
-    lead = tenant_get_or_404(InstallLead, lead_id)
-    linked = _projects_by_lead_id([lead]).get(lead.id)
-    if lead.status == 'تم تحويله لمشروع' and linked:
-        flash('هذه الفرصة مُحوّلة مسبقاً', 'error')
-        return redirect(url_for('installation.project_detail', project_id=linked.id))
-    project = InstallProject(
-        code=_next_code(InstallProject, 'PRJ-', 4),
-        title=lead.client_display,
-        status='استفسار',
-        lead_id=lead.id,
-        customer_id=lead.customer_id,
-        notes=lead.notes,
-    )
-    assign_organization(project)
-    db.session.add(project)
-    lead.status = 'تم تحويله لمشروع'
-    db.session.commit()
-    flash(f'تم إنشاء المشروع {project.code} — العميل مربوط ويمكنك البدء بالتسعير', 'success')
-    return redirect(url_for('installation.project_detail', project_id=project.id))
+    return redirect(url_for('sales.install_quote_new'))

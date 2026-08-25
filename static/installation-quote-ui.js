@@ -362,6 +362,8 @@ document.addEventListener('DOMContentLoaded', function () {
       stops: el('sStops').value,
       capacity: el('sCap').value,
       machine: el('sMachine').value,
+      elev_class: el('sElevClass') ? el('sElevClass').value : 'passenger',
+      control_sys: el('sControlSys') ? el('sControlSys').value : 'simplex',
       door: el('sDoor').value,
       cabin: el('sCabin').value,
       entrances: el('sEntr').value,
@@ -1153,7 +1155,12 @@ document.addEventListener('DOMContentLoaded', function () {
       if (el('eFloorH') && s.spec.floor_height) el('eFloorH').value = toStoredCm(s.spec.floor_height);
       if (el('sStops') && s.spec.stops) el('sStops').value = s.spec.stops;
       if (el('sCap') && s.spec.capacity) el('sCap').value = s.spec.capacity;
-      if (el('sMachine') && s.spec.machine) el('sMachine').value = s.spec.machine;
+      if (el('sMachine') && s.spec.machine) {
+        var m = s.spec.machine === 'gearless' ? 'gearless_mrl' : s.spec.machine;
+        el('sMachine').value = m;
+      }
+      if (el('sElevClass') && s.spec.elev_class) el('sElevClass').value = s.spec.elev_class;
+      if (el('sControlSys') && s.spec.control_sys) el('sControlSys').value = s.spec.control_sys;
       if (el('sDoor') && s.spec.door) el('sDoor').value = s.spec.door;
       if (el('sCabin') && s.spec.cabin) el('sCabin').value = s.spec.cabin;
       if (el('sEntr') && s.spec.entrances) el('sEntr').value = s.spec.entrances;
@@ -1257,13 +1264,18 @@ document.addEventListener('DOMContentLoaded', function () {
   var restored = restoreDraftIfNeeded();
   if (cfg.saved) {
     loadSaved();
-  } else if (cfg.prefill && cfg.prefill.customer_id) {
-    if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
-      LcClientSelect.setCustomers('cCustomer', customers, cfg.prefill.customer_id);
-    } else if (el('cCustomer')) {
-      el('cCustomer').value = String(cfg.prefill.customer_id);
+  } else {
+    if (cfg.preferredQuoteType && ['new', 'upgrade', 'extend'].indexOf(cfg.preferredQuoteType) >= 0) {
+      switchTab(cfg.preferredQuoteType);
     }
-    onCustomerChange();
+    if (cfg.prefill && cfg.prefill.customer_id) {
+      if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
+        LcClientSelect.setCustomers('cCustomer', customers, cfg.prefill.customer_id);
+      } else if (el('cCustomer')) {
+        el('cCustomer').value = String(cfg.prefill.customer_id);
+      }
+      onCustomerChange();
+    }
   }
   if (restored) {
     markDrafting(true);

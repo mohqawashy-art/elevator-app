@@ -6,7 +6,32 @@
 
   var MACHINE_PRICES = {
     gearless: { 320: 14000, 450: 16000, 630: 19000, 800: 23000, 1000: 28000 },
+    gearless_mrl: { 320: 14500, 450: 16500, 630: 19500, 800: 23500, 1000: 28500 },
+    gearless_mr: { 320: 13500, 450: 15500, 630: 18500, 800: 22500, 1000: 27500 },
     geared: { 320: 11000, 450: 13000, 630: 15500, 800: 19000, 1000: 24000 },
+    hydraulic: { 320: 12000, 450: 14000, 630: 17000, 800: 21000, 1000: 26000 },
+    home: { 320: 9000, 450: 11000, 630: 13000, 800: 16000, 1000: 19000 },
+  };
+  var MACHINE_LABELS = {
+    gearless: 'جيرلس MRL',
+    gearless_mrl: 'جيرلس MRL (بدون غرفة)',
+    gearless_mr: 'جيرلس MR (بغرفة ماكينة)',
+    geared: 'جير تقليدي',
+    hydraulic: 'هيدروليك',
+    home: 'مصعد منزلي / فيلا',
+  };
+  var ELEV_CLASS_LABELS = {
+    passenger: 'ركاب',
+    hospital: 'مستشفى / سرير',
+    freight: 'بضائع',
+    panorama: 'بانوراما',
+    home: 'منزلي',
+  };
+  var CONTROL_SYS_LABELS = {
+    simplex: 'Simplex',
+    duplex: 'Duplex',
+    group: 'Group Control',
+    destination: 'Destination Control',
   };
   var PANEL_BASE_PRICE = 8000;
   var CUSTOM_ORIGIN_OPTION = '__custom__';
@@ -67,7 +92,7 @@
 
   var UPG = [
     { id: 'panel', name: 'لوحة تحكم + إنفرتر جديد', unit: 'قطعة', qty: function () { return 1; }, price: function (s, cap, spec) { return applyPanelOrigin(PANEL_BASE_PRICE, spec); }, desc: 'استبدال اللوحة القديمة بنظام حديث' },
-    { id: 'machine', name: 'ماكينة جديدة', unit: 'قطعة', qty: function () { return 1; }, price: function (s, cap, spec) { return applyOrigin(MACHINE_PRICES.gearless[cap], spec, 'full'); }, desc: 'جيرلس بالحمولة المختارة' },
+    { id: 'machine', name: 'ماكينة جديدة', unit: 'قطعة', qty: function () { return 1; }, price: function (s, cap, spec) { return applyOrigin((MACHINE_PRICES.gearless_mrl || MACHINE_PRICES.gearless)[cap], spec, 'full'); }, desc: 'جيرلس بالحمولة المختارة' },
     { id: 'ldoors', name: 'أبواب أدوار أوتوماتيك', unit: 'باب', qty: function (s) { return s; }, price: function (s, cap, spec) { return applyOrigin(2600, spec, 'light'); }, desc: 'الكمية = عدد الوقفات' },
     { id: 'cdoor', name: 'باب كبينة + مشغل', unit: 'قطعة', qty: function () { return 1; }, price: function (s, cap, spec) { return applyOrigin(4500, spec, 'light'); }, desc: '' },
     { id: 'cabin', name: 'تجديد تشطيب الكبينة', unit: 'مقطوع', qty: function () { return 1; }, price: function () { return 8000; }, desc: '' },
@@ -239,7 +264,8 @@
     var elevators = Math.max(1, Math.round(num(spec.elevator_count) || 1));
     var capRaw = spec.capacity;
     var cap = isNone(capRaw) ? 630 : (num(capRaw) || 630);
-    var machine = isNone(spec.machine) ? '' : (spec.machine || 'gearless');
+    var machine = isNone(spec.machine) ? '' : (spec.machine || 'gearless_mrl');
+    if (machine === 'gearless') machine = 'gearless_mrl';
     var door = isNone(spec.door) ? '' : (spec.door || 'tele');
     var cabin = isNone(spec.cabin) ? '' : (spec.cabin || 'steel');
     var entrRaw = spec.entrances;
@@ -247,6 +273,8 @@
     var floorH = toCm(spec.floor_height) || 300;
     var speed = isNone(spec.speed) ? '' : (spec.speed || '1.0');
     var shaft = isNone(spec.shaft) ? '' : (spec.shaft || 'ready');
+    var elevClass = spec.elev_class || 'passenger';
+    var controlSys = spec.control_sys || 'simplex';
     var includeMachine = !!machine;
     var includePanel = !isNone(spec.panel_origin);
     var machineSuffix = originSuffix(spec);
@@ -296,8 +324,9 @@
     // مرحلة 2 — كبينة وأحبال وماكينة
     if (includeMachine && MACHINE_PRICES[machine]) {
       var machineBase = MACHINE_PRICES[machine][cap] || MACHINE_PRICES[machine][630];
-      var machineName = 'ماكينة ' + (machine === 'gearless' ? 'جيرلس MRL' : 'جير') + ' — ' + cap + ' كجم';
+      var machineName = 'ماكينة ' + (MACHINE_LABELS[machine] || machine) + ' — ' + cap + ' كجم';
       if (speed) machineName += ' / ' + speed + ' م/ث';
+      if (ELEV_CLASS_LABELS[elevClass]) machineName += ' / ' + ELEV_CLASS_LABELS[elevClass];
       machineName += machineSuffix;
       add(STAGE_CABIN, machineName, 'قطعة', 1, applyOrigin(machineBase, spec, 'full'));
     }
@@ -310,13 +339,20 @@
     add(STAGE_CABIN, 'باب كبينة أوتوماتيك + مشغل (Operator)' + machineSuffix, 'قطعة', 1, applyOrigin(4500, spec, 'light'));
     add(STAGE_CABIN, 'شاسيه كبينة + باراشوت (Safety Gear)', 'طقم', 1, 6500);
     add(STAGE_CABIN, 'إطار ثقل موازن + بلوكات', 'طقم', 1, 3500);
-    add(STAGE_CABIN, 'حبال جر 8 مم (بالمتر)', 'متر', ropesM, 12);
+    if (machine === 'hydraulic') {
+      add(STAGE_CABIN, 'وحدة قدرة هيدروليك + أسطوانة', 'طقم', 1, applyOrigin(8500, spec, 'full'));
+    } else {
+      add(STAGE_CABIN, 'حبال جر 8 مم (بالمتر)', 'متر', ropesM, 12);
+    }
     add(STAGE_CABIN, 'منظم سرعة (Governor) + بكرة شد', 'طقم', 1, 1800);
     add(STAGE_CABIN, 'بوفرات', 'قطعة', 2, 900);
 
     // مرحلة 3 — كنترول وتشغيل
     if (includePanel) {
-      add(STAGE_CTRL, 'لوحة تحكم + إنفرتر' + panelLabel, 'قطعة', 1, applyPanelOrigin(PANEL_BASE_PRICE, spec));
+      var ctrlExtra = controlSys === 'destination' ? 4500 : (controlSys === 'group' ? 2500 : (controlSys === 'duplex' ? 1200 : 0));
+      var ctrlName = 'لوحة تحكم + إنفرتر' + panelLabel;
+      if (CONTROL_SYS_LABELS[controlSys]) ctrlName += ' — ' + CONTROL_SYS_LABELS[controlSys];
+      add(STAGE_CTRL, ctrlName, 'قطعة', 1, applyPanelOrigin(PANEL_BASE_PRICE, spec) + ctrlExtra);
     }
     add(STAGE_CTRL, 'ترافلينج كيبل (بالمتر)', 'متر', travCable, 18);
     add(STAGE_CTRL, 'مفاتيح حدود + ممرات مغناطيسية', 'طقم', 1, 800);

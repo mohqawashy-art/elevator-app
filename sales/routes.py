@@ -57,13 +57,7 @@ def hub():
         .count()
     )
     install_open = 0
-    estimates_count = 0
     module_on = False
-    try:
-        from models import ElevatorEstimate
-        estimates_count = tenant_query(ElevatorEstimate).count()
-    except Exception:
-        estimates_count = 0
     try:
         module_on = bool(install_module_enabled())
         if module_on:
@@ -81,61 +75,141 @@ def hub():
         page_title='المبيعات',
         maint_open=maint_open,
         install_open=install_open,
-        estimates_count=estimates_count,
         install_module_on=module_on,
     )
 
 
 @sales_bp.route('/install')
 def install_hub():
-    """فرع مبيعات التركيبات."""
-    from installation.config import install_module_enabled
-    from models import ElevatorEstimate
-
-    module_on = bool(install_module_enabled())
-    estimates_count = tenant_query(ElevatorEstimate).count()
-    install_open = 0
-    if module_on:
-        from installation.models import InstallQuotation
-        install_open = (
-            tenant_query(InstallQuotation)
-            .filter(InstallQuotation.status.in_(['مسودة', 'مُرسل', 'تفاوض']))
-            .count()
-        )
-    return render_template(
-        'sales/install_hub.html',
-        page_title='مبيعات التركيبات',
-        install_module_on=module_on,
-        estimates_count=estimates_count,
-        install_open=install_open,
-    )
+    return redirect(url_for('sales.quotes_inbox', kind='install'))
 
 
 @sales_bp.route('/maintenance')
 def maintenance_hub():
-    """فرع مبيعات الصيانة."""
-    maint_open = (
-        tenant_query(MaintenanceQuote)
-        .filter(MaintenanceQuote.status.in_(['مسودة', 'مُرسل']))
-        .count()
+    return redirect(url_for('sales.maintenance_quotes_list'))
+
+
+@sales_bp.route('/install/quotes/new', methods=['GET', 'POST'])
+def install_quote_new():
+    """بدء عرض تركيب من المبيعات — ينشئ مشروعاً ويفتح فورم التسعير الحديث."""
+    from installation.config import install_module_enabled
+    from installation.models import InstallProject
+    from installation.routes import _next_code
+
+    if not install_module_enabled():
+        flash('وحدة التركيب غير مفعّلة', 'error')
+        return redirect(url_for('sales.hub'))
+
+    if request.method == 'GET' and not request.args.get('go'):
+        # شاشة اختيار سريعة قبل الفورم
+        return render_template(
+            'sales/install_quote_start.html',
+            page_title='عرض تركيب جديد',
+        )
+
+    title = (request.form.get('title') or request.args.get('title') or '').strip()
+    quote_kind = (request.form.get('quote_kind') or request.args.get('quote_kind') or 'new').strip()
+    kind_labels = {
+        'new': 'تركيب مصعد جديد',
+        'upgrade': 'تحديث مصعد قائم',
+        'extend': 'إضافة أدوار',
+    }
+    if quote_kind not in kind_labels:
+        quote_kind = 'new'
+    if not title:
+        title = kind_labels[quote_kind]
+
+    project = InstallProject(
+        code=_next_code(InstallProject, 'PRJ-', 4),
+        title=title,
+        status='تسعير',
+        notes=f'من مبيعات التركيبات — {kind_labels[quote_kind]}',
     )
-    return render_template(
-        'sales/maintenance_hub.html',
-        page_title='مبيعات الصيانة',
-        maint_open=maint_open,
-    )
+    assign_organization(project)
+    db.session.add(project)
+    db.session.commit()
+    flash('تم إنشاء المشروع — أكمل مواصفات العرض ثم أرسله للعميل', 'success')
+    return redirect(url_for(
+        'installation.project_quote',
+        project_id=project.id,
+        new=1,
+        quote_type=quote_kind,
+    ))
+
+
+@sales_bp.route('/install/quotes/<int:quotation_id>/deliver/<channel>')
+def install_quote_deliver(quotation_id, channel):
+    """فتح واتساب/إيميل لإرسال عرض التركيب وتعليم الحالة كمُرسل."""
+    from installation.models import InstallQuotation
+    from models import Settings
+    from sales.delivery import delivery_links_for_install_quote
+
+    channel = (channel or '').strip().lower()
+    if channel not in ('whatsapp', 'email'):
+        flash('قناة إرسال غير مدعومة', 'error')
+        return redirect(url_for('sales.quotes_inbox', kind='install'))
+
+    q = tenant_get_or_404(InstallQuotation, quotation_id)
+    print_url = url_for('installation.quote_print', quotation_id=q.id, _external=True)
+    settings = tenant_query(Settings).first()
+    links = delivery_links_for_install_quote(q, print_url=print_url, settings=settings)
+    target = links['whatsapp_url'] if channel == 'whatsapp' else links['mailto_url']
+    if not target:
+        missing = 'رقم جوال' if channel == 'whatsapp' else 'بريد إلكتروني'
+        flash(f'لا يوجد {missing} للعميل — حدّث بيانات العميل أولاً', 'error')
+        return redirect(url_for('installation.project_detail', project_id=q.project_id))
+
+    if q.status not in ('مقبول', 'مرفوض'):
+        q.status = 'مُرسل'
+        from datetime import datetime as dt
+        if hasattr(q, 'sent_at'):
+            pass
+        project = q.project
+        if project and project.status in ('استفسار', 'معاينة', 'هندسة', 'تسعير'):
+            project.status = 'عرض سعر'
+        db.session.commit()
+
+    return redirect(target)
+
+
+@sales_bp.route('/maintenance-quotes/<int:quote_id>/deliver/<channel>')
+def maintenance_quote_deliver(quote_id, channel):
+    from models import Settings
+    from sales.delivery import delivery_links_for_maint_quote
+
+    channel = (channel or '').strip().lower()
+    if channel not in ('whatsapp', 'email'):
+        flash('قناة إرسال غير مدعومة', 'error')
+        return redirect(url_for('sales.maintenance_quotes_list'))
+
+    quote = tenant_get_or_404(MaintenanceQuote, quote_id)
+    print_url = url_for('sales.maintenance_quote_print', quote_id=quote.id, _external=True)
+    settings = tenant_query(Settings).first()
+    links = delivery_links_for_maint_quote(quote, print_url=print_url, settings=settings)
+    target = links['whatsapp_url'] if channel == 'whatsapp' else links['mailto_url']
+    if not target:
+        missing = 'رقم جوال' if channel == 'whatsapp' else 'بريد إلكتروني'
+        flash(f'لا يوجد {missing} للعميل — حدّث بيانات العميل أولاً', 'error')
+        return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
+
+    if quote.status not in ('مقبول', 'مرفوض'):
+        quote.status = 'مُرسل'
+        quote.sent_at = datetime.utcnow()
+        db.session.commit()
+
+    return redirect(target)
 
 
 @sales_bp.route('/install/from-estimate/<int:estimate_id>', methods=['POST'])
 def convert_estimate_to_install_quote(estimate_id):
-    """تقدير → عرض سعر تركيب (مشروع + عرض)."""
+    """تقدير قديم → عرض سعر (للتوافق). المسار الجديد عبر /sales/install/quotes/new."""
     from installation.config import install_module_enabled
     from installation.routes import _next_code
     from models import ElevatorEstimate
 
     if not install_module_enabled():
         flash('وحدة التركيب غير مفعّلة', 'error')
-        return redirect('/elevator-estimates')
+        return redirect(url_for('sales.install_quote_new'))
 
     est = tenant_get_or_404(ElevatorEstimate, estimate_id)
     if not est.customer_id:
@@ -156,13 +230,17 @@ def convert_estimate_to_install_quote(estimate_id):
     except Exception:
         db.session.rollback()
         flash('تعذّر إصدار عرض السعر من التقدير', 'error')
-        return redirect('/elevator-estimates')
+        return redirect(url_for('sales.install_quote_new'))
 
     flash(
         f'صدر عرض السعر {result["quote_code"]} — راجع وعدّل ثم أرسل للعميل',
         'success',
     )
-    return redirect(url_for('installation.project_detail', project_id=result['project_id']))
+    return redirect(url_for(
+        'installation.project_quote',
+        project_id=result['project_id'],
+        quotation_id=result['quotation_id'],
+    ))
 
 
 @sales_bp.route('/quotes')
@@ -217,7 +295,11 @@ def quotes_inbox():
             'total': getattr(q, 'grand_total', None) or 0,
             'customer': cust_name,
             'created_at': getattr(q, 'created_at', None),
-            'url': url_for('installation.project_detail', project_id=q.project_id) if q.project_id else '#',
+            'url': url_for(
+                'installation.project_quote',
+                project_id=q.project_id,
+                quotation_id=q.id,
+            ) if q.project_id else '#',
             'print_url': url_for('installation.quote_print', quotation_id=q.id),
             'contract_id': None,
         })

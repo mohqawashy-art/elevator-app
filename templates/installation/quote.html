@@ -113,17 +113,40 @@
                   <option value="320">320 كجم</option><option value="450">450 كجم</option>
                   <option value="630" selected>630 كجم</option><option value="800">800 كجم</option><option value="1000">1000 كجم</option>
                 </select></div>
-              <div class="field"><label>نوع الماكينة</label>
+              <div class="field"><label>نوع النظام / الماكينة</label>
                 <select id="sMachine">
                   <option value="__none__">بدون</option>
-                  <option value="gearless" selected>جيرلس MRL</option>
-                  <option value="geared">جير</option>
+                  <option value="gearless_mrl" selected>جيرلس MRL (بدون غرفة)</option>
+                  <option value="gearless_mr">جيرلس MR (بغرفة ماكينة)</option>
+                  <option value="geared">جير تقليدي</option>
+                  <option value="hydraulic">هيدروليك</option>
+                  <option value="home">مصعد منزلي / فيلا</option>
+                </select></div>
+              <div class="field"><label>نوع المصعد</label>
+                <select id="sElevClass">
+                  <option value="passenger" selected>ركاب</option>
+                  <option value="hospital">مستشفى / سرير</option>
+                  <option value="freight">بضائع</option>
+                  <option value="panorama">بانوراما / مشاهدة</option>
+                  <option value="home">منزلي</option>
+                </select></div>
+              <div class="field"><label>نظام التحكم</label>
+                <select id="sControlSys">
+                  <option value="simplex" selected>Simplex</option>
+                  <option value="duplex">Duplex</option>
+                  <option value="group">Group Control</option>
+                  <option value="destination">Destination Control (DCS)</option>
                 </select></div>
               <div class="field"><label>السرعة</label>
                 <select id="sSpeed">
                   <option value="__none__">بدون</option>
+                  <option value="0.5">0.5 م/ث</option>
+                  <option value="0.63">0.63 م/ث</option>
                   <option value="1.0" selected>1.0 م/ث</option>
                   <option value="1.6">1.6 م/ث</option>
+                  <option value="1.75">1.75 م/ث</option>
+                  <option value="2.0">2.0 م/ث</option>
+                  <option value="2.5">2.5 م/ث</option>
                 </select></div>
 
               <div class="field form-full" style="grid-column:1/-1;margin-top:4px">
@@ -356,6 +379,7 @@ window.__INSTALL_QUOTE__ = {
   noneOption: '__none__',
   machineOrigins: {{ machine_origins | tojson }},
   defaultCustomerId: {{ default_customer_id | tojson }},
+  preferredQuoteType: {{ (preferred_quote_type|default(none)) | tojson }},
   companyName: {{ ((company_settings.company_name if company_settings and company_settings.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة')) | tojson }},
   companyLogoUrl: {{ brand_logo_url | tojson }},
   logoWidth: {{ (logo_width_report or 150) | tojson }},
@@ -369,7 +393,7 @@ window.__INSTALL_QUOTE__ = {
   companySignOffsetY: {{ (company_sign_offset_y or 0) | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=extend2"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=extend2"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=market1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=market1"></script>
 </body>
 </html>

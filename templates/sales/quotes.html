@@ -17,7 +17,7 @@
       <div class="page-actions">
         <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
         {% if kind in ['install', 'تركيب', 'تركيبات'] %}
-        <a href="/elevator-estimates" class="btn btn-primary btn-sm">+ من تقدير</a>
+        <a href="{{ url_for('sales.install_quote_new') }}" class="btn btn-primary btn-sm">+ عرض تركيب</a>
         {% else %}
         <a href="{{ url_for('sales.maintenance_quote_new') }}" class="btn btn-primary btn-sm">+ عرض صيانة</a>
         {% endif %}

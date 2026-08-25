@@ -12,7 +12,7 @@
     <div class="page-header">
       <div class="page-title">مشاريع التركيب</div>
       <div class="page-actions">
-        <a href="{{ url_for('installation.leads_list') }}" class="btn btn-primary btn-sm">+ فرصة بيع</a>
+        <a href="{{ url_for('sales.install_quote_new') }}" class="btn btn-primary btn-sm">+ عرض تركيب</a>
       </div>
     </div>
 
@@ -51,7 +51,7 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">لا توجد مشاريع — حوّل فرصة بيع أولاً</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">لا توجد مشاريع — ابدأ من <a href="{{ url_for('sales.install_quote_new') }}">عرض تركيب جديد</a></td></tr>
           {% endfor %}
         </tbody>
       </table>

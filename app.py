@@ -10781,25 +10781,8 @@ def _parse_estimate_lines(form):
 
 @app.route('/elevator-estimates')
 def elevator_estimates():
-    estimates = tenant_query(ElevatorEstimate).order_by(ElevatorEstimate.created_at.desc()).all()
-    customers = tenant_query(Customer).order_by(Customer.name).all()
-    edit_raw = request.args.get('edit', '').strip()
-    edit_est = None
-    if edit_raw.isdigit():
-        edit_est = tenant_query(ElevatorEstimate).filter_by(id=int(edit_raw)).first()
-    return render_template(
-        'elevator-estimates.html',
-        estimates=estimates,
-        customers=customers,
-        edit_est=edit_est,
-        machine_types=MACHINE_TYPES,
-        elev_types=ELEV_TYPES,
-        statuses=ESTIMATE_STATUSES,
-        next_es_code=next_code(ElevatorEstimate, 'ES-', digits=4),
-        today=date.today().isoformat(),
-        default_vat=DEFAULT_VAT_PCT,
-        default_margin=DEFAULT_MARGIN_PCT,
-    )
+    flash('استخدم عرض التركيب الحديث من المبيعات (تركيب / تحديث / إضافة أدوار)', 'success')
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @app.route('/api/elevator-estimates/calculate', methods=['POST'])
