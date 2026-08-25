@@ -27,6 +27,35 @@ def _parse_date(raw: str):
         return None
 
 
+def _split_maint_notes(notes: str | None) -> tuple[str, list[str], str]:
+    """استخراج الباقة والنطاق من ملاحظات العرض المحفوظة."""
+    text = (notes or '').strip()
+    package = 'قياسي'
+    scope: list[str] = []
+    body_lines: list[str] = []
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith('باقة الخدمة:'):
+            package = s.split(':', 1)[1].strip() or package
+        elif s.startswith('نطاق الخدمة:'):
+            scope = [p.strip() for p in s.split(':', 1)[1].split('،') if p.strip()]
+        else:
+            body_lines.append(line)
+    return package, scope, '\n'.join(body_lines).strip()
+
+
+def _compose_maint_notes(form) -> str:
+    package = (form.get('service_package') or 'قياسي').strip() or 'قياسي'
+    scope = form.getlist('scope_items') if hasattr(form, 'getlist') else []
+    body = (form.get('notes_body') or form.get('notes') or '').strip()
+    parts = [f'باقة الخدمة: {package}']
+    if scope:
+        parts.append('نطاق الخدمة: ' + '، '.join(scope))
+    if body:
+        parts.append(body)
+    return '\n'.join(parts)
+
+
 def _apply_maint_quote_form(quote: MaintenanceQuote, form) -> None:
     quote.customer_id = int(form.get('customer_id') or 0)
     quote.duration_months = int(form.get('duration_months') or 12)
@@ -40,11 +69,35 @@ def _apply_maint_quote_form(quote: MaintenanceQuote, form) -> None:
     quote.city = (form.get('city') or '').strip() or None
     quote.district = (form.get('district') or '').strip() or None
     quote.address = (form.get('address') or '').strip() or None
-    quote.notes = (form.get('notes') or '').strip() or None
+    quote.notes = _compose_maint_notes(form) or None
     recalc_quote_totals(quote)
     if quote.start_date and quote.duration_months and not quote.end_date:
         from sales.service import add_months
         quote.end_date = add_months(quote.start_date, quote.duration_months)
+
+
+def _maint_form_context(quote=None, *, selected_elevator_ids=None):
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    elevators = tenant_query(Elevator).order_by(Elevator.code).limit(800).all()
+    package, scope, notes_body = _split_maint_notes(quote.notes if quote else None)
+    elev_n = len(selected_elevator_ids or [])
+    months = float((quote.duration_months if quote else 12) or 12)
+    price_per = 0.0
+    if quote and elev_n and months and quote.value:
+        # عكس تقريبي: قيمة / مصاعد / (مدة÷12)
+        years = months / 12.0
+        if years > 0:
+            price_per = money_round((quote.value or 0) / elev_n / years)
+    return dict(
+        customers=customers,
+        elevators=elevators,
+        selected_elevator_ids=selected_elevator_ids or set(),
+        today=date.today().isoformat(),
+        package=package,
+        scope_items=scope,
+        notes_body=notes_body,
+        price_per_elevator=price_per,
+    )
 
 
 @sales_bp.route('/')
@@ -333,11 +386,16 @@ def quotes_inbox():
 
 @sales_bp.route('/maintenance-quotes')
 def maintenance_quotes_list():
-    quotes = tenant_query(MaintenanceQuote).order_by(MaintenanceQuote.id.desc()).limit(300).all()
+    status = (request.args.get('status') or '').strip()
+    q = tenant_query(MaintenanceQuote).order_by(MaintenanceQuote.id.desc())
+    if status:
+        q = q.filter_by(status=status)
+    quotes = q.limit(300).all()
     return render_template(
         'sales/maintenance_quotes.html',
         page_title='عروض سعر الصيانة',
         quotes=quotes,
+        status=status,
     )
 
 
@@ -345,11 +403,14 @@ def maintenance_quotes_list():
 def maintenance_quote_new():
     from app import next_code
 
-    customers = tenant_query(Customer).order_by(Customer.name).all()
     if request.method == 'POST':
         customer_id = request.form.get('customer_id', type=int)
+        elev_ids = request.form.getlist('elevator_ids')
         if not customer_id:
             flash('اختر العميل', 'error')
+            return redirect(url_for('sales.maintenance_quote_new'))
+        if not elev_ids:
+            flash('اختر مصعداً واحداً على الأقل مشمولاً في العرض', 'error')
             return redirect(url_for('sales.maintenance_quote_new'))
         quote = MaintenanceQuote(code=next_code(MaintenanceQuote, 'MQ-', digits=5))
         assign_organization(quote)
@@ -357,22 +418,21 @@ def maintenance_quote_new():
         if not quote.customer_id:
             flash('اختر العميل', 'error')
             return redirect(url_for('sales.maintenance_quote_new'))
+        if money_round(quote.value) <= 0:
+            flash('أدخل قيمة العرض أو سعر المصعد', 'error')
+            return redirect(url_for('sales.maintenance_quote_new'))
         db.session.add(quote)
         db.session.flush()
-        sync_quote_elevators(quote.id, request.form.getlist('elevator_ids'))
+        sync_quote_elevators(quote.id, elev_ids)
         db.session.commit()
         flash(f'تم إنشاء عرض {quote.code}', 'success')
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
-    elevators = tenant_query(Elevator).order_by(Elevator.code).limit(500).all()
     return render_template(
         'sales/maintenance_quote_form.html',
         page_title='عرض سعر صيانة جديد',
         quote=None,
-        customers=customers,
-        elevators=elevators,
-        selected_elevator_ids=set(),
-        today=date.today().isoformat(),
+        **_maint_form_context(),
     )
 
 
@@ -384,15 +444,20 @@ def maintenance_quote_edit(quote_id):
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
     if request.method == 'POST':
+        elev_ids = request.form.getlist('elevator_ids')
+        if not elev_ids:
+            flash('اختر مصعداً واحداً على الأقل', 'error')
+            return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
         _apply_maint_quote_form(quote, request.form)
-        sync_quote_elevators(quote.id, request.form.getlist('elevator_ids'))
+        if money_round(quote.value) <= 0:
+            flash('قيمة العرض يجب أن تكون أكبر من صفر', 'error')
+            return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
+        sync_quote_elevators(quote.id, elev_ids)
         quote.updated_at = datetime.utcnow()
         db.session.commit()
         flash('تم حفظ العرض', 'success')
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
-    customers = tenant_query(Customer).order_by(Customer.name).all()
-    elevators = tenant_query(Elevator).order_by(Elevator.code).limit(500).all()
     selected = {
         row.elevator_id
         for row in tenant_query(MaintenanceQuoteElevator).filter_by(quote_id=quote.id).all()
@@ -401,10 +466,7 @@ def maintenance_quote_edit(quote_id):
         'sales/maintenance_quote_form.html',
         page_title=f'عرض صيانة {quote.code}',
         quote=quote,
-        customers=customers,
-        elevators=elevators,
-        selected_elevator_ids=selected,
-        today=date.today().isoformat(),
+        **_maint_form_context(quote, selected_elevator_ids=selected),
     )
 
 
@@ -431,6 +493,16 @@ def maintenance_quote_approve(quote_id):
         return redirect(url_for('contracts'))
     if not quote.customer_id:
         flash('العرض بدون عميل', 'error')
+        return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
+    elev_count = tenant_query(MaintenanceQuoteElevator).filter_by(quote_id=quote.id).count()
+    if elev_count < 1:
+        flash('أضف مصعداً واحداً على الأقل قبل الموافقة', 'error')
+        return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
+    if money_round(quote.total) <= 0:
+        flash('قيمة العرض غير مكتملة', 'error')
+        return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
+    if not quote.start_date:
+        flash('حدد تاريخ بداية العقد', 'error')
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
     try:
         contract = create_contract_from_maintenance_quote(quote, next_code_fn=next_code)
