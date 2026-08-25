@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = page_title|default('المبيعات') %}
+{% include 'installation/_layout_head.html' %}
+<style>
+.sales-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:8px}
+.sales-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-decoration:none;color:inherit;display:block;transition:var(--trans)}
+.sales-card:hover{border-color:var(--border2);background:var(--bg3)}
+.sales-card h3{font-size:15px;margin-bottom:6px;color:var(--text1)}
+.sales-card p{font-size:12px;color:var(--text2);line-height:1.6}
+.sales-card .meta{margin-top:12px;font-size:12px;color:var(--gold)}
+.flow{margin:18px 0;padding:14px 16px;border:1px dashed var(--border2);border-radius:var(--r);color:var(--text2);font-size:13px;line-height:1.7}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">المبيعات</div>
+    </div>
+    <div class="flow">
+      المسار: <b>تسعير (تركيب أو صيانة)</b> → <b>عرض سعر</b> → <b>موافقة العميل</b> → تحويل تلقائي إلى
+      <b>التركيبات</b> أو <b>عقد صيانة</b>.
+    </div>
+    <div class="sales-grid">
+      {% if install_module_on and has_perm('installation_projects.read') %}
+      <a class="sales-card" href="{{ url_for('installation.leads_list') }}">
+        <h3>فرص بيع التركيب</h3>
+        <p>تسجيل ومتابعة فرص التركيب قبل إنشاء المشروع والعرض.</p>
+      </a>
+      <a class="sales-card" href="{{ url_for('installation.projects_list') }}">
+        <h3>تسعير التركيب</h3>
+        <p>عروض أسعار مشاريع التركيب والتفاوض حتى القبول.</p>
+        <div class="meta">عروض مفتوحة: {{ install_open }}</div>
+      </a>
+      {% endif %}
+      {% if has_perm('sales_quotes.read') or has_perm('contracts.read') %}
+      <a class="sales-card" href="{{ url_for('sales.maintenance_quotes_list') }}">
+        <h3>تسعير عقود الصيانة</h3>
+        <p>إنشاء عرض سعر صيانة ثم تحويله لعقد بعد موافقة العميل.</p>
+        <div class="meta">عروض مفتوحة: {{ maint_open }}</div>
+      </a>
+      {% endif %}
+      {% if has_perm('elevator_estimates.read') %}
+      <a class="sales-card" href="/elevator-estimates">
+        <h3>تقدير تكلفة مصعد</h3>
+        <p>حاسبة تقدير تكلفة أولية قبل عرض التركيب التفصيلي.</p>
+      </a>
+      {% endif %}
+      <a class="sales-card" href="{{ url_for('sales.quotes_inbox') }}">
+        <h3>عروض السعر</h3>
+        <p>صندوق موحد لعروض التركيب والصيانة وحالاتها.</p>
+      </a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

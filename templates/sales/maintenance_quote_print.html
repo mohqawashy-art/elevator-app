@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>عرض سعر صيانة {{ quote.code }}</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{font-family:'IBM Plex Sans Arabic',sans-serif;padding:24px;color:#111;max-width:800px;margin:auto}
+h1{font-size:20px;margin-bottom:4px}
+.meta{color:#555;font-size:13px;margin-bottom:18px}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+td,th{border:1px solid #ddd;padding:8px;text-align:right;font-size:13px}
+.total{font-size:16px;font-weight:600;margin-top:12px}
+@media print{.noprint{display:none}}
+</style>
+</head>
+<body>
+<button class="noprint" onclick="window.print()">طباعة</button>
+<h1>عرض سعر — عقد صيانة مصاعد</h1>
+<div class="meta">رقم العرض: <b dir="ltr">{{ quote.code }}</b> · الحالة: {{ quote.status }}</div>
+<table>
+  <tr><th>العميل</th><td>{{ quote.customer.name if quote.customer else '—' }}</td></tr>
+  <tr><th>المدة</th><td>{{ quote.duration_months or '—' }} شهر</td></tr>
+  <tr><th>التكرار</th><td>{{ quote.maint_frequency or '—' }}</td></tr>
+  <tr><th>الزيارات شهرياً</th><td>{{ quote.visits_per_month or '—' }}</td></tr>
+  <tr><th>من / إلى</th><td>{{ quote.start_date or '—' }} — {{ quote.end_date or '—' }}</td></tr>
+  <tr><th>المدينة</th><td>{{ quote.city or '—' }} {% if quote.district %}· {{ quote.district }}{% endif %}</td></tr>
+  <tr><th>العنوان</th><td>{{ quote.address or '—' }}</td></tr>
+</table>
+{% if elevators %}
+<h3>المصاعد المشمولة</h3>
+<ul>{% for e in elevators %}<li dir="ltr">{{ e.code }} — {{ e.building_name or '' }}</li>{% endfor %}</ul>
+{% endif %}
+<table>
+  <tr><th>القيمة</th><td dir="ltr">{{ '%.2f'|format(quote.value or 0) }}</td></tr>
+  <tr><th>الضريبة ({{ quote.tax_pct or 0 }}%)</th><td dir="ltr">{{ '%.2f'|format(quote.tax_amount or 0) }}</td></tr>
+  <tr><th>الإجمالي</th><td dir="ltr"><b>{{ '%.2f'|format(quote.total or 0) }}</b></td></tr>
+</table>
+{% if quote.notes %}<p><b>ملاحظات:</b> {{ quote.notes }}</p>{% endif %}
+{% include 'partials/document_company_seal.html' ignore missing %}
+</body>
+</html>

@@ -772,6 +772,13 @@ def quote_approve(project_id, quotation_id):
     project.status = 'عقد'
     if not project.customer_id and q.customer_id:
         project.customer_id = q.customer_id
+    try:
+        from app import next_code
+        from sales.service import create_install_contract_from_quotation
+        create_install_contract_from_quotation(project, q, next_code_fn=next_code)
+    except Exception as exc:
+        from flask import current_app
+        current_app.logger.warning('install contract from quote skipped: %s', exc)
     create_execution_timeline(project, db.session)
     sync_project_auto_amounts(project, force=True)
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)

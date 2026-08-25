@@ -12717,6 +12717,9 @@ def api_client_annual(customer_id):
 from installation import register_install_module
 register_install_module(app)
 
+from sales import register_sales_module
+register_sales_module(app)
+
 
 def _ensure_installation_project_routes(flask_app):
     """تسجيل مسارات المشاريع إذا كانت نسخة قديمة من blueprint لم تُحمَّل."""

@@ -55,16 +55,40 @@
 </div>
 {% endif %}
 
-{% if has_any_perm('elevator_estimates.read', 'installation_projects.read') %}
+{% if has_any_perm('sales_quotes.read', 'elevator_estimates.read', 'installation_projects.read') %}
+<div class="nav-group" data-nav-group>
+  <button type="button" class="nav-group-btn" aria-expanded="false" aria-haspopup="true">
+    <span class="nav-group-label">المبيعات</span>
+    <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M3 4.5l3 3 3-3"/></svg>
+  </button>
+  <div class="nav-group-menu">
+    {% if has_any_perm('sales_quotes.read', 'installation_projects.read', 'elevator_estimates.read') %}
+    <a href="{{ url_for('sales.hub') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>لوحة المبيعات</a>
+    {% endif %}
+    {% if install_module_enabled and has_perm('installation_projects.read') %}
+    <a href="/installation/leads" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>فرص بيع التركيب</a>
+    <a href="/installation/projects" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تسعير التركيب</a>
+    {% endif %}
+    {% if has_perm('sales_quotes.read') or has_perm('contracts.create') or has_perm('contracts.read') %}
+    <a href="{{ url_for('sales.maintenance_quotes_list') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>تسعير عقود الصيانة</a>
+    {% endif %}
+    {% if has_perm('elevator_estimates.read') %}<a href="/elevator-estimates" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تقدير تكلفة مصعد</a>{% endif %}
+    {% if has_any_perm('sales_quotes.read', 'installation_projects.read') %}
+    <a href="{{ url_for('sales.quotes_inbox') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>عروض السعر</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if has_any_perm('installation_projects.read') %}
 <div class="nav-group" data-nav-group>
   <button type="button" class="nav-group-btn" aria-expanded="false" aria-haspopup="true">
     <span class="nav-group-label">التركيب</span>
     <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M3 4.5l3 3 3-3"/></svg>
   </button>
   <div class="nav-group-menu">
-    {% if has_perm('elevator_estimates.read') %}<a href="/elevator-estimates" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تقدير تكلفة مصعد</a>{% endif %}
     {% if install_module_enabled and has_perm('installation_projects.read') %}
-    <a href="/installation/" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M2 20h20M6 20V10l6-6 6 6v10"/><path d="M10 20v-6h4v6"/></svg>مشاريع التركيب</a>
+    <a href="/installation/" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M2 20h20M6 20V10l6-6 6 6v10"/><path d="M10 20v-6h4v6"/></svg>مشاريع وتنفيذ التركيب</a>
     {% endif %}
   </div>
 </div>

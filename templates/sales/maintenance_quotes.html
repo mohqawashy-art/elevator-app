@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = page_title|default('تسعير عقود الصيانة') %}
+{% include 'installation/_layout_head.html' %}
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">تسعير عقود الصيانة</div>
+      <div class="page-actions">
+        <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
+        <a href="{{ url_for('sales.maintenance_quote_new') }}" class="btn btn-primary btn-sm">+ عرض جديد</a>
+      </div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    <div class="panel" style="padding:0;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="text-align:right;color:var(--text2);border-bottom:1px solid var(--border)">
+            <th style="padding:10px">الرمز</th>
+            <th style="padding:10px">العميل</th>
+            <th style="padding:10px">المدة</th>
+            <th style="padding:10px">الحالة</th>
+            <th style="padding:10px">الإجمالي</th>
+            <th style="padding:10px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for q in quotes %}
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px" dir="ltr">{{ q.code }}</td>
+            <td style="padding:10px">{{ q.customer.name if q.customer else '—' }}</td>
+            <td style="padding:10px">{{ q.duration_months or '—' }} شهر</td>
+            <td style="padding:10px">{{ q.status }}</td>
+            <td style="padding:10px" dir="ltr">{{ '%.2f'|format(q.total or 0) }}</td>
+            <td style="padding:10px"><a class="btn btn-secondary btn-sm" href="{{ url_for('sales.maintenance_quote_edit', quote_id=q.id) }}">فتح</a></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" style="padding:20px;color:var(--text2)">لا توجد عروض بعد</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

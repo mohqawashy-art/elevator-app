@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = page_title|default('عروض السعر') %}
+{% include 'installation/_layout_head.html' %}
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">عروض السعر</div>
+      <div class="page-actions">
+        <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
+        <a href="{{ url_for('sales.maintenance_quote_new') }}" class="btn btn-primary btn-sm">+ عرض صيانة</a>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox') }}">الكل</a>
+      {% for s in ['مسودة','مُرسل','تفاوض','مقبول','مرفوض'] %}
+      <a class="btn btn-sm {{ 'btn-primary' if status==s else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', status=s) }}">{{ s }}</a>
+      {% endfor %}
+    </div>
+    <div class="panel" style="padding:0;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="text-align:right;color:var(--text2);border-bottom:1px solid var(--border)">
+            <th style="padding:10px">النوع</th>
+            <th style="padding:10px">الرمز</th>
+            <th style="padding:10px">العميل</th>
+            <th style="padding:10px">الحالة</th>
+            <th style="padding:10px">الإجمالي</th>
+            <th style="padding:10px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px">{{ r.kind_ar }}</td>
+            <td style="padding:10px" dir="ltr">{{ r.code }}</td>
+            <td style="padding:10px">{{ r.customer }}</td>
+            <td style="padding:10px">{{ r.status }}</td>
+            <td style="padding:10px" dir="ltr">{{ '%.2f'|format(r.total or 0) }}</td>
+            <td style="padding:10px;white-space:nowrap">
+              <a href="{{ r.url }}" class="btn btn-secondary btn-sm">فتح</a>
+              <a href="{{ r.print_url }}" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" style="padding:20px;color:var(--text2)">لا توجد عروض</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

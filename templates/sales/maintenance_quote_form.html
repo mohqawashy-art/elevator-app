@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = page_title|default('عرض سعر صيانة') %}
+{% include 'installation/_layout_head.html' %}
+<style>
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid .full{grid-column:1/-1}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-family:inherit}
+.elev-box{max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:var(--r-sm);padding:8px}
+.elev-box label{display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px;color:var(--text2)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+@media(max-width:800px){.form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">{% if quote %}عرض {{ quote.code }} — {{ quote.status }}{% else %}عرض سعر صيانة جديد{% endif %}</div>
+      <div class="page-actions">
+        <a href="{{ url_for('sales.maintenance_quotes_list') }}" class="btn btn-secondary btn-sm">العودة</a>
+        {% if quote %}<a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id) }}" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>{% endif %}
+      </div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="post" class="panel">
+      <div class="form-grid">
+        <div class="field full">
+          <label>العميل *</label>
+          <select name="customer_id" required {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+            <option value="">— اختر —</option>
+            {% for c in customers %}
+            <option value="{{ c.id }}" {% if quote and quote.customer_id==c.id %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>مدة العقد (شهر)</label>
+          <input type="number" name="duration_months" min="1" value="{{ quote.duration_months if quote else 12 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        </div>
+        <div class="field">
+          <label>تكرار الصيانة</label>
+          <select name="maint_frequency" {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+            {% set freq = quote.maint_frequency if quote else 'شهري' %}
+            {% for f in ['شهري','ربع سنوي','نصف سنوي','سنوي'] %}
+            <option value="{{ f }}" {% if freq==f %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>زيارات / شهر</label>
+          <input type="number" name="visits_per_month" min="1" value="{{ quote.visits_per_month if quote else 1 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        </div>
+        <div class="field">
+          <label>قيمة العرض (بدون ضريبة)</label>
+          <input type="number" step="0.01" name="value" value="{{ quote.value if quote else 0 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        </div>
+        <div class="field">
+          <label>نسبة الضريبة %</label>
+          <input type="number" step="0.01" name="tax_pct" value="{{ quote.tax_pct if quote else 15 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        </div>
+        <div class="field">
+          <label>شروط الدفع</label>
+          <select name="payment_terms" {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+            {% set pt = quote.payment_terms if quote else 'سنوي' %}
+            {% for p in ['دفعة واحدة','ربع سنوي','نصف سنوي','سنوي'] %}
+            <option value="{{ p }}" {% if pt==p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>تاريخ البداية</label>
+          <input type="date" name="start_date" value="{{ quote.start_date.isoformat() if quote and quote.start_date else today }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        </div>
+        <div class="field">
+          <label>تاريخ النهاية</label>
+          <input type="date" name="end_date" value="{{ quote.end_date.isoformat() if quote and quote.end_date else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        </div>
+        <div class="field">
+          <label>المدينة</label>
+          <input name="city" value="{% if quote %}{{ quote.city or 'مكة المكرمة' }}{% else %}مكة المكرمة{% endif %}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        </div>
+        <div class="field">
+          <label>الحي</label>
+          <input name="district" value="{{ quote.district or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        </div>
+        <div class="field full">
+          <label>العنوان</label>
+          <input name="address" value="{{ quote.address or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        </div>
+        <div class="field full">
+          <label>المصاعد المشمولة</label>
+          <div class="elev-box">
+            {% for e in elevators %}
+            <label><input type="checkbox" name="elevator_ids" value="{{ e.id }}" {% if e.id in selected_elevator_ids %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}> {{ e.code }} — {{ e.building_name or e.location or '' }}</label>
+            {% else %}
+            <div style="color:var(--text3);font-size:12px">لا توجد مصاعد — أضفها من صفحة المصاعد</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="field full">
+          <label>ملاحظات</label>
+          <textarea name="notes" rows="3" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>{{ quote.notes or '' if quote else '' }}</textarea>
+        </div>
+        {% if quote %}
+        <div class="field">
+          <label>الضريبة</label>
+          <input value="{{ '%.2f'|format(quote.tax_amount or 0) }}" readonly>
+        </div>
+        <div class="field">
+          <label>الإجمالي</label>
+          <input value="{{ '%.2f'|format(quote.total or 0) }}" readonly>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if not quote or quote.status != 'مقبول' %}
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">حفظ</button>
+      </div>
+      {% endif %}
+    </form>
+
+    {% if quote and quote.status != 'مقبول' %}
+    <div class="actions">
+      {% if quote.status != 'مُرسل' %}
+      <form method="post" action="{{ url_for('sales.maintenance_quote_send', quote_id=quote.id) }}"><button class="btn btn-secondary" type="submit">تعليم كـ مُرسل للعميل</button></form>
+      {% endif %}
+      <form method="post" action="{{ url_for('sales.maintenance_quote_approve', quote_id=quote.id) }}" onsubmit="return confirm('تأكيد موافقة العميل وتحويل العرض لعقد صيانة؟')">
+        <button class="btn btn-gold" type="submit">موافقة العميل → تحويل لعقد صيانة</button>
+      </form>
+      <form method="post" action="{{ url_for('sales.maintenance_quote_reject', quote_id=quote.id) }}" onsubmit="return confirm('رفض العرض؟')">
+        <button class="btn btn-secondary" type="submit">رفض</button>
+      </form>
+    </div>
+    {% elif quote and quote.result_contract_id %}
+    <div class="flash flash-success">تم التحويل لعقد — <a href="/contracts">عرض العقود</a></div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>
