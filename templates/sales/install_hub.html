@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = page_title|default('مبيعات التركيبات') %}
+{% include 'installation/_layout_head.html' %}
+<style>
+.sales-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:8px}
+.sales-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-decoration:none;color:inherit;display:block;transition:var(--trans)}
+.sales-card:hover{border-color:var(--border2);background:var(--bg3)}
+.sales-card h3{font-size:15px;margin-bottom:6px;color:var(--text1)}
+.sales-card p{font-size:12px;color:var(--text2);line-height:1.6}
+.sales-card .meta{margin-top:12px;font-size:12px;color:var(--gold)}
+.flow{margin:18px 0;padding:14px 16px;border:1px dashed var(--border2);border-radius:var(--r);color:var(--text2);font-size:13px;line-height:1.7}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">مبيعات التركيبات</div>
+      <div class="page-actions">
+        <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
+      </div>
+    </div>
+    <div class="flow">
+      <b>تقدير قيمة المصعد</b> → <b>عرض سعر</b> → <b>موافقة العميل</b> → <b>إدارة مشروعات التركيب</b>
+    </div>
+    <div class="sales-grid">
+      {% if has_perm('elevator_estimates.read') %}
+      <a class="sales-card" href="/elevator-estimates">
+        <h3>1. تقدير تكلفة مصعد</h3>
+        <p>احسب التكلفة والقيمة، ثم اصدر عرض سعر من التقدير.</p>
+        <div class="meta">تقديرات: {{ estimates_count }}</div>
+      </a>
+      {% endif %}
+      {% if install_module_on and has_perm('installation_projects.read') %}
+      <a class="sales-card" href="{{ url_for('sales.quotes_inbox', kind='install') }}">
+        <h3>2. عروض سعر التركيب</h3>
+        <p>راجع العروض وأرسلها للعميل حتى القبول.</p>
+        <div class="meta">عروض مفتوحة: {{ install_open }}</div>
+      </a>
+      <a class="sales-card" href="/installation/">
+        <h3>3. إدارة مشروعات التركيب</h3>
+        <p>بعد موافقة العميل ينتقل المشروع هنا للتنفيذ.</p>
+      </a>
+      <a class="sales-card" href="{{ url_for('installation.leads_list') }}">
+        <h3>فرص بيع</h3>
+        <p>فرص قبل التقدير أو إنشاء المشروع.</p>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -112,10 +112,19 @@ tbody tr:hover{background:var(--bg3)}
     <div class="page-header">
       <div class="page-title">تقدير تكلفة إنشاء مصعد</div>
       <div class="page-actions">
+        <a href="{{ url_for('sales.install_hub') }}" class="btn btn-secondary btn-sm">مسار التركيبات</a>
         <a href="/elevators" class="btn btn-secondary btn-sm">← المصاعد</a>
         {% if edit_est %}<a href="/elevator-estimates" class="btn btn-secondary btn-sm">تقدير جديد</a>{% endif %}
+        {% if edit_est and edit_est.result_project_id %}
+        <a href="{{ url_for('installation.project_detail', project_id=edit_est.result_project_id) }}" class="btn btn-primary btn-sm">فتح عرض السعر</a>
+        {% elif edit_est and edit_est.customer_id %}
+        <form method="post" action="{{ url_for('sales.convert_estimate_to_install_quote', estimate_id=edit_est.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-primary btn-sm">إصدار عرض سعر</button>
+        </form>
+        {% endif %}
       </div>
     </div>
+    <p class="hint" style="margin:-8px 0 16px;color:var(--text2)">مسار التركيبات: تقدير → عرض سعر → موافقة العميل → إدارة مشروعات التركيب</p>
 
     <form method="post" action="/elevator-estimates/save" id="est-form">
       {% if edit_est %}<input type="hidden" name="estimate_id" value="{{ edit_est.id }}">{% endif %}
@@ -293,6 +302,13 @@ tbody tr:hover{background:var(--bg3)}
             <td style="white-space:nowrap">
               <a href="{{ url_for('elevator_estimate_print', estimate_id=e.id) }}" class="btn btn-primary btn-sm lc-open-tab">🖨️ طباعة</a>
               <a href="/elevator-estimates?edit={{ e.id }}" class="btn btn-secondary btn-sm">تعديل</a>
+              {% if e.result_project_id %}
+              <a href="{{ url_for('installation.project_detail', project_id=e.result_project_id) }}" class="btn btn-secondary btn-sm">عرض السعر</a>
+              {% elif e.customer_id %}
+              <form method="post" action="{{ url_for('sales.convert_estimate_to_install_quote', estimate_id=e.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-primary btn-sm">إصدار عرض سعر</button>
+              </form>
+              {% endif %}
               <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="LiftCoreAdminDelete.post('/elevator-estimates/delete/{{ e.id }}', {message: 'حذف التقدير؟'})">حذف</button>
             </td>
           </tr>

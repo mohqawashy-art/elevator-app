@@ -9,6 +9,7 @@ from models import Customer, Elevator, MaintenanceQuote, MaintenanceQuoteElevato
 from sales import sales_bp
 from sales.service import (
     create_contract_from_maintenance_quote,
+    create_install_project_and_quote_from_estimate,
     money_round,
     recalc_quote_totals,
     sync_quote_elevators,
@@ -56,7 +57,13 @@ def hub():
         .count()
     )
     install_open = 0
+    estimates_count = 0
     module_on = False
+    try:
+        from models import ElevatorEstimate
+        estimates_count = tenant_query(ElevatorEstimate).count()
+    except Exception:
+        estimates_count = 0
     try:
         module_on = bool(install_module_enabled())
         if module_on:
@@ -74,23 +81,104 @@ def hub():
         page_title='المبيعات',
         maint_open=maint_open,
         install_open=install_open,
+        estimates_count=estimates_count,
         install_module_on=module_on,
     )
+
+
+@sales_bp.route('/install')
+def install_hub():
+    """فرع مبيعات التركيبات."""
+    from installation.config import install_module_enabled
+    from models import ElevatorEstimate
+
+    module_on = bool(install_module_enabled())
+    estimates_count = tenant_query(ElevatorEstimate).count()
+    install_open = 0
+    if module_on:
+        from installation.models import InstallQuotation
+        install_open = (
+            tenant_query(InstallQuotation)
+            .filter(InstallQuotation.status.in_(['مسودة', 'مُرسل', 'تفاوض']))
+            .count()
+        )
+    return render_template(
+        'sales/install_hub.html',
+        page_title='مبيعات التركيبات',
+        install_module_on=module_on,
+        estimates_count=estimates_count,
+        install_open=install_open,
+    )
+
+
+@sales_bp.route('/maintenance')
+def maintenance_hub():
+    """فرع مبيعات الصيانة."""
+    maint_open = (
+        tenant_query(MaintenanceQuote)
+        .filter(MaintenanceQuote.status.in_(['مسودة', 'مُرسل']))
+        .count()
+    )
+    return render_template(
+        'sales/maintenance_hub.html',
+        page_title='مبيعات الصيانة',
+        maint_open=maint_open,
+    )
+
+
+@sales_bp.route('/install/from-estimate/<int:estimate_id>', methods=['POST'])
+def convert_estimate_to_install_quote(estimate_id):
+    """تقدير → عرض سعر تركيب (مشروع + عرض)."""
+    from installation.config import install_module_enabled
+    from installation.routes import _next_code
+    from models import ElevatorEstimate
+
+    if not install_module_enabled():
+        flash('وحدة التركيب غير مفعّلة', 'error')
+        return redirect('/elevator-estimates')
+
+    est = tenant_get_or_404(ElevatorEstimate, estimate_id)
+    if not est.customer_id:
+        flash('اربط التقدير بعميل قبل إصدار عرض السعر', 'error')
+        return redirect(f'/elevator-estimates?edit={est.id}')
+
+    if est.result_project_id and est.result_quotation_id:
+        flash('تم تحويل هذا التقدير مسبقاً', 'success')
+        return redirect(url_for('installation.project_detail', project_id=est.result_project_id))
+
+    try:
+        result = create_install_project_and_quote_from_estimate(
+            est,
+            next_project_code_fn=_next_code,
+            next_quote_code_fn=_next_code,
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash('تعذّر إصدار عرض السعر من التقدير', 'error')
+        return redirect('/elevator-estimates')
+
+    flash(
+        f'صدر عرض السعر {result["quote_code"]} — راجع وعدّل ثم أرسل للعميل',
+        'success',
+    )
+    return redirect(url_for('installation.project_detail', project_id=result['project_id']))
 
 
 @sales_bp.route('/quotes')
 def quotes_inbox():
     status = (request.args.get('status') or '').strip()
+    kind = (request.args.get('kind') or '').strip().lower()
     maint_q = tenant_query(MaintenanceQuote).order_by(MaintenanceQuote.id.desc())
     if status:
         maint_q = maint_q.filter_by(status=status)
-    maint = maint_q.limit(200).all()
+    maint = maint_q.limit(200).all() if kind in ('', 'maintenance', 'صيانة') else []
 
     install = []
     try:
         from installation.config import install_module_enabled
         from installation.models import InstallQuotation
-        if install_module_enabled():
+        if install_module_enabled() and kind in ('', 'install', 'تركيب', 'تركيبات'):
             iq = tenant_query(InstallQuotation).order_by(InstallQuotation.id.desc())
             if status:
                 iq = iq.filter_by(status=status)
@@ -134,11 +222,17 @@ def quotes_inbox():
             'contract_id': None,
         })
     rows.sort(key=lambda r: r['created_at'] or datetime.min, reverse=True)
+    title = 'عروض السعر'
+    if kind in ('install', 'تركيب', 'تركيبات'):
+        title = 'عروض سعر التركيبات'
+    elif kind in ('maintenance', 'صيانة'):
+        title = 'عروض سعر الصيانة'
     return render_template(
         'sales/quotes.html',
-        page_title='عروض السعر',
+        page_title=title,
         rows=rows,
         status=status,
+        kind=kind,
     )
 
 
@@ -147,7 +241,7 @@ def maintenance_quotes_list():
     quotes = tenant_query(MaintenanceQuote).order_by(MaintenanceQuote.id.desc()).limit(300).all()
     return render_template(
         'sales/maintenance_quotes.html',
-        page_title='تسعير عقود الصيانة',
+        page_title='عروض سعر الصيانة',
         quotes=quotes,
     )
 
@@ -250,7 +344,7 @@ def maintenance_quote_approve(quote_id):
         db.session.rollback()
         flash('تعذّر تحويل العرض لعقد', 'error')
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
-    flash(f'تمت موافقة العميل — أُنشئ عقد الصيانة {contract.code}', 'success')
+    flash(f'تمت موافقة العميل — أُنشئ عقد الصيانة {contract.code} وتحوّل للعقود', 'success')
     return redirect(url_for('contracts'))
 
 

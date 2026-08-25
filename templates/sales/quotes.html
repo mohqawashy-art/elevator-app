@@ -13,16 +13,25 @@
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
-      <div class="page-title">عروض السعر</div>
+      <div class="page-title">{{ page_title }}</div>
       <div class="page-actions">
         <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
+        {% if kind in ['install', 'تركيب', 'تركيبات'] %}
+        <a href="/elevator-estimates" class="btn btn-primary btn-sm">+ من تقدير</a>
+        {% else %}
         <a href="{{ url_for('sales.maintenance_quote_new') }}" class="btn btn-primary btn-sm">+ عرض صيانة</a>
+        {% endif %}
       </div>
     </div>
     <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
-      <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox') }}">الكل</a>
+      <a class="btn btn-sm {{ 'btn-primary' if not kind else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', status=status or none) }}">الكل</a>
+      <a class="btn btn-sm {{ 'btn-primary' if kind=='install' else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', kind='install', status=status or none) }}">تركيبات</a>
+      <a class="btn btn-sm {{ 'btn-primary' if kind=='maintenance' else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', kind='maintenance', status=status or none) }}">صيانة</a>
+    </div>
+    <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', kind=kind or none) }}">كل الحالات</a>
       {% for s in ['مسودة','مُرسل','تفاوض','مقبول','مرفوض'] %}
-      <a class="btn btn-sm {{ 'btn-primary' if status==s else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', status=s) }}">{{ s }}</a>
+      <a class="btn btn-sm {{ 'btn-primary' if status==s else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', status=s, kind=kind or none) }}">{{ s }}</a>
       {% endfor %}
     </div>
     <div class="panel" style="padding:0;overflow:auto">

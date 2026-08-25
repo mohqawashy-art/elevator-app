@@ -50,7 +50,7 @@ RATE_TABLE = {
 
 MACHINE_TYPES = ('MR', 'MRL', 'Hydraulic')
 ELEV_TYPES = ('مصعد ركاب', 'مصعد بضائع', 'مصعد مستشفى', 'مصعد منزلي')
-ESTIMATE_STATUSES = ('مسودة', 'معتمد', 'ملغي')
+ESTIMATE_STATUSES = ('مسودة', 'معتمد', 'محوّل لعرض سعر', 'ملغي')
 
 
 def _safe_int(value, default=0, minimum=0):

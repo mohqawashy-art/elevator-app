@@ -146,3 +146,116 @@ def create_install_contract_from_quotation(project, quotation, *, next_code_fn) 
     db.session.flush()
     project.contract_id = contract.id
     return contract
+
+
+def create_install_project_and_quote_from_estimate(estimate, *, next_project_code_fn, next_quote_code_fn):
+    """تقدير تكلفة → مشروع تركيب + عرض سعر قابل للإرسال/القبول."""
+    import json
+
+    from installation.models import InstallProject, InstallQuotation, InstallQuotationLine
+    from models import Customer
+
+    if estimate.result_project_id and estimate.result_quotation_id:
+        return {
+            'project_id': estimate.result_project_id,
+            'quotation_id': estimate.result_quotation_id,
+            'created': False,
+        }
+
+    customer = None
+    if estimate.customer_id:
+        customer = tenant_query(Customer).filter_by(id=estimate.customer_id).first()
+
+    title = (estimate.project_name or '').strip() or f'تقدير {estimate.code}'
+    notes_parts = [f'من تقدير التكلفة {estimate.code}']
+    if estimate.city:
+        notes_parts.append(f'المدينة: {estimate.city}')
+    project = InstallProject(
+        code=next_project_code_fn(InstallProject, 'PRJ-', 4),
+        title=title,
+        status='تسعير',
+        customer_id=estimate.customer_id,
+        notes=' — '.join(notes_parts),
+    )
+    assign_organization(project)
+    db.session.add(project)
+    db.session.flush()
+
+    materials = money_round(estimate.cost_subtotal)
+    margin_pct = float(estimate.margin_pct or 12)
+    cost = materials
+    profit = money_round(cost * margin_pct / 100.0)
+    before = money_round(cost + profit)
+    vat_pct = float(estimate.vat_pct if estimate.vat_pct is not None else 15)
+    vat = money_round(before * vat_pct / 100.0)
+    # إن وُجدت مجاميع محفوظة في التقدير نفضّلها
+    if estimate.subtotal:
+        before = money_round(estimate.subtotal)
+    if estimate.vat_amount is not None and estimate.total:
+        vat = money_round(estimate.vat_amount)
+        profit = money_round(estimate.margin_amount)
+    grand = money_round(estimate.total) if estimate.total else money_round(before + vat)
+
+    q = InstallQuotation(
+        code=next_quote_code_fn(InstallQuotation, 'Q-', 4),
+        project_id=project.id,
+        customer_id=estimate.customer_id,
+        quote_type='new',
+        status='مسودة',
+        client_name=(customer.name if customer else None),
+        client_phone=(getattr(customer, 'phone', None) if customer else None),
+        client_address=(getattr(customer, 'address', None) if customer else None),
+        valid_days=30,
+        spec_json=json.dumps({
+            'source_estimate': estimate.code,
+            'machine_type': estimate.machine_type,
+            'elev_type': estimate.elev_type,
+            'floors': estimate.floors,
+            'stops': estimate.stops,
+            'capacity_kg': estimate.capacity_kg,
+            'doors_count': estimate.doors_count,
+            'speed': estimate.speed,
+            'travel_m': estimate.travel_m,
+            'city': estimate.city,
+        }, ensure_ascii=False),
+        labor=0,
+        transport=0,
+        other_costs=0,
+        profit_pct=margin_pct,
+        materials_total=materials,
+        cost_total=materials,
+        profit_amount=profit,
+        before_tax=before,
+        vat_amount=vat,
+        grand_total=grand,
+        pay_advance_pct=50,
+        pay_supply_pct=40,
+        pay_final_pct=10,
+    )
+    assign_organization(q)
+    db.session.add(q)
+    db.session.flush()
+
+    for sort_i, ln in enumerate(estimate.lines or [], start=1):
+        row = InstallQuotationLine(
+            quotation_id=q.id,
+            sort_order=sort_i,
+            stage=(ln.category or 'تقدير')[:100],
+            name=(ln.description or ln.category or 'بند')[:300],
+            qty=float(ln.quantity or 1),
+            unit=(ln.unit or 'وحدة')[:40],
+            unit_price=money_round(ln.unit_price),
+        )
+        assign_organization(row)
+        db.session.add(row)
+
+    estimate.result_project_id = project.id
+    estimate.result_quotation_id = q.id
+    estimate.status = 'محوّل لعرض سعر'
+    return {
+        'project_id': project.id,
+        'quotation_id': q.id,
+        'created': True,
+        'project_code': project.code,
+        'quote_code': q.code,
+    }

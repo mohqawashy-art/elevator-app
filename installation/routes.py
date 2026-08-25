@@ -787,7 +787,7 @@ def quote_approve(project_id, quotation_id):
         steps[0].started_at = project.execution_started_at or datetime.utcnow()
         apply_auto_amount(steps[0], q, force=True)
     db.session.commit()
-    flash(f'تم قبول العرض {q.code} — بدأت مرحلة التنفيذ', 'success')
+    flash(f'تم قبول العرض {q.code} — تحوّل لإدارة مشروعات التركيب', 'success')
     return redirect(url_for('installation.project_execution', project_id=project.id))
 
 

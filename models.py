@@ -1005,6 +1005,8 @@ class ElevatorEstimate(TenantMixin, db.Model):
     status = db.Column(db.String(30), default='مسودة')
     estimate_date = db.Column(db.Date, default=date.today)
     notes = db.Column(db.Text)
+    result_project_id = db.Column(db.Integer, nullable=True, index=True)
+    result_quotation_id = db.Column(db.Integer, nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     customer = db.relationship('Customer', foreign_keys=[customer_id])
