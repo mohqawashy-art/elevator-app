@@ -661,7 +661,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
           <div class="field form-full">
             <label>اسم المبنى</label>
-            <input type="text" id="f-building" placeholder="اسم المبنى">
+            <input type="text" id="f-building" placeholder="يُكتب يدوياً — اتركه فارغاً إن لم يُحدَّد بعد">
           </div>
         </div>
       </div>
@@ -897,15 +897,9 @@ function fillClientData() {
   if (!c) return;
   document.getElementById('f-elev-city').value = c.city || '';
   document.getElementById('f-elev-district').value = c.district || '';
-  var building = document.getElementById('f-building');
-  var elevCode = document.getElementById('f-elev-code');
-  if (building && !building.value.trim()) {
-    var suffix = (elevCode && elevCode.value) ? (' — ' + elevCode.value) : '';
-    building.value = (c.name || '') + suffix;
-  }
   if (c.lat && c.lng && typeof LiftCoreMapPicker !== 'undefined') {
     LiftCoreMapPicker.setLocation(c.lat, c.lng, {
-      address: building ? building.value : '',
+      address: c.address || '',
       city: c.city || '',
       district: c.district || '',
       maps_url: 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng,
