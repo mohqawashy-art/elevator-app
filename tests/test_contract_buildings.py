@@ -1,7 +1,7 @@
 """أسماء المباني في تسلسل العقود."""
 from types import SimpleNamespace
 
-from app import _contract_building_names, contract_to_js_dict
+from app import _contract_building_names, _elevator_building_display, contract_to_js_dict
 
 
 def test_contract_building_names_unique_joined():
@@ -55,3 +55,27 @@ def test_contract_to_js_dict_includes_buildings():
         elevator_by_id={5: SimpleNamespace(building_name='مجمع الأندلس')},
     )
     assert row['buildings'] == 'مجمع الأندلس'
+
+
+def test_elevator_building_display_strips_code_suffix():
+    elev = SimpleNamespace(building_name='حمدي حمدان — EL-0054', code='EL-0054')
+    assert _elevator_building_display(elev) == 'حمدي حمدان'
+
+
+def test_elevator_building_display_skips_code_only():
+    elev = SimpleNamespace(building_name='EL-0054', code='EL-0054')
+    assert _elevator_building_display(elev) == ''
+
+
+def test_contract_building_names_without_elevator_codes():
+    c = SimpleNamespace(
+        elevators=[
+            SimpleNamespace(elevator_id=1),
+            SimpleNamespace(elevator_id=2),
+        ]
+    )
+    elevator_by_id = {
+        1: SimpleNamespace(building_name='برج النور — EL-0001', code='EL-0001'),
+        2: SimpleNamespace(building_name='برج النور — EL-0002', code='EL-0002'),
+    }
+    assert _contract_building_names(c, elevator_by_id=elevator_by_id) == 'برج النور'

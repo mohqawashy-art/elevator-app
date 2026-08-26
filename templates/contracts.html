@@ -1060,6 +1060,41 @@ function formatContractDueCell(c) {
   return '<span class="contract-days ' + cls + '" title="تاريخ استحقاق التحصيل">' + esc(c.due_date) + '</span>';
 }
 
+function buildingDisplay(e) {
+  if (!e) return '';
+  var raw = (e.building || '').trim();
+  var code = (e.code || '').trim();
+  if (!raw) return '';
+  if (code && raw === code) return '';
+  if (code) {
+    var suffixes = [' — ' + code, ' - ' + code, ' – ' + code, ' –' + code, '– ' + code];
+    for (var i = 0; i < suffixes.length; i++) {
+      if (raw.endsWith(suffixes[i])) {
+        raw = raw.slice(0, -suffixes[i].length).trim();
+        break;
+      }
+    }
+  }
+  if (!raw || (code && raw === code)) return '';
+  if (/^(EL|EV|E)-\d+$/i.test(raw)) return '';
+  return raw;
+}
+
+function buildingLabels(ids) {
+  if (!ids || !ids.length) return '—';
+  var seen = {};
+  var out = [];
+  ids.forEach(function(id) {
+    var e = ELEVATOR_LOOKUP[id] || ELEVATOR_LOOKUP[String(id)];
+    var b = buildingDisplay(e);
+    if (b && !seen[b]) {
+      seen[b] = 1;
+      out.push(b);
+    }
+  });
+  return out.length ? out.join('، ') : '—';
+}
+
 function elevatorLabels(ids) {
   if (!ids || !ids.length) return '—';
   return ids.map(function(id) {
@@ -1266,7 +1301,7 @@ function renderTable(data) {
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.start_date) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
       '<td>' + formatContractDaysCell(c) + '</td>' +
-      '<td style="text-align:center" title="' + esc(elevatorLabels(c.elevator_ids)) + '">' + c.elevators + '</td>' +
+      '<td style="text-align:center" title="' + esc(buildingLabels(c.elevator_ids)) + '">' + c.elevators + '</td>' +
       '<td class="td-amount">' + fmtMoneyAmt(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td class="td-amount">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + formatContractDueCell(c) + '</td>' +
@@ -1913,7 +1948,8 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">كود العقد</div><div class="view-val" style="font-family:var(--font-en)">' + esc(c.code) + '</div></div>' +
       '<div class="view-item"><div class="view-label">العميل</div><div class="view-val">' + esc(c.customer) + '</div></div>' +
       '<div class="view-item"><div class="view-label">نوع العقد</div><div class="view-val">' + esc(c.contract_type) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">المصاعد المرتبطة</div><div class="view-val" style="font-family:var(--font-en)">' + esc(elevatorLabels(c.elevator_ids)) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">المبنى</div><div class="view-val">' + esc(c.buildings || buildingLabels(c.elevator_ids)) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">عدد المصاعد</div><div class="view-val">' + (c.elevators || 0) + '</div></div>' +
       '<div class="view-item"><div class="view-label">حالة العقد</div><div class="view-val"><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></div></div>' +
       '<div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span> <span style="font-size:12px;color:var(--text3)">(' + fmtMoneyAmt(c.paid_amount || 0) + ' / ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>)</span></div></div>' +
       '<div class="view-section">التواريخ والصيانة</div>' +

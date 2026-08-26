@@ -1000,6 +1000,36 @@ def _backfill_contract_billing_cache():
     app.logger.info('Contract billing cache backfill complete.')
 
 
+def _elevator_building_display(elev):
+    """اسم المبنى للعرض — بدون كود المصعد أو لاحقته."""
+    if isinstance(elev, dict):
+        raw = (elev.get('building') or '').strip()
+        code = (elev.get('code') or '').strip()
+    else:
+        raw = (getattr(elev, 'building_name', None) or '').strip()
+        code = (getattr(elev, 'code', None) or '').strip()
+    if not raw:
+        return ''
+    if code and raw == code:
+        return ''
+    if code:
+        for sep in (' — ', ' - ', ' – ', ' –', '– '):
+            suffix = f'{sep}{code}'
+            if raw.endswith(suffix):
+                raw = raw[: -len(suffix)].strip()
+                break
+    if not raw or (code and raw == code):
+        return ''
+    if code and raw.upper().endswith(code.upper()) and len(raw) > len(code):
+        # احتياط: لاحقة بدون فاصل واضح
+        maybe = raw[: -len(code)].rstrip(' —–-').strip()
+        if maybe:
+            raw = maybe
+    if re.fullmatch(r'(?:EL|EV|E)-\d+', raw, re.IGNORECASE):
+        return ''
+    return raw
+
+
 def _contract_building_names(c, elevator_by_id=None):
     """أسماء المباني الفريدة من المصاعد المرتبطة بالعقد."""
     elev_ids = [ce.elevator_id for ce in (c.elevators or [])]
@@ -1017,10 +1047,7 @@ def _contract_building_names(c, elevator_by_id=None):
         elev = lookup.get(eid)
         if elev is None:
             continue
-        if isinstance(elev, dict):
-            name = (elev.get('building') or '').strip()
-        else:
-            name = (getattr(elev, 'building_name', None) or '').strip()
+        name = _elevator_building_display(elev)
         if name and name not in seen:
             seen.add(name)
             labels.append(name)
