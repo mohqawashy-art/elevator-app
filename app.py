@@ -1000,7 +1000,34 @@ def _backfill_contract_billing_cache():
     app.logger.info('Contract billing cache backfill complete.')
 
 
-def contract_to_js_dict(c, *, renewed_ids=None):
+def _contract_building_names(c, elevator_by_id=None):
+    """أسماء المباني الفريدة من المصاعد المرتبطة بالعقد."""
+    elev_ids = [ce.elevator_id for ce in (c.elevators or [])]
+    if not elev_ids:
+        return ''
+    lookup = elevator_by_id
+    if lookup is None:
+        lookup = {
+            e.id: e
+            for e in tenant_query(Elevator).filter(Elevator.id.in_(elev_ids)).all()
+        }
+    labels = []
+    seen = set()
+    for eid in elev_ids:
+        elev = lookup.get(eid)
+        if elev is None:
+            continue
+        if isinstance(elev, dict):
+            name = (elev.get('building') or '').strip()
+        else:
+            name = (getattr(elev, 'building_name', None) or '').strip()
+        if name and name not in seen:
+            seen.add(name)
+            labels.append(name)
+    return '، '.join(labels)
+
+
+def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
     """تسلسل عقد لـ JSON في الصفحة (بدون استعلامات إضافية)."""
     cid = getattr(c, 'id', None)
     is_renewed = bool(getattr(c, '_is_renewed', False))
@@ -1011,6 +1038,7 @@ def contract_to_js_dict(c, *, renewed_ids=None):
         'code': c.code,
         'customer_id': c.customer_id,
         'customer': c.customer.name if c.customer else '',
+        'buildings': _contract_building_names(c, elevator_by_id=elevator_by_id),
         'customer_name_en': (c.customer.name_en or '') if c.customer else '',
         'customer_city': (c.customer.city or '') if c.customer else '',
         'customer_lat': (c.customer.lat or '') if c.customer else '',
@@ -6347,14 +6375,19 @@ def contracts():
     )
     renewed_ids = _annotate_contract_renewals(contracts_list)
     customers = tenant_query(Customer).order_by(Customer.name).all()
+    all_elevators = tenant_query(Elevator).all()
+    elevator_by_id = {e.id: e for e in all_elevators}
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
-        for e in tenant_query(Elevator).all()
+        for e in all_elevators
     }
     resp = make_response(render_template(
         'contracts.html',
         contracts=contracts_list,
-        contracts_js=[contract_to_js_dict(c, renewed_ids=renewed_ids) for c in contracts_list],
+        contracts_js=[
+            contract_to_js_dict(c, renewed_ids=renewed_ids, elevator_by_id=elevator_by_id)
+            for c in contracts_list
+        ],
         customers_js=[contract_customer_js_dict(c) for c in customers],
         elev_lookup=elev_lookup,
         next_contract_codes={

@@ -352,7 +352,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <table>
           <thead>
             <tr>
-              <th>الكود</th><th>العميل</th><th>النوع</th><th>الانتهاء</th><th>الأيام</th><th>المصاعد</th><th>الإجمالي</th><th>حالة العقد</th><th>الفاتورة</th>
+              <th>الكود</th><th>العميل</th><th>المبنى</th><th>النوع</th><th>الانتهاء</th><th>الأيام</th><th>المصاعد</th><th>الإجمالي</th><th>حالة العقد</th><th>الفاتورة</th>
             </tr>
           </thead>
           <tbody id="drill-body"></tbody>
@@ -452,6 +452,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <tr>
               <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="buildings">المبنى <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="contract_type">النوع <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="start_date">تاريخ البداية <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="end_date">تاريخ الانتهاء <span class="sort-ind"></span></th>
@@ -1158,6 +1159,7 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
     customer: function (c) {
       return window.LiftCoreDisplay ? LiftCoreDisplay.name(c.customer, c.customer_name_en) : c.customer;
     },
+    buildings: function (c) { return c.buildings || ''; },
     contract_status: function (c) { return getContractDisplayStatus(c); },
     days_left: function (c) {
       var d = contractDaysLeft(c);
@@ -1188,13 +1190,14 @@ function getContractsByDrill(type) {
 function renderDrillTable(rows) {
   var body = document.getElementById('drill-body');
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">لا توجد بيانات</td></tr>';
+    body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">لا توجد بيانات</td></tr>';
     return;
   }
   body.innerHTML = rows.map(function(c) {
     return '<tr style="cursor:pointer" onclick="viewContract(' + c.id + ')">' +
       '<td class="td-code">' + esc(c.code) + '</td>' +
       '<td class="td-name">' + esc(c.customer) + '</td>' +
+      '<td class="td-name">' + esc(c.buildings || '—') + '</td>' +
       '<td>' + esc(c.contract_type) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
       '<td>' + formatContractDaysCell(c) + '</td>' +
@@ -1258,6 +1261,7 @@ function renderTable(data) {
     return '<tr onclick="viewContract(' + c.id + ')">' +
       '<td class="td-code">' + esc(c.code) + '</td>' +
       '<td class="td-name">' + esc(LC ? LC.name(c.customer, c.customer_name_en) : c.customer) + '</td>' +
+      '<td class="td-name" title="' + esc(c.buildings || '') + '">' + esc(c.buildings || '—') + '</td>' +
       '<td>' + esc(D(c.contract_type)) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.start_date) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
@@ -1288,7 +1292,7 @@ function filterTable() {
   const st  = document.getElementById('f-status')?.value||'';
   const inv = document.getElementById('f-invoice')?.value||'';
   filtered = CONTRACTS.filter(c=>
-    (!s   || c.code.toLowerCase().includes(s) || c.customer.includes(s)) &&
+    (!s   || c.code.toLowerCase().includes(s) || c.customer.includes(s) || (c.buildings || '').includes(s)) &&
     (!cl  || c.customer === cl) &&
     (!tp  || c.contract_type === tp) &&
     (!st  || getContractDisplayStatus(c) === st) &&
@@ -2276,7 +2280,7 @@ function loadClientElevators(selectedIds, opts) {
 }
 
 function exportExcel() {
-  const rows=[['الكود','العميل','النوع','البداية','الانتهاء','الأيام','القيمة','الإجمالي','الاستحقاق','حالة العقد','حالة الفاتورة']];
+  const rows=[['الكود','العميل','المبنى','النوع','البداية','الانتهاء','الأيام','القيمة','الإجمالي','الاستحقاق','حالة العقد','حالة الفاتورة']];
   filtered.forEach(function(c) {
     var days = contractDaysLeft(c);
     var daysLabel = '—';
@@ -2288,7 +2292,7 @@ function exportExcel() {
         else daysLabel = 'منذ ' + Math.abs(days);
       }
     }
-    rows.push([c.code,c.customer,c.contract_type,c.start_date,c.end_date,daysLabel,c.value,c.total,c.due_date||'',getContractDisplayStatus(c),c.inv_status]);
+    rows.push([c.code,c.customer,c.buildings||'',c.contract_type,c.start_date,c.end_date,daysLabel,c.value,c.total,c.due_date||'',getContractDisplayStatus(c),c.inv_status]);
   });
   const csv=rows.map(r=>r.join(',')).join('\n');
   const a=document.createElement('a');
