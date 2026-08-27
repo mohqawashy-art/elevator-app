@@ -10972,6 +10972,10 @@ def supplier_rfqs():
         SupplierQuoteRequest.request_date.desc().nullslast()
     ).all()
     project = _resolve_rfq_project(request.args.get('project_id'))
+    edit_rfq = None
+    edit_id = request.args.get('edit', type=int)
+    if edit_id:
+        edit_rfq = tenant_get_or_404(SupplierQuoteRequest, edit_id)
     return render_template(
         'supplier-rfqs.html',
         requests=requests_list,
@@ -10979,6 +10983,7 @@ def supplier_rfqs():
         next_rfq_code=next_code(SupplierQuoteRequest, 'RFQ-', digits=4),
         today=date.today().isoformat(),
         project=project,
+        edit_rfq=edit_rfq,
     )
 
 
@@ -11052,7 +11057,7 @@ def supplier_rfqs_save():
         assign_organization(line)
         rfq.lines.append(line)
     db.session.commit()
-    flash('تم حفظ طلب عرض السعر', 'success')
+    flash('تم تحديث طلب عرض السعر' if req_id else 'تم حفظ طلب عرض السعر', 'success')
     return redirect(url_for('supplier_rfq_print', request_id=rfq.id))
 
 

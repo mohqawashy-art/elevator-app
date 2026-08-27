@@ -49,7 +49,11 @@ th{color:var(--text3);font-size:11px;font-weight:500}
 .badge-ok{background:rgba(31,184,122,.12);color:var(--success)}
 .badge-warn{background:rgba(224,144,48,.12);color:var(--warning)}
 .empty-msg{color:var(--text3);font-size:13px}
-.project-banner{background:rgba(200,160,85,.1);border:1px solid rgba(200,160,85,.25);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--gold)}
+.project-banner,.edit-banner{background:rgba(200,160,85,.1);border:1px solid rgba(200,160,85,.25);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--gold);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.edit-banner{background:rgba(42,127,255,.1);border-color:rgba(42,127,255,.25);color:var(--accent)}
+.flash{padding:10px 12px;border-radius:var(--r-sm);margin-bottom:12px;font-size:13px}
+.flash-success{background:rgba(31,184,122,.12);color:var(--success);border:1px solid rgba(31,184,122,.25)}
+.flash-error{background:rgba(224,72,72,.12);color:var(--danger);border:1px solid rgba(224,72,72,.25)}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
 @media(max-width:768px){
   .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
@@ -81,49 +85,67 @@ th{color:var(--text3);font-size:11px;font-weight:500}
       </div>
     </div>
 
-    <div class="panel">
-      <h2 class="panel-title">طلب جديد</h2>
-      {% if project %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="panel" id="rfq-form-panel">
+      <h2 class="panel-title">{% if edit_rfq %}تعديل طلب {{ edit_rfq.code }}{% else %}طلب جديد{% endif %}</h2>
+      {% if edit_rfq %}
+      <div class="edit-banner">
+        <span>تعديل عرض السعر <b style="font-family:var(--font-en)">{{ edit_rfq.code }}</b> — الحالة: {{ edit_rfq.status }}</span>
+        <a href="{{ url_for('supplier_rfqs') }}" class="btn btn-secondary btn-sm">+ طلب جديد</a>
+      </div>
+      {% elif project %}
       <div class="project-banner">
-        مرتبط بمشروع تركيب: <b>{{ project.code }}</b> — {{ project.title or project.client_display }}
+        <span>مرتبط بمشروع تركيب: <b>{{ project.code }}</b> — {{ project.title or project.client_display }}</span>
       </div>
       {% endif %}
       <form method="post" action="/supplier-rfqs/save" id="rfq-form">
-        {% if project %}<input type="hidden" name="project_id" value="{{ project.id }}">{% endif %}
+        {% if edit_rfq %}
+        <input type="hidden" name="request_id" value="{{ edit_rfq.id }}">
+        {% if edit_rfq.project_id %}<input type="hidden" name="project_id" value="{{ edit_rfq.project_id }}">{% endif %}
+        {% elif project %}
+        <input type="hidden" name="project_id" value="{{ project.id }}">
+        {% endif %}
         <div class="form-grid">
           <div class="field">
-            <label>رقم الطلب (تلقائي)</label>
-            <input value="{{ next_rfq_code }}" disabled style="opacity:.85">
+            <label>رقم الطلب</label>
+            <input value="{{ edit_rfq.code if edit_rfq else next_rfq_code }}" disabled style="opacity:.85;font-family:var(--font-en)">
           </div>
           <div class="field">
             <label>التاريخ</label>
-            <input type="date" name="request_date" class="lc-date-input" value="{{ today }}">
+            <input type="date" name="request_date" class="lc-date-input" value="{{ (edit_rfq.request_date.isoformat() if edit_rfq and edit_rfq.request_date else today) }}">
           </div>
           <div class="field">
             <label>المورد</label>
-            <input name="supplier" placeholder="اسم المورد" required>
+            <input name="supplier" placeholder="اسم المورد" value="{{ edit_rfq.supplier or '' if edit_rfq else '' }}" required>
           </div>
           <div class="field">
             <label>جوال المورد (واتساب)</label>
-            <input type="tel" name="supplier_phone" placeholder="05XXXXXXXX" style="direction:ltr;font-family:var(--font-en)">
+            <input type="tel" name="supplier_phone" placeholder="05XXXXXXXX" value="{{ edit_rfq.supplier_phone or '' if edit_rfq else '' }}" style="direction:ltr;font-family:var(--font-en)">
           </div>
           <div class="field">
             <label>إيميل المورد</label>
-            <input type="email" name="supplier_email" placeholder="supplier@example.com" style="direction:ltr;font-family:var(--font-en)">
+            <input type="email" name="supplier_email" placeholder="supplier@example.com" value="{{ edit_rfq.supplier_email or '' if edit_rfq else '' }}" style="direction:ltr;font-family:var(--font-en)">
           </div>
           <div class="field">
             <label>الحالة</label>
             <select name="status">
-              {% for st in statuses %}<option value="{{ st }}">{{ st }}</option>{% endfor %}
+              {% for st in statuses %}
+              <option value="{{ st }}" {% if edit_rfq and edit_rfq.status == st %}selected{% endif %}>{{ st }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="field form-full">
             <label>الموضوع (اختياري)</label>
-            <input name="subject" placeholder="مثال: تسعير ماكينة وشاسيه — مشروع {{ project.code if project else '…' }}">
+            <input name="subject" value="{{ edit_rfq.subject or '' if edit_rfq else '' }}" placeholder="مثال: تسعير ماكينة وشاسيه — مشروع {{ project.code if project else (edit_rfq.project_code if edit_rfq else '…') }}">
           </div>
           <div class="field form-full">
             <label>ملاحظات</label>
-            <textarea name="notes" rows="2" placeholder="مدة التوريد المطلوبة، شروط الدفع…"></textarea>
+            <textarea name="notes" rows="2" placeholder="مدة التوريد المطلوبة، شروط الدفع…">{{ edit_rfq.notes or '' if edit_rfq else '' }}</textarea>
           </div>
         </div>
         <table class="lines-table">
@@ -137,18 +159,24 @@ th{color:var(--text3);font-size:11px;font-weight:500}
             </tr>
           </thead>
           <tbody id="lines-body">
+            {% set rfq_lines = edit_rfq.lines if edit_rfq and edit_rfq.lines else [none] %}
+            {% for line in rfq_lines %}
             <tr class="line-row">
-              <td><input type="text" name="description" placeholder="ماكينة، سكك، كبينة…" required></td>
-              <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
-              <td><input type="text" name="unit" value="قطعة"></td>
-              <td><input type="text" name="specs" placeholder="مواصفات"></td>
+              <td><input type="text" name="description" placeholder="ماكينة، سكك، كبينة…" value="{{ line.description if line else '' }}" {% if not edit_rfq %}required{% endif %}></td>
+              <td><input type="number" name="quantity" min="0.01" step="0.01" value="{{ line.quantity if line else 1 }}"></td>
+              <td><input type="text" name="unit" value="{{ line.unit if line else 'قطعة' }}"></td>
+              <td><input type="text" name="specs" placeholder="مواصفات" value="{{ line.specs or '' if line else '' }}"></td>
               <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
             </tr>
+            {% endfor %}
           </tbody>
         </table>
-        <div style="margin-top:10px;display:flex;gap:8px">
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
           <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ سطر</button>
-          <button type="submit" class="btn btn-primary btn-sm">حفظ وطباعة / إرسال</button>
+          <button type="submit" class="btn btn-primary btn-sm">{% if edit_rfq %}حفظ التعديل{% else %}حفظ وطباعة / إرسال{% endif %}</button>
+          {% if edit_rfq %}
+          <a href="{{ url_for('supplier_rfq_print', request_id=edit_rfq.id) }}" class="btn btn-secondary btn-sm lc-open-tab">طباعة / إرسال</a>
+          {% endif %}
         </div>
       </form>
       <p style="font-size:11px;color:var(--text3);margin-top:10px">يُنشأ مستند RFQ بدون أسعار — للإرسال للمورد عبر واتساب أو إيميل. بعد استلام العرض يمكنك إنشاء طلب شراء.</p>
@@ -163,14 +191,15 @@ th{color:var(--text3);font-size:11px;font-weight:500}
         </thead>
         <tbody>
           {% for r in requests %}
-          <tr>
+          <tr{% if edit_rfq and edit_rfq.id == r.id %} style="background:rgba(42,127,255,.06)"{% endif %}>
             <td class="td-code">{{ r.code }}</td>
             <td>{{ r.supplier or '—' }}</td>
             <td>{{ r.project_code or '—' }}</td>
             <td class="lc-date">{{ r.request_date | dmY }}</td>
             <td><span class="badge {% if r.status == 'مستلم' %}badge-ok{% else %}badge-warn{% endif %}">{{ r.status }}</span></td>
             <td style="white-space:nowrap">
-              <a href="{{ url_for('supplier_rfq_print', request_id=r.id) }}" class="btn btn-primary btn-sm lc-open-tab">🖨️ طباعة / إرسال</a>
+              <a href="{{ url_for('supplier_rfqs', edit=r.id) }}#rfq-form-panel" class="btn btn-secondary btn-sm">تعديل</a>
+              <a href="{{ url_for('supplier_rfq_print', request_id=r.id) }}" class="btn btn-primary btn-sm lc-open-tab">🖨️ طباعة</a>
               <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="LiftCoreAdminDelete.post('/supplier-rfqs/delete/{{ r.id }}', {message: 'حذف الطلب؟'})">حذف</button>
             </td>
           </tr>
@@ -208,6 +237,12 @@ function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
 }
+{% if edit_rfq %}
+document.addEventListener('DOMContentLoaded', function () {
+  var panel = document.getElementById('rfq-form-panel');
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+{% endif %}
 </script>
 </body>
 </html>
