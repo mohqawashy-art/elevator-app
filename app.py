@@ -1659,6 +1659,12 @@ def _startup_schema_and_data_sync():
         db.session.rollback()
         app.logger.warning('Install project card schema ensure skip: %s', exc)
     try:
+        from supplier_rfq_schema import ensure_supplier_rfq_schema
+        ensure_supplier_rfq_schema()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Supplier RFQ schema ensure skip: %s', exc)
+    try:
         from installation.schema import ensure_install_tenant_uniques
         ensure_install_tenant_uniques()
     except Exception as exc:
@@ -10960,6 +10966,8 @@ def _resolve_rfq_project(project_id_raw):
 
 @app.route('/supplier-rfqs')
 def supplier_rfqs():
+    from supplier_rfq_schema import ensure_supplier_rfq_schema
+    ensure_supplier_rfq_schema()
     requests_list = tenant_query(SupplierQuoteRequest).order_by(
         SupplierQuoteRequest.request_date.desc().nullslast()
     ).all()
@@ -10978,6 +10986,8 @@ def supplier_rfqs():
 
 @app.route('/supplier-rfqs/save', methods=['POST'])
 def supplier_rfqs_save():
+    from supplier_rfq_schema import ensure_supplier_rfq_schema
+    ensure_supplier_rfq_schema()
     req_id = request.form.get('request_id', '').strip()
     supplier = request.form.get('supplier', '').strip()
     supplier_phone = request.form.get('supplier_phone', '').strip()
@@ -11081,6 +11091,8 @@ def _supplier_rfq_print_context(rfq, *, en_only=False):
 
 @app.route('/supplier-rfqs/<int:request_id>/print')
 def supplier_rfq_print(request_id):
+    from supplier_rfq_schema import ensure_supplier_rfq_schema
+    ensure_supplier_rfq_schema()
     rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
     return render_template('supplier-rfq-print.html', **_supplier_rfq_print_context(rfq))
 
