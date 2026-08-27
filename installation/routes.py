@@ -427,53 +427,37 @@ def project_card_print(project_id):
 
 @install_bp.route('/projects/<int:project_id>/card/costs/add', methods=['POST'])
 def project_card_cost_add(project_id):
-    from installation.project_card import ensure_project_card_schema
+    from installation.project_card import ensure_project_card_schema, parse_cost_item_form
 
     ensure_project_card_schema()
     project = tenant_get_or_404(InstallProject, project_id)
-    title = (request.form.get('title') or '').strip()
-    category = (request.form.get('category') or 'أخرى').strip()
-    if category not in COST_CATEGORIES:
-        category = 'أخرى'
-    try:
-        amount = float(request.form.get('amount') or 0)
-    except ValueError:
-        amount = 0
-    date_raw = (request.form.get('cost_date') or '').strip()
-    try:
-        cost_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date.today()
-    except ValueError:
-        cost_date = date.today()
-    inst_raw = (request.form.get('installment_no') or '').strip()
-    installment_no = int(inst_raw) if inst_raw.isdigit() else None
-    pay_status = (request.form.get('payment_status') or '').strip()
-    if pay_status not in COST_PAYMENT_STATUSES:
-        pay_status = 'غير مدفوعة' if installment_no or category == 'عمالة' else None
-    if not title:
-        if category == 'عمالة' and installment_no:
-            from installation.project_card import installment_label
-            title = installment_label(installment_no)
-        elif installment_no:
-            title = f'دفعة {installment_no}'
-        else:
-            title = category
-    if amount <= 0:
-        flash('أدخل مبلغاً أكبر من صفر', 'error')
+    fields, err = parse_cost_item_form(request.form)
+    if err:
+        flash(err, 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
-    item = InstallProjectCostItem(
-        project_id=project.id,
-        category=category,
-        title=title,
-        amount=amount,
-        cost_date=cost_date,
-        installment_no=installment_no,
-        payment_status=pay_status,
-        notes=(request.form.get('notes') or '').strip() or None,
-    )
+    item = InstallProjectCostItem(project_id=project.id, **fields)
     assign_organization(item)
     db.session.add(item)
     db.session.commit()
     flash('تمت إضافة بند التكلفة', 'success')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+
+
+@install_bp.route('/projects/<int:project_id>/card/costs/<int:item_id>/edit', methods=['POST'])
+def project_card_cost_edit(project_id, item_id):
+    from installation.project_card import ensure_project_card_schema, parse_cost_item_form
+
+    ensure_project_card_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    item = tenant_query(InstallProjectCostItem).filter_by(id=item_id, project_id=project.id).first_or_404()
+    fields, err = parse_cost_item_form(request.form)
+    if err:
+        flash(err, 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+    for key, value in fields.items():
+        setattr(item, key, value)
+    db.session.commit()
+    flash('تم تحديث بند التكلفة', 'success')
     return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
 
 

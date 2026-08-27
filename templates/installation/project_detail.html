@@ -150,6 +150,52 @@
                     </select>
                   </form>
                   {% endif %}
+                  <details class="pc-edit-details">
+                    <summary class="btn btn-secondary btn-sm">تعديل</summary>
+                    <form method="post" action="/installation/projects/{{ project.id }}/card/costs/{{ row.item.id }}/edit" class="pc-edit-form">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <div class="pc-edit-fields">
+                        <div>
+                          <label>مرحلة التركيب</label>
+                          <select name="category">
+                            {% for c in cost_categories %}
+                            <option value="{{ c }}" {% if row.item.category == c %}selected{% endif %}>{{ c }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div>
+                          <label>رقم الدفعة</label>
+                          <input type="number" name="installment_no" min="1" value="{{ row.item.installment_no or '' }}" placeholder="اختياري">
+                        </div>
+                        <div>
+                          <label>الوصف</label>
+                          <input type="text" name="title" value="{{ row.item.title or '' }}">
+                        </div>
+                        <div>
+                          <label>المبلغ</label>
+                          <input type="number" step="0.01" name="amount" value="{{ row.item.amount }}" required>
+                        </div>
+                        <div>
+                          <label>الحالة</label>
+                          <select name="payment_status">
+                            <option value="">—</option>
+                            {% for s in cost_payment_statuses %}
+                            <option value="{{ s }}" {% if row.item.payment_status == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div>
+                          <label>التاريخ</label>
+                          <input type="date" name="cost_date" value="{{ row.item.cost_date.isoformat() if row.item.cost_date else today }}">
+                        </div>
+                        <div class="pc-edit-notes">
+                          <label>ملاحظة</label>
+                          <input type="text" name="notes" value="{{ row.item.notes or '' }}" placeholder="اختياري">
+                        </div>
+                      </div>
+                      <button type="submit" class="btn btn-primary btn-sm">حفظ التعديل</button>
+                    </form>
+                  </details>
                   <form method="post" action="/installation/projects/{{ project.id }}/card/costs/{{ row.item.id }}/delete" onsubmit="return confirm('حذف البند؟')" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger)">حذف</button>
@@ -175,23 +221,23 @@
 
       <div class="pc-add-grid">
         <div class="pc-add-box">
-          <div class="pc-add-title">إضافة بند تكلفة / دفعة عمالة</div>
+          <div class="pc-add-title">إضافة بند تكلفة — مرحلة تركيب</div>
           <form method="post" action="/installation/projects/{{ project.id }}/card/costs/add" class="pc-add-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="pc-fields">
               <div>
-                <label>الفئة</label>
+                <label>مرحلة التركيب</label>
                 <select name="category" id="pcCat">
                   {% for c in cost_categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
                 </select>
               </div>
               <div>
-                <label>رقم الدفعة</label>
+                <label>رقم الدفعة (اختياري)</label>
                 <input type="number" name="installment_no" min="1" placeholder="1 / 2 / 3">
               </div>
               <div>
                 <label>الوصف (اختياري)</label>
-                <input type="text" name="title" placeholder="سكك أو اتركه لدفعة أولى…">
+                <input type="text" name="title" placeholder="سكك، ماكينة، كبينة…">
               </div>
               <div>
                 <label>المبلغ</label>
@@ -210,7 +256,7 @@
             </div>
             <button type="submit" class="btn btn-primary btn-sm">+ إضافة بند</button>
           </form>
-          <p class="pc-hint">مثال: فئة «عمالة» + رقم دفعة 1 + مبلغ 2000 + حالة مدفوعة ← يظهر كـ «دفعة أولى».</p>
+          <p class="pc-hint">المصروفات تُجمَّع على 3 مراحل: السكك والأبواب، الماكينة والشاسيه، الكابينة والكنترول. مثال: مرحلة 1 + دفعة 1 + مبلغ 2000.</p>
         </div>
 
         <div class="pc-add-box">
@@ -260,7 +306,20 @@
     .pc-inline-form input[type=number],.pc-inline-form select{
       padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:var(--font-en);max-width:140px
     }
-    .pc-status-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .pc-status-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
+    .pc-edit-details{position:relative}
+    .pc-edit-details summary{list-style:none;cursor:pointer}
+    .pc-edit-details summary::-webkit-details-marker{display:none}
+    .pc-edit-form{
+      position:absolute;left:0;top:calc(100% + 4px);z-index:20;min-width:min(420px,90vw);
+      background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.25)
+    }
+    .pc-edit-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+    .pc-edit-fields label{display:block;font-size:10px;color:var(--text3);margin-bottom:3px}
+    .pc-edit-fields input,.pc-edit-fields select{
+      width:100%;padding:6px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:inherit;font-size:12px
+    }
+    .pc-edit-notes{grid-column:1/-1}
     .pc-add-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .pc-add-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px}
     .pc-add-title{font-size:13px;font-weight:600;margin-bottom:10px}
