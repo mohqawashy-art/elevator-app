@@ -129,25 +129,16 @@ th{color:var(--text3);font-size:11px;font-weight:500}
         <table class="lines-table">
           <thead>
             <tr>
-              <th style="width:28%">صنف مخزن (اختياري)</th>
-              <th style="width:32%">الوصف / البند</th>
-              <th style="width:10%">الكمية</th>
-              <th style="width:10%">الوحدة</th>
-              <th style="width:18%">المواصفات</th>
+              <th style="width:38%">الصنيف / البند</th>
+              <th style="width:12%">الكمية</th>
+              <th style="width:12%">الوحدة</th>
+              <th style="width:28%">المواصفات</th>
               <th></th>
             </tr>
           </thead>
           <tbody id="lines-body">
             <tr class="line-row">
-              <td>
-                <select name="item_id" onchange="fillFromItem(this)">
-                  <option value="">— يدوي —</option>
-                  {% for it in items %}
-                  <option value="{{ it.id }}" data-name="{{ it.code }} — {{ it.name }}">{{ it.code }} — {{ it.name }}</option>
-                  {% endfor %}
-                </select>
-              </td>
-              <td><input type="text" name="description" placeholder="ماكينة، سكك، كبينة…"></td>
+              <td><input type="text" name="description" placeholder="ماكينة، سكك، كبينة…" required></td>
               <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
               <td><input type="text" name="unit" value="قطعة"></td>
               <td><input type="text" name="specs" placeholder="مواصفات"></td>
@@ -195,15 +186,7 @@ th{color:var(--text3);font-size:11px;font-weight:500}
 
 <template id="line-tpl">
   <tr class="line-row">
-    <td>
-      <select name="item_id" onchange="fillFromItem(this)">
-        <option value="">— يدوي —</option>
-        {% for it in items %}
-        <option value="{{ it.id }}" data-name="{{ it.code }} — {{ it.name }}">{{ it.code }} — {{ it.name }}</option>
-        {% endfor %}
-      </select>
-    </td>
-    <td><input type="text" name="description" placeholder="الوصف"></td>
+    <td><input type="text" name="description" placeholder="الصنيف / البند"></td>
     <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
     <td><input type="text" name="unit" value="قطعة"></td>
     <td><input type="text" name="specs" placeholder="مواصفات"></td>
@@ -212,12 +195,6 @@ th{color:var(--text3);font-size:11px;font-weight:500}
 </template>
 
 <script>
-function fillFromItem(sel) {
-  const name = sel.selectedOptions[0]?.dataset.name;
-  const row = sel.closest('tr');
-  const desc = row.querySelector('input[name="description"]');
-  if (name && desc && !desc.value) desc.value = name;
-}
 function addLine() {
   const body = document.getElementById('lines-body');
   const row = document.getElementById('line-tpl').content.cloneNode(true).querySelector('tr');

@@ -10971,12 +10971,10 @@ def supplier_rfqs():
     requests_list = tenant_query(SupplierQuoteRequest).order_by(
         SupplierQuoteRequest.request_date.desc().nullslast()
     ).all()
-    items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
     project = _resolve_rfq_project(request.args.get('project_id'))
     return render_template(
         'supplier-rfqs.html',
         requests=requests_list,
-        items=items,
         statuses=list(RFQ_STATUSES),
         next_rfq_code=next_code(SupplierQuoteRequest, 'RFQ-', digits=4),
         today=date.today().isoformat(),
@@ -11006,14 +11004,9 @@ def supplier_rfqs_save():
     quantities = request.form.getlist('quantity')
     units = request.form.getlist('unit')
     specs_list = request.form.getlist('specs')
-    item_ids = request.form.getlist('item_id')
     lines_data = []
-    for desc, qty, unit, specs, item_id in zip(descriptions, quantities, units, specs_list, item_ids):
+    for desc, qty, unit, specs in zip(descriptions, quantities, units, specs_list):
         description = (desc or '').strip()
-        if not description and item_id:
-            item = db.session.get(InventoryItem, int(item_id))
-            if item:
-                description = f'{item.code} — {item.name}'
         if not description:
             continue
         quantity = float(qty or 0)
@@ -11024,7 +11017,7 @@ def supplier_rfqs_save():
             'quantity': quantity,
             'unit': (unit or 'قطعة').strip() or 'قطعة',
             'specs': (specs or '').strip() or None,
-            'item_id': int(item_id) if item_id else None,
+            'item_id': None,
         })
     if not lines_data:
         flash('أضف بنداً واحداً على الأقل', 'error')
