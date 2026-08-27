@@ -15,3 +15,10 @@ def ensure_supplier_rfq_schema() -> None:
         SupplierQuoteRequest.__table__.create(bind=db.engine, checkfirst=True)
     if 'supplier_quote_request_lines' not in tables:
         SupplierQuoteRequestLine.__table__.create(bind=db.engine, checkfirst=True)
+
+
+if __name__ == '__main__':
+    from app import app
+    with app.app_context():
+        ensure_supplier_rfq_schema()
+        print('supplier RFQ tables OK')
