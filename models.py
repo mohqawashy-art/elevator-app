@@ -921,6 +921,57 @@ class PurchaseOrderLine(TenantMixin, db.Model):
 
 
 # =============================================
+# 11ب. طلبات عروض أسعار من الموردين (RFQ)
+# =============================================
+RFQ_STATUSES = ('مسودة', 'مرسل', 'مستلم', 'ملغي')
+
+
+class SupplierQuoteRequest(TenantMixin, db.Model):
+    """طلب عرض سعر من مورد — قبل إصدار طلب شراء."""
+    __tablename__ = 'supplier_quote_requests'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_rfq_org_code'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)
+    supplier = db.Column(db.String(200))
+    supplier_phone = db.Column(db.String(30))
+    supplier_email = db.Column(db.String(120))
+    request_date = db.Column(db.Date, default=date.today)
+    status = db.Column(db.String(30), default='مسودة')
+    subject = db.Column(db.String(300))
+    notes = db.Column(db.Text)
+    project_id = db.Column(db.Integer, nullable=True, index=True)
+    project_code = db.Column(db.String(30))
+    signature_data = db.Column(db.Text)
+    pdf_path = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    lines = db.relationship(
+        'SupplierQuoteRequestLine',
+        back_populates='request',
+        cascade='all, delete-orphan',
+        lazy='joined',
+    )
+
+
+class SupplierQuoteRequestLine(TenantMixin, db.Model):
+    __tablename__ = 'supplier_quote_request_lines'
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.Integer, db.ForeignKey('supplier_quote_requests.id'), nullable=False)
+    description = db.Column(db.String(500), nullable=False)
+    quantity = db.Column(db.Float, default=1)
+    unit = db.Column(db.String(30), default='قطعة')
+    specs = db.Column(db.String(500))
+    item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=True)
+
+    request = db.relationship('SupplierQuoteRequest', back_populates='lines')
+    item = db.relationship('InventoryItem')
+
+
+# =============================================
 # 12ب. عروض أسعار عقود الصيانة (مسار المبيعات)
 # =============================================
 class MaintenanceQuote(TenantMixin, db.Model):

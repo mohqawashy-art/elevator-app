@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — طلبات عروض أسعار الموردين</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden;font-family:var(--font-ar)}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:900px;height:200px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:inherit;text-decoration:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.panel-title{font-size:15px;font-weight:600;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:right}
+th{color:var(--text3);font-size:11px;font-weight:500}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px}
+.form-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;font-family:inherit;padding:9px 12px;width:100%}
+.lines-table input,.lines-table select{min-width:80px;width:100%}
+.badge{display:inline-flex;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500}
+.badge-ok{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-warn{background:rgba(224,144,48,.12);color:var(--warning)}
+.empty-msg{color:var(--text3);font-size:13px}
+.project-banner{background:rgba(200,160,85,.1);border:1px solid rgba(200,160,85,.25);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--gold)}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
+  .sidebar.open{right:0}
+  .mobile-overlay.open{display:block}
+  .content{padding:16px}
+  .form-grid{grid-template-columns:1fr}
+}
+</style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<script src="/static/liftcore-dates.js" defer></script>
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% set page_title = 'طلبات عروض أسعار الموردين' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">طلب عرض سعر من مورد</div>
+      <div class="page-actions">
+        <a href="/purchase-orders" class="btn btn-secondary btn-sm">طلبات الشراء</a>
+        <a href="/inventory" class="btn btn-secondary btn-sm">← الأصناف</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">طلب جديد</h2>
+      {% if project %}
+      <div class="project-banner">
+        مرتبط بمشروع تركيب: <b>{{ project.code }}</b> — {{ project.title or project.client_display }}
+      </div>
+      {% endif %}
+      <form method="post" action="/supplier-rfqs/save" id="rfq-form">
+        {% if project %}<input type="hidden" name="project_id" value="{{ project.id }}">{% endif %}
+        <div class="form-grid">
+          <div class="field">
+            <label>رقم الطلب (تلقائي)</label>
+            <input value="{{ next_rfq_code }}" disabled style="opacity:.85">
+          </div>
+          <div class="field">
+            <label>التاريخ</label>
+            <input type="date" name="request_date" class="lc-date-input" value="{{ today }}">
+          </div>
+          <div class="field">
+            <label>المورد</label>
+            <input name="supplier" placeholder="اسم المورد" required>
+          </div>
+          <div class="field">
+            <label>جوال المورد (واتساب)</label>
+            <input type="tel" name="supplier_phone" placeholder="05XXXXXXXX" style="direction:ltr;font-family:var(--font-en)">
+          </div>
+          <div class="field">
+            <label>إيميل المورد</label>
+            <input type="email" name="supplier_email" placeholder="supplier@example.com" style="direction:ltr;font-family:var(--font-en)">
+          </div>
+          <div class="field">
+            <label>الحالة</label>
+            <select name="status">
+              {% for st in statuses %}<option value="{{ st }}">{{ st }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field form-full">
+            <label>الموضوع (اختياري)</label>
+            <input name="subject" placeholder="مثال: تسعير ماكينة وشاسيه — مشروع {{ project.code if project else '…' }}">
+          </div>
+          <div class="field form-full">
+            <label>ملاحظات</label>
+            <textarea name="notes" rows="2" placeholder="مدة التوريد المطلوبة، شروط الدفع…"></textarea>
+          </div>
+        </div>
+        <table class="lines-table">
+          <thead>
+            <tr>
+              <th style="width:28%">صنف مخزن (اختياري)</th>
+              <th style="width:32%">الوصف / البند</th>
+              <th style="width:10%">الكمية</th>
+              <th style="width:10%">الوحدة</th>
+              <th style="width:18%">المواصفات</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="lines-body">
+            <tr class="line-row">
+              <td>
+                <select name="item_id" onchange="fillFromItem(this)">
+                  <option value="">— يدوي —</option>
+                  {% for it in items %}
+                  <option value="{{ it.id }}" data-name="{{ it.code }} — {{ it.name }}">{{ it.code }} — {{ it.name }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td><input type="text" name="description" placeholder="ماكينة، سكك، كبينة…"></td>
+              <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
+              <td><input type="text" name="unit" value="قطعة"></td>
+              <td><input type="text" name="specs" placeholder="مواصفات"></td>
+              <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ سطر</button>
+          <button type="submit" class="btn btn-primary btn-sm">حفظ وطباعة / إرسال</button>
+        </div>
+      </form>
+      <p style="font-size:11px;color:var(--text3);margin-top:10px">يُنشأ مستند RFQ بدون أسعار — للإرسال للمورد عبر واتساب أو إيميل. بعد استلام العرض يمكنك إنشاء طلب شراء.</p>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">الطلبات السابقة ({{ requests|length }})</h2>
+      {% if requests %}
+      <table>
+        <thead>
+          <tr><th>الرقم</th><th>المورد</th><th>المشروع</th><th>التاريخ</th><th>الحالة</th><th>إجراءات</th></tr>
+        </thead>
+        <tbody>
+          {% for r in requests %}
+          <tr>
+            <td class="td-code">{{ r.code }}</td>
+            <td>{{ r.supplier or '—' }}</td>
+            <td>{{ r.project_code or '—' }}</td>
+            <td class="lc-date">{{ r.request_date | dmY }}</td>
+            <td><span class="badge {% if r.status == 'مستلم' %}badge-ok{% else %}badge-warn{% endif %}">{{ r.status }}</span></td>
+            <td style="white-space:nowrap">
+              <a href="{{ url_for('supplier_rfq_print', request_id=r.id) }}" class="btn btn-primary btn-sm lc-open-tab">🖨️ طباعة / إرسال</a>
+              <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="LiftCoreAdminDelete.post('/supplier-rfqs/delete/{{ r.id }}', {message: 'حذف الطلب؟'})">حذف</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty-msg">لا توجد طلبات بعد.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<template id="line-tpl">
+  <tr class="line-row">
+    <td>
+      <select name="item_id" onchange="fillFromItem(this)">
+        <option value="">— يدوي —</option>
+        {% for it in items %}
+        <option value="{{ it.id }}" data-name="{{ it.code }} — {{ it.name }}">{{ it.code }} — {{ it.name }}</option>
+        {% endfor %}
+      </select>
+    </td>
+    <td><input type="text" name="description" placeholder="الوصف"></td>
+    <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
+    <td><input type="text" name="unit" value="قطعة"></td>
+    <td><input type="text" name="specs" placeholder="مواصفات"></td>
+    <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
+  </tr>
+</template>
+
+<script>
+function fillFromItem(sel) {
+  const name = sel.selectedOptions[0]?.dataset.name;
+  const row = sel.closest('tr');
+  const desc = row.querySelector('input[name="description"]');
+  if (name && desc && !desc.value) desc.value = name;
+}
+function addLine() {
+  const body = document.getElementById('lines-body');
+  const row = document.getElementById('line-tpl').content.cloneNode(true).querySelector('tr');
+  body.appendChild(row);
+}
+function removeLine(btn) {
+  const body = document.getElementById('lines-body');
+  if (body.querySelectorAll('.line-row').length > 1) btn.closest('tr').remove();
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+</script>
+</body>
+</html>
