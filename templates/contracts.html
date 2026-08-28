@@ -2473,7 +2473,7 @@ function contractCostAllocationViewHtml(c) {
   var gap = Number(a.collection_gap) || 0;
   var gapColor = gap > 0.01 ? 'var(--danger)' : 'var(--success)';
   var statusBadge = a.collection_status === 'محصّل' ? 'badge-active'
-    : (a.collection_status === 'تحصيل جزئي' ? 'badge-warning' : 'badge-unpaid');
+    : (a.collection_status === 'تحصيل جزئي' ? 'badge-partial' : 'badge-unpaid');
   return '<div class="view-section">توزيع قيمة العقد والتحصيل</div>' +
     '<div class="view-item"><div class="view-label">إجمالي العقد</div><div class="view-val">' + fmtMoneyAmt(a.contract_total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div></div>' +
     '<div class="view-item"><div class="view-label">استحقاق شهري</div><div class="view-val" style="font-family:var(--font-en)">' + fmtMoneyAmt(a.monthly_accrual) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div></div>' +
