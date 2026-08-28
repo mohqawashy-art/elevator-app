@@ -48,9 +48,9 @@
   }
 
   function setMarqueeDuration(track, pxPerSec) {
-    var half = track.scrollWidth / 2;
+    var half = track.scrollHeight / 2;
     if (!half) return;
-    var sec = Math.max(60, Math.min(420, half / (pxPerSec || 42)));
+    var sec = Math.max(60, Math.min(420, half / (pxPerSec || 28)));
     track.style.setProperty('--lc-azkar-duration', sec + 's');
   }
 
@@ -160,9 +160,9 @@
   }
 
   function boot() {
-    var footer = $('lc-azkar-footer');
-    if (!footer || footer.dataset.lcBoot === '1') return;
-    footer.dataset.lcBoot = '1';
+    var panel = $('lc-azkar-panel');
+    if (!panel || panel.dataset.lcBoot === '1') return;
+    panel.dataset.lcBoot = '1';
     state.reduced = prefersReducedMotion();
 
     loadData(function (payload) {
@@ -171,6 +171,10 @@
       if (!state.items.length) return;
 
       var mode = (payload.config.defaultMode || 'fade').toLowerCase();
+      /* الإطار الجانبي: التلاشي/الآلة الكاتبة أنسب من الشريط الأفقي */
+      if (mode === 'marquee' && panel.classList.contains('lc-azkar-panel')) {
+        mode = 'fade';
+      }
       if (state.reduced && mode === 'marquee') {
         startFadeRotation(state.items, payload.config);
         return;
@@ -191,8 +195,8 @@
 
   window.LiftCoreAzkar = {
     reload: function () {
-      var footer = $('lc-azkar-footer');
-      if (footer) delete footer.dataset.lcBoot;
+      var panel = $('lc-azkar-panel');
+      if (panel) delete panel.dataset.lcBoot;
       var track = $('lc-azkar-track');
       if (track) {
         track.innerHTML = '';

@@ -1,85 +1,98 @@
-/* شريط أذكار وأدعية — تلاشي/آلة كاتبة/شريط متحرك */
+/* إطار أذكار وأدعية — يسار الصفحة */
 :root {
-  --lc-azkar-h: 56px;
+  --lc-azkar-panel-w: 248px;
   --lc-azkar-font: 'Diwani Letter', 'Diwani Simple', 'Traditional Arabic', 'Arabic Typesetting', serif;
 }
 
-.lc-azkar-footer {
+.lc-azkar-panel {
   position: fixed;
-  inset-inline: 0;
-  bottom: 0;
-  z-index: 170;
-  display: flex;
-  align-items: stretch;
-  min-height: var(--lc-azkar-h);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: linear-gradient(180deg, rgba(8, 12, 22, 0.97), rgba(4, 8, 16, 0.99));
-  border-top: 1px solid rgba(201, 161, 74, 0.28);
-  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
+  left: max(12px, env(safe-area-inset-left, 0px));
+  top: calc(var(--header-h, 60px) + 14px);
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  width: var(--lc-azkar-panel-w);
+  z-index: 165;
+  pointer-events: none;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
-.lc-azkar-footer::before {
+.lc-azkar-frame {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: min(520px, calc(100vh - var(--header-h, 60px) - 28px));
+  margin-top: auto;
+  margin-bottom: auto;
+  padding: 14px 12px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(201, 161, 74, 0.45);
+  background: linear-gradient(165deg, rgba(12, 18, 32, 0.96) 0%, rgba(6, 10, 20, 0.98) 100%);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(201, 161, 74, 0.12);
+  overflow: hidden;
+  position: relative;
+}
+
+.lc-azkar-frame::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 120% at 50% 120%, rgba(201, 161, 74, 0.08), transparent 70%);
+  background: radial-gradient(ellipse 90% 60% at 50% 0%, rgba(201, 161, 74, 0.1), transparent 65%);
   pointer-events: none;
   animation: lc-azkar-glow 8s ease-in-out infinite alternate;
 }
 
 @keyframes lc-azkar-glow {
-  from { opacity: 0.45; }
+  from { opacity: 0.5; }
   to { opacity: 1; }
 }
 
-.lc-azkar-ticker {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
+.lc-azkar-frame-head {
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(201, 161, 74, 0.22);
 }
 
-.lc-azkar-ticker::before,
-.lc-azkar-ticker::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 32px;
-  z-index: 2;
-  pointer-events: none;
+.lc-azkar-frame-icon {
+  font-size: 14px;
+  color: rgba(201, 161, 74, 0.85);
+  line-height: 1;
 }
 
-.lc-azkar-ticker::before {
-  inset-inline-start: 0;
-  background: linear-gradient(90deg, rgba(4, 8, 16, 0.96) 0%, transparent 100%);
+.lc-azkar-frame-title {
+  font-family: var(--font-ar, 'IBM Plex Sans Arabic', sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(201, 161, 74, 0.9);
 }
 
-html[dir="rtl"] .lc-azkar-ticker::before {
-  background: linear-gradient(-90deg, rgba(4, 8, 16, 0.96) 0%, transparent 100%);
+.lc-azkar-ticker {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
-.lc-azkar-ticker::after {
-  inset-inline-end: 0;
-  background: linear-gradient(-90deg, rgba(4, 8, 16, 0.96) 0%, transparent 100%);
-}
-
-html[dir="rtl"] .lc-azkar-ticker::after {
-  background: linear-gradient(90deg, rgba(4, 8, 16, 0.96) 0%, transparent 100%);
-}
-
-/* —— شريط متحرك (Marquee) —— */
+/* —— شريط متحرك عمودي (Marquee) —— */
 .lc-azkar-track {
   display: flex;
-  width: max-content;
-  direction: ltr;
+  flex-direction: column;
+  width: 100%;
   will-change: transform;
-  animation: lc-azkar-scroll var(--lc-azkar-duration, 120s) linear infinite;
+  animation: lc-azkar-scroll-y var(--lc-azkar-duration, 120s) linear infinite;
 }
 
 .lc-azkar-track[hidden] {
@@ -88,33 +101,30 @@ html[dir="rtl"] .lc-azkar-ticker::after {
 
 .lc-azkar-segment {
   flex: 0 0 auto;
-  padding-inline: 2rem;
-  white-space: nowrap;
+  padding: 1rem 0.35rem;
+  white-space: normal;
   direction: rtl;
+  text-align: center;
   font-family: var(--lc-azkar-font);
-  font-size: clamp(18px, 2.2vw, 24px);
+  font-size: 18px;
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.65;
   color: #f5e8c4;
   -webkit-font-smoothing: antialiased;
 }
 
-@keyframes lc-azkar-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(50%); }
+@keyframes lc-azkar-scroll-y {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
 }
 
 /* —— تلاشي + آلة كاتبة —— */
 .lc-azkar-rotate {
-  position: relative;
-  z-index: 1;
   width: 100%;
-  max-width: min(960px, 94vw);
-  margin-inline: auto;
-  padding: 6px 2.5rem;
+  padding: 4px 2px;
   text-align: center;
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(10px);
   transition: opacity 0.65s ease, transform 0.65s ease;
 }
 
@@ -129,53 +139,64 @@ html[dir="rtl"] .lc-azkar-ticker::after {
 
 .lc-azkar-label {
   display: block;
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: rgba(201, 161, 74, 0.75);
-  margin-bottom: 2px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: rgba(201, 161, 74, 0.8);
+  margin-bottom: 8px;
   font-family: var(--font-ar, 'IBM Plex Sans Arabic', sans-serif);
+  line-height: 1.4;
 }
 
 .lc-azkar-text {
   display: block;
   direction: rtl;
   font-family: var(--lc-azkar-font);
-  font-size: clamp(17px, 2.1vw, 23px);
-  line-height: 1.45;
+  font-size: clamp(17px, 1.05vw + 14px, 21px);
+  line-height: 1.7;
   color: #f5e8c4;
-  min-height: 1.45em;
-  max-height: 3.2em;
-  overflow: hidden;
+  min-height: 3.4em;
+  max-height: none;
+  overflow: visible;
   -webkit-font-smoothing: antialiased;
 }
 
-html:has(#lc-azkar-footer) body {
-  padding-bottom: calc(var(--lc-azkar-h) + env(safe-area-inset-bottom, 0px));
-}
-
-html:has(#lc-azkar-footer) .lc-support {
-  bottom: calc(var(--lc-azkar-h) + max(18px, env(safe-area-inset-bottom, 0px)));
-}
-
-@media (max-width: 640px) {
-  :root { --lc-azkar-h: 48px; }
-
-  .lc-azkar-rotate {
-    padding-inline: 1.25rem;
-  }
+@media (max-width: 1100px) {
+  :root { --lc-azkar-panel-w: 220px; }
 
   .lc-azkar-text {
     font-size: 16px;
   }
+}
 
-  .lc-azkar-segment {
-    font-size: 17px;
-    padding-inline: 1.25rem;
+@media (max-width: 768px) {
+  .lc-azkar-panel {
+    left: max(8px, env(safe-area-inset-left, 0px));
+    top: auto;
+    bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+    width: min(var(--lc-azkar-panel-w), calc(100vw - 88px));
+    max-width: 200px;
+  }
+
+  .lc-azkar-frame {
+    max-height: 220px;
+    padding: 10px 10px 12px;
+    border-radius: 12px;
+  }
+
+  .lc-azkar-frame-head {
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+
+  .lc-azkar-text {
+    font-size: 15px;
+    line-height: 1.55;
+    min-height: 2.8em;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lc-azkar-footer::before {
+  .lc-azkar-frame::before {
     animation: none;
   }
 
@@ -195,11 +216,7 @@ html:has(#lc-azkar-footer) .lc-support {
 }
 
 @media print {
-  .lc-azkar-footer {
+  .lc-azkar-panel {
     display: none !important;
-  }
-
-  html:has(#lc-azkar-footer) body {
-    padding-bottom: 0 !important;
   }
 }
