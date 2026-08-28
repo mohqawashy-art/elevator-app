@@ -1,10 +1,10 @@
 {# شريط أذكار متحرك — فوتر ثابت (صفحات المكتب المسجّل فقط) #}
 {% if auth_user and not platform_admin_host and azkar_ticker_enabled %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-azkar.css') }}?v=4">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-azkar.css') }}?v=5">
 <footer class="lc-azkar-footer" id="lc-azkar-footer" aria-label="أذكار" data-i18n-skip>
   <div class="lc-azkar-ticker">
     <div class="lc-azkar-track" id="lc-azkar-track" aria-live="off"></div>
   </div>
 </footer>
-<script src="{{ url_for('static', filename='liftcore-azkar.js') }}?v=4" defer></script>
+<script src="{{ url_for('static', filename='liftcore-azkar.js') }}?v=5" defer></script>
 {% endif %}

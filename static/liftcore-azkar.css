@@ -60,6 +60,7 @@ html[dir="rtl"] .lc-azkar-ticker::after {
 .lc-azkar-track {
   display: flex;
   width: max-content;
+  direction: ltr;
   will-change: transform;
   animation: lc-azkar-scroll var(--lc-azkar-duration, 120s) linear infinite;
 }
@@ -68,6 +69,7 @@ html[dir="rtl"] .lc-azkar-ticker::after {
   flex: 0 0 auto;
   padding-inline: 2rem;
   white-space: nowrap;
+  direction: rtl;
   font-family: var(--lc-azkar-font);
   font-size: clamp(20px, 2.4vw, 26px);
   font-weight: 400;
@@ -86,15 +88,6 @@ html[dir="rtl"] .lc-azkar-ticker::after {
 }
 
 @keyframes lc-azkar-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-html[dir="rtl"] .lc-azkar-track {
-  animation-name: lc-azkar-scroll-rtl;
-}
-
-@keyframes lc-azkar-scroll-rtl {
   from { transform: translateX(0); }
   to { transform: translateX(50%); }
 }
