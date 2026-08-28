@@ -34,6 +34,8 @@
     'مكة': 'Makkah', 'مكة المكرمة': 'Makkah', 'جدة': 'Jeddah', 'الرياض': 'Riyadh',
     'الدمام': 'Dammam', 'المدينة المنورة': 'Madinah', 'المدينة': 'Madinah', 'الطائف': 'Taif',
     'الشرائع': 'Al-Sharaie', 'الخضراء': 'Al-Khadra',
+    'العزيزية': 'Al Aziziyah', 'الشوقية': 'Al Shuqiyah', 'العوالي': 'Al Awali',
+    'الزاهر': 'Al Zaher', 'النسيم': 'Al Naseem', 'أجياد': 'Ajyad', 'المسفلة': 'Al Misfalah',
     'مصعد': 'Elevator', 'مصاعد': 'Elevators',
     'وارد': 'Incoming', 'صادر': 'Outgoing', 'منخفض': 'Low', 'نافد': 'Out of Service', 'كافي': 'Sufficient', 'قطعة': 'Piece',
   };

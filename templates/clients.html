@@ -824,6 +824,13 @@ function cityDisplayName(city) {
   if (!isClientUiEn()) return city;
   return CITY_EN[city] || city;
 }
+function districtDisplayName(district) {
+  if (!district) return district;
+  if (!isClientUiEn()) return district;
+  if (window.LiftCoreDisplay && LiftCoreDisplay.text) return LiftCoreDisplay.text(district);
+  if (window.LiftCoreTranslit && LiftCoreTranslit.arabicToLatin) return LiftCoreTranslit.arabicToLatin(district);
+  return district;
+}
 function phoneCodeLabel(entry) {
   if (!entry) return '';
   if (isClientUiEn() && entry.en) return entry.en;
@@ -1069,7 +1076,9 @@ function fillDistrictFilter(keepSelected) {
   var prev = keepSelected ? (sel.value || '') : '';
   var districts = allDistricts(city);
   sel.innerHTML = '<option value="">' + esc(lcT('كل الأحياء')) + '</option>' +
-    districts.map(function (d) { return '<option value="' + esc(d) + '">' + esc(d) + '</option>'; }).join('');
+    districts.map(function (d) {
+      return '<option value="' + esc(d) + '">' + esc(districtDisplayName(d)) + '</option>';
+    }).join('');
   if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
     sel.value = prev;
   }
