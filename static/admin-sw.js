@@ -1,7 +1,7 @@
 /* LiftCore Admin PWA — static shell + visited pages + offline fallback */
 'use strict';
 
-const CACHE = 'liftcore-admin-v17';
+const CACHE = 'liftcore-admin-v18';
 const OFFLINE_FALLBACK = '/static/admin-offline-fallback.html';
 const PRECACHE = [
   '/static/liftcore-shell.css?v=50',
@@ -50,6 +50,7 @@ function isCacheableAdminPage(url) {
   if (p.indexOf('/onboard') === 0) return false;
   if (p.indexOf('/auth/') === 0) return false;
   if (p === '/login' || p === '/logout' || p === '/signup' || p === '/sw.js') return false;
+  if (p === '/clients' || p.indexOf('/clients/') === 0) return false;
   if (p === '/' || p === '/pricing' || p === '/coming-soon' || p === '/product') return false;
   return true;
 }

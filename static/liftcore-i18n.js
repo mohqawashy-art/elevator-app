@@ -718,6 +718,30 @@
   var applying = false;
   var moTimer = null;
 
+  function applyToRoot(root, lang) {
+    if (!root) return;
+    if (lang !== 'ar' && lang !== 'en') lang = 'ar';
+    applyLcMarked(root, lang);
+    applySelectors(root, lang);
+    walkTextNodes(root, lang);
+    translateFormAttributes(root, lang);
+    if (global.LiftCoreDisplay && global.LiftCoreDisplay.applyDom) {
+      global.LiftCoreDisplay.applyDom(root, lang);
+    }
+    applyLcMarked(root, lang);
+  }
+
+  function applyModal(modalId) {
+    var el = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+    if (!el) return;
+    if (el.hasAttribute && el.hasAttribute('data-lc-server-i18n')) return;
+    var lang = global.__LC_LANG || currentLang || 'ar';
+    if (lang !== 'en') return;
+    applyToRoot(el, 'en');
+    setTimeout(function () { applyToRoot(el, 'en'); }, 60);
+    setTimeout(function () { applyToRoot(el, 'en'); }, 300);
+  }
+
   function applyLanguage(lang) {
     if (applying) return;
     applying = true;
