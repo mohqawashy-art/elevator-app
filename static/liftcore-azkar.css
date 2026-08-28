@@ -1,6 +1,6 @@
-/* شريط أذكار متحرك — فوتر ثابت بخط ديواني */
+/* شريط أذكار وأدعية — تلاشي/آلة كاتبة/شريط متحرك */
 :root {
-  --lc-azkar-h: 44px;
+  --lc-azkar-h: 56px;
   --lc-azkar-font: 'Diwani Letter', 'Diwani Simple', 'Traditional Arabic', 'Arabic Typesetting', serif;
 }
 
@@ -17,6 +17,21 @@
   border-top: 1px solid rgba(201, 161, 74, 0.28);
   box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.lc-azkar-footer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 120% at 50% 120%, rgba(201, 161, 74, 0.08), transparent 70%);
+  pointer-events: none;
+  animation: lc-azkar-glow 8s ease-in-out infinite alternate;
+}
+
+@keyframes lc-azkar-glow {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
 }
 
 .lc-azkar-ticker {
@@ -26,6 +41,7 @@
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .lc-azkar-ticker::before,
@@ -35,7 +51,7 @@
   top: 0;
   bottom: 0;
   width: 32px;
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
 }
 
@@ -57,6 +73,7 @@ html[dir="rtl"] .lc-azkar-ticker::after {
   background: linear-gradient(90deg, rgba(4, 8, 16, 0.96) 0%, transparent 100%);
 }
 
+/* —— شريط متحرك (Marquee) —— */
 .lc-azkar-track {
   display: flex;
   width: max-content;
@@ -65,31 +82,71 @@ html[dir="rtl"] .lc-azkar-ticker::after {
   animation: lc-azkar-scroll var(--lc-azkar-duration, 120s) linear infinite;
 }
 
+.lc-azkar-track[hidden] {
+  display: none !important;
+}
+
 .lc-azkar-segment {
   flex: 0 0 auto;
   padding-inline: 2rem;
   white-space: nowrap;
   direction: rtl;
   font-family: var(--lc-azkar-font);
-  font-size: clamp(20px, 2.4vw, 26px);
+  font-size: clamp(18px, 2.2vw, 24px);
   font-weight: 400;
   line-height: 1.55;
   color: #f5e8c4;
-  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
-}
-
-.lc-azkar-sep {
-  display: inline-block;
-  margin-inline: 0.65em;
-  color: rgba(201, 161, 74, 0.55);
-  font-size: 0.72em;
-  vertical-align: middle;
 }
 
 @keyframes lc-azkar-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(50%); }
+}
+
+/* —— تلاشي + آلة كاتبة —— */
+.lc-azkar-rotate {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: min(960px, 94vw);
+  margin-inline: auto;
+  padding: 6px 2.5rem;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+
+.lc-azkar-rotate[hidden] {
+  display: none !important;
+}
+
+.lc-azkar-rotate.lc-azkar-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.lc-azkar-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(201, 161, 74, 0.75);
+  margin-bottom: 2px;
+  font-family: var(--font-ar, 'IBM Plex Sans Arabic', sans-serif);
+}
+
+.lc-azkar-text {
+  display: block;
+  direction: rtl;
+  font-family: var(--lc-azkar-font);
+  font-size: clamp(17px, 2.1vw, 23px);
+  line-height: 1.45;
+  color: #f5e8c4;
+  min-height: 1.45em;
+  max-height: 3.2em;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 html:has(#lc-azkar-footer) body {
@@ -101,15 +158,27 @@ html:has(#lc-azkar-footer) .lc-support {
 }
 
 @media (max-width: 640px) {
-  :root { --lc-azkar-h: 40px; }
+  :root { --lc-azkar-h: 48px; }
+
+  .lc-azkar-rotate {
+    padding-inline: 1.25rem;
+  }
+
+  .lc-azkar-text {
+    font-size: 16px;
+  }
 
   .lc-azkar-segment {
-    font-size: 19px;
+    font-size: 17px;
     padding-inline: 1.25rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .lc-azkar-footer::before {
+    animation: none;
+  }
+
   .lc-azkar-track {
     animation: none;
     transform: none;
@@ -117,6 +186,11 @@ html:has(#lc-azkar-footer) .lc-support {
 
   .lc-azkar-segment + .lc-azkar-segment {
     display: none;
+  }
+
+  .lc-azkar-rotate {
+    transition: opacity 0.2s ease;
+    transform: none;
   }
 }
 
