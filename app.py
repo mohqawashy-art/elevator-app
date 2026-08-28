@@ -725,6 +725,14 @@ def idle_screensaver_seconds(settings=None):
     return max(15, min(sec, 3600))
 
 
+def azkar_ticker_enabled(settings=None):
+    s = settings if settings is not None else get_app_settings()
+    val = getattr(s, 'azkar_ticker_enabled', None)
+    if val is None:
+        return True
+    return bool(val)
+
+
 def brand_logo_url(settings=None):
     """شعار شركة العميل (ليس شعار منتج LiftCore)."""
     s = settings or get_app_settings()
@@ -908,6 +916,16 @@ def inject_global_template_vars():
     except Exception:
         platform_op = False
     support = _platform_support_context(user=user, settings=s, lang=lang)
+    from department_portals import DEPARTMENT_PORTALS, visible_department_portals
+
+    def _perm_ok(perm):
+        if not user:
+            return False
+        try:
+            from liftcore_permissions import user_has_permission
+            return user_has_permission(user, perm, s)
+        except Exception:
+            return False
     requested_department = (request.args.get('department') or '').strip()
     if requested_department in DEPARTMENT_PORTALS:
         session['active_department'] = requested_department
@@ -919,7 +937,11 @@ def inject_global_template_vars():
         try:
             active_department_portal = next(
                 (
-                    portal for portal in _visible_department_portals()
+                    portal for portal in visible_department_portals(
+                        permission_ok=_perm_ok,
+                        install_enabled=install_module_enabled(),
+                        lang=lang,
+                    )
                     if portal['slug'] == active_department
                 ),
                 None,
@@ -957,6 +979,7 @@ def inject_global_template_vars():
         'session_locked': session_is_locked(),
         'idle_screensaver_enabled': idle_screensaver_enabled(s),
         'idle_screensaver_seconds': idle_screensaver_seconds(s),
+        'azkar_ticker_enabled': azkar_ticker_enabled(s),
         'can_write': can_write,
         'is_viewer': bool(user and user.role == 'viewer'),
         'user_permissions': user_perms,
@@ -1038,6 +1061,7 @@ def contract_to_js_dict(c, *, renewed_ids=None):
         'customer': c.customer.name if c.customer else '',
         'customer_name_en': (c.customer.name_en or '') if c.customer else '',
         'customer_city': (c.customer.city or '') if c.customer else '',
+        'customer_district': (c.customer.district or '') if c.customer else '',
         'customer_lat': (c.customer.lat or '') if c.customer else '',
         'customer_lng': (c.customer.lng or '') if c.customer else '',
         'customer_status': ((c.customer.status or 'نشط') if c.customer else 'نشط'),
@@ -1346,6 +1370,7 @@ def _sqlite_legacy_schema_patches():
                 ('default_sign_method', 'VARCHAR(20)'),
                 ('idle_screensaver_enabled', 'BOOLEAN'),
                 ('idle_screensaver_seconds', 'INTEGER'),
+                ('azkar_ticker_enabled', 'BOOLEAN'),
                 ('logo_width_sidebar', 'INTEGER'),
                 ('logo_width_report', 'INTEGER'),
                 ('logo_width_login', 'INTEGER'),
@@ -1581,6 +1606,7 @@ def _startup_schema_and_data_sync():
                 'company_sign_width': 'INTEGER DEFAULT 140',
                 'company_sign_offset_x': 'INTEGER DEFAULT 0',
                 'company_sign_offset_y': 'INTEGER DEFAULT 0',
+                'azkar_ticker_enabled': 'BOOLEAN DEFAULT TRUE',
             }
             for col_name, column_type in seal_columns.items():
                 if col_name in settings_cols:
@@ -2309,164 +2335,17 @@ def home():
     if not user:
         return redirect(url_for('login'))
     session.pop('active_department', None)
-    return render_template('home.html', departments=_visible_department_portals())
-
-
-DEPARTMENT_PORTALS = {
-    'maintenance': {
-        'title': 'منصة الصيانة والأعطال',
-        'short_title': 'الصيانة والأعطال',
-        'description': 'عملاء وعقود الصيانة والزيارات والبلاغات وقطع الغيار',
-        'color': '#2a7fff',
-        'links': (
-            ('عملاء الصيانة', '/clients?scope=maintenance', 'clients.read'),
-            ('عقود الصيانة', '/contracts?scope=maintenance', 'contracts.read'),
-            ('مصاعد الصيانة', '/elevators', 'elevators.read'),
-            ('زيارات الصيانة', '/maintenance-visits', 'maintenance_visits.read'),
-            ('الأعطال والبلاغات', '/faults', 'faults.read'),
-            ('وارد واتساب', '/support/whatsapp', 'whatsapp_inbox.read'),
-            ('تركيب قطع الغيار', '/parts-billing', 'parts_billing.read'),
+    from department_portals import home_ui, visible_department_portals
+    lang = resolve_user_language(user)
+    return render_template(
+        'home.html',
+        departments=visible_department_portals(
+            permission_ok=has_perm,
+            install_enabled=install_module_enabled(),
+            lang=lang,
         ),
-        'reports': (
-            ('تقرير زيارات الصيانة', '/reports/maintenance-visits', 'report_maintenance.read'),
-            ('تقرير الأعطال', '/reports/faults', 'report_faults.read'),
-            ('تقرير العقود', '/reports/contracts', 'report_contracts.read'),
-            ('تقرير المصاعد', '/reports/elevators', 'report_elevators.read'),
-        ),
-    },
-    'installations': {
-        'title': 'منصة التركيبات والتحديث',
-        'short_title': 'التركيبات والتحديث',
-        'description': 'عملاء وعقود التركيبات ومشروعات التنفيذ والمتابعة',
-        'color': '#c8a055',
-        'links': (
-            ('عملاء التركيبات', '/clients?scope=installation', 'clients.read'),
-            ('عقود التركيبات والتحديث', '/contracts?scope=installation', 'contracts.read'),
-            ('مشروعات التركيبات', '/installation/projects', 'installation_projects.read', True),
-            ('لوحة تنفيذ المشروعات', '/installation/', 'installation_projects.read', True),
-        ),
-        'reports': (
-            ('بطاقات وتقارير المشروعات', '/installation/projects', 'installation_projects.read', True),
-            ('تقرير العقود', '/reports/contracts', 'report_contracts.read'),
-        ),
-    },
-    'marketing': {
-        'title': 'منصة التسويق والمبيعات',
-        'short_title': 'التسويق والمبيعات',
-        'description': 'لوحة المبيعات وعروض التركيب والصيانة والتقدير وفرص البيع',
-        'color': '#14b8a6',
-        'links': (
-            ('لوحة المبيعات', '/sales/', 'sales_quotes.read'),
-            ('تركيب مصعد جديد', '/sales/install/quotes/new', 'installation_projects.read', True),
-            ('عرض سعر تحديث', '/sales/install/quotes/upgrade', 'installation_projects.read', True),
-            ('إضافة أدوار', '/sales/install/quotes/extend', 'installation_projects.read', True),
-            ('عروض التركيب', '/sales/quotes?kind=install', 'installation_projects.read', True),
-            ('عرض صيانة جديد', '/sales/maintenance-quotes/new', 'sales_quotes.read'),
-            ('عروض الصيانة', '/sales/maintenance-quotes', 'sales_quotes.read'),
-            ('تقدير تكلفة مصعد', '/elevator-estimates', 'elevator_estimates.read'),
-            ('فرص البيع', '/installation/leads', 'installation_projects.read', True),
-        ),
-        'reports': (
-            ('تقرير العملاء', '/reports/clients', 'report_clients.read'),
-            ('تقرير العقود', '/reports/contracts', 'report_contracts.read'),
-        ),
-    },
-    'inventory': {
-        'title': 'منصة المخازن والمشتريات',
-        'short_title': 'المخازن والمشتريات',
-        'description': 'الأصناف وحركة المخزون وطلبات الشراء وتقارير المخازن',
-        'color': '#1fb87a',
-        'links': (
-            ('الأصناف', '/inventory', 'inventory.read'),
-            ('حركة المخزن', '/stock-movements', 'stock_movements.read'),
-            ('طلبات الشراء', '/purchase-orders', 'purchase_orders.read'),
-        ),
-        'reports': (
-            ('تقرير الأصناف', '/reports/inventory', 'report_inventory.read'),
-            ('تقرير حركة المخزن', '/reports/stock-movements', 'report_stock.read'),
-        ),
-    },
-    'personnel': {
-        'title': 'منصة شؤون العاملين والفنيين',
-        'short_title': 'شؤون العاملين',
-        'description': 'الفنيون وفرق الصيانة ومتابعة الأداء الفني',
-        'color': '#8c6cff',
-        'links': (
-            ('الفنيون', '/technicians', 'technicians.read'),
-            ('فرق الصيانة', '/technicians?tab=teams', 'technicians.read'),
-        ),
-        'reports': (
-            ('تقرير الفنيين', '/reports/technicians', 'report_technicians.read'),
-        ),
-    },
-    'accounting': {
-        'title': 'منصة الحسابات والمالية',
-        'short_title': 'الحسابات والمالية',
-        'description': 'الإيرادات والمصروفات والفواتير والحسابات والقيود',
-        'color': '#e09030',
-        'links': (
-            ('الإيرادات والتحصيل', '/revenues', 'revenues.read'),
-            ('المصروفات', '/expenses', 'expenses.read'),
-            ('الفواتير', '/invoices', 'invoices.read'),
-            ('شجرة الحسابات', '/accounts', 'revenues.read'),
-            ('القيود اليومية', '/journals', 'revenues.read'),
-            ('دفتر الأستاذ', '/ledger', 'revenues.read'),
-            ('ميزان المراجعة', '/trial-balance', 'revenues.read'),
-            ('قائمة الدخل', '/pnl', 'revenues.read'),
-            ('المركز المالي', '/balance-sheet', 'revenues.read'),
-        ),
-        'reports': (
-            ('التقرير المالي', '/reports/financial', 'report_financial.read'),
-            ('الصحة المالية', '/reports/financial-health', 'report_financial_health.read'),
-            ('توقعات التحصيل', '/reports/contract-forecast', 'report_contract_forecast.read'),
-            ('كشف حساب عميل', '/reports/customer-statement', 'report_customer_statement.read'),
-            ('تقرير الإيرادات', '/reports/revenues', 'report_revenues.read'),
-            ('تقرير المصروفات', '/reports/expenses', 'report_expenses.read'),
-            ('تقرير الفواتير', '/reports/invoices', 'report_invoices.read'),
-        ),
-    },
-    'management': {
-        'title': 'منصة الإدارة والمتابعة',
-        'short_title': 'الإدارة والمتابعة',
-        'description': 'لوحة المؤشرات والتقارير العامة وإعدادات النظام',
-        'color': '#e04f6f',
-        'links': (
-            ('لوحة المؤشرات العامة', '/dashboard', 'dashboard.read'),
-            ('كل التقارير', '/reports', 'reports_home.read'),
-            ('إعدادات الحساب والنظام', '/settings', 'dashboard.read'),
-        ),
-        'reports': (
-            ('تقرير الداشبورد', '/reports/dashboard', 'report_dashboard.read'),
-            ('التقرير السنوي للعميل', '/reports/client-annual', 'report_client_annual.read'),
-        ),
-    },
-}
-
-
-def _visible_department_portals():
-    """فلترة المنصات وروابطها قبل العرض وفق صلاحيات المستخدم والباقة."""
-    visible = []
-    install_enabled = install_module_enabled()
-    for slug, definition in DEPARTMENT_PORTALS.items():
-        portal = dict(definition)
-        portal['slug'] = slug
-        for group in ('links', 'reports'):
-            allowed = []
-            for item in definition[group]:
-                label, href, permission, *flags = item
-                install_only = bool(flags and flags[0])
-                if install_only and not install_enabled:
-                    continue
-                if has_perm(permission):
-                    separator = '&' if '?' in href else '?'
-                    allowed.append({
-                        'label': label,
-                        'href': f'{href}{separator}department={slug}',
-                    })
-            portal[group] = allowed
-        if portal['links'] or portal['reports']:
-            visible.append(portal)
-    return visible
+        home_ui=home_ui(lang),
+    )
 
 
 @app.route('/departments/<department>')
@@ -2474,15 +2353,21 @@ def department_portal(department):
     user = require_login()
     if not user:
         return redirect(url_for('login'))
+    from department_portals import portal_ui, visible_department_portals
+    lang = resolve_user_language(user)
     portals = {
         portal['slug']: portal
-        for portal in _visible_department_portals()
+        for portal in visible_department_portals(
+            permission_ok=has_perm,
+            install_enabled=install_module_enabled(),
+            lang=lang,
+        )
     }
     portal = portals.get(department)
     if not portal:
         abort(403)
     session['active_department'] = department
-    return render_template('department_portal.html', portal=portal)
+    return render_template('department_portal.html', portal=portal, portal_ui=portal_ui(lang))
 
 
 @app.route('/coming-soon')
@@ -12016,6 +11901,18 @@ def settings_screensaver_save():
     db.session.commit()
     session['settings_notice'] = 'تم حفظ إعدادات شاشة الحفظ.'
     return _settings_redirect('screensaver')
+
+
+@app.route('/settings/azkar/save', methods=['POST'])
+def settings_azkar_save():
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('appearance')
+    s = get_app_settings()
+    s.azkar_ticker_enabled = request.form.get('azkar_ticker_enabled') == '1'
+    db.session.commit()
+    session['settings_notice'] = 'تم حفظ إعدادات شريط الأذكار.'
+    return _settings_redirect('appearance')
 
 
 @app.route('/settings/billing/checkout', methods=['POST'])

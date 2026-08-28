@@ -1,0 +1,26 @@
+/**
+ * LiftCore — إظهار لغة واحدة في الوضع العربي/الإنجليزي
+ * عربي افتراضي: إخفاء التسميات الإنجليزية الثانوية
+ */
+html[lang="ar"] .lc-en-only,
+html[lang="ar"] .rpt-header-center h2,
+html[lang="ar"] .doc-center .sub.lc-en-only {
+  display: none !important;
+}
+
+html[lang="en"] .lc-ar-only,
+html[lang="en"] .stat-label-ar {
+  display: none !important;
+}
+
+/* لوحة التحكم — إظهار العربية فقط في AR */
+html[lang="ar"] .stat-card > .stat-label {
+  display: none;
+}
+
+@media print {
+  html[lang="ar"] .rpt-header-center h2,
+  html[lang="ar"] .doc-center .sub.lc-en-only {
+    display: none !important;
+  }
+}

@@ -776,6 +776,18 @@
     if (loginLang) loginLang.value = lang;
     try { localStorage.setItem('liftcore_lang', lang); } catch (e) { /* ignore */ }
 
+    var path = (global.location && global.location.pathname) || '';
+    var portalPage = path === '/home' || path.indexOf('/departments/') === 0;
+
+    /* منصات الأقسام: المحتوى يُعرض من السيرفر حسب اللغة */
+    if (portalPage && lang !== currentLang && !loginLang) {
+      var reloadPortal = function () { global.location.reload(); };
+      var portalPersist = persistLanguage(lang);
+      if (portalPersist && portalPersist.then) { portalPersist.then(reloadPortal, reloadPortal); }
+      else { setTimeout(reloadPortal, 200); }
+      return;
+    }
+
     /* الرجوع للعربية: الصفحة مكتوبة عربي أصلاً — إعادة تحميل تضمن استرجاعاً نظيفاً 100% */
     if (lang === 'ar' && wasEn && !loginLang) {
       var reload = function () { global.location.reload(); };
