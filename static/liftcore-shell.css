@@ -240,6 +240,7 @@ html[dir="rtl"] .lc-digital-day {
   z-index: 4;
   display: flex !important;
   align-items: center !important;
+  gap: 12px;
   padding-inline-end: 8px;
 }
 
@@ -2372,4 +2373,65 @@ html[data-lc-can-write="0"] .lc-write-only {
   .lc-hotkeys-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── v49: تبويبات جدول/خريطة — نحيفة مثل btn-sm (كل الصفحات AR/EN) ── */
+body:has(#sidebar) .tabs {
+  display: inline-flex !important;
+  flex-wrap: nowrap !important;
+  gap: 3px !important;
+  margin-bottom: 10px !important;
+  padding: 3px !important;
+  background: var(--bg3) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--r-sm, 8px) !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+
+body:has(#sidebar) .tabs .tab {
+  flex: 0 0 auto !important;
+  padding: 5px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+  min-height: 0 !important;
+  text-align: start !important;
+  justify-content: flex-start !important;
+  cursor: pointer !important;
+}
+
+body:has(#sidebar) .tabs .tab svg {
+  width: 13px !important;
+  height: 13px !important;
+  flex-shrink: 0 !important;
+}
+
+body:has(#sidebar) .tabs .tab.active {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+body:has(#sidebar) .tabs .tab:hover:not(.active) {
+  background: var(--bg4) !important;
+  color: var(--text1) !important;
+}
+
+html[dir="ltr"] body:has(#sidebar) .tabs .tab {
+  font-family: var(--font-en, 'DM Sans', sans-serif) !important;
+}
+
+body:has(#sidebar) .page-header {
+  margin-bottom: 10px !important;
+}
+
+body:has(#sidebar) .filters-bar {
+  margin-bottom: 10px !important;
+}
+
+body:has(#sidebar) .stats-row {
+  margin-bottom: 12px !important;
 }
