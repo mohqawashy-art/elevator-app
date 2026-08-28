@@ -376,11 +376,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="tabs">
       <div class="tab active" id="tab-btn-table" onclick="switchTab('table', this)">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="5" y1="5.5" x2="5" y2="12"/></svg>
-        جدول العقود
+        <span data-lc-map-t="جدول العقود">جدول العقود</span>
       </div>
       <div class="tab" id="tab-btn-map" onclick="switchTab('map', this)">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
-        خريطة العقود
+        <span data-lc-map-t="خريطة العقود">خريطة العقود</span>
       </div>
     </div>
 
@@ -482,24 +482,24 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="map-panel">
         <div class="map-toolbar">
           <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('table', document.getElementById('tab-btn-table'))" title="العودة إلى جدول العقود">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('table', document.getElementById('tab-btn-table'))" data-lc-map-title="العودة إلى جدول العقود" title="العودة إلى جدول العقود">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 2.5L4.5 7 9 11.5"/><line x1="4.5" y1="7" x2="13" y2="7"/></svg>
-              جدول العقود
+              <span data-lc-map-t="جدول العقود">جدول العقود</span>
             </button>
             <div>
-              <div style="font-size:14px;font-weight:600;color:var(--text1)">خريطة العقود</div>
+              <div style="font-size:14px;font-weight:600;color:var(--text1)" data-lc-map-t="خريطة العقود">خريطة العقود</div>
               <div id="map-summary" style="font-size:12px;color:var(--text3);margin-top:4px"></div>
             </div>
           </div>
           <div class="map-legend">
-            <div class="map-legend-item"><span class="map-legend-dot status-active"></span> نشط</div>
-            <div class="map-legend-item"><span class="map-legend-dot status-expiring"></span> على وشك الانتهاء</div>
-            <div class="map-legend-item"><span class="map-legend-dot status-renewed"></span> تم تجديده</div>
-            <div class="map-legend-item"><span class="map-legend-dot status-expired"></span> منتهي</div>
-            <div class="map-legend-item"><span class="map-legend-dot status-cancelled"></span> ملغي</div>
-            <div class="map-legend-item"><span class="map-legend-cluster">2</span> تجميع</div>
-            <div class="map-legend-item" style="color:var(--text3)">عملاء غير نشطين لا يظهرون</div>
-            <button class="btn btn-secondary btn-sm" type="button" onclick="refreshContractMap(true)" title="تحديث الخريطة">تحديث</button>
+            <div class="map-legend-item"><span class="map-legend-dot status-active"></span><span data-lc-map-t="نشط">نشط</span></div>
+            <div class="map-legend-item"><span class="map-legend-dot status-expiring"></span><span data-lc-map-t="على وشك الانتهاء">على وشك الانتهاء</span></div>
+            <div class="map-legend-item"><span class="map-legend-dot status-renewed"></span><span data-lc-map-t="تم تجديده">تم تجديده</span></div>
+            <div class="map-legend-item"><span class="map-legend-dot status-expired"></span><span data-lc-map-t="منتهي">منتهي</span></div>
+            <div class="map-legend-item"><span class="map-legend-dot status-cancelled"></span><span data-lc-map-t="ملغي">ملغي</span></div>
+            <div class="map-legend-item"><span class="map-legend-cluster">2</span><span data-lc-map-t="تجميع">تجميع</span></div>
+            <div class="map-legend-item" style="color:var(--text3)"><span data-lc-map-t="عملاء غير نشطين لا يظهرون">عملاء غير نشطين لا يظهرون</span></div>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="refreshContractMap(true)" data-lc-map-t="تحديث الخريطة" data-lc-map-title="تحديث الخريطة" title="تحديث الخريطة">تحديث الخريطة</button>
           </div>
         </div>
         <div id="map"></div>
@@ -805,6 +805,76 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 var CONTRACTS = {{ contracts_js|tojson }};
 
 var CUSTOMERS = {{ customers_js|tojson }};
+
+var contractMapLastSummary = null;
+
+function contractUiLang() {
+  if (window.__LC_LANG) return window.__LC_LANG;
+  try {
+    var ls = localStorage.getItem('liftcore_lang');
+    if (ls) return ls;
+  } catch (e) { /* ignore */ }
+  return document.documentElement.getAttribute('lang') || 'ar';
+}
+function isContractUiEn() {
+  return contractUiLang() === 'en';
+}
+function contractTr(s) {
+  if (!isContractUiEn()) return s;
+  var t = window.__LC_TRANSLATIONS || {};
+  return t[s] || s;
+}
+function contractMapSummaryShown(count, locations) {
+  var n = Number(count) || 0;
+  var loc = Number(locations) || 0;
+  if (isContractUiEn()) {
+    return 'Shown: ' + n + ' contract' + (n === 1 ? '' : 's') + ' at ' + loc + ' location' + (loc === 1 ? '' : 's') + ' (active clients only)';
+  }
+  return 'معروض: ' + n + ' عقد في ' + loc + ' موقع (عملاء نشطون فقط)';
+}
+function contractMapSummaryOsm(count, locations) {
+  var n = Number(count) || 0;
+  var loc = Number(locations) || 0;
+  if (isContractUiEn()) {
+    return 'OpenStreetMap — ' + n + ' contract' + (n === 1 ? '' : 's') + ' at ' + loc + ' location' + (loc === 1 ? '' : 's') + ' (active clients only)';
+  }
+  return 'OpenStreetMap — ' + n + ' عقد في ' + loc + ' موقع (عملاء نشطون فقط)';
+}
+function contractMapSummaryEmpty() {
+  return contractTr('لا مواقع لعقود عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة');
+}
+function contractMapSummaryGeocoding(count) {
+  var n = Number(count) || 0;
+  if (isContractUiEn()) return 'Locating ' + n + ' client' + (n === 1 ? '' : 's') + '...';
+  return 'جاري تحديد مواقع ' + n + ' عميل...';
+}
+function refreshContractMapSummaryI18n() {
+  var summary = document.getElementById('map-summary');
+  if (!summary || !contractMapLastSummary) return;
+  var d = contractMapLastSummary;
+  if (d.type === 'shown') summary.textContent = contractMapSummaryShown(d.count, d.locations);
+  else if (d.type === 'osm') summary.textContent = contractMapSummaryOsm(d.count, d.locations);
+  else if (d.type === 'empty') summary.textContent = contractMapSummaryEmpty();
+  else if (d.type === 'geocoding') summary.textContent = contractMapSummaryGeocoding(d.count);
+  else if (d.type === 'loading') summary.textContent = contractTr('جاري تحميل خرائط Google...');
+}
+function applyContractsMapI18n() {
+  var en = isContractUiEn();
+  document.querySelectorAll('#tab-map [data-lc-map-t], #tab-btn-map [data-lc-map-t], #tab-btn-table [data-lc-map-t]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-map-t');
+    if (!key) return;
+    if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent.trim();
+    el.textContent = en ? contractTr(key) : el.dataset.lcAr;
+  });
+  document.querySelectorAll('#tab-map [data-lc-map-title]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-map-title');
+    if (!key) return;
+    if (el.dataset.lcTitleAr == null) el.dataset.lcTitleAr = el.getAttribute('title') || key;
+    el.setAttribute('title', en ? contractTr(key) : el.dataset.lcTitleAr);
+  });
+  refreshContractMapSummaryI18n();
+}
+window.applyContractsMapI18n = applyContractsMapI18n;
 
 var ELEVATOR_LOOKUP = {{ elev_lookup|tojson }};
 const NEXT_CONTRACT_CODES = {{ next_contract_codes|tojson }};
@@ -2813,10 +2883,13 @@ function renderContractMapMarkers(fitAgain) {
   });
 
   var summary = document.getElementById('map-summary');
+  contractMapLastSummary = shownContracts
+    ? { type: 'shown', count: shownContracts, locations: groups.length }
+    : { type: 'empty' };
   if (summary) {
     summary.textContent = shownContracts
-      ? ('معروض: ' + shownContracts + ' عقد في ' + groups.length + ' موقع (عملاء نشطون فقط)')
-      : 'لا مواقع لعقود عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
+      ? contractMapSummaryShown(shownContracts, groups.length)
+      : contractMapSummaryEmpty();
   }
 
   if (contractMarkers.length && window.LiftCoreMap) {
@@ -2916,10 +2989,13 @@ function refreshContractMapOsm() {
     osmContractMarkers.push(marker);
     bounds.push([pos.lat, pos.lng]);
   });
+  contractMapLastSummary = shownContracts
+    ? { type: 'osm', count: shownContracts, locations: groups.length }
+    : { type: 'empty' };
   if (summary) {
     summary.textContent = shownContracts
-      ? ('OpenStreetMap — ' + shownContracts + ' عقد في ' + groups.length + ' موقع (عملاء نشطون فقط)')
-      : 'لا مواقع لعقود عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
+      ? contractMapSummaryOsm(shownContracts, groups.length)
+      : contractMapSummaryEmpty();
   }
   if (bounds.length) {
     osmContractMap.fitBounds(bounds, { padding: [48, 48] });
@@ -2931,7 +3007,8 @@ function refreshContractMapOsm() {
 function refreshContractMap(fitAgain) {
   if (window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && (typeof google === 'undefined' || !google.maps)) {
     var summaryWait = document.getElementById('map-summary');
-    if (summaryWait) summaryWait.textContent = 'جاري تحميل خرائط Google...';
+    contractMapLastSummary = { type: 'loading' };
+    if (summaryWait) summaryWait.textContent = contractTr('جاري تحميل خرائط Google...');
     whenGoogleMapsReady(function () { refreshContractMap(fitAgain); });
     return;
   }
@@ -2975,7 +3052,8 @@ function refreshContractMap(fitAgain) {
 
   var summary = document.getElementById('map-summary');
   if (missing.length && summary) {
-    summary.textContent = 'جاري تحديد مواقع ' + missing.length + ' عميل...';
+    contractMapLastSummary = { type: 'geocoding', count: missing.length };
+    summary.textContent = contractMapSummaryGeocoding(missing.length);
   }
 
   function finish() { renderContractMapMarkers(fitAgain); }
@@ -3126,12 +3204,16 @@ if (window.LiftCoreLocation) {
   LiftCoreLocation.setLookup(getCustomerById);
 }
 
-try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); initContractClientSelect(); } catch (bootErr) { console.error('contracts boot', bootErr); }
+try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); initContractClientSelect(); applyContractsMapI18n(); } catch (bootErr) { console.error('contracts boot', bootErr); }
 window.__lcRefreshPage = function () {
   if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : CONTRACTS);
   if (typeof updateStats === 'function') updateStats();
+  applyContractsMapI18n();
 };
+document.addEventListener('liftcore:lang', function () {
+  applyContractsMapI18n();
+});
 var bootParams = new URLSearchParams(window.location.search);
 if (bootParams.get('action') === 'add') {
   openAddModal(bootParams.get('customer_id'));

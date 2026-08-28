@@ -115,7 +115,7 @@ tr.done td{background:#f8fdf9}
     <table style="margin-top:12px">
       <tbody>
         <tr>
-          <td><b>نوع المشروع</b></td><td>{{ 'تركيب جديد' if accepted_quote.quote_type == 'new' else 'تحديث' }}</td>
+          <td><b>نوع المشروع</b></td><td>{{ 'تركيب جديد' if accepted_quote.quote_type == 'new' else 'تحديث وتطوير' }}</td>
           <td><b>تاريخ القبول</b></td><td>{{ accepted_quote.approved_at.strftime('%Y-%m-%d') if accepted_quote.approved_at else '—' }}</td>
         </tr>
         <tr>
