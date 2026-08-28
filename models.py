@@ -1088,6 +1088,7 @@ class Settings(TenantMixin, db.Model):
     default_sign_method = db.Column(db.String(20), default='both')  # draw | pin | both
     idle_screensaver_enabled = db.Column(db.Boolean, default=True)
     idle_screensaver_seconds = db.Column(db.Integer, default=60)
+    azkar_ticker_enabled = db.Column(db.Boolean, default=True)
     checklist_template_key = db.Column(db.String(50), default='liftcore_standard_v1')  # SaaS: قالب الفحص الافتراضي
     google_maps_api_key = db.Column(db.String(200))  # اختياري — يُستخدم إن لم يُضبط GOOGLE_MAPS_API_KEY
     company_website   = db.Column(db.String(200))

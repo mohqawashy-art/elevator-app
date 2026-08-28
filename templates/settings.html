@@ -808,6 +808,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
     </form>
     {% if current_user.role == 'admin' %}
     <form class="card" method="post" action="{{ url_for('settings_azkar_save') }}" style="margin-top:16px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="section">شريط الدعاء والأذكار</div>
       <p class="hint" style="margin-bottom:14px">شريط متحرك أسفل الشاشة يعرض الأذكار والأدعية. الإعداد يطبّق على جميع مستخدمي المكتب.</p>
       <div class="full">

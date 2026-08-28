@@ -35,6 +35,7 @@ ADMIN_ONLY_ENDPOINTS = frozenset({
     'settings_signatory_delete',
     'settings_signatures_prefs',
     'settings_screensaver_save',
+    'settings_azkar_save',
     'settings_user_add',
     'settings_user_edit',
     'settings_user_toggle',
