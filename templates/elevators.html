@@ -15,7 +15,7 @@
 <script src="/static/elevator_profile.js"></script>
 <script src="/static/client_location.js?v=8"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=8"></script>
+<script src="/static/liftcore_map.js?v=9"></script>
 <script src="/static/client_map_picker.js?v=7"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -1786,10 +1786,8 @@ function refreshElevatorMap(fitAgain) {
     refreshElevatorMapOsm();
     return;
   }
-  if (window.LiftCoreMap && LiftCoreMap.ensureMapMarkersReady) {
-    LiftCoreMap.ensureMapMarkersReady(function () { refreshElevatorMap(fitAgain); });
-    return;
-  }
+
+  function buildElevGoogleMap() {
   var mapEl = document.getElementById('map');
   if (!mapEl) return;
 
@@ -1885,6 +1883,13 @@ function refreshElevatorMap(fitAgain) {
     elevMap.setCenter({lat: 21.4225, lng: 39.8262});
     elevMap.setZoom(12);
   }
+  }
+
+  if (window.LiftCoreMap && LiftCoreMap.ensureMapMarkersReady) {
+    LiftCoreMap.ensureMapMarkersReady(buildElevGoogleMap);
+    return;
+  }
+  buildElevGoogleMap();
 }
 
 function switchElevTab(tab, el) {

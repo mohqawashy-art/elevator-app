@@ -727,7 +727,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   </div>
 </div>
 
-<script src="/static/liftcore_map.js?v=8"></script>
+<script src="/static/liftcore_map.js?v=9"></script>
 <script src="/static/ops-common.js?v=3"></script>
 
 <script>
@@ -784,10 +784,8 @@ function visitStatusColor(status) {
 
 function refreshVisitMap() {
   if (typeof google === 'undefined' || !google.maps) return;
-  if (window.LiftCoreMap && LiftCoreMap.ensureMapMarkersReady) {
-    LiftCoreMap.ensureMapMarkersReady(refreshVisitMap);
-    return;
-  }
+
+  function buildVisitGoogleMap() {
   const mapEl = document.getElementById('map');
   if (!mapEl) return;
   if (!visitMap) {
@@ -852,6 +850,13 @@ function refreshVisitMap() {
     visitMap.setZoom(12);
     google.maps.event.trigger(visitMap, 'resize');
   }
+  }
+
+  if (window.LiftCoreMap && LiftCoreMap.ensureMapMarkersReady) {
+    LiftCoreMap.ensureMapMarkersReady(buildVisitGoogleMap);
+    return;
+  }
+  buildVisitGoogleMap();
 }
 
 function refreshCalendarView() {

@@ -15,8 +15,8 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js?v=8"></script>
 <script src="/static/client_geocode.js?v=8"></script>
-<script src="/static/liftcore_map.js?v=8"></script>
-<script src="/static/client_map_picker.js?v=12"></script>
+<script src="/static/liftcore_map.js?v=9"></script>
+<script src="/static/client_map_picker.js?v=13"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -3026,10 +3026,8 @@ function refreshContractMap(fitAgain) {
     refreshContractMapOsm();
     return;
   }
-  if (window.LiftCoreMap && LiftCoreMap.ensureMapMarkersReady) {
-    LiftCoreMap.ensureMapMarkersReady(function () { refreshContractMap(fitAgain); });
-    return;
-  }
+
+  function buildContractGoogleMap() {
   var mapEl = document.getElementById('map');
   if (!mapEl) return;
   mapEl.style.display = 'block';
@@ -3073,6 +3071,13 @@ function refreshContractMap(fitAgain) {
   } else {
     finish();
   }
+  }
+
+  if (window.LiftCoreMap && LiftCoreMap.ensureMapMarkersReady) {
+    LiftCoreMap.ensureMapMarkersReady(buildContractGoogleMap);
+    return;
+  }
+  buildContractGoogleMap();
 }
 
 function switchTab(tab, el) {

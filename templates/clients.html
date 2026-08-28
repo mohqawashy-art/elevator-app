@@ -72,8 +72,8 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js?v=4"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=8"></script>
-<script src="/static/client_map_picker.js?v=12"></script>
+<script src="/static/liftcore_map.js?v=9"></script>
+<script src="/static/client_map_picker.js?v=13"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -2563,11 +2563,8 @@ function refreshMainMap(fitAgain) {
     refreshMainMapOsm(fitAgain);
     return;
   }
-  if (window.LiftCoreMap && LiftCoreMap.ensureMapMarkersReady) {
-    LiftCoreMap.ensureMapMarkersReady(function () { refreshMainMap(fitAgain); });
-    return;
-  }
 
+  function buildMainGoogleMap() {
   var mapEl = document.getElementById('map');
   var emptyEl = document.getElementById('map-empty');
   var summaryEl = document.getElementById('map-summary');
@@ -2739,6 +2736,13 @@ function refreshMainMap(fitAgain) {
       mainMap.setZoom(14);
     }
   }
+  }
+
+  if (window.LiftCoreMap && LiftCoreMap.ensureMapMarkersReady) {
+    LiftCoreMap.ensureMapMarkersReady(buildMainGoogleMap);
+    return;
+  }
+  buildMainGoogleMap();
 }
 
 function initMainMap() {
