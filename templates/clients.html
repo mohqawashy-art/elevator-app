@@ -974,9 +974,24 @@ window.applyClientCardI18n = applyClientCardI18n;
 
 function refreshClientCardI18n() {
   applyClientCardI18n();
-  setTimeout(applyClientCardI18n, 0);
-  setTimeout(applyClientCardI18n, 150);
-  setTimeout(applyClientCardI18n, 450);
+  setTimeout(applyClientCardI18n, 160);
+}
+
+function refreshOpenClientCardI18n() {
+  var cardModal = document.getElementById('modal-client-card');
+  if (!cardModal || !cardModal.classList.contains('open') || !currentCardId) return;
+  var c = CUSTOMERS.find(function (x) { return x.id === currentCardId; });
+  if (!c) return;
+  document.getElementById('card-title').innerHTML =
+    esc(c.code) + ' — ' + esc(lcClient(c)) + ' ' + clientStatusBadge(c);
+  var nameEl = cardModal.querySelector('[data-lc-client-name]');
+  if (nameEl) nameEl.textContent = lcClient(c);
+  if (window.LiftCoreDisplay) {
+    LiftCoreDisplay.applyDom(document.getElementById('card-body'), LiftCoreDisplay.currentLang());
+    LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
+  }
+  refreshClientCardI18n();
+  scheduleClientCardMapResize();
 }
 
 function lcT(s) {
@@ -1578,6 +1593,10 @@ let currentCardId = null;
 let cardMapInstance = null;
 let cardMapMarker = null;
 let cardOsmMap = null;
+let cardMapScheduleToken = 0;
+let cardMapBoundClientId = null;
+let cardMapBoundLatLng = null;
+let cardMapResizeTimer = null;
 
 function lcDisp(s) {
   return (window.LiftCoreDisplay) ? LiftCoreDisplay.text(s == null ? '' : s) : (s || '—');
@@ -1709,18 +1728,32 @@ function normalizeExtraPhonesList(raw) {
   return [];
 }
 
-function scheduleClientCardMap(id, pos, c) {
-  function run(p) {
-    if (currentCardId !== id) return;
-    var mapEl = document.getElementById('card-map');
-    if (mapEl && !mapEl.querySelector('.leaflet-container')) {
-      mapEl.innerHTML = '<div class="card-map-loading card-loading-msg" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px">جاري تحميل الخريطة...</div>';
-      if (window.LiftCoreDisplay) LiftCoreDisplay.applyDom(mapEl, LiftCoreDisplay.currentLang());
+function sameCardMapPos(a, b) {
+  return a && b && Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lng - b.lng) < 1e-6;
+}
+
+function scheduleClientCardMapResize() {
+  if (cardMapResizeTimer) clearTimeout(cardMapResizeTimer);
+  cardMapResizeTimer = setTimeout(function () {
+    cardMapResizeTimer = null;
+    if (cardOsmMap) {
+      try { cardOsmMap.invalidateSize(); } catch (e) { /* ignore */ }
+    } else if (cardMapInstance && window.google && google.maps) {
+      try { google.maps.event.trigger(cardMapInstance, 'resize'); } catch (e) { /* ignore */ }
     }
-    setTimeout(function () {
-      if (currentCardId !== id) return;
-      try { showClientCardMap(p, c); } catch (mapErr) { console.error('client card map', mapErr); }
-    }, 120);
+  }, 180);
+}
+
+function scheduleClientCardMap(id, pos, c) {
+  var token = ++cardMapScheduleToken;
+  function run(p) {
+    if (!p || currentCardId !== id || token !== cardMapScheduleToken) return;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (currentCardId !== id || token !== cardMapScheduleToken) return;
+        try { showClientCardMap(p, c); } catch (mapErr) { console.error('client card map', mapErr); }
+      });
+    });
   }
   if (pos) {
     run(pos);
@@ -1734,6 +1767,13 @@ function scheduleClientCardMap(id, pos, c) {
 }
 
 function destroyClientCardMap() {
+  cardMapScheduleToken++;
+  cardMapBoundClientId = null;
+  cardMapBoundLatLng = null;
+  if (cardMapResizeTimer) {
+    clearTimeout(cardMapResizeTimer);
+    cardMapResizeTimer = null;
+  }
   if (cardMapMarker) {
     if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(cardMapMarker, null);
     else if (cardMapMarker.setMap) cardMapMarker.setMap(null);
@@ -1757,22 +1797,28 @@ function showClientCardMapOsm(pos, c) {
   var lat = parseFloat(pos.lat);
   var lng = parseFloat(pos.lng);
   if (!isFinite(lat) || !isFinite(lng)) return;
+  var posKey = { lat: lat, lng: lng };
+  if (cardOsmMap && cardMapBoundClientId === c.id && sameCardMapPos(cardMapBoundLatLng, posKey) &&
+      mapEl.querySelector('.leaflet-container')) {
+    scheduleClientCardMapResize();
+    return;
+  }
   if (cardOsmMap) {
     try { cardOsmMap.remove(); } catch (e) { /* ignore */ }
     cardOsmMap = null;
   }
   mapEl.innerHTML = '';
-  cardOsmMap = L.map(mapEl, { scrollWheelZoom: false, zoomControl: true }).setView([lat, lng], 15);
+  cardOsmMap = L.map(mapEl, { scrollWheelZoom: false, zoomControl: true, fadeAnimation: false, zoomAnimation: false }).setView([lat, lng], 15);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution: '&copy; OpenStreetMap'
+    attribution: '&copy; OpenStreetMap',
+    updateWhenIdle: true,
+    keepBuffer: 2
   }).addTo(cardOsmMap);
   L.marker([lat, lng]).addTo(cardOsmMap).bindPopup(esc(lcClient(c) || c.name || ''));
-  setTimeout(function () {
-    if (cardOsmMap) {
-      try { cardOsmMap.invalidateSize(); } catch (e) { /* ignore */ }
-    }
-  }, 200);
+  cardMapBoundClientId = c.id;
+  cardMapBoundLatLng = posKey;
+  scheduleClientCardMapResize();
 }
 
 function showClientCardMap(pos, c) {
@@ -1877,7 +1923,7 @@ function openClientCard(id) {
     '<div class="client-card-section">البيانات الأساسية</div>' +
     '<div class="client-card-grid">' +
       '<div class="client-card-item"><div class="client-card-label">الكود</div><div class="client-card-val" style="font-family:var(--font-en);color:var(--accent)">' + c.code + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">الاسم</div><div class="client-card-val">' + lcClient(c) + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">الاسم</div><div class="client-card-val" data-lc-client-name="' + c.id + '">' + lcClient(c) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">حالة العميل</div><div class="client-card-val">' + clientStatusBadge(c) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">المدينة</div><div class="client-card-val">' + (c.city||'—') + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">الحي</div><div class="client-card-val">' + (c.district||'—') + '</div></div>' +
@@ -1932,10 +1978,12 @@ function loadClientData(id) {
   LiftCoreProfile.loadIntoElement(document.getElementById('card-dynamic-data'), id, null, {
     showContractSelect: true,
     showSections: true,
-  }).then(function(data) {
-    if (!data || !data.financial) return;
-    var el = document.getElementById('card-total-paid');
-    if (el) setMoneyEl(el, data.financial.total_paid, {maximumFractionDigits: 0});
+  }).then(function (data) {
+    if (data && data.financial) {
+      var el = document.getElementById('card-total-paid');
+      if (el) setMoneyEl(el, data.financial.total_paid, { maximumFractionDigits: 0 });
+    }
+    scheduleClientCardMapResize();
   });
 }
 
@@ -2669,11 +2717,14 @@ function switchTab(tab){
   }
   if(tab==='map') {
     whenGoogleMapsReady(function () {
-      setTimeout(function(){ refreshMainMap(true); }, 200);
-      setTimeout(function(){
-        if (mainMap && google.maps) google.maps.event.trigger(mainMap, 'resize');
-        else if (osmMainMap) osmMainMap.invalidateSize();
-      }, 500);
+      if (mainMap || osmMainMap) {
+        setTimeout(function () {
+          if (mainMap && google.maps) google.maps.event.trigger(mainMap, 'resize');
+          else if (osmMainMap) osmMainMap.invalidateSize();
+        }, 220);
+      } else {
+        setTimeout(function () { refreshMainMap(true); }, 200);
+      }
     });
   }
 }
@@ -3236,10 +3287,7 @@ if (window.LiftCoreTranslit) LiftCoreTranslit.bindAutoLatin('f-name', 'f-name-en
 
 document.addEventListener('liftcore:lang', function () {
   renderTable(filtered);
-  var cardModal = document.getElementById('modal-client-card');
-  if (cardModal && cardModal.classList.contains('open') && currentCardId) {
-    openClientCard(currentCardId);
-  }
+  refreshOpenClientCardI18n();
   applyClientModalI18n();
   applyClientsFilterI18n();
   var addModal = document.getElementById('modal-add');
@@ -3256,10 +3304,7 @@ window.__lcRefreshPage = function () {
   if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : CUSTOMERS);
   if (typeof updateStats === 'function') updateStats();
-  var cardModal = document.getElementById('modal-client-card');
-  if (cardModal && cardModal.classList.contains('open') && window.LiftCoreDisplay) {
-    LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
-  }
+  refreshOpenClientCardI18n();
 };
 fillCitySelects();
 applyClientsFilterI18n();
