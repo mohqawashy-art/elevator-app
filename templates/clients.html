@@ -70,7 +70,7 @@
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/client_location.css?v=2">
 <script src="/static/customer_profile.js"></script>
-<script src="/static/client_location.js?v=3"></script>
+<script src="/static/client_location.js?v=4"></script>
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js?v=6"></script>
 <script src="/static/client_map_picker.js?v=11"></script>
@@ -820,7 +820,9 @@ var CLIENT_MODAL_EN = {
   'عقد': 'Contract',
   'إجمالي المدفوع': 'Total Paid',
   'جاري تحميل البيانات...': 'Loading data...',
-  'جاري تحميل الخريطة...': 'Loading map...'
+  'جاري تحميل الخريطة...': 'Loading map...',
+  'اضغط للاتجاهات أو صورة المبنى': 'Click for directions or building photo',
+  'عنوان الموقع': 'Site Address'
 };
 
 window.__lcApplyClientModal = null;
@@ -969,6 +971,13 @@ function applyClientCardI18n() {
   });
 }
 window.applyClientCardI18n = applyClientCardI18n;
+
+function refreshClientCardI18n() {
+  applyClientCardI18n();
+  setTimeout(applyClientCardI18n, 0);
+  setTimeout(applyClientCardI18n, 150);
+  setTimeout(applyClientCardI18n, 450);
+}
 
 function lcT(s) {
   return clientModalTr(s);
@@ -1908,7 +1917,7 @@ function openClientCard(id) {
     LiftCoreDisplay.applyDom(document.getElementById('card-body'), LiftCoreDisplay.currentLang());
     if (cardModal) LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
   }
-  applyClientCardI18n();
+  refreshClientCardI18n();
   loadClientData(id);
   } catch (err) {
     console.error('openClientCard', err);

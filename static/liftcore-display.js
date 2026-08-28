@@ -48,7 +48,7 @@
     '.view-val', '.view-label', '.view-section',
     '.client-card-val', '.client-card-label', '.client-card-section',
     '.stat-mini-label', '.card-stat-label', '.card-stat-val', '.card-section-title',
-    '.cloc-label', '.cloc-hint', '.card-loading-msg',
+    '.cloc-label', '.card-loading-msg',
     '.form-section-title', '.modal-title',
     '.alert-expiry span', '.table-info', '.page-info',
     '.filter-select option',
@@ -177,6 +177,9 @@
     if (!el || el.closest('[data-i18n-skip]')) return true;
     if (el.matches && el.matches(DOM_SKIP)) return true;
     if (el.closest && el.closest(DOM_SKIP)) return true;
+    if (el.hasAttribute && el.hasAttribute('data-lc-t')) return true;
+    if (el.closest && el.closest('[data-lc-t]')) return true;
+    if (el.querySelector && el.querySelector('[data-lc-t]')) return true;
     if (el.querySelector && el.querySelector('svg, img, input, select, button, .td-actions')) return true;
     return false;
   }
