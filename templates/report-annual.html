@@ -188,36 +188,36 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 
 <!-- MAIN -->
 <div class="main">
-  {% set page_title = 'التقرير السنوي للعميل' %}
+  {% set page_title = ui('التقرير السنوي للعميل', 'Client Annual Report') %}
   {% include 'partials/app_header.html' %}
 
   <div class="content">
 
     <div class="page-header screen-only">
-      <div class="page-title">التقرير الختامي لعقد الصيانة السنوي</div>
+      <div class="page-title">{{ ui('التقرير الختامي لعقد الصيانة السنوي', 'Final Report of the Annual Maintenance Contract') }}</div>
       <div class="page-actions">
         <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>
-          طباعة
+          {{ ui('طباعة', 'Print') }}
         </button>
         <button class="btn btn-success btn-sm" onclick="exportPDF()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-          تصدير PDF
+          {{ ui('تصدير PDF', 'Export PDF') }}
         </button>
       </div>
     </div>
 
     <!-- فلاتر الاختيار -->
-    <div class="filter-card screen-only">
+    <div class="filter-card screen-only" data-lc-server-i18n="1" data-i18n-skip="1">
       <div class="filter-row">
         <div class="field">
-          <label>العميل</label>
+          <label>{{ ui('العميل', 'Client') }}</label>
           <select id="sel-client" onchange="onAnnualClientChange()">
-            <option value="">اختر العميل</option>
+            <option value="">{{ ui('اختر العميل', 'Select Client') }}</option>
           </select>
         </div>
         <div class="field">
-          <label>السنة (لفرز العقود)</label>
+          <label>{{ ui('السنة (لفرز العقود)', 'Year (filter contracts)') }}</label>
           <select id="sel-year" onchange="onAnnualYearChange()">
             {% for y in report_years %}
             <option value="{{ y }}"{% if y == current_year %} selected{% endif %}>{{ y }}</option>
@@ -225,25 +225,25 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
           </select>
         </div>
         <div class="field">
-          <label>العقد / فترة التعاقد</label>
+          <label>{{ ui('العقد / فترة التعاقد', 'Contract / Contract Period') }}</label>
           <select id="sel-contract" onchange="generateAnnualReport()">
-            <option value="">اختر العقد أولاً</option>
+            <option value="">{{ ui('اختر العقد أولاً', 'Select contract first') }}</option>
           </select>
         </div>
         <div>
           <button class="btn btn-primary" onclick="generateAnnualReport()" style="width:100%;justify-content:center">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
-            توليد التقرير
+            {{ ui('توليد التقرير', 'Generate Report') }}
           </button>
         </div>
       </div>
     </div>
 
     <!-- رسالة البداية -->
-    <div id="annual-empty-hint" class="annual-empty-hint">
+    <div id="annual-empty-hint" class="annual-empty-hint" data-lc-server-i18n="1" data-i18n-skip="1">
       <div class="annual-empty-icon">📋</div>
-      <h2>التقرير الختامي لعقد الصيانة السنوي</h2>
-      <p>اختر العميل ثم <strong>العقد / فترة التعاقد</strong>، ثم اضغط <strong>توليد التقرير</strong> لعرض نتيجة ذلك العقد فقط.</p>
+      <h2>{{ ui('التقرير الختامي لعقد الصيانة السنوي', 'Final Report of the Annual Maintenance Contract') }}</h2>
+      <p>{{ ui('اختر العميل ثم العقد / فترة التعاقد، ثم اضغط توليد التقرير لعرض نتيجة ذلك العقد فقط.', 'Select the client and contract period, then click Generate Report to view that contract only.') }}</p>
     </div>
 
     <!-- التقرير -->
@@ -506,6 +506,6 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 function setLang(l){document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');document.getElementById('btn-ar').classList.toggle('active',l==='ar');document.getElementById('btn-en').classList.toggle('active',l==='en');}
 </script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=7"></script>
 </body>
 </html>

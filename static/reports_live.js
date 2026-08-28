@@ -65,6 +65,14 @@ var __lcReportDomPager = null;
       .replace(/>/g, '&gt;');
   }
 
+  function lcT(key) {
+    if (global.LiftCoreI18n && global.LiftCoreI18n.t) {
+      var out = global.LiftCoreI18n.t(key);
+      if (out && out !== key) return out;
+    }
+    return key;
+  }
+
   function fmtNum(v) {
     if (typeof v === 'number' && !isNaN(v)) {
       return v.toLocaleString('en-US');
@@ -831,13 +839,13 @@ function hookReportPagination(reset) {
       yearSel.dataset.liveReady = '1';
     }
     if (contractSel && !contractSel.dataset.liveReady) {
-      contractSel.innerHTML = '<option value="">اختر العقد أولاً</option>';
+      contractSel.innerHTML = '<option value="">' + esc(lcT('اختر العقد أولاً')) + '</option>';
       contractSel.dataset.liveReady = '1';
     }
     if (!clientSel || clientSel.dataset.liveReady) return;
     var list = global.__LC_ANNUAL_CUSTOMERS || [];
     if (!list.length) return;
-    clientSel.innerHTML = '<option value="">اختر العميل</option>' +
+    clientSel.innerHTML = '<option value="">' + esc(lcT('اختر العميل')) + '</option>' +
       list.map(function (c) {
         return '<option value="' + c.id + '">' + esc(c.name) + ' (' + esc(c.code) + ')</option>';
       }).join('');
@@ -861,10 +869,10 @@ function hookReportPagination(reset) {
     var contractSel = document.getElementById('sel-contract');
     if (!contractSel) return;
     if (!contracts || !contracts.length) {
-      contractSel.innerHTML = '<option value="">لا توجد عقود في هذه الفترة</option>';
+      contractSel.innerHTML = '<option value="">' + esc(lcT('لا توجد عقود في هذه الفترة')) + '</option>';
       return;
     }
-    contractSel.innerHTML = '<option value="">اختر العقد / فترة التعاقد</option>' +
+    contractSel.innerHTML = '<option value="">' + esc(lcT('اختر العقد / فترة التعاقد')) + '</option>' +
       contracts.map(function (ct) {
         var label = esc(ct.code) + ' — ' + esc(ct.start || '؟') + ' → ' + esc(ct.end || '؟');
         if (ct.status) label += ' (' + esc(ct.status) + ')';
@@ -885,7 +893,7 @@ function hookReportPagination(reset) {
     var year = document.getElementById('sel-year') && document.getElementById('sel-year').value;
     var contractSel = document.getElementById('sel-contract');
     if (!clientId) {
-      if (contractSel) contractSel.innerHTML = '<option value="">اختر العميل أولاً</option>';
+      if (contractSel) contractSel.innerHTML = '<option value="">' + esc(lcT('اختر العميل أولاً')) + '</option>';
       return [];
     }
     try {
@@ -899,7 +907,7 @@ function hookReportPagination(reset) {
       return contracts;
     } catch (e) {
       console.error('Annual contracts load error:', e);
-      if (contractSel) contractSel.innerHTML = '<option value="">تعذّر تحميل العقود</option>';
+      if (contractSel) contractSel.innerHTML = '<option value="">' + esc(lcT('تعذّر تحميل العقود')) + '</option>';
       return [];
     }
   }
@@ -931,11 +939,11 @@ function hookReportPagination(reset) {
     var year = document.getElementById('sel-year') && document.getElementById('sel-year').value;
     var contractId = document.getElementById('sel-contract') && document.getElementById('sel-contract').value;
     if (!clientId) {
-      alert('اختر العميل أولاً');
+      alert(lcT('اختر العميل أولاً'));
       return;
     }
     if (!contractId) {
-      alert('اختر العقد / فترة التعاقد');
+      alert(lcT('اختر العقد / فترة التعاقد'));
       hideAnnualReport();
       return;
     }
