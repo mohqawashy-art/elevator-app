@@ -110,10 +110,10 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .stat-mini-val{font-size:24px;font-weight:600;color:var(--text1);font-family:var(--font-en);line-height:1;margin-bottom:3px}
 .stat-mini-label{font-size:11px;color:var(--text3)}
 
-.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:4px}
-.tab{flex:1;padding:8px;text-align:center;font-size:13px;color:var(--text2);cursor:pointer;border-radius:var(--r-sm);transition:var(--trans);display:flex;align-items:center;justify-content:center;gap:6px}
-.tab svg{width:14px;height:14px}
-.tab.active{background:var(--bg4);color:var(--text1)}
+.tabs{display:inline-flex;flex-wrap:nowrap;gap:3px;margin-bottom:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px;width:fit-content;max-width:100%}
+.tab{flex:0 0 auto;padding:5px 10px;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;border-radius:var(--r-sm);transition:var(--trans);display:inline-flex;align-items:center;justify-content:flex-start;gap:5px;white-space:nowrap;line-height:1.2}
+.tab svg{width:13px;height:13px;flex-shrink:0}
+.tab.active{background:var(--accent);color:#fff}
 .tab:hover:not(.active){background:var(--bg3);color:var(--text1)}
 
 .filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
