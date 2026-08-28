@@ -45,7 +45,9 @@
     window.__gmapsAuthFailed = true;
     var el = document.getElementById('client-map-coords');
     if (el) {
-      el.textContent = 'مفتاح Google غير صالح — تم التحويل لخريطة OpenStreetMap';
+      el.textContent = (typeof isClientUiEn === 'function' && isClientUiEn())
+        ? 'Invalid Google key — switched to OpenStreetMap'
+        : 'مفتاح Google غير صالح — تم التحويل لخريطة OpenStreetMap';
       el.style.color = 'var(--warning)';
     }
     if (window.LiftCoreMapPicker && window.LiftCoreMapPicker._lastOpts) {
@@ -58,7 +60,7 @@
 </script>
 {% if google_maps_api_key %}
 <script async
-  src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async&language=ar&region=SA&libraries=places,marker&callback=initGoogleMapsApi"
+  src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async&language={{ user_language|default('ar') }}&region=SA&libraries=places,marker&callback=initGoogleMapsApi"
   onerror="window.__gmapsAuthFailed=true"></script>
 {% endif %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
@@ -461,8 +463,8 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 
     <div class="drill-panel" id="drill-panel" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px;overflow:hidden">
       <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px">
-        <div id="drill-title" style="font-size:14px;font-weight:600">تفاصيل</div>
-        <span onclick="closeClientDrill()" style="font-size:12px;color:var(--accent);cursor:pointer">إغلاق ✕</span>
+        <div id="drill-title" style="font-size:14px;font-weight:600" data-lc-map-t="تفاصيل">تفاصيل</div>
+        <span onclick="closeClientDrill()" style="font-size:12px;color:var(--accent);cursor:pointer" data-lc-map-t="إغلاق ✕">إغلاق ✕</span>
       </div>
       <div id="drill-body" style="padding:12px 18px;font-size:13px;color:var(--text2)"></div>
     </div>
@@ -573,24 +575,24 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <div class="map-panel">
         <div class="map-toolbar">
           <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('table')" title="العودة إلى جدول العملاء">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('table')" data-lc-map-title="العودة إلى جدول العملاء" title="العودة إلى جدول العملاء">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9 2.5L4.5 7 9 11.5"/><line x1="4.5" y1="7" x2="13" y2="7"/></svg>
-              جدول العملاء
+              <span data-lc-map-t="جدول العملاء">جدول العملاء</span>
             </button>
             <div>
-              <div class="map-toolbar-title">خريطة مواقع العملاء</div>
+              <div class="map-toolbar-title" data-lc-map-t="خريطة مواقع العملاء">خريطة مواقع العملاء</div>
               <div id="map-summary" style="font-size:12px;color:var(--text3);margin-top:4px"></div>
             </div>
           </div>
           <div class="map-legend">
-            <div class="map-legend-item"><span class="map-legend-dot active"></span> عميل نشط</div>
-            <div class="map-legend-item" style="color:var(--text3)">غير النشطين لا يظهرون على الخريطة</div>
-            <div class="map-legend-item"><span class="map-legend-cluster">2</span> تجميع عند التصغير</div>
-            <button class="btn btn-secondary btn-sm" onclick="refreshMainMap(true)">تحديث الخريطة</button>
+            <div class="map-legend-item"><span class="map-legend-dot active"></span><span data-lc-map-t="عميل نشط">عميل نشط</span></div>
+            <div class="map-legend-item" style="color:var(--text3)"><span data-lc-map-t="غير النشطين لا يظهرون على الخريطة">غير النشطين لا يظهرون على الخريطة</span></div>
+            <div class="map-legend-item"><span class="map-legend-cluster">2</span><span data-lc-map-t="تجميع عند التصغير">تجميع عند التصغير</span></div>
+            <button class="btn btn-secondary btn-sm" onclick="refreshMainMap(true)" data-lc-map-t="تحديث الخريطة">تحديث الخريطة</button>
           </div>
         </div>
         <div id="map"></div>
-        <div id="map-empty">جاري تحميل مواقع العملاء من العناوين... افتح تاب الخريطة وانتظر قليلاً.</div>
+        <div id="map-empty" data-lc-map-t="جاري تحميل مواقع العملاء من العناوين... افتح تاب الخريطة وانتظر قليلاً.">جاري تحميل مواقع العملاء من العناوين... افتح تاب الخريطة وانتظر قليلاً.</div>
       </div>
     </div>
 
@@ -1047,11 +1049,63 @@ function applyClientsFilterI18n() {
   var cityVal = citySel ? citySel.value : '';
   fillCitySelects(cityVal);
   updateImportTemplateLink();
+  applyClientsMapI18n();
 }
 function updateImportTemplateLink() {
   var link = document.getElementById('clients-import-template-link');
   if (!link) return;
   link.href = '/clients/template?lang=' + (isClientUiEn() ? 'en' : 'ar');
+}
+
+function mapActiveClientLabel(count) {
+  var n = Number(count) || 0;
+  if (isClientUiEn()) return n + ' active client' + (n === 1 ? '' : 's');
+  return n + ' عميل نشط';
+}
+
+function mapSummaryShown(count) {
+  if (isClientUiEn()) return 'Shown on map: ' + mapActiveClientLabel(count);
+  return 'معروض على الخريطة: ' + count + ' عميل نشط';
+}
+
+function mapSummaryEmpty() {
+  return lcT('لا مواقع لعملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة');
+}
+
+function mapSummaryOsm(count) {
+  if (isClientUiEn()) return 'OpenStreetMap — ' + mapActiveClientLabel(count);
+  return 'OpenStreetMap — ' + count + ' عميل نشط';
+}
+
+function mapSummaryGeocoding(count) {
+  var n = Number(count) || 0;
+  if (isClientUiEn()) return 'Locating ' + n + ' client' + (n === 1 ? '' : 's') + ' from addresses...';
+  return 'جاري تحديد مواقع ' + n + ' عميل من العناوين...';
+}
+
+function mapSummaryGeocoded(done, total) {
+  if (isClientUiEn()) return 'Located ' + done + ' of ' + total + '...';
+  return 'تم تحديد ' + done + ' من ' + total + ' موقع...';
+}
+
+function applyClientsMapI18n() {
+  var en = isClientUiEn();
+  document.querySelectorAll('#tab-map [data-lc-map-t], #drill-panel [data-lc-map-t]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-map-t');
+    if (!key) return;
+    if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent.trim();
+    el.textContent = en ? lcT(key) : el.dataset.lcAr;
+  });
+  document.querySelectorAll('#tab-map [data-lc-map-title]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-map-title');
+    if (!key) return;
+    if (el.dataset.lcTitleAr == null) el.dataset.lcTitleAr = el.getAttribute('title') || key;
+    el.setAttribute('title', en ? lcT(key) : el.dataset.lcTitleAr);
+  });
+  var mapTab = document.getElementById('tab-map');
+  if (mapTab && mapTab.style.display !== 'none' && typeof refreshMainMap === 'function') {
+    refreshMainMap(false);
+  }
 }
 function fillCitySelects(selected) {
   var cities = allCities();
@@ -1412,10 +1466,10 @@ function openClientDrill(type, cardEl) {
   document.querySelectorAll('.stat-mini').forEach(function(el){ el.classList.remove('active'); });
   if (cardEl) cardEl.classList.add('active');
   var rows = CUSTOMERS.slice();
-  var title = 'كل العملاء';
-  if (type === 'active') { rows = rows.filter(function(c){ return clientAccountStatus(c) === 'نشط'; }); title = 'عملاء نشطون'; }
-  else if (type === 'nocontract') { rows = rows.filter(function(c){ return c.contract_status === 'بدون عقد'; }); title = 'بدون عقد'; }
-  else if (type === 'mapexp') { rows = rows.filter(hasExactGps); title = 'عملاء بموقع GPS دقيق'; }
+  var title = lcT('كل العملاء');
+  if (type === 'active') { rows = rows.filter(function(c){ return clientAccountStatus(c) === 'نشط'; }); title = lcT('عملاء نشطون'); }
+  else if (type === 'nocontract') { rows = rows.filter(function(c){ return c.contract_status === 'بدون عقد'; }); title = lcT('بدون عقد'); }
+  else if (type === 'mapexp') { rows = rows.filter(hasExactGps); title = lcT('عملاء بموقع GPS دقيق'); }
 
   document.getElementById('drill-title').textContent = title + ' (' + rows.length + ')';
   var drillBody = document.getElementById('drill-body');
@@ -1431,7 +1485,7 @@ function openClientDrill(type, cardEl) {
           '<span style="color:var(--text3);font-size:12px">' + c.code + '</span></div>';
       }).join('') +
       '</div>'
-    : '<div style="padding:8px 0">لا توجد نتائج</div>';
+    : '<div style="padding:8px 0">' + esc(lcT('لا توجد نتائج')) + '</div>';
   document.getElementById('drill-panel').style.display = 'block';
 
   filtered = rows;
@@ -2187,14 +2241,17 @@ function makePinIcon(color, scale) {
 }
 
 function mapInfoContent(c, exact) {
-  var locNote = exact ? 'موقع GPS دقيق' : 'موقع تقريبي حسب المدينة';
+  var locNote = exact ? lcT('موقع GPS دقيق') : lcT('موقع تقريبي حسب المدينة');
   var statusColor = getClientPinColor(c);
+  var cityLabel = cityDisplayName(c.city || '') || '—';
+  var districtLabel = c.district ? districtDisplayName(c.district) : '';
+  var nameLabel = lcClient(c) || c.name;
   return '<div class="map-info">' +
-    '<div class="map-info-title">' + c.name + '</div>' +
-    '<div class="map-info-sub">' + c.code + '<br>' + (c.city || '—') + (c.district ? ' — ' + c.district : '') + '<br>' + (c.phone || '') + '<br><span style="color:' + statusColor + ';font-weight:600">' + clientAccountStatus(c) + '</span> · <span style="color:#888">' + locNote + '</span></div>' +
+    '<div class="map-info-title">' + esc(nameLabel) + '</div>' +
+    '<div class="map-info-sub">' + esc(c.code) + '<br>' + esc(cityLabel) + (districtLabel ? ' — ' + esc(districtLabel) : '') + '<br>' + esc(c.phone || '') + '<br><span style="color:' + statusColor + ';font-weight:600">' + esc(lcDisp(clientAccountStatus(c))) + '</span> · <span style="color:#888">' + esc(locNote) + '</span></div>' +
     '<div class="map-info-actions">' +
-      '<button class="map-info-btn" onclick="openClientCard(' + c.id + ')">عرض العميل</button>' +
-      (c.phone ? '<button type="button" class="map-info-btn btn-wa" data-wa-phone=' + JSON.stringify(String(c.phone)) + ' data-wa-name=' + JSON.stringify(String(c.name || '')) + '>واتساب</button>' : '') +
+      '<button class="map-info-btn" onclick="openClientCard(' + c.id + ')">' + esc(lcT('عرض العميل')) + '</button>' +
+      (c.phone ? '<button type="button" class="map-info-btn btn-wa" data-wa-phone=' + JSON.stringify(String(c.phone)) + ' data-wa-name=' + JSON.stringify(String(c.name || '')) + '>' + esc(lcT('واتساب')) + '</button>' : '') +
     '</div></div>';
 }
 
@@ -2273,15 +2330,13 @@ function refreshMainMapOsm() {
       fillColor: getClientPinColor(c),
       fillOpacity: 1
     }).addTo(osmMainMap);
-    marker.bindPopup('<strong>' + c.name + '</strong><br>' + (c.code || '') + '<br>' + (c.city || ''));
+    marker.bindPopup('<strong>' + esc(lcClient(c) || c.name) + '</strong><br>' + esc(c.code || '') + '<br>' + esc(cityDisplayName(c.city || '')));
     marker.on('click', function () { openClientCard(c.id); });
     osmMainMarkers.push(marker);
     bounds.push([pos.lat, pos.lng]);
   });
   if (summaryEl) {
-    summaryEl.textContent = activeCount
-      ? ('OpenStreetMap — ' + activeCount + ' عميل نشط')
-      : 'لا مواقع لعملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
+    summaryEl.textContent = activeCount ? mapSummaryOsm(activeCount) : mapSummaryEmpty();
   }
   if (emptyEl) emptyEl.style.display = activeCount ? 'none' : 'block';
   if (bounds.length) {
@@ -2295,7 +2350,7 @@ function refreshMainMap(fitAgain) {
   // إن وُجد مفتاح Google ولم يُحمَّل بعد — انتظر بدلاً من تثبيت OSM نهائياً
   if (window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && (typeof google === 'undefined' || !google.maps)) {
     var summaryWait = document.getElementById('map-summary');
-    if (summaryWait) summaryWait.textContent = 'جاري تحميل خرائط Google...';
+    if (summaryWait) summaryWait.textContent = lcT('جاري تحميل خرائط Google...');
     whenGoogleMapsReady(function () { refreshMainMap(fitAgain); });
     return;
   }
@@ -2402,12 +2457,12 @@ function refreshMainMap(fitAgain) {
   });
 
   if (mapMarkers.length && window.LiftCoreMap) {
-    markerCluster = LiftCoreMap.attachCluster(mainMap, mapMarkers, 'عميل');
+    markerCluster = LiftCoreMap.attachCluster(mainMap, mapMarkers, lcT('عميل'));
   } else if (mapMarkers.length && typeof markerClusterer !== 'undefined' && markerClusterer.MarkerClusterer) {
     markerCluster = new markerClusterer.MarkerClusterer({
       map: mainMap,
       markers: mapMarkers,
-      renderer: LiftCoreMap ? LiftCoreMap.createClusterRenderer('عميل') : undefined,
+      renderer: LiftCoreMap ? LiftCoreMap.createClusterRenderer(lcT('عميل')) : undefined,
       algorithm: new markerClusterer.SuperClusterAlgorithm({radius: 90, maxZoom: 16}),
       onClusterClick: function(_event, cluster, map) {
         map.fitBounds(cluster.bounds, 48);
@@ -2422,9 +2477,7 @@ function refreshMainMap(fitAgain) {
 
   var total = activeCount;
   if (summaryEl) {
-    summaryEl.textContent = total
-      ? ('معروض على الخريطة: ' + total + ' عميل نشط')
-      : 'لا مواقع لعملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
+    summaryEl.textContent = total ? mapSummaryShown(total) : mapSummaryEmpty();
   }
 
   if (emptyEl) emptyEl.style.display = total ? 'none' : 'block';
@@ -2436,10 +2489,10 @@ function refreshMainMap(fitAgain) {
     });
     if (missing.length) {
       window._liftcoreGeocodeStarted = true;
-      if (summaryEl) summaryEl.textContent = 'جاري تحديد مواقع ' + missing.length + ' عميل من العناوين...';
+      if (summaryEl) summaryEl.textContent = mapSummaryGeocoding(missing.length);
       var geocodeFn = window.LiftCoreMap ? LiftCoreMap.geocodeMissing : LiftCoreGeocode.geocodeAll.bind(LiftCoreGeocode);
       geocodeFn(missing, function(done, totalMissing) {
-        if (summaryEl) summaryEl.textContent = 'تم تحديد ' + done + ' من ' + totalMissing + ' موقع...';
+        if (summaryEl) summaryEl.textContent = mapSummaryGeocoded(done, totalMissing);
         if (typeof updateStats === 'function') updateStats();
         if (done === totalMissing) refreshMainMap(true);
       });
