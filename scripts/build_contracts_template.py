@@ -7,7 +7,7 @@ from xml.sax.saxutils import escape
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'static', 'templates', 'contracts_template.xlsx')
 
-HEADERS = [
+HEADERS_AR = [
     'كود العميل',
     'اسم العميل',
     'نوع العقد',
@@ -22,7 +22,26 @@ HEADERS = [
     'أكواد المصاعد',
     'ملاحظات',
 ]
+HEADERS_EN = [
+    'Client Code',
+    'Client Name',
+    'Contract Type',
+    'Start Date',
+    'End Date',
+    'Maintenance Frequency',
+    'Contract Value (excl. VAT)',
+    'Tax Rate %',
+    'Total (incl. VAT)',
+    'Payment Terms',
+    'Contract Status',
+    'Elevator Codes',
+    'Notes',
+]
 EXAMPLE = []
+
+
+def headers_for_lang(lang='ar'):
+    return HEADERS_EN if lang == 'en' else HEADERS_AR
 
 
 def col_letter(n):
@@ -50,9 +69,9 @@ def sheet_xml(rows):
     return ''.join(lines)
 
 
-def build_xlsx(path):
+def build_xlsx(path, lang='ar'):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    rows = [HEADERS]
+    rows = [headers_for_lang(lang)]
     if EXAMPLE:
         rows.append(EXAMPLE)
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:

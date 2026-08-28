@@ -42,6 +42,11 @@ window.__LC_TRANSLATIONS = {
   'معاينة البيانات': 'Data Preview',
   'استيراد': 'Import',
   'تعليمات:': 'Instructions:',
+  'تنزيل نموذج الاستيراد': 'Download import template',
+  '.xlsx أو .csv': '.xlsx or .csv',
+  'إلغاء': 'Cancel',
+  'يجب أن يكون العميل موجوداً مسبقاً (كود أو اسم). التواريخ بصيغة YYYY-MM-DD. أكواد المصاعد مفصولة بفاصلة (مثل: EL-0001، EL-0002).':
+    'The client must already exist (code or name). Dates in YYYY-MM-DD format. Elevator codes separated by comma (e.g. EL-0001, EL-0002).',
   'إضافة عقد جديد': 'Add New Contract',
   'كود العقد': 'Contract Code',
   'نوع العقد': 'Contract Type',

@@ -6459,8 +6459,13 @@ def contracts():
 
 @app.route('/contracts/template')
 def contracts_import_template():
-    """تحميل نموذج استيراد العقود."""
-    path = os.path.join(app.root_path, 'static', 'templates', 'contracts_template.xlsx')
+    """تحميل نموذج استيراد العقود (عربي أو إنجليزي حسب لغة الواجهة)."""
+    lang = request.args.get('lang')
+    if lang not in ('ar', 'en'):
+        lang = resolve_user_language(getattr(g, 'auth_user', None))
+    basename = 'contracts_template_en.xlsx' if lang == 'en' else 'contracts_template.xlsx'
+    download_name = 'contracts_import_template_en.xlsx' if lang == 'en' else 'contracts_import_template.xlsx'
+    path = os.path.join(app.root_path, 'static', 'templates', basename)
     if not os.path.isfile(path):
         script = os.path.join(app.root_path, 'scripts', 'build_contracts_template.py')
         if os.path.isfile(script):
@@ -6469,14 +6474,14 @@ def contracts_import_template():
             if spec and spec.loader:
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
-                mod.build_xlsx(path)
+                mod.build_xlsx(path, lang=lang)
         if not os.path.isfile(path):
             abort(404)
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),
         as_attachment=True,
-        download_name='contracts_template.xlsx',
+        download_name=download_name,
     )
 
 
