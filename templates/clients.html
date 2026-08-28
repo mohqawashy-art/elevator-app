@@ -1102,9 +1102,9 @@ function applyClientsMapI18n() {
     if (el.dataset.lcTitleAr == null) el.dataset.lcTitleAr = el.getAttribute('title') || key;
     el.setAttribute('title', en ? lcT(key) : el.dataset.lcTitleAr);
   });
-  var mapTab = document.getElementById('tab-map');
-  if (mapTab && mapTab.style.display !== 'none' && typeof refreshMainMap === 'function') {
-    refreshMainMap(false);
+  var summaryEl = document.getElementById('map-summary');
+  if (summaryEl && mapLastActiveCount !== null) {
+    summaryEl.textContent = mapLastActiveCount ? mapSummaryShown(mapLastActiveCount) : mapSummaryEmpty();
   }
 }
 function fillCitySelects(selected) {
@@ -2183,7 +2183,7 @@ function confirmDelete(){
 }
 
 // ===== خريطة =====
-var mainMap = null, miniMap = null, miniMarker = null, mapMarkers = [], mapInfoWindow = null, markerCluster = null, mapInfoPinned = false, mapHoverTimer = null;
+var mainMap = null, miniMap = null, miniMarker = null, mapMarkers = [], mapInfoWindow = null, markerCluster = null, mapInfoPinned = false, mapHoverTimer = null, mapInfoHover = false, mapLastActiveCount = null;
 var CLIENT_MAP_PIN_SCALE = 0.82;
 var CLIENT_MAP_PIN_SCALE_CARD = 0.78;
 var CLIENT_MAP_OSM_RADIUS = 6;
@@ -2238,6 +2238,34 @@ function makePinIcon(color, scale) {
     fillColor: color, fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2,
     scale: scale || CLIENT_MAP_PIN_SCALE, anchor: new google.maps.Point(12, 22)
   };
+}
+
+function bindClientMapInfoHover() {
+  if (!mapInfoWindow || mapInfoWindow.__lcHoverBound) return;
+  mapInfoWindow.__lcHoverBound = true;
+  google.maps.event.addListener(mapInfoWindow, 'domready', function () {
+    var nodes = document.querySelectorAll('.gm-style-iw-c, .gm-style-iw-d');
+    nodes.forEach(function (node) {
+      if (node.dataset.lcIwHover) return;
+      node.dataset.lcIwHover = '1';
+      node.addEventListener('mouseenter', function () {
+        mapInfoHover = true;
+        if (mapHoverTimer) clearTimeout(mapHoverTimer);
+      });
+      node.addEventListener('mouseleave', function () {
+        mapInfoHover = false;
+        if (mapInfoPinned) return;
+        mapHoverTimer = setTimeout(function () { mapInfoWindow.close(); }, 220);
+      });
+    });
+  });
+}
+
+function openClientMapInfo(c, pos, marker) {
+  if (mapHoverTimer) clearTimeout(mapHoverTimer);
+  mapInfoWindow.setContent(mapInfoContent(c, pos.exact));
+  if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(mapInfoWindow, mainMap, marker);
+  else mapInfoWindow.open(mainMap, marker);
 }
 
 function mapInfoContent(c, exact) {
@@ -2338,6 +2366,7 @@ function refreshMainMapOsm() {
   if (summaryEl) {
     summaryEl.textContent = activeCount ? mapSummaryOsm(activeCount) : mapSummaryEmpty();
   }
+  mapLastActiveCount = activeCount;
   if (emptyEl) emptyEl.style.display = activeCount ? 'none' : 'block';
   if (bounds.length) {
     osmMainMap.fitBounds(bounds, { padding: [48, 48] });
@@ -2406,14 +2435,19 @@ function refreshMainMap(fitAgain) {
         mainMap.setOptions({styles: MAP_POI_HIDDEN_STYLES});
       }
     });
-    mapInfoWindow = new google.maps.InfoWindow();
+    mapInfoWindow = new google.maps.InfoWindow({ disableAutoPan: true });
+    bindClientMapInfoHover();
     mainMap.addListener('click', function() {
       mapInfoPinned = false;
+      mapInfoHover = false;
       mapInfoWindow.close();
     });
   }
 
   clearMapMarkers();
+  mapInfoPinned = false;
+  mapInfoHover = false;
+  if (mapInfoWindow) mapInfoWindow.close();
 
   var bounds = new google.maps.LatLngBounds();
   var activeCount = 0;
@@ -2435,21 +2469,15 @@ function refreshMainMap(fitAgain) {
     if (!marker) return;
 
     marker.addListener('mouseover', function() {
-      if (mapHoverTimer) clearTimeout(mapHoverTimer);
-      mapInfoWindow.setContent(mapInfoContent(c, pos.exact));
-      if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(mapInfoWindow, mainMap, marker);
-      else mapInfoWindow.open(mainMap, marker);
+      openClientMapInfo(c, pos, marker);
     });
     marker.addListener('mouseout', function() {
-      if (mapInfoPinned) return;
-      mapHoverTimer = setTimeout(function() { mapInfoWindow.close(); }, 250);
+      if (mapInfoPinned || mapInfoHover) return;
+      mapHoverTimer = setTimeout(function() { mapInfoWindow.close(); }, 320);
     });
     marker.addListener('click', function() {
-      if (mapHoverTimer) clearTimeout(mapHoverTimer);
       mapInfoPinned = true;
-      mapInfoWindow.setContent(mapInfoContent(c, pos.exact));
-      if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(mapInfoWindow, mainMap, marker);
-      else mapInfoWindow.open(mainMap, marker);
+      openClientMapInfo(c, pos, marker);
     });
 
     mapMarkers.push(marker);
@@ -2476,6 +2504,7 @@ function refreshMainMap(fitAgain) {
   }
 
   var total = activeCount;
+  mapLastActiveCount = total;
   if (summaryEl) {
     summaryEl.textContent = total ? mapSummaryShown(total) : mapSummaryEmpty();
   }
