@@ -1,6 +1,11 @@
 {# القائمة الموحّدة — أقسام بقوائم منسدلة (مع صلاحيات اختيارية) #}
-{% if has_perm('dashboard.read') %}
+{% if active_department_portal %}
+{% set department_tabs_sidebar = true %}
+{% include 'partials/department_tabs.html' %}
+{% else %}
 <a href="/home" class="nav-item nav-item-single"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 11l9-8 9 8"/><path d="M5 10v11h14V10"/><path d="M9 21v-6h6v6"/></svg>الرئيسية</a>
+
+{% if has_perm('dashboard.read') %}
 <a href="/dashboard" class="nav-item nav-item-single"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>لوحة التحكم</a>
 {% endif %}
 
@@ -55,38 +60,16 @@
 </div>
 {% endif %}
 
-{% if has_any_perm('sales_quotes.read', 'elevator_estimates.read') or (install_module_enabled and has_perm('installation_projects.read')) %}
+{% if has_any_perm('elevator_estimates.read', 'installation_projects.read') %}
 <div class="nav-group" data-nav-group>
   <button type="button" class="nav-group-btn" aria-expanded="false" aria-haspopup="true">
-    <span class="nav-group-label">المبيعات</span>
+    <span class="nav-group-label">التركيب</span>
     <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M3 4.5l3 3 3-3"/></svg>
   </button>
   <div class="nav-group-menu">
-    <a href="{{ url_for('sales.hub') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>لوحة المبيعات</a>
-    <div class="nav-item" style="opacity:.65;font-size:11px;pointer-events:none;padding-top:10px">تركيبات</div>
+    {% if has_perm('elevator_estimates.read') %}<a href="/elevator-estimates" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تقدير تكلفة مصعد</a>{% endif %}
     {% if install_module_enabled and has_perm('installation_projects.read') %}
-    <a href="{{ url_for('sales.install_quote_new') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>عرض تركيب جديد</a>
-    <a href="{{ url_for('sales.quotes_inbox', kind='install') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>عروض التركيب</a>
-    {% endif %}
-    <div class="nav-item" style="opacity:.65;font-size:11px;pointer-events:none;padding-top:10px">صيانة</div>
-    {% if has_perm('sales_quotes.read') or has_perm('contracts.create') or has_perm('contracts.read') %}
-    <a href="{{ url_for('sales.maintenance_quote_new') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>عرض صيانة جديد</a>
-    <a href="{{ url_for('sales.maintenance_quotes_list') }}" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>عروض الصيانة</a>
-    {% endif %}
-  </div>
-</div>
-{% endif %}
-
-{% if has_any_perm('installation_projects.read') %}
-<div class="nav-group" data-nav-group>
-  <button type="button" class="nav-group-btn" aria-expanded="false" aria-haspopup="true">
-    <span class="nav-group-label">المشاريع</span>
-    <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12"><path d="M3 4.5l3 3 3-3"/></svg>
-  </button>
-  <div class="nav-group-menu">
-    {% if install_module_enabled and has_perm('installation_projects.read') %}
-    <a href="/installation/projects" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M2 20h20M6 20V10l6-6 6 6v10"/><path d="M10 20v-6h4v6"/></svg>قائمة المشاريع</a>
-    <a href="/installation/" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>كارت وتنفيذ التركيب</a>
+    <a href="/installation/" class="nav-item"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.7" width="16" height="16"><path d="M2 20h20M6 20V10l6-6 6 6v10"/><path d="M10 20v-6h4v6"/></svg>مشاريع التركيب</a>
     {% endif %}
   </div>
 </div>
@@ -165,4 +148,5 @@
     {% endif %}
   </div>
 </div>
+{% endif %}
 {% endif %}
