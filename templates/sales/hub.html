@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = page_title|default('المبيعات') %}
+{% include 'installation/_layout_head.html' %}
+<style>
+.sales-doors{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px}
+@media(max-width:860px){.sales-doors{grid-template-columns:1fr}}
+.door{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px 20px;display:flex;flex-direction:column;min-height:280px}
+.door h2{margin:0 0 8px;font-size:20px;color:var(--text1)}
+.door .path{color:var(--text2);font-size:13px;line-height:1.75;margin:0 0 18px;flex:1}
+.door .path b{color:var(--text1)}
+.door .acts{display:flex;flex-direction:column;gap:10px}
+.door .meta{font-size:12px;color:var(--gold);margin-top:4px}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">المبيعات</div>
+    </div>
+    <div class="sales-doors">
+      <section class="door">
+        <h2>تركيبات</h2>
+        <p class="path">
+          <b>عرض سعر</b> (تركيب جديد / تحديث / إضافة أدوار)
+          → إرسال للعميل (واتساب / إيميل)
+          → موافقة العميل
+          → يُحوَّل تلقائياً إلى <b>قسم المشاريع</b>
+        </p>
+        <div class="acts">
+          {% if install_module_on and has_perm('installation_projects.read') %}
+          <a class="btn btn-primary" href="{{ url_for('sales.install_quote_new') }}">+ عرض تركيب جديد</a>
+          <a class="btn btn-secondary" href="{{ url_for('sales.quotes_inbox', kind='install') }}">عروض التركيب</a>
+          <div class="meta">عروض مفتوحة: {{ install_open }}</div>
+          {% else %}
+          <p class="path">وحدة التركيب غير مفعّلة لهذا الحساب.</p>
+          {% endif %}
+        </div>
+      </section>
+      <section class="door">
+        <h2>صيانة</h2>
+        <p class="path">
+          <b>عرض سعر صيانة</b> احترافي (عميل → مصاعد → باقة → تسعير)
+          → إرسال واتساب/إيميل
+          → موافقة
+          → <b>عقد صيانة</b>
+        </p>
+        <div class="acts">
+          {% if has_perm('sales_quotes.read') or has_perm('contracts.read') %}
+          <a class="btn btn-primary" href="{{ url_for('sales.maintenance_quote_new') }}">+ عرض صيانة جديد</a>
+          <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quotes_list') }}">عروض الصيانة</a>
+          <div class="meta">عروض مفتوحة: {{ maint_open }}</div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>

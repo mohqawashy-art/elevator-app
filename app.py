@@ -2337,18 +2337,35 @@ DEPARTMENT_PORTALS = {
     'installations': {
         'title': 'منصة التركيبات والتحديث',
         'short_title': 'التركيبات والتحديث',
-        'description': 'عملاء وعقود التركيبات والفرص والتسعير والمشروعات',
+        'description': 'عملاء وعقود التركيبات ومشروعات التنفيذ والمتابعة',
         'color': '#c8a055',
         'links': (
             ('عملاء التركيبات', '/clients?scope=installation', 'clients.read'),
             ('عقود التركيبات والتحديث', '/contracts?scope=installation', 'contracts.read'),
-            ('تقدير تكلفة مصعد', '/elevator-estimates', 'elevator_estimates.read'),
-            ('فرص البيع', '/installation/leads', 'installation_projects.read', True),
             ('مشروعات التركيبات', '/installation/projects', 'installation_projects.read', True),
             ('لوحة تنفيذ المشروعات', '/installation/', 'installation_projects.read', True),
         ),
         'reports': (
             ('بطاقات وتقارير المشروعات', '/installation/projects', 'installation_projects.read', True),
+            ('تقرير العقود', '/reports/contracts', 'report_contracts.read'),
+        ),
+    },
+    'marketing': {
+        'title': 'منصة التسويق والمبيعات',
+        'short_title': 'التسويق والمبيعات',
+        'description': 'لوحة المبيعات وعروض التركيب والصيانة والتقدير وفرص البيع',
+        'color': '#14b8a6',
+        'links': (
+            ('لوحة المبيعات', '/sales/', 'sales_quotes.read'),
+            ('عرض تركيب جديد', '/sales/install/quotes/new', 'installation_projects.read', True),
+            ('عروض التركيب', '/sales/quotes?kind=install', 'installation_projects.read', True),
+            ('عرض صيانة جديد', '/sales/maintenance-quotes/new', 'sales_quotes.read'),
+            ('عروض الصيانة', '/sales/maintenance-quotes', 'sales_quotes.read'),
+            ('تقدير تكلفة مصعد', '/elevator-estimates', 'elevator_estimates.read'),
+            ('فرص البيع', '/installation/leads', 'installation_projects.read', True),
+        ),
+        'reports': (
+            ('تقرير العملاء', '/reports/clients', 'report_clients.read'),
             ('تقرير العقود', '/reports/contracts', 'report_contracts.read'),
         ),
     },
@@ -12898,6 +12915,9 @@ def api_client_annual(customer_id):
 # =============================================
 from installation import register_install_module
 register_install_module(app)
+
+from sales import register_sales_module
+register_sales_module(app)
 
 
 def _ensure_installation_project_routes(flask_app):

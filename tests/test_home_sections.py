@@ -20,6 +20,7 @@ def test_admin_sees_all_department_cards_and_sidebar_home(client):
     for title in (
         'الصيانة والأعطال',
         'التركيبات والتحديث',
+        'التسويق والمبيعات',
         'المخازن والمشتريات',
         'شؤون العاملين',
         'الحسابات والمالية',
@@ -29,6 +30,7 @@ def test_admin_sees_all_department_cards_and_sidebar_home(client):
     assert 'href="/home"' in html
     assert 'href="/departments/maintenance"' in html
     assert 'href="/departments/installations"' in html
+    assert 'href="/departments/marketing"' in html
     assert 'data-nav-group' not in html
 
     portal = client.get('/departments/maintenance')
@@ -73,6 +75,7 @@ def test_all_department_portals_use_the_same_tab_chrome(client):
     inner_pages = {
         'maintenance': '/faults?department=maintenance',
         'installations': '/installation/?department=installations',
+        'marketing': '/sales/?department=marketing',
         'inventory': '/inventory?department=inventory',
         'personnel': '/technicians?department=personnel',
         'accounting': '/revenues?department=accounting',
@@ -81,6 +84,7 @@ def test_all_department_portals_use_the_same_tab_chrome(client):
     titles = {
         'maintenance': 'الصيانة والأعطال',
         'installations': 'التركيبات والتحديث',
+        'marketing': 'التسويق والمبيعات',
         'inventory': 'المخازن والمشتريات',
         'personnel': 'شؤون العاملين',
         'accounting': 'الحسابات والمالية',
@@ -179,6 +183,23 @@ def test_authenticated_root_redirects_to_home(client):
     )
     assert response.status_code == 302
     assert '/home' in (response.headers.get('Location') or '')
+
+
+def test_marketing_portal_lists_sales_links(client):
+    login_as(client, 'admin')
+    portal = client.get('/departments/marketing')
+    assert portal.status_code == 200
+    html = portal.get_data(as_text=True)
+    assert 'منصة التسويق والمبيعات' in html
+    assert '/sales/?department=marketing' in html
+    assert '/sales/maintenance-quotes?department=marketing' in html
+    assert '/elevator-estimates?department=marketing' in html
+
+    sales_page = client.get('/sales/?department=marketing')
+    assert sales_page.status_code == 200
+    sales_html = sales_page.get_data(as_text=True)
+    assert 'data-department="marketing"' in sales_html
+    assert 'التسويق والمبيعات' in sales_html
 
 
 def test_department_customer_and_contract_scopes_are_labeled(client):

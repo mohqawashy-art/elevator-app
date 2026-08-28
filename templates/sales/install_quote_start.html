@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = page_title|default('عرض تركيب جديد') %}
+{% include 'installation/_layout_head.html' %}
+<style>
+.kind-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:12px}
+@media(max-width:900px){.kind-grid{grid-template-columns:1fr}}
+.kind-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;cursor:pointer;text-align:right;transition:var(--trans);display:block;color:inherit;text-decoration:none}
+.kind-card:hover{border-color:var(--border2);background:var(--bg3)}
+.kind-card h3{margin:0 0 8px;font-size:16px}
+.kind-card p{margin:0;font-size:13px;color:var(--text2);line-height:1.6}
+.hint{margin-top:18px;font-size:13px;color:var(--text2);line-height:1.7}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">عرض تركيب جديد</div>
+      <div class="page-actions">
+        <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
+      </div>
+    </div>
+    <p class="hint">اختر نوع العمل — ثم أكمل المواصفات والأنظمة في شاشة التسعير الحديثة (BOM تلقائي، منشأ، ماركات، مراحل).</p>
+    <div class="kind-grid">
+      <a class="kind-card" href="{{ url_for('sales.install_quote_new', go=1, quote_kind='new') }}">
+        <h3>تركيب مصعد جديد</h3>
+        <p>توريد وتركيب كامل — أنظمة MRL / جيرلس / جير / هيدروليك / منزلي وأنظمة سوق حديثة.</p>
+      </a>
+      <a class="kind-card" href="{{ url_for('sales.install_quote_new', go=1, quote_kind='upgrade') }}">
+        <h3>تحديث مصعد قائم</h3>
+        <p>استبدال لوحة، ماكينة، أبواب، كبينة أو مكونات سلامة حسب اختيارك.</p>
+      </a>
+      <a class="kind-card" href="{{ url_for('sales.install_quote_new', go=1, quote_kind='extend') }}">
+        <h3>إضافة أدوار</h3>
+        <p>تمديد سفر ووقفات لمصعد قائم دون إعادة تسعير المصعد كاملاً.</p>
+      </a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

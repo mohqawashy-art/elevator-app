@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = page_title|default('عرض سعر صيانة') %}
+{% include 'installation/_layout_head.html' %}
+<style>
+.mq-wrap{display:grid;gap:14px;max-width:980px}
+.mq-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px 18px 14px}
+.mq-card h2{margin:0 0 12px;font-size:15px;color:var(--text1);display:flex;align-items:center;gap:8px}
+.mq-card h2 .n{width:24px;height:24px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:var(--text2)}
+.mq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mq-grid .full{grid-column:1/-1}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;padding:9px 10px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-family:inherit}
+.field .hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
+.elev-box{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;background:var(--bg2)}
+.elev-box label{display:flex;gap:8px;align-items:flex-start;padding:6px 0;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border)}
+.elev-box label:last-child{border-bottom:none}
+.elev-box .meta{font-size:11px;color:var(--text3)}
+.pkg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pkg label{border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;cursor:pointer;background:var(--bg2);display:block}
+.pkg label.on,.pkg input:checked + span{/* via js */}
+.pkg label{transition:var(--trans)}
+.pkg label.selected{border-color:var(--gold);background:rgba(200,160,85,.08)}
+.pkg input{margin-left:6px}
+.pkg small{display:block;margin-top:4px;font-size:11px;color:var(--text3);line-height:1.45}
+.scope{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+.scope label{font-size:13px;color:var(--text2);display:flex;gap:8px;align-items:center}
+.totals{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.tot{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px}
+.tot .l{font-size:11px;color:var(--text3)}
+.tot .v{font-size:18px;font-family:var(--font-en);margin-top:4px;color:var(--text1)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.flow{font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 8px}
+@media(max-width:860px){.mq-grid,.pkg,.scope,.totals{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">{% if quote %}عرض صيانة {{ quote.code }}{% else %}عرض سعر صيانة جديد{% endif %}</div>
+        {% if quote %}<div class="flow" style="margin-top:4px">الحالة: <b>{{ quote.status }}</b>{% if quote.result_contract_id %} · تم التحويل للعقد{% endif %}</div>{% endif %}
+      </div>
+      <div class="page-actions">
+        <a href="{{ url_for('sales.maintenance_quotes_list') }}" class="btn btn-secondary btn-sm">العروض</a>
+        <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
+        {% if quote %}<a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id) }}" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>{% endif %}
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <p class="flow">المسار: تعبئة العرض → إرسال للعميل → موافقة → <b>عقد صيانة</b> في قسم العقود.</p>
+
+    <form method="post" class="mq-wrap" id="mq-form">
+      <section class="mq-card">
+        <h2><span class="n">1</span> العميل والموقع</h2>
+        <div class="mq-grid">
+          <div class="field full">
+            <label>العميل *</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:stretch">
+              <select name="customer_id" id="customer_id" required style="flex:1;min-width:200px" {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+                <option value="">— اختر عميلاً مسجّلاً —</option>
+                {% for c in customers %}
+                <option value="{{ c.id }}"
+                  data-city="{{ c.city or '' }}"
+                  data-district="{{ c.district or '' }}"
+                  data-address="{{ c.address or '' }}"
+                  {% if quote and quote.customer_id==c.id %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
+                {% endfor %}
+              </select>
+              {% if not quote or quote.status != 'مقبول' %}
+              <button type="button" class="btn btn-secondary btn-sm" id="btnQuickCustomerMaint">+ عميل جديد</button>
+              {% endif %}
+            </div>
+            <div class="hint">يمكن إضافة عميل جديد مباشرة دون مغادرة العرض. تُصفّى المصاعد حسب العميل.</div>
+          </div>
+          <div class="field">
+            <label>المدينة</label>
+            <input name="city" id="city" value="{% if quote %}{{ quote.city or '' }}{% else %}مكة المكرمة{% endif %}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+          </div>
+          <div class="field">
+            <label>الحي</label>
+            <input name="district" id="district" value="{{ quote.district or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+          </div>
+          <div class="field full">
+            <label>عنوان الموقع</label>
+            <input name="address" id="address" value="{{ quote.address or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+          </div>
+        </div>
+      </section>
+
+      <section class="mq-card">
+        <h2><span class="n">2</span> المصاعد المشمولة</h2>
+        <div class="field full">
+          <div class="elev-box" id="elev-box">
+            {% for e in elevators %}
+            <label class="elev-row" data-customer="{{ e.customer_id }}" style="display:none">
+              <input type="checkbox" name="elevator_ids" value="{{ e.id }}" {% if e.id in selected_elevator_ids %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+              <span>
+                <b dir="ltr">{{ e.code }}</b>
+                {% if e.building_name %} — {{ e.building_name }}{% endif %}
+                <div class="meta">{{ e.elev_type or '' }}{% if e.capacity_kg %} · {{ e.capacity_kg }} كجم{% endif %}{% if e.floors %} · {{ e.floors }} ط{% endif %}</div>
+              </span>
+            </label>
+            {% else %}
+            <div style="color:var(--text3);font-size:12px;padding:8px">لا توجد مصاعد في النظام.</div>
+            {% endfor %}
+            <div id="elev-empty" style="color:var(--text3);font-size:12px;padding:8px;display:none">اختر العميل أولاً لعرض مصاعده، أو أضف مصاعد من صفحة المصاعد.</div>
+          </div>
+          <div class="hint">عدد المصاعد المحددة: <b id="elev-count">0</b></div>
+        </div>
+      </section>
+
+      <section class="mq-card">
+        <h2><span class="n">3</span> باقة الخدمة والنطاق</h2>
+        {% set pkg = package|default('قياسي') %}
+        <div class="pkg" id="pkg-box">
+          <label class="{% if pkg=='أساسي' %}selected{% endif %}">
+            <input type="radio" name="service_package" value="أساسي" {% if pkg=='أساسي' %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+            <b>أساسي</b>
+            <small>زيارات دورية + فحص سلامة أساسي. بدون قطع غيار.</small>
+          </label>
+          <label class="{% if pkg=='قياسي' %}selected{% endif %}">
+            <input type="radio" name="service_package" value="قياسي" {% if pkg=='قياسي' %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+            <b>قياسي</b>
+            <small>صيانة وقائية + استجابة أعطال خلال أوقات العمل + تقرير زيارة.</small>
+          </label>
+          <label class="{% if pkg=='شامل' %}selected{% endif %}">
+            <input type="radio" name="service_package" value="شامل" {% if pkg=='شامل' %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+            <b>شامل</b>
+            <small>قياسي + طوارئ 24/7 + أولوية قطع غيار (حسب الاتفاق).</small>
+          </label>
+        </div>
+        <div class="scope" style="margin-top:12px">
+          {% set scopes = scope_items|default([]) %}
+          {% for item in ['زيارات وقائية','فحص سلامة','تشحيم وضبط','استجابة أعطال','تقارير زيارة','طوارئ خارج الدوام'] %}
+          <label><input type="checkbox" name="scope_items" value="{{ item }}" {% if item in scopes or (not quote and item != 'طوارئ خارج الدوام') %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}> {{ item }}</label>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="mq-card">
+        <h2><span class="n">4</span> مدة العقد وجدول الزيارات</h2>
+        <div class="mq-grid">
+          <div class="field">
+            <label>مدة العقد (شهر)</label>
+            <select name="duration_months" id="duration_months" {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+              {% set dur = quote.duration_months if quote else 12 %}
+              {% for d in [3,6,12,18,24,36] %}
+              <option value="{{ d }}" {% if dur==d %}selected{% endif %}>{{ d }} شهر</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>تكرار الزيارات</label>
+            <select name="maint_frequency" id="maint_frequency" {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+              {% set freq = quote.maint_frequency if quote else 'شهري' %}
+              {% for f in ['شهري','ربع سنوي','نصف سنوي','سنوي'] %}
+              <option value="{{ f }}" {% if freq==f %}selected{% endif %}>{{ f }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>زيارات لكل فترة</label>
+            <input type="number" name="visits_per_month" id="visits_per_month" min="1" max="12" value="{{ quote.visits_per_month if quote else 1 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            <div class="hint" id="visits-hint">مثال: شهري × 1 = زيارة كل شهر</div>
+          </div>
+          <div class="field">
+            <label>شروط الدفع</label>
+            <select name="payment_terms" {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+              {% set pt = quote.payment_terms if quote else 'سنوي' %}
+              {% for p in ['دفعة واحدة','ربع سنوي','نصف سنوي','سنوي'] %}
+              <option value="{{ p }}" {% if pt==p %}selected{% endif %}>{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>تاريخ البداية</label>
+            <input type="date" name="start_date" id="start_date" value="{{ quote.start_date.isoformat() if quote and quote.start_date else today }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+          </div>
+          <div class="field">
+            <label>تاريخ النهاية</label>
+            <input type="date" name="end_date" id="end_date" value="{{ quote.end_date.isoformat() if quote and quote.end_date else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            <div class="hint">يُحسب تلقائياً من البداية + المدة (يمكن تعديله).</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mq-card">
+        <h2><span class="n">5</span> التسعير</h2>
+        <div class="mq-grid">
+          <div class="field">
+            <label>سعر المصعد / السنة (بدون ضريبة)</label>
+            <input type="number" step="0.01" min="0" id="price_per_elev" value="{{ price_per_elevator|default(0) }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            <div class="hint">يُضرب بعدد المصاعد ثم يُنسب لمدة العقد.</div>
+          </div>
+          <div class="field">
+            <label>أو إجمالي يدوي (بدون ضريبة)</label>
+            <input type="number" step="0.01" min="0" name="value" id="value" value="{{ quote.value if quote else 0 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+          </div>
+          <div class="field">
+            <label>ضريبة القيمة المضافة %</label>
+            <input type="number" step="0.01" min="0" name="tax_pct" id="tax_pct" value="{{ quote.tax_pct if quote else 15 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+          </div>
+          <div class="field full">
+            <div class="totals">
+              <div class="tot"><div class="l">القيمة</div><div class="v" id="t-value">0</div></div>
+              <div class="tot"><div class="l">الضريبة</div><div class="v" id="t-tax">0</div></div>
+              <div class="tot"><div class="l">الإجمالي</div><div class="v" id="t-total">0</div></div>
+            </div>
+          </div>
+          <div class="field full">
+            <label>ملاحظات للعميل</label>
+            <textarea name="notes_body" id="notes_body" rows="3" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>{{ notes_body|default('') }}</textarea>
+          </div>
+        </div>
+      </section>
+
+      {% if not quote or quote.status != 'مقبول' %}
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">حفظ العرض</button>
+      </div>
+      {% endif %}
+    </form>
+
+    {% if quote and quote.status != 'مقبول' %}
+    <div class="actions" style="margin-top:12px">
+      <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quote_deliver', quote_id=quote.id, channel='whatsapp') }}" target="_blank" rel="noopener">إرسال واتساب</a>
+      <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quote_deliver', quote_id=quote.id, channel='email') }}">إرسال إيميل</a>
+      <form method="post" action="{{ url_for('sales.maintenance_quote_approve', quote_id=quote.id) }}" onsubmit="return confirm('تأكيد موافقة العميل وإنشاء عقد الصيانة؟')">
+        <button class="btn btn-primary" type="submit">موافقة العميل → عقد صيانة</button>
+      </form>
+      <form method="post" action="{{ url_for('sales.maintenance_quote_reject', quote_id=quote.id) }}" onsubmit="return confirm('رفض العرض؟')">
+        <button class="btn btn-secondary" type="submit">رفض</button>
+      </form>
+    </div>
+    {% elif quote and quote.result_contract_id %}
+    <div class="flash flash-success" style="margin-top:12px">تم التحويل لعقد الصيانة — <a href="/contracts">فتح العقود</a></div>
+    {% endif %}
+  </div>
+</div>
+<script>
+(function(){
+  var locked = {{ 'true' if quote and quote.status=='مقبول' else 'false' }};
+  function money(n){ n=Number(n)||0; return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function elevCount(){
+    return document.querySelectorAll('#elev-box input[name=elevator_ids]:checked').length;
+  }
+  function filterElev(){
+    var cid = (document.getElementById('customer_id')||{}).value || '';
+    var rows = document.querySelectorAll('.elev-row');
+    var shown = 0;
+    rows.forEach(function(row){
+      var ok = cid && String(row.getAttribute('data-customer')) === String(cid);
+      row.style.display = ok ? 'flex' : 'none';
+      if(!ok){
+        var box = row.querySelector('input');
+        if(box && !locked) box.checked = false;
+      } else shown++;
+    });
+    var empty = document.getElementById('elev-empty');
+    if(empty) empty.style.display = (!cid || shown===0) ? 'block' : 'none';
+    document.getElementById('elev-count').textContent = elevCount();
+    recalcFromUnit();
+  }
+  function fillCustomerMeta(){
+    var sel = document.getElementById('customer_id');
+    if(!sel || locked) return;
+    var opt = sel.options[sel.selectedIndex];
+    if(!opt || !opt.value) return;
+    var city = opt.getAttribute('data-city')||'';
+    var district = opt.getAttribute('data-district')||'';
+    var address = opt.getAttribute('data-address')||'';
+    var c = document.getElementById('city');
+    var d = document.getElementById('district');
+    var a = document.getElementById('address');
+    if(c && (!c.value || c.value==='مكة المكرمة') && city) c.value = city;
+    if(d && !d.value && district) d.value = district;
+    if(a && !a.value && address) a.value = address;
+  }
+  function addMonths(iso, months){
+    if(!iso) return '';
+    var p = iso.split('-');
+    var dt = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+    dt.setMonth(dt.getMonth() + Number(months||0));
+    var y=dt.getFullYear(), m=String(dt.getMonth()+1).padStart(2,'0'), d=String(dt.getDate()).padStart(2,'0');
+    return y+'-'+m+'-'+d;
+  }
+  function syncEnd(){
+    if(locked) return;
+    var start = document.getElementById('start_date').value;
+    var months = document.getElementById('duration_months').value;
+    var end = document.getElementById('end_date');
+    if(start && months) end.value = addMonths(start, months);
+  }
+  function visitsHint(){
+    var f = document.getElementById('maint_frequency').value;
+    var v = document.getElementById('visits_per_month').value || 1;
+    var map = { 'شهري':'كل شهر', 'ربع سنوي':'كل ربع سنة', 'نصف سنوي':'كل نصف سنة', 'سنوي':'كل سنة' };
+    document.getElementById('visits-hint').textContent = (map[f]||f) + ' × ' + v + ' زيارة';
+  }
+  function recalcTotals(){
+    var value = Number(document.getElementById('value').value)||0;
+    var taxPct = Number(document.getElementById('tax_pct').value)||0;
+    var tax = value * taxPct / 100;
+    document.getElementById('t-value').textContent = money(value);
+    document.getElementById('t-tax').textContent = money(tax);
+    document.getElementById('t-total').textContent = money(value+tax);
+  }
+  function recalcFromUnit(){
+    if(locked) return;
+    var unit = Number(document.getElementById('price_per_elev').value)||0;
+    var n = elevCount();
+    var months = Number(document.getElementById('duration_months').value)||12;
+    if(unit > 0 && n > 0){
+      // سعر سنوي للمصعد × عدد × (المدة/12)
+      var val = unit * n * (months/12);
+      document.getElementById('value').value = Math.round(val*100)/100;
+    }
+    document.getElementById('elev-count').textContent = n;
+    recalcTotals();
+  }
+  document.querySelectorAll('#pkg-box label').forEach(function(lab){
+    lab.addEventListener('click', function(){
+      if(locked) return;
+      document.querySelectorAll('#pkg-box label').forEach(function(x){ x.classList.remove('selected'); });
+      lab.classList.add('selected');
+    });
+  });
+  var cust = document.getElementById('customer_id');
+  if(cust){ cust.addEventListener('change', function(){ fillCustomerMeta(); filterElev(); }); }
+  document.getElementById('elev-box').addEventListener('change', recalcFromUnit);
+  ['duration_months','start_date'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.addEventListener('change', function(){ syncEnd(); recalcFromUnit(); });
+  });
+  document.getElementById('maint_frequency').addEventListener('change', visitsHint);
+  document.getElementById('visits_per_month').addEventListener('input', visitsHint);
+  document.getElementById('price_per_elev').addEventListener('input', recalcFromUnit);
+  document.getElementById('value').addEventListener('input', recalcTotals);
+  document.getElementById('tax_pct').addEventListener('input', recalcTotals);
+  filterElev();
+  visitsHint();
+  if(!document.getElementById('end_date').value) syncEnd();
+  recalcTotals();
+
+  var btnQc = document.getElementById('btnQuickCustomerMaint');
+  if (btnQc && window.LiftCoreQuickCustomer) {
+    btnQc.addEventListener('click', function () {
+      window.LiftCoreQuickCustomer.open({
+        onCreated: function (cust) {
+          if (!cust || !cust.id) return;
+          var sel = document.getElementById('customer_id');
+          if (!sel) return;
+          var opt = document.createElement('option');
+          opt.value = String(cust.id);
+          opt.textContent = (cust.code || '') + ' — ' + (cust.name || '');
+          opt.setAttribute('data-city', cust.city || '');
+          opt.setAttribute('data-district', cust.district || '');
+          opt.setAttribute('data-address', cust.address || '');
+          sel.appendChild(opt);
+          sel.value = String(cust.id);
+          sel.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+  }
+})();
+</script>
+{% include 'partials/quick_customer_modal.html' %}
+</body>
+</html>

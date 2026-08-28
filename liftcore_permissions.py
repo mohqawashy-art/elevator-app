@@ -22,7 +22,8 @@ PAGE_DEFS: tuple[dict[str, str], ...] = (
     {'slug': 'faults', 'label_ar': 'الأعطال', 'label_en': 'Faults', 'group_ar': 'العمليات'},
     {'slug': 'whatsapp_inbox', 'label_ar': 'وارد واتساب', 'label_en': 'WhatsApp Inbox', 'group_ar': 'العمليات'},
     {'slug': 'parts_billing', 'label_ar': 'تركيب قطع الغيار', 'label_en': 'Parts Billing', 'group_ar': 'العمليات'},
-    {'slug': 'elevator_estimates', 'label_ar': 'تقدير تكلفة مصعد', 'label_en': 'Elevator Estimates', 'group_ar': 'التركيب'},
+    {'slug': 'sales_quotes', 'label_ar': 'المبيعات وعروض السعر', 'label_en': 'Sales & Quotes', 'group_ar': 'المبيعات'},
+    {'slug': 'elevator_estimates', 'label_ar': 'تقدير تكلفة مصعد', 'label_en': 'Elevator Estimates', 'group_ar': 'المبيعات'},
     {'slug': 'installation_projects', 'label_ar': 'مشاريع التركيب', 'label_en': 'Installation Projects', 'group_ar': 'التركيب'},
     {'slug': 'revenues', 'label_ar': 'الإيرادات', 'label_en': 'Revenues', 'group_ar': 'المالية'},
     {'slug': 'expenses', 'label_ar': 'المصروفات', 'label_en': 'Expenses', 'group_ar': 'المالية'},
@@ -94,10 +95,12 @@ LEGACY_GRANT_MAP: dict[str, tuple[str, ...]] = {
     'clients.read': (
         page_perm('clients', PERM_READ),
         page_perm('contracts', PERM_READ),
+        page_perm('sales_quotes', PERM_READ),
     ),
     'clients.write': (
         page_perm('clients', PERM_CREATE), page_perm('clients', PERM_EDIT),
         page_perm('contracts', PERM_CREATE), page_perm('contracts', PERM_EDIT),
+        page_perm('sales_quotes', PERM_CREATE), page_perm('sales_quotes', PERM_EDIT),
     ),
     'elevators.read': (page_perm('elevators', PERM_READ),),
     'elevators.write': (
@@ -122,10 +125,12 @@ LEGACY_GRANT_MAP: dict[str, tuple[str, ...]] = {
     'installation.read': (
         page_perm('elevator_estimates', PERM_READ),
         page_perm('installation_projects', PERM_READ),
+        page_perm('sales_quotes', PERM_READ),
     ),
     'installation.write': (
         page_perm('elevator_estimates', PERM_CREATE), page_perm('elevator_estimates', PERM_EDIT),
         page_perm('installation_projects', PERM_CREATE), page_perm('installation_projects', PERM_EDIT),
+        page_perm('sales_quotes', PERM_CREATE), page_perm('sales_quotes', PERM_EDIT),
     ),
     'finance.read': (
         page_perm('revenues', PERM_READ),
@@ -179,6 +184,7 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/parts-billing', 'parts_billing'),
     ('/api/parts-billing', 'parts_billing'),
     ('/elevator-estimates', 'elevator_estimates'),
+    ('/sales', 'sales_quotes'),
     ('/installation', 'installation_projects'),
     ('/api/revenues', 'revenues'),
     ('/revenues', 'revenues'),

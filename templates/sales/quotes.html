@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = page_title|default('عروض السعر') %}
+{% include 'installation/_layout_head.html' %}
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">{{ page_title }}</div>
+      <div class="page-actions">
+        <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
+        {% if kind in ['install', 'تركيب', 'تركيبات'] %}
+        <a href="{{ url_for('sales.install_quote_new') }}" class="btn btn-primary btn-sm">+ عرض تركيب</a>
+        {% else %}
+        <a href="{{ url_for('sales.maintenance_quote_new') }}" class="btn btn-primary btn-sm">+ عرض صيانة</a>
+        {% endif %}
+      </div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn btn-sm {{ 'btn-primary' if not kind else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', status=status or none) }}">الكل</a>
+      <a class="btn btn-sm {{ 'btn-primary' if kind=='install' else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', kind='install', status=status or none) }}">تركيبات</a>
+      <a class="btn btn-sm {{ 'btn-primary' if kind=='maintenance' else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', kind='maintenance', status=status or none) }}">صيانة</a>
+    </div>
+    <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', kind=kind or none) }}">كل الحالات</a>
+      {% for s in ['مسودة','مُرسل','تفاوض','مقبول','مرفوض'] %}
+      <a class="btn btn-sm {{ 'btn-primary' if status==s else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', status=s, kind=kind or none) }}">{{ s }}</a>
+      {% endfor %}
+    </div>
+    <div class="panel" style="padding:0;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="text-align:right;color:var(--text2);border-bottom:1px solid var(--border)">
+            <th style="padding:10px">النوع</th>
+            <th style="padding:10px">الرمز</th>
+            <th style="padding:10px">العميل</th>
+            <th style="padding:10px">الحالة</th>
+            <th style="padding:10px">الإجمالي</th>
+            <th style="padding:10px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px">{{ r.kind_ar }}</td>
+            <td style="padding:10px" dir="ltr">{{ r.code }}</td>
+            <td style="padding:10px">{{ r.customer }}</td>
+            <td style="padding:10px">{{ r.status }}</td>
+            <td style="padding:10px" dir="ltr">{{ '%.2f'|format(r.total or 0) }}</td>
+            <td style="padding:10px;white-space:nowrap">
+              {% if r.kind == 'install' and r.status == 'مقبول' and r.project_url %}
+              <a href="{{ r.project_url }}" class="btn btn-primary btn-sm">فتح المشروع</a>
+              {% else %}
+              <a href="{{ r.url }}" class="btn btn-secondary btn-sm">فتح</a>
+              {% endif %}
+              <a href="{{ r.print_url }}" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>
+              {% if r.kind == 'install' and r.status not in ('مقبول', 'مرفوض') %}
+              <a href="{{ r.deliver_wa }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">واتساب</a>
+              <a href="{{ r.deliver_email }}" class="btn btn-secondary btn-sm">إيميل</a>
+              {% if r.approve_url %}
+              <form method="post" action="{{ r.approve_url }}" style="display:inline" onsubmit="return confirm('موافقة العميل وتحويل العرض لقسم المشاريع؟')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="sales">
+                <button type="submit" class="btn btn-primary btn-sm">موافقة → مشاريع</button>
+              </form>
+              {% endif %}
+              {% elif r.kind == 'maintenance' and r.contract_id %}
+              <a href="/contracts" class="btn btn-primary btn-sm">العقود</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" style="padding:20px;color:var(--text2)">لا توجد عروض</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

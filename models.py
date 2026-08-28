@@ -921,6 +921,57 @@ class PurchaseOrderLine(TenantMixin, db.Model):
 
 
 # =============================================
+# 12ب. عروض أسعار عقود الصيانة (مسار المبيعات)
+# =============================================
+class MaintenanceQuote(TenantMixin, db.Model):
+    """عرض سعر عقد صيانة — ينتهي بموافقة العميل ثم تحويل لعقد CN-."""
+    __tablename__ = 'maintenance_quotes'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_maint_quote_org_code'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
+    status = db.Column(db.String(30), default='مسودة')  # مسودة / مُرسل / مقبول / مرفوض
+    duration_months = db.Column(db.Integer, default=12)
+    maint_frequency = db.Column(db.String(50))
+    visits_per_month = db.Column(db.Integer, default=1)
+    value = db.Column(db.Float, default=0)
+    tax_pct = db.Column(db.Float, default=15)
+    tax_amount = db.Column(db.Float, default=0)
+    total = db.Column(db.Float, default=0)
+    payment_terms = db.Column(db.String(50))
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    city = db.Column(db.String(100))
+    district = db.Column(db.String(100))
+    address = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    result_contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=True)
+    approved_at = db.Column(db.DateTime)
+    sent_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    customer = db.relationship('Customer', foreign_keys=[customer_id], uselist=False)
+    result_contract = db.relationship('Contract', foreign_keys=[result_contract_id], uselist=False)
+    elevators = db.relationship(
+        'MaintenanceQuoteElevator',
+        backref='quote',
+        cascade='all, delete-orphan',
+        lazy=True,
+    )
+
+
+class MaintenanceQuoteElevator(TenantMixin, db.Model):
+    __tablename__ = 'maintenance_quote_elevators'
+    id = db.Column(db.Integer, primary_key=True)
+    quote_id = db.Column(db.Integer, db.ForeignKey('maintenance_quotes.id'), nullable=False, index=True)
+    elevator_id = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
+
+
+# =============================================
 # 12ج. تقدير تكلفة إنشاء مصعد
 # =============================================
 class ElevatorEstimate(TenantMixin, db.Model):
