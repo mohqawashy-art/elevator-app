@@ -37,7 +37,11 @@
   function lookupWord(word, words) {
     if (words[word]) {
       var mapped = words[word];
-      if (word.indexOf('\u0627\u0644') === 0 && word.length > 2 && mapped.indexOf('Al') !== 0) {
+      if (
+        word.indexOf('\u0627\u0644') === 0 && word.length > 2
+        && mapped.indexOf('Al') !== 0
+        && word.slice(-2) === '\u064A\u0629'
+      ) {
         return 'Al-' + mapped;
       }
       return mapped;
@@ -97,22 +101,20 @@
     var phrases = (data.phrases || []).slice().sort(function (a, b) {
       return b[0].length - a[0].length;
     });
-    return { phrases: phrases, words: data.words || {} };
+    var labels = data.labels || {};
+    var labelPhrases = Object.keys(labels).slice().sort(function (a, b) {
+      return b.length - a.length;
+    });
+    return { phrases: phrases, words: data.words || {}, labels: labels, labelPhrases: labelPhrases };
   }
 
-  function arabicToLatin(text) {
-    if (!text || !String(text).trim()) return '';
-    if (!DICT_READY || !DICT) return String(text).trim();
-
-    var parts = normalizeAr(text).split(/\s+/).filter(Boolean);
-    if (!parts.length) return '';
-
+  function convertParts(parts, phrases, words) {
     var converted = [];
     var i = 0;
     while (i < parts.length) {
       var matched = false;
-      for (var p = 0; p < DICT.phrases.length; p++) {
-        var phrase = DICT.phrases[p];
+      for (var p = 0; p < phrases.length; p++) {
+        var phrase = phrases[p];
         var phraseParts = phrase[0].split(/\s+/);
         var chunk = parts.slice(i, i + phraseParts.length);
         var same = chunk.length === phraseParts.length;
@@ -129,10 +131,79 @@
         }
       }
       if (matched) continue;
-      converted.push(transliterateWord(parts[i], DICT.words));
+      converted.push(transliterateWord(parts[i], words));
       i += 1;
     }
-    return converted.join(' ');
+    return converted;
+  }
+
+  function splitLabelPhrase(parts, labels, labelPhrases) {
+    if (!parts.length) return { descriptors: [], remaining: [] };
+
+    var descriptors = [];
+    var remaining = parts.slice();
+
+    while (remaining.length) {
+      var matched = false;
+      for (var i = 0; i < labelPhrases.length; i++) {
+        var phrase = labelPhrases[i];
+        var phraseParts = phrase.split(/\s+/);
+        if (remaining.length <= phraseParts.length) continue;
+        var chunk = remaining.slice(0, phraseParts.length);
+        var same = chunk.length === phraseParts.length;
+        if (same) {
+          for (var k = 0; k < phraseParts.length; k++) {
+            if (chunk[k] !== phraseParts[k]) same = false;
+          }
+        }
+        if (same) {
+          descriptors.push(labels[phrase]);
+          remaining = remaining.slice(phraseParts.length);
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) break;
+    }
+
+    while (remaining.length > 1 && labels[remaining[0]]) {
+      descriptors.push(labels[remaining[0]]);
+      remaining = remaining.slice(1);
+    }
+
+    while (remaining.length > 1 && labels[remaining[remaining.length - 1]]) {
+      descriptors.push(labels[remaining[remaining.length - 1]]);
+      remaining = remaining.slice(0, -1);
+    }
+
+    if (remaining.length === 1 && labels[remaining[0]] && !descriptors.length) {
+      return { descriptors: [labels[remaining[0]]], remaining: [] };
+    }
+
+    return { descriptors: descriptors, remaining: remaining };
+  }
+
+  function arabicToLatin(text) {
+    if (!text || !String(text).trim()) return '';
+    if (!DICT_READY || !DICT) return String(text).trim();
+
+    var parts = normalizeAr(text).split(/\s+/).filter(Boolean);
+    if (!parts.length) return '';
+
+    var split = splitLabelPhrase(parts, DICT.labels || {}, DICT.labelPhrases || []);
+    if (!split.remaining.length) {
+      return split.descriptors.join(' ');
+    }
+
+    var converted = convertParts(split.remaining, DICT.phrases, DICT.words);
+    var name = converted.join(' ').trim();
+    if (split.descriptors.length && name) {
+      return name + ' ' + split.descriptors.join(' ');
+    }
+    if (split.descriptors.length) {
+      return split.descriptors.join(' ');
+    }
+    return name;
   }
 
   function bindAutoLatin(arId, enId) {
@@ -244,7 +315,7 @@
     }
   });
 
-  fetch('/static/translit-dictionary.json?v=1')
+  fetch('/static/translit-dictionary.json?v=2')
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (data) { if (data) initDictionary(data); })
     .catch(function () { /* keep embedded fallback */ });
