@@ -345,6 +345,19 @@
     });
   }
 
+  var markerLibWaitAttempted = false;
+
+  /** انتظر مكتبة العلامات مرة واحدة فقط عند وجود mapId — وإلا تعلّق/حلقة لا نهائية */
+  function ensureMapMarkersReady(fn) {
+    if (!fn) return Promise.resolve();
+    if (!getMapId() || canUseAdvancedMarkers() || markerLibWaitAttempted) {
+      fn();
+      return Promise.resolve();
+    }
+    markerLibWaitAttempted = true;
+    return ensureMarkerLibReady(fn);
+  }
+
   if (global.__gmapsMarkerLib) {
     _setMarkerLib(global.__gmapsMarkerLib);
   }
@@ -374,6 +387,7 @@
     coordsForRecord: coordsForRecord,
     bindMarkerHover: bindMarkerHover,
     geocodeMissing: geocodeMissing,
-    ensureMarkerLibReady: ensureMarkerLibReady
+    ensureMarkerLibReady: ensureMarkerLibReady,
+    ensureMapMarkersReady: ensureMapMarkersReady
   };
 })(typeof window !== 'undefined' ? window : this);
