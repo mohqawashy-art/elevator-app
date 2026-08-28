@@ -59,7 +59,6 @@ DEPARTMENT_PORTALS = {
             ('مصاعد الصيانة', 'Maintenance Elevators', '/elevators', 'elevators.read'),
             ('زيارات الصيانة', 'Maintenance Visits', '/maintenance-visits', 'maintenance_visits.read'),
             ('الأعطال والبلاغات', 'Faults & Reports', '/faults', 'faults.read'),
-            ('وارد واتساب', 'WhatsApp Inbox', '/support/whatsapp', 'whatsapp_inbox.read'),
             ('تركيب قطع الغيار', 'Parts Installation', '/parts-billing', 'parts_billing.read'),
         ),
         'reports': (
