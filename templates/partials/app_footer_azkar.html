@@ -1,20 +1,10 @@
-{# إطار أذكار وأدعية — يسار الصفحة #}
+{# شريط أذكار متحرك — فوتر ثابت (صفحات المكتب المسجّل فقط) #}
 {% if auth_user and not platform_admin_host and azkar_ticker_enabled %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-azkar.css') }}?v=8">
-<aside class="lc-azkar-panel" id="lc-azkar-panel" aria-label="أذكار وأدعية" data-i18n-skip>
-  <div class="lc-azkar-frame">
-    <div class="lc-azkar-frame-head">
-      <span class="lc-azkar-frame-icon" aria-hidden="true">☪</span>
-      <span class="lc-azkar-frame-title">ذكر</span>
-    </div>
-    <div class="lc-azkar-ticker">
-      <div class="lc-azkar-rotate" id="lc-azkar-rotate" hidden>
-        <span class="lc-azkar-label" id="lc-azkar-label" hidden></span>
-        <span class="lc-azkar-text" id="lc-azkar-text" aria-live="polite"></span>
-      </div>
-      <div class="lc-azkar-track" id="lc-azkar-track" hidden aria-live="off"></div>
-    </div>
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-azkar.css') }}?v=9">
+<footer class="lc-azkar-footer" id="lc-azkar-footer" aria-label="أذكار" data-i18n-skip>
+  <div class="lc-azkar-ticker">
+    <div class="lc-azkar-track" id="lc-azkar-track" aria-live="off"></div>
   </div>
-</aside>
-<script src="{{ url_for('static', filename='liftcore-azkar.js') }}?v=8" defer></script>
+</footer>
+<script src="{{ url_for('static', filename='liftcore-azkar.js') }}?v=9" defer></script>
 {% endif %}
