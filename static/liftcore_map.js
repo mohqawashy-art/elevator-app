@@ -49,6 +49,10 @@
     options = options || {};
     var merged = Object.assign({}, options);
     merged.mapId = merged.mapId || getMapId();
+    /* Vector maps (mapId) reject legacy styles in the constructor — causes Google error overlay */
+    if (merged.mapId && merged.styles) {
+      delete merged.styles;
+    }
     return merged;
   }
 

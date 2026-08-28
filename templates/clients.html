@@ -72,7 +72,7 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=4"></script>
+<script src="/static/liftcore_map.js?v=5"></script>
 <script src="/static/client_map_picker.js?v=11"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
@@ -610,7 +610,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-secondary btn-sm" id="card-edit-btn" onclick="editFromCard()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg>
-          تعديل
+          <span data-lc-t="تعديل">تعديل</span>
         </button>
         <button type="button" class="modal-close" onclick="closeClientCard()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
       </div>
@@ -619,11 +619,11 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <!-- يتعبى بالـ JS -->
     </div>
     <div class="modal-foot">
-      <a class="btn btn-secondary btn-sm" id="card-report-clients" href="/reports/clients" style="margin-left:auto">تقرير العملاء</a>
-      <a class="btn btn-primary btn-sm" id="card-report-statement" href="/reports/customer-statement">كشف حساب</a>
-      <a class="btn btn-primary btn-sm" id="card-report-annual" href="/reports/client-annual">تقرير سنوي</a>
-      <a class="btn btn-primary btn-sm" id="card-new-contract" href="/contracts?action=add" style="display:none">إضافة عقد</a>
-      <button type="button" class="btn btn-secondary" onclick="closeClientCard()">إغلاق</button>
+      <a class="btn btn-secondary btn-sm" id="card-report-clients" href="/reports/clients" style="margin-left:auto"><span data-lc-t="تقرير العملاء">تقرير العملاء</span></a>
+      <a class="btn btn-primary btn-sm" id="card-report-statement" href="/reports/customer-statement"><span data-lc-t="كشف حساب">كشف حساب</span></a>
+      <a class="btn btn-primary btn-sm" id="card-report-annual" href="/reports/client-annual"><span data-lc-t="تقرير سنوي">تقرير سنوي</span></a>
+      <a class="btn btn-primary btn-sm" id="card-new-contract" href="/contracts?action=add" style="display:none"><span data-lc-t="إضافة عقد">إضافة عقد</span></a>
+      <button type="button" class="btn btn-secondary" onclick="closeClientCard()"><span data-lc-t="إغلاق">إغلاق</span></button>
     </div>
   </div>
 </div>
@@ -805,7 +805,21 @@ var CLIENT_MODAL_EN = {
   'Contact WhatsApp': 'Contact WhatsApp',
   'Additional Numbers': 'Additional Numbers',
   'Elevator Count': 'Elevator Count',
-  'Detailed Address': 'Detailed Address'
+  'Detailed Address': 'Detailed Address',
+  'كشف حساب': 'Account Statement',
+  'تقرير سنوي': 'Annual Report',
+  'تقرير العملاء': 'Clients Report',
+  'إضافة عقد': 'Add Contract',
+  'إغلاق': 'Close',
+  'بيانات العميل': 'Client Details',
+  'الموقع': 'Location',
+  'البيانات الأساسية': 'Basic Data',
+  'الكود': 'Code',
+  'الاسم': 'Name',
+  'مصعد': 'Elevator',
+  'عقد': 'Contract',
+  'إجمالي المدفوع': 'Total Paid',
+  'جاري تحميل البيانات...': 'Loading data...'
 };
 
 window.__lcApplyClientModal = null;
@@ -941,6 +955,19 @@ function applyClientModalI18n() {
 }
 window.applyClientModalI18n = applyClientModalI18n;
 window.__lcApplyClientModal = applyClientModalI18n;
+
+function applyClientCardI18n() {
+  var modal = document.getElementById('modal-client-card');
+  if (!modal) return;
+  var en = isClientUiEn();
+  modal.querySelectorAll('[data-lc-t]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-t');
+    if (!key) return;
+    if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent;
+    el.textContent = en ? clientModalTr(key) : el.dataset.lcAr;
+  });
+}
+window.applyClientCardI18n = applyClientCardI18n;
 
 function lcT(s) {
   return clientModalTr(s);
@@ -1429,7 +1456,7 @@ function testWhatsAppContact() {
 function waButtonHtml(phone, name) {
   if (!whatsappDigits(phone)) return '';
   return '<button type="button" class="btn-wa" data-wa-phone=' + JSON.stringify(String(phone)) + ' data-wa-name=' + JSON.stringify(String(name || '')) + '>' +
-    '<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg> ' + lcDisp('واتساب') + '</button>';
+    '<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg> واتساب</button>';
 }
 
 function clientPhoneCell(phone, waName) {
@@ -1524,12 +1551,12 @@ function clientStatusBadge(c) {
 function clientStatusBarHtml(c) {
   var st = clientAccountStatus(c);
   return '<div class="client-status-bar">' +
-    '<div class="client-card-label">' + lcDisp('حالة العميل') + '</div>' +
+    '<div class="client-card-label">حالة العميل</div>' +
     '<div class="client-status-actions">' +
       clientStatusBadge(c) +
       '<select id="card-status-sel" class="filter-select" style="min-width:120px" onchange="saveClientStatusFromCard(' + c.id + ', this.value)">' +
-        '<option value="نشط"' + (st === 'نشط' ? ' selected' : '') + '>' + lcDisp('نشط') + '</option>' +
-        '<option value="غير نشط"' + (st === 'غير نشط' ? ' selected' : '') + '>' + lcDisp('غير نشط') + '</option>' +
+        '<option value="نشط"' + (st === 'نشط' ? ' selected' : '') + '>نشط</option>' +
+        '<option value="غير نشط"' + (st === 'غير نشط' ? ' selected' : '') + '>غير نشط</option>' +
       '</select>' +
     '</div></div>';
 }
@@ -1709,6 +1736,10 @@ function showClientCardMap(pos, c) {
     try {
       var mapEl = document.getElementById('card-map');
       if (!mapEl || typeof google === 'undefined' || !google.maps) return;
+      if (cardMapInstance && cardMapInstance.getDiv && cardMapInstance.getDiv() !== mapEl) {
+        cardMapInstance = null;
+        cardMapMarker = null;
+      }
       var center = { lat: lat, lng: lng };
       if (!cardMapInstance) {
         var cardMapOpts = {
@@ -1720,8 +1751,7 @@ function showClientCardMap(pos, c) {
           streetViewControl: false,
           fullscreenControl: false,
           zoomControl: true,
-          gestureHandling: 'cooperative',
-          styles: MAP_POI_HIDDEN_STYLES
+          gestureHandling: 'cooperative'
         };
         if (window.LiftCoreMap && LiftCoreMap.mergeMapOptions) {
           cardMapOpts = LiftCoreMap.mergeMapOptions(cardMapOpts);
@@ -1835,7 +1865,7 @@ function openClientCard(id) {
   var cardPos = getClientPosition(c);
   var hasAddress = !!(c.address || c.city || c.district);
   var mapSection = (cardPos || hasAddress)
-    ? '<div class="card-section-title">' + lcDisp('الموقع') + '</div><div id="card-map" data-i18n-skip style="height:200px;border-radius:var(--r-sm);border:1px solid var(--border);margin:8px 0 12px"></div>'
+    ? '<div class="card-section-title">الموقع</div><div id="card-map" data-i18n-skip style="height:200px;border-radius:var(--r-sm);border:1px solid var(--border);margin:8px 0 12px"></div>'
     : '';
   var locBlock = (window.LiftCoreLocation && LiftCoreLocation.renderLocationBlock)
     ? LiftCoreLocation.renderLocationBlock(c) : '';
@@ -1845,37 +1875,37 @@ function openClientCard(id) {
     locBlock +
     mapSection +
     '<div class="card-stats">' +
-      '<div class="card-stat"><div class="card-stat-val">' + c.elevators + '</div><div class="card-stat-label">' + lcDisp('مصعد') + '</div></div>' +
-      '<div class="card-stat"><div class="card-stat-val">' + c.contracts + '</div><div class="card-stat-label">' + lcDisp('عقد') + '</div></div>' +
-      '<div class="card-stat"><div class="card-stat-val" id="card-total-paid" style="font-size:15px;color:var(--success)">—</div><div class="card-stat-label">' + lcDisp('إجمالي المدفوع') + '</div></div>' +
-      '<div class="card-stat"><div class="card-stat-val" style="color:' + (c.fleet_status==='نشط'?'var(--success)':(c.fleet_status==='بدون مصاعد'?'var(--text3)':'var(--warning)')) + '">' + lcDisp(c.fleet_status) + '</div><div class="card-stat-label">' + lcDisp('حالة المصاعد') + '</div></div>' +
-      '<div class="card-stat"><div class="card-stat-val" style="font-size:14px;color:' + (c.contract_status==='نشط'?'var(--success)':'var(--warning)') + '">' + lcDisp(c.contract_status) + '</div><div class="card-stat-label">' + lcDisp('حالة العقد') + '</div></div>' +
+      '<div class="card-stat"><div class="card-stat-val">' + c.elevators + '</div><div class="card-stat-label">مصعد</div></div>' +
+      '<div class="card-stat"><div class="card-stat-val">' + c.contracts + '</div><div class="card-stat-label">عقد</div></div>' +
+      '<div class="card-stat"><div class="card-stat-val" id="card-total-paid" style="font-size:15px;color:var(--success)">—</div><div class="card-stat-label">إجمالي المدفوع</div></div>' +
+      '<div class="card-stat"><div class="card-stat-val" style="color:' + (c.fleet_status==='نشط'?'var(--success)':(c.fleet_status==='بدون مصاعد'?'var(--text3)':'var(--warning)')) + '">' + (c.fleet_status || '—') + '</div><div class="card-stat-label">حالة المصاعد</div></div>' +
+      '<div class="card-stat"><div class="card-stat-val" style="font-size:14px;color:' + (c.contract_status==='نشط'?'var(--success)':'var(--warning)') + '">' + (c.contract_status || '—') + '</div><div class="card-stat-label">حالة العقد</div></div>' +
     '</div>' +
-    '<div class="client-card-section">' + lcDisp('البيانات الأساسية') + '</div>' +
+    '<div class="client-card-section">البيانات الأساسية</div>' +
     '<div class="client-card-grid">' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الكود') + '</div><div class="client-card-val" style="font-family:var(--font-en);color:var(--accent)">' + c.code + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الاسم') + '</div><div class="client-card-val">' + lcClient(c) + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('حالة العميل') + '</div><div class="client-card-val">' + clientStatusBadge(c) + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('المدينة') + '</div><div class="client-card-val">' + lcDisp(c.city||'—') + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الحي') + '</div><div class="client-card-val">' + lcDisp(c.district||'—') + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('المسؤول') + '</div><div class="client-card-val">' + lcDisp(c.contact||'—') + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الصفة') + '</div><div class="client-card-val">' + lcDisp(c.role||'—') + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('نوع المتعاقد') + '</div><div class="client-card-val">' + lcDisp(c.entity_type || 'فرد') + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp(contractorIdLabel(c.entity_type)) + '</div><div class="client-card-val" style="direction:ltr;font-family:var(--font-en)">' + contractorIdValue(c) + '</div></div>' +
-      ((c.entity_type === 'شركة' && c.vat_number) ? '<div class="client-card-item"><div class="client-card-label">' + lcDisp('الرقم الضريبي') + '</div><div class="client-card-val" style="direction:ltr;font-family:var(--font-en)">' + esc(c.vat_number) + '</div></div>' : '') +
-      ((c.entity_type === 'شركة' && c.national_address) ? '<div class="client-card-item full"><div class="client-card-label">' + lcDisp('العنوان الوطني') + '</div><div class="client-card-val">' + esc(c.national_address) + '</div></div>' : '') +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('واتساب المسؤول') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone2||'—') + '</span>' + waButtonHtml(c.phone2, c.contact) + '</div></div>' +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('رقم الجوال') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone||'—') + '</span>' + waButtonHtml(c.phone, lcClient(c)) + '</div></div>' +
-      (extraPhones.length ? ('<div class="client-card-item full"><div class="client-card-label">' + lcDisp('أرقام إضافية') + '</div><div class="client-card-val" style="display:flex;flex-direction:column;gap:8px">' +
+      '<div class="client-card-item"><div class="client-card-label">الكود</div><div class="client-card-val" style="font-family:var(--font-en);color:var(--accent)">' + c.code + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">الاسم</div><div class="client-card-val">' + lcClient(c) + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">حالة العميل</div><div class="client-card-val">' + clientStatusBadge(c) + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">المدينة</div><div class="client-card-val">' + (c.city||'—') + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">الحي</div><div class="client-card-val">' + (c.district||'—') + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">المسؤول</div><div class="client-card-val">' + (c.contact||'—') + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">الصفة</div><div class="client-card-val">' + (c.role||'—') + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">نوع المتعاقد</div><div class="client-card-val">' + (c.entity_type || 'فرد') + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">' + contractorIdLabel(c.entity_type) + '</div><div class="client-card-val" style="direction:ltr;font-family:var(--font-en)">' + contractorIdValue(c) + '</div></div>' +
+      ((c.entity_type === 'شركة' && c.vat_number) ? '<div class="client-card-item"><div class="client-card-label">الرقم الضريبي</div><div class="client-card-val" style="direction:ltr;font-family:var(--font-en)">' + esc(c.vat_number) + '</div></div>' : '') +
+      ((c.entity_type === 'شركة' && c.national_address) ? '<div class="client-card-item full"><div class="client-card-label">العنوان الوطني</div><div class="client-card-val">' + esc(c.national_address) + '</div></div>' : '') +
+      '<div class="client-card-item"><div class="client-card-label">واتساب المسؤول</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone2||'—') + '</span>' + waButtonHtml(c.phone2, c.contact) + '</div></div>' +
+      '<div class="client-card-item"><div class="client-card-label">رقم الجوال</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone||'—') + '</span>' + waButtonHtml(c.phone, lcClient(c)) + '</div></div>' +
+      (extraPhones.length ? ('<div class="client-card-item full"><div class="client-card-label">أرقام إضافية</div><div class="client-card-val" style="display:flex;flex-direction:column;gap:8px">' +
         extraPhones.map(function(p){
           var lab = p.label ? ('<span style="color:var(--text3);font-size:12px">' + esc(p.label) + ': </span>') : '';
           return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' + lab + '<span style="direction:ltr;font-family:var(--font-en)">' + esc(p.number||'') + '</span>' + waButtonHtml(p.number, p.label || c.contact) + '</div>';
         }).join('') +
       '</div></div>') : '') +
-      '<div class="client-card-item"><div class="client-card-label">' + lcDisp('البريد') + '</div><div class="client-card-val" style="direction:ltr">' + (c.email||'—') + '</div></div>' +
-      (c.notes ? '<div class="client-card-item full"><div class="client-card-label">' + lcDisp('ملاحظات') + '</div><div class="client-card-val">' + c.notes + '</div></div>' : '') +
+      '<div class="client-card-item"><div class="client-card-label">البريد</div><div class="client-card-val" style="direction:ltr">' + (c.email||'—') + '</div></div>' +
+      (c.notes ? '<div class="client-card-item full"><div class="client-card-label">ملاحظات</div><div class="client-card-val">' + c.notes + '</div></div>' : '') +
     '</div>' +
-    '<div id="card-dynamic-data"><div style="text-align:center;padding:16px;color:var(--text3);font-size:13px">⏳ ' + lcDisp('جاري تحميل البيانات...') + '</div></div>';
+    '<div id="card-dynamic-data"><div class="card-loading-msg" style="text-align:center;padding:16px;color:var(--text3);font-size:13px">⏳ جاري تحميل البيانات...</div></div>';
 
   openModal('modal-client-card');
   var annualLink = document.getElementById('card-report-annual');
@@ -1889,7 +1919,12 @@ function openClientCard(id) {
     contractLink.href = '/contracts?action=add&customer_id=' + encodeURIComponent(id);
     contractLink.style.display = '';
   }
-  if (window.LiftCoreDisplay) LiftCoreDisplay.applyDom(document.getElementById('card-body'), LiftCoreDisplay.currentLang());
+  if (window.LiftCoreDisplay) {
+    var cardModal = document.getElementById('modal-client-card');
+    LiftCoreDisplay.applyDom(document.getElementById('card-body'), LiftCoreDisplay.currentLang());
+    if (cardModal) LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
+  }
+  applyClientCardI18n();
   loadClientData(id);
   } catch (err) {
     console.error('openClientCard', err);
@@ -3020,14 +3055,16 @@ function openModal(id){
   if (window.LiftCoreI18n && LiftCoreI18n.applyModal) {
     setTimeout(function () {
       applyClientModalI18n();
+      applyClientCardI18n();
       LiftCoreI18n.applyModal(id);
       applyClientModalI18n();
+      applyClientCardI18n();
     }, 0);
-    setTimeout(function () { applyClientModalI18n(); }, 120);
-    setTimeout(function () { applyClientModalI18n(); }, 400);
+    setTimeout(function () { applyClientModalI18n(); applyClientCardI18n(); }, 120);
+    setTimeout(function () { applyClientModalI18n(); applyClientCardI18n(); }, 400);
   } else {
-    setTimeout(function () { applyClientModalI18n(); }, 0);
-    setTimeout(function () { applyClientModalI18n(); }, 200);
+    setTimeout(function () { applyClientModalI18n(); applyClientCardI18n(); }, 0);
+    setTimeout(function () { applyClientModalI18n(); applyClientCardI18n(); }, 200);
   }
 }
 function closeModal(id){
@@ -3207,8 +3244,16 @@ if (window.LiftCoreTranslit) LiftCoreTranslit.bindAutoLatin('f-name', 'f-name-en
 document.addEventListener('liftcore:lang', function () {
   renderTable(filtered);
   var cardModal = document.getElementById('modal-client-card');
-  if (cardModal && cardModal.classList.contains('open') && window.LiftCoreDisplay) {
-    LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
+  if (cardModal && cardModal.classList.contains('open') && currentCardId) {
+    var cLang = CUSTOMERS.find(function (x) { return x.id === currentCardId; });
+    if (cLang) {
+      document.getElementById('card-title').innerHTML =
+        esc(cLang.code) + ' — ' + esc(lcClient(cLang)) + ' ' + clientStatusBadge(cLang);
+    }
+    if (window.LiftCoreDisplay) {
+      LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
+    }
+    applyClientCardI18n();
   }
   applyClientModalI18n();
   applyClientsFilterI18n();
