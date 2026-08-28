@@ -994,6 +994,17 @@ function refreshOpenClientCardI18n() {
   scheduleClientCardMapResize();
 }
 
+function refreshOpenClientCardAfterStatusSave(c) {
+  if (!c || currentCardId !== c.id) return;
+  var bar = document.querySelector('#card-body .client-status-bar');
+  if (bar) bar.outerHTML = clientStatusBarHtml(c);
+  document.getElementById('card-title').innerHTML =
+    esc(c.code) + ' — ' + esc(lcClient(c)) + ' ' + clientStatusBadge(c);
+  var sel = document.getElementById('card-status-sel');
+  if (sel) sel.disabled = false;
+  refreshClientCardI18n();
+}
+
 function lcT(s) {
   return clientModalTr(s);
 }
@@ -1748,12 +1759,15 @@ function scheduleClientCardMap(id, pos, c) {
   var token = ++cardMapScheduleToken;
   function run(p) {
     if (!p || currentCardId !== id || token !== cardMapScheduleToken) return;
-    requestAnimationFrame(function () {
+    setTimeout(function () {
+      if (currentCardId !== id || token !== cardMapScheduleToken) return;
       requestAnimationFrame(function () {
-        if (currentCardId !== id || token !== cardMapScheduleToken) return;
-        try { showClientCardMap(p, c); } catch (mapErr) { console.error('client card map', mapErr); }
+        requestAnimationFrame(function () {
+          if (currentCardId !== id || token !== cardMapScheduleToken) return;
+          try { showClientCardMap(p, c); } catch (mapErr) { console.error('client card map', mapErr); }
+        });
       });
-    });
+    }, 140);
   }
   if (pos) {
     run(pos);
@@ -1881,7 +1895,7 @@ function saveClientStatusFromCard(id, status) {
       renderTable(filtered);
       updateStats();
       if (typeof refreshMainMap === 'function') refreshMainMap(false);
-      if (currentCardId === id) openClientCard(id);
+      refreshOpenClientCardAfterStatusSave(c);
     })
     .catch(function () {
       alert('فشل الاتصال بالخادم');
@@ -2300,7 +2314,7 @@ function confirmDelete(){
 }
 
 // ===== خريطة =====
-var mainMap = null, miniMap = null, miniMarker = null, mapMarkers = [], mapInfoWindow = null, markerCluster = null, mapInfoPinned = false, mapHoverTimer = null, mapInfoHover = false, mapLastActiveCount = null;
+var mainMap = null, miniMap = null, miniMarker = null, mapMarkers = [], mapInfoWindow = null, markerCluster = null, mapInfoPinned = false, mapHoverTimer = null, mapInfoHover = false, mapLastActiveCount = null, mainMapMarkersSignature = '';
 var CLIENT_MAP_PIN_SCALE = 0.82;
 var CLIENT_MAP_PIN_SCALE_CARD = 0.78;
 var CLIENT_MAP_OSM_RADIUS = 6;
@@ -2419,12 +2433,51 @@ function useOsmMaps() {
   return !window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed || typeof google === 'undefined' || !google.maps;
 }
 
+function buildMainMapMarkersSignature() {
+  var parts = [];
+  CUSTOMERS.forEach(function (c) {
+    if (!clientShownOnMap(c)) return;
+    var pos = getClientPosition(c);
+    if (!pos) return;
+    parts.push(String(c.id) + '@' + Number(pos.lat).toFixed(5) + ',' + Number(pos.lng).toFixed(5) + ':' + getClientPinColor(c));
+  });
+  parts.sort();
+  return parts.join('|');
+}
+
+function invalidateMainMapMarkersSignature() {
+  mainMapMarkersSignature = '';
+}
+
+function updateMainMapSummaryText(activeCount) {
+  var summaryEl = document.getElementById('map-summary');
+  var emptyEl = document.getElementById('map-empty');
+  mapLastActiveCount = activeCount;
+  if (summaryEl) {
+    if (activeCount) {
+      summaryEl.textContent = (osmMainMap && !mainMap) ? mapSummaryOsm(activeCount) : mapSummaryShown(activeCount);
+    } else {
+      summaryEl.textContent = mapSummaryEmpty();
+    }
+  }
+  if (emptyEl) emptyEl.style.display = activeCount ? 'none' : 'block';
+}
+
+function resizeMainMapView() {
+  if (mainMap && google && google.maps) {
+    google.maps.event.trigger(mainMap, 'resize');
+  } else if (osmMainMap) {
+    try { osmMainMap.invalidateSize(); } catch (e) { /* ignore */ }
+  }
+}
+
 function destroyOsmMainMap() {
   if (osmMainMap) {
     try { osmMainMap.remove(); } catch (e) { /* ignore */ }
   }
   osmMainMap = null;
   osmMainMarkers = [];
+  invalidateMainMapMarkersSignature();
   var mapEl = document.getElementById('map');
   if (mapEl) {
     mapEl.innerHTML = '';
@@ -2440,23 +2493,32 @@ function destroyGoogleMainMap() {
   markerCluster = null;
   mapInfoWindow = null;
   mainMap = null;
+  invalidateMainMapMarkersSignature();
   var mapEl = document.getElementById('map');
   if (mapEl) mapEl.innerHTML = '';
 }
 
-function refreshMainMapOsm() {
+function refreshMainMapOsm(fitAgain) {
   var mapEl = document.getElementById('map');
   var emptyEl = document.getElementById('map-empty');
   var summaryEl = document.getElementById('map-summary');
   if (!mapEl || typeof L === 'undefined') return;
+  var sig = buildMainMapMarkersSignature();
+  if (osmMainMap && sig === mainMapMarkersSignature && fitAgain === false) {
+    updateMainMapSummaryText(mapLastActiveCount != null ? mapLastActiveCount : 0);
+    setTimeout(resizeMainMapView, 120);
+    return;
+  }
   // لا تخلط Leaflet فوق Google في نفس الحاوية
   if (mainMap) destroyGoogleMainMap();
   mapEl.style.display = 'block';
   if (!osmMainMap) {
-    osmMainMap = L.map(mapEl).setView([21.4225, 39.8262], 11);
+    osmMainMap = L.map(mapEl, { fadeAnimation: false, zoomAnimation: false }).setView([21.4225, 39.8262], 11);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
+      attribution: '&copy; OpenStreetMap',
+      updateWhenIdle: true,
+      keepBuffer: 2
     }).addTo(osmMainMap);
   }
   osmMainMarkers.forEach(function (m) { osmMainMap.removeLayer(m); });
@@ -2480,16 +2542,13 @@ function refreshMainMapOsm() {
     osmMainMarkers.push(marker);
     bounds.push([pos.lat, pos.lng]);
   });
-  if (summaryEl) {
-    summaryEl.textContent = activeCount ? mapSummaryOsm(activeCount) : mapSummaryEmpty();
-  }
-  mapLastActiveCount = activeCount;
-  if (emptyEl) emptyEl.style.display = activeCount ? 'none' : 'block';
-  if (bounds.length) {
+  mainMapMarkersSignature = sig;
+  updateMainMapSummaryText(activeCount);
+  if (bounds.length && fitAgain !== false) {
     osmMainMap.fitBounds(bounds, { padding: [48, 48] });
     if (bounds.length === 1) osmMainMap.setZoom(14);
   }
-  setTimeout(function () { osmMainMap.invalidateSize(); }, 250);
+  setTimeout(resizeMainMapView, 120);
 }
 
 function refreshMainMap(fitAgain) {
@@ -2501,7 +2560,7 @@ function refreshMainMap(fitAgain) {
     return;
   }
   if (useOsmMaps()) {
-    refreshMainMapOsm();
+    refreshMainMapOsm(fitAgain);
     return;
   }
   if (window.LiftCoreMap && LiftCoreMap.ensureMarkerLibReady && !LiftCoreMap.canUseAdvancedMarkers()) {
@@ -2513,6 +2572,13 @@ function refreshMainMap(fitAgain) {
   var emptyEl = document.getElementById('map-empty');
   var summaryEl = document.getElementById('map-summary');
   if (!mapEl) return;
+
+  var sig = buildMainMapMarkersSignature();
+  if (mainMap && sig === mainMapMarkersSignature && fitAgain === false) {
+    updateMainMapSummaryText(mapLastActiveCount != null ? mapLastActiveCount : 0);
+    resizeMainMapView();
+    return;
+  }
 
   // إزالة Leaflet إن وُجد — وإلا تظهر بلاطات Google مكسورة
   if (osmMainMap) destroyOsmMainMap();
@@ -2621,12 +2687,8 @@ function refreshMainMap(fitAgain) {
   }
 
   var total = activeCount;
-  mapLastActiveCount = total;
-  if (summaryEl) {
-    summaryEl.textContent = total ? mapSummaryShown(total) : mapSummaryEmpty();
-  }
-
-  if (emptyEl) emptyEl.style.display = total ? 'none' : 'block';
+  mainMapMarkersSignature = sig;
+  updateMainMapSummaryText(total);
   mapEl.style.display = 'block';
 
   if (window.LiftCoreGeocode && !window._liftcoreGeocodeStarted) {
@@ -2718,10 +2780,7 @@ function switchTab(tab){
   if(tab==='map') {
     whenGoogleMapsReady(function () {
       if (mainMap || osmMainMap) {
-        setTimeout(function () {
-          if (mainMap && google.maps) google.maps.event.trigger(mainMap, 'resize');
-          else if (osmMainMap) osmMainMap.invalidateSize();
-        }, 220);
+        setTimeout(resizeMainMapView, 220);
       } else {
         setTimeout(function () { refreshMainMap(true); }, 200);
       }
