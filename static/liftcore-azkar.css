@@ -217,10 +217,6 @@ html[data-theme="light"] .lc-azkar-ticker::after {
   background: linear-gradient(-90deg, var(--bg2, #ffffff) 0%, transparent 100%);
 }
 
-html[data-theme="report"] .lc-azkar-accent {
-  background: linear-gradient(90deg, var(--accent, #002147), var(--gold, #c9a962), var(--accent, #002147));
-}
-
 @media (max-width: 640px) {
   :root {
     --lc-azkar-h: 48px;

@@ -779,18 +779,18 @@ ROLE_LABELS_EN = {
     'custom': 'Custom',
 }
 
-USER_THEMES = frozenset({'dark', 'light', 'report', 'premium'})
+USER_THEMES = frozenset({'dark', 'light'})
 
 USER_THEME_OPTIONS = (
     {'id': 'dark', 'label_ar': 'داكن', 'hint_ar': 'الوضع الافتراضي', 'swatch': 'swatch-dark'},
     {'id': 'light', 'label_ar': 'فاتح', 'hint_ar': 'مناسب للإضاءة القوية', 'swatch': 'swatch-light'},
-    {'id': 'report', 'label_ar': 'احترافي', 'hint_ar': 'كحلي وذهبي — مثل التقارير', 'swatch': 'swatch-report'},
-    {'id': 'premium', 'label_ar': 'LiftCore', 'hint_ar': 'أسود وذهبي — مثل شاشة الدخول', 'swatch': 'swatch-premium'},
 )
 
 
 def normalize_user_theme(value):
     theme = (value or 'dark').strip()
+    if theme in ('report', 'premium'):
+        return 'dark'
     return theme if theme in USER_THEMES else 'dark'
 
 
