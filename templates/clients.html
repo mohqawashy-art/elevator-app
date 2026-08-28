@@ -634,6 +634,12 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
+      <div style="margin-bottom:12px;text-align:center">
+        <a class="btn btn-secondary btn-sm" id="clients-import-template-link" href="{{ url_for('clients_import_template') }}?lang={{ user_language }}">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" style="width:14px;height:14px"><path d="M7 1v8M4 6l3 3 3-3M2 11h10"/></svg>
+          {{ ui('تنزيل نموذج الاستيراد', 'Download import template') }}
+        </a>
+      </div>
       <div class="import-area" onclick="document.getElementById('import-file').click()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
         <p>{{ ui('اسحب ملف Excel هنا أو', 'Drag an Excel file here or') }} <span>{{ ui('اضغط للاختيار', 'click to choose') }}</span></p>
@@ -1040,6 +1046,12 @@ function applyClientsFilterI18n() {
   var citySel = document.getElementById('f-city');
   var cityVal = citySel ? citySel.value : '';
   fillCitySelects(cityVal);
+  updateImportTemplateLink();
+}
+function updateImportTemplateLink() {
+  var link = document.getElementById('clients-import-template-link');
+  if (!link) return;
+  link.href = '/clients/template?lang=' + (isClientUiEn() ? 'en' : 'ar');
 }
 function fillCitySelects(selected) {
   var cities = allCities();

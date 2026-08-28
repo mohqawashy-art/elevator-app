@@ -112,6 +112,21 @@ def test_clients_import_template_columns(client):
     assert data['imported'] == 1
 
 
+def test_clients_import_template_columns_en(client):
+    login_as(client, 'admin')
+    r = client.post('/clients/import', json={
+        'rows': [{
+            'Name (Arabic)': 'Template Client',
+            'Phone': '512345678',
+            'City': 'Riyadh',
+            'District': 'Al Malaz',
+        }],
+    })
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['imported'] == 1
+
+
 def test_clients_import_avoids_global_code_collision(client):
     """C-0001 في مؤسسة أخرى لا يمنع الاستيراد عند وجود customers_code_key القديم."""
     from flask import g

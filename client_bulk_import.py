@@ -11,6 +11,7 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
         'اسم العميل',
         'name',
         'Name',
+        'Name (Arabic)',
     ),
     'phone': (
         'رقم الهاتف',
@@ -31,14 +32,22 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
         'email',
         'Email',
     ),
-    'contact_person': ('اسم المسؤول', 'المسؤول', 'contact', 'Contact'),
-    'entity_type': ('نوع المتعاقد', 'entity_type'),
+    'contact_person': (
+        'اسم المسؤول',
+        'المسؤول',
+        'contact',
+        'Contact',
+        'Contact Person',
+    ),
+    'entity_type': ('نوع المتعاقد', 'entity_type', 'Contractor Type'),
     'national_id': (
         'رقم هوية المتعاقد',
         'رقم الهوية',
         'national_id',
+        'Contractor ID Number',
+        'ID Number',
     ),
-    'cr_number': ('رقم السجل التجاري', 'cr_number'),
+    'cr_number': ('رقم السجل التجاري', 'cr_number', 'CR Number'),
     'vat_number': (
         'الرقم الضريبي',
         'الرقم الضريبي للعميل',

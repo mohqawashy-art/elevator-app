@@ -7,7 +7,7 @@ from xml.sax.saxutils import escape
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'static', 'templates', 'clients_template.xlsx')
 
-HEADERS = [
+HEADERS_AR = [
     'الاسم (عربي)',
     'المدينة',
     'الحي',
@@ -19,7 +19,23 @@ HEADERS = [
     'رقم هوية المتعاقد',
     'رقم السجل التجاري',
 ]
+HEADERS_EN = [
+    'Name (Arabic)',
+    'City',
+    'District',
+    'Address',
+    'Phone',
+    'Email',
+    'Contact Person',
+    'Contractor Type',
+    'Contractor ID Number',
+    'CR Number',
+]
 EXAMPLE = []  # صف العناوين فقط — المستخدم يضيف بياناته
+
+
+def headers_for_lang(lang='ar'):
+    return HEADERS_EN if lang == 'en' else HEADERS_AR
 
 
 def col_letter(n):
@@ -47,9 +63,9 @@ def sheet_xml(rows):
     return ''.join(lines)
 
 
-def build_xlsx(path):
+def build_xlsx(path, lang='ar'):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    rows = [HEADERS]
+    rows = [headers_for_lang(lang)]
     if EXAMPLE:
         rows.append(EXAMPLE)
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
@@ -77,5 +93,9 @@ def build_xlsx(path):
     print(f'[OK] {path}')
 
 
+OUT_EN = os.path.join(ROOT, 'static', 'templates', 'clients_template_en.xlsx')
+
+
 if __name__ == '__main__':
-    build_xlsx(OUT)
+    build_xlsx(OUT, 'ar')
+    build_xlsx(OUT_EN, 'en')
