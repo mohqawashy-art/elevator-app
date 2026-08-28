@@ -594,196 +594,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 </div>
 
 <!-- ===== MODAL: إضافة/تعديل عميل ===== -->
-<!-- lc-client-status-v3 -->
-<div class="modal-overlay" id="modal-add">
-  <div class="modal" style="max-width:780px">
-    <div class="modal-head">
-      <div class="modal-title" id="modal-title" data-lc-t="إضافة عميل جديد">إضافة عميل جديد</div>
-      <button class="modal-close" onclick="closeModal('modal-add')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="field">
-          <label><span data-lc-t="كود العميل">كود العميل</span></label>
-          <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-family:var(--font-en);color:var(--accent);font-weight:600" id="f-code-display">—</div>
-        </div>
-        <div class="field">
-          <label><span data-lc-t="نوع المتعاقد">نوع المتعاقد</span></label>
-          <select id="f-entity-type" onchange="updateContractorIdField()">
-            <option value="فرد" data-lc-t="فرد">فرد</option>
-            <option value="شركة" data-lc-t="شركة">شركة</option>
-          </select>
-        </div>
-        <div class="field" style="display:none">
-          <select id="f-type"><option>مبنى سكني</option></select>
-        </div>
-        <div class="field form-full">
-          <label><span data-lc-t="اسم العميل / المبنى">اسم العميل / المبنى</span> <span style="color:var(--danger)">*</span></label>
-          <input type="text" id="f-name" data-lc-ph="برج الياسمين" placeholder="برج الياسمين">
-        </div>
-        <div class="field form-full">
-          <label><span data-lc-t="الاسم بالإنجليزية">الاسم بالإنجليزية</span></label>
-          <input type="text" id="f-name-en" placeholder="Yasmin Tower" style="direction:ltr;font-family:var(--font-en)">
-          <span class="field-hint" data-lc-t="يُترجم تلقائياً أثناء الكتابة بالعربية">يُترجم تلقائياً أثناء الكتابة بالعربية</span>
-        </div>
-        <div class="field">
-          <label><span data-lc-t="المدينة">المدينة</span></label>
-          <div class="select-with-add">
-            <select id="f-city-sel" style="flex:1;width:100%">
-              <option value="" data-lc-t="اختر المدينة">اختر المدينة</option>
-            </select>
-            <button type="button" class="add-opt-btn" onclick="addNewCity()" data-lc-title="إضافة مدينة جديدة" title="إضافة مدينة جديدة">+</button>
-          </div>
-        </div>
-        <div class="field">
-          <label><span data-lc-t="الحي">الحي</span></label>
-          <input type="text" id="f-district" data-lc-ph="اسم الحي" placeholder="اسم الحي">
-        </div>
-        <div class="field">
-          <label><span data-lc-t="اسم المسؤول">اسم المسؤول</span></label>
-          <input type="text" id="f-contact" data-lc-ph="اسم المسؤول" placeholder="اسم المسؤول">
-          <div class="contact-actions">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="copyClientNameToContact()"><span data-lc-t="نسخ اسم العميل">نسخ اسم العميل</span></button>
-          </div>
-        </div>
-        <div class="field">
-          <label><span data-lc-t="صفة المسؤول">صفة المسؤول</span></label>
-          <select id="f-role">
-            <option value="" data-lc-t="اختر الصفة">اختر الصفة</option>
-            <option value="مالك" data-lc-t="مالك">مالك</option><option value="مدير" data-lc-t="مدير">مدير</option><option value="وكيل" data-lc-t="وكيل">وكيل</option>
-            <option value="حارس" data-lc-t="حارس">حارس</option><option value="مشرف" data-lc-t="مشرف">مشرف</option><option value="أخرى" data-lc-t="أخرى">أخرى</option>
-          </select>
-        </div>
-        <div class="field">
-          <label id="f-contractor-id-label"><span data-lc-t="رقم هوية المتعاقد">رقم هوية المتعاقد</span></label>
-          <input type="text" id="f-national-id" placeholder="1XXXXXXXXX" inputmode="numeric" maxlength="20" style="direction:ltr;font-family:var(--font-en)">
-          <span class="field-hint" id="f-contractor-id-hint" data-lc-t="رقم الهوية أو الإقامة لصاحب التوقيع على العقد">رقم الهوية أو الإقامة لصاحب التوقيع على العقد</span>
-        </div>
-        <div class="field company-only-field" id="f-vat-number-wrap" style="display:none">
-          <label><span data-lc-t="الرقم الضريبي">الرقم الضريبي</span></label>
-          <input type="text" id="f-vat-number" placeholder="3XXXXXXXXXXXXXX" inputmode="numeric" maxlength="50" style="direction:ltr;font-family:var(--font-en)">
-          <span class="field-hint" data-lc-t="يُستخدم في الفواتير الضريبية للشركات">يُستخدم في الفواتير الضريبية للشركات</span>
-        </div>
-        <div class="field form-full company-only-field" id="f-national-address-wrap" style="display:none">
-          <label><span data-lc-t="العنوان الوطني">العنوان الوطني</span></label>
-          <input type="text" id="f-national-address" data-lc-ph="الرمز البريدي، رقم المبنى، الرقم الإضافي..." placeholder="الرمز البريدي، رقم المبنى، الرقم الإضافي...">
-          <span class="field-hint" data-lc-t="يُطبع في فاتورة العميل عند كون المتعاقد شركة">يُطبع في فاتورة العميل عند كون المتعاقد شركة</span>
-        </div>
-        <div class="field form-full">
-          <label><span data-lc-t="رقم الجوال">رقم الجوال</span> <span style="color:var(--danger)">*</span></label>
-          <div class="phone-wrap">
-            <div class="select-with-add">
-              <select class="phone-code" id="f-code-phone"></select>
-              <button type="button" class="add-opt-btn" onclick="addNewPhoneCode('f-code-phone')" data-lc-title="إضافة كود دولة" title="إضافة كود دولة">+</button>
-            </div>
-            <input type="tel" class="phone-input" id="f-phone" placeholder="512345678" inputmode="tel" maxlength="15" autocomplete="tel">
-          </div>
-          <div class="contact-actions">
-            <span class="field-hint" style="margin:0" data-lc-t="بدون صفر في البداية — مثال: 512345678 (مع كود +966)">بدون صفر في البداية — مثال: 512345678 (مع كود +966)</span>
-            <button type="button" class="btn-wa" onclick="testWhatsAppMobile()">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.75.75 0 00.918.918l4.458-1.495A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.714 9.714 0 01-4.95-1.35l-.355-.21-3.28 1.1 1.1-3.195-.231-.37A9.735 9.735 0 012.25 12C2.25 6.9 6.9 2.25 12 2.25S21.75 6.9 21.75 12 17.1 21.75 12 21.75z"/></svg>
-              <span data-lc-t="تواصل واتساب">تواصل واتساب</span>
-            </button>
-          </div>
-        </div>
-        <div class="field form-full">
-          <label><span data-lc-t="واتساب المسؤول">واتساب المسؤول</span></label>
-          <div class="phone-wrap">
-            <div class="select-with-add">
-              <select class="phone-code" id="f-code-wa"></select>
-              <button type="button" class="add-opt-btn" onclick="addNewPhoneCode('f-code-wa')" data-lc-title="إضافة كود دولة" title="إضافة كود دولة">+</button>
-            </div>
-            <input type="tel" class="phone-input" id="f-whatsapp" placeholder="512345678" inputmode="tel" maxlength="15" autocomplete="tel">
-          </div>
-          <div class="contact-actions">
-            <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="copyPhone()" data-lc-t="← نسخ من رقم الجوال">← نسخ من رقم الجوال</span>
-            <button type="button" class="btn-wa" onclick="testWhatsAppContact()">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.75.75 0 00.918.918l4.458-1.495A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.714 9.714 0 01-4.95-1.35l-.355-.21-3.28 1.1 1.1-3.195-.231-.37A9.735 9.735 0 012.25 12C2.25 6.9 6.9 2.25 12 2.25S21.75 6.9 21.75 12 17.1 21.75 12 21.75z"/></svg>
-              <span data-lc-t="واتساب المسؤول">واتساب المسؤول</span>
-            </button>
-          </div>
-        </div>
-        <div class="field form-full">
-          <label><span data-lc-t="أرقام إضافية">أرقام إضافية</span></label>
-          <div id="extra-phones-list" class="extra-phones-list"></div>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-add-extra-phone" onclick="addExtraPhoneRow()" style="margin-top:8px">
-            <span data-lc-t="+ إضافة رقم آخر">+ إضافة رقم آخر</span>
-          </button>
-          <span class="field-hint" data-lc-t="اختياري — محاسب، حارس، رقم طوارئ… حتى 10 أرقام">اختياري — محاسب، حارس، رقم طوارئ… حتى 10 أرقام</span>
-        </div>
-        <div class="field">
-          <label><span data-lc-t="عدد المصاعد">عدد المصاعد</span></label>
-          <div id="f-elevators-display" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-family:var(--font-en);color:var(--text1)">0</div>
-          <span class="field-hint" data-lc-t="يُحسب تلقائياً من المصاعد المسجّلة">يُحسب تلقائياً من المصاعد المسجّلة</span>
-        </div>
-        <div class="field">
-          <label><span data-lc-t="حالة العميل">حالة العميل</span> <span style="color:var(--danger)">*</span></label>
-          <select id="f-status-sel" class="filter-select" style="width:100%;padding:9px 12px;font-size:13px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1)">
-            <option value="نشط" data-lc-t="نشط">نشط</option>
-            <option value="غير نشط" data-lc-t="غير نشط">غير نشط</option>
-          </select>
-          <span class="field-hint" data-lc-t="اختر: نشط أو غير نشط">اختر: نشط أو غير نشط</span>
-        </div>
-        <div class="field">
-          <label><span data-lc-t="حالة المصاعد">حالة المصاعد</span></label>
-          <div id="f-fleet-status" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;color:var(--text1)">بدون مصاعد</div>
-          <span class="field-hint" data-lc-t="تُحدَّث تلقائياً عند إضافة المصاعد">تُحدَّث تلقائياً عند إضافة المصاعد</span>
-        </div>
-        <div class="field form-full map-picker-section">
-          <label><span data-lc-t="موقع العميل على الخريطة">موقع العميل على الخريطة</span></label>
-          <p class="map-picker-hint" data-lc-t="اكتب العنوان في خانة البحث واضغط «بحث»، أو انقر على الخريطة، أو استخدم «تطبيق على الخريطة» بعد إدخال المدينة والحي والعنوان.">اكتب العنوان في خانة البحث واضغط «بحث»، أو انقر على الخريطة، أو استخدم «تطبيق على الخريطة» بعد إدخال المدينة والحي والعنوان.</p>
-          <div class="map-picker-toolbar">
-            <input type="text" id="client-map-search" class="map-picker-search" data-lc-ph="ابحث: برج، شارع، حي، مكة..." placeholder="ابحث: برج، شارع، حي، مكة...">
-            <button type="button" class="btn btn-primary btn-sm" id="client-map-search-btn" onclick="searchClientMap()"><span data-lc-t="بحث">بحث</span></button>
-          </div>
-          <div id="client-map-picker" class="client-map-picker"></div>
-          <div class="map-picker-coords" id="client-map-coords" data-lc-t="لم يُحدَّد موقع بعد — ابحث أو اضغط على الخريطة لتحديد العنوان">لم يُحدَّد موقع بعد — ابحث أو اضغط على الخريطة لتحديد العنوان</div>
-          <input type="hidden" id="f-maps-url">
-          <input type="hidden" id="f-lat">
-          <input type="hidden" id="f-lng">
-        </div>
-        <div class="field form-full">
-          <label><span data-lc-t="العنوان التفصيلي">العنوان التفصيلي</span></label>
-          <input type="text" id="f-address" data-lc-ph="يُعبَّأ من الخريطة — يمكنك تعديله يدوياً" placeholder="يُعبَّأ من الخريطة — يمكنك تعديله يدوياً" onkeydown="if(event.key==='Enter'){event.preventDefault();applyClientFormAddressToMap();}">
-          <div class="contact-actions">
-            <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="applyClientFormAddressToMap()" data-lc-t="← تطبيق العنوان على الخريطة">← تطبيق العنوان على الخريطة</span>
-          </div>
-        </div>
-        <div class="field form-full">
-          <label><span data-lc-t="صورة المبنى">صورة المبنى</span></label>
-          <div class="cloc-building-row">
-            <div class="cloc-building-upload" onclick="triggerBuildingPhotoUpload(event)">
-              <img id="building-photo-preview" class="cloc-building-preview cloc-building-default-logo" alt="صورة المبنى">
-              <div id="building-photo-ph" class="cloc-building-ph" style="display:none"><span data-lc-t="رفع صورة">رفع صورة</span><br><span data-lc-t="المبنى">المبنى</span></div>
-              <div>
-                <div style="font-size:13px;color:var(--text1)" data-lc-t="صورة واجهة المبنى">صورة واجهة المبنى</div>
-                <div style="font-size:11px;color:var(--text3);margin-top:4px" data-lc-t="بدون رفع — يظهر شعار LiftCore">بدون رفع — يظهر شعار LiftCore</div>
-              </div>
-            </div>
-            <div class="cloc-building-actions">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="triggerBuildingPhotoUpload(event)"><span data-lc-t="رفع / تغيير">رفع / تغيير</span></button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-download-building-photo" style="display:none" onclick="downloadBuildingPhoto()"><span data-lc-t="تحميل">تحميل</span></button>
-              <button type="button" class="btn btn-danger btn-sm" id="btn-delete-building-photo" style="display:none" onclick="deleteBuildingPhoto()"><span data-lc-t="حذف المرفق">حذف المرفق</span></button>
-            </div>
-          </div>
-          <input type="hidden" id="f-delete-building-photo" value="">
-          <input type="file" id="f-building-photo" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="previewBuildingPhoto(this)">
-        </div>
-        <div class="field form-full">
-          <label><span data-lc-t="ملاحظات">ملاحظات</span></label>
-          <textarea id="f-notes" data-lc-ph="أي ملاحظات..." placeholder="أي ملاحظات..."></textarea>
-        </div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('modal-add')"><span data-lc-t="إلغاء">إلغاء</span></button>
-      <button class="btn btn-primary" onclick="saveClient()">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
-        <span data-lc-t="حفظ العميل">حفظ العميل</span>
-      </button>
-    </div>
-  </div>
-</div>
+{% include 'partials/client_add_modal.html' %}
 
 <!-- ===== MODAL: كارت العميل ===== -->
 <div class="modal-overlay" id="modal-client-card">
@@ -1134,23 +945,13 @@ function updateContractorIdField() {
   var nationalAddressWrap = document.getElementById('f-national-address-wrap');
   if (!label || !input) return;
   if (isCompany) {
-    var span = label.querySelector('[data-lc-t]') || label;
-    span.setAttribute('data-lc-t', 'رقم السجل التجاري');
-    span.textContent = lcT('رقم السجل التجاري');
+    label.textContent = lcT('رقم السجل التجاري');
     input.placeholder = '1010XXXXXX';
-    if (hint) {
-      hint.setAttribute('data-lc-t', 'رقم السجل التجاري للشركة أو المؤسسة');
-      hint.textContent = lcT('رقم السجل التجاري للشركة أو المؤسسة');
-    }
+    if (hint) hint.textContent = lcT('رقم السجل التجاري للشركة أو المؤسسة');
   } else {
-    var span2 = label.querySelector('[data-lc-t]') || label;
-    span2.setAttribute('data-lc-t', 'رقم هوية المتعاقد');
-    span2.textContent = lcT('رقم هوية المتعاقد');
+    label.textContent = lcT('رقم هوية المتعاقد');
     input.placeholder = '1XXXXXXXXX';
-    if (hint) {
-      hint.setAttribute('data-lc-t', 'رقم الهوية أو الإقامة لصاحب التوقيع على العقد');
-      hint.textContent = lcT('رقم الهوية أو الإقامة لصاحب التوقيع على العقد');
-    }
+    if (hint) hint.textContent = lcT('رقم الهوية أو الإقامة لصاحب التوقيع على العقد');
   }
   // .field يستخدم display:flex — لا نترك القيمة فارغة حتى لا تبقى الحقول مخفية
   if (vatWrap) vatWrap.style.display = isCompany ? 'flex' : 'none';
@@ -1187,6 +988,8 @@ function allPhoneCodes() {
 }
 function refreshClientModalI18n() {
   applyClientModalI18n();
+  var modal = document.getElementById('modal-add');
+  if (modal && modal.hasAttribute('data-lc-server-i18n')) return;
   if (window.LiftCoreI18n && LiftCoreI18n.applyModal) LiftCoreI18n.applyModal('modal-add');
 }
 function fillCitySelects(selected) {
@@ -1195,8 +998,8 @@ function fillCitySelects(selected) {
     var sel = document.getElementById(id);
     if(!sel) return;
     var first = id === 'f-city'
-      ? '<option value="" data-lc-t="كل المدن">كل المدن</option>'
-      : '<option value="" data-lc-t="اختر المدينة">اختر المدينة</option>';
+      ? '<option value="">' + esc(lcT('كل المدن')) + '</option>'
+      : '<option value="">' + esc(lcT('اختر المدينة')) + '</option>';
     sel.innerHTML = first + cities.map(function(c){ return '<option>' + c + '</option>'; }).join('');
     if(selected) sel.value = selected;
   });
@@ -1371,7 +1174,7 @@ function addExtraPhoneRow(prefill) {
   }
   row.querySelector('.extra-phone-remove').onclick = function() { row.remove(); };
   bindPhoneInputs();
-  if (window.LiftCoreI18n && LiftCoreI18n.applyModal) LiftCoreI18n.applyModal('modal-add');
+  applyClientModalI18n();
 }
 function fillOnePhoneCodeSelect(selectEl, preferred) {
   if (!selectEl) return;
@@ -3208,9 +3011,8 @@ document.addEventListener('liftcore:lang', function () {
   }
   applyClientModalI18n();
   var addModal = document.getElementById('modal-add');
-  if (addModal && addModal.classList.contains('open') && window.LiftCoreI18n && LiftCoreI18n.applyModal) {
+  if (addModal && addModal.classList.contains('open')) {
     updateContractorIdField();
-    LiftCoreI18n.applyModal('modal-add');
     applyClientModalI18n();
   }
   syncModalA11y();

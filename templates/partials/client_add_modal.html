@@ -1,0 +1,194 @@
+<!-- lc-client-modal-i18n-server -->
+<div class="modal-overlay" id="modal-add" data-lc-server-i18n="1" data-i18n-skip="1">
+  <div class="modal" style="max-width:780px">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">{{ ui('إضافة عميل جديد', 'Add New Client') }}</div>
+      <button class="modal-close" onclick="closeModal('modal-add')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>{{ ui('كود العميل', 'Client Code') }}</label>
+          <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-family:var(--font-en);color:var(--accent);font-weight:600" id="f-code-display">—</div>
+        </div>
+        <div class="field">
+          <label>{{ ui('نوع المتعاقد', 'Contractor Type') }}</label>
+          <select id="f-entity-type" onchange="updateContractorIdField()">
+            <option value="فرد">{{ ui('فرد', 'Individual') }}</option>
+            <option value="شركة">{{ ui('شركة', 'Company') }}</option>
+          </select>
+        </div>
+        <div class="field" style="display:none">
+          <select id="f-type"><option>مبنى سكني</option></select>
+        </div>
+        <div class="field form-full">
+          <label>{{ ui('اسم العميل / المبنى', 'Client / Building Name') }} <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="f-name" placeholder="{{ ui('برج الياسمين', 'Yasmin Tower') }}">
+        </div>
+        <div class="field form-full">
+          <label>{{ ui('الاسم بالإنجليزية', 'English Name') }}</label>
+          <input type="text" id="f-name-en" placeholder="Yasmin Tower" style="direction:ltr;font-family:var(--font-en)">
+          <span class="field-hint">{{ ui('يُترجم تلقائياً أثناء الكتابة بالعربية', 'Auto-translated while typing in Arabic') }}</span>
+        </div>
+        <div class="field">
+          <label>{{ ui('المدينة', 'City') }}</label>
+          <div class="select-with-add">
+            <select id="f-city-sel" style="flex:1;width:100%">
+              <option value="">{{ ui('اختر المدينة', 'Select city') }}</option>
+            </select>
+            <button type="button" class="add-opt-btn" onclick="addNewCity()" title="{{ ui('إضافة مدينة جديدة', 'Add new city') }}">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>{{ ui('الحي', 'District') }}</label>
+          <input type="text" id="f-district" placeholder="{{ ui('اسم الحي', 'District name') }}">
+        </div>
+        <div class="field">
+          <label>{{ ui('اسم المسؤول', 'Contact Person') }}</label>
+          <input type="text" id="f-contact" placeholder="{{ ui('اسم المسؤول', 'Contact person') }}">
+          <div class="contact-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="copyClientNameToContact()">{{ ui('نسخ اسم العميل', 'Copy client name') }}</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>{{ ui('صفة المسؤول', 'Contact Role') }}</label>
+          <select id="f-role">
+            <option value="">{{ ui('اختر الصفة', 'Select role') }}</option>
+            <option value="مالك">{{ ui('مالك', 'Owner') }}</option>
+            <option value="مدير">{{ ui('مدير', 'Manager') }}</option>
+            <option value="وكيل">{{ ui('وكيل', 'Agent') }}</option>
+            <option value="حارس">{{ ui('حارس', 'Guard') }}</option>
+            <option value="مشرف">{{ ui('مشرف', 'Supervisor') }}</option>
+            <option value="أخرى">{{ ui('أخرى', 'Other') }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="f-contractor-id-label">{{ ui('رقم هوية المتعاقد', 'Contractor ID Number') }}</label>
+          <input type="text" id="f-national-id" placeholder="1XXXXXXXXX" inputmode="numeric" maxlength="20" style="direction:ltr;font-family:var(--font-en)">
+          <span class="field-hint" id="f-contractor-id-hint">{{ ui('رقم الهوية أو الإقامة لصاحب التوقيع على العقد', 'National ID or Iqama of the contract signatory') }}</span>
+        </div>
+        <div class="field company-only-field" id="f-vat-number-wrap" style="display:none">
+          <label>{{ ui('الرقم الضريبي', 'VAT Number') }}</label>
+          <input type="text" id="f-vat-number" placeholder="3XXXXXXXXXXXXXX" inputmode="numeric" maxlength="50" style="direction:ltr;font-family:var(--font-en)">
+          <span class="field-hint">{{ ui('يُستخدم في الفواتير الضريبية للشركات', 'Used on tax invoices for companies') }}</span>
+        </div>
+        <div class="field form-full company-only-field" id="f-national-address-wrap" style="display:none">
+          <label>{{ ui('العنوان الوطني', 'National Address') }}</label>
+          <input type="text" id="f-national-address" placeholder="{{ ui('الرمز البريدي، رقم المبنى، الرقم الإضافي...', 'Postal code, building no., additional no...') }}">
+          <span class="field-hint">{{ ui('يُطبع في فاتورة العميل عند كون المتعاقد شركة', 'Printed on the client invoice when the contractor is a company') }}</span>
+        </div>
+        <div class="field form-full">
+          <label>{{ ui('رقم الجوال', 'Mobile Number') }} <span style="color:var(--danger)">*</span></label>
+          <div class="phone-wrap">
+            <div class="select-with-add">
+              <select class="phone-code" id="f-code-phone"></select>
+              <button type="button" class="add-opt-btn" onclick="addNewPhoneCode('f-code-phone')" title="{{ ui('إضافة كود دولة', 'Add country code') }}">+</button>
+            </div>
+            <input type="tel" class="phone-input" id="f-phone" placeholder="512345678" inputmode="tel" maxlength="15" autocomplete="tel">
+          </div>
+          <div class="contact-actions">
+            <span class="field-hint" style="margin:0">{{ ui('بدون صفر في البداية — مثال: 512345678 (مع كود +966)', 'No leading zero — e.g. 512345678 (with +966)') }}</span>
+            <button type="button" class="btn-wa" onclick="testWhatsAppMobile()">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.75.75 0 00.918.918l4.458-1.495A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.714 9.714 0 01-4.95-1.35l-.355-.21-3.28 1.1 1.1-3.195-.231-.37A9.735 9.735 0 012.25 12C2.25 6.9 6.9 2.25 12 2.25S21.75 6.9 21.75 12 17.1 21.75 12 21.75z"/></svg>
+              {{ ui('تواصل واتساب', 'WhatsApp') }}
+            </button>
+          </div>
+        </div>
+        <div class="field form-full">
+          <label>{{ ui('واتساب المسؤول', 'Contact WhatsApp') }}</label>
+          <div class="phone-wrap">
+            <div class="select-with-add">
+              <select class="phone-code" id="f-code-wa"></select>
+              <button type="button" class="add-opt-btn" onclick="addNewPhoneCode('f-code-wa')" title="{{ ui('إضافة كود دولة', 'Add country code') }}">+</button>
+            </div>
+            <input type="tel" class="phone-input" id="f-whatsapp" placeholder="512345678" inputmode="tel" maxlength="15" autocomplete="tel">
+          </div>
+          <div class="contact-actions">
+            <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="copyPhone()">{{ ui('← نسخ من رقم الجوال', '← Copy from mobile number') }}</span>
+            <button type="button" class="btn-wa" onclick="testWhatsAppContact()">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.75.75 0 00.918.918l4.458-1.495A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.714 9.714 0 01-4.95-1.35l-.355-.21-3.28 1.1 1.1-3.195-.231-.37A9.735 9.735 0 012.25 12C2.25 6.9 6.9 2.25 12 2.25S21.75 6.9 21.75 12 17.1 21.75 12 21.75z"/></svg>
+              {{ ui('واتساب المسؤول', 'Contact WhatsApp') }}
+            </button>
+          </div>
+        </div>
+        <div class="field form-full">
+          <label>{{ ui('أرقام إضافية', 'Additional Numbers') }}</label>
+          <div id="extra-phones-list" class="extra-phones-list"></div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-add-extra-phone" onclick="addExtraPhoneRow()" style="margin-top:8px">
+            {{ ui('+ إضافة رقم آخر', '+ Add another number') }}
+          </button>
+          <span class="field-hint">{{ ui('اختياري — محاسب، حارس، رقم طوارئ… حتى 10 أرقام', 'Optional — accountant, guard, emergency… up to 10 numbers') }}</span>
+        </div>
+        <div class="field">
+          <label>{{ ui('عدد المصاعد', 'Elevator Count') }}</label>
+          <div id="f-elevators-display" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;font-family:var(--font-en);color:var(--text1)">0</div>
+          <span class="field-hint">{{ ui('يُحسب تلقائياً من المصاعد المسجّلة', 'Calculated automatically from registered elevators') }}</span>
+        </div>
+        <div class="field">
+          <label>{{ ui('حالة العميل', 'Client Status') }} <span style="color:var(--danger)">*</span></label>
+          <select id="f-status-sel" class="filter-select" style="width:100%;padding:9px 12px;font-size:13px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1)">
+            <option value="نشط">{{ ui('نشط', 'Active') }}</option>
+            <option value="غير نشط">{{ ui('غير نشط', 'Inactive') }}</option>
+          </select>
+          <span class="field-hint">{{ ui('اختر: نشط أو غير نشط', 'Select: Active or Inactive') }}</span>
+        </div>
+        <div class="field">
+          <label>{{ ui('حالة المصاعد', 'Fleet Status') }}</label>
+          <div id="f-fleet-status" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;color:var(--text1)">{{ ui('بدون مصاعد', 'No elevators') }}</div>
+          <span class="field-hint">{{ ui('تُحدَّث تلقائياً عند إضافة المصاعد', 'Updates automatically when elevators are added') }}</span>
+        </div>
+        <div class="field form-full map-picker-section">
+          <label>{{ ui('موقع العميل على الخريطة', 'Client Location on Map') }}</label>
+          <p class="map-picker-hint">{{ ui('اكتب العنوان في خانة البحث واضغط «بحث»، أو انقر على الخريطة، أو استخدم «تطبيق على الخريطة» بعد إدخال المدينة والحي والعنوان.', 'Enter the address in the search box and click Search, click the map, or use Apply to Map after entering city, district, and address.') }}</p>
+          <div class="map-picker-toolbar">
+            <input type="text" id="client-map-search" class="map-picker-search" placeholder="{{ ui('ابحث: برج، شارع، حي، مكة...', 'Search: tower, street, district, Makkah...') }}">
+            <button type="button" class="btn btn-primary btn-sm" id="client-map-search-btn" onclick="searchClientMap()">{{ ui('بحث', 'Search') }}</button>
+          </div>
+          <div id="client-map-picker" class="client-map-picker"></div>
+          <div class="map-picker-coords" id="client-map-coords">{{ ui('لم يُحدَّد موقع بعد — ابحث أو اضغط على الخريطة لتحديد العنوان', 'No location set yet — search or click the map to set the address') }}</div>
+          <input type="hidden" id="f-maps-url">
+          <input type="hidden" id="f-lat">
+          <input type="hidden" id="f-lng">
+        </div>
+        <div class="field form-full">
+          <label>{{ ui('العنوان التفصيلي', 'Detailed Address') }}</label>
+          <input type="text" id="f-address" placeholder="{{ ui('يُعبَّأ من الخريطة — يمكنك تعديله يدوياً', 'Filled from the map — you can edit manually') }}" onkeydown="if(event.key==='Enter'){event.preventDefault();applyClientFormAddressToMap();}">
+          <div class="contact-actions">
+            <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="applyClientFormAddressToMap()">{{ ui('← تطبيق العنوان على الخريطة', '← Apply address to map') }}</span>
+          </div>
+        </div>
+        <div class="field form-full">
+          <label>{{ ui('صورة المبنى', 'Building Photo') }}</label>
+          <div class="cloc-building-row">
+            <div class="cloc-building-upload" onclick="triggerBuildingPhotoUpload(event)">
+              <img id="building-photo-preview" class="cloc-building-preview cloc-building-default-logo" alt="{{ ui('صورة المبنى', 'Building photo') }}">
+              <div id="building-photo-ph" class="cloc-building-ph" style="display:none">{{ ui('رفع صورة', 'Upload photo') }}<br>{{ ui('المبنى', 'Building') }}</div>
+              <div>
+                <div style="font-size:13px;color:var(--text1)">{{ ui('صورة واجهة المبنى', 'Building facade photo') }}</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">{{ ui('بدون رفع — يظهر شعار LiftCore', 'If not uploaded — LiftCore logo is shown') }}</div>
+              </div>
+            </div>
+            <div class="cloc-building-actions">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="triggerBuildingPhotoUpload(event)">{{ ui('رفع / تغيير', 'Upload / Change') }}</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-download-building-photo" style="display:none" onclick="downloadBuildingPhoto()">{{ ui('تحميل', 'Download') }}</button>
+              <button type="button" class="btn btn-danger btn-sm" id="btn-delete-building-photo" style="display:none" onclick="deleteBuildingPhoto()">{{ ui('حذف المرفق', 'Delete attachment') }}</button>
+            </div>
+          </div>
+          <input type="hidden" id="f-delete-building-photo" value="">
+          <input type="file" id="f-building-photo" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="previewBuildingPhoto(this)">
+        </div>
+        <div class="field form-full">
+          <label>{{ ui('ملاحظات', 'Notes') }}</label>
+          <textarea id="f-notes" placeholder="{{ ui('أي ملاحظات...', 'Any notes...') }}"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add')">{{ ui('إلغاء', 'Cancel') }}</button>
+      <button class="btn btn-primary" onclick="saveClient()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
+        {{ ui('حفظ العميل', 'Save Client') }}
+      </button>
+    </div>
+  </div>
+</div>

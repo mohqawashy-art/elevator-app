@@ -790,6 +790,7 @@
   function applyModal(modalId) {
     var el = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
     if (!el) return;
+    if (el.hasAttribute && el.hasAttribute('data-lc-server-i18n')) return;
     var lang = global.__LC_LANG || currentLang || 'ar';
     if (lang !== 'en') return;
     applyToRoot(el, 'en');

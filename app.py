@@ -986,6 +986,7 @@ def inject_global_template_vars():
         'active_department': active_department if active_department_portal else '',
         'active_department_portal': active_department_portal,
         **support,
+        'ui': lambda ar, en: en if lang == 'en' else ar,
     }
 
 
@@ -4766,6 +4767,14 @@ def clients():
         customers_js=[client_to_js_dict(c) for c in customers],
         next_client_code=next_code(Customer, 'C-', digits=4),
     )
+
+
+@app.after_request
+def _clients_page_no_cache(response):
+    if request.path.rstrip('/') == '/clients':
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+    return response
 
 
 @app.route('/clients/template')
