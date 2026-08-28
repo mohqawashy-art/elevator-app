@@ -24,13 +24,14 @@ _ALEF_RE = re.compile('[أإآٱ]')
 
 
 @lru_cache(maxsize=1)
-def _load_dictionary() -> tuple[list[tuple[str, str]], dict[str, str]]:
+def _load_dictionary() -> tuple[list[tuple[str, str]], dict[str, str], dict[str, str]]:
     path = Path(__file__).resolve().parent / 'static' / 'translit-dictionary.json'
     data = json.loads(path.read_text(encoding='utf-8'))
     phrases = [(p[0], p[1]) for p in data.get('phrases', [])]
     phrases.sort(key=lambda item: len(item[0]), reverse=True)
     words = {str(k): str(v) for k, v in (data.get('words') or {}).items()}
-    return phrases, words
+    labels = {str(k): str(v) for k, v in (data.get('labels') or {}).items()}
+    return phrases, words, labels
 
 
 def _normalize_ar(text: str) -> str:
@@ -50,7 +51,11 @@ def _title_word(word: str) -> str:
 def _lookup_word(word: str, words: dict[str, str]) -> str | None:
     if word in words:
         mapped = words[word]
-        if word.startswith('ال') and len(word) > 2 and not mapped.startswith('Al'):
+        if (
+            word.startswith('ال') and len(word) > 2
+            and not mapped.startswith('Al')
+            and word.endswith('ية')
+        ):
             return f'Al-{mapped}'
         return mapped
     if word.startswith('ال') and len(word) > 2:
@@ -115,15 +120,7 @@ def _transliterate_word(word: str, words: dict[str, str]) -> str:
     return _phonetic_word(word)
 
 
-def arabic_to_latin(text: str | None) -> str:
-    if not text or not str(text).strip():
-        return ''
-
-    phrases, words = _load_dictionary()
-    parts = _normalize_ar(str(text)).split()
-    if not parts:
-        return ''
-
+def _convert_parts(parts: list[str], phrases: list[tuple[str, str]], words: dict[str, str]) -> list[str]:
     converted: list[str] = []
     i = 0
     while i < len(parts):
@@ -139,5 +136,61 @@ def arabic_to_latin(text: str | None) -> str:
             continue
         converted.append(_transliterate_word(parts[i], words))
         i += 1
+    return converted
 
-    return ' '.join(converted)
+
+def _split_label_phrase(parts: list[str], labels: dict[str, str]) -> tuple[list[str], list[str]]:
+    """فصل أوصاف المبنى (برج، مجمع...) عن اسم العميل."""
+    if not parts:
+        return [], []
+
+    label_phrases = sorted(labels.keys(), key=len, reverse=True)
+    descriptors: list[str] = []
+    remaining = list(parts)
+
+    while remaining:
+        matched = False
+        for phrase in label_phrases:
+            phrase_parts = phrase.split()
+            if remaining[:len(phrase_parts)] == phrase_parts and len(remaining) > len(phrase_parts):
+                descriptors.append(labels[phrase])
+                remaining = remaining[len(phrase_parts):]
+                matched = True
+                break
+        if not matched:
+            break
+
+    while len(remaining) > 1 and remaining[0] in labels:
+        descriptors.append(labels[remaining[0]])
+        remaining = remaining[1:]
+
+    while len(remaining) > 1 and remaining[-1] in labels:
+        descriptors.append(labels[remaining[-1]])
+        remaining = remaining[:-1]
+
+    if len(remaining) == 1 and remaining[0] in labels and not descriptors:
+        return [labels[remaining[0]]], []
+
+    return descriptors, remaining
+
+
+def arabic_to_latin(text: str | None) -> str:
+    if not text or not str(text).strip():
+        return ''
+
+    phrases, words, labels = _load_dictionary()
+    parts = _normalize_ar(str(text)).split()
+    if not parts:
+        return ''
+
+    descriptors, name_parts = _split_label_phrase(parts, labels)
+    if not name_parts:
+        return ' '.join(descriptors)
+
+    converted = _convert_parts(name_parts, phrases, words)
+    name = ' '.join(converted).strip()
+    if descriptors and name:
+        return f"{name} {' '.join(descriptors)}"
+    if descriptors:
+        return ' '.join(descriptors)
+    return name
