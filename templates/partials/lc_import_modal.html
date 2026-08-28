@@ -1,0 +1,53 @@
+{# نافذة استيراد Excel موحّدة — نمط العملاء/العقود
+   import_title_ar, import_title_en — عنوان النافذة
+   template_base — مسار التحميل (مثل /elevators/template) أو فارغ
+   file_handler — onchange للملف (مثل handleElevImport(this))
+   confirm_handler — onclick للتأكيد (مثل confirmElevImport())
+   file_input_id — معرّف input الملف (افتراضي import-file)
+   instructions_ar / instructions_en — HTML للتعليمات (اختياري)
+   required_block — كتلة HTML إضافية للأعمدة (اختياري)
+#}
+<div class="modal-overlay" id="modal-import" data-lc-server-i18n="1" data-i18n-skip="1">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-head">
+      <div class="modal-title" data-lc-ar="{{ import_title_ar }}">{{ ui(import_title_ar, import_title_en) }}</div>
+      <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      {% if template_base %}
+      <div style="margin-bottom:12px;text-align:center">
+        <a class="btn btn-secondary btn-sm lc-import-template-link" data-lc-template-base="{{ template_base }}" href="{{ template_base }}?lang={{ user_language }}" download>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" style="width:14px;height:14px"><path d="M7 1v8M4 6l3 3 3-3M2 11h10"/></svg>
+          <span data-lc-ar="تنزيل نموذج الاستيراد">{{ ui('تنزيل نموذج الاستيراد', 'Download import template') }}</span>
+        </a>
+      </div>
+      {% endif %}
+      <div class="import-area" onclick="document.getElementById('{{ file_input_id|default('import-file') }}').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        <p data-lc-ar="اضغط لاختيار ملف Excel أو CSV" style="font-size:13px;color:var(--text2)">{{ ui('اضغط لاختيار ملف Excel أو CSV', 'Click to choose an Excel or CSV file') }}</p>
+        <p data-lc-ar=".xlsx أو .csv" style="font-size:11px;margin-top:4px;color:var(--text3)">{{ ui('.xlsx أو .csv', '.xlsx or .csv') }}</p>
+        <input type="file" id="{{ file_input_id|default('import-file') }}" accept=".xlsx,.xls,.csv" style="display:none" onchange="{{ file_handler }}">
+      </div>
+      <div id="import-preview" style="margin-top:14px;display:none">
+        <div id="import-preview-label" data-lc-ar="معاينة البيانات" style="font-size:12px;color:var(--text3);margin-bottom:8px">{{ ui('معاينة البيانات', 'Data preview') }}</div>
+        <div id="import-table-wrap" style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)"></div>
+        <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
+      </div>
+      {% if required_block %}
+      {{ required_block|safe }}
+      {% elif instructions_ar is defined and instructions_en is defined %}
+      <div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:var(--r-sm);font-size:11px;color:var(--text3);line-height:1.7">
+        <strong data-lc-ar="تعليمات:" style="color:var(--text2)">{{ ui('تعليمات:', 'Instructions:') }}</strong>
+        <span data-lc-ar="{{ instructions_ar }}">{{ ui(instructions_ar, instructions_en) }}</span>
+      </div>
+      {% endif %}
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" data-lc-ar="إلغاء" onclick="closeModal('modal-import')">{{ ui('إلغاء', 'Cancel') }}</button>
+      <button class="btn btn-primary" id="btn-confirm-import" data-lc-ar="استيراد" onclick="{{ confirm_handler }}" style="display:none">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
+        {{ ui('استيراد', 'Import') }}
+      </button>
+    </div>
+  </div>
+</div>

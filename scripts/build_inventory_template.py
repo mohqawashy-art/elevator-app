@@ -5,22 +5,22 @@ import zipfile
 from xml.sax.saxutils import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'static', 'templates', 'inventory_template.xlsx')
+OUT_AR = os.path.join(ROOT, 'static', 'templates', 'inventory_template.xlsx')
+OUT_EN = os.path.join(ROOT, 'static', 'templates', 'inventory_template_en.xlsx')
 
-HEADERS = [
-    'كود الصنف',
-    'اسم الصنف',
-    'التصنيف',
-    'الوحدة',
-    'الرصيد الحالي',
-    'الحد الأدنى',
-    'سعر الشراء',
-    'سعر البيع',
-    'موقع التخزين',
-    'المورد',
-    'ملاحظات',
+HEADERS_AR = [
+    'كود الصنف', 'اسم الصنف', 'التصنيف', 'الوحدة', 'الرصيد الحالي', 'الحد الأدنى',
+    'سعر الشراء', 'سعر البيع', 'موقع التخزين', 'المورد', 'ملاحظات',
 ]
-EXAMPLE = []
+HEADERS_EN = [
+    'Item Code', 'Item Name', 'Category', 'Unit', 'Current Stock', 'Min Stock',
+    'Purchase Price', 'Sale Price', 'Storage Location', 'Supplier', 'Notes',
+]
+EXAMPLE_EN = ['', 'Sample Item', 'Spare Parts', 'Piece', '10', '2', '50', '75', 'A-1', '', '']
+
+
+def headers_for_lang(lang='ar'):
+    return HEADERS_EN if lang == 'en' else HEADERS_AR
 
 
 def col_letter(n):
@@ -40,19 +40,17 @@ def sheet_xml(rows):
         for ci, val in enumerate(row):
             ref = f'{col_letter(ci)}{ri}'
             text = escape(str(val))
-            lines.append(
-                f'<c r="{ref}" t="inlineStr"><is><t>{text}</t></is></c>'
-            )
+            lines.append(f'<c r="{ref}" t="inlineStr"><is><t>{text}</t></is></c>')
         lines.append('</row>')
     lines.append('</sheetData></worksheet>')
     return ''.join(lines)
 
 
-def build_xlsx(path):
+def build_xlsx(path, lang='ar'):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    rows = [HEADERS]
-    if EXAMPLE:
-        rows.append(EXAMPLE)
+    rows = [headers_for_lang(lang)]
+    if lang == 'en':
+        rows.append(EXAMPLE_EN)
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
         z.writestr('[Content_Types].xml', '''<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -79,4 +77,5 @@ def build_xlsx(path):
 
 
 if __name__ == '__main__':
-    build_xlsx(OUT)
+    build_xlsx(OUT_AR, 'ar')
+    build_xlsx(OUT_EN, 'en')

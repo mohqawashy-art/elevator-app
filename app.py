@@ -5628,8 +5628,13 @@ def elevators():
 
 @app.route('/elevators/template')
 def elevators_import_template():
-    """تحميل نموذج استيراد المصاعد."""
-    path = os.path.join(app.root_path, 'static', 'templates', 'elevators_template.xlsx')
+    """تحميل نموذج استيراد المصاعد (عربي أو إنجليزي)."""
+    lang = request.args.get('lang')
+    if lang not in ('ar', 'en'):
+        lang = resolve_user_language(getattr(g, 'auth_user', None))
+    basename = 'elevators_template_en.xlsx' if lang == 'en' else 'elevators_template.xlsx'
+    download_name = 'elevators_import_template_en.xlsx' if lang == 'en' else 'elevators_import_template.xlsx'
+    path = os.path.join(app.root_path, 'static', 'templates', basename)
     if not os.path.isfile(path):
         script = os.path.join(app.root_path, 'scripts', 'build_elevators_template.py')
         if os.path.isfile(script):
@@ -5638,14 +5643,14 @@ def elevators_import_template():
             if spec and spec.loader:
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
-                mod.build_xlsx(path)
+                mod.build_xlsx(path, lang=lang)
         if not os.path.isfile(path):
             abort(404)
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),
         as_attachment=True,
-        download_name='elevators_template.xlsx',
+        download_name=download_name,
     )
 
 
@@ -10435,8 +10440,13 @@ def inventory_delete(id):
 
 @app.route('/inventory/template')
 def inventory_import_template():
-    """تحميل نموذج استيراد الأصناف."""
-    path = os.path.join(app.root_path, 'static', 'templates', 'inventory_template.xlsx')
+    """تحميل نموذج استيراد الأصناف (عربي أو إنجليزي)."""
+    lang = request.args.get('lang')
+    if lang not in ('ar', 'en'):
+        lang = resolve_user_language(getattr(g, 'auth_user', None))
+    basename = 'inventory_template_en.xlsx' if lang == 'en' else 'inventory_template.xlsx'
+    download_name = 'inventory_import_template_en.xlsx' if lang == 'en' else 'inventory_import_template.xlsx'
+    path = os.path.join(app.root_path, 'static', 'templates', basename)
     if not os.path.isfile(path):
         script = os.path.join(app.root_path, 'scripts', 'build_inventory_template.py')
         if os.path.isfile(script):
@@ -10445,14 +10455,14 @@ def inventory_import_template():
             if spec and spec.loader:
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
-                mod.build_xlsx(path)
+                mod.build_xlsx(path, lang=lang)
         if not os.path.isfile(path):
             abort(404)
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),
         as_attachment=True,
-        download_name='inventory_template.xlsx',
+        download_name=download_name,
     )
 
 

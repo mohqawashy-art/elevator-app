@@ -661,7 +661,10 @@
       'h3',
       '.toolbar-title',
       '.filter-label',
-      '.hint',
+      '.import-area p',
+      '.field-hint',
+      '.field-calc',
+      '.map-picker-hint',
       'option',
       '.panel-title',
       '.exec-aside-title',
@@ -716,6 +719,59 @@
     });
   }
 
+  function lcTr(key, lang) {
+    if (!key) return key;
+    if (lang !== 'en') return key;
+    return lookupEn(norm(key)) || key;
+  }
+
+  function captureLcArEl(el) {
+    if (!el || el.dataset.lcAr != null) return;
+    var t = el.textContent.replace(/\s+/g, ' ').trim();
+    if (t) el.dataset.lcAr = t;
+    if (el.innerHTML && el.querySelector('code')) el.dataset.lcArHtml = el.innerHTML;
+  }
+
+  function applyLcMarked(root, lang) {
+    if (!root) root = document;
+    if (lang !== 'ar' && lang !== 'en') lang = 'ar';
+    root.querySelectorAll('[data-lc-ar]').forEach(function (el) {
+      if (el.closest('[data-i18n-skip]') && !el.closest('[data-lc-server-i18n]')) return;
+      captureLcArEl(el);
+      if (lang === 'en') {
+        var en = lcTr(el.dataset.lcAr, lang);
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = en;
+        else el.textContent = en;
+      } else if (el.dataset.lcArHtml) {
+        el.innerHTML = el.dataset.lcArHtml;
+      } else {
+        el.textContent = el.dataset.lcAr;
+      }
+    });
+    root.querySelectorAll('[data-lc-t]').forEach(function (el) {
+      var key = el.getAttribute('data-lc-t');
+      if (!key) return;
+      if (el.dataset.lcAr == null) el.dataset.lcAr = key;
+      var label = lang === 'en' ? lcTr(key, lang) : el.dataset.lcAr;
+      var sortInd = el.querySelector('.sort-ind');
+      el.textContent = label;
+      if (sortInd) {
+        el.appendChild(document.createTextNode(' '));
+        el.appendChild(sortInd);
+      }
+    });
+    root.querySelectorAll('[data-lc-ph-ar]').forEach(function (el) {
+      if (el.dataset.lcPhAr == null) el.dataset.lcPhAr = el.getAttribute('data-lc-ph-ar');
+      el.placeholder = lang === 'en' ? lcTr(el.dataset.lcPhAr, lang) : el.dataset.lcPhAr;
+    });
+    root.querySelectorAll('[data-lc-map-t]').forEach(function (el) {
+      var key = el.getAttribute('data-lc-map-t');
+      if (!key) return;
+      if (el.dataset.lcAr == null) el.dataset.lcAr = key;
+      el.textContent = lang === 'en' ? lcTr(key, lang) : el.dataset.lcAr;
+    });
+  }
+
   var applying = false;
   var moTimer = null;
 
@@ -761,6 +817,7 @@
     if (enBtn) enBtn.classList.toggle('active', lang === 'en');
 
     applyDataI18n(document, lang);
+    applyLcMarked(document, lang);
     applySelectors(document, lang);
 
     var zones = document.querySelectorAll(
@@ -843,6 +900,8 @@
       t: t,
       TEXT: TEXT,
       KEYS: KEYS,
+      applyLcMarked: applyLcMarked,
+      applyModal: applyModal,
     };
   }
 

@@ -16,6 +16,9 @@
       }
       window.LiftCoreI18n.apply(lang);
     }
+    if (window.LiftCorePageI18n && window.LiftCorePageI18n.updateTemplateLinks) {
+      window.LiftCorePageI18n.updateTemplateLinks();
+    }
   }
   boot();
   window.addEventListener('load', boot);

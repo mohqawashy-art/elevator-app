@@ -5,32 +5,30 @@ import zipfile
 from xml.sax.saxutils import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'static', 'templates', 'elevators_template.xlsx')
+OUT_AR = os.path.join(ROOT, 'static', 'templates', 'elevators_template.xlsx')
+OUT_EN = os.path.join(ROOT, 'static', 'templates', 'elevators_template_en.xlsx')
 
-HEADERS = [
-    'كود العميل',
-    'اسم العميل',
-    'المبنى',
-    'المدينة',
-    'الحي',
-    'نوع المصعد',
-    'الماركة',
-    'الموديل',
-    'الحمولة (كجم)',
-    'عدد الطوابق',
-    'الرقم التسلسلي',
-    'نوع الآلة',
-    'نوع النظام',
-    'نوع المحرك',
-    'طريقة التشغيل',
-    'تفاصيل التحكم',
-    'تاريخ التركيب',
-    'آخر صيانة',
-    'الصيانة القادمة',
-    'الحالة',
-    'ملاحظات',
+HEADERS_AR = [
+    'كود العميل', 'اسم العميل', 'المبنى', 'المدينة', 'الحي', 'نوع المصعد', 'الماركة',
+    'الموديل', 'الحمولة (كجم)', 'عدد الطوابق', 'الرقم التسلسلي', 'نوع الآلة', 'نوع النظام',
+    'نوع المحرك', 'طريقة التشغيل', 'تفاصيل التحكم', 'تاريخ التركيب', 'آخر صيانة',
+    'الصيانة القادمة', 'الحالة', 'ملاحظات',
 ]
-EXAMPLE = []
+HEADERS_EN = [
+    'Client Code', 'Client Name', 'Building', 'City', 'District', 'Elevator Type', 'Brand',
+    'Model', 'Capacity (kg)', 'Floors', 'Serial Number', 'Machine Type', 'System Type',
+    'Motor Type', 'Operation Mode', 'Control Details', 'Installation Date', 'Last Maintenance',
+    'Next Maintenance', 'Status', 'Notes',
+]
+EXAMPLE_EN = [
+    'C-0001', 'Client name (must exist)', 'Tower A', 'Mecca', 'Al Aziziyah',
+    'Passenger', 'KONE', 'Model X', '630', '12', 'SN-001', '', '', '', '', '',
+    '2024-01-01', '2025-06-01', '2026-06-01', 'Active', '',
+]
+
+
+def headers_for_lang(lang='ar'):
+    return HEADERS_EN if lang == 'en' else HEADERS_AR
 
 
 def col_letter(n):
@@ -50,19 +48,17 @@ def sheet_xml(rows):
         for ci, val in enumerate(row):
             ref = f'{col_letter(ci)}{ri}'
             text = escape(str(val))
-            lines.append(
-                f'<c r="{ref}" t="inlineStr"><is><t>{text}</t></is></c>'
-            )
+            lines.append(f'<c r="{ref}" t="inlineStr"><is><t>{text}</t></is></c>')
         lines.append('</row>')
     lines.append('</sheetData></worksheet>')
     return ''.join(lines)
 
 
-def build_xlsx(path):
+def build_xlsx(path, lang='ar'):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    rows = [HEADERS]
-    if EXAMPLE:
-        rows.append(EXAMPLE)
+    rows = [headers_for_lang(lang)]
+    if lang == 'en':
+        rows.append(EXAMPLE_EN)
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
         z.writestr('[Content_Types].xml', '''<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -89,4 +85,5 @@ def build_xlsx(path):
 
 
 if __name__ == '__main__':
-    build_xlsx(OUT)
+    build_xlsx(OUT_AR, 'ar')
+    build_xlsx(OUT_EN, 'en')

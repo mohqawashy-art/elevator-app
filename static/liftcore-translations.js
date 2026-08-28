@@ -1223,6 +1223,28 @@ window.__LC_TRANSLATIONS = {
     'After client approval click «Client Approved» to create the timeline (advance → suppliers → supply → install → handover).',
   'مرحلة 1: فرص البيع · مراحل 3–6: التسعير وعرض السعر · مرحلة 7: التنفيذ والجدول الزمني. المعاينة الميدانية (مرحلة 2) قادمة.':
     'Phase 1: Sales leads · Phases 3–6: Pricing & quotation · Phase 7: Execution & timeline. Site survey (phase 2) coming soon.',
+  'استيراد مصاعد من Excel': 'Import Elevators from Excel',
+  'استيراد فنيين من Excel': 'Import Technicians from Excel',
+  'استيراد أصناف من Excel': 'Import Items from Excel',
+  'استيراد قطع الغيار من Excel': 'Import Parts Billing from Excel',
+  'اسحب ملف Excel هنا أو': 'Drag an Excel file here or',
+  'اضغط للاختيار': 'click to choose',
+  'الأعمدة المطلوبة:': 'Required columns:',
+  'كود العميل أو اسم العميل (يجب أن يكون العميل مسجّلاً مسبقاً)': 'Client code or name (client must already exist)',
+  'اختيارية: المبنى، المدينة، النوع، الماركة، الحمولة، الحالة...': 'Optional: building, city, type, brand, capacity, status…',
+  'املأ «اسم الصنف» (إلزامي) وباقي الأعمدة حسب الحاجة. إذا تركت «كود الصنف» فارغاً يُولَّد تلقائياً.': 'Fill in Item Name (required) and other columns as needed. Leave Item Code empty to auto-generate.',
+  'معاينة:': 'Preview:',
+  'تأكيد الحذف': 'Confirm Delete',
+  'شجرة الحسابات': 'Chart of Accounts',
+  'القيود اليومية': 'Journal Entries',
+  'دفتر الأستاذ': 'General Ledger',
+  'ميزان المراجعة': 'Trial Balance',
+  'قائمة الدخل': 'Income Statement',
+  'المركز المالي': 'Balance Sheet',
+  '.xlsx — نفس تنسيق تصدير Notion / جما': '.xlsx — same format as Notion / Jama export',
+  'رقم العقد CN-xxxx + التاريخ + بيان قطع الغيار': 'Contract # CN-xxxx + date + parts description',
+  'اختيارية: رقم العملية، التكلفة، سعر العميل، حالة التحصيل، بيان السداد، ملاحظات': 'Optional: transaction #, cost, client price, collection status, payment note, notes',
+  'اختيارية: كود الفني (Tech-001)، المسمى الوظيفي، الحالة، الجوال، المدينة، ملاحظات': 'Optional: technician code (Tech-001), job title, status, phone, city, notes',
 };
 window.__LC_I18N_UI = window.__LC_TRANSLATIONS;
 

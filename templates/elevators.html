@@ -705,39 +705,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <!-- IMPORT MODAL -->
-<div class="modal-overlay" id="modal-import">
-  <div class="modal" style="max-width:520px">
-    <div class="modal-head">
-      <div class="modal-title">استيراد مصاعد من Excel</div>
-      <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
-    </div>
-    <div class="modal-body">
-      <div class="import-area" onclick="document.getElementById('import-file').click()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
-        <p>اسحب ملف Excel هنا أو <span>اضغط للاختيار</span></p>
-        <p style="font-size:11px;margin-top:4px">.xlsx أو .csv</p>
-        <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleElevImport(this)">
-      </div>
-      <div id="import-preview" style="margin-top:14px;display:none">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">معاينة:</div>
-        <div id="import-table-wrap" style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)"></div>
-        <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
-      </div>
+{% set elev_import_required %}
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
-        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
-        <div style="color:var(--accent)">كود العميل أو اسم العميل (يجب أن يكون العميل مسجّلاً مسبقاً)</div>
-        <div style="color:var(--text3);margin-top:4px">اختيارية: المبنى، المدينة، النوع، الماركة، الحمولة، الحالة...</div>
+        <div style="color:var(--text1);font-weight:600;margin-bottom:6px" data-lc-ar="الأعمدة المطلوبة:">{{ ui('الأعمدة المطلوبة:', 'Required columns:') }}</div>
+        <div style="color:var(--accent)" data-lc-ar="كود العميل أو اسم العميل (يجب أن يكون العميل مسجّلاً مسبقاً)">{{ ui('كود العميل أو اسم العميل (يجب أن يكون العميل مسجّلاً مسبقاً)', 'Client code or name (client must already exist)') }}</div>
+        <div style="color:var(--text3);margin-top:4px" data-lc-ar="اختيارية: المبنى، المدينة، النوع، الماركة، الحمولة، الحالة...">{{ ui('اختيارية: المبنى، المدينة، النوع، الماركة، الحمولة، الحالة...', 'Optional: building, city, type, brand, capacity, status…') }}</div>
       </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('modal-import')">إلغاء</button>
-      <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmElevImport()" style="display:none">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
-        استيراد
-      </button>
-    </div>
-  </div>
-</div>
+{% endset %}
+{% with import_title_ar='استيراد مصاعد من Excel', import_title_en='Import Elevators from Excel', template_base='/elevators/template', file_handler='handleElevImport(this)', confirm_handler='confirmElevImport()', required_block=elev_import_required %}
+{% include 'partials/lc_import_modal.html' %}
+{% endwith %}
 
 <!-- DELETE MODAL -->
 <div class="modal-overlay" id="modal-delete">

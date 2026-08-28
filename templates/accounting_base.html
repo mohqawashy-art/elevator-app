@@ -86,12 +86,12 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
   <div class="content">
     {% include 'partials/flash_messages.html' %}
     <nav class="subnav">
-      <a href="/accounts" class="{{ 'active' if accounting_tab=='accounts' else '' }}">شجرة الحسابات</a>
-      <a href="/journals" class="{{ 'active' if accounting_tab=='journals' else '' }}">القيود اليومية</a>
-      <a href="/ledger" class="{{ 'active' if accounting_tab=='ledger' else '' }}">دفتر الأستاذ</a>
-      <a href="/trial-balance" class="{{ 'active' if accounting_tab=='trial' else '' }}">ميزان المراجعة</a>
-      <a href="/pnl" class="{{ 'active' if accounting_tab=='pnl' else '' }}">قائمة الدخل</a>
-      <a href="/balance-sheet" class="{{ 'active' if accounting_tab=='bs' else '' }}">المركز المالي</a>
+      <a href="/accounts" class="{{ 'active' if accounting_tab=='accounts' else '' }}">{{ ui('شجرة الحسابات', 'Chart of Accounts') }}</a>
+      <a href="/journals" class="{{ 'active' if accounting_tab=='journals' else '' }}">{{ ui('القيود اليومية', 'Journal Entries') }}</a>
+      <a href="/ledger" class="{{ 'active' if accounting_tab=='ledger' else '' }}">{{ ui('دفتر الأستاذ', 'General Ledger') }}</a>
+      <a href="/trial-balance" class="{{ 'active' if accounting_tab=='trial' else '' }}">{{ ui('ميزان المراجعة', 'Trial Balance') }}</a>
+      <a href="/pnl" class="{{ 'active' if accounting_tab=='pnl' else '' }}">{{ ui('قائمة الدخل', 'Income Statement') }}</a>
+      <a href="/balance-sheet" class="{{ 'active' if accounting_tab=='bs' else '' }}">{{ ui('المركز المالي', 'Balance Sheet') }}</a>
     </nav>
     {% block accounting_body %}{% endblock %}
   </div>
