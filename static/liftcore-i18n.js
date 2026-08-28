@@ -606,6 +606,10 @@
       translateMixed(el, lang);
       return;
     }
+    if (el.children && el.children.length > 0) {
+      translateMixed(el, lang);
+      return;
+    }
     if (el.querySelector('input, select, textarea, button')) {
       if (tag === 'LABEL') translateMixed(el, lang);
       return;
@@ -775,7 +779,6 @@
   }
 
   function setLang(lang) {
-    var wasEn = currentLang === 'en';
     var loginLang = document.getElementById('login-lang');
     if (loginLang) loginLang.value = lang;
     try { localStorage.setItem('liftcore_lang', lang); } catch (e) { /* ignore */ }
@@ -792,11 +795,12 @@
       return;
     }
 
-    /* الرجوع للعربية: الصفحة مكتوبة عربي أصلاً — إعادة تحميل تضمن استرجاعاً نظيفاً 100% */
-    if (lang === 'ar' && wasEn && !loginLang) {
-      var reload = function () { global.location.reload(); };
-      var p = persistLanguage('ar');
-      if (p && p.then) { p.then(reload, reload); } else { setTimeout(reload, 200); }
+    /* تبديل اللغة: إعادة تحميل لضمان تطبيق الترجمة/الاسترجاع بالكامل */
+    if (lang !== currentLang && !loginLang) {
+      var reloadForLang = function () { global.location.reload(); };
+      var p = persistLanguage(lang);
+      if (p && p.then) { p.then(reloadForLang, reloadForLang); }
+      else { setTimeout(reloadForLang, 200); }
       return;
     }
 
