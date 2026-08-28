@@ -516,12 +516,60 @@
   }
 
   function shouldTranslateZone(el) {
-    return !(el.classList && el.classList.contains('modal-overlay') && !el.classList.contains('open'));
+    return true;
+  }
+
+  function applyLcMarked(root, lang) {
+    if (!root) return;
+    root.querySelectorAll('[data-lc-t]').forEach(function (el) {
+      var key = el.getAttribute('data-lc-t');
+      if (!key) return;
+      if (lang === 'en') {
+        if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent;
+        var en = lookupEn(norm(key)) || t(key, 'en');
+        if (en !== key) el.textContent = en;
+      } else if (el.dataset.lcAr != null) {
+        el.textContent = el.dataset.lcAr;
+      }
+    });
+    root.querySelectorAll('[data-lc-ph]').forEach(function (el) {
+      var key = el.getAttribute('data-lc-ph');
+      if (!key) return;
+      if (lang === 'en') {
+        if (!el.dataset.lcPhAr) el.dataset.lcPhAr = el.getAttribute('placeholder') || '';
+        var phEn = lookupEn(norm(key)) || t(key, 'en');
+        if (phEn && phEn !== key) el.setAttribute('placeholder', phEn);
+      } else if (el.dataset.lcPhAr) {
+        el.setAttribute('placeholder', el.dataset.lcPhAr);
+      }
+    });
+    root.querySelectorAll('option[data-lc-t]').forEach(function (el) {
+      var optKey = el.getAttribute('data-lc-t');
+      if (!optKey) return;
+      if (lang === 'en') {
+        if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent;
+        var optEn = lookupEn(norm(optKey)) || t(optKey, 'en');
+        if (optEn !== optKey) el.textContent = optEn;
+      } else if (el.dataset.lcAr != null) {
+        el.textContent = el.dataset.lcAr;
+      }
+    });
+    root.querySelectorAll('[data-lc-title]').forEach(function (el) {
+      var titleKey = el.getAttribute('data-lc-title');
+      if (!titleKey) return;
+      if (lang === 'en') {
+        if (!el.dataset.lcTitleAr) el.dataset.lcTitleAr = el.getAttribute('title') || '';
+        var titleEn = lookupEn(norm(titleKey)) || t(titleKey, 'en');
+        if (titleEn && titleEn !== titleKey) el.setAttribute('title', titleEn);
+      } else if (el.dataset.lcTitleAr) {
+        el.setAttribute('title', el.dataset.lcTitleAr);
+      }
+    });
   }
 
   function translateFormAttributes(root, lang) {
     root.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(function (el) {
-      if (el.closest('.modal-overlay:not(.open)')) return;
+      if (el.hasAttribute('data-lc-ph')) return;
       var ph = el.getAttribute('placeholder');
       if (!ph || !/[\u0600-\u06FF]/.test(ph)) return;
       if (lang === 'en') {
@@ -724,18 +772,24 @@
   function applyToRoot(root, lang) {
     if (!root) return;
     if (lang !== 'ar' && lang !== 'en') lang = 'ar';
+    applyLcMarked(root, lang);
     applySelectors(root, lang);
     walkTextNodes(root, lang);
     translateFormAttributes(root, lang);
     if (global.LiftCoreDisplay && global.LiftCoreDisplay.applyDom) {
       global.LiftCoreDisplay.applyDom(root, lang);
     }
+    applyLcMarked(root, lang);
   }
 
   function applyModal(modalId) {
     var el = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
-    if (!el || currentLang !== 'en') return;
+    if (!el) return;
+    var lang = global.__LC_LANG || currentLang || 'ar';
+    if (lang !== 'en') return;
     applyToRoot(el, 'en');
+    setTimeout(function () { applyToRoot(el, 'en'); }, 60);
+    setTimeout(function () { applyToRoot(el, 'en'); }, 300);
   }
 
   function applyLanguage(lang) {
@@ -756,6 +810,7 @@
     if (enBtn) enBtn.classList.toggle('active', lang === 'en');
 
     applyDataI18n(document, lang);
+    applyLcMarked(document, lang);
     applySelectors(document, lang);
 
     var zones = document.querySelectorAll(
@@ -840,6 +895,7 @@
       apply: applyLanguage,
       applyModal: applyModal,
       applyToRoot: applyToRoot,
+      applyLcMarked: applyLcMarked,
       setLang: setLang,
       t: t,
       TEXT: TEXT,

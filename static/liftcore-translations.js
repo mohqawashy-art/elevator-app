@@ -252,6 +252,7 @@ window.__LC_TRANSLATIONS = {
   'التسمية (اختياري)': 'Label (optional)',
   'الحد الأقصى 10 أرقام إضافية': 'Maximum 10 additional numbers',
   'برج الياسمين': 'Yasmin Tower',
+  'المبنى': 'Building',
   'هاتف إضافي': 'Secondary Phone',
   'جهة الطوارئ': 'Emergency Contact',
   'تخطيط الصيانة': 'Maintenance Planning',
