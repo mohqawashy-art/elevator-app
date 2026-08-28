@@ -2812,9 +2812,21 @@ async function confirmImport(){
 
 // ===== تصدير =====
 function exportExcel(){
-  var headers = ['الكود','الاسم','نوع المتعاقد','المدينة','الحي','الهاتف','المسؤول','هوية المتعاقد','السجل التجاري','المصاعد','حالة العقد','الحالة'];
-  var rows = [headers].concat(filtered.map(function(c){
-    return [c.code,c.name,c.entity_type||'فرد',c.city,c.district,c.phone,c.contact,c.national_id||'',c.cr_number||'',c.elevators,c.contract_status,c.status];
+  var headersAr = ['الكود','الاسم','نوع المتعاقد','المدينة','الحي','الهاتف','المسؤول','هوية المتعاقد','السجل التجاري','المصاعد','حالة العقد','الحالة'];
+  var headersEn = ['Code','Name','Contractor Type','City','District','Phone','Contact','ID Number','CR Number','Elevators','Contract Status','Status'];
+  var headers = isClientUiEn() ? headersEn : headersAr;
+  var rows = [headers].concat(filtered.map(function (c) {
+    var name = isClientUiEn() ? (lcClient(c) || c.name) : c.name;
+    var entityType = isClientUiEn() ? lcT(c.entity_type || 'فرد') : (c.entity_type || 'فرد');
+    var city = isClientUiEn() ? cityDisplayName(c.city || '') : (c.city || '');
+    var district = isClientUiEn() ? districtDisplayName(c.district || '') : (c.district || '');
+    var contact = isClientUiEn() && window.LiftCoreDisplay ? LiftCoreDisplay.text(c.contact || '') : (c.contact || '');
+    var contractStatus = isClientUiEn() ? lcDispVal(c.contract_status || '') : (c.contract_status || '');
+    var status = isClientUiEn() ? lcDispVal(c.status || '') : (c.status || '');
+    return [
+      c.code, name, entityType, city, district, c.phone, contact,
+      c.national_id || '', c.cr_number || '', c.elevators, contractStatus, status
+    ];
   }));
   var csv = rows.map(function(r){return r.map(function(v){return '"'+(v||'')+'"';}).join(',');}).join('\n');
   var a = document.createElement('a');
