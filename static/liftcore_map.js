@@ -7,7 +7,6 @@
 
   var DEFAULT_CENTER = { lat: 21.4225, lng: 39.8262 };
   var DEFAULT_ZOOM = 12;
-  var DEFAULT_MAP_ID = 'DEMO_MAP_ID';
 
   var POI_HIDDEN = [
     { featureType: 'poi', stylers: [{ visibility: 'off' }] },
@@ -31,10 +30,12 @@
   }
 
   function getMapId() {
-    return (global.LIFTCORE_GOOGLE_MAP_ID || DEFAULT_MAP_ID);
+    var id = (global.LIFTCORE_GOOGLE_MAP_ID || '').trim();
+    return id || null;
   }
 
   function canUseAdvancedMarkers() {
+    if (!getMapId()) return false;
     var mc = getMarkerClasses();
     return !!(mc && mc.AdvancedMarkerElement);
   }
@@ -48,10 +49,13 @@
   function mergeMapOptions(options) {
     options = options || {};
     var merged = Object.assign({}, options);
-    merged.mapId = merged.mapId || getMapId();
-    /* Vector maps (mapId) reject legacy styles in the constructor — causes Google error overlay */
-    if (merged.mapId && merged.styles) {
-      delete merged.styles;
+    var mapId = merged.mapId || getMapId();
+    if (mapId) {
+      merged.mapId = mapId;
+      /* Vector maps (mapId) reject legacy styles in the constructor */
+      if (merged.styles) delete merged.styles;
+    } else if (merged.mapId) {
+      delete merged.mapId;
     }
     return merged;
   }

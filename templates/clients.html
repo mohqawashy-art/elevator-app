@@ -72,7 +72,7 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=5"></script>
+<script src="/static/liftcore_map.js?v=6"></script>
 <script src="/static/client_map_picker.js?v=11"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
@@ -1567,6 +1567,7 @@ let currentDeleteId = null;
 let currentCardId = null;
 let cardMapInstance = null;
 let cardMapMarker = null;
+let cardOsmMap = null;
 
 function lcDisp(s) {
   return (window.LiftCoreDisplay) ? LiftCoreDisplay.text(s == null ? '' : s) : (s || '—');
@@ -1719,12 +1720,43 @@ function scheduleClientCardMap(id, pos, c) {
 function destroyClientCardMap() {
   if (cardMapMarker) {
     if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(cardMapMarker, null);
-    else cardMapMarker.setMap(null);
+    else if (cardMapMarker.setMap) cardMapMarker.setMap(null);
     cardMapMarker = null;
   }
   cardMapInstance = null;
+  if (cardOsmMap) {
+    try { cardOsmMap.remove(); } catch (e) { /* ignore */ }
+    cardOsmMap = null;
+  }
   var mapEl = document.getElementById('card-map');
-  if (mapEl) mapEl.innerHTML = '';
+  if (mapEl) {
+    mapEl.innerHTML = '';
+    mapEl.className = mapEl.className.replace(/\bleaflet-\S+/g, '').trim();
+  }
+}
+
+function showClientCardMapOsm(pos, c) {
+  var mapEl = document.getElementById('card-map');
+  if (!mapEl || typeof L === 'undefined') return;
+  var lat = parseFloat(pos.lat);
+  var lng = parseFloat(pos.lng);
+  if (!isFinite(lat) || !isFinite(lng)) return;
+  if (cardOsmMap) {
+    try { cardOsmMap.remove(); } catch (e) { /* ignore */ }
+    cardOsmMap = null;
+  }
+  mapEl.innerHTML = '';
+  cardOsmMap = L.map(mapEl, { scrollWheelZoom: false, zoomControl: true }).setView([lat, lng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(cardOsmMap);
+  L.marker([lat, lng]).addTo(cardOsmMap).bindPopup(esc(lcClient(c) || c.name || ''));
+  setTimeout(function () {
+    if (cardOsmMap) {
+      try { cardOsmMap.invalidateSize(); } catch (e) { /* ignore */ }
+    }
+  }, 200);
 }
 
 function showClientCardMap(pos, c) {
@@ -1732,61 +1764,49 @@ function showClientCardMap(pos, c) {
   var lat = parseFloat(pos.lat);
   var lng = parseFloat(pos.lng);
   if (!isFinite(lat) || !isFinite(lng)) return;
+  if (useOsmMaps()) {
+    showClientCardMapOsm(pos, c);
+    return;
+  }
   whenGoogleMapsReady(function () {
     try {
       var mapEl = document.getElementById('card-map');
-      if (!mapEl || typeof google === 'undefined' || !google.maps) return;
-      if (cardMapInstance && cardMapInstance.getDiv && cardMapInstance.getDiv() !== mapEl) {
-        cardMapInstance = null;
-        cardMapMarker = null;
+      if (!mapEl || typeof google === 'undefined' || !google.maps) {
+        showClientCardMapOsm(pos, c);
+        return;
       }
+      cardMapInstance = null;
+      cardMapMarker = null;
       var center = { lat: lat, lng: lng };
-      if (!cardMapInstance) {
-        var cardMapOpts = {
-          center: center,
-          zoom: 15,
-          mapTypeId: 'satellite',
-          clickableIcons: false,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          zoomControl: true,
-          gestureHandling: 'cooperative'
-        };
-        if (window.LiftCoreMap && LiftCoreMap.mergeMapOptions) {
-          cardMapOpts = LiftCoreMap.mergeMapOptions(cardMapOpts);
-        }
-        cardMapInstance = new google.maps.Map(mapEl, cardMapOpts);
-      } else {
-        cardMapInstance.setCenter(center);
-      }
-      if (cardMapMarker) {
-        if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(cardMapMarker, null);
-        else if (cardMapMarker.setMap) cardMapMarker.setMap(null);
-      }
-      if (window.LiftCoreMap && LiftCoreMap.createPinMarker) {
-        cardMapMarker = LiftCoreMap.createPinMarker({
-          position: center,
-          map: cardMapInstance,
-          title: c.name,
-          color: getClientPinColor(c),
-          scale: CLIENT_MAP_PIN_SCALE_CARD
-        });
-      } else if (google.maps.Marker) {
-        cardMapMarker = new google.maps.Marker({
-          position: center,
-          map: cardMapInstance,
-          title: c.name,
-          icon: makePinIcon(getClientPinColor(c), CLIENT_MAP_PIN_SCALE_CARD)
-        });
-      }
+      var cardMapOpts = {
+        center: center,
+        zoom: 15,
+        mapTypeId: 'satellite',
+        clickableIcons: false,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControl: true,
+        gestureHandling: 'cooperative'
+      };
+      cardMapInstance = new google.maps.Map(mapEl, cardMapOpts);
+      cardMapMarker = new google.maps.Marker({
+        position: center,
+        map: cardMapInstance,
+        title: c.name || '',
+        icon: makePinIcon(getClientPinColor(c), CLIENT_MAP_PIN_SCALE_CARD)
+      });
       setTimeout(function () {
         if (!cardMapInstance) return;
         google.maps.event.trigger(cardMapInstance, 'resize');
         cardMapInstance.setCenter(center);
+        if (mapEl.querySelector('.gm-err-container')) {
+          showClientCardMapOsm(pos, c);
+        }
       }, 400);
     } catch (err) {
       console.error('showClientCardMap', err);
+      showClientCardMapOsm(pos, c);
     }
   });
 }
@@ -3245,15 +3265,7 @@ document.addEventListener('liftcore:lang', function () {
   renderTable(filtered);
   var cardModal = document.getElementById('modal-client-card');
   if (cardModal && cardModal.classList.contains('open') && currentCardId) {
-    var cLang = CUSTOMERS.find(function (x) { return x.id === currentCardId; });
-    if (cLang) {
-      document.getElementById('card-title').innerHTML =
-        esc(cLang.code) + ' — ' + esc(lcClient(cLang)) + ' ' + clientStatusBadge(cLang);
-    }
-    if (window.LiftCoreDisplay) {
-      LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
-    }
-    applyClientCardI18n();
+    openClientCard(currentCardId);
   }
   applyClientModalI18n();
   applyClientsFilterI18n();
