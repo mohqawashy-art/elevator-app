@@ -314,11 +314,13 @@
   }
 
   function ensureMarkerLibReady(fn) {
+    if (!fn) return Promise.resolve();
     if (!global.google || !global.google.maps || global.__gmapsAuthFailed) {
+      fn();
       return Promise.resolve();
     }
     if (canUseAdvancedMarkers()) {
-      if (fn) fn();
+      fn();
       return Promise.resolve();
     }
     var loader;
@@ -332,12 +334,14 @@
         return lib;
       });
     } else {
+      fn();
       return Promise.resolve();
     }
     return loader.then(function () {
-      if (fn && canUseAdvancedMarkers()) fn();
+      fn();
     }).catch(function (err) {
       console.error('LiftCoreMap: failed to load marker library', err);
+      fn();
     });
   }
 

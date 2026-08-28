@@ -15,7 +15,7 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js?v=8"></script>
 <script src="/static/client_geocode.js?v=8"></script>
-<script src="/static/liftcore_map.js?v=3"></script>
+<script src="/static/liftcore_map.js?v=7"></script>
 <script src="/static/client_map_picker.js?v=7"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -2926,6 +2926,7 @@ function renderContractMapMarkers(fitAgain) {
       contractMap.setZoom(12);
     }
   }
+  setTimeout(resizeContractMapView, 220);
 }
 
 var osmContractMap = null;
@@ -2957,13 +2958,22 @@ function destroyGoogleContractMap() {
   if (mapEl) mapEl.innerHTML = '';
 }
 
+function resizeContractMapView() {
+  if (contractMap && window.google && google.maps) {
+    google.maps.event.trigger(contractMap, 'resize');
+  } else if (osmContractMap) {
+    try { osmContractMap.invalidateSize(); } catch (e) { /* ignore */ }
+  }
+}
+
 function refreshContractMapOsm() {
   var mapEl = document.getElementById('map');
   var summary = document.getElementById('map-summary');
   if (!mapEl || typeof L === 'undefined') return;
   if (contractMap) destroyGoogleContractMap();
+  mapEl.style.display = 'block';
   if (!osmContractMap) {
-    osmContractMap = L.map(mapEl).setView([21.4225, 39.8262], 11);
+    osmContractMap = L.map(mapEl, { fadeAnimation: false, zoomAnimation: false }).setView([21.4225, 39.8262], 11);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'
@@ -3001,7 +3011,7 @@ function refreshContractMapOsm() {
     osmContractMap.fitBounds(bounds, { padding: [48, 48] });
     if (bounds.length === 1) osmContractMap.setZoom(14);
   }
-  setTimeout(function () { osmContractMap.invalidateSize(); }, 250);
+  setTimeout(resizeContractMapView, 250);
 }
 
 function refreshContractMap(fitAgain) {
@@ -3022,6 +3032,7 @@ function refreshContractMap(fitAgain) {
   }
   var mapEl = document.getElementById('map');
   if (!mapEl) return;
+  mapEl.style.display = 'block';
 
   if (osmContractMap) destroyOsmContractMap();
 
@@ -3071,6 +3082,10 @@ function switchTab(tab, el) {
   if (el) el.classList.add('active');
   if (tab === 'map') {
     if (window.ensureGoogleMapsScript) ensureGoogleMapsScript();
+    if (contractMap || osmContractMap) {
+      setTimeout(resizeContractMapView, 220);
+      return;
+    }
     if (useOsmContractMaps()) {
       setTimeout(function() { refreshContractMap(true); }, 120);
       return;
