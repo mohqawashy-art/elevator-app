@@ -143,14 +143,18 @@
     var scale = opts.scale || 1.2;
     var mc = requireMarkerClasses();
     if (mc && mc.AdvancedMarkerElement) {
-      return new mc.AdvancedMarkerElement({
-        map: opts.map || null,
-        position: position,
-        title: opts.title || '',
-        content: makePinContent(color, scale),
-        gmpDraggable: !!opts.draggable,
-        zIndex: opts.zIndex
-      });
+      try {
+        return new mc.AdvancedMarkerElement({
+          map: opts.map || null,
+          position: position,
+          title: opts.title || '',
+          content: makePinContent(color, scale),
+          gmpDraggable: !!opts.draggable,
+          zIndex: opts.zIndex
+        });
+      } catch (advErr) {
+        console.warn('LiftCoreMap: AdvancedMarkerElement failed, using classic marker', advErr);
+      }
     }
     if (!global.google || !global.google.maps || !global.google.maps.Marker) return null;
     return new global.google.maps.Marker({

@@ -72,7 +72,7 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=3"></script>
+<script src="/static/liftcore_map.js?v=4"></script>
 <script src="/static/client_map_picker.js?v=11"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
@@ -1659,6 +1659,36 @@ function focusClientRow(id) {
 }
 
 // ===== كارت العميل =====
+function normalizeExtraPhonesList(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  }
+  return [];
+}
+
+function scheduleClientCardMap(id, pos, c) {
+  function run(p) {
+    setTimeout(function () {
+      if (currentCardId !== id) return;
+      try { showClientCardMap(p, c); } catch (mapErr) { console.error('client card map', mapErr); }
+    }, 80);
+  }
+  if (pos) {
+    run(pos);
+    return;
+  }
+  if (window.LiftCoreGeocode) {
+    LiftCoreGeocode.geocodeOne(c).then(function (geoPos) {
+      if (geoPos && currentCardId === id) run(geoPos);
+    });
+  }
+}
+
 function destroyClientCardMap() {
   if (cardMapMarker) {
     if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(cardMapMarker, null);
@@ -1672,46 +1702,62 @@ function destroyClientCardMap() {
 
 function showClientCardMap(pos, c) {
   if (!pos || !c) return;
+  var lat = parseFloat(pos.lat);
+  var lng = parseFloat(pos.lng);
+  if (!isFinite(lat) || !isFinite(lng)) return;
   whenGoogleMapsReady(function () {
-    var mapEl = document.getElementById('card-map');
-    if (!mapEl || typeof google === 'undefined') return;
-    var center = { lat: pos.lat, lng: pos.lng };
-    if (!cardMapInstance) {
-      var cardMapOpts = {
-        center: center,
-        zoom: 15,
-        mapTypeId: 'satellite',
-        clickableIcons: false,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        zoomControl: true,
-        gestureHandling: 'cooperative',
-        styles: MAP_POI_HIDDEN_STYLES
-      };
-      if (window.LiftCoreMap && LiftCoreMap.mergeMapOptions) {
-        cardMapOpts = LiftCoreMap.mergeMapOptions(cardMapOpts);
+    try {
+      var mapEl = document.getElementById('card-map');
+      if (!mapEl || typeof google === 'undefined' || !google.maps) return;
+      var center = { lat: lat, lng: lng };
+      if (!cardMapInstance) {
+        var cardMapOpts = {
+          center: center,
+          zoom: 15,
+          mapTypeId: 'satellite',
+          clickableIcons: false,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          zoomControl: true,
+          gestureHandling: 'cooperative',
+          styles: MAP_POI_HIDDEN_STYLES
+        };
+        if (window.LiftCoreMap && LiftCoreMap.mergeMapOptions) {
+          cardMapOpts = LiftCoreMap.mergeMapOptions(cardMapOpts);
+        }
+        cardMapInstance = new google.maps.Map(mapEl, cardMapOpts);
+      } else {
+        cardMapInstance.setCenter(center);
       }
-      cardMapInstance = new google.maps.Map(mapEl, cardMapOpts);
-    } else {
-      cardMapInstance.setCenter(center);
+      if (cardMapMarker) {
+        if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(cardMapMarker, null);
+        else if (cardMapMarker.setMap) cardMapMarker.setMap(null);
+      }
+      if (window.LiftCoreMap && LiftCoreMap.createPinMarker) {
+        cardMapMarker = LiftCoreMap.createPinMarker({
+          position: center,
+          map: cardMapInstance,
+          title: c.name,
+          color: getClientPinColor(c),
+          scale: CLIENT_MAP_PIN_SCALE_CARD
+        });
+      } else if (google.maps.Marker) {
+        cardMapMarker = new google.maps.Marker({
+          position: center,
+          map: cardMapInstance,
+          title: c.name,
+          icon: makePinIcon(getClientPinColor(c), CLIENT_MAP_PIN_SCALE_CARD)
+        });
+      }
+      setTimeout(function () {
+        if (!cardMapInstance) return;
+        google.maps.event.trigger(cardMapInstance, 'resize');
+        cardMapInstance.setCenter(center);
+      }, 400);
+    } catch (err) {
+      console.error('showClientCardMap', err);
     }
-    if (cardMapMarker) {
-      if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(cardMapMarker, null);
-      else cardMapMarker.setMap(null);
-    }
-    cardMapMarker = LiftCoreMap.createPinMarker({
-      position: center,
-      map: cardMapInstance,
-      title: c.name,
-      color: getClientPinColor(c),
-      scale: CLIENT_MAP_PIN_SCALE_CARD
-    });
-    setTimeout(function () {
-      if (!cardMapInstance) return;
-      google.maps.event.trigger(cardMapInstance, 'resize');
-      cardMapInstance.setCenter(center);
-    }, 400);
   });
 }
 
@@ -1785,6 +1831,7 @@ function openClientCard(id) {
   document.getElementById('card-title').innerHTML =
     esc(c.code) + ' — ' + esc(lcClient(c)) + ' ' + clientStatusBadge(c);
 
+  var extraPhones = normalizeExtraPhonesList(c.extra_phones);
   var cardPos = getClientPosition(c);
   var hasAddress = !!(c.address || c.city || c.district);
   var mapSection = (cardPos || hasAddress)
@@ -1819,8 +1866,8 @@ function openClientCard(id) {
       ((c.entity_type === 'شركة' && c.national_address) ? '<div class="client-card-item full"><div class="client-card-label">' + lcDisp('العنوان الوطني') + '</div><div class="client-card-val">' + esc(c.national_address) + '</div></div>' : '') +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('واتساب المسؤول') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone2||'—') + '</span>' + waButtonHtml(c.phone2, c.contact) + '</div></div>' +
       '<div class="client-card-item"><div class="client-card-label">' + lcDisp('رقم الجوال') + '</div><div class="client-card-val" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="direction:ltr;font-family:var(--font-en)">' + (c.phone||'—') + '</span>' + waButtonHtml(c.phone, lcClient(c)) + '</div></div>' +
-      (((c.extra_phones || []).length) ? ('<div class="client-card-item full"><div class="client-card-label">' + lcDisp('أرقام إضافية') + '</div><div class="client-card-val" style="display:flex;flex-direction:column;gap:8px">' +
-        (c.extra_phones || []).map(function(p){
+      (extraPhones.length ? ('<div class="client-card-item full"><div class="client-card-label">' + lcDisp('أرقام إضافية') + '</div><div class="client-card-val" style="display:flex;flex-direction:column;gap:8px">' +
+        extraPhones.map(function(p){
           var lab = p.label ? ('<span style="color:var(--text3);font-size:12px">' + esc(p.label) + ': </span>') : '';
           return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' + lab + '<span style="direction:ltr;font-family:var(--font-en)">' + esc(p.number||'') + '</span>' + waButtonHtml(p.number, p.label || c.contact) + '</div>';
         }).join('') +
@@ -1844,18 +1891,12 @@ function openClientCard(id) {
   }
   if (window.LiftCoreDisplay) LiftCoreDisplay.applyDom(document.getElementById('card-body'), LiftCoreDisplay.currentLang());
   loadClientData(id);
-
-  if (cardPos) {
-    showClientCardMap(cardPos, c);
-  } else if (window.LiftCoreGeocode) {
-    LiftCoreGeocode.geocodeOne(c).then(function(pos) {
-      if (pos && currentCardId === id) showClientCardMap(pos, c);
-    });
-  }
   } catch (err) {
     console.error('openClientCard', err);
-    alert('تعذّر عرض بيانات العميل');
+    alert(typeof lcT === 'function' ? lcT('تعذّر عرض بيانات العميل') : 'تعذّر عرض بيانات العميل');
+    return;
   }
+  scheduleClientCardMap(id, cardPos, c);
 }
 
 function loadClientData(id) {
