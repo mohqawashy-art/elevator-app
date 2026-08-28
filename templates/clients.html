@@ -70,7 +70,7 @@
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/client_location.css?v=2">
 <script src="/static/customer_profile.js"></script>
-<script src="/static/client_location.js"></script>
+<script src="/static/client_location.js?v=3"></script>
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js?v=6"></script>
 <script src="/static/client_map_picker.js?v=11"></script>
@@ -819,7 +819,8 @@ var CLIENT_MODAL_EN = {
   'مصعد': 'Elevator',
   'عقد': 'Contract',
   'إجمالي المدفوع': 'Total Paid',
-  'جاري تحميل البيانات...': 'Loading data...'
+  'جاري تحميل البيانات...': 'Loading data...',
+  'جاري تحميل الخريطة...': 'Loading map...'
 };
 
 window.__lcApplyClientModal = null;
@@ -1701,10 +1702,16 @@ function normalizeExtraPhonesList(raw) {
 
 function scheduleClientCardMap(id, pos, c) {
   function run(p) {
+    if (currentCardId !== id) return;
+    var mapEl = document.getElementById('card-map');
+    if (mapEl && !mapEl.querySelector('.leaflet-container')) {
+      mapEl.innerHTML = '<div class="card-map-loading card-loading-msg" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px">جاري تحميل الخريطة...</div>';
+      if (window.LiftCoreDisplay) LiftCoreDisplay.applyDom(mapEl, LiftCoreDisplay.currentLang());
+    }
     setTimeout(function () {
       if (currentCardId !== id) return;
       try { showClientCardMap(p, c); } catch (mapErr) { console.error('client card map', mapErr); }
-    }, 80);
+    }, 120);
   }
   if (pos) {
     run(pos);
@@ -1764,51 +1771,8 @@ function showClientCardMap(pos, c) {
   var lat = parseFloat(pos.lat);
   var lng = parseFloat(pos.lng);
   if (!isFinite(lat) || !isFinite(lng)) return;
-  if (useOsmMaps()) {
-    showClientCardMapOsm(pos, c);
-    return;
-  }
-  whenGoogleMapsReady(function () {
-    try {
-      var mapEl = document.getElementById('card-map');
-      if (!mapEl || typeof google === 'undefined' || !google.maps) {
-        showClientCardMapOsm(pos, c);
-        return;
-      }
-      cardMapInstance = null;
-      cardMapMarker = null;
-      var center = { lat: lat, lng: lng };
-      var cardMapOpts = {
-        center: center,
-        zoom: 15,
-        mapTypeId: 'satellite',
-        clickableIcons: false,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        zoomControl: true,
-        gestureHandling: 'cooperative'
-      };
-      cardMapInstance = new google.maps.Map(mapEl, cardMapOpts);
-      cardMapMarker = new google.maps.Marker({
-        position: center,
-        map: cardMapInstance,
-        title: c.name || '',
-        icon: makePinIcon(getClientPinColor(c), CLIENT_MAP_PIN_SCALE_CARD)
-      });
-      setTimeout(function () {
-        if (!cardMapInstance) return;
-        google.maps.event.trigger(cardMapInstance, 'resize');
-        cardMapInstance.setCenter(center);
-        if (mapEl.querySelector('.gm-err-container')) {
-          showClientCardMapOsm(pos, c);
-        }
-      }, 400);
-    } catch (err) {
-      console.error('showClientCardMap', err);
-      showClientCardMapOsm(pos, c);
-    }
-  });
+  /* كارت العميل: OSM فوراً — Google داخل modal بطيء/فارغ غالباً */
+  showClientCardMapOsm(pos, c);
 }
 
 function closeClientCard() {
