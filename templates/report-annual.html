@@ -504,7 +504,7 @@ var hDateEl = document.getElementById('h-date');
 if (hDateEl) hDateEl.textContent = `${_days[_now.getDay()]}، ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} — `;
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
-function setLang(l){document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');document.getElementById('btn-ar').classList.toggle('active',l==='ar');document.getElementById('btn-en').classList.toggle('active',l==='en');}
+function setLang(l){if(window.LiftCoreI18n&&window.LiftCoreI18n.setLang){window.LiftCoreI18n.setLang(l);return;}document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');var a=document.getElementById('btn-ar'),e=document.getElementById('btn-en');if(a)a.classList.toggle('active',l==='ar');if(e)e.classList.toggle('active',l==='en');}
 </script>
 <script src="{{ url_for('static', filename='reports_live.js') }}?v=6"></script>
 </body>
