@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="/static/client_location.css">
 <script src="/static/customer_profile.js"></script>
 <script src="/static/elevator_profile.js"></script>
+<script src="/static/client_location.js?v=8"></script>
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js?v=3"></script>
 <script src="/static/client_map_picker.js?v=7"></script>
@@ -320,10 +321,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="page-title">المصاعد <span id="elev-count" data-i18n-skip>({{ elevators|length }} مصعد)</span></div>
         <div class="page-actions">
           {% with report_url=url_for('report_elevators'), report_label='تقرير المصاعد' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
-          <a class="btn btn-secondary btn-sm" href="{{ url_for('elevators_import_template') }}" download>
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-            تحميل النموذج
-          </a>
           <button class="btn btn-secondary btn-sm" onclick="openModal('modal-import')">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
             استيراد Excel
@@ -347,8 +344,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <select class="filter-select" id="f-client" onchange="filterTable()">
           <option value="">كل العملاء</option>
         </select>
-        <select class="filter-select" id="f-city" onchange="filterTable()">
+        <select class="filter-select" id="f-city" onchange="onElevCityFilterChange()">
           <option value="">كل المدن</option>
+        </select>
+        <select class="filter-select" id="f-filter-district" onchange="filterTable()">
+          <option value="">كل الأحياء</option>
         </select>
         <select class="filter-select" id="f-type" onchange="filterTable()">
           <option value="">كل الأنواع</option>
@@ -661,7 +661,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           </div>
           <div class="field form-full">
             <label>اسم المبنى</label>
-            <input type="text" id="f-building" placeholder="اسم المبنى">
+            <input type="text" id="f-building" placeholder="يُكتب يدوياً — اتركه فارغاً إن لم يُحدَّد بعد">
           </div>
         </div>
       </div>
@@ -727,9 +727,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
         <div style="color:var(--accent)">كود العميل أو اسم العميل (يجب أن يكون العميل مسجّلاً مسبقاً)</div>
         <div style="color:var(--text3);margin-top:4px">اختيارية: المبنى، المدينة، النوع، الماركة، الحمولة، الحالة...</div>
-        <div style="margin-top:8px">
-          <a href="{{ url_for('elevators_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
-        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -775,6 +772,7 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   numberCols: ['capacity', 'floors'],
   getters: {
     customer: function (e) { return elevCustomer(e); },
+    district: function (e) { return elevDistrict(e) || ''; },
   },
   onChange: function () { renderTable(filtered); },
 }) : null;
@@ -856,6 +854,13 @@ let currentDeleteId = null;
 let currentViewId = null;
 
 // ===== فلاتر =====
+function elevDistrict(e) {
+  var d = ((e && e.district) || '').trim();
+  if (d) return d;
+  var cust = CUSTOMERS.find(function(c) { return c.id === e.customer_id; });
+  return ((cust && cust.district) || '').trim();
+}
+
 function initFilters() {
   var fClient = document.getElementById('f-client');
   var fCity = document.getElementById('f-city');
@@ -879,6 +884,37 @@ function initFilters() {
       }
     });
   }
+  fillDistrictFilter();
+}
+
+function allElevDistricts(cityFilter) {
+  var seen = {}, list = [];
+  ELEVATORS.forEach(function(e) {
+    var d = elevDistrict(e);
+    if (!d || seen[d]) return;
+    if (cityFilter && e.city !== cityFilter) return;
+    seen[d] = 1;
+    list.push(d);
+  });
+  return list.sort(function(a, b) { return a.localeCompare(b, 'ar'); });
+}
+
+function fillDistrictFilter(keepSelected) {
+  var sel = document.getElementById('f-filter-district');
+  if (!sel) return;
+  var city = (document.getElementById('f-city') || {}).value || '';
+  var prev = keepSelected ? (sel.value || '') : '';
+  var districts = allElevDistricts(city);
+  sel.innerHTML = '<option value="">كل الأحياء</option>' +
+    districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
+  if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
+    sel.value = prev;
+  }
+}
+
+function onElevCityFilterChange() {
+  fillDistrictFilter(true);
+  filterTable();
 }
 
 function fillClientSelect(selectedId) {
@@ -897,15 +933,9 @@ function fillClientData() {
   if (!c) return;
   document.getElementById('f-elev-city').value = c.city || '';
   document.getElementById('f-elev-district').value = c.district || '';
-  var building = document.getElementById('f-building');
-  var elevCode = document.getElementById('f-elev-code');
-  if (building && !building.value.trim()) {
-    var suffix = (elevCode && elevCode.value) ? (' — ' + elevCode.value) : '';
-    building.value = (c.name || '') + suffix;
-  }
   if (c.lat && c.lng && typeof LiftCoreMapPicker !== 'undefined') {
     LiftCoreMapPicker.setLocation(c.lat, c.lng, {
-      address: building ? building.value : '',
+      address: c.address || '',
       city: c.city || '',
       district: c.district || '',
       maps_url: 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng,
@@ -1077,12 +1107,15 @@ function filterTable() {
   var tp = document.getElementById('f-type').value || '';
   var st = document.getElementById('f-status').value || '';
   var cy = document.getElementById('f-city').value || '';
+  var dist = (document.getElementById('f-filter-district') || {}).value || '';
   filtered = ELEVATORS.filter(function(e) {
-    return (!s || e.code.toLowerCase().indexOf(s) >= 0 || e.customer.toLowerCase().indexOf(s) >= 0 || (e.building || '').toLowerCase().indexOf(s) >= 0) &&
+    var ed = elevDistrict(e);
+    return (!s || e.code.toLowerCase().indexOf(s) >= 0 || e.customer.toLowerCase().indexOf(s) >= 0 || (e.building || '').toLowerCase().indexOf(s) >= 0 || ed.toLowerCase().indexOf(s) >= 0) &&
       (!ct || e.customer === ct) &&
       (!tp || e.elev_type === tp) &&
       (!st || e.status === st) &&
-      (!cy || e.city === cy);
+      (!cy || e.city === cy) &&
+      (!dist || ed === dist);
   });
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
@@ -1591,21 +1624,80 @@ function exportExcel() {
 
 // ===== خريطة المصاعد =====
 var elevMap = null, elevMarkers = [], elevCluster = null, elevInfoWindow = null, elevInfoPinned = false, elevHoverTimer = null;
+var osmElevMap = null, osmElevMarkers = [];
+var ELEV_MAP_OSM_RADIUS = 7;
 
 var MAP_POI_HIDDEN = [
   {featureType: 'poi', stylers: [{visibility: 'off'}]},
   {featureType: 'transit', stylers: [{visibility: 'off'}]}
 ];
 
+function useOsmElevMaps() {
+  return !window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed || typeof google === 'undefined' || !google.maps;
+}
+
+function destroyOsmElevMap() {
+  if (osmElevMap) {
+    try { osmElevMap.remove(); } catch (e) { /* ignore */ }
+  }
+  osmElevMap = null;
+  osmElevMarkers = [];
+  var mapEl = document.getElementById('map');
+  if (mapEl) {
+    mapEl.innerHTML = '';
+    mapEl.className = mapEl.className.replace(/\bleaflet-\S+/g, '').trim();
+  }
+}
+
+function destroyGoogleElevMap() {
+  clearElevMapMarkers();
+  elevInfoWindow = null;
+  elevMap = null;
+  var mapEl = document.getElementById('map');
+  if (mapEl) mapEl.innerHTML = '';
+}
+
 function getElevatorPosition(e) {
   if ((e.customer_status || 'نشط') === 'غير نشط') return null;
+  var cust = CUSTOMERS.find(function(c) { return c.id === e.customer_id; });
+  if (window.LiftCoreMap && LiftCoreMap.coordsForRecord) {
+    var fromMap = LiftCoreMap.coordsForRecord(cust || {
+      lat: e.customer_lat, lng: e.customer_lng, city: e.city
+    });
+    if (fromMap) {
+      if (fromMap.exact) {
+        var spread = (e.id % 8) * 0.00012;
+        return { lat: fromMap.lat + spread, lng: fromMap.lng + spread * 0.8, exact: true };
+      }
+      return fromMap;
+    }
+  }
+  if (window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer) {
+    var fromCust = LiftCoreLocation.coordsForCustomer(cust || {
+      lat: e.customer_lat, lng: e.customer_lng, city: e.city
+    });
+    if (fromCust) {
+      if (fromCust.exact) {
+        var spread2 = (e.id % 8) * 0.00012;
+        return { lat: fromCust.lat + spread2, lng: fromCust.lng + spread2 * 0.8, exact: true };
+      }
+      return fromCust;
+    }
+  }
   var lat = parseFloat(e.customer_lat), lng = parseFloat(e.customer_lng);
-  if (isNaN(lat) || isNaN(lng)) return null;
-  var spread = (e.id % 8) * 0.00012;
-  return {lat: lat + spread, lng: lng + spread * 0.8, exact: true};
+  if (!isNaN(lat) && !isNaN(lng)) {
+    var spread3 = (e.id % 8) * 0.00012;
+    return { lat: lat + spread3, lng: lng + spread3 * 0.8, exact: true };
+  }
+  var city = (window.LiftCoreLocation && LiftCoreLocation.resolveCityCoords)
+    ? LiftCoreLocation.resolveCityCoords(e.city)
+    : CITY_COORDS[e.city];
+  if (!city) return null;
+  return { lat: city.lat, lng: city.lng, exact: false };
 }
 
 function makeElevPin(color) {
+  if (window.LiftCoreMap) return LiftCoreMap.makePinIcon(color, 1.25);
   return {
     path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z',
     fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2,
@@ -1635,14 +1727,73 @@ function clearElevMapMarkers() {
   elevMarkers = [];
 }
 
+function refreshElevatorMapOsm() {
+  var mapEl = document.getElementById('map');
+  var summary = document.getElementById('map-summary');
+  var emptyEl = document.getElementById('map-empty');
+  if (!mapEl || typeof L === 'undefined') return;
+  if (elevMap) destroyGoogleElevMap();
+  mapEl.style.display = 'block';
+  if (!osmElevMap) {
+    osmElevMap = L.map(mapEl).setView([21.4225, 39.8262], 11);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(osmElevMap);
+  }
+  osmElevMarkers.forEach(function (m) { osmElevMap.removeLayer(m); });
+  osmElevMarkers = [];
+  var bounds = [];
+  var shown = 0;
+  ELEVATORS.forEach(function (e) {
+    if ((e.customer_status || 'نشط') === 'غير نشط') return;
+    var pos = getElevatorPosition(e);
+    if (!pos) return;
+    shown++;
+    var color = ELEV_PIN_COLORS[e.status] || '#2a7fff';
+    var marker = L.circleMarker([pos.lat, pos.lng], {
+      radius: ELEV_MAP_OSM_RADIUS,
+      color: '#ffffff',
+      weight: 2,
+      fillColor: color,
+      fillOpacity: 1
+    }).addTo(osmElevMap);
+    marker.bindPopup(elevMapInfo(e));
+    osmElevMarkers.push(marker);
+    bounds.push([pos.lat, pos.lng]);
+  });
+  if (summary) {
+    summary.textContent = shown
+      ? ('OpenStreetMap — ' + shown + ' مصعد (عملاء نشطون فقط)')
+      : 'لا مواقع لمصاعد عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
+  }
+  if (emptyEl) emptyEl.style.display = shown ? 'none' : 'block';
+  if (bounds.length) {
+    osmElevMap.fitBounds(bounds, { padding: [48, 48] });
+    if (bounds.length === 1) osmElevMap.setZoom(14);
+  }
+  setTimeout(function () { osmElevMap.invalidateSize(); }, 250);
+}
+
 function refreshElevatorMap(fitAgain) {
-  if (typeof google === 'undefined' || !google.maps) return;
+  if (window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && (typeof google === 'undefined' || !google.maps)) {
+    var summaryWait = document.getElementById('map-summary');
+    if (summaryWait) summaryWait.textContent = 'جاري تحميل خرائط Google...';
+    whenGoogleMapsReady(function () { refreshElevatorMap(fitAgain); });
+    return;
+  }
+  if (useOsmElevMaps()) {
+    refreshElevatorMapOsm();
+    return;
+  }
   if (window.LiftCoreMap && LiftCoreMap.ensureMarkerLibReady && !LiftCoreMap.canUseAdvancedMarkers()) {
     LiftCoreMap.ensureMarkerLibReady(function () { refreshElevatorMap(fitAgain); });
     return;
   }
   var mapEl = document.getElementById('map');
   if (!mapEl) return;
+
+  if (osmElevMap) destroyOsmElevMap();
 
   if (!elevMap) {
     var elevMapOpts = {
@@ -1745,9 +1896,17 @@ function switchElevTab(tab, el) {
   document.querySelectorAll('.tabs .tab').forEach(function(t) { t.classList.remove('active'); });
   if (el) el.classList.add('active');
   if (tab === 'map') {
-    setTimeout(function() { refreshElevatorMap(true); }, 200);
+    if (window.ensureGoogleMapsScript) ensureGoogleMapsScript();
+    if (useOsmElevMaps()) {
+      setTimeout(function() { refreshElevatorMap(true); }, 200);
+    } else {
+      whenGoogleMapsReady(function () {
+        setTimeout(function() { refreshElevatorMap(true); }, 200);
+      });
+    }
     setTimeout(function() {
       if (elevMap && google.maps) google.maps.event.trigger(elevMap, 'resize');
+      if (osmElevMap) osmElevMap.invalidateSize();
     }, 500);
     if (window.history && window.history.replaceState) {
       var u = new URL(window.location.href);
