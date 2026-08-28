@@ -397,13 +397,14 @@ def _completed_visits_for_contract(MaintenanceVisit, contract, period_from, peri
 def get_contract_cost_allocation_report(
     Contract,
     MaintenanceVisit,
+    Revenue,
     date_from=None,
     date_to=None,
     contract_status_fn=None,
     today=None,
 ):
-    """توزيع قيمة العقود النشطة على مدة العقد والزيارات — مع استحقاق الفترة."""
-    from contract_cost_allocation import contract_cost_allocation
+    """توزيع قيمة العقود — استحقاق الفترة ومقارنة المحصّل (فجوة التحصيل)."""
+    from contract_cost_allocation import contract_cost_allocation, collection_gap_fields
 
     if today is None:
         today = date.today()
@@ -420,6 +421,8 @@ def get_contract_cost_allocation_report(
         'contract_total': 0.0,
         'monthly_accrual': 0.0,
         'period_accrued': 0.0,
+        'period_collected': 0.0,
+        'collection_gap': 0.0,
         'earned_by_visits': 0.0,
         'planned_visits': 0,
         'completed_visits': 0,
@@ -444,6 +447,9 @@ def get_contract_cost_allocation_report(
         if not alloc.get('contract_total'):
             continue
 
+        period_collected = _collected_for_contract_in_period(Revenue, c.id, date_from, date_to)
+        gap = collection_gap_fields(alloc.get('period_accrued') or 0, period_collected)
+
         rows.append({
             'code': c.code,
             'customer': c.customer.name if c.customer else '—',
@@ -451,10 +457,14 @@ def get_contract_cost_allocation_report(
             'end_date': str(c.end_date),
             'status': st,
             **alloc,
+            'period_collected': period_collected,
+            **gap,
         })
         totals['contract_total'] += alloc['contract_total']
         totals['monthly_accrual'] += alloc['monthly_accrual']
         totals['period_accrued'] += alloc.get('period_accrued') or 0
+        totals['period_collected'] += period_collected
+        totals['collection_gap'] += gap['collection_gap']
         totals['earned_by_visits'] += alloc.get('earned_by_visits') or 0
         totals['planned_visits'] += alloc['planned_visits']
         totals['completed_visits'] += completed

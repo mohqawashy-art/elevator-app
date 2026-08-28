@@ -94,3 +94,27 @@ def contract_cost_allocation(
         result['earned_by_visits'] = round(per_visit * cv, 2)
 
     return result
+
+
+def collection_gap_status(accrued: float, collected: float) -> str:
+    """حالة التحصيل مقابل المستحق."""
+    accrued = float(accrued or 0)
+    collected = float(collected or 0)
+    if accrued <= 0.01:
+        return '—'
+    if collected >= accrued - 0.01:
+        return 'محصّل'
+    if collected > 0:
+        return 'تحصيل جزئي'
+    return 'متأخر'
+
+
+def collection_gap_fields(accrued: float, collected: float) -> dict:
+    """المحصّل، فجوة التحصيل (مستحق − محصّل)، والحالة."""
+    accrued = round(float(accrued or 0), 2)
+    collected = round(float(collected or 0), 2)
+    return {
+        'collected': collected,
+        'collection_gap': round(accrued - collected, 2),
+        'collection_status': collection_gap_status(accrued, collected),
+    }

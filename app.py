@@ -1051,8 +1051,6 @@ def _backfill_contract_billing_cache():
 
 def contract_to_js_dict(c, *, renewed_ids=None):
     """تسلسل عقد لـ JSON في الصفحة (بدون استعلامات إضافية)."""
-    from contract_cost_allocation import contract_cost_allocation
-
     cid = getattr(c, 'id', None)
     is_renewed = bool(getattr(c, '_is_renewed', False))
     if renewed_ids is not None and cid is not None:
@@ -1094,8 +1092,25 @@ def contract_to_js_dict(c, *, renewed_ids=None):
         'notes': c.notes or '',
         'file_url': upload_url(c.file_path),
         'file_name': contract_file_display_name(c.file_path),
-        'cost_allocation': contract_cost_allocation(c),
+        'cost_allocation': _contract_cost_allocation_js(c),
     }
+
+
+def _contract_cost_allocation_js(c):
+    """توزيع العقد + المستحق حتى اليوم مقابل المحصّل."""
+    from contract_cost_allocation import contract_cost_allocation, collection_gap_fields
+
+    alloc = contract_cost_allocation(c)
+    paid = _money_round(c.paid_amount or 0)
+    accrued_to_date = 0.0
+    if c.start_date and c.end_date:
+        to_d = min(date.today(), c.end_date)
+        if to_d >= c.start_date:
+            td = contract_cost_allocation(c, period_from=c.start_date, period_to=to_d)
+            accrued_to_date = td.get('period_accrued') or 0
+    alloc['accrued_to_date'] = accrued_to_date
+    alloc.update(collection_gap_fields(accrued_to_date, paid))
+    return alloc
 
 
 def contract_customer_js_dict(c):
@@ -12675,7 +12690,7 @@ def api_report_contract_cost_allocation():
     date_from = _parse_report_date(request.args.get('date_from')) or date(today.year, 1, 1)
     date_to = _parse_report_date(request.args.get('date_to')) or today
     return jsonify(get_contract_cost_allocation_report(
-        Contract, MaintenanceVisit,
+        Contract, MaintenanceVisit, Revenue,
         date_from=date_from,
         date_to=date_to,
         contract_status_fn=contract_display_status,

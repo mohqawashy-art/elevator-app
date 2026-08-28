@@ -6,7 +6,7 @@ from datetime import date
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from contract_cost_allocation import contract_cost_allocation, contract_planned_visits
+from contract_cost_allocation import contract_cost_allocation, contract_planned_visits, collection_gap_fields, collection_gap_status
 
 
 class _ContractStub:
@@ -64,3 +64,13 @@ def test_visits_derived_from_frequency_when_missing():
     a = contract_cost_allocation(c, completed_visits=2)
     assert a['per_visit_value'] == 1500.0
     assert a['earned_by_visits'] == 3000.0
+
+
+def test_collection_gap_fields():
+    gap = collection_gap_fields(6000, 4000)
+    assert gap['collected'] == 4000.0
+    assert gap['collection_gap'] == 2000.0
+    assert gap['collection_status'] == 'تحصيل جزئي'
+    assert collection_gap_status(5000, 5000) == 'محصّل'
+    assert collection_gap_status(5000, 0) == 'متأخر'
+    assert collection_gap_status(0, 100) == '—'

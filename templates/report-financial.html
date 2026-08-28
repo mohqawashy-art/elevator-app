@@ -77,7 +77,9 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 .alloc-table td{font-family:var(--font-en)}
 .alloc-table td.alloc-name{font-family:var(--font-ar);white-space:normal;min-width:120px}
 .alloc-table tr:hover td{background:rgba(42,127,255,.04)}
-.alloc-empty{padding:24px;text-align:center;color:var(--text3);font-size:13px}
+.alloc-gap-pos{color:var(--danger)}
+.alloc-gap-ok{color:var(--success)}
+.alloc-status{font-family:var(--font-ar);font-size:11px}
 
 @media(max-width:1100px){.stats-row-4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){
@@ -220,6 +222,20 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
             <div class="stat-value" id="alloc-visits-ratio">—</div>
           </div>
         </div>
+        <div class="stats-row stats-row-3">
+          <div class="stat-card">
+            <div class="stat-label">محصّل الفترة</div>
+            <div class="stat-value green" id="alloc-period-collected">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">فجوة التحصيل (مستحق − محصّل)</div>
+            <div class="stat-value red" id="alloc-collection-gap">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">عدد العقود المتأخرة تحصيلاً</div>
+            <div class="stat-value" id="alloc-overdue-count">—</div>
+          </div>
+        </div>
         <div class="alloc-table-wrap">
           <table class="alloc-table">
             <thead>
@@ -230,12 +246,15 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
                 <th>استحقاق شهري</th>
                 <th>قيمة/زيارة</th>
                 <th>استحقاق الفترة</th>
+                <th>محصّل الفترة</th>
+                <th>فجوة التحصيل</th>
+                <th>الحالة</th>
                 <th>زيارات</th>
                 <th>قيمة منفذة</th>
               </tr>
             </thead>
             <tbody id="alloc-table-body">
-              <tr><td colspan="8" class="alloc-empty">جاري التحميل...</td></tr>
+              <tr><td colspan="11" class="alloc-empty">جاري التحميل...</td></tr>
             </tbody>
           </table>
         </div>
@@ -307,7 +326,7 @@ function loadFinancial() {
 function loadContractCostAllocation(qs) {
   const tbody = document.getElementById('alloc-table-body');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="8" class="alloc-empty">جاري التحميل...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" class="alloc-empty">جاري التحميل...</td></tr>';
 
   fetch('/api/reports/contract-cost-allocation?' + qs)
     .then(r => r.json())
@@ -323,6 +342,22 @@ function loadContractCostAllocation(qs) {
       setMoney('alloc-total-contracts', totals.contract_total);
       setMoney('alloc-period-accrued', totals.period_accrued);
       setMoney('alloc-earned-visits', totals.earned_by_visits);
+      setMoney('alloc-period-collected', totals.period_collected);
+
+      const gapEl = document.getElementById('alloc-collection-gap');
+      const gapVal = Number(totals.collection_gap) || 0;
+      if (gapEl) {
+        setMoney('alloc-collection-gap', gapVal);
+        gapEl.classList.remove('green', 'red');
+        gapEl.classList.add(gapVal > 0.01 ? 'red' : 'green');
+      }
+
+      const overdueEl = document.getElementById('alloc-overdue-count');
+      if (overdueEl) {
+        const overdue = rows.filter(function (r) { return r.collection_status === 'متأخر'; }).length;
+        overdueEl.textContent = String(overdue);
+        overdueEl.style.fontFamily = 'var(--font-en)';
+      }
 
       const ratioEl = document.getElementById('alloc-visits-ratio');
       if (ratioEl) {
@@ -331,11 +366,13 @@ function loadContractCostAllocation(qs) {
       }
 
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="alloc-empty">لا توجد عقود نشطة بقيمة في هذه الفترة</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="alloc-empty">لا توجد عقود نشطة بقيمة في هذه الفترة</td></tr>';
         return;
       }
 
       tbody.innerHTML = rows.map(function (r) {
+        var gap = Number(r.collection_gap) || 0;
+        var gapCls = gap > 0.01 ? 'alloc-gap-pos' : 'alloc-gap-ok';
         return '<tr>' +
           '<td>' + escHtml(r.code) + '</td>' +
           '<td class="alloc-name">' + escHtml(r.customer) + '</td>' +
@@ -343,13 +380,16 @@ function loadContractCostAllocation(qs) {
           '<td>' + fmtNum(r.monthly_accrual) + '</td>' +
           '<td>' + fmtNum(r.per_visit_value) + '</td>' +
           '<td>' + fmtNum(r.period_accrued) + '</td>' +
+          '<td>' + fmtNum(r.period_collected) + '</td>' +
+          '<td class="' + gapCls + '">' + fmtNum(gap) + '</td>' +
+          '<td class="alloc-status">' + escHtml(r.collection_status || '—') + '</td>' +
           '<td>' + (r.completed_visits || 0) + ' / ' + (r.planned_visits || 0) + '</td>' +
           '<td>' + fmtNum(r.earned_by_visits) + '</td>' +
           '</tr>';
       }).join('');
     })
     .catch(function () {
-      tbody.innerHTML = '<tr><td colspan="8" class="alloc-empty">تعذّر تحميل توزيع العقود</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" class="alloc-empty">تعذّر تحميل توزيع العقود</td></tr>';
     });
 }
 
