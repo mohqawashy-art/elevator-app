@@ -18,10 +18,11 @@
 }
 body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;margin:0}
 .wrap{max-width:1200px;margin:0 auto;padding:20px 24px 40px}
-.page-heading{font-size:22px;font-weight:600;margin-bottom:16px}
 .settings-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;align-items:start}
-.settings-tabs-col{position:sticky;top:calc(var(--lc-header-h,104px) + 16px);align-self:start;z-index:50;background:var(--bg);padding-bottom:8px}
-body:has(.department-tabs-wrap) .settings-tabs-col{top:calc(var(--lc-header-h,104px) + var(--lc-dept-tabs-h,50px) + 16px)}
+.settings-tabs-col{position:sticky;top:calc(var(--lc-header-h,104px) + 16px);align-self:start;z-index:50;background:var(--bg);padding-bottom:8px;display:flex;flex-direction:column;max-height:calc(100vh - var(--lc-header-h,104px) - 24px)}
+body:has(.department-tabs-wrap) .settings-tabs-col{top:calc(var(--lc-header-h,104px) + var(--lc-dept-tabs-h,50px) + 16px);max-height:calc(100vh - var(--lc-header-h,104px) - var(--lc-dept-tabs-h,50px) - 24px)}
+.settings-tabs-col .page-heading{font-size:22px;font-weight:600;margin:0 0 12px;padding-inline-start:12px;border-inline-start:3px solid var(--gold);flex-shrink:0}
+.settings-main{min-width:0}
 .settings-panels{min-width:0}
 .flash{padding:10px 14px;border-radius:var(--r-sm);margin-bottom:14px;font-size:13px;line-height:1.6}
 .flash-ok{background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.25);color:var(--success)}
@@ -29,8 +30,7 @@ body:has(.department-tabs-wrap) .settings-tabs-col{top:calc(var(--lc-header-h,10
 .flash-info{background:rgba(42,127,255,.1);border:1px solid rgba(42,127,255,.2);color:#7eb8ff}
 .generated-box{background:rgba(200,160,85,.1);border:1px solid rgba(200,160,85,.25);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.8}
 .generated-box code{background:var(--bg3);padding:2px 8px;border-radius:4px;direction:ltr;display:inline-block}
-.tabs{display:flex;flex-direction:column;gap:4px;margin:0;border-inline-end:1px solid var(--border);padding-inline-end:16px;max-height:calc(100vh - var(--lc-header-h,104px) - 32px);overflow-y:auto;overscroll-behavior:contain}
-body:has(.department-tabs-wrap) .tabs{max-height:calc(100vh - var(--lc-header-h,104px) - var(--lc-dept-tabs-h,50px) - 32px)}
+.tabs{display:flex;flex-direction:column;gap:4px;margin:0;border-inline-end:1px solid var(--border);padding-inline-end:16px;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .tab{padding:10px 14px;border-radius:var(--r-sm);font-size:13px;color:var(--text2);cursor:pointer;border:1px solid transparent;background:transparent;font-family:inherit;text-align:right;width:100%}
 .tab:hover{color:var(--text1);background:var(--bg3)}
 .tab.active{color:var(--accent);border-color:rgba(42,127,255,.35);background:rgba(42,127,255,.08)}
@@ -77,8 +77,9 @@ input[type=range]{padding:0;background:transparent;border:none}
 .row-actions{display:flex;gap:6px;flex-wrap:wrap}
 @media(max-width:900px){
   .settings-layout{grid-template-columns:1fr;gap:16px}
-  .settings-tabs-col{position:static;padding-bottom:0}
-  .tabs{flex-direction:row;flex-wrap:wrap;border-inline-end:none;border-bottom:1px solid var(--border);padding-inline-end:0;padding-bottom:10px;max-height:none;overflow:visible}
+  .settings-tabs-col{position:static;padding-bottom:0;max-height:none;display:block}
+  .settings-tabs-col .page-heading{margin-bottom:16px}
+  .tabs{flex-direction:row;flex-wrap:wrap;border-inline-end:none;border-bottom:1px solid var(--border);padding-inline-end:0;padding-bottom:10px;flex:none;overflow:visible}
   .tab{width:auto;padding:8px 14px}
 }
 @media(max-width:768px){.grid,.preview-row{grid-template-columns:1fr}}
@@ -97,24 +98,9 @@ input[type=range]{padding:0;background:transparent;border:none}
 </nav>
 {% endif %}
 <div class="wrap">
-  <h1 class="page-heading" data-i18n="settings">الإعدادات</h1>
-
-  {% if request.args.get('saved') %}
-  <div class="flash flash-ok">تم الحفظ بنجاح.</div>
-  {% endif %}
-  {% if settings_notice %}
-  <div class="flash {% if 'غير' in settings_notice or 'مطلوب' in settings_notice or 'مستخ' in settings_notice or 'لا يمكن' in settings_notice or 'صلاحية' in settings_notice %}flash-warn{% else %}flash-ok{% endif %}">{{ settings_notice }}</div>
-  {% endif %}
-  {% if generated_password and generated_username %}
-  <div class="generated-box">
-    <strong>كلمة المرور — انسخها الآن:</strong><br>
-    المستخدم: <code>{{ generated_username }}</code><br>
-    كلمة المرور: <code>{{ generated_password }}</code>
-  </div>
-  {% endif %}
-
   <div class="settings-layout">
   <aside class="settings-tabs-col" aria-label="أقسام الإعدادات">
+  <h1 class="page-heading" data-i18n="settings">الإعدادات</h1>
   <div class="tabs" role="tablist">
     <button type="button" class="tab {% if active_tab == 'company' %}active{% endif %}" data-tab="company">الشركة والهوية</button>
     {% if current_user.role == 'admin' %}
@@ -129,6 +115,21 @@ input[type=range]{padding:0;background:transparent;border:none}
     <button type="button" class="tab {% if active_tab == 'plan' %}active{% endif %}" data-tab="plan">الباقة</button>
   </div>
   </aside>
+
+  <div class="settings-main">
+  {% if request.args.get('saved') %}
+  <div class="flash flash-ok">تم الحفظ بنجاح.</div>
+  {% endif %}
+  {% if settings_notice %}
+  <div class="flash {% if 'غير' in settings_notice or 'مطلوب' in settings_notice or 'مستخ' in settings_notice or 'لا يمكن' in settings_notice or 'صلاحية' in settings_notice %}flash-warn{% else %}flash-ok{% endif %}">{{ settings_notice }}</div>
+  {% endif %}
+  {% if generated_password and generated_username %}
+  <div class="generated-box">
+    <strong>كلمة المرور — انسخها الآن:</strong><br>
+    المستخدم: <code>{{ generated_username }}</code><br>
+    كلمة المرور: <code>{{ generated_password }}</code>
+  </div>
+  {% endif %}
 
   <div class="settings-panels">
   <!-- الشركة -->
@@ -893,6 +894,7 @@ input[type=range]{padding:0;background:transparent;border:none}
       <p class="hint">لا توجد بيانات اشتراك لهذه الجلسة.</p>
       {% endif %}
     </div>
+  </div>
   </div>
   </div>
   </div>
