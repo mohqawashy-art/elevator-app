@@ -905,7 +905,7 @@ function fillDistrictFilter(keepSelected) {
   var city = (document.getElementById('f-city') || {}).value || '';
   var prev = keepSelected ? (sel.value || '') : '';
   var districts = allElevDistricts(city);
-  sel.innerHTML = '<option value="">كل الأحياء</option>' +
+  sel.innerHTML = '<option value="">' + (typeof lcDisp === 'function' ? lcDisp('كل الأحياء') : 'كل الأحياء') + '</option>' +
     districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
   if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
     sel.value = prev;

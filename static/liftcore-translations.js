@@ -12,6 +12,7 @@ window.__LC_TRANSLATIONS = {
   'أرقام التواصل': 'Contact Numbers',
   'هاتف المسؤول': 'Contact Phone',
   'كل المدن': 'All Cities',
+  'كل الأحياء': 'All Districts',
   'حالة العقد': 'Contract Status',
   'على وشك الانتهاء': 'Expiring Soon',
   'ملغي': 'Cancelled',
