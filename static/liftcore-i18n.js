@@ -667,6 +667,10 @@
       '.exec-auto-note',
       '.exec-done-panel h2',
       'summary',
+      '.rpt-stat-label',
+      '.rpt-header-logo-sub',
+      '.rpt-footer-line span',
+      '.print-toolbar-title',
     ];
     selectors.forEach(function (sel) {
       root.querySelectorAll(sel).forEach(function (el) {
