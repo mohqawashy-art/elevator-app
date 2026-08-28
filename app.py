@@ -1051,6 +1051,8 @@ def _backfill_contract_billing_cache():
 
 def contract_to_js_dict(c, *, renewed_ids=None):
     """تسلسل عقد لـ JSON في الصفحة (بدون استعلامات إضافية)."""
+    from contract_cost_allocation import contract_cost_allocation
+
     cid = getattr(c, 'id', None)
     is_renewed = bool(getattr(c, '_is_renewed', False))
     if renewed_ids is not None and cid is not None:
@@ -1092,6 +1094,7 @@ def contract_to_js_dict(c, *, renewed_ids=None):
         'notes': c.notes or '',
         'file_url': upload_url(c.file_path),
         'file_name': contract_file_display_name(c.file_path),
+        'cost_allocation': contract_cost_allocation(c),
     }
 
 
@@ -12663,6 +12666,20 @@ def api_report_financial():
     date_from = _parse_report_date(request.args.get('date_from')) or date(today.year, 1, 1)
     date_to = _parse_report_date(request.args.get('date_to')) or today
     return jsonify(get_financial_report(db, Revenue, Expense, date_from=date_from, date_to=date_to))
+
+
+@app.route('/api/reports/contract-cost-allocation')
+def api_report_contract_cost_allocation():
+    from report_data import get_contract_cost_allocation_report, _parse_report_date
+    today = date.today()
+    date_from = _parse_report_date(request.args.get('date_from')) or date(today.year, 1, 1)
+    date_to = _parse_report_date(request.args.get('date_to')) or today
+    return jsonify(get_contract_cost_allocation_report(
+        Contract, MaintenanceVisit,
+        date_from=date_from,
+        date_to=date_to,
+        contract_status_fn=contract_display_status,
+    ))
 
 
 @app.route('/api/reports/contract-forecast')

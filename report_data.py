@@ -361,6 +361,115 @@ def get_financial_report(db, Revenue, Expense, date_from=None, date_to=None, tod
     }
 
 
+def _completed_visits_for_contract(MaintenanceVisit, contract, period_from, period_to):
+    """زيارات مكتملة مرتبطة بالعقد أو بمصاعده ضمن الفترة."""
+    from sqlalchemy import or_
+
+    start = contract.start_date
+    end = contract.end_date
+    if start and end:
+        visit_from = max(period_from, start)
+        visit_to = min(period_to, end)
+    else:
+        visit_from, visit_to = period_from, period_to
+
+    if visit_to < visit_from:
+        return 0
+
+    q = tenant_query(MaintenanceVisit).filter(
+        MaintenanceVisit.status == 'مكتملة',
+        MaintenanceVisit.visit_date >= visit_from,
+        MaintenanceVisit.visit_date <= visit_to,
+    )
+
+    conditions = []
+    if getattr(contract, 'id', None):
+        conditions.append(MaintenanceVisit.contract_id == contract.id)
+    elev_ids = [ce.elevator_id for ce in (contract.elevators or [])]
+    if elev_ids:
+        conditions.append(MaintenanceVisit.elevator_id.in_(elev_ids))
+    if not conditions:
+        return 0
+
+    return int(q.filter(or_(*conditions)).count())
+
+
+def get_contract_cost_allocation_report(
+    Contract,
+    MaintenanceVisit,
+    date_from=None,
+    date_to=None,
+    contract_status_fn=None,
+    today=None,
+):
+    """توزيع قيمة العقود النشطة على مدة العقد والزيارات — مع استحقاق الفترة."""
+    from contract_cost_allocation import contract_cost_allocation
+
+    if today is None:
+        today = date.today()
+    if date_to is None:
+        date_to = today
+    if date_from is None:
+        date_from = date(today.year, 1, 1)
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    contracts = tenant_query(Contract).filter(Contract.status != 'ملغي').order_by(Contract.code).all()
+    rows = []
+    totals = {
+        'contract_total': 0.0,
+        'monthly_accrual': 0.0,
+        'period_accrued': 0.0,
+        'earned_by_visits': 0.0,
+        'planned_visits': 0,
+        'completed_visits': 0,
+    }
+
+    for c in contracts:
+        st = contract_status_fn(c) if contract_status_fn else (c.status or '')
+        if st not in ('نشط', 'على وشك الانتهاء', 'منتهي'):
+            continue
+        if not c.start_date or not c.end_date:
+            continue
+        if c.end_date < date_from or c.start_date > date_to:
+            continue
+
+        completed = _completed_visits_for_contract(MaintenanceVisit, c, date_from, date_to)
+        alloc = contract_cost_allocation(
+            c,
+            period_from=date_from,
+            period_to=date_to,
+            completed_visits=completed,
+        )
+        if not alloc.get('contract_total'):
+            continue
+
+        rows.append({
+            'code': c.code,
+            'customer': c.customer.name if c.customer else '—',
+            'start_date': str(c.start_date),
+            'end_date': str(c.end_date),
+            'status': st,
+            **alloc,
+        })
+        totals['contract_total'] += alloc['contract_total']
+        totals['monthly_accrual'] += alloc['monthly_accrual']
+        totals['period_accrued'] += alloc.get('period_accrued') or 0
+        totals['earned_by_visits'] += alloc.get('earned_by_visits') or 0
+        totals['planned_visits'] += alloc['planned_visits']
+        totals['completed_visits'] += completed
+
+    for key in totals:
+        totals[key] = _round_money(totals[key]) if key not in ('planned_visits', 'completed_visits') else totals[key]
+
+    return {
+        'date_from': str(date_from),
+        'date_to': str(date_to),
+        'rows': rows,
+        'totals': totals,
+    }
+
+
 def _month_bounds(year, month):
     from calendar import monthrange
     year, month = int(year), int(month)

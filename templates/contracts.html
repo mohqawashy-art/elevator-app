@@ -708,6 +708,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           {% include '_tax_amount_block.html' %}
           {% endwith %}
           <span id="contract-value-optional-hint" class="field-hint" style="display:block;margin-top:8px;color:var(--gold);font-weight:600">اختياري — يمكن حفظ العقد بقيمة 0 أو بدون مبلغ</span>
+          <div id="contract-cost-preview" class="field-calc" style="display:none;margin-top:12px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;line-height:1.7;color:var(--text2)"></div>
           <!-- contract-zero-value-ok-v3 -->
         </div>
         <div class="form-grid">
@@ -2260,6 +2261,7 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">تكرار الصيانة</div><div class="view-val">' + esc(c.maint_freq || '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">إجمالي الزيارات</div><div class="view-val">' + (c.visits_month || '—') + '</div></div>' +
       '<div class="view-item"><div class="view-label">شروط الدفع</div><div class="view-val">' + esc(c.pay_terms || '—') + '</div></div>' +
+      contractCostAllocationViewHtml(c) +
       (c.notes ? '<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">' + esc(c.notes) + '</div></div>' : '') +
       contractAttachmentBlock(c) +
     '</div>';
@@ -2437,9 +2439,42 @@ function calcTotalVisits() {
   var duration = getContractDurationMonths();
   if (!interval || !duration) {
     visitsEl.value = '';
+    updateContractCostPreview();
     return;
   }
   visitsEl.value = Math.max(1, Math.ceil(duration / interval));
+  updateContractCostPreview();
+}
+
+function updateContractCostPreview() {
+  var el = document.getElementById('contract-cost-preview');
+  if (!el) return;
+  var totalEl = document.getElementById('f-total');
+  var total = parseFloat((totalEl && totalEl.value) || '0') || 0;
+  var duration = getContractDurationMonths();
+  var visits = parseInt((document.getElementById('f-visits-month') || {}).value, 10) || 0;
+  if (!total || !duration || !visits) {
+    el.style.display = 'none';
+    return;
+  }
+  var monthly = Math.round((total / duration) * 100) / 100;
+  var perVisit = Math.round((total / visits) * 100) / 100;
+  el.style.display = '';
+  el.innerHTML =
+    '<strong style="color:var(--text1)">توزيع قيمة العقد</strong><br>' +
+    'استحقاق شهري: <strong style="color:var(--accent);font-family:var(--font-en)">' + fmtMoneyAmt(monthly) + '</strong> <span class="lc-sar" role="img" aria-label="ريال سعودي"></span> &nbsp;|&nbsp; ' +
+    'قيمة الزيارة: <strong style="color:var(--gold);font-family:var(--font-en)">' + fmtMoneyAmt(perVisit) + '</strong> <span class="lc-sar" role="img" aria-label="ريال سعودي"></span> ' +
+    '<span style="color:var(--text3)">(' + visits + ' زيارة على ' + duration + ' شهر)</span>';
+}
+
+function contractCostAllocationViewHtml(c) {
+  var a = c.cost_allocation;
+  if (!a || !a.contract_total) return '';
+  return '<div class="view-section">توزيع قيمة العقد</div>' +
+    '<div class="view-item"><div class="view-label">إجمالي العقد</div><div class="view-val">' + fmtMoneyAmt(a.contract_total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div></div>' +
+    '<div class="view-item"><div class="view-label">استحقاق شهري</div><div class="view-val" style="font-family:var(--font-en)">' + fmtMoneyAmt(a.monthly_accrual) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div></div>' +
+    '<div class="view-item"><div class="view-label">قيمة الزيارة</div><div class="view-val" style="font-family:var(--font-en)">' + fmtMoneyAmt(a.per_visit_value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div></div>' +
+    '<div class="view-item"><div class="view-label">الزيارات المخططة</div><div class="view-val">' + (a.planned_visits || '—') + ' زيارة / ' + (a.duration_months || '—') + ' شهر</div></div>';
 }
 
 function addMonthsToDate(dateStr, months) {
@@ -3433,6 +3468,21 @@ function bindContractFileDropzone() {
 }
 
 bindContractFileDropzone();
+
+function bindContractCostPreview() {
+  ['ctax-input', 'f-duration', 'f-start', 'f-end', 'f-maint-freq'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateContractCostPreview);
+    if (el) el.addEventListener('change', updateContractCostPreview);
+  });
+  var totalEl = document.getElementById('f-total');
+  if (totalEl && window.MutationObserver) {
+    var obs = new MutationObserver(updateContractCostPreview);
+    obs.observe(totalEl, { attributes: true, attributeFilter: ['value'] });
+  }
+  if (totalEl) totalEl.addEventListener('change', updateContractCostPreview);
+}
+bindContractCostPreview();
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 /* setLang: liftcore-i18n.js */

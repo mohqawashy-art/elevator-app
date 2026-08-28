@@ -70,6 +70,15 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 
 .fin-report-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:8px}
 
+.alloc-table-wrap{overflow-x:auto;margin-top:8px}
+.alloc-table{width:100%;border-collapse:collapse;font-size:12px}
+.alloc-table th,.alloc-table td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+.alloc-table th{color:var(--text3);font-weight:500;font-size:11px}
+.alloc-table td{font-family:var(--font-en)}
+.alloc-table td.alloc-name{font-family:var(--font-ar);white-space:normal;min-width:120px}
+.alloc-table tr:hover td{background:rgba(42,127,255,.04)}
+.alloc-empty{padding:24px;text-align:center;color:var(--text3);font-size:13px}
+
 @media(max-width:1100px){.stats-row-4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){
   .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease}
@@ -189,6 +198,49 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
         </div>
       </div>
 
+      <div class="sec-header">
+        <div class="sec-title">توزيع قيمة العقود <span id="alloc-period-label" style="font-weight:400;color:var(--text3);font-size:13px"></span></div>
+      </div>
+      <div class="fin-report-panel" id="alloc-panel">
+        <div class="stats-row stats-row-4">
+          <div class="stat-card">
+            <div class="stat-label">إجمالي قيمة العقود</div>
+            <div class="stat-value blue" id="alloc-total-contracts">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">استحقاق الفترة (زمني)</div>
+            <div class="stat-value gold" id="alloc-period-accrued">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">قيمة الزيارات المنفذة</div>
+            <div class="stat-value green" id="alloc-earned-visits">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">زيارات منفذة / مخططة</div>
+            <div class="stat-value" id="alloc-visits-ratio">—</div>
+          </div>
+        </div>
+        <div class="alloc-table-wrap">
+          <table class="alloc-table">
+            <thead>
+              <tr>
+                <th>العقد</th>
+                <th>العميل</th>
+                <th>إجمالي العقد</th>
+                <th>استحقاق شهري</th>
+                <th>قيمة/زيارة</th>
+                <th>استحقاق الفترة</th>
+                <th>زيارات</th>
+                <th>قيمة منفذة</th>
+              </tr>
+            </thead>
+            <tbody id="alloc-table-body">
+              <tr><td colspan="8" class="alloc-empty">جاري التحميل...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -248,6 +300,65 @@ function loadFinancial() {
       document.getElementById('fin-report').innerHTML =
         '<p style="text-align:center;padding:40px;color:var(--text3)">تعذّر تحميل التقرير المالي</p>';
     });
+
+  loadContractCostAllocation(qs);
+}
+
+function loadContractCostAllocation(qs) {
+  const tbody = document.getElementById('alloc-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" class="alloc-empty">جاري التحميل...</td></tr>';
+
+  fetch('/api/reports/contract-cost-allocation?' + qs)
+    .then(r => r.json())
+    .then(data => {
+      const totals = data.totals || {};
+      const rows = data.rows || [];
+
+      const allocLabel = document.getElementById('alloc-period-label');
+      if (allocLabel) {
+        allocLabel.textContent = '— ' + formatPeriodLabel(data.date_from, data.date_to);
+      }
+
+      setMoney('alloc-total-contracts', totals.contract_total);
+      setMoney('alloc-period-accrued', totals.period_accrued);
+      setMoney('alloc-earned-visits', totals.earned_by_visits);
+
+      const ratioEl = document.getElementById('alloc-visits-ratio');
+      if (ratioEl) {
+        ratioEl.textContent = (totals.completed_visits || 0) + ' / ' + (totals.planned_visits || 0);
+        ratioEl.style.fontFamily = 'var(--font-en)';
+      }
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="alloc-empty">لا توجد عقود نشطة بقيمة في هذه الفترة</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(function (r) {
+        return '<tr>' +
+          '<td>' + escHtml(r.code) + '</td>' +
+          '<td class="alloc-name">' + escHtml(r.customer) + '</td>' +
+          '<td>' + fmtNum(r.contract_total) + '</td>' +
+          '<td>' + fmtNum(r.monthly_accrual) + '</td>' +
+          '<td>' + fmtNum(r.per_visit_value) + '</td>' +
+          '<td>' + fmtNum(r.period_accrued) + '</td>' +
+          '<td>' + (r.completed_visits || 0) + ' / ' + (r.planned_visits || 0) + '</td>' +
+          '<td>' + fmtNum(r.earned_by_visits) + '</td>' +
+          '</tr>';
+      }).join('');
+    })
+    .catch(function () {
+      tbody.innerHTML = '<tr><td colspan="8" class="alloc-empty">تعذّر تحميل توزيع العقود</td></tr>';
+    });
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function fmtNum(n) {
+  return (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function openSidebar(){var s=document.getElementById('sidebar'),o=document.getElementById('overlay');if(s)s.classList.add('open');if(o)o.classList.add('open');}
