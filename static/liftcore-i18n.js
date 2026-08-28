@@ -485,6 +485,7 @@
   function shouldSkipTextNode(node) {
     var p = node.parentElement;
     if (!p) return true;
+    if (p.closest('#modal-add')) return true;
     if (p.closest('[data-i18n-skip], script, style, noscript, .lc-sar, .lc-sar-char')) return true;
     if (p.tagName === 'INPUT' || p.tagName === 'TEXTAREA' || p.tagName === 'SCRIPT') return true;
     /* نص أزرار الجداول (تعديل / حذف ...) يُترجم دائماً */
@@ -569,6 +570,7 @@
 
   function translateFormAttributes(root, lang) {
     root.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(function (el) {
+      if (el.closest('#modal-add')) return;
       if (el.hasAttribute('data-lc-ph')) return;
       var ph = el.getAttribute('placeholder');
       if (!ph || !/[\u0600-\u06FF]/.test(ph)) return;
@@ -581,9 +583,11 @@
       }
     });
     root.querySelectorAll('option').forEach(function (el) {
+      if (el.closest('#modal-add')) return;
       translateElement(el, lang);
     });
     root.querySelectorAll('[title]').forEach(function (el) {
+      if (el.closest('#modal-add')) return;
       var ti = el.getAttribute('title');
       if (!ti || !/[\u0600-\u06FF]/.test(ti)) return;
       if (lang === 'en') {
@@ -729,6 +733,7 @@
     ];
     selectors.forEach(function (sel) {
       root.querySelectorAll(sel).forEach(function (el) {
+        if (el.closest('#modal-add')) return;
         translateElement(el, lang);
       });
     });
@@ -843,6 +848,10 @@
     document.querySelectorAll('.modal-overlay.open').forEach(function (m) {
       applyToRoot(m, lang);
     });
+
+    if (typeof global.__lcApplyClientModal === 'function') {
+      try { global.__lcApplyClientModal(); } catch (e) { /* ignore */ }
+    }
     } finally {
       applying = false;
     }

@@ -71,7 +71,7 @@
 <script src="/static/client_location.js"></script>
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js?v=3"></script>
-<script src="/static/client_map_picker.js?v=10"></script>
+<script src="/static/client_map_picker.js?v=11"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -650,8 +650,8 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           <label><span data-lc-t="صفة المسؤول">صفة المسؤول</span></label>
           <select id="f-role">
             <option value="" data-lc-t="اختر الصفة">اختر الصفة</option>
-            <option data-lc-t="مالك">مالك</option><option data-lc-t="مدير">مدير</option><option data-lc-t="وكيل">وكيل</option>
-            <option data-lc-t="حارس">حارس</option><option data-lc-t="مشرف">مشرف</option><option data-lc-t="أخرى">أخرى</option>
+            <option value="مالك" data-lc-t="مالك">مالك</option><option value="مدير" data-lc-t="مدير">مدير</option><option value="وكيل" data-lc-t="وكيل">وكيل</option>
+            <option value="حارس" data-lc-t="حارس">حارس</option><option value="مشرف" data-lc-t="مشرف">مشرف</option><option value="أخرى" data-lc-t="أخرى">أخرى</option>
           </select>
         </div>
         <div class="field">
@@ -962,8 +962,19 @@ var CLIENT_MODAL_EN = {
   'أي ملاحظات...': 'Any notes...',
   'إلغاء': 'Cancel',
   'حفظ العميل': 'Save Client',
-  'التسمية (اختياري)': 'Label (optional)'
+  'التسمية (اختياري)': 'Label (optional)',
+  'لم يُحدَّد موقع بعد — اضغط على الخريطة أو ابحث أعلاه': 'No location set yet — click the map or search above',
+  'خريطة OpenStreetMap — ابحث أو انقر لتحديد الموقع': 'OpenStreetMap — search or click to set location',
+  'Name in English': 'English Name',
+  'Elevator Status': 'Fleet Status',
+  '← Copy from mobile number': '← Copy from mobile number',
+  'Contact WhatsApp': 'Contact WhatsApp',
+  'Additional Numbers': 'Additional Numbers',
+  'Elevator Count': 'Elevator Count',
+  'Detailed Address': 'Detailed Address'
 };
+
+window.__lcApplyClientModal = null;
 
 function clientUiLang() {
   if (window.__LC_LANG) return window.__LC_LANG;
@@ -1023,6 +1034,12 @@ function applyClientModalI18n() {
   ['f-city-sel', 'f-city'].forEach(function (id) {
     var sel = document.getElementById(id);
     if (!sel) return;
+    var emptyOpt = sel.querySelector('option[value=""]');
+    if (emptyOpt && emptyOpt.hasAttribute('data-lc-t')) {
+      var ek = emptyOpt.getAttribute('data-lc-t');
+      if (emptyOpt.dataset.lcAr == null) emptyOpt.dataset.lcAr = emptyOpt.textContent;
+      emptyOpt.textContent = en ? clientModalTr(ek) : emptyOpt.dataset.lcAr;
+    }
     [].forEach.call(sel.options, function (opt) {
       if (!opt.value) return;
       if (opt.dataset.lcAr == null) opt.dataset.lcAr = opt.textContent;
@@ -1050,12 +1067,39 @@ function applyClientModalI18n() {
       opt.textContent = entry ? phoneCodeLabel(entry) : opt.dataset.lcAr;
     });
   });
+  document.querySelectorAll('#extra-phones-list .extra-label[data-lc-ph]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-ph');
+    if (!key) return;
+    if (el.dataset.lcPhAr == null) el.dataset.lcPhAr = el.getAttribute('placeholder') || '';
+    el.setAttribute('placeholder', en ? clientModalTr(key) : el.dataset.lcPhAr);
+  });
   var fleet = document.getElementById('f-fleet-status');
-  if (fleet && fleet.textContent && /[\u0600-\u06FF]/.test(fleet.textContent)) {
-    if (fleet.dataset.lcAr == null) fleet.dataset.lcAr = fleet.textContent;
-    fleet.textContent = en ? clientModalTr(fleet.dataset.lcAr) : fleet.dataset.lcAr;
+  if (fleet) {
+    if (fleet.dataset.lcAr == null && /[\u0600-\u06FF]/.test(fleet.textContent)) {
+      fleet.dataset.lcAr = fleet.textContent;
+    }
+    if (fleet.dataset.lcAr) {
+      fleet.textContent = en ? clientModalTr(fleet.dataset.lcAr) : fleet.dataset.lcAr;
+    }
+  }
+  var coords = document.getElementById('client-map-coords');
+  if (coords && !coords.classList.contains('set')) {
+    var ck = coords.getAttribute('data-lc-t');
+    if (ck) {
+      if (coords.dataset.lcAr == null) coords.dataset.lcAr = ck;
+      if (en && /[\u0600-\u06FF]/.test(coords.textContent)) {
+        coords.textContent = clientModalTr(ck);
+      } else if (!en && coords.dataset.lcAr) {
+        coords.textContent = coords.dataset.lcAr;
+      }
+    } else if (/[\u0600-\u06FF]/.test(coords.textContent)) {
+      if (coords.dataset.lcAr == null) coords.dataset.lcAr = coords.textContent.trim();
+      coords.textContent = en ? clientModalTr(coords.dataset.lcAr) : coords.dataset.lcAr;
+    }
   }
 }
+window.applyClientModalI18n = applyClientModalI18n;
+window.__lcApplyClientModal = applyClientModalI18n;
 
 function lcT(s) {
   return clientModalTr(s);
@@ -1130,7 +1174,14 @@ function allCities() {
 function allPhoneCodes() {
   var seen = {}, list = [];
   DEFAULT_PHONE_CODES.concat(getExtraPhoneCodes()).forEach(function(c) {
-    if(c && c.v && !seen[c.v]) { seen[c.v]=1; list.push(c); }
+    if (!c || !c.v || seen[c.v]) return;
+    seen[c.v] = 1;
+    var base = DEFAULT_PHONE_CODES.find(function (d) { return d.v === c.v; });
+    list.push({
+      v: c.v,
+      l: (c.l || (base && base.l) || c.v),
+      en: (c.en || (base && base.en) || c.l || c.v)
+    });
   });
   return list;
 }
@@ -2966,10 +3017,13 @@ function openModal(id){
     setTimeout(function () {
       applyClientModalI18n();
       LiftCoreI18n.applyModal(id);
+      applyClientModalI18n();
     }, 0);
     setTimeout(function () { applyClientModalI18n(); }, 120);
+    setTimeout(function () { applyClientModalI18n(); }, 400);
   } else {
     setTimeout(function () { applyClientModalI18n(); }, 0);
+    setTimeout(function () { applyClientModalI18n(); }, 200);
   }
 }
 function closeModal(id){

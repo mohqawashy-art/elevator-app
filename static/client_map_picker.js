@@ -217,6 +217,7 @@
       }
       el.classList.remove('set');
       el.style.color = '';
+      if (global.applyClientModalI18n) global.applyClientModalI18n();
       return;
     }
     var prefix = state.provider === 'leaflet' ? 'OSM GPS' : 'GPS';
