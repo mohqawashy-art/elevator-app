@@ -2,46 +2,52 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=seal2">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=extend2">
 <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 </head>
-<body>
-{% include 'installation/_sidebar.html' %}
+<body{% if lock_quote_type %} class="quote-mode-locked quote-mode-{{ lock_quote_type }}"{% endif %}>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
 <div class="main">
-  {% set page_title = 'تسعير وعرض سعر' %}
+  {% set page_title = quote_flow_title|default('عرض سعر تركيب') %}
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
-      <div class="page-title">تسعير — {{ project.code }} · {{ project.client_display }}</div>
+      <div class="page-title">{{ quote_flow_title or ('عرض سعر — ' ~ (quotation.code if quotation else next_quote_code)) }}</div>
       <div class="page-actions">
-        <a href="/installation/projects/{{ project.id }}" class="btn btn-secondary btn-sm">← المشروع</a>
+        <a href="{{ url_for('sales.quotes_inbox', kind='install') }}" class="btn btn-secondary btn-sm">← عروض التركيب</a>
+        <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
         {% if quotation %}
-        <a href="/installation/quotes/{{ quotation.id }}/print" class="btn btn-secondary btn-sm">طباعة محفوظ</a>
+        <a href="/installation/quotes/{{ quotation.id }}/print" class="btn btn-secondary btn-sm">طباعة</a>
         {% endif %}
       </div>
     </div>
 
     {% if quotation %}
     <div class="quote-resume-banner">
-      <span>تعديل العرض المحفوظ <b style="font-family:var(--font-en)">{{ quotation.code }}</b> — الحالة: {{ quotation.status }}</span>
-      <a href="/installation/projects/{{ project.id }}/quote?new=1" class="btn btn-secondary btn-sm">+ عرض سعر جديد</a>
+      <span>تعديل العرض <b style="font-family:var(--font-en)">{{ quotation.code }}</b> — الحالة: {{ quotation.status }}</span>
+      <a href="{{ url_for('installation.project_quote', project_id=project.id, new=1, from='sales') }}" class="btn btn-secondary btn-sm">+ عرض جديد لنفس العميل</a>
     </div>
     {% elif request.args.get('new') %}
     <div class="quote-resume-banner quote-resume-new">
-      <span>إنشاء عرض سعر جديد للمشروع {{ project.code }}</span>
-      <a href="/installation/projects/{{ project.id }}" class="btn btn-secondary btn-sm">← المشروع</a>
+      <span>عرض سعر جديد من المبيعات — بعد الموافقة يُحوَّل لقسم المشاريع (كارت / تنفيذ) وليس هنا.</span>
     </div>
     {% endif %}
 
+    {% if not lock_quote_type %}
     <div class="pricing-tabs">
       <button type="button" class="pricing-tab active" id="tabNewBtn">تركيب مصعد جديد<span class="tag">مواصفات → BOM تلقائي</span></button>
-      <button type="button" class="pricing-tab" id="tabUpgBtn">تحديث مصعد قائم<span class="tag">اختر المكونات</span></button>
+      <button type="button" class="pricing-tab" id="tabExtendBtn">إضافة أدوار<span class="tag">قائم + أدوار جديدة</span></button>
+      <button type="button" class="pricing-tab" id="tabUpgBtn">عرض سعر تحديث<span class="tag">اختر المكونات</span></button>
     </div>
+    {% endif %}
 
     <div class="pricing-layout">
       <div>
         <div class="pricing-card">
-          <h3><span class="step-no">١</span> العميل <span class="pricing-hint" style="font-weight:400">— يجب تسجيله في العملاء أولاً</span></h3>
+          <h3><span class="step-no">١</span> العميل</h3>
           <div class="pricing-grid">
             <div class="field form-full" style="grid-column:1/-1">
               <label>اختر العميل *</label>
@@ -49,7 +55,7 @@
                 <select id="cCustomer" style="flex:1;min-width:200px" required>
                   <option value="">— اختر عميلاً —</option>
                 </select>
-                <a href="/clients" target="_blank" class="btn btn-secondary btn-sm">+ عميل جديد</a>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnQuickCustomer">+ عميل جديد</button>
               </div>
             </div>
             <div class="field"><label>اسم العميل</label><input type="text" id="cName" readonly style="opacity:.85"></div>
@@ -59,7 +65,7 @@
           </div>
         </div>
 
-        <div class="pricing-card">
+        <div class="pricing-card" id="brandOriginCard">
           <h3><span class="step-no">٢</span> بلد المنشئ والماركة <span class="pricing-hint" style="font-weight:400">— يؤثر على سعر الماكينة واللوحة</span></h3>
           <div class="pricing-grid">
             <div class="field form-full" style="grid-column:1/-1;margin-top:0">
@@ -112,17 +118,40 @@
                   <option value="320">320 كجم</option><option value="450">450 كجم</option>
                   <option value="630" selected>630 كجم</option><option value="800">800 كجم</option><option value="1000">1000 كجم</option>
                 </select></div>
-              <div class="field"><label>نوع الماكينة</label>
+              <div class="field"><label>نوع النظام / الماكينة</label>
                 <select id="sMachine">
                   <option value="__none__">بدون</option>
-                  <option value="gearless" selected>جيرلس MRL</option>
-                  <option value="geared">جير</option>
+                  <option value="gearless_mrl" selected>جيرلس MRL (بدون غرفة)</option>
+                  <option value="gearless_mr">جيرلس MR (بغرفة ماكينة)</option>
+                  <option value="geared">جير تقليدي</option>
+                  <option value="hydraulic">هيدروليك</option>
+                  <option value="home">مصعد منزلي / فيلا</option>
+                </select></div>
+              <div class="field"><label>نوع المصعد</label>
+                <select id="sElevClass">
+                  <option value="passenger" selected>ركاب</option>
+                  <option value="hospital">مستشفى / سرير</option>
+                  <option value="freight">بضائع</option>
+                  <option value="panorama">بانوراما / مشاهدة</option>
+                  <option value="home">منزلي</option>
+                </select></div>
+              <div class="field"><label>نظام التحكم</label>
+                <select id="sControlSys">
+                  <option value="simplex" selected>Simplex</option>
+                  <option value="duplex">Duplex</option>
+                  <option value="group">Group Control</option>
+                  <option value="destination">Destination Control (DCS)</option>
                 </select></div>
               <div class="field"><label>السرعة</label>
                 <select id="sSpeed">
                   <option value="__none__">بدون</option>
+                  <option value="0.5">0.5 م/ث</option>
+                  <option value="0.63">0.63 م/ث</option>
                   <option value="1.0" selected>1.0 م/ث</option>
                   <option value="1.6">1.6 م/ث</option>
+                  <option value="1.75">1.75 م/ث</option>
+                  <option value="2.0">2.0 م/ث</option>
+                  <option value="2.5">2.5 م/ث</option>
                 </select></div>
 
               <div class="field form-full" style="grid-column:1/-1;margin-top:4px">
@@ -167,8 +196,72 @@
                   <option value="steel">هيكل حديد</option>
                 </select></div>
             </div>
+            <div style="font-size:12px;font-weight:700;color:var(--text2);margin:12px 0 0">نطاق العمل — المراحل المطلوبة في هذا العرض</div>
+            <div class="stage-picks" id="stagePicks">
+              <label class="stage-pick on"><input type="checkbox" id="stgRails" checked> <span><b>مرحلة 1</b><small>سكك وأبواب</small></span></label>
+              <label class="stage-pick on"><input type="checkbox" id="stgCabin" checked> <span><b>مرحلة 2</b><small>كبينة وأحبال وماكينة</small></span></label>
+              <label class="stage-pick on"><input type="checkbox" id="stgCtrl" checked> <span><b>مرحلة 3</b><small>كنترول وتشغيل</small></span></label>
+            </div>
+            <div class="pricing-hint" style="margin-bottom:10px">بعض العملاء يطلبون مرحلة واحدة فقط — ألغِ تحديد ما لا يدخل في هذا العرض ثم ابنِ القائمة.</div>
             <div class="pricing-actions">
               <button type="button" class="btn btn-primary btn-sm" id="buildBtn">بناء قائمة القطع</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="paneExtend" style="display:none">
+          <div class="pricing-card">
+            <h3><span class="step-no">٣</span> إضافة أدوار لمصعد قائم</h3>
+            <div class="pricing-hint" style="margin-bottom:10px">مثال: مصعد راكب 3 أدوار ويحتاج رفع دورين ليصبح 5 — تُسعَّر أعمال التمديد فقط وليس المصعد كاملاً.</div>
+            <div class="pricing-grid">
+              <div class="field"><label>عدد المصاعد</label>
+                <input type="number" id="eElevCount" value="1" min="1" max="50" step="1">
+              </div>
+              <div class="field"><label>الوقفات الحالية</label>
+                <select id="eCurrentStops"></select>
+                <div class="pricing-hint">كم دور يخدم المصعد الآن</div>
+              </div>
+              <div class="field"><label>الأدوار المطلوب إضافتها</label>
+                <select id="eAddedStops"></select>
+                <div class="pricing-hint">كم دور سيُرفع</div>
+              </div>
+              <div class="field"><label>الحمولة</label>
+                <select id="eCap">
+                  <option value="__none__">بدون</option>
+                  <option value="320">320 كجم</option><option value="450">450 كجم</option>
+                  <option value="630" selected>630 كجم</option><option value="800">800 كجم</option><option value="1000">1000 كجم</option>
+                </select>
+              </div>
+              <div class="field form-full" style="grid-column:1/-1">
+                <div class="pricing-hint" id="extendHint" style="padding:8px 10px;background:var(--bg2);border-radius:8px">3 وقفات قائمة + 2 دور = <b>5 وقفات</b></div>
+              </div>
+              <div class="field"><label>أبواب الأدوار الجديدة</label>
+                <select id="eDoor">
+                  <option value="__none__">بدون</option>
+                  <option value="tele" selected>تليسكوبي</option>
+                  <option value="center">سنتر</option>
+                  <option value="semi">نص أوتوماتيك</option>
+                </select>
+              </div>
+              <div class="field"><label>المداخل</label>
+                <select id="eEntr">
+                  <option value="1" selected>واحد</option>
+                  <option value="2">اثنان</option>
+                </select>
+              </div>
+              <div class="field"><label>ارتفاع الدور (سم)</label>
+                <input type="number" id="eFloorH" value="300" min="250" max="600" step="5">
+                <div class="pricing-hint">لحساب امتداد السكك والحبال</div>
+              </div>
+            </div>
+            <div style="font-size:12px;font-weight:700;color:var(--text2);margin:12px 0 0">نطاق العمل — المراحل المطلوبة</div>
+            <div class="stage-picks" id="eStagePicks">
+              <label class="stage-pick on"><input type="checkbox" id="eStgRails" checked> <span><b>مرحلة 1</b><small>سكك وأبواب الأدوار الجديدة</small></span></label>
+              <label class="stage-pick on"><input type="checkbox" id="eStgCabin" checked> <span><b>مرحلة 2</b><small>أحبال وثقل</small></span></label>
+              <label class="stage-pick on"><input type="checkbox" id="eStgCtrl" checked> <span><b>مرحلة 3</b><small>كنترول وبرمجة وتشغيل</small></span></label>
+            </div>
+            <div class="pricing-actions">
+              <button type="button" class="btn btn-primary btn-sm" id="buildExtBtn">بناء قائمة إضافة الأدوار</button>
             </div>
           </div>
         </div>
@@ -220,21 +313,36 @@
         <div class="head">ملخص التكلفة</div>
         <div class="body">
           <div class="sum-row"><span class="lbl">المواد والقطع</span><b id="sumMat">0</b></div>
-          <div class="sum-row"><span class="lbl">المصنعيات</span><input type="number" id="sumLabor" value="0" min="0"></div>
-          <div class="sum-row"><span class="lbl">نقل ورافعة</span><input type="number" id="sumTrans" value="2000" min="0"></div>
-          <div class="sum-row"><span class="lbl">مصاريف أخرى</span><input type="number" id="sumOther" value="0" min="0"></div>
+          <div class="sum-row"><span class="lbl">المصنعيات</span><input type="number" id="sumLabor" value="0" min="0" step="1"></div>
+          <div class="sum-row"><span class="lbl">نقل ورافعة</span><input type="number" id="sumTrans" value="2000" min="0" step="1"></div>
+          <div class="sum-row"><span class="lbl">مصاريف أخرى</span><input type="number" id="sumOther" value="0" min="0" step="1"></div>
           <div class="sum-row sub"><span class="lbl">التكلفة قبل الربح</span><b id="sumCost">0</b></div>
           <div class="sum-row"><span class="lbl">هامش الربح %</span><input type="number" id="sumProfitP" value="20" min="0" max="100"></div>
           <div class="sum-row"><span class="lbl">قيمة الربح</span><b id="sumProfit">0</b></div>
           <div class="sum-row sub"><span class="lbl">قبل الضريبة</span><b id="sumBefore">0</b></div>
           <div class="sum-row"><span class="lbl">ض.ق.م 15%</span><b id="sumVat">0</b></div>
-          <div class="sum-grand"><span>الإجمالي النهائي</span><span class="v" id="sumGrand">0 ر.س</span></div>
+          <div class="sum-grand">
+            <span class="k">سقف العرض التقريبي</span>
+            <span class="v" id="sumGrand">0 ر.س</span>
+            <span class="hint">مقرب لأقرب 10 ريال — بدون كسور عشرية</span>
+          </div>
 
           <div class="pay-schedule">
-            <div class="pay-schedule-head">جدول الدفعات <span class="pay-schedule-note">المجموع 100%</span></div>
-            <div class="sum-row"><span class="lbl">دفعة مقدمة %</span><input type="number" id="payAdvance" value="50" min="0" max="100" step="1"></div>
-            <div class="sum-row"><span class="lbl">دفعة التوريد %</span><input type="number" id="paySupply" value="40" min="0" max="100" step="1"></div>
-            <div class="sum-row"><span class="lbl">دفعة نهائية %</span><input type="number" id="payFinal" value="10" min="0" max="100" step="1"></div>
+            <div class="pay-schedule-head">جدول الدفعات <span class="pay-schedule-note">حسب الاتفاق — المجموع 100%</span></div>
+            <div class="sum-row">
+              <span class="lbl">عدد الدفعات</span>
+              <select id="payCount">
+                <option value="1">دفعة واحدة</option>
+                <option value="2">دفعتان</option>
+                <option value="3" selected>ثلاث دفعات</option>
+                <option value="4">أربع دفعات</option>
+                <option value="5">خمس دفعات</option>
+                <option value="6">ست دفعات</option>
+                <option value="7">سبع دفعات</option>
+                <option value="8">ثمان دفعات</option>
+              </select>
+            </div>
+            <div id="payRows"></div>
             <div class="pay-schedule-total" id="payPctTotal">المجموع: <b>100%</b></div>
             <div class="pay-schedule-preview" id="payPreview"></div>
           </div>
@@ -276,6 +384,8 @@ window.__INSTALL_QUOTE__ = {
   noneOption: '__none__',
   machineOrigins: {{ machine_origins | tojson }},
   defaultCustomerId: {{ default_customer_id | tojson }},
+  preferredQuoteType: {{ (preferred_quote_type|default(none)) | tojson }},
+  lockQuoteType: {{ (lock_quote_type|default(none)) | tojson }},
   companyName: {{ ((company_settings.company_name if company_settings and company_settings.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة')) | tojson }},
   companyLogoUrl: {{ brand_logo_url | tojson }},
   logoWidth: {{ (logo_width_report or 150) | tojson }},
@@ -289,7 +399,8 @@ window.__INSTALL_QUOTE__ = {
   companySignOffsetY: {{ (company_sign_offset_y or 0) | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=logoonly1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=seal2"></script>
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=market1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=market2"></script>
+{% include 'partials/quick_customer_modal.html' %}
 </body>
 </html>

@@ -19,10 +19,13 @@ from installation.models import (
     LEAD_SOURCES,
     PROJECT_STATUSES,
     QUOTE_STATUSES,
+    QUOTE_TYPE_LABELS,
     TIMELINE_STEP_STATUSES,
     COST_CATEGORIES,
     COST_PAYMENT_STATUSES,
     RECEIPT_STATUSES,
+    normalize_pay_installments,
+    legacy_pcts_from_items,
 )
 from installation.timeline import (
     create_execution_timeline,
@@ -213,6 +216,10 @@ def _quotation_to_dict(q):
         'pay_advance_pct': q.pay_advance_pct if q.pay_advance_pct is not None else 50,
         'pay_supply_pct': q.pay_supply_pct if q.pay_supply_pct is not None else 40,
         'pay_final_pct': q.pay_final_pct if q.pay_final_pct is not None else 10,
+        'pay_count': q.payment_count(),
+        'pay_installments': [
+            {'label': it['label'], 'pct': it['pct']} for it in q.payment_items()
+        ],
         'spec': spec,
         'lines': [
             {
@@ -579,6 +586,14 @@ def project_quote(project_id):
         default_customer_id = quotation.customer_id
     elif project.customer_id:
         default_customer_id = project.customer_id
+    from installation.models import QUOTE_FLOW_PAGE_TITLES
+    quote_type_arg = (request.args.get('quote_type') or '').strip()
+    lock_quote_type = (
+        quote_type_arg if quote_type_arg in QUOTE_FLOW_PAGE_TITLES else None
+    )
+    if quotation and (quotation.quote_type or '') in QUOTE_FLOW_PAGE_TITLES:
+        lock_quote_type = quotation.quote_type
+    quote_flow_title = QUOTE_FLOW_PAGE_TITLES.get(lock_quote_type or '')
     return render_template(
         'installation/quote.html',
         project=project,
@@ -591,7 +606,10 @@ def project_quote(project_id):
         machine_brands=MACHINE_BRANDS,
         panel_brands=CONTROL_PANEL_BRANDS,
         default_customer_id=default_customer_id,
-        page_title=f'تسعير — {project.code}',
+        preferred_quote_type=lock_quote_type or quote_type_arg or None,
+        lock_quote_type=lock_quote_type,
+        quote_flow_title=quote_flow_title,
+        page_title=quote_flow_title or f'تسعير — {project.code}',
     )
 
 
@@ -630,33 +648,54 @@ def project_quote_save(project_id):
         db.session.add(q)
 
     q.customer_id = customer.id
-    q.quote_type = data.get('quote_type') or 'new'
+    quote_type = data.get('quote_type') or 'new'
+    q.quote_type = quote_type if quote_type in QUOTE_TYPE_LABELS else 'new'
     q.client_name = snapshot['client_name']
     q.client_phone = snapshot['client_phone']
     q.client_address = snapshot['client_address']
     q.valid_days = int(data.get('valid_days') or 30)
     q.spec_json = json.dumps(data.get('spec') or {}, ensure_ascii=False)
-    q.labor = float(data.get('labor') or 0)
-    q.transport = float(data.get('transport') or 0)
-    q.other_costs = float(data.get('other_costs') or 0)
+    q.labor = round(float(data.get('labor') or 0))
+    q.transport = round(float(data.get('transport') or 0))
+    q.other_costs = round(float(data.get('other_costs') or 0))
     q.profit_pct = float(data.get('profit_pct') or 20)
-    pay_adv = float(data.get('pay_advance_pct') if data.get('pay_advance_pct') is not None else 50)
-    pay_sup = float(data.get('pay_supply_pct') if data.get('pay_supply_pct') is not None else 40)
-    pay_fin = float(data.get('pay_final_pct') if data.get('pay_final_pct') is not None else 10)
-    if pay_adv < 0 or pay_sup < 0 or pay_fin < 0:
-        return jsonify({'ok': False, 'error': 'نسب الدفعات لا يمكن أن تكون سالبة'}), 400
-    if round(pay_adv + pay_sup + pay_fin, 2) != 100:
-        return jsonify({'ok': False, 'error': 'مجموع نسب الدفعات (مقدمة + توريد + نهائية) يجب أن يساوي 100%'}), 400
+    raw_pays = data.get('pay_installments')
+    if raw_pays:
+        try:
+            pay_items = normalize_pay_installments(raw_pays)
+        except ValueError as exc:
+            return jsonify({'ok': False, 'error': str(exc)}), 400
+    else:
+        pay_adv = float(data.get('pay_advance_pct') if data.get('pay_advance_pct') is not None else 50)
+        pay_sup = float(data.get('pay_supply_pct') if data.get('pay_supply_pct') is not None else 40)
+        pay_fin = float(data.get('pay_final_pct') if data.get('pay_final_pct') is not None else 10)
+        try:
+            pay_count = int(data.get('pay_count') or 0)
+        except (TypeError, ValueError):
+            pay_count = 0
+        if pay_count == 2:
+            pay_sup = 0.0
+        fallback = [{'label': 'دفعة مقدمة', 'pct': pay_adv}]
+        if pay_sup > 0:
+            fallback.append({'label': 'عند التوريد', 'pct': pay_sup})
+        if pay_fin > 0:
+            fallback.append({'label': 'عند التسليم' if pay_sup <= 0 else 'دفعة نهائية', 'pct': pay_fin})
+        try:
+            pay_items = normalize_pay_installments(fallback)
+        except ValueError as exc:
+            return jsonify({'ok': False, 'error': str(exc)}), 400
+    pay_adv, pay_sup, pay_fin = legacy_pcts_from_items(pay_items)
     q.pay_advance_pct = pay_adv
     q.pay_supply_pct = pay_sup
     q.pay_final_pct = pay_fin
+    q.pay_schedule_json = json.dumps(pay_items, ensure_ascii=False)
     if q.status != 'مقبول':
         q.status = 'مسودة'
 
     materials = 0.0
     for i, row in enumerate(lines):
-        qty = float(row.get('qty') or 0)
-        price = float(row.get('price') or 0)
+        qty = round(float(row.get('qty') or 0))
+        price = round(float(row.get('price') or 0))
         materials += qty * price
         line = InstallQuotationLine(
             quotation=q,
@@ -674,12 +713,12 @@ def project_quote_save(project_id):
     profit = cost * q.profit_pct / 100
     before = cost + profit
     vat = before * 0.15
-    q.materials_total = materials
-    q.cost_total = cost
-    q.profit_amount = profit
-    q.before_tax = before
-    q.vat_amount = vat
-    q.grand_total = before + vat
+    q.materials_total = int(round(round(materials) / 10.0) * 10)
+    q.cost_total = int(round(round(cost) / 10.0) * 10)
+    q.profit_amount = int(round(round(profit) / 10.0) * 10)
+    q.before_tax = int(round(round(before) / 10.0) * 10)
+    q.vat_amount = int(round(round(vat) / 10.0) * 10)
+    q.grand_total = int(round(round(before + vat) / 10.0) * 10)
 
     if project.status in ('استفسار', 'معاينة', 'هندسة'):
         project.status = 'تسعير'
@@ -744,6 +783,13 @@ def quote_approve(project_id, quotation_id):
     project.status = 'عقد'
     if not project.customer_id and q.customer_id:
         project.customer_id = q.customer_id
+    try:
+        from app import next_code
+        from sales.service import create_install_contract_from_quotation
+        create_install_contract_from_quotation(project, q, next_code_fn=next_code)
+    except Exception as exc:
+        from flask import current_app
+        current_app.logger.warning('install contract from quote skipped: %s', exc)
     create_execution_timeline(project, db.session)
     sync_project_auto_amounts(project, force=True)
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
@@ -752,8 +798,14 @@ def quote_approve(project_id, quotation_id):
         steps[0].started_at = project.execution_started_at or datetime.utcnow()
         apply_auto_amount(steps[0], q, force=True)
     db.session.commit()
-    flash(f'تم قبول العرض {q.code} — بدأت مرحلة التنفيذ', 'success')
-    return redirect(url_for('installation.project_execution', project_id=project.id))
+    flash(
+        f'تم قبول العرض {q.code} — حُوِّل لقسم المشاريع (كارت المشروع / التنفيذ).',
+        'success',
+    )
+    next_dest = (request.form.get('next') or request.args.get('next') or '').strip().lower()
+    if next_dest == 'sales':
+        return redirect(url_for('sales.quotes_inbox', kind='install'))
+    return redirect(url_for('installation.project_detail', project_id=project.id))
 
 
 @install_bp.route('/projects/<int:project_id>/execution')
@@ -1029,7 +1081,7 @@ def quote_print(quotation_id):
 
 
 def _quote_stage_blocks(quotation):
-    """تجميع بنود العرض حسب مرحلة التركيب + توزيع الأجور."""
+    """تجميع بنود العرض حسب مرحلة التركيب + توزيع الأجور على المراحل الموجودة فقط."""
     factor = 1 + float(quotation.profit_pct or 0) / 100.0
     labor_pool = (
         float(quotation.labor or 0)
@@ -1042,20 +1094,8 @@ def _quote_stage_blocks(quotation):
         ('مرحلة 2 — تركيب كبينة وأحبال وماكينة', 'أجور وتركيب — كبينة وأحبال وماكينة', 0.45),
         ('مرحلة 3 — تركيب كنترول وتشغيل', 'أجور وتركيب — كنترول وتشغيل', 0.25),
     ]
-    labor_by_stage = {}
-    used = 0.0
-    is_new = (quotation.quote_type or 'new') != 'upgrade'
-    if is_new and labor_pool > 0:
-        for i, (stage, label, share) in enumerate(shares):
-            if i == len(shares) - 1:
-                amt = round(labor_pool - used, 2)
-            else:
-                amt = round(labor_pool * share, 2)
-                used += amt
-            labor_by_stage[stage] = (label, round(amt * factor, 2))
 
     ordered = []
-    seen = set()
     by_stage = {}
     for ln in quotation.lines:
         st = (ln.stage or '—').strip() or '—'
@@ -1063,11 +1103,23 @@ def _quote_stage_blocks(quotation):
             by_stage[st] = []
             ordered.append(st)
         by_stage[st].append(ln)
-        seen.add(st)
 
-    # أظهر المراحل المعروفة بالترتيب حتى لو فارغة من البنود لكن عليها أجور
+    labor_by_stage = {}
+    used = 0.0
+    is_new = (quotation.quote_type or 'new') != 'upgrade'
+    active_shares = [s for s in shares if s[0] in by_stage]
+    if is_new and labor_pool > 0 and active_shares:
+        share_sum = sum(s[2] for s in active_shares) or 1.0
+        for i, (stage, label, share) in enumerate(active_shares):
+            if i == len(active_shares) - 1:
+                amt = round(labor_pool - used, 2)
+            else:
+                amt = round(labor_pool * (share / share_sum), 2)
+                used += amt
+            labor_by_stage[stage] = (label, round(amt * factor, 2))
+
     preferred = [s[0] for s in shares]
-    final_order = [s for s in preferred if s in by_stage or s in labor_by_stage]
+    final_order = [s for s in preferred if s in by_stage]
     for st in ordered:
         if st not in final_order:
             final_order.append(st)
@@ -1115,118 +1167,26 @@ def _projects_by_lead_id(leads):
 
 @install_bp.route('/leads')
 def leads_list():
-    try:
-        leads = tenant_query(InstallLead).order_by(InstallLead.created_at.desc()).all()
-        customers = _active_customers()
-        project_by_lead = _projects_by_lead_id(leads)
-        return render_template(
-            'installation/leads.html',
-            leads=leads,
-            project_by_lead=project_by_lead,
-            customers=customers,
-            customers_js=[_customer_to_js(c) for c in customers],
-            statuses=LEAD_STATUSES,
-            sources=LEAD_SOURCES,
-            next_lead_code=_next_code(InstallLead, 'LD-', 4),
-            page_title='فرص البيع — تركيب',
-        )
-    except Exception as exc:
-        db.session.rollback()
-        import logging
-        logging.getLogger('liftcore').exception('installation leads_list failed')
-        flash(f'تعذّر فتح فرص البيع: {exc}', 'error')
-        return redirect(url_for('installation.index'))
+    flash('تم إلغاء مسار «فرصة البيع» — ابدأ بعرض تركيب من المبيعات', 'success')
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @install_bp.route('/leads/add', methods=['POST'])
 def leads_add():
-    customer_id = request.form.get('customer_id', type=int)
-    if not customer_id:
-        flash('اختر عميلاً مسجّلاً من جدول العملاء أولاً', 'error')
-        return redirect(url_for('installation.leads_list'))
-    customer = tenant_query(Customer).filter_by(id=customer_id).first()
-    if not customer:
-        flash('العميل غير موجود — أضفه من صفحة العملاء', 'error')
-        return redirect(url_for('installation.leads_list'))
-    try:
-        snapshot = _customer_snapshot(customer)
-        lead = InstallLead(
-            code=_next_code(InstallLead, 'LD-', 4),
-            inquiry_date=_parse_date(request.form.get('inquiry_date')) or datetime.utcnow().date(),
-            customer_id=customer.id,
-            client_name=snapshot['client_name'],
-            phone=snapshot['client_phone'],
-            email=(customer.email or '').strip(),
-            city=(customer.city or '').strip(),
-            district=(customer.district or '').strip(),
-            address=snapshot['client_address'],
-            source=(request.form.get('source') or '').strip(),
-            building_type=(request.form.get('building_type') or '').strip(),
-            notes=(request.form.get('notes') or '').strip(),
-            status=(request.form.get('status') or 'جديد').strip(),
-        )
-        if lead.status not in LEAD_STATUSES:
-            lead.status = 'جديد'
-        assign_organization(lead)
-        db.session.add(lead)
-        db.session.commit()
-        flash(f'تم إنشاء الفرصة {lead.code}', 'success')
-    except Exception as exc:
-        db.session.rollback()
-        import logging
-        logging.getLogger('liftcore').exception('installation leads_add failed')
-        orig = getattr(exc, 'orig', None)
-        detail = str(orig or exc).strip()
-        if len(detail) > 280:
-            detail = detail[:277] + '…'
-        flash(f'فشل حفظ الفرصة: {detail}', 'error')
-    return redirect(url_for('installation.leads_list'))
+    flash('تم إلغاء مسار «فرصة البيع» — استخدم عرض تركيب جديد', 'error')
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @install_bp.route('/leads/<int:lead_id>/status', methods=['POST'])
 def leads_status(lead_id):
-    lead = tenant_get_or_404(InstallLead, lead_id)
-    status = (request.form.get('status') or '').strip()
-    if status in LEAD_STATUSES:
-        lead.status = status
-        db.session.commit()
-    return redirect(url_for('installation.leads_list'))
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @install_bp.route('/leads/<int:lead_id>/cancel', methods=['POST'])
 def leads_cancel(lead_id):
-    lead = tenant_get_or_404(InstallLead, lead_id)
-    if lead.status == 'ملغي':
-        flash('هذه الفرصة ملغاة مسبقاً', 'error')
-        return redirect(url_for('installation.leads_list'))
-    linked = _projects_by_lead_id([lead]).get(lead.id)
-    if lead.status == 'تم تحويله لمشروع' or linked:
-        flash('لا يمكن إلغاء فرصة مُحوّلة لمشروع', 'error')
-        return redirect(url_for('installation.leads_list'))
-    lead.status = 'ملغي'
-    db.session.commit()
-    flash(f'تم إلغاء الفرصة {lead.code}', 'success')
-    return redirect(url_for('installation.leads_list'))
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @install_bp.route('/leads/<int:lead_id>/convert', methods=['POST'])
 def leads_convert(lead_id):
-    lead = tenant_get_or_404(InstallLead, lead_id)
-    linked = _projects_by_lead_id([lead]).get(lead.id)
-    if lead.status == 'تم تحويله لمشروع' and linked:
-        flash('هذه الفرصة مُحوّلة مسبقاً', 'error')
-        return redirect(url_for('installation.project_detail', project_id=linked.id))
-    project = InstallProject(
-        code=_next_code(InstallProject, 'PRJ-', 4),
-        title=lead.client_display,
-        status='استفسار',
-        lead_id=lead.id,
-        customer_id=lead.customer_id,
-        notes=lead.notes,
-    )
-    assign_organization(project)
-    db.session.add(project)
-    lead.status = 'تم تحويله لمشروع'
-    db.session.commit()
-    flash(f'تم إنشاء المشروع {project.code} — العميل مربوط ويمكنك البدء بالتسعير', 'success')
-    return redirect(url_for('installation.project_detail', project_id=project.id))
+    return redirect(url_for('sales.install_quote_new'))

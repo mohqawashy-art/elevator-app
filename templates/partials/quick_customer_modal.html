@@ -1,0 +1,162 @@
+{# نافذة إضافة عميل سريع من المبيعات — يعتمد على LiftCoreQuickCustomer #}
+<style>
+.qc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9990;display:none;align-items:center;justify-content:center;padding:16px}
+.qc-overlay.open{display:flex}
+.qc-modal{background:var(--card);border:1px solid var(--border);border-radius:var(--r);width:min(520px,100%);max-height:90vh;overflow:auto;padding:18px}
+.qc-modal h3{margin:0 0 12px;font-size:16px}
+.qc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qc-grid .full{grid-column:1/-1}
+.qc-modal label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.qc-modal input,.qc-modal select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);color:var(--text1);font-family:inherit}
+.qc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;justify-content:flex-end}
+.qc-err{color:var(--danger);font-size:13px;margin-top:8px;display:none}
+@media(max-width:600px){.qc-grid{grid-template-columns:1fr}}
+</style>
+<div class="qc-overlay" id="qc-overlay" aria-hidden="true">
+  <div class="qc-modal" role="dialog" aria-labelledby="qc-title">
+    <h3 id="qc-title">إضافة عميل جديد</h3>
+    <form id="qc-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="qc-grid">
+        <div class="full">
+          <label>اسم العميل *</label>
+          <input name="name" id="qc-name" required maxlength="200" autocomplete="organization">
+        </div>
+        <div>
+          <label>الجوال *</label>
+          <input name="phone" id="qc-phone" required inputmode="tel" dir="ltr" placeholder="05xxxxxxxx">
+        </div>
+        <div>
+          <label>واتساب</label>
+          <input name="phone2" id="qc-phone2" inputmode="tel" dir="ltr" placeholder="اختياري">
+        </div>
+        <div>
+          <label>البريد</label>
+          <input name="email" id="qc-email" type="email" dir="ltr">
+        </div>
+        <div>
+          <label>نوع الجهة</label>
+          <select name="entity_type" id="qc-entity">
+            <option value="فرد">فرد</option>
+            <option value="شركة">شركة</option>
+            <option value="مؤسسة">مؤسسة</option>
+            <option value="جهة حكومية">جهة حكومية</option>
+          </select>
+        </div>
+        <div>
+          <label>المدينة</label>
+          <input name="city" id="qc-city" value="مكة المكرمة">
+        </div>
+        <div>
+          <label>الحي</label>
+          <input name="district" id="qc-district">
+        </div>
+        <div class="full">
+          <label>العنوان</label>
+          <input name="address" id="qc-address">
+        </div>
+        <div class="full">
+          <label>اسم المسؤول / جهة الاتصال</label>
+          <input name="contact_person" id="qc-contact">
+        </div>
+      </div>
+      <div class="qc-err" id="qc-err"></div>
+      <div class="qc-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="qc-cancel">إلغاء</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="qc-save">حفظ واختيار</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+window.LiftCoreQuickCustomer = (function () {
+  var overlay, form, errEl, onCreatedCb, busy = false;
+
+  function ensure() {
+    overlay = document.getElementById('qc-overlay');
+    form = document.getElementById('qc-form');
+    errEl = document.getElementById('qc-err');
+    if (!overlay || !form || overlay.dataset.bound) return;
+    overlay.dataset.bound = '1';
+    document.getElementById('qc-cancel').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) close();
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      submit();
+    });
+  }
+
+  function open(opts) {
+    ensure();
+    onCreatedCb = (opts && opts.onCreated) || null;
+    if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+    if (form) form.reset();
+    var city = document.getElementById('qc-city');
+    if (city && !city.value) city.value = 'مكة المكرمة';
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+    var name = document.getElementById('qc-name');
+    if (name) setTimeout(function () { name.focus(); }, 50);
+  }
+
+  function close() {
+    if (!overlay) return;
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+    busy = false;
+  }
+
+  function submit() {
+    if (busy) return;
+    ensure();
+    var payload = {
+      name: (document.getElementById('qc-name').value || '').trim(),
+      phone: (document.getElementById('qc-phone').value || '').trim(),
+      phone2: (document.getElementById('qc-phone2').value || '').trim(),
+      email: (document.getElementById('qc-email').value || '').trim(),
+      entity_type: document.getElementById('qc-entity').value || 'فرد',
+      city: (document.getElementById('qc-city').value || '').trim() || 'مكة المكرمة',
+      district: (document.getElementById('qc-district').value || '').trim(),
+      address: (document.getElementById('qc-address').value || '').trim(),
+      contact_person: (document.getElementById('qc-contact').value || '').trim(),
+    };
+    if (!payload.name || !payload.phone) {
+      errEl.textContent = 'الاسم والجوال مطلوبان';
+      errEl.style.display = 'block';
+      return;
+    }
+    busy = true;
+    var btn = document.getElementById('qc-save');
+    if (btn) btn.disabled = true;
+    errEl.style.display = 'none';
+    fetch('/api/clients/create', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j }; }); })
+      .then(function (res) {
+        busy = false;
+        if (btn) btn.disabled = false;
+        if (!res.ok || !res.body || !res.body.ok) {
+          errEl.textContent = (res.body && res.body.error) || 'تعذّر إنشاء العميل';
+          errEl.style.display = 'block';
+          return;
+        }
+        close();
+        if (typeof onCreatedCb === 'function') onCreatedCb(res.body.customer);
+      })
+      .catch(function () {
+        busy = false;
+        if (btn) btn.disabled = false;
+        errEl.textContent = 'فشل الاتصال — حاول مرة أخرى';
+        errEl.style.display = 'block';
+      });
+  }
+
+  return { open: open, close: close };
+})();
+</script>

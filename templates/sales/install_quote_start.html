@@ -29,15 +29,15 @@
     </div>
     <p class="hint">اختر نوع العمل — ثم أكمل المواصفات والأنظمة في شاشة التسعير الحديثة (BOM تلقائي، منشأ، ماركات، مراحل).</p>
     <div class="kind-grid">
-      <a class="kind-card" href="{{ url_for('sales.install_quote_new', go=1, quote_kind='new') }}">
+      <a class="kind-card" href="{{ url_for('sales.install_quote_new') }}">
         <h3>تركيب مصعد جديد</h3>
         <p>توريد وتركيب كامل — أنظمة MRL / جيرلس / جير / هيدروليك / منزلي وأنظمة سوق حديثة.</p>
       </a>
-      <a class="kind-card" href="{{ url_for('sales.install_quote_new', go=1, quote_kind='upgrade') }}">
-        <h3>تحديث مصعد قائم</h3>
+      <a class="kind-card" href="{{ url_for('sales.install_quote_upgrade') }}">
+        <h3>عرض سعر تحديث</h3>
         <p>استبدال لوحة، ماكينة، أبواب، كبينة أو مكونات سلامة حسب اختيارك.</p>
       </a>
-      <a class="kind-card" href="{{ url_for('sales.install_quote_new', go=1, quote_kind='extend') }}">
+      <a class="kind-card" href="{{ url_for('sales.install_quote_extend') }}">
         <h3>إضافة أدوار</h3>
         <p>تمديد سفر ووقفات لمصعد قائم دون إعادة تسعير المصعد كاملاً.</p>
       </a>

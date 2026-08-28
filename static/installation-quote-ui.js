@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!P) return;
 
   var cfg = window.__INSTALL_QUOTE__ || {};
+  var lockQuoteType = cfg.lockQuoteType || null;
   var saveUrl = cfg.saveUrl || '';
   var quoteCode = cfg.quoteCode || 'Q-____';
   var customers = cfg.customers || [];
@@ -41,10 +42,9 @@ document.addEventListener('DOMContentLoaded', function () {
       transport: el('sumTrans') ? el('sumTrans').value : 0,
       other_costs: el('sumOther') ? el('sumOther').value : 0,
       profit_pct: el('sumProfitP') ? el('sumProfitP').value : 20,
-      pay_advance_pct: el('payAdvance') ? el('payAdvance').value : 50,
-      pay_supply_pct: el('paySupply') ? el('paySupply').value : 40,
-      pay_final_pct: el('payFinal') ? el('payFinal').value : 10,
-      spec: currentMode === 'new' ? getNewSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected }),
+      pay_count: getPayCount(),
+      pay_installments: collectPayInstallments(),
+      spec: currentMode === 'new' ? getNewSpec() : (currentMode === 'extend' ? getExtendSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected })),
       lines: collectRows(),
       quote_type: currentMode,
       code: quoteCode,
@@ -97,8 +97,8 @@ document.addEventListener('DOMContentLoaded', function () {
     return n;
   }
   function fmt(n) {
-    n = Math.round(n);
-    return n.toLocaleString('en-US') + ' ر.س';
+    n = Math.round(Number(n) || 0);
+    return n.toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' ر.س';
   }
 
   function fillStopsSelect(selId, def) {
@@ -112,6 +112,17 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   fillStopsSelect('sStops', cfg.stops || 6);
   fillStopsSelect('uStops', cfg.stops || 6);
+  fillStopsSelect('eCurrentStops', 3);
+  function fillAddedStopsSelect(def) {
+    var sel = el('eAddedStops');
+    if (!sel) return;
+    var i, opts = '', pick = def || 2;
+    for (i = 1; i <= 10; i++) {
+      opts += '<option value="' + i + '"' + (i === pick ? ' selected' : '') + '>' + i + (i === 1 ? ' دور' : ' أدوار') + '</option>';
+    }
+    sel.innerHTML = opts;
+  }
+  fillAddedStopsSelect(2);
 
   function fillCustomerSelect() {
     if (typeof LcClientSelect !== 'undefined') {
@@ -280,6 +291,70 @@ document.addEventListener('DOMContentLoaded', function () {
       + (adj ? ' (تأثير السعر' + adj + ')' : ' (قياس قياسي)');
   }
 
+  function stageCheckIds() {
+    if (currentMode === 'extend') {
+      return [
+        { id: 'eStgRails', stage: P.STAGE_RAILS },
+        { id: 'eStgCabin', stage: P.STAGE_CABIN },
+        { id: 'eStgCtrl', stage: P.STAGE_CTRL },
+      ];
+    }
+    return [
+      { id: 'stgRails', stage: P.STAGE_RAILS },
+      { id: 'stgCabin', stage: P.STAGE_CABIN },
+      { id: 'stgCtrl', stage: P.STAGE_CTRL },
+    ];
+  }
+
+  function getSelectedStages() {
+    var checks = stageCheckIds();
+    var out = [];
+    var i, box;
+    for (i = 0; i < checks.length; i++) {
+      box = el(checks[i].id);
+      if (box && box.checked) out.push(checks[i].stage);
+    }
+    return out;
+  }
+
+  function setSelectedStages(stages) {
+    var checks = stageCheckIds();
+    var wanted = stages && stages.length ? stages : checks.map(function (c) { return c.stage; });
+    var i, box;
+    for (i = 0; i < checks.length; i++) {
+      box = el(checks[i].id);
+      if (box) box.checked = wanted.indexOf(checks[i].stage) >= 0;
+    }
+    syncStagePickStyles();
+  }
+
+  function inferStagesFromLines(lines) {
+    var known = [P.STAGE_RAILS, P.STAGE_CABIN, P.STAGE_CTRL];
+    var found = [];
+    var i, st;
+    for (i = 0; i < lines.length; i++) {
+      st = lines[i] && lines[i].stage;
+      if (st && known.indexOf(st) >= 0 && found.indexOf(st) < 0) found.push(st);
+    }
+    return found;
+  }
+
+  function syncStagePickStyles() {
+    document.querySelectorAll('.stage-picks .stage-pick').forEach(function (lab) {
+      var box = lab.querySelector('input');
+      lab.classList.toggle('on', !!(box && box.checked));
+    });
+  }
+
+  function onStagePickChange(ev) {
+    if (!getSelectedStages().length) {
+      if (ev && ev.target) ev.target.checked = true;
+      alert('اختر مرحلة واحدة على الأقل');
+    }
+    syncStagePickStyles();
+    maybeRebuildBOM();
+  }
+
   function getNewSpec() {
     var machineOrigin = resolveOrigin('sOrigin', 'sOriginCustom');
     var panelOrigin = resolveOrigin('sPanelOrigin', 'sPanelOriginCustom');
@@ -288,6 +363,8 @@ document.addEventListener('DOMContentLoaded', function () {
       stops: el('sStops').value,
       capacity: el('sCap').value,
       machine: el('sMachine').value,
+      elev_class: el('sElevClass') ? el('sElevClass').value : 'passenger',
+      control_sys: el('sControlSys') ? el('sControlSys').value : 'simplex',
       door: el('sDoor').value,
       cabin: el('sCabin').value,
       entrances: el('sEntr').value,
@@ -302,6 +379,7 @@ document.addEventListener('DOMContentLoaded', function () {
       panel_origin: panelOrigin.id,
       panel_origin_country: panelOrigin.country,
       panel_brand: resolveBrand('sPanelBrand', 'sPanelBrandCustom'),
+      include_stages: getSelectedStages(),
     };
     var cabinCalc = P.calcCabinFromShaft(spec);
     if (cabinCalc && !cabinCalc.error) {
@@ -309,6 +387,38 @@ document.addEventListener('DOMContentLoaded', function () {
       spec.cabin_depth = cabinCalc.depth;
     }
     return spec;
+  }
+
+  function getExtendSpec() {
+    var machineOrigin = resolveOrigin('sOrigin', 'sOriginCustom');
+    var panelOrigin = resolveOrigin('sPanelOrigin', 'sPanelOriginCustom');
+    var currentStops = el('eCurrentStops') ? P.num(el('eCurrentStops').value) : 3;
+    var addedStops = el('eAddedStops') ? P.num(el('eAddedStops').value) : 2;
+    return {
+      elevator_count: el('eElevCount') ? el('eElevCount').value : 1,
+      current_stops: currentStops,
+      added_stops: addedStops,
+      stops: currentStops + addedStops,
+      capacity: el('eCap') ? el('eCap').value : '630',
+      door: el('eDoor') ? el('eDoor').value : 'tele',
+      entrances: el('eEntr') ? el('eEntr').value : 1,
+      floor_height: el('eFloorH') ? el('eFloorH').value : 300,
+      machine_origin: machineOrigin.id,
+      machine_origin_country: machineOrigin.country,
+      machine_brand: resolveBrand('sBrand', 'sBrandCustom'),
+      panel_origin: panelOrigin.id,
+      panel_origin_country: panelOrigin.country,
+      panel_brand: resolveBrand('sPanelBrand', 'sPanelBrandCustom'),
+      include_stages: getSelectedStages(),
+    };
+  }
+
+  function updateExtendHint() {
+    var hint = el('extendHint');
+    if (!hint) return;
+    var cur = el('eCurrentStops') ? P.num(el('eCurrentStops').value) : 3;
+    var add = el('eAddedStops') ? P.num(el('eAddedStops').value) : 2;
+    hint.innerHTML = cur + ' وقفات قائمة + ' + add + ' دور = <b>' + (cur + add) + ' وقفات</b>';
   }
 
   function getUpgSpec() {
@@ -379,8 +489,8 @@ document.addEventListener('DOMContentLoaded', function () {
     return '<tr class="item-row" data-stage="' + escapeAttr(r.stage) + '">'
       + '<td><input class="w-name f-name" type="text" value="' + escapeAttr(r.name) + '"></td>'
       + '<td>' + unitCellHTML(r.unit) + '</td>'
-      + '<td><input class="f-qty" type="number" min="0" step="any" value="' + r.qty + '"></td>'
-      + '<td><input class="f-price" type="number" min="0" step="any" value="' + r.price + '"></td>'
+      + '<td><input class="f-qty" type="number" min="0" step="1" value="' + Math.round(Number(r.qty) || 0) + '"></td>'
+      + '<td><input class="f-price" type="number" min="0" step="1" value="' + Math.round(Number(r.price) || 0) + '"></td>'
       + '<td class="line-total">0</td>'
       + '<td><button type="button" class="pricing-del" title="حذف">✕</button></td>'
       + '</tr>';
@@ -450,29 +560,122 @@ document.addEventListener('DOMContentLoaded', function () {
     return out;
   }
 
+  var PAY_MAX = 8;
+  var PAY_PRESETS = {
+    1: [{ label: 'دفعة واحدة', pct: 100 }],
+    2: [{ label: 'دفعة مقدمة', pct: 50 }, { label: 'عند التسليم', pct: 50 }],
+    3: [{ label: 'دفعة مقدمة', pct: 50 }, { label: 'عند التوريد', pct: 40 }, { label: 'دفعة نهائية', pct: 10 }],
+    4: [{ label: 'دفعة مقدمة', pct: 40 }, { label: 'عند التوريد', pct: 30 }, { label: 'بعد التركيب', pct: 20 }, { label: 'دفعة نهائية', pct: 10 }],
+  };
+
+  function defaultPayItems(count) {
+    count = Math.max(1, Math.min(PAY_MAX, parseInt(count, 10) || 3));
+    var i, each, labels, items;
+    if (PAY_PRESETS[count]) {
+      return PAY_PRESETS[count].map(function (r) { return { label: r.label, pct: r.pct }; });
+    }
+    labels = ['دفعة مقدمة'];
+    for (i = 2; i < count; i++) labels.push('دفعة ' + i);
+    labels.push('دفعة نهائية');
+    each = Math.floor(100 / count);
+    items = [];
+    for (i = 0; i < count; i++) {
+      items.push({
+        label: labels[i],
+        pct: i === count - 1 ? (100 - each * (count - 1)) : each,
+      });
+    }
+    return items;
+  }
+
+  function getPayCount() {
+    var n = el('payCount') ? parseInt(el('payCount').value, 10) : 3;
+    if (isNaN(n) || n < 1) n = 3;
+    if (n > PAY_MAX) n = PAY_MAX;
+    return n;
+  }
+
+  function collectPayInstallments() {
+    var box = el('payRows');
+    if (!box) return defaultPayItems(getPayCount());
+    var rows = box.querySelectorAll('.pay-install-row');
+    var out = [], i, lab, pctEl;
+    for (i = 0; i < rows.length; i++) {
+      lab = rows[i].querySelector('.pay-label');
+      pctEl = rows[i].querySelector('.pay-pct');
+      out.push({
+        label: lab ? String(lab.value || '').trim() : ('دفعة ' + (i + 1)),
+        pct: P.num(pctEl ? pctEl.value : 0),
+      });
+    }
+    return out;
+  }
+
+  function renderPayRows(items) {
+    var box = el('payRows');
+    if (!box) return;
+    items = items && items.length ? items : defaultPayItems(3);
+    var html = '', i;
+    for (i = 0; i < items.length; i++) {
+      html += '<div class="pay-install-row">'
+        + '<input class="pay-label" type="text" value="' + escapeAttr(items[i].label || ('دفعة ' + (i + 1))) + '" placeholder="اسم الدفعة">'
+        + '<input class="pay-pct" type="number" min="0" max="100" step="1" value="' + (items[i].pct || 0) + '">'
+        + '</div>';
+    }
+    box.innerHTML = html;
+    var inputs = box.querySelectorAll('input');
+    for (i = 0; i < inputs.length; i++) {
+      inputs[i].addEventListener('input', recalc);
+    }
+  }
+
+  function applyPayCount(count) {
+    count = Math.max(1, Math.min(PAY_MAX, parseInt(count, 10) || 3));
+    if (el('payCount')) el('payCount').value = String(count);
+    renderPayRows(defaultPayItems(count));
+  }
+
+  function itemsFromSaved(s) {
+    if (s && s.pay_installments && s.pay_installments.length) return s.pay_installments;
+    var adv = P.num(s && s.pay_advance_pct != null ? s.pay_advance_pct : 50);
+    var sup = P.num(s && s.pay_supply_pct != null ? s.pay_supply_pct : 40);
+    var fin = P.num(s && s.pay_final_pct != null ? s.pay_final_pct : 10);
+    var items = [{ label: 'دفعة مقدمة', pct: adv }];
+    if (sup > 0) items.push({ label: 'عند التوريد', pct: sup });
+    if (fin > 0) items.push({ label: sup > 0 ? 'دفعة نهائية' : 'عند التسليم', pct: fin });
+    return items;
+  }
+
   function getPaymentPcts() {
+    var items = collectPayInstallments();
+    var n = items.length;
+    var supply = 0, i;
+    for (i = 1; i < n - 1; i++) supply += items[i].pct;
     return {
-      advance: P.num(el('payAdvance') ? el('payAdvance').value : 50),
-      supply: P.num(el('paySupply') ? el('paySupply').value : 40),
-      final: P.num(el('payFinal') ? el('payFinal').value : 10),
+      count: n,
+      advance: n ? items[0].pct : 0,
+      supply: supply,
+      final: n >= 2 ? items[n - 1].pct : 0,
+      items: items,
     };
   }
 
   function paymentTermsText(pcts, grand) {
-    var advAmt = Math.round(grand * pcts.advance / 100);
-    var supAmt = Math.round(grand * pcts.supply / 100);
-    var finAmt = Math.round(grand * pcts.final / 100);
-    return '<b>شروط الدفع:</b>'
-      + '<div class="q-pay-list">'
-      + '<div>' + pcts.advance + '% دفعة مقدمة (' + fmt(advAmt) + ')</div>'
-      + '<div>' + pcts.supply + '% عند التوريد (' + fmt(supAmt) + ')</div>'
-      + '<div>' + pcts.final + '% عند التسليم (' + fmt(finAmt) + ')</div>'
-      + '</div>';
+    var items = (pcts && pcts.items) ? pcts.items : collectPayInstallments();
+    var html = '<b>شروط الدفع:</b><div class="q-pay-list">';
+    var i, amt;
+    for (i = 0; i < items.length; i++) {
+      if (items[i].pct <= 0) continue;
+      amt = Math.round(grand * items[i].pct / 100);
+      html += '<div>' + items[i].pct + '% ' + (items[i].label || ('دفعة ' + (i + 1))) + ' (' + fmt(amt) + ')</div>';
+    }
+    return html + '</div>';
   }
 
   function recalcPaymentSchedule(grand) {
-    var pcts = getPaymentPcts();
-    var total = pcts.advance + pcts.supply + pcts.final;
+    var items = collectPayInstallments();
+    var total = 0, i;
+    for (i = 0; i < items.length; i++) total += items[i].pct;
     var totalEl = el('payPctTotal');
     var preview = el('payPreview');
     var payWarn = el('payWarnBox');
@@ -481,9 +684,13 @@ document.addEventListener('DOMContentLoaded', function () {
       totalEl.style.color = total === 100 ? 'var(--text3)' : 'var(--danger)';
     }
     if (preview && grand > 0) {
-      preview.innerHTML = 'مقدمة: <span class="amt">' + fmt(Math.round(grand * pcts.advance / 100)) + '</span><br>'
-        + 'توريد: <span class="amt">' + fmt(Math.round(grand * pcts.supply / 100)) + '</span><br>'
-        + 'نهائية: <span class="amt">' + fmt(Math.round(grand * pcts.final / 100)) + '</span>';
+      var html = '';
+      for (i = 0; i < items.length; i++) {
+        if (items[i].pct <= 0) continue;
+        html += (html ? '<br>' : '') + escapeAttr(items[i].label || ('دفعة ' + (i + 1)))
+          + ': <span class="amt">' + fmt(Math.round(grand * items[i].pct / 100)) + '</span>';
+      }
+      preview.innerHTML = html || 'أدخل نسب الدفعات';
     } else if (preview) {
       preview.innerHTML = 'أدخل البنود لحساب مبالغ الدفعات';
     }
@@ -553,6 +760,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function maybeRebuildBOM() {
     if (!hasBuiltRows) return;
     if (currentMode === 'new') buildNewBOM();
+    else if (currentMode === 'extend') buildExtendBOM();
     else if (currentMode === 'upgrade') buildUpgBOM();
   }
 
@@ -586,6 +794,18 @@ document.addEventListener('DOMContentLoaded', function () {
     recalc();
   }
 
+  function buildExtendBOM() {
+    updateExtendHint();
+    if (typeof P.buildExtendBOM !== 'function') { alert('حدّث الصفحة (Ctrl+F5)'); return; }
+    var result = P.buildExtendBOM(getExtendSpec());
+    if (result.error) { alert(result.error); return; }
+    currentMode = 'extend';
+    renderRows(result.rows);
+    el('sumLabor').value = result.labor;
+    el('sumTrans').value = el('sumTrans').value || 1500;
+    recalc();
+  }
+
   function addManualRow() {
     var body = el('itemsBody');
     var note = body.querySelector('.pricing-empty');
@@ -596,8 +816,8 @@ document.addEventListener('DOMContentLoaded', function () {
     tr.setAttribute('data-stage', 'بنود إضافية');
     tr.innerHTML = '<td><input class="w-name f-name" type="text" placeholder="اسم البند"></td>'
       + '<td>' + unitCellHTML('قطعة') + '</td>'
-      + '<td><input class="f-qty" type="number" min="0" step="any" value="1"></td>'
-      + '<td><input class="f-price" type="number" min="0" step="any" value="0"></td>'
+      + '<td><input class="f-qty" type="number" min="0" step="1" value="1"></td>'
+      + '<td><input class="f-price" type="number" min="0" step="1" value="0"></td>'
       + '<td class="line-total">0</td>'
       + '<td><button type="button" class="pricing-del">✕</button></td>';
     body.appendChild(tr);
@@ -606,17 +826,22 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function switchTab(mode) {
-    var isNew = mode === 'new';
-    el('paneNew').style.display = isNew ? '' : 'none';
-    el('paneUpg').style.display = isNew ? 'none' : '';
-    el('tabNewBtn').className = 'pricing-tab' + (isNew ? ' active' : '');
-    el('tabUpgBtn').className = 'pricing-tab' + (isNew ? '' : ' active');
+    if (lockQuoteType && mode !== lockQuoteType) return;
+    el('paneNew').style.display = mode === 'new' ? '' : 'none';
+    el('paneExtend').style.display = mode === 'extend' ? '' : 'none';
+    el('paneUpg').style.display = mode === 'upgrade' ? '' : 'none';
+    el('tabNewBtn').className = 'pricing-tab' + (mode === 'new' ? ' active' : '');
+    if (el('tabExtendBtn')) el('tabExtendBtn').className = 'pricing-tab' + (mode === 'extend' ? ' active' : '');
+    el('tabUpgBtn').className = 'pricing-tab' + (mode === 'upgrade' ? ' active' : '');
     currentMode = mode;
     hasBuiltRows = false;
-    el('itemsBody').innerHTML = '<tr><td colspan="6" class="pricing-empty">' + (isNew
-      ? 'حدد المواصفات ثم اضغط «بناء قائمة القطع»'
-      : 'اختر مكونات التحديث ثم اضغط «بناء قائمة التحديث»') + '</td></tr>';
+    var empty = 'حدد المواصفات ثم اضغط «بناء قائمة القطع»';
+    if (mode === 'extend') empty = 'حدد الوقفات الحالية والأدوار المضافة ثم اضغط «بناء قائمة إضافة الأدوار»';
+    if (mode === 'upgrade') empty = 'اختر مكونات التحديث ثم اضغط «بناء قائمة التحديث»';
+    el('itemsBody').innerHTML = '<tr><td colspan="6" class="pricing-empty">' + empty + '</td></tr>';
     el('sumLabor').value = 0;
+    syncStagePickStyles();
+    if (mode === 'extend') updateExtendHint();
     recalc();
   }
 
@@ -657,7 +882,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var validDays = P.num(el('cValid').value) || 30;
     var laborByStage = {};
     if (!isUpg && typeof P.splitLaborByStage === 'function') {
-      var laborParts = P.splitLaborByStage(labor + trans + other);
+      var laborParts = P.splitLaborByStage(labor + trans + other, stagesOrder);
       for (i = 0; i < laborParts.length; i++) {
         laborByStage[laborParts[i].stage] = {
           label: laborParts[i].label,
@@ -689,7 +914,38 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     tbl += '</tbody></table>';
     var specs = '';
-    if (!isUpg) {
+    var quoteTitle = 'توريد وتركيب مصعد جديد';
+    if (currentMode === 'upgrade') quoteTitle = 'عرض سعر تحديث';
+    if (currentMode === 'extend') quoteTitle = 'إضافة أدوار لمصعد قائم';
+    if (currentMode === 'extend') {
+      var spec = getExtendSpec();
+      var cells = [];
+      function pushPair(label, value) {
+        if (!value && value !== 0) return;
+        cells.push({ label: label, value: value });
+      }
+      pushPair('عدد المصاعد', spec.elevator_count || 1);
+      pushPair('الوقفات الحالية', spec.current_stops + ' وقفات');
+      pushPair('الأدوار المضافة', spec.added_stops + ' أدوار');
+      pushPair('بعد الإضافة', spec.stops + ' وقفات');
+      if (!isNoneVal(spec.capacity)) pushPair('الحمولة', spec.capacity + ' كجم');
+      if (spec.include_stages && spec.include_stages.length && spec.include_stages.length < 3) {
+        pushPair('نطاق العمل', spec.include_stages.join(' · '));
+      }
+      var specRows = '';
+      var ci;
+      for (ci = 0; ci < cells.length; ci += 2) {
+        specRows += '<tr>';
+        specRows += '<td>' + cells[ci].label + '</td><td>' + cells[ci].value + '</td>';
+        if (cells[ci + 1]) {
+          specRows += '<td>' + cells[ci + 1].label + '</td><td>' + cells[ci + 1].value + '</td>';
+        } else {
+          specRows += '<td></td><td></td>';
+        }
+        specRows += '</tr>';
+      }
+      specs = '<div class="q-sec"><h3>نطاق العمل</h3><table class="q-tbl"><tbody>' + specRows + '</tbody></table></div>';
+    } else if (!isUpg) {
       var spec = getNewSpec();
       var cabinCalc = P.calcCabinFromShaft(Object.assign({}, spec, {
         capacity: isNoneVal(spec.capacity) ? 630 : spec.capacity,
@@ -728,6 +984,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (shaftTxt) pushPair('البئر الداخلي', shaftTxt);
       if (showCabin && cabinCalc && cabinCalc.label) pushPair('مقاس الكبينة', cabinCalc.label);
       if (showCabin && P.CABIN_NAMES[spec.cabin]) pushPair('تشطيب الكبينة', P.CABIN_NAMES[spec.cabin]);
+      if (spec.include_stages && spec.include_stages.length && spec.include_stages.length < 3) {
+        pushPair('نطاق العمل', spec.include_stages.join(' · '));
+      }
       var specRows = '';
       var ci;
       for (ci = 0; ci < cells.length; ci += 2) {
@@ -745,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', function () {
           + specRows + '</tbody></table></div>';
       }
     } else {
-      specs = '<div class="q-sec"><h3>نطاق العمل</h3><div class="q-terms">تحديث مصعد قائم — '
+      specs = '<div class="q-sec"><h3>نطاق العمل</h3><div class="q-terms">عرض سعر تحديث — '
         + (el('uElevCount') ? el('uElevCount').value : 1) + ' مصعد — '
         + el('uStops').value + ' وقفات.</div></div>';
     }
@@ -757,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', function () {
     el('quoteSheet').innerHTML = ''
       + '<div class="q-head">' + brandBlock
       + '<div class="q-meta">رقم العرض: <b>' + quoteCode + '</b><br>التاريخ: <b>' + dateStr + '</b><br>الصلاحية: <b>' + validDays + ' يوم</b></div></div>'
-      + '<div class="q-title">عرض سعر — ' + (isUpg ? 'تحديث مصعد قائم' : 'توريد وتركيب مصعد جديد') + '</div>'
+      + '<div class="q-title">عرض سعر — ' + quoteTitle + '</div>'
       + '<div class="q-sec"><h3>بيانات العميل</h3><div class="q-terms">'
       + (custCode ? '<b>كود العميل:</b> ' + custCode + ' &nbsp; ' : '')
       + '<b>الاسم:</b> ' + (el('cName').value || '—') + ' &nbsp; <b>الجوال:</b> ' + (el('cPhone').value || '—') + ' &nbsp; <b>الموقع:</b> ' + (el('cAddr').value || '—') + '</div></div>'
@@ -809,8 +1068,10 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
     var pcts = getPaymentPcts();
-    if (pcts.advance + pcts.supply + pcts.final !== 100) {
-      alert('مجموع نسب الدفعات يجب أن يساوي 100%.\nمقدمة + توريد + نهائية = ' + (pcts.advance + pcts.supply + pcts.final) + '%');
+    var payTotal = 0, pi;
+    for (pi = 0; pi < pcts.items.length; pi++) payTotal += pcts.items[pi].pct;
+    if (payTotal !== 100) {
+      alert('مجموع نسب الدفعات يجب أن يساوي 100% (حالياً ' + payTotal + '%).');
       return;
     }
     var payload = {
@@ -821,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', function () {
       client_phone: el('cPhone').value,
       client_address: el('cAddr').value,
       valid_days: P.num(el('cValid').value) || 30,
-      spec: currentMode === 'new' ? getNewSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected }),
+      spec: currentMode === 'new' ? getNewSpec() : (currentMode === 'extend' ? getExtendSpec() : Object.assign(getUpgSpec(), { upg_selected: upgSelected })),
       labor: P.num(el('sumLabor').value),
       transport: P.num(el('sumTrans').value),
       other_costs: P.num(el('sumOther').value),
@@ -829,6 +1090,8 @@ document.addEventListener('DOMContentLoaded', function () {
       pay_advance_pct: pcts.advance,
       pay_supply_pct: pcts.supply,
       pay_final_pct: pcts.final,
+      pay_count: pcts.count,
+      pay_installments: pcts.items,
       lines: rows,
     };
     fetch(saveUrl, {
@@ -872,11 +1135,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (el('sumTrans')) el('sumTrans').value = s.transport || 2000;
     if (el('sumOther')) el('sumOther').value = s.other_costs || 0;
     if (el('sumProfitP')) el('sumProfitP').value = s.profit_pct || 20;
-    if (el('payAdvance')) el('payAdvance').value = s.pay_advance_pct != null ? s.pay_advance_pct : 50;
-    if (el('paySupply')) el('paySupply').value = s.pay_supply_pct != null ? s.pay_supply_pct : 40;
-    if (el('payFinal')) el('payFinal').value = s.pay_final_pct != null ? s.pay_final_pct : 10;
+    var payItems = itemsFromSaved(s);
+    if (el('payCount')) el('payCount').value = String(payItems.length || 3);
+    renderPayRows(payItems);
     currentMode = s.quote_type || 'new';
     if (currentMode === 'upgrade') switchTab('upgrade');
+    if (currentMode === 'extend') switchTab('extend');
     if (s.spec) {
       initOriginSelect('sOrigin', 'sOriginCustom', s.spec.machine_origin || 'chinese', s.spec.machine_origin_country || '');
       fillBrandSelect('sBrand', 'sBrandCustom', machineBrands, s.spec.machine_origin || 'chinese', s.spec.machine_brand || '');
@@ -884,9 +1148,21 @@ document.addEventListener('DOMContentLoaded', function () {
       fillBrandSelect('sPanelBrand', 'sPanelBrandCustom', panelBrands, s.spec.panel_origin || 'chinese', s.spec.panel_brand || '');
       if (el('sElevCount') && s.spec.elevator_count) el('sElevCount').value = s.spec.elevator_count;
       if (el('uElevCount') && s.spec.elevator_count) el('uElevCount').value = s.spec.elevator_count;
+      if (el('eElevCount') && s.spec.elevator_count) el('eElevCount').value = s.spec.elevator_count;
+      if (el('eCurrentStops') && s.spec.current_stops) el('eCurrentStops').value = s.spec.current_stops;
+      if (el('eAddedStops') && s.spec.added_stops) el('eAddedStops').value = s.spec.added_stops;
+      if (el('eCap') && s.spec.capacity) el('eCap').value = s.spec.capacity;
+      if (el('eDoor') && s.spec.door) el('eDoor').value = s.spec.door;
+      if (el('eEntr') && s.spec.entrances) el('eEntr').value = s.spec.entrances;
+      if (el('eFloorH') && s.spec.floor_height) el('eFloorH').value = toStoredCm(s.spec.floor_height);
       if (el('sStops') && s.spec.stops) el('sStops').value = s.spec.stops;
       if (el('sCap') && s.spec.capacity) el('sCap').value = s.spec.capacity;
-      if (el('sMachine') && s.spec.machine) el('sMachine').value = s.spec.machine;
+      if (el('sMachine') && s.spec.machine) {
+        var m = s.spec.machine === 'gearless' ? 'gearless_mrl' : s.spec.machine;
+        el('sMachine').value = m;
+      }
+      if (el('sElevClass') && s.spec.elev_class) el('sElevClass').value = s.spec.elev_class;
+      if (el('sControlSys') && s.spec.control_sys) el('sControlSys').value = s.spec.control_sys;
       if (el('sDoor') && s.spec.door) el('sDoor').value = s.spec.door;
       if (el('sCabin') && s.spec.cabin) el('sCabin').value = s.spec.cabin;
       if (el('sEntr') && s.spec.entrances) el('sEntr').value = s.spec.entrances;
@@ -895,8 +1171,14 @@ document.addEventListener('DOMContentLoaded', function () {
       if (el('sShaft') && s.spec.shaft) el('sShaft').value = s.spec.shaft;
       if (el('sShaftW') && s.spec.shaft_width) el('sShaftW').value = toStoredCm(s.spec.shaft_width);
       if (el('sShaftD') && s.spec.shaft_depth) el('sShaftD').value = toStoredCm(s.spec.shaft_depth);
+      if (s.spec.include_stages && s.spec.include_stages.length) {
+        setSelectedStages(s.spec.include_stages);
+      } else if (s.lines && s.lines.length && currentMode !== 'upgrade') {
+        setSelectedStages(inferStagesFromLines(s.lines));
+      }
       if (s.spec.upg_selected) upgSelected = s.spec.upg_selected;
     }
+    if (currentMode === 'extend') updateExtendHint();
     if (s.lines && s.lines.length) renderRows(s.lines);
     quoteCode = s.code || quoteCode;
   }
@@ -944,35 +1226,91 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   if (el('sBrandCustom')) el('sBrandCustom').addEventListener('input', maybeRebuildBOM);
   if (el('sPanelBrandCustom')) el('sPanelBrandCustom').addEventListener('input', maybeRebuildBOM);
-  ['sShaftW', 'sShaftD', 'sCap', 'sElevCount', 'uElevCount'].forEach(function (id) {
+  ['sShaftW', 'sShaftD', 'sCap', 'sElevCount', 'uElevCount', 'eElevCount'].forEach(function (id) {
     if (el(id)) el(id).addEventListener('input', function () { updateCabinHint(); maybeRebuildBOM(); });
   });
+  ['eCurrentStops', 'eAddedStops', 'eCap', 'eDoor', 'eEntr', 'eFloorH'].forEach(function (id) {
+    if (el(id)) el(id).addEventListener('change', function () { updateExtendHint(); maybeRebuildBOM(); });
+  });
+  if (el('eFloorH')) el('eFloorH').addEventListener('input', function () { updateExtendHint(); maybeRebuildBOM(); });
   updateCabinHint();
+  updateExtendHint();
 
   el('tabNewBtn').addEventListener('click', function () { switchTab('new'); });
-  el('tabUpgBtn').addEventListener('click', function () { switchTab('upgrade'); });
+  if (el('tabExtendBtn')) el('tabExtendBtn').addEventListener('click', function () { switchTab('extend'); });
+  if (el('tabUpgBtn')) el('tabUpgBtn').addEventListener('click', function () { switchTab('upgrade'); });
+  if (el('btnQuickCustomer')) {
+    el('btnQuickCustomer').addEventListener('click', function () {
+      if (!window.LiftCoreQuickCustomer) return;
+      window.LiftCoreQuickCustomer.open({
+        onCreated: function (cust) {
+          if (!cust || !cust.id) return;
+          var row = {
+            id: cust.id,
+            code: cust.code || '',
+            name: cust.name || '',
+            phone: cust.phone || '',
+            email: cust.email || '',
+            address: cust.address_display || cust.address || '',
+            city: cust.city || '',
+            district: cust.district || '',
+          };
+          customers.push(row);
+          if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
+            LcClientSelect.setCustomers('cCustomer', customers, cust.id);
+          } else if (el('cCustomer')) {
+            var opt = document.createElement('option');
+            opt.value = String(cust.id);
+            opt.textContent = (row.code || '') + ' — ' + (row.name || '');
+            el('cCustomer').appendChild(opt);
+            el('cCustomer').value = String(cust.id);
+          }
+          onCustomerChange();
+        },
+      });
+    });
+  }
   el('buildBtn').addEventListener('click', buildNewBOM);
+  if (el('buildExtBtn')) el('buildExtBtn').addEventListener('click', buildExtendBOM);
   el('buildUpgBtn').addEventListener('click', buildUpgBOM);
+  ['stgRails', 'stgCabin', 'stgCtrl', 'eStgRails', 'eStgCabin', 'eStgCtrl'].forEach(function (id) {
+    if (el(id)) el(id).addEventListener('change', onStagePickChange);
+  });
+  syncStagePickStyles();
   el('addRowBtn').addEventListener('click', addManualRow);
   el('previewBtn').addEventListener('click', buildQuote);
   el('saveBtn').addEventListener('click', saveQuote);
   el('printBtn').addEventListener('click', function () { window.print(); });
   el('closeQuoteBtn').addEventListener('click', function () { el('quoteOverlay').classList.remove('open'); });
   el('qDetailed').addEventListener('change', buildQuote);
-  ['sumLabor', 'sumTrans', 'sumOther', 'sumProfitP', 'payAdvance', 'paySupply', 'payFinal'].forEach(function (id) {
+  ['sumLabor', 'sumTrans', 'sumOther', 'sumProfitP'].forEach(function (id) {
     if (el(id)) el(id).addEventListener('input', recalc);
   });
+  if (el('payCount')) {
+    el('payCount').addEventListener('change', function () {
+      applyPayCount(getPayCount());
+      recalc();
+    });
+  }
+  renderPayRows(defaultPayItems(el('payCount') ? el('payCount').value : 3));
 
   var restored = restoreDraftIfNeeded();
   if (cfg.saved) {
     loadSaved();
-  } else if (cfg.prefill && cfg.prefill.customer_id) {
-    if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
-      LcClientSelect.setCustomers('cCustomer', customers, cfg.prefill.customer_id);
-    } else if (el('cCustomer')) {
-      el('cCustomer').value = String(cfg.prefill.customer_id);
+  } else {
+    if (lockQuoteType && ['new', 'upgrade', 'extend'].indexOf(lockQuoteType) >= 0) {
+      switchTab(lockQuoteType);
+    } else if (cfg.preferredQuoteType && ['new', 'upgrade', 'extend'].indexOf(cfg.preferredQuoteType) >= 0) {
+      switchTab(cfg.preferredQuoteType);
     }
-    onCustomerChange();
+    if (cfg.prefill && cfg.prefill.customer_id) {
+      if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {
+        LcClientSelect.setCustomers('cCustomer', customers, cfg.prefill.customer_id);
+      } else if (el('cCustomer')) {
+        el('cCustomer').value = String(cfg.prefill.customer_id);
+      }
+      onCustomerChange();
+    }
   }
   if (restored) {
     markDrafting(true);

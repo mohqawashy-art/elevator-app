@@ -38,6 +38,24 @@ PROJECT_STATUSES = (
     'مغلق',
 )
 
+QUOTE_TYPE_LABELS = {
+    'new': 'توريد وتركيب مصعد جديد',
+    'upgrade': 'عرض سعر تحديث',
+    'extend': 'إضافة أدوار لمصعد قائم',
+}
+
+QUOTE_TYPE_SHORT = {
+    'new': 'تركيب جديد',
+    'upgrade': 'عرض تحديث',
+    'extend': 'إضافة أدوار',
+}
+
+QUOTE_FLOW_PAGE_TITLES = {
+    'new': 'عرض سعر تركيب مصعد جديد',
+    'upgrade': 'عرض سعر تحديث',
+    'extend': 'عرض سعر إضافة أدوار',
+}
+
 QUOTE_STATUSES = (
     'مسودة',
     'مُرسل',
@@ -173,6 +191,111 @@ class InstallProject(TenantMixin, db.Model):
         return self.title or '—'
 
 
+MAX_PAY_INSTALLMENTS = 8
+
+
+def default_pay_labels(count):
+    presets = {
+        1: ['دفعة واحدة'],
+        2: ['دفعة مقدمة', 'عند التسليم'],
+        3: ['دفعة مقدمة', 'عند التوريد', 'دفعة نهائية'],
+        4: ['دفعة مقدمة', 'عند التوريد', 'بعد التركيب', 'دفعة نهائية'],
+    }
+    if count in presets:
+        return list(presets[count])
+    labels = ['دفعة مقدمة']
+    for i in range(2, count):
+        labels.append(f'دفعة {i}')
+    labels.append('دفعة نهائية')
+    return labels
+
+
+def default_pay_installments(count):
+    try:
+        count = int(count or 3)
+    except (TypeError, ValueError):
+        count = 3
+    count = max(1, min(count, MAX_PAY_INSTALLMENTS))
+    presets = {
+        1: [100],
+        2: [50, 50],
+        3: [50, 40, 10],
+        4: [40, 30, 20, 10],
+    }
+    labels = default_pay_labels(count)
+    if count in presets:
+        pcts = presets[count]
+    else:
+        each = 100 // count
+        pcts = [each] * count
+        pcts[-1] = 100 - each * (count - 1)
+    return assign_pay_keys([
+        {'label': labels[i], 'pct': pcts[i]} for i in range(count)
+    ])
+
+
+def assign_pay_keys(items):
+    n = len(items)
+    out = []
+    for i, it in enumerate(items):
+        row = {
+            'label': (it.get('label') or f'دفعة {i + 1}').strip() or f'دفعة {i + 1}',
+            'pct': float(it.get('pct') or 0),
+        }
+        if i == 0:
+            row['key'] = 'advance_payment'
+        elif n >= 2 and i == n - 1:
+            row['key'] = 'payment_final'
+        elif n == 3 and i == 1:
+            row['key'] = 'payment_on_delivery'
+        else:
+            row['key'] = f'client_payment_{i + 1}'
+        out.append(row)
+    return out
+
+
+def normalize_pay_installments(raw):
+    """تحقق من قائمة الدفعات الحرة. يرفع ValueError عند الخطأ."""
+    if not raw:
+        raise ValueError('أدخل دفعة واحدة على الأقل')
+    items = []
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        try:
+            pct = float(row.get('pct') or 0)
+        except (TypeError, ValueError):
+            pct = 0.0
+        if pct < 0:
+            raise ValueError('نسب الدفعات لا يمكن أن تكون سالبة')
+        items.append({
+            'label': (row.get('label') or '').strip(),
+            'pct': pct,
+        })
+    items = [it for it in items if it['pct'] > 0]
+    if not items:
+        raise ValueError('أدخل دفعة واحدة على الأقل')
+    if len(items) > MAX_PAY_INSTALLMENTS:
+        raise ValueError(f'الحد الأقصى {MAX_PAY_INSTALLMENTS} دفعات')
+    for i, it in enumerate(items):
+        if not it['label']:
+            it['label'] = f'دفعة {i + 1}'
+    if round(sum(it['pct'] for it in items), 2) != 100:
+        raise ValueError('مجموع نسب الدفعات يجب أن يساوي 100%')
+    return assign_pay_keys(items)
+
+
+def legacy_pcts_from_items(items):
+    if not items:
+        return 50.0, 40.0, 10.0
+    if len(items) == 1:
+        return float(items[0]['pct']), 0.0, 0.0
+    if len(items) == 2:
+        return float(items[0]['pct']), 0.0, float(items[1]['pct'])
+    mid = sum(float(i['pct']) for i in items[1:-1])
+    return float(items[0]['pct']), float(mid), float(items[-1]['pct'])
+
+
 class InstallQuotation(TenantMixin, db.Model):
     """عرض سعر / تسعير تركيب — مراحل 3–6."""
     __tablename__ = 'installation_quotations'
@@ -184,7 +307,7 @@ class InstallQuotation(TenantMixin, db.Model):
     code = db.Column(db.String(20), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('installation_projects.id'), nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True)
-    quote_type = db.Column(db.String(20), default='new')  # new | upgrade
+    quote_type = db.Column(db.String(20), default='new')  # new | upgrade | extend
     status = db.Column(db.String(30), default='مسودة')
 
     client_name = db.Column(db.String(200))
@@ -209,6 +332,7 @@ class InstallQuotation(TenantMixin, db.Model):
     pay_advance_pct = db.Column(db.Float, default=50)
     pay_supply_pct = db.Column(db.Float, default=40)
     pay_final_pct = db.Column(db.Float, default=10)
+    pay_schedule_json = db.Column(db.Text)  # قائمة دفعات حرة حسب الاتفاق
 
     approved_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -227,6 +351,12 @@ class InstallQuotation(TenantMixin, db.Model):
         order_by='InstallQuotationLine.sort_order',
     )
 
+    def quote_type_label(self):
+        return QUOTE_TYPE_LABELS.get(self.quote_type or 'new', QUOTE_TYPE_LABELS['new'])
+
+    def quote_type_short(self):
+        return QUOTE_TYPE_SHORT.get(self.quote_type or 'new', QUOTE_TYPE_SHORT['new'])
+
     def spec(self):
         if not self.spec_json:
             return {}
@@ -235,12 +365,78 @@ class InstallQuotation(TenantMixin, db.Model):
         except (json.JSONDecodeError, TypeError):
             return {}
 
+    def _pay_installments_raw(self):
+        if not self.pay_schedule_json:
+            return None
+        try:
+            data = json.loads(self.pay_schedule_json)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        if isinstance(data, list) and data:
+            return data
+        return None
+
+    def payment_items(self):
+        """دفعات العرض ذات النسبة الأكبر من صفر — للطباعة والمعاينة."""
+        gt = float(self.grand_total or 0)
+        raw = self._pay_installments_raw()
+        items = None
+        if raw:
+            try:
+                items = normalize_pay_installments(raw)
+            except ValueError:
+                cleaned = []
+                for row in raw:
+                    if not isinstance(row, dict):
+                        continue
+                    try:
+                        pct = float(row.get('pct') or 0)
+                    except (TypeError, ValueError):
+                        pct = 0
+                    if pct > 0:
+                        cleaned.append({
+                            'label': (row.get('label') or '').strip() or 'دفعة',
+                            'pct': pct,
+                        })
+                items = assign_pay_keys(cleaned) if cleaned else None
+        if not items:
+            sched_adv = self.pay_advance_pct if self.pay_advance_pct is not None else 50.0
+            sched_sup = self.pay_supply_pct if self.pay_supply_pct is not None else 40.0
+            sched_fin = self.pay_final_pct if self.pay_final_pct is not None else 10.0
+            fallback = [{'label': 'دفعة مقدمة', 'pct': sched_adv}]
+            if (sched_sup or 0) > 0:
+                fallback.append({'label': 'عند التوريد', 'pct': sched_sup})
+            if (sched_fin or 0) > 0:
+                fallback.append({
+                    'label': 'عند التسليم' if (sched_sup or 0) <= 0 else 'دفعة نهائية',
+                    'pct': sched_fin,
+                })
+            items = assign_pay_keys(fallback)
+        out = []
+        for it in items:
+            pct = float(it.get('pct') or 0)
+            if pct <= 0:
+                continue
+            out.append({
+                'key': it.get('key'),
+                'label': it.get('label') or 'دفعة',
+                'pct': pct,
+                'amount': round(gt * pct / 100.0),
+            })
+        return out
+
+    def payment_count(self):
+        return max(1, len(self.payment_items()))
+
     def payment_schedule(self):
-        """نسب دفعات العميل المحددة في التسعير."""
+        """نسب دفعات العميل — متوافق مع الحقول الثلاثة القديمة."""
+        items = self.payment_items()
+        adv, sup, fin = legacy_pcts_from_items(items)
         return {
-            'advance_pct': self.pay_advance_pct if self.pay_advance_pct is not None else 50.0,
-            'supply_pct': self.pay_supply_pct if self.pay_supply_pct is not None else 40.0,
-            'final_pct': self.pay_final_pct if self.pay_final_pct is not None else 10.0,
+            'advance_pct': adv,
+            'supply_pct': sup,
+            'final_pct': fin,
+            'count': len(items),
         }
 
     def payment_amount(self, step_key, grand_total=None):
@@ -248,16 +444,10 @@ class InstallQuotation(TenantMixin, db.Model):
         gt = grand_total if grand_total is not None else (self.grand_total or 0)
         if not gt:
             return None
-        sched = self.payment_schedule()
-        key_pct = {
-            'advance_payment': sched['advance_pct'],
-            'payment_on_delivery': sched['supply_pct'],
-            'payment_final': sched['final_pct'],
-        }
-        pct = key_pct.get(step_key)
-        if pct is None:
-            return None
-        return round(float(gt) * float(pct) / 100.0)
+        for it in self.payment_items():
+            if it.get('key') == step_key:
+                return round(float(gt) * float(it['pct']) / 100.0)
+        return None
 
 
 class InstallQuotationLine(TenantMixin, db.Model):

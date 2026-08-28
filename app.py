@@ -2357,7 +2357,9 @@ DEPARTMENT_PORTALS = {
         'color': '#14b8a6',
         'links': (
             ('لوحة المبيعات', '/sales/', 'sales_quotes.read'),
-            ('عرض تركيب جديد', '/sales/install/quotes/new', 'installation_projects.read', True),
+            ('تركيب مصعد جديد', '/sales/install/quotes/new', 'installation_projects.read', True),
+            ('عرض سعر تحديث', '/sales/install/quotes/upgrade', 'installation_projects.read', True),
+            ('إضافة أدوار', '/sales/install/quotes/extend', 'installation_projects.read', True),
             ('عروض التركيب', '/sales/quotes?kind=install', 'installation_projects.read', True),
             ('عرض صيانة جديد', '/sales/maintenance-quotes/new', 'sales_quotes.read'),
             ('عروض الصيانة', '/sales/maintenance-quotes', 'sales_quotes.read'),
