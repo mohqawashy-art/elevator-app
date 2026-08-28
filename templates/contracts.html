@@ -839,6 +839,7 @@ var CONTRACT_FILTER_INVOICE_OPTS = ['مدفوع', 'مدفوع جزئياً', 'غ
 
 function lcContractClient(c) {
   if (!c) return '';
+  if (window.LiftCoreDisplay && LiftCoreDisplay.clientName) return LiftCoreDisplay.clientName(c);
   if (!isContractUiEn()) return c.name || '';
   if (c.name_en && String(c.name_en).trim()) return String(c.name_en).trim();
   return c.name || '';

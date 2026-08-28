@@ -1099,6 +1099,7 @@ def contract_customer_js_dict(c):
     return {
         'id': c.id,
         'name': c.name,
+        'name_en': c.name_en or '',
         'code': c.code,
         'city': c.city or '',
         'district': c.district or '',

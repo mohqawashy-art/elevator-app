@@ -24,9 +24,15 @@
     return String(s || '').toLowerCase().trim();
   }
 
+  function displayName(c) {
+    if (!c) return '';
+    if (global.LiftCoreDisplay && LiftCoreDisplay.clientName) return LiftCoreDisplay.clientName(c);
+    return c.name || '';
+  }
+
   function labelFor(c) {
     var code = c.code ? c.code + ' — ' : '';
-    return code + (c.name || '');
+    return code + displayName(c);
   }
 
   function parseCustomersFromSelect(sel) {
@@ -49,6 +55,8 @@
     if (!n) return customers.slice(0, 80);
     return customers.filter(function (c) {
       return norm(c.name).indexOf(n) >= 0 ||
+        norm(c.name_en).indexOf(n) >= 0 ||
+        norm(displayName(c)).indexOf(n) >= 0 ||
         norm(c.code).indexOf(n) >= 0 ||
         norm(c.city).indexOf(n) >= 0;
     }).slice(0, 80);
