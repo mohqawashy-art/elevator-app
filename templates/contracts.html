@@ -407,7 +407,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
 
     <!-- FILTERS -->
-    <div class="filters-bar">
+    <div class="filters-bar" data-i18n-skip>
       <div class="search-wrap">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
         <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو اسم العميل..." oninput="filterTable()">
@@ -449,21 +449,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <table>
           <thead>
             <tr>
-              <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="buildings">اسم المبنى <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="contract_type">النوع <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="start_date">تاريخ البداية <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="end_date">تاريخ الانتهاء <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="days_left">الأيام <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="value">قيمة العقد <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="total">الإجمالي <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="due_date">الاستحقاق <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="inv_status">حالة الفاتورة <span class="sort-ind"></span></th>
-              <th>مرفق</th>
-              <th>إجراءات</th>
+              <th class="th-sort" data-sort-col="code" data-lc-t="الكود">الكود <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="customer" data-lc-t="العميل">العميل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="buildings" data-lc-t="اسم المبنى">اسم المبنى <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract_type" data-lc-t="النوع">النوع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="start_date" data-lc-t="تاريخ البداية">تاريخ البداية <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="end_date" data-lc-t="تاريخ الانتهاء">تاريخ الانتهاء <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="days_left" data-lc-t="الأيام">الأيام <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="elevators" data-lc-t="المصاعد">المصاعد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="value" data-lc-t="قيمة العقد">قيمة العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="total" data-lc-t="الإجمالي">الإجمالي <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="due_date" data-lc-t="الاستحقاق">الاستحقاق <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract_status" data-lc-t="حالة العقد">حالة العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="inv_status" data-lc-t="حالة الفاتورة">حالة الفاتورة <span class="sort-ind"></span></th>
+              <th data-lc-t="مرفق">مرفق</th>
+              <th data-lc-t="إجراءات">إجراءات</th>
             </tr>
           </thead>
           <tbody id="table-body">
@@ -510,7 +510,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <!-- MODAL: استيراد -->
-<div class="modal-overlay" id="modal-import">
+<div class="modal-overlay" id="modal-import" data-i18n-skip>
   <div class="modal" style="max-width:720px">
     <div class="modal-head">
       <div class="modal-title">استيراد عقود من Excel</div>
@@ -545,7 +545,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <!-- ADD/EDIT MODAL -->
-<div class="modal-overlay" id="modal-add">
+<div class="modal-overlay" id="modal-add" data-i18n-skip>
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title" id="modal-title">إضافة عقد جديد</div>
@@ -824,6 +824,169 @@ function contractTr(s) {
   var t = window.__LC_TRANSLATIONS || {};
   return t[s] || s;
 }
+function contractModalTr(key) {
+  if (!isContractUiEn()) return key;
+  if (CONTRACT_MODAL_EN[key]) return CONTRACT_MODAL_EN[key];
+  return contractTr(key);
+}
+var CONTRACT_MODAL_EN = {
+  'تعديل عقد': 'Edit Contract',
+  'تجديد عقد': 'Renew Contract'
+};
+var CONTRACT_FILTER_TYPE_OPTS = ['عقد صيانة', 'عقد ضمان', 'عقد تركيب', 'عقد تحديث', 'عقد طوارئ'];
+var CONTRACT_FILTER_STATUS_OPTS = ['نشط', 'على وشك الانتهاء', 'تم تجديده', 'منتهي', 'ملغي'];
+var CONTRACT_FILTER_INVOICE_OPTS = ['مدفوع', 'مدفوع جزئياً', 'غير مدفوع', 'متأخر'];
+
+function lcContractClient(c) {
+  if (!c) return '';
+  if (!isContractUiEn()) return c.name || '';
+  if (c.name_en && String(c.name_en).trim()) return String(c.name_en).trim();
+  return c.name || '';
+}
+function contractDistrictLabel(d) {
+  if (!d) return d;
+  if (!isContractUiEn()) return d;
+  return contractModalTr(d) || d;
+}
+function rebuildContractFilterSelect(id, emptyLabel, values) {
+  var sel = document.getElementById(id);
+  if (!sel) return;
+  var prev = sel.value;
+  sel.innerHTML = '<option value="">' + esc(emptyLabel) + '</option>' +
+    values.map(function (v) {
+      return '<option value="' + esc(v) + '">' + esc(contractModalTr(v)) + '</option>';
+    }).join('');
+  if (prev) sel.value = prev;
+}
+function rebuildContractClientFilter() {
+  var sel = document.getElementById('f-client');
+  if (!sel) return;
+  var prev = sel.value;
+  sel.innerHTML = '<option value="">' + esc(contractModalTr('كل العملاء')) + '</option>';
+  CUSTOMERS.forEach(function (c) {
+    var o = document.createElement('option');
+    o.value = c.name;
+    o.textContent = lcContractClient(c);
+    sel.appendChild(o);
+  });
+  if (prev) sel.value = prev;
+}
+function translateContractElText(el, en) {
+  if (!el || !el.dataset.lcAr) return;
+  el.textContent = en ? contractModalTr(el.dataset.lcAr) : el.dataset.lcAr;
+}
+function captureContractElText(el) {
+  if (!el) return;
+  var t = el.textContent.replace(/\s+/g, ' ').trim();
+  if (t && el.dataset.lcAr == null) el.dataset.lcAr = t;
+}
+function applyContractSelectOptions(sel, en) {
+  if (!sel) return;
+  [].forEach.call(sel.options, function (opt) {
+    if (opt.dataset.lcAr == null) opt.dataset.lcAr = opt.textContent;
+    opt.textContent = en ? contractModalTr(opt.dataset.lcAr) : opt.dataset.lcAr;
+  });
+}
+function applyContractModalI18n() {
+  var en = isContractUiEn();
+  ['modal-add', 'modal-import'].forEach(function (mid) {
+    var modal = document.getElementById(mid);
+    if (!modal) return;
+    modal.querySelectorAll('.modal-title, label, .field-hint, .field-calc, .map-picker-hint, .upload-area p, #contract-value-optional-hint').forEach(function (el) {
+      captureContractElText(el);
+      translateContractElText(el, en);
+    });
+    modal.querySelectorAll('.form-section-title').forEach(function (el) {
+      var svg = el.querySelector('svg');
+      if (el.dataset.lcAr == null) {
+        el.dataset.lcAr = el.textContent.replace(/\s+/g, ' ').trim();
+      }
+      var label = en ? contractModalTr(el.dataset.lcAr) : el.dataset.lcAr;
+      el.textContent = '';
+      if (svg) el.appendChild(svg.cloneNode(true));
+      el.appendChild(document.createTextNode(' ' + label));
+    });
+    modal.querySelectorAll('[placeholder]').forEach(function (el) {
+      if (el.dataset.lcPhAr == null && el.placeholder) el.dataset.lcPhAr = el.placeholder;
+      if (en && el.dataset.lcPhAr) el.placeholder = contractModalTr(el.dataset.lcPhAr);
+      else if (el.dataset.lcPhAr) el.placeholder = el.dataset.lcPhAr;
+    });
+    modal.querySelectorAll('select').forEach(function (sel) {
+      applyContractSelectOptions(sel, en);
+    });
+    modal.querySelectorAll('.modal-foot .btn').forEach(function (btn) {
+      if (btn.id === 'btn-save-contract') {
+        btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg> ' + contractModalTr('حفظ العقد');
+      } else if (btn.id === 'btn-confirm-import') {
+        var keepHidden = btn.style.display === 'none';
+        btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg> ' + contractModalTr('استيراد');
+        if (keepHidden) btn.style.display = 'none';
+      } else {
+        captureContractElText(btn);
+        translateContractElText(btn, en);
+      }
+    });
+    var coords = document.getElementById('contract-map-coords');
+    if (coords && mid === 'modal-add') {
+      captureContractElText(coords);
+      translateContractElText(coords, en);
+    }
+  });
+  var title = document.getElementById('modal-title');
+  if (title) {
+    if (title.dataset.lcAr == null) title.dataset.lcAr = title.textContent.trim();
+    if (document.getElementById('modal-add').dataset.editId) {
+      title.textContent = en ? contractModalTr('تعديل عقد') : 'تعديل عقد';
+    } else if (document.getElementById('modal-add').dataset.renewFromId) {
+      title.textContent = en ? contractModalTr('تجديد عقد') : 'تجديد عقد';
+    } else {
+      title.textContent = en ? contractModalTr('إضافة عقد جديد') : title.dataset.lcAr;
+    }
+  }
+}
+window.applyContractModalI18n = applyContractModalI18n;
+
+function applyContractsTableHeadI18n() {
+  var en = isContractUiEn();
+  document.querySelectorAll('#tab-table thead th[data-lc-t]').forEach(function (th) {
+    var key = th.getAttribute('data-lc-t');
+    if (!key) return;
+    if (th.dataset.lcAr == null) th.dataset.lcAr = key;
+    var sortInd = th.querySelector('.sort-ind');
+    var label = en ? contractModalTr(key) : th.dataset.lcAr;
+    th.textContent = label;
+    if (sortInd) {
+      th.appendChild(document.createTextNode(' '));
+      th.appendChild(sortInd);
+    } else if (th.classList.contains('th-sort')) {
+      th.appendChild(document.createTextNode(' '));
+      var span = document.createElement('span');
+      span.className = 'sort-ind';
+      th.appendChild(span);
+    }
+  });
+}
+
+function applyContractsFilterI18n() {
+  var search = document.getElementById('search-input');
+  if (search) {
+    if (search.dataset.lcPhAr == null) search.dataset.lcPhAr = 'بحث بالكود أو اسم العميل...';
+    search.placeholder = isContractUiEn() ? contractModalTr('بحث بالكود أو اسم العميل...') : search.dataset.lcPhAr;
+  }
+  rebuildContractFilterSelect('f-type', contractModalTr('كل الأنواع'), CONTRACT_FILTER_TYPE_OPTS);
+  rebuildContractFilterSelect('f-status', contractModalTr('كل الحالات'), CONTRACT_FILTER_STATUS_OPTS);
+  rebuildContractFilterSelect('f-invoice', contractModalTr('حالة الفاتورة'), CONTRACT_FILTER_INVOICE_OPTS);
+  rebuildContractClientFilter();
+  fillDistrictFilter();
+}
+
+function applyContractsPageI18n() {
+  applyContractsFilterI18n();
+  applyContractsTableHeadI18n();
+  applyContractModalI18n();
+  applyContractsMapI18n();
+}
+window.applyContractsPageI18n = applyContractsPageI18n;
 function contractMapSummaryShown(count, locations) {
   var n = Number(count) || 0;
   var loc = Number(locations) || 0;
@@ -1225,15 +1388,7 @@ function contractBuildingName(c) {
 }
 
 function initFilters() {
-  var fClient = document.getElementById('f-client');
-  if (fClient) {
-    CUSTOMERS.forEach(function(c) {
-      var o = document.createElement('option');
-      o.value = c.name;
-      o.textContent = c.name;
-      fClient.appendChild(o);
-    });
-  }
+  rebuildContractClientFilter();
   fillDistrictFilter();
 }
 
@@ -1259,8 +1414,8 @@ function fillDistrictFilter() {
   if (!sel) return;
   var prev = sel.value || '';
   var districts = allContractDistricts();
-  sel.innerHTML = '<option value="">' + (typeof lcDisp === 'function' ? lcDisp('كل الأحياء') : 'كل الأحياء') + '</option>' +
-    districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
+  sel.innerHTML = '<option value="">' + esc(contractModalTr('كل الأحياء')) + '</option>' +
+    districts.map(function(d) { return '<option>' + esc(contractDistrictLabel(d)) + '</option>'; }).join('');
   if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
     sel.value = prev;
   }
@@ -1602,10 +1757,12 @@ function openAddModal(customerId) {
   openContractFormModal(function () {
     if (!cid) {
       if (window.LiftCoreMapPicker) LiftCoreMapPicker.reset();
+      applyContractModalI18n();
       return;
     }
     applyContractClientData({ silent: true });
     loadClientElevators();
+    applyContractModalI18n();
   });
 }
 
@@ -1818,6 +1975,7 @@ function openContractFormModal(afterOpen) {
   function bootMap() {
     whenGoogleMapsReady(function () {
       initContractMapPicker();
+      applyContractModalI18n();
       if (typeof afterOpen === 'function') afterOpen();
     });
   }
@@ -2551,6 +2709,7 @@ function openImportModal() {
   }
   if (file) file.value = '';
   document.getElementById('modal-import').classList.add('open');
+  applyContractModalI18n();
 }
 
 function handleContractImport(input) {
@@ -3224,15 +3383,16 @@ if (window.LiftCoreLocation) {
   LiftCoreLocation.setLookup(getCustomerById);
 }
 
-try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); initContractClientSelect(); applyContractsMapI18n(); } catch (bootErr) { console.error('contracts boot', bootErr); }
+try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); initContractClientSelect(); applyContractsPageI18n(); } catch (bootErr) { console.error('contracts boot', bootErr); }
 window.__lcRefreshPage = function () {
   if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : CONTRACTS);
   if (typeof updateStats === 'function') updateStats();
-  applyContractsMapI18n();
+  applyContractsPageI18n();
 };
 document.addEventListener('liftcore:lang', function () {
-  applyContractsMapI18n();
+  applyContractsPageI18n();
+  if (typeof renderTable === 'function') renderTable(typeof filtered !== 'undefined' ? filtered : CONTRACTS);
 });
 var bootParams = new URLSearchParams(window.location.search);
 if (bootParams.get('action') === 'add') {
