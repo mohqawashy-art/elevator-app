@@ -368,9 +368,22 @@ function exportExcel(){
   a.download = 'تقرير_الإيرادات.csv';
   a.click();
 }
-document.getElementById('footer-date').textContent = (window.fmtDate ? fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
-const el = document.getElementById('rpt-date-range');
-if(el) el.textContent = 'تاريخ التقرير: ' + (window.fmtDate ? fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
+(function () {
+  function syncRptDates() {
+    var now = new Date();
+    var foot = document.getElementById('footer-date');
+    if (foot && window.LiftCoreFormat && LiftCoreFormat.reportDateNumeric) {
+      foot.textContent = LiftCoreFormat.reportDateNumeric(now);
+    } else if (foot) {
+      foot.textContent = now.toLocaleDateString('en-GB');
+    }
+    if (window.LiftCoreFormat && LiftCoreFormat.setReportDateEl) {
+      LiftCoreFormat.setReportDateEl('rpt-date-range', now);
+    }
+  }
+  syncRptDates();
+  document.addEventListener('liftcore:lang', syncRptDates);
+})();
 </script>
 <script>
 window.__LC_REPORT_ROWS = {{ report_rows|tojson }};

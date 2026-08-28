@@ -232,6 +232,26 @@
     return y + '-' + m + '-' + day;
   }
 
+  /** تاريخ dd/mm/yyyy للتقارير */
+  function reportDateNumeric(date) {
+    date = date || new Date();
+    var day = String(date.getDate()).padStart(2, '0');
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var year = date.getFullYear();
+    return day + '/' + month + '/' + year;
+  }
+
+  /** سطر «تاريخ التقرير» / Report Date حسب اللغة */
+  function reportDateLine(date) {
+    var numeric = reportDateNumeric(date);
+    return isEn() ? ('Report Date: ' + numeric) : ('تاريخ التقرير: ' + numeric);
+  }
+
+  function setReportDateEl(id, date) {
+    var el = document.getElementById(id || 'rpt-date-range');
+    if (el) el.textContent = reportDateLine(date);
+  }
+
   function wrapCode(text) {
     return '<span class="lc-code">' + esc(text) + '</span>';
   }
@@ -266,6 +286,9 @@
     monthLabelText: monthLabelText,
     monthLabelHTML: monthLabel,
     dateISO: dateISO,
+    reportDateNumeric: reportDateNumeric,
+    reportDateLine: reportDateLine,
+    setReportDateEl: setReportDateEl,
     wrapCode: wrapCode,
     wrapDate: wrapDate,
     initHeaderDates: initHeaderDates,
@@ -293,5 +316,7 @@
       el.removeAttribute('data-lc-clock-stamp');
     });
     initHeaderDates();
+    setReportDateEl('rpt-date-range');
+    setReportDateEl('r-print-date');
   });
 })(window);

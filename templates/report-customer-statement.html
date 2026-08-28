@@ -452,9 +452,14 @@ function renderStatement(data) {
   document.getElementById('report-tbody').innerHTML = rows;
   document.getElementById('link-revenues').href = '/revenues?customer_id=' + encodeURIComponent(data.customer_id);
 
-  const todayStr = (window.fmtDate ? window.fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
+  const todayStr = (window.LiftCoreFormat && LiftCoreFormat.reportDateNumeric)
+    ? LiftCoreFormat.reportDateNumeric(new Date())
+    : (window.fmtDate ? window.fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
   setText('footer-date', todayStr);
-  setText('rpt-date-range', 'تاريخ التقرير: ' + todayStr + (COMPANY && COMPANY.name ? ' · ' + COMPANY.name : ''));
+  var dateLine = (window.LiftCoreFormat && LiftCoreFormat.reportDateLine)
+    ? LiftCoreFormat.reportDateLine(new Date())
+    : ('تاريخ التقرير: ' + todayStr);
+  setText('rpt-date-range', dateLine + (COMPANY && COMPANY.name ? ' · ' + COMPANY.name : ''));
 }
 
 async function loadStatement() {
@@ -490,9 +495,15 @@ function exportExcel() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  const todayStr = (window.fmtDate ? window.fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
+  const todayStr = (window.LiftCoreFormat && LiftCoreFormat.reportDateNumeric)
+    ? LiftCoreFormat.reportDateNumeric(new Date())
+    : (window.fmtDate ? window.fmtDate(new Date()) : new Date().toLocaleDateString('en-GB'));
   setText('footer-date', todayStr);
-  setText('rpt-date-range', 'تاريخ التقرير: ' + todayStr);
+  if (window.LiftCoreFormat && LiftCoreFormat.setReportDateEl) {
+    LiftCoreFormat.setReportDateEl('rpt-date-range');
+  } else {
+    setText('rpt-date-range', 'تاريخ التقرير: ' + todayStr);
+  }
 
   if (window.LcClientSelect) {
     LcClientSelect.upgradeSelect('sel-client', {

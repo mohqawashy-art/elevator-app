@@ -11,6 +11,15 @@ var __lcReportDomPager = null;
   var __lcDashboardCache = null;
   var __lcReportLoaded = false;
 
+  function syncReportDateLine() {
+    if (global.LiftCoreFormat && global.LiftCoreFormat.setReportDateEl) {
+      global.LiftCoreFormat.setReportDateEl('rpt-date-range');
+      global.LiftCoreFormat.setReportDateEl('r-print-date');
+    }
+  }
+
+  document.addEventListener('liftcore:lang', syncReportDateLine);
+
   var REPORT_API = {
     'report-clients': '/api/reports/clients',
     'report-elevators': '/api/reports/elevators',
@@ -547,8 +556,7 @@ function hookReportPagination(reset) {
     populateFilterSelects(reportId, __lcReportData);
     installLiveFilterTable(reportId);
     renderReportTable(reportId, __lcReportData);
-    var dateEl = document.getElementById('rpt-date-range');
-    if (dateEl) dateEl.textContent = 'تاريخ التقرير: ' + new Date().toLocaleDateString('ar-SA');
+    syncReportDateLine();
     applyUrlFilters();
   }
 
@@ -994,7 +1002,7 @@ function hookReportPagination(reset) {
           : '<tr><td colspan="3" style="text-align:center;color:#aaa;padding:12px">لا توجد قطع ضمن فترة هذا العقد</td></tr>';
       }
 
-      setText('r-print-date', 'تاريخ التقرير: ' + new Date().toLocaleDateString('ar-SA'));
+      syncReportDateLine();
       setText(
         'toolbar-title',
         'التقرير الختامي — ' + (c.name || '') + ' — ' + (contract.code || '') +
