@@ -5,7 +5,8 @@ import zipfile
 from xml.sax.saxutils import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'static', 'templates', 'contracts_template.xlsx')
+OUT_AR = os.path.join(ROOT, 'static', 'templates', 'contracts_template.xlsx')
+OUT_EN = os.path.join(ROOT, 'static', 'templates', 'contracts_template_en.xlsx')
 
 HEADERS_AR = [
     'كود العميل',
@@ -37,11 +38,44 @@ HEADERS_EN = [
     'Elevator Codes',
     'Notes',
 ]
-EXAMPLE = []
+EXAMPLE_AR = [
+    'C-0001',
+    'اسم العميل (موجود مسبقاً)',
+    'عقد صيانة',
+    '2026-01-01',
+    '2026-12-31',
+    'شهري',
+    '12000',
+    '15',
+    '13800',
+    'دفعة واحدة',
+    'نشط',
+    'EL-0001, EL-0002',
+    '',
+]
+EXAMPLE_EN = [
+    'C-0001',
+    'Client name (must exist)',
+    'Maintenance Contract',
+    '2026-01-01',
+    '2026-12-31',
+    'Monthly',
+    '12000',
+    '15',
+    '13800',
+    'Single payment',
+    'Active',
+    'EL-0001, EL-0002',
+    '',
+]
 
 
 def headers_for_lang(lang='ar'):
     return HEADERS_EN if lang == 'en' else HEADERS_AR
+
+
+def example_for_lang(lang='ar'):
+    return EXAMPLE_EN if lang == 'en' else EXAMPLE_AR
 
 
 def col_letter(n):
@@ -71,9 +105,7 @@ def sheet_xml(rows):
 
 def build_xlsx(path, lang='ar'):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    rows = [headers_for_lang(lang)]
-    if EXAMPLE:
-        rows.append(EXAMPLE)
+    rows = [headers_for_lang(lang), example_for_lang(lang)]
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
         z.writestr('[Content_Types].xml', '''<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -100,4 +132,5 @@ def build_xlsx(path, lang='ar'):
 
 
 if __name__ == '__main__':
-    build_xlsx(OUT)
+    build_xlsx(OUT_AR, 'ar')
+    build_xlsx(OUT_EN, 'en')

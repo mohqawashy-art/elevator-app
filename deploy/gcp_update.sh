@@ -133,6 +133,7 @@ grep -q "register_install_module" "$APP_DIR/app.py" && echo "  install routes OK
 test -f "$APP_DIR/static/liftcore-dates.js" && echo "  liftcore-dates.js OK"
 if [ -x "$VENV/bin/python" ]; then
   python "$APP_DIR/scripts/build_clients_template.py" 2>/dev/null && echo "  clients import template OK" || true
+  python "$APP_DIR/scripts/build_contracts_template.py" 2>/dev/null && echo "  contracts import template OK" || true
   python "$APP_DIR/scripts/build_elevators_template.py" 2>/dev/null && echo "  elevators import template OK" || true
 fi
 test -f "$APP_DIR/templates/purchase-orders.html" && echo "  purchase-orders.html OK"

@@ -513,40 +513,44 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <div class="modal-overlay" id="modal-import" data-i18n-skip>
   <div class="modal" style="max-width:720px">
     <div class="modal-head">
-      <div class="modal-title">استيراد عقود من Excel</div>
+      <div class="modal-title" data-lc-ar="استيراد عقود من Excel">{{ ui('استيراد عقود من Excel', 'Import Contracts from Excel') }}</div>
       <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
       <div style="margin-bottom:12px;text-align:center">
-        <a class="btn btn-secondary btn-sm" id="contracts-import-template-link" href="{{ url_for('contracts_import_template') }}?lang={{ user_language }}">
+        <a class="btn btn-secondary btn-sm" id="contracts-import-template-link" href="{{ url_for('contracts_import_template') }}?lang={{ user_language }}" download>
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" style="width:14px;height:14px"><path d="M7 1v8M4 6l3 3 3-3M2 11h10"/></svg>
-          <span data-lc-ar="تنزيل نموذج الاستيراد">تنزيل نموذج الاستيراد</span>
+          <span data-lc-ar="تنزيل نموذج الاستيراد">{{ ui('تنزيل نموذج الاستيراد', 'Download import template') }}</span>
         </a>
       </div>
       <div class="import-area" onclick="document.getElementById('contract-import-file').click()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-        <p data-lc-ar="اضغط لاختيار ملف Excel أو CSV" style="font-size:13px;color:var(--text2)">اضغط لاختيار ملف Excel أو CSV</p>
-        <p data-lc-ar=".xlsx أو .csv" style="font-size:11px;margin-top:4px;color:var(--text3)">.xlsx أو .csv</p>
+        <p data-lc-ar="اضغط لاختيار ملف Excel أو CSV" style="font-size:13px;color:var(--text2)">{{ ui('اضغط لاختيار ملف Excel أو CSV', 'Click to choose an Excel or CSV file') }}</p>
+        <p data-lc-ar=".xlsx أو .csv" style="font-size:11px;margin-top:4px;color:var(--text3)">{{ ui('.xlsx أو .csv', '.xlsx or .csv') }}</p>
         <input type="file" id="contract-import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleContractImport(this)">
       </div>
       <div id="import-preview" style="margin-top:14px;display:none">
-        <div id="import-preview-label" data-lc-ar="معاينة البيانات" style="font-size:12px;color:var(--text3);margin-bottom:8px">معاينة البيانات</div>
+        <div id="import-preview-label" data-lc-ar="معاينة البيانات" style="font-size:12px;color:var(--text3);margin-bottom:8px">{{ ui('معاينة البيانات', 'Data preview') }}</div>
         <div id="import-table-wrap" style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)"></div>
         <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
       </div>
       <div id="contract-import-instructions" style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:var(--r-sm);font-size:11px;color:var(--text3);line-height:1.7">
-        <strong data-lc-ar="تعليمات:" style="color:var(--text2)">تعليمات:</strong>
+        <strong data-lc-ar="تعليمات:" style="color:var(--text2)">{{ ui('تعليمات:', 'Instructions:') }}</strong>
         <span id="contract-import-instr-body" data-lc-ar="يجب أن يكون العميل موجوداً مسبقاً (كود أو اسم). التواريخ بصيغة YYYY-MM-DD. أكواد المصاعد مفصولة بفاصلة (مثل: EL-0001، EL-0002).">
+          {% if user_language == 'en' %}
+          The client must already exist (code or name). Dates in <code style="font-family:var(--font-en)">YYYY-MM-DD</code> format. Elevator codes separated by comma (e.g. EL-0001, EL-0002). Use the English template above for column names and sample values.
+          {% else %}
           يجب أن يكون العميل موجوداً مسبقاً (كود أو اسم). التواريخ بصيغة <code style="font-family:var(--font-en)">YYYY-MM-DD</code>.
           أكواد المصاعد مفصولة بفاصلة (مثل: EL-0001، EL-0002).
+          {% endif %}
         </span>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-secondary" data-lc-ar="إلغاء" onclick="closeModal('modal-import')">إلغاء</button>
-      <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmContractImport()" style="display:none">
+      <button class="btn btn-secondary" data-lc-ar="إلغاء" onclick="closeModal('modal-import')">{{ ui('إلغاء', 'Cancel') }}</button>
+      <button class="btn btn-primary" id="btn-confirm-import" data-lc-ar="استيراد" onclick="confirmContractImport()" style="display:none">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
-        استيراد
+        {{ ui('استيراد', 'Import') }}
       </button>
     </div>
   </div>
@@ -902,8 +906,11 @@ function translateContractInstrSpan(el, en) {
     el.dataset.lcAr = 'يجب أن يكون العميل موجوداً مسبقاً (كود أو اسم). التواريخ بصيغة YYYY-MM-DD. أكواد المصاعد مفصولة بفاصلة (مثل: EL-0001، EL-0002).';
     el.dataset.lcArHtml = el.innerHTML;
   }
-  if (en) el.textContent = contractModalTr(el.dataset.lcAr);
-  else el.innerHTML = el.dataset.lcArHtml;
+  if (en) {
+    el.innerHTML = contractModalTr(el.dataset.lcAr) + ' Use the English template above for column names and sample values.';
+  } else {
+    el.innerHTML = el.dataset.lcArHtml;
+  }
 }
 function updateContractImportTemplateLink() {
   var link = document.getElementById('contracts-import-template-link');
@@ -2631,6 +2638,40 @@ function exportExcel() {
 // ===== استيراد العقود =====
 var contractImportData = [];
 
+var CONTRACT_IMPORT_ENUM = {
+  'Maintenance Contract': 'عقد صيانة',
+  'Warranty Contract': 'عقد ضمان',
+  'Installation Contract': 'عقد تركيب',
+  'Modernization Contract': 'عقد تحديث',
+  'Update Contract': 'عقد تحديث',
+  'Emergency Contract': 'عقد طوارئ',
+  'Monthly': 'شهري',
+  'Every 2 months': 'كل شهرين',
+  'Quarterly': 'ربع سنوي',
+  'Semi-annual': 'نصف سنوي',
+  'Annual': 'سنوي',
+  'Yearly': 'سنوي',
+  'Single payment': 'دفعة واحدة',
+  'One-time payment': 'دفعة واحدة',
+  'Active': 'نشط',
+  'Expiring soon': 'على وشك الانتهاء',
+  'Renewed': 'تم تجديده',
+  'Expired': 'منتهي',
+  'Cancelled': 'ملغي',
+  'Canceled': 'ملغي'
+};
+function normalizeImportEnum(val, fallback) {
+  if (val == null || val === '') return fallback;
+  var s = String(val).trim();
+  if (CONTRACT_IMPORT_ENUM[s]) return CONTRACT_IMPORT_ENUM[s];
+  if (/[\u0600-\u06FF]/.test(s)) return s;
+  var t = window.__LC_TRANSLATIONS || {};
+  Object.keys(t).forEach(function (ar) {
+    if (t[ar] === s) s = ar;
+  });
+  return s || fallback;
+}
+
 function pickImportRow(row, keys) {
   for (var i = 0; i < keys.length; i++) {
     var v = row[keys[i]];
@@ -2866,10 +2907,10 @@ async function confirmContractImport() {
     fd.append('customer_id', customer.id);
     var importCode = pickImportRow(row, ['رقم العقد', 'contract_code', 'code', 'Contract Code']);
     if (importCode) fd.append('code', importCode);
-    fd.append('contract_type', pickImportRow(row, ['نوع العقد', 'contract_type', 'Contract Type']) || 'عقد صيانة');
+    fd.append('contract_type', normalizeImportEnum(pickImportRow(row, ['نوع العقد', 'contract_type', 'Contract Type']), 'عقد صيانة'));
     fd.append('start_date', startDate);
     fd.append('end_date', endDate);
-    fd.append('maint_frequency', pickImportRow(row, ['تكرار الصيانة', 'برنامج الصيانة', 'maint_frequency', 'Maintenance Frequency']) || 'شهري');
+    fd.append('maint_frequency', normalizeImportEnum(pickImportRow(row, ['تكرار الصيانة', 'برنامج الصيانة', 'maint_frequency', 'Maintenance Frequency']), 'شهري'));
     fd.append('visits_per_month', '1');
     fd.append('value', pickImportRow(row, ['قيمة العقد قبل الضريبة', 'قيمة العقد', 'value', 'القيمة', 'Contract Value (excl. VAT)']) || '0');
     var taxPct = pickImportRow(row, ['نسبة الضريبة %', 'tax_pct', 'نسبة الضريبة', 'Tax Rate %']);
@@ -2878,8 +2919,8 @@ async function confirmContractImport() {
     if (total) fd.append('total', total);
     var paid = pickImportPaid(row);
     fd.append('paid_amount', paid);
-    fd.append('payment_terms', pickImportRow(row, ['شروط الدفع', 'payment_terms', 'Payment Terms']) || 'دفعة واحدة');
-    fd.append('status', pickImportRow(row, ['حالة العقد', 'status', 'Contract Status']) || 'نشط');
+    fd.append('payment_terms', normalizeImportEnum(pickImportRow(row, ['شروط الدفع', 'payment_terms', 'Payment Terms']), 'دفعة واحدة'));
+    fd.append('status', normalizeImportEnum(pickImportRow(row, ['حالة العقد', 'status', 'Contract Status']), 'نشط'));
     fd.append('notes', pickImportRow(row, ['ملاحظات', 'notes', 'Notes']));
     resolveImportElevatorIds(
       pickImportRow(row, ['أكواد المصاعد', 'رقم المصعد', 'elevator_codes', 'المصاعد', 'Elevator Codes']),

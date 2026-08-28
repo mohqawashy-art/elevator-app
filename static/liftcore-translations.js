@@ -39,7 +39,7 @@ window.__LC_TRANSLATIONS = {
   'غير مدفوع': 'Unpaid',
   'استيراد عقود من Excel': 'Import Contracts from Excel',
   'اضغط لاختيار ملف Excel أو CSV': 'Click to choose an Excel or CSV file',
-  'معاينة البيانات': 'Data Preview',
+  'معاينة البيانات': 'Data preview',
   'استيراد': 'Import',
   'تعليمات:': 'Instructions:',
   'تنزيل نموذج الاستيراد': 'Download import template',
