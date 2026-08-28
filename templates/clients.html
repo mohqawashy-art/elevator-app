@@ -492,17 +492,17 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       {% endwith %}
       <!-- عنوان وأزرار -->
       <div class="page-header">
-        <div class="page-title">العملاء <span id="clients-count" data-i18n-skip>({{ customers|length }} عميل)</span></div>
+        <div class="page-title">{{ ui('العملاء', 'Clients') }} <span id="clients-count" data-i18n-skip>({{ customers|length }} {{ ui('عميل', 'clients') }})</span></div>
         <div class="page-actions">
-          {% with report_url=url_for('report_clients'), report_label='تقرير العملاء' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
-          {% with report_url=url_for('report_client_annual'), report_label='تقرير سنوي' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
+          {% with report_url=url_for('report_clients'), report_label=ui('تقرير العملاء', 'Clients Report') %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
+          {% with report_url=url_for('report_client_annual'), report_label=ui('تقرير سنوي', 'Annual Report') %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
           <button class="btn btn-secondary btn-sm" onclick="openModal('modal-import')">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
-            استيراد Excel
+            {{ ui('استيراد Excel', 'Import Excel') }}
           </button>
           <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-            تصدير Excel
+            {{ ui('تصدير Excel', 'Export Excel') }}
           </button>
           <button class="btn btn-primary btn-sm" onclick="openAddModal()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
@@ -621,55 +621,55 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 </div>
 
 <!-- ===== MODAL: استيراد ===== -->
-<div class="modal-overlay" id="modal-import">
+<div class="modal-overlay" id="modal-import" data-lc-server-i18n="1" data-i18n-skip="1">
   <div class="modal" style="max-width:520px">
     <div class="modal-head">
-      <div class="modal-title">استيراد عملاء من Excel</div>
+      <div class="modal-title">{{ ui('استيراد عملاء من Excel', 'Import Clients from Excel') }}</div>
       <button class="modal-close" onclick="closeModal('modal-import')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="import-area" onclick="document.getElementById('import-file').click()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
-        <p>اسحب ملف Excel هنا أو <span>اضغط للاختيار</span></p>
-        <p style="font-size:11px;margin-top:4px">.xlsx أو .csv</p>
+        <p>{{ ui('اسحب ملف Excel هنا أو', 'Drag an Excel file here or') }} <span>{{ ui('اضغط للاختيار', 'click to choose') }}</span></p>
+        <p style="font-size:11px;margin-top:4px">.xlsx {{ ui('أو', 'or') }} .csv</p>
         <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImport(this)">
       </div>
       <div id="import-preview" style="margin-top:14px;display:none">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">معاينة:</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">{{ ui('معاينة:', 'Preview:') }}</div>
         <div id="import-table-wrap" style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)"></div>
         <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
-        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
-        <div style="color:var(--accent)">الاسم / اسم العميل، رقم الهاتف / الجوال</div>
-        <div style="color:var(--text3);margin-top:4px">اختيارية: المدينة، الحي، العنوان، المسؤول، البريد، رقم الهوية</div>
+        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">{{ ui('الأعمدة المطلوبة:', 'Required columns:') }}</div>
+        <div style="color:var(--accent)">{{ ui('الاسم / اسم العميل، رقم الهاتف / الجوال', 'Name / Client name, phone / mobile number') }}</div>
+        <div style="color:var(--text3);margin-top:4px">{{ ui('اختيارية: المدينة، الحي، العنوان، المسؤول، البريد، رقم الهوية', 'Optional: city, district, address, contact, email, ID number') }}</div>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('modal-import')">إلغاء</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-import')">{{ ui('إلغاء', 'Cancel') }}</button>
       <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmImport()" style="display:none">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
-        استيراد
+        {{ ui('استيراد', 'Import') }}
       </button>
     </div>
   </div>
 </div>
 
 <!-- ===== MODAL: حذف ===== -->
-<div class="modal-overlay" id="modal-delete">
+<div class="modal-overlay" id="modal-delete" data-lc-server-i18n="1" data-i18n-skip="1">
   <div class="modal" style="max-width:400px">
     <div class="modal-head">
-      <div class="modal-title" style="color:var(--danger)">تأكيد الحذف</div>
+      <div class="modal-title" style="color:var(--danger)">{{ ui('تأكيد الحذف', 'Confirm Delete') }}</div>
       <button class="modal-close" onclick="closeModal('modal-delete')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
-      <p style="font-size:14px;color:var(--text2);line-height:1.7">هل أنت متأكد من حذف هذا العميل؟</p>
-      <p style="font-size:13px;color:var(--danger);margin-top:10px;background:rgba(224,72,72,.08);padding:10px 12px;border-radius:var(--r-sm);border:1px solid rgba(224,72,72,.15)">سيتم حذف جميع بيانات العميل.</p>
+      <p style="font-size:14px;color:var(--text2);line-height:1.7">{{ ui('هل أنت متأكد من حذف هذا العميل؟', 'Are you sure you want to delete this client?') }}</p>
+      <p style="font-size:13px;color:var(--danger);margin-top:10px;background:rgba(224,72,72,.08);padding:10px 12px;border-radius:var(--r-sm);border:1px solid rgba(224,72,72,.15)">{{ ui('سيتم حذف جميع بيانات العميل.', 'All client data will be deleted.') }}</p>
       {% include 'partials/admin_delete_fields.html' %}
     </div>
     <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
-      <button class="btn btn-danger lc-admin-delete" onclick="confirmDelete()">حذف</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-delete')">{{ ui('إلغاء', 'Cancel') }}</button>
+      <button class="btn btn-danger lc-admin-delete" onclick="confirmDelete()">{{ ui('حذف', 'Delete') }}</button>
     </div>
   </div>
 </div>
