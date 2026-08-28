@@ -1,7 +1,12 @@
-{# شريط أذكار وأدعية — JSON + تحريك (فوتر سفلي) #}
+{# شريط أذكار — مظهر LiftCore الاحترافي #}
 {% if auth_user and not platform_admin_host and azkar_ticker_enabled %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-azkar.css') }}?v=10">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-azkar.css') }}?v=11">
 <footer class="lc-azkar-footer" id="lc-azkar-footer" aria-label="أذكار وأدعية" data-i18n-skip>
+  <div class="lc-azkar-accent" aria-hidden="true"></div>
+  <div class="lc-azkar-brand">
+    <img src="{{ liftcore_logo_url }}?v=10" alt="" class="lc-azkar-brand-logo" width="72" height="22" decoding="async">
+    <span class="lc-azkar-brand-tag">ذكر</span>
+  </div>
   <div class="lc-azkar-ticker">
     <div class="lc-azkar-rotate" id="lc-azkar-rotate" hidden>
       <span class="lc-azkar-label" id="lc-azkar-label" hidden></span>
@@ -10,5 +15,5 @@
     <div class="lc-azkar-track" id="lc-azkar-track" hidden aria-live="off"></div>
   </div>
 </footer>
-<script src="{{ url_for('static', filename='liftcore-azkar.js') }}?v=10" defer></script>
+<script src="{{ url_for('static', filename='liftcore-azkar.js') }}?v=11" defer></script>
 {% endif %}
