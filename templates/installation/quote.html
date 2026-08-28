@@ -399,8 +399,8 @@ window.__INSTALL_QUOTE__ = {
   companySignOffsetY: {{ (company_sign_offset_y or 0) | tojson }}
 };
 </script>
-<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=market1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=market2"></script>
 {% include 'partials/quick_customer_modal.html' %}
+<script src="{{ url_for('static', filename='installation-pricing.js') }}?v=market1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=market3"></script>
 </body>
 </html>

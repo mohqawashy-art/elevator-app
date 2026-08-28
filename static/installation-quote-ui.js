@@ -1236,7 +1236,7 @@ document.addEventListener('DOMContentLoaded', function () {
   updateCabinHint();
   updateExtendHint();
 
-  el('tabNewBtn').addEventListener('click', function () { switchTab('new'); });
+  if (el('tabNewBtn')) el('tabNewBtn').addEventListener('click', function () { switchTab('new'); });
   if (el('tabExtendBtn')) el('tabExtendBtn').addEventListener('click', function () { switchTab('extend'); });
   if (el('tabUpgBtn')) el('tabUpgBtn').addEventListener('click', function () { switchTab('upgrade'); });
   if (el('btnQuickCustomer')) {
