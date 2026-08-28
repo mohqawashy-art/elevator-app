@@ -161,7 +161,7 @@ if ($missing.Count) {
 Write-Host ""
 Write-Host "Next:" -ForegroundColor Cyan
 Write-Host "  1) Upload deploy\liftcore-update.zip to server /home/info/"
-Write-Host "  2) ssh info@34.18.56.21"
+Write-Host "  2) ssh info@2.29.6.41"
 Write-Host "  3) bash ~/liftcore/elevator-app/deploy/apply_update_zip.sh ~/liftcore-update.zip"
 Write-Host ""
 Write-Host "Or run: powershell -File deploy\push_update_zip.ps1" -ForegroundColor Cyan

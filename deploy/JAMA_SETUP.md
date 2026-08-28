@@ -5,8 +5,8 @@
 > **`provision_jama.sh` DEPRECATED** لتجهيز عملاء جدد — استخدم `/signup` أو دعوة المنصة.
 
 ## المتطلبات
-- DNS: `jama` → `A` → `34.18.56.21` ✅
-- SSH على السيرفر (GCP Console)
+- DNS: `jama` → Cloudflare → Hetzner (`2.29.6.41`) ✅
+- SSH: `ssh info@2.29.6.41`
 
 ## أمر واحد
 

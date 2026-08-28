@@ -2,7 +2,7 @@
 # powershell -ExecutionPolicy Bypass -File deploy\push_sync_liftcore.ps1
 
 $ErrorActionPreference = "Stop"
-$Remote = "info@34.18.56.21"
+$Remote = "info@2.29.6.41"
 $sshOpts = @("-o", "StrictHostKeyChecking=no")
 $Root = Split-Path $PSScriptRoot -Parent
 

@@ -9,7 +9,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Remote = "info@34.18.56.21"
+$Remote = "info@2.29.6.41"
 $JamaApp = "~/liftcore/jama-elevator-app"
 $DataDir = "$JamaApp/deploy/data/jama_import"
 $sshOpts = @("-o", "StrictHostKeyChecking=no")

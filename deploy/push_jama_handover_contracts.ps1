@@ -10,7 +10,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Remote = "info@34.18.56.21"
+$Remote = "info@2.29.6.41"
 $sshOpts = @("-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=20")
 $Root = Split-Path $PSScriptRoot -Parent
 $App = "~/liftcore/elevator-app"
