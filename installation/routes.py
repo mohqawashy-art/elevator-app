@@ -1061,7 +1061,7 @@ def quote_print(quotation_id):
         'cabin_w': _dim_to_cm(spec.get('cabin_width')),
         'cabin_d': _dim_to_cm(spec.get('cabin_depth')),
     }
-    stage_blocks, labor_sell = _quote_stage_blocks(q)
+    stage_blocks, labor_sell, cost_breakdown = _quote_stage_blocks(q)
     return render_template(
         'installation/quote_print.html',
         quotation=q,
@@ -1075,20 +1075,31 @@ def quote_print(quotation_id):
         customer_code=q.customer.code if q.customer else (q.project.customer.code if q.project.customer else '—'),
         stage_blocks=stage_blocks,
         labor_sell=labor_sell,
+        cost_breakdown=cost_breakdown,
         quote_type=q.quote_type or 'new',
         page_title=f'عرض سعر {q.code}',
     )
 
 
+def _quote_cost_breakdown(quotation, factor: float) -> tuple[list[dict], float]:
+    """بنود المصنعيات والنقل والمصاريف الأخرى بأسعار البيع للعميل."""
+    items = []
+    for label, raw in (
+        ('المصنعيات والتركيب', quotation.labor),
+        ('النقل والرافعة', quotation.transport),
+        ('مصاريف أخرى', quotation.other_costs),
+    ):
+        amt = round(float(raw or 0) * factor, 2)
+        if amt > 0:
+            items.append({'label': label, 'amount': amt})
+    total = round(sum(item['amount'] for item in items), 2)
+    return items, total
+
+
 def _quote_stage_blocks(quotation):
-    """تجميع بنود العرض حسب مرحلة التركيب + توزيع الأجور على المراحل الموجودة فقط."""
+    """تجميع بنود العرض حسب مرحلة التركيب + قسم منفصل لتكاليف التنفيذ."""
     factor = 1 + float(quotation.profit_pct or 0) / 100.0
-    labor_pool = (
-        float(quotation.labor or 0)
-        + float(quotation.transport or 0)
-        + float(quotation.other_costs or 0)
-    )
-    labor_sell = round(labor_pool * factor, 2)
+    cost_breakdown, labor_sell = _quote_cost_breakdown(quotation, factor)
     shares = [
         ('مرحلة 1 — سكك وأبواب', 'أجور وتركيب — سكك وأبواب', 0.30),
         ('مرحلة 2 — تركيب كبينة وأحبال وماكينة', 'أجور وتركيب — كبينة وأحبال وماكينة', 0.45),
@@ -1104,20 +1115,6 @@ def _quote_stage_blocks(quotation):
             ordered.append(st)
         by_stage[st].append(ln)
 
-    labor_by_stage = {}
-    used = 0.0
-    is_new = (quotation.quote_type or 'new') != 'upgrade'
-    active_shares = [s for s in shares if s[0] in by_stage]
-    if is_new and labor_pool > 0 and active_shares:
-        share_sum = sum(s[2] for s in active_shares) or 1.0
-        for i, (stage, label, share) in enumerate(active_shares):
-            if i == len(active_shares) - 1:
-                amt = round(labor_pool - used, 2)
-            else:
-                amt = round(labor_pool * (share / share_sum), 2)
-                used += amt
-            labor_by_stage[stage] = (label, round(amt * factor, 2))
-
     preferred = [s[0] for s in shares]
     final_order = [s for s in preferred if s in by_stage]
     for st in ordered:
@@ -1128,7 +1125,6 @@ def _quote_stage_blocks(quotation):
     for st in final_order:
         lines = by_stage.get(st, [])
         lines_total = round(sum(float(ln.line_total or 0) * factor for ln in lines), 2)
-        labor_label, labor_amt = labor_by_stage.get(st, (None, 0))
         blocks.append({
             'stage': st,
             'lines': [
@@ -1140,11 +1136,9 @@ def _quote_stage_blocks(quotation):
                 }
                 for ln in lines
             ],
-            'labor_label': labor_label if is_new else None,
-            'labor_amount': labor_amt if is_new else 0,
-            'total': round(lines_total + (labor_amt if is_new else 0), 2),
+            'total': lines_total,
         })
-    return blocks, labor_sell
+    return blocks, labor_sell, cost_breakdown
 
 
 def _projects_by_lead_id(leads):

@@ -88,7 +88,7 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
       الصلاحية: <b>{{ quotation.valid_days }} يوم</b>
     </div>
   </div>
-  <div class="q-title">عرض سعر — {{ 'توريد وتركيب مصعد جديد' if quotation.quote_type == 'new' else 'تحديث مصعد قائم' }}</div>
+  <div class="q-title">عرض سعر — {{ quotation.quote_type_label }}</div>
 
   <div class="q-sec">
     <h3>بيانات العميل</h3>
@@ -158,6 +158,42 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
           </td>
         </tr>
         {% endif %}
+        {% set inc_stages = spec.include_stages or [] %}
+        {% if inc_stages and inc_stages|length and inc_stages|length < 3 %}
+        <tr>
+          <td><b>نطاق العمل</b></td>
+          <td colspan="3">{{ inc_stages|join(' · ') }}</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% elif quotation.quote_type == 'extend' and spec %}
+  <div class="q-sec">
+    <h3>نطاق العمل — إضافة أدوار</h3>
+    <table>
+      <tbody>
+        <tr>
+          <td><b>عدد المصاعد</b></td><td>{{ spec.elevator_count or 1 }}</td>
+          <td><b>الوقفات الحالية</b></td><td>{{ spec.current_stops or '—' }} وقفات</td>
+        </tr>
+        <tr>
+          <td><b>الأدوار المضافة</b></td><td>{{ spec.added_stops or '—' }} أدوار</td>
+          <td><b>بعد الإضافة</b></td><td>{{ spec.stops or '—' }} وقفات</td>
+        </tr>
+        {% if spec.capacity and spec.capacity not in ['__none__', 'بدون'] %}
+        <tr>
+          <td><b>الحمولة</b></td><td>{{ spec.capacity }} كجم</td>
+          <td></td><td></td>
+        </tr>
+        {% endif %}
+        {% set inc_stages = spec.include_stages or [] %}
+        {% if inc_stages and inc_stages|length and inc_stages|length < 3 %}
+        <tr>
+          <td><b>نطاق العمل</b></td>
+          <td colspan="3">{{ inc_stages|join(' · ') }}</td>
+        </tr>
+        {% endif %}
       </tbody>
     </table>
   </div>
@@ -178,19 +214,20 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
           <td>{{ '{:,.0f}'.format(line.line_total) }}</td>
         </tr>
         {% endfor %}
-        {% if block.labor_label and block.labor_amount %}
-        <tr>
-          <td style="padding-right:18px">{{ block.labor_label }}</td>
-          <td>1</td>
-          <td>{{ '{:,.0f}'.format(block.labor_amount) }}</td>
-          <td>{{ '{:,.0f}'.format(block.labor_amount) }}</td>
-        </tr>
-        {% endif %}
         <tr class="stage"><td colspan="3">إجمالي {{ block.stage }}</td>
           <td>{{ '{:,.0f}'.format(block.total) }}</td></tr>
         {% endfor %}
-        {% if quote_type == 'upgrade' and labor_sell %}
-        <tr class="stage"><td colspan="3">أعمال التركيب والتشغيل والتسليم</td>
+        {% if cost_breakdown %}
+        <tr class="stage"><td colspan="4">تكاليف التنفيذ والخدمات</td></tr>
+        {% for line in cost_breakdown %}
+        <tr>
+          <td style="padding-right:18px">{{ line.label }}</td>
+          <td>1</td>
+          <td>{{ '{:,.0f}'.format(line.amount) }}</td>
+          <td>{{ '{:,.0f}'.format(line.amount) }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="stage"><td colspan="3">إجمالي التنفيذ والخدمات</td>
           <td>{{ '{:,.0f}'.format(labor_sell) }}</td></tr>
         {% endif %}
       </tbody>
@@ -205,18 +242,15 @@ tr.stage td{background:#f3e8cf;font-weight:700;color:#0a2647}
     <div class="g"><span>الإجمالي شامل الضريبة</span><span>{{ '{:,.0f}'.format(quotation.grand_total) }} ر.س</span></div>
   </div>
 
-  {% set sched = quotation.payment_schedule() %}
-  {% set adv_amt = quotation.payment_amount('advance_payment') %}
-  {% set sup_amt = quotation.payment_amount('payment_on_delivery') %}
-  {% set fin_amt = quotation.payment_amount('payment_final') %}
+  {% set pay_items = quotation.payment_items() %}
   <div class="q-sec">
     <h3>الشروط</h3>
     <div class="terms">
       <b>شروط الدفع:</b>
       <div class="q-pay-list">
-        <div>{{ '{:.0f}'.format(sched.advance_pct) }}% دفعة مقدمة ({{ '{:,.0f}'.format(adv_amt or 0) }} ر.س)</div>
-        <div>{{ '{:.0f}'.format(sched.supply_pct) }}% عند التوريد ({{ '{:,.0f}'.format(sup_amt or 0) }} ر.س)</div>
-        <div>{{ '{:.0f}'.format(sched.final_pct) }}% عند التسليم ({{ '{:,.0f}'.format(fin_amt or 0) }} ر.س)</div>
+        {% for it in pay_items %}
+        <div>{{ '{:.0f}'.format(it.pct) }}% {{ it.label }} ({{ '{:,.0f}'.format(it.amount or 0) }} ر.س)</div>
+        {% endfor %}
       </div>
       <b>الضمان:</b> سنة على أعمال التركيب + صيانة مجانية 12 شهراً.
     </div>
