@@ -214,15 +214,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير
         </button>
-        <a class="btn btn-secondary btn-sm" href="{{ url_for('inventory_import_template') }}" download>
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-          نموذج Excel
-        </a>
         <button class="btn btn-secondary btn-sm" onclick="openImportModal()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 9V2M4.5 4.5L7 2l2.5 2.5"/></svg>
           استيراد Excel
         </button>
-        <a class="btn btn-secondary btn-sm" href="/supplier-rfqs">طلب عرض سعر</a>
         <a class="btn btn-secondary btn-sm" href="/purchase-orders">طلب شراء</a>
         <button class="btn btn-primary btn-sm" onclick="openModal()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
@@ -307,10 +302,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       </div>
       <div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:var(--r-sm);font-size:11px;color:var(--text3);line-height:1.6">
         <strong style="color:var(--text2)">تعليمات:</strong>
-        حمّل النموذج، املأ «اسم الصنف» (إلزامي) وباقي الأعمدة حسب الحاجة. إذا تركت «كود الصنف» فارغاً يُولَّد تلقائياً.
-        <div style="margin-top:6px">
-          <a href="{{ url_for('inventory_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
-        </div>
+        املأ «اسم الصنف» (إلزامي) وباقي الأعمدة حسب الحاجة. إذا تركت «كود الصنف» فارغاً يُولَّد تلقائياً.
       </div>
     </div>
     <div class="modal-foot">

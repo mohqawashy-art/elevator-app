@@ -498,17 +498,9 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         <div class="page-actions">
           {% with report_url=url_for('report_clients'), report_label='تقرير العملاء' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
           {% with report_url=url_for('report_client_annual'), report_label='تقرير سنوي' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
-          <a class="btn btn-secondary btn-sm" href="{{ url_for('clients_import_template') }}" download>
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-            تحميل النموذج
-          </a>
           <button class="btn btn-secondary btn-sm" onclick="openModal('modal-import')">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
             استيراد Excel
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="openModal('modal-import-addresses')" title="تحديث المدينة والحي والعنوان للعملاء الموجودين">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1.5l5.5 2v4c0 3.2-2.3 5.5-5.5 6.5C3.8 12.5 1.5 10.2 1.5 7.5v-4L7 1.5z"/><circle cx="7" cy="7" r="1.8"/></svg>
-            تحديث العناوين
           </button>
           <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
@@ -527,8 +519,11 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
           <input type="text" class="search-input" id="search-input" placeholder="بحث بالاسم أو الهاتف أو الكود..." oninput="filterTable()">
         </div>
-        <select class="filter-select" id="f-city" onchange="filterTable()">
+        <select class="filter-select" id="f-city" onchange="onCityFilterChange()">
           <option value="">كل المدن</option>
+        </select>
+        <select class="filter-select" id="f-filter-district" onchange="filterTable()">
+          <option value="">كل الأحياء</option>
         </select>
         <select class="filter-select" id="f-contract" onchange="filterTable()">
           <option value="">حالة العقد</option>
@@ -849,9 +844,6 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
         <div style="color:var(--accent)">الاسم / اسم العميل، رقم الهاتف / الجوال</div>
         <div style="color:var(--text3);margin-top:4px">اختيارية: المدينة، الحي، العنوان، المسؤول، البريد، رقم الهوية</div>
-        <div style="margin-top:8px">
-          <a href="{{ url_for('clients_import_template') }}" download style="color:var(--accent);font-size:12px">⬇️ تحميل النموذج</a>
-        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -859,37 +851,6 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmImport()" style="display:none">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
         استيراد
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MODAL: تحديث العناوين ===== -->
-<div class="modal-overlay" id="modal-import-addresses">
-  <div class="modal" style="max-width:520px">
-    <div class="modal-head">
-      <div class="modal-title">تحديث عناوين العملاء من Excel</div>
-      <button class="modal-close" onclick="closeModal('modal-import-addresses')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
-    </div>
-    <div class="modal-body">
-      <div class="import-area" onclick="document.getElementById('import-addresses-file').click()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-        <p>ارفع ملف Excel الذي يحتوي العناوين</p>
-        <p style="font-size:11px;margin-top:4px;color:var(--text3)">.xlsx — يُطابق العملاء برقم العميل (C-xxxx)</p>
-        <input type="file" id="import-addresses-file" accept=".xlsx,.xls" style="display:none" onchange="handleAddressImport(this)">
-      </div>
-      <div id="import-addresses-status" style="margin-top:14px;font-size:12px;color:var(--text2);display:none"></div>
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
-        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المتوقعة:</div>
-        <div style="color:var(--accent)">رقم العميل، المدينة، الحي أو المنطقة، العنوان</div>
-        <div style="color:var(--text3);margin-top:6px">يُحدّث العملاء الموجودين فقط — لا يُنشئ عملاء جدد. يُحفظ العنوان التفصيلي فوراً بدون انتظار GPS (لتفادي انتهاء مهلة السيرفر).</div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('modal-import-addresses')">إلغاء</button>
-      <button class="btn btn-primary" id="btn-import-addresses" onclick="confirmAddressImport()" style="display:none">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
-        تحديث العناوين
       </button>
     </div>
   </div>
@@ -998,6 +959,34 @@ function fillCitySelects(selected) {
     sel.innerHTML = first + cities.map(function(c){ return '<option>' + c + '</option>'; }).join('');
     if(selected) sel.value = selected;
   });
+  fillDistrictFilter();
+}
+function allDistricts(cityFilter) {
+  var seen = {}, list = [];
+  CUSTOMERS.forEach(function(c) {
+    var d = (c.district || '').trim();
+    if (!d || seen[d]) return;
+    if (cityFilter && c.city !== cityFilter) return;
+    seen[d] = 1;
+    list.push(d);
+  });
+  return list.sort(function(a, b) { return a.localeCompare(b, 'ar'); });
+}
+function fillDistrictFilter(keepSelected) {
+  var sel = document.getElementById('f-filter-district');
+  if (!sel) return;
+  var city = (document.getElementById('f-city') || {}).value || '';
+  var prev = keepSelected ? (sel.value || '') : '';
+  var districts = allDistricts(city);
+  sel.innerHTML = '<option value="">كل الأحياء</option>' +
+    districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
+  if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
+    sel.value = prev;
+  }
+}
+function onCityFilterChange() {
+  fillDistrictFilter(true);
+  filterTable();
 }
 function fillPhoneCodeSelects(selectedPhone, selectedWa) {
   var codes = allPhoneCodes();
@@ -1464,11 +1453,14 @@ function renderTable(data) {
 function filterTable() {
   var s  = (document.getElementById('search-input').value||'').toLowerCase();
   var ct = document.getElementById('f-city').value||'';
+  var distSel = document.getElementById('f-filter-district');
+  var dist = distSel ? (distSel.value || '') : '';
   var cs = document.getElementById('f-contract').value||'';
   var st = document.getElementById('f-status').value||'';
   filtered = CUSTOMERS.filter(function(c) {
     return (!s  || (c.name||'').includes(s)||String(c.code||'').toLowerCase().includes(s)||(c.phone||'').includes(s)||(c.phone2||'').includes(s)||customerAllPhones(c).some(function(p){return String(p||'').includes(s);})||(c.district||'').includes(s)) &&
            (!ct || c.city===ct) &&
+           (!dist || (c.district || '').trim() === dist) &&
            (!cs || c.contract_status===cs) &&
            (!st || clientAccountStatus(c)===st);
   });
