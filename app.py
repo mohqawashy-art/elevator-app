@@ -4770,8 +4770,12 @@ def clients():
 
 
 @app.after_request
-def _clients_page_no_cache(response):
-    if request.path.rstrip('/') == '/clients':
+def _admin_html_no_cache(response):
+    """منع كاش HTML — يضمن وصول CSS/قوالب محدّثة فوراً."""
+    if request.path.startswith('/static/') or request.path.startswith('/api/'):
+        return response
+    ct = (response.content_type or '')
+    if 'text/html' in ct:
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
     return response
