@@ -1,0 +1,15 @@
+{% set tabs_portal = department_tabs_portal|default(active_department_portal|default(portal)) %}
+{% if tabs_portal %}
+<span class="department-nav-marker" data-department="{{ tabs_portal.slug }}" aria-hidden="true"></span>
+<a class="department-tabs-title" href="{{ url_for('department_portal', department=tabs_portal.slug) }}">{{ tabs_portal.short_title }}</a>
+<a class="department-tab{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" href="{{ url_for('home') }}">{{ 'All departments' if user_language == 'en' else 'كل الأقسام' }}</a>
+{% for item in tabs_portal.links %}
+<a class="department-tab{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+{% endfor %}
+{% if tabs_portal.reports %}
+<span class="department-tabs-label">{{ 'Reports' if user_language == 'en' else 'التقارير' }}</span>
+{% for item in tabs_portal.reports %}
+<a class="department-tab department-tab--report{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+{% endfor %}
+{% endif %}
+{% endif %}

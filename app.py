@@ -11,7 +11,6 @@ from models import MaintenanceTeam
 from models import VisitTechnician, FaultTechnician, WhatsAppInbox
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
-from models import SupplierQuoteRequest, SupplierQuoteRequestLine, RFQ_STATUSES
 from models import ElevatorEstimate, ElevatorEstimateLine
 from elevator_estimate_calc import (
     calculate_lines, summarize_lines, MACHINE_TYPES, ELEV_TYPES,
@@ -721,6 +720,14 @@ def idle_screensaver_seconds(settings=None):
     return max(15, min(sec, 3600))
 
 
+def azkar_ticker_enabled(settings=None):
+    s = settings if settings is not None else get_app_settings()
+    val = getattr(s, 'azkar_ticker_enabled', None)
+    if val is None:
+        return True
+    return bool(val)
+
+
 def brand_logo_url(settings=None):
     """شعار شركة العميل (ليس شعار منتج LiftCore)."""
     s = settings or get_app_settings()
@@ -904,6 +911,39 @@ def inject_global_template_vars():
     except Exception:
         platform_op = False
     support = _platform_support_context(user=user, settings=s, lang=lang)
+    from department_portals import DEPARTMENT_PORTALS, visible_department_portals
+
+    def _perm_ok(perm):
+        if not user:
+            return False
+        try:
+            from liftcore_permissions import user_has_permission
+            return user_has_permission(user, perm, s)
+        except Exception:
+            return False
+
+    requested_department = (request.args.get('department') or '').strip()
+    if requested_department in DEPARTMENT_PORTALS:
+        session['active_department'] = requested_department
+    active_department = (
+        requested_department or session.get('active_department') or ''
+    ).strip()
+    active_department_portal = None
+    if user and active_department:
+        try:
+            active_department_portal = next(
+                (
+                    portal for portal in visible_department_portals(
+                        permission_ok=_perm_ok,
+                        install_enabled=install_module_enabled(),
+                        lang=lang,
+                    )
+                    if portal['slug'] == active_department
+                ),
+                None,
+            )
+        except Exception:
+            active_department_portal = None
     return {
         'google_maps_api_key': resolve_google_maps_api_key(s),
         'google_maps_key_source': google_maps_key_source(s),
@@ -935,6 +975,7 @@ def inject_global_template_vars():
         'session_locked': session_is_locked(),
         'idle_screensaver_enabled': idle_screensaver_enabled(s),
         'idle_screensaver_seconds': idle_screensaver_seconds(s),
+        'azkar_ticker_enabled': azkar_ticker_enabled(s),
         'can_write': can_write,
         'is_viewer': bool(user and user.role == 'viewer'),
         'user_permissions': user_perms,
@@ -942,6 +983,8 @@ def inject_global_template_vars():
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
         'is_platform_operator': platform_op,
         'platform_admin_host': bool(getattr(g, 'platform_admin_host', False)),
+        'active_department': active_department if active_department_portal else '',
+        'active_department_portal': active_department_portal,
         **support,
     }
 
@@ -1069,6 +1112,7 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
         'buildings': _contract_building_names(c, elevator_by_id=elevator_by_id),
         'customer_name_en': (c.customer.name_en or '') if c.customer else '',
         'customer_city': (c.customer.city or '') if c.customer else '',
+        'customer_district': (c.customer.district or '') if c.customer else '',
         'customer_lat': (c.customer.lat or '') if c.customer else '',
         'customer_lng': (c.customer.lng or '') if c.customer else '',
         'customer_status': ((c.customer.status or 'نشط') if c.customer else 'نشط'),
@@ -1377,6 +1421,7 @@ def _sqlite_legacy_schema_patches():
                 ('default_sign_method', 'VARCHAR(20)'),
                 ('idle_screensaver_enabled', 'BOOLEAN'),
                 ('idle_screensaver_seconds', 'INTEGER'),
+                ('azkar_ticker_enabled', 'BOOLEAN'),
                 ('logo_width_sidebar', 'INTEGER'),
                 ('logo_width_report', 'INTEGER'),
                 ('logo_width_login', 'INTEGER'),
@@ -1613,6 +1658,7 @@ def _startup_schema_and_data_sync():
                 'company_sign_width': 'INTEGER DEFAULT 140',
                 'company_sign_offset_x': 'INTEGER DEFAULT 0',
                 'company_sign_offset_y': 'INTEGER DEFAULT 0',
+                'azkar_ticker_enabled': 'BOOLEAN DEFAULT TRUE',
             }
             for col_name, column_type in seal_columns.items():
                 if col_name in settings_cols:
@@ -1658,12 +1704,6 @@ def _startup_schema_and_data_sync():
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Install project card schema ensure skip: %s', exc)
-    try:
-        from supplier_rfq_schema import ensure_supplier_rfq_schema
-        ensure_supplier_rfq_schema()
-    except Exception as exc:
-        db.session.rollback()
-        app.logger.warning('Supplier RFQ schema ensure skip: %s', exc)
     try:
         from installation.schema import ensure_install_tenant_uniques
         ensure_install_tenant_uniques()
@@ -1714,7 +1754,6 @@ COMPANY_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'company'
 USER_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'users')
 CLIENT_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'clients')
 PO_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'purchase_orders')
-RFQ_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'supplier_rfqs')
 ALLOWED_TECH_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_LOGO_EXT = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
 ALLOWED_TECH_DOC_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
@@ -2375,8 +2414,49 @@ def index():
         # الصفحة العامة: تعريف المنتج أولاً، ثم الأسعار
         return render_template('landing.html', **_pricing_context())
     if current_user():
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('home'))
     return redirect(url_for('login'))
+
+
+@app.route('/home')
+def home():
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+    session.pop('active_department', None)
+    from department_portals import home_ui, visible_department_portals
+    lang = resolve_user_language(user)
+    return render_template(
+        'home.html',
+        departments=visible_department_portals(
+            permission_ok=has_perm,
+            install_enabled=install_module_enabled(),
+            lang=lang,
+        ),
+        home_ui=home_ui(lang),
+    )
+
+
+@app.route('/departments/<department>')
+def department_portal(department):
+    user = require_login()
+    if not user:
+        return redirect(url_for('login'))
+    from department_portals import portal_ui, visible_department_portals
+    lang = resolve_user_language(user)
+    portals = {
+        portal['slug']: portal
+        for portal in visible_department_portals(
+            permission_ok=has_perm,
+            install_enabled=install_module_enabled(),
+            lang=lang,
+        )
+    }
+    portal = portals.get(department)
+    if not portal:
+        abort(403)
+    session['active_department'] = department
+    return render_template('department_portal.html', portal=portal, portal_ui=portal_ui(lang))
 
 
 @app.route('/coming-soon')
@@ -10864,283 +10944,6 @@ def purchase_orders_delete(order_id):
     return redirect(url_for('purchase_orders'))
 
 
-RFQ_STATUS_EN = {'مسودة': 'Draft', 'مرسل': 'Sent', 'مستلم': 'Received', 'ملغي': 'Cancelled'}
-
-RFQ_PRINT_LABELS = {
-    'ar': {
-        'toolbar_title': 'طباعة وإرسال طلب عرض سعر',
-        'supplier_mobile': 'جوال المورد (واتساب)',
-        'supplier_email': 'إيميل المورد',
-        'print_pdf': '🖨️ طباعة / PDF',
-        'wa_supplier': '📄 واتساب PDF للمورد',
-        'email_pdf': '✉️ إيميل PDF',
-        'save_contact': '💾 حفظ الجوال/الإيميل',
-        'back': '← رجوع',
-        'doc_title': 'طلب عرض سعر',
-        'request_no': 'رقم الطلب',
-        'request_date': 'التاريخ',
-        'supplier': 'المورد',
-        'supplier_default': 'المورد',
-        'status': 'الحالة',
-        'project': 'المشروع',
-        'subject': 'الموضوع',
-        'salutation': 'السادة / {name} المحترمين،',
-        'letter_p1': 'تحية طيبة وبعد، نأمل منكم التفضل بتزويدنا بعرض سعر للبنود المذكورة في الجدول أدناه مع تحديد مدة التوريد وشروط الدفع إن أمكن.',
-        'letter_p2': 'نشكركم على تعاونكم، وتفضلوا بقبول فائق الاحترام والتقدير.',
-        'items_title': 'البنود المطلوب تسعيرها',
-        'col_item': 'البند / الوصف',
-        'col_qty': 'الكمية',
-        'col_unit': 'الوحدة',
-        'col_specs': 'المواصفات',
-        'notes': 'ملاحظات:',
-        'doc_foot': 'وثيقة صادرة من نظام LiftCore — طلب عرض سعر من مورد',
-        'phone_required': 'يرجى إدخال جوال المورد',
-        'email_required': 'يرجى إدخال إيميل المورد',
-        'phone_invalid': 'رقم الجوال غير صالح',
-        'pdf_generating': 'جاري إنشاء PDF...',
-        'pdf_upload_fail': 'تعذّر رفع PDF',
-        'wa_greeting': 'السلام عليكم',
-        'wa_body': 'نرفق لكم طلب عرض سعر رقم {code}',
-        'wa_date': ' بتاريخ {date}',
-        'wa_link': 'يمكنكم تحميل ملف PDF من الرابط:',
-        'wa_closing': 'نأمل منكم التفضل بتزويدنا بعرض سعر للبنود المذكورة.',
-        'wa_regards': 'مع التحية،',
-        'email_subject': 'طلب عرض سعر {code} — {company}',
-    },
-    'en': {
-        'toolbar_title': 'Print & Send RFQ',
-        'supplier_mobile': 'Supplier Mobile (WhatsApp)',
-        'supplier_email': 'Supplier Email',
-        'print_pdf': '🖨️ Print / PDF',
-        'wa_supplier': '📄 WhatsApp PDF to Supplier',
-        'email_pdf': '✉️ Email PDF',
-        'save_contact': '💾 Save contact',
-        'back': '← Back',
-        'doc_title': 'Request for Quotation',
-        'request_no': 'RFQ No.',
-        'request_date': 'Date',
-        'supplier': 'Supplier',
-        'supplier_default': 'Supplier',
-        'status': 'Status',
-        'project': 'Project',
-        'subject': 'Subject',
-        'salutation': 'Dear {name},',
-        'letter_p1': 'We kindly request your quotation for the items listed below, including delivery time and payment terms if applicable.',
-        'letter_p2': 'Thank you for your cooperation.',
-        'items_title': 'Items for quotation',
-        'col_item': 'Description',
-        'col_qty': 'Qty',
-        'col_unit': 'Unit',
-        'col_specs': 'Specifications',
-        'notes': 'Notes:',
-        'doc_foot': 'Issued by LiftCore — Supplier RFQ',
-        'phone_required': 'Please enter supplier mobile',
-        'email_required': 'Please enter supplier email',
-        'phone_invalid': 'Invalid mobile number',
-        'pdf_generating': 'Generating PDF...',
-        'pdf_upload_fail': 'PDF upload failed',
-        'wa_greeting': 'Hello',
-        'wa_body': 'Please find RFQ no. {code}',
-        'wa_date': ' dated {date}',
-        'wa_link': 'Download PDF:',
-        'wa_closing': 'We look forward to receiving your quotation.',
-        'wa_regards': 'Best regards,',
-        'email_subject': 'RFQ {code} — {company}',
-    },
-}
-
-
-def _resolve_rfq_project(project_id_raw):
-    if not project_id_raw:
-        return None
-    try:
-        pid = int(project_id_raw)
-    except (TypeError, ValueError):
-        return None
-    try:
-        from installation.models import InstallProject
-        return tenant_get_or_404(InstallProject, pid)
-    except Exception:
-        return None
-
-
-@app.route('/supplier-rfqs')
-def supplier_rfqs():
-    from supplier_rfq_schema import ensure_supplier_rfq_schema
-    ensure_supplier_rfq_schema()
-    requests_list = tenant_query(SupplierQuoteRequest).order_by(
-        SupplierQuoteRequest.request_date.desc().nullslast()
-    ).all()
-    project = _resolve_rfq_project(request.args.get('project_id'))
-    edit_rfq = None
-    edit_id = request.args.get('edit', type=int)
-    if edit_id:
-        edit_rfq = tenant_get_or_404(SupplierQuoteRequest, edit_id)
-    return render_template(
-        'supplier-rfqs.html',
-        requests=requests_list,
-        statuses=list(RFQ_STATUSES),
-        next_rfq_code=next_code(SupplierQuoteRequest, 'RFQ-', digits=4),
-        today=date.today().isoformat(),
-        project=project,
-        edit_rfq=edit_rfq,
-    )
-
-
-@app.route('/supplier-rfqs/save', methods=['POST'])
-def supplier_rfqs_save():
-    from supplier_rfq_schema import ensure_supplier_rfq_schema
-    ensure_supplier_rfq_schema()
-    req_id = request.form.get('request_id', '').strip()
-    supplier = request.form.get('supplier', '').strip()
-    supplier_phone = request.form.get('supplier_phone', '').strip()
-    supplier_email = request.form.get('supplier_email', '').strip()
-    subject = request.form.get('subject', '').strip()
-    notes = request.form.get('notes', '').strip()
-    status = request.form.get('status', 'مسودة').strip()
-    project_id_raw = request.form.get('project_id', '').strip()
-    date_raw = request.form.get('request_date', '').strip()
-    try:
-        request_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date.today()
-    except ValueError:
-        request_date = date.today()
-
-    descriptions = request.form.getlist('description')
-    quantities = request.form.getlist('quantity')
-    units = request.form.getlist('unit')
-    specs_list = request.form.getlist('specs')
-    lines_data = []
-    for desc, qty, unit, specs in zip(descriptions, quantities, units, specs_list):
-        description = (desc or '').strip()
-        if not description:
-            continue
-        quantity = float(qty or 0)
-        if quantity <= 0:
-            quantity = 1
-        lines_data.append({
-            'description': description,
-            'quantity': quantity,
-            'unit': (unit or 'قطعة').strip() or 'قطعة',
-            'specs': (specs or '').strip() or None,
-            'item_id': None,
-        })
-    if not lines_data:
-        flash('أضف بنداً واحداً على الأقل', 'error')
-        return redirect(url_for('supplier_rfqs', project_id=project_id_raw or None))
-
-    if req_id:
-        rfq = tenant_get_or_404(SupplierQuoteRequest, int(req_id))
-    else:
-        rfq = SupplierQuoteRequest(code=next_code(SupplierQuoteRequest, 'RFQ-', digits=4))
-        assign_organization(rfq)
-        db.session.add(rfq)
-
-    project = _resolve_rfq_project(project_id_raw)
-    rfq.supplier = supplier or None
-    rfq.supplier_phone = supplier_phone or None
-    rfq.supplier_email = supplier_email or None
-    rfq.subject = subject or None
-    rfq.notes = notes or None
-    rfq.request_date = request_date
-    rfq.status = status if status in RFQ_STATUSES else 'مسودة'
-    rfq.project_id = project.id if project else None
-    rfq.project_code = project.code if project else None
-    rfq.lines.clear()
-    for row in lines_data:
-        line = SupplierQuoteRequestLine(
-            description=row['description'],
-            quantity=row['quantity'],
-            unit=row['unit'],
-            specs=row['specs'],
-            item_id=row['item_id'],
-        )
-        assign_organization(line)
-        rfq.lines.append(line)
-    db.session.commit()
-    flash('تم تحديث طلب عرض السعر' if req_id else 'تم حفظ طلب عرض السعر', 'success')
-    return redirect(url_for('supplier_rfq_print', request_id=rfq.id))
-
-
-def _supplier_rfq_print_context(rfq, *, en_only=False):
-    s = tenant_query(Settings).first()
-    logo_w = (getattr(s, 'logo_width_report', None) or 150) if s else 150
-    uid = session.get('user_id')
-    user = db.session.get(User, uid) if uid else None
-    lang = 'en' if en_only else resolve_user_language(user)
-    rfq_ar = RFQ_PRINT_LABELS['ar']
-    rfq_en = RFQ_PRINT_LABELS['en']
-    rfq_ui = rfq_en if en_only else (rfq_en if lang == 'en' else rfq_ar)
-    company_name = (s.company_name if s and s.company_name else 'LiftCore')
-    return dict(
-        rfq=rfq,
-        logo_width=logo_w,
-        purchasing_phone=(getattr(s, 'phone', None) or '') if s else '',
-        purchasing_email=(getattr(s, 'email', None) or '') if s else '',
-        rfq_ar=rfq_ar,
-        rfq_en=rfq_en,
-        rfq_ui=rfq_ui,
-        en_only=en_only,
-        company_settings=s,
-        company_name=company_name,
-        brand_logo_url=brand_logo_url(s),
-        status_en=RFQ_STATUS_EN.get(rfq.status or '', rfq.status or ''),
-    )
-
-
-@app.route('/supplier-rfqs/<int:request_id>/print')
-def supplier_rfq_print(request_id):
-    from supplier_rfq_schema import ensure_supplier_rfq_schema
-    ensure_supplier_rfq_schema()
-    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
-    return render_template('supplier-rfq-print.html', **_supplier_rfq_print_context(rfq))
-
-
-@app.route('/supplier-rfqs/<int:request_id>/print-en')
-def supplier_rfq_print_en(request_id):
-    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
-    return render_template('supplier-rfq-print.html', **_supplier_rfq_print_context(rfq, en_only=True))
-
-
-@app.route('/supplier-rfqs/<int:request_id>/contact', methods=['POST'])
-def supplier_rfq_update_contact(request_id):
-    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
-    rfq.supplier_phone = request.form.get('supplier_phone', '').strip() or None
-    rfq.supplier_email = request.form.get('supplier_email', '').strip() or None
-    db.session.commit()
-    if request.form.get('en_only') == '1':
-        return redirect(url_for('supplier_rfq_print_en', request_id=rfq.id))
-    return redirect(url_for('supplier_rfq_print', request_id=rfq.id))
-
-
-@app.route('/supplier-rfqs/<int:request_id>/pdf', methods=['POST'])
-def supplier_rfq_upload_pdf(request_id):
-    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
-    upload = request.files.get('pdf')
-    if not upload:
-        return jsonify(ok=False, error='لم يُرفَع ملف PDF'), 400
-    folder = os.path.join(RFQ_UPLOAD_ROOT, str(request_id))
-    os.makedirs(folder, exist_ok=True)
-    safe_code = re.sub(r'[^\w\-]', '_', rfq.code or f'RFQ-{request_id}')
-    filename = f'{safe_code}.pdf'
-    upload.save(os.path.join(folder, filename))
-    rfq.pdf_path = f'uploads/supplier_rfqs/{request_id}/{filename}'
-    db.session.commit()
-    pdf_url = url_for('static', filename=rfq.pdf_path, _external=True)
-    return jsonify(ok=True, url=pdf_url)
-
-
-@app.route('/supplier-rfqs/delete/<int:request_id>', methods=['POST'])
-def supplier_rfqs_delete(request_id):
-    err = enforce_admin_delete()
-    if err:
-        return err
-    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
-    db.session.delete(rfq)
-    db.session.commit()
-    flash('تم حذف طلب عرض السعر', 'success')
-    return redirect(url_for('supplier_rfqs'))
-
-
 # =============================================
 # تقدير تكلفة إنشاء مصعد
 # =============================================
@@ -12157,6 +11960,18 @@ def settings_screensaver_save():
     db.session.commit()
     session['settings_notice'] = 'تم حفظ إعدادات شاشة الحفظ.'
     return _settings_redirect('screensaver')
+
+
+@app.route('/settings/azkar/save', methods=['POST'])
+def settings_azkar_save():
+    if not require_admin():
+        session['settings_notice'] = 'صلاحية المدير مطلوبة.'
+        return _settings_redirect('appearance')
+    s = get_app_settings()
+    s.azkar_ticker_enabled = request.form.get('azkar_ticker_enabled') == '1'
+    db.session.commit()
+    session['settings_notice'] = 'تم حفظ إعدادات شريط الأذكار.'
+    return _settings_redirect('appearance')
 
 
 @app.route('/settings/billing/checkout', methods=['POST'])

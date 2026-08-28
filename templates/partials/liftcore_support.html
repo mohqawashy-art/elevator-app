@@ -42,7 +42,7 @@
       {% endif %}
     </div>
   </div>
-  <button type="button" class="lc-support__btn" aria-expanded="false" aria-controls="lc-support-panel" aria-label="الدعم الفني">
+  <button type="button" class="lc-support__btn" aria-expanded="false" aria-controls="lc-support-panel" aria-label="{{ 'Support' if user_language == 'en' else 'الدعم الفني' }}">
     <span class="lc-support__glyph-wrap" aria-hidden="true">
       <span class="lc-support__glyph lc-support__glyph--open">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -58,7 +58,7 @@
         </svg>
       </span>
     </span>
-    <span class="lc-support__label">الدعم الفني</span>
+    <span class="lc-support__label">{{ 'Support' if user_language == 'en' else 'الدعم الفني' }}</span>
   </button>
 </div>
 <script src="{{ url_for('static', filename='liftcore-support.js') }}?v=5" defer></script>
