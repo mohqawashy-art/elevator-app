@@ -1,7 +1,7 @@
 /* LiftCore Admin PWA — static shell + visited pages + offline fallback */
 'use strict';
 
-const CACHE = 'liftcore-admin-v20';
+const CACHE = 'liftcore-admin-v21';
 const OFFLINE_FALLBACK = '/static/admin-offline-fallback.html';
 const PRECACHE = [
   '/static/liftcore-shell.css?v=50',

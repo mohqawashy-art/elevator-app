@@ -512,24 +512,30 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       </div>
 
       <!-- فلاتر البحث -->
-      <div class="filters-bar">
+      <div class="filters-bar" id="clients-filters-bar" data-lc-server-i18n="1" data-i18n-skip="1">
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-          <input type="text" class="search-input" id="search-input" placeholder="بحث بالاسم أو الهاتف أو الكود..." oninput="filterTable()">
+          <input type="text" class="search-input" id="search-input" placeholder="{{ ui('بحث بالاسم أو الهاتف أو الكود...', 'Search by name, phone, or code...') }}" oninput="filterTable()">
         </div>
         <select class="filter-select" id="f-city" onchange="onCityFilterChange()">
-          <option value="">كل المدن</option>
+          <option value="">{{ ui('كل المدن', 'All Cities') }}</option>
         </select>
         <select class="filter-select" id="f-filter-district" onchange="filterTable()">
-          <option value="">كل الأحياء</option>
+          <option value="">{{ ui('كل الأحياء', 'All Districts') }}</option>
         </select>
         <select class="filter-select" id="f-contract" onchange="filterTable()">
-          <option value="">حالة العقد</option>
-          <option>نشط</option><option>على وشك الانتهاء</option><option>تم تجديده</option><option>منتهي</option><option>ملغي</option><option>بدون عقد</option>
+          <option value="">{{ ui('حالة العقد', 'Contract Status') }}</option>
+          <option value="نشط">{{ ui('نشط', 'Active') }}</option>
+          <option value="على وشك الانتهاء">{{ ui('على وشك الانتهاء', 'Expiring Soon') }}</option>
+          <option value="تم تجديده">{{ ui('تم تجديده', 'Renewed') }}</option>
+          <option value="منتهي">{{ ui('منتهي', 'Expired') }}</option>
+          <option value="ملغي">{{ ui('ملغي', 'Cancelled') }}</option>
+          <option value="بدون عقد">{{ ui('بدون عقد', 'No Contract') }}</option>
         </select>
         <select class="filter-select" id="f-status" onchange="filterTable()">
-          <option value="">الحالة</option>
-          <option>نشط</option><option>غير نشط</option>
+          <option value="">{{ ui('الحالة', 'Status') }}</option>
+          <option value="نشط">{{ ui('نشط', 'Active') }}</option>
+          <option value="غير نشط">{{ ui('غير نشط', 'Inactive') }}</option>
         </select>
       </div>
 
@@ -710,7 +716,18 @@ var CLIENT_MODAL_EN = {
   'يُترجم تلقائياً أثناء الكتابة بالعربية': 'Auto-translated while typing in Arabic',
   'المدينة': 'City',
   'اختر المدينة': 'Select city',
-  'كل المدن': 'All cities',
+  'كل المدن': 'All Cities',
+  'كل الأحياء': 'All Districts',
+  'حالة العقد': 'Contract Status',
+  'الحالة': 'Status',
+  'على وشك الانتهاء': 'Expiring Soon',
+  'تم تجديده': 'Renewed',
+  'منتهي': 'Expired',
+  'ملغي': 'Cancelled',
+  'بدون عقد': 'No Contract',
+  'نشط': 'Active',
+  'غير نشط': 'Inactive',
+  'بحث بالاسم أو الهاتف أو الكود...': 'Search by name, phone, or code...',
   'إضافة مدينة جديدة': 'Add new city',
   'الحي': 'District',
   'اسم الحي': 'District name',
@@ -990,6 +1007,33 @@ function refreshClientModalI18n() {
   if (modal && modal.hasAttribute('data-lc-server-i18n')) return;
   if (window.LiftCoreI18n && LiftCoreI18n.applyModal) LiftCoreI18n.applyModal('modal-add');
 }
+
+var CLIENT_FILTER_CONTRACT_OPTS = ['نشط', 'على وشك الانتهاء', 'تم تجديده', 'منتهي', 'ملغي', 'بدون عقد'];
+var CLIENT_FILTER_STATUS_OPTS = ['نشط', 'غير نشط'];
+
+function rebuildFilterSelect(id, emptyLabel, values) {
+  var sel = document.getElementById(id);
+  if (!sel) return;
+  var prev = sel.value;
+  sel.innerHTML = '<option value="">' + esc(emptyLabel) + '</option>' +
+    values.map(function (v) {
+      return '<option value="' + esc(v) + '">' + esc(lcT(v)) + '</option>';
+    }).join('');
+  if (prev) sel.value = prev;
+}
+
+function applyClientsFilterI18n() {
+  var search = document.getElementById('search-input');
+  if (search) {
+    if (search.dataset.lcPhAr == null) search.dataset.lcPhAr = 'بحث بالاسم أو الهاتف أو الكود...';
+    search.placeholder = isClientUiEn() ? lcT('بحث بالاسم أو الهاتف أو الكود...') : search.dataset.lcPhAr;
+  }
+  rebuildFilterSelect('f-contract', lcT('حالة العقد'), CLIENT_FILTER_CONTRACT_OPTS);
+  rebuildFilterSelect('f-status', lcT('الحالة'), CLIENT_FILTER_STATUS_OPTS);
+  var citySel = document.getElementById('f-city');
+  var cityVal = citySel ? citySel.value : '';
+  fillCitySelects(cityVal);
+}
 function fillCitySelects(selected) {
   var cities = allCities();
   ['f-city-sel','f-city'].forEach(function(id) {
@@ -998,7 +1042,10 @@ function fillCitySelects(selected) {
     var first = id === 'f-city'
       ? '<option value="">' + esc(lcT('كل المدن')) + '</option>'
       : '<option value="">' + esc(lcT('اختر المدينة')) + '</option>';
-    sel.innerHTML = first + cities.map(function(c){ return '<option>' + c + '</option>'; }).join('');
+    sel.innerHTML = first + cities.map(function (c) {
+      var label = cityDisplayName(c);
+      return '<option value="' + esc(c) + '">' + esc(label) + '</option>';
+    }).join('');
     if(selected) sel.value = selected;
   });
   fillDistrictFilter();
@@ -1021,8 +1068,8 @@ function fillDistrictFilter(keepSelected) {
   var city = (document.getElementById('f-city') || {}).value || '';
   var prev = keepSelected ? (sel.value || '') : '';
   var districts = allDistricts(city);
-  sel.innerHTML = '<option value="">' + (typeof lcDisp === 'function' ? lcDisp('كل الأحياء') : 'كل الأحياء') + '</option>' +
-    districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
+  sel.innerHTML = '<option value="">' + esc(lcT('كل الأحياء')) + '</option>' +
+    districts.map(function (d) { return '<option value="' + esc(d) + '">' + esc(d) + '</option>'; }).join('');
   if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
     sel.value = prev;
   }
@@ -3008,6 +3055,7 @@ document.addEventListener('liftcore:lang', function () {
     LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
   }
   applyClientModalI18n();
+  applyClientsFilterI18n();
   var addModal = document.getElementById('modal-add');
   if (addModal && addModal.classList.contains('open')) {
     updateContractorIdField();
@@ -3028,6 +3076,7 @@ window.__lcRefreshPage = function () {
   }
 };
 fillCitySelects();
+applyClientsFilterI18n();
 fillPhoneCodeSelects('+966', '+966');
 bindPhoneInputs();
 setTimeout(applyClientModalI18n, 200);
