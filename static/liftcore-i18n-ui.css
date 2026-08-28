@@ -13,8 +13,8 @@ html[lang="en"] .stat-label-ar {
   display: none !important;
 }
 
-/* لوحة التحكم — إظهار العربية فقط في AR */
-html[lang="ar"] .stat-card > .stat-label {
+/* لوحة التحكم فقط — بطاقتان: EN في .stat-label و AR في .stat-label-ar */
+html[lang="ar"] .stats-grid .stat-card > .stat-label {
   display: none;
 }
 
