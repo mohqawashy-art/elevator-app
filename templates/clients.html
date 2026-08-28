@@ -872,24 +872,199 @@ var CUSTOMERS = {{ customers_js|tojson }};
 const NEXT_CODE = {{ next_client_code|tojson }};
 
 const DEFAULT_CITIES = ['مكة','جدة','الطائف','المدينة','الرياض','الدمام','الخبر','أبها','تبوك','بريدة'];
+const CITY_EN = {
+  'مكة': 'Makkah', 'جدة': 'Jeddah', 'الطائف': 'Taif', 'المدينة': 'Madinah',
+  'الرياض': 'Riyadh', 'الدمام': 'Dammam', 'الخبر': 'Khobar', 'أبها': 'Abha',
+  'تبوك': 'Tabuk', 'بريدة': 'Buraidah'
+};
 const DEFAULT_PHONE_CODES = [
-  {v:'+966', l:'+966 السعودية'},
-  {v:'+971', l:'+971 الإمارات'},
-  {v:'+965', l:'+965 الكويت'},
-  {v:'+973', l:'+973 البحرين'},
-  {v:'+974', l:'+974 قطر'},
-  {v:'+968', l:'+968 عُمان'},
-  {v:'+20',  l:'+20 مصر'},
-  {v:'+962', l:'+962 الأردن'},
+  {v:'+966', l:'+966 السعودية', en:'+966 Saudi Arabia'},
+  {v:'+971', l:'+971 الإمارات', en:'+971 UAE'},
+  {v:'+965', l:'+965 الكويت', en:'+965 Kuwait'},
+  {v:'+973', l:'+973 البحرين', en:'+973 Bahrain'},
+  {v:'+974', l:'+974 قطر', en:'+974 Qatar'},
+  {v:'+968', l:'+968 عُمان', en:'+968 Oman'},
+  {v:'+20',  l:'+20 مصر', en:'+20 Egypt'},
+  {v:'+962', l:'+962 الأردن', en:'+962 Jordan'},
 ];
 
+var CLIENT_MODAL_EN = {
+  'إضافة عميل جديد': 'Add New Client',
+  'تعديل': 'Edit',
+  'كود العميل': 'Client Code',
+  'نوع المتعاقد': 'Contractor Type',
+  'فرد': 'Individual',
+  'شركة': 'Company',
+  'اسم العميل / المبنى': 'Client / Building Name',
+  'برج الياسمين': 'Yasmin Tower',
+  'الاسم بالإنجليزية': 'English Name',
+  'يُترجم تلقائياً أثناء الكتابة بالعربية': 'Auto-translated while typing in Arabic',
+  'المدينة': 'City',
+  'اختر المدينة': 'Select city',
+  'كل المدن': 'All cities',
+  'إضافة مدينة جديدة': 'Add new city',
+  'الحي': 'District',
+  'اسم الحي': 'District name',
+  'اسم المسؤول': 'Contact Person',
+  'نسخ اسم العميل': 'Copy client name',
+  'صفة المسؤول': 'Contact Role',
+  'اختر الصفة': 'Select role',
+  'مالك': 'Owner',
+  'مدير': 'Manager',
+  'وكيل': 'Agent',
+  'حارس': 'Guard',
+  'مشرف': 'Supervisor',
+  'أخرى': 'Other',
+  'رقم هوية المتعاقد': 'Contractor ID Number',
+  'رقم السجل التجاري': 'Commercial Registration No.',
+  'رقم الهوية أو الإقامة لصاحب التوقيع على العقد': 'National ID or Iqama of the contract signatory',
+  'رقم السجل التجاري للشركة أو المؤسسة': 'Commercial registration number of the company or establishment',
+  'الرقم الضريبي': 'VAT Number',
+  'يُستخدم في الفواتير الضريبية للشركات': 'Used on tax invoices for companies',
+  'العنوان الوطني': 'National Address',
+  'الرمز البريدي، رقم المبنى، الرقم الإضافي...': 'Postal code, building no., additional no...',
+  'يُطبع في فاتورة العميل عند كون المتعاقد شركة': 'Printed on the client invoice when the contractor is a company',
+  'رقم الجوال': 'Mobile Number',
+  'إضافة كود دولة': 'Add country code',
+  'بدون صفر في البداية — مثال: 512345678 (مع كود +966)': 'No leading zero — e.g. 512345678 (with +966)',
+  'تواصل واتساب': 'WhatsApp',
+  'واتساب المسؤول': 'Contact WhatsApp',
+  '← نسخ من رقم الجوال': '← Copy from mobile number',
+  'أرقام إضافية': 'Additional Numbers',
+  '+ إضافة رقم آخر': '+ Add another number',
+  'اختياري — محاسب، حارس، رقم طوارئ… حتى 10 أرقام': 'Optional — accountant, guard, emergency… up to 10 numbers',
+  'عدد المصاعد': 'Elevator Count',
+  'يُحسب تلقائياً من المصاعد المسجّلة': 'Calculated automatically from registered elevators',
+  'حالة العميل': 'Client Status',
+  'نشط': 'Active',
+  'غير نشط': 'Inactive',
+  'اختر: نشط أو غير نشط': 'Select: Active or Inactive',
+  'حالة المصاعد': 'Fleet Status',
+  'بدون مصاعد': 'No elevators',
+  'تُحدَّث تلقائياً عند إضافة المصاعد': 'Updates automatically when elevators are added',
+  'موقع العميل على الخريطة': 'Client Location on Map',
+  'اكتب العنوان في خانة البحث واضغط «بحث»، أو انقر على الخريطة، أو استخدم «تطبيق على الخريطة» بعد إدخال المدينة والحي والعنوان.': 'Enter the address in the search box and click Search, click the map, or use Apply to Map after entering city, district, and address.',
+  'ابحث: برج، شارع، حي، مكة...': 'Search: tower, street, district, Makkah...',
+  'بحث': 'Search',
+  'لم يُحدَّد موقع بعد — ابحث أو اضغط على الخريطة لتحديد العنوان': 'No location set yet — search or click the map to set the address',
+  'العنوان التفصيلي': 'Detailed Address',
+  'يُعبَّأ من الخريطة — يمكنك تعديله يدوياً': 'Filled from the map — you can edit manually',
+  '← تطبيق العنوان على الخريطة': '← Apply address to map',
+  'صورة المبنى': 'Building Photo',
+  'رفع صورة': 'Upload photo',
+  'المبنى': 'Building',
+  'صورة واجهة المبنى': 'Building facade photo',
+  'بدون رفع — يظهر شعار LiftCore': 'If not uploaded — LiftCore logo is shown',
+  'رفع / تغيير': 'Upload / Change',
+  'تحميل': 'Download',
+  'حذف المرفق': 'Delete attachment',
+  'ملاحظات': 'Notes',
+  'أي ملاحظات...': 'Any notes...',
+  'إلغاء': 'Cancel',
+  'حفظ العميل': 'Save Client',
+  'التسمية (اختياري)': 'Label (optional)'
+};
+
+function clientUiLang() {
+  if (window.__LC_LANG) return window.__LC_LANG;
+  try {
+    var ls = localStorage.getItem('liftcore_lang');
+    if (ls) return ls;
+  } catch (e) { /* ignore */ }
+  return document.documentElement.getAttribute('lang') || 'ar';
+}
+function isClientUiEn() {
+  return clientUiLang() === 'en';
+}
+function clientModalTr(key) {
+  if (!isClientUiEn()) return key;
+  if (CLIENT_MODAL_EN[key]) return CLIENT_MODAL_EN[key];
+  if (window.LiftCoreI18n && LiftCoreI18n.t) return LiftCoreI18n.t(key);
+  return key;
+}
+function cityDisplayName(city) {
+  if (!city) return city;
+  if (!isClientUiEn()) return city;
+  return CITY_EN[city] || city;
+}
+function phoneCodeLabel(entry) {
+  if (!entry) return '';
+  if (isClientUiEn() && entry.en) return entry.en;
+  return entry.l || entry.v;
+}
+function applyClientModalI18n() {
+  var modal = document.getElementById('modal-add');
+  if (!modal) return;
+  var en = isClientUiEn();
+  modal.querySelectorAll('[data-lc-t]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-t');
+    if (!key) return;
+    if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent;
+    el.textContent = en ? clientModalTr(key) : el.dataset.lcAr;
+  });
+  modal.querySelectorAll('[data-lc-ph]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-ph');
+    if (!key) return;
+    if (el.dataset.lcPhAr == null) el.dataset.lcPhAr = el.getAttribute('placeholder') || '';
+    el.setAttribute('placeholder', en ? clientModalTr(key) : el.dataset.lcPhAr);
+  });
+  modal.querySelectorAll('[data-lc-title]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-title');
+    if (!key) return;
+    if (el.dataset.lcTitleAr == null) el.dataset.lcTitleAr = el.getAttribute('title') || '';
+    el.setAttribute('title', en ? clientModalTr(key) : el.dataset.lcTitleAr);
+  });
+  modal.querySelectorAll('option[data-lc-t]').forEach(function (el) {
+    var key = el.getAttribute('data-lc-t');
+    if (!key) return;
+    if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent;
+    el.textContent = en ? clientModalTr(key) : el.dataset.lcAr;
+  });
+  ['f-city-sel', 'f-city'].forEach(function (id) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    [].forEach.call(sel.options, function (opt) {
+      if (!opt.value) return;
+      if (opt.dataset.lcAr == null) opt.dataset.lcAr = opt.textContent;
+      opt.textContent = en ? cityDisplayName(opt.value) : opt.dataset.lcAr;
+    });
+  });
+  ['f-code-phone', 'f-code-wa'].forEach(function (id) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    [].forEach.call(sel.options, function (opt) {
+      if (opt.dataset.lcAr == null) opt.dataset.lcAr = opt.textContent;
+      if (!en) {
+        opt.textContent = opt.dataset.lcAr;
+        return;
+      }
+      var entry = allPhoneCodes().find(function (c) { return c.v === opt.value; });
+      opt.textContent = entry ? phoneCodeLabel(entry) : opt.dataset.lcAr;
+    });
+  });
+  document.querySelectorAll('#extra-phones-list .phone-code').forEach(function (sel) {
+    [].forEach.call(sel.options, function (opt) {
+      if (opt.dataset.lcAr == null) opt.dataset.lcAr = opt.textContent;
+      if (!en) { opt.textContent = opt.dataset.lcAr; return; }
+      var entry = allPhoneCodes().find(function (c) { return c.v === opt.value; });
+      opt.textContent = entry ? phoneCodeLabel(entry) : opt.dataset.lcAr;
+    });
+  });
+  var fleet = document.getElementById('f-fleet-status');
+  if (fleet && fleet.textContent && /[\u0600-\u06FF]/.test(fleet.textContent)) {
+    if (fleet.dataset.lcAr == null) fleet.dataset.lcAr = fleet.textContent;
+    fleet.textContent = en ? clientModalTr(fleet.dataset.lcAr) : fleet.dataset.lcAr;
+  }
+}
+
 function lcT(s) {
-  if (window.LiftCoreI18n && LiftCoreI18n.t) return LiftCoreI18n.t(s);
-  return s;
+  return clientModalTr(s);
 }
 function lcDispVal(s) {
+  if (!isClientUiEn()) return s;
+  if (CLIENT_MODAL_EN[s]) return CLIENT_MODAL_EN[s];
   if (window.lcDisp) return lcDisp(s);
-  return lcT(s);
+  return clientModalTr(s);
 }
 
 function contractorIdLabel(entityType) {
@@ -960,6 +1135,7 @@ function allPhoneCodes() {
   return list;
 }
 function refreshClientModalI18n() {
+  applyClientModalI18n();
   if (window.LiftCoreI18n && LiftCoreI18n.applyModal) LiftCoreI18n.applyModal('modal-add');
 }
 function fillCitySelects(selected) {
@@ -1005,7 +1181,10 @@ function onCityFilterChange() {
 }
 function fillPhoneCodeSelects(selectedPhone, selectedWa) {
   var codes = allPhoneCodes();
-  var html = codes.map(function(c){ return '<option value="' + c.v + '">' + c.l + '</option>'; }).join('');
+  var html = codes.map(function(c){
+    var label = phoneCodeLabel(c).replace(/"/g, '&quot;');
+    return '<option value="' + c.v + '">' + label + '</option>';
+  }).join('');
   var p = document.getElementById('f-code-phone');
   var w = document.getElementById('f-code-wa');
   if(p) { p.innerHTML = html; if(selectedPhone) p.value = selectedPhone; }
@@ -1016,6 +1195,7 @@ function fillPhoneCodeSelects(selectedPhone, selectedWa) {
     if (cur && [].some.call(sel.options, function(o){ return o.value === cur; })) sel.value = cur;
     else if (selectedPhone) sel.value = selectedPhone;
   });
+  applyClientModalI18n();
 }
 function addNewCity() {
   var name = prompt('اسم المدينة الجديدة:');
@@ -1126,7 +1306,7 @@ function addExtraPhoneRow(prefill) {
   row.className = 'extra-phone-row';
   var uid = 'xp-' + Date.now() + '-' + Math.floor(Math.random() * 9999);
   row.innerHTML =
-    '<input type="text" class="extra-label" placeholder="التسمية (اختياري)" maxlength="40">' +
+    '<input type="text" class="extra-label" data-lc-ph="التسمية (اختياري)" placeholder="التسمية (اختياري)" maxlength="40">' +
     '<select class="phone-code" id="' + uid + '-code"></select>' +
     '<input type="tel" class="phone-input" placeholder="512345678" inputmode="tel" maxlength="15">' +
     '<button type="button" class="extra-phone-remove" title="حذف">×</button>';
@@ -2783,7 +2963,13 @@ function openModal(id){
   if (el) el.classList.add('open');
   syncModalA11y();
   if (window.LiftCoreI18n && LiftCoreI18n.applyModal) {
-    setTimeout(function () { LiftCoreI18n.applyModal(id); }, 0);
+    setTimeout(function () {
+      applyClientModalI18n();
+      LiftCoreI18n.applyModal(id);
+    }, 0);
+    setTimeout(function () { applyClientModalI18n(); }, 120);
+  } else {
+    setTimeout(function () { applyClientModalI18n(); }, 0);
   }
 }
 function closeModal(id){
@@ -2966,10 +3152,12 @@ document.addEventListener('liftcore:lang', function () {
   if (cardModal && cardModal.classList.contains('open') && window.LiftCoreDisplay) {
     LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
   }
+  applyClientModalI18n();
   var addModal = document.getElementById('modal-add');
   if (addModal && addModal.classList.contains('open') && window.LiftCoreI18n && LiftCoreI18n.applyModal) {
     updateContractorIdField();
     LiftCoreI18n.applyModal('modal-add');
+    applyClientModalI18n();
   }
   syncModalA11y();
 });
@@ -2988,6 +3176,8 @@ window.__lcRefreshPage = function () {
 fillCitySelects();
 fillPhoneCodeSelects('+966', '+966');
 bindPhoneInputs();
+setTimeout(applyClientModalI18n, 200);
+setTimeout(applyClientModalI18n, 800);
 try { if (tableSort) tableSort.bindHeaders(); updateStats(); renderTable(CUSTOMERS); syncModalA11y(); } catch (bootErr) { console.error('clients boot', bootErr); }
 var bootParams = new URLSearchParams(window.location.search);
 if (bootParams.get('action') === 'add') {

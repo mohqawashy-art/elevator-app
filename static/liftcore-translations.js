@@ -208,6 +208,7 @@ window.__LC_TRANSLATIONS = {
   'رقم السجل التجاري': 'Commercial Registration No.',
   'فرد': 'Individual',
   'شركة': 'Company',
+  'مدير': 'Manager',
   'المدينة': 'City',
   'الحي': 'District',
   'اختر الصفة': 'Select Role',

@@ -173,6 +173,9 @@
 
   function shouldSkipEl(el) {
     if (!el || el.closest('[data-i18n-skip]')) return true;
+    if (el.hasAttribute('data-lc-t') || el.hasAttribute('data-lc-ph') || el.hasAttribute('data-lc-title')) return true;
+    if (el.closest('[data-lc-t], [data-lc-ph], #modal-add')) return true;
+    if (el.querySelector && el.querySelector('[data-lc-t], [data-lc-ph]')) return true;
     if (el.matches && el.matches(DOM_SKIP)) return true;
     if (el.closest && el.closest(DOM_SKIP)) return true;
     if (el.querySelector && el.querySelector('svg, img, input, select, button, .td-actions')) return true;
