@@ -2,6 +2,11 @@
 (function (global) {
   'use strict';
 
+  function lcT(s) {
+    if (global.LiftCoreI18n && global.LiftCoreI18n.t) return global.LiftCoreI18n.t(s);
+    return s;
+  }
+
   var state = {
     provider: null,
     map: null,
@@ -206,9 +211,9 @@
     if (!el) return;
     if (!payload || !payload.lat || !payload.lng) {
       if (state.provider === 'leaflet') {
-        el.textContent = 'خريطة OpenStreetMap — ابحث أو انقر لتحديد الموقع';
+        el.textContent = lcT('خريطة OpenStreetMap — ابحث أو انقر لتحديد الموقع');
       } else {
-        el.textContent = 'لم يُحدَّد موقع بعد — اضغط على الخريطة أو ابحث أعلاه';
+        el.textContent = lcT('لم يُحدَّد موقع بعد — اضغط على الخريطة أو ابحث أعلاه');
       }
       el.classList.remove('set');
       el.style.color = '';

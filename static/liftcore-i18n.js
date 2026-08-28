@@ -661,6 +661,9 @@
       '.toolbar-title',
       '.filter-label',
       '.hint',
+      '.field-hint',
+      '.map-picker-hint',
+      '.map-picker-coords',
       'option',
       '.panel-title',
       '.exec-aside-title',
@@ -718,6 +721,23 @@
   var applying = false;
   var moTimer = null;
 
+  function applyToRoot(root, lang) {
+    if (!root) return;
+    if (lang !== 'ar' && lang !== 'en') lang = 'ar';
+    applySelectors(root, lang);
+    walkTextNodes(root, lang);
+    translateFormAttributes(root, lang);
+    if (global.LiftCoreDisplay && global.LiftCoreDisplay.applyDom) {
+      global.LiftCoreDisplay.applyDom(root, lang);
+    }
+  }
+
+  function applyModal(modalId) {
+    var el = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+    if (!el || currentLang !== 'en') return;
+    applyToRoot(el, 'en');
+  }
+
   function applyLanguage(lang) {
     if (applying) return;
     applying = true;
@@ -763,6 +783,10 @@
     zones.forEach(function (z) {
       if (!shouldTranslateZone(z)) return;
       walkTextNodes(z, lang);
+    });
+
+    document.querySelectorAll('.modal-overlay.open').forEach(function (m) {
+      applyToRoot(m, lang);
     });
     } finally {
       applying = false;
@@ -814,6 +838,8 @@
     } catch (e) { /* ignore */ }
     global.LiftCoreI18n = {
       apply: applyLanguage,
+      applyModal: applyModal,
+      applyToRoot: applyToRoot,
       setLang: setLang,
       t: t,
       TEXT: TEXT,
