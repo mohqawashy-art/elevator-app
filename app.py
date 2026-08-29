@@ -5743,14 +5743,24 @@ def elevator_add():
     from form_validation import elevator_form_error
     from entitlements import assert_capacity
 
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.form.get('ajax') == '1'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+
+    def _fail(msg, status=400):
+        if wants_json:
+            return jsonify({'ok': False, 'error': msg}), status
+        flash(msg, 'error')
+        return redirect(url_for('elevators'))
+
     elev_err = elevator_form_error(request.form, parse_int=_parse_int)
     if elev_err:
-        flash(elev_err, 'error')
-        return redirect(url_for('elevators'))
+        return _fail(elev_err)
     cap = assert_capacity('elevators')
     if not cap.get('ok'):
-        flash(cap.get('error') or 'تجاوزت حد المصاعد في الباقة.', 'error')
-        return redirect(url_for('elevators'))
+        return _fail(cap.get('error') or 'تجاوزت حد المصاعد في الباقة.', 403)
     raw_code = (request.form.get('code') or '').strip()
     m_el = re.match(r'EL-(\d+)$', raw_code, re.I)
     if m_el:
@@ -5792,6 +5802,8 @@ def elevator_add():
     db.session.flush()
     sync_customer_from_elevators(e.customer)
     db.session.commit()
+    if wants_json:
+        return jsonify({'ok': True, 'id': e.id, 'code': e.code})
     return redirect(url_for('elevators'))
 
 
