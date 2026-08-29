@@ -8,7 +8,15 @@ def test_admin_manifest_branding(client):
     body = r.get_data(as_text=True)
     assert 'LiftCore' in body
     assert '/dashboard' in body
-    assert 'JAMA' not in body
+    assert '"purpose":"any"' in body.replace(' ', '')
+
+
+def test_jama_manifest_uses_tenant_name(client):
+    r = client.get('/manifest.webmanifest', headers={'Host': 'jama.liftcoreapp.com'})
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'JAMA' in body
+    assert 'short_name' in body
 
 
 def test_admin_service_worker_route(client):

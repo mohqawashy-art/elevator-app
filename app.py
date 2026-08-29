@@ -2664,11 +2664,74 @@ def _complete_user_login(user, *, next_url: str | None = None):
 
 @app.route('/manifest.webmanifest')
 def web_manifest():
-    return send_from_directory(
-        os.path.join(app.root_path, 'static'),
-        'manifest.webmanifest',
+    """مانيفست PWA — اسم المستأجر على النطاق الفرعي حتى يظهر التثبيت باسم صحيح."""
+    import json
+
+    host = (request.host or '').split(':')[0].lower().rstrip('.')
+    slug = ''
+    if host.endswith('.liftcoreapp.com'):
+        slug = host.split('.', 1)[0]
+    if slug in ('', 'www', 'app', 'admin', 'test', 'signup', 'api'):
+        slug = ''
+
+    display_name = 'LiftCore'
+    short_name = 'LiftCore'
+    description = 'لوحة إدارة صيانة المصاعد — للمكتب على الجوال والتابلت والحاسوب'
+    if slug == 'jama':
+        display_name = 'JAMA'
+        short_name = 'JAMA'
+        description = 'JAMA — نظام إدارة المصاعد عبر LiftCore'
+    elif slug:
+        display_name = slug.upper()
+        short_name = slug.upper()[:12]
+
+    payload = {
+        'name': display_name if slug else 'LiftCore — الإدارة',
+        'short_name': short_name,
+        'description': description,
+        'id': f'https://{host}/' if host else '/',
+        'start_url': '/dashboard?source=pwa',
+        'scope': '/',
+        'display': 'standalone',
+        'orientation': 'any',
+        'background_color': '#0b0f17',
+        'theme_color': '#0b0f17',
+        'lang': 'ar',
+        'dir': 'rtl',
+        'categories': ['business', 'productivity'],
+        'icons': [
+            {
+                'src': '/static/images/icon-192.png',
+                'sizes': '192x192',
+                'type': 'image/png',
+                'purpose': 'any',
+            },
+            {
+                'src': '/static/images/icon-512.png',
+                'sizes': '512x512',
+                'type': 'image/png',
+                'purpose': 'any',
+            },
+            {
+                'src': '/static/images/icon-192.png',
+                'sizes': '192x192',
+                'type': 'image/png',
+                'purpose': 'maskable',
+            },
+            {
+                'src': '/static/images/icon-512.png',
+                'sizes': '512x512',
+                'type': 'image/png',
+                'purpose': 'maskable',
+            },
+        ],
+    }
+    resp = app.response_class(
+        json.dumps(payload, ensure_ascii=False, separators=(',', ':')),
         mimetype='application/manifest+json',
     )
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
 
 
 @app.route('/sw.js')
