@@ -1552,11 +1552,13 @@ async function confirmElevImport() {
   btn.disabled = true;
   var ok = 0;
   var skip = 0;
+  var errors = [];
   for (var i = 0; i < elevImportData.length; i++) {
     var row = elevImportData[i];
     var customerId = resolveCustomerId(row);
     if (!customerId) { skip++; continue; }
     var fd = new FormData();
+    fd.append('ajax', '1');
     fd.append('customer_id', customerId);
     fd.append('code', row['كود المصعد'] || row['رقم المصعد'] || row['code'] || '');
     fd.append('building_name', row['المبنى'] || row['building'] || '');
@@ -1579,11 +1581,29 @@ async function confirmElevImport() {
     fd.append('next_maintenance', row['الصيانة القادمة'] || row['next_maintenance'] || '');
     fd.append('status', row['الحالة'] || row['حالة المصعد'] || row['status'] || 'نشط');
     fd.append('notes', row['ملاحظات'] || row['notes'] || '');
-    var r = await fetch('/elevators/add', {method: 'POST', body: fd, credentials: 'same-origin'});
-    if (r.ok || r.redirected) ok++;
-    else skip++;
+    try {
+      var r = await fetch('/elevators/add', {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+      });
+      var data = null;
+      try { data = await r.json(); } catch (e) { data = null; }
+      if (r.ok && data && data.ok) ok++;
+      else {
+        skip++;
+        var err = (data && data.error) ? data.error : ('HTTP ' + r.status);
+        if (errors.length < 5) errors.push(err);
+      }
+    } catch (e) {
+      skip++;
+      if (errors.length < 5) errors.push(String(e.message || e));
+    }
   }
-  alert('تم استيراد ' + ok + ' مصعد بنجاح' + (skip ? (' — تم تخطي ' + skip + ' سجل') : ''));
+  var msg = 'تم استيراد ' + ok + ' مصعد بنجاح' + (skip ? (' — تم تخطي ' + skip + ' سجل') : '');
+  if (errors.length) msg += '\n\nأمثلة أخطاء:\n- ' + errors.join('\n- ');
+  alert(msg);
   window.location.reload();
 }
 
