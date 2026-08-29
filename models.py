@@ -43,6 +43,8 @@ class Organization(db.Model):
     office_users_limit_override = db.Column(db.Integer)
     technicians_limit_override = db.Column(db.Integer)
     storage_gb_limit_override = db.Column(db.Integer)
+    # ميزات باقة التخصيص (JSON) — تُستخدم عند plan=custom
+    features_override_json = db.Column(db.Text)
 
     def __repr__(self):
         return f'<Organization {self.slug}>'

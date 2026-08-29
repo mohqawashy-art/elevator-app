@@ -114,6 +114,9 @@ def set_subscription(
         if plan not in PLANS:
             return {'ok': False, 'errors': ['باقة غير معروفة.']}
         org.plan = plan
+        # عند مغادرة باقة التخصيص أزل الميزات اليدوية حتى تُستخدم الباقة القياسية
+        if plan != 'custom':
+            org.features_override_json = None
     if cycle is not None:
         cycle = cycle.strip().lower()
         if cycle not in BILLING_CYCLES:

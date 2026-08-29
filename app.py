@@ -1577,6 +1577,7 @@ def _sqlite_legacy_schema_patches():
                 ('office_users_limit_override', 'INTEGER'),
                 ('technicians_limit_override', 'INTEGER'),
                 ('storage_gb_limit_override', 'INTEGER'),
+                ('features_override_json', 'TEXT'),
             ],
             'onboarding_invites': [
                 ('admin_username', 'VARCHAR(50)'),
@@ -3777,9 +3778,11 @@ def platform_org_detail(org_id):
         billing_amount=detail.get('billing_amount') or 0,
         login_url=detail['login_url'],
         plans=detail['plans'],
+        plan_options=detail.get('plan_options') or [],
         entitlements=detail.get('entitlements') or {},
         org_addons=detail.get('org_addons') or [],
         addon_catalog=detail.get('addon_catalog') or [],
+        feature_catalog=detail.get('feature_catalog') or [],
         can_delete=not is_protected_operator_org(detail['org']),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
@@ -3972,6 +3975,82 @@ def platform_org_subscription(org_id):
         session['plat_notice_type'] = 'ok'
     else:
         session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل الحفظ.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/custom-package', methods=['POST'])
+def platform_org_custom_package(org_id):
+    """باقة تخصيص: مشغّل المنصة يحدد الخدمات والحدود والسعر للعميل."""
+    from models import Organization
+    from platform_admin import is_admin_host
+    from entitlements import set_custom_package
+    from plan_catalog import FEATURE_KEYS
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+
+    features = {fk: request.form.get(f'feature_{fk}') in ('1', 'on', 'true', 'yes') for fk in FEATURE_KEYS}
+
+    def _int(name: str, default: int = 0) -> int:
+        raw = (request.form.get(name) or '').strip()
+        if raw == '':
+            return default
+        return int(raw)
+
+    try:
+        elevators = _int('elevators_limit', 0)
+        office_users = _int('office_users_limit', 0)
+        technicians = _int('technicians_limit', 0)
+        storage_gb = _int('storage_gb_limit', 0)
+        amount = float((request.form.get('billing_amount') or '').strip())
+    except (TypeError, ValueError):
+        session['plat_notice'] = 'تحقق من الحدود والسعر — قيم غير صالحة.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+
+    result = set_custom_package(
+        org,
+        features=features,
+        elevators=elevators,
+        office_users=office_users,
+        technicians=technicians,
+        storage_gb=storage_gb,
+        amount=amount,
+        cycle=request.form.get('billing_cycle') or 'monthly',
+        billing_notes=request.form.get('billing_notes'),
+    )
+    if result.get('ok'):
+        try:
+            from audit_log import log_audit
+            log_audit(
+                'platform_custom_package',
+                user=user,
+                organization_id=org.id,
+                details={
+                    'features': features,
+                    'limits': {
+                        'elevators': elevators,
+                        'office_users': office_users,
+                        'technicians': technicians,
+                        'storage_gb': storage_gb,
+                    },
+                    'amount': amount,
+                    'cycle': request.form.get('billing_cycle') or 'monthly',
+                },
+            )
+        except Exception:
+            app.logger.exception('custom package audit failed')
+        session['plat_notice'] = 'تم حفظ باقة التخصيص لهذا العميل.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل حفظ باقة التخصيص.'])
         session['plat_notice_type'] = 'warn'
     return redirect(url_for('platform_org_detail', org_id=org_id))
 
