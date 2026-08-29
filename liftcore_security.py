@@ -36,6 +36,7 @@ MAX_UPLOAD_BYTES = int(os.environ.get('LIFTCORE_MAX_UPLOAD_MB', '10')) * 1024 * 
 ALLOWED_UPLOAD_MIME = frozenset({
     'image/png', 'image/jpeg', 'image/webp', 'image/svg+xml',
     'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 })
 
 # ── Rate limiting ───────────────────────────────────────────────
@@ -452,6 +453,8 @@ def validate_upload_file(file_storage, *, allowed_ext: set[str]) -> tuple[bool, 
     ctype = (getattr(file_storage, 'content_type', None) or '').split(';')[0].strip().lower()
     if ctype and ctype not in ALLOWED_UPLOAD_MIME and ctype != 'application/octet-stream':
         if ext == 'svg' and ctype in ('text/xml', 'application/xml'):
+            pass
+        elif ext == 'docx' and ctype in ('application/zip', 'application/x-zip-compressed'):
             pass
         else:
             return False, 'نوع MIME للملف غير مسموح'

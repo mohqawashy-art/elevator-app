@@ -1449,6 +1449,7 @@ def _sqlite_legacy_schema_patches():
                 ('custom_holidays_json', 'TEXT'),
                 ('extra_work_days_json', 'TEXT'),
                 ('custom_permissions_enabled', 'BOOLEAN'),
+                ('contract_template_path', 'VARCHAR(300)'),
             ],
             'users': [
                 ('theme', 'VARCHAR(10)'),
@@ -1661,6 +1662,7 @@ def _startup_schema_and_data_sync():
                 'company_sign_offset_x': 'INTEGER DEFAULT 0',
                 'company_sign_offset_y': 'INTEGER DEFAULT 0',
                 'azkar_ticker_enabled': 'BOOLEAN DEFAULT TRUE',
+                'contract_template_path': 'VARCHAR(300)',
             }
             for col_name, column_type in seal_columns.items():
                 if col_name in settings_cols:
@@ -1765,6 +1767,7 @@ PO_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'purchase_orde
 RFQ_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'supplier_rfqs')
 ALLOWED_TECH_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_LOGO_EXT = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
+ALLOWED_CONTRACT_TEMPLATE_EXT = {'docx'}
 ALLOWED_TECH_DOC_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 ALLOWED_CLIENT_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_CONTRACT_FILE_EXT = {'pdf'}
@@ -6747,7 +6750,18 @@ def contract_delete(id):
 def contract_print_page(contract_id):
     from contract_print import contract_print_payload
 
-    return render_template('contract-print.html', **contract_print_payload(contract_id))
+    if request.args.get('html') != '1':
+        try:
+            from contract_docx import try_send_filled_contract
+            filled = try_send_filled_contract(contract_id)
+            if filled is not None:
+                return filled
+        except Exception:
+            app.logger.exception('contract docx fill failed for %s', contract_id)
+    payload = contract_print_payload(contract_id)
+    from contract_docx import has_contract_template
+    payload['has_docx_template'] = has_contract_template(get_app_settings(), app.root_path)
+    return render_template('contract-print.html', **payload)
 
 
 # =============================================
@@ -12030,6 +12044,45 @@ def _save_company_image_asset(settings_row, file_storage, *, attr_name: str, pre
     return True, f'تم تحديث {label_ar}.'
 
 
+def _save_contract_template(settings_row, file_storage, *, remove=False):
+    """يحفظ نموذج عقد Word (.docx). يرجع (ok, message_ar|None)."""
+    if remove:
+        rel = (getattr(settings_row, 'contract_template_path', None) or '').replace('\\', '/').lstrip('/')
+        if rel:
+            abs_path = os.path.join(app.root_path, 'static', rel)
+            try:
+                if os.path.isfile(abs_path):
+                    os.remove(abs_path)
+            except OSError:
+                pass
+        settings_row.contract_template_path = None
+        return True, 'تم حذف نموذج العقد.'
+    if not file_storage or not file_storage.filename:
+        return True, None
+    if not _ext_ok(file_storage.filename, ALLOWED_CONTRACT_TEMPLATE_EXT):
+        return False, 'ارفع ملف Word بصيغة .docx فقط.'
+    ok_up, err_up = _upload_ok(file_storage, ALLOWED_CONTRACT_TEMPLATE_EXT)
+    if not ok_up:
+        return False, err_up or 'تعذّر قبول ملف النموذج.'
+
+    org_id = getattr(settings_row, 'organization_id', None) or 0
+    dest_dir = os.path.join(COMPANY_UPLOAD_ROOT, str(org_id))
+    os.makedirs(dest_dir, exist_ok=True)
+    filename = f'contract-template-{int(time.time())}.docx'
+    for old in os.listdir(dest_dir):
+        if old.startswith('contract-template'):
+            try:
+                os.remove(os.path.join(dest_dir, old))
+            except OSError:
+                pass
+    dest = os.path.join(dest_dir, filename)
+    file_storage.save(dest)
+    if not os.path.isfile(dest):
+        return False, 'فشل حفظ نموذج العقد على السيرفر.'
+    settings_row.contract_template_path = f'uploads/company/{org_id}/{filename}'
+    return True, 'تم رفع نموذج العقد.'
+
+
 def _clamp_logo_width(value, default=150, min_w=60, max_w=400):
     try:
         n = int(value)
@@ -12105,6 +12158,7 @@ def settings():
     from moyasar_payments import moyasar_enabled
     from platform_billing import effective_amount, refresh_billing_status
     from entitlements import resolve_entitlements
+    from contract_docx import PLACEHOLDER_HELP, has_contract_template
     from models import Organization
     from tenant_scope import effective_organization_id
     oid = effective_organization_id()
@@ -12142,6 +12196,9 @@ def settings():
         plan_amount=plan_amount,
         entitlements=entitlements,
         moyasar_enabled=moyasar_enabled(),
+        contract_placeholders=PLACEHOLDER_HELP,
+        has_contract_template=has_contract_template(s, app.root_path),
+        contract_template_url=upload_url(getattr(s, 'contract_template_path', None)) if s else '',
     )
 
 
@@ -12425,6 +12482,10 @@ def settings_save():
         s, request.files.get('company_sign'),
         attr_name='company_sign_path', prefix='sign', label_ar='توقيع الشركة',
     )
+    tpl_ok, tpl_msg = _save_contract_template(
+        s, request.files.get('contract_template'),
+        remove=request.form.get('remove_contract_template') == '1',
+    )
     from zatca_phase2 import sync_zatca_credentials_from_settings
     sync_zatca_credentials_from_settings(s)
     db.session.commit()
@@ -12441,9 +12502,13 @@ def settings_save():
         notices.append(sign_msg or 'تعذّر حفظ التوقيع.')
     elif sign_msg:
         notices.append(sign_msg)
+    if not tpl_ok:
+        notices.append(tpl_msg or 'تعذّر حفظ نموذج العقد.')
+    elif tpl_msg:
+        notices.append(tpl_msg)
     if not notices:
         session['settings_notice'] = 'تم حفظ بيانات الشركة بنجاح.'
-    elif logo_ok and stamp_ok and sign_ok:
+    elif logo_ok and stamp_ok and sign_ok and tpl_ok:
         session['settings_notice'] = 'تم حفظ بيانات الشركة. ' + ' '.join(notices)
     else:
         session['settings_notice'] = ' '.join(notices)

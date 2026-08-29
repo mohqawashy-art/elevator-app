@@ -1156,6 +1156,7 @@ class Settings(TenantMixin, db.Model):
     custom_holidays_json = db.Column(db.Text)
     extra_work_days_json = db.Column(db.Text)
     custom_permissions_enabled = db.Column(db.Boolean, default=False)  # صلاحيات اختيارية per-user
+    contract_template_path = db.Column(db.String(300))  # نموذج عقد Word لكل مؤسسة
 
 
 # =============================================

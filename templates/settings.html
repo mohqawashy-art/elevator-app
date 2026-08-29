@@ -345,6 +345,42 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
       </div>
     </div>
 
+    <div class="section" style="margin-top:22px">نموذج عقد Word</div>
+    <p class="hint" style="margin-bottom:12px">
+      ارفع ملف <strong>.docx</strong> بنصوص العقد كما تريدها. البرنامج لا يغيّر التنسيق ولا اتجاه الصفحة العربية — يملأ فقط الحقول المتغيرة المكتوبة بين أقواس مزدوجة، مثل <code dir="ltr">{% raw %}{{اسم_العميل}}{% endraw %}</code>
+    </p>
+    {% if has_contract_template %}
+    <p class="hint" style="margin-bottom:10px;color:var(--success)">✓ يوجد نموذج مرفوع
+      {% if contract_template_url %}
+      — <a href="{{ contract_template_url }}" style="color:var(--accent)">تنزيل الملف الحالي</a>
+      {% endif %}
+    </p>
+    {% endif %}
+    <label>رفع نموذج جديد</label>
+    <input type="file" name="contract_template" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    <p class="hint">في Word: اكتب مكان الاسم أو القيمة الرمز كما في الجدول، ثم احفظ الملف كـ Word (.docx) وليس PDF.</p>
+    {% if has_contract_template %}
+    <label class="hint" style="display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--text2)">
+      <input type="checkbox" name="remove_contract_template" value="1" style="width:auto">
+      حذف النموذج والرجوع للطباعة الداخلية
+    </label>
+    {% endif %}
+    <div style="margin-top:14px;overflow:auto;border:1px solid var(--border);border-radius:var(--r-sm)">
+      <table class="users-table" style="margin:0">
+        <thead>
+          <tr><th>الرمز في ملف الورد</th><th>ما يُعبَّأ من البرنامج</th></tr>
+        </thead>
+        <tbody>
+          {% for token, label in contract_placeholders %}
+          <tr>
+            <td dir="ltr" style="font-family:Consolas,monospace;white-space:nowrap">{{ token }}</td>
+            <td>{{ label }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
     <div class="actions">
       <button type="submit" class="btn btn-primary">حفظ بيانات الشركة</button>
     </div>
