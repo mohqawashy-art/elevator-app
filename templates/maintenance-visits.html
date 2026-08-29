@@ -2187,12 +2187,11 @@ function printVisit() {
 }
 
 function exportExcel() {
-  const rows=[['الكود','العميل','المصعد','الفني','النوع','التاريخ','الحالة']];
-  filtered.forEach(v=>rows.push([v.code,v.customer,v.elevator,v.technician,v.visit_type,v.visit_date,v.status]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='visits.csv'; a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('visits'),
+    labels: LiftCoreCsv.LABELS.visit,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }

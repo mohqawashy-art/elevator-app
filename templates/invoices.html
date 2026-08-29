@@ -831,13 +831,11 @@ function confirmDelete() {
 }
 
 function exportCSV() {
-  const rows = [['الكود','النوع','العميل','العقد','التاريخ','البيان','المبلغ','الضريبة','الإجمالي','طريقة الدفع','الحالة']];
-  filtered.forEach(i => rows.push([i.code,i.invoice_type,i.customer,i.contract,i.invoice_date,i.description,i.amount,i.tax_amount,i.total,i.pay_method,i.status]));
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type:'text/csv;charset=utf-8' }));
-  a.download = 'invoices.csv';
-  a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('invoices'),
+    labels: LiftCoreCsv.LABELS.invoice,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }

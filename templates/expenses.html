@@ -590,13 +590,11 @@ function deleteExpense(id) {
 }
 
 function exportCSV() {
-  const rows = [['الكود', 'التاريخ', 'النوع', 'الوصف', 'المسؤول', 'طريقة الدفع', 'المبلغ', 'سجّله']];
-  filtered.forEach(e => rows.push([e.code, e.expense_date, e.expense_type, e.description, e.responsible, e.pay_method, e.amount, e.created_by || '']));
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = 'expenses.csv';
-  a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('expenses'),
+    labels: LiftCoreCsv.LABELS.expense,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);

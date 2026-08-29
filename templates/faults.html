@@ -1396,12 +1396,14 @@ function confirmDelete() {
 }
 
 function exportExcel() {
-  const rows=[['الكود','العميل','المصعد','نوع العطل','الأولوية','الفني','الاستجابة','الحالة','الفوترة']];
-  filtered.forEach(f=>rows.push([f.code,f.customer,f.elevator,f.fault_type,f.priority,f.technician,f.response_time,f.status,f.needs_parts?'قابل للفوترة':'ضمن العقد']));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='faults.csv'; a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('faults'),
+    labels: LiftCoreCsv.LABELS.fault,
+    skip: LiftCoreCsv.SKIP_COMMON,
+    transforms: {
+      needs_parts: function (v) { return v ? 'قابل للفوترة' : 'ضمن العقد'; }
+    }
+  });
 }
 
 function openModal(id) {

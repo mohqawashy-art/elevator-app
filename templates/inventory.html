@@ -573,13 +573,11 @@ function askDelete(id) {
 }
 
 function exportCSV() {
-  const rows = [['الكود', 'الاسم', 'التصنيف', 'الرصيد', 'الحد الأدنى', 'سعر الشراء', 'المورد', 'الحالة']];
-  filtered.forEach(i => rows.push([i.code, i.name, i.category, i.current_qty, i.min_qty, i.buy_price, i.supplier, i.order_status]));
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = 'inventory.csv';
-  a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('inventory'),
+    labels: LiftCoreCsv.LABELS.inventory,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 
 // ===== استيراد =====

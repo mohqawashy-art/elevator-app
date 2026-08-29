@@ -1224,12 +1224,11 @@ async function confirmPartsImport() {
 }
 
 function exportCSV() {
-  const rows = [['الكود','العميل','العقد','التاريخ','البيان','التكلفة','سعر البيع','الربح','الحالة','بيان السداد']];
-  filtered.forEach(p => rows.push([p.code,p.customer,p.contract,p.billing_date,p.description,p.cost_price,p.sell_price,p.profit,p.status,p.payment_note||'']));
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(r => r.join(',')).join('\n')], {type:'text/csv;charset=utf-8'}));
-  a.download = 'parts-billing.csv';
-  a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('parts-billing'),
+    labels: LiftCoreCsv.LABELS.parts,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);

@@ -1611,15 +1611,17 @@ async function confirmElevImport() {
 }
 
 function exportExcel() {
-  var rows = [['الكود','العميل','المبنى','المدينة','النوع','الماركة','نوع الباب','نوع الآلة','نظام التحكم','الحمولة','الحالة','الصيانة القادمة']];
-  filtered.forEach(function(e) {
-    rows.push([e.code, e.customer, e.building, e.city, e.elev_type, e.brand, (e.door_type || ''), (MACHINE_LABELS[e.machine_type] || e.machine_type || ''), formatControlSummary(e), (e.capacity ? e.capacity + ' كجم' : ''), e.status, e.next_maint]);
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('elevators'),
+    labels: LiftCoreCsv.LABELS.elevator,
+    skip: LiftCoreCsv.SKIP_COMMON,
+    transforms: {
+      machine_type: function (v) { return (typeof MACHINE_LABELS !== 'undefined' && MACHINE_LABELS[v]) || v || ''; }
+    },
+    extraColumns: [
+      { label: 'ملخص التحكم', value: function (e) { return typeof formatControlSummary === 'function' ? formatControlSummary(e) : ''; } }
+    ]
   });
-  var csv = rows.map(function(r) { return r.join(','); }).join('\n');
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'}));
-  a.download = 'elevators.csv';
-  a.click();
 }
 
 // ===== خريطة المصاعد =====

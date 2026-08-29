@@ -1032,13 +1032,11 @@ function confirmDelete() {
 
 function exportCSV() { exportExcel(); }
 function exportExcel() {
-  const rows = [['الكود', 'العميل', 'العقد', 'التاريخ', 'النوع', 'طريقة الدفع', 'المبلغ', 'الضريبة', 'الإجمالي', 'الحالة', 'سجّله']];
-  filtered.forEach(r => rows.push([r.code, r.customer, r.contract, r.revenue_date, r.revenue_type, r.pay_method, r.amount, r.tax_amount, r.total, r.status, r.created_by || '']));
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = 'revenues.csv';
-  a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('revenues'),
+    labels: LiftCoreCsv.LABELS.revenue,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }

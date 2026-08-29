@@ -2355,24 +2355,31 @@ function loadClientElevators(selectedIds, opts) {
 }
 
 function exportExcel() {
-  const rows=[['الكود','العميل','المبنى','النوع','البداية','الانتهاء','الأيام','القيمة','الإجمالي','الاستحقاق','حالة العقد','حالة الفاتورة']];
-  filtered.forEach(function(c) {
-    var days = contractDaysLeft(c);
-    var daysLabel = '—';
-    if (days !== null) {
-      var st = getContractDisplayStatus(c);
-      if (st !== 'ملغي' && st !== 'تم تجديده') {
-        if (days > 0) daysLabel = 'متبقي ' + days;
-        else if (days === 0) daysLabel = 'ينتهي اليوم';
-        else daysLabel = 'منذ ' + Math.abs(days);
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('contracts'),
+    labels: LiftCoreCsv.LABELS.contract,
+    skip: LiftCoreCsv.SKIP_COMMON,
+    transforms: {
+      renewed: function (v) { return v ? 'نعم' : 'لا'; },
+      display_status: function (v, c) {
+        return (typeof getContractDisplayStatus === 'function' ? getContractDisplayStatus(c) : v) || '';
       }
-    }
-    rows.push([c.code,c.customer,c.buildings||'',c.contract_type,c.start_date,c.end_date,daysLabel,c.value,c.total,c.due_date||'',getContractDisplayStatus(c),c.inv_status]);
+    },
+    extraColumns: [
+      {
+        label: 'الأيام المتبقية',
+        value: function (c) {
+          var days = typeof contractDaysLeft === 'function' ? contractDaysLeft(c) : null;
+          if (days === null) return '—';
+          var st = typeof getContractDisplayStatus === 'function' ? getContractDisplayStatus(c) : '';
+          if (st === 'ملغي' || st === 'تم تجديده') return '—';
+          if (days > 0) return 'متبقي ' + days;
+          if (days === 0) return 'ينتهي اليوم';
+          return 'منذ ' + Math.abs(days);
+        }
+      }
+    ]
   });
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='contracts.csv'; a.click();
 }
 
 // ===== استيراد العقود =====
