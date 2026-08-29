@@ -208,12 +208,79 @@ def test_department_customer_and_contract_scopes_are_labeled(client):
     maintenance_clients = client.get('/clients?scope=maintenance')
     assert maintenance_clients.status_code == 200
     assert 'عملاء الصيانة' in maintenance_clients.get_data(as_text=True)
+    assert 'var CLIENT_SCOPE = "maintenance"' in maintenance_clients.get_data(as_text=True)
 
     installation_contracts = client.get('/contracts?scope=installation&z=4')
     assert installation_contracts.status_code == 200
     contracts_html = installation_contracts.get_data(as_text=True)
     assert 'عقود التركيبات والتحديث' in contracts_html
     assert 'var CONTRACT_SCOPE = "installation"' in contracts_html
+
+
+def test_department_scopes_filter_clients_and_contracts_by_type(client):
+    """عملاء/عقود الصيانة منفصلون عن التركيبات حسب نوع العقد."""
+    from datetime import date, timedelta
+
+    from models import Contract, Customer, db
+
+    with client.application.app_context():
+        oid = db.session.get(Customer, 1).organization_id if db.session.get(Customer, 1) else None
+        if oid is None:
+            from models import Organization
+            oid = Organization.query.filter_by(slug='default').first().id
+        maint_cust = Customer(organization_id=oid, code='C-M01', name='عميل صيانة فقط', status='نشط')
+        inst_cust = Customer(organization_id=oid, code='C-I01', name='عميل تركيب فقط', status='نشط')
+        both_cust = Customer(organization_id=oid, code='C-B01', name='عميل بالنوعين', status='نشط')
+        none_cust = Customer(organization_id=oid, code='C-N01', name='بدون عقود', status='نشط')
+        db.session.add_all([maint_cust, inst_cust, both_cust, none_cust])
+        db.session.flush()
+        start = date.today()
+        end = start + timedelta(days=365)
+        db.session.add_all([
+            Contract(
+                organization_id=oid, code='CN-00091', customer_id=maint_cust.id,
+                contract_type='عقد صيانة', start_date=start, end_date=end, status='نشط', value=1000,
+            ),
+            Contract(
+                organization_id=oid, code='CI-00091', customer_id=inst_cust.id,
+                contract_type='عقد تركيب', start_date=start, end_date=end, status='نشط', value=5000,
+            ),
+            Contract(
+                organization_id=oid, code='CN-00092', customer_id=both_cust.id,
+                contract_type='عقد ضمان', start_date=start, end_date=end, status='نشط', value=800,
+            ),
+            Contract(
+                organization_id=oid, code='CI-00092', customer_id=both_cust.id,
+                contract_type='عقد تحديث', start_date=start, end_date=end, status='نشط', value=3000,
+            ),
+        ])
+        db.session.commit()
+
+    login_as(client, 'admin')
+
+    maint_html = client.get('/clients?scope=maintenance').get_data(as_text=True)
+    assert 'C-M01' in maint_html
+    assert 'C-B01' in maint_html
+    assert 'C-I01' not in maint_html
+    assert 'C-N01' not in maint_html
+
+    inst_html = client.get('/clients?scope=installation').get_data(as_text=True)
+    assert 'C-I01' in inst_html
+    assert 'C-B01' in inst_html
+    assert 'C-M01' not in inst_html
+    assert 'C-N01' not in inst_html
+
+    maint_contracts = client.get('/contracts?scope=maintenance&z=4').get_data(as_text=True)
+    assert 'CN-00091' in maint_contracts
+    assert 'CN-00092' in maint_contracts
+    assert 'CI-00091' not in maint_contracts
+    assert 'CI-00092' not in maint_contracts
+
+    inst_contracts = client.get('/contracts?scope=installation&z=4').get_data(as_text=True)
+    assert 'CI-00091' in inst_contracts
+    assert 'CI-00092' in inst_contracts
+    assert 'CN-00091' not in inst_contracts
+    assert 'CN-00092' not in inst_contracts
 
 
 def test_department_css_lets_tables_fill_the_workspace():

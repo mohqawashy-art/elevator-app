@@ -1132,9 +1132,11 @@ def contract_customer_js_dict(c):
     }
 
 
-def client_to_js_dict(c):
+def client_to_js_dict(c, *, scope: str | None = None):
     """تسلسل عميل لـ JSON (مع علاقات محمّلة مسبقاً)."""
-    cust_contracts = list(c.contracts or [])
+    from contract_codes import contracts_for_scope
+
+    cust_contracts = contracts_for_scope(c.contracts or [], scope)
     renewed_ids = _annotate_contract_renewals(cust_contracts)
     primary = None
     for ct in sorted(
@@ -1168,7 +1170,7 @@ def client_to_js_dict(c):
         'national_address': c.national_address or '',
         'elevators': len(c.elevators),
         'fleet_status': customer_fleet_status(c),
-        'contracts': len(c.contracts),
+        'contracts': len(cust_contracts),
         'contract_status': contract_display_status(primary, renewed_ids=renewed_ids) if primary else 'بدون عقد',
         'status': c.status,
         'notes': c.notes or '',
@@ -1177,6 +1179,7 @@ def client_to_js_dict(c):
         'lng': c.lng or '',
         'maps_url': c.maps_url or '',
         'building_photo_url': upload_url(c.building_photo_path),
+        'scope': scope or '',
     }
 
 
@@ -4685,6 +4688,8 @@ def api_dashboard_drill(card_type):
 def clients():
     from sqlalchemy.orm import joinedload
 
+    from contract_codes import customer_matches_scope
+
     client_scope = (request.args.get('scope') or '').strip().lower()
     if client_scope not in ('maintenance', 'installation'):
         client_scope = ''
@@ -4694,10 +4699,12 @@ def clients():
         .order_by(Customer.id.desc())
         .all()
     )
+    if client_scope:
+        customers = [c for c in customers if customer_matches_scope(c, client_scope)]
     return render_template(
         'clients.html',
         customers=customers,
-        customers_js=[client_to_js_dict(c) for c in customers],
+        customers_js=[client_to_js_dict(c, scope=client_scope or None) for c in customers],
         next_client_code=next_code(Customer, 'C-', digits=4),
         client_scope=client_scope,
         clients_page_title=(
@@ -6446,11 +6453,17 @@ def api_debug_contract_zero():
 def contracts():
     from sqlalchemy.orm import joinedload
 
+    from contract_codes import contracts_for_scope
+
     # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة التي ترفض القيمة 0
     if request.args.get('z') != '4':
         args = request.args.to_dict(flat=True)
         args['z'] = '4'
         return redirect(url_for('contracts', **args))
+
+    contract_scope = (request.args.get('scope') or '').strip().lower()
+    if contract_scope not in ('maintenance', 'installation'):
+        contract_scope = ''
 
     contracts_list = (
         tenant_query(Contract)
@@ -6458,10 +6471,9 @@ def contracts():
         .order_by(Contract.id.desc())
         .all()
     )
+    if contract_scope:
+        contracts_list = contracts_for_scope(contracts_list, contract_scope)
     renewed_ids = _annotate_contract_renewals(contracts_list)
-    contract_scope = (request.args.get('scope') or '').strip().lower()
-    if contract_scope not in ('maintenance', 'installation'):
-        contract_scope = ''
     customers = tenant_query(Customer).order_by(Customer.name).all()
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore — العملاء</title>
+<title>LiftCore — {{ clients_page_title|default('العملاء') }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -436,7 +436,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 </nav>
 </aside>
 <div class="main">
-  {% set page_title = 'العملاء' %}
+  {% set page_title = clients_page_title|default('العملاء') %}
   {% include 'partials/app_header.html' %}
 
   <div class="content">
@@ -494,7 +494,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       {% endwith %}
       <!-- عنوان وأزرار -->
       <div class="page-header">
-        <div class="page-title">{{ ui('العملاء', 'Clients') }} <span id="clients-count" data-i18n-skip>({{ customers|length }} {{ ui('عميل', 'clients') }})</span></div>
+        <div class="page-title">{{ ui(clients_page_title|default('العملاء'), 'Clients') }} <span id="clients-count" data-i18n-skip>({{ customers|length }} {{ ui('عميل', 'clients') }})</span></div>
         <div class="page-actions">
           {% with report_url=url_for('report_clients'), report_label=ui('تقرير العملاء', 'Clients Report') %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
           {% with report_url=url_for('report_client_annual'), report_label=ui('تقرير سنوي', 'Annual Report') %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
@@ -691,6 +691,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 <script>
 // ===== البيانات من Flask =====
 var CUSTOMERS = {{ customers_js|tojson }};
+var CLIENT_SCOPE = {{ (client_scope or '')|tojson }};
 
 const NEXT_CODE = {{ next_client_code|tojson }};
 

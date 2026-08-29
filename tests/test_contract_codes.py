@@ -32,6 +32,39 @@ def test_is_installation_contract_type():
     assert not is_installation_contract_type(None)
 
 
+def test_contract_and_customer_scope_helpers():
+    from types import SimpleNamespace
+
+    from contract_codes import (
+        contract_matches_scope,
+        contracts_for_scope,
+        customer_matches_scope,
+        is_maintenance_contract_type,
+    )
+
+    assert is_maintenance_contract_type('عقد صيانة')
+    assert is_maintenance_contract_type('عقد ضمان')
+    assert not is_maintenance_contract_type('عقد تركيب')
+    assert contract_matches_scope('عقد صيانة', 'maintenance')
+    assert contract_matches_scope('عقد تركيب', 'installation')
+    assert not contract_matches_scope('عقد صيانة', 'installation')
+
+    rows = [
+        SimpleNamespace(contract_type='عقد صيانة'),
+        SimpleNamespace(contract_type='عقد تركيب'),
+        SimpleNamespace(contract_type='عقد تحديث'),
+    ]
+    assert len(contracts_for_scope(rows, 'maintenance')) == 1
+    assert len(contracts_for_scope(rows, 'installation')) == 2
+
+    cust = SimpleNamespace(contracts=[SimpleNamespace(contract_type='عقد صيانة')])
+    assert customer_matches_scope(cust, 'maintenance')
+    assert not customer_matches_scope(cust, 'installation')
+    assert customer_matches_scope(cust, '')
+    assert customer_matches_scope(SimpleNamespace(contracts=[]), '')
+    assert not customer_matches_scope(SimpleNamespace(contracts=[]), 'maintenance')
+
+
 def test_contract_base_code_strips_year():
     assert contract_base_code('CN-00042') == 'CN-00042'
     assert contract_base_code('CN-00042-2025') == 'CN-00042'
@@ -74,3 +107,36 @@ def test_build_superseded_contract_ids():
     alone = SimpleNamespace(id=3, code='CN-00099', start_date=date(2025, 1, 1), end_date=date(2025, 12, 31))
     ids = build_superseded_contract_ids([old, new, alone])
     assert ids == {1}
+
+
+def test_contract_and_customer_scope_helpers():
+    from types import SimpleNamespace
+
+    from contract_codes import (
+        contract_matches_scope,
+        contracts_for_scope,
+        customer_matches_scope,
+        is_maintenance_contract_type,
+    )
+
+    assert is_maintenance_contract_type('عقد صيانة')
+    assert is_maintenance_contract_type('عقد ضمان')
+    assert not is_maintenance_contract_type('عقد تركيب')
+    assert contract_matches_scope('عقد صيانة', 'maintenance')
+    assert contract_matches_scope('عقد تركيب', 'installation')
+    assert not contract_matches_scope('عقد صيانة', 'installation')
+
+    rows = [
+        SimpleNamespace(contract_type='عقد صيانة'),
+        SimpleNamespace(contract_type='عقد تركيب'),
+        SimpleNamespace(contract_type='عقد تحديث'),
+    ]
+    assert len(contracts_for_scope(rows, 'maintenance')) == 1
+    assert len(contracts_for_scope(rows, 'installation')) == 2
+
+    cust = SimpleNamespace(contracts=[SimpleNamespace(contract_type='عقد صيانة')])
+    assert customer_matches_scope(cust, 'maintenance')
+    assert not customer_matches_scope(cust, 'installation')
+    assert customer_matches_scope(cust, '')
+    assert customer_matches_scope(SimpleNamespace(contracts=[]), '')
+    assert not customer_matches_scope(SimpleNamespace(contracts=[]), 'maintenance')
