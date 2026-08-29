@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore — العقود</title>
+<title>LiftCore — {{ contracts_page_title|default('العقود') }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -306,7 +306,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </nav>
 </aside>
 <div class="main">
-  {% set page_title = 'العقود' %}
+  {% set page_title = contracts_page_title|default('العقود') %}
   {% include 'partials/app_header.html' %}
 
 
@@ -388,7 +388,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     {% include 'partials/flash_messages.html' %}
     <!-- PAGE HEADER -->
     <div class="page-header">
-      <div class="page-title">العقود <span id="contracts-count" data-i18n-skip>({{ contracts|length }} عقد)</span></div>
+      <div class="page-title">{{ contracts_page_title|default('العقود') }} <span id="contracts-count" data-i18n-skip>({{ contracts|length }} عقد)</span></div>
       <div class="page-actions">
         {% with report_url=url_for('report_contracts'), report_label='تقرير العقود' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
         <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
@@ -803,6 +803,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <script>
 // ===== البيانات من Flask =====
 var CONTRACTS = {{ contracts_js|tojson }};
+var CONTRACT_SCOPE = {{ (contract_scope or '')|tojson }};
 
 var CUSTOMERS = {{ customers_js|tojson }};
 
@@ -1477,10 +1478,21 @@ function initContractClientSelect() {
 }
 
 function resetContractForm() {
-  document.getElementById('f-type-sel').selectedIndex = 0;
-  document.getElementById('f-code').value = nextContractCodeForType('عقد صيانة');
+  var defaultType = (typeof CONTRACT_SCOPE !== 'undefined' && CONTRACT_SCOPE === 'installation')
+    ? 'عقد تركيب'
+    : 'عقد صيانة';
+  var typeSel = document.getElementById('f-type-sel');
+  if (typeSel) {
+    typeSel.value = defaultType;
+    if (typeSel.value !== defaultType) typeSel.selectedIndex = 0;
+  }
+  document.getElementById('f-code').value = nextContractCodeForType(defaultType);
   var codeHint = document.getElementById('f-code-hint');
-  if (codeHint) codeHint.textContent = 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
+  if (codeHint) {
+    codeHint.textContent = defaultType.indexOf('تركيب') >= 0 || defaultType.indexOf('تحديث') >= 0
+      ? 'يُولَّد تلقائياً — تسلسل التركيب والتحديث (CI-)'
+      : 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
+  }
   ['f-end','f-reminder','f-due-date','f-notes','f-visits-month','f-contract-city','f-contract-district','f-contract-address','f-contract-maps-url','f-contract-lat','f-contract-lng'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';

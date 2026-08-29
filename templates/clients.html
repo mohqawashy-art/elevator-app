@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore — العملاء</title>
+<title>LiftCore — {{ clients_page_title|default('العملاء') }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -434,7 +434,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 </nav>
 </aside>
 <div class="main">
-  {% set page_title = 'العملاء' %}
+  {% set page_title = clients_page_title|default('العملاء') %}
   {% include 'partials/app_header.html' %}
 
   <div class="content">
@@ -470,7 +470,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 
     <!-- شريط: عنوان + تبويبات + أزرار -->
     <div class="lc-page-toolbar">
-      <div class="page-title">العملاء <span id="clients-count" data-i18n-skip>({{ customers|length }} عميل)</span></div>
+      <div class="page-title">{{ clients_page_title|default('العملاء') }} <span id="clients-count" data-i18n-skip>({{ customers|length }} عميل)</span></div>
       <div class="tabs">
         <div class="tab active" id="tab-btn-table" onclick="switchTab('table')">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="5" y1="5.5" x2="5" y2="12"/></svg>
@@ -676,6 +676,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 <script>
 // ===== البيانات من Flask =====
 var CUSTOMERS = {{ customers_js|tojson }};
+var CLIENT_SCOPE = {{ (client_scope or '')|tojson }};
 
 const NEXT_CODE = {{ next_client_code|tojson }};
 

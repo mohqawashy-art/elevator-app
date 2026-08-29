@@ -64,6 +64,40 @@ def is_installation_contract_type(contract_type: Optional[str]) -> bool:
     return contract_prefix_for_type(contract_type) == CONTRACT_PREFIX_INSTALLATION
 
 
+def is_maintenance_contract_type(contract_type: Optional[str]) -> bool:
+    """True لعقود الصيانة/الضمان/الطوارئ (ليست تركيب أو تحديث)."""
+    return not is_installation_contract_type(contract_type)
+
+
+def contract_matches_scope(contract_type: Optional[str], scope: Optional[str]) -> bool:
+    """scope: maintenance | installation | فارغ = الكل."""
+    key = (scope or '').strip().lower()
+    if key == 'installation':
+        return is_installation_contract_type(contract_type)
+    if key == 'maintenance':
+        return is_maintenance_contract_type(contract_type)
+    return True
+
+
+def contracts_for_scope(contracts: Iterable, scope: Optional[str]) -> list:
+    """صفّ عقود قائمة حسب نطاق القسم."""
+    key = (scope or '').strip().lower()
+    if key not in ('maintenance', 'installation'):
+        return list(contracts or [])
+    return [c for c in (contracts or []) if contract_matches_scope(getattr(c, 'contract_type', None), key)]
+
+
+def customer_matches_scope(customer, scope: Optional[str]) -> bool:
+    """عميل يظهر في نطاق القسم إن وُجد له عقد مطابق."""
+    key = (scope or '').strip().lower()
+    if key not in ('maintenance', 'installation'):
+        return True
+    return any(
+        contract_matches_scope(getattr(c, 'contract_type', None), key)
+        for c in (getattr(customer, 'contracts', None) or [])
+    )
+
+
 def contract_base_code(code: Optional[str]) -> str:
     """يعيد أساس رقم العقد بدون سنة التجديد."""
     raw = (code or '').strip()
