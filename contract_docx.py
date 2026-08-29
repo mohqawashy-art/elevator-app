@@ -200,9 +200,10 @@ def try_send_filled_contract(contract_id: int):
     from flask import current_app, send_file
 
     from models import Contract
+    from tenant_scope import tenant_get_or_404, tenant_query
 
-    contract = Contract.query.get_or_404(contract_id)
-    settings = Settings.query.first()
+    contract = tenant_get_or_404(Contract, contract_id)
+    settings = tenant_query(Settings).first()
     path = template_abs_path(settings, current_app.root_path)
     if not path:
         return None
