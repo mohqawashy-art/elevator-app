@@ -1,0 +1,103 @@
+{% extends 'platform/base.html' %}
+{% block title %}الباقات والأسعار — LiftCore Platform{% endblock %}
+{% block content %}
+<div class="h1">الباقات والأسعار</div>
+<p class="sub">أنت وحدك من يحدّد أسعار الباقات وحدودها ومميزاتها. التغيير يطبَّق فوراً على الاشتراكات الجديدة وصفحة الأسعار.</p>
+
+<div class="owner-note">
+  صلاحية حصرية لمشغّل المنصة · التعديل هنا يتجاوز القيم الافتراضية في النظام · المؤسسات ذات السعر المخصص (billing_amount) تبقى كما هي حتى تُغيَّر من صفحة المؤسسة.
+  {% if meta and meta.updated_at %}<br>آخر حفظ: {{ meta.updated_at }}{% endif %}
+</div>
+
+<form method="post" action="/platform/plans" id="catalog-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="action" value="save" id="catalog-action">
+
+  <div class="plan-editor">
+    {% for key in plan_order %}
+    {% set p = plans[key] %}
+    <div class="plan-card">
+      <h3>{{ p.label_ar or p.label }}</h3>
+      <div class="pkey">{{ key }}</div>
+      <div class="grid">
+        <div>
+          <label>الاسم (عربي)</label>
+          <input name="plan_{{ key }}_label_ar" value="{{ p.label_ar or '' }}">
+        </div>
+        <div>
+          <label>الاسم (EN)</label>
+          <input name="plan_{{ key }}_label" value="{{ p.label or '' }}" dir="ltr">
+        </div>
+        <div>
+          <label>السعر الشهري (ر.س)</label>
+          <input name="plan_{{ key }}_monthly_sar" type="number" step="0.1" min="0" value="{{ p.monthly_sar }}" dir="ltr">
+        </div>
+        <div>
+          <label>السعر السنوي (ر.س)</label>
+          <input name="plan_{{ key }}_yearly_sar" type="number" step="0.1" min="0" value="{{ p.yearly_sar }}" dir="ltr">
+        </div>
+      </div>
+
+      <div class="section" style="margin-top:16px">الحدود</div>
+      <div class="grid">
+        {% for lk in limit_keys %}
+        <div>
+          <label>{{ {'elevators':'المصاعد','office_users':'مستخدمون مكتبيون','technicians':'فنيون','storage_gb':'تخزين GB'}[lk] }}</label>
+          <input name="plan_{{ key }}_limit_{{ lk }}" type="number" min="0" step="1" value="{{ p.limits[lk] }}" dir="ltr">
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="section" style="margin-top:16px">المميزات</div>
+      <div class="feat-grid">
+        {% for fk in feature_keys %}
+        <label class="feat-item">
+          <input class="chk" type="checkbox" name="plan_{{ key }}_feature_{{ fk }}" value="1" {% if p.features.get(fk) %}checked{% endif %}>
+          {{ feature_labels.get(fk, fk) }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card" style="margin-top:8px">
+    <div class="section">أسعار الإضافات</div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>الإضافة</th>
+          <th>الاسم</th>
+          <th>شهري (ر.س)</th>
+          <th>سنوي (ر.س)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key, ad in addons.items() %}
+        <tr>
+          <td><code>{{ key }}</code></td>
+          <td><input name="addon_{{ key }}_label" value="{{ ad.label or '' }}"></td>
+          <td><input name="addon_{{ key }}_monthly_sar" type="number" step="0.1" min="0" value="{{ ad.monthly_sar }}" dir="ltr"></td>
+          <td><input name="addon_{{ key }}_yearly_sar" type="number" step="0.1" min="0" value="{{ ad.yearly_sar }}" dir="ltr"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="actions" style="margin-top:8px">
+    <button type="submit" class="btn btn-primary" onclick="document.getElementById('catalog-action').value='save'">حفظ الباقات والأسعار</button>
+    <button type="submit" class="btn btn-secondary" onclick="return confirmReset()">إعادة للقيم الافتراضية</button>
+    <a class="btn btn-secondary" href="/platform">رجوع</a>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+function confirmReset() {
+  if (!confirm('إعادة كل الأسعار والمميزات للقيم الافتراضية في النظام؟')) return false;
+  document.getElementById('catalog-action').value = 'reset';
+  return true;
+}
+</script>
+{% endblock %}

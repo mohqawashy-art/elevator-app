@@ -3379,6 +3379,8 @@ def operator_onboarding_cancel(invite_id):
 def platform_home():
     from platform_admin import is_admin_host, list_organizations, org_stats, recent_invites, server_status, tenant_ops_by_id
     from sales_leads import list_sales_leads, sales_lead_stats
+    from platform_catalog_store import catalog_meta, live_plan_catalog
+    from plan_catalog import PLAN_ORDER
 
     if not is_admin_host():
         abort(404)
@@ -3389,6 +3391,7 @@ def platform_home():
     stats = org_stats()
     stats['leads_new'] = lead_stats.get('new', 0)
     orgs = list_organizations(limit=12)
+    plans = live_plan_catalog()
     return render_template(
         'platform/home.html',
         nav='home',
@@ -3398,8 +3401,69 @@ def platform_home():
         ops=tenant_ops_by_id(orgs),
         invites=recent_invites(12),
         leads=list_sales_leads(limit=12),
+        plan_order=PLAN_ORDER,
+        plans_preview=plans,
+        catalog_meta=catalog_meta(),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
+    )
+
+
+@app.route('/platform/plans', methods=['GET', 'POST'])
+def platform_plans():
+    """إدارة أسعار ومميزات الباقات — لمشغّل المنصة فقط."""
+    from platform_admin import is_admin_host
+    from platform_catalog_store import (
+        catalog_meta,
+        parse_addons_form,
+        parse_plans_form,
+        plans_editor_context,
+        reset_catalog_to_defaults,
+        save_catalog,
+    )
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        action = (request.form.get('action') or 'save').strip().lower()
+        try:
+            if action == 'reset':
+                reset_catalog_to_defaults(user_id=user.id)
+                session['plat_notice'] = 'أُعيدت الباقات والإضافات إلى القيم الافتراضية.'
+            else:
+                save_catalog(
+                    plans=parse_plans_form(request.form),
+                    addons=parse_addons_form(request.form),
+                    user_id=user.id,
+                )
+                session['plat_notice'] = 'تم حفظ أسعار ومميزات الباقات.'
+            session['plat_notice_type'] = 'ok'
+            try:
+                from audit_log import log_audit
+                log_audit(
+                    'platform_catalog_updated',
+                    user=user,
+                    details={'action': action, 'meta': catalog_meta()},
+                )
+            except Exception:
+                app.logger.exception('platform catalog audit failed')
+        except Exception:
+            app.logger.exception('platform catalog save failed')
+            session['plat_notice'] = 'فشل حفظ الكتالوج — راجع سجلات السيرفر.'
+            session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_plans'))
+
+    ctx = plans_editor_context()
+    return render_template(
+        'platform/plans.html',
+        nav='plans',
+        notice=session.pop('plat_notice', None),
+        notice_type=session.pop('plat_notice_type', None),
+        **ctx,
     )
 
 

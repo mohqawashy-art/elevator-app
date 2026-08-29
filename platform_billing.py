@@ -5,23 +5,35 @@ from calendar import monthrange
 from datetime import datetime, timedelta
 
 from models import Organization, PlatformPayment, db
-from plan_catalog import PLAN_CATALOG, normalize_plan
+from plan_catalog import normalize_plan, plan_definition
 
-# أسعار مشتقة من كتالوج الباقات
-PLAN_MONTHLY_SAR = {k: float(v['monthly_sar']) for k, v in PLAN_CATALOG.items()}
-PLAN_YEARLY_SAR = {k: float(v['yearly_sar']) for k, v in PLAN_CATALOG.items()}
 
 BILLING_STATUSES = ('ok', 'due', 'overdue', 'complimentary')
 BILLING_CYCLES = ('monthly', 'yearly')
 PAYMENT_METHODS = ('transfer', 'cash', 'card', 'complimentary', 'other')
 
 
+def _plan_price_maps() -> tuple[dict[str, float], dict[str, float]]:
+    from plan_catalog import PLAN_ORDER
+    monthly: dict[str, float] = {}
+    yearly: dict[str, float] = {}
+    for key in PLAN_ORDER:
+        spec = plan_definition(key)
+        monthly[key] = float(spec.get('monthly_sar') or 0)
+        yearly[key] = float(spec.get('yearly_sar') or 0)
+    return monthly, yearly
+
+
+# توافق خلفي — تُحدَّث عند الاستيراد؛ plan_price() يقرأ القيم الحية
+PLAN_MONTHLY_SAR, PLAN_YEARLY_SAR = _plan_price_maps()
+
+
 def plan_price(plan: str | None, cycle: str = 'monthly') -> float:
     key = normalize_plan(plan)
+    spec = plan_definition(key)
     if (cycle or 'monthly').strip().lower() == 'yearly':
-        return float(PLAN_YEARLY_SAR.get(key, PLAN_YEARLY_SAR['basic']))
-    return float(PLAN_MONTHLY_SAR.get(key, PLAN_MONTHLY_SAR['basic']))
-
+        return float(spec.get('yearly_sar') or 0)
+    return float(spec.get('monthly_sar') or 0)
 
 def effective_amount(org: Organization) -> float:
     if org.billing_amount is not None and float(org.billing_amount) > 0:
@@ -246,9 +258,10 @@ def billing_overview(limit: int = 200) -> dict:
     # ترتيب: overdue ثم due ثم الباقي
     order = {'overdue': 0, 'due': 1, 'ok': 2, 'complimentary': 3}
     rows.sort(key=lambda r: (order.get(r['billing_status'], 9), r['days_left'] if r['days_left'] is not None else 9999))
+    monthly, yearly = _plan_price_maps()
     return {
         'rows': rows,
         'stats': stats,
-        'plan_prices': PLAN_MONTHLY_SAR,
-        'plan_prices_yearly': PLAN_YEARLY_SAR,
+        'plan_prices': monthly,
+        'plan_prices_yearly': yearly,
     }

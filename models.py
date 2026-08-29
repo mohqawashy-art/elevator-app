@@ -70,6 +70,20 @@ class PlatformPayment(db.Model):
         return f'<PlatformPayment org={self.organization_id} {self.amount}>'
 
 
+class PlatformCatalog(db.Model):
+    """كتالوج الباقات/الإضافات الحي — يُعدَّل من لوحة المنصة فقط (صف واحد)."""
+    __tablename__ = 'platform_catalog'
+
+    id = db.Column(db.Integer, primary_key=True)
+    plans_json = db.Column(db.Text)   # JSON: تجاوزات PLAN_CATALOG
+    addons_json = db.Column(db.Text)  # JSON: تجاوزات ADDON_CATALOG
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by_user_id = db.Column(db.Integer)
+
+    def __repr__(self):
+        return f'<PlatformCatalog id={self.id}>'
+
+
 class OrganizationAddon(db.Model):
     """إضافات اشتراك لكل مؤسسة (تُدار من لوحة المنصة)."""
     __tablename__ = 'organization_addons'

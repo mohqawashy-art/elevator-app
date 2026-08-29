@@ -36,6 +36,28 @@
   <div class="stat"><div class="n">{{ stats.invites_open }}</div><div class="l">دعوات مفتوحة</div></div>
 </div>
 
+{% if plans_preview is defined and plans_preview %}
+<div class="card" style="padding-bottom:14px">
+  <div class="server-head" style="margin-bottom:12px">
+    <div class="h">الباقات الحالية</div>
+    <a class="btn btn-primary btn-sm" href="/platform/plans">تعديل الأسعار والمميزات</a>
+  </div>
+  <div class="plans-strip">
+    {% for key in plan_order %}
+    {% set p = plans_preview[key] %}
+    <div class="plan-mini">
+      <div class="pname">{{ p.label_ar or p.label }}</div>
+      <div class="pprice">{{ '%.0f'|format(p.monthly_sar or 0) }} <span>ر.س / شهر</span></div>
+      <div class="plim">{{ p.limits.elevators }} مصعد · {{ p.limits.office_users }} مستخدم · {{ p.limits.technicians }} فني</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if catalog_meta and catalog_meta.updated_at %}
+  <p class="muted" style="margin-top:4px">آخر تحديث للكتالوج: {{ catalog_meta.updated_at }}</p>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="card">
   <div class="section">أحدث المؤسسات</div>
   {% if not orgs %}

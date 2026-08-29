@@ -261,7 +261,9 @@ def set_limit_overrides(
 
 
 def addon_catalog_for_ui() -> list[dict[str, Any]]:
+    from plan_catalog import _safe_live_addons
+
     rows = []
-    for key, spec in ADDON_CATALOG.items():
+    for key, spec in _safe_live_addons().items():
         rows.append({'key': key, **spec})
     return rows

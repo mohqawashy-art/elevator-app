@@ -105,9 +105,12 @@ def _fmt_sar(amount: float) -> str:
 
 
 def build_pricing_plans() -> list[dict[str, Any]]:
+    from plan_catalog import _safe_live_plans
+
     plans: list[dict[str, Any]] = []
+    live = _safe_live_plans()
     for key in PLAN_ORDER:
-        cat = PLAN_CATALOG[key]
+        cat = live.get(key) or PLAN_CATALOG[key]
         mkt = PLAN_MARKETING.get(key) or {}
         limits = cat.get('limits') or {}
         plans.append({
@@ -144,9 +147,12 @@ def build_pricing_plans() -> list[dict[str, Any]]:
 
 
 def build_pricing_addons() -> list[dict[str, Any]]:
+    from plan_catalog import _safe_live_addons
+
     rows: list[dict[str, Any]] = []
+    live = _safe_live_addons()
     for key in known_addon_keys():
-        ad = ADDON_CATALOG[key]
+        ad = live.get(key) or ADDON_CATALOG[key]
         rows.append({
             'key': key,
             'label': ad.get('label') or key,

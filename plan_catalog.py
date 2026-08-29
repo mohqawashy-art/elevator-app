@@ -201,19 +201,57 @@ LIMIT_LABELS_AR = {
     'storage_gb': 'التخزين (GB)',
 }
 
+FEATURE_KEYS = (
+    'maintenance_core',
+    'inventory',
+    'purchasing',
+    'advanced_finance',
+    'excel_import',
+    'installation',
+    'zatca_phase2',
+    'priority_support',
+)
+FEATURE_LABELS_AR = {
+    'maintenance_core': 'الصيانة الأساسية',
+    'inventory': 'المخزون',
+    'purchasing': 'المشتريات',
+    'advanced_finance': 'المالية المتقدمة',
+    'excel_import': 'استيراد Excel',
+    'installation': 'وحدة التركيب',
+    'zatca_phase2': 'ZATCA Phase 2',
+    'priority_support': 'دعم أولوية',
+}
+
 
 def normalize_plan(plan: str | None) -> str:
     key = (plan or 'basic').strip().lower()
-    return key if key in PLAN_CATALOG else 'basic'
+    catalog = _safe_live_plans()
+    return key if key in catalog else 'basic'
+
+
+def _safe_live_plans() -> dict[str, dict[str, Any]]:
+    try:
+        from platform_catalog_store import live_plan_catalog
+        return live_plan_catalog()
+    except Exception:
+        return PLAN_CATALOG
+
+
+def _safe_live_addons() -> dict[str, dict[str, Any]]:
+    try:
+        from platform_catalog_store import live_addon_catalog
+        return live_addon_catalog()
+    except Exception:
+        return ADDON_CATALOG
 
 
 def plan_definition(plan: str | None) -> dict[str, Any]:
-    return PLAN_CATALOG[normalize_plan(plan)]
+    return _safe_live_plans()[normalize_plan(plan)]
 
 
 def addon_definition(addon_key: str | None) -> dict[str, Any] | None:
     key = (addon_key or '').strip().lower()
-    return ADDON_CATALOG.get(key)
+    return _safe_live_addons().get(key)
 
 
 def known_plan_keys() -> tuple[str, ...]:
@@ -221,4 +259,4 @@ def known_plan_keys() -> tuple[str, ...]:
 
 
 def known_addon_keys() -> tuple[str, ...]:
-    return tuple(ADDON_CATALOG.keys())
+    return tuple(_safe_live_addons().keys()) or tuple(ADDON_CATALOG.keys())

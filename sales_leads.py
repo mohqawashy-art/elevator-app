@@ -163,11 +163,11 @@ def get_sales_lead(lead_id: int) -> SalesLead | None:
 
 
 def _plans_quote_text() -> str:
-    from plan_catalog import PLAN_CATALOG, PLAN_ORDER
+    from plan_catalog import PLAN_ORDER, plan_definition
 
     lines = []
     for key in PLAN_ORDER:
-        p = PLAN_CATALOG.get(key) or {}
+        p = plan_definition(key)
         label = p.get('label') or key
         yearly = p.get('yearly_sar')
         elev = (p.get('limits') or {}).get('elevators')
