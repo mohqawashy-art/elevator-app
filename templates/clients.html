@@ -2754,12 +2754,63 @@ async function confirmImport(){
 }
 
 // ===== تصدير =====
+function formatExtraPhonesExport(list) {
+  if (!list || !list.length) return '';
+  return list.map(function(p) {
+    var label = (p && p.label) ? String(p.label).trim() : '';
+    var num = (p && (p.number || p.phone)) ? String(p.number || p.phone).trim() : '';
+    if (label && num) return label + ': ' + num;
+    return num || label;
+  }).filter(Boolean).join(' | ');
+}
+
 function exportExcel(){
-  var headers = ['الكود','الاسم','نوع المتعاقد','المدينة','الحي','الهاتف','المسؤول','هوية المتعاقد','السجل التجاري','المصاعد','حالة العقد','الحالة'];
+  var headers = [
+    'الكود', 'الاسم', 'الاسم الإنجليزي', 'نوع المتعاقد',
+    'المدينة', 'الحي', 'العنوان', 'العنوان الوطني',
+    'الهاتف', 'واتساب / هاتف 2', 'أرقام إضافية', 'البريد الإلكتروني',
+    'المسؤول', 'صفة المسؤول',
+    'هوية المتعاقد', 'السجل التجاري', 'الرقم الضريبي',
+    'عدد المصاعد', 'حالة الأسطول', 'عدد العقود', 'حالة العقد', 'حالة العميل',
+    'خط العرض', 'خط الطول', 'رابط الخريطة', 'رابط صورة المبنى',
+    'ملاحظات'
+  ];
   var rows = [headers].concat(filtered.map(function(c){
-    return [c.code,c.name,c.entity_type||'فرد',c.city,c.district,c.phone,c.contact,c.national_id||'',c.cr_number||'',c.elevators,c.contract_status,c.status];
+    return [
+      c.code,
+      c.name,
+      c.name_en || '',
+      c.entity_type || 'فرد',
+      c.city || '',
+      c.district || '',
+      c.address || '',
+      c.national_address || '',
+      c.phone || '',
+      c.phone2 || '',
+      formatExtraPhonesExport(c.extra_phones),
+      c.email || '',
+      c.contact || '',
+      c.role || '',
+      c.national_id || '',
+      c.cr_number || '',
+      c.vat_number || '',
+      c.elevators != null ? c.elevators : '',
+      c.fleet_status || '',
+      c.contracts != null ? c.contracts : '',
+      c.contract_status || '',
+      c.status || '',
+      c.lat || '',
+      c.lng || '',
+      c.maps_url || '',
+      c.building_photo_url || '',
+      c.notes || ''
+    ];
   }));
-  var csv = rows.map(function(r){return r.map(function(v){return '"'+(v||'')+'"';}).join(',');}).join('\n');
+  var csv = rows.map(function(r){
+    return r.map(function(v){
+      return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    }).join(',');
+  }).join('\n');
   var a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
   a.download = 'clients_' + new Date().toISOString().split('T')[0] + '.csv';
