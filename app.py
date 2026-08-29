@@ -6750,17 +6750,8 @@ def contract_delete(id):
 def contract_print_page(contract_id):
     from contract_print import contract_print_payload
 
-    if request.args.get('html') != '1':
-        try:
-            from contract_docx import try_send_filled_contract
-            filled = try_send_filled_contract(contract_id)
-            if filled is not None:
-                return filled
-        except Exception:
-            app.logger.exception('contract docx fill failed for %s', contract_id)
     payload = contract_print_payload(contract_id)
-    from contract_docx import has_contract_template
-    payload['has_docx_template'] = has_contract_template(get_app_settings(), app.root_path)
+    payload['has_docx_template'] = False
     return render_template('contract-print.html', **payload)
 
 

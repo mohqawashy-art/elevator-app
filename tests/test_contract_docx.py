@@ -26,12 +26,11 @@ def _make_template_bytes() -> bytes:
     return buf.getvalue()
 
 
-def test_settings_shows_contract_template_upload(client):
+def test_settings_hides_contract_template_upload(client):
     login_as(client, 'admin')
     html = client.get('/settings').get_data(as_text=True)
-    assert 'نموذج عقد Word' in html
-    assert 'اسم_العميل' in html
-    assert 'contract_template' in html
+    assert 'نموذج عقد Word' not in html
+    assert 'name="contract_template"' not in html
 
 
 def test_fill_contract_docx_keeps_placeholder_values(client, tmp_path):
@@ -143,7 +142,7 @@ def test_fill_rtl_reversed_braces(client, tmp_path):
     assert 'ريال سعودي' in text
 
 
-def test_contract_print_downloads_docx_when_template_set(client):
+def test_contract_print_uses_html_even_when_template_set(client):
     login_as(client, 'admin')
     with app.app_context():
         org_id = Settings.query.first().organization_id
@@ -174,11 +173,8 @@ def test_contract_print_downloads_docx_when_template_set(client):
 
     r = client.get(f'/contracts/{cid}/print')
     assert r.status_code == 200
-    disp = r.headers.get('Content-Disposition', '')
     ctype = r.headers.get('Content-Type', '')
-    assert 'wordprocessingml' in ctype or '.docx' in disp
-    assert r.get_data()[:2] == b'PK'
-
-    html = client.get(f'/contracts/{cid}/print?html=1')
-    assert html.status_code == 200
-    assert 'طباعة' in html.get_data(as_text=True)
+    assert 'wordprocessingml' not in ctype
+    html = r.get_data(as_text=True)
+    assert 'طباعة' in html
+    assert 'تنزيل Word' not in html
