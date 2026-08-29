@@ -1,7 +1,8 @@
 {# ويدجت دعم المنصة — واتساب + بريد (صفحات المكتب المسجّل فقط) #}
 {% if auth_user and not platform_admin_host and (support_whatsapp_url or support_email_url) %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-support.css') }}?v=5">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-support.css') }}?v=7">
 <div class="lc-support" id="lc-support" data-lc-support="1">
+  <div class="lc-support__rail" aria-hidden="true"></div>
   <div class="lc-support__panel" id="lc-support-panel" role="menu" aria-label="{{ 'Support' if user_language == 'en' else 'الدعم' }}">
     <div class="lc-support__head">
       <p class="lc-support__brand">LiftCore</p>
@@ -61,5 +62,5 @@
     <span class="lc-support__label">{{ 'Support' if user_language == 'en' else 'الدعم الفني' }}</span>
   </button>
 </div>
-<script src="{{ url_for('static', filename='liftcore-support.js') }}?v=5" defer></script>
+<script src="{{ url_for('static', filename='liftcore-support.js') }}?v=7" defer></script>
 {% endif %}

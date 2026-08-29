@@ -186,7 +186,8 @@ html:has(#lc-azkar-footer) body {
 }
 
 html:has(#lc-azkar-footer) .lc-support {
-  bottom: calc(var(--lc-azkar-h) + max(18px, env(safe-area-inset-bottom, 0px)));
+  top: auto;
+  bottom: calc(var(--lc-azkar-h) + 10px + env(safe-area-inset-bottom, 0px));
 }
 
 html[data-theme="light"] .lc-azkar-footer {
