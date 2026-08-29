@@ -65,6 +65,7 @@ def test_fill_contract_docx_keeps_placeholder_values(client, tmp_path):
         db.session.commit()
         mapping = placeholder_map(contract)
         assert mapping['{{اسم_العميل}}'] == 'مؤسسة الاختبار'
+        assert mapping['}}اسم_العميل{{'] == 'مؤسسة الاختبار'
         assert mapping['{{رقم_الهوية}}'] == '1012345678'
 
         tpl = tmp_path / 'cn.docx'
@@ -76,6 +77,70 @@ def test_fill_contract_docx_keeps_placeholder_values(client, tmp_path):
     assert 'مؤسسة الاختبار' in text
     assert '{{اسم_العميل}}' not in text
     assert '{{رقم_العقد}}' not in text
+
+
+def _make_rtl_template_bytes() -> bytes:
+    doc = Document()
+    p = doc.add_paragraph()
+    p.add_run('عقد رقم ')
+    p.add_run('}}')
+    p.add_run('رقم')
+    p.add_run('_العقد')
+    p.add_run('{{')
+    p2 = doc.add_paragraph()
+    p2.add_run('السيد / ')
+    p2.add_run('}}')
+    p2.add_run('اسم')
+    p2.add_run('_العميل')
+    p2.add_run('{{')
+    p3 = doc.add_paragraph()
+    p3.add_run('مبلغ ')
+    p3.add_run('}}')
+    p3.add_run('تفقيط')
+    p3.add_run('_قيمة_العقد')
+    p3.add_run(')')
+    buf = BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def test_fill_rtl_reversed_braces(client, tmp_path):
+    login_as(client, 'admin')
+    from contract_docx import fill_contract_docx
+
+    with app.app_context():
+        org_id = Settings.query.first().organization_id
+        cust = Customer(
+            code='C-WD03',
+            name='عميل عربي',
+            status='نشط',
+            organization_id=org_id,
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            code='CN-WD03',
+            customer_id=cust.id,
+            contract_type='صيانة',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=5000,
+            total=5750,
+            status='نشط',
+            organization_id=org_id,
+        )
+        db.session.add(contract)
+        db.session.commit()
+        tpl = tmp_path / 'rtl.docx'
+        tpl.write_bytes(_make_rtl_template_bytes())
+        filled = fill_contract_docx(contract, str(tpl))
+
+    text = '\n'.join(p.text for p in Document(BytesIO(filled)).paragraphs)
+    assert 'عميل عربي' in text
+    assert '}}اسم_العميل{{' not in text
+    assert '}}رقم_العقد{{' not in text
+    assert '}}تفقيط_قيمة_العقد)' not in text
+    assert 'ريال سعودي' in text
 
 
 def test_contract_print_downloads_docx_when_template_set(client):

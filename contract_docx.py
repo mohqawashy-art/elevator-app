@@ -10,32 +10,33 @@ from models import Settings
 PLACEHOLDER_HELP = [
     ('{{رقم_العقد}}', 'رقم العقد'),
     ('{{اسم_العميل}}', 'اسم العميل'),
-    ('{{رقم_الهوية}}', 'رقم الهوية / الإقامة'),
-    ('{{السجل_التجاري}}', 'السجل التجاري للعميل'),
-    ('{{الرقم_الضريبي}}', 'الرقم الضريبي للعميل'),
-    ('{{العنوان}}', 'عنوان موقع العقد'),
-    ('{{المدينة}}', 'المدينة'),
-    ('{{الحي}}', 'الحي'),
-    ('{{هاتف_العميل}}', 'هاتف العميل'),
+    ('{{هوية_العميل}} / {{رقم_الهوية}}', 'رقم الهوية / الإقامة'),
+    ('{{عنوان_العميل}} / {{العنوان}}', 'عنوان موقع العقد'),
+    ('{{رقم_جوال_العميل}} / {{هاتف_العميل}}', 'هاتف العميل'),
     ('{{قيمة_العقد}}', 'قيمة العقد رقماً'),
-    ('{{قيمة_العقد_كتابة}}', 'قيمة العقد كتابةً'),
-    ('{{مدة_العقد}}', 'مدة العقد بالأشهر'),
-    ('{{تاريخ_البداية}}', 'بداية العقد'),
-    ('{{تاريخ_النهاية}}', 'نهاية العقد'),
-    ('{{نوع_العقد}}', 'نوع العقد'),
-    ('{{دورية_الصيانة}}', 'دورية الصيانة'),
-    ('{{طريقة_الدفع}}', 'طريقة الدفع'),
-    ('{{عدد_المصاعد}}', 'عدد المصاعد'),
+    ('{{تفقيط_قيمة_العقد}}', 'قيمة العقد كتابةً'),
+    ('{{مدة_العقد}}', 'مدة العقد'),
+    ('{{تاريخ_بدء_العقد}}', 'بداية العقد'),
+    ('{{تاريخ_انتهاء_العقد}}', 'نهاية العقد'),
     ('{{اليوم}}', 'يوم التوقيع'),
-    ('{{التاريخ_الهجري}}', 'التاريخ الهجري'),
-    ('{{التاريخ_الميلادي}}', 'التاريخ الميلادي'),
-    ('{{اسم_الشركة}}', 'اسم الشركة (الطرف الأول)'),
-    ('{{مقر_الشركة}}', 'مقر الشركة'),
-    ('{{هاتف_الشركة}}', 'هاتف الشركة'),
-    ('{{بريد_الشركة}}', 'بريد الشركة'),
-    ('{{ممثل_الشركة}}', 'ممثل الشركة'),
-    ('{{جوال_الممثل}}', 'جوال ممثل الشركة'),
+    ('{{تاريخ_العقد_بالهجري}}', 'التاريخ الهجري'),
+    ('{{تاريخ_العقد_ميلادي}}', 'التاريخ الميلادي'),
+    ('{{عدد_الوقفات}}', 'عدد الوقفات'),
+    ('{{نوع_الابواب}}', 'نوع الأبواب'),
+    ('{{الحمولة}}', 'الحمولة بالكجم'),
 ]
+
+
+def token_strings(key: str) -> list[str]:
+    """ورد العربي يخزّن غالباً }}الاسم{{ بدل {{الاسم}}."""
+    key = (key or '').strip()
+    if not key:
+        return []
+    return [
+        '{{' + key + '}}',
+        '}}' + key + '{{',
+        '}}' + key + ')',
+    ]
 
 
 def template_abs_path(settings: Settings | None, app_root: str) -> str | None:
@@ -98,28 +99,43 @@ def placeholder_map(contract) -> dict[str, str]:
     amount = payload['amount']
     amount_fmt = f'{amount:,}'.replace(',', '٬') if amount else '0'
 
+    elevators = payload.get('elevators') or [{}]
+    first = elevators[0] if elevators else {}
+    amount_words = (payload.get('amount_words') or amount_in_words(amount)) + ' ريال سعودي'
+
     values = {
         'رقم_العقد': payload['contract_code'] or format_contract_code(contract.code),
         'اسم_العميل': (customer.name if customer else '') or '',
         'رقم_الهوية': (getattr(customer, 'national_id', None) or '') if customer else '',
+        'هوية_العميل': (getattr(customer, 'national_id', None) or '') if customer else '',
         'السجل_التجاري': (getattr(customer, 'cr_number', None) or '') if customer else '',
         'الرقم_الضريبي': (getattr(customer, 'vat_number', None) or '') if customer else '',
         'العنوان': payload.get('customer_address') or '',
+        'عنوان_العميل': payload.get('customer_address') or '',
         'المدينة': (contract.city or (customer.city if customer else '') or '') or '',
         'الحي': (contract.district or (customer.district if customer else '') or '') or '',
         'هاتف_العميل': (customer.phone if customer else '') or '',
+        'رقم_جوال_العميل': (customer.phone if customer else '') or '',
         'قيمة_العقد': amount_fmt,
-        'قيمة_العقد_كتابة': (payload.get('amount_words') or amount_in_words(amount)) + ' ريال سعودي',
+        'قيمة_العقد_كتابة': amount_words,
+        'تفقيط_قيمة_العقد': amount_words,
         'مدة_العقد': _duration_phrase(contract),
         'تاريخ_البداية': payload.get('start_gregorian') or '',
         'تاريخ_النهاية': payload.get('end_gregorian') or '',
+        'تاريخ_بدء_العقد': payload.get('start_gregorian') or '',
+        'تاريخ_انتهاء_العقد': payload.get('end_gregorian') or '',
         'نوع_العقد': contract.contract_type or '',
         'دورية_الصيانة': payload.get('maint_phrase') or '',
         'طريقة_الدفع': payload.get('pay_phrase') or '',
         'عدد_المصاعد': str(payload.get('elevator_count') or ''),
+        'عدد_الوقفات': first.get('floors') or '',
+        'نوع_الابواب': first.get('doors') or first.get('type') or '',
+        'الحمولة': first.get('capacity') or '',
         'اليوم': payload.get('sign_day') or '',
         'التاريخ_الهجري': payload.get('sign_hijri') or '',
         'التاريخ_الميلادي': payload.get('sign_gregorian') or '',
+        'تاريخ_العقد_بالهجري': payload.get('sign_hijri') or '',
+        'تاريخ_العقد_ميلادي': payload.get('sign_gregorian') or '',
         'اسم_الشركة': company.get('company_name') or '',
         'مقر_الشركة': company.get('city_full') or '',
         'هاتف_الشركة': company.get('phone') or '',
@@ -131,8 +147,10 @@ def placeholder_map(contract) -> dict[str, str]:
     mapping: dict[str, str] = {}
     for key, val in values.items():
         text = _xml_safe(val)
-        mapping[f'{{{{{key}}}}}'] = text
-        mapping[f'{{{{{key.replace("_", " ")}}}}}'] = text
+        for token in token_strings(key):
+            mapping[token] = text
+        mapping['{{' + key.replace('_', ' ') + '}}'] = text
+        mapping['}}' + key.replace('_', ' ') + '{{'] = text
     return mapping
 
 
@@ -145,12 +163,14 @@ def _replace_in_element(element, mapping: dict[str, str]) -> None:
         if not nodes:
             continue
         full = ''.join(n.text or '' for n in nodes)
-        if not any(k in full for k in keys):
-            continue
         new = full
-        for key, val in mapping.items():
+        changed = False
+        for key in sorted(keys, key=len, reverse=True):
             if key in new:
-                new = new.replace(key, val)
+                new = new.replace(key, mapping[key])
+                changed = True
+        if not changed:
+            continue
         nodes[0].text = new
         for n in nodes[1:]:
             n.text = ''

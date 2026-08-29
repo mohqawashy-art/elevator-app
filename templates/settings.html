@@ -347,7 +347,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
 
     <div class="section" style="margin-top:22px">نموذج عقد Word</div>
     <p class="hint" style="margin-bottom:12px">
-      ارفع ملف <strong>.docx</strong> بنصوص العقد كما تريدها. البرنامج لا يغيّر التنسيق ولا اتجاه الصفحة العربية — يملأ فقط الحقول المتغيرة المكتوبة بين أقواس مزدوجة، مثل <code dir="ltr">{% raw %}{{اسم_العميل}}{% endraw %}</code>
+      ارفع ملف <strong>.docx</strong> بنصوص العقد كما تريدها. البرنامج لا يغيّر التنسيق ولا اتجاه الصفحة العربية — يملأ الرموز مثل <code dir="ltr">{% raw %}{{اسم_العميل}}{% endraw %}</code>. في وورد العربي قد تظهر بالعكس <code dir="ltr">&#125;&#125;اسم_العميل&#123;&#123;</code> وهذا مدعوم تلقائياً.
     </p>
     {% if has_contract_template %}
     <p class="hint" style="margin-bottom:10px;color:var(--success)">✓ يوجد نموذج مرفوع
