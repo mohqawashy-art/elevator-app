@@ -245,6 +245,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <option value="">الكل</option>
           <option>تجديد عقد</option>
           <option>عقد جديد</option>
+          <option>تركيب مصعد</option>
+          <option>تحديث مصعد</option>
           <option>قطع غيار</option>
           <option>بيع قطع غيار</option>
           <option>زيارة</option>
@@ -343,6 +345,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <select id="f-rev-type">
             <option>تجديد عقد</option>
             <option>عقد جديد</option>
+            <option>تركيب مصعد</option>
+            <option>تحديث مصعد</option>
             <option>قطع غيار</option>
             <option>بيع قطع غيار</option>
             <option>زيارة</option>
@@ -443,7 +447,7 @@ function updateStats() {
   const cnt = (rows) => (window.LiftCoreDisplay ? LiftCoreDisplay.fmtTransactionsCount(rows.length) : rows.length + ' عملية');
   const renewal = REVENUES.filter(r => r.revenue_type === 'تجديد عقد');
   const parts = REVENUES.filter(r => (r.revenue_type || '').includes('قطع غيار'));
-  const newContracts = REVENUES.filter(r => r.revenue_type === 'عقد جديد');
+  const newContracts = REVENUES.filter(r => isInstallOrNewRevenue(r.revenue_type));
   setText('s-total', sum(REVENUES).toLocaleString('ar-SA'));
   setText('s-total-sub', cnt(REVENUES));
   setText('s-renewal', sum(renewal).toLocaleString('ar-SA'));
@@ -558,11 +562,25 @@ function renderTable(data) {
 
 var activeStatCard = 'all';
 
+function isInstallOrNewRevenue(rt) {
+  rt = String(rt || '');
+  return rt === 'عقد جديد' || rt === 'تركيب مصعد' || rt === 'تحديث مصعد';
+}
+
+function revenueTypeFromPendingOp(op) {
+  if (!op) return 'تجديد عقد';
+  if (op.revenue_type) return op.revenue_type;
+  const title = String(op.title || op.contract_type || '');
+  if (title.includes('تحديث')) return 'تحديث مصعد';
+  if (title.includes('تركيب')) return 'تركيب مصعد';
+  return REV_TYPE_BY_SOURCE[op.source_type] || 'تجديد عقد';
+}
+
 function rowMatchesStatCard(r, kind) {
   if (!kind || kind === 'all') return true;
   if (kind === 'renewal') return r.revenue_type === 'تجديد عقد';
   if (kind === 'parts') return String(r.revenue_type || '').includes('قطع غيار');
-  if (kind === 'new') return r.revenue_type === 'عقد جديد';
+  if (kind === 'new') return isInstallOrNewRevenue(r.revenue_type);
   if (kind === 'pending') return !['محصّل', 'محصل'].includes(r.status);
   return true;
 }
@@ -716,13 +734,18 @@ function applyPendingOpFields(op) {
   document.getElementById('f-source-type').value = op.source_type;
   document.getElementById('f-source-id').value = op.source_id;
   document.getElementById('f-contract-id').value = op.contract_id || '';
-  const revType = REV_TYPE_BY_SOURCE[op.source_type] || 'زيارة';
+  const revType = revenueTypeFromPendingOp(op);
   const rt = document.getElementById('f-rev-type');
   if (rt) rt.value = revType;
   const ref = document.getElementById('f-reference');
   if (ref) ref.value = op.code || '';
   const titleEl = document.getElementById('f-title');
-  if (titleEl && !titleEl.value.trim()) titleEl.value = (op.title || op.description || '').trim();
+  if (titleEl && !titleEl.value.trim()) {
+    const base = (op.title || op.description || '').trim();
+    titleEl.value = (revType === 'تركيب مصعد' || revType === 'تحديث مصعد')
+      ? (revType + ' — دفعة من المستحق' + (op.code ? ' (' + op.code + ')' : ''))
+      : base;
+  }
   const notes = document.getElementById('f-notes');
   if (notes && !notes.value.trim()) notes.value = (op.title || '') + ' — ' + (op.description || '');
   const dateEl = document.getElementById('f-date');

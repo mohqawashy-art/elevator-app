@@ -15,7 +15,7 @@ COLLECTED_REVENUE_STATUSES = ('محصّل', 'محصل', 'مدفوع', 'مدفو�
 UNPAID_INVOICE_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً']
 PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل', 'محصل']
 UNPAID_PARTS_STATUSES = ('غير محصل', 'معلقة', 'بانتظار موافقة العميل', 'بانتظار التوريد')
-CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد')
+CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد', 'تركيب', 'تحديث')
 # إيرادات لا تُنقص رصيد عقد الصيانة حتى لو رُبطت به للمرجعية
 _NON_CONTRACT_BALANCE_TYPES = frozenset({'زيارة', 'أعمال إضافية'})
 # يدعم CN-00042 و CN-00042-2026 و CN-00042-2026-2 (لا تقطع لاحقة التجديد)
@@ -265,6 +265,16 @@ SOURCE_REVENUE_TYPES = {
 }
 
 
+def revenue_type_for_contract(contract: Contract | None, *, default: str = 'تجديد عقد') -> str:
+    """نوع الإيراد المناسب لدفعة من مستحق العقد (تركيب / تحديث / صيانة)."""
+    ct = ((contract.contract_type if contract else '') or '').strip()
+    if 'تحديث' in ct:
+        return 'تحديث مصعد'
+    if 'تركيب' in ct:
+        return 'تركيب مصعد'
+    return default
+
+
 def invoice_remaining(inv: Invoice) -> float:
     total = _round_money(inv.total)
     paid = _round_money(getattr(inv, 'paid_amount', 0) or 0)
@@ -469,6 +479,8 @@ def customer_billable_ops(customer_id: int) -> list[dict]:
             'remaining': max(remaining, 0),
             'contract_id': c.id,
             'contract_code': c.code,
+            'contract_type': c.contract_type or '',
+            'revenue_type': revenue_type_for_contract(c),
             'fault_code': '',
             'visit_code': '',
             'status': c.invoice_status or 'غير مدفوع',
@@ -527,6 +539,12 @@ def invoice_description_for_revenue(revenue: Revenue) -> str:
         return (
             'عقد جديد صيانة مصاعد عن الفترة '
             f'من {_fmt_date_dmy(contract.start_date)} إلى {_fmt_date_dmy(contract.end_date)}'
+        )
+
+    if rev_type in ('تركيب مصعد', 'تحديث مصعد') and contract:
+        return (
+            f'{rev_type} — دفعة من المستحق على عقد {contract.code} '
+            f'({contract.contract_type or "تركيب/تحديث"})'
         )
 
     if contract:
@@ -709,6 +727,8 @@ def tenant_uncollected_ops(*, customer_id: int | None = None) -> list[dict]:
             'remaining': remaining,
             'amount_before_tax': _before_tax_from_inclusive(remaining),
             'contract_id': c.id,
+            'contract_type': c.contract_type or '',
+            'revenue_type': revenue_type_for_contract(c),
             'customer_id': c.customer_id,
             'customer': cust.name if cust else '—',
             'customer_code': cust.code if cust else '',
@@ -814,7 +834,7 @@ def apply_payment_to_source(
             'contract_id': c.id,
             'invoice_id': None,
             'parts_billing_id': None,
-            'revenue_type': SOURCE_REVENUE_TYPES['contract'],
+            'revenue_type': revenue_type_for_contract(c, default=SOURCE_REVENUE_TYPES['contract']),
             'reference_note': f'تحصيل عقد {c.code}',
         }
 
@@ -836,12 +856,15 @@ def apply_payment_to_source(
         )
         if contract_id and not inv.contract_id:
             inv.contract_id = contract_id
+        linked = tenant_query(Contract).filter_by(id=int(contract_id)).first() if contract_id else None
         return {
             'customer_id': inv.customer_id,
             'contract_id': contract_id,
             'invoice_id': inv.id,
             'parts_billing_id': None,
-            'revenue_type': SOURCE_REVENUE_TYPES['invoice'],
+            'revenue_type': revenue_type_for_contract(
+                linked, default=SOURCE_REVENUE_TYPES['invoice'],
+            ),
             'reference_note': f'تحصيل فاتورة {inv.code}',
         }
 
@@ -995,7 +1018,9 @@ def customer_financial_totals(revenues, parts, invoices) -> dict:
         invoice_extra.append(inv)
 
     contract_rev_types = (
-        'عقد صيانة', 'عقد ضمان', 'عقد تركيب', 'تجديد عقد', 'عقد جديد', 'صيانة',
+        'عقد صيانة', 'عقد ضمان', 'عقد تركيب', 'عقد تحديث',
+        'تجديد عقد', 'عقد جديد', 'صيانة',
+        'تركيب مصعد', 'تحديث مصعد',
     )
     contract_payments = sum(
         r.total or 0 for r in revenues

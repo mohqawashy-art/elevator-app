@@ -665,6 +665,9 @@ window.__LC_TRANSLATIONS = {
   /* — الإيرادات والمصروفات والفواتير — */
   'إجمالي الإيرادات': 'Total Revenues',
   'تجديد عقود': 'Contract Renewals',
+  'تركيب مصعد': 'Elevator Installation',
+  'تحديث مصعد': 'Elevator Modernization',
+  'دفعة من المستحق': 'Receivable Installment',
   'عقود جديدة': 'New Contracts',
   'إضافة إيراد': 'Add Revenue',
   'رقم العقد أو المرجع': 'Contract # or reference',

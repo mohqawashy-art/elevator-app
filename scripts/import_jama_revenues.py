@@ -31,7 +31,10 @@ from models import Contract, Customer, Invoice, PartsBilling, Revenue
 from tenant_scope import assign_organization, tenant_query
 
 PARTS_REVENUE_TYPES = frozenset({'قطع غيار', 'بيع قطع غيار', 'زيارة'})
-CONTRACT_REVENUE_TYPES = frozenset({'تجديد عقد', 'عقد صيانة', 'عقد جديد', 'ضمان'})
+CONTRACT_REVENUE_TYPES = frozenset({
+    'تجديد عقد', 'عقد صيانة', 'عقد جديد', 'ضمان',
+    'تركيب مصعد', 'تحديث مصعد', 'عقد تركيب', 'عقد تحديث',
+})
 
 # ملف إيرادات جما: عمود «المبلغ» = الإجمالي المحصّل (شامل الضريبة)
 JAMA_EXCEL_AMOUNT_IS_INCLUSIVE = True

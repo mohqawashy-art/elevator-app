@@ -87,8 +87,8 @@ DEFAULT_CHART: list[tuple] = [
     ('4110', 'عقود صيانة دورية', 'Periodic Maintenance Contracts', 'revenue', '4100', 'revenue:عقد صيانة', True, 4110),
     ('4120', 'تجديد عقود', 'Contract Renewals', 'revenue', '4100', 'revenue:تجديد عقد', True, 4120),
     ('4200', 'إيراد التركيب والتحديث', 'Installation & Modernization', 'revenue', '4000', None, False, 4200),
-    ('4210', 'تركيب مصاعد جديدة', 'New Elevator Installation', 'revenue', '4200', 'revenue:عقد جديد', True, 4210),
-    ('4220', 'تحديث وتطوير مصاعد', 'Elevator Modernization', 'revenue', '4200', None, True, 4220),
+    ('4210', 'تركيب مصاعد جديدة', 'New Elevator Installation', 'revenue', '4200', 'revenue:تركيب مصعد', True, 4210),
+    ('4220', 'تحديث وتطوير مصاعد', 'Elevator Modernization', 'revenue', '4200', 'revenue:تحديث مصعد', True, 4220),
     ('4300', 'إيراد القطع والأعمال', 'Parts & Extra Works', 'revenue', '4000', None, False, 4300),
     ('4310', 'مبيعات قطع غيار', 'Spare Parts Sales', 'revenue', '4300', 'revenue:قطع غيار', True, 4310),
     ('4320', 'أعمال إضافية وأعطال خارج العقد', 'Extra Works & Out-of-contract Faults', 'revenue', '4300', 'revenue:أعمال إضافية', True, 4320),
@@ -142,7 +142,11 @@ _REVENUE_TYPE_ALIASES = {
     'صيانة': 'revenue:عقد صيانة',
     'تجديد عقد': 'revenue:تجديد عقد',
     'تجديد': 'revenue:تجديد عقد',
-    'عقد جديد': 'revenue:عقد جديد',
+    'عقد جديد': 'revenue:تركيب مصعد',
+    'تركيب مصعد': 'revenue:تركيب مصعد',
+    'عقد تركيب': 'revenue:تركيب مصعد',
+    'تحديث مصعد': 'revenue:تحديث مصعد',
+    'عقد تحديث': 'revenue:تحديث مصعد',
     'ضمان': 'revenue:عقد صيانة',
     'قطع غيار': 'revenue:قطع غيار',
     'بيع قطع غيار': 'revenue:قطع غيار',
@@ -187,6 +191,15 @@ def ensure_chart_for_org(organization_id: int | None) -> int:
         code_to_id = {c: a.id for c, a in existing.items()}
         for code, name, name_en, atype, parent_code, map_key, postable, sort in DEFAULT_CHART:
             if code in existing:
+                acc = existing[code]
+                # أكمل map_key الناقص حتى تُربط أنواع الإيراد الجديدة (تركيب/تحديث)
+                if map_key and not (acc.map_key or '').strip():
+                    acc.map_key = map_key
+                    added += 1
+                # حدّث مفتاح التركيب القديم revenue:عقد جديد → revenue:تركيب مصعد
+                elif map_key == 'revenue:تركيب مصعد' and (acc.map_key or '').strip() == 'revenue:عقد جديد':
+                    acc.map_key = map_key
+                    added += 1
                 continue
             parent_id = code_to_id.get(parent_code) if parent_code else None
             acc = Account(

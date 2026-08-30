@@ -9814,7 +9814,7 @@ def _revenue_from_form(form, existing: Revenue | None = None):
     contract_id = form.get('contract_id') or None
     invoice_id = None
     parts_billing_id = None
-    revenue_type = form.get('revenue_type', '')
+    revenue_type = (form.get('revenue_type') or '').strip()
     customer_id = form.get('customer_id') or None
 
     if source_type and source_id and not existing:
@@ -9823,7 +9823,8 @@ def _revenue_from_form(form, existing: Revenue | None = None):
         contract_id = link['contract_id']
         invoice_id = link['invoice_id']
         parts_billing_id = link['parts_billing_id']
-        revenue_type = link['revenue_type']
+        if not revenue_type:
+            revenue_type = link['revenue_type']
         ref_note = link.get('reference_note') or ''
         if ref_note and ref_note not in (notes or ''):
             notes = (ref_note + (' — ' + notes if notes else '')).strip()
