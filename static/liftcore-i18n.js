@@ -488,7 +488,7 @@
     var p = node.parentElement;
     if (!p) return true;
     if (p.closest('#modal-add')) return true;
-    if (p.closest('[data-i18n-skip], script, style, noscript, .lc-sar, .lc-sar-char')) return true;
+    if (p.closest('[data-i18n-skip], script, style, noscript, .lc-sar, .lc-sar-char, .stat-mini-val, .stat-value, .kpi-val')) return true;
     if (p.closest('[data-lc-t], .cloc-hint, .cloc-box')) return true;
     if (p.tagName === 'INPUT' || p.tagName === 'TEXTAREA' || p.tagName === 'SCRIPT') return true;
     /* نص أزرار الجداول (تعديل / حذف ...) يُترجم دائماً */

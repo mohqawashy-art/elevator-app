@@ -186,7 +186,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     <div class="stats-row" role="toolbar" aria-label="تصفية الإيرادات حسب النوع">
       <div class="stat-card active" data-stat="all" role="button" tabindex="0" aria-pressed="true" title="عرض كل الإيرادات" onclick="filterByStat('all')" onkeydown="statCardKey(event,'all')">
         <div class="stat-label">إجمالي الإيرادات</div>
-        <div class="stat-value green" id="s-total">0</div>
+        <div class="stat-value green" id="s-total" data-i18n-skip>0</div>
         <div class="stat-sub" id="s-total-sub">0 عملية</div>
       </div>
       <div class="stat-card" data-stat="renewal" role="button" tabindex="0" aria-pressed="false" title="عرض عمليات تجديد العقود" onclick="filterByStat('renewal')" onkeydown="statCardKey(event,'renewal')">
@@ -1060,10 +1060,13 @@ document.addEventListener('keydown', function (e) {
 /* إغلاق الخلفية: liftcore-shell.js */
 
 function initRevenuesPage() {
-  updateStats();
-  if (tableSort) tableSort.bindHeaders();
-  initRevenueClientSelects();
-  renderTable(REVENUES);
+  try { updateStats(); } catch (e) { console.error('revenues stats', e); }
+  try {
+    if (tableSort) tableSort.bindHeaders();
+    initRevenueClientSelects();
+    renderTable(REVENUES);
+  } catch (e) { console.error('revenues boot', e); }
+  try { updateStats(); } catch (e2) { /* keep */ }
   var params = new URLSearchParams(window.location.search);
   if (params.get('action') === 'add') {
     openAddModal(params.get('customer_id'), {

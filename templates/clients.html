@@ -445,7 +445,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
     <!-- lc-clients-toolbar-v51 -->
     <div class="stats-row lc-stats-compact" style="grid-template-columns:repeat(4,1fr)">
       <div class="stat-mini" style="--sm-color:var(--accent)" onclick="openClientDrill('all', this)">
-        <div class="stat-mini-val" id="stat-total">0</div>
+        <div class="stat-mini-val" id="stat-total" data-i18n-skip>{{ customers|length }}</div>
         <div class="stat-mini-label">إجمالي العملاء</div>
       </div>
       <div class="stat-mini" style="--sm-color:var(--success)" onclick="openClientDrill('active', this)">
@@ -3192,7 +3192,9 @@ fillPhoneCodeSelects('+966', '+966');
 bindPhoneInputs();
 setTimeout(applyClientModalI18n, 200);
 setTimeout(applyClientModalI18n, 800);
-try { if (tableSort) tableSort.bindHeaders(); updateStats(); renderTable(CUSTOMERS); syncModalA11y(); } catch (bootErr) { console.error('clients boot', bootErr); }
+try { updateStats(); } catch (statsErr) { console.error('clients stats', statsErr); }
+try { if (tableSort) tableSort.bindHeaders(); renderTable(CUSTOMERS); syncModalA11y(); } catch (bootErr) { console.error('clients boot', bootErr); }
+try { updateStats(); } catch (statsErr2) { /* keep first pass */ }
 var bootParams = new URLSearchParams(window.location.search);
 if (bootParams.get('action') === 'add') {
   openAddModal();

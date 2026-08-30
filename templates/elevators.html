@@ -254,7 +254,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <!-- STATS -->
     <div class="stats-row">
       <div class="stat-mini" style="--sm-color:var(--accent)" onclick="openElevDrill('all', this)">
-        <div class="stat-mini-val" id="stat-total">{{ elevators|length }}</div>
+        <div class="stat-mini-val" id="stat-total" data-i18n-skip>{{ elevators|length }}</div>
         <div class="stat-mini-label">إجمالي المصاعد</div>
       </div>
       <div class="stat-mini" style="--sm-color:var(--success)" onclick="openElevDrill('نشط', this)">
@@ -1997,7 +1997,9 @@ var months = ['يناير','فبراير','مارس','أبريل','مايو','ي
 var hDateEl = document.getElementById('h-date');
 if (hDateEl) hDateEl.textContent = days[now.getDay()] + '، ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
 
-try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(ELEVATORS); } catch (bootErr) { console.error('elevators boot', bootErr); }
+try { updateStats(); } catch (statsErr) { console.error('elevators stats', statsErr); }
+try { if (tableSort) tableSort.bindHeaders(); initFilters(); renderTable(ELEVATORS); } catch (bootErr) { console.error('elevators boot', bootErr); }
+try { updateStats(); } catch (statsErr2) { /* keep first pass */ }
 document.addEventListener('liftcore:lang', function () {
   renderTable(typeof filtered !== 'undefined' ? filtered : ELEVATORS);
   if (currentElevDrillType != null) {

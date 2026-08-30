@@ -315,7 +315,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <!-- STATS -->
     <div class="stats-row">
       <div class="stat-mini" style="--sm-color:var(--accent)" onclick="openContractDrill('all', this)">
-        <div class="stat-mini-val" id="stat-total">0</div>
+        <div class="stat-mini-val" id="stat-total" data-i18n-skip>{{ contracts|length if contracts is defined else 0 }}</div>
         <div class="stat-mini-label">إجمالي العقود</div>
       </div>
       <div class="stat-mini" style="--sm-color:var(--success)" onclick="openContractDrill('active', this)">
@@ -3626,7 +3626,9 @@ if (window.LiftCoreLocation) {
   LiftCoreLocation.setLookup(getCustomerById);
 }
 
-try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); initContractClientSelect(); applyContractsPageI18n(); } catch (bootErr) { console.error('contracts boot', bootErr); }
+try { updateStats(); } catch (statsErr) { console.error('contracts stats', statsErr); }
+try { if (tableSort) tableSort.bindHeaders(); initFilters(); renderTable(CONTRACTS); initContractClientSelect(); applyContractsPageI18n(); } catch (bootErr) { console.error('contracts boot', bootErr); }
+try { updateStats(); } catch (statsErr2) { /* keep first pass */ }
 window.__lcRefreshPage = function () {
   if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : CONTRACTS);
