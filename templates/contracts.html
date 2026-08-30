@@ -420,11 +420,20 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </select>
       <select class="filter-select" id="f-type" onchange="filterTable()">
         <option value="">كل الأنواع</option>
+        {% if contract_scope == 'installation' %}
+        <option>عقد تركيب</option>
+        <option>عقد تحديث</option>
+        {% elif contract_scope == 'maintenance' %}
+        <option>عقد صيانة</option>
+        <option>عقد ضمان</option>
+        <option>عقد طوارئ</option>
+        {% else %}
         <option>عقد صيانة</option>
         <option>عقد ضمان</option>
         <option>عقد تركيب</option>
         <option>عقد تحديث</option>
         <option>عقد طوارئ</option>
+        {% endif %}
       </select>
       <select class="filter-select" id="f-status" onchange="filterTable()">
         <option value="">كل الحالات</option>
@@ -570,11 +579,20 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field">
             <label>نوع العقد</label>
             <select id="f-type-sel" onchange="onContractTypeChanged()">
+              {% if contract_scope == 'installation' %}
+              <option>عقد تركيب</option>
+              <option>عقد تحديث</option>
+              {% elif contract_scope == 'maintenance' %}
+              <option>عقد صيانة</option>
+              <option>عقد ضمان</option>
+              <option>عقد طوارئ</option>
+              {% else %}
               <option>عقد صيانة</option>
               <option>عقد ضمان</option>
               <option>عقد تركيب</option>
               <option>عقد تحديث</option>
               <option>عقد طوارئ</option>
+              {% endif %}
             </select>
           </div>
           <div class="field">
@@ -841,9 +859,28 @@ var CONTRACT_MODAL_EN = {
   'تعديل عقد': 'Edit Contract',
   'تجديد عقد': 'Renew Contract'
 };
-var CONTRACT_FILTER_TYPE_OPTS = ['عقد صيانة', 'عقد ضمان', 'عقد تركيب', 'عقد تحديث', 'عقد طوارئ'];
+var CONTRACT_FILTER_TYPE_OPTS_ALL = ['عقد صيانة', 'عقد ضمان', 'عقد تركيب', 'عقد تحديث', 'عقد طوارئ'];
+var CONTRACT_FILTER_TYPE_OPTS_MAINT = ['عقد صيانة', 'عقد ضمان', 'عقد طوارئ'];
+var CONTRACT_FILTER_TYPE_OPTS_INSTALL = ['عقد تركيب', 'عقد تحديث'];
+var CONTRACT_FILTER_TYPE_OPTS = (typeof CONTRACT_SCOPE !== 'undefined' && CONTRACT_SCOPE === 'installation')
+  ? CONTRACT_FILTER_TYPE_OPTS_INSTALL
+  : (typeof CONTRACT_SCOPE !== 'undefined' && CONTRACT_SCOPE === 'maintenance')
+    ? CONTRACT_FILTER_TYPE_OPTS_MAINT
+    : CONTRACT_FILTER_TYPE_OPTS_ALL;
 var CONTRACT_FILTER_STATUS_OPTS = ['نشط', 'على وشك الانتهاء', 'تم تجديده', 'منتهي', 'ملغي'];
 var CONTRACT_FILTER_INVOICE_OPTS = ['مدفوع', 'مدفوع جزئياً', 'غير مدفوع', 'متأخر'];
+
+function rebuildContractTypeSelect() {
+  var sel = document.getElementById('f-type-sel');
+  if (!sel) return;
+  var prev = sel.value;
+  var opts = CONTRACT_FILTER_TYPE_OPTS;
+  sel.innerHTML = opts.map(function (v) {
+    return '<option value="' + esc(v) + '">' + esc(contractModalTr(v)) + '</option>';
+  }).join('');
+  if (prev && opts.indexOf(prev) >= 0) sel.value = prev;
+  else if (opts.length) sel.value = opts[0];
+}
 
 function lcContractClient(c) {
   if (!c) return '';
@@ -1002,6 +1039,7 @@ function applyContractsFilterI18n() {
     search.placeholder = isContractUiEn() ? contractModalTr('بحث بالكود أو اسم العميل...') : search.dataset.lcPhAr;
   }
   rebuildContractFilterSelect('f-type', contractModalTr('كل الأنواع'), CONTRACT_FILTER_TYPE_OPTS);
+  rebuildContractTypeSelect();
   rebuildContractFilterSelect('f-status', contractModalTr('كل الحالات'), CONTRACT_FILTER_STATUS_OPTS);
   rebuildContractFilterSelect('f-invoice', contractModalTr('حالة الفاتورة'), CONTRACT_FILTER_INVOICE_OPTS);
   rebuildContractClientFilter();
