@@ -21,11 +21,13 @@
             <th>العميل</th>
             <th>الحالة</th>
             <th>تاريخ الإنشاء</th>
+            <th>تاريخ الانتهاء</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          {% for p in projects %}
+          {% for row in project_rows %}
+          {% set p = row.project %}
           <tr>
             <td style="font-family:var(--font-en)"><a href="/installation/projects/{{ p.id }}" style="font-weight:600;color:var(--accent)">{{ p.code }}</a></td>
             <td>
@@ -36,11 +38,12 @@
               <span style="color:var(--text3);font-size:11px">(غير مربوط)</span>
               {% endif %}
             </td>
-            <td><span class="badge badge-new">{{ p.status }}</span></td>
+            <td><span class="badge badge-new">{{ row.status_label }}</span></td>
             <td style="font-family:var(--font-en)">{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '—' }}</td>
+            <td {% if row.end_label == 'مكتمل' %}style="color:var(--success);font-weight:600"{% else %}style="font-family:var(--font-en)"{% endif %}>{{ row.end_label }}</td>
             <td style="white-space:nowrap">
               <a href="/installation/projects/{{ p.id }}#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
-              {% if p.execution_active %}
+              {% if p.execution_active and row.end_label != 'مكتمل' %}
               <a href="/installation/projects/{{ p.id }}/execution" class="btn btn-secondary btn-sm">تنفيذ</a>
               {% else %}
               <a href="/installation/projects/{{ p.id }}" class="btn btn-secondary btn-sm">فتح</a>
@@ -48,7 +51,7 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">لا توجد مشاريع بعد — تظهر هنا بعد موافقة عرض من المبيعات</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">لا توجد مشاريع بعد — تظهر هنا بعد موافقة عرض من المبيعات</td></tr>
           {% endfor %}
         </tbody>
       </table>

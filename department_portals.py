@@ -78,9 +78,8 @@ DEPARTMENT_PORTALS = {
         'color': '#c8a055',
         'links': (
             ('عملاء التركيبات', 'Installation Clients', '/clients?scope=installation', 'clients.read'),
-            ('عقود التركيبات والتحديث', 'Installation Contracts', '/contracts?scope=installation', 'contracts.read'),
             ('مشروعات التركيبات', 'Installation Projects', '/installation/projects', 'installation_projects.read', True),
-            ('لوحة تنفيذ المشروعات', 'Project Execution Board', '/installation/', 'installation_projects.read', True),
+            ('عقود التركيبات والتحديث', 'Installation Contracts', '/contracts?scope=installation', 'contracts.read'),
         ),
         'reports': (
             ('بطاقات وتقارير المشروعات', 'Project Cards & Reports', '/installation/projects', 'installation_projects.read', True),

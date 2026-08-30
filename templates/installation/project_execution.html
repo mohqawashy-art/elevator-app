@@ -32,7 +32,10 @@
           <span>العرض: <b>{{ accepted_quote.code if accepted_quote else '—' }}</b></span>
           <span>العقد: <b>{{ '{:,.0f}'.format(accepted_quote.grand_total) if accepted_quote else 0 }}</b> ر.س</span>
           <span>محصّل: <b>{{ '{:,.0f}'.format(payments_received) }}</b> ر.س</span>
-          <span>الحالة: <b>{{ project.status }}</b></span>
+          <span>الحالة: <b>{% if project.status in ('مكتمل', 'مغلق') %}مكتمل{% else %}{{ project.status }}{% endif %}</b></span>
+          {% if project.status in ('مكتمل', 'مغلق') %}
+          <span>تاريخ الانتهاء: <b style="color:var(--success)">مكتمل</b></span>
+          {% endif %}
         </div>
         <div class="exec-bar"><span style="width:{{ progress }}%"></span></div>
       </div>

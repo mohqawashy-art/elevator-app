@@ -147,6 +147,22 @@ def ensure_project_card_schema() -> None:
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+        # refresh cols after possible ALTERs
+        try:
+            insp.clear_cache()
+        except Exception:
+            pass
+        cols = {c['name'] for c in insp.get_columns('installation_projects')}
+        if 'end_date' not in cols:
+            if dialect == 'postgresql':
+                sql = (
+                    'ALTER TABLE installation_projects '
+                    'ADD COLUMN IF NOT EXISTS end_date DATE'
+                )
+            else:
+                sql = 'ALTER TABLE installation_projects ADD COLUMN end_date DATE'
+            db.session.execute(text(sql))
+            db.session.commit()
 
     if 'installation_project_costs' in set(inspect(db.engine).get_table_names()):
         try:

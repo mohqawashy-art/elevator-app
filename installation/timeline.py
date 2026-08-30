@@ -427,6 +427,48 @@ def is_execution_complete(steps):
     return all(s.status == 'مكتمل' for s in steps)
 
 
+def project_is_closed(project) -> bool:
+    status = (getattr(project, 'status', None) or '').strip()
+    return status in ('مكتمل', 'مغلق')
+
+
+def expected_project_end_date(project):
+    """أبعد تاريخ مخطط/مكتمل في الخطوات — للمشاريع المفتوحة فقط."""
+    dates = []
+    for step in getattr(project, 'timeline_steps', None) or []:
+        if step.planned_date:
+            dates.append(step.planned_date)
+        if step.completed_at:
+            dates.append(step.completed_at.date() if hasattr(step.completed_at, 'date') else step.completed_at)
+    return max(dates) if dates else None
+
+
+def freeze_project_end_date(project):
+    """تجميد تاريخ الانتهاء عند الإغلاق — لا يُحدَّث لاحقاً."""
+    from datetime import date as _date
+
+    if getattr(project, 'end_date', None):
+        return project.end_date
+    end = expected_project_end_date(project) or _date.today()
+    project.end_date = end
+    return end
+
+
+def mark_project_completed(project):
+    """عند اكتمال كل المراحل: حالة مكتمل + تجميد تاريخ الانتهاء."""
+    freeze_project_end_date(project)
+    project.status = 'مكتمل'
+    return project
+
+
+def project_end_date_label(project) -> str:
+    """عرض تاريخ الانتهاء — عند الإغلاق يُكتب «مكتمل» ويتوقف التحديث."""
+    if project_is_closed(project):
+        return 'مكتمل'
+    end = expected_project_end_date(project)
+    return end.isoformat() if end else '—'
+
+
 PHASE_ORDER = ('عقد', 'توريد', 'تركيب', 'تسليم', 'ضمان')
 
 

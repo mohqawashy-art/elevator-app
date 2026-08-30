@@ -35,6 +35,7 @@ PROJECT_STATUSES = (
     'تركيب',
     'تسليم',
     'ضمان',
+    'مكتمل',
     'مغلق',
 )
 
@@ -129,6 +130,8 @@ class InstallProject(TenantMixin, db.Model):
     # عقد ضمان الصيانة (الربط الوحيد المسموح مع الصيانة بعد اكتمال المراحل)
     warranty_contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=True, index=True)
     execution_started_at = db.Column(db.DateTime, nullable=True)
+    # تاريخ انتهاء مخطط/فعلي — يُجمَّد عند إكمال المشروع
+    end_date = db.Column(db.Date, nullable=True)
     # قيمة العقد الفعلية (إن وُجدت؛ وإلا يُستخدم إجمالي العرض المعتمد)
     contract_value = db.Column(db.Float, nullable=True)
     notes = db.Column(db.Text)

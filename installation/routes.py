@@ -35,6 +35,8 @@ from installation.timeline import (
     active_timeline_steps,
     advance_next_step,
     is_execution_complete,
+    mark_project_completed,
+    project_end_date_label,
     payment_totals,
     client_payment_amount,
     phase_track,
@@ -254,10 +256,25 @@ def index():
 
 @install_bp.route('/projects')
 def projects_list():
+    from installation.project_card import ensure_project_card_schema
+
+    try:
+        ensure_project_card_schema()
+    except Exception:
+        db.session.rollback()
     projects = tenant_query(InstallProject).order_by(InstallProject.created_at.desc()).all()
+    project_rows = [
+        {
+            'project': p,
+            'end_label': project_end_date_label(p),
+            'status_label': 'مكتمل' if (p.status or '') in ('مكتمل', 'مغلق') else (p.status or '—'),
+        }
+        for p in projects
+    ]
     return render_template(
         'installation/projects.html',
         projects=projects,
+        project_rows=project_rows,
         statuses=PROJECT_STATUSES,
         page_title='مشاريع التركيب',
     )
@@ -862,7 +879,7 @@ def timeline_step_update(project_id, step_id):
     sync_project_status_from_timeline(project)
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
     if is_execution_complete(steps):
-        project.status = 'مغلق'
+        mark_project_completed(project)
     db.session.commit()
 
     warranty = None
@@ -1010,7 +1027,7 @@ def timeline_step_edit(project_id, step_id):
         sync_project_status_from_timeline(project)
         steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
         if is_execution_complete(steps):
-            project.status = 'مغلق'
+            mark_project_completed(project)
         db.session.commit()
         flash(f'تم تحديث: {step.title}', 'success')
         if return_to == 'execution':

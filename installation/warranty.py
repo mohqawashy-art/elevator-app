@@ -132,7 +132,7 @@ def create_warranty_contract_from_project(project, *, next_code_fn) -> Contract 
             elev.install_date = start
 
     project.warranty_contract_id = contract.id
-    if project.status not in ('ضمان', 'مغلق'):
+    if project.status not in ('ضمان', 'مكتمل', 'مغلق'):
         project.status = 'ضمان'
     project.updated_at = datetime.utcnow()
     return contract
