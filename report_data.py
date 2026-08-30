@@ -22,6 +22,21 @@ def get_report_clients(db, Customer, contract_display_status):
     } for c in customers]
 
 
+_DOOR_TYPE_ALIASES = {
+    'اتوماتيك': 'أوتوماتيك', 'أوتوماتيك': 'أوتوماتيك',
+    'نصف اتوماتيك': 'نصف أوتوماتيك', 'نصف أوتوماتيك': 'نصف أوتوماتيك',
+    'سنتر اتوماتيك': 'سنتر أوتوماتيك', 'سنتر أوتوماتيك': 'سنتر أوتوماتيك',
+    'تلسكوبي': 'تلسكوبي', 'تليسكوبي': 'تلسكوبي',
+}
+
+
+def _report_door_type(e):
+    door = (e.door_type or '').strip()
+    if door:
+        return _DOOR_TYPE_ALIASES.get(door, door)
+    return _DOOR_TYPE_ALIASES.get((e.elev_type or '').strip(), '')
+
+
 def get_report_elevators(db, Elevator):
     elevs = tenant_query(Elevator).order_by(Elevator.id).all()
     return [{
@@ -30,7 +45,7 @@ def get_report_elevators(db, Elevator):
         'building': e.building_name or '',
         'city': e.city or '',
         'elev_type': e.elev_type or '',
-        'door_type': e.door_type or '',
+        'door_type': _report_door_type(e),
         'brand': e.brand or '',
         'capacity': str(e.capacity_kg or '') + ' كجم' if e.capacity_kg else '',
         'status': e.status,

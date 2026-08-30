@@ -895,7 +895,7 @@ function fillDoorTypeFilter() {
   });
   var extras = [];
   ELEVATORS.forEach(function(e) {
-    var t = (e.door_type || '').trim();
+    var t = elevDoorType(e);
     if (t && !known[t]) {
       known[t] = 1;
       extras.push(t);
@@ -1044,7 +1044,7 @@ function renderDrillTable(rows) {
       '<td class="td-name">' + esc(elevCustomer(e)) + '</td>' +
       '<td>' + esc(lcDisp(e.building || '—')) + '</td>' +
       '<td>' + esc(lcDisp(e.city || '—')) + '</td>' +
-      '<td>' + esc(lcDisp(e.door_type || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(elevDoorType(e) || '—')) + '</td>' +
       '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></td>' +
       '<td style="font-family:var(--font-en);direction:ltr">' + esc(e.next_maint || '—') + '</td>' +
     '</tr>';
@@ -1089,6 +1089,39 @@ function elevCustomer(e) {
   return (window.LiftCoreDisplay) ? LiftCoreDisplay.name(e.customer, e.customer_name_en) : e.customer;
 }
 
+var DOOR_TYPE_ALIASES = {
+  'اتوماتيك': 'أوتوماتيك',
+  'أوتوماتيك': 'أوتوماتيك',
+  'نصف اتوماتيك': 'نصف أوتوماتيك',
+  'نصف أوتوماتيك': 'نصف أوتوماتيك',
+  'سنتر اتوماتيك': 'سنتر أوتوماتيك',
+  'سنتر أوتوماتيك': 'سنتر أوتوماتيك',
+  'تلسكوبي': 'تلسكوبي',
+  'تليسكوبي': 'تلسكوبي'
+};
+var ELEV_KIND_TYPES = {
+  'مصعد ركاب': 1, 'مصعد بضائع': 1, 'مصعد مستشفى': 1,
+  'مصعد منزلي': 1, 'مصعد بانوراما': 1, 'مصعد خدمة': 1
+};
+
+function normalizeDoorType(v) {
+  v = String(v || '').trim();
+  return DOOR_TYPE_ALIASES[v] || v;
+}
+
+function elevDoorType(e) {
+  var door = normalizeDoorType(e && e.door_type);
+  if (door) return door;
+  var et = String((e && e.elev_type) || '').trim();
+  return DOOR_TYPE_ALIASES[et] || '';
+}
+
+function elevKindType(e) {
+  var et = String((e && e.elev_type) || '').trim();
+  if (ELEV_KIND_TYPES[et]) return et;
+  return 'مصعد ركاب';
+}
+
 function renderTable(data) {
   if (tableSort) {
     data = tableSort.apply(data);
@@ -1111,7 +1144,7 @@ function renderTable(data) {
       '<td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="event.stopPropagation();window.location=\'/clients\'">' + esc(elevCustomer(e)) + '</td>' +
       '<td>' + esc(lcDisp(e.building || '—')) + '</td>' +
       '<td>' + esc(lcDisp(e.city || '—')) + '</td>' +
-      '<td>' + esc(lcDisp(e.door_type || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(elevDoorType(e) || '—')) + '</td>' +
       '<td style="font-family:var(--font-en)">' + esc(e.brand || '—') + '</td>' +
       '<td style="font-family:var(--font-en)">' + (e.capacity ? lcDisp(e.capacity + ' كجم') : '—') + '</td>' +
       '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></td>' +
@@ -1133,9 +1166,9 @@ function filterTable() {
   var dist = (document.getElementById('f-filter-district') || {}).value || '';
   filtered = ELEVATORS.filter(function(e) {
     var ed = elevDistrict(e);
-    return (!s || e.code.toLowerCase().indexOf(s) >= 0 || e.customer.toLowerCase().indexOf(s) >= 0 || (e.building || '').toLowerCase().indexOf(s) >= 0 || ed.toLowerCase().indexOf(s) >= 0 || (e.door_type || '').toLowerCase().indexOf(s) >= 0) &&
+    return (!s || e.code.toLowerCase().indexOf(s) >= 0 || e.customer.toLowerCase().indexOf(s) >= 0 || (e.building || '').toLowerCase().indexOf(s) >= 0 || ed.toLowerCase().indexOf(s) >= 0 || elevDoorType(e).toLowerCase().indexOf(s) >= 0) &&
       (!ct || e.customer === ct) &&
-      (!tp || e.door_type === tp) &&
+      (!tp || elevDoorType(e) === tp) &&
       (!st || e.status === st) &&
       (!cy || e.city === cy) &&
       (!dist || ed === dist);
@@ -1372,7 +1405,7 @@ function editElevator(id) {
   document.getElementById('f-building').value = e.building || '';
   document.getElementById('f-elev-city').value = e.city || '';
   document.getElementById('f-elev-district').value = e.district || '';
-  document.getElementById('f-type-sel').value = e.elev_type || 'مصعد ركاب';
+  document.getElementById('f-type-sel').value = elevKindType(e);
   document.getElementById('f-brand').value = e.brand || '';
   document.getElementById('f-model').value = e.model || '';
   document.getElementById('f-capacity-kg').value = e.capacity || '';
@@ -1382,7 +1415,7 @@ function editElevator(id) {
   document.getElementById('f-doors').value = e.doors || '';
   document.getElementById('f-serial').value = e.serial || '';
   document.getElementById('f-machine').value = e.machine_type || 'MR';
-  document.getElementById('f-door-type').value = e.door_type || '';
+  document.getElementById('f-door-type').value = elevDoorType(e);
   document.getElementById('f-control-type').value = e.control_type || '';
   document.getElementById('f-control-drive').value = e.control_drive || '';
   document.getElementById('f-control-operation').value = e.control_operation || '';
@@ -1442,7 +1475,7 @@ function viewElevator(id) {
       viewItem('السرعة', e.speed ? esc(lcDisp(e.speed)) : '—') +
       viewItem('الحمولة', e.capacity ? lcDisp(e.capacity + ' كجم') : '—') +
       viewItem('عدد الأشخاص', e.capacity_persons ? '<span style="font-family:var(--font-en)">' + esc(String(e.capacity_persons)) + '</span>' : '—') +
-      viewItem('نوع الباب', esc(lcDisp(e.door_type || '—'))) +
+      viewItem('نوع الباب', esc(lcDisp(elevDoorType(e) || '—'))) +
       viewItem('نوع الآلة', esc(lcDisp(MACHINE_LABELS[e.machine_type] || e.machine_type || '—'))) +
       '<div class="view-section">' + lcDisp('نظام التحكم') + '</div>' +
       viewItem('نوع النظام', esc(e.control_type || '—'), { style: 'font-family:var(--font-en)' }) +
@@ -1753,7 +1786,7 @@ function makeElevPin(color) {
 function elevMapInfo(e) {
   return '<div class="map-info"><div class="map-info-title">' + esc(e.code) + '</div>' +
     '<div class="map-info-sub">' + esc(e.customer) + '<br>' + esc(e.building || '—') + '<br>' +
-    esc(e.door_type || '') + ' · ' + esc(e.status) + '</div>' +
+    esc(elevDoorType(e) || '') + ' · ' + esc(e.status) + '</div>' +
     '<button class="map-info-btn" onclick="viewElevator(' + e.id + ')">عرض المصعد</button></div>';
 }
 
