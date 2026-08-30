@@ -5008,6 +5008,13 @@ def clients():
     from sqlalchemy.orm import joinedload
 
     from contract_codes import customer_matches_scope
+    from installation.project_card import ensure_project_card_schema
+
+    # يضمن وجود أعمدة مشاريع التركيب (مثل warranty_contract_id) قبل joinedload
+    try:
+        ensure_project_card_schema()
+    except Exception:
+        db.session.rollback()
 
     client_scope = (request.args.get('scope') or '').strip().lower()
     if client_scope not in ('maintenance', 'installation'):
