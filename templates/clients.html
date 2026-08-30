@@ -1499,14 +1499,14 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  var s  = (document.getElementById('search-input').value||'').toLowerCase();
+  var s  = (document.getElementById('search-input').value||'');
   var ct = document.getElementById('f-city').value||'';
   var distSel = document.getElementById('f-filter-district');
   var dist = distSel ? (distSel.value || '') : '';
   var cs = document.getElementById('f-contract').value||'';
   var st = document.getElementById('f-status').value||'';
   filtered = CUSTOMERS.filter(function(c) {
-    return (!s  || (c.name||'').includes(s)||String(c.code||'').toLowerCase().includes(s)||(c.phone||'').includes(s)||(c.phone2||'').includes(s)||customerAllPhones(c).some(function(p){return String(p||'').includes(s);})||(c.district||'').includes(s)) &&
+    return LcSearch.match(s, [c.name, c.name_en, c.code, c.phone, c.phone2, customerAllPhones(c), c.city, c.district, c.address, c.contact]) &&
            (!ct || c.city===ct) &&
            (!dist || (c.district || '').trim() === dist) &&
            (!cs || c.contract_status===cs) &&

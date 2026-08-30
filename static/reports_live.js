@@ -456,10 +456,13 @@ function hookReportPagination(reset) {
 
   function rowPassesFilters(reportId, row) {
     var searchEl = document.getElementById('f-search');
-    var q = searchEl ? searchEl.value.toLowerCase().trim() : '';
+    var q = searchEl ? searchEl.value.trim() : '';
     if (q) {
-      var txt = reportRowCells(reportId, row).join(' ').toLowerCase();
-      if (txt.indexOf(q) === -1) return false;
+      var cells = reportRowCells(reportId, row);
+      var hit = global.LcSearch
+        ? LcSearch.match(q, cells.concat([row.code, row.customer, row.customer_name_en, row.name, row.phone, row.contract, row.description, row.title, row.building, row.city, row.elevator, row.technician]))
+        : reportRowCells(reportId, row).join(' ').toLowerCase().indexOf(q.toLowerCase()) !== -1;
+      if (!hit) return false;
     }
 
     var citySel = document.getElementById('f-city');

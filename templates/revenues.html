@@ -604,14 +604,14 @@ function onTypeStatusChange() {
 }
 
 function applyFilters() {
-  const s = (document.getElementById('f-search')?.value || '').trim().toLowerCase();
+  const s = (document.getElementById('f-search')?.value || '').trim();
   const tp = document.getElementById('f-type')?.value || '';
   const pm = document.getElementById('f-pay')?.value || '';
   const st = document.getElementById('f-status')?.value || '';
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = REVENUES.filter(r =>
-    (!s || String(r.code || '').toLowerCase().includes(s) || String(r.title || '').toLowerCase().includes(s) || String(r.customer || '').toLowerCase().includes(s) || String(r.created_by || '').toLowerCase().includes(s)) &&
+    LcSearch.match(s, [r.code, r.title, r.customer, r.contract, r.created_by, r.notes, r.reference, r.revenue_type]) &&
     rowMatchesStatCard(r, activeStatCard) &&
     (!tp || r.revenue_type === tp) &&
     (!pm || r.pay_method === pm) &&

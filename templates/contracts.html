@@ -1359,14 +1359,14 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  const s   = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const s   = (document.getElementById('search-input')?.value||'');
   const cl  = document.getElementById('f-client')?.value||'';
   const dist = document.getElementById('f-filter-district')?.value||'';
   const tp  = document.getElementById('f-type')?.value||'';
   const st  = document.getElementById('f-status')?.value||'';
   const inv = document.getElementById('f-invoice')?.value||'';
   filtered = CONTRACTS.filter(c=>
-    (!s   || c.code.toLowerCase().includes(s) || c.customer.includes(s) || (contractBuildingName(c) || '').includes(s) || (contractDistrict(c) || '').includes(s)) &&
+    LcSearch.match(s, [c.code, c.customer, c.customer_name_en, contractBuildingName(c), contractDistrict(c), c.contract_type, c.notes]) &&
     (!cl  || c.customer === cl) &&
     (!dist || contractDistrict(c) === dist) &&
     (!tp  || c.contract_type === tp) &&

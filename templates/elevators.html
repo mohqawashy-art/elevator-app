@@ -1143,7 +1143,7 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  var s = (document.getElementById('search-input').value || '').toLowerCase();
+  var s = (document.getElementById('search-input').value || '');
   var ct = document.getElementById('f-client').value || '';
   var tp = document.getElementById('f-type').value || '';
   var st = document.getElementById('f-status').value || '';
@@ -1151,7 +1151,7 @@ function filterTable() {
   var dist = (document.getElementById('f-filter-district') || {}).value || '';
   filtered = ELEVATORS.filter(function(e) {
     var ed = elevDistrict(e);
-    return (!s || e.code.toLowerCase().indexOf(s) >= 0 || e.customer.toLowerCase().indexOf(s) >= 0 || (e.building || '').toLowerCase().indexOf(s) >= 0 || ed.toLowerCase().indexOf(s) >= 0 || (e.elev_type || '').toLowerCase().indexOf(s) >= 0 || (e.door_type || '').toLowerCase().indexOf(s) >= 0) &&
+    return LcSearch.match(s, [e.code, e.customer, e.customer_name_en, e.building, ed, e.city, e.elev_type, e.door_type, e.brand, e.address, e.notes]) &&
       (!ct || e.customer === ct) &&
       (!tp || e.elev_type === tp) &&
       (!st || e.status === st) &&

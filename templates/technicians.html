@@ -1192,21 +1192,13 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').toLowerCase().trim();
+  var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').trim();
   var sp = document.getElementById('filter-spec') && document.getElementById('filter-spec').value || '';
   var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
   var st = document.getElementById('filter-status') && document.getElementById('filter-status').value || '';
   var em = document.getElementById('filter-emergency') && document.getElementById('filter-emergency').value || '';
   filtered = TECHNICIANS.filter(function(t) {
-    var nameAr = String(t.name || '').toLowerCase();
-    var nameEn = String(t.name_en || '').toLowerCase();
-    var phone = String(t.phone || '');
-    var phone2 = String(t.phone2 || '');
-    var email = String(t.email || '').toLowerCase();
-    var nid = String(t.national_id || '');
-    var hit = !s || nameAr.includes(s) || nameEn.includes(s) ||
-      String(t.code || '').toLowerCase().includes(s) ||
-      phone.includes(s) || phone2.includes(s) || email.includes(s) || nid.includes(s);
+    var hit = LcSearch.match(s, [t.name, t.name_en, t.code, t.phone, t.phone2, t.email, t.national_id, t.city, t.specialization, t.team]);
     return hit &&
       (!sp || t.specialization === sp) &&
       (!ct || t.city === ct) &&

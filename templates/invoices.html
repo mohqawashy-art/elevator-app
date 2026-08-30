@@ -550,7 +550,7 @@ function switchTab(tab) {
 }
 
 function applyFilters() {
-  const s = (document.getElementById('f-search')?.value || '').toLowerCase();
+  const s = (document.getElementById('f-search')?.value || '');
   const py = document.getElementById('f-pay')?.value || '';
   const st = document.getElementById('f-status')?.value || '';
   const fr = document.getElementById('f-from')?.value || '';
@@ -558,7 +558,7 @@ function applyFilters() {
   filtered = INVOICES.filter(i => {
     if (currentTab !== 'all' && invoiceTabType(i) !== currentTab) return false;
     const stMatch = !st || (st === 'محصل' && isPaidStatus(i.status)) || (st === 'غير محصل' && !isPaidStatus(i.status));
-    return (!s || i.code.toLowerCase().includes(s) || (i.customer||'').includes(s) || (i.contract||'').toLowerCase().includes(s)) &&
+    return LcSearch.match(s, [i.code, i.customer, i.contract, i.description, i.invoice_type, i.notes, i.reference]) &&
       (!py || i.pay_method === py) && stMatch &&
       (!fr || i.invoice_date >= fr) && (!to || i.invoice_date <= to);
   });

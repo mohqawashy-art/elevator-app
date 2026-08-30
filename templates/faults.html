@@ -1043,14 +1043,14 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const s  = (document.getElementById('search-input')?.value||'');
   const cl = document.getElementById('f-client')?.value||'';
   const pr = document.getElementById('f-priority')?.value||'';
   const st = document.getElementById('f-status')?.value||'';
   const cat = document.getElementById('f-category')?.value||'';
   const bl = document.getElementById('filter-billable')?.value||'';
   filtered = FAULTS.filter(f=>
-    (!s  || f.code.toLowerCase().includes(s) || (f.customer||'').includes(s) || (f.fault_type||'').includes(s) || (f.client_report||'').includes(s)) &&
+    LcSearch.match(s, [f.code, f.customer, f.customer_name_en, f.elevator, f.fault_type, f.client_report, f.description, f.technician, f.notes]) &&
     (!cl || f.customer === cl) &&
     faultMatchesPriority(f, pr) &&
     (!st || f.status === st) &&

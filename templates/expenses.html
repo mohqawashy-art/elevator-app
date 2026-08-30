@@ -424,13 +424,13 @@ function renderTable(data) {
 }
 
 function applyFilters() {
-  const s  = (document.getElementById('f-search')?.value || '').toLowerCase();
+  const s  = (document.getElementById('f-search')?.value || '');
   const tp = document.getElementById('f-type')?.value || '';
   const pm = document.getElementById('f-pay')?.value || '';
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = EXPENSES.filter(e =>
-    (!s || e.code.toLowerCase().includes(s) || (e.description || '').includes(s) || (e.responsible || '').includes(s) || (e.created_by || '').toLowerCase().includes(s)) &&
+    LcSearch.match(s, [e.code, e.description, e.expense_type, e.responsible, e.created_by, e.notes, e.reference, e.pay_method]) &&
     (!tp || e.expense_type === tp) &&
     (!pm || e.pay_method === pm) &&
     (!fd || e.expense_date >= fd) &&

@@ -45,9 +45,12 @@
   }
 
   function filterCustomers(customers, q) {
-    var n = norm(q);
-    if (!n) return customers.slice(0, 80);
+    if (!String(q || '').trim()) return customers.slice(0, 80);
     return customers.filter(function (c) {
+      if (global.LcSearch) {
+        return LcSearch.match(q, [c.name, c.name_en, c.code, c.city, c.phone, c.district]);
+      }
+      var n = norm(q);
       return norm(c.name).indexOf(n) >= 0 ||
         norm(c.code).indexOf(n) >= 0 ||
         norm(c.city).indexOf(n) >= 0;

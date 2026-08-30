@@ -597,14 +597,12 @@ function renderTable(data) {
 }
 
 function applyFilters() {
-  const s  = (document.getElementById('f-search')?.value || '').toLowerCase();
+  const s  = (document.getElementById('f-search')?.value || '');
   const st = document.getElementById('f-status')?.value || '';
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = PARTS.filter(p =>
-    (!s || p.code.toLowerCase().includes(s) || (p.customer||'').includes(s) ||
-      (p.contract||'').toLowerCase().includes(s) || (p.description||'').includes(s) ||
-      (p.payment_note||'').includes(s)) &&
+    LcSearch.match(s, [p.code, p.customer, p.customer_name_en, p.contract, p.elevator, p.description, p.payment_note, p.notes, p.technician]) &&
     (!st || p.status === st || (st === 'محصل' && p.status === 'مكتملة')) &&
     (!fd || p.billing_date >= fd) &&
     (!td || p.billing_date <= td)
