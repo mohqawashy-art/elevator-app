@@ -1692,6 +1692,14 @@ def _startup_schema_and_data_sync():
                 db.session.execute(text('ALTER TABLE revenues ADD COLUMN title VARCHAR(300)'))
                 db.session.commit()
                 app.logger.info('Added revenues.title column')
+        if 'contracts' in tables:
+            contract_cols = {c['name'] for c in insp.get_columns('contracts')}
+            if 'install_warranty' not in contract_cols:
+                db.session.execute(text(
+                    'ALTER TABLE contracts ADD COLUMN install_warranty VARCHAR(30)'
+                ))
+                db.session.commit()
+                app.logger.info('Added contracts.install_warranty column')
         if 'settings' in tables:
             settings_cols = {c['name'] for c in insp.get_columns('settings')}
             seal_columns = {
