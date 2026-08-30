@@ -508,6 +508,7 @@ window.__LC_TRANSLATIONS = {
   /* — البحث — */
   'بحث بالكود أو العميل أو الوصف...': 'Search by code, client, or description...',
   'بحث بالعميل أو رقم العملية...': 'Search by client or transaction #...',
+  'بحث بالعميل أو رقم العملية أو البيان...': 'Search by client, transaction #, or title...',
   'بحث بالوصف أو رقم العملية...': 'Search by description or transaction #...',
   'بحث بالعميل أو رقم المستند...': 'Search by client or document #...',
   'بحث بالعميل أو العقد أو البيان...': 'Search by client, contract, or statement...',

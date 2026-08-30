@@ -195,7 +195,7 @@
     },
     revenue: {
       code: 'الكود', customer: 'العميل', contract: 'العقد',
-      revenue_date: 'التاريخ', revenue_type: 'النوع', pay_method: 'طريقة الدفع',
+      revenue_date: 'التاريخ', title: 'البيان', revenue_type: 'النوع', pay_method: 'طريقة الدفع',
       amount: 'المبلغ', tax_amount: 'الضريبة', total: 'الإجمالي', status: 'الحالة',
       reference: 'المرجع', proof_url: 'رابط الإثبات', has_proof: 'يوجد إثبات',
       notes: 'ملاحظات', created_by: 'سجّله'

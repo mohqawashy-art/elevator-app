@@ -1284,6 +1284,7 @@ def revenue_to_js_dict(r):
         'customer': r.customer.name if r.customer else '—',
         'contract': r.contract.code if r.contract else '—',
         'revenue_date': str(r.revenue_date or ''),
+        'title': r.title or '',
         'revenue_type': r.revenue_type or '',
         'pay_method': r.payment_method or '',
         'amount': r.amount or 0,
@@ -1507,6 +1508,7 @@ def _sqlite_legacy_schema_patches():
                 ('parts_billing_id', 'INTEGER'),
                 ('proof_path', 'VARCHAR(300)'),
                 ('account_id', 'INTEGER'),
+                ('title', 'VARCHAR(300)'),
             ],
             'expenses': [
                 ('proof_path', 'VARCHAR(300)'),
@@ -9744,6 +9746,7 @@ def _revenue_from_form(form, existing: Revenue | None = None):
         'invoice_id': invoice_id,
         'parts_billing_id': parts_billing_id,
         'revenue_date': datetime.strptime(form['revenue_date'], '%Y-%m-%d').date(),
+        'title': (form.get('title') or '').strip()[:300],
         'revenue_type': revenue_type,
         'payment_method': form.get('payment_method', ''),
         'amount': amount,

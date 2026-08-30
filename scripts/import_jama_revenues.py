@@ -383,6 +383,7 @@ def import_revenues(
             invoice_id=invoice_id,
             parts_billing_id=parts_billing_id,
             revenue_date=rdate,
+            title=(title or '')[:300],
             revenue_type=rev_type,
             payment_method=_str(_cell(r, 'طريقة الدفع')) or 'كاش',
             amount=amount_ex,

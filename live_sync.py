@@ -429,6 +429,7 @@ def _sync_revenues():
             'customer': r.customer.name if r.customer else '—',
             'contract': r.contract.code if r.contract else '—',
             'revenue_date': str(r.revenue_date or ''),
+            'title': getattr(r, 'title', None) or '',
             'revenue_type': r.revenue_type or '',
             'pay_method': r.payment_method or '',
             'amount': r.amount or 0,

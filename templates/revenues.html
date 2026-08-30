@@ -237,7 +237,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     <div class="filters-bar">
       <div class="search-wrap">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-        <input class="search-input" type="text" id="f-search" placeholder="بحث بالعميل أو رقم العملية..." oninput="applyFilters()">
+          <input class="search-input" type="text" id="f-search" placeholder="بحث بالعميل أو رقم العملية أو البيان..." oninput="applyFilters()">
       </div>
       <div class="filter-group">
         <div class="filter-label">نوع الإيراد</div>
@@ -284,6 +284,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <thead>
             <tr>
               <th class="th-sort" data-sort-col="code">رقم العملية <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="title">البيان <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="customer">العميل / العقد <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="revenue_date">التاريخ <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="revenue_type">نوع الإيراد <span class="sort-ind"></span></th>
@@ -332,6 +333,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="field">
           <label>التاريخ <span>*</span></label>
           <input type="date" lang="en-GB" class="lc-date-input" id="f-date" style="direction:ltr">
+        </div>
+        <div class="field form-full">
+          <label>البيان</label>
+          <input id="f-title" placeholder="عنوان العملية — مثال: تجديد عقد برج الصفا">
         </div>
         <div class="field">
           <label>نوع الإيراد <span>*</span></label>
@@ -525,6 +530,7 @@ function renderTable(data) {
   tbody.innerHTML = pg.rows.map(r=>`
     <tr onclick="viewRevenue(${r.id})">
       <td class="td-code">${escHtml(r.code)}</td>
+      <td>${escHtml(D(r.title || '—'))}</td>
       <td>${escHtml(D(r.customer))}${r.contract && r.contract !== '—' ? ' / ' + escHtml(r.contract) : ''}</td>
       <td class="lc-date">${revFmtDate(r.revenue_date)}</td>
       <td>${D(r.revenue_type)}</td>
@@ -605,7 +611,7 @@ function applyFilters() {
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = REVENUES.filter(r =>
-    (!s || String(r.code || '').toLowerCase().includes(s) || String(r.customer || '').toLowerCase().includes(s) || String(r.created_by || '').toLowerCase().includes(s)) &&
+    (!s || String(r.code || '').toLowerCase().includes(s) || String(r.title || '').toLowerCase().includes(s) || String(r.customer || '').toLowerCase().includes(s) || String(r.created_by || '').toLowerCase().includes(s)) &&
     rowMatchesStatCard(r, activeStatCard) &&
     (!tp || r.revenue_type === tp) &&
     (!pm || r.pay_method === pm) &&
@@ -718,6 +724,8 @@ function applyPendingOpFields(op) {
   if (rt) rt.value = revType;
   const ref = document.getElementById('f-reference');
   if (ref) ref.value = op.code || '';
+  const titleEl = document.getElementById('f-title');
+  if (titleEl && !titleEl.value.trim()) titleEl.value = (op.title || op.description || '').trim();
   const notes = document.getElementById('f-notes');
   if (notes && !notes.value.trim()) notes.value = (op.title || '') + ' — ' + (op.description || '');
   const dateEl = document.getElementById('f-date');
@@ -801,7 +809,7 @@ function openAddModal(preselectedCustomerId, opts) {
   initRevenueClientSelects();
   const cid = preselectedCustomerId || '';
   syncRevenueCustomerSelectors(cid);
-  ['f-reference', 'f-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['f-title', 'f-reference', 'f-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   var proofInp = document.getElementById('f-proof');
   if (proofInp) proofInp.value = '';
   var proofEx = document.getElementById('f-proof-existing');
@@ -847,7 +855,7 @@ function saveRevenue() {
   const hasNewProof = proofInput && proofInput.files && proofInput.files[0];
   const fd = new FormData();
   [['customer_id', 'f-customer-sel'], ['revenue_date', 'f-date'],
-    ['revenue_type', 'f-rev-type'], ['payment_method', 'f-pay-method'],
+    ['title', 'f-title'], ['revenue_type', 'f-rev-type'], ['payment_method', 'f-pay-method'],
     ['amount', 'f-amount'], ['total', 'f-total'], ['tax_pct', 'f-tax-pct'],
     ['status', 'f-status-sel'],
     ['reference', 'f-reference'], ['notes', 'f-notes']
@@ -882,7 +890,7 @@ function editRevenue(id) {
     sel.innerHTML=CUSTOMERS.map(c=>`<option value="${c.id}"${c.id===r.customer_id?' selected':''}>${c.name}</option>`).join('');
   }
   const map={
-    'f-date':r.revenue_date,'f-rev-type':r.revenue_type,
+    'f-date':r.revenue_date,'f-title':r.title,'f-rev-type':r.revenue_type,
     'f-pay-method':r.pay_method,'f-amount':r.amount,
     'f-status-sel':r.status,'f-reference':r.reference,'f-notes':r.notes,
   };
@@ -924,7 +932,7 @@ function editRevenue(id) {
 function viewRevenue(id) {
   const r = REVENUES.find(x=>x.id===id);
   if(!r) return;
-  document.getElementById('view-title').textContent = r.code;
+  document.getElementById('view-title').textContent = r.code + (r.title ? ' — ' + r.title : '');
   document.getElementById('view-body').innerHTML = `
     <div class="fin-summary" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">المبلغ</span><span style="font-family:var(--font-en)">${r.amount.toLocaleString()} ⃁</span></div>
@@ -934,6 +942,7 @@ function viewRevenue(id) {
     <div class="view-grid">
       <div class="view-section">تفاصيل الإيراد</div>
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${r.code}</div></div>
+      <div class="view-item view-full"><div class="view-label">البيان</div><div class="view-val">${escHtml(r.title || '—')}</div></div>
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${r.customer}</div></div>
       <div class="view-item"><div class="view-label">العقد</div><div class="view-val" style="font-family:var(--font-en)">${r.contract}</div></div>
       <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val lc-date">${revFmtDate(r.revenue_date)}</div></div>
