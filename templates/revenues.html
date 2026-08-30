@@ -605,17 +605,14 @@ function onTypeStatusChange() {
 
 function applyFilters() {
   const s = (document.getElementById('f-search')?.value || '').trim();
-  const tp = document.getElementById('f-type')?.value || '';
-  const pm = document.getElementById('f-pay')?.value || '';
-  const st = document.getElementById('f-status')?.value || '';
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = REVENUES.filter(r =>
     LcSearch.match(s, [r.code, r.title, r.customer, r.contract, r.created_by, r.notes, r.reference, r.revenue_type]) &&
     rowMatchesStatCard(r, activeStatCard) &&
-    (!tp || r.revenue_type === tp) &&
-    (!pm || r.pay_method === pm) &&
-    (!st || r.status === st || (st === 'محصل' && r.status === 'محصّل') || (st === 'غير محصل' && r.status === 'غير محصّل')) &&
+    lcAllows('f-type', r.revenue_type) &&
+    lcAllows('f-pay', r.pay_method) &&
+    lcAllows('f-status', r.status, { aliases: { 'محصل': ['محصّل'], 'غير محصل': ['غير محصّل'] } }) &&
     (!fd || r.revenue_date >= fd) &&
     (!td || r.revenue_date <= td)
   );

@@ -1046,10 +1046,10 @@ function clearAllFilters() {
 function updateFilterHint() {
   var parts = [];
   var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').trim();
-  var sp = document.getElementById('filter-spec') && document.getElementById('filter-spec').value || '';
-  var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
-  var st = document.getElementById('filter-status') && document.getElementById('filter-status').value || '';
-  var em = document.getElementById('filter-emergency') && document.getElementById('filter-emergency').value || '';
+  var sp = (window.lcFilterSummary && lcFilterSummary('filter-spec')) || '';
+  var ct = (window.lcFilterSummary && lcFilterSummary('f-city')) || '';
+  var st = (window.lcFilterSummary && lcFilterSummary('filter-status')) || '';
+  var em = (window.lcFilterSummary && lcFilterSummary('filter-emergency')) || '';
   if (s) parts.push('بحث: ' + s);
   if (ct) parts.push('مدينة: ' + ct);
   if (sp) parts.push('تخصص: ' + sp);
@@ -1193,17 +1193,15 @@ function renderTable(data) {
 
 function filterTable() {
   var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').trim();
-  var sp = document.getElementById('filter-spec') && document.getElementById('filter-spec').value || '';
-  var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
-  var st = document.getElementById('filter-status') && document.getElementById('filter-status').value || '';
-  var em = document.getElementById('filter-emergency') && document.getElementById('filter-emergency').value || '';
   filtered = TECHNICIANS.filter(function(t) {
     var hit = LcSearch.match(s, [t.name, t.name_en, t.code, t.phone, t.phone2, t.email, t.national_id, t.city, t.specialization, t.team]);
     return hit &&
-      (!sp || t.specialization === sp) &&
-      (!ct || t.city === ct) &&
-      (!st || techMatchesStatus(t, st)) &&
-      (!em || (em === 'نعم' ? isTechEmergencyOn(t) : !isTechEmergencyOn(t)));
+      lcAllows('filter-spec', t.specialization) &&
+      lcAllows('f-city', t.city) &&
+      lcAllows('filter-status', null, function(st) { return techMatchesStatus(t, st); }) &&
+      lcAllows('filter-emergency', null, function(em) {
+        return em === 'نعم' ? isTechEmergencyOn(t) : !isTechEmergencyOn(t);
+      });
   });
   updateFilterHint();
   if (tablePager) tablePager.resetPage();

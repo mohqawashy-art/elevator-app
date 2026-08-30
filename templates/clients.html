@@ -1005,11 +1005,12 @@ function fillCitySelects(selected) {
   refreshClientModalI18n();
 }
 function allDistricts(cityFilter) {
+  var cities = Array.isArray(cityFilter) ? cityFilter.filter(Boolean) : (cityFilter ? [cityFilter] : []);
   var seen = {}, list = [];
   CUSTOMERS.forEach(function(c) {
     var d = (c.district || '').trim();
     if (!d || seen[d]) return;
-    if (cityFilter && c.city !== cityFilter) return;
+    if (cities.length && cities.indexOf(c.city) < 0) return;
     seen[d] = 1;
     list.push(d);
   });
@@ -1018,13 +1019,17 @@ function allDistricts(cityFilter) {
 function fillDistrictFilter(keepSelected) {
   var sel = document.getElementById('f-filter-district');
   if (!sel) return;
-  var city = (document.getElementById('f-city') || {}).value || '';
-  var prev = keepSelected ? (sel.value || '') : '';
-  var districts = allDistricts(city);
+  var cityEl = document.getElementById('f-city');
+  var cities = window.LiftCoreFilter ? LiftCoreFilter.values(cityEl) : [((cityEl || {}).value || '')].filter(Boolean);
+  var prev = keepSelected
+    ? (window.LiftCoreFilter ? LiftCoreFilter.values(sel) : [(sel.value || '')].filter(Boolean))
+    : [];
+  var districts = allDistricts(cities);
   sel.innerHTML = '<option value="">' + (typeof lcDisp === 'function' ? lcDisp('كل الأحياء') : 'كل الأحياء') + '</option>' +
     districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
-  if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
-    sel.value = prev;
+  if (window.LiftCoreFilter) LiftCoreFilter.set(sel, prev);
+  else if (prev[0] && [].some.call(sel.options, function(o) { return o.value === prev[0]; })) {
+    sel.value = prev[0];
   }
 }
 function onCityFilterChange() {
@@ -1500,17 +1505,12 @@ function renderTable(data) {
 
 function filterTable() {
   var s  = (document.getElementById('search-input').value||'');
-  var ct = document.getElementById('f-city').value||'';
-  var distSel = document.getElementById('f-filter-district');
-  var dist = distSel ? (distSel.value || '') : '';
-  var cs = document.getElementById('f-contract').value||'';
-  var st = document.getElementById('f-status').value||'';
   filtered = CUSTOMERS.filter(function(c) {
     return LcSearch.match(s, [c.name, c.name_en, c.code, c.phone, c.phone2, customerAllPhones(c), c.city, c.district, c.address, c.contact]) &&
-           (!ct || c.city===ct) &&
-           (!dist || (c.district || '').trim() === dist) &&
-           (!cs || c.contract_status===cs) &&
-           (!st || clientAccountStatus(c)===st);
+           lcAllows('f-city', c.city) &&
+           lcAllows('f-filter-district', (c.district || '').trim()) &&
+           lcAllows('f-contract', c.contract_status) &&
+           lcAllows('f-status', clientAccountStatus(c));
   });
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);

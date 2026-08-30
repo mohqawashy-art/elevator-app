@@ -446,12 +446,16 @@ function hookReportPagination(reset) {
     });
 
     selects.forEach(function (sel) {
+      if (global.LiftCoreFilter) LiftCoreFilter.upgrade(sel);
       if (sel.dataset.liveHooked) return;
       sel.addEventListener('change', function () {
         if (typeof global.filterTable === 'function') global.filterTable();
       });
       sel.dataset.liveHooked = '1';
     });
+    if (global.LiftCoreFilter) {
+      selects.forEach(function (sel) { LiftCoreFilter.refresh(sel); });
+    }
   }
 
   function rowPassesFilters(reportId, row) {
@@ -466,16 +470,20 @@ function hookReportPagination(reset) {
     }
 
     var citySel = document.getElementById('f-city');
-    if (citySel && citySel.value && row.city !== citySel.value) return false;
+    if (citySel && global.lcAllows && !global.lcAllows(citySel, row.city)) return false;
+    if (citySel && !global.lcAllows && citySel.value && row.city !== citySel.value) return false;
 
     var statusSel = document.getElementById('f-status');
-    if (statusSel && statusSel.value && row.status !== statusSel.value) return false;
+    if (statusSel && global.lcAllows && !global.lcAllows(statusSel, row.status)) return false;
+    if (statusSel && !global.lcAllows && statusSel.value && row.status !== statusSel.value) return false;
 
     var contractSel = document.getElementById('f-contract-status');
-    if (contractSel && contractSel.value && row.contract_status !== contractSel.value) return false;
+    if (contractSel && global.lcAllows && !global.lcAllows(contractSel, row.contract_status)) return false;
+    if (contractSel && !global.lcAllows && contractSel.value && row.contract_status !== contractSel.value) return false;
 
     var invSel = document.getElementById('f-inv-status');
-    if (invSel && invSel.value && row.inv_status !== invSel.value) return false;
+    if (invSel && global.lcAllows && !global.lcAllows(invSel, row.inv_status)) return false;
+    if (invSel && !global.lcAllows && invSel.value && row.inv_status !== invSel.value) return false;
 
     var dateField = REPORT_DATE_FIELD[reportId];
     if (dateField && row[dateField]) {

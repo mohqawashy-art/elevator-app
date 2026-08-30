@@ -915,11 +915,12 @@ function fillElevTypeFilter() {
 }
 
 function allElevDistricts(cityFilter) {
+  var cities = Array.isArray(cityFilter) ? cityFilter.filter(Boolean) : (cityFilter ? [cityFilter] : []);
   var seen = {}, list = [];
   ELEVATORS.forEach(function(e) {
     var d = elevDistrict(e);
     if (!d || seen[d]) return;
-    if (cityFilter && e.city !== cityFilter) return;
+    if (cities.length && cities.indexOf(e.city) < 0) return;
     seen[d] = 1;
     list.push(d);
   });
@@ -929,13 +930,17 @@ function allElevDistricts(cityFilter) {
 function fillDistrictFilter(keepSelected) {
   var sel = document.getElementById('f-filter-district');
   if (!sel) return;
-  var city = (document.getElementById('f-city') || {}).value || '';
-  var prev = keepSelected ? (sel.value || '') : '';
-  var districts = allElevDistricts(city);
+  var cityEl = document.getElementById('f-city');
+  var cities = window.LiftCoreFilter ? LiftCoreFilter.values(cityEl) : [((cityEl || {}).value || '')].filter(Boolean);
+  var prev = keepSelected
+    ? (window.LiftCoreFilter ? LiftCoreFilter.values(sel) : [(sel.value || '')].filter(Boolean))
+    : [];
+  var districts = allElevDistricts(cities);
   sel.innerHTML = '<option value="">' + (typeof lcDisp === 'function' ? lcDisp('كل الأحياء') : 'كل الأحياء') + '</option>' +
     districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
-  if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
-    sel.value = prev;
+  if (window.LiftCoreFilter) LiftCoreFilter.set(sel, prev);
+  else if (prev[0] && [].some.call(sel.options, function(o) { return o.value === prev[0]; })) {
+    sel.value = prev[0];
   }
 }
 
@@ -1144,19 +1149,14 @@ function renderTable(data) {
 
 function filterTable() {
   var s = (document.getElementById('search-input').value || '');
-  var ct = document.getElementById('f-client').value || '';
-  var tp = document.getElementById('f-type').value || '';
-  var st = document.getElementById('f-status').value || '';
-  var cy = document.getElementById('f-city').value || '';
-  var dist = (document.getElementById('f-filter-district') || {}).value || '';
   filtered = ELEVATORS.filter(function(e) {
     var ed = elevDistrict(e);
     return LcSearch.match(s, [e.code, e.customer, e.customer_name_en, e.building, ed, e.city, e.elev_type, e.door_type, e.brand, e.address, e.notes]) &&
-      (!ct || e.customer === ct) &&
-      (!tp || e.elev_type === tp) &&
-      (!st || e.status === st) &&
-      (!cy || e.city === cy) &&
-      (!dist || ed === dist);
+      lcAllows('f-client', e.customer) &&
+      lcAllows('f-type', e.elev_type) &&
+      lcAllows('f-status', e.status) &&
+      lcAllows('f-city', e.city) &&
+      lcAllows('f-filter-district', ed);
   });
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);

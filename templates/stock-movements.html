@@ -440,16 +440,13 @@ function renderTable(data) {
 
 function applyFilters() {
   const s = (document.getElementById('f-search')?.value || '').trim();
-  const dr = document.getElementById('f-dir')?.value || '';
-  const tp = document.getElementById('f-type')?.value || '';
-  const itemId = document.getElementById('f-item')?.value || '';
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = MOVEMENTS.filter(m =>
     LcSearch.match(s, [m.item_name, m.item_code, m.code, m.technician, m.movement_type, m.notes, m.reference]) &&
-    (!dr || m.direction === dr) &&
-    (!tp || m.movement_type === tp) &&
-    (!itemId || String(m.item_id) === itemId) &&
+    lcAllows('f-dir', m.direction) &&
+    lcAllows('f-type', m.movement_type) &&
+    lcAllows('f-item', String(m.item_id)) &&
     (!fd || m.movement_date >= fd) &&
     (!td || m.movement_date <= td)
   );

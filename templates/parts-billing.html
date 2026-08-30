@@ -598,12 +598,11 @@ function renderTable(data) {
 
 function applyFilters() {
   const s  = (document.getElementById('f-search')?.value || '');
-  const st = document.getElementById('f-status')?.value || '';
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = PARTS.filter(p =>
     LcSearch.match(s, [p.code, p.customer, p.customer_name_en, p.contract, p.elevator, p.description, p.payment_note, p.notes, p.technician]) &&
-    (!st || p.status === st || (st === 'محصل' && p.status === 'مكتملة')) &&
+    lcAllows('f-status', p.status, { aliases: { 'محصل': ['مكتملة'] } }) &&
     (!fd || p.billing_date >= fd) &&
     (!td || p.billing_date <= td)
   );

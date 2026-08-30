@@ -456,12 +456,13 @@ function renderTable(data) {
 
 function applyFilters() {
   const s = (document.getElementById('f-search')?.value || '').trim();
-  const cat = document.getElementById('f-cat')?.value || '';
-  const stock = document.getElementById('f-stock')?.value || '';
   filtered = ITEMS.filter(i => {
     const matchSearch = LcSearch.match(s, [i.name, i.name_en, i.code, i.category, i.unit, i.notes]);
-    const matchCat = !cat || i.category === cat;
-    const matchStock = !stock || (stock === 'low' && (i.order_status === 'منخفض' || i.order_status === 'نافد')) || (stock === 'ok' && i.order_status === 'كافي');
+    const matchCat = lcAllows('f-cat', i.category);
+    const matchStock = lcAllows('f-stock', null, function(stock) {
+      return (stock === 'low' && (i.order_status === 'منخفض' || i.order_status === 'نافد')) ||
+        (stock === 'ok' && i.order_status === 'كافي');
+    });
     return matchSearch && matchCat && matchStock;
   });
   if (tablePager) tablePager.resetPage();

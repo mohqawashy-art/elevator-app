@@ -598,7 +598,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   </div>
 </div>
 
-<script src="/static/ops-common.js"></script>
+<script src="/static/ops-common.js?v=4"></script>
 
 <script>
 var FAULTS = {{ faults_js|tojson }};
@@ -938,11 +938,11 @@ function clearAllFaultFilters() {
 function updateFaultFilterHint() {
   const parts = [];
   const s = (document.getElementById('search-input')?.value || '').trim();
-  const cl = document.getElementById('f-client')?.value || '';
-  const pr = document.getElementById('f-priority')?.value || '';
-  const st = document.getElementById('f-status')?.value || '';
-  const cat = document.getElementById('f-category')?.value || '';
-  const bl = document.getElementById('filter-billable')?.value || '';
+  const cl = (window.lcFilterSummary && lcFilterSummary('f-client')) || '';
+  const pr = (window.lcFilterSummary && lcFilterSummary('f-priority')) || '';
+  const st = (window.lcFilterSummary && lcFilterSummary('f-status')) || '';
+  const cat = (window.lcFilterSummary && lcFilterSummary('f-category')) || '';
+  const bl = (window.lcFilterSummary && lcFilterSummary('filter-billable')) || '';
   if (s) parts.push('بحث: ' + s);
   if (cl) parts.push('عميل: ' + cl);
   if (pr) parts.push('أولوية: ' + pr);
@@ -1044,18 +1044,15 @@ function renderTable(data) {
 
 function filterTable() {
   const s  = (document.getElementById('search-input')?.value||'');
-  const cl = document.getElementById('f-client')?.value||'';
-  const pr = document.getElementById('f-priority')?.value||'';
-  const st = document.getElementById('f-status')?.value||'';
-  const cat = document.getElementById('f-category')?.value||'';
-  const bl = document.getElementById('filter-billable')?.value||'';
   filtered = FAULTS.filter(f=>
     LcSearch.match(s, [f.code, f.customer, f.customer_name_en, f.elevator, f.fault_type, f.client_report, f.description, f.technician, f.notes]) &&
-    (!cl || f.customer === cl) &&
-    faultMatchesPriority(f, pr) &&
-    (!st || f.status === st) &&
-    (!cat || f.fault_type === cat) &&
-    (!bl || (bl==='yes' ? f.needs_parts : !f.needs_parts))
+    lcAllows('f-client', f.customer) &&
+    lcAllows('f-priority', null, function(pr) { return faultMatchesPriority(f, pr); }) &&
+    lcAllows('f-status', f.status) &&
+    lcAllows('f-category', f.fault_type) &&
+    lcAllows('filter-billable', null, function(bl) {
+      return bl === 'yes' ? f.needs_parts : !f.needs_parts;
+    })
   );
   updateFaultFilterHint();
   if (tablePager) tablePager.resetPage();

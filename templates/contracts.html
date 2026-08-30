@@ -1188,12 +1188,13 @@ function allContractDistricts() {
 function fillDistrictFilter() {
   var sel = document.getElementById('f-filter-district');
   if (!sel) return;
-  var prev = sel.value || '';
+  var prev = window.LiftCoreFilter ? LiftCoreFilter.values(sel) : [(sel.value || '')].filter(Boolean);
   var districts = allContractDistricts();
   sel.innerHTML = '<option value="">' + (typeof lcDisp === 'function' ? lcDisp('كل الأحياء') : 'كل الأحياء') + '</option>' +
     districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
-  if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
-    sel.value = prev;
+  if (window.LiftCoreFilter) LiftCoreFilter.set(sel, prev);
+  else if (prev[0] && [].some.call(sel.options, function(o) { return o.value === prev[0]; })) {
+    sel.value = prev[0];
   }
 }
 
@@ -1360,18 +1361,13 @@ function renderTable(data) {
 
 function filterTable() {
   const s   = (document.getElementById('search-input')?.value||'');
-  const cl  = document.getElementById('f-client')?.value||'';
-  const dist = document.getElementById('f-filter-district')?.value||'';
-  const tp  = document.getElementById('f-type')?.value||'';
-  const st  = document.getElementById('f-status')?.value||'';
-  const inv = document.getElementById('f-invoice')?.value||'';
   filtered = CONTRACTS.filter(c=>
     LcSearch.match(s, [c.code, c.customer, c.customer_name_en, contractBuildingName(c), contractDistrict(c), c.contract_type, c.notes]) &&
-    (!cl  || c.customer === cl) &&
-    (!dist || contractDistrict(c) === dist) &&
-    (!tp  || c.contract_type === tp) &&
-    (!st  || getContractDisplayStatus(c) === st) &&
-    (!inv || c.inv_status === inv)
+    lcAllows('f-client', c.customer) &&
+    lcAllows('f-filter-district', contractDistrict(c)) &&
+    lcAllows('f-type', c.contract_type) &&
+    lcAllows('f-status', getContractDisplayStatus(c)) &&
+    lcAllows('f-invoice', c.inv_status)
   );
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);

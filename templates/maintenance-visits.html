@@ -728,7 +728,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <script src="/static/liftcore_map.js?v=2"></script>
-<script src="/static/ops-common.js?v=3"></script>
+<script src="/static/ops-common.js?v=4"></script>
 
 <script>
 const OPS_TODAY = {{ ops_today|tojson }};
@@ -1025,18 +1025,14 @@ function filterTable() {
     updateVisitFilterHint();
   }
   const s  = (document.getElementById('search-input')?.value||'');
-  const cl = document.getElementById('f-client')?.value||'';
-  const tc = document.getElementById('f-tech')?.value||'';
-  const tp = document.getElementById('f-type')?.value||'';
-  const st = document.getElementById('f-status')?.value||'';
   const fd = document.getElementById('f-date-from')?.value||'';
   const td = document.getElementById('f-date-to')?.value||'';
   filtered = VISITS.filter(v=>
     LcSearch.match(s, [v.code, v.customer, v.customer_name_en, v.elevator, v.technician, v.visit_type, v.works_done, v.notes, v.building]) &&
-    (!cl || v.customer === cl) &&
-    (!tc || v.technician === tc) &&
-    (!tp || v.visit_type === tp) &&
-    (!st || v.status === st || (st === 'جاري التنفيذ' && (v.status === 'جارية' || v.status === 'مُرسلة للفني'))) &&
+    lcAllows('f-client', v.customer) &&
+    lcAllows('f-tech', v.technician) &&
+    lcAllows('f-type', v.visit_type) &&
+    lcAllows('f-status', v.status, { aliases: { 'جاري التنفيذ': ['جارية', 'مُرسلة للفني'] } }) &&
     (!fd || v.visit_date >= fd) &&
     (!td || v.visit_date <= td)
   );

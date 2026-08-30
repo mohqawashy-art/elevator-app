@@ -551,15 +551,15 @@ function switchTab(tab) {
 
 function applyFilters() {
   const s = (document.getElementById('f-search')?.value || '');
-  const py = document.getElementById('f-pay')?.value || '';
-  const st = document.getElementById('f-status')?.value || '';
   const fr = document.getElementById('f-from')?.value || '';
   const to = document.getElementById('f-to')?.value || '';
   filtered = INVOICES.filter(i => {
     if (currentTab !== 'all' && invoiceTabType(i) !== currentTab) return false;
-    const stMatch = !st || (st === 'محصل' && isPaidStatus(i.status)) || (st === 'غير محصل' && !isPaidStatus(i.status));
     return LcSearch.match(s, [i.code, i.customer, i.contract, i.description, i.invoice_type, i.notes, i.reference]) &&
-      (!py || i.pay_method === py) && stMatch &&
+      lcAllows('f-pay', i.pay_method) &&
+      lcAllows('f-status', null, function(st) {
+        return (st === 'محصل' && isPaidStatus(i.status)) || (st === 'غير محصل' && !isPaidStatus(i.status));
+      }) &&
       (!fr || i.invoice_date >= fr) && (!to || i.invoice_date <= to);
   });
   if (tablePager) tablePager.resetPage();

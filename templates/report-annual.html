@@ -506,6 +506,6 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 function setLang(l){if(window.LiftCoreI18n&&window.LiftCoreI18n.setLang){window.LiftCoreI18n.setLang(l);return;}document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');var a=document.getElementById('btn-ar'),e=document.getElementById('btn-en');if(a)a.classList.toggle('active',l==='ar');if(e)e.classList.toggle('active',l==='en');}
 </script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=10"></script>
 </body>
 </html>

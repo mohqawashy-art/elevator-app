@@ -53,6 +53,7 @@
     '.form-section-title', '.modal-title',
     '.alert-expiry span', '.table-info', '.page-info',
     '.filter-select option',
+    '.lc-filter-multi-item span',
     '.legend-item', '.alert-chip', '.tab', 'label', 'th',
   ].join(',');
 

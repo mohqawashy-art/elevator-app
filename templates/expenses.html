@@ -425,14 +425,12 @@ function renderTable(data) {
 
 function applyFilters() {
   const s  = (document.getElementById('f-search')?.value || '');
-  const tp = document.getElementById('f-type')?.value || '';
-  const pm = document.getElementById('f-pay')?.value || '';
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = EXPENSES.filter(e =>
     LcSearch.match(s, [e.code, e.description, e.expense_type, e.responsible, e.created_by, e.notes, e.reference, e.pay_method]) &&
-    (!tp || e.expense_type === tp) &&
-    (!pm || e.pay_method === pm) &&
+    lcAllows('f-type', e.expense_type) &&
+    lcAllows('f-pay', e.pay_method) &&
     (!fd || e.expense_date >= fd) &&
     (!td || e.expense_date <= td)
   );
