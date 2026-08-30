@@ -2137,6 +2137,43 @@ def complete_field_fault(
 
 
 PARTS_JSON_PREFIX = 'PARTS_JSON:'
+COMPANY_ACCOUNT_STATUS = 'على حساب الشركة'
+
+
+def parts_line_discount(ln: dict) -> float:
+    qty = float(ln.get('qty') or 0)
+    price = float(ln.get('unit_price') or 0)
+    gross = round(qty * price, 2)
+    disc = round(float(ln.get('discount') or 0), 2)
+    if disc < 0:
+        disc = 0.0
+    if disc > gross:
+        disc = gross
+    return disc
+
+
+def parts_line_net(ln: dict) -> float:
+    qty = float(ln.get('qty') or 0)
+    price = float(ln.get('unit_price') or 0)
+    gross = round(qty * price, 2)
+    return round(gross - parts_line_discount(ln), 2)
+
+
+def parts_lines_totals(lines: list[dict]) -> tuple[float, float, float]:
+    sell = cost = disc = 0.0
+    for ln in lines or []:
+        qty = float(ln.get('qty') or 0)
+        sell += parts_line_net(ln)
+        disc += parts_line_discount(ln)
+        cost += qty * float(ln.get('cost_price') or 0)
+    return round(sell, 2), round(cost, 2), round(disc, 2)
+
+
+def apply_parts_company_account_status(pb: PartsBilling) -> None:
+    if (pb.sell_price or 0) <= 0.01:
+        pb.status = COMPANY_ACCOUNT_STATUS
+    elif (pb.status or '') == COMPANY_ACCOUNT_STATUS:
+        pb.status = 'غير محصل'
 
 
 def parts_billing_notes_display(notes: str | None) -> str:
@@ -2177,27 +2214,35 @@ def parse_fault_parts_lines(raw: str | None) -> list[dict]:
         qty = float(row.get('qty') or 1)
         unit_price = float(row.get('unit_price') or 0)
         cost_price = float(row.get('cost_price') or 0)
+        discount = float(row.get('discount') or 0)
         if item_id not in (None, '', 0, '0') and not cost_price:
             item = tenant_query(InventoryItem).filter_by(id=int(item_id)).first()
             if item:
                 cost_price = float(item.buy_price or 0)
         if not name or qty <= 0:
             continue
-        lines.append({
+        parsed = {
             'item_id': int(item_id) if item_id not in (None, '', 0, '0') else None,
             'name': name,
             'qty': qty,
             'unit_price': unit_price,
             'cost_price': cost_price,
-        })
+            'discount': discount,
+        }
+        parsed['discount'] = parts_line_discount(parsed)
+        lines.append(parsed)
     return lines
 
 
 def format_fault_parts_description(lines: list[dict]) -> str:
-    return '\n'.join(
-        f"{ln['qty']}× {ln['name']} — {ln['unit_price']:.2f} \u20C1"
-        for ln in lines
-    )
+    rows = []
+    for ln in lines:
+        disc = parts_line_discount(ln)
+        text = f"{ln['qty']}× {ln['name']} — {ln['unit_price']:.2f} \u20C1"
+        if disc:
+            text += f' (خصم {disc:.2f})'
+        rows.append(text)
+    return '\n'.join(rows)
 
 
 def parts_billing_invoice_lines(pb: PartsBilling | None) -> list[dict]:
@@ -2205,14 +2250,16 @@ def parts_billing_invoice_lines(pb: PartsBilling | None) -> list[dict]:
     if not pb:
         return []
 
-    def _row(name: str, qty: float, unit_price: float) -> dict:
+    def _row(name: str, qty: float, unit_price: float, discount: float = 0) -> dict:
         q = float(qty or 1)
         u = float(unit_price or 0)
+        d = parts_line_discount({'qty': q, 'unit_price': u, 'discount': discount})
         return {
             'name': name.strip(),
             'qty': q,
             'unit_price': round(u, 2),
-            'total': round(q * u, 2),
+            'discount': round(d, 2),
+            'total': round(q * u - d, 2),
         }
 
     if pb.notes and str(pb.notes).startswith(PARTS_JSON_PREFIX):
@@ -2228,8 +2275,9 @@ def parts_billing_invoice_lines(pb: PartsBilling | None) -> list[dict]:
                     name = item.name if item else ''
                 qty = float(row.get('qty') or 1)
                 unit_price = float(row.get('unit_price') or 0)
+                discount = float(row.get('discount') or 0)
                 if name and qty > 0:
-                    rows.append(_row(name, qty, unit_price))
+                    rows.append(_row(name, qty, unit_price, discount))
             if rows:
                 return rows
         except (json.JSONDecodeError, TypeError, ValueError):
@@ -2307,13 +2355,15 @@ def apply_parts_billing_inventory(
     *,
     user_notes: str = '',
 ) -> None:
-    sell = round(sum(ln['qty'] * ln['unit_price'] for ln in lines), 2)
-    cost = round(sum(ln['qty'] * ln['cost_price'] for ln in lines), 2)
+    sell, cost, _disc = parts_lines_totals(lines)
     pb.description = format_fault_parts_description(lines)
     pb.cost_price = cost
     pb.sell_price = sell
     pb.profit = round(sell - cost, 2)
+    apply_parts_company_account_status(pb)
     label = (user_notes or '').strip()
+    if pb.status == COMPANY_ACCOUNT_STATUS and not label:
+        label = COMPANY_ACCOUNT_STATUS
     pb.notes = PARTS_JSON_PREFIX + json.dumps(
         {'lines': lines, 'label': label},
         ensure_ascii=False,
@@ -2347,8 +2397,7 @@ def apply_fault_parts_billing(
 ) -> PartsBilling | None:
     if not lines:
         return None
-    sell = round(sum(ln['qty'] * ln['unit_price'] for ln in lines), 2)
-    cost = round(sum(ln['qty'] * ln['cost_price'] for ln in lines), 2)
+    sell, cost, _disc = parts_lines_totals(lines)
     elev = fault.elevator
     cust = elev.customer if elev else None
     pb = tenant_query(PartsBilling).filter_by(fault_id=fault.id).order_by(PartsBilling.id.desc()).first()
@@ -2366,8 +2415,10 @@ def apply_fault_parts_billing(
     pb.sell_price = sell
     pb.profit = round(sell - cost, 2)
     pb.status = 'غير محصل'
+    apply_parts_company_account_status(pb)
+    notes_label = COMPANY_ACCOUNT_STATUS if pb.status == COMPANY_ACCOUNT_STATUS else 'جاهز للفوترة'
     pb.notes = PARTS_JSON_PREFIX + json.dumps(
-        {'lines': lines, 'label': 'جاهز للفوترة'},
+        {'lines': lines, 'label': notes_label},
         ensure_ascii=False,
     )
     from inventory_stock import sync_entity_parts_stock

@@ -9493,6 +9493,7 @@ def _parse_reported_at(raw: str | None):
 
 def _apply_fault_billing_from_form(fault, form, *, is_new: bool = False):
     from operations import (
+        COMPANY_ACCOUNT_STATUS,
         apply_fault_parts_billing,
         clear_fault_parts_billing,
         parse_fault_parts_lines,
@@ -9504,9 +9505,11 @@ def _apply_fault_billing_from_form(fault, form, *, is_new: bool = False):
         fault.needs_parts = True
         fault.billed = False
         if lines:
-            apply_fault_parts_billing(
+            pb = apply_fault_parts_billing(
                 fault, lines, technician_id=fault.technician_id,
             )
+            if pb and (pb.status or '') == COMPANY_ACCOUNT_STATUS:
+                fault.billed = True
         elif not is_new:
             clear_fault_parts_billing(fault.id)
     else:

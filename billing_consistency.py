@@ -99,7 +99,10 @@ def refresh_parts_cache(pb: PartsBilling) -> bool:
     stored = _round_money(pb.paid_amount or 0)
     canonical = from_revenues if from_revenues > 0.01 else stored
     total = _round_money(pb.sell_price or 0)
-    if canonical >= total - 0.01 and total > 0:
+    if total <= 0.01:
+        from operations import COMPANY_ACCOUNT_STATUS
+        status = COMPANY_ACCOUNT_STATUS
+    elif canonical >= total - 0.01:
         status = 'محصل'
     elif canonical > 0.01:
         status = 'غير محصل'

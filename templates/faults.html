@@ -160,6 +160,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap;vertical-align:
 .badge-medium{background:rgba(224,144,48,.12);color:var(--warning)}
 .badge-low{background:rgba(42,127,255,.12);color:var(--accent)}
 .badge-billable{background:rgba(200,160,85,.15);color:var(--gold);border:1px solid rgba(200,160,85,.3)}
+.badge-blue{background:rgba(42,127,255,.12);color:var(--accent)}
 
 .table-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px}
 .table-info{font-size:12px;color:var(--text3)}
@@ -178,7 +179,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap;vertical-align:
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:860px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:980px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
 .modal-overlay.open .modal{transform:translateY(0)}
 .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-title{font-size:15px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px}
@@ -501,9 +502,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <label>نوع الفوترة</label>
             <select id="fault-billable-sel" onchange="toggleBillableParts()">
               <option value="no">لا — ضمن العقد (بدون قطع غيار)</option>
-              <option value="yes">نعم — قابل للفوترة (يوجد قطع غيار)</option>
+              <option value="yes">نعم — يوجد قطع غيار (فوترة أو خصم على حساب الشركة)</option>
             </select>
-            <span class="field-hint">عند وجود قطع غيار خارج العقد يُسجَّل البيان ويصبح جاهزاً للفوترة</span>
+            <span class="field-hint">للتركيب على حساب الشركة: سجّل القطع ثم اضغط «على حساب الشركة» في الخصم</span>
           </div>
         </div>
         <div id="fault-parts-panel" class="fault-parts-panel" style="display:none">
@@ -511,19 +512,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table class="fault-parts-table">
             <thead>
               <tr>
-                <th style="width:28%">الصنف / القطعة</th>
-                <th style="width:22%">اسم القطعة</th>
+                <th style="width:24%">الصنف / القطعة</th>
+                <th style="width:18%">اسم القطعة</th>
                 <th style="width:10%">الكمية</th>
                 <th style="width:14%">سعر الوحدة</th>
-                <th style="width:14%">الإجمالي</th>
+                <th style="width:12%">خصم</th>
+                <th style="width:14%">الصافي</th>
                 <th style="width:6%"></th>
               </tr>
             </thead>
             <tbody id="fault-parts-body"></tbody>
           </table>
           <button type="button" class="btn btn-secondary btn-sm fault-parts-add" onclick="addFaultPartRow()">+ إضافة قطعة</button>
+          <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;margin-right:8px" onclick="applyFaultCompanyAccount()">على حساب الشركة</button>
           <div class="fault-parts-total">
-            <span>إجمالي قطع الغيار (جاهز للفوترة)</span>
+            <span>صافي المطلوب من العميل</span>
             <span class="fault-parts-total-val" id="fault-parts-total">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
           </div>
         </div>
@@ -810,13 +813,14 @@ function inventoryItemOptions(selectedId) {
 function addFaultPartRow(data) {
   const tbody = document.getElementById('fault-parts-body');
   if (!tbody) return;
-  const row = data || { item_id: '', name: '', qty: 1, unit_price: '', cost_price: 0 };
+  const row = data || { item_id: '', name: '', qty: 1, unit_price: '', cost_price: 0, discount: 0 };
   const tr = document.createElement('tr');
   tr.innerHTML =
     `<td><select class="part-item-sel">${inventoryItemOptions(row.item_id)}</select></td>` +
     `<td><input type="text" class="part-name" placeholder="اسم القطعة" value="${(row.name || '').replace(/"/g, '&quot;')}"></td>` +
     `<td><input type="number" class="part-qty" min="1" step="1" value="${row.qty || 1}" style="direction:ltr"></td>` +
     `<td><input type="number" class="part-price" min="0" step="0.01" placeholder="0.00" value="${row.unit_price !== '' && row.unit_price != null ? row.unit_price : ''}" style="direction:ltr"></td>` +
+    `<td><input type="number" class="part-discount" min="0" step="0.01" placeholder="0" value="${row.discount ? row.discount : ''}" style="direction:ltr" title="خصم"></td>` +
     `<td><input type="text" class="part-row-total" readonly style="direction:ltr;font-family:var(--font-en)"></td>` +
     `<td><button type="button" class="btn btn-danger btn-sm btn-icon part-del" title="حذف">×</button></td>`;
   tbody.appendChild(tr);
@@ -825,7 +829,7 @@ function addFaultPartRow(data) {
   const sel = tr.querySelector('.part-item-sel');
   const nameEl = tr.querySelector('.part-name');
   if (sel) sel.addEventListener('change', () => onFaultPartItemChange(tr));
-  tr.querySelectorAll('.part-qty,.part-price').forEach(inp => inp.addEventListener('input', calcFaultPartsTotal));
+  tr.querySelectorAll('.part-qty,.part-price,.part-discount').forEach(inp => inp.addEventListener('input', calcFaultPartsTotal));
   tr.querySelector('.part-del')?.addEventListener('click', () => { tr.remove(); calcFaultPartsTotal(); });
   if (row.item_id) onFaultPartItemChange(tr, true);
   else if (row.name) nameEl.readOnly = false;
@@ -857,7 +861,11 @@ function calcFaultPartsTotal() {
   document.querySelectorAll('#fault-parts-body tr').forEach(tr => {
     const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
     const price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
-    const rowTotal = qty * price;
+    let disc = parseFloat(tr.querySelector('.part-discount')?.value) || 0;
+    const gross = qty * price;
+    if (disc < 0) disc = 0;
+    if (disc > gross) disc = gross;
+    const rowTotal = gross - disc;
     const rt = tr.querySelector('.part-row-total');
     if (rt) rt.value = rowTotal.toFixed(2);
     total += rowTotal;
@@ -866,16 +874,27 @@ function calcFaultPartsTotal() {
   if (el) setMoneyEl(el, total, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function applyFaultCompanyAccount() {
+  document.querySelectorAll('#fault-parts-body tr').forEach(function (tr) {
+    const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
+    const price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
+    const discEl = tr.querySelector('.part-discount');
+    if (discEl) discEl.value = (qty * price).toFixed(2);
+  });
+  calcFaultPartsTotal();
+}
+
 function collectFaultParts() {
   const lines = [];
   document.querySelectorAll('#fault-parts-body tr').forEach(tr => {
     const name = (tr.querySelector('.part-name')?.value || '').trim();
     const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
     const unit_price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
+    const discount = parseFloat(tr.querySelector('.part-discount')?.value) || 0;
     const item_id = tr.dataset.itemId || null;
     const cost_price = parseFloat(tr.dataset.costPrice) || 0;
     if (name && qty > 0) {
-      lines.push({ item_id: item_id ? Number(item_id) : null, name, qty, unit_price, cost_price });
+      lines.push({ item_id: item_id ? Number(item_id) : null, name, qty, unit_price, cost_price, discount });
     }
   });
   return lines;
@@ -913,6 +932,38 @@ const PRIORITY_BADGE = {
   'حرجة':'badge-expired','عالية':'badge-pending','عاجلة':'badge-pending',
   'متوسطة':'badge-active','عادية':'badge-active','منخفضة':'badge-active'
 };
+
+function faultPartsOnCompanyAccount(f) {
+  const lines = (f && f.parts_lines) || [];
+  if (!lines.length) return false;
+  return lines.every(function (p) {
+    const gross = (Number(p.qty) || 0) * (Number(p.unit_price) || 0);
+    const disc = Number(p.discount) || 0;
+    return (gross - disc) <= 0.01;
+  });
+}
+
+function faultBillingBadgeHtml(f) {
+  const disp = window.lcDisp || function (s) { return s; };
+  if (!f.needs_parts) {
+    return '<span class="badge badge-cancelled">' + disp('ضمن العقد') + '</span>';
+  }
+  if (faultPartsOnCompanyAccount(f)) {
+    return '<span class="badge badge-blue">' + disp('على حساب الشركة') + '</span>';
+  }
+  return '<span class="badge badge-billable">' + disp('قابل للفوترة') + '</span>';
+}
+
+function formatFaultPartLine(p) {
+  const price = Number(p.unit_price || 0).toFixed(2);
+  const disc = Number(p.discount) || 0;
+  let html = (p.qty || 0) + '× ' + (p.name || '') + ' — ' + price +
+    ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>';
+  if (disc > 0.01) {
+    html += ' (خصم ' + disc.toFixed(2) + ')';
+  }
+  return html;
+}
 
 function faultMatchesPriority(f, pr) {
   if (!pr) return true;
@@ -1018,7 +1069,7 @@ function renderTable(data) {
       <td>${formatResponseTimeCell(f.response_time)}</td>
       <td><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${D(f.status)}</span></td>
       <td onclick="event.stopPropagation()">${renderWaCell(f)}</td>
-      <td><span class="badge ${f.needs_parts?'badge-billable':'badge-cancelled'}">${D(f.needs_parts?'قابل للفوترة':'ضمن العقد')}</span></td>
+      <td>${faultBillingBadgeHtml(f)}</td>
       <td onclick="event.stopPropagation()">
         <div class="td-actions">
           <a class="btn btn-primary btn-sm btn-icon" href="/faults/${f.id}/report" title="تعبئة / تعديل تقرير العطل" onclick="event.stopPropagation()" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
@@ -1272,8 +1323,8 @@ function viewFault(id) {
       <div class="view-item"><div class="view-label">تاريخ البلاغ</div><div class="view-val" style="direction:ltr">${f.reported_at}</div></div>
       <div class="view-item"><div class="view-label">وقت الاستجابة</div><div class="view-val">${f.response_time}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${f.status}</span></div></div>
-      <div class="view-item"><div class="view-label">الفوترة</div><div class="view-val"><span class="badge ${f.needs_parts?'badge-billable':'badge-cancelled'}">${f.needs_parts?'قابل للفوترة':'ضمن العقد'}</span>${f.billed?' · <span class="badge badge-active">مفوتر</span>':''}</div></div>
-      ${f.needs_parts && f.parts_lines && f.parts_lines.length ? `<div class="view-item view-full"><div class="view-label">قطع الغيار</div><div class="view-val">${f.parts_lines.map(p => `${p.qty}× ${p.name} — ${Number(p.unit_price).toFixed(2)} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>`).join('<br>')}</div></div>` : ''}
+      <div class="view-item"><div class="view-label">الفوترة</div><div class="view-val">${faultBillingBadgeHtml(f)}${f.billed && !faultPartsOnCompanyAccount(f)?' · <span class="badge badge-active">مفوتر</span>':''}</div></div>
+      ${f.needs_parts && f.parts_lines && f.parts_lines.length ? `<div class="view-item view-full"><div class="view-label">قطع الغيار</div><div class="view-val">${f.parts_lines.map(formatFaultPartLine).join('<br>')}</div></div>` : ''}
       ${f.visit_code?`<div class="view-item"><div class="view-label">رقم الزيارة</div><div class="view-val" style="font-family:var(--font-en)">${f.visit_code}</div></div>`:''}
       ${f.description?`<div class="view-item view-full"><div class="view-label">الوصف</div><div class="view-val">${f.description}</div></div>`:''}
       ${f.resolution?`<div class="view-item view-full"><div class="view-label">طريقة الحل</div><div class="view-val">${f.resolution}</div></div>`:''}
@@ -1398,7 +1449,10 @@ function exportExcel() {
     labels: LiftCoreCsv.LABELS.fault,
     skip: LiftCoreCsv.SKIP_COMMON,
     transforms: {
-      needs_parts: function (v) { return v ? 'قابل للفوترة' : 'ضمن العقد'; }
+      needs_parts: function (v, rec) {
+        if (rec && faultPartsOnCompanyAccount(rec)) return 'على حساب الشركة';
+        return v ? 'قابل للفوترة' : 'ضمن العقد';
+      }
     }
   });
 }

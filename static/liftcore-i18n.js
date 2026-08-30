@@ -177,6 +177,7 @@
     'مكتمل': 'Completed',
     'ملغى': 'Cancelled',
     'غير محصل': 'Uncollected',
+    'على حساب الشركة': 'On Company Account',
     'إجمالي الإيرادات': 'Total Revenues',
     'تجديد عقود': 'Contract Renewals',
     'قطع غيار': 'Spare Parts',
@@ -302,6 +303,7 @@
     'منتهي': 'Expired',
     'محصل': 'Collected',
     'غير محصل': 'Uncollected',
+    'على حساب الشركة': 'On Company Account',
     'عاجل': 'Urgent',
     'عادي': 'Normal',
     'مفتوح': 'Open',
@@ -499,7 +501,7 @@
       var key = norm(node.textContent);
       /* كميات بالوحدات: 12 قطعة / 5 متر ... */
       if (/^[0-9٠-٩.,]+\s*(قطعة|متر|لتر|كجم)$/.test(key)) return false;
-      if (!lookupEn(key) && !/^(نشط|غير نشط|منتهي|معلق|مكتمل|ملغى|عاجل|عادي|ساري|محصل|غير محصل|مدفوعة|غير مدفوعة)$/.test(key)) {
+      if (!lookupEn(key) && !/^(نشط|غير نشط|منتهي|معلق|مكتمل|ملغى|عاجل|عادي|ساري|محصل|غير محصل|على حساب الشركة|مدفوعة|غير مدفوعة)$/.test(key)) {
         if (key.length > 40 || /[0-9]{2,}/.test(key)) return true;
       }
     }
