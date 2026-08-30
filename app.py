@@ -6209,7 +6209,7 @@ def contract_display_status(contract, today=None, *, renewed_ids=None):
         return 'تم تجديده'
     if is_installation_contract_type(getattr(contract, 'contract_type', None)):
         if raw == 'منتهي':
-            return 'منتهي'
+            return 'مكتمل'
         return 'نشط'
     if raw == 'منتهي' or (contract.end_date and contract.end_date < today):
         return 'منتهي'
@@ -6666,6 +6666,8 @@ def _apply_contract_form(c, form):
     c.total = total
     c.payment_terms = form.get('payment_terms', '')
     c.status = form.get('status', 'نشط')
+    if is_installation_contract_type(c.contract_type) and (c.status or '').strip() == 'مكتمل':
+        c.status = 'منتهي'
     c.due_date = _parse_date(form.get('due_date'))
     c.city = form.get('city', '')
     c.district = form.get('district', '')
@@ -6852,16 +6854,25 @@ def contracts():
     from sqlalchemy.orm import joinedload
 
     from contract_codes import contracts_for_scope
+    from installation.timeline import sync_closed_install_projects_to_contracts
 
-    # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة التي ترفض القيمة 0
-    if request.args.get('z') != '4':
+    # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة
+    if request.args.get('z') != '5':
         args = request.args.to_dict(flat=True)
-        args['z'] = '4'
+        args['z'] = '5'
         return redirect(url_for('contracts', **args))
 
     contract_scope = (request.args.get('scope') or '').strip().lower()
     if contract_scope not in ('maintenance', 'installation'):
         contract_scope = ''
+
+    # مزامنة: مشاريع مكتملة → إغلاق عقود التركيب (بيانات سابقة قبل الربط)
+    try:
+        if sync_closed_install_projects_to_contracts(commit=True):
+            pass
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('sync_closed_install_projects_to_contracts failed')
 
     contracts_list = (
         tenant_query(Contract)
@@ -6935,9 +6946,37 @@ def contracts_import_template():
     )
 
 
+def _contracts_page_url(*, contract=None, form=None):
+    """رابط قائمة العقود مع الحفاظ على نطاق التركيب/الصيانة."""
+    from contract_codes import is_installation_contract_type
+
+    form = form if form is not None else request.form
+    scope = (
+        (form.get('scope') if form is not None else None)
+        or request.args.get('scope')
+        or ''
+    )
+    scope = str(scope or '').strip().lower()
+    if scope not in ('maintenance', 'installation'):
+        ctype = None
+        if contract is not None:
+            ctype = getattr(contract, 'contract_type', None)
+        if not ctype and form is not None:
+            ctype = form.get('contract_type')
+        if is_installation_contract_type(ctype):
+            scope = 'installation'
+        else:
+            scope = ''
+    kwargs = {'z': '5'}
+    if scope:
+        kwargs['scope'] = scope
+    return url_for('contracts', **kwargs)
+
+
 @app.route('/contracts/edit/<int:id>', methods=['POST'])
 def contract_edit(id):
     from form_validation import contract_form_error
+    from installation.timeline import resync_install_contract_if_project_closed
 
     wants_json = (
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -6948,7 +6987,7 @@ def contract_edit(id):
         if wants_json:
             return jsonify({'ok': False, 'message': err}), 400
         flash(err, 'error')
-        return redirect(url_for('contracts'))
+        return redirect(_contracts_page_url())
     c = tenant_get_or_404(Contract, id)
     raw_cid = (request.form.get('customer_id') or '').strip()
     try:
@@ -6991,8 +7030,9 @@ def contract_edit(id):
             if wants_json:
                 return jsonify({'ok': False, 'message': msg}), 403
             flash(msg, 'error')
-            return redirect(url_for('contracts'))
+            return redirect(_contracts_page_url(contract=c))
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
+        resync_install_contract_if_project_closed(c)
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
@@ -7000,10 +7040,11 @@ def contract_edit(id):
         if wants_json:
             return jsonify({'ok': False, 'message': str(exc) or 'تعذّر حفظ العقد'}), 400
         flash(str(exc) or 'تعذّر حفظ العقد', 'error')
-        return redirect(url_for('contracts'))
+        return redirect(_contracts_page_url(contract=c))
+    redirect_to = _contracts_page_url(contract=c)
     if wants_json:
-        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': url_for('contracts')})
-    return redirect(url_for('contracts'))
+        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': redirect_to})
+    return redirect(redirect_to)
 
 
 @app.route('/contracts/add', methods=['POST'])
@@ -7020,7 +7061,7 @@ def contract_add():
         if wants_json:
             return jsonify({'ok': False, 'message': err}), 400
         flash(err, 'error')
-        return redirect(url_for('contracts'))
+        return redirect(_contracts_page_url())
 
     renew_from_id = request.form.get('renew_from_id', type=int)
     renew_src = tenant_get_or_404(Contract, renew_from_id) if renew_from_id else None
@@ -7048,7 +7089,7 @@ def contract_add():
             if wants_json:
                 return jsonify({'ok': False, 'message': 'رقم العقد الناتج أطول من المسموح'}), 400
             flash('رقم العقد الناتج أطول من المسموح', 'error')
-            return redirect(url_for('contracts'))
+            return redirect(_contracts_page_url())
     else:
         from contract_codes import CONTRACT_CODE_DIGITS, contract_prefix_for_type
 
@@ -7060,7 +7101,7 @@ def contract_add():
         if wants_json:
             return jsonify({'ok': False, 'message': msg}), 400
         flash(msg, 'error')
-        return redirect(url_for('contracts'))
+        return redirect(_contracts_page_url())
 
     c = existing or Contract(code=code)
     try:
@@ -7080,10 +7121,11 @@ def contract_add():
         if wants_json:
             return jsonify({'ok': False, 'message': str(exc) or 'تعذّر حفظ العقد'}), 400
         flash(str(exc) or 'تعذّر حفظ العقد', 'error')
-        return redirect(url_for('contracts'))
+        return redirect(_contracts_page_url(contract=c if getattr(c, 'id', None) else None))
+    redirect_to = _contracts_page_url(contract=c)
     if wants_json:
-        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': url_for('contracts')})
-    return redirect(url_for('contracts'))
+        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': redirect_to})
+    return redirect(redirect_to)
 
 @app.route('/contracts/<int:id>/remove-file', methods=['POST'])
 def contract_remove_file(id):
@@ -7105,6 +7147,7 @@ def contract_delete(id):
     if err:
         return err
     c = tenant_get_or_404(Contract, id)
+    scope_hint = type('T', (), {'contract_type': c.contract_type})()
     try:
         _remove_contract_file(c)
         _purge_contract_dependencies(id)
@@ -7113,7 +7156,8 @@ def contract_delete(id):
     except Exception:
         db.session.rollback()
         flash('تعذّر حذف العقد — تحقق من السجلات المرتبطة', 'error')
-    return redirect(url_for('contracts'))
+        return redirect(_contracts_page_url(contract=scope_hint))
+    return redirect(_contracts_page_url(contract=scope_hint))
 
 
 @app.route('/contracts/<int:contract_id>/print')

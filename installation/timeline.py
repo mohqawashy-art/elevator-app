@@ -493,6 +493,49 @@ def close_linked_install_contract(project):
     return contract
 
 
+def sync_closed_install_projects_to_contracts(*, commit: bool = False) -> int:
+    """يغلق عقود التركيب المرتبطة بمشاريع مكتملة/مغلقة (يشمل البيانات السابقة)."""
+    from installation.models import InstallProject
+    from models import db
+    from tenant_scope import tenant_query
+
+    projects = (
+        tenant_query(InstallProject)
+        .filter(
+            InstallProject.contract_id.isnot(None),
+            InstallProject.status.in_(('مكتمل', 'مغلق')),
+        )
+        .all()
+    )
+    n = 0
+    for project in projects:
+        if close_linked_install_contract(project):
+            n += 1
+    if n and commit:
+        db.session.commit()
+    return n
+
+
+def resync_install_contract_if_project_closed(contract) -> bool:
+    """إن كان العقد مرتبطاً بمشروع مكتمل — أعد إغلاقه بعد أي تعديل."""
+    from contract_codes import is_installation_contract_type
+    from installation.models import InstallProject
+    from tenant_scope import tenant_query
+
+    if not contract or not getattr(contract, 'id', None):
+        return False
+    if not is_installation_contract_type(getattr(contract, 'contract_type', None)):
+        return False
+    project = (
+        tenant_query(InstallProject)
+        .filter_by(contract_id=int(contract.id))
+        .first()
+    )
+    if not project or not project_is_closed(project):
+        return False
+    return close_linked_install_contract(project) is not None
+
+
 def mark_project_completed(project):
     """عند اكتمال كل المراحل: حالة مكتمل + تجميد تاريخ الانتهاء + إغلاق عقد التركيب."""
     freeze_project_end_date(project)
