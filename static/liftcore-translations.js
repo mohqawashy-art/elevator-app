@@ -120,6 +120,7 @@ window.__LC_TRANSLATIONS = {
   'تاريخ الإصلاح': 'Repair Date',
   'كود المصعد': 'Elevator Code',
   'نوع المصعد': 'Elevator Type',
+  'نوع الباب': 'Door Type',
   'نوع الآلة': 'Machine Type',
   'نظام التحكم': 'Control System',
   'MR (غرفة آلة)': 'MR (Machine Room)',

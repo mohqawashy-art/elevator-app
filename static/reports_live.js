@@ -83,7 +83,7 @@ var __lcReportDomPager = null;
       case 'report-clients':
         return [row.code, row.name, row.city, row.district, row.phone, row.elevators, row.contract_status, row.status];
       case 'report-elevators':
-        return [row.code, row.customer, row.building, row.city, row.door_type || row.elev_type, row.brand, row.capacity, row.status, row.next_maint];
+        return [row.code, row.customer, row.building, row.city, row.elev_type, row.door_type, row.brand, row.capacity, row.status, row.next_maint];
       case 'report-contracts':
         return [row.code, row.customer, row.contract_type, row.start_date, row.end_date, row.elevators, row.value, row.total, row.status, row.inv_status];
       case 'report-technicians':

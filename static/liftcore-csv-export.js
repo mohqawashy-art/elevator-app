@@ -138,7 +138,7 @@
       elev_type: 'نوع المصعد', brand: 'الماركة', model: 'الموديل',
       capacity: 'الحمولة كجم', capacity_persons: 'عدد الأشخاص', floors: 'الطوابق', stops: 'التوقفات',
       doors: 'عدد الأبواب', speed: 'السرعة', serial: 'الرقم التسلسلي',
-      machine_type: 'نوع الآلة', door_type: 'النوع',
+      machine_type: 'نوع الآلة', door_type: 'نوع الباب',
       control_type: 'نوع التحكم', control_drive: 'نظام الدفع', control_operation: 'نمط التشغيل', control_detail: 'تفاصيل التحكم',
       install_date: 'تاريخ التركيب', warranty_end: 'انتهاء الضمان',
       last_maint: 'آخر صيانة', next_maint: 'الصيانة القادمة', maint_freq: 'تكرار الصيانة',

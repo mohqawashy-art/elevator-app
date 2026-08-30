@@ -1216,48 +1216,8 @@ def client_to_js_dict(c, *, scope: str | None = None):
     }
 
 
-_DOOR_TYPE_ALIASES = {
-    'اتوماتيك': 'أوتوماتيك',
-    'أوتوماتيك': 'أوتوماتيك',
-    'نصف اتوماتيك': 'نصف أوتوماتيك',
-    'نصف أوتوماتيك': 'نصف أوتوماتيك',
-    'سنتر اتوماتيك': 'سنتر أوتوماتيك',
-    'سنتر أوتوماتيك': 'سنتر أوتوماتيك',
-    'تلسكوبي': 'تلسكوبي',
-    'تليسكوبي': 'تلسكوبي',
-}
-_ELEV_KIND_TYPES = {
-    'مصعد ركاب', 'مصعد بضائع', 'مصعد مستشفى',
-    'مصعد منزلي', 'مصعد بانوراما', 'مصعد خدمة',
-}
-
-
-def normalize_door_type(value):
-    raw = (value or '').strip()
-    return _DOOR_TYPE_ALIASES.get(raw, raw)
-
-
-def resolved_door_type(elev_type='', door_type=''):
-    door = normalize_door_type(door_type)
-    if door:
-        return door
-    return _DOOR_TYPE_ALIASES.get((elev_type or '').strip(), '')
-
-
-def resolved_elev_kind(elev_type=''):
-    raw = (elev_type or '').strip()
-    if raw in _ELEV_KIND_TYPES:
-        return raw
-    return 'مصعد ركاب' if raw in _DOOR_TYPE_ALIASES else raw
-
-
-def split_elev_and_door(elev_type='', door_type=''):
-    return resolved_elev_kind(elev_type), resolved_door_type(elev_type, door_type)
-
-
 def elevator_to_js_dict(e):
     """تسلسل مصعد لـ JSON (مع علاقة العميل)."""
-    elev_kind, door = split_elev_and_door(e.elev_type or '', e.door_type or '')
     return {
         'id': e.id,
         'code': e.code,
@@ -1267,7 +1227,7 @@ def elevator_to_js_dict(e):
         'building': e.building_name or '',
         'city': e.city or '',
         'district': e.district or '',
-        'elev_type': elev_kind,
+        'elev_type': e.elev_type or '',
         'brand': e.brand or '',
         'model': e.model or '',
         'capacity': e.capacity_kg or 0,
@@ -1278,7 +1238,7 @@ def elevator_to_js_dict(e):
         'speed': e.speed or '',
         'serial': e.serial_number or '',
         'machine_type': e.machine_type or '',
-        'door_type': door,
+        'door_type': e.door_type or '',
         'control_type': e.control_type or '',
         'control_drive': e.control_drive or '',
         'control_operation': e.control_operation or '',
@@ -6029,10 +5989,6 @@ def elevator_add():
         raw_code = f'EL-{int(m_el.group(1)):04d}'
         if tenant_query(Elevator).filter_by(code=raw_code).first():
             raw_code = ''
-    elev_kind, door_kind = split_elev_and_door(
-        request.form.get('elev_type', ''),
-        request.form.get('door_type', ''),
-    )
     e = Elevator(
         code            = raw_code or next_code(Elevator, 'EL-', digits=4),
         customer_id     = request.form['customer_id'],
@@ -6040,7 +5996,7 @@ def elevator_add():
         city            = request.form.get('city', ''),
         district        = request.form.get('district', ''),
         address         = request.form.get('address', ''),
-        elev_type       = elev_kind,
+        elev_type       = request.form.get('elev_type', ''),
         brand           = request.form.get('brand', ''),
         model           = request.form.get('model', ''),
         capacity_kg     = _parse_int(request.form.get('capacity_kg')),
@@ -6050,7 +6006,7 @@ def elevator_add():
         doors_count     = _parse_int(request.form.get('doors_count')),
         serial_number   = request.form.get('serial_number', ''),
         machine_type    = request.form.get('machine_type', ''),
-        door_type       = door_kind,
+        door_type       = request.form.get('door_type', ''),
         control_type    = request.form.get('control_type', ''),
         control_drive   = request.form.get('control_drive', ''),
         control_operation = request.form.get('control_operation', ''),
@@ -6087,10 +6043,8 @@ def elevator_edit(id):
     e.city             = request.form.get('city', '')
     e.district         = request.form.get('district', '')
     e.address          = request.form.get('address', '')
-    e.elev_type, e.door_type = split_elev_and_door(
-        request.form.get('elev_type', ''),
-        request.form.get('door_type', ''),
-    )
+    e.elev_type        = request.form.get('elev_type', '')
+    e.door_type        = request.form.get('door_type', '')
     e.brand            = request.form.get('brand', '')
     e.model            = request.form.get('model', '')
     e.capacity_kg      = _parse_int(request.form.get('capacity_kg'))
