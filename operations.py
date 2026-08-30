@@ -113,11 +113,16 @@ def tech_whatsapp_phone(tech: Technician) -> str:
 
 
 def due_contract_reminders(*, on_date: date | None = None, days_ahead: int = 0):
-    """عقود لها reminder_date خلال [اليوم .. اليوم+days_ahead] وحالتها نشطة."""
+    """عقود صيانة لها reminder_date خلال [اليوم .. اليوم+days_ahead] وحالتها نشطة.
+
+    يستبعد عقود التركيب/التحديث (لا تُجدَّد بالتقويم).
+    """
+    from contract_codes import is_installation_contract_type
+
     today = on_date or date.today()
     end = today + timedelta(days=max(0, int(days_ahead)))
     active = ('نشط', 'على وشك الانتهاء')
-    return (
+    rows = (
         tenant_query(Contract)
         .filter(
             Contract.reminder_date.isnot(None),
@@ -132,6 +137,7 @@ def due_contract_reminders(*, on_date: date | None = None, days_ahead: int = 0):
         .order_by(Contract.reminder_date.asc(), Contract.id.asc())
         .all()
     )
+    return [c for c in rows if not is_installation_contract_type(c.contract_type)]
 
 
 def build_contract_reminder_message(contract: Contract, *, company_name: str = '') -> str:

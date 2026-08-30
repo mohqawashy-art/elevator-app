@@ -660,7 +660,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <label>تاريخ البداية</label>
             <input type="date" lang="en-GB" id="f-start" style="direction:ltr" oninput="onContractStartChange()">
           </div>
-          <div class="field">
+          <div class="field" id="field-duration-wrap">
             <label>مدة العقد</label>
             <select id="f-duration" onchange="applyDurationToEndDate()">
               <option value="">— اختر المدة —</option>
@@ -672,11 +672,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             </select>
             <span class="field-hint">يُحسب تاريخ الانتهاء وتاريخ تذكير التجديد تلقائياً</span>
           </div>
-          <div class="field">
-            <label>تاريخ الانتهاء</label>
+          <div class="field" id="field-end-wrap">
+            <label id="label-end-date">تاريخ الانتهاء</label>
             <input type="date" lang="en-GB" id="f-end" style="direction:ltr" oninput="calcDurationFromEnd()">
+            <span class="field-hint" id="hint-end-install" style="display:none">ينتهي بتسليم الأعمال — يُثبت عند إغلاق المشروع في التنفيذ</span>
           </div>
-          <div class="field">
+          <div class="field" id="field-reminder-wrap">
             <label>تاريخ تذكير التجديد</label>
             <input type="date" lang="en-GB" id="f-reminder" style="direction:ltr">
             <span class="field-hint">يُحسب تلقائياً قبل 30 يوم من الانتهاء</span>
@@ -694,7 +695,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div id="elevators-actions" class="elev-add-bar" style="display:none"></div>
         </div>
         <div class="field-calc" id="selected-count">لم يتم اختيار مصاعد</div>
-        <div class="form-grid" style="margin-top:28px">
+        <div class="form-grid" style="margin-top:28px" id="maint-freq-wrap">
           <div class="field">
             <label>تكرار الصيانة</label>
             <select id="f-maint-freq" onchange="calcTotalVisits()">
@@ -792,7 +793,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg>
         طباعة العقد
       </button>
-      <button class="btn btn-secondary" onclick="renewFromView()" style="color:var(--accent)">
+      <button class="btn btn-secondary" id="btn-renew-contract" onclick="renewFromView()" style="color:var(--accent)">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 7A4.5 4.5 0 017 2.5c1.5 0 2.8.7 3.6 1.8M11.5 2.5v2.5H9"/><path d="M11.5 7A4.5 4.5 0 017 11.5c-1.5 0-2.8-.7-3.6-1.8M2.5 11.5V9H5"/></svg>
         تجديد العقد
       </button>
@@ -1137,17 +1138,50 @@ function isNewContractForm() {
 }
 
 function onContractTypeChanged() {
-  if (!isNewContractForm()) return;
+  if (isNewContractForm()) {
+    var typeSel = document.getElementById('f-type-sel');
+    var codeEl = document.getElementById('f-code');
+    if (typeSel && codeEl) {
+      codeEl.value = nextContractCodeForType(typeSel.value);
+      var codeHint = document.getElementById('f-code-hint');
+      if (codeHint) {
+        var prefix = contractPrefixForType(typeSel.value);
+        codeHint.textContent = prefix === 'CI-'
+          ? 'يُولَّد تلقائياً — تسلسل التركيب والتحديث (CI-)'
+          : 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
+      }
+    }
+  }
+  syncInstallContractFormFields();
+}
+
+function isInstallContractType(t) {
+  t = String(t || '');
+  return t.indexOf('تركيب') >= 0 || t.indexOf('تحديث') >= 0;
+}
+
+function syncInstallContractFormFields() {
   var typeSel = document.getElementById('f-type-sel');
-  var codeEl = document.getElementById('f-code');
-  if (!typeSel || !codeEl) return;
-  codeEl.value = nextContractCodeForType(typeSel.value);
-  var codeHint = document.getElementById('f-code-hint');
-  if (codeHint) {
-    var prefix = contractPrefixForType(typeSel.value);
-    codeHint.textContent = prefix === 'CI-'
-      ? 'يُولَّد تلقائياً — تسلسل التركيب والتحديث (CI-)'
-      : 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
+  var install = isInstallContractType(typeSel && typeSel.value);
+  var durWrap = document.getElementById('field-duration-wrap');
+  var remWrap = document.getElementById('field-reminder-wrap');
+  var maintWrap = document.getElementById('maint-freq-wrap');
+  var hintInstall = document.getElementById('hint-end-install');
+  var labelEnd = document.getElementById('label-end-date');
+  var costPreview = document.getElementById('contract-cost-preview');
+  if (durWrap) durWrap.style.display = install ? 'none' : '';
+  if (remWrap) remWrap.style.display = install ? 'none' : '';
+  if (maintWrap) maintWrap.style.display = install ? 'none' : '';
+  if (hintInstall) hintInstall.style.display = install ? '' : 'none';
+  if (labelEnd) labelEnd.textContent = install ? 'تاريخ التسليم (اختياري)' : 'تاريخ الانتهاء';
+  if (install) {
+    var rem = document.getElementById('f-reminder');
+    if (rem) rem.value = '';
+    var dur = document.getElementById('f-duration');
+    if (dur) dur.value = '';
+    if (costPreview) costPreview.style.display = 'none';
+  } else {
+    calcTotalVisits();
   }
 }
 
@@ -1287,6 +1321,11 @@ function getContractDisplayStatus(c) {
   if (raw === 'تم تجديده' || raw === 'مجدد' || c.renewed || c.display_status === 'تم تجديده') {
     return 'تم تجديده';
   }
+  // عقود التركيب/التحديث: لا انتهاء تقويمي — تُغلق عند تسليم الأعمال فقط
+  if (isInstallContractType(c.contract_type)) {
+    if (raw === 'منتهي') return 'منتهي';
+    return 'نشط';
+  }
   if (raw === 'منتهي' || (c.end_date && new Date(c.end_date) < new Date())) {
     if (c.renewed) return 'تم تجديده';
     return 'منتهي';
@@ -1319,6 +1358,19 @@ function formatDaysWord(n) {
 }
 
 function formatContractDaysCell(c) {
+  if (isInstallContractType(c.contract_type)) {
+    var ist = getContractDisplayStatus(c);
+    if (ist === 'ملغي' || ist === 'تم تجديده') {
+      return '<span class="contract-days muted">—</span>';
+    }
+    if (ist === 'منتهي') {
+      if (c.duration) {
+        return '<span class="contract-days muted" title="مدة العمل الفعلية">مدة العمل: ' + c.duration + ' شهر</span>';
+      }
+      return '<span class="contract-days muted" title="أُغلق بتسليم الأعمال">مُسلَّم</span>';
+    }
+    return '<span class="contract-days active" title="ينتهي بتسليم الأعمال">حتى التسليم</span>';
+  }
   var days = contractDaysLeft(c);
   if (days === null) return '<span class="contract-days muted">—</span>';
   var st = getContractDisplayStatus(c);
@@ -1672,7 +1724,7 @@ function renderTable(data) {
         (contractNeedsCollection(c) && window.LiftCoreFinancialWa ? LiftCoreFinancialWa.collectButtonHtml('contract', c.id, c.customer_id) : '') +
         (contractNeedsCollection(c) && window.LiftCoreFinancialWa ? LiftCoreFinancialWa.buttonHtml('contract', c.id) : '') +
         '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();viewContract(' + c.id + ')" title="عرض"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
-        '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();renewContract(' + c.id + ')" title="تجديد العقد" style="color:var(--accent)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 7A4.5 4.5 0 017 2.5c1.5 0 2.8.7 3.6 1.8M11.5 2.5v2.5H9"/><path d="M11.5 7A4.5 4.5 0 017 11.5c-1.5 0-2.8-.7-3.6-1.8M2.5 11.5V9H5"/></svg></button>' +
+        (isInstallContractType(c.contract_type) ? '' : '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();renewContract(' + c.id + ')" title="تجديد العقد" style="color:var(--accent)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 7A4.5 4.5 0 017 2.5c1.5 0 2.8.7 3.6 1.8M11.5 2.5v2.5H9"/><path d="M11.5 7A4.5 4.5 0 017 11.5c-1.5 0-2.8-.7-3.6-1.8M2.5 11.5V9H5"/></svg></button>') +
         '<button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();editContract(' + c.id + ')" title="تعديل"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>' +
         '<button class="btn btn-danger btn-sm btn-icon lc-admin-delete" onclick="event.stopPropagation();deleteContract(' + c.id + ')" title="حذف"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>' +
       '</div></td></tr>';
@@ -1835,6 +1887,7 @@ function resetContractForm() {
   renderContractClientSummary(null);
   setContractFileUi(null);
   calcTotalVisits();
+  syncInstallContractFormFields();
 }
 
 function openAddModal(customerId) {
@@ -2294,6 +2347,7 @@ function editContract(id) {
   loadClientElevators(c.elevator_ids || [], { allowContractId: c.id });
   calcTotalVisits();
   setContractFileUi(c);
+  syncInstallContractFormFields();
   openContractFormModal(function () {
     var loc = { address: c.address, district: c.district, city: c.city };
     if (c.address || c.city || c.district) {
@@ -2311,6 +2365,21 @@ function viewContract(id) {
   document.getElementById('view-title').textContent = c.code + ' — ' + c.customer;
   var cust = getCustomerById(c.customer_id);
   var locHtml = cust ? LiftCoreLocation.renderLocationBlock(cust) : '';
+  var install = isInstallContractType(c.contract_type);
+  var datesSection = install ? 'التواريخ ومدة العمل' : 'التواريخ والصيانة';
+  var endLabel = install
+    ? (getContractDisplayStatus(c) === 'منتهي' ? 'تاريخ التسليم' : 'تاريخ التسليم المتوقع')
+    : 'تاريخ الانتهاء';
+  var durationLabel = install ? 'مدة العمل' : 'مدة العقد';
+  var durationVal = install
+    ? (getContractDisplayStatus(c) === 'منتهي'
+      ? ((c.duration ? c.duration + ' شهر' : 'مُسلَّم') + ' — من تاريخ البداية حتى التسليم')
+      : 'حتى تسليم الأعمال')
+    : ((c.duration || '—') + ' شهر');
+  var maintRows = install
+    ? ''
+    : ('<div class="view-item"><div class="view-label">تكرار الصيانة</div><div class="view-val">' + esc(c.maint_freq || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">إجمالي الزيارات</div><div class="view-val">' + (c.visits_month || '—') + '</div></div>');
   document.getElementById('view-body').innerHTML =
     locHtml +
     '<div class="view-grid">' +
@@ -2322,16 +2391,16 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">عدد المصاعد</div><div class="view-val">' + (c.elevators || 0) + '</div></div>' +
       '<div class="view-item"><div class="view-label">حالة العقد</div><div class="view-val"><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></div></div>' +
       '<div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span> <span style="font-size:12px;color:var(--text3)">(' + fmtMoneyAmt(c.paid_amount || 0) + ' / ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>)</span></div></div>' +
-      '<div class="view-section">التواريخ والصيانة</div>' +
+      '<div class="view-section">' + datesSection + '</div>' +
       '<div class="view-item"><div class="view-label">تاريخ البداية</div><div class="view-val" style="direction:ltr">' + esc(c.start_date) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">تاريخ الانتهاء</div><div class="view-val" style="direction:ltr">' + esc(c.end_date) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">الأيام المتبقية / المنقضية</div><div class="view-val">' + formatContractDaysCell(c) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + endLabel + '</div><div class="view-val" style="direction:ltr">' +
+        (install && getContractDisplayStatus(c) !== 'منتهي' ? 'حتى التسليم' : esc(c.end_date)) + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + (install ? 'حالة المدة' : 'الأيام المتبقية / المنقضية') + '</div><div class="view-val">' + formatContractDaysCell(c) + '</div></div>' +
       '<div class="view-item"><div class="view-label">تاريخ استحقاق التحصيل</div><div class="view-val">' + formatContractDueCell(c) + '</div></div>' +
-      '<div class="view-item"><div class="view-label">مدة العقد</div><div class="view-val">' + (c.duration || '—') + ' شهر</div></div>' +
-      '<div class="view-item"><div class="view-label">تكرار الصيانة</div><div class="view-val">' + esc(c.maint_freq || '—') + '</div></div>' +
-      '<div class="view-item"><div class="view-label">إجمالي الزيارات</div><div class="view-val">' + (c.visits_month || '—') + '</div></div>' +
+      '<div class="view-item"><div class="view-label">' + durationLabel + '</div><div class="view-val">' + durationVal + '</div></div>' +
+      maintRows +
       '<div class="view-item"><div class="view-label">شروط الدفع</div><div class="view-val">' + esc(c.pay_terms || '—') + '</div></div>' +
-      contractCostAllocationViewHtml(c) +
+      (install ? '' : contractCostAllocationViewHtml(c)) +
       (c.notes ? '<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">' + esc(c.notes) + '</div></div>' : '') +
       contractAttachmentBlock(c) +
     '</div>';
@@ -2351,6 +2420,8 @@ function viewContract(id) {
       collectBtn.style.display = 'none';
     }
   }
+  var renewBtn = document.getElementById('btn-renew-contract');
+  if (renewBtn) renewBtn.style.display = install ? 'none' : '';
 }
 
 function editFromView() {
@@ -2406,6 +2477,10 @@ function syncRenewalContractCode() {
 function renewContract(id) {
   var c = CONTRACTS.find(function(x) { return x.id === id; });
   if (!c) return;
+  if (isInstallContractType(c.contract_type)) {
+    alert('عقود التركيب والتحديث لا تُجدَّد — تنتهي بتسليم الأعمال عند إغلاق المشروع.');
+    return;
+  }
   document.getElementById('modal-title').textContent = 'تجديد عقد';
   document.getElementById('modal-add').dataset.editId = '';
   document.getElementById('modal-add').dataset.renewFromId = String(id);
@@ -2519,6 +2594,11 @@ function calcTotalVisits() {
 function updateContractCostPreview() {
   var el = document.getElementById('contract-cost-preview');
   if (!el) return;
+  var typeSel = document.getElementById('f-type-sel');
+  if (isInstallContractType(typeSel && typeSel.value)) {
+    el.style.display = 'none';
+    return;
+  }
   var totalEl = document.getElementById('f-total');
   var total = parseFloat((totalEl && totalEl.value) || '0') || 0;
   var duration = getContractDurationMonths();

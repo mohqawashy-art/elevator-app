@@ -514,7 +514,9 @@ def _renewal_collection_status(expected, collected):
 
 
 def get_contract_renewal_forecast(Contract, Revenue, year, month, contract_status_fn=None):
-    """توقع تحصيل تجديد العقود — العقود المنتهية في الشهر المحدد."""
+    """توقع تحصيل تجديد العقود — العقود المنتهية في الشهر المحدد (صيانة فقط)."""
+    from contract_codes import is_installation_contract_type
+
     year, month = int(year), int(month)
     first, last = _month_bounds(year, month)
 
@@ -523,6 +525,7 @@ def get_contract_renewal_forecast(Contract, Revenue, year, month, contract_statu
         Contract.end_date <= last,
         Contract.status != 'ملغي',
     ).order_by(Contract.end_date).all()
+    contracts = [c for c in contracts if not is_installation_contract_type(c.contract_type)]
 
     rows = []
     total_expected = 0.0

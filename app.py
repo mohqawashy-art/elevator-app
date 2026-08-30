@@ -1154,8 +1154,12 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
 
 
 def _contract_cost_allocation_js(c):
-    """توزيع العقد + المستحق حتى اليوم مقابل المحصّل."""
+    """توزيع العقد + المستحق حتى اليوم مقابل المحصّل (صيانة فقط)."""
+    from contract_codes import is_installation_contract_type
     from contract_cost_allocation import contract_cost_allocation, collection_gap_fields
+
+    if is_installation_contract_type(getattr(c, 'contract_type', None)):
+        return None
 
     alloc = contract_cost_allocation(c)
     paid = _money_round(c.paid_amount or 0)
@@ -6183,7 +6187,12 @@ def api_elevators_by_customer(customer_id):
     return jsonify(rows)
 
 def contract_display_status(contract, today=None, *, renewed_ids=None):
-    """حالة العرض: نشط / على وشك الانتهاء / تم تجديده / منتهي / ملغي."""
+    """حالة العرض: نشط / على وشك الانتهاء / تم تجديده / منتهي / ملغي.
+
+    عقود التركيب/التحديث: لا تُنهى بالتقويم — تُغلق عند تسليم أعمال المشروع فقط.
+    """
+    from contract_codes import is_installation_contract_type
+
     today = today or date.today()
     raw = (contract.status or 'نشط').strip()
     if raw in ('ملغي', 'معلق'):
@@ -6198,6 +6207,10 @@ def contract_display_status(contract, today=None, *, renewed_ids=None):
         is_renewed = bool(contract._is_renewed)
     if is_renewed:
         return 'تم تجديده'
+    if is_installation_contract_type(getattr(contract, 'contract_type', None)):
+        if raw == 'منتهي':
+            return 'منتهي'
+        return 'نشط'
     if raw == 'منتهي' or (contract.end_date and contract.end_date < today):
         return 'منتهي'
     if raw == 'على وشك الانتهاء':
@@ -6624,23 +6637,35 @@ def _apply_contract_form(c, form):
             amount_ex_vat=value_raw,
             tax_pct=tax_pct,
         )
+    from contract_codes import is_installation_contract_type
+
     start = _parse_date(form.get('start_date'))
     end = _parse_date(form.get('end_date'))
     c.customer_id = form['customer_id']
     c.contract_type = form.get('contract_type', '')
     c.start_date = start
-    c.end_date = end
-    c.duration_months = _contract_duration_months(start, end)
-    c.maint_frequency = form.get('maint_frequency', '')
-    visits = form.get('visits_per_month') or 1
-    c.visits_per_month = int(visits) if str(visits).isdigit() else 1
+    # عقود التركيب: الانتهاء = التسليم — لا تُفرض مدة صيانة؛ إن لم يُحدد نهاية تُساوى البداية
+    if is_installation_contract_type(c.contract_type):
+        if not end or (start and end < start):
+            end = start
+        c.end_date = end
+        c.duration_months = _contract_duration_months(start, end) if end and start and end > start else None
+        c.maint_frequency = ''
+        c.visits_per_month = 0
+        c.reminder_date = None
+    else:
+        c.end_date = end
+        c.duration_months = _contract_duration_months(start, end)
+        c.maint_frequency = form.get('maint_frequency', '')
+        visits = form.get('visits_per_month') or 1
+        c.visits_per_month = int(visits) if str(visits).isdigit() else 1
+        c.reminder_date = _parse_date(form.get('reminder_date'))
     c.value = value
     c.tax_pct = tax_pct
     c.tax_amount = tax_amount
     c.total = total
     c.payment_terms = form.get('payment_terms', '')
     c.status = form.get('status', 'نشط')
-    c.reminder_date = _parse_date(form.get('reminder_date'))
     c.due_date = _parse_date(form.get('due_date'))
     c.city = form.get('city', '')
     c.district = form.get('district', '')

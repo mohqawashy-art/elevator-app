@@ -454,10 +454,50 @@ def freeze_project_end_date(project):
     return end
 
 
+def close_linked_install_contract(project):
+    """يغلق عقد التركيب/التحديث المرتبط عند إكمال المشروع.
+
+    المدة المحسوبة = مدة العمل الفعلية (من بداية العقد إلى تاريخ التسليم)،
+    بغض النظر عن أي مدة تقويمية سابقة.
+    """
+    from contract_codes import is_installation_contract_type
+    from models import Contract
+    from tenant_scope import tenant_query
+
+    cid = getattr(project, 'contract_id', None)
+    if not cid:
+        return None
+    contract = tenant_query(Contract).filter_by(id=int(cid)).first()
+    if not contract or not is_installation_contract_type(contract.contract_type):
+        return None
+
+    from datetime import date as _date
+
+    end = getattr(project, 'end_date', None) or _date.today()
+    start = contract.start_date or getattr(project, 'start_date', None) or end
+    if end < start:
+        end = start
+    contract.end_date = end
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    if end > start and months <= 0:
+        months = 1
+    contract.duration_months = months if months > 0 else None
+    contract.status = 'منتهي'
+    contract.reminder_date = None
+    marker = 'أُغلق بتسليم أعمال المشروع'
+    note = (contract.notes or '').strip()
+    if marker not in note:
+        code = getattr(project, 'code', '') or ''
+        suffix = f'{marker} {code}'.strip() + f' في {end.isoformat()}'
+        contract.notes = (note + ' — ' + suffix) if note else suffix
+    return contract
+
+
 def mark_project_completed(project):
-    """عند اكتمال كل المراحل: حالة مكتمل + تجميد تاريخ الانتهاء."""
+    """عند اكتمال كل المراحل: حالة مكتمل + تجميد تاريخ الانتهاء + إغلاق عقد التركيب."""
     freeze_project_end_date(project)
     project.status = 'مكتمل'
+    close_linked_install_contract(project)
     return project
 
 

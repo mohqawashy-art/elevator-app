@@ -388,10 +388,15 @@ def contract_remaining(contract: Contract) -> float:
 
 
 def _contract_is_collectible(contract: Contract, today: date | None = None) -> bool:
+    from contract_codes import is_installation_contract_type
+
     today = today or date.today()
     status = (contract.status or '').strip()
     if status in _NON_COLLECTIBLE_STATUSES:
         return False
+    # عقود التركيب قد تُغلق بالتسليم مع بقاء مستحقات — لا تُمنع بالتقويم
+    if is_installation_contract_type(getattr(contract, 'contract_type', None)):
+        return True
     if contract.end_date and contract.end_date < today:
         return False
     return True

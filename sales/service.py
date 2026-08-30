@@ -109,13 +109,18 @@ def create_contract_from_maintenance_quote(quote: MaintenanceQuote, *, next_code
 
 
 def create_install_contract_from_quotation(project, quotation, *, next_code_fn) -> Contract | None:
-    """إنشاء عقد تركيب CI- عند قبول عرض تركيب (إن لم يكن مربوطاً بعقد)."""
+    """إنشاء عقد تركيب/تحديث CI- عند قبول العرض.
+
+    ليس عقد صيانة: لا مدة تقويمية للتجديد — ينتهي بتسليم الأعمال عند إغلاق المشروع.
+    """
     if getattr(project, 'contract_id', None):
         return tenant_query(Contract).filter_by(id=project.contract_id).first()
     customer_id = project.customer_id or getattr(quotation, 'customer_id', None)
     if not customer_id:
         return None
-    prefix = contract_prefix_for_type('عقد تركيب')
+    qtype = (getattr(quotation, 'quote_type', None) or 'new').strip().lower()
+    ctype = 'عقد تحديث' if qtype in ('upgrade', 'extend') else 'عقد تركيب'
+    prefix = contract_prefix_for_type(ctype)
     code = next_code_fn(Contract, prefix, digits=CONTRACT_CODE_DIGITS)
     total = money_round(getattr(quotation, 'grand_total', 0) or 0)
     value = money_round(getattr(quotation, 'subtotal', None) or total)
@@ -124,13 +129,15 @@ def create_install_contract_from_quotation(project, quotation, *, next_code_fn) 
     if value:
         tax_pct = money_round((tax_amount / value) * 100.0) if value else 15.0
     start = date.today()
+    # end_date مؤقت (= البداية) حتى يُغلق المشروع ويُثبت تاريخ التسليم
     contract = Contract(
         code=code,
         customer_id=customer_id,
-        contract_type='عقد تركيب',
+        contract_type=ctype,
         start_date=start,
-        end_date=add_months(start, 12),
-        duration_months=12,
+        end_date=start,
+        duration_months=None,
+        reminder_date=None,
         value=value,
         tax_pct=tax_pct,
         tax_amount=tax_amount,
@@ -139,7 +146,7 @@ def create_install_contract_from_quotation(project, quotation, *, next_code_fn) 
         invoice_status='غير مدفوع',
         paid_amount=0,
         status='نشط',
-        notes=f'من عرض التركيب {quotation.code}',
+        notes=f'من عرض التركيب {quotation.code} — ينتهي بتسليم الأعمال',
     )
     assign_organization(contract)
     db.session.add(contract)
