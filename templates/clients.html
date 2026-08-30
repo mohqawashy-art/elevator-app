@@ -72,8 +72,8 @@
 <script src="/static/customer_profile.js"></script>
 <script src="/static/client_location.js?v=4"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=9"></script>
-<script src="/static/client_map_picker.js?v=13"></script>
+<script src="/static/liftcore_map.js?v=3"></script>
+<script src="/static/client_map_picker.js?v=11"></script>
 <script src="/static/entity_detail.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -442,7 +442,8 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
   <div class="content">
 
     <!-- إحصائيات -->
-    <div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+    <!-- lc-clients-toolbar-v51 -->
+    <div class="stats-row lc-stats-compact" style="grid-template-columns:repeat(4,1fr)">
       <div class="stat-mini" style="--sm-color:var(--accent)" onclick="openClientDrill('all', this)">
         <div class="stat-mini-val" id="stat-total">0</div>
         <div class="stat-mini-label">إجمالي العملاء</div>
@@ -469,15 +470,34 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <div id="drill-body" style="padding:12px 18px;font-size:13px;color:var(--text2)"></div>
     </div>
 
-    <!-- تاب الجدول والخريطة -->
-    <div class="tabs" style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg3);padding:4px;border-radius:var(--r-sm);width:fit-content;border:1px solid var(--border)">
-      <div class="tab active" id="tab-btn-table" onclick="switchTab('table')" style="padding:7px 16px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:var(--trans)">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="5" y1="5.5" x2="5" y2="12"/></svg>
-        جدول العملاء
+    <!-- شريط: عنوان + تبويبات + أزرار -->
+    <div class="lc-page-toolbar">
+      <div class="page-title">{{ clients_page_title|default('العملاء') }} <span id="clients-count" data-i18n-skip>({{ customers|length }} عميل)</span></div>
+      <div class="tabs">
+        <div class="tab active" id="tab-btn-table" onclick="switchTab('table')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="2" width="12" height="10" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="5" y1="5.5" x2="5" y2="12"/></svg>
+          جدول العملاء
+        </div>
+        <div class="tab" id="tab-btn-map" onclick="switchTab('map')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
+          خريطة مواقع العملاء
+        </div>
       </div>
-      <div class="tab" id="tab-btn-map" onclick="switchTab('map')" style="padding:7px 16px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:var(--trans)">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z"/><circle cx="7" cy="5" r="1.5"/></svg>
-        خريطة مواقع العملاء
+      <div class="page-actions">
+        {% with report_url=url_for('report_clients'), report_label='تقرير العملاء' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
+        {% with report_url=url_for('report_client_annual'), report_label='تقرير سنوي' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
+        <button class="btn btn-secondary btn-sm" onclick="openModal('modal-import')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
+          استيراد Excel
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
+          تصدير Excel
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+          إضافة عميل
+        </button>
       </div>
     </div>
 
@@ -492,27 +512,6 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       </div>
       {% endif %}
       {% endwith %}
-      <!-- عنوان وأزرار -->
-      <div class="page-header">
-        <div class="page-title">{{ ui(clients_page_title|default('العملاء'), 'Clients') }} <span id="clients-count" data-i18n-skip>({{ customers|length }} {{ ui('عميل', 'clients') }})</span></div>
-        <div class="page-actions">
-          {% with report_url=url_for('report_clients'), report_label=ui('تقرير العملاء', 'Clients Report') %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
-          {% with report_url=url_for('report_client_annual'), report_label=ui('تقرير سنوي', 'Annual Report') %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
-          <button class="btn btn-secondary btn-sm" onclick="openModal('modal-import')">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 8V1M4.5 3.5L7 1l2.5 2.5"/></svg>
-            {{ ui('استيراد Excel', 'Import Excel') }}
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="exportExcel()">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-            {{ ui('تصدير Excel', 'Export Excel') }}
-          </button>
-          <button class="btn btn-primary btn-sm" onclick="openAddModal()">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
-            {{ ui('إضافة عميل', 'Add Client') }}
-          </button>
-        </div>
-      </div>
-
       <!-- فلاتر البحث -->
       <div class="filters-bar" id="clients-filters-bar" data-lc-server-i18n="1" data-i18n-skip="1">
         <div class="search-wrap">
@@ -520,10 +519,10 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
           <input type="text" class="search-input" id="search-input" placeholder="{{ ui('بحث بالاسم أو الهاتف أو الكود...', 'Search by name, phone, or code...') }}" oninput="filterTable()">
         </div>
         <select class="filter-select" id="f-city" onchange="onCityFilterChange()">
-          <option value="">{{ ui('كل المدن', 'All Cities') }}</option>
+          <option value="">كل المدن</option>
         </select>
         <select class="filter-select" id="f-filter-district" onchange="filterTable()">
-          <option value="">{{ ui('كل الأحياء', 'All Districts') }}</option>
+          <option value="">كل الأحياء</option>
         </select>
         <select class="filter-select" id="f-contract" onchange="filterTable()">
           <option value="">{{ ui('حالة العقد', 'Contract Status') }}</option>
@@ -654,16 +653,16 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
-        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">{{ ui('الأعمدة المطلوبة:', 'Required columns:') }}</div>
-        <div style="color:var(--accent)">{{ ui('الاسم / اسم العميل، رقم الهاتف / الجوال', 'Name / Client name, phone / mobile number') }}</div>
-        <div style="color:var(--text3);margin-top:4px">{{ ui('اختيارية: المدينة، الحي، العنوان، المسؤول، البريد، رقم الهوية', 'Optional: city, district, address, contact, email, ID number') }}</div>
+        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
+        <div style="color:var(--accent)">الاسم / اسم العميل، رقم الهاتف / الجوال</div>
+        <div style="color:var(--text3);margin-top:4px">اختيارية: المدينة، الحي، العنوان، المسؤول، البريد، رقم الهوية</div>
       </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal('modal-import')">{{ ui('إلغاء', 'Cancel') }}</button>
       <button class="btn btn-primary" id="btn-confirm-import" onclick="confirmImport()" style="display:none">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 7l3.5 3.5L12 3"/></svg>
-        {{ ui('استيراد', 'Import') }}
+        استيراد
       </button>
     </div>
   </div>
@@ -725,18 +724,7 @@ var CLIENT_MODAL_EN = {
   'يُترجم تلقائياً أثناء الكتابة بالعربية': 'Auto-translated while typing in Arabic',
   'المدينة': 'City',
   'اختر المدينة': 'Select city',
-  'كل المدن': 'All Cities',
-  'كل الأحياء': 'All Districts',
-  'حالة العقد': 'Contract Status',
-  'الحالة': 'Status',
-  'على وشك الانتهاء': 'Expiring Soon',
-  'تم تجديده': 'Renewed',
-  'منتهي': 'Expired',
-  'ملغي': 'Cancelled',
-  'بدون عقد': 'No Contract',
-  'نشط': 'Active',
-  'غير نشط': 'Inactive',
-  'بحث بالاسم أو الهاتف أو الكود...': 'Search by name, phone, or code...',
+  'كل المدن': 'All cities',
   'إضافة مدينة جديدة': 'Add new city',
   'الحي': 'District',
   'اسم الحي': 'District name',
@@ -806,24 +794,7 @@ var CLIENT_MODAL_EN = {
   'Contact WhatsApp': 'Contact WhatsApp',
   'Additional Numbers': 'Additional Numbers',
   'Elevator Count': 'Elevator Count',
-  'Detailed Address': 'Detailed Address',
-  'كشف حساب': 'Account Statement',
-  'تقرير سنوي': 'Annual Report',
-  'تقرير العملاء': 'Clients Report',
-  'إضافة عقد': 'Add Contract',
-  'إغلاق': 'Close',
-  'بيانات العميل': 'Client Details',
-  'الموقع': 'Location',
-  'البيانات الأساسية': 'Basic Data',
-  'الكود': 'Code',
-  'الاسم': 'Name',
-  'مصعد': 'Elevator',
-  'عقد': 'Contract',
-  'إجمالي المدفوع': 'Total Paid',
-  'جاري تحميل البيانات...': 'Loading data...',
-  'جاري تحميل الخريطة...': 'Loading map...',
-  'اضغط للاتجاهات أو صورة المبنى': 'Click for directions or building photo',
-  'عنوان الموقع': 'Site Address'
+  'Detailed Address': 'Detailed Address'
 };
 
 window.__lcApplyClientModal = null;
@@ -849,13 +820,6 @@ function cityDisplayName(city) {
   if (!city) return city;
   if (!isClientUiEn()) return city;
   return CITY_EN[city] || city;
-}
-function districtDisplayName(district) {
-  if (!district) return district;
-  if (!isClientUiEn()) return district;
-  if (window.LiftCoreDisplay && LiftCoreDisplay.text) return LiftCoreDisplay.text(district);
-  if (window.LiftCoreTranslit && LiftCoreTranslit.arabicToLatin) return LiftCoreTranslit.arabicToLatin(district);
-  return district;
 }
 function phoneCodeLabel(entry) {
   if (!entry) return '';
@@ -960,52 +924,6 @@ function applyClientModalI18n() {
 window.applyClientModalI18n = applyClientModalI18n;
 window.__lcApplyClientModal = applyClientModalI18n;
 
-function applyClientCardI18n() {
-  var modal = document.getElementById('modal-client-card');
-  if (!modal) return;
-  var en = isClientUiEn();
-  modal.querySelectorAll('[data-lc-t]').forEach(function (el) {
-    var key = el.getAttribute('data-lc-t');
-    if (!key) return;
-    if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent;
-    el.textContent = en ? clientModalTr(key) : el.dataset.lcAr;
-  });
-}
-window.applyClientCardI18n = applyClientCardI18n;
-
-function refreshClientCardI18n() {
-  applyClientCardI18n();
-  setTimeout(applyClientCardI18n, 160);
-}
-
-function refreshOpenClientCardI18n() {
-  var cardModal = document.getElementById('modal-client-card');
-  if (!cardModal || !cardModal.classList.contains('open') || !currentCardId) return;
-  var c = CUSTOMERS.find(function (x) { return x.id === currentCardId; });
-  if (!c) return;
-  document.getElementById('card-title').innerHTML =
-    esc(c.code) + ' — ' + esc(lcClient(c)) + ' ' + clientStatusBadge(c);
-  var nameEl = cardModal.querySelector('[data-lc-client-name]');
-  if (nameEl) nameEl.textContent = lcClient(c);
-  if (window.LiftCoreDisplay) {
-    LiftCoreDisplay.applyDom(document.getElementById('card-body'), LiftCoreDisplay.currentLang());
-    LiftCoreDisplay.applyDom(cardModal, LiftCoreDisplay.currentLang());
-  }
-  refreshClientCardI18n();
-  scheduleClientCardMapResize();
-}
-
-function refreshOpenClientCardAfterStatusSave(c) {
-  if (!c || currentCardId !== c.id) return;
-  var bar = document.querySelector('#card-body .client-status-bar');
-  if (bar) bar.outerHTML = clientStatusBarHtml(c);
-  document.getElementById('card-title').innerHTML =
-    esc(c.code) + ' — ' + esc(lcClient(c)) + ' ' + clientStatusBadge(c);
-  var sel = document.getElementById('card-status-sel');
-  if (sel) sel.disabled = false;
-  refreshClientCardI18n();
-}
-
 function lcT(s) {
   return clientModalTr(s);
 }
@@ -1086,91 +1004,6 @@ function refreshClientModalI18n() {
   if (modal && modal.hasAttribute('data-lc-server-i18n')) return;
   if (window.LiftCoreI18n && LiftCoreI18n.applyModal) LiftCoreI18n.applyModal('modal-add');
 }
-
-var CLIENT_FILTER_CONTRACT_OPTS = ['نشط', 'على وشك الانتهاء', 'تم تجديده', 'منتهي', 'ملغي', 'بدون عقد'];
-var CLIENT_FILTER_STATUS_OPTS = ['نشط', 'غير نشط'];
-
-function rebuildFilterSelect(id, emptyLabel, values) {
-  var sel = document.getElementById(id);
-  if (!sel) return;
-  var prev = sel.value;
-  sel.innerHTML = '<option value="">' + esc(emptyLabel) + '</option>' +
-    values.map(function (v) {
-      return '<option value="' + esc(v) + '">' + esc(lcT(v)) + '</option>';
-    }).join('');
-  if (prev) sel.value = prev;
-}
-
-function applyClientsFilterI18n() {
-  var search = document.getElementById('search-input');
-  if (search) {
-    if (search.dataset.lcPhAr == null) search.dataset.lcPhAr = 'بحث بالاسم أو الهاتف أو الكود...';
-    search.placeholder = isClientUiEn() ? lcT('بحث بالاسم أو الهاتف أو الكود...') : search.dataset.lcPhAr;
-  }
-  rebuildFilterSelect('f-contract', lcT('حالة العقد'), CLIENT_FILTER_CONTRACT_OPTS);
-  rebuildFilterSelect('f-status', lcT('الحالة'), CLIENT_FILTER_STATUS_OPTS);
-  var citySel = document.getElementById('f-city');
-  var cityVal = citySel ? citySel.value : '';
-  fillCitySelects(cityVal);
-  updateImportTemplateLink();
-  applyClientsMapI18n();
-}
-function updateImportTemplateLink() {
-  var link = document.getElementById('clients-import-template-link');
-  if (!link) return;
-  link.href = '/clients/template?lang=' + (isClientUiEn() ? 'en' : 'ar');
-}
-
-function mapActiveClientLabel(count) {
-  var n = Number(count) || 0;
-  if (isClientUiEn()) return n + ' active client' + (n === 1 ? '' : 's');
-  return n + ' عميل نشط';
-}
-
-function mapSummaryShown(count) {
-  if (isClientUiEn()) return 'Shown on map: ' + mapActiveClientLabel(count);
-  return 'معروض على الخريطة: ' + count + ' عميل نشط';
-}
-
-function mapSummaryEmpty() {
-  return lcT('لا مواقع لعملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة');
-}
-
-function mapSummaryOsm(count) {
-  if (isClientUiEn()) return 'OpenStreetMap — ' + mapActiveClientLabel(count);
-  return 'OpenStreetMap — ' + count + ' عميل نشط';
-}
-
-function mapSummaryGeocoding(count) {
-  var n = Number(count) || 0;
-  if (isClientUiEn()) return 'Locating ' + n + ' client' + (n === 1 ? '' : 's') + ' from addresses...';
-  return 'جاري تحديد مواقع ' + n + ' عميل من العناوين...';
-}
-
-function mapSummaryGeocoded(done, total) {
-  if (isClientUiEn()) return 'Located ' + done + ' of ' + total + '...';
-  return 'تم تحديد ' + done + ' من ' + total + ' موقع...';
-}
-
-function applyClientsMapI18n() {
-  var en = isClientUiEn();
-  document.querySelectorAll('#tab-map [data-lc-map-t], #drill-panel [data-lc-map-t]').forEach(function (el) {
-    var key = el.getAttribute('data-lc-map-t');
-    if (!key) return;
-    if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent.trim();
-    el.textContent = en ? lcT(key) : el.dataset.lcAr;
-  });
-  document.querySelectorAll('#tab-map [data-lc-map-title]').forEach(function (el) {
-    var key = el.getAttribute('data-lc-map-title');
-    if (!key) return;
-    if (el.dataset.lcTitleAr == null) el.dataset.lcTitleAr = el.getAttribute('title') || key;
-    el.setAttribute('title', en ? lcT(key) : el.dataset.lcTitleAr);
-  });
-  var summaryEl = document.getElementById('map-summary');
-  if (summaryEl && mapLastActiveCount !== null) {
-    summaryEl.textContent = mapLastActiveCount ? mapSummaryShown(mapLastActiveCount) : mapSummaryEmpty();
-  }
-}
 function fillCitySelects(selected) {
   var cities = allCities();
   ['f-city-sel','f-city'].forEach(function(id) {
@@ -1179,21 +1012,19 @@ function fillCitySelects(selected) {
     var first = id === 'f-city'
       ? '<option value="">' + esc(lcT('كل المدن')) + '</option>'
       : '<option value="">' + esc(lcT('اختر المدينة')) + '</option>';
-    sel.innerHTML = first + cities.map(function (c) {
-      var label = cityDisplayName(c);
-      return '<option value="' + esc(c) + '">' + esc(label) + '</option>';
-    }).join('');
+    sel.innerHTML = first + cities.map(function(c){ return '<option>' + c + '</option>'; }).join('');
     if(selected) sel.value = selected;
   });
   fillDistrictFilter();
   refreshClientModalI18n();
 }
 function allDistricts(cityFilter) {
+  var cities = Array.isArray(cityFilter) ? cityFilter.filter(Boolean) : (cityFilter ? [cityFilter] : []);
   var seen = {}, list = [];
   CUSTOMERS.forEach(function(c) {
     var d = (c.district || '').trim();
     if (!d || seen[d]) return;
-    if (cityFilter && c.city !== cityFilter) return;
+    if (cities.length && cities.indexOf(c.city) < 0) return;
     seen[d] = 1;
     list.push(d);
   });
@@ -1202,15 +1033,17 @@ function allDistricts(cityFilter) {
 function fillDistrictFilter(keepSelected) {
   var sel = document.getElementById('f-filter-district');
   if (!sel) return;
-  var city = (document.getElementById('f-city') || {}).value || '';
-  var prev = keepSelected ? (sel.value || '') : '';
-  var districts = allDistricts(city);
-  sel.innerHTML = '<option value="">' + esc(lcT('كل الأحياء')) + '</option>' +
-    districts.map(function (d) {
-      return '<option value="' + esc(d) + '">' + esc(districtDisplayName(d)) + '</option>';
-    }).join('');
-  if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
-    sel.value = prev;
+  var cityEl = document.getElementById('f-city');
+  var cities = window.LiftCoreFilter ? LiftCoreFilter.values(cityEl) : [((cityEl || {}).value || '')].filter(Boolean);
+  var prev = keepSelected
+    ? (window.LiftCoreFilter ? LiftCoreFilter.values(sel) : [(sel.value || '')].filter(Boolean))
+    : [];
+  var districts = allDistricts(cities);
+  sel.innerHTML = '<option value="">' + (typeof lcDisp === 'function' ? lcDisp('كل الأحياء') : 'كل الأحياء') + '</option>' +
+    districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
+  if (window.LiftCoreFilter) LiftCoreFilter.set(sel, prev);
+  else if (prev[0] && [].some.call(sel.options, function(o) { return o.value === prev[0]; })) {
+    sel.value = prev[0];
   }
 }
 function onCityFilterChange() {
@@ -1690,18 +1523,13 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  var s  = (document.getElementById('search-input').value||'').toLowerCase();
-  var ct = document.getElementById('f-city').value||'';
-  var distSel = document.getElementById('f-filter-district');
-  var dist = distSel ? (distSel.value || '') : '';
-  var cs = document.getElementById('f-contract').value||'';
-  var st = document.getElementById('f-status').value||'';
+  var s  = (document.getElementById('search-input').value||'');
   filtered = CUSTOMERS.filter(function(c) {
-    return (!s  || (c.name||'').includes(s)||String(c.code||'').toLowerCase().includes(s)||(c.phone||'').includes(s)||(c.phone2||'').includes(s)||customerAllPhones(c).some(function(p){return String(p||'').includes(s);})||(c.district||'').includes(s)) &&
-           (!ct || c.city===ct) &&
-           (!dist || (c.district || '').trim() === dist) &&
-           (!cs || c.contract_status===cs) &&
-           (!st || clientAccountStatus(c)===st);
+    return LcSearch.match(s, [c.name, c.name_en, c.code, c.phone, c.phone2, customerAllPhones(c), c.city, c.district, c.address, c.contact]) &&
+           lcAllows('f-city', c.city) &&
+           lcAllows('f-filter-district', (c.district || '').trim()) &&
+           lcAllows('f-contract', c.contract_status) &&
+           lcAllows('f-status', clientAccountStatus(c));
   });
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
@@ -2779,8 +2607,8 @@ function switchTab(tab){
   document.getElementById('tab-btn-table').classList.toggle('active', tab==='table');
   document.getElementById('tab-btn-map').classList.toggle('active',   tab==='map');
   if (tab === 'table') {
-    var tabsEl = document.querySelector('.tabs');
-    if (tabsEl) tabsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    var toolbar = document.querySelector('.lc-page-toolbar');
+    if (toolbar) toolbar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   if(tab==='map') {
     whenGoogleMapsReady(function () {
@@ -3090,27 +2918,11 @@ async function confirmImport(){
 
 // ===== تصدير =====
 function exportExcel(){
-  var headersAr = ['الكود','الاسم','نوع المتعاقد','المدينة','الحي','الهاتف','المسؤول','هوية المتعاقد','السجل التجاري','المصاعد','حالة العقد','الحالة'];
-  var headersEn = ['Code','Name','Contractor Type','City','District','Phone','Contact','ID Number','CR Number','Elevators','Contract Status','Status'];
-  var headers = isClientUiEn() ? headersEn : headersAr;
-  var rows = [headers].concat(filtered.map(function (c) {
-    var name = isClientUiEn() ? (lcClient(c) || c.name) : c.name;
-    var entityType = isClientUiEn() ? lcT(c.entity_type || 'فرد') : (c.entity_type || 'فرد');
-    var city = isClientUiEn() ? cityDisplayName(c.city || '') : (c.city || '');
-    var district = isClientUiEn() ? districtDisplayName(c.district || '') : (c.district || '');
-    var contact = isClientUiEn() && window.LiftCoreDisplay ? LiftCoreDisplay.text(c.contact || '') : (c.contact || '');
-    var contractStatus = isClientUiEn() ? lcDispVal(c.contract_status || '') : (c.contract_status || '');
-    var status = isClientUiEn() ? lcDispVal(c.status || '') : (c.status || '');
-    return [
-      c.code, name, entityType, city, district, c.phone, contact,
-      c.national_id || '', c.cr_number || '', c.elevators, contractStatus, status
-    ];
-  }));
-  var csv = rows.map(function(r){return r.map(function(v){return '"'+(v||'')+'"';}).join(',');}).join('\n');
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download = 'clients_' + new Date().toISOString().split('T')[0] + '.csv';
-  a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('clients'),
+    labels: LiftCoreCsv.LABELS.client,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 
 // ===== مشترك =====
@@ -3163,16 +2975,14 @@ function openModal(id){
   if (window.LiftCoreI18n && LiftCoreI18n.applyModal) {
     setTimeout(function () {
       applyClientModalI18n();
-      applyClientCardI18n();
       LiftCoreI18n.applyModal(id);
       applyClientModalI18n();
-      applyClientCardI18n();
     }, 0);
-    setTimeout(function () { applyClientModalI18n(); applyClientCardI18n(); }, 120);
-    setTimeout(function () { applyClientModalI18n(); applyClientCardI18n(); }, 400);
+    setTimeout(function () { applyClientModalI18n(); }, 120);
+    setTimeout(function () { applyClientModalI18n(); }, 400);
   } else {
-    setTimeout(function () { applyClientModalI18n(); applyClientCardI18n(); }, 0);
-    setTimeout(function () { applyClientModalI18n(); applyClientCardI18n(); }, 200);
+    setTimeout(function () { applyClientModalI18n(); }, 0);
+    setTimeout(function () { applyClientModalI18n(); }, 200);
   }
 }
 function closeModal(id){
@@ -3354,6 +3164,12 @@ document.addEventListener('liftcore:lang', function () {
   refreshOpenClientCardI18n();
   applyClientModalI18n();
   applyClientsFilterI18n();
+  var addModal = document.getElementById('modal-add');
+  if (addModal && addModal.classList.contains('open')) {
+    updateContractorIdField();
+    applyClientModalI18n();
+  }
+  applyClientModalI18n();
   var addModal = document.getElementById('modal-add');
   if (addModal && addModal.classList.contains('open')) {
     updateContractorIdField();

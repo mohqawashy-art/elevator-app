@@ -31,6 +31,7 @@ PAGE_DEFS: tuple[dict[str, str], ...] = (
     {'slug': 'inventory', 'label_ar': 'الأصناف', 'label_en': 'Inventory', 'group_ar': 'المخزن'},
     {'slug': 'stock_movements', 'label_ar': 'حركة المخزن', 'label_en': 'Stock Movements', 'group_ar': 'المخزن'},
     {'slug': 'purchase_orders', 'label_ar': 'طلبات الشراء', 'label_en': 'Purchase Orders', 'group_ar': 'المخزن'},
+    {'slug': 'supplier_rfqs', 'label_ar': 'طلبات عروض أسعار الموردين', 'label_en': 'Supplier RFQs', 'group_ar': 'المخزن'},
     {'slug': 'reports_home', 'label_ar': 'كل التقارير', 'label_en': 'All Reports', 'group_ar': 'التقارير'},
     {'slug': 'report_dashboard', 'label_ar': 'تقرير الداشبورد', 'label_en': 'Dashboard Report', 'group_ar': 'التقارير'},
     {'slug': 'report_client_annual', 'label_ar': 'التقرير السنوي للعميل', 'label_en': 'Client Annual Report', 'group_ar': 'التقارير'},
@@ -92,15 +93,15 @@ ROLE_DEFAULT_PERMISSIONS: dict[str, frozenset[str]] = {
 
 LEGACY_GRANT_MAP: dict[str, tuple[str, ...]] = {
     'dashboard.read': (page_perm('dashboard', PERM_READ),),
-    'clients.read': (
-        page_perm('clients', PERM_READ),
-        page_perm('contracts', PERM_READ),
-        page_perm('sales_quotes', PERM_READ),
-    ),
     'clients.write': (
         page_perm('clients', PERM_CREATE), page_perm('clients', PERM_EDIT),
         page_perm('contracts', PERM_CREATE), page_perm('contracts', PERM_EDIT),
         page_perm('sales_quotes', PERM_CREATE), page_perm('sales_quotes', PERM_EDIT),
+    ),
+    'clients.read': (
+        page_perm('clients', PERM_READ),
+        page_perm('contracts', PERM_READ),
+        page_perm('sales_quotes', PERM_READ),
     ),
     'elevators.read': (page_perm('elevators', PERM_READ),),
     'elevators.write': (
@@ -126,11 +127,14 @@ LEGACY_GRANT_MAP: dict[str, tuple[str, ...]] = {
         page_perm('elevator_estimates', PERM_READ),
         page_perm('installation_projects', PERM_READ),
         page_perm('sales_quotes', PERM_READ),
+        page_perm('supplier_rfqs', PERM_READ),
     ),
     'installation.write': (
         page_perm('elevator_estimates', PERM_CREATE), page_perm('elevator_estimates', PERM_EDIT),
         page_perm('installation_projects', PERM_CREATE), page_perm('installation_projects', PERM_EDIT),
         page_perm('sales_quotes', PERM_CREATE), page_perm('sales_quotes', PERM_EDIT),
+        page_perm('supplier_rfqs', PERM_CREATE), page_perm('supplier_rfqs', PERM_EDIT),
+        page_perm('supplier_rfqs', PERM_READ),
     ),
     'finance.read': (
         page_perm('revenues', PERM_READ),
@@ -146,11 +150,13 @@ LEGACY_GRANT_MAP: dict[str, tuple[str, ...]] = {
         page_perm('inventory', PERM_READ),
         page_perm('stock_movements', PERM_READ),
         page_perm('purchase_orders', PERM_READ),
+        page_perm('supplier_rfqs', PERM_READ),
     ),
     'inventory.write': (
         page_perm('inventory', PERM_CREATE), page_perm('inventory', PERM_EDIT),
         page_perm('stock_movements', PERM_CREATE), page_perm('stock_movements', PERM_EDIT),
         page_perm('purchase_orders', PERM_CREATE), page_perm('purchase_orders', PERM_EDIT),
+        page_perm('supplier_rfqs', PERM_CREATE), page_perm('supplier_rfqs', PERM_EDIT),
     ),
     'reports.read': tuple(page_perm(page['slug'], PERM_READ) for page in PAGE_DEFS if page['group_ar'] == 'التقارير'),
 }
@@ -170,6 +176,7 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/settings/password', 'dashboard'),
     ('/dashboard', 'dashboard'),
     ('/clients', 'clients'),
+    ('/api/clients', 'clients'),
     ('/api/customers', 'clients'),
     ('/contracts', 'contracts'),
     ('/elevators', 'elevators'),
@@ -199,6 +206,7 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/inventory', 'inventory'),
     ('/stock-movements', 'stock_movements'),
     ('/purchase-orders', 'purchase_orders'),
+    ('/supplier-rfqs', 'supplier_rfqs'),
     ('/reports/dashboard', 'report_dashboard'),
     ('/reports/client-annual', 'report_client_annual'),
     ('/reports/clients', 'report_clients'),
@@ -340,6 +348,65 @@ def check_path_permission(user, *, path: str, method: str, settings=None) -> str
     if need and not user_has_permission(user, need, settings):
         return need
     return None
+
+
+# أول مسار مناسب لكل slug (للتحويل بعد تسجيل الدخول / رفض الصلاحية)
+PAGE_HOME_PATHS: dict[str, str] = {
+    'dashboard': '/dashboard',
+    'clients': '/clients',
+    'contracts': '/contracts',
+    'elevators': '/elevators',
+    'technicians': '/technicians',
+    'maintenance_visits': '/maintenance-visits',
+    'faults': '/faults',
+    'whatsapp_inbox': '/support/whatsapp',
+    'parts_billing': '/parts-billing',
+    'elevator_estimates': '/elevator-estimates',
+    'sales_quotes': '/sales',
+    'installation_projects': '/installation',
+    'revenues': '/revenues',
+    'expenses': '/expenses',
+    'invoices': '/invoices',
+    'inventory': '/inventory',
+    'stock_movements': '/stock-movements',
+    'purchase_orders': '/purchase-orders',
+    'supplier_rfqs': '/supplier-rfqs',
+    'reports_home': '/reports',
+    'report_dashboard': '/reports/dashboard',
+    'report_client_annual': '/reports/client-annual',
+    'report_clients': '/reports/clients',
+    'report_elevators': '/reports/elevators',
+    'report_contracts': '/reports/contracts',
+    'report_technicians': '/reports/technicians',
+    'report_maintenance': '/reports/maintenance-visits',
+    'report_faults': '/reports/faults',
+    'report_financial': '/reports/financial',
+    'report_contract_forecast': '/reports/contract-forecast',
+    'report_financial_health': '/reports/financial-health',
+    'report_revenues': '/reports/revenues',
+    'report_expenses': '/reports/expenses',
+    'report_invoices': '/reports/invoices',
+    'report_customer_statement': '/reports/customer-statement',
+    'report_inventory': '/reports/inventory',
+    'report_stock': '/reports/stock-movements',
+}
+
+
+def first_allowed_path_for_user(user) -> str:
+    """يرجع أول مسار يملك المستخدم قراءته، أو /dashboard."""
+    if not user:
+        return '/dashboard'
+    if not is_custom_role(user):
+        return '/dashboard'
+    grants = effective_permissions(user)
+    # لوحة التحكم دائماً متاحة كصفحة هبوط
+    for page in PAGE_DEFS:
+        slug = page['slug']
+        if slug == 'dashboard':
+            continue
+        if any(page_perm(slug, a) in grants for a in PERM_ACTIONS):
+            return PAGE_HOME_PATHS.get(slug, '/dashboard')
+    return '/dashboard'
 
 
 def permission_groups_for_ui() -> list[dict[str, Any]]:

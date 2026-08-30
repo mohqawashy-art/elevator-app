@@ -11,30 +11,26 @@
   <div class="content">
     <div class="stat-grid">
       <div class="stat-card">
-        <div class="stat-val">{{ active_leads }}</div>
-        <div class="stat-label">فرص نشطة</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-val">{{ lead_count }}</div>
-        <div class="stat-label">إجمالي الفرص</div>
-      </div>
-      <div class="stat-card">
         <div class="stat-val">{{ project_count }}</div>
-        <div class="stat-label">مشاريع مُنشأة</div>
+        <div class="stat-label">مشاريع</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">{{ active_leads }}</div>
+        <div class="stat-label">عروض/مشاريع نشطة*</div>
       </div>
     </div>
     <div class="page-header">
       <div class="page-title">مشاريع تركيب المصاعد</div>
       <div class="page-actions">
-        <a href="{{ url_for('installation.leads_list') }}" class="btn btn-primary btn-sm">+ فرصة بيع جديدة</a>
+        <a href="/installation/projects" class="btn btn-primary btn-sm">كل المشاريع</a>
       </div>
     </div>
     <div class="panel">
-      <div class="panel-title">المراحل المفعّلة</div>
+      <div class="panel-title">التدفق</div>
       <p class="install-stages-desc" style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:12px">
-        مرحلة 1: فرص البيع · مراحل 3–6: التسعير وعرض السعر · مرحلة 7: التنفيذ والجدول الزمني. المعاينة الميدانية (مرحلة 2) قادمة.
+        المبيعات منفصلة: العروض تُدار هناك. هنا فقط <b>كارت المشروع</b> (مالية) و<b>تنفيذ المشروع</b> (مراحل ميدانية).
       </p>
-      <a href="/installation/projects" class="btn btn-primary btn-sm">المشاريع والتسعير</a>
+      <a href="/installation/projects" class="btn btn-primary btn-sm">المشاريع</a>
     </div>
     {% if recent_projects %}
     <div class="panel">
@@ -48,7 +44,10 @@
             <td>{{ p.client_display }}</td>
             <td><span class="badge badge-new">{{ p.status }}</span></td>
             <td>
-              <a href="/installation/projects/{{ p.id }}/quote" class="btn btn-secondary btn-sm">تسعير</a>
+              <a href="/installation/projects/{{ p.id }}#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
+              {% if p.execution_active %}
+              <a href="/installation/projects/{{ p.id }}/execution" class="btn btn-secondary btn-sm">تنفيذ</a>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

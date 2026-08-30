@@ -128,15 +128,15 @@ def test_project_card_costs_and_receipts(client):
         db.session.add(InstallProjectCostItem(
             organization_id=org.id,
             project_id=project.id,
-            category='قطع غيار',
-            title='قطع غيار',
+            category='السكك والأبواب',
+            title='سكك وأبواب',
             amount=23000,
             cost_date=date.today(),
         ))
         db.session.add(InstallProjectCostItem(
             organization_id=org.id,
             project_id=project.id,
-            category='عمالة',
+            category='السكك والأبواب',
             title='دفعة أولى',
             amount=2000,
             installment_no=1,
@@ -146,7 +146,7 @@ def test_project_card_costs_and_receipts(client):
         db.session.add(InstallProjectCostItem(
             organization_id=org.id,
             project_id=project.id,
-            category='عمالة',
+            category='الماكينة والشاسيه',
             title='دفعة ثانية',
             amount=2000,
             installment_no=2,
@@ -156,7 +156,7 @@ def test_project_card_costs_and_receipts(client):
         db.session.add(InstallProjectCostItem(
             organization_id=org.id,
             project_id=project.id,
-            category='عمالة',
+            category='الكابينة والكنترول',
             title='دفعة ثالثة',
             amount=1600,
             installment_no=3,
@@ -183,8 +183,9 @@ def test_project_card_costs_and_receipts(client):
         labels = [r['label'] for r in card['sheet_rows']]
         assert 'قيمة المشروع' in labels
         assert 'تكاليف المشروع' in labels
-        assert 'قطع غيار' in labels
-        assert 'عمالة' in labels
+        assert 'مرحلة 1 — السكك والأبواب' in labels
+        assert 'مرحلة 2 — الماكينة والشاسيه' in labels
+        assert 'مرحلة 3 — الكابينة والكنترول' in labels
         assert 'دفعة أولى' in labels
         assert 'دفعة ثانية' in labels
         assert 'دفعة ثالثة' in labels
@@ -195,7 +196,8 @@ def test_project_card_costs_and_receipts(client):
     assert 'كارت المشروع' in body
     assert 'دفعة أولى' in body
     assert 'مدفوعة' in body
-    assert 'إمكانية فاتورة قطع غيار' in body
+    assert 'مرحلة 1 — السكك والأبواب' in body
+    assert 'تعديل' in body
     assert 'pc-sheet' in body
     assert 'طباعة الكارت' in body
     assert 'ربط بعقد' in body
@@ -206,6 +208,96 @@ def test_project_card_costs_and_receipts(client):
     assert 'كارت مشروع' in print_body
     assert 'دفعة أولى' in print_body
     assert 'window.print' in print_body
+
+
+def test_project_card_cost_edit(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        ensure_project_card_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-EDIT1',
+            title='مشروع تعديل',
+            status='عقد',
+            contract_value=10000,
+        )
+        db.session.add(project)
+        db.session.flush()
+        item = InstallProjectCostItem(
+            organization_id=org.id,
+            project_id=project.id,
+            category='السكك والأبواب',
+            title='سكك',
+            amount=500,
+            cost_date=date.today(),
+        )
+        db.session.add(item)
+        db.session.commit()
+        pid, iid = project.id, item.id
+        with client.session_transaction() as sess:
+            sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        f'/installation/projects/{pid}/card/costs/{iid}/edit',
+        data={
+            'csrf_token': 'test-csrf',
+            'category': 'الماكينة والشاسيه',
+            'title': 'ماكينة محدّثة',
+            'amount': '750',
+            'cost_date': date.today().isoformat(),
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert 'تم تحديث بند التكلفة' in resp.data.decode('utf-8', errors='ignore')
+    with client.application.app_context():
+        updated = db.session.get(InstallProjectCostItem, iid)
+        assert updated.category == 'الماكينة والشاسيه'
+        assert updated.title == 'ماكينة محدّثة'
+        assert float(updated.amount) == 750
+
+
+def test_legacy_cost_category_migration(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        from installation.project_card import build_project_card
+        import installation.project_card as pc_mod
+        pc_mod._cost_phases_migrated = False
+        ensure_project_card_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-MIG1',
+            title='ترقية فئات',
+            status='عقد',
+        )
+        db.session.add(project)
+        db.session.flush()
+        db.session.add(InstallProjectCostItem(
+            organization_id=org.id,
+            project_id=project.id,
+            category='قطع غيار',
+            title='قطع',
+            amount=100,
+            cost_date=date.today(),
+        ))
+        db.session.add(InstallProjectCostItem(
+            organization_id=org.id,
+            project_id=project.id,
+            category='عمالة',
+            title='دفعة 2',
+            amount=200,
+            installment_no=2,
+            cost_date=date.today(),
+        ))
+        db.session.commit()
+        pid = project.id
+        ensure_project_card_schema()
+        card = build_project_card(db.session.get(InstallProject, pid))
+        labels = [r['label'] for r in card['sheet_rows']]
+        assert 'مرحلة 1 — السكك والأبواب' in labels
+        assert 'مرحلة 2 — الماكينة والشاسيه' in labels
 
 
 def test_project_card_link_contract(client):

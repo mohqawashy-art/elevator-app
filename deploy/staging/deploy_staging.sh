@@ -15,6 +15,8 @@ ENV_FILE="/etc/liftcore/staging.env"
 SERVICE="liftcore-staging"
 LOCK="/var/lock/liftcore-staging-deploy.lock"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 if [ "$(id -u)" -ne 0 ]; then
   echo "ERROR: run with sudo"
   exit 1
@@ -70,6 +72,9 @@ cd "$RELEASE"
 "$VENV/bin/python" deploy/migrate_db.py
 if [ -f scripts/init_install_module.py ]; then
   "$VENV/bin/python" scripts/init_install_module.py
+fi
+if [ -f "$SCRIPT_DIR/seed_staging.py" ]; then
+  "$VENV/bin/python" "$SCRIPT_DIR/seed_staging.py"
 fi
 
 ln -sfn "$RELEASE" "$CURRENT"

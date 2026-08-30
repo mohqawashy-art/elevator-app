@@ -82,12 +82,12 @@ def test_quote_stage_blocks_split_labor(client):
         assert labor_sell == 10000
         assert len(blocks) == 3
         assert blocks[0]['stage'].startswith('مرحلة 1')
-        assert blocks[0]['total'] == 1000
-        assert blocks[1]['total'] == 20000
-        assert blocks[2]['total'] == 8000
-        assert len(cost_breakdown) == 1
-        assert cost_breakdown[0]['label'] == 'المصنعيات والتركيب'
-        assert cost_breakdown[0]['amount'] == 10000
+        assert blocks[0]['labor_amount'] == 3000
+        assert blocks[1]['labor_amount'] == 4500
+        assert blocks[2]['labor_amount'] == 2500
+        assert blocks[0]['total'] == 1000 + 3000
+        assert blocks[1]['total'] == 20000 + 4500
+        assert blocks[2]['total'] == 8000 + 2500
 
 
 def test_quote_stage_blocks_single_stage_gets_all_labor(client):
@@ -129,12 +129,12 @@ def test_quote_stage_blocks_single_stage_gets_all_labor(client):
             sort_order=1,
         ))
         db.session.commit()
-        blocks, labor_sell, cost_breakdown = _quote_stage_blocks(q)
+        blocks, labor_sell = _quote_stage_blocks(q)
         assert labor_sell == 10000
         assert len(blocks) == 1
         assert blocks[0]['stage'].startswith('مرحلة 1')
-        assert blocks[0]['total'] == 1000
-        assert cost_breakdown[0]['amount'] == 10000
+        assert blocks[0]['labor_amount'] == 10000
+        assert blocks[0]['total'] == 1000 + 10000
 
 
 def test_extend_floors_quote_type_assets():

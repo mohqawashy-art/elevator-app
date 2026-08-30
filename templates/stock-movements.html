@@ -439,17 +439,14 @@ function renderTable(data) {
 }
 
 function applyFilters() {
-  const s = (document.getElementById('f-search')?.value || '').trim().toLowerCase();
-  const dr = document.getElementById('f-dir')?.value || '';
-  const tp = document.getElementById('f-type')?.value || '';
-  const itemId = document.getElementById('f-item')?.value || '';
+  const s = (document.getElementById('f-search')?.value || '').trim();
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = MOVEMENTS.filter(m =>
-    (!s || m.item_name.toLowerCase().includes(s) || m.code.toLowerCase().includes(s) || m.technician.toLowerCase().includes(s)) &&
-    (!dr || m.direction === dr) &&
-    (!tp || m.movement_type === tp) &&
-    (!itemId || String(m.item_id) === itemId) &&
+    LcSearch.match(s, [m.item_name, m.item_code, m.code, m.technician, m.movement_type, m.notes, m.reference]) &&
+    lcAllows('f-dir', m.direction) &&
+    lcAllows('f-type', m.movement_type) &&
+    lcAllows('f-item', String(m.item_id)) &&
     (!fd || m.movement_date >= fd) &&
     (!td || m.movement_date <= td)
   );
@@ -588,13 +585,11 @@ function deleteMovement(id) {
 }
 
 function exportCSV() {
-  const rows = [['الكود', 'التاريخ', 'الاتجاه', 'النوع', 'الصنف', 'الكمية', 'القيمة', 'الفني', 'السبب']];
-  filtered.forEach(m => rows.push([m.code, m.movement_date, m.direction, m.movement_type, m.item_name, m.quantity, m.total_value, m.technician, m.reason]));
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = 'stock-movements.csv';
-  a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('stock-movements'),
+    labels: LiftCoreCsv.LABELS.stock,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);

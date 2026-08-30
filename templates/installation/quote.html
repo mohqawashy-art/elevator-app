@@ -5,17 +5,17 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=extend2">
 <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 </head>
-<body{% if lock_quote_type %} class="quote-mode-locked quote-mode-{{ lock_quote_type }}"{% endif %}>
+<body>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
   <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
 </aside>
 <div class="main">
-  {% set page_title = quote_flow_title|default('عرض سعر تركيب') %}
+  {% set page_title = 'عرض سعر تركيب' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
-      <div class="page-title">{{ quote_flow_title or ('عرض سعر — ' ~ (quotation.code if quotation else next_quote_code)) }}</div>
+      <div class="page-title">عرض سعر — {{ quotation.code if quotation else next_quote_code }}</div>
       <div class="page-actions">
         <a href="{{ url_for('sales.quotes_inbox', kind='install') }}" class="btn btn-secondary btn-sm">← عروض التركيب</a>
         <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
@@ -40,7 +40,7 @@
     <div class="pricing-tabs">
       <button type="button" class="pricing-tab active" id="tabNewBtn">تركيب مصعد جديد<span class="tag">مواصفات → BOM تلقائي</span></button>
       <button type="button" class="pricing-tab" id="tabExtendBtn">إضافة أدوار<span class="tag">قائم + أدوار جديدة</span></button>
-      <button type="button" class="pricing-tab" id="tabUpgBtn">عرض سعر تحديث<span class="tag">اختر المكونات</span></button>
+      <button type="button" class="pricing-tab" id="tabUpgBtn">تحديث مصعد قائم<span class="tag">اختر المكونات</span></button>
     </div>
     {% endif %}
 
@@ -385,7 +385,6 @@ window.__INSTALL_QUOTE__ = {
   machineOrigins: {{ machine_origins | tojson }},
   defaultCustomerId: {{ default_customer_id | tojson }},
   preferredQuoteType: {{ (preferred_quote_type|default(none)) | tojson }},
-  lockQuoteType: {{ (lock_quote_type|default(none)) | tojson }},
   companyName: {{ ((company_settings.company_name if company_settings and company_settings.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة')) | tojson }},
   companyLogoUrl: {{ brand_logo_url | tojson }},
   logoWidth: {{ (logo_width_report or 150) | tojson }},
@@ -399,8 +398,8 @@ window.__INSTALL_QUOTE__ = {
   companySignOffsetY: {{ (company_sign_offset_y or 0) | tojson }}
 };
 </script>
-{% include 'partials/quick_customer_modal.html' %}
 <script src="{{ url_for('static', filename='installation-pricing.js') }}?v=market1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=market4"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=market2"></script>
+{% include 'partials/quick_customer_modal.html' %}
 </body>
 </html>

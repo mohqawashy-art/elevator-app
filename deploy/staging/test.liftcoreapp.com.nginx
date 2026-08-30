@@ -1,7 +1,21 @@
+# تجربة test.liftcoreapp.com — معزولة عن الإنتاج (منفذ 5003)
+# خلف Cloudflare: شهادة Origin على 443
+
 server {
     listen 80;
     listen [::]:80;
     server_name test.liftcoreapp.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name test.liftcoreapp.com;
+
+    ssl_certificate     /etc/ssl/certs/liftcore-origin.crt;
+    ssl_certificate_key /etc/ssl/private/liftcore-origin.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
 
     client_max_body_size 20M;
     add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
@@ -11,7 +25,6 @@ server {
         return 200 "User-agent: *\nDisallow: /\n";
     }
 
-    # أنشئ الملف عبر htpasswd أثناء bootstrap. لا تفتح staging للعامة.
     auth_basic "LiftCore staging";
     auth_basic_user_file /etc/nginx/.htpasswd-liftcore-staging;
 

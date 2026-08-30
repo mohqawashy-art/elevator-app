@@ -5,7 +5,8 @@
 > **Onboarding:** `deploy/ONBOARDING.md`
 
 السيرفر: **https://app.liftcoreapp.com**  
-IP: `34.18.56.21`  
+الإنتاج: **Hetzner** `2.29.6.41` (CX43 · Falkenstein) — Cloudflare + SSL  
+سجل النقل: [`deploy/hetzner/README.md`](hetzner/README.md) — GCP أُلغي أغسطس 2026  
 الكود على: **https://github.com/mohqawashy-art/elevator-app**
 
 ### تثبيت تطبيق الإدارة (جوال / تابلت)
@@ -25,10 +26,10 @@ IP: `34.18.56.21`
 
 ### بعد كل `git push` على `main`
 
-الإنتاج **لا يتحدّث تلقائياً** إلا إذا فُعِّل cron التحديث (أسفل). وإلا من **GCP Console → SSH**:
+الإنتاج **لا يتحدّث تلقائياً** إلا إذا فُعِّل cron التحديث (أسفل). وإلا SSH على Hetzner:
 
 ```bash
-cd ~/liftcore/elevator-app && bash deploy/gcp_update.sh
+cd ~/liftcore/elevator-app && bash deploy/server_update_now.sh
 ```
 
 تحقق محلياً قبل الرفع:
@@ -39,26 +40,24 @@ python scripts/qa_preflight.py --e2e --url https://app.liftcoreapp.com
 
 ---
 
-## الطريقة 1 — من Google Cloud (الأسهل)
+## الطريقة 1 — SSH على Hetzner
 
-1. افتح [Google Cloud Console](https://console.cloud.google.com/) → **Compute Engine** → **VM instances**
-2. اضغط **SSH** بجانب السيرفر
-3. الصق هذا الأمر:
+```bash
+ssh info@2.29.6.41
+cd ~/liftcore/elevator-app
+bash deploy/server_update_now.sh
+```
+
+أو:
 
 ```bash
 cd ~/liftcore/elevator-app 2>/dev/null || cd /var/www/elevator-app
 bash deploy/install.sh update
 ```
 
-إذا ظهر خطأ في المسار، جرّب:
-
-```bash
-find ~ /var/www -maxdepth 3 -name elevator-app -type d 2>/dev/null
-```
-
 ---
 
-## الطريقة 2 — من جهازك (SSH)
+## الطريقة 2 — من جهازك (Windows)
 
 ```bat
 deploy\deploy_to_server.bat
@@ -76,15 +75,7 @@ deploy\push_sync_liftcore.ps1
 bash ~/liftcore/elevator-app/deploy/sync_liftcore_with_jama.sh
 ```
 
-أو يدوياً:
-
-```bash
-ssh USER@34.18.56.21
-cd ~/liftcore/elevator-app
-bash deploy/gcp_update.sh
-```
-
-> يجب أن يكون مفتاح SSH الخاص بك مضافاً على السيرفر (مستخدم `info` أو حسب إعداد GCP).
+> يجب أن يكون مفتاح SSH الخاص بك مضافاً على السيرفر (مستخدم `info`).
 
 ---
 
@@ -110,7 +101,7 @@ sudo systemctl status liftcore
 
 بعد كل `git push` على `main`، السيرفر يسحب التحديث ويعيد تشغيل الخدمات **بدون SSH يدوي**.
 
-**تفعيل مرة واحدة** — من GCP Console SSH:
+**تفعيل مرة واحدة** — SSH على Hetzner:
 
 ```bash
 cd ~/liftcore/elevator-app
@@ -137,4 +128,14 @@ bash ~/liftcore/elevator-app/deploy/auto_update.sh --force
 
 ```bash
 crontab -l | grep -v liftcore-auto-update | crontab -
+```
+
+---
+
+## فحص سريع للسيرفر
+
+```bash
+bash ~/liftcore/elevator-app/deploy/hetzner/status.sh
+bash ~/liftcore/elevator-app/deploy/check_production_ops.sh
+curl -s https://app.liftcoreapp.com/api/health
 ```

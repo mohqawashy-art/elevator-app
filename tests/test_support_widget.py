@@ -10,6 +10,7 @@ def test_support_widget_on_dashboard(client, monkeypatch):
     assert r.status_code == 200
     html = r.get_data(as_text=True)
     assert 'lc-support' in html
+    assert 'lc-support__rail' in html
     assert 'liftcore-support.css' in html
     assert 'wa.me/' in html
     assert 'mailto:info@liftcoreapp.com' in html

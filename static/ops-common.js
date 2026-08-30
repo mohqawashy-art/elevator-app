@@ -91,6 +91,7 @@ window.OpsPage = (function () {
       options.map(function (o) {
         return '<option value="' + String(o.value).replace(/"/g, '&quot;') + '">' + o.label + '</option>';
       }).join('');
+    if (window.LiftCoreFilter) LiftCoreFilter.refresh(sel);
   }
 
   function initCalendar(gridId, titleId, items, dateField, labelField, statusField, labelTitle) {

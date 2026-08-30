@@ -29,16 +29,14 @@
       <section class="door">
         <h2>تركيبات</h2>
         <p class="path">
-          <b>عرض سعر</b> (تركيب جديد · تحديث · إضافة أدوار)
+          <b>عرض سعر</b> (تركيب جديد / تحديث / إضافة أدوار)
           → إرسال للعميل (واتساب / إيميل)
           → موافقة العميل
           → يُحوَّل تلقائياً إلى <b>قسم المشاريع</b>
         </p>
         <div class="acts">
           {% if install_module_on and has_perm('installation_projects.read') %}
-          <a class="btn btn-primary" href="{{ url_for('sales.install_quote_new') }}">+ تركيب مصعد جديد</a>
-          <a class="btn btn-secondary" href="{{ url_for('sales.install_quote_upgrade') }}">+ عرض سعر تحديث</a>
-          <a class="btn btn-secondary" href="{{ url_for('sales.install_quote_extend') }}">+ إضافة أدوار</a>
+          <a class="btn btn-primary" href="{{ url_for('sales.install_quote_new') }}">+ عرض تركيب جديد</a>
           <a class="btn btn-secondary" href="{{ url_for('sales.quotes_inbox', kind='install') }}">عروض التركيب</a>
           <div class="meta">عروض مفتوحة: {{ install_open }}</div>
           {% else %}

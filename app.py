@@ -11,6 +11,7 @@ from models import MaintenanceTeam
 from models import VisitTechnician, FaultTechnician, WhatsAppInbox
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
+from models import SupplierQuoteRequest, SupplierQuoteRequestLine, RFQ_STATUSES
 from models import ElevatorEstimate, ElevatorEstimateLine
 from elevator_estimate_calc import (
     calculate_lines, summarize_lines, MACHINE_TYPES, ELEV_TYPES,
@@ -926,6 +927,7 @@ def inject_global_template_vars():
             return user_has_permission(user, perm, s)
         except Exception:
             return False
+
     requested_department = (request.args.get('department') or '').strip()
     if requested_department in DEPARTMENT_PORTALS:
         session['active_department'] = requested_department
@@ -1049,7 +1051,61 @@ def _backfill_contract_billing_cache():
     app.logger.info('Contract billing cache backfill complete.')
 
 
-def contract_to_js_dict(c, *, renewed_ids=None):
+def _elevator_building_display(elev):
+    """اسم المبنى للعرض — بدون كود المصعد أو لاحقته."""
+    if isinstance(elev, dict):
+        raw = (elev.get('building') or '').strip()
+        code = (elev.get('code') or '').strip()
+    else:
+        raw = (getattr(elev, 'building_name', None) or '').strip()
+        code = (getattr(elev, 'code', None) or '').strip()
+    if not raw:
+        return ''
+    if code and raw == code:
+        return ''
+    if code:
+        for sep in (' — ', ' - ', ' – ', ' –', '– '):
+            suffix = f'{sep}{code}'
+            if raw.endswith(suffix):
+                raw = raw[: -len(suffix)].strip()
+                break
+    if not raw or (code and raw == code):
+        return ''
+    if code and raw.upper().endswith(code.upper()) and len(raw) > len(code):
+        # احتياط: لاحقة بدون فاصل واضح
+        maybe = raw[: -len(code)].rstrip(' —–-').strip()
+        if maybe:
+            raw = maybe
+    if re.fullmatch(r'(?:EL|EV|E)-\d+', raw, re.IGNORECASE):
+        return ''
+    return raw
+
+
+def _contract_building_names(c, elevator_by_id=None):
+    """أسماء المباني الفريدة من المصاعد المرتبطة بالعقد."""
+    elev_ids = [ce.elevator_id for ce in (c.elevators or [])]
+    if not elev_ids:
+        return ''
+    lookup = elevator_by_id
+    if lookup is None:
+        lookup = {
+            e.id: e
+            for e in tenant_query(Elevator).filter(Elevator.id.in_(elev_ids)).all()
+        }
+    labels = []
+    seen = set()
+    for eid in elev_ids:
+        elev = lookup.get(eid)
+        if elev is None:
+            continue
+        name = _elevator_building_display(elev)
+        if name and name not in seen:
+            seen.add(name)
+            labels.append(name)
+    return '، '.join(labels)
+
+
+def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
     """تسلسل عقد لـ JSON في الصفحة (بدون استعلامات إضافية)."""
     cid = getattr(c, 'id', None)
     is_renewed = bool(getattr(c, '_is_renewed', False))
@@ -1060,6 +1116,7 @@ def contract_to_js_dict(c, *, renewed_ids=None):
         'code': c.code,
         'customer_id': c.customer_id,
         'customer': c.customer.name if c.customer else '',
+        'buildings': _contract_building_names(c, elevator_by_id=elevator_by_id),
         'customer_name_en': (c.customer.name_en or '') if c.customer else '',
         'customer_city': (c.customer.city or '') if c.customer else '',
         'customer_district': (c.customer.district or '') if c.customer else '',
@@ -1251,6 +1308,7 @@ def revenue_to_js_dict(r):
         'customer': r.customer.name if r.customer else '—',
         'contract': r.contract.code if r.contract else '—',
         'revenue_date': str(r.revenue_date or ''),
+        'title': r.title or '',
         'revenue_type': r.revenue_type or '',
         'pay_method': r.payment_method or '',
         'amount': r.amount or 0,
@@ -1419,6 +1477,7 @@ def _sqlite_legacy_schema_patches():
                 ('custom_holidays_json', 'TEXT'),
                 ('extra_work_days_json', 'TEXT'),
                 ('custom_permissions_enabled', 'BOOLEAN'),
+                ('contract_template_path', 'VARCHAR(300)'),
             ],
             'users': [
                 ('theme', 'VARCHAR(10)'),
@@ -1473,6 +1532,7 @@ def _sqlite_legacy_schema_patches():
                 ('parts_billing_id', 'INTEGER'),
                 ('proof_path', 'VARCHAR(300)'),
                 ('account_id', 'INTEGER'),
+                ('title', 'VARCHAR(300)'),
             ],
             'expenses': [
                 ('proof_path', 'VARCHAR(300)'),
@@ -1518,6 +1578,7 @@ def _sqlite_legacy_schema_patches():
                 ('pay_advance_pct', 'FLOAT'),
                 ('pay_supply_pct', 'FLOAT'),
                 ('pay_final_pct', 'FLOAT'),
+                ('pay_schedule_json', 'TEXT'),
             ],
             'installation_projects': [
                 ('accepted_quotation_id', 'INTEGER'),
@@ -1545,6 +1606,7 @@ def _sqlite_legacy_schema_patches():
                 ('office_users_limit_override', 'INTEGER'),
                 ('technicians_limit_override', 'INTEGER'),
                 ('storage_gb_limit_override', 'INTEGER'),
+                ('features_override_json', 'TEXT'),
             ],
             'onboarding_invites': [
                 ('admin_username', 'VARCHAR(50)'),
@@ -1618,6 +1680,12 @@ def _startup_schema_and_data_sync():
                 db.session.execute(text('ALTER TABLE customers ADD COLUMN extra_phones TEXT'))
                 db.session.commit()
                 app.logger.info('Added customers.extra_phones column')
+        if 'revenues' in tables:
+            rev_cols = {c['name'] for c in insp.get_columns('revenues')}
+            if 'title' not in rev_cols:
+                db.session.execute(text('ALTER TABLE revenues ADD COLUMN title VARCHAR(300)'))
+                db.session.commit()
+                app.logger.info('Added revenues.title column')
         if 'settings' in tables:
             settings_cols = {c['name'] for c in insp.get_columns('settings')}
             seal_columns = {
@@ -1630,6 +1698,7 @@ def _startup_schema_and_data_sync():
                 'company_sign_offset_x': 'INTEGER DEFAULT 0',
                 'company_sign_offset_y': 'INTEGER DEFAULT 0',
                 'azkar_ticker_enabled': 'BOOLEAN DEFAULT TRUE',
+                'contract_template_path': 'VARCHAR(300)',
             }
             for col_name, column_type in seal_columns.items():
                 if col_name in settings_cols:
@@ -1640,6 +1709,20 @@ def _startup_schema_and_data_sync():
                 db.session.commit()
                 app.logger.info('Added settings.%s column', col_name)
                 settings_cols.add(col_name)
+        if 'elevator_estimates' in tables:
+            est_cols = {c['name'] for c in insp.get_columns('elevator_estimates')}
+            for col_name, column_type in (
+                ('result_project_id', 'INTEGER'),
+                ('result_quotation_id', 'INTEGER'),
+            ):
+                if col_name in est_cols:
+                    continue
+                db.session.execute(text(
+                    f'ALTER TABLE elevator_estimates ADD COLUMN {col_name} {column_type}'
+                ))
+                db.session.commit()
+                app.logger.info('Added elevator_estimates.%s column', col_name)
+                est_cols.add(col_name)
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('settings/customers column ensure skip: %s', exc)
@@ -1661,6 +1744,12 @@ def _startup_schema_and_data_sync():
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Install project card schema ensure skip: %s', exc)
+    try:
+        from supplier_rfq_schema import ensure_supplier_rfq_schema
+        ensure_supplier_rfq_schema()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Supplier RFQ schema ensure skip: %s', exc)
     try:
         from installation.schema import ensure_install_tenant_uniques
         ensure_install_tenant_uniques()
@@ -1711,8 +1800,10 @@ COMPANY_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'company'
 USER_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'users')
 CLIENT_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'clients')
 PO_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'purchase_orders')
+RFQ_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'supplier_rfqs')
 ALLOWED_TECH_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_LOGO_EXT = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
+ALLOWED_CONTRACT_TEMPLATE_EXT = {'docx'}
 ALLOWED_TECH_DOC_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 ALLOWED_CLIENT_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_CONTRACT_FILE_EXT = {'pdf'}
@@ -2222,9 +2313,14 @@ def demo_request():
     """طلب تجربة أو عرض سعر — يُحفظ في المنصة ويُرسل إيميل للمبيعات."""
     import time
     from liftcore_mail import send_demo_request_email
-    from liftcore_security import ensure_csrf_token, validate_csrf
+    from liftcore_security import (
+        check_demo_request_rate_limit,
+        ensure_csrf_token,
+        record_demo_request_attempt,
+        validate_csrf,
+    )
     from marketing_site import marketing_page_context
-    from sales_leads import create_sales_lead, mark_lead_email_result
+    from sales_leads import create_sales_lead, is_spam_sales_lead, mark_lead_email_result
 
     ensure_csrf_token()
     if not app.config.get('TESTING'):
@@ -2250,6 +2346,11 @@ def demo_request():
             return redirect('/start')
         return redirect(redirect_to)
 
+    allowed, _retry = check_demo_request_rate_limit()
+    if not allowed:
+        flash('انتظر قليلاً ثم أعد المحاولة.', 'warn')
+        return redirect(redirect_to if next_url != '/start' else '/start#contact')
+
     now = time.time()
     last = float(session.get('demo_request_at') or 0)
     if last and (now - last) < 60:
@@ -2263,6 +2364,19 @@ def demo_request():
     city = (request.form.get('city') or '').strip()
     elevators = (request.form.get('elevators') or '').strip()
     notes = (request.form.get('notes') or '').strip()
+    record_demo_request_attempt()
+    if is_spam_sales_lead(
+        company_name=company,
+        contact_name=name,
+        contact_email=email,
+        phone=phone,
+        city=city,
+        notes=notes,
+    ):
+        flash('تم استلام طلبك. سنتواصل معك قريباً.', 'ok')
+        if next_url == '/start':
+            return redirect('/start')
+        return redirect(redirect_to)
     request_type = (request.form.get('request_type') or 'demo').strip().lower()
     utm_source = (request.form.get('utm_source') or session.get('utm_source') or '').strip()
     utm_medium = (request.form.get('utm_medium') or session.get('utm_medium') or '').strip()
@@ -2582,11 +2696,74 @@ def _complete_user_login(user, *, next_url: str | None = None):
 
 @app.route('/manifest.webmanifest')
 def web_manifest():
-    return send_from_directory(
-        os.path.join(app.root_path, 'static'),
-        'manifest.webmanifest',
+    """مانيفست PWA — اسم المستأجر على النطاق الفرعي حتى يظهر التثبيت باسم صحيح."""
+    import json
+
+    host = (request.host or '').split(':')[0].lower().rstrip('.')
+    slug = ''
+    if host.endswith('.liftcoreapp.com'):
+        slug = host.split('.', 1)[0]
+    if slug in ('', 'www', 'app', 'admin', 'test', 'signup', 'api'):
+        slug = ''
+
+    display_name = 'LiftCore'
+    short_name = 'LiftCore'
+    description = 'لوحة إدارة صيانة المصاعد — للمكتب على الجوال والتابلت والحاسوب'
+    if slug == 'jama':
+        display_name = 'JAMA'
+        short_name = 'JAMA'
+        description = 'JAMA — نظام إدارة المصاعد عبر LiftCore'
+    elif slug:
+        display_name = slug.upper()
+        short_name = slug.upper()[:12]
+
+    payload = {
+        'name': display_name if slug else 'LiftCore — الإدارة',
+        'short_name': short_name,
+        'description': description,
+        'id': f'https://{host}/' if host else '/',
+        'start_url': '/dashboard?source=pwa',
+        'scope': '/',
+        'display': 'standalone',
+        'orientation': 'any',
+        'background_color': '#0b0f17',
+        'theme_color': '#0b0f17',
+        'lang': 'ar',
+        'dir': 'rtl',
+        'categories': ['business', 'productivity'],
+        'icons': [
+            {
+                'src': '/static/images/icon-192.png',
+                'sizes': '192x192',
+                'type': 'image/png',
+                'purpose': 'any',
+            },
+            {
+                'src': '/static/images/icon-512.png',
+                'sizes': '512x512',
+                'type': 'image/png',
+                'purpose': 'any',
+            },
+            {
+                'src': '/static/images/icon-192.png',
+                'sizes': '192x192',
+                'type': 'image/png',
+                'purpose': 'maskable',
+            },
+            {
+                'src': '/static/images/icon-512.png',
+                'sizes': '512x512',
+                'type': 'image/png',
+                'purpose': 'maskable',
+            },
+        ],
+    }
+    resp = app.response_class(
+        json.dumps(payload, ensure_ascii=False, separators=(',', ':')),
         mimetype='application/manifest+json',
     )
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
 
 
 @app.route('/sw.js')
@@ -3301,6 +3478,8 @@ def operator_onboarding_cancel(invite_id):
 def platform_home():
     from platform_admin import is_admin_host, list_organizations, org_stats, recent_invites, server_status, tenant_ops_by_id
     from sales_leads import list_sales_leads, sales_lead_stats
+    from platform_catalog_store import catalog_meta, live_plan_catalog
+    from plan_catalog import PLAN_ORDER
 
     if not is_admin_host():
         abort(404)
@@ -3311,6 +3490,7 @@ def platform_home():
     stats = org_stats()
     stats['leads_new'] = lead_stats.get('new', 0)
     orgs = list_organizations(limit=12)
+    plans = live_plan_catalog()
     return render_template(
         'platform/home.html',
         nav='home',
@@ -3320,8 +3500,69 @@ def platform_home():
         ops=tenant_ops_by_id(orgs),
         invites=recent_invites(12),
         leads=list_sales_leads(limit=12),
+        plan_order=PLAN_ORDER,
+        plans_preview=plans,
+        catalog_meta=catalog_meta(),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
+    )
+
+
+@app.route('/platform/plans', methods=['GET', 'POST'])
+def platform_plans():
+    """إدارة أسعار ومميزات الباقات — لمشغّل المنصة فقط."""
+    from platform_admin import is_admin_host
+    from platform_catalog_store import (
+        catalog_meta,
+        parse_addons_form,
+        parse_plans_form,
+        plans_editor_context,
+        reset_catalog_to_defaults,
+        save_catalog,
+    )
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        action = (request.form.get('action') or 'save').strip().lower()
+        try:
+            if action == 'reset':
+                reset_catalog_to_defaults(user_id=user.id)
+                session['plat_notice'] = 'أُعيدت الباقات والإضافات إلى القيم الافتراضية.'
+            else:
+                save_catalog(
+                    plans=parse_plans_form(request.form),
+                    addons=parse_addons_form(request.form),
+                    user_id=user.id,
+                )
+                session['plat_notice'] = 'تم حفظ أسعار ومميزات الباقات.'
+            session['plat_notice_type'] = 'ok'
+            try:
+                from audit_log import log_audit
+                log_audit(
+                    'platform_catalog_updated',
+                    user=user,
+                    details={'action': action, 'meta': catalog_meta()},
+                )
+            except Exception:
+                app.logger.exception('platform catalog audit failed')
+        except Exception:
+            app.logger.exception('platform catalog save failed')
+            session['plat_notice'] = 'فشل حفظ الكتالوج — راجع سجلات السيرفر.'
+            session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_plans'))
+
+    ctx = plans_editor_context()
+    return render_template(
+        'platform/plans.html',
+        nav='plans',
+        notice=session.pop('plat_notice', None),
+        notice_type=session.pop('plat_notice_type', None),
+        **ctx,
     )
 
 
@@ -3635,9 +3876,11 @@ def platform_org_detail(org_id):
         billing_amount=detail.get('billing_amount') or 0,
         login_url=detail['login_url'],
         plans=detail['plans'],
+        plan_options=detail.get('plan_options') or [],
         entitlements=detail.get('entitlements') or {},
         org_addons=detail.get('org_addons') or [],
         addon_catalog=detail.get('addon_catalog') or [],
+        feature_catalog=detail.get('feature_catalog') or [],
         can_delete=not is_protected_operator_org(detail['org']),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
@@ -3830,6 +4073,82 @@ def platform_org_subscription(org_id):
         session['plat_notice_type'] = 'ok'
     else:
         session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل الحفظ.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/custom-package', methods=['POST'])
+def platform_org_custom_package(org_id):
+    """باقة تخصيص: مشغّل المنصة يحدد الخدمات والحدود والسعر للعميل."""
+    from models import Organization
+    from platform_admin import is_admin_host
+    from entitlements import set_custom_package
+    from plan_catalog import FEATURE_KEYS
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+
+    features = {fk: request.form.get(f'feature_{fk}') in ('1', 'on', 'true', 'yes') for fk in FEATURE_KEYS}
+
+    def _int(name: str, default: int = 0) -> int:
+        raw = (request.form.get(name) or '').strip()
+        if raw == '':
+            return default
+        return int(raw)
+
+    try:
+        elevators = _int('elevators_limit', 0)
+        office_users = _int('office_users_limit', 0)
+        technicians = _int('technicians_limit', 0)
+        storage_gb = _int('storage_gb_limit', 0)
+        amount = float((request.form.get('billing_amount') or '').strip())
+    except (TypeError, ValueError):
+        session['plat_notice'] = 'تحقق من الحدود والسعر — قيم غير صالحة.'
+        session['plat_notice_type'] = 'warn'
+        return redirect(url_for('platform_org_detail', org_id=org_id))
+
+    result = set_custom_package(
+        org,
+        features=features,
+        elevators=elevators,
+        office_users=office_users,
+        technicians=technicians,
+        storage_gb=storage_gb,
+        amount=amount,
+        cycle=request.form.get('billing_cycle') or 'monthly',
+        billing_notes=request.form.get('billing_notes'),
+    )
+    if result.get('ok'):
+        try:
+            from audit_log import log_audit
+            log_audit(
+                'platform_custom_package',
+                user=user,
+                organization_id=org.id,
+                details={
+                    'features': features,
+                    'limits': {
+                        'elevators': elevators,
+                        'office_users': office_users,
+                        'technicians': technicians,
+                        'storage_gb': storage_gb,
+                    },
+                    'amount': amount,
+                    'cycle': request.form.get('billing_cycle') or 'monthly',
+                },
+            )
+        except Exception:
+            app.logger.exception('custom package audit failed')
+        session['plat_notice'] = 'تم حفظ باقة التخصيص لهذا العميل.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل حفظ باقة التخصيص.'])
         session['plat_notice_type'] = 'warn'
     return redirect(url_for('platform_org_detail', org_id=org_id))
 
@@ -4716,8 +5035,12 @@ def clients():
 
 
 @app.after_request
-def _clients_page_no_cache(response):
-    if request.path.rstrip('/') == '/clients':
+def _admin_html_no_cache(response):
+    """منع كاش HTML — يضمن وصول CSS/قوالب محدّثة فوراً."""
+    if request.path.startswith('/static/') or request.path.startswith('/api/'):
+        return response
+    ct = (response.content_type or '')
+    if 'text/html' in ct:
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
     return response
@@ -5763,6 +6086,7 @@ def elevator_edit(id):
     e.district         = request.form.get('district', '')
     e.address          = request.form.get('address', '')
     e.elev_type        = request.form.get('elev_type', '')
+    e.door_type        = request.form.get('door_type', '')
     e.brand            = request.form.get('brand', '')
     e.model            = request.form.get('model', '')
     e.capacity_kg      = _parse_int(request.form.get('capacity_kg'))
@@ -5772,7 +6096,6 @@ def elevator_edit(id):
     e.doors_count      = _parse_int(request.form.get('doors_count'))
     e.serial_number    = request.form.get('serial_number', '')
     e.machine_type     = request.form.get('machine_type', '')
-    e.door_type        = request.form.get('door_type', '')
     e.control_type     = request.form.get('control_type', '')
     e.control_drive      = request.form.get('control_drive', '')
     e.control_operation = request.form.get('control_operation', '')
@@ -6475,14 +6798,19 @@ def contracts():
         contracts_list = contracts_for_scope(contracts_list, contract_scope)
     renewed_ids = _annotate_contract_renewals(contracts_list)
     customers = tenant_query(Customer).order_by(Customer.name).all()
+    all_elevators = tenant_query(Elevator).all()
+    elevator_by_id = {e.id: e for e in all_elevators}
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
-        for e in tenant_query(Elevator).all()
+        for e in all_elevators
     }
     resp = make_response(render_template(
         'contracts.html',
         contracts=contracts_list,
-        contracts_js=[contract_to_js_dict(c, renewed_ids=renewed_ids) for c in contracts_list],
+        contracts_js=[
+            contract_to_js_dict(c, renewed_ids=renewed_ids, elevator_by_id=elevator_by_id)
+            for c in contracts_list
+        ],
         customers_js=[contract_customer_js_dict(c) for c in customers],
         elev_lookup=elev_lookup,
         next_contract_codes={
@@ -6717,7 +7045,9 @@ def contract_delete(id):
 def contract_print_page(contract_id):
     from contract_print import contract_print_payload
 
-    return render_template('contract-print.html', **contract_print_payload(contract_id))
+    payload = contract_print_payload(contract_id)
+    payload['has_docx_template'] = False
+    return render_template('contract-print.html', **payload)
 
 
 # =============================================
@@ -9202,6 +9532,7 @@ def _parse_reported_at(raw: str | None):
 
 def _apply_fault_billing_from_form(fault, form, *, is_new: bool = False):
     from operations import (
+        COMPANY_ACCOUNT_STATUS,
         apply_fault_parts_billing,
         clear_fault_parts_billing,
         parse_fault_parts_lines,
@@ -9213,9 +9544,11 @@ def _apply_fault_billing_from_form(fault, form, *, is_new: bool = False):
         fault.needs_parts = True
         fault.billed = False
         if lines:
-            apply_fault_parts_billing(
+            pb = apply_fault_parts_billing(
                 fault, lines, technician_id=fault.technician_id,
             )
+            if pb and (pb.status or '') == COMPANY_ACCOUNT_STATUS:
+                fault.billed = True
         elif not is_new:
             clear_fault_parts_billing(fault.id)
     else:
@@ -9461,6 +9794,7 @@ def _revenue_from_form(form, existing: Revenue | None = None):
         'invoice_id': invoice_id,
         'parts_billing_id': parts_billing_id,
         'revenue_date': datetime.strptime(form['revenue_date'], '%Y-%m-%d').date(),
+        'title': (form.get('title') or '').strip()[:300],
         'revenue_type': revenue_type,
         'payment_method': form.get('payment_method', ''),
         'amount': amount,
@@ -10940,6 +11274,283 @@ def purchase_orders_delete(order_id):
     return redirect(url_for('purchase_orders'))
 
 
+RFQ_STATUS_EN = {'مسودة': 'Draft', 'مرسل': 'Sent', 'مستلم': 'Received', 'ملغي': 'Cancelled'}
+
+RFQ_PRINT_LABELS = {
+    'ar': {
+        'toolbar_title': 'طباعة وإرسال طلب عرض سعر',
+        'supplier_mobile': 'جوال المورد (واتساب)',
+        'supplier_email': 'إيميل المورد',
+        'print_pdf': '🖨️ طباعة / PDF',
+        'wa_supplier': '📄 واتساب PDF للمورد',
+        'email_pdf': '✉️ إيميل PDF',
+        'save_contact': '💾 حفظ الجوال/الإيميل',
+        'back': '← رجوع',
+        'doc_title': 'طلب عرض سعر',
+        'request_no': 'رقم الطلب',
+        'request_date': 'التاريخ',
+        'supplier': 'المورد',
+        'supplier_default': 'المورد',
+        'status': 'الحالة',
+        'project': 'المشروع',
+        'subject': 'الموضوع',
+        'salutation': 'السادة / {name} المحترمين،',
+        'letter_p1': 'تحية طيبة وبعد، نأمل منكم التفضل بتزويدنا بعرض سعر للبنود المذكورة في الجدول أدناه مع تحديد مدة التوريد وشروط الدفع إن أمكن.',
+        'letter_p2': 'نشكركم على تعاونكم، وتفضلوا بقبول فائق الاحترام والتقدير.',
+        'items_title': 'البنود المطلوب تسعيرها',
+        'col_item': 'البند / الوصف',
+        'col_qty': 'الكمية',
+        'col_unit': 'الوحدة',
+        'col_specs': 'المواصفات',
+        'notes': 'ملاحظات:',
+        'doc_foot': 'وثيقة صادرة من نظام LiftCore — طلب عرض سعر من مورد',
+        'phone_required': 'يرجى إدخال جوال المورد',
+        'email_required': 'يرجى إدخال إيميل المورد',
+        'phone_invalid': 'رقم الجوال غير صالح',
+        'pdf_generating': 'جاري إنشاء PDF...',
+        'pdf_upload_fail': 'تعذّر رفع PDF',
+        'wa_greeting': 'السلام عليكم',
+        'wa_body': 'نرفق لكم طلب عرض سعر رقم {code}',
+        'wa_date': ' بتاريخ {date}',
+        'wa_link': 'يمكنكم تحميل ملف PDF من الرابط:',
+        'wa_closing': 'نأمل منكم التفضل بتزويدنا بعرض سعر للبنود المذكورة.',
+        'wa_regards': 'مع التحية،',
+        'email_subject': 'طلب عرض سعر {code} — {company}',
+    },
+    'en': {
+        'toolbar_title': 'Print & Send RFQ',
+        'supplier_mobile': 'Supplier Mobile (WhatsApp)',
+        'supplier_email': 'Supplier Email',
+        'print_pdf': '🖨️ Print / PDF',
+        'wa_supplier': '📄 WhatsApp PDF to Supplier',
+        'email_pdf': '✉️ Email PDF',
+        'save_contact': '💾 Save contact',
+        'back': '← Back',
+        'doc_title': 'Request for Quotation',
+        'request_no': 'RFQ No.',
+        'request_date': 'Date',
+        'supplier': 'Supplier',
+        'supplier_default': 'Supplier',
+        'status': 'Status',
+        'project': 'Project',
+        'subject': 'Subject',
+        'salutation': 'Dear {name},',
+        'letter_p1': 'We kindly request your quotation for the items listed below, including delivery time and payment terms if applicable.',
+        'letter_p2': 'Thank you for your cooperation.',
+        'items_title': 'Items for quotation',
+        'col_item': 'Description',
+        'col_qty': 'Qty',
+        'col_unit': 'Unit',
+        'col_specs': 'Specifications',
+        'notes': 'Notes:',
+        'doc_foot': 'Issued by LiftCore — Supplier RFQ',
+        'phone_required': 'Please enter supplier mobile',
+        'email_required': 'Please enter supplier email',
+        'phone_invalid': 'Invalid mobile number',
+        'pdf_generating': 'Generating PDF...',
+        'pdf_upload_fail': 'PDF upload failed',
+        'wa_greeting': 'Hello',
+        'wa_body': 'Please find RFQ no. {code}',
+        'wa_date': ' dated {date}',
+        'wa_link': 'Download PDF:',
+        'wa_closing': 'We look forward to receiving your quotation.',
+        'wa_regards': 'Best regards,',
+        'email_subject': 'RFQ {code} — {company}',
+    },
+}
+
+
+def _resolve_rfq_project(project_id_raw):
+    if not project_id_raw:
+        return None
+    try:
+        pid = int(project_id_raw)
+    except (TypeError, ValueError):
+        return None
+    try:
+        from installation.models import InstallProject
+        return tenant_get_or_404(InstallProject, pid)
+    except Exception:
+        return None
+
+
+@app.route('/supplier-rfqs')
+def supplier_rfqs():
+    from supplier_rfq_schema import ensure_supplier_rfq_schema
+    ensure_supplier_rfq_schema()
+    requests_list = tenant_query(SupplierQuoteRequest).order_by(
+        SupplierQuoteRequest.request_date.desc().nullslast()
+    ).all()
+    project = _resolve_rfq_project(request.args.get('project_id'))
+    edit_rfq = None
+    edit_id = request.args.get('edit', type=int)
+    if edit_id:
+        edit_rfq = tenant_get_or_404(SupplierQuoteRequest, edit_id)
+    return render_template(
+        'supplier-rfqs.html',
+        requests=requests_list,
+        statuses=list(RFQ_STATUSES),
+        next_rfq_code=next_code(SupplierQuoteRequest, 'RFQ-', digits=4),
+        today=date.today().isoformat(),
+        project=project,
+        edit_rfq=edit_rfq,
+    )
+
+
+@app.route('/supplier-rfqs/save', methods=['POST'])
+def supplier_rfqs_save():
+    from supplier_rfq_schema import ensure_supplier_rfq_schema
+    ensure_supplier_rfq_schema()
+    req_id = request.form.get('request_id', '').strip()
+    supplier = request.form.get('supplier', '').strip()
+    supplier_phone = request.form.get('supplier_phone', '').strip()
+    supplier_email = request.form.get('supplier_email', '').strip()
+    subject = request.form.get('subject', '').strip()
+    notes = request.form.get('notes', '').strip()
+    status = request.form.get('status', 'مسودة').strip()
+    project_id_raw = request.form.get('project_id', '').strip()
+    date_raw = request.form.get('request_date', '').strip()
+    try:
+        request_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date.today()
+    except ValueError:
+        request_date = date.today()
+
+    descriptions = request.form.getlist('description')
+    quantities = request.form.getlist('quantity')
+    units = request.form.getlist('unit')
+    specs_list = request.form.getlist('specs')
+    lines_data = []
+    for desc, qty, unit, specs in zip(descriptions, quantities, units, specs_list):
+        description = (desc or '').strip()
+        if not description:
+            continue
+        quantity = float(qty or 0)
+        if quantity <= 0:
+            quantity = 1
+        lines_data.append({
+            'description': description,
+            'quantity': quantity,
+            'unit': (unit or 'قطعة').strip() or 'قطعة',
+            'specs': (specs or '').strip() or None,
+            'item_id': None,
+        })
+    if not lines_data:
+        flash('أضف بنداً واحداً على الأقل', 'error')
+        return redirect(url_for('supplier_rfqs', project_id=project_id_raw or None))
+
+    if req_id:
+        rfq = tenant_get_or_404(SupplierQuoteRequest, int(req_id))
+    else:
+        rfq = SupplierQuoteRequest(code=next_code(SupplierQuoteRequest, 'RFQ-', digits=4))
+        assign_organization(rfq)
+        db.session.add(rfq)
+
+    project = _resolve_rfq_project(project_id_raw)
+    rfq.supplier = supplier or None
+    rfq.supplier_phone = supplier_phone or None
+    rfq.supplier_email = supplier_email or None
+    rfq.subject = subject or None
+    rfq.notes = notes or None
+    rfq.request_date = request_date
+    rfq.status = status if status in RFQ_STATUSES else 'مسودة'
+    rfq.project_id = project.id if project else None
+    rfq.project_code = project.code if project else None
+    rfq.lines.clear()
+    for row in lines_data:
+        line = SupplierQuoteRequestLine(
+            description=row['description'],
+            quantity=row['quantity'],
+            unit=row['unit'],
+            specs=row['specs'],
+            item_id=row['item_id'],
+        )
+        assign_organization(line)
+        rfq.lines.append(line)
+    db.session.commit()
+    flash('تم تحديث طلب عرض السعر' if req_id else 'تم حفظ طلب عرض السعر', 'success')
+    return redirect(url_for('supplier_rfq_print', request_id=rfq.id))
+
+
+def _supplier_rfq_print_context(rfq, *, en_only=False):
+    s = tenant_query(Settings).first()
+    logo_w = (getattr(s, 'logo_width_report', None) or 150) if s else 150
+    uid = session.get('user_id')
+    user = db.session.get(User, uid) if uid else None
+    lang = 'en' if en_only else resolve_user_language(user)
+    rfq_ar = RFQ_PRINT_LABELS['ar']
+    rfq_en = RFQ_PRINT_LABELS['en']
+    rfq_ui = rfq_en if en_only else (rfq_en if lang == 'en' else rfq_ar)
+    company_name = (s.company_name if s and s.company_name else 'LiftCore')
+    return dict(
+        rfq=rfq,
+        logo_width=logo_w,
+        purchasing_phone=(getattr(s, 'phone', None) or '') if s else '',
+        purchasing_email=(getattr(s, 'email', None) or '') if s else '',
+        rfq_ar=rfq_ar,
+        rfq_en=rfq_en,
+        rfq_ui=rfq_ui,
+        en_only=en_only,
+        company_settings=s,
+        company_name=company_name,
+        brand_logo_url=brand_logo_url(s),
+        status_en=RFQ_STATUS_EN.get(rfq.status or '', rfq.status or ''),
+    )
+
+
+@app.route('/supplier-rfqs/<int:request_id>/print')
+def supplier_rfq_print(request_id):
+    from supplier_rfq_schema import ensure_supplier_rfq_schema
+    ensure_supplier_rfq_schema()
+    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
+    return render_template('supplier-rfq-print.html', **_supplier_rfq_print_context(rfq))
+
+
+@app.route('/supplier-rfqs/<int:request_id>/print-en')
+def supplier_rfq_print_en(request_id):
+    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
+    return render_template('supplier-rfq-print.html', **_supplier_rfq_print_context(rfq, en_only=True))
+
+
+@app.route('/supplier-rfqs/<int:request_id>/contact', methods=['POST'])
+def supplier_rfq_update_contact(request_id):
+    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
+    rfq.supplier_phone = request.form.get('supplier_phone', '').strip() or None
+    rfq.supplier_email = request.form.get('supplier_email', '').strip() or None
+    db.session.commit()
+    if request.form.get('en_only') == '1':
+        return redirect(url_for('supplier_rfq_print_en', request_id=rfq.id))
+    return redirect(url_for('supplier_rfq_print', request_id=rfq.id))
+
+
+@app.route('/supplier-rfqs/<int:request_id>/pdf', methods=['POST'])
+def supplier_rfq_upload_pdf(request_id):
+    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
+    upload = request.files.get('pdf')
+    if not upload:
+        return jsonify(ok=False, error='لم يُرفَع ملف PDF'), 400
+    folder = os.path.join(RFQ_UPLOAD_ROOT, str(request_id))
+    os.makedirs(folder, exist_ok=True)
+    safe_code = re.sub(r'[^\w\-]', '_', rfq.code or f'RFQ-{request_id}')
+    filename = f'{safe_code}.pdf'
+    upload.save(os.path.join(folder, filename))
+    rfq.pdf_path = f'uploads/supplier_rfqs/{request_id}/{filename}'
+    db.session.commit()
+    pdf_url = url_for('static', filename=rfq.pdf_path, _external=True)
+    return jsonify(ok=True, url=pdf_url)
+
+
+@app.route('/supplier-rfqs/delete/<int:request_id>', methods=['POST'])
+def supplier_rfqs_delete(request_id):
+    err = enforce_admin_delete()
+    if err:
+        return err
+    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
+    db.session.delete(rfq)
+    db.session.commit()
+    flash('تم حذف طلب عرض السعر', 'success')
+    return redirect(url_for('supplier_rfqs'))
+
+
 # =============================================
 # تقدير تكلفة إنشاء مصعد
 # =============================================
@@ -10971,8 +11582,8 @@ def _parse_estimate_lines(form):
         desc = (desc or '').strip()
         if not desc:
             continue
-        quantity = float(qty or 0)
-        unit_price = float(price or 0)
+        quantity = round(float(qty or 0))
+        unit_price = round(float(price or 0))
         if quantity <= 0:
             continue
         lines.append({
@@ -10981,32 +11592,15 @@ def _parse_estimate_lines(form):
             'quantity': quantity,
             'unit': (unit or '').strip() or 'وحدة',
             'unit_price': unit_price,
-            'line_total': round(quantity * unit_price, 2),
+            'line_total': round(quantity * unit_price),
         })
     return lines
 
 
 @app.route('/elevator-estimates')
 def elevator_estimates():
-    estimates = tenant_query(ElevatorEstimate).order_by(ElevatorEstimate.created_at.desc()).all()
-    customers = tenant_query(Customer).order_by(Customer.name).all()
-    edit_raw = request.args.get('edit', '').strip()
-    edit_est = None
-    if edit_raw.isdigit():
-        edit_est = tenant_query(ElevatorEstimate).filter_by(id=int(edit_raw)).first()
-    return render_template(
-        'elevator-estimates.html',
-        estimates=estimates,
-        customers=customers,
-        edit_est=edit_est,
-        machine_types=MACHINE_TYPES,
-        elev_types=ELEV_TYPES,
-        statuses=ESTIMATE_STATUSES,
-        next_es_code=next_code(ElevatorEstimate, 'ES-', digits=4),
-        today=date.today().isoformat(),
-        default_vat=DEFAULT_VAT_PCT,
-        default_margin=DEFAULT_MARGIN_PCT,
-    )
+    flash('استخدم عرض التركيب الحديث من المبيعات (تركيب / تحديث / إضافة أدوار)', 'success')
+    return redirect(url_for('sales.install_quote_new'))
 
 
 @app.route('/api/elevator-estimates/calculate', methods=['POST'])
@@ -11745,6 +12339,45 @@ def _save_company_image_asset(settings_row, file_storage, *, attr_name: str, pre
     return True, f'تم تحديث {label_ar}.'
 
 
+def _save_contract_template(settings_row, file_storage, *, remove=False):
+    """يحفظ نموذج عقد Word (.docx). يرجع (ok, message_ar|None)."""
+    if remove:
+        rel = (getattr(settings_row, 'contract_template_path', None) or '').replace('\\', '/').lstrip('/')
+        if rel:
+            abs_path = os.path.join(app.root_path, 'static', rel)
+            try:
+                if os.path.isfile(abs_path):
+                    os.remove(abs_path)
+            except OSError:
+                pass
+        settings_row.contract_template_path = None
+        return True, 'تم حذف نموذج العقد.'
+    if not file_storage or not file_storage.filename:
+        return True, None
+    if not _ext_ok(file_storage.filename, ALLOWED_CONTRACT_TEMPLATE_EXT):
+        return False, 'ارفع ملف Word بصيغة .docx فقط.'
+    ok_up, err_up = _upload_ok(file_storage, ALLOWED_CONTRACT_TEMPLATE_EXT)
+    if not ok_up:
+        return False, err_up or 'تعذّر قبول ملف النموذج.'
+
+    org_id = getattr(settings_row, 'organization_id', None) or 0
+    dest_dir = os.path.join(COMPANY_UPLOAD_ROOT, str(org_id))
+    os.makedirs(dest_dir, exist_ok=True)
+    filename = f'contract-template-{int(time.time())}.docx'
+    for old in os.listdir(dest_dir):
+        if old.startswith('contract-template'):
+            try:
+                os.remove(os.path.join(dest_dir, old))
+            except OSError:
+                pass
+    dest = os.path.join(dest_dir, filename)
+    file_storage.save(dest)
+    if not os.path.isfile(dest):
+        return False, 'فشل حفظ نموذج العقد على السيرفر.'
+    settings_row.contract_template_path = f'uploads/company/{org_id}/{filename}'
+    return True, 'تم رفع نموذج العقد.'
+
+
 def _clamp_logo_width(value, default=150, min_w=60, max_w=400):
     try:
         n = int(value)
@@ -11820,6 +12453,7 @@ def settings():
     from moyasar_payments import moyasar_enabled
     from platform_billing import effective_amount, refresh_billing_status
     from entitlements import resolve_entitlements
+    from contract_docx import PLACEHOLDER_HELP, has_contract_template
     from models import Organization
     from tenant_scope import effective_organization_id
     oid = effective_organization_id()
@@ -11857,6 +12491,9 @@ def settings():
         plan_amount=plan_amount,
         entitlements=entitlements,
         moyasar_enabled=moyasar_enabled(),
+        contract_placeholders=PLACEHOLDER_HELP,
+        has_contract_template=has_contract_template(s, app.root_path),
+        contract_template_url=upload_url(getattr(s, 'contract_template_path', None)) if s else '',
     )
 
 
@@ -12140,6 +12777,10 @@ def settings_save():
         s, request.files.get('company_sign'),
         attr_name='company_sign_path', prefix='sign', label_ar='توقيع الشركة',
     )
+    tpl_ok, tpl_msg = _save_contract_template(
+        s, request.files.get('contract_template'),
+        remove=request.form.get('remove_contract_template') == '1',
+    )
     from zatca_phase2 import sync_zatca_credentials_from_settings
     sync_zatca_credentials_from_settings(s)
     db.session.commit()
@@ -12156,9 +12797,13 @@ def settings_save():
         notices.append(sign_msg or 'تعذّر حفظ التوقيع.')
     elif sign_msg:
         notices.append(sign_msg)
+    if not tpl_ok:
+        notices.append(tpl_msg or 'تعذّر حفظ نموذج العقد.')
+    elif tpl_msg:
+        notices.append(tpl_msg)
     if not notices:
         session['settings_notice'] = 'تم حفظ بيانات الشركة بنجاح.'
-    elif logo_ok and stamp_ok and sign_ok:
+    elif logo_ok and stamp_ok and sign_ok and tpl_ok:
         session['settings_notice'] = 'تم حفظ بيانات الشركة. ' + ' '.join(notices)
     else:
         session['settings_notice'] = ' '.join(notices)

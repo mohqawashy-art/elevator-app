@@ -91,7 +91,7 @@ var __lcReportDomPager = null;
       case 'report-clients':
         return [row.code, row.name, row.city, row.district, row.phone, row.elevators, row.contract_status, row.status];
       case 'report-elevators':
-        return [row.code, row.customer, row.building, row.city, row.elev_type, row.brand, row.capacity, row.status, row.next_maint];
+        return [row.code, row.customer, row.building, row.city, row.elev_type, row.door_type, row.brand, row.capacity, row.status, row.next_maint];
       case 'report-contracts':
         return [row.code, row.customer, row.contract_type, row.start_date, row.end_date, row.elevators, row.value, row.total, row.status, row.inv_status];
       case 'report-technicians':
@@ -101,7 +101,7 @@ var __lcReportDomPager = null;
       case 'report-faults':
         return [row.code, row.customer, row.elevator, row.fault_type, row.priority, row.technician, row.response, row.status, row.billed];
       case 'report-revenues':
-        return [row.code, joinClientContract(row), row.date, row.revenue_type, row.pay_method, row.total, row.status, row.created_by || '—'];
+        return [row.code, joinClientContract(row), row.date, row.title || '—', row.revenue_type, row.pay_method, row.total, row.status, row.created_by || '—'];
       case 'report-expenses':
         return [row.code, row.date, row.expense_type, row.description, row.responsible, row.pay_method, row.amount, row.created_by || '—'];
       case 'report-invoices':
@@ -127,7 +127,7 @@ var __lcReportDomPager = null;
     'report-technicians': [6, 7],
     'report-maintenance': [7, 8],
     'report-faults': [4, 7, 8],
-    'report-revenues': [6],
+    'report-revenues': [7],
     'report-invoices': [7],
     'report-parts': [11],
     'report-inventory': [8],
@@ -454,33 +454,44 @@ function hookReportPagination(reset) {
     });
 
     selects.forEach(function (sel) {
+      if (global.LiftCoreFilter) LiftCoreFilter.upgrade(sel);
       if (sel.dataset.liveHooked) return;
       sel.addEventListener('change', function () {
         if (typeof global.filterTable === 'function') global.filterTable();
       });
       sel.dataset.liveHooked = '1';
     });
+    if (global.LiftCoreFilter) {
+      selects.forEach(function (sel) { LiftCoreFilter.refresh(sel); });
+    }
   }
 
   function rowPassesFilters(reportId, row) {
     var searchEl = document.getElementById('f-search');
-    var q = searchEl ? searchEl.value.toLowerCase().trim() : '';
+    var q = searchEl ? searchEl.value.trim() : '';
     if (q) {
-      var txt = reportRowCells(reportId, row).join(' ').toLowerCase();
-      if (txt.indexOf(q) === -1) return false;
+      var cells = reportRowCells(reportId, row);
+      var hit = global.LcSearch
+        ? LcSearch.match(q, cells.concat([row.code, row.customer, row.customer_name_en, row.name, row.phone, row.contract, row.description, row.title, row.building, row.city, row.elevator, row.technician]))
+        : reportRowCells(reportId, row).join(' ').toLowerCase().indexOf(q.toLowerCase()) !== -1;
+      if (!hit) return false;
     }
 
     var citySel = document.getElementById('f-city');
-    if (citySel && citySel.value && row.city !== citySel.value) return false;
+    if (citySel && global.lcAllows && !global.lcAllows(citySel, row.city)) return false;
+    if (citySel && !global.lcAllows && citySel.value && row.city !== citySel.value) return false;
 
     var statusSel = document.getElementById('f-status');
-    if (statusSel && statusSel.value && row.status !== statusSel.value) return false;
+    if (statusSel && global.lcAllows && !global.lcAllows(statusSel, row.status)) return false;
+    if (statusSel && !global.lcAllows && statusSel.value && row.status !== statusSel.value) return false;
 
     var contractSel = document.getElementById('f-contract-status');
-    if (contractSel && contractSel.value && row.contract_status !== contractSel.value) return false;
+    if (contractSel && global.lcAllows && !global.lcAllows(contractSel, row.contract_status)) return false;
+    if (contractSel && !global.lcAllows && contractSel.value && row.contract_status !== contractSel.value) return false;
 
     var invSel = document.getElementById('f-inv-status');
-    if (invSel && invSel.value && row.inv_status !== invSel.value) return false;
+    if (invSel && global.lcAllows && !global.lcAllows(invSel, row.inv_status)) return false;
+    if (invSel && !global.lcAllows && invSel.value && row.inv_status !== invSel.value) return false;
 
     var dateField = REPORT_DATE_FIELD[reportId];
     if (dateField && row[dateField]) {

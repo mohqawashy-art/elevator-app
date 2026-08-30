@@ -1,4 +1,4 @@
-/* شريط أذكار — مظهر LiftCore الاحترافي (متغيّرات الثيم) */
+/* shreeet azkar - LiftCore footer ticker */
 :root {
   --lc-azkar-h: 52px;
   --lc-azkar-brand-w: 108px;
@@ -27,12 +27,7 @@
   top: 0;
   inset-inline: 0;
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    var(--accent, #2a7fff) 0%,
-    var(--gold, #c8a055) 50%,
-    var(--accent, #2a7fff) 100%
-  );
+  background: linear-gradient(90deg, var(--accent, #2a7fff) 0%, var(--gold, #c8a055) 50%, var(--accent, #2a7fff) 100%);
   opacity: 0.85;
   pointer-events: none;
 }
@@ -191,10 +186,10 @@ html:has(#lc-azkar-footer) body {
 }
 
 html:has(#lc-azkar-footer) .lc-support {
-  bottom: calc(var(--lc-azkar-h) + max(18px, env(safe-area-inset-bottom, 0px)));
+  top: auto;
+  bottom: calc(var(--lc-azkar-h) + 10px + env(safe-area-inset-bottom, 0px));
 }
 
-/* ثيم فاتح */
 html[data-theme="light"] .lc-azkar-footer {
   background: color-mix(in srgb, var(--bg2, #ffffff) 96%, transparent);
   box-shadow: 0 -4px 20px rgba(15, 30, 60, 0.08);

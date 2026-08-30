@@ -177,6 +177,7 @@
     'مكتمل': 'Completed',
     'ملغى': 'Cancelled',
     'غير محصل': 'Uncollected',
+    'على حساب الشركة': 'On Company Account',
     'إجمالي الإيرادات': 'Total Revenues',
     'تجديد عقود': 'Contract Renewals',
     'قطع غيار': 'Spare Parts',
@@ -302,6 +303,7 @@
     'منتهي': 'Expired',
     'محصل': 'Collected',
     'غير محصل': 'Uncollected',
+    'على حساب الشركة': 'On Company Account',
     'عاجل': 'Urgent',
     'عادي': 'Normal',
     'مفتوح': 'Open',
@@ -485,6 +487,7 @@
   function shouldSkipTextNode(node) {
     var p = node.parentElement;
     if (!p) return true;
+    if (p.closest('#modal-add')) return true;
     if (p.closest('[data-i18n-skip], script, style, noscript, .lc-sar, .lc-sar-char')) return true;
     if (p.closest('[data-lc-t], .cloc-hint, .cloc-box')) return true;
     if (p.tagName === 'INPUT' || p.tagName === 'TEXTAREA' || p.tagName === 'SCRIPT') return true;
@@ -499,7 +502,7 @@
       var key = norm(node.textContent);
       /* كميات بالوحدات: 12 قطعة / 5 متر ... */
       if (/^[0-9٠-٩.,]+\s*(قطعة|متر|لتر|كجم)$/.test(key)) return false;
-      if (!lookupEn(key) && !/^(نشط|غير نشط|منتهي|معلق|مكتمل|ملغى|عاجل|عادي|ساري|محصل|غير محصل|مدفوعة|غير مدفوعة)$/.test(key)) {
+      if (!lookupEn(key) && !/^(نشط|غير نشط|منتهي|معلق|مكتمل|ملغى|عاجل|عادي|ساري|محصل|غير محصل|على حساب الشركة|مدفوعة|غير مدفوعة)$/.test(key)) {
         if (key.length > 40 || /[0-9]{2,}/.test(key)) return true;
       }
     }
@@ -517,12 +520,61 @@
   }
 
   function shouldTranslateZone(el) {
-    return !(el.classList && el.classList.contains('modal-overlay') && !el.classList.contains('open'));
+    return true;
+  }
+
+  function applyLcMarked(root, lang) {
+    if (!root) return;
+    root.querySelectorAll('[data-lc-t]').forEach(function (el) {
+      var key = el.getAttribute('data-lc-t');
+      if (!key) return;
+      if (lang === 'en') {
+        if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent;
+        var en = lookupEn(norm(key)) || t(key, 'en');
+        if (en !== key) el.textContent = en;
+      } else if (el.dataset.lcAr != null) {
+        el.textContent = el.dataset.lcAr;
+      }
+    });
+    root.querySelectorAll('[data-lc-ph]').forEach(function (el) {
+      var key = el.getAttribute('data-lc-ph');
+      if (!key) return;
+      if (lang === 'en') {
+        if (!el.dataset.lcPhAr) el.dataset.lcPhAr = el.getAttribute('placeholder') || '';
+        var phEn = lookupEn(norm(key)) || t(key, 'en');
+        if (phEn && phEn !== key) el.setAttribute('placeholder', phEn);
+      } else if (el.dataset.lcPhAr) {
+        el.setAttribute('placeholder', el.dataset.lcPhAr);
+      }
+    });
+    root.querySelectorAll('option[data-lc-t]').forEach(function (el) {
+      var optKey = el.getAttribute('data-lc-t');
+      if (!optKey) return;
+      if (lang === 'en') {
+        if (el.dataset.lcAr == null) el.dataset.lcAr = el.textContent;
+        var optEn = lookupEn(norm(optKey)) || t(optKey, 'en');
+        if (optEn !== optKey) el.textContent = optEn;
+      } else if (el.dataset.lcAr != null) {
+        el.textContent = el.dataset.lcAr;
+      }
+    });
+    root.querySelectorAll('[data-lc-title]').forEach(function (el) {
+      var titleKey = el.getAttribute('data-lc-title');
+      if (!titleKey) return;
+      if (lang === 'en') {
+        if (!el.dataset.lcTitleAr) el.dataset.lcTitleAr = el.getAttribute('title') || '';
+        var titleEn = lookupEn(norm(titleKey)) || t(titleKey, 'en');
+        if (titleEn && titleEn !== titleKey) el.setAttribute('title', titleEn);
+      } else if (el.dataset.lcTitleAr) {
+        el.setAttribute('title', el.dataset.lcTitleAr);
+      }
+    });
   }
 
   function translateFormAttributes(root, lang) {
     root.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(function (el) {
-      if (el.closest('.modal-overlay:not(.open)')) return;
+      if (el.closest('#modal-add')) return;
+      if (el.hasAttribute('data-lc-ph')) return;
       var ph = el.getAttribute('placeholder');
       if (!ph || !/[\u0600-\u06FF]/.test(ph)) return;
       if (lang === 'en') {
@@ -534,9 +586,11 @@
       }
     });
     root.querySelectorAll('option').forEach(function (el) {
+      if (el.closest('#modal-add')) return;
       translateElement(el, lang);
     });
     root.querySelectorAll('[title]').forEach(function (el) {
+      if (el.closest('#modal-add')) return;
       var ti = el.getAttribute('title');
       if (!ti || !/[\u0600-\u06FF]/.test(ti)) return;
       if (lang === 'en') {
@@ -661,10 +715,10 @@
       'h3',
       '.toolbar-title',
       '.filter-label',
-      '.import-area p',
+      '.hint',
       '.field-hint',
-      '.field-calc',
       '.map-picker-hint',
+      '.map-picker-coords',
       'option',
       '.panel-title',
       '.exec-aside-title',
@@ -682,6 +736,7 @@
     ];
     selectors.forEach(function (sel) {
       root.querySelectorAll(sel).forEach(function (el) {
+        if (el.closest('#modal-add')) return;
         translateElement(el, lang);
       });
     });
@@ -846,6 +901,14 @@
       if (!shouldTranslateZone(z)) return;
       walkTextNodes(z, lang);
     });
+
+    document.querySelectorAll('.modal-overlay.open').forEach(function (m) {
+      applyToRoot(m, lang);
+    });
+
+    if (typeof global.__lcApplyClientModal === 'function') {
+      try { global.__lcApplyClientModal(); } catch (e) { /* ignore */ }
+    }
     } finally {
       applying = false;
     }
@@ -896,6 +959,9 @@
     } catch (e) { /* ignore */ }
     global.LiftCoreI18n = {
       apply: applyLanguage,
+      applyModal: applyModal,
+      applyToRoot: applyToRoot,
+      applyLcMarked: applyLcMarked,
       setLang: setLang,
       t: t,
       TEXT: TEXT,

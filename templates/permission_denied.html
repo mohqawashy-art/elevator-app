@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>غير مصرح — LiftCore</title>
+<style>
+  body{font-family:Tahoma,Arial,sans-serif;background:#0b1220;color:#e8eef8;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .box{max-width:440px;width:100%;background:#121a2b;border:1px solid #243044;border-radius:14px;padding:28px 24px;text-align:center}
+  h1{font-size:20px;margin:0 0 10px;color:#f0a500}
+  p{margin:0 0 18px;line-height:1.7;color:#b7c2d4;font-size:14px}
+  a{display:inline-block;background:#2a7fff;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:700;font-size:14px}
+  a:hover{filter:brightness(1.08)}
+</style>
+</head>
+<body>
+  <div class="box">
+    <h1>ليس لديك صلاحية</h1>
+    <p>{{ message or 'هذا القسم غير متاح لحسابك. تواصل مع المسؤول إن احتجت الوصول.' }}</p>
+    <a href="{{ home_url or '/dashboard' }}">العودة للصفحة الرئيسية</a>
+  </div>
+</body>
+</html>

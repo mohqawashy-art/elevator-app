@@ -821,14 +821,14 @@ input[type=range]{padding:0;background:transparent;border:none}
     {% if current_user.role == 'admin' %}
     <form class="card" method="post" action="{{ url_for('settings_azkar_save') }}" style="margin-top:16px">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="section">شريط الدعاء والأذكار</div>
-      <p class="hint" style="margin-bottom:14px">شريط LiftCore أسفل الشاشة — أدعية وأذكار من السنة (JSON). مظهر متناسق مع ثيم التطبيق.</p>
+      <div class="section">شريط الأذكار والأدعية</div>
+      <p class="hint" style="margin-bottom:14px">يُقدّم LiftCore هذا الشريط — أدعية وأذكار من مصادر موثوقة (JSON). يظهر أسفل الشاشة بعد تسجيل الدخول.</p>
       <div class="full">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">
           <input type="checkbox" name="azkar_ticker_enabled" value="1" {% if azkar_ticker_enabled %}checked{% endif %}>
-          إظهار شريط الدعاء والأذكار
+          تفعيل شريط الأذكار المتحرك
         </label>
-        <p class="hint" style="margin-top:6px">عند التعطيل لن يظهر الشريط السفلي ولن تُضاف مساحة إضافية أسفل الصفحة.</p>
+        <p class="hint" style="margin-top:6px">يمكن إيقافه لاحقاً من الإعدادات — لا يؤثر على بيانات الشركة أو التقارير.</p>
       </div>
       <div class="actions" style="margin-top:14px">
         <button type="submit" class="btn btn-primary">حفظ إعدادات الشريط</button>

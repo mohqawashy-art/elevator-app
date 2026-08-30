@@ -400,10 +400,18 @@ def get_org_detail(org_id: int) -> dict | None:
         .all()
     )
     from platform_billing import effective_amount, refresh_billing_status
-    from entitlements import addon_catalog_for_ui, list_org_addons, resolve_entitlements
+    from entitlements import addon_catalog_for_ui, feature_catalog_for_ui, list_org_addons, resolve_entitlements
+    from plan_catalog import plan_definition
 
     refresh_billing_status(org)
     entitlements = resolve_entitlements(org=org)
+    plan_options = []
+    for key in PLANS:
+        spec = plan_definition(key)
+        plan_options.append({
+            'key': key,
+            'label': spec.get('label_ar') or spec.get('label') or key,
+        })
     return {
         'org': org,
         'settings': settings,
@@ -414,9 +422,11 @@ def get_org_detail(org_id: int) -> dict | None:
         'billing_amount': effective_amount(org),
         'login_url': tenant_login_url(org.slug),
         'plans': PLANS,
+        'plan_options': plan_options,
         'entitlements': entitlements,
         'org_addons': list_org_addons(org.id),
         'addon_catalog': addon_catalog_for_ui(),
+        'feature_catalog': feature_catalog_for_ui(),
     }
 
 

@@ -5,7 +5,7 @@
 <p class="sub">
   <code>{{ org.slug }}</code>
   · <span class="badge badge-{{ org.status }}">{{ org.status }}</span>
-  · الباقة: <strong>{{ org.plan }}</strong>
+  · الباقة: <strong>{% if entitlements.is_custom %}تخصيص{% else %}{{ entitlements.plan_label or org.plan }}{% endif %}</strong>
 </p>
 
 {% if issued_password %}
@@ -59,9 +59,13 @@
     <div class="grid">
       <div>
         <label>الباقة</label>
-        <select name="plan">
+        <select name="plan" id="org-plan-select">
+          {% for p in plan_options or [] %}
+          <option value="{{ p.key }}" {% if p.key == org.plan %}selected{% endif %}>{{ p.label }}{% if p.key == 'custom' %} — يدوي{% endif %}</option>
+          {% else %}
           {% for p in plans %}
           <option value="{{ p }}" {% if p == org.plan %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
           {% endfor %}
         </select>
       </div>
@@ -164,6 +168,77 @@
   {% endif %}
 </div>
 
+<div class="card" style="border-color:rgba(201,161,74,.35)">
+  <div class="section">باقة التخصيص — تحديد يدوي للعميل</div>
+  <p class="muted" style="margin-bottom:14px;line-height:1.8">
+    أنت وحدك من يبني باقة هذا العميل: اختر الخدمات والحدود والسعر.
+    عند الحفظ تُضبط الباقة على <strong>تخصيص</strong> وتُطبَّق فوراً على صلاحيات الحساب.
+  </p>
+  {% if entitlements.is_custom %}
+  <div class="owner-note" style="margin-bottom:14px">هذه المؤسسة على باقة تخصيص حالياً.</div>
+  {% endif %}
+  <form method="post" action="/platform/orgs/{{ org.id }}/custom-package">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="section" style="margin-top:0">الخدمات المفعّلة</div>
+    <div class="feat-grid" style="margin-bottom:16px">
+      {% for f in feature_catalog or [] %}
+      <label class="feat-item">
+        <input class="chk" type="checkbox" name="feature_{{ f.key }}" value="1"
+          {% if (entitlements.features or {}).get(f.key) %}checked{% endif %}>
+        {{ f.label }}
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="section">الحدود</div>
+    <div class="grid">
+      <div>
+        <label>المصاعد</label>
+        <input name="elevators_limit" type="number" min="0" required dir="ltr"
+               value="{{ org.elevators_limit_override if org.elevators_limit_override is not none else entitlements.limits.elevators }}">
+      </div>
+      <div>
+        <label>مستخدمون مكتبيون</label>
+        <input name="office_users_limit" type="number" min="0" required dir="ltr"
+               value="{{ org.office_users_limit_override if org.office_users_limit_override is not none else entitlements.limits.office_users }}">
+      </div>
+      <div>
+        <label>فنيون</label>
+        <input name="technicians_limit" type="number" min="0" required dir="ltr"
+               value="{{ org.technicians_limit_override if org.technicians_limit_override is not none else entitlements.limits.technicians }}">
+      </div>
+      <div>
+        <label>تخزين GB</label>
+        <input name="storage_gb_limit" type="number" min="0" required dir="ltr"
+               value="{{ org.storage_gb_limit_override if org.storage_gb_limit_override is not none else entitlements.limits.storage_gb }}">
+      </div>
+    </div>
+
+    <div class="section" style="margin-top:16px">السعر</div>
+    <div class="grid">
+      <div>
+        <label>السعر للفترة (ر.س) *</label>
+        <input name="billing_amount" type="number" step="0.01" min="0" required dir="ltr"
+               value="{{ org.billing_amount if org.billing_amount is not none else '' }}" placeholder="مثال: 750">
+      </div>
+      <div>
+        <label>دورة الفوترة</label>
+        <select name="billing_cycle">
+          <option value="monthly" {% if (org.billing_cycle or 'monthly') == 'monthly' %}selected{% endif %}>شهري</option>
+          <option value="yearly" {% if org.billing_cycle == 'yearly' %}selected{% endif %}>سنوي</option>
+        </select>
+      </div>
+      <div class="full">
+        <label>ملاحظة داخلية</label>
+        <input name="billing_notes" value="{{ org.billing_notes or '' }}" placeholder="عقد خاص / اتفاقية…">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">حفظ باقة التخصيص</button>
+    </div>
+  </form>
+</div>
+
 <div class="card">
   <div class="section">الحدود والاستخدام — {{ entitlements.plan_label or org.plan }}</div>
   <div class="grid">
@@ -180,14 +255,22 @@
   </div>
   <div class="section" style="margin-top:18px">الميزات المفعّلة</div>
   <p class="muted" style="margin-bottom:12px">
-    {% for fk, on in (entitlements.features or {}).items() if on %}
-      <span class="badge badge-active" style="margin:2px">{{ fk }}</span>
-    {% else %}
-      —
+    {% set ns = namespace(any=false) %}
+    {% for f in feature_catalog or [] %}
+      {% if (entitlements.features or {}).get(f.key) %}
+      {% set ns.any = true %}
+      <span class="badge badge-active" style="margin:2px">{{ f.label }}</span>
+      {% endif %}
     {% endfor %}
+    {% if not ns.any %}—{% endif %}
   </p>
 
   <div class="section" style="margin-top:18px">إضافة على الباقة</div>
+  {% if entitlements.is_custom %}
+  <p class="muted" style="margin-bottom:12px;line-height:1.7">
+    باقة التخصيص لا تستخدم الإضافات القياسية — عدّل الخدمات والحدود من بطاقة «باقة التخصيص» أعلاه.
+  </p>
+  {% else %}
   <form method="post" action="/platform/orgs/{{ org.id }}/addons">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="grid">
@@ -216,6 +299,7 @@
       <button class="btn btn-primary" type="submit">تفعيل الإضافة</button>
     </div>
   </form>
+  {% endif %}
 
   {% if org_addons %}
   <div class="section" style="margin-top:22px">إضافات العميل</div>
@@ -288,8 +372,12 @@
       <div>
         <label>الباقة</label>
         <select name="plan">
+          {% for p in plan_options or [] %}
+          <option value="{{ p.key }}" {% if p.key == org.plan %}selected{% endif %}>{{ p.label }}</option>
+          {% else %}
           {% for p in plans %}
           <option value="{{ p }}" {% if p == org.plan %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
           {% endfor %}
         </select>
       </div>

@@ -13,7 +13,8 @@
     'بدون عقد': 'No Contract', 'بدون مصاعد': 'No Elevators',
     'على وشك الانتهاء': 'Expiring Soon', 'منتهي': 'Expired', 'منتهية': 'Expired',
     'ملغي': 'Cancelled', 'معلق': 'Pending', 'محصّل': 'Collected', 'محصل': 'Collected',
-    'غير محصل': 'Uncollected', 'مكتمل': 'Completed', 'مكتملة': 'Completed',
+    'غير محصل': 'Uncollected',
+    'على حساب الشركة': 'On Company Account', 'مكتمل': 'Completed', 'مكتملة': 'Completed',
     'مفتوح': 'Open', 'مغلق': 'Closed', 'قيد التنفيذ': 'In Progress',
     'جاري التنفيذ': 'In Progress', 'جارية': 'In Progress', 'مُرسلة للفني': 'Sent to Technician',
     'عادية': 'Normal', 'عاجلة': 'Urgent', 'حرجة': 'Critical',
@@ -21,12 +22,16 @@
     'مدفوعة': 'Paid', 'غير مدفوعة': 'Unpaid', 'مدفوع جزئياً': 'Partially Paid',
     'متأخرة': 'Overdue', 'ملغاة': 'Cancelled',
     'صيانة دورية': 'Routine Maintenance', 'صيانة طارئة': 'Emergency Maintenance', 'صيانة': 'Maintenance',
+    'نصف أوتوماتيك': 'Semi-Automatic', 'نصف اتوماتيك': 'Semi-Automatic',
+    'أوتوماتيك': 'Automatic', 'اتوماتيك': 'Automatic',
+    'سنتر أوتوماتيك': 'Center Automatic', 'تلسكوبي': 'Telescopic',
     'مصعد ركاب': 'Passenger Elevator', 'مصعد بضائع': 'Freight Elevator',
     'مصعد مستشفى': 'Hospital Elevator', 'مصعد منزلي': 'Home Elevator',
     'مصعد بانوراما': 'Panoramic Elevator', 'مصعد خدمة': 'Service Elevator',
     'بغرفة آلة — MR': 'With Machine Room — MR', 'بدون غرفة — MRL': 'Machine Room Less — MRL',
     'هيدروليك — Hydraulic': 'Hydraulic',
-    'مالك': 'Owner', 'مدير': 'Manager', 'مستأجر': 'Tenant', 'مسؤول': 'Contact',
+    'مالك': 'Owner', 'مدير': 'Manager', 'وكيل': 'Agent', 'حارس': 'Guard', 'مشرف': 'Supervisor',
+    'مستأجر': 'Tenant', 'مسؤول': 'Contact',
     'عقد': 'Contract', 'عقد صيانة': 'Maintenance Contract', 'عقد تركيب': 'Installation Contract', 'عقد تحديث': 'Modernization Contract',
     'إيراد': 'Revenue', 'فاتورة': 'Invoice', 'عطل': 'Fault',
     'كجم': 'kg', 'ر.س': '\u20C1', 'واتساب': 'WhatsApp',
@@ -52,6 +57,7 @@
     '.form-section-title', '.modal-title',
     '.alert-expiry span', '.table-info', '.page-info',
     '.filter-select option',
+    '.lc-filter-multi-item span',
     '.legend-item', '.alert-chip', '.tab', 'label', 'th',
   ].join(',');
 
@@ -175,6 +181,9 @@
 
   function shouldSkipEl(el) {
     if (!el || el.closest('[data-i18n-skip]')) return true;
+    if (el.hasAttribute('data-lc-t') || el.hasAttribute('data-lc-ph') || el.hasAttribute('data-lc-title')) return true;
+    if (el.closest('[data-lc-t], [data-lc-ph], #modal-add')) return true;
+    if (el.querySelector && el.querySelector('[data-lc-t], [data-lc-ph]')) return true;
     if (el.matches && el.matches(DOM_SKIP)) return true;
     if (el.closest && el.closest(DOM_SKIP)) return true;
     if (el.hasAttribute && el.hasAttribute('data-lc-t')) return true;

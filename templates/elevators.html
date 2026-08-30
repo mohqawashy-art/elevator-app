@@ -292,7 +292,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <th>العميل</th>
               <th>المبنى</th>
               <th>المدينة</th>
-              <th>النوع</th>
+              <th>نوع المصعد</th>
+              <th>نوع الباب</th>
               <th>الحالة</th>
               <th>الصيانة القادمة</th>
             </tr>
@@ -377,7 +378,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="building">المبنى <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="city">المدينة <span class="sort-ind"></span></th>
-                <th class="th-sort" data-sort-col="elev_type">النوع <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="elev_type">نوع المصعد <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="door_type">نوع الباب <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="brand">الماركة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="capacity">الحمولة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
@@ -707,9 +709,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <!-- IMPORT MODAL -->
 {% set elev_import_required %}
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
-        <div style="color:var(--text1);font-weight:600;margin-bottom:6px" data-lc-ar="الأعمدة المطلوبة:">{{ ui('الأعمدة المطلوبة:', 'Required columns:') }}</div>
-        <div style="color:var(--accent)" data-lc-ar="كود العميل أو اسم العميل (يجب أن يكون العميل مسجّلاً مسبقاً)">{{ ui('كود العميل أو اسم العميل (يجب أن يكون العميل مسجّلاً مسبقاً)', 'Client code or name (client must already exist)') }}</div>
-        <div style="color:var(--text3);margin-top:4px" data-lc-ar="اختيارية: المبنى، المدينة، النوع، الماركة، الحمولة، الحالة...">{{ ui('اختيارية: المبنى، المدينة، النوع، الماركة، الحمولة، الحالة...', 'Optional: building, city, type, brand, capacity, status…') }}</div>
+        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
+        <div style="color:var(--accent)">كود العميل أو اسم العميل (يجب أن يكون العميل مسجّلاً مسبقاً)</div>
+        <div style="color:var(--text3);margin-top:4px">اختيارية: المبنى، المدينة، النوع، الماركة، الحمولة، الحالة...</div>
       </div>
 {% endset %}
 {% with import_title_ar='استيراد مصاعد من Excel', import_title_en='Import Elevators from Excel', template_base='/elevators/template', file_handler='handleElevImport(this)', confirm_handler='confirmElevImport()', required_block=elev_import_required %}
@@ -861,15 +863,41 @@ function initFilters() {
       }
     });
   }
+  fillElevTypeFilter();
   fillDistrictFilter();
 }
 
+function fillElevTypeFilter() {
+  var sel = document.getElementById('f-type');
+  if (!sel) return;
+  var known = {};
+  Array.prototype.forEach.call(sel.options, function(o) {
+    if (o.value) known[o.value] = 1;
+  });
+  var extras = [];
+  ELEVATORS.forEach(function(e) {
+    var t = (e.elev_type || '').trim();
+    if (t && !known[t]) {
+      known[t] = 1;
+      extras.push(t);
+    }
+  });
+  extras.sort(function(a, b) { return a.localeCompare(b, 'ar'); });
+  extras.forEach(function(t) {
+    var o = document.createElement('option');
+    o.value = t;
+    o.textContent = t;
+    sel.appendChild(o);
+  });
+}
+
 function allElevDistricts(cityFilter) {
+  var cities = Array.isArray(cityFilter) ? cityFilter.filter(Boolean) : (cityFilter ? [cityFilter] : []);
   var seen = {}, list = [];
   ELEVATORS.forEach(function(e) {
     var d = elevDistrict(e);
     if (!d || seen[d]) return;
-    if (cityFilter && e.city !== cityFilter) return;
+    if (cities.length && cities.indexOf(e.city) < 0) return;
     seen[d] = 1;
     list.push(d);
   });
@@ -879,13 +907,17 @@ function allElevDistricts(cityFilter) {
 function fillDistrictFilter(keepSelected) {
   var sel = document.getElementById('f-filter-district');
   if (!sel) return;
-  var city = (document.getElementById('f-city') || {}).value || '';
-  var prev = keepSelected ? (sel.value || '') : '';
-  var districts = allElevDistricts(city);
+  var cityEl = document.getElementById('f-city');
+  var cities = window.LiftCoreFilter ? LiftCoreFilter.values(cityEl) : [((cityEl || {}).value || '')].filter(Boolean);
+  var prev = keepSelected
+    ? (window.LiftCoreFilter ? LiftCoreFilter.values(sel) : [(sel.value || '')].filter(Boolean))
+    : [];
+  var districts = allElevDistricts(cities);
   sel.innerHTML = '<option value="">' + (typeof lcDisp === 'function' ? lcDisp('كل الأحياء') : 'كل الأحياء') + '</option>' +
     districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
-  if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
-    sel.value = prev;
+  if (window.LiftCoreFilter) LiftCoreFilter.set(sel, prev);
+  else if (prev[0] && [].some.call(sel.options, function(o) { return o.value === prev[0]; })) {
+    sel.value = prev[0];
   }
 }
 
@@ -989,7 +1021,7 @@ function getElevatorsByDrill(type) {
 function renderDrillTable(rows) {
   var body = document.getElementById('drill-body');
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">لا توجد بيانات</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">لا توجد بيانات</td></tr>';
     return;
   }
   body.innerHTML = rows.map(function(e) {
@@ -999,6 +1031,7 @@ function renderDrillTable(rows) {
       '<td>' + esc(lcDisp(e.building || '—')) + '</td>' +
       '<td>' + esc(lcDisp(e.city || '—')) + '</td>' +
       '<td>' + esc(lcDisp(e.elev_type || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(e.door_type || '—')) + '</td>' +
       '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></td>' +
       '<td style="font-family:var(--font-en);direction:ltr">' + esc(e.next_maint || '—') + '</td>' +
     '</tr>';
@@ -1043,6 +1076,18 @@ function elevCustomer(e) {
   return (window.LiftCoreDisplay) ? LiftCoreDisplay.name(e.customer, e.customer_name_en) : e.customer;
 }
 
+function ensureSelectValue(sel, value) {
+  if (!sel || value == null || value === '') return;
+  var exists = Array.prototype.some.call(sel.options, function(o) { return o.value === value; });
+  if (!exists) {
+    var o = document.createElement('option');
+    o.value = value;
+    o.textContent = value;
+    sel.appendChild(o);
+  }
+  sel.value = value;
+}
+
 function renderTable(data) {
   if (tableSort) {
     data = tableSort.apply(data);
@@ -1066,6 +1111,7 @@ function renderTable(data) {
       '<td>' + esc(lcDisp(e.building || '—')) + '</td>' +
       '<td>' + esc(lcDisp(e.city || '—')) + '</td>' +
       '<td>' + esc(lcDisp(e.elev_type || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(e.door_type || '—')) + '</td>' +
       '<td style="font-family:var(--font-en)">' + esc(e.brand || '—') + '</td>' +
       '<td style="font-family:var(--font-en)">' + (e.capacity ? lcDisp(e.capacity + ' كجم') : '—') + '</td>' +
       '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></td>' +
@@ -1079,20 +1125,15 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  var s = (document.getElementById('search-input').value || '').toLowerCase();
-  var ct = document.getElementById('f-client').value || '';
-  var tp = document.getElementById('f-type').value || '';
-  var st = document.getElementById('f-status').value || '';
-  var cy = document.getElementById('f-city').value || '';
-  var dist = (document.getElementById('f-filter-district') || {}).value || '';
+  var s = (document.getElementById('search-input').value || '');
   filtered = ELEVATORS.filter(function(e) {
     var ed = elevDistrict(e);
-    return (!s || e.code.toLowerCase().indexOf(s) >= 0 || e.customer.toLowerCase().indexOf(s) >= 0 || (e.building || '').toLowerCase().indexOf(s) >= 0 || ed.toLowerCase().indexOf(s) >= 0) &&
-      (!ct || e.customer === ct) &&
-      (!tp || e.elev_type === tp) &&
-      (!st || e.status === st) &&
-      (!cy || e.city === cy) &&
-      (!dist || ed === dist);
+    return LcSearch.match(s, [e.code, e.customer, e.customer_name_en, e.building, ed, e.city, e.elev_type, e.door_type, e.brand, e.address, e.notes]) &&
+      lcAllows('f-client', e.customer) &&
+      lcAllows('f-type', e.elev_type) &&
+      lcAllows('f-status', e.status) &&
+      lcAllows('f-city', e.city) &&
+      lcAllows('f-filter-district', ed);
   });
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
@@ -1326,7 +1367,7 @@ function editElevator(id) {
   document.getElementById('f-building').value = e.building || '';
   document.getElementById('f-elev-city').value = e.city || '';
   document.getElementById('f-elev-district').value = e.district || '';
-  document.getElementById('f-type-sel').value = e.elev_type || 'مصعد ركاب';
+  ensureSelectValue(document.getElementById('f-type-sel'), e.elev_type || 'مصعد ركاب');
   document.getElementById('f-brand').value = e.brand || '';
   document.getElementById('f-model').value = e.model || '';
   document.getElementById('f-capacity-kg').value = e.capacity || '';
@@ -1336,7 +1377,8 @@ function editElevator(id) {
   document.getElementById('f-doors').value = e.doors || '';
   document.getElementById('f-serial').value = e.serial || '';
   document.getElementById('f-machine').value = e.machine_type || 'MR';
-  document.getElementById('f-door-type').value = e.door_type || '';
+  if (e.door_type) ensureSelectValue(document.getElementById('f-door-type'), e.door_type);
+  else document.getElementById('f-door-type').value = '';
   document.getElementById('f-control-type').value = e.control_type || '';
   document.getElementById('f-control-drive').value = e.control_drive || '';
   document.getElementById('f-control-operation').value = e.control_operation || '';
@@ -1608,15 +1650,17 @@ async function confirmElevImport() {
 }
 
 function exportExcel() {
-  var rows = [['الكود','العميل','المبنى','المدينة','النوع','الماركة','نوع الباب','نوع الآلة','نظام التحكم','الحمولة','الحالة','الصيانة القادمة']];
-  filtered.forEach(function(e) {
-    rows.push([e.code, e.customer, e.building, e.city, e.elev_type, e.brand, (e.door_type || ''), (MACHINE_LABELS[e.machine_type] || e.machine_type || ''), formatControlSummary(e), (e.capacity ? e.capacity + ' كجم' : ''), e.status, e.next_maint]);
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('elevators'),
+    labels: LiftCoreCsv.LABELS.elevator,
+    skip: LiftCoreCsv.SKIP_COMMON,
+    transforms: {
+      machine_type: function (v) { return (typeof MACHINE_LABELS !== 'undefined' && MACHINE_LABELS[v]) || v || ''; }
+    },
+    extraColumns: [
+      { label: 'ملخص التحكم', value: function (e) { return typeof formatControlSummary === 'function' ? formatControlSummary(e) : ''; } }
+    ]
   });
-  var csv = rows.map(function(r) { return r.join(','); }).join('\n');
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'}));
-  a.download = 'elevators.csv';
-  a.click();
 }
 
 // ===== خريطة المصاعد =====
@@ -1705,7 +1749,7 @@ function makeElevPin(color) {
 function elevMapInfo(e) {
   return '<div class="map-info"><div class="map-info-title">' + esc(e.code) + '</div>' +
     '<div class="map-info-sub">' + esc(e.customer) + '<br>' + esc(e.building || '—') + '<br>' +
-    esc(e.elev_type || '') + ' · ' + esc(e.status) + '</div>' +
+    esc(e.elev_type || '') + (e.door_type ? ' · ' + esc(e.door_type) : '') + ' · ' + esc(e.status) + '</div>' +
     '<button class="map-info-btn" onclick="viewElevator(' + e.id + ')">عرض المصعد</button></div>';
 }
 
@@ -1777,6 +1821,14 @@ function refreshElevatorMap(fitAgain) {
     var summaryWait = document.getElementById('map-summary');
     if (summaryWait) summaryWait.textContent = 'جاري تحميل خرائط Google...';
     whenGoogleMapsReady(function () { refreshElevatorMap(fitAgain); });
+    return;
+  }
+  if (useOsmElevMaps()) {
+    refreshElevatorMapOsm();
+    return;
+  }
+  if (window.LiftCoreMap && LiftCoreMap.ensureMarkerLibReady && !LiftCoreMap.canUseAdvancedMarkers()) {
+    LiftCoreMap.ensureMarkerLibReady(function () { refreshElevatorMap(fitAgain); });
     return;
   }
   if (useOsmElevMaps()) {

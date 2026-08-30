@@ -19,14 +19,22 @@ for command in git python3 psql pg_dump nginx openssl curl; do
   command -v "$command" >/dev/null || { echo "ERROR: missing $command"; exit 1; }
 done
 
-read -r -p "Staging Basic Auth user [tester]: " BASIC_USER
 BASIC_USER="${BASIC_USER:-tester}"
-read -r -s -p "Staging Basic Auth password: " BASIC_PASSWORD
-echo
-if [ -z "$BASIC_PASSWORD" ]; then
-  echo "ERROR: Basic Auth password is required"
+if [ -z "${BASIC_PASSWORD:-}" ]; then
+  if [ -t 0 ]; then
+    read -r -p "Staging Basic Auth user [${BASIC_USER}]: " BASIC_USER_IN
+    BASIC_USER="${BASIC_USER_IN:-$BASIC_USER}"
+    read -r -s -p "Staging Basic Auth password: " BASIC_PASSWORD
+    echo
+  fi
+fi
+if [ -z "${BASIC_PASSWORD:-}" ]; then
+  echo "ERROR: set BASIC_PASSWORD (or run interactively)"
   exit 1
 fi
+# PowerShell Set-Content -Encoding utf8 prefixes a BOM that breaks browser login.
+BASIC_PASSWORD="${BASIC_PASSWORD#$'\xef\xbb\xbf'}"
+BASIC_PASSWORD="$(printf '%s' "$BASIC_PASSWORD" | tr -d '\r')"
 
 id "$SERVICE_USER" >/dev/null 2>&1 || \
   useradd --system --home /var/lib/liftcore-staging --shell /usr/sbin/nologin "$SERVICE_USER"

@@ -153,9 +153,12 @@ function renderTable(rows) {
 }
 
 function filterRows() {
-  var q = (document.getElementById('f-search').value || '').toLowerCase();
+  var q = (document.getElementById('f-search').value || '');
   document.querySelectorAll('#tbody tr[data-search]').forEach(function (tr) {
-    tr.style.display = !q || tr.getAttribute('data-search').indexOf(q) >= 0 ? '' : 'none';
+    var show = window.LcSearch
+      ? LcSearch.match(q, tr.getAttribute('data-search') || '')
+      : !q || (tr.getAttribute('data-search') || '').indexOf(q.toLowerCase()) >= 0;
+    tr.style.display = show ? '' : 'none';
   });
 }
 

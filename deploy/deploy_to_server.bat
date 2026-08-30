@@ -1,6 +1,6 @@
 @echo off
 title LiftCore - رفع على السيرفر
-set "SERVER=34.18.56.21"
+set "SERVER=2.29.6.41"
 set "USER=info"
 set "APP=~/liftcore/elevator-app"
 
@@ -12,16 +12,16 @@ echo ================================================
 echo.
 echo السيرفر: %USER%@%SERVER%
 echo.
-echo اذا فشل SSH، استخدم Google Cloud Console ^> SSH
-echo وشغّل: bash deploy/gcp_update.sh
+echo اذا فشل SSH، اتصل بـ Hetzner Console ^> SSH
+echo وشغّل: bash deploy/server_update_now.sh
 echo.
 
-ssh -o StrictHostKeyChecking=accept-new %USER%@%SERVER% "cd %APP% 2>/dev/null || cd /var/www/elevator-app; bash deploy/gcp_update.sh"
+ssh -o StrictHostKeyChecking=accept-new %USER%@%SERVER% "cd %APP% 2>/dev/null || cd /var/www/elevator-app; bash deploy/server_update_now.sh"
 
 if errorlevel 1 (
   echo.
-  echo فشل الاتصال. جرّب من GCP Console:
-  echo   cd ~/liftcore/elevator-app ^&^& bash deploy/gcp_update.sh
+  echo فشل الاتصال. جرّب SSH يدوياً:
+  echo   cd ~/liftcore/elevator-app ^&^& bash deploy/server_update_now.sh
   pause
   exit /b 1
 )

@@ -449,21 +449,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <table>
           <thead>
             <tr>
-              <th class="th-sort" data-sort-col="code" data-lc-t="الكود">الكود <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="customer" data-lc-t="العميل">العميل <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="buildings" data-lc-t="اسم المبنى">اسم المبنى <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="contract_type" data-lc-t="النوع">النوع <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="start_date" data-lc-t="تاريخ البداية">تاريخ البداية <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="end_date" data-lc-t="تاريخ الانتهاء">تاريخ الانتهاء <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="days_left" data-lc-t="الأيام">الأيام <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="elevators" data-lc-t="المصاعد">المصاعد <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="value" data-lc-t="قيمة العقد">قيمة العقد <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="total" data-lc-t="الإجمالي">الإجمالي <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="due_date" data-lc-t="الاستحقاق">الاستحقاق <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="contract_status" data-lc-t="حالة العقد">حالة العقد <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="inv_status" data-lc-t="حالة الفاتورة">حالة الفاتورة <span class="sort-ind"></span></th>
-              <th data-lc-t="مرفق">مرفق</th>
-              <th data-lc-t="إجراءات">إجراءات</th>
+              <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="buildings">اسم المبنى <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract_type">النوع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="start_date">تاريخ البداية <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="end_date">تاريخ الانتهاء <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="days_left">الأيام <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="value">قيمة العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="total">الإجمالي <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="due_date">الاستحقاق <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="inv_status">حالة الفاتورة <span class="sort-ind"></span></th>
+              <th>مرفق</th>
+              <th>إجراءات</th>
             </tr>
           </thead>
           <tbody id="table-body">
@@ -534,16 +534,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div id="import-table-wrap" style="overflow-x:auto;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm)"></div>
         <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--success)"></div>
       </div>
-      <div id="contract-import-instructions" style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:var(--r-sm);font-size:11px;color:var(--text3);line-height:1.7">
-        <strong data-lc-ar="تعليمات:" style="color:var(--text2)">{{ ui('تعليمات:', 'Instructions:') }}</strong>
-        <span id="contract-import-instr-body" data-lc-ar="يجب أن يكون العميل موجوداً مسبقاً (كود أو اسم). التواريخ بصيغة YYYY-MM-DD. أكواد المصاعد مفصولة بفاصلة (مثل: EL-0001، EL-0002).">
-          {% if user_language == 'en' %}
-          The client must already exist (code or name). Dates in <code style="font-family:var(--font-en)">YYYY-MM-DD</code> format. Elevator codes separated by comma (e.g. EL-0001, EL-0002). Use the English template above for column names and sample values.
-          {% else %}
-          يجب أن يكون العميل موجوداً مسبقاً (كود أو اسم). التواريخ بصيغة <code style="font-family:var(--font-en)">YYYY-MM-DD</code>.
-          أكواد المصاعد مفصولة بفاصلة (مثل: EL-0001، EL-0002).
-          {% endif %}
-        </span>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:var(--r-sm);font-size:11px;color:var(--text3);line-height:1.7">
+        <strong style="color:var(--text2)">تعليمات:</strong>
+        يجب أن يكون العميل موجوداً مسبقاً (كود أو اسم). التواريخ بصيغة <code style="font-family:var(--font-en)">YYYY-MM-DD</code>.
+        أكواد المصاعد مفصولة بفاصلة (مثل: EL-0001، EL-0002).
       </div>
     </div>
     <div class="modal-foot">
@@ -1453,6 +1447,37 @@ function fillDistrictFilter() {
   if (prev && [].some.call(sel.options, function(o) { return o.value === prev; })) {
     sel.value = prev;
   }
+  fillDistrictFilter();
+}
+
+function allContractDistricts() {
+  var seen = {}, list = [];
+  CONTRACTS.forEach(function(c) {
+    var d = contractDistrict(c);
+    if (!d || seen[d]) return;
+    seen[d] = 1;
+    list.push(d);
+  });
+  CUSTOMERS.forEach(function(c) {
+    var d = ((c && c.district) || '').trim();
+    if (!d || seen[d]) return;
+    seen[d] = 1;
+    list.push(d);
+  });
+  return list.sort(function(a, b) { return a.localeCompare(b, 'ar'); });
+}
+
+function fillDistrictFilter() {
+  var sel = document.getElementById('f-filter-district');
+  if (!sel) return;
+  var prev = window.LiftCoreFilter ? LiftCoreFilter.values(sel) : [(sel.value || '')].filter(Boolean);
+  var districts = allContractDistricts();
+  sel.innerHTML = '<option value="">' + (typeof lcDisp === 'function' ? lcDisp('كل الأحياء') : 'كل الأحياء') + '</option>' +
+    districts.map(function(d) { return '<option>' + d + '</option>'; }).join('');
+  if (window.LiftCoreFilter) LiftCoreFilter.set(sel, prev);
+  else if (prev[0] && [].some.call(sel.options, function(o) { return o.value === prev[0]; })) {
+    sel.value = prev[0];
+  }
 }
 
 // ===== badges =====
@@ -1617,19 +1642,14 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  const s   = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const cl  = document.getElementById('f-client')?.value||'';
-  const dist = document.getElementById('f-filter-district')?.value||'';
-  const tp  = document.getElementById('f-type')?.value||'';
-  const st  = document.getElementById('f-status')?.value||'';
-  const inv = document.getElementById('f-invoice')?.value||'';
+  const s   = (document.getElementById('search-input')?.value||'');
   filtered = CONTRACTS.filter(c=>
-    (!s   || c.code.toLowerCase().includes(s) || c.customer.includes(s) || (contractBuildingName(c) || '').includes(s) || (contractDistrict(c) || '').includes(s)) &&
-    (!cl  || c.customer === cl) &&
-    (!dist || contractDistrict(c) === dist) &&
-    (!tp  || c.contract_type === tp) &&
-    (!st  || getContractDisplayStatus(c) === st) &&
-    (!inv || c.inv_status === inv)
+    LcSearch.match(s, [c.code, c.customer, c.customer_name_en, contractBuildingName(c), contractDistrict(c), c.contract_type, c.notes]) &&
+    lcAllows('f-client', c.customer) &&
+    lcAllows('f-filter-district', contractDistrict(c)) &&
+    lcAllows('f-type', c.contract_type) &&
+    lcAllows('f-status', getContractDisplayStatus(c)) &&
+    lcAllows('f-invoice', c.inv_status)
   );
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
@@ -2670,24 +2690,31 @@ function loadClientElevators(selectedIds, opts) {
 }
 
 function exportExcel() {
-  const rows=[['الكود','العميل','المبنى','النوع','البداية','الانتهاء','الأيام','القيمة','الإجمالي','الاستحقاق','حالة العقد','حالة الفاتورة']];
-  filtered.forEach(function(c) {
-    var days = contractDaysLeft(c);
-    var daysLabel = '—';
-    if (days !== null) {
-      var st = getContractDisplayStatus(c);
-      if (st !== 'ملغي' && st !== 'تم تجديده') {
-        if (days > 0) daysLabel = 'متبقي ' + days;
-        else if (days === 0) daysLabel = 'ينتهي اليوم';
-        else daysLabel = 'منذ ' + Math.abs(days);
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('contracts'),
+    labels: LiftCoreCsv.LABELS.contract,
+    skip: LiftCoreCsv.SKIP_COMMON,
+    transforms: {
+      renewed: function (v) { return v ? 'نعم' : 'لا'; },
+      display_status: function (v, c) {
+        return (typeof getContractDisplayStatus === 'function' ? getContractDisplayStatus(c) : v) || '';
       }
-    }
-    rows.push([c.code,c.customer,c.buildings||'',c.contract_type,c.start_date,c.end_date,daysLabel,c.value,c.total,c.due_date||'',getContractDisplayStatus(c),c.inv_status]);
+    },
+    extraColumns: [
+      {
+        label: 'الأيام المتبقية',
+        value: function (c) {
+          var days = typeof contractDaysLeft === 'function' ? contractDaysLeft(c) : null;
+          if (days === null) return '—';
+          var st = typeof getContractDisplayStatus === 'function' ? getContractDisplayStatus(c) : '';
+          if (st === 'ملغي' || st === 'تم تجديده') return '—';
+          if (days > 0) return 'متبقي ' + days;
+          if (days === 0) return 'ينتهي اليوم';
+          return 'منذ ' + Math.abs(days);
+        }
+      }
+    ]
   });
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='contracts.csv'; a.click();
 }
 
 // ===== استيراد العقود =====
@@ -3296,12 +3323,92 @@ function refreshContractMapOsm() {
   setTimeout(resizeContractMapView, 250);
 }
 
+var osmContractMap = null;
+var osmContractMarkers = [];
+var CONTRACT_MAP_OSM_RADIUS = 7;
+
+function useOsmContractMaps() {
+  return !window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed || typeof google === 'undefined' || !google.maps;
+}
+
+function destroyOsmContractMap() {
+  if (osmContractMap) {
+    try { osmContractMap.remove(); } catch (e) { /* ignore */ }
+  }
+  osmContractMap = null;
+  osmContractMarkers = [];
+  var mapEl = document.getElementById('map');
+  if (mapEl) {
+    mapEl.innerHTML = '';
+    mapEl.className = mapEl.className.replace(/\bleaflet-\S+/g, '').trim();
+  }
+}
+
+function destroyGoogleContractMap() {
+  clearContractMapMarkers();
+  contractInfoWindow = null;
+  contractMap = null;
+  var mapEl = document.getElementById('map');
+  if (mapEl) mapEl.innerHTML = '';
+}
+
+function refreshContractMapOsm() {
+  var mapEl = document.getElementById('map');
+  var summary = document.getElementById('map-summary');
+  if (!mapEl || typeof L === 'undefined') return;
+  if (contractMap) destroyGoogleContractMap();
+  if (!osmContractMap) {
+    osmContractMap = L.map(mapEl).setView([21.4225, 39.8262], 11);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(osmContractMap);
+  }
+  osmContractMarkers.forEach(function (m) { osmContractMap.removeLayer(m); });
+  osmContractMarkers = [];
+  var groups = buildContractLocationGroups();
+  var shownContracts = 0;
+  var bounds = [];
+  groups.forEach(function (group) {
+    shownContracts += group.contracts.length;
+    var pos = group.pos;
+    var color = getGroupPinColor(group);
+    var marker = L.circleMarker([pos.lat, pos.lng], {
+      radius: CONTRACT_MAP_OSM_RADIUS,
+      color: '#ffffff',
+      weight: 2,
+      fillColor: color,
+      fillOpacity: 1
+    }).addTo(osmContractMap);
+    marker.bindPopup(contractGroupMapInfo(group));
+    osmContractMarkers.push(marker);
+    bounds.push([pos.lat, pos.lng]);
+  });
+  if (summary) {
+    summary.textContent = shownContracts
+      ? ('OpenStreetMap — ' + shownContracts + ' عقد في ' + groups.length + ' موقع (عملاء نشطون فقط)')
+      : 'لا مواقع لعقود عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
+  }
+  if (bounds.length) {
+    osmContractMap.fitBounds(bounds, { padding: [48, 48] });
+    if (bounds.length === 1) osmContractMap.setZoom(14);
+  }
+  setTimeout(function () { osmContractMap.invalidateSize(); }, 250);
+}
+
 function refreshContractMap(fitAgain) {
   if (window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && (typeof google === 'undefined' || !google.maps)) {
     var summaryWait = document.getElementById('map-summary');
-    contractMapLastSummary = { type: 'loading' };
-    if (summaryWait) summaryWait.textContent = contractTr('جاري تحميل خرائط Google...');
+    if (summaryWait) summaryWait.textContent = 'جاري تحميل خرائط Google...';
     whenGoogleMapsReady(function () { refreshContractMap(fitAgain); });
+    return;
+  }
+  if (useOsmContractMaps()) {
+    refreshContractMapOsm();
+    return;
+  }
+  if (window.LiftCoreMap && LiftCoreMap.ensureMarkerLibReady && !LiftCoreMap.canUseAdvancedMarkers()) {
+    LiftCoreMap.ensureMarkerLibReady(function () { refreshContractMap(fitAgain); });
     return;
   }
   if (useOsmContractMaps()) {
@@ -3313,6 +3420,8 @@ function refreshContractMap(fitAgain) {
   var mapEl = document.getElementById('map');
   if (!mapEl) return;
   mapEl.style.display = 'block';
+
+  if (osmContractMap) destroyOsmContractMap();
 
   if (osmContractMap) destroyOsmContractMap();
 
@@ -3369,10 +3478,6 @@ function switchTab(tab, el) {
   if (el) el.classList.add('active');
   if (tab === 'map') {
     if (window.ensureGoogleMapsScript) ensureGoogleMapsScript();
-    if (contractMap || osmContractMap) {
-      setTimeout(resizeContractMapView, 220);
-      return;
-    }
     if (useOsmContractMaps()) {
       setTimeout(function() { refreshContractMap(true); }, 120);
       return;

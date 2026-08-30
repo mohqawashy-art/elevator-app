@@ -1,11 +1,52 @@
-{# تبويبات جدول/خريطة — نحيفة مثل btn-sm — يُحمَّل بعد shell.css #}
+{# lc-admin-compact-ui v51 — تبويبات + إحصائيات + شريط أدوات #}
 <style id="lc-view-tabs-compact">
+#sidebar ~ .main .stats-row.lc-stats-compact,
+.main .content > .stats-row.lc-stats-compact {
+  gap: 6px !important;
+  margin-bottom: 8px !important;
+}
+#sidebar ~ .main .stats-row.lc-stats-compact .stat-mini,
+.main .content > .stats-row.lc-stats-compact .stat-mini {
+  padding: 6px 10px !important;
+  border-radius: var(--r-sm, 8px) !important;
+}
+#sidebar ~ .main .stats-row.lc-stats-compact .stat-mini-val,
+.main .content > .stats-row.lc-stats-compact .stat-mini-val {
+  font-size: 16px !important;
+  margin-bottom: 1px !important;
+}
+#sidebar ~ .main .stats-row.lc-stats-compact .stat-mini-label,
+.main .content > .stats-row.lc-stats-compact .stat-mini-label {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+}
+#sidebar ~ .main .lc-page-toolbar,
+.main .content > .lc-page-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+#sidebar ~ .main .lc-page-toolbar .page-title,
+.main .content > .lc-page-toolbar .page-title {
+  margin: 0 !important;
+  font-size: 16px !important;
+  flex: 0 0 auto !important;
+}
+#sidebar ~ .main .lc-page-toolbar .page-actions,
+.main .content > .lc-page-toolbar .page-actions {
+  margin-inline-start: auto !important;
+}
 #sidebar ~ .main .tabs,
-.main .content > .tabs {
+.main .content > .tabs,
+#sidebar ~ .main .lc-page-toolbar .tabs,
+.main .content > .lc-page-toolbar .tabs {
   display: inline-flex !important;
   flex-wrap: nowrap !important;
   gap: 3px !important;
-  margin-bottom: 10px !important;
+  margin: 0 !important;
   padding: 3px !important;
   background: var(--bg3) !important;
   border: 1px solid var(--border) !important;
@@ -14,7 +55,9 @@
   max-width: 100% !important;
 }
 #sidebar ~ .main .tabs .tab,
-.main .content > .tabs .tab {
+.main .content > .tabs .tab,
+#sidebar ~ .main .lc-page-toolbar .tabs .tab,
+.main .content > .lc-page-toolbar .tabs .tab {
   flex: 0 0 auto !important;
   padding: 5px 10px !important;
   font-size: 12px !important;
@@ -28,23 +71,35 @@
   justify-content: flex-start !important;
 }
 #sidebar ~ .main .tabs .tab svg,
-.main .content > .tabs .tab svg {
+.main .content > .tabs .tab svg,
+#sidebar ~ .main .lc-page-toolbar .tabs .tab svg,
+.main .content > .lc-page-toolbar .tabs .tab svg {
   width: 13px !important;
   height: 13px !important;
   flex-shrink: 0 !important;
 }
 #sidebar ~ .main .tabs .tab.active,
-.main .content > .tabs .tab.active {
+.main .content > .tabs .tab.active,
+#sidebar ~ .main .lc-page-toolbar .tabs .tab.active,
+.main .content > .lc-page-toolbar .tabs .tab.active {
   background: var(--accent) !important;
   color: #fff !important;
 }
 #sidebar ~ .main .tabs .tab:hover:not(.active),
-.main .content > .tabs .tab:hover:not(.active) {
+.main .content > .tabs .tab:hover:not(.active),
+#sidebar ~ .main .lc-page-toolbar .tabs .tab:hover:not(.active),
+.main .content > .lc-page-toolbar .tabs .tab:hover:not(.active) {
   background: var(--bg4) !important;
   color: var(--text1) !important;
 }
 html[dir="ltr"] #sidebar ~ .main .tabs .tab,
-html[dir="ltr"] .main .content > .tabs .tab {
+html[dir="ltr"] .main .content > .tabs .tab,
+html[dir="ltr"] #sidebar ~ .main .lc-page-toolbar .tabs .tab,
+html[dir="ltr"] .main .content > .lc-page-toolbar .tabs .tab {
   font-family: var(--font-en, 'DM Sans', sans-serif) !important;
+}
+#sidebar ~ .main .filters-bar,
+.main .content > .filters-bar {
+  margin-bottom: 8px !important;
 }
 </style>

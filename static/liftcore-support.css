@@ -1,4 +1,4 @@
-/* LiftCore — ويدجت دعم احترافي */
+/* LiftCore — لسان دعم جانبي: ينزلق للخارج عند الاقتراب ويعود عند البعد */
 .lc-support {
   --lc-sup-accent: #2a7fff;
   --lc-sup-accent-deep: #1a5fcc;
@@ -7,22 +7,43 @@
   --lc-sup-border: rgba(148, 175, 220, 0.14);
   --lc-sup-text: #e8eef8;
   --lc-sup-muted: #8a9bb5;
+  --lc-tongue-peek: 44px;
+  --lc-out: 1;
   position: fixed;
-  inset-inline-end: max(18px, env(safe-area-inset-right, 0px));
-  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  inset-inline-end: 0;
+  top: auto;
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
   z-index: 1200;
   font-family: inherit;
+  pointer-events: none;
+}
+
+[dir="rtl"] .lc-support,
+html[dir="rtl"] .lc-support {
+  --lc-out: -1;
 }
 
 .lc-support[hidden] {
   display: none !important;
 }
 
+/* منطقة وقوف أوسع من اللسان نفسه */
+.lc-support__rail {
+  position: absolute;
+  inset-block-end: -10px;
+  inset-block-start: -44px;
+  inset-inline-end: 0;
+  width: 64px;
+  z-index: 0;
+  pointer-events: auto;
+}
+
 .lc-support__panel {
   position: absolute;
   inset-inline-end: 0;
-  bottom: calc(100% + 14px);
-  width: min(268px, calc(100vw - 36px));
+  bottom: calc(100% + 12px);
+  top: auto;
+  width: min(268px, calc(100vw - 24px));
   padding: 0;
   border-radius: 16px;
   overflow: hidden;
@@ -32,6 +53,8 @@
     0 24px 48px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(255, 255, 255, 0.03) inset;
   display: none;
+  z-index: 2;
+  pointer-events: auto;
   transform-origin: bottom right;
 }
 
@@ -189,15 +212,20 @@ html[dir="rtl"] .lc-support__chev {
 
 .lc-support__btn {
   position: relative;
-  height: 48px;
-  width: auto;
-  min-width: auto;
-  max-width: none;
-  border-radius: 999px;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  max-width: 44px;
   border: 0;
-  padding-block: 0;
-  padding-inline: 12px 16px;
-  gap: 8px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+  border-start-start-radius: 14px;
+  border-end-start-radius: 14px;
   background: linear-gradient(145deg, #3b8cff 0%, var(--lc-sup-accent) 42%, var(--lc-sup-accent-deep) 100%);
   color: #fff;
   cursor: pointer;
@@ -210,33 +238,46 @@ html[dir="rtl"] .lc-support__chev {
     0 0 0 1px rgba(255, 255, 255, 0.12) inset,
     0 10px 28px rgba(26, 95, 204, 0.42),
     0 2px 6px rgba(0, 0, 0, 0.28);
+  transform: translateX(calc((100% - var(--lc-tongue-peek)) * var(--lc-out)));
   transition:
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.2s ease,
     background 0.2s ease;
+}
+
+.lc-support:hover .lc-support__btn,
+.lc-support:focus-within .lc-support__btn,
+.lc-support.is-near .lc-support__btn,
+.lc-support.is-open .lc-support__btn {
+  transform: translateX(0);
 }
 
 .lc-support__btn::before {
   content: "";
   position: absolute;
-  inset: -4px;
-  border-radius: 999px;
-  border: 1.5px solid rgba(42, 127, 255, 0.28);
+  inset-block: 8px;
+  inset-inline-end: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: rgba(255, 255, 255, 0.55);
   pointer-events: none;
-  opacity: 1;
-  transition: opacity 0.2s ease;
+}
+
+[dir="rtl"] .lc-support__btn::before,
+html[dir="rtl"] .lc-support__btn::before {
+  border-radius: 0 3px 3px 0;
 }
 
 .lc-support__label {
-  display: inline-block;
-  font-size: 13px !important;
-  font-weight: 700;
-  line-height: 1.2 !important;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-  letter-spacing: 0;
-  color: #fff !important;
-  opacity: 1 !important;
-  visibility: visible !important;
+  border: 0;
 }
 
 .lc-support__glyph-wrap {
@@ -246,16 +287,8 @@ html[dir="rtl"] .lc-support__chev {
   flex-shrink: 0;
 }
 
-.lc-support__btn:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.16) inset,
-    0 14px 32px rgba(26, 95, 204, 0.48),
-    0 4px 10px rgba(0, 0, 0, 0.3);
-}
-
 .lc-support__btn:active {
-  transform: translateY(0) scale(0.98);
+  filter: brightness(0.96);
 }
 
 .lc-support__btn:focus-visible {
@@ -294,7 +327,7 @@ html[dir="rtl"] .lc-support__chev {
 }
 
 .lc-support.is-open .lc-support__btn::before {
-  opacity: 0;
+  opacity: 0.35;
 }
 
 .lc-support.is-open .lc-support__glyph--open {
@@ -309,12 +342,22 @@ html[dir="rtl"] .lc-support__chev {
   pointer-events: auto;
 }
 
+@media (hover: none) {
+  .lc-support {
+    --lc-tongue-peek: 44px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lc-support.is-open .lc-support__panel,
   .lc-support__btn,
   .lc-support__glyph {
     animation: none;
     transition: none;
+  }
+
+  .lc-support__btn {
+    transform: none;
   }
 }
 
@@ -326,6 +369,6 @@ html[dir="rtl"] .lc-support__chev {
 
 @media (max-width: 1100px) {
   .lc-support {
-    bottom: max(76px, calc(18px + env(safe-area-inset-bottom, 0px)));
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
 }

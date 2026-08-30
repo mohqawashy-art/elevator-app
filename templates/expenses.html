@@ -424,15 +424,13 @@ function renderTable(data) {
 }
 
 function applyFilters() {
-  const s  = (document.getElementById('f-search')?.value || '').toLowerCase();
-  const tp = document.getElementById('f-type')?.value || '';
-  const pm = document.getElementById('f-pay')?.value || '';
+  const s  = (document.getElementById('f-search')?.value || '');
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = EXPENSES.filter(e =>
-    (!s || e.code.toLowerCase().includes(s) || (e.description || '').includes(s) || (e.responsible || '').includes(s) || (e.created_by || '').toLowerCase().includes(s)) &&
-    (!tp || e.expense_type === tp) &&
-    (!pm || e.pay_method === pm) &&
+    LcSearch.match(s, [e.code, e.description, e.expense_type, e.responsible, e.created_by, e.notes, e.reference, e.pay_method]) &&
+    lcAllows('f-type', e.expense_type) &&
+    lcAllows('f-pay', e.pay_method) &&
     (!fd || e.expense_date >= fd) &&
     (!td || e.expense_date <= td)
   );
@@ -590,13 +588,11 @@ function deleteExpense(id) {
 }
 
 function exportCSV() {
-  const rows = [['الكود', 'التاريخ', 'النوع', 'الوصف', 'المسؤول', 'طريقة الدفع', 'المبلغ', 'سجّله']];
-  filtered.forEach(e => rows.push([e.code, e.expense_date, e.expense_type, e.description, e.responsible, e.pay_method, e.amount, e.created_by || '']));
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = 'expenses.csv';
-  a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('expenses'),
+    labels: LiftCoreCsv.LABELS.expense,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);

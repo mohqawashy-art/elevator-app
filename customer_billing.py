@@ -16,6 +16,8 @@ UNPAID_INVOICE_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخ
 PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل', 'محصل']
 UNPAID_PARTS_STATUSES = ('غير محصل', 'معلقة', 'بانتظار موافقة العميل', 'بانتظار التوريد')
 CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد')
+# إيرادات لا تُنقص رصيد عقد الصيانة حتى لو رُبطت به للمرجعية
+_NON_CONTRACT_BALANCE_TYPES = frozenset({'زيارة', 'أعمال إضافية'})
 # يدعم CN-00042 و CN-00042-2026 و CN-00042-2026-2 (لا تقطع لاحقة التجديد)
 _CONTRACT_CODE_RE = re.compile(
     r'(CN|CI)-?\s*(\d+)(?:\s*[-/]\s*(20\d{2})(?:\s*-\s*(\d+))?)?',
@@ -135,6 +137,18 @@ def _before_tax_from_inclusive(total_incl, tax_pct: float = 15) -> float:
 def _is_contract_revenue_type(revenue_type: str) -> bool:
     t = (revenue_type or '').strip()
     return any(keyword in t for keyword in CONTRACT_REVENUE_KEYWORDS)
+
+
+def revenue_counts_toward_contract(revenue) -> bool:
+    """سداد قطع الغيار/الزيارة لا يُحسب من قيمة عقد الصيانة."""
+    if getattr(revenue, 'parts_billing_id', None):
+        return False
+    rt = (getattr(revenue, 'revenue_type', None) or '').strip()
+    if 'قطع غيار' in rt:
+        return False
+    if rt in _NON_CONTRACT_BALANCE_TYPES:
+        return False
+    return True
 
 
 def _invoice_paid_total(inv: Invoice) -> float:
@@ -272,10 +286,13 @@ def contract_paid_amount(contract_id: int) -> float:
     if not contract:
         return 0.0
 
-    rev_rows = tenant_query(Revenue).filter(
-        Revenue.contract_id == contract_id,
-        Revenue.status.in_(COLLECTED_REVENUE_STATUSES),
-    ).all()
+    rev_rows = [
+        r for r in tenant_query(Revenue).filter(
+            Revenue.contract_id == contract_id,
+            Revenue.status.in_(COLLECTED_REVENUE_STATUSES),
+        ).all()
+        if revenue_counts_toward_contract(r)
+    ]
     rev_paid = _round_money(sum(_round_money(r.total or 0) for r in rev_rows))
 
     linked_by_invoice: dict[int, float] = {}
@@ -290,6 +307,9 @@ def contract_paid_amount(contract_id: int) -> float:
         # سند القبض = نفس مبلغ الإيراد — لا يُحسب مرتين
         if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
             continue
+        # فاتورة قطع غيار مربوطة بالعقد للمرجعية — ليست سداداً لقيمة العقد
+        if getattr(inv, 'parts_billing_id', None):
+            continue
         inv_paid = _invoice_paid_total(inv)
         linked = linked_by_invoice.get(inv.id, 0.0)
         inv_extra += max(0.0, inv_paid - linked)
@@ -303,6 +323,8 @@ def contract_paid_amount(contract_id: int) -> float:
         Revenue.status.in_(COLLECTED_REVENUE_STATUSES),
     ).all()
     for rev in orphan_revs:
+        if not revenue_counts_toward_contract(rev):
+            continue
         amount = _round_money(rev.total or 0)
         if amount <= 0.01:
             continue
@@ -328,6 +350,8 @@ def contract_paid_amount(contract_id: int) -> float:
     ).all()
     for inv in orphan_invs:
         if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
+            continue
+        if getattr(inv, 'parts_billing_id', None):
             continue
         inv_paid = _invoice_paid_total(inv)
         if inv_paid <= 0.01:
@@ -1077,12 +1101,12 @@ def build_customer_statement(customer_id: int) -> dict:
             inv = tenant_query(Invoice).filter_by(id=r.invoice_id).first()
             if inv and not is_receipt_voucher(inv.invoice_type):
                 parent_ref = f'فاتورة {inv.code}'
-        elif r.contract_id:
-            c = tenant_query(Contract).filter_by(id=r.contract_id).first()
-            parent_ref = f'عقد {c.code}' if c else ''
-        elif r.parts_billing_id:
+        if not parent_ref and r.parts_billing_id:
             pb = tenant_query(PartsBilling).filter_by(id=r.parts_billing_id).first()
             parent_ref = f'قطع {pb.code}' if pb else ''
+        if not parent_ref and revenue_counts_toward_contract(r) and r.contract_id:
+            c = tenant_query(Contract).filter_by(id=r.contract_id).first()
+            parent_ref = f'عقد {c.code}' if c else ''
 
         credits.append({
             'date': str(r.revenue_date or ''),

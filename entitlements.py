@@ -1,12 +1,16 @@
 """احتساب وتفعيل حدود الباقة والإضافات لكل مؤسسة."""
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
 from models import Elevator, Organization, OrganizationAddon, Technician, User, db
 from plan_catalog import (
     ADDON_CATALOG,
+    CUSTOM_PLAN_KEY,
+    FEATURE_KEYS,
+    FEATURE_LABELS_AR,
     LIMIT_KEYS,
     LIMIT_LABELS_AR,
     addon_definition,
@@ -33,6 +37,23 @@ def _active_addons(org_id: int) -> list[OrganizationAddon]:
     return active
 
 
+def parse_features_override(org: Organization | None) -> dict[str, bool] | None:
+    raw = getattr(org, 'features_override_json', None) if org else None
+    if not raw or not str(raw).strip():
+        return None
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    out: dict[str, bool] = {}
+    for fk in FEATURE_KEYS:
+        if fk in data:
+            out[fk] = bool(data[fk])
+    return out or None
+
+
 def resolve_entitlements(org: Organization | None = None, org_id: int | None = None) -> dict[str, Any]:
     """حدود وميزات فعّالة = الباقة + الإضافات النشطة + تجاوزات يدوية."""
     if org is None:
@@ -44,18 +65,26 @@ def resolve_entitlements(org: Organization | None = None, org_id: int | None = N
         plan = plan_definition(plan_key)
         return {
             'plan': plan_key,
-            'plan_label': plan['label'],
+            'plan_label': plan.get('label_ar') or plan['label'],
             'limits': dict(plan['limits']),
             'features': dict(plan['features']),
             'addons': [],
+            'is_custom': False,
             'usage': {'elevators': 0, 'office_users': 0, 'technicians': 0, 'storage_gb': 0},
         }
 
     plan_key = normalize_plan(org.plan)
     plan = plan_definition(plan_key)
+    is_custom = plan_key == CUSTOM_PLAN_KEY
     limits = dict(plan['limits'])
     features = dict(plan['features'])
-    addon_rows = _active_addons(org.id)
+    if is_custom:
+        features = {fk: False for fk in FEATURE_KEYS}
+        override_features = parse_features_override(org)
+        if override_features:
+            features.update(override_features)
+
+    addon_rows = [] if is_custom else _active_addons(org.id)
     addon_summary = []
 
     for row in addon_rows:
@@ -81,7 +110,7 @@ def resolve_entitlements(org: Organization | None = None, org_id: int | None = N
             for fk in spec.get('feature_keys') or ():
                 features[fk] = True
 
-    # تجاوزات يدوية من المنصة (اختياري)
+    # تجاوزات يدوية من المنصة (لباقة التخصيص إلزامية عملياً)
     for key in LIMIT_KEYS:
         override = getattr(org, f'{key}_limit_override', None)
         if override is not None and int(override) >= 0:
@@ -89,10 +118,11 @@ def resolve_entitlements(org: Organization | None = None, org_id: int | None = N
 
     return {
         'plan': plan_key,
-        'plan_label': plan['label'],
+        'plan_label': plan.get('label_ar') or plan['label'],
         'limits': limits,
         'features': features,
         'addons': addon_summary,
+        'is_custom': is_custom,
         'usage': usage_counts(org.id),
     }
 
@@ -260,8 +290,71 @@ def set_limit_overrides(
     return {'ok': True, 'entitlements': resolve_entitlements(org=org)}
 
 
+def set_custom_package(
+    org: Organization,
+    *,
+    features: dict[str, bool],
+    elevators: int,
+    office_users: int,
+    technicians: int,
+    storage_gb: int,
+    amount: float,
+    cycle: str = 'monthly',
+    billing_notes: str | None = None,
+) -> dict[str, Any]:
+    """باقة تخصيص كاملة: ميزات + حدود + سعر — لمشغّل المنصة فقط."""
+    try:
+        amount = float(amount)
+    except (TypeError, ValueError):
+        return {'ok': False, 'errors': ['السعر مطلوب.']}
+    if amount < 0:
+        return {'ok': False, 'errors': ['السعر غير صالح.']}
+
+    cycle = (cycle or 'monthly').strip().lower()
+    if cycle not in ('monthly', 'yearly'):
+        return {'ok': False, 'errors': ['دورة فوترة غير معروفة.']}
+
+    cleaned_features: dict[str, bool] = {}
+    for fk in FEATURE_KEYS:
+        cleaned_features[fk] = bool(features.get(fk))
+    if not any(cleaned_features.values()):
+        return {'ok': False, 'errors': ['فعّل خدمة واحدة على الأقل للعميل.']}
+
+    for label, val in (
+        ('المصاعد', elevators),
+        ('المستخدمون', office_users),
+        ('الفنيون', technicians),
+        ('التخزين', storage_gb),
+    ):
+        try:
+            n = int(val)
+        except (TypeError, ValueError):
+            return {'ok': False, 'errors': [f'حد {label} غير صالح.']}
+        if n < 0:
+            return {'ok': False, 'errors': [f'حد {label} لا يمكن أن يكون سالباً.']}
+
+    org.plan = CUSTOM_PLAN_KEY
+    org.features_override_json = json.dumps(cleaned_features, ensure_ascii=False, separators=(',', ':'))
+    org.elevators_limit_override = int(elevators)
+    org.office_users_limit_override = int(office_users)
+    org.technicians_limit_override = int(technicians)
+    org.storage_gb_limit_override = int(storage_gb)
+    org.billing_cycle = cycle
+    org.billing_amount = float(amount)
+    if billing_notes is not None:
+        org.billing_notes = (billing_notes or '').strip() or None
+    db.session.commit()
+    return {'ok': True, 'org': org, 'entitlements': resolve_entitlements(org=org)}
+
+
 def addon_catalog_for_ui() -> list[dict[str, Any]]:
+    from plan_catalog import _safe_live_addons
+
     rows = []
-    for key, spec in ADDON_CATALOG.items():
+    for key, spec in _safe_live_addons().items():
         rows.append({'key': key, **spec})
     return rows
+
+
+def feature_catalog_for_ui() -> list[dict[str, str]]:
+    return [{'key': fk, 'label': FEATURE_LABELS_AR.get(fk, fk)} for fk in FEATURE_KEYS]

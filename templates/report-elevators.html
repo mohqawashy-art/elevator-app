@@ -262,7 +262,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <select onchange="filterTable()"><option value="">الكل</option></select>
         </div>
         <div class="field">
-          <label>النوع</label>
+          <label>نوع المصعد</label>
           <select onchange="filterTable()"><option value="">الكل</option></select>
         </div>
         <div class="field">
@@ -308,7 +308,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
         <div id="rpt-print-stats" class="rpt-print-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي المصاعد</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">نشطة</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">متوقفة</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">خارج الخدمة</div></div></div>
         <table class="rpt-table">
-        <thead><tr><th>الكود</th><th>العميل</th><th>المبنى</th><th>المدينة</th><th>النوع</th><th>الماركة</th><th>الحمولة</th><th>الحالة</th><th>الصيانة القادمة</th></tr></thead>
+        <thead><tr><th>الكود</th><th>العميل</th><th>المبنى</th><th>المدينة</th><th>نوع المصعد</th><th>نوع الباب</th><th>الماركة</th><th>الحمولة</th><th>الحالة</th><th>الصيانة القادمة</th></tr></thead>
         <tbody id="print-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
       </table>
         <div class="rpt-footer-line">
@@ -322,7 +322,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="table-wrap screen-only">
       <div class="table-scroll">
         <table>
-          <thead><tr><th>الكود</th><th>العميل</th><th>المبنى</th><th>المدينة</th><th>النوع</th><th>الماركة</th><th>الحمولة</th><th>الحالة</th><th>الصيانة القادمة</th></tr></thead>
+          <thead><tr><th>الكود</th><th>العميل</th><th>المبنى</th><th>المدينة</th><th>نوع المصعد</th><th>نوع الباب</th><th>الماركة</th><th>الحمولة</th><th>الحالة</th><th>الصيانة القادمة</th></tr></thead>
           <tbody id="report-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
         </table>
       </div>
@@ -344,6 +344,10 @@ function setLang(l){if(window.LiftCoreI18n&&window.LiftCoreI18n.setLang){window.
 </script>
 <script>
 function filterTable(){
+  if (window.LcSearch) {
+    LcSearch.filterDomRows('#report-tbody tr', 'f-search', 'table-info');
+    return;
+  }
   const s = document.getElementById('f-search').value.toLowerCase();
   const rows = document.querySelectorAll('#report-tbody tr');
   let count = 0;
@@ -356,7 +360,7 @@ function filterTable(){
   document.getElementById('table-info').textContent = 'عرض ' + count + ' سجل';
 }
 function exportExcel(){
-  const rows = [['الكود','العميل','المبنى','المدينة','النوع','الماركة','الحمولة','الحالة','الصيانة القادمة']];
+  const rows = [['الكود','العميل','المبنى','المدينة','نوع المصعد','نوع الباب','الماركة','الحمولة','الحالة','الصيانة القادمة']];
   document.querySelectorAll('#report-tbody tr').forEach(r=>{
     if(r.style.display !== 'none'){
       rows.push([...r.querySelectorAll('td')].map(td=>td.textContent.trim()));
@@ -389,6 +393,6 @@ function exportExcel(){
 window.__LC_REPORT_ROWS = {{ report_rows|tojson }};
 window.__LC_REPORT_ID = {{ report_id|tojson }};
 </script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=8"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=10"></script>
 </body>
 </html>

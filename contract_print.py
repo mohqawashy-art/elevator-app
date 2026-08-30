@@ -225,7 +225,7 @@ def elevators_for_contract(contract: Contract) -> list[dict]:
         out.append({
             'type': e.elev_type or '',
             'floors': str(e.floors) if e.floors is not None else '',
-            'doors': '',
+            'doors': getattr(e, 'door_type', None) or '',
             'capacity': str(e.capacity_kg) if e.capacity_kg else '',
         })
     return out

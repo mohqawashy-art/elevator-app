@@ -66,7 +66,8 @@ tbody tr:hover{background:var(--bg3)}
 .totals-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;margin-top:12px}
 .totals-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:var(--text2)}
 .totals-row.grand{font-size:16px;font-weight:700;color:var(--gold);border-top:1px solid var(--border);margin-top:8px;padding-top:10px}
-.totals-row span:last-child{font-family:var(--font-en);color:var(--text1)}
+.totals-row span:last-child{font-family:var(--font-en);color:var(--text1);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cat-row td{background:var(--bg3)!important;color:var(--gold);font-weight:700;font-size:12px;padding:8px 12px}
 .check-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
 .check-row input{width:auto}
 .badge{display:inline-flex;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500}
@@ -111,10 +112,19 @@ tbody tr:hover{background:var(--bg3)}
     <div class="page-header">
       <div class="page-title">تقدير تكلفة إنشاء مصعد</div>
       <div class="page-actions">
+        <a href="{{ url_for('sales.install_hub') }}" class="btn btn-secondary btn-sm">مسار التركيبات</a>
         <a href="/elevators" class="btn btn-secondary btn-sm">← المصاعد</a>
         {% if edit_est %}<a href="/elevator-estimates" class="btn btn-secondary btn-sm">تقدير جديد</a>{% endif %}
+        {% if edit_est and edit_est.result_project_id %}
+        <a href="{{ url_for('installation.project_detail', project_id=edit_est.result_project_id) }}" class="btn btn-primary btn-sm">فتح عرض السعر</a>
+        {% elif edit_est and edit_est.customer_id %}
+        <form method="post" action="{{ url_for('sales.convert_estimate_to_install_quote', estimate_id=edit_est.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-primary btn-sm">إصدار عرض سعر</button>
+        </form>
+        {% endif %}
       </div>
     </div>
+    <p class="hint" style="margin:-8px 0 16px;color:var(--text2)">مسار التركيبات: تقدير → عرض سعر → موافقة العميل → إدارة مشروعات التركيب</p>
 
     <form method="post" action="/elevator-estimates/save" id="est-form">
       {% if edit_est %}<input type="hidden" name="estimate_id" value="{{ edit_est.id }}">{% endif %}
@@ -235,14 +245,19 @@ tbody tr:hover{background:var(--bg3)}
             </thead>
             <tbody id="lines-body">
               {% if edit_est and edit_est.lines %}
+                {% set ns = namespace(last_cat='') %}
                 {% for ln in edit_est.lines %}
+                {% if (ln.category or '') != ns.last_cat %}
+                {% set ns.last_cat = ln.category or '' %}
+                <tr class="cat-row"><td colspan="7">{{ ln.category or 'بنود' }}</td></tr>
+                {% endif %}
                 <tr class="line-row">
                   <td><input name="line_category" value="{{ ln.category or '' }}"></td>
                   <td><input name="line_description" value="{{ ln.description or '' }}"></td>
-                  <td><input type="number" name="line_quantity" step="0.01" min="0.01" value="{{ ln.quantity }}"></td>
+                  <td><input type="number" name="line_quantity" step="1" min="1" value="{{ '{:.0f}'.format(ln.quantity or 0) }}"></td>
                   <td><input name="line_unit" value="{{ ln.unit or '' }}"></td>
-                  <td><input type="number" name="line_unit_price" step="0.01" min="0" value="{{ ln.unit_price }}"></td>
-                  <td class="line-total" style="font-family:var(--font-en)">{{ '%.2f'|format(ln.line_total or 0) }}</td>
+                  <td><input type="number" name="line_unit_price" step="1" min="0" value="{{ '{:.0f}'.format(ln.unit_price or 0) }}"></td>
+                  <td class="line-total" style="font-family:var(--font-en)">{{ '{:,.0f}'.format(ln.line_total or 0) }}</td>
                   <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
                 </tr>
                 {% endfor %}
@@ -256,11 +271,12 @@ tbody tr:hover{background:var(--bg3)}
             <button type="submit" class="btn btn-primary btn-sm">حفظ وطباعة</button>
           </div>
           <div class="totals-box" id="totals-box">
-            <div class="totals-row"><span>تكلفة البنود</span><span id="t-cost">0.00</span></div>
-            <div class="totals-row"><span>هامش الربح</span><span id="t-margin">0.00</span></div>
-            <div class="totals-row"><span>قبل الضريبة</span><span id="t-sub">0.00</span></div>
-            <div class="totals-row"><span>ضريبة VAT</span><span id="t-vat">0.00</span></div>
-            <div class="totals-row grand"><span>الإجمالي شامل الضريبة</span><span id="t-total">0.00</span></div>
+            <div class="totals-row"><span>تكلفة البنود</span><span id="t-cost">0</span></div>
+            <div class="totals-row"><span>هامش الربح</span><span id="t-margin">0</span></div>
+            <div class="totals-row"><span>قبل الضريبة</span><span id="t-sub">0</span></div>
+            <div class="totals-row"><span>ضريبة VAT</span><span id="t-vat">0</span></div>
+            <div class="totals-row grand"><span>الإجمالي شامل الضريبة</span><span id="t-total">0</span></div>
+            <p class="hint" style="margin-top:8px">الأرقام مقربة لأقرب ريال — بدون كسور عشرية.</p>
           </div>
         </div>
       </div>
@@ -282,10 +298,17 @@ tbody tr:hover{background:var(--bg3)}
             <td>{{ e.machine_type }} / {{ e.floors }} ط</td>
             <td class="lc-date">{{ e.estimate_date | dmY }}</td>
             <td><span class="badge {% if e.status == 'معتمد' %}badge-ok{% else %}badge-warn{% endif %}">{{ e.status }}</span></td>
-            <td style="font-family:var(--font-en)">{{ '%.2f'|format(e.total or 0) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+            <td style="font-family:var(--font-en)">{{ '{:,.0f}'.format(e.total or 0) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
             <td style="white-space:nowrap">
               <a href="{{ url_for('elevator_estimate_print', estimate_id=e.id) }}" class="btn btn-primary btn-sm lc-open-tab">🖨️ طباعة</a>
               <a href="/elevator-estimates?edit={{ e.id }}" class="btn btn-secondary btn-sm">تعديل</a>
+              {% if e.result_project_id %}
+              <a href="{{ url_for('installation.project_detail', project_id=e.result_project_id) }}" class="btn btn-secondary btn-sm">عرض السعر</a>
+              {% elif e.customer_id %}
+              <form method="post" action="{{ url_for('sales.convert_estimate_to_install_quote', estimate_id=e.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-primary btn-sm">إصدار عرض سعر</button>
+              </form>
+              {% endif %}
               <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="LiftCoreAdminDelete.post('/elevator-estimates/delete/{{ e.id }}', {message: 'حذف التقدير؟'})">حذف</button>
             </td>
           </tr>
@@ -303,16 +326,18 @@ tbody tr:hover{background:var(--bg3)}
   <tr class="line-row">
     <td><input name="line_category" placeholder="فئة"></td>
     <td><input name="line_description" placeholder="الوصف"></td>
-    <td><input type="number" name="line_quantity" step="0.01" min="0.01" value="1"></td>
+    <td><input type="number" name="line_quantity" step="1" min="1" value="1"></td>
     <td><input name="line_unit" value="وحدة"></td>
-    <td><input type="number" name="line_unit_price" step="0.01" min="0" value="0"></td>
-    <td class="line-total" style="font-family:var(--font-en)">0.00</td>
+    <td><input type="number" name="line_unit_price" step="1" min="0" value="0"></td>
+    <td class="line-total" style="font-family:var(--font-en)">0</td>
     <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
   </tr>
 </template>
 
 <script>
-function fmt(n) { return (Number(n) || 0).toFixed(2); }
+function fmt(n) {
+  return Math.round(Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
 
 function recalcTotals() {
   const rows = document.querySelectorAll('#lines-body .line-row:not(.empty-line)');
@@ -320,17 +345,17 @@ function recalcTotals() {
   rows.forEach(row => {
     const qty = parseFloat(row.querySelector('[name="line_quantity"]')?.value) || 0;
     const price = parseFloat(row.querySelector('[name="line_unit_price"]')?.value) || 0;
-    const total = qty * price;
+    const total = Math.round(qty * price);
     cost += total;
     const cell = row.querySelector('.line-total');
     if (cell) cell.textContent = fmt(total);
   });
   const marginPct = parseFloat(document.getElementById('margin_pct').value) || 0;
   const vatPct = parseFloat(document.getElementById('vat_pct').value) || 0;
-  const marginAmt = cost * marginPct / 100;
-  const sub = cost + marginAmt;
-  const vatAmt = sub * vatPct / 100;
-  const grand = sub + vatAmt;
+  const marginAmt = Math.round(cost * marginPct / 100);
+  const sub = Math.round(cost + marginAmt);
+  const vatAmt = Math.round(sub * vatPct / 100);
+  const grand = Math.round(sub + vatAmt);
   document.getElementById('t-cost').textContent = fmt(cost);
   document.getElementById('t-margin').textContent = fmt(marginAmt);
   document.getElementById('t-sub').textContent = fmt(sub);
@@ -364,13 +389,22 @@ function removeLine(btn) {
 function fillLines(lines) {
   const body = document.getElementById('lines-body');
   body.innerHTML = '';
+  let lastCat = null;
   lines.forEach(ln => {
+    const cat = ln.category || '';
+    if (cat !== lastCat) {
+      lastCat = cat;
+      const head = document.createElement('tr');
+      head.className = 'cat-row';
+      head.innerHTML = '<td colspan="7">' + cat + '</td>';
+      body.appendChild(head);
+    }
     const row = document.getElementById('line-tpl').content.cloneNode(true).querySelector('tr');
-    row.querySelector('[name="line_category"]').value = ln.category || '';
+    row.querySelector('[name="line_category"]').value = cat;
     row.querySelector('[name="line_description"]').value = ln.description || '';
-    row.querySelector('[name="line_quantity"]').value = ln.quantity;
+    row.querySelector('[name="line_quantity"]').value = Math.round(Number(ln.quantity) || 0);
     row.querySelector('[name="line_unit"]').value = ln.unit || '';
-    row.querySelector('[name="line_unit_price"]').value = ln.unit_price;
+    row.querySelector('[name="line_unit_price"]').value = Math.round(Number(ln.unit_price) || 0);
     row.querySelector('.line-total').textContent = fmt(ln.line_total);
     body.appendChild(row);
     bindLine(row);

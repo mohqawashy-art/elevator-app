@@ -144,26 +144,9 @@ def maintenance_hub():
 
 @sales_bp.route('/install/quotes/new', methods=['GET', 'POST'])
 def install_quote_new():
-    """عرض تركيب مصعد جديد — صفحة تسعير مستقلة."""
-    return _start_install_quote('new')
-
-
-@sales_bp.route('/install/quotes/upgrade', methods=['GET', 'POST'])
-def install_quote_upgrade():
-    """عرض سعر تحديث — صفحة تسعير مستقلة."""
-    return _start_install_quote('upgrade')
-
-
-@sales_bp.route('/install/quotes/extend', methods=['GET', 'POST'])
-def install_quote_extend():
-    """عرض إضافة أدوار — نموذج مستقل."""
-    return _start_install_quote('extend')
-
-
-def _start_install_quote(default_kind: str):
-    """بدء عرض تركيب من المبيعات — ينشئ مشروعاً ويفتح فورم التسعير المناسب."""
+    """بدء عرض تركيب من المبيعات — ينشئ مشروعاً ويفتح فورم التسعير الحديث."""
     from installation.config import install_module_enabled
-    from installation.models import InstallProject, QUOTE_FLOW_PAGE_TITLES
+    from installation.models import InstallProject
     from installation.routes import _next_code
 
     if not install_module_enabled():
@@ -171,27 +154,23 @@ def _start_install_quote(default_kind: str):
         return redirect(url_for('sales.hub'))
 
     if request.method == 'GET' and not request.args.get('go'):
-        return redirect(url_for(
-            request.endpoint,
-            go=1,
-            quote_kind=default_kind,
-        ))
+        # شاشة اختيار سريعة قبل الفورم
+        return render_template(
+            'sales/install_quote_start.html',
+            page_title='عرض تركيب جديد',
+        )
 
     title = (request.form.get('title') or request.args.get('title') or '').strip()
-    quote_kind = (
-        request.form.get('quote_kind')
-        or request.args.get('quote_kind')
-        or default_kind
-    ).strip()
+    quote_kind = (request.form.get('quote_kind') or request.args.get('quote_kind') or 'new').strip()
     kind_labels = {
         'new': 'تركيب مصعد جديد',
-        'upgrade': 'عرض سعر تحديث',
+        'upgrade': 'تحديث مصعد قائم',
         'extend': 'إضافة أدوار',
     }
     if quote_kind not in kind_labels:
         quote_kind = 'new'
     if not title:
-        title = QUOTE_FLOW_PAGE_TITLES.get(quote_kind) or kind_labels[quote_kind]
+        title = kind_labels[quote_kind]
 
     project = InstallProject(
         code=_next_code(InstallProject, 'PRJ-', 4),

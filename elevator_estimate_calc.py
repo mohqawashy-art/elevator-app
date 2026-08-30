@@ -50,7 +50,7 @@ RATE_TABLE = {
 
 MACHINE_TYPES = ('MR', 'MRL', 'Hydraulic')
 ELEV_TYPES = ('مصعد ركاب', 'مصعد بضائع', 'مصعد مستشفى', 'مصعد منزلي')
-ESTIMATE_STATUSES = ('مسودة', 'معتمد', 'ملغي')
+ESTIMATE_STATUSES = ('مسودة', 'معتمد', 'محوّل لعرض سعر', 'ملغي')
 
 
 def _safe_int(value, default=0, minimum=0):
@@ -69,15 +69,15 @@ def _safe_float(value, default=0.0):
 
 
 def _line(category, description, quantity, unit, unit_price):
-    qty = _safe_float(quantity, 1)
-    price = _safe_float(unit_price, 0)
+    qty = round(_safe_float(quantity, 1))
+    price = round(_safe_float(unit_price, 0))
     return {
         'category': category,
         'description': description,
         'quantity': qty,
         'unit': unit,
         'unit_price': price,
-        'line_total': round(qty * price, 2),
+        'line_total': round(qty * price),
     }
 
 
@@ -145,11 +145,11 @@ def summarize_lines(lines, margin_pct=None, vat_pct=None):
     """يحسب الإجماليات من البنود."""
     margin_pct = _safe_float(margin_pct, DEFAULT_MARGIN_PCT)
     vat_pct = _safe_float(vat_pct, DEFAULT_VAT_PCT)
-    cost_subtotal = round(sum(_safe_float(ln.get('line_total')) for ln in lines), 2)
-    margin_amount = round(cost_subtotal * margin_pct / 100, 2)
-    subtotal = round(cost_subtotal + margin_amount, 2)
-    vat_amount = round(subtotal * vat_pct / 100, 2)
-    total = round(subtotal + vat_amount, 2)
+    cost_subtotal = round(sum(_safe_float(ln.get('line_total')) for ln in lines))
+    margin_amount = round(cost_subtotal * margin_pct / 100)
+    subtotal = round(cost_subtotal + margin_amount)
+    vat_amount = round(subtotal * vat_pct / 100)
+    total = round(subtotal + vat_amount)
     return {
         'cost_subtotal': cost_subtotal,
         'margin_pct': margin_pct,

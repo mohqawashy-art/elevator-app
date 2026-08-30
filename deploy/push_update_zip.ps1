@@ -2,7 +2,7 @@
 # الاستخدام: powershell -ExecutionPolicy Bypass -File deploy\push_update_zip.ps1
 
 $ErrorActionPreference = "Stop"
-$Remote = "info@34.18.56.21"
+$Remote = "info@2.29.6.41"
 $RemoteZip = "~/liftcore-update.zip"
 $RemoteApp = "~/liftcore/elevator-app"
 $DeployDir = $PSScriptRoot

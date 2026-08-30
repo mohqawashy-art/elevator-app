@@ -826,7 +826,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function switchTab(mode) {
-    if (lockQuoteType && mode !== lockQuoteType) return;
     el('paneNew').style.display = mode === 'new' ? '' : 'none';
     el('paneExtend').style.display = mode === 'extend' ? '' : 'none';
     el('paneUpg').style.display = mode === 'upgrade' ? '' : 'none';
@@ -879,6 +878,16 @@ document.addEventListener('DOMContentLoaded', function () {
     var grand = before + vat;
     var dateStr = new Date().toLocaleDateString('ar-SA');
     var validDays = P.num(el('cValid').value) || 30;
+    var laborByStage = {};
+    if (!isUpg && typeof P.splitLaborByStage === 'function') {
+      var laborParts = P.splitLaborByStage(labor + trans + other, stagesOrder);
+      for (i = 0; i < laborParts.length; i++) {
+        laborByStage[laborParts[i].stage] = {
+          label: laborParts[i].label,
+          amount: laborParts[i].amount * factor,
+        };
+      }
+    }
     var tbl = '<table class="q-tbl"><thead><tr><th style="width:55%">البيان</th><th>الكمية</th><th>الإجمالي (ر.س)</th></tr></thead><tbody>';
     for (i = 0; i < stagesOrder.length; i++) {
       var st2 = stagesOrder[i];
@@ -913,7 +922,7 @@ document.addEventListener('DOMContentLoaded', function () {
     tbl += '</tbody></table>';
     var specs = '';
     var quoteTitle = 'توريد وتركيب مصعد جديد';
-    if (currentMode === 'upgrade') quoteTitle = 'عرض سعر تحديث';
+    if (currentMode === 'upgrade') quoteTitle = 'تحديث مصعد قائم';
     if (currentMode === 'extend') quoteTitle = 'إضافة أدوار لمصعد قائم';
     if (currentMode === 'extend') {
       var spec = getExtendSpec();
@@ -1234,9 +1243,9 @@ document.addEventListener('DOMContentLoaded', function () {
   updateCabinHint();
   updateExtendHint();
 
-  if (el('tabNewBtn')) el('tabNewBtn').addEventListener('click', function () { switchTab('new'); });
+  el('tabNewBtn').addEventListener('click', function () { switchTab('new'); });
   if (el('tabExtendBtn')) el('tabExtendBtn').addEventListener('click', function () { switchTab('extend'); });
-  if (el('tabUpgBtn')) el('tabUpgBtn').addEventListener('click', function () { switchTab('upgrade'); });
+  el('tabUpgBtn').addEventListener('click', function () { switchTab('upgrade'); });
   if (el('btnQuickCustomer')) {
     el('btnQuickCustomer').addEventListener('click', function () {
       if (!window.LiftCoreQuickCustomer) return;
@@ -1296,9 +1305,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (cfg.saved) {
     loadSaved();
   } else {
-    if (lockQuoteType && ['new', 'upgrade', 'extend'].indexOf(lockQuoteType) >= 0) {
-      switchTab(lockQuoteType);
-    } else if (cfg.preferredQuoteType && ['new', 'upgrade', 'extend'].indexOf(cfg.preferredQuoteType) >= 0) {
+    if (cfg.preferredQuoteType && ['new', 'upgrade', 'extend'].indexOf(cfg.preferredQuoteType) >= 0) {
       switchTab(cfg.preferredQuoteType);
     }
     if (cfg.prefill && cfg.prefill.customer_id) {

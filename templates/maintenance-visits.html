@@ -727,8 +727,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   </div>
 </div>
 
-<script src="/static/liftcore_map.js?v=9"></script>
-<script src="/static/ops-common.js?v=3"></script>
+<script src="/static/liftcore_map.js?v=2"></script>
+<script src="/static/ops-common.js?v=4"></script>
 
 <script>
 const OPS_TODAY = {{ ops_today|tojson }};
@@ -1029,19 +1029,15 @@ function filterTable() {
     document.querySelectorAll('[data-visit-filter]').forEach(el => el.classList.remove('active'));
     updateVisitFilterHint();
   }
-  const s  = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const cl = document.getElementById('f-client')?.value||'';
-  const tc = document.getElementById('f-tech')?.value||'';
-  const tp = document.getElementById('f-type')?.value||'';
-  const st = document.getElementById('f-status')?.value||'';
+  const s  = (document.getElementById('search-input')?.value||'');
   const fd = document.getElementById('f-date-from')?.value||'';
   const td = document.getElementById('f-date-to')?.value||'';
   filtered = VISITS.filter(v=>
-    (!s  || v.code.toLowerCase().includes(s) || (v.customer||'').includes(s) || (v.elevator||'').toLowerCase().includes(s) || (v.technician||'').includes(s)) &&
-    (!cl || v.customer === cl) &&
-    (!tc || v.technician === tc) &&
-    (!tp || v.visit_type === tp) &&
-    (!st || v.status === st || (st === 'جاري التنفيذ' && (v.status === 'جارية' || v.status === 'مُرسلة للفني'))) &&
+    LcSearch.match(s, [v.code, v.customer, v.customer_name_en, v.elevator, v.technician, v.visit_type, v.works_done, v.notes, v.building]) &&
+    lcAllows('f-client', v.customer) &&
+    lcAllows('f-tech', v.technician) &&
+    lcAllows('f-type', v.visit_type) &&
+    lcAllows('f-status', v.status, { aliases: { 'جاري التنفيذ': ['جارية', 'مُرسلة للفني'] } }) &&
     (!fd || v.visit_date >= fd) &&
     (!td || v.visit_date <= td)
   );
@@ -2192,12 +2188,11 @@ function printVisit() {
 }
 
 function exportExcel() {
-  const rows=[['الكود','العميل','المصعد','الفني','النوع','التاريخ','الحالة']];
-  filtered.forEach(v=>rows.push([v.code,v.customer,v.elevator,v.technician,v.visit_type,v.visit_date,v.status]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='visits.csv'; a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('visits'),
+    labels: LiftCoreCsv.LABELS.visit,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }

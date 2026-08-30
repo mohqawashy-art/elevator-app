@@ -115,7 +115,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:720px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:980px;max-height:92vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .25s}
 .modal-overlay.open .modal{transform:translateY(0)}
 .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-title{font-size:15px;font-weight:600;color:var(--text1)}
@@ -144,7 +144,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .pb-parts-table .lc-client-select{position:relative;min-width:150px}
 .pb-parts-table .lc-client-select-input{font-size:12px;padding:6px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm)}
 .pb-parts-table .lc-client-select-list{z-index:500;max-height:220px;overflow-y:auto}
-.pb-parts-total{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
+.pb-parts-total{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);flex-wrap:wrap}
+.pb-parts-total-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pb-parts-net{width:100%;margin-top:6px;font-size:13px;color:var(--text1)}
 .pb-parts-total-val{font-size:15px;font-weight:600;color:var(--gold);font-family:var(--font-en)}
 .pb-parts-cost{font-size:11px;color:var(--text3);margin-top:4px}
 .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
@@ -236,6 +238,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <option value="">حالة التحصيل</option>
         <option>محصل</option>
         <option>غير محصل</option>
+        <option>على حساب الشركة</option>
       </select>
       <input class="filter-input" type="date" lang="en-GB" id="f-from" title="من" onchange="applyFilters()">
       <input class="filter-input" type="date" lang="en-GB" id="f-to" title="إلى" onchange="applyFilters()">
@@ -274,7 +277,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th class="th-sort" data-sort-col="billing_date">التاريخ <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="description">بيان القطع <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="cost_price">التكلفة <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="sell_price">سعر العميل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="sell_price">المطلوب من العميل <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="profit">الربح <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="payment_note">بيان السداد <span class="sort-ind"></span></th>
@@ -347,12 +350,13 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             <table class="pb-parts-table">
               <thead>
                 <tr>
-                  <th style="width:26%">الصنف من المخزون</th>
-                  <th style="width:20%">اسم القطعة</th>
+                  <th style="width:22%">الصنف من المخزون</th>
+                  <th style="width:16%">اسم القطعة</th>
                   <th style="width:8%">الكمية</th>
-                  <th style="width:12%">تكلفة الوحدة</th>
-                  <th style="width:12%">سعر العميل</th>
-                  <th style="width:12%">الإجمالي</th>
+                  <th style="width:11%">تكلفة الوحدة</th>
+                  <th style="width:11%">سعر العميل</th>
+                  <th style="width:11%">خصم</th>
+                  <th style="width:11%">الصافي</th>
                   <th style="width:5%"></th>
                 </tr>
               </thead>
@@ -363,6 +367,13 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <span>إجمالي سعر العميل</span>
               <span class="pb-parts-total-val" id="pb-parts-sell-total">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
             </div>
+            <div class="pb-parts-total-actions" style="margin-top:8px">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="applyPbCompanyAccount()">على حساب الشركة</button>
+              <span style="font-size:11px;color:var(--text3)">الخصم من سعر العميل — للتركيب المجاني ضع الخصم مساوياً للإجمالي</span>
+            </div>
+            <div class="pb-parts-net">صافي المطلوب من العميل: <span id="pb-parts-net-total" style="font-family:var(--font-en);font-weight:600">0.00</span> <span class="lc-sar" role="img" aria-label="ريال"></span>
+              <span id="pb-parts-disc-total-wrap" style="color:var(--text3);margin-right:10px">· الخصم <span id="pb-parts-disc-total" style="font-family:var(--font-en)">0.00</span></span>
+            </div>
             <div class="pb-parts-cost">إجمالي التكلفة: <span id="pb-parts-cost-total" style="font-family:var(--font-en)">0.00</span> <span class="lc-sar" role="img" aria-label="ريال"></span></div>
           </div>
           <input type="hidden" id="m-desc">
@@ -372,7 +383,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <input type="number" id="m-cost" placeholder="0.00" step="0.01" readonly style="opacity:.9;background:var(--bg4)" title="يُحسب تلقائياً من تكلفة القطع">
         </div>
         <div class="field">
-          <label>سعر العميل (<span class="lc-sar" role="img" aria-label="ريال"></span>) <span>*</span></label>
+          <label>المطلوب من العميل (<span class="lc-sar" role="img" aria-label="ريال"></span>) <span>*</span></label>
           <input type="number" id="m-price" placeholder="0.00" step="0.01" readonly style="opacity:.9;background:var(--bg4)" title="يُحسب تلقائياً من أسعار القطع">
         </div>
         <div id="m-collection-block" style="display:none">
@@ -440,9 +451,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       </div>
       <div id="parts-import-status" style="margin-top:12px;font-size:12px;color:var(--text2);display:none"></div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-top:14px;font-size:12px">
-        <div style="color:var(--text1);font-weight:600;margin-bottom:6px" data-lc-ar="الأعمدة المطلوبة:">{{ ui('الأعمدة المطلوبة:', 'Required columns:') }}</div>
-        <div style="color:var(--accent)" data-lc-ar="رقم العقد CN-xxxx + التاريخ + بيان قطع الغيار">{{ ui('رقم العقد CN-xxxx + التاريخ + بيان قطع الغيار', 'Contract # CN-xxxx + date + parts description') }}</div>
-        <div style="color:var(--text3);margin-top:4px" data-lc-ar="اختيارية: رقم العملية، التكلفة، سعر العميل، حالة التحصيل، بيان السداد، ملاحظات">{{ ui('اختيارية: رقم العملية، التكلفة، سعر العميل، حالة التحصيل، بيان السداد، ملاحظات', 'Optional: transaction #, cost, client price, collection status, payment note, notes') }}</div>
+        <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
+        <div style="color:var(--accent)">رقم العقد CN-xxxx + التاريخ + بيان قطع الغيار</div>
+        <div style="color:var(--text3);margin-top:4px">اختيارية: رقم العملية، التكلفة، سعر العميل، حالة التحصيل، بيان السداد، ملاحظات</div>
       </div>
     </div>
     <div class="modal-foot">
@@ -497,14 +508,15 @@ function faultTechId(f) {
   return '';
 }
 const STATUS_BADGE = {
-  'محصل':'badge-green','مكتملة':'badge-green','غير محصل':'badge-red','معلقة':'badge-gold'
+  'محصل':'badge-green','مكتملة':'badge-green','غير محصل':'badge-red','معلقة':'badge-gold',
+  'على حساب الشركة':'badge-blue'
 };
 
 function partsNeedsCollection(p) {
   if (!p) return false;
   var st = p.status || '';
   if (st.indexOf('ملغ') >= 0) return false;
-  return !['محصل', 'محصّل', 'مدفوع', 'مكتملة'].includes(st);
+  return !['محصل', 'محصّل', 'مدفوع', 'مكتملة', 'على حساب الشركة'].includes(st);
 }
 
 let currentDeleteId = null;
@@ -603,15 +615,12 @@ function renderTable(data) {
 }
 
 function applyFilters() {
-  const s  = (document.getElementById('f-search')?.value || '').toLowerCase();
-  const st = document.getElementById('f-status')?.value || '';
+  const s  = (document.getElementById('f-search')?.value || '');
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = PARTS.filter(p =>
-    (!s || p.code.toLowerCase().includes(s) || (p.customer||'').includes(s) ||
-      (p.contract||'').toLowerCase().includes(s) || (p.description||'').includes(s) ||
-      (p.payment_note||'').includes(s)) &&
-    (!st || p.status === st || (st === 'محصل' && p.status === 'مكتملة')) &&
+    LcSearch.match(s, [p.code, p.customer, p.customer_name_en, p.contract, p.elevator, p.description, p.payment_note, p.notes, p.technician]) &&
+    lcAllows('f-status', p.status, { aliases: { 'محصل': ['مكتملة'] } }) &&
     (!fd || p.billing_date >= fd) &&
     (!td || p.billing_date <= td)
   );
@@ -702,7 +711,7 @@ function setPbPartCostEditable(tr, editable) {
 function addPbPartRow(data) {
   const tbody = document.getElementById('pb-parts-body');
   if (!tbody) return;
-  const row = data || { item_id: '', name: '', qty: 1, unit_price: '', cost_price: 0 };
+  const row = data || { item_id: '', name: '', qty: 1, unit_price: '', cost_price: 0, discount: 0 };
   const tr = document.createElement('tr');
   tr.innerHTML =
     '<td class="part-item-cell"></td>' +
@@ -710,13 +719,14 @@ function addPbPartRow(data) {
     `<td><input type="number" class="part-qty" min="1" step="1" value="${row.qty || 1}" style="direction:ltr"></td>` +
     `<td><input type="text" class="part-cost" readonly placeholder="0.00" style="direction:ltr;font-family:var(--font-en);opacity:.85;background:var(--bg3)"></td>` +
     `<td><input type="number" class="part-price" min="0" step="0.01" placeholder="0.00" value="${row.unit_price !== '' && row.unit_price != null ? row.unit_price : ''}" style="direction:ltr"></td>` +
+    `<td><input type="number" class="part-discount" min="0" step="0.01" placeholder="0" value="${row.discount ? row.discount : ''}" style="direction:ltr" title="خصم من سعر العميل"></td>` +
     `<td><input type="text" class="part-row-total" readonly style="direction:ltr;font-family:var(--font-en)"></td>` +
     `<td><button type="button" class="btn btn-danger btn-sm btn-icon part-del" title="حذف">×</button></td>`;
   tbody.appendChild(tr);
   tr.dataset.costPrice = row.cost_price || 0;
   tr.dataset.itemId = row.item_id || '';
   mountPbPartItemSelect(tr, row.item_id || '');
-  tr.querySelectorAll('.part-qty,.part-price').forEach(inp => inp.addEventListener('input', calcPbPartsTotals));
+  tr.querySelectorAll('.part-qty,.part-price,.part-discount').forEach(inp => inp.addEventListener('input', calcPbPartsTotals));
   tr.querySelector('.part-del')?.addEventListener('click', () => { tr.remove(); calcPbPartsTotals(); });
   if (row.item_id) {
     onPbPartItemChange(tr, true);
@@ -764,29 +774,52 @@ function onPbPartItemChange(tr, keepPrice) {
 function calcPbPartsTotals() {
   let sellTotal = 0;
   let costTotal = 0;
+  let discTotal = 0;
   document.querySelectorAll('#pb-parts-body tr').forEach(tr => {
     const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
     const price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
+    const discEl = tr.querySelector('.part-discount');
+    let disc = parseFloat(discEl?.value) || 0;
+    const gross = qty * price;
+    if (disc < 0) disc = 0;
+    if (disc > gross) disc = gross;
     const itemId = tr.querySelector('.part-item-id')?.value;
     const costInput = tr.querySelector('.part-cost');
     const cost = itemId
       ? (parseFloat(tr.dataset.costPrice) || 0)
       : (parseFloat(costInput?.value) || 0);
-    const rowTotal = qty * price;
+    const rowTotal = gross - disc;
     const rt = tr.querySelector('.part-row-total');
     if (rt) rt.value = rowTotal.toFixed(2);
     sellTotal += rowTotal;
+    discTotal += disc;
     costTotal += qty * cost;
   });
   const sellEl = document.getElementById('pb-parts-sell-total');
   const costEl = document.getElementById('pb-parts-cost-total');
-  if (sellEl) setMoneyEl(sellEl, sellTotal, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const netEl = document.getElementById('pb-parts-net-total');
+  const discOut = document.getElementById('pb-parts-disc-total');
+  if (sellEl) setMoneyEl(sellEl, sellTotal + discTotal, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (netEl) netEl.textContent = sellTotal.toFixed(2);
+  if (discOut) discOut.textContent = discTotal.toFixed(2);
   if (costEl) costEl.textContent = costTotal.toFixed(2);
   const costInput = document.getElementById('m-cost');
   const priceInput = document.getElementById('m-price');
   if (costInput) costInput.value = costTotal > 0 ? costTotal.toFixed(2) : '';
-  if (priceInput) priceInput.value = sellTotal > 0 ? sellTotal.toFixed(2) : '';
+  if (priceInput) priceInput.value = sellTotal > 0 ? sellTotal.toFixed(2) : (discTotal > 0 ? '0.00' : '');
   updateProfit();
+}
+
+function applyPbCompanyAccount() {
+  document.querySelectorAll('#pb-parts-body tr').forEach(function (tr) {
+    const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
+    const price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
+    const discEl = tr.querySelector('.part-discount');
+    if (discEl) discEl.value = (qty * price).toFixed(2);
+  });
+  const notes = document.getElementById('m-notes');
+  if (notes && !String(notes.value || '').trim()) notes.value = 'على حساب الشركة';
+  calcPbPartsTotals();
 }
 
 function collectPbParts() {
@@ -796,6 +829,7 @@ function collectPbParts() {
     const name = (tr.querySelector('.part-name')?.value || '').trim();
     const qty = parseFloat(tr.querySelector('.part-qty')?.value) || 0;
     const unit_price = parseFloat(tr.querySelector('.part-price')?.value) || 0;
+    const discount = parseFloat(tr.querySelector('.part-discount')?.value) || 0;
     const item_id = hidden && hidden.value ? Number(hidden.value) : null;
     let cost_price = 0;
     const costEl = tr.querySelector('.part-cost');
@@ -806,7 +840,7 @@ function collectPbParts() {
       cost_price = parseFloat(costEl?.value) || parseFloat(tr.dataset.costPrice) || 0;
     }
     if (name && qty > 0) {
-      lines.push({ item_id, name, qty, unit_price, cost_price });
+      lines.push({ item_id, name, qty, unit_price, cost_price, discount });
     }
   });
   return lines;
@@ -1035,6 +1069,8 @@ function saveRecord() {
   if (!clientEl || !clientEl.value) { alert('اختر العميل'); return; }
   const lines = collectPbParts();
   if (!lines.length) { alert('أضف قطعة غيار واحدة على الأقل من ملف الأصناف'); return; }
+  const invalid = lines.find(l => !l.unit_price || l.unit_price <= 0);
+  if (invalid) { alert('أدخل سعر العميل لكل قطعة — للتركيب المجاني استخدم الخصم أو «على حساب الشركة»'); return; }
   const techId = document.getElementById('m-tech-sel')?.value;
   if (!techId) { alert('اختر الفني — يظهر اسمه في حركة المخزون'); return; }
   const customer = CUSTOMERS.find(c => String(c.id) === String(clientEl.value));
@@ -1114,7 +1150,7 @@ function viewPart(id) {
         <div style="font-size:10px;color:var(--text3)"><span class="lc-sar" role="img" aria-label="ريال"></span></div>
       </div>
       <div style="background:rgba(42,127,255,.08);border:1px solid rgba(42,127,255,.2);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">سعر البيع</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">المطلوب من العميل</div>
         <div style="font-size:18px;font-weight:700;color:var(--accent);font-family:var(--font-en)">${p.sell_price.toLocaleString()}</div>
         <div style="font-size:10px;color:var(--text3)"><span class="lc-sar" role="img" aria-label="ريال"></span></div>
       </div>
@@ -1230,12 +1266,11 @@ async function confirmPartsImport() {
 }
 
 function exportCSV() {
-  const rows = [['الكود','العميل','العقد','التاريخ','البيان','التكلفة','سعر البيع','الربح','الحالة','بيان السداد']];
-  filtered.forEach(p => rows.push([p.code,p.customer,p.contract,p.billing_date,p.description,p.cost_price,p.sell_price,p.profit,p.status,p.payment_note||'']));
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(r => r.join(',')).join('\n')], {type:'text/csv;charset=utf-8'}));
-  a.download = 'parts-billing.csv';
-  a.click();
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('parts-billing'),
+    labels: LiftCoreCsv.LABELS.parts,
+    skip: LiftCoreCsv.SKIP_COMMON
+  });
 }
 function setLang(l) {
   document.documentElement.setAttribute('lang',l);

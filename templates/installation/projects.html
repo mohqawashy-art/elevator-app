@@ -11,9 +11,6 @@
   <div class="content">
     <div class="page-header">
       <div class="page-title">مشاريع التركيب</div>
-      <div class="page-actions">
-        <a href="{{ url_for('installation.leads_list') }}" class="btn btn-primary btn-sm">+ فرصة بيع</a>
-      </div>
     </div>
 
     <div class="panel">
@@ -51,7 +48,7 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">لا توجد مشاريع — حوّل فرصة بيع أولاً</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">لا توجد مشاريع بعد — تظهر هنا بعد موافقة عرض من المبيعات</td></tr>
           {% endfor %}
         </tbody>
       </table>

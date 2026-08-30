@@ -165,13 +165,15 @@ def _sync_contracts():
     contracts = Contract.query.order_by(Contract.id.desc()).all()
     renewed_ids = h._annotate_contract_renewals(contracts)
     customers = Customer.query.order_by(Customer.name).all()
+    all_elevators = Elevator.query.all()
+    elevator_by_id = {e.id: e for e in all_elevators}
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
-        for e in Elevator.query.all()
+        for e in all_elevators
     }
     rows = []
     for c in contracts:
-        row = h.contract_to_js_dict(c, renewed_ids=renewed_ids)
+        row = h.contract_to_js_dict(c, renewed_ids=renewed_ids, elevator_by_id=elevator_by_id)
         rows.append(row)
     cust_rows = [{
         'id': c.id,
@@ -427,6 +429,7 @@ def _sync_revenues():
             'customer': r.customer.name if r.customer else '—',
             'contract': r.contract.code if r.contract else '—',
             'revenue_date': str(r.revenue_date or ''),
+            'title': getattr(r, 'title', None) or '',
             'revenue_type': r.revenue_type or '',
             'pay_method': r.payment_method or '',
             'amount': r.amount or 0,

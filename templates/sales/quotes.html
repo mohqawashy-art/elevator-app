@@ -62,6 +62,8 @@
             <td style="padding:10px;white-space:nowrap">
               {% if r.kind == 'install' and r.status == 'مقبول' and r.project_url %}
               <a href="{{ r.project_url }}" class="btn btn-primary btn-sm">فتح المشروع</a>
+              {% elif r.status not in ('مقبول', 'مرفوض') %}
+              <a href="{{ r.url }}" class="btn btn-secondary btn-sm">تعديل</a>
               {% else %}
               <a href="{{ r.url }}" class="btn btn-secondary btn-sm">فتح</a>
               {% endif %}

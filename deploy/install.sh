@@ -29,6 +29,7 @@ LiftCore install.sh — أوامر:
   verify      تحقق من نشر: install.sh verify https://jama.liftcoreapp.com
   checkpoint  حفظ نقطة رجوع قبل Multi-Tenant (قواعد + uploads + nginx)
   week1       أسبوع 1 Multi-Tenant: checkpoint + postgres + فحوصات
+  hetzner     تعليمات نقل الإنتاج إلى Hetzner (bootstrap / export / import)
   help        هذه الرسالة
 
 محلياً على Windows: run_local.bat
@@ -101,6 +102,9 @@ case "$CMD" in
     ;;
   week1)
     bash "$SCRIPT_DIR/week1_multitenant.sh"
+    ;;
+  hetzner)
+    cat "$SCRIPT_DIR/hetzner/README.md"
     ;;
   *)
     echo "أمر غير معروف: $CMD"

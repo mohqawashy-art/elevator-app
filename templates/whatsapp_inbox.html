@@ -280,11 +280,13 @@ function waNorm(s) {
 }
 
 function waFindCustomers(q) {
-  q = waNorm(q);
-  if (!q) return WA_CUSTOMERS.slice(0, 12);
+  if (!String(q || '').trim()) return WA_CUSTOMERS.slice(0, 12);
   return WA_CUSTOMERS.filter(function (c) {
+    if (window.LcSearch) {
+      return LcSearch.match(q, [c.code, c.name, c.name_en, c.phone, c.phone2, c.city]);
+    }
     var blob = waNorm([c.code, c.name, c.phone, c.phone2, c.city].join(' '));
-    return blob.indexOf(q) !== -1;
+    return blob.indexOf(waNorm(q)) !== -1;
   }).slice(0, 12);
 }
 

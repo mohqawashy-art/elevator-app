@@ -1023,10 +1023,10 @@ function clearAllFilters() {
 function updateFilterHint() {
   var parts = [];
   var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').trim();
-  var sp = document.getElementById('filter-spec') && document.getElementById('filter-spec').value || '';
-  var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
-  var st = document.getElementById('filter-status') && document.getElementById('filter-status').value || '';
-  var em = document.getElementById('filter-emergency') && document.getElementById('filter-emergency').value || '';
+  var sp = (window.lcFilterSummary && lcFilterSummary('filter-spec')) || '';
+  var ct = (window.lcFilterSummary && lcFilterSummary('f-city')) || '';
+  var st = (window.lcFilterSummary && lcFilterSummary('filter-status')) || '';
+  var em = (window.lcFilterSummary && lcFilterSummary('filter-emergency')) || '';
   if (s) parts.push('بحث: ' + s);
   if (ct) parts.push('مدينة: ' + ct);
   if (sp) parts.push('تخصص: ' + sp);
@@ -1169,26 +1169,16 @@ function renderTable(data) {
 }
 
 function filterTable() {
-  var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').toLowerCase().trim();
-  var sp = document.getElementById('filter-spec') && document.getElementById('filter-spec').value || '';
-  var ct = document.getElementById('f-city') && document.getElementById('f-city').value || '';
-  var st = document.getElementById('filter-status') && document.getElementById('filter-status').value || '';
-  var em = document.getElementById('filter-emergency') && document.getElementById('filter-emergency').value || '';
+  var s = (document.getElementById('search-input') && document.getElementById('search-input').value || '').trim();
   filtered = TECHNICIANS.filter(function(t) {
-    var nameAr = String(t.name || '').toLowerCase();
-    var nameEn = String(t.name_en || '').toLowerCase();
-    var phone = String(t.phone || '');
-    var phone2 = String(t.phone2 || '');
-    var email = String(t.email || '').toLowerCase();
-    var nid = String(t.national_id || '');
-    var hit = !s || nameAr.includes(s) || nameEn.includes(s) ||
-      String(t.code || '').toLowerCase().includes(s) ||
-      phone.includes(s) || phone2.includes(s) || email.includes(s) || nid.includes(s);
+    var hit = LcSearch.match(s, [t.name, t.name_en, t.code, t.phone, t.phone2, t.email, t.national_id, t.city, t.specialization, t.team]);
     return hit &&
-      (!sp || t.specialization === sp) &&
-      (!ct || t.city === ct) &&
-      (!st || techMatchesStatus(t, st)) &&
-      (!em || (em === 'نعم' ? isTechEmergencyOn(t) : !isTechEmergencyOn(t)));
+      lcAllows('filter-spec', t.specialization) &&
+      lcAllows('f-city', t.city) &&
+      lcAllows('filter-status', null, function(st) { return techMatchesStatus(t, st); }) &&
+      lcAllows('filter-emergency', null, function(em) {
+        return em === 'نعم' ? isTechEmergencyOn(t) : !isTechEmergencyOn(t);
+      });
   });
   updateFilterHint();
   if (tablePager) tablePager.resetPage();
@@ -1751,24 +1741,11 @@ async function confirmTechImport() {
 }
 
 function exportExcel() {
-  function csvCell(v) {
-    var s = String(v == null ? '' : v);
-    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-    return s;
-  }
-  var rows = [['الكود','الاسم','الاسم إنجليزي','الهاتف','واتساب','البريد','المسمى','التخصص','البوابة','المدينة','الحالة','طوارئ','الزيارات','أعطال','PIN']];
-  filtered.forEach(function(t) {
-    rows.push([
-      t.code, t.name, t.name_en || '', t.phone || '', t.phone2 || '', t.email || '',
-      t.job_title || '', t.specialization || '', t.team || '', t.city || '',
-      t.display_status, t.emergency ? 'نعم' : 'لا', t.visits, t.faults, t.has_sign_pin ? 'نعم' : 'لا'
-    ]);
+  LiftCoreCsv.exportRecords(filtered, {
+    filename: LiftCoreCsv.datedName('technicians'),
+    labels: LiftCoreCsv.LABELS.technician,
+    skip: LiftCoreCsv.SKIP_COMMON
   });
-  var csv = rows.map(function(r) { return r.map(csvCell).join(','); }).join('\n');
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'}));
-  a.download = 'technicians.csv';
-  a.click();
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }

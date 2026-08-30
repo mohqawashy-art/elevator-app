@@ -1,6 +1,6 @@
 # Deploy client status field (clients.html + app.py)
 $ErrorActionPreference = "Stop"
-$Remote = "info@34.18.56.21"
+$Remote = "info@2.29.6.41"
 $RemoteApp = "~/liftcore/elevator-app"
 $Root = Split-Path $PSScriptRoot -Parent
 $sshOpts = @("-o", "StrictHostKeyChecking=no")

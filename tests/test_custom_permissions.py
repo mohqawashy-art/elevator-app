@@ -32,7 +32,13 @@ def test_custom_role_user_gets_finance_only(client):
         sess['lang'] = 'ar'
 
     assert client.get('/invoices', follow_redirects=False).status_code == 200
-    assert client.get('/clients', follow_redirects=False).status_code == 403
+    # لوحة التحكم متاحة دائماً حتى بدون صلاحية dashboard صريحة
+    assert client.get('/dashboard', follow_redirects=False).status_code == 200
+    denied = client.get('/clients', follow_redirects=False)
+    assert denied.status_code == 403
+    # لا نعيد redirect+403 (يظهر Redirecting... في المتصفح)
+    assert not (denied.headers.get('Location') or '')
+    assert 'صلاحية' in (denied.get_data(as_text=True) or '')
 
 
 def test_custom_role_can_write_when_granted(client):

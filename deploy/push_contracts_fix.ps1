@@ -2,7 +2,7 @@
 # powershell -ExecutionPolicy Bypass -File deploy\push_contracts_fix.ps1
 
 $ErrorActionPreference = "Stop"
-$Remote = "info@34.18.56.21"
+$Remote = "info@2.29.6.41"
 $Root = Split-Path $PSScriptRoot -Parent
 $sshOpts = @("-o", "StrictHostKeyChecking=no")
 

@@ -30,11 +30,9 @@ cd liftcore-staging-bootstrap
 sudo bash deploy/staging/bootstrap_staging.sh
 ```
 
-3. فعّل TLS بعد وصول DNS:
+3. شهادة الأصل (Cloudflare Origin) على 443 — لا تستخدم certbot إذا كان النطاق خلف Cloudflare Proxied.
 
-```bash
-sudo certbot --nginx -d test.liftcoreapp.com
-```
+بعد نجاح الصحة محلياً: في Cloudflare غيّر سجل A لـ `test` إلى IP السيرفر، ويفضّل **Proxied**.
 
 ## كل تحديث تجريبي
 

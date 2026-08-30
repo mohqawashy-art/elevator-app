@@ -5,25 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — الصحة المالية</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0b0f17;--card:#131b27;--border:rgba(100,160,255,.1);
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
   --accent:#2a7fff;--gold:#c8a055;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
   --success:#1fb87a;--warning:#e09030;--danger:#e04848;
-  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;--r:10px;--r-sm:7px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
 }
 html[dir="rtl"]{font-family:var(--font-ar)}
+html[dir="ltr"]{font-family:var(--font-en)}
 body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
-.sidebar{width:240px;min-width:240px;background:#111720;border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+.sidebar{width:240px;min-width:240px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
 .sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:60px}
 .sidebar-logo img{width:150px;height:44px;object-fit:contain}
 .sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
 .nav-section{padding:14px 16px 4px;font-size:10px;color:var(--text3);letter-spacing:.1em;font-weight:500}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r-sm);font-size:13px;color:var(--text2);text-decoration:none}
-.nav-item:hover{background:#161e2b;color:var(--text1)}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
 .nav-item.active{background:rgba(42,127,255,.12);color:var(--accent)}
 .nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
 .main{flex:1;display:flex;flex-direction:column;min-width:0;width:100%}
@@ -34,54 +38,79 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 .page-title{font-size:18px;font-weight:600;color:var(--text1)}
 .page-subtitle{font-size:13px;color:var(--text3);margin-top:4px}
 .page-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--font-ar)}
-.btn-secondary{background:#161e2b;color:var(--text2);border:1px solid var(--border)}
-.btn-secondary:hover{background:#1c2535;color:var(--text1)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:inherit;text-decoration:none;transition:var(--trans)}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
 .btn-sm{padding:5px 10px;font-size:12px}
-.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)}
-.toolbar-filters{display:flex;align-items:center;gap:10px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)}
+.toolbar-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .toolbar label{font-size:12px;color:var(--text2)}
-.filter-select{padding:8px 12px;background:#161e2b;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;font-family:var(--font-ar)}
-.health-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-radius:var(--r);margin-bottom:20px;border:1px solid var(--border);background:var(--card)}
-.health-banner.success{border-color:rgba(31,184,122,.3);background:rgba(31,184,122,.08)}
-.health-banner.warning{border-color:rgba(224,144,48,.3);background:rgba(224,144,48,.08)}
-.health-banner.danger{border-color:rgba(224,72,72,.3);background:rgba(224,72,72,.08)}
-.health-title{font-size:18px;font-weight:700}
-.health-sub{font-size:13px;color:var(--text2);margin-top:4px}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
-.stat-label{font-size:12px;color:var(--text3);margin-bottom:6px}
-.stat-value{font-size:22px;font-weight:700;font-family:var(--font-en)}
+.filter-select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;font-family:inherit}
+
+.health-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;border-radius:var(--r);margin-bottom:16px;border:1px solid var(--border);background:var(--card)}
+.health-banner.success{border-color:rgba(31,184,122,.28);background:rgba(31,184,122,.07)}
+.health-banner.warning{border-color:rgba(224,144,48,.28);background:rgba(224,144,48,.07)}
+.health-banner.danger{border-color:rgba(224,72,72,.28);background:rgba(224,72,72,.07)}
+.health-title{font-size:18px;font-weight:700;letter-spacing:-.02em}
+.health-banner.success .health-title{color:var(--success)}
+.health-banner.warning .health-title{color:var(--warning)}
+.health-banner.danger .health-title{color:var(--danger)}
+.health-sub{font-size:13px;color:var(--text2);margin-top:6px}
+.health-margin-wrap{text-align:end;flex-shrink:0}
+.health-margin-lab{font-size:11px;color:var(--text3);margin-bottom:4px}
+.health-banner .stat-value{font-size:32px;font-weight:700;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1}
+.health-banner.success .stat-value{color:var(--success)}
+.health-banner.warning .stat-value{color:var(--warning)}
+.health-banner.danger .stat-value{color:var(--danger)}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;transition:border-color var(--trans)}
+.stat-card:hover{border-color:var(--border2)}
+.stat-label{font-size:12px;color:var(--text3);margin-bottom:8px}
+.stat-value{font-size:22px;font-weight:700;font-family:var(--font-en);font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--text1)}
 .stat-value.green{color:var(--success)}.stat-value.red{color:var(--danger)}.stat-value.blue{color:var(--accent)}.stat-value.gold{color:var(--gold)}
-.charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px}
-.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
-.chart-title{font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text1)}
-.chart-wrap{position:relative;height:260px}
-.chart-wrap-sm{position:relative;height:220px}
+
+.charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.chart-title{font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text1)}
+.chart-wrap{position:relative;height:280px}
+.chart-wrap-sm{position:relative;height:240px}
+
 .sec-title{font-size:14px;font-weight:600;margin:24px 0 12px;display:flex;align-items:center;gap:8px}
 .sec-title::before{content:'';width:3px;height:16px;background:var(--accent);border-radius:2px}
-.sec-title:first-of-type{margin-top:0}
-.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px}
-.rec-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;border-right:3px solid var(--warning)}
+.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:8px}
+.rec-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;border-inline-start:3px solid var(--warning)}
 .rec-card h4{font-size:14px;margin-bottom:6px;color:var(--text1)}
-.rec-card p{font-size:12px;color:var(--text2);line-height:1.55}
-.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.pricing-item{background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px}
-.pricing-item .pl{font-size:11px;color:var(--text3);margin-bottom:4px}
-.pricing-item .pv{font-size:16px;font-weight:600;font-family:var(--font-en);color:var(--text1)}
-.pricing-item.highlight{border-color:rgba(42,127,255,.3);background:rgba(42,127,255,.08)}
-.pricing-item.highlight .pv{color:var(--accent)}
-.note{font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6}
+.rec-card p{font-size:13px;color:var(--text2);line-height:1.65}
+
+.pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pricing-item{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.pricing-item .pl{font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.45}
+.pricing-item .pv{font-size:16px;font-weight:600;font-family:var(--font-en);font-variant-numeric:tabular-nums;color:var(--text1)}
+.pricing-item.highlight{border-color:rgba(42,127,255,.35);background:rgba(42,127,255,.08)}
+.pricing-item.highlight .pv{color:var(--accent);font-size:20px;font-weight:700}
+.note{font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.7}
+
+@media(max-width:1100px){.pricing-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1000px){.charts-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr}}
 @media(max-width:768px){
   .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease;z-index:100}
   .sidebar.open{right:0}
   .mobile-overlay.open{display:block}
   .hamburger{display:flex}
   .content{padding:16px}
+  .health-banner{flex-direction:column;align-items:flex-start}
+  .health-margin-wrap{text-align:start}
 }
-@media(max-width:1000px){.charts-grid,.pricing-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.stats-row{grid-template-columns:1fr}}
-@media print{.sidebar,.page-header,.toolbar,.screen-only{display:none!important}body{background:#fff;color:#111}}
+@media(max-width:560px){.stats-row,.pricing-grid{grid-template-columns:1fr}}
+@media print{
+  .sidebar,.page-header,.toolbar,.screen-only,.hamburger,.mobile-overlay{display:none!important}
+  body{background:#fff;color:#111}
+  .content{padding:0}
+  .health-banner,.stat-card,.chart-card,.rec-card,.pricing-item{background:#fff;border-color:#ddd}
+  .health-title,.chart-title,.sec-title,.stat-label{color:#444}
+  .stat-value{color:#111}
+}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
@@ -130,7 +159,10 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
         <div class="health-title" id="health-title">جاري التحميل...</div>
         <div class="health-sub" id="health-sub"></div>
       </div>
-      <div class="stat-value" id="health-margin" style="font-size:28px">—</div>
+      <div class="health-margin-wrap">
+        <div class="health-margin-lab">هامش الربح</div>
+        <div class="stat-value" id="health-margin">—</div>
+      </div>
     </div>
 
     <div class="stats-row">
@@ -178,6 +210,11 @@ const CHART_COLORS = {
 };
 let charts = {};
 
+function cssVar(name, fallback) {
+  var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
 function destroyCharts() {
   Object.keys(charts).forEach(function (k) {
     if (charts[k]) { charts[k].destroy(); charts[k] = null; }
@@ -195,22 +232,58 @@ function setMoney(id, n) {
   else el.textContent = fmt(n);
 }
 
+function chartBase(type) {
+  var muted = cssVar('--text2', '#8a9bb8');
+  var grid = 'rgba(100,160,255,.07)';
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        labels: {
+          color: muted,
+          font: { family: getComputedStyle(document.body).fontFamily, size: 12, weight: '500' },
+          usePointStyle: true,
+          pointStyle: 'rectRounded',
+          padding: 14,
+          boxWidth: 8,
+          boxHeight: 8,
+        },
+      },
+      tooltip: {
+        backgroundColor: cssVar('--bg2', '#111720'),
+        borderColor: cssVar('--border', 'rgba(100,160,255,.2)'),
+        borderWidth: 1,
+        titleColor: cssVar('--text1', '#e4eaf5'),
+        bodyColor: muted,
+        padding: 10,
+        callbacks: {
+          label: function (ctx) {
+            var v = ctx.parsed.y != null ? ctx.parsed.y : ctx.parsed;
+            return ' ' + ctx.dataset.label + ': ' + fmt(v);
+          },
+        },
+      },
+    },
+    scales: type === 'doughnut' || type === 'pie' ? {} : {
+      x: { ticks: { color: muted, font: { size: 10 }, maxRotation: 0 }, grid: { color: grid, drawBorder: false }, border: { display: false } },
+      y: { ticks: { color: muted, font: { size: 10 }, callback: function (v) { return Number(v).toLocaleString('en-US'); } }, grid: { color: grid, drawBorder: false }, border: { display: false } },
+    },
+  };
+}
+
 function makeChart(id, type, labels, datasets, opts) {
   var ctx = document.getElementById(id);
   if (!ctx) return;
   if (charts[id]) charts[id].destroy();
+  var base = chartBase(type);
+  if (type === 'doughnut') base.cutout = '62%';
   charts[id] = new Chart(ctx, {
     type: type,
     data: { labels: labels, datasets: datasets },
-    options: Object.assign({
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#8a9bb8', font: { family: 'IBM Plex Sans Arabic', size: 11 } } } },
-      scales: type === 'doughnut' || type === 'pie' ? {} : {
-        x: { ticks: { color: '#8a9bb8', font: { size: 10 } }, grid: { color: 'rgba(100,160,255,.06)' } },
-        y: { ticks: { color: '#8a9bb8', font: { size: 10 } }, grid: { color: 'rgba(100,160,255,.06)' } },
-      },
-    }, opts || {}),
+    options: Object.assign(base, opts || {}),
   });
 }
 
@@ -247,6 +320,7 @@ function renderPricing(p, summaryExpenses) {
   }).join('');
   if (window.setMoneyEl) {
     document.querySelectorAll('#pricing-grid .pv[data-money]').forEach(function (el) {
+      if (el.getAttribute('data-money') === '') return;
       setMoneyEl(el, el.getAttribute('data-money'), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     });
   }
@@ -293,7 +367,7 @@ function loadHealth() {
           backgroundColor: CHART_COLORS.revenue.fill,
           borderColor: CHART_COLORS.revenue.border,
           borderWidth: 1,
-          borderRadius: 6,
+          borderRadius: 4,
           hoverBackgroundColor: CHART_COLORS.revenue.hover,
         },
         {
@@ -302,7 +376,7 @@ function loadHealth() {
           backgroundColor: CHART_COLORS.expense.fill,
           borderColor: CHART_COLORS.expense.border,
           borderWidth: 1,
-          borderRadius: 6,
+          borderRadius: 4,
           hoverBackgroundColor: CHART_COLORS.expense.hover,
         },
         {
@@ -311,39 +385,28 @@ function loadHealth() {
           backgroundColor: CHART_COLORS.profit.fill,
           borderColor: CHART_COLORS.profit.border,
           borderWidth: 1,
-          borderRadius: 6,
+          borderRadius: 4,
           hoverBackgroundColor: CHART_COLORS.profit.hover,
         },
       ], {
-        datasets: { bar: { maxBarThickness: 32 } },
-        plugins: {
-          legend: {
-            labels: {
-              color: '#c8d4e8',
-              font: { family: 'IBM Plex Sans Arabic', size: 12, weight: '600' },
-              usePointStyle: true,
-              pointStyle: 'rectRounded',
-              padding: 14,
-            },
-          },
-        },
+        datasets: { bar: { maxBarThickness: 28 } },
       });
 
       var exp = d.expense_breakdown || {};
       makeChart('chart-expenses', 'doughnut', Object.keys(exp), [{
         data: Object.values(exp),
         backgroundColor: ['#e04848', '#e09030', '#2a7fff', '#c8a055', '#8a9bb8'],
-        borderColor: '#131b27',
+        borderColor: cssVar('--card', '#131b27'),
         borderWidth: 2,
         hoverOffset: 6,
       }]);
 
       var cumRev = [], cumExp = [], cr = 0, ce = 0;
-      (m.revenue || []).forEach(function (v, i) { cr += v; cumRev.push(cr); });
-      (m.expenses || []).forEach(function (v, i) { ce += v; cumExp.push(ce); });
+      (m.revenue || []).forEach(function (v) { cr += v; cumRev.push(cr); });
+      (m.expenses || []).forEach(function (v) { ce += v; cumExp.push(ce); });
       makeChart('chart-compare', 'line', MONTHS, [
-        { label: 'إيرادات تراكمية', data: cumRev, borderColor: CHART_COLORS.revenue.border, backgroundColor: 'rgba(31,184,122,.22)', fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: CHART_COLORS.revenue.fill, borderWidth: 2.5 },
-        { label: 'مصروفات تراكمية', data: cumExp, borderColor: CHART_COLORS.expense.border, backgroundColor: 'rgba(224,72,72,.18)', fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: CHART_COLORS.expense.fill, borderWidth: 2.5 },
+        { label: 'إيرادات تراكمية', data: cumRev, borderColor: CHART_COLORS.revenue.border, backgroundColor: 'rgba(31,184,122,.18)', fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, pointBackgroundColor: CHART_COLORS.revenue.fill, borderWidth: 2 },
+        { label: 'مصروفات تراكمية', data: cumExp, borderColor: CHART_COLORS.expense.border, backgroundColor: 'rgba(224,72,72,.14)', fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, pointBackgroundColor: CHART_COLORS.expense.fill, borderWidth: 2 },
       ]);
 
       renderRecommendations(d.recommendations);

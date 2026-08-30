@@ -43,6 +43,8 @@ class Organization(db.Model):
     office_users_limit_override = db.Column(db.Integer)
     technicians_limit_override = db.Column(db.Integer)
     storage_gb_limit_override = db.Column(db.Integer)
+    # ميزات باقة التخصيص (JSON) — تُستخدم عند plan=custom
+    features_override_json = db.Column(db.Text)
 
     def __repr__(self):
         return f'<Organization {self.slug}>'
@@ -68,6 +70,20 @@ class PlatformPayment(db.Model):
 
     def __repr__(self):
         return f'<PlatformPayment org={self.organization_id} {self.amount}>'
+
+
+class PlatformCatalog(db.Model):
+    """كتالوج الباقات/الإضافات الحي — يُعدَّل من لوحة المنصة فقط (صف واحد)."""
+    __tablename__ = 'platform_catalog'
+
+    id = db.Column(db.Integer, primary_key=True)
+    plans_json = db.Column(db.Text)   # JSON: تجاوزات PLAN_CATALOG
+    addons_json = db.Column(db.Text)  # JSON: تجاوزات ADDON_CATALOG
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by_user_id = db.Column(db.Integer)
+
+    def __repr__(self):
+        return f'<PlatformCatalog id={self.id}>'
 
 
 class OrganizationAddon(db.Model):
@@ -584,6 +600,7 @@ class Revenue(TenantMixin, db.Model):
     invoice_id      = db.Column(db.Integer, db.ForeignKey('invoices.id'))
     parts_billing_id = db.Column(db.Integer, db.ForeignKey('parts_billing.id'))
     revenue_date    = db.Column(db.Date, nullable=False)
+    title           = db.Column(db.String(300))  # البيان / عنوان العملية
     revenue_type    = db.Column(db.String(100))  # عقد صيانة / قطع غيار / أعمال إضافية
     payment_method  = db.Column(db.String(50))   # نقد / تحويل / شيك / بطاقة
     amount          = db.Column(db.Float, nullable=False)
@@ -921,6 +938,57 @@ class PurchaseOrderLine(TenantMixin, db.Model):
 
 
 # =============================================
+# 11ب. طلبات عروض أسعار من الموردين (RFQ)
+# =============================================
+RFQ_STATUSES = ('مسودة', 'مرسل', 'مستلم', 'ملغي')
+
+
+class SupplierQuoteRequest(TenantMixin, db.Model):
+    """طلب عرض سعر من مورد — قبل إصدار طلب شراء."""
+    __tablename__ = 'supplier_quote_requests'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_rfq_org_code'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)
+    supplier = db.Column(db.String(200))
+    supplier_phone = db.Column(db.String(30))
+    supplier_email = db.Column(db.String(120))
+    request_date = db.Column(db.Date, default=date.today)
+    status = db.Column(db.String(30), default='مسودة')
+    subject = db.Column(db.String(300))
+    notes = db.Column(db.Text)
+    project_id = db.Column(db.Integer, nullable=True, index=True)
+    project_code = db.Column(db.String(30))
+    signature_data = db.Column(db.Text)
+    pdf_path = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    lines = db.relationship(
+        'SupplierQuoteRequestLine',
+        back_populates='request',
+        cascade='all, delete-orphan',
+        lazy='joined',
+    )
+
+
+class SupplierQuoteRequestLine(TenantMixin, db.Model):
+    __tablename__ = 'supplier_quote_request_lines'
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.Integer, db.ForeignKey('supplier_quote_requests.id'), nullable=False)
+    description = db.Column(db.String(500), nullable=False)
+    quantity = db.Column(db.Float, default=1)
+    unit = db.Column(db.String(30), default='قطعة')
+    specs = db.Column(db.String(500))
+    item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=True)
+
+    request = db.relationship('SupplierQuoteRequest', back_populates='lines')
+    item = db.relationship('InventoryItem')
+
+
+# =============================================
 # 12ب. عروض أسعار عقود الصيانة (مسار المبيعات)
 # =============================================
 class MaintenanceQuote(TenantMixin, db.Model):
@@ -1005,6 +1073,8 @@ class ElevatorEstimate(TenantMixin, db.Model):
     status = db.Column(db.String(30), default='مسودة')
     estimate_date = db.Column(db.Date, default=date.today)
     notes = db.Column(db.Text)
+    result_project_id = db.Column(db.Integer, nullable=True, index=True)
+    result_quotation_id = db.Column(db.Integer, nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     customer = db.relationship('Customer', foreign_keys=[customer_id])
@@ -1104,6 +1174,7 @@ class Settings(TenantMixin, db.Model):
     custom_holidays_json = db.Column(db.Text)
     extra_work_days_json = db.Column(db.Text)
     custom_permissions_enabled = db.Column(db.Boolean, default=False)  # صلاحيات اختيارية per-user
+    contract_template_path = db.Column(db.String(300))  # نموذج عقد Word لكل مؤسسة
 
 
 # =============================================

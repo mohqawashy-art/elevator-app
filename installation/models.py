@@ -40,20 +40,14 @@ PROJECT_STATUSES = (
 
 QUOTE_TYPE_LABELS = {
     'new': 'توريد وتركيب مصعد جديد',
-    'upgrade': 'عرض سعر تحديث',
+    'upgrade': 'تحديث مصعد قائم',
     'extend': 'إضافة أدوار لمصعد قائم',
 }
 
 QUOTE_TYPE_SHORT = {
     'new': 'تركيب جديد',
-    'upgrade': 'عرض تحديث',
+    'upgrade': 'تحديث',
     'extend': 'إضافة أدوار',
-}
-
-QUOTE_FLOW_PAGE_TITLES = {
-    'new': 'عرض سعر تركيب مصعد جديد',
-    'upgrade': 'عرض سعر تحديث',
-    'extend': 'عرض سعر إضافة أدوار',
 }
 
 QUOTE_STATUSES = (
@@ -501,12 +495,39 @@ class InstallTimelineStep(TenantMixin, db.Model):
 # كارت المشروع — مصروفات بنود + دفعات العميل
 # =============================================
 COST_CATEGORIES = (
-    'قطع غيار',
-    'عمالة',
-    'نقل',
-    'موردين',
-    'أخرى',
+    'السكك والأبواب',
+    'الماكينة والشاسيه',
+    'الكابينة والكنترول',
 )
+
+COST_PHASE_LABELS = {
+    'السكك والأبواب': 'مرحلة 1 — السكك والأبواب',
+    'الماكينة والشاسيه': 'مرحلة 2 — الماكينة والشاسيه',
+    'الكابينة والكنترول': 'مرحلة 3 — الكابينة والكنترول',
+}
+
+
+def normalize_cost_category(category, installment_no=None):
+    """تحويل الفئات القديمة (قطع غيار / عمالة …) إلى مراحل التركيب الثلاث."""
+    cat = (category or '').strip()
+    if cat in COST_CATEGORIES:
+        return cat
+    if cat == 'عمالة':
+        by_inst = {
+            1: 'السكك والأبواب',
+            2: 'الماكينة والشاسيه',
+            3: 'الكابينة والكنترول',
+        }
+        if installment_no in by_inst:
+            return by_inst[installment_no]
+        return 'السكك والأبواب'
+    legacy = {
+        'قطع غيار': 'السكك والأبواب',
+        'نقل': 'السكك والأبواب',
+        'موردين': 'الماكينة والشاسيه',
+        'أخرى': 'الكابينة والكنترول',
+    }
+    return legacy.get(cat, 'السكك والأبواب')
 
 COST_PAYMENT_STATUSES = (
     'مدفوعة',
@@ -520,7 +541,7 @@ RECEIPT_STATUSES = (
 
 
 class InstallProjectCostItem(TenantMixin, db.Model):
-    """بند تكلفة على مشروع تركيب (قطع / عمالة / نقل / …)."""
+    """بند تكلفة على مشروع تركيب — مرتبط بمرحلة تركيب (سكك / ماكينة / كبينة)."""
     __tablename__ = 'installation_project_costs'
 
     id = db.Column(db.Integer, primary_key=True)
