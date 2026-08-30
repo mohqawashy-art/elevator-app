@@ -13,8 +13,8 @@ html[lang="en"] .stat-label-ar {
   display: none !important;
 }
 
-/* لوحة التحكم — إظهار العربية فقط في AR */
-html[lang="ar"] .stat-card > .stat-label {
+/* لوحة التحكم فقط: إخفاء التسمية الإنجليزية عند وجود تسمية عربية مرافقة */
+html[lang="ar"] .stat-card:has(.stat-label-ar) > .stat-label {
   display: none;
 }
 
