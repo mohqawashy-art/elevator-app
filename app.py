@@ -1656,6 +1656,12 @@ def _startup_schema_and_data_sync():
                 db.session.execute(text('ALTER TABLE customers ADD COLUMN extra_phones TEXT'))
                 db.session.commit()
                 app.logger.info('Added customers.extra_phones column')
+        if 'revenues' in tables:
+            rev_cols = {c['name'] for c in insp.get_columns('revenues')}
+            if 'title' not in rev_cols:
+                db.session.execute(text('ALTER TABLE revenues ADD COLUMN title VARCHAR(300)'))
+                db.session.commit()
+                app.logger.info('Added revenues.title column')
         if 'settings' in tables:
             settings_cols = {c['name'] for c in insp.get_columns('settings')}
             seal_columns = {
