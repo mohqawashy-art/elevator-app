@@ -146,6 +146,7 @@ def create_install_contract_from_quotation(project, quotation, *, next_code_fn) 
         invoice_status='غير مدفوع',
         paid_amount=0,
         status='نشط',
+        install_warranty='بعد المشروع',
         notes=f'من عرض التركيب {quotation.code} — ينتهي بتسليم الأعمال',
     )
     assign_organization(contract)

@@ -34,6 +34,8 @@ def test_warranty_start_completed():
 def test_should_create_warranty_skips_if_already_linked():
     project = SimpleNamespace(
         warranty_contract_id=99,
+        contract_id=None,
+        status='مكتمل',
         timeline_steps=[
             _step('توريد'),
             _step('تركيب'),
@@ -41,6 +43,34 @@ def test_should_create_warranty_skips_if_already_linked():
         ],
     )
     assert not should_create_warranty(project)
+
+
+def test_should_create_warranty_respects_no_warranty_option():
+    from unittest.mock import patch
+
+    project = SimpleNamespace(
+        warranty_contract_id=None,
+        contract_id=1,
+        status='مكتمل',
+        timeline_steps=[_step('توريد'), _step('تركيب'), _step('تسليم')],
+    )
+    contract = SimpleNamespace(install_warranty='بدون')
+    with patch('installation.warranty._install_contract_for_project', return_value=contract):
+        assert not should_create_warranty(project)
+
+
+def test_should_create_warranty_on_completed_project_with_policy():
+    from unittest.mock import patch
+
+    project = SimpleNamespace(
+        warranty_contract_id=None,
+        contract_id=1,
+        status='مكتمل',
+        timeline_steps=[_step('عقد', key='sign')],
+    )
+    contract = SimpleNamespace(install_warranty='بعد المشروع')
+    with patch('installation.warranty._install_contract_for_project', return_value=contract):
+        assert should_create_warranty(project)
 
 
 def test_customer_matches_scope_includes_install_projects():

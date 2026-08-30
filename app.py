@@ -1136,6 +1136,7 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
         'tax_amount': _money_round(c.tax_amount or 0),
         'total': _money_round(c.total or 0),
         'pay_terms': c.payment_terms or '',
+        'install_warranty': getattr(c, 'install_warranty', None) or '',
         'paid_amount': _money_round(c.paid_amount or 0),
         'inv_status': c.invoice_status or 'غير مدفوع',
         'status': c.status or 'نشط',
@@ -1520,6 +1521,7 @@ def _sqlite_legacy_schema_patches():
                 ('district', 'VARCHAR(100)'),
                 ('address', 'TEXT'),
                 ('paid_amount', 'FLOAT'),
+                ('install_warranty', 'VARCHAR(30)'),
             ],
             'parts_billing': [
                 ('visit_id', 'INTEGER'), ('fault_id', 'INTEGER'), ('paid_amount', 'FLOAT'),
@@ -6653,6 +6655,11 @@ def _apply_contract_form(c, form):
         c.maint_frequency = ''
         c.visits_per_month = 0
         c.reminder_date = None
+        raw_w = (form.get('install_warranty') or '').strip()
+        if raw_w in ('بدون', 'بدون ضمان', 'none', 'no'):
+            c.install_warranty = 'بدون'
+        else:
+            c.install_warranty = 'بعد المشروع'
     else:
         c.end_date = end
         c.duration_months = _contract_duration_months(start, end)
@@ -6660,6 +6667,7 @@ def _apply_contract_form(c, form):
         visits = form.get('visits_per_month') or 1
         c.visits_per_month = int(visits) if str(visits).isdigit() else 1
         c.reminder_date = _parse_date(form.get('reminder_date'))
+        c.install_warranty = None
     c.value = value
     c.tax_pct = tax_pct
     c.tax_amount = tax_amount
@@ -6857,9 +6865,9 @@ def contracts():
     from installation.timeline import sync_closed_install_projects_to_contracts
 
     # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة
-    if request.args.get('z') != '5':
+    if request.args.get('z') != '6':
         args = request.args.to_dict(flat=True)
-        args['z'] = '5'
+        args['z'] = '6'
         return redirect(url_for('contracts', **args))
 
     contract_scope = (request.args.get('scope') or '').strip().lower()
@@ -6967,7 +6975,7 @@ def _contracts_page_url(*, contract=None, form=None):
             scope = 'installation'
         else:
             scope = ''
-    kwargs = {'z': '5'}
+    kwargs = {'z': '6'}
     if scope:
         kwargs['scope'] = scope
     return url_for('contracts', **kwargs)

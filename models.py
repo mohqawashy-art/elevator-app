@@ -313,6 +313,8 @@ class Contract(TenantMixin, db.Model):
     tax_amount      = db.Column(db.Float, default=0)
     total           = db.Column(db.Float, default=0)
     payment_terms   = db.Column(db.String(50))   # دفعة واحدة / ربع سنوي / نصف سنوي / سنوي
+    # عقود التركيب/التحديث فقط: بعد المشروع | بدون
+    install_warranty = db.Column(db.String(30))
     invoice_status  = db.Column(db.String(30), default='غير مدفوع')  # مدفوع / مدفوع جزئياً / غير مدفوع / متأخر
     paid_amount     = db.Column(db.Float, default=0)                 # محصّل العقد (مخزّن — يُحدَّث عند الدفع)
     status          = db.Column(db.String(30), default='نشط')        # نشط / على وشك الانتهاء / منتهي / ملغي

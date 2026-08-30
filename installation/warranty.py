@@ -1,6 +1,7 @@
 """تحويل مشروع التركيب المكتمل إلى عقد ضمان صيانة لسنة واحدة.
 
 الربط الوحيد المسموح بين التركيب والصيانة.
+يُنشأ فقط إذا اختُير في عقد التركيب: «ضمان بعد انتهاء المشروع».
 """
 from __future__ import annotations
 
@@ -15,6 +16,10 @@ WARRANTY_MONTHS = 12
 WARRANTY_CONTRACT_TYPE = 'عقد ضمان'
 WORK_PHASES = ('توريد', 'تركيب', 'تسليم')
 
+# قيم Contract.install_warranty
+WARRANTY_AFTER_PROJECT = 'بعد المشروع'
+WARRANTY_NONE = 'بدون'
+
 
 def work_phases_complete(steps) -> bool:
     """True إذا اكتملت مراحل التوريد والتركيب والتسليم بالكامل."""
@@ -27,7 +32,6 @@ def work_phases_complete(steps) -> bool:
         info['total'] += 1
         if getattr(step, 'status', None) == 'مكتمل':
             info['done'] += 1
-    # يجب وجود المراحل الثلاث واكتمال كل خطواتها
     for name in WORK_PHASES:
         info = by_group.get(name)
         if not info or not info['total'] or info['done'] < info['total']:
@@ -42,12 +46,39 @@ def warranty_start_completed(steps) -> bool:
     return False
 
 
-def should_create_warranty(project) -> bool:
-    """يُنشأ عقد الضمان بعد اكتمال المراحل الثلاث، أو عند إكمال خطوة بدء الضمان."""
-    steps = list(getattr(project, 'timeline_steps', None) or [])
-    if not steps:
+def _install_contract_for_project(project) -> Contract | None:
+    cid = getattr(project, 'contract_id', None)
+    if not cid:
+        return None
+    return tenant_query(Contract).filter_by(id=int(cid)).first()
+
+
+def project_wants_warranty(project) -> bool:
+    """True إن اختُير في عقد التركيب إنشاء ضمان بعد انتهاء المشروع (الافتراضي: نعم)."""
+    contract = _install_contract_for_project(project)
+    raw = (getattr(contract, 'install_warranty', None) or '').strip() if contract else ''
+    if not raw:
+        # عقود قديمة بلا حقل — الإبقاء على السلوك السابق (مع ضمان)
+        return True
+    if raw in (WARRANTY_NONE, 'بدون ضمان', 'none', 'no', '0'):
         return False
+    return True
+
+
+def should_create_warranty(project) -> bool:
+    """يُنشأ عقد الضمان بعد اكتمال المشروع/المراحل إن كان الخيار «بعد المشروع»."""
+    steps = list(getattr(project, 'timeline_steps', None) or [])
     if getattr(project, 'warranty_contract_id', None):
+        return False
+    if not project_wants_warranty(project):
+        return False
+    from installation.timeline import is_execution_complete, project_is_closed
+
+    if project_is_closed(project):
+        return True
+    if steps and is_execution_complete(steps):
+        return True
+    if not steps:
         return False
     return work_phases_complete(steps) or warranty_start_completed(steps)
 
@@ -71,6 +102,8 @@ def _existing_warranty_for_project(project) -> Contract | None:
 
 def create_warranty_contract_from_project(project, *, next_code_fn) -> Contract | None:
     """إنشاء عقد ضمان CN- لسنة واحدة بعد اكتمال التركيب."""
+    if not project_wants_warranty(project):
+        return None
     existing = _existing_warranty_for_project(project)
     if existing:
         if not getattr(project, 'warranty_contract_id', None):

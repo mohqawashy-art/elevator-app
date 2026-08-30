@@ -1029,6 +1029,17 @@ def timeline_step_edit(project_id, step_id):
         if is_execution_complete(steps):
             mark_project_completed(project)
         db.session.commit()
+        try:
+            from installation.project_card import ensure_project_card_schema
+            from installation.warranty import ensure_warranty_contract
+            from app import next_code
+
+            ensure_project_card_schema()
+            db.session.refresh(project)
+            if ensure_warranty_contract(project, next_code_fn=next_code):
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
         flash(f'تم تحديث: {step.title}', 'success')
         if return_to == 'execution':
             return redirect(url_for('installation.project_execution', project_id=project.id))

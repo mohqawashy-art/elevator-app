@@ -682,6 +682,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <input type="date" lang="en-GB" id="f-reminder" style="direction:ltr">
             <span class="field-hint">يُحسب تلقائياً قبل 30 يوم من الانتهاء</span>
           </div>
+          <div class="field" id="field-install-warranty-wrap" style="display:none">
+            <label>الضمان بعد انتهاء المشروع <span>*</span></label>
+            <select id="f-install-warranty">
+              <option value="بعد المشروع">ضمان بعد انتهاء المشروع</option>
+              <option value="بدون">بدون ضمان</option>
+            </select>
+            <span class="field-hint">إن وُجد ضمان: يُنشأ عقد ضمان صيانة تلقائياً عند إكمال التنفيذ</span>
+          </div>
         </div>
       </div>
 
@@ -1167,6 +1175,7 @@ function syncInstallContractFormFields() {
   var install = isInstallContractType(typeSel && typeSel.value);
   var durWrap = document.getElementById('field-duration-wrap');
   var remWrap = document.getElementById('field-reminder-wrap');
+  var warrantyWrap = document.getElementById('field-install-warranty-wrap');
   var maintWrap = document.getElementById('maint-freq-wrap');
   var hintInstall = document.getElementById('hint-end-install');
   var labelEnd = document.getElementById('label-end-date');
@@ -1174,6 +1183,7 @@ function syncInstallContractFormFields() {
   var statusSel = document.getElementById('f-status-sel');
   if (durWrap) durWrap.style.display = install ? 'none' : '';
   if (remWrap) remWrap.style.display = install ? 'none' : '';
+  if (warrantyWrap) warrantyWrap.style.display = install ? '' : 'none';
   if (maintWrap) maintWrap.style.display = install ? 'none' : '';
   if (hintInstall) hintInstall.style.display = install ? '' : 'none';
   if (labelEnd) labelEnd.textContent = install ? 'تاريخ التسليم (اختياري)' : 'تاريخ الانتهاء';
@@ -1916,6 +1926,8 @@ function resetContractForm() {
   document.getElementById('f-status-sel').value = 'نشط';
   document.getElementById('f-maint-freq').selectedIndex = 0;
   document.getElementById('f-payment-terms').selectedIndex = 0;
+  var iwReset = document.getElementById('f-install-warranty');
+  if (iwReset) iwReset.value = 'بعد المشروع';
   document.getElementById('elevators-select').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">اختر العميل أولاً لعرض مصاعده</div>';
   document.getElementById('selected-count').textContent = 'لم يتم اختيار مصاعد';
   setElevatorsActions(null, false);
@@ -2186,7 +2198,7 @@ function updateElevatorCount() {
 }
 
 function contractsListUrl() {
-  var base = '/contracts?z=5';
+  var base = '/contracts?z=6';
   if (typeof CONTRACT_SCOPE !== 'undefined' && CONTRACT_SCOPE) {
     return base + '&scope=' + encodeURIComponent(CONTRACT_SCOPE);
   }
@@ -2225,6 +2237,10 @@ function buildContractFormData(adminPassword) {
   fd.append('tax_pct', document.getElementById('f-tax-pct').value || '15');
   fd.append('payment_terms', document.getElementById('f-payment-terms').value);
   fd.append('status', document.getElementById('f-status-sel').value);
+  var iw = document.getElementById('f-install-warranty');
+  if (iw && isInstallContractType(document.getElementById('f-type-sel')?.value)) {
+    fd.append('install_warranty', iw.value || 'بعد المشروع');
+  }
   fd.append('city', document.getElementById('f-contract-city').value);
   fd.append('district', document.getElementById('f-contract-district').value);
   fd.append('address', document.getElementById('f-contract-address').value);
@@ -2378,6 +2394,10 @@ function editContract(id) {
   document.getElementById('f-maint-freq').value = c.maint_freq || 'شهري';
   document.getElementById('f-visits-month').value = c.visits_month || 1;
   document.getElementById('f-payment-terms').value = c.pay_terms || 'دفعة واحدة';
+  var iwEl = document.getElementById('f-install-warranty');
+  if (iwEl) {
+    iwEl.value = (c.install_warranty === 'بدون') ? 'بدون' : 'بعد المشروع';
+  }
   document.getElementById('f-notes').value = c.notes || '';
   document.getElementById('f-contract-city').value = c.city || '';
   document.getElementById('f-contract-district').value = c.district || '';
@@ -2394,6 +2414,9 @@ function editContract(id) {
   calcTotalVisits();
   setContractFileUi(c);
   syncInstallContractFormFields();
+  if (iwEl) {
+    iwEl.value = (c.install_warranty === 'بدون') ? 'بدون' : 'بعد المشروع';
+  }
   openContractFormModal(function () {
     var loc = { address: c.address, district: c.district, city: c.city };
     if (c.address || c.city || c.district) {
@@ -2446,6 +2469,10 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">' + durationLabel + '</div><div class="view-val">' + durationVal + '</div></div>' +
       maintRows +
       '<div class="view-item"><div class="view-label">شروط الدفع</div><div class="view-val">' + esc(c.pay_terms || '—') + '</div></div>' +
+      (install
+        ? '<div class="view-item"><div class="view-label">الضمان</div><div class="view-val">' +
+          esc(c.install_warranty === 'بدون' ? 'بدون ضمان' : 'ضمان بعد انتهاء المشروع') + '</div></div>'
+        : '') +
       (install ? '' : contractCostAllocationViewHtml(c)) +
       (c.notes ? '<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">' + esc(c.notes) + '</div></div>' : '') +
       contractAttachmentBlock(c) +
