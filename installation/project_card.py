@@ -129,6 +129,24 @@ def ensure_project_card_schema() -> None:
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+        if 'warranty_contract_id' not in cols:
+            if dialect == 'postgresql':
+                sql = (
+                    'ALTER TABLE installation_projects '
+                    'ADD COLUMN IF NOT EXISTS warranty_contract_id INTEGER'
+                )
+            else:
+                sql = 'ALTER TABLE installation_projects ADD COLUMN warranty_contract_id INTEGER'
+            db.session.execute(text(sql))
+            db.session.commit()
+            try:
+                db.session.execute(text(
+                    'CREATE INDEX IF NOT EXISTS ix_installation_projects_warranty_contract_id '
+                    'ON installation_projects (warranty_contract_id)'
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
     if 'installation_project_costs' in set(inspect(db.engine).get_table_names()):
         try:

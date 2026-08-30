@@ -126,6 +126,8 @@ class InstallProject(TenantMixin, db.Model):
     accepted_quotation_id = db.Column(db.Integer, db.ForeignKey('installation_quotations.id'), nullable=True)
     # ربط بعقد تركيب/تحديث LiftCore لحفظ القيمة المرجعية والطباعة
     contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=True, index=True)
+    # عقد ضمان الصيانة (الربط الوحيد المسموح مع الصيانة بعد اكتمال المراحل)
+    warranty_contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=True, index=True)
     execution_started_at = db.Column(db.DateTime, nullable=True)
     # قيمة العقد الفعلية (إن وُجدت؛ وإلا يُستخدم إجمالي العرض المعتمد)
     contract_value = db.Column(db.Float, nullable=True)
@@ -135,6 +137,7 @@ class InstallProject(TenantMixin, db.Model):
 
     customer = db.relationship('Customer', backref='installation_projects')
     contract = db.relationship('Contract', foreign_keys=[contract_id], uselist=False)
+    warranty_contract = db.relationship('Contract', foreign_keys=[warranty_contract_id], uselist=False)
     accepted_quotation = db.relationship(
         'InstallQuotation',
         foreign_keys=[accepted_quotation_id],

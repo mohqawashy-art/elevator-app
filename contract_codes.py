@@ -88,14 +88,20 @@ def contracts_for_scope(contracts: Iterable, scope: Optional[str]) -> list:
 
 
 def customer_matches_scope(customer, scope: Optional[str]) -> bool:
-    """عميل يظهر في نطاق القسم إن وُجد له عقد مطابق."""
+    """عميل يظهر في نطاق القسم حسب العقود (أو مشاريع/فرص التركيب لنطاق التركيب)."""
     key = (scope or '').strip().lower()
     if key not in ('maintenance', 'installation'):
         return True
-    return any(
-        contract_matches_scope(getattr(c, 'contract_type', None), key)
-        for c in (getattr(customer, 'contracts', None) or [])
-    )
+    contracts = list(getattr(customer, 'contracts', None) or [])
+    if any(contract_matches_scope(getattr(c, 'contract_type', None), key) for c in contracts):
+        return True
+    if key == 'installation':
+        # عملاء مرتبطون بفرص/مشاريع تركيب حتى قبل إنشاء عقد CI
+        if list(getattr(customer, 'installation_projects', None) or []):
+            return True
+        if list(getattr(customer, 'installation_leads', None) or []):
+            return True
+    return False
 
 
 def contract_base_code(code: Optional[str]) -> str:

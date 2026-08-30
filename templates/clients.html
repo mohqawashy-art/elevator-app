@@ -69,7 +69,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/client_location.css?v=2">
-<script src="/static/customer_profile.js"></script>
+<script src="/static/customer_profile.js?v=2"></script>
 <script src="/static/client_location.js?v=4"></script>
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js?v=3"></script>
@@ -691,6 +691,24 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 // ===== البيانات من Flask =====
 var CUSTOMERS = {{ customers_js|tojson }};
 var CLIENT_SCOPE = {{ (client_scope or '')|tojson }};
+function clientsScopeQuery(extra) {
+  var parts = [];
+  if (CLIENT_SCOPE) parts.push('scope=' + encodeURIComponent(CLIENT_SCOPE));
+  if (extra) {
+    Object.keys(extra).forEach(function (k) {
+      if (extra[k] !== undefined && extra[k] !== null && extra[k] !== '') {
+        parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(extra[k]));
+      }
+    });
+  }
+  return parts.length ? ('?' + parts.join('&')) : '';
+}
+function clientsContractsAddHref(customerId) {
+  return '/contracts' + clientsScopeQuery({
+    action: 'add',
+    customer_id: customerId || undefined,
+  });
+}
 
 const NEXT_CODE = {{ next_client_code|tojson }};
 
@@ -1513,7 +1531,7 @@ function renderTable(data) {
     '<td><span class="badge ' + (CONTRACT_B[c.contract_status]||'badge-cancelled') + '">' + lcDisp(c.contract_status) + '</span></td>' +
     '<td><span class="badge ' + (STATUS_B[clientAccountStatus(c)]||'badge-active') + '">' + lcDisp(clientAccountStatus(c)) + '</span></td>' +
     '<td><div class="td-actions">' +
-      '<a class="btn btn-secondary btn-sm btn-icon" title="إضافة عقد" href="/contracts?action=add&amp;customer_id=' + c.id + '" style="color:var(--gold)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2h6l2 2v8H3V2z"/><path d="M9 2v2h2M5 7h4M5 9.5h4"/></svg></a>' +
+      '<a class="btn btn-secondary btn-sm btn-icon" title="إضافة عقد" href="' + clientsContractsAddHref(c.id).replace(/"/g, '&quot;') + '" style="color:var(--gold)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 2h6l2 2v8H3V2z"/><path d="M9 2v2h2M5 7h4M5 9.5h4"/></svg></a>' +
       '<button class="btn btn-secondary btn-sm btn-icon" title="عرض" onclick="openClientCard(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>' +
       '<button class="btn btn-secondary btn-sm btn-icon" title="تعديل" onclick="editClient(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>' +
       '<button class="btn btn-danger btn-sm btn-icon lc-admin-delete" title="حذف" onclick="deleteClient(' + c.id + ')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>' +
@@ -1798,7 +1816,7 @@ function openClientCard(id) {
   if (statementLink) statementLink.href = '/reports/customer-statement?customer_id=' + encodeURIComponent(id);
   if (clientsLink) clientsLink.href = '/reports/clients?q=' + encodeURIComponent(c.code || c.name || '');
   if (contractLink) {
-    contractLink.href = '/contracts?action=add&customer_id=' + encodeURIComponent(id);
+    contractLink.href = clientsContractsAddHref(id);
     contractLink.style.display = '';
   }
   if (window.LiftCoreDisplay) {
@@ -1821,6 +1839,7 @@ function loadClientData(id) {
   LiftCoreProfile.loadIntoElement(document.getElementById('card-dynamic-data'), id, null, {
     showContractSelect: true,
     showSections: true,
+    scope: CLIENT_SCOPE || '',
   }).then(function (data) {
     if (data && data.financial) {
       var el = document.getElementById('card-total-paid');
@@ -3196,13 +3215,16 @@ try { updateStats(); } catch (statsErr) { console.error('clients stats', statsEr
 try { if (tableSort) tableSort.bindHeaders(); renderTable(CUSTOMERS); syncModalA11y(); } catch (bootErr) { console.error('clients boot', bootErr); }
 try { updateStats(); } catch (statsErr2) { /* keep first pass */ }
 var bootParams = new URLSearchParams(window.location.search);
+function clientsKeepScopeUrl() {
+  return window.location.pathname + clientsScopeQuery();
+}
 if (bootParams.get('action') === 'add') {
   openAddModal();
-  history.replaceState(null, '', window.location.pathname);
+  history.replaceState(null, '', clientsKeepScopeUrl());
 }
 if (bootParams.get('focus')) {
   try { focusClientRow(bootParams.get('focus')); } catch (focusErr) { console.error('clients focus', focusErr); }
-  history.replaceState(null, '', window.location.pathname);
+  history.replaceState(null, '', clientsKeepScopeUrl());
 }
 </script>
 </body>

@@ -30,9 +30,12 @@
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  function fetchCustomerProfile(customerId, contractId) {
+  function fetchCustomerProfile(customerId, contractId, scope) {
+    var params = [];
+    if (contractId) params.push('contract_id=' + encodeURIComponent(contractId));
+    if (scope) params.push('scope=' + encodeURIComponent(scope));
     var url = '/api/customers/' + customerId + '/profile';
-    if (contractId) url += '?contract_id=' + contractId;
+    if (params.length) url += '?' + params.join('&');
     return fetch(url).then(function (r) {
       if (!r.ok) throw new Error('profile fetch failed');
       return r.json();
@@ -111,9 +114,16 @@
       faults: counts.faults || 0,
       parts: counts.parts || 0,
     };
+    var tabs = SECTION_TABS;
+    if ((data.scope || '') === 'installation') {
+      tabs = SECTION_TABS.filter(function (t) {
+        return t.key === 'contracts' || t.key === 'parts';
+      });
+      if (activeTab === 'visits' || activeTab === 'faults') activeTab = 'contracts';
+    }
 
     var html = '<div class="cp-tabs" role="tablist">';
-    SECTION_TABS.forEach(function (tab) {
+    tabs.forEach(function (tab) {
       var n = countMap[tab.key] || 0;
       html += '<button type="button" class="cp-tab' + (activeTab === tab.key ? ' active' : '') + '"'
         + ' data-tab="' + tab.key + '" role="tab">'
@@ -121,7 +131,7 @@
     });
     html += '</div>';
 
-    SECTION_TABS.forEach(function (tab) {
+    tabs.forEach(function (tab) {
       var rows = sections[tab.key];
       if (tab.key === 'contracts' && (!rows || !rows.length)) {
         rows = (data.contracts || []).map(function (ct) {
@@ -214,9 +224,10 @@
     if (!el || !customerId) return Promise.resolve();
     options = options || {};
     var activeTab = el._cpActiveTab || options.activeTab || 'contracts';
+    var scope = options.scope || '';
 
     el.innerHTML = '<div class="cp-loading">' + L('جاري تحميل بيانات العميل...') + '</div>';
-    return fetchCustomerProfile(customerId, contractId).then(function (data) {
+    return fetchCustomerProfile(customerId, contractId, scope).then(function (data) {
       options.activeTab = activeTab;
       el.innerHTML = renderCustomerProfilePanel(data, options);
       var mount = el.querySelector('#cp-sections-mount');
@@ -251,9 +262,11 @@
   function reloadCard(customerId, contractId) {
     var el = document.getElementById('card-dynamic-data');
     if (!el) return;
+    var scope = (typeof CLIENT_SCOPE !== 'undefined' && CLIENT_SCOPE) ? CLIENT_SCOPE : '';
     loadIntoElement(el, customerId, contractId || null, {
       showContractSelect: true,
       showSections: true,
+      scope: scope,
     });
   }
 

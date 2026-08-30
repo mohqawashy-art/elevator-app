@@ -24,7 +24,7 @@
 
     <div class="flash" style="background:#fff8e6;border-color:#e8c547;color:#5c4a00;margin-bottom:16px">
       <b>الخطوة الأولى:</b> سجّل العميل في
-      <a href="/clients" target="_blank" style="font-weight:600">صفحة العملاء (C-xxxx)</a>
+      <a href="/clients?scope=installation" target="_blank" style="font-weight:600">عملاء التركيبات (C-xxxx)</a>
       ثم اختره هنا عند إضافة فرصة البيع.
     </div>
 
@@ -32,7 +32,7 @@
       <h2 class="panel-title">إضافة فرصة بيع</h2>
       {% if not customers %}
       <p style="color:var(--warning);font-size:13px;margin-bottom:12px">
-        لا يوجد عملاء نشطون — <a href="/clients" target="_blank">أضف عميلاً أولاً</a>
+        لا يوجد عملاء نشطون — <a href="/clients?scope=installation" target="_blank">أضف عميلاً أولاً</a>
       </p>
       {% endif %}
       <form method="post" action="{{ url_for('installation.leads_add') }}" id="leadForm">
@@ -54,7 +54,7 @@
                 <option value="{{ c.id }}">{{ c.code }} — {{ c.name }}</option>
                 {% endfor %}
               </select>
-              <a href="/clients" target="_blank" class="btn btn-secondary btn-sm">+ عميل جديد</a>
+              <a href="/clients?scope=installation&action=add" target="_blank" class="btn btn-secondary btn-sm">+ عميل جديد</a>
             </div>
           </div>
           <div class="field"><label>اسم العميل</label><input type="text" id="lName" readonly style="opacity:.85"></div>

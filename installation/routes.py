@@ -268,6 +268,7 @@ def project_detail(project_id):
     from installation.project_card import build_project_card, ensure_project_card_schema
 
     project = tenant_get_or_404(InstallProject, project_id)
+    ensure_project_card_schema()
     quotations = project.quotations.order_by(InstallQuotation.created_at.desc()).all()
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
     progress = timeline_progress(steps) if project.execution_active else 0
@@ -863,6 +864,27 @@ def timeline_step_update(project_id, step_id):
     if is_execution_complete(steps):
         project.status = 'مغلق'
     db.session.commit()
+
+    warranty = None
+    try:
+        from installation.project_card import ensure_project_card_schema
+        from installation.warranty import ensure_warranty_contract
+        from app import next_code
+
+        ensure_project_card_schema()
+        db.session.refresh(project)
+        warranty = ensure_warranty_contract(project, next_code_fn=next_code)
+        if warranty:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash('تعذّر إنشاء عقد الضمان تلقائياً — أنشئه يدوياً من عقود الصيانة إن لزم', 'error')
+
+    if warranty:
+        flash(
+            f'تم إنشاء عقد ضمان صيانة لسنة واحدة: {warranty.code}',
+            'success',
+        )
     if is_execution_complete(steps):
         flash('تم إكمال المشروع — يمكنك عرض تقرير الإغلاق', 'success')
         return redirect(url_for('installation.project_report', project_id=project.id))

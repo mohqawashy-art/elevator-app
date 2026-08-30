@@ -347,15 +347,23 @@
       <div class="form-grid" style="font-size:13px">
         <div>
           <span style="color:var(--text3)">الكود:</span>
-          <a href="/clients" style="font-family:var(--font-en);font-weight:600">{{ project.customer.code }}</a>
+          <a href="/clients?scope=installation&focus={{ project.customer.id }}" style="font-family:var(--font-en);font-weight:600">{{ project.customer.code }}</a>
         </div>
         <div><span style="color:var(--text3)">الاسم:</span> {{ project.customer.name }}</div>
         <div><span style="color:var(--text3)">الجوال:</span> {{ project.customer.phone or project.customer.phone2 or '—' }}</div>
         <div><span style="color:var(--text3)">المدينة:</span> {{ project.customer.city or '—' }}</div>
       </div>
+      <p class="pc-hint" style="margin-top:10px">عميل التركيب منفصل عن عملاء الصيانة. يظهر في الصيانة فقط بعد إنشاء عقد الضمان عند اكتمال المراحل (توريد · تركيب · تسليم).</p>
+      {% if project.warranty_contract_id and project.warranty_contract %}
+      <p style="margin-top:10px;font-size:13px">
+        <span style="color:var(--success)">✓ عقد ضمان صيانة:</span>
+        <a href="/contracts?scope=maintenance" style="font-family:var(--font-en);font-weight:600">{{ project.warranty_contract.code }}</a>
+        <span style="color:var(--text3)">(الربط الوحيد مع الصيانة)</span>
+      </p>
+      {% endif %}
       {% else %}
       <p style="font-size:13px;color:var(--text3);margin:0">
-        لم يُربط المشروع بعميل مسجّل بعد. أضف العميل في <a href="/clients" target="_blank">صفحة العملاء</a> ثم اختره عند حفظ عرض السعر.
+        لم يُربط المشروع بعميل مسجّل بعد. أضف العميل في <a href="/clients?scope=installation" target="_blank">عملاء التركيبات</a> ثم اختره عند حفظ عرض السعر.
       </p>
       {% endif %}
     </div>

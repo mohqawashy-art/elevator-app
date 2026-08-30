@@ -5014,7 +5014,12 @@ def clients():
         client_scope = ''
     customers = (
         tenant_query(Customer)
-        .options(joinedload(Customer.elevators), joinedload(Customer.contracts))
+        .options(
+            joinedload(Customer.elevators),
+            joinedload(Customer.contracts),
+            joinedload(Customer.installation_projects),
+            joinedload(Customer.installation_leads),
+        )
         .order_by(Customer.id.desc())
         .all()
     )
@@ -5221,7 +5226,10 @@ def api_customer_geocode(customer_id):
 @app.route('/api/customers/<int:customer_id>/profile')
 def api_customer_profile(customer_id):
     contract_id = request.args.get('contract_id', type=int)
-    return jsonify(build_customer_profile(customer_id, contract_id))
+    scope = (request.args.get('scope') or '').strip().lower()
+    if scope not in ('maintenance', 'installation'):
+        scope = None
+    return jsonify(build_customer_profile(customer_id, contract_id, scope=scope))
 
 
 @app.route('/api/customers/<int:customer_id>/invoicable-revenues')
@@ -6273,22 +6281,53 @@ def _customer_in_period_filter(model, contract, date_field):
     )
 
 
-def build_customer_profile(customer_id, contract_id=None):
+def build_customer_profile(customer_id, contract_id=None, scope=None):
+    from contract_codes import contracts_for_scope, is_installation_contract_type
     from customer_billing import customer_uncollected_ops
 
     customer = tenant_get_or_404(Customer, customer_id)
+    scope_key = (scope or '').strip().lower()
+    if scope_key not in ('maintenance', 'installation'):
+        scope_key = ''
+
     if contract_id:
         contract = tenant_query(Contract).filter_by(
             id=contract_id, customer_id=customer_id
         ).first_or_404()
+        if scope_key and not (
+            (scope_key == 'installation' and is_installation_contract_type(contract.contract_type))
+            or (scope_key == 'maintenance' and not is_installation_contract_type(contract.contract_type))
+        ):
+            contract = None
     else:
-        contract = customer_primary_contract(customer)
+        contract = None
 
     contracts = (
         tenant_query(Contract).filter_by(customer_id=customer_id)
         .order_by(Contract.start_date.desc())
         .all()
     )
+    contracts = contracts_for_scope(contracts, scope_key or None)
+    if contract is None:
+        # اختر عقداً أساسياً ضمن النطاق فقط
+        primary_pool = contracts
+        if primary_pool:
+            from datetime import date as _date
+            renewed_ids = _annotate_contract_renewals(primary_pool)
+            for ct in sorted(
+                primary_pool,
+                key=lambda x: (x.end_date or _date.min, x.id or 0),
+                reverse=True,
+            ):
+                st = contract_display_status(ct, renewed_ids=renewed_ids)
+                if st in ('نشط', 'على وشك الانتهاء'):
+                    contract = ct
+                    break
+            if contract is None:
+                contract = primary_pool[0]
+    elif scope_key:
+        # تجاهل عقد خارج النطاق إن مُرّر بالخطأ
+        pass
 
     rev_q = tenant_query(Revenue).filter(
         Revenue.customer_id == customer_id,
@@ -6331,24 +6370,27 @@ def build_customer_profile(customer_id, contract_id=None):
     else:
         balance = 0
 
-    visit_q = tenant_query(MaintenanceVisit).join(Elevator).filter(
-        Elevator.customer_id == customer_id
-    )
-    fault_q = tenant_query(Fault).join(Elevator).filter(
-        Elevator.customer_id == customer_id
-    )
-    if contract:
-        visit_q = visit_q.filter(
-            MaintenanceVisit.visit_date >= contract.start_date,
-            MaintenanceVisit.visit_date <= contract.end_date,
+    # الزيارات والأعطال للصيانة فقط — لا تُعرض في نطاق التركيب
+    visits = []
+    faults = []
+    if scope_key != 'installation':
+        visit_q = tenant_query(MaintenanceVisit).join(Elevator).filter(
+            Elevator.customer_id == customer_id
         )
-        fault_q = fault_q.filter(
-            db.func.date(Fault.reported_at) >= contract.start_date,
-            db.func.date(Fault.reported_at) <= contract.end_date,
+        fault_q = tenant_query(Fault).join(Elevator).filter(
+            Elevator.customer_id == customer_id
         )
-
-    visits = visit_q.order_by(MaintenanceVisit.visit_date.desc()).limit(50).all()
-    faults = fault_q.order_by(Fault.reported_at.desc()).limit(50).all()
+        if contract:
+            visit_q = visit_q.filter(
+                MaintenanceVisit.visit_date >= contract.start_date,
+                MaintenanceVisit.visit_date <= contract.end_date,
+            )
+            fault_q = fault_q.filter(
+                db.func.date(Fault.reported_at) >= contract.start_date,
+                db.func.date(Fault.reported_at) <= contract.end_date,
+            )
+        visits = visit_q.order_by(MaintenanceVisit.visit_date.desc()).limit(50).all()
+        faults = fault_q.order_by(Fault.reported_at.desc()).limit(50).all()
 
     timeline = []
     for r in revenues:
@@ -6498,6 +6540,7 @@ def build_customer_profile(customer_id, contract_id=None):
         },
         'timeline': timeline[:80],
         'sections': sections,
+        'scope': scope_key,
         'counts': {
             'revenues': len(revenues),
             'parts': len(parts),
