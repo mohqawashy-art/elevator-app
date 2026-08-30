@@ -352,12 +352,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </select>
         <select class="filter-select" id="f-type" onchange="filterTable()">
           <option value="">كل الأنواع</option>
-          <option>مصعد ركاب</option>
-          <option>مصعد بضائع</option>
-          <option>مصعد مستشفى</option>
-          <option>مصعد منزلي</option>
-          <option>مصعد بانوراما</option>
-          <option>مصعد خدمة</option>
+          <option>نصف أوتوماتيك</option>
+          <option>أوتوماتيك</option>
+          <option>سنتر أوتوماتيك</option>
+          <option>تلسكوبي</option>
         </select>
         <select class="filter-select" id="f-status" onchange="filterTable()">
           <option value="">كل الحالات</option>
@@ -377,7 +375,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="building">المبنى <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="city">المدينة <span class="sort-ind"></span></th>
-                <th class="th-sort" data-sort-col="elev_type">النوع <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="door_type">النوع <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="brand">الماركة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="capacity">الحمولة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
@@ -884,7 +882,32 @@ function initFilters() {
       }
     });
   }
+  fillDoorTypeFilter();
   fillDistrictFilter();
+}
+
+function fillDoorTypeFilter() {
+  var sel = document.getElementById('f-type');
+  if (!sel) return;
+  var known = {};
+  Array.prototype.forEach.call(sel.options, function(o) {
+    if (o.value) known[o.value] = 1;
+  });
+  var extras = [];
+  ELEVATORS.forEach(function(e) {
+    var t = (e.door_type || '').trim();
+    if (t && !known[t]) {
+      known[t] = 1;
+      extras.push(t);
+    }
+  });
+  extras.sort(function(a, b) { return a.localeCompare(b, 'ar'); });
+  extras.forEach(function(t) {
+    var o = document.createElement('option');
+    o.value = t;
+    o.textContent = t;
+    sel.appendChild(o);
+  });
 }
 
 function allElevDistricts(cityFilter) {
@@ -1021,7 +1044,7 @@ function renderDrillTable(rows) {
       '<td class="td-name">' + esc(elevCustomer(e)) + '</td>' +
       '<td>' + esc(lcDisp(e.building || '—')) + '</td>' +
       '<td>' + esc(lcDisp(e.city || '—')) + '</td>' +
-      '<td>' + esc(lcDisp(e.elev_type || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(e.door_type || '—')) + '</td>' +
       '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></td>' +
       '<td style="font-family:var(--font-en);direction:ltr">' + esc(e.next_maint || '—') + '</td>' +
     '</tr>';
@@ -1088,7 +1111,7 @@ function renderTable(data) {
       '<td class="td-name" style="cursor:pointer;color:var(--accent)" onclick="event.stopPropagation();window.location=\'/clients\'">' + esc(elevCustomer(e)) + '</td>' +
       '<td>' + esc(lcDisp(e.building || '—')) + '</td>' +
       '<td>' + esc(lcDisp(e.city || '—')) + '</td>' +
-      '<td>' + esc(lcDisp(e.elev_type || '—')) + '</td>' +
+      '<td>' + esc(lcDisp(e.door_type || '—')) + '</td>' +
       '<td style="font-family:var(--font-en)">' + esc(e.brand || '—') + '</td>' +
       '<td style="font-family:var(--font-en)">' + (e.capacity ? lcDisp(e.capacity + ' كجم') : '—') + '</td>' +
       '<td><span class="badge ' + (STATUS_CLASS[e.status] || 'badge-active') + '">' + esc(lcDisp(e.status)) + '</span></td>' +
@@ -1110,9 +1133,9 @@ function filterTable() {
   var dist = (document.getElementById('f-filter-district') || {}).value || '';
   filtered = ELEVATORS.filter(function(e) {
     var ed = elevDistrict(e);
-    return (!s || e.code.toLowerCase().indexOf(s) >= 0 || e.customer.toLowerCase().indexOf(s) >= 0 || (e.building || '').toLowerCase().indexOf(s) >= 0 || ed.toLowerCase().indexOf(s) >= 0) &&
+    return (!s || e.code.toLowerCase().indexOf(s) >= 0 || e.customer.toLowerCase().indexOf(s) >= 0 || (e.building || '').toLowerCase().indexOf(s) >= 0 || ed.toLowerCase().indexOf(s) >= 0 || (e.door_type || '').toLowerCase().indexOf(s) >= 0) &&
       (!ct || e.customer === ct) &&
-      (!tp || e.elev_type === tp) &&
+      (!tp || e.door_type === tp) &&
       (!st || e.status === st) &&
       (!cy || e.city === cy) &&
       (!dist || ed === dist);
@@ -1730,7 +1753,7 @@ function makeElevPin(color) {
 function elevMapInfo(e) {
   return '<div class="map-info"><div class="map-info-title">' + esc(e.code) + '</div>' +
     '<div class="map-info-sub">' + esc(e.customer) + '<br>' + esc(e.building || '—') + '<br>' +
-    esc(e.elev_type || '') + ' · ' + esc(e.status) + '</div>' +
+    esc(e.door_type || '') + ' · ' + esc(e.status) + '</div>' +
     '<button class="map-info-btn" onclick="viewElevator(' + e.id + ')">عرض المصعد</button></div>';
 }
 

@@ -30,6 +30,7 @@ def get_report_elevators(db, Elevator):
         'building': e.building_name or '',
         'city': e.city or '',
         'elev_type': e.elev_type or '',
+        'door_type': e.door_type or '',
         'brand': e.brand or '',
         'capacity': str(e.capacity_kg or '') + ' كجم' if e.capacity_kg else '',
         'status': e.status,

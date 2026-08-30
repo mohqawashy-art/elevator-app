@@ -21,6 +21,8 @@
     'مدفوعة': 'Paid', 'غير مدفوعة': 'Unpaid', 'مدفوع جزئياً': 'Partially Paid',
     'متأخرة': 'Overdue', 'ملغاة': 'Cancelled',
     'صيانة دورية': 'Routine Maintenance', 'صيانة طارئة': 'Emergency Maintenance', 'صيانة': 'Maintenance',
+    'نصف أوتوماتيك': 'Semi-Automatic', 'أوتوماتيك': 'Automatic',
+    'سنتر أوتوماتيك': 'Center Automatic', 'تلسكوبي': 'Telescopic',
     'مصعد ركاب': 'Passenger Elevator', 'مصعد بضائع': 'Freight Elevator',
     'مصعد مستشفى': 'Hospital Elevator', 'مصعد منزلي': 'Home Elevator',
     'مصعد بانوراما': 'Panoramic Elevator', 'مصعد خدمة': 'Service Elevator',
