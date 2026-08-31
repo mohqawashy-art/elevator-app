@@ -1659,6 +1659,10 @@ var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
   container: '#page-btns',
   infoEl: '#table-info',
   onPageChange: function () { renderTable(filtered); },
+  sumFields: [
+    { key: 'total', label: 'الإجمالي', labelEn: 'Total' },
+    { key: 'paid_amount', label: 'المحصّل', labelEn: 'Collected' },
+  ],
 }) : null;
 
 function getContractsByDrill(type) {

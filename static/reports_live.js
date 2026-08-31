@@ -176,7 +176,7 @@ var __lcReportDomPager = null;
 function __lcLoadPagination(cb) {
     if (global.LiftCorePagination) { cb(); return; }
   var s = document.createElement('script');
-  s.src = '/static/liftcore-pagination.js?v=2';
+  s.src = '/static/liftcore-pagination.js?v=4';
   s.onload = cb;
   document.head.appendChild(s);
 }
