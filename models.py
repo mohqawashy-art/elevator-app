@@ -1218,7 +1218,7 @@ class User(TenantMixin, db.Model):
     full_name       = db.Column(db.String(100))
     email           = db.Column(db.String(100))
     role            = db.Column(db.String(30), default='viewer')  # admin / manager / viewer / custom
-    theme           = db.Column(db.String(10), default='dark')  # dark / light
+    theme           = db.Column(db.String(10), default='light')  # dark / light
     language        = db.Column(db.String(10), default='ar')  # ar / en
     photo_path      = db.Column(db.String(300))
     is_active       = db.Column(db.Boolean, default=True)
