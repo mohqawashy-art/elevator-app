@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore � ??????? ?????? ??????</title>
+<title>LiftCore — التقرير السنوي للعميل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -93,7 +93,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
   position:relative;
 }
 
-/* ???? ??????? */
+/* هيدر التقرير */
 .rpt-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #1a4fa0;margin-bottom:20px}
 .rpt-header-logo{display:flex;flex-direction:column;align-items:flex-end}
 .rpt-header-logo img{height:56px;object-fit:contain}
@@ -105,12 +105,12 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 .rpt-header-icon{width:60px;height:60px;border:2px solid #1a4fa0;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .rpt-header-icon svg{width:36px;height:36px;color:#1a4fa0}
 
-/* ????? ??????? */
+/* أقسام التقرير */
 .rpt-section{margin-bottom:16px}
 .rpt-section-title{background:#1a4fa0;color:#fff;padding:6px 12px;font-size:12px;font-weight:600;border-radius:4px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .rpt-section-title svg{width:14px;height:14px}
 
-/* ???? ???????? */
+/* شبكة البيانات */
 .rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .rpt-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .rpt-field{display:flex;flex-direction:column}
@@ -118,14 +118,14 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 .rpt-value{border-bottom:1.5px solid #bbb;padding:4px 2px;font-size:12px;color:#111;min-height:24px;font-weight:500}
 .rpt-value.en{font-family:var(--font-en);direction:ltr;text-align:left}
 
-/* ????? ??????? */
+/* جداول التقرير */
 .rpt-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
 .rpt-table th{background:#e8eef8;color:#1a4fa0;padding:6px 8px;text-align:right;font-weight:600;border:1px solid #c5d0e6}
 .rpt-table td{padding:5px 8px;border:1px solid #ddd;color:#333;vertical-align:top}
 .rpt-table tr:nth-child(even) td{background:#f8faff}
 .rpt-table .num{font-family:var(--font-en);text-align:center}
 
-/* ???? ????? */
+/* ملخص العقد */
 .rpt-summary-box{border:1.5px solid #1a4fa0;border-radius:6px;padding:12px 16px;background:#f5f8ff}
 .rpt-summary-title{font-size:12px;font-weight:700;color:#1a4fa0;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .rpt-summary-title svg{width:14px;height:14px}
@@ -134,23 +134,23 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 .rpt-summary-row span:first-child{color:#444}
 .rpt-summary-row span:last-child{font-family:var(--font-en);font-weight:600}
 
-/* ???????? ??????? */
+/* إحصائيات الأعطال */
 .rpt-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 .rpt-stat{border:1px solid #ddd;border-radius:6px;padding:8px 10px;text-align:center;background:#fafbff}
 .rpt-stat-val{font-size:20px;font-weight:700;color:#1a4fa0;font-family:var(--font-en)}
 .rpt-stat-label{font-size:9px;color:#666;margin-top:2px}
 
-/* ????? ????? */
+/* منطقة الصور */
 .rpt-photos-area{border:1.5px dashed #bbb;border-radius:6px;min-height:80px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:11px;margin-top:6px}
 
-/* ????????? */
+/* التوقيعات */
 .rpt-signatures{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px;padding-top:16px;border-top:2px solid #1a4fa0}
 .rpt-sig{text-align:center}
 .rpt-sig-title{font-size:11px;font-weight:700;color:#1a4fa0;margin-bottom:16px}
 .rpt-sig-line{border-bottom:1.5px solid #333;margin:0 8px 4px}
 .rpt-sig-label{font-size:9px;color:#666}
 
-/* ???? ??????? */
+/* فوتر التقرير */
 .rpt-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:10px;border-top:1px solid #ddd;font-size:9px;color:#888}
 .rpt-footer-brand{color:#1a4fa0;font-weight:600}
 
@@ -166,7 +166,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 .annual-empty-hint p{font-size:14px;color:var(--text2);line-height:1.7;max-width:520px;margin:0 auto}
 .annual-empty-icon{font-size:42px;margin-bottom:12px;opacity:.85}
 
-/* ??????? ? static/reports-print.css */
+/* الطباعة → static/reports-print.css */
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
 </style>
 {% include 'partials/liftcore_head.html' %}
@@ -188,36 +188,36 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 
 <!-- MAIN -->
 <div class="main">
-  {% set page_title = '??????? ?????? ??????' %}
+  {% set page_title = 'التقرير السنوي للعميل' %}
   {% include 'partials/app_header.html' %}
 
   <div class="content">
 
     <div class="page-header screen-only">
-      <div class="page-title">??????? ??????? ???? ??????? ??????</div>
+      <div class="page-title">التقرير الختامي لعقد الصيانة السنوي</div>
       <div class="page-actions">
         <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>
-          ?????
+          طباعة
         </button>
         <button class="btn btn-success btn-sm" onclick="exportPDF()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
-          ????? PDF
+          تصدير PDF
         </button>
       </div>
     </div>
 
-    <!-- ????? ???????? -->
+    <!-- فلاتر الاختيار -->
     <div class="filter-card screen-only">
       <div class="filter-row">
         <div class="field">
-          <label>??????</label>
+          <label>العميل</label>
           <select id="sel-client" onchange="onAnnualClientChange()">
-            <option value="">???? ??????</option>
+            <option value="">اختر العميل</option>
           </select>
         </div>
         <div class="field">
-          <label>????? (???? ??????)</label>
+          <label>السنة (لفرز العقود)</label>
           <select id="sel-year" onchange="onAnnualYearChange()">
             {% for y in report_years %}
             <option value="{{ y }}"{% if y == current_year %} selected{% endif %}>{{ y }}</option>
@@ -225,34 +225,34 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
           </select>
         </div>
         <div class="field">
-          <label>????? / ???? ???????</label>
+          <label>العقد / فترة التعاقد</label>
           <select id="sel-contract" onchange="generateAnnualReport()">
-            <option value="">???? ????? ?????</option>
+            <option value="">اختر العقد أولاً</option>
           </select>
         </div>
         <div>
           <button class="btn btn-primary" onclick="generateAnnualReport()" style="width:100%;justify-content:center">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
-            ????? ???????
+            توليد التقرير
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ????? ??????? -->
+    <!-- رسالة البداية -->
     <div id="annual-empty-hint" class="annual-empty-hint">
-      <div class="annual-empty-icon">??</div>
-      <h2>??????? ??????? ???? ??????? ??????</h2>
-      <p>???? ?????? ?? <strong>????? / ???? ???????</strong>? ?? ???? <strong>????? ???????</strong> ???? ????? ??? ????? ???.</p>
+      <div class="annual-empty-icon">📋</div>
+      <h2>التقرير الختامي لعقد الصيانة السنوي</h2>
+      <p>اختر العميل ثم <strong>العقد / فترة التعاقد</strong>، ثم اضغط <strong>توليد التقرير</strong> لعرض نتيجة ذلك العقد فقط.</p>
     </div>
 
-    <!-- ??????? -->
+    <!-- التقرير -->
     <div class="print-wrap" id="report-container" style="display:none">
       <div class="print-toolbar">
-        <span class="print-toolbar-title" id="toolbar-title">??????? ???????</span>
+        <span class="print-toolbar-title" id="toolbar-title">التقرير الختامي</span>
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>?????
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
           </button>
           <button class="btn btn-success btn-sm" onclick="exportPDF()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>PDF
@@ -260,226 +260,226 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
         </div>
       </div>
 
-      <!-- ???? ??????? ??????? -->
+      <!-- صفحة التقرير للطباعة -->
       <div id="report-page">
 
-        <!-- ???? ??????? -->
+        <!-- هيدر التقرير -->
         <div class="rpt-header">
           <div class="rpt-header-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           </div>
           <div class="rpt-header-center">
-            <h1>??????? ??????? ???? ??????? ??????</h1>
+            <h1>التقرير الختامي لعقد الصيانة السنوي</h1>
             <h2>Annual Maintenance Contract Closing Report</h2>
-            <p>???? ????? ?? ??????? ????? ?????? ??? ??????? ?? ????? ??????? ???? ?? ??????? ???? ???? ???????</p>
+            <p>نشكر ثقتكم في خدماتنا ونسعد بتقديم هذا التقرير عن أعمال الصيانة التي تم تنفيذها خلال فترة التعاقد</p>
           </div>
           <div class="rpt-header-logo">
             <img src="{{ brand_logo_url }}" alt="LiftCore" style="height:56px;object-fit:contain">
-            <div class="rpt-header-logo-sub">??????? ?????? ???????</div>
+            <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
           </div>
         </div>
 
-        <!-- 1. ?????? ?????? -->
+        <!-- 1. بيانات العميل -->
         <div class="rpt-section">
           <div class="rpt-section-title">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 7A3 3 0 108 1a3 3 0 000 6z"/><path d="M2 15c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg>
-            1. ?????? ??????
+            1. بيانات العميل
           </div>
           <div class="rpt-grid">
             <div class="rpt-field">
-              <div class="rpt-label">??? ?????? / ???????</div>
+              <div class="rpt-label">اسم العميل / المنشأة</div>
               <div class="rpt-value" id="r-client-name"></div>
             </div>
             <div class="rpt-field">
-              <div class="rpt-label">?????? / ???????</div>
+              <div class="rpt-label">الموقع / العنوان</div>
               <div class="rpt-value" id="r-client-address"></div>
             </div>
             <div class="rpt-field">
-              <div class="rpt-label">??? ?????</div>
+              <div class="rpt-label">رقم العقد</div>
               <div class="rpt-value en" id="r-contract-no"></div>
             </div>
             <div class="rpt-field">
-              <div class="rpt-label">???? ???????</div>
+              <div class="rpt-label">فترة التعاقد</div>
               <div class="rpt-value en" id="r-contract-period"></div>
             </div>
             <div class="rpt-field">
-              <div class="rpt-label">??? ??????</div>
+              <div class="rpt-label">نوع المصعد</div>
               <div class="rpt-value" id="r-elev-type"></div>
             </div>
             <div class="rpt-field">
-              <div class="rpt-label">???????</div>
+              <div class="rpt-label">الموديل</div>
               <div class="rpt-value en" id="r-elev-model"></div>
             </div>
             <div class="rpt-field">
-              <div class="rpt-label">???????</div>
+              <div class="rpt-label">الحمولة</div>
               <div class="rpt-value en" id="r-elev-capacity"></div>
             </div>
             <div class="rpt-field">
-              <div class="rpt-label">??? ??????</div>
+              <div class="rpt-label">رقم المصعد</div>
               <div class="rpt-value en" id="r-elev-no"></div>
             </div>
           </div>
         </div>
 
-        <!-- 2 + 3 ????? ??? -->
+        <!-- 2 + 3 بجانب بعض -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
 
-          <!-- 2. ???? ??????? -->
+          <!-- 2. ملخص التعاقد -->
           <div class="rpt-summary-box">
             <div class="rpt-summary-title">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16"/><path d="M14 2v4h4"/></svg>
-              2. ???? ???????
+              2. ملخص التعاقد
             </div>
             <p style="font-size:11px;color:#444;line-height:1.7;margin-bottom:10px">
-              ?? ????? ????? ??????? ??????? ?????? ????? ????? ????? ???? ???? ???????? ?? ???????? ?????? ??????? ????? ??????? ?????????? ??????? ???????? ??? ????? ???? ??????? ?? ??? ???? ??? ????? ?????? ?????? ?????? ????????.
+              تم تنفيذ أعمال الصيانة الدورية للمصعد طبقاً لبنود العقد طوال فترة التعاقد، مع الالتزام الكامل بزيارات الفحص المجولة والاستجابة للأعطال الطارئة، وتم تنفيذ جميع الأعمال من قبل فريق فني متخصص وبأعلى معايير الجودة والسلامة.
             </p>
             <div class="rpt-summary-row">
-              <span>?????? ???????? ???????</span>
-              <span id="r-planned-visits">�</span>
+              <span>إجمالي الزيارات المخططة</span>
+              <span id="r-planned-visits">—</span>
             </div>
             <div class="rpt-summary-row">
-              <span>???????? ???????</span>
-              <span id="r-done-visits">�</span>
+              <span>الزيارات المنفذة</span>
+              <span id="r-done-visits">—</span>
             </div>
             <div class="rpt-summary-row">
-              <span>???? ????????</span>
-              <span id="r-compliance">�</span>
+              <span>نسبة الالتزام</span>
+              <span id="r-compliance">—</span>
             </div>
             <div class="rpt-summary-row">
-              <span>??? ??????? ???????</span>
-              <span id="r-faults-count">�</span>
+              <span>عدد الأعطال الطارئة</span>
+              <span id="r-faults-count">—</span>
             </div>
             <div class="rpt-summary-row">
-              <span>???? ????? ???????</span>
-              <span id="r-faults-done">�</span>
+              <span>نسبة إنجاز الأعطال</span>
+              <span id="r-faults-done">—</span>
             </div>
           </div>
 
-          <!-- 3. ??????? ???? ?? ??????? ???? -->
+          <!-- 3. الأعطال التي تم التعامل معها -->
           <div class="rpt-section" style="margin-bottom:0">
             <div class="rpt-section-title">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
-              3. ??????? ???? ?? ??????? ????
+              3. الأعطال التي تم التعامل معها
             </div>
             <table class="rpt-table">
               <thead>
-                <tr><th>#</th><th>??? ?????</th><th>???????</th><th>??????</th></tr>
+                <tr><th>#</th><th>نوع العطل</th><th>التاريخ</th><th>الحالة</th></tr>
               </thead>
               <tbody id="r-faults-table">
-                <tr><td colspan="4" style="text-align:center;color:#aaa;padding:12px">?? ???? ????? ?????</td></tr>
+                <tr><td colspan="4" style="text-align:center;color:#aaa;padding:12px">لا توجد أعطال مسجلة</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <!-- 4. ??? ???????? ?????? -->
+        <!-- 4. سجل الزيارات الفنية -->
         <div class="rpt-section">
           <div class="rpt-section-title">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>
-            4. ??? ???????? ??????
+            4. سجل الزيارات الفنية
           </div>
           <table class="rpt-table">
             <thead>
-              <tr><th>#</th><th>???????</th><th>?????</th><th>??? ???????</th><th>??????? ???????</th><th>??????</th></tr>
+              <tr><th>#</th><th>التاريخ</th><th>الفني</th><th>نوع الزيارة</th><th>الأعمال المنفذة</th><th>الحالة</th></tr>
             </thead>
             <tbody id="r-visits-table">
-              <tr><td colspan="6" style="text-align:center;color:#aaa;padding:12px">?? ???? ?????? ?????</td></tr>
+              <tr><td colspan="6" style="text-align:center;color:#aaa;padding:12px">لا توجد زيارات مسجلة</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- 5 + 6 ????? ??? -->
+        <!-- 5 + 6 بجانب بعض -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
 
-          <!-- 5. ???????? ??????? -->
+          <!-- 5. إحصائيات الأعطال -->
           <div class="rpt-section" style="margin-bottom:0">
             <div class="rpt-section-title">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="10" width="3" height="4"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="2" width="3" height="12"/></svg>
-              5. ???????? ??????
+              5. إحصائيات الأداء
             </div>
             <div class="rpt-stats-grid">
               <div class="rpt-stat">
                 <div class="rpt-stat-val" id="s-visits">0</div>
-                <div class="rpt-stat-label">???????? ???????</div>
+                <div class="rpt-stat-label">الزيارات المنفذة</div>
               </div>
               <div class="rpt-stat">
                 <div class="rpt-stat-val" id="s-compliance">0%</div>
-                <div class="rpt-stat-label">???? ????????</div>
+                <div class="rpt-stat-label">نسبة الالتزام</div>
               </div>
               <div class="rpt-stat">
                 <div class="rpt-stat-val" id="s-faults">0</div>
-                <div class="rpt-stat-label">??????? ???????</div>
+                <div class="rpt-stat-label">الأعطال الطارئة</div>
               </div>
               <div class="rpt-stat">
                 <div class="rpt-stat-val" id="s-resolve">0%</div>
-                <div class="rpt-stat-label">???? ???????</div>
+                <div class="rpt-stat-label">نسبة الإنجاز</div>
               </div>
             </div>
           </div>
 
-          <!-- 6. ??? ?????? ????????? -->
+          <!-- 6. قطع الغيار المستبدلة -->
           <div class="rpt-section" style="margin-bottom:0">
             <div class="rpt-section-title">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 14.5S13 12 13 7V3.5L8 1.5 3 3.5V7c0 5 5 7.5 5 7.5z"/></svg>
-              6. ??? ?????? ?????????
+              6. قطع الغيار المستبدلة
             </div>
             <table class="rpt-table">
               <thead>
-                <tr><th>?????</th><th>??????</th><th>???????</th></tr>
+                <tr><th>الصنف</th><th>الكمية</th><th>التاريخ</th></tr>
               </thead>
               <tbody id="r-parts-table">
-                <tr><td colspan="3" style="text-align:center;color:#aaa;padding:12px">?? ???? ??? ?????</td></tr>
+                <tr><td colspan="3" style="text-align:center;color:#aaa;padding:12px">لا توجد قطع مسجلة</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <!-- 7. ??? ?????? -->
+        <!-- 7. صور المصعد -->
         <div class="rpt-section">
           <div class="rpt-section-title">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/><circle cx="8" cy="8" r="2.5"/></svg>
-            7. ??? ?????? (???????? - ???? ?????? - ???????? - ???? ???????? - ??? ??????)
+            7. صور المصعد (الماكينة - لوحة التحكم - الكابينة - أعلى الكابينة - بئر المصعد)
           </div>
           <div class="rpt-photos-area">
-            ?? ??? ????? ????? ??? ??????? ???????
+            📷 يتم إضافة الصور عند الطباعة الفعلية
           </div>
         </div>
 
-        <!-- ????????? -->
+        <!-- التوقيعات -->
         <div class="rpt-signatures">
           <div class="rpt-sig">
-            <div class="rpt-sig-title">?????? ?? ?? ?????</div>
+            <div class="rpt-sig-title">العميل أو من يمثله</div>
             <div class="rpt-sig-line"></div>
-            <div class="rpt-sig-label">?????: _______________</div>
-            <div class="rpt-sig-label">???????: _______________</div>
-            <div class="rpt-sig-label">???????: _______________</div>
+            <div class="rpt-sig-label">الاسم: _______________</div>
+            <div class="rpt-sig-label">التوقيع: _______________</div>
+            <div class="rpt-sig-label">التاريخ: _______________</div>
           </div>
           <div class="rpt-sig">
-            <div class="rpt-sig-title">????? ???????</div>
+            <div class="rpt-sig-title">مهندس الصيانة</div>
             <div class="rpt-sig-line"></div>
-            <div class="rpt-sig-label">?????: _______________</div>
-            <div class="rpt-sig-label">???????: _______________</div>
-            <div class="rpt-sig-label">???????: _______________</div>
+            <div class="rpt-sig-label">الاسم: _______________</div>
+            <div class="rpt-sig-label">التوقيع: _______________</div>
+            <div class="rpt-sig-label">التاريخ: _______________</div>
           </div>
           <div class="rpt-sig">
-            <div class="rpt-sig-title">?????? ???????</div>
+            <div class="rpt-sig-title">المدير المسئول</div>
             <div class="rpt-sig-line"></div>
-            <div class="rpt-sig-label">?????: _______________</div>
-            <div class="rpt-sig-label">???????: _______________</div>
-            <div class="rpt-sig-label">???????: _______________</div>
+            <div class="rpt-sig-label">الاسم: _______________</div>
+            <div class="rpt-sig-label">التوقيع: _______________</div>
+            <div class="rpt-sig-label">التاريخ: _______________</div>
           </div>
           <div class="rpt-sig">
-            <div class="rpt-sig-title">?????</div>
+            <div class="rpt-sig-title">الختم</div>
             <div class="rpt-sig-line"></div>
             <div style="height:48px;border:1.5px dashed #aaa;border-radius:50%;width:48px;margin:4px auto"></div>
           </div>
         </div>
 
-        <!-- ???? ??????? -->
+        <!-- فوتر التقرير -->
         <div class="rpt-footer">
-          <span>???? ?????? ??? ??????...</span>
+          <span>نصعد بثقتكم إلى الأعلى...</span>
           <span id="r-print-date"></span>
-          <span class="rpt-footer-brand">LiftCore � ??????? ?????? ???????</span>
+          <span class="rpt-footer-brand">LiftCore — الإدارة الذكية للمصاعد</span>
         </div>
 
       </div><!-- end report-page -->
@@ -496,16 +496,16 @@ function exportPDF(){
   else window.print();
 }
 
-// JS ?????
+// JS مشترك
 const _now = new Date();
-const _days = ['?????','???????','????????','????????','??????','??????','?????'];
-const _months = ['?????','??????','????','?????','????','?????','?????','?????','??????','??????','??????','??????'];
+const _days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const _months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 var hDateEl = document.getElementById('h-date');
-if (hDateEl) hDateEl.textContent = `${_days[_now.getDay()]}? ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} � `;
+if (hDateEl) hDateEl.textContent = `${_days[_now.getDay()]}، ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} — `;
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 function setLang(l){if(window.LiftCoreI18n&&window.LiftCoreI18n.setLang){window.LiftCoreI18n.setLang(l);return;}document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');var a=document.getElementById('btn-ar'),e=document.getElementById('btn-en');if(a)a.classList.toggle('active',l==='ar');if(e)e.classList.toggle('active',l==='en');}
 </script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=10"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=11"></script>
 </body>
 </html>

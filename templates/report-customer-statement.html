@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore � ??? ???? ????</title>
+<title>LiftCore — كشف حساب عميل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -239,18 +239,18 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </nav>
 </aside>
 <div class="main">
-  {% set page_title = '??? ???? ????' %}
+  {% set page_title = 'كشف حساب عميل' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header screen-only">
-      <div class="page-title">??? ???? ???? <span>???? / ???? / ?????? ???????</span></div>
+      <div class="page-title">كشف حساب عميل <span>مدين / دائن / الرصيد المستحق</span></div>
       <div class="page-actions">
-        <a class="btn btn-secondary btn-sm" href="/reports" style="text-decoration:none">?? ????????</a>
+        <a class="btn btn-secondary btn-sm" href="/reports" style="text-decoration:none">كل التقارير</a>
         <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()" id="btn-print-top" disabled>
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>?????
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
         </button>
         <button class="btn btn-success btn-sm" onclick="exportExcel()" id="btn-excel-top" disabled>
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>????? Excel
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>تصدير Excel
         </button>
       </div>
     </div>
@@ -258,46 +258,46 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="filter-card screen-only" style="margin-bottom:20px">
       <div class="filter-row">
         <div class="field" style="flex:2">
-          <label>??????</label>
+          <label>العميل</label>
           <select id="sel-client">
-            <option value="">� ???? ?????? ?? ????? �</option>
+            <option value="">— ابحث بالاسم أو الكود —</option>
             {% for c in customers %}
-            <option value="{{ c.id }}" {% if selected_id == c.id %}selected{% endif %}>{{ c.code }} � {{ c.name }}</option>
+            <option value="{{ c.id }}" {% if selected_id == c.id %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
             {% endfor %}
           </select>
-          <span class="field-hint" style="font-size:11px;color:var(--text3);margin-top:4px">???? ??? ?????? ?? ????? ????? ?????????</span>
+          <span class="field-hint" style="font-size:11px;color:var(--text3);margin-top:4px">اكتب اسم العميل أو الكود للبحث والاختيار</span>
         </div>
         <div class="field" style="flex:0;min-width:auto">
           <label>&nbsp;</label>
-          <button type="button" class="btn btn-primary" onclick="loadStatement()" style="white-space:nowrap">??? ?????</button>
+          <button type="button" class="btn btn-primary" onclick="loadStatement()" style="white-space:nowrap">عرض الكشف</button>
         </div>
       </div>
     </div>
 
     <div id="stmt-empty" class="filter-card screen-only" style="text-align:center;padding:40px 20px;color:var(--text3);{% if selected_id %}display:none{% endif %}">
-      <div style="font-size:15px;color:var(--text1);font-weight:600;margin-bottom:6px">??? ???? ??????</div>
-      <div style="font-size:13px">???? ?????? ?? ???? �??? ?????� ???? ??????? ??????? ???????.</div>
+      <div style="font-size:15px;color:var(--text1);font-weight:600;margin-bottom:6px">كشف حساب العميل</div>
+      <div style="font-size:13px">اختر العميل ثم اضغط «عرض الكشف» لعرض الحركات والرصيد المستحق.</div>
     </div>
 
     <div id="stmt-body" style="{% if not selected_id %}display:none{% endif %}">
       <div class="rpt-stat-row screen-only" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
-        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-debit">�</div><div class="rpt-stat-label">?????? ??????</div></div>
-        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-credit">�</div><div class="rpt-stat-label">?????? ??????</div></div>
-        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-due" style="color:var(--danger)">�</div><div class="rpt-stat-label">?????? ???????</div></div>
-        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-lines">�</div><div class="rpt-stat-label">??? ???????</div></div>
+        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-debit">—</div><div class="rpt-stat-label">إجمالي المدين</div></div>
+        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-credit">—</div><div class="rpt-stat-label">إجمالي الدائن</div></div>
+        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-due" style="color:var(--danger)">—</div><div class="rpt-stat-label">الرصيد المستحق</div></div>
+        <div class="rpt-stat-box"><div class="rpt-stat-val" id="st-lines">—</div><div class="rpt-stat-label">عدد الحركات</div></div>
       </div>
 
       <div class="print-wrap">
         <div class="print-toolbar">
-          <span class="print-toolbar-title" id="toolbar-title">??? ???? ????</span>
+          <span class="print-toolbar-title" id="toolbar-title">كشف حساب عميل</span>
           <div style="display:flex;gap:8px">
             <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>?????
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
             </button>
             <button class="btn btn-success btn-sm" onclick="exportExcel()">
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>????? Excel
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>تصدير Excel
             </button>
-            <a class="btn btn-primary btn-sm" id="link-revenues" href="/revenues" style="text-decoration:none">????? ?????</a>
+            <a class="btn btn-primary btn-sm" id="link-revenues" href="/revenues" style="text-decoration:none">تسجيل تحصيل</a>
           </div>
         </div>
         <div class="rpt-page">
@@ -306,49 +306,49 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <svg viewBox="0 0 24 24" fill="none" stroke="#1a4fa0" stroke-width="1.5" width="32" height="32"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </div>
             <div class="rpt-header-center">
-              <h1>??? ???? ????</h1>
+              <h1>كشف حساب عميل</h1>
               <h2>Customer Account Statement</h2>
-              <p id="rpt-date-range">????? ???????: �</p>
+              <p id="rpt-date-range">تاريخ التقرير: —</p>
             </div>
             <div class="rpt-header-logo">
               <img src="{{ brand_logo_url }}" alt="LiftCore">
-              <div class="rpt-header-logo-sub">??????? ?????? ???????</div>
+              <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
             </div>
           </div>
 
           <div class="rpt-meta" id="rpt-meta">
-            <div class="rpt-meta-item"><span class="rpt-meta-label">??????</span><span class="rpt-meta-val" id="m-name">�</span></div>
-            <div class="rpt-meta-item"><span class="rpt-meta-label">?????</span><span class="rpt-meta-val" id="m-code">�</span></div>
-            <div class="rpt-meta-item"><span class="rpt-meta-label">??????</span><span class="rpt-meta-val ltr" id="m-phone">�</span></div>
+            <div class="rpt-meta-item"><span class="rpt-meta-label">العميل</span><span class="rpt-meta-val" id="m-name">—</span></div>
+            <div class="rpt-meta-item"><span class="rpt-meta-label">الكود</span><span class="rpt-meta-val" id="m-code">—</span></div>
+            <div class="rpt-meta-item"><span class="rpt-meta-label">الجوال</span><span class="rpt-meta-val ltr" id="m-phone">—</span></div>
           </div>
 
           <div id="rpt-print-stats" class="rpt-print-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
-            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif" id="p-debit">�</div><div style="font-size:9px;color:#555;margin-top:2px">??????</div></div>
-            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a7f4b;font-family:DM Sans,sans-serif" id="p-credit">�</div><div style="font-size:9px;color:#555;margin-top:2px">??????</div></div>
-            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#c0392b;font-family:DM Sans,sans-serif" id="p-due">�</div><div style="font-size:9px;color:#555;margin-top:2px">???????</div></div>
-            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif" id="p-lines">�</div><div style="font-size:9px;color:#555;margin-top:2px">???????</div></div>
+            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif" id="p-debit">—</div><div style="font-size:9px;color:#555;margin-top:2px">المدين</div></div>
+            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a7f4b;font-family:DM Sans,sans-serif" id="p-credit">—</div><div style="font-size:9px;color:#555;margin-top:2px">الدائن</div></div>
+            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#c0392b;font-family:DM Sans,sans-serif" id="p-due">—</div><div style="font-size:9px;color:#555;margin-top:2px">المستحق</div></div>
+            <div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif" id="p-lines">—</div><div style="font-size:9px;color:#555;margin-top:2px">الحركات</div></div>
           </div>
 
           <table class="rpt-table">
             <thead>
               <tr>
-                <th>???????</th>
-                <th>?????</th>
-                <th>?????</th>
-                <th>??????</th>
-                <th>????</th>
-                <th>????</th>
-                <th>??????</th>
+                <th>التاريخ</th>
+                <th>النوع</th>
+                <th>الكود</th>
+                <th>البيان</th>
+                <th>مدين</th>
+                <th>دائن</th>
+                <th>الرصيد</th>
               </tr>
             </thead>
             <tbody id="print-tbody">
-              <tr><td colspan="7" style="text-align:center;padding:24px;color:#888">???? ?????? ???? ?????</td></tr>
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:#888">اختر عميلاً لعرض الكشف</td></tr>
             </tbody>
           </table>
           <div class="rpt-footer-line">
-            <span>LiftCore � ??????? ?????? ???????</span>
+            <span>LiftCore — الإدارة الذكية للمصاعد</span>
             <span id="footer-date"></span>
-            <span>??? ???? ????</span>
+            <span>كشف حساب عميل</span>
           </div>
         </div>
       </div>
@@ -358,22 +358,22 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th>???????</th>
-                <th>?????</th>
-                <th>?????</th>
-                <th>??????</th>
-                <th>????</th>
-                <th>????</th>
-                <th>??????</th>
+                <th>التاريخ</th>
+                <th>النوع</th>
+                <th>الكود</th>
+                <th>البيان</th>
+                <th>مدين</th>
+                <th>دائن</th>
+                <th>الرصيد</th>
               </tr>
             </thead>
             <tbody id="report-tbody">
-              <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">???? ?????? ???? ?????</td></tr>
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">اختر عميلاً لعرض الكشف</td></tr>
             </tbody>
           </table>
         </div>
         <div class="table-footer">
-          <span class="table-info" id="table-info">�</span>
+          <span class="table-info" id="table-info">—</span>
         </div>
       </div>
     </div>
@@ -385,10 +385,10 @@ const PRESELECT = {{ selected_id|tojson }};
 let LAST_DATA = null;
 
 const _now = new Date();
-const _days = ['?????','???????','????????','????????','??????','??????','?????'];
-const _months = ['?????','??????','????','?????','????','?????','?????','?????','??????','??????','??????','??????'];
+const _days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const _months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 var hDateEl = document.getElementById('h-date');
-if (hDateEl) hDateEl.textContent = `${_days[_now.getDay()]}? ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} � `;
+if (hDateEl) hDateEl.textContent = `${_days[_now.getDay()]}، ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} — `;
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 
@@ -399,7 +399,7 @@ function money(n) {
   return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtD(s) {
-  if (!s) return '�';
+  if (!s) return '—';
   const p = String(s).slice(0, 10).split('-');
   if (p.length !== 3) return esc(s);
   return p[2] + '/' + p[1] + '/' + p[0];
@@ -408,7 +408,7 @@ function setText(id, v) { const el = document.getElementById(id); if (el) el.tex
 
 function buildRows(lines) {
   if (!lines.length) {
-    return '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888">?? ???? ????? ???? ??????</td></tr>';
+    return '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888">لا توجد حركات لهذا العميل</td></tr>';
   }
   return lines.map(function (r) {
     return '<tr>' +
@@ -416,8 +416,8 @@ function buildRows(lines) {
       '<td>' + esc(r.type) + '</td>' +
       '<td class="td-code">' + esc(r.code) + '</td>' +
       '<td>' + esc(r.description || '') + '</td>' +
-      '<td class="num">' + (r.debit ? money(r.debit) : '�') + '</td>' +
-      '<td class="num">' + (r.credit ? money(r.credit) : '�') + '</td>' +
+      '<td class="num">' + (r.debit ? money(r.debit) : '—') + '</td>' +
+      '<td class="num">' + (r.credit ? money(r.credit) : '—') + '</td>' +
       '<td class="num"><strong>' + money(r.balance) + '</strong></td>' +
     '</tr>';
   }).join('');
@@ -434,9 +434,9 @@ function renderStatement(data) {
   document.getElementById('btn-print-top').disabled = false;
   document.getElementById('btn-excel-top').disabled = false;
 
-  setText('m-name', data.customer_name || '�');
-  setText('m-code', data.customer_code || '�');
-  setText('m-phone', data.customer_phone || '�');
+  setText('m-name', data.customer_name || '—');
+  setText('m-code', data.customer_code || '—');
+  setText('m-phone', data.customer_phone || '—');
   setText('st-debit', money(data.total_debit));
   setText('st-credit', money(data.total_credit));
   setText('st-due', money(due));
@@ -445,8 +445,8 @@ function renderStatement(data) {
   setText('p-credit', money(data.total_credit));
   setText('p-due', money(due));
   setText('p-lines', String(lines.length));
-  setText('toolbar-title', '??? ???? � ' + (data.customer_name || ''));
-  setText('table-info', '??? ' + lines.length + ' ???? � ????? ' + money(due));
+  setText('toolbar-title', 'كشف حساب — ' + (data.customer_name || ''));
+  setText('table-info', 'عرض ' + lines.length + ' حركة · مستحق ' + money(due));
 
   document.getElementById('print-tbody').innerHTML = rows;
   document.getElementById('report-tbody').innerHTML = rows;
@@ -458,13 +458,13 @@ function renderStatement(data) {
   setText('footer-date', todayStr);
   var dateLine = (window.LiftCoreFormat && LiftCoreFormat.reportDateLine)
     ? LiftCoreFormat.reportDateLine(new Date())
-    : ('????? ???????: ' + todayStr);
-  setText('rpt-date-range', dateLine + (COMPANY && COMPANY.name ? ' � ' + COMPANY.name : ''));
+    : ('تاريخ التقرير: ' + todayStr);
+  setText('rpt-date-range', dateLine + (COMPANY && COMPANY.name ? ' · ' + COMPANY.name : ''));
 }
 
 async function loadStatement() {
   const id = document.getElementById('sel-client').value;
-  if (!id) { alert('???? ?????? ?????'); return; }
+  if (!id) { alert('اختر العميل أولاً'); return; }
   const url = new URL(window.location.href);
   url.searchParams.set('customer_id', id);
   history.replaceState({}, '', url);
@@ -473,24 +473,24 @@ async function loadStatement() {
     if (!res.ok) throw new Error('failed');
     renderStatement(await res.json());
   } catch (e) {
-    alert('????? ????? ??? ??????');
+    alert('تعذّر تحميل كشف الحساب');
   }
 }
 
 function exportExcel() {
-  if (!LAST_DATA) { alert('???? ????? ?????'); return; }
-  const rows = [['???????','?????','?????','??????','????','????','??????']];
+  if (!LAST_DATA) { alert('اعرض الكشف أولاً'); return; }
+  const rows = [['التاريخ','النوع','الكود','البيان','مدين','دائن','الرصيد']];
   (LAST_DATA.lines || []).forEach(function (r) {
     rows.push([r.date || '', r.type || '', r.code || '', r.description || '', r.debit || 0, r.credit || 0, r.balance || 0]);
   });
   rows.push([]);
-  rows.push(['?????? ??????', LAST_DATA.total_debit || 0]);
-  rows.push(['?????? ??????', LAST_DATA.total_credit || 0]);
-  rows.push(['?????? ???????', LAST_DATA.balance_due || 0]);
+  rows.push(['إجمالي المدين', LAST_DATA.total_debit || 0]);
+  rows.push(['إجمالي الدائن', LAST_DATA.total_credit || 0]);
+  rows.push(['الرصيد المستحق', LAST_DATA.balance_due || 0]);
   const csv = rows.map(function (r) { return r.join(','); }).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = '???_????_' + (LAST_DATA.customer_code || LAST_DATA.customer_id) + '.csv';
+  a.download = 'كشف_حساب_' + (LAST_DATA.customer_code || LAST_DATA.customer_id) + '.csv';
   a.click();
 }
 
@@ -502,12 +502,12 @@ document.addEventListener('DOMContentLoaded', function () {
   if (window.LiftCoreFormat && LiftCoreFormat.setReportDateEl) {
     LiftCoreFormat.setReportDateEl('rpt-date-range');
   } else {
-    setText('rpt-date-range', '????? ???????: ' + todayStr);
+    setText('rpt-date-range', 'تاريخ التقرير: ' + todayStr);
   }
 
   if (window.LcClientSelect) {
     LcClientSelect.upgradeSelect('sel-client', {
-      placeholder: '???? ?????? ?? ?????...',
+      placeholder: 'ابحث بالاسم أو الكود...',
       selectedId: PRESELECT || null,
       onChange: function () {
         var id = document.getElementById('sel-client');

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore � ????? ?????????</title>
+<title>LiftCore — تقرير الإيرادات</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -237,57 +237,57 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </nav>
 </aside>
 <div class="main">
-  {% set page_title = '????? ?????????' %}
+  {% set page_title = 'تقرير الإيرادات' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header screen-only">
-      <div class="page-title">????? ?????????</div>
+      <div class="page-title">تقرير الإيرادات</div>
       <div class="page-actions">
         <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>?????
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
         </button>
         <button class="btn btn-success btn-sm" onclick="exportExcel()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>????? Excel
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>تصدير Excel
         </button>
       </div>
     </div>
     <div class="filter-card screen-only" style="margin-bottom:20px">
       <div class="filter-row">
         <div class="field" style="flex:2">
-          <label>???</label>
-          <input type="text" id="f-search" placeholder="???..." oninput="filterTable()">
+          <label>بحث</label>
+          <input type="text" id="f-search" placeholder="بحث..." oninput="filterTable()">
         </div>
         <div class="field">
-          <label>??? ???????</label>
-          <select onchange="filterTable()"><option value="">????</option></select>
+          <label>نوع الإيراد</label>
+          <select onchange="filterTable()"><option value="">الكل</option></select>
         </div>
         <div class="field">
-          <label>????? ?????</label>
-          <select onchange="filterTable()"><option value="">????</option></select>
+          <label>طريقة الدفع</label>
+          <select onchange="filterTable()"><option value="">الكل</option></select>
         </div>
         <div class="field">
-          <label>??????</label>
-          <select onchange="filterTable()"><option value="">????</option></select>
+          <label>الحالة</label>
+          <select onchange="filterTable()"><option value="">الكل</option></select>
         </div>
         <div class="field">
-          <label>?? ?????</label>
+          <label>من تاريخ</label>
           <input type="date" lang="en-GB" id="f-from" oninput="filterTable()">
         </div>
         <div class="field">
-          <label>??? ?????</label>
+          <label>إلى تاريخ</label>
           <input type="date" lang="en-GB" id="f-to" oninput="filterTable()">
         </div>
       </div>
     </div>
     <div class="print-wrap">
       <div class="print-toolbar">
-        <span class="print-toolbar-title">????? ?????????</span>
+        <span class="print-toolbar-title">تقرير الإيرادات</span>
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>?????
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
           </button>
           <button class="btn btn-success btn-sm" onclick="exportExcel()">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>????? Excel
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>تصدير Excel
           </button>
         </div>
       </div>
@@ -297,47 +297,47 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <svg viewBox="0 0 24 24" fill="none" stroke="#1a4fa0" stroke-width="1.5" width="32" height="32"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       </div>
       <div class="rpt-header-center">
-        <h1>????? ?????????</h1>
+        <h1>تقرير الإيرادات</h1>
         <h2>Revenues Report</h2>
-        <p id="rpt-date-range">????? ???????: {}</p>
+        <p id="rpt-date-range">تاريخ التقرير: {}</p>
       </div>
       <div class="rpt-header-logo">
         <img src="{{ brand_logo_url }}" alt="LiftCore">
-        <div class="rpt-header-logo-sub">??????? ?????? ???????</div>
+        <div class="rpt-header-logo-sub">الإدارة الذكية للمصاعد</div>
       </div>
     </div>
-        <div id="rpt-print-stats" class="rpt-print-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">�</div><div style="font-size:9px;color:#555;margin-top:2px">?????? ?????????</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">�</div><div style="font-size:9px;color:#555;margin-top:2px">?????</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">�</div><div style="font-size:9px;color:#555;margin-top:2px">????</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">�</div><div style="font-size:9px;color:#555;margin-top:2px">??? ?????</div></div></div>
+        <div id="rpt-print-stats" class="rpt-print-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">إجمالي الإيرادات</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">محصّل</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">معلق</div></div><div style="border:1px solid #c5d0e6;border-radius:6px;padding:8px;text-align:center;background:#f5f8ff"><div style="font-size:18px;font-weight:700;color:#1a4fa0;font-family:DM Sans,sans-serif">—</div><div style="font-size:9px;color:#555;margin-top:2px">هذا الشهر</div></div></div>
         <table class="rpt-table">
-        <thead><tr><th>??? ???????</th><th>?????? / ?????</th><th>???????</th><th>??????</th><th>??? ???????</th><th>????? ?????</th><th>?????? (<span class="lc-sar" role="img" aria-label="????"></span>)</th><th>??????</th><th>?????</th></tr></thead>
-        <tbody id="print-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">???? ????? ????????...</td></tr></tbody>
+        <thead><tr><th>رقم العملية</th><th>العميل / العقد</th><th>التاريخ</th><th>البيان</th><th>نوع الإيراد</th><th>طريقة الدفع</th><th>المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)</th><th>الحالة</th><th>سجّله</th></tr></thead>
+        <tbody id="print-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
       </table>
         <div class="rpt-footer-line">
-          <span>LiftCore � ??????? ?????? ???????</span>
+          <span>LiftCore — الإدارة الذكية للمصاعد</span>
           <span id="footer-date"></span>
-          <span>????? ?????????</span>
+          <span>تقرير الإيرادات</span>
         </div>
       </div>
     </div>
-    <div class="rpt-stat-row screen-only" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">�</div><div class="rpt-stat-label">?????? ?????????</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">�</div><div class="rpt-stat-label">?????</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">�</div><div class="rpt-stat-label">????</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">�</div><div class="rpt-stat-label">??? ?????</div></div></div>
+    <div class="rpt-stat-row screen-only" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">إجمالي الإيرادات</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">محصّل</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">معلق</div></div><div class="rpt-stat-box"><div class="rpt-stat-val">—</div><div class="rpt-stat-label">هذا الشهر</div></div></div>
     <div class="table-wrap screen-only">
       <div class="table-scroll">
         <table>
-          <thead><tr><th>??? ???????</th><th>?????? / ?????</th><th>???????</th><th>??????</th><th>??? ???????</th><th>????? ?????</th><th>?????? (<span class="lc-sar" role="img" aria-label="????"></span>)</th><th>??????</th><th>?????</th></tr></thead>
-          <tbody id="report-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">???? ????? ????????...</td></tr></tbody>
+          <thead><tr><th>رقم العملية</th><th>العميل / العقد</th><th>التاريخ</th><th>البيان</th><th>نوع الإيراد</th><th>طريقة الدفع</th><th>المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)</th><th>الحالة</th><th>سجّله</th></tr></thead>
+          <tbody id="report-tbody"><tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text3)">جاري تحميل البيانات...</td></tr></tbody>
         </table>
       </div>
       <div class="table-footer">
-        <span class="table-info" id="table-info">??? 6 ???</span>
+        <span class="table-info" id="table-info">عرض 6 سجل</span>
       </div>
     </div>
   </div>
 </div>
 <script>
 const _now = new Date();
-const _days = ['?????','???????','????????','????????','??????','??????','?????'];
-const _months = ['?????','??????','????','?????','????','?????','?????','?????','??????','??????','??????','??????'];
+const _days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const _months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 var hDateEl = document.getElementById('h-date');
-if (hDateEl) hDateEl.textContent = `${_days[_now.getDay()]}? ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} � `;
+if (hDateEl) hDateEl.textContent = `${_days[_now.getDay()]}، ${_now.getDate()} ${_months[_now.getMonth()]} ${_now.getFullYear()} — `;
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').classList.add('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 function setLang(l){if(window.LiftCoreI18n&&window.LiftCoreI18n.setLang){window.LiftCoreI18n.setLang(l);return;}document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');var a=document.getElementById('btn-ar'),e=document.getElementById('btn-en');if(a)a.classList.toggle('active',l==='ar');if(e)e.classList.toggle('active',l==='en');}
@@ -357,10 +357,10 @@ function filterTable(){
     r.style.display = show ? '' : 'none';
     if(show) count++;
   });
-  document.getElementById('table-info').textContent = '??? ' + count + ' ???';
+  document.getElementById('table-info').textContent = 'عرض ' + count + ' سجل';
 }
 function exportExcel(){
-  const rows = [['??? ???????','?????? / ?????','???????','??????','??? ???????','????? ?????','?????? (<span class="lc-sar" role="img" aria-label="????"></span>)','??????']];
+  const rows = [['رقم العملية','العميل / العقد','التاريخ','البيان','نوع الإيراد','طريقة الدفع','المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>)','الحالة']];
   document.querySelectorAll('#report-tbody tr').forEach(r=>{
     if(r.style.display !== 'none'){
       rows.push([...r.querySelectorAll('td')].map(td=>td.textContent.trim()));
@@ -369,7 +369,7 @@ function exportExcel(){
   const csv = rows.map(r=>r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download = '?????_?????????.csv';
+  a.download = 'تقرير_الإيرادات.csv';
   a.click();
 }
 (function () {
@@ -393,6 +393,6 @@ function exportExcel(){
 window.__LC_REPORT_ROWS = {{ report_rows|tojson }};
 window.__LC_REPORT_ID = {{ report_id|tojson }};
 </script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=10"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=11"></script>
 </body>
 </html>

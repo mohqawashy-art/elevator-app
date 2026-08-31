@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore � ??????? ??????</title>
+<title>LiftCore — التقرير المالي</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -111,80 +111,80 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
 </aside>
 
 <div class="main">
-  {% set page_title = '??????? ??????' %}
+  {% set page_title = 'التقرير المالي' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
 
     <div class="page-header screen-only">
       <div>
-        <div class="page-title">??????? ??????</div>
-        <div class="page-subtitle" style="font-size:13px;color:var(--text3);margin-top:4px">???? ????????? ?????????? ????? ?????</div>
+        <div class="page-title">التقرير المالي</div>
+        <div class="page-subtitle" style="font-size:13px;color:var(--text3);margin-top:4px">ملخص الإيرادات والمصروفات لفترة محددة</div>
       </div>
       <div class="page-actions">
-        <a href="/reports" class="btn btn-secondary btn-sm">? ?? ????????</a>
-        <a href="{{ url_for('report_contract_forecast') }}" class="btn btn-secondary btn-sm">?????? ???????</a>
+        <a href="/reports" class="btn btn-secondary btn-sm">← كل التقارير</a>
+        <a href="{{ url_for('report_contract_forecast') }}" class="btn btn-secondary btn-sm">توقعات التحصيل</a>
       </div>
     </div>
 
     <div class="print-toolbar screen-only" id="fin-print-area">
       <div class="print-toolbar-filters">
-        <label>?? ?????</label>
+        <label>من تاريخ</label>
         <input type="date" lang="en-GB" id="date-from" class="filter-date lc-date-input" value="{{ default_date_from }}">
-        <label>??? ?????</label>
+        <label>إلى تاريخ</label>
         <input type="date" lang="en-GB" id="date-to" class="filter-date lc-date-input" value="{{ default_date_to }}">
-        <button class="btn btn-secondary btn-sm" type="button" onclick="loadFinancial()">???</button>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="loadFinancial()">عرض</button>
       </div>
       <button class="btn btn-secondary btn-sm" onclick="LiftCorePrint.report()">
-        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>?????
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5H1v7h12V5h-2M3 1h8v4H3z"/><path d="M3 9h8"/></svg>طباعة
       </button>
     </div>
 
     <div id="fin-report">
 
       <div class="sec-header">
-        <div class="sec-title">???? ?????? <span id="period-label" style="font-weight:400;color:var(--text3);font-size:13px"></span></div>
+        <div class="sec-title">ملخص الفترة <span id="period-label" style="font-weight:400;color:var(--text3);font-size:13px"></span></div>
       </div>
       <div class="fin-report-panel">
         <div class="stats-row stats-row-3">
           <div class="stat-card stat-card--hero">
-            <div class="stat-label">?????? ?????????</div>
-            <div class="stat-value green" id="period-rev-total">�</div>
+            <div class="stat-label">إجمالي الإيرادات</div>
+            <div class="stat-value green" id="period-rev-total">—</div>
           </div>
           <div class="stat-card stat-card--hero">
-            <div class="stat-label">?????? ?????????</div>
-            <div class="stat-value red" id="period-exp-total">�</div>
+            <div class="stat-label">إجمالي المصروفات</div>
+            <div class="stat-value red" id="period-exp-total">—</div>
           </div>
           <div class="stat-card stat-card--hero">
-            <div class="stat-label">???? ??????</div>
-            <div class="stat-value" id="period-net">�</div>
+            <div class="stat-label">صافي الفترة</div>
+            <div class="stat-value" id="period-net">—</div>
           </div>
         </div>
         <div class="stats-row stats-row-3">
           <div class="stat-card">
-            <div class="stat-label">?????? ???? ?????? ???????</div>
-            <div class="stat-value" id="period-rev-renewed">�</div>
+            <div class="stat-label">اجمالي قيمة العقود المجددة</div>
+            <div class="stat-value" id="period-rev-renewed">—</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">?????? ??????? ??? ?????? ???????? ????????</div>
-            <div class="stat-value blue" id="period-rev-parts">�</div>
+            <div class="stat-label">اجمالي ايرادات قطع الغيار والصيانة الخارجية</div>
+            <div class="stat-value blue" id="period-rev-parts">—</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">?????? ???? ?????? ???????</div>
-            <div class="stat-value gold" id="period-rev-new">�</div>
+            <div class="stat-label">اجمالي قيمة العقود الجديدة</div>
+            <div class="stat-value gold" id="period-rev-new">—</div>
           </div>
         </div>
         <div class="stats-row stats-row-3">
           <div class="stat-card">
-            <div class="stat-label">?????? ??????? ????????</div>
-            <div class="stat-value" id="period-exp-basic">�</div>
+            <div class="stat-label">اجمالي المصروف الاساسية</div>
+            <div class="stat-value" id="period-exp-basic">—</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">?????? ??????? ??????? ???? ??????</div>
-            <div class="stat-value" id="period-exp-parts">�</div>
+            <div class="stat-label">إجمالي مصروفات الصيانة وقطع الغيار</div>
+            <div class="stat-value" id="period-exp-parts">—</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">?????? ????????? ??????? ???????? ??????????</div>
-            <div class="stat-value" id="period-exp-other">�</div>
+            <div class="stat-label">اجمالي المصروفات النثرية والتأثيث والتجهيزات</div>
+            <div class="stat-value" id="period-exp-other">—</div>
           </div>
         </div>
       </div>
@@ -209,7 +209,7 @@ function formatPeriodLabel(from, to) {
   if (window.LiftCoreDates && LiftCoreDates.formatRange) {
     return LiftCoreDates.formatRange(from, to);
   }
-  return '?? ' + from + ' ??? ' + to;
+  return 'من ' + from + ' إلى ' + to;
 }
 
 function loadFinancial() {
@@ -226,7 +226,7 @@ function loadFinancial() {
       const net = Number(data.net) || 0;
 
       document.getElementById('period-label').textContent =
-        '� ' + formatPeriodLabel(data.date_from, data.date_to);
+        '— ' + formatPeriodLabel(data.date_from, data.date_to);
 
       setMoney('period-rev-total', rev.total);
       setMoney('period-exp-total', exp.total);
@@ -246,7 +246,7 @@ function loadFinancial() {
     })
     .catch(() => {
       document.getElementById('fin-report').innerHTML =
-        '<p style="text-align:center;padding:40px;color:var(--text3)">????? ????? ??????? ??????</p>';
+        '<p style="text-align:center;padding:40px;color:var(--text3)">تعذّر تحميل التقرير المالي</p>';
     });
 }
 
