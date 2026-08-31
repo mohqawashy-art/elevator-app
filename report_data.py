@@ -4,7 +4,18 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import extract, case
+from contract_cost_allocation import contract_duration_months, contract_planned_visits
 from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
+
+
+def _period_planned_visits(contract, months_in_period: int) -> float:
+    """حصة الفترة من إجمالي زيارات العقد.
+
+    ملاحظة: حقل visits_per_month في العقود يخزّن إجمالي الزيارات للعقد وليس المعدّل الشهري.
+    """
+    total = float(contract_planned_visits(contract))
+    duration = max(1, int(contract_duration_months(contract)))
+    return total * (max(1, int(months_in_period)) / duration)
 
 
 def get_report_clients(db, Customer, contract_display_status):
@@ -725,6 +736,7 @@ def _build_health_tips(
     visits_planned,
     active_contracts_count,
     avg_contract_value,
+    visits_basis_is_scheduled=False,
 ):
     """نصائح واقتراحات دائمة — تُبرز دائماً في التقرير."""
     tips = []
@@ -793,7 +805,12 @@ def _build_health_tips(
             'text': (
                 f'متوسط تكلفة الزيارة من مصروفات الصيانة المباشرة '
                 f'(محروقات + قطع غيار) ≈ {cost_visit:,.2f} ريال. '
-                f'الزيارات المكتملة: {visits_done} من المخطط {visits_planned}.'
+                f'الزيارات المكتملة: {visits_done}'
+                + (
+                    f' من المجدولة {visits_planned}.'
+                    if visits_basis_is_scheduled
+                    else f' من المخطط حسب العقود {visits_planned}.'
+                )
             ),
             'action': 'حسّن مسارات الفنيين وقلّل الزيارات غير الضرورية',
         })
@@ -817,7 +834,8 @@ def _build_health_tips(
             'category': 'تشغيل',
             'title': 'نقص في إنجاز الزيارات',
             'text': (
-                f'أُنجز {visits_done} زيارة فقط من أصل {visits_planned} مخططة في الفترة '
+                f'أُنجز {visits_done} زيارة فقط من أصل {visits_planned} '
+                f'{"مجدولة" if visits_basis_is_scheduled else "مخططة حسب العقود"} في الفترة '
                 f'({_round_money(visits_done / visits_planned * 100) if visits_planned else 0}%). '
                 'انخفاض الإنجاز يضعف جودة الخدمة ويزيد الأعطال لاحقاً.'
             ),
@@ -974,8 +992,10 @@ def get_financial_health_report(
             Elevator.status.in_(['نشط', 'تحت الصيانة'])
         ).count()
 
-    # زيارات مخططة تناسب طول الفترة (شهري × عدد الأشهر)
-    annual_visits_planned = sum((c.visits_per_month or 1) * months_in_period for c in active_contracts)
+    # زيارات مخططة للفترة = حصة تناسبية من إجمالي العقد (وليس visits_per_month × أشهر)
+    annual_visits_planned = int(round(sum(
+        _period_planned_visits(c, months_in_period) for c in active_contracts
+    )))
     contract_values = [_contract_forecast_amount(c) for c in active_contracts]
     elevator_values = []
     for c in active_contracts:
@@ -997,7 +1017,13 @@ def get_financial_health_report(
         MaintenanceVisit.visit_date <= dt,
         MaintenanceVisit.status == 'مكتملة',
     ).count()
-    visits_for_pricing = annual_visits_planned or visits_done or 1
+    # الإنجاز التشغيلي: المكتمل مقابل المجدول في النظام (وليس التزام العقد النظري فقط)
+    visits_scheduled = tenant_query(MaintenanceVisit).filter(
+        MaintenanceVisit.visit_date >= df,
+        MaintenanceVisit.visit_date <= dt,
+        ~MaintenanceVisit.status.in_(['ملغاة', 'ملغية']),
+    ).count()
+    visits_for_pricing = visits_done or annual_visits_planned or 1
 
     variable_cost = exp_buckets['fuel'] + exp_buckets['parts'] + exp_buckets.get('maint_ops', 0)
     # مصروفات الصيانة التشغيلية (مباشرة + أسطول + رواتب فنيين + مصاريف صيانة)
@@ -1086,7 +1112,7 @@ def get_financial_health_report(
     visits_per_elevator = []
     for c in active_contracts:
         n_elev = len(c.elevators) or 1
-        visits_period = (c.visits_per_month or 1) * months_in_period
+        visits_period = _period_planned_visits(c, months_in_period)
         visits_per_elevator.append(round(visits_period / n_elev, 1))
         contract_cost = cost_per_visit * visits_period + fixed_per_contract
         elevator_cost_estimates.append(contract_cost / n_elev)
@@ -1132,7 +1158,10 @@ def get_financial_health_report(
         maint=maintenance_costs,
         pricing=pricing,
         visits_done=visits_done,
-        visits_planned=annual_visits_planned,
+        visits_planned=(
+            visits_scheduled if visits_scheduled > 0 else annual_visits_planned
+        ),
+        visits_basis_is_scheduled=visits_scheduled > 0,
         active_contracts_count=len(active_contracts),
         avg_contract_value=avg_contract_value,
     )
