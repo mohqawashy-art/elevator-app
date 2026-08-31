@@ -614,6 +614,48 @@ def _month_keys_between(date_from: date, date_to: date) -> list[tuple[int, int]]
     return keys
 
 
+def _tenant_revenue_date_bounds(Revenue, today=None):
+    """أول تاريخ إيراد → اليوم (لتطابق إجمالي صفحة الإيرادات عند الفترة الكاملة)."""
+    from sqlalchemy import func
+
+    if today is None:
+        today = date.today()
+    min_date = tenant_query(Revenue).with_entities(func.min(Revenue.revenue_date)).scalar()
+    if min_date:
+        return min_date, today
+    return date(today.year, 1, 1), today
+
+
+def _monthly_totals_from_records(
+    records,
+    date_from: date,
+    date_to: date,
+    date_fn,
+    value_fn,
+):
+    """مجاميع شهرية من سجلات مفلترة بالمؤسسة — نفس منطق الجمع اليدوي."""
+    month_keys = _month_keys_between(date_from, date_to)
+    index = {k: i for i, k in enumerate(month_keys)}
+    result = [0.0] * len(month_keys)
+    multi_year = date_from.year != date_to.year
+    labels = [
+        f'{_MONTH_NAMES_AR[m - 1]} {y}' if multi_year else _MONTH_NAMES_AR[m - 1]
+        for y, m in month_keys
+    ]
+    for rec in records:
+        d = date_fn(rec)
+        if not d:
+            continue
+        if isinstance(d, datetime):
+            d = d.date()
+        if d < date_from or d > date_to:
+            continue
+        key = (d.year, d.month)
+        if key in index:
+            result[index[key]] = _round_money(result[index[key]] + value_fn(rec))
+    return labels, result
+
+
 def _period_monthly_totals(
     db, extract, func, date_from, date_to, date_col, value_col,
     exclude_cancelled=False, status_col=None,
@@ -884,37 +926,43 @@ def get_financial_health_report(
         year = int(year)
         df = date(year, 1, 1)
         dt = date(year, 12, 31)
-    if df is None:
-        df = date(today.year, 1, 1)
-    if dt is None:
-        dt = today
+    elif df is None and dt is None:
+        df, dt = _tenant_revenue_date_bounds(Revenue, today)
+    else:
+        if df is None:
+            df = date(today.year, 1, 1)
+        if dt is None:
+            dt = today
     if dt < df:
         df, dt = dt, df
 
     months_in_period = max(1, len(_month_keys_between(df, dt)))
 
-    month_labels, monthly_revenue = _period_monthly_totals(
-        db, extract, func, df, dt, Revenue.revenue_date, Revenue.total,
-        exclude_cancelled=True, status_col=Revenue.status,
+    period_revenues = _filter_revenues(Revenue, date_from=df, date_to=dt)
+    period_expenses = _filter_expenses(Expense, date_from=df, date_to=dt)
+    rev_summary = summarize_revenue_rows(period_revenues)
+    total_revenue = rev_summary['total']
+
+    month_labels, monthly_revenue = _monthly_totals_from_records(
+        period_revenues, df, dt,
+        lambda r: r.revenue_date,
+        lambda r: float(r.total or 0),
     )
-    _, monthly_expenses = _period_monthly_totals(
-        db, extract, func, df, dt, Expense.expense_date, Expense.amount,
+    _, monthly_expenses = _monthly_totals_from_records(
+        period_expenses, df, dt,
+        lambda e: e.expense_date,
+        lambda e: float(e.amount or 0),
     )
     monthly_profit = [
         _round_money(monthly_revenue[i] - monthly_expenses[i])
         for i in range(len(monthly_revenue))
     ]
 
-    total_revenue = _round_money(sum(monthly_revenue))
-    total_expenses = _round_money(sum(monthly_expenses))
+    total_expenses = _round_money(sum(float(e.amount or 0) for e in period_expenses))
     net_profit = _round_money(total_revenue - total_expenses)
     margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
     health_text, health_level = _health_label(margin_pct, net_profit)
 
-    period_expenses = tenant_query(Expense).filter(
-        Expense.expense_date >= df,
-        Expense.expense_date <= dt,
-    ).all()
     exp_buckets = _expense_buckets(period_expenses)
 
     tech_salaries_annual = _round_money(sum(
@@ -1144,6 +1192,7 @@ def get_financial_health_report(
         'period_label': period_label,
         'summary': {
             'revenue': total_revenue,
+            'revenue_count': rev_summary['count'],
             'expenses': total_expenses,
             'profit': net_profit,
             'margin_pct': margin_pct,

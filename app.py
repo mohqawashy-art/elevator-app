@@ -12373,11 +12373,14 @@ def report_contract_forecast():
 
 @app.route('/reports/financial-health')
 def report_financial_health():
+    from report_data import _tenant_revenue_date_bounds
+
     today = date.today()
+    df, dt = _tenant_revenue_date_bounds(Revenue, today)
     return render_template(
         'report-financial-health.html',
-        default_from=date(today.year, 1, 1).isoformat(),
-        default_to=today.isoformat(),
+        default_from=df.isoformat(),
+        default_to=dt.isoformat(),
     )
 
 
