@@ -8685,14 +8685,58 @@ def api_run_plan():
     preview = str(data.get('preview', '')).lower() in ('1', 'true', 'yes')
     confirmed = str(data.get('confirmed', '')).lower() in ('1', 'true', 'yes')
     replace = bool(data.get('replace'))
+    max_per_day = data.get('max_per_day')
+    try:
+        max_per_day = int(max_per_day) if max_per_day not in (None, '') else None
+    except (TypeError, ValueError):
+        max_per_day = None
+    draft_visits = data.get('draft_visits')
+    if not isinstance(draft_visits, list):
+        draft_visits = None
     if preview:
-        return jsonify(preview_full_plan(year, month, replace_draft=replace))
+        return jsonify(preview_full_plan(
+            year, month, replace_draft=replace, max_per_day=max_per_day,
+        ))
     if not confirmed:
-        return jsonify({'error': 'اعرض معاينة الخطة ثم اضغط «تشغيل الخطة»'}), 400
-    result = run_full_plan(year, month, replace_draft=replace)
+        return jsonify({'error': 'راجع المسودة ثم اضغط «اعتماد الخطة»'}), 400
+    result = run_full_plan(
+        year, month, replace_draft=replace, max_per_day=max_per_day, draft_visits=draft_visits,
+    )
     if result.get('error'):
         return jsonify(result), 400
     return jsonify(result)
+
+
+@app.route('/api/maintenance/plan/update-visit', methods=['POST'])
+def api_plan_update_visit():
+    """تعديل تاريخ زيارة ضمن الخطة (للزيارات المجدولة فقط)."""
+    from operations import get_plan
+    from work_calendar import work_day_validation_error
+
+    data = request.get_json(silent=True) or {}
+    visit_id = data.get('visit_id')
+    visit_date = (data.get('visit_date') or '').strip()[:10]
+    if not visit_id or not visit_date:
+        return jsonify({'error': 'visit_id وتاريخ الزيارة مطلوبان'}), 400
+    v = tenant_get_or_404(MaintenanceVisit, int(visit_id))
+    if v.status not in ('مجدولة', 'مُرسلة للفني'):
+        return jsonify({'error': 'لا يمكن تعديل زيارة مكتملة أو ملغية من هنا'}), 400
+    try:
+        d = date.fromisoformat(visit_date)
+    except ValueError:
+        return jsonify({'error': 'تاريخ غير صالح'}), 400
+    err = work_day_validation_error(d)
+    if err and not data.get('force'):
+        return jsonify({'error': err, 'need_force': True}), 400
+    v.visit_date = d
+    if data.get('route_order') is not None:
+        try:
+            v.route_order = int(data.get('route_order'))
+        except (TypeError, ValueError):
+            pass
+    db.session.commit()
+    ym = v.plan_month or d.strftime('%Y-%m')
+    return jsonify(get_plan(ym) | {'updated_id': v.id})
 
 
 @app.route('/api/maintenance/cancel-plan', methods=['POST'])

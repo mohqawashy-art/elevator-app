@@ -108,10 +108,14 @@ def _build_summary_ar(
     return lines
 
 
-def preview_full_plan(year: int, month: int, *, replace_draft: bool = False) -> dict:
+def preview_full_plan(
+    year: int, month: int, *, replace_draft: bool = False, max_per_day: int | None = None,
+) -> dict:
     plan_month = f'{year}-{month:02d}'
     readiness = get_plan_readiness(plan_month)
-    gen = generate_monthly_plan(year, month, replace_draft=replace_draft, preview_only=True)
+    gen = generate_monthly_plan(
+        year, month, replace_draft=replace_draft, preview_only=True, max_per_day=max_per_day,
+    )
     dist = distribute_plan_to_teams(plan_month, preview_only=True) if readiness['teams_ready'] else {
         'error': 'لا توجد فرق صيانة نشطة',
         'would_assign': 0,
@@ -132,19 +136,33 @@ def preview_full_plan(year: int, month: int, *, replace_draft: bool = False) -> 
         'readiness': readiness,
         'generate': gen,
         'distribute': dist,
+        'draft_visits': gen.get('draft_visits') or [],
+        'max_per_day': gen.get('max_per_day') or max_per_day or MAX_VISITS_PER_TEAM_DAY,
         'would_distribute_total': readiness['unassigned_visits'] + would_create,
         'can_confirm': can_run,
         'summary_lines': _build_summary_ar(plan_month, readiness, gen, dist, after_confirm=False),
     }
 
 
-def run_full_plan(year: int, month: int, *, replace_draft: bool = False) -> dict:
+def run_full_plan(
+    year: int, month: int, *, replace_draft: bool = False, max_per_day: int | None = None,
+    draft_visits: list | None = None,
+) -> dict:
     plan_month = f'{year}-{month:02d}'
     readiness = get_plan_readiness(plan_month)
     if not readiness['teams_ready']:
         return {'error': 'لا توجد فرق صيانة — أنشئ فرقاً من الفنيين ← فرق الصيانة ثم أعد المحاولة'}
 
-    gen = generate_monthly_plan(year, month, replace_draft=replace_draft, preview_only=False)
+    if draft_visits:
+        from operations import create_plan_from_draft
+        gen = create_plan_from_draft(plan_month, draft_visits, replace_draft=True)
+        if gen.get('error'):
+            return gen
+    else:
+        gen = generate_monthly_plan(
+            year, month, replace_draft=replace_draft, preview_only=False, max_per_day=max_per_day,
+        )
+
     dist = distribute_plan_to_teams(plan_month, preview_only=False)
     if dist.get('error'):
         gen['team_distribution_error'] = dist['error']

@@ -559,35 +559,55 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   </div>
 </div>
 
-<!-- PLAN MODAL — مبسّط وواضح -->
+<!-- PLAN MODAL — معاينة ثم اعتماد -->
 <div class="modal-overlay" id="modal-plan">
-  <div class="modal" style="max-width:960px;width:96vw;max-height:92vh">
+  <div class="modal" style="max-width:980px;width:96vw;max-height:92vh">
     <div class="modal-head">
       <div class="modal-title">تخطيط الشهر</div>
       <button class="modal-close" onclick="closeModal('modal-plan')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body" style="overflow-y:auto;max-height:calc(92vh - 120px)">
       <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px">
-        اختر الشهر ثم أنشئ الخطة. النظام يوزّع زيارة لكل مصعد على أيام العمل ويعيّن الفرق تلقائياً.
+        تظهر المسودة أولاً مرتّبة جغرافياً (تقريب خط السير). راجعها وعدّلها ثم اعتمد الإنشاء.
       </p>
 
-      <div class="field" style="margin-bottom:14px">
-        <label>الشهر</label>
-        <input type="month" id="plan-month" value="{{ plan_default_month }}" style="direction:ltr;max-width:220px" onchange="onPlanMonthChange()">
-        <p id="plan-month-hint" style="font-size:11px;color:var(--text3);margin-top:6px"></p>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px">
+        <div class="field" style="margin:0">
+          <label>الشهر</label>
+          <input type="month" id="plan-month" value="{{ plan_default_month }}" style="direction:ltr;min-width:160px" onchange="onPlanMonthChange()">
+        </div>
+        <div class="field" style="margin:0">
+          <label>حد الزيارات / اليوم</label>
+          <select id="plan-max-per-day" onchange="reloadPlanDraft()" style="min-width:100px">
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6" selected>6</option>
+            <option value="8">8</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="reloadPlanDraft()">تحديث المسودة</button>
+      </div>
+      <p id="plan-month-hint" style="font-size:11px;color:var(--text3);margin:-6px 0 12px"></p>
+
+      <div id="plan-readiness-box" style="margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);font-size:13px;line-height:1.7"></div>
+      <div id="plan-full-preview-box" style="margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(42,127,255,.25);background:rgba(42,127,255,.06);font-size:13px;line-height:1.7">جاري تحميل المسودة...</div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <button class="btn btn-primary" type="button" id="btn-create-month-plan" disabled onclick="confirmDraftPlan()">اعتماد الخطة وإنشاؤها</button>
+        <button class="btn btn-secondary" type="button" onclick="cancelPlan()">إلغاء الخطة الحالية</button>
       </div>
 
-      <div id="plan-readiness-box" style="margin-bottom:14px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);font-size:13px;line-height:1.7"></div>
-      <div id="plan-full-preview-box" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(31,184,122,.3);background:rgba(31,184,122,.08);font-size:13px;line-height:1.7"></div>
-
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-        <button class="btn btn-primary" type="button" id="btn-create-month-plan" onclick="createMonthPlan()">إنشاء خطة الشهر</button>
-        <button class="btn btn-secondary" type="button" onclick="cancelPlan()">إلغاء الخطة</button>
+      <div id="plan-draft-wrap" style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <div style="font-size:14px;font-weight:600">مسودة الخطة <span id="plan-draft-count" style="color:var(--text3);font-weight:500"></span></div>
+          <div style="font-size:11px;color:var(--text3)">يمكنك تغيير التاريخ أو حذف صف قبل الاعتماد</div>
+        </div>
+        <div id="plan-districts" style="max-height:min(440px,46vh);overflow:auto"></div>
       </div>
 
       <div id="plan-summary" style="font-size:13px;color:var(--text2);margin-bottom:8px"></div>
       <div id="plan-tech-summary" style="font-size:12px;margin-bottom:12px"></div>
-      <div id="plan-districts" style="margin-bottom:16px;max-height:min(420px,42vh);overflow:auto"></div>
 
       <div style="padding-top:12px;border-top:1px solid var(--border)">
         <div style="font-size:13px;font-weight:600;margin-bottom:8px">إرسال خط السير (واتساب)</div>
@@ -616,7 +636,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         · لزيارة واحدة: استخدم «إضافة زيارة» من الصفحة.
       </p>
 
-      <!-- عناصر مخفية للتوافق مع الدوال القديمة -->
       <div style="display:none" aria-hidden="true">
         <div id="plan-panel-auto"></div>
         <div id="plan-panel-manual"></div>
@@ -1037,49 +1056,129 @@ function openPlanModal() {
   renderDispatchTeamSelect();
   loadPlanReadiness();
   loadPlan();
+  reloadPlanDraft();
 }
 
-function createMonthPlan() {
+let PLAN_DRAFT = [];
+let PLAN_DRAFT_META = null;
+
+function planMaxPerDay() {
+  var el = document.getElementById('plan-max-per-day');
+  var n = el ? parseInt(el.value, 10) : 6;
+  return isNaN(n) ? 6 : n;
+}
+
+function reloadPlanDraft() {
+  const ym = planMonth();
+  const box = document.getElementById('plan-full-preview-box');
+  const btn = document.getElementById('btn-create-month-plan');
+  if (!ym) return;
+  if (box) box.innerHTML = 'جاري تحضير المسودة...';
+  if (btn) { btn.disabled = true; }
+  fetchPlanApi('/api/maintenance/run-plan', {
+    plan_month: ym,
+    preview: true,
+    max_per_day: planMaxPerDay(),
+    replace: true,
+  })
+    .then(function (data) {
+      PLAN_DRAFT_META = data;
+      var gen = data.generate || {};
+      PLAN_DRAFT = (data.draft_visits || gen.draft_visits || []).map(function (r, i) {
+        return Object.assign({}, r, { _key: String(r.elevator_id) + ':' + i });
+      });
+      renderDraftSummary(data);
+      renderPlanDistricts();
+      if (btn) btn.disabled = !(data.can_confirm && PLAN_DRAFT.length);
+    })
+    .catch(function (err) {
+      if (box) box.innerHTML = '<span style="color:var(--danger)">' + escHtml(err.message || err) + '</span>';
+      PLAN_DRAFT = [];
+      renderPlanDistricts();
+      if (btn) btn.disabled = true;
+    });
+}
+
+function renderDraftSummary(data) {
+  const box = document.getElementById('plan-full-preview-box');
+  if (!box) return;
+  var gen = (data && data.generate) || {};
+  var lines = (data && data.summary_lines) || [];
+  var html = '<strong>معاينة المسودة — لم يُنشأ شيء بعد</strong><br>';
+  lines.forEach(function (line) { html += escHtml(line) + '<br>'; });
+  html += '<span style="color:var(--text3)">الترتيب حسب القرب الجغرافي (تقريب خط السير). عدّل التاريخ أو احذف صفاً ثم اعتمد.</span>';
+  box.innerHTML = html;
+  box.style.display = 'block';
+  var cnt = document.getElementById('plan-draft-count');
+  if (cnt) cnt.textContent = '(' + PLAN_DRAFT.length + ' زيارة)';
+}
+
+function confirmDraftPlan() {
   const ym = planMonth();
   if (!ym) { alert('اختر الشهر أولاً'); return; }
+  if (!PLAN_DRAFT.length) { alert('لا توجد مسودة للاعتماد'); return; }
   const btn = document.getElementById('btn-create-month-plan');
-  if (btn) { btn.disabled = true; btn.textContent = 'جاري التحضير...'; }
-  const previewBox = document.getElementById('plan-full-preview-box');
-  fetchPlanApi('/api/maintenance/run-plan', { plan_month: ym, preview: true })
+  var msg = 'اعتماد خطة ' + formatMonthLabel(ym) + '؟\n\n';
+  msg += '• زيارات في المسودة: ' + PLAN_DRAFT.length + '\n';
+  msg += '• حد اليوم: ' + planMaxPerDay() + '\n\n';
+  msg += 'ستُنشأ الزيارات وتُوزَّع على الفرق. لن يُرسل واتساب تلقائياً.';
+  if (!confirm(msg)) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'جاري الاعتماد...'; }
+  var payload = PLAN_DRAFT.map(function (r, i) {
+    return {
+      elevator_id: r.elevator_id,
+      contract_id: r.contract_id || null,
+      visit_date: r.visit_date,
+      route_order: r.route_order || (i + 1),
+      district: r.district || '',
+    };
+  });
+  fetchPlanApi('/api/maintenance/run-plan', {
+    plan_month: ym,
+    confirmed: true,
+    replace: true,
+    max_per_day: planMaxPerDay(),
+    draft_visits: payload,
+  })
     .then(function (data) {
-      const gen = data.generate || {};
-      const n = gen.would_create ?? 0;
-      const distN = data.would_distribute_total ?? n;
-      let msg = 'إنشاء خطة ' + formatMonthLabel(ym) + '؟\n\n';
-      msg += '• زيارات جديدة: ' + n + '\n';
-      msg += '• تُوزَّع على الفرق: نحو ' + distN + '\n\n';
-      msg += 'لن يُرسل واتساب تلقائياً.';
-      if (previewBox) {
-        let html = '<strong>معاينة سريعة</strong><br>';
-        (data.summary_lines || []).forEach(function (line) { html += escHtml(line) + '<br>'; });
-        previewBox.innerHTML = html;
-        previewBox.style.display = 'block';
-      }
-      if (n <= 0 && !data.can_confirm) {
-        alert((data.summary_lines || []).join('\n') || 'لا توجد زيارات جديدة لإنشائها في هذا الشهر.');
-        return;
-      }
-      if (!confirm(msg)) return null;
-      if (btn) btn.textContent = 'جاري الإنشاء...';
-      return fetchPlanApi('/api/maintenance/run-plan', { plan_month: ym, confirmed: true });
-    })
-    .then(function (data) {
-      if (!data) return;
       applyPlanData(data);
       loadPlanReadiness();
       refreshVisitsFromServer(ym);
-      const lines = (data.summary_lines || []).join('\n');
-      alert(lines || ('تم — أُنشئ ' + (data.created || 0) + ' زيارة ووُزِّعت على الفرق.'));
+      PLAN_DRAFT = [];
+      PLAN_DRAFT_META = null;
+      var box = document.getElementById('plan-full-preview-box');
+      if (box) {
+        box.innerHTML = '<strong>تم اعتماد الخطة</strong> — يمكنك تعديل تواريخ الزيارات أدناه.';
+      }
+      renderPlanDistricts();
+      var lines = (data.summary_lines || []).join('\n');
+      alert(lines || ('تم الاعتماد — أُنشئ ' + (data.created || 0) + ' زيارة.'));
+      loadPlan();
     })
     .catch(function (err) { alert(err.message || err); })
     .finally(function () {
-      if (btn) { btn.disabled = false; btn.textContent = 'إنشاء خطة الشهر'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'اعتماد الخطة وإنشاؤها'; }
     });
+}
+
+function createMonthPlan() {
+  reloadPlanDraft();
+}
+
+function removeDraftRow(key) {
+  PLAN_DRAFT = PLAN_DRAFT.filter(function (r) { return r._key !== key; });
+  var btn = document.getElementById('btn-create-month-plan');
+  if (btn) btn.disabled = !PLAN_DRAFT.length;
+  var cnt = document.getElementById('plan-draft-count');
+  if (cnt) cnt.textContent = '(' + PLAN_DRAFT.length + ' زيارة)';
+  renderPlanDistricts();
+}
+
+function changeDraftDate(key, newDate) {
+  PLAN_DRAFT.forEach(function (r) {
+    if (r._key === key) r.visit_date = newDate;
+  });
+  renderPlanDistricts();
 }
 
 function refreshMaintenanceTeams() {
@@ -1151,6 +1250,7 @@ function onPlanMonthChange() {
   updatePlanMonthHint();
   loadPlanReadiness();
   loadPlan();
+  reloadPlanDraft();
 }
 
 function syncPlanMonthFromWork() {
@@ -1714,48 +1814,93 @@ function planVisitCustomerName(v) {
 function renderPlanDistricts() {
   const el = document.getElementById('plan-districts');
   if (!el) return;
-  if (!PLAN_VISITS.length) {
-    el.innerHTML = '<p style="font-size:13px;color:var(--text3)">لا توجد زيارات في هذه الخطة بعد. اضغط «إنشاء خطة الشهر».</p>';
-    return;
-  }
-  const byDate = {};
-  PLAN_VISITS.forEach(function (v) {
-    const day = v.visit_date || 'غير محدد';
-    if (!byDate[day]) byDate[day] = [];
-    byDate[day].push(v);
-  });
-  const sortedDays = Object.keys(byDate).sort();
-  el.innerHTML =
-    '<div style="font-size:14px;font-weight:600;margin-bottom:10px">جدول الخطة — ' + PLAN_VISITS.length + ' زيارة</div>' +
-    sortedDays.map(function (day) {
-      const visits = byDate[day].slice().sort(function (a, b) {
-        var ca = planVisitCustomerName(a).localeCompare(planVisitCustomerName(b), 'ar');
-        if (ca) return ca;
-        return String(a.elevator || '').localeCompare(String(b.elevator || ''), undefined, { numeric: true });
+
+  var modal = document.getElementById('modal-plan');
+  var showDraft = modal && modal.classList.contains('open') && PLAN_DRAFT && PLAN_DRAFT.length;
+
+  if (showDraft) {
+    var byDate = {};
+    PLAN_DRAFT.forEach(function (v) {
+      var day = v.visit_date || 'غير محدد';
+      if (!byDate[day]) byDate[day] = [];
+      byDate[day].push(v);
+    });
+    var sortedDays = Object.keys(byDate).sort();
+    var bounds = monthBounds(planMonth());
+    el.innerHTML = sortedDays.map(function (day) {
+      var visits = byDate[day].slice().sort(function (a, b) {
+        return (a.route_order || 0) - (b.route_order || 0);
       });
-      const rows = visits.map(function (v) {
+      var rows = visits.map(function (v, idx) {
         var cust = planVisitCustomerName(v);
-        var elev = (v.elevator || '—');
-        var bld = (v.building || '').trim();
-        var team = (v.team || v.technician || '— بدون فريق —');
-        return '<div style="display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(70px,.5fr) minmax(120px,1fr) minmax(110px,.8fr);gap:10px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);font-size:13px">' +
-          '<div style="font-weight:600;color:var(--text1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(cust) + '">' + escHtml(cust) + '</div>' +
+        var elev = v.elevator || '—';
+        var bld = (v.building || '').trim() || '—';
+        var order = v.route_order || (idx + 1);
+        return '<div style="display:grid;grid-template-columns:40px minmax(150px,1.3fr) 70px minmax(110px,.9fr) 140px 70px;gap:8px;align-items:center;padding:8px 8px;border-bottom:1px solid var(--border);font-size:13px">' +
+          '<div style="color:var(--accent);font-weight:700;font-family:var(--font-en)">' + order + '</div>' +
+          '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(cust) + '">' + escHtml(cust) + '</div>' +
           '<div style="font-family:var(--font-en);direction:ltr;color:var(--accent);font-weight:600">' + escHtml(elev) + '</div>' +
-          '<div style="color:var(--text2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(bld || '—') + '">' + escHtml(bld || '—') + '</div>' +
-          '<div style="color:var(--text3);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(team) + '</div>' +
+          '<div style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(bld) + '">' + escHtml(bld) + '</div>' +
+          '<div><input type="date" lang="en-GB" value="' + escHtml(v.visit_date || '') + '" min="' + bounds.from + '" max="' + bounds.to + '" style="direction:ltr;width:100%;font-size:12px;padding:4px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text1)" onchange="changeDraftDate(\'' + escHtml(v._key) + '\', this.value)"></div>' +
+          '<div><button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px" onclick="removeDraftRow(\'' + escHtml(v._key) + '\')">حذف</button></div>' +
         '</div>';
       }).join('');
-      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">' +
-        '<div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">' +
-          '<strong style="font-size:13px">' + escHtml(formatPlanDayLabel(day)) + '</strong>' +
-          '<span style="font-size:12px;color:var(--text3)">' + visits.length + ' زيارة</span>' +
-        '</div>' +
-        '<div style="display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(70px,.5fr) minmax(120px,1fr) minmax(110px,.8fr);gap:10px;padding:0 10px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
-          '<span>العميل</span><span>المصعد</span><span>المبنى</span><span>الفريق</span>' +
-        '</div>' +
-        rows +
-      '</div>';
+      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>' + escHtml(formatPlanDayLabel(day)) + '</strong><span style="color:var(--text3);font-size:12px">' + visits.length + ' زيارة · ترتيب خط السير</span></div>' +
+        '<div style="display:grid;grid-template-columns:40px minmax(150px,1.3fr) 70px minmax(110px,.9fr) 140px 70px;gap:8px;padding:0 8px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
+          '<span>#</span><span>العميل</span><span>المصعد</span><span>المبنى</span><span>التاريخ</span><span></span>' +
+        '</div>' + rows + '</div>';
     }).join('');
+    return;
+  }
+
+  if (!PLAN_VISITS.length) {
+    if (modal && modal.classList.contains('open')) {
+      el.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:8px">' +
+        (PLAN_DRAFT_META ? 'لا توجد زيارات في المسودة لهذا الشهر (قد تكون الخطة موجودة مسبقاً أو لا توجد عقود).' : 'جاري تحميل المسودة...') +
+        '</p>';
+    } else {
+      el.innerHTML = '<p style="font-size:13px;color:var(--text3)">لا توجد زيارات في هذه الخطة بعد.</p>';
+    }
+    return;
+  }
+  var byDate2 = {};
+  PLAN_VISITS.forEach(function (v) {
+    var day = v.visit_date || 'غير محدد';
+    if (!byDate2[day]) byDate2[day] = [];
+    byDate2[day].push(v);
+  });
+  var days2 = Object.keys(byDate2).sort();
+  var bounds2 = monthBounds(planMonth());
+  el.innerHTML =
+    '<div style="font-size:14px;font-weight:600;margin-bottom:10px">الخطة المعتمدة — ' + PLAN_VISITS.length + ' زيارة</div>' +
+    days2.map(function (day) {
+      var visits = byDate2[day].slice().sort(function (a, b) {
+        return (a.route_order || 0) - (b.route_order || 0);
+      });
+      var rows = visits.map(function (v) {
+        var cust = planVisitCustomerName(v);
+        return '<div style="display:grid;grid-template-columns:minmax(160px,1.3fr) 70px minmax(110px,1fr) minmax(120px,.9fr) 140px;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border);font-size:13px">' +
+          '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(cust) + '</div>' +
+          '<div style="font-family:var(--font-en);direction:ltr;color:var(--accent);font-weight:600">' + escHtml(v.elevator || '—') + '</div>' +
+          '<div style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(v.building || '—') + '</div>' +
+          '<div style="color:var(--text3);font-size:12px">' + escHtml(v.team || v.technician || '—') + '</div>' +
+          '<div><input type="date" lang="en-GB" value="' + escHtml(v.visit_date || '') + '" min="' + bounds2.from + '" max="' + bounds2.to + '" style="direction:ltr;width:100%;font-size:12px;padding:4px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text1)" onchange="updateSavedVisitDate(' + v.id + ', this.value)"></div>' +
+        '</div>';
+      }).join('');
+      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>' + escHtml(formatPlanDayLabel(day)) + '</strong><span style="color:var(--text3);font-size:12px">' + visits.length + ' زيارة</span></div>' +
+        '<div style="display:grid;grid-template-columns:minmax(160px,1.3fr) 70px minmax(110px,1fr) minmax(120px,.9fr) 140px;gap:8px;padding:0 8px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
+          '<span>العميل</span><span>المصعد</span><span>المبنى</span><span>الفريق</span><span>التاريخ</span>' +
+        '</div>' + rows + '</div>';
+    }).join('');
+}
+
+function updateSavedVisitDate(visitId, newDate) {
+  if (!visitId || !newDate) return;
+  fetchPlanApi('/api/maintenance/plan/update-visit', { visit_id: visitId, visit_date: newDate })
+    .then(function (data) { applyPlanData(data); })
+    .catch(function (err) { alert(err.message || err); loadPlan(); });
 }
 
 function assignSelectedVisits(btn, andDispatch) {

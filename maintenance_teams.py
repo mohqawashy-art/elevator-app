@@ -75,6 +75,40 @@ def item_coordinates(item: dict) -> tuple[float, float] | None:
     return None
 
 
+def order_items_nearest_neighbor(items: list, coords_fn) -> list:
+    """ترتيب تقريبي لخط السير: أقرب جار جغرافياً (greedy)."""
+    if len(items) <= 1:
+        return list(items)
+    remaining = list(items)
+    start_i = 0
+    best_key = None
+    for i, it in enumerate(remaining):
+        c = coords_fn(it)
+        if not c:
+            continue
+        key = (c[0], c[1])
+        if best_key is None or key < best_key:
+            best_key = key
+            start_i = i
+    ordered = [remaining.pop(start_i)]
+    while remaining:
+        last = ordered[-1]
+        lc = coords_fn(last)
+        best_i = 0
+        best_d = float('inf')
+        for i, it in enumerate(remaining):
+            c = coords_fn(it)
+            if not lc or not c:
+                d = 1e9
+            else:
+                d = haversine_km(lc[0], lc[1], c[0], c[1])
+            if d < best_d:
+                best_d = d
+                best_i = i
+        ordered.append(remaining.pop(best_i))
+    return ordered
+
+
 def cluster_by_geography(
     items: list,
     *,
