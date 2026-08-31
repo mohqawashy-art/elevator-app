@@ -245,7 +245,7 @@ def _revenue_total(revenue):
 
 def _classify_revenue(revenue_type):
     rt = (revenue_type or '').strip()
-    if rt in ('عقد جديد', 'عقد تركيب') or ('جديد' in rt and 'عقد' in rt):
+    if rt in ('عقد جديد', 'عقد تركيب', 'عقد تحديث') or ('جديد' in rt and 'عقد' in rt):
         return 'new'
     if 'قطع غيار' in rt or rt in ('زيارة', 'أعمال إضافية', 'بيع قطع غيار'):
         return 'parts'

@@ -88,7 +88,7 @@ DEFAULT_CHART: list[tuple] = [
     ('4120', 'تجديد عقود', 'Contract Renewals', 'revenue', '4100', 'revenue:تجديد عقد', True, 4120),
     ('4200', 'إيراد التركيب والتحديث', 'Installation & Modernization', 'revenue', '4000', None, False, 4200),
     ('4210', 'تركيب مصاعد جديدة', 'New Elevator Installation', 'revenue', '4200', 'revenue:عقد جديد', True, 4210),
-    ('4220', 'تحديث وتطوير مصاعد', 'Elevator Modernization', 'revenue', '4200', None, True, 4220),
+    ('4220', 'تحديث وتطوير مصاعد', 'Elevator Modernization', 'revenue', '4200', 'revenue:عقد تحديث', True, 4220),
     ('4300', 'إيراد القطع والأعمال', 'Parts & Extra Works', 'revenue', '4000', None, False, 4300),
     ('4310', 'مبيعات قطع غيار', 'Spare Parts Sales', 'revenue', '4300', 'revenue:قطع غيار', True, 4310),
     ('4320', 'أعمال إضافية وأعطال خارج العقد', 'Extra Works & Out-of-contract Faults', 'revenue', '4300', 'revenue:أعمال إضافية', True, 4320),
@@ -145,6 +145,10 @@ _REVENUE_TYPE_ALIASES = {
     'الدفعات المستحقة': 'revenue:تجديد عقد',
     'دفعات مستحقة': 'revenue:تجديد عقد',
     'عقد جديد': 'revenue:عقد جديد',
+    'عقد تركيب': 'revenue:عقد جديد',
+    'تركيب': 'revenue:عقد جديد',
+    'عقد تحديث': 'revenue:عقد تحديث',
+    'تحديث': 'revenue:عقد تحديث',
     'ضمان': 'revenue:عقد صيانة',
     'قطع غيار': 'revenue:قطع غيار',
     'بيع قطع غيار': 'revenue:قطع غيار',
@@ -186,9 +190,14 @@ def ensure_chart_for_org(organization_id: int | None) -> int:
     if existing:
         # أكمل الحسابات الناقصة فقط (لا تكرر)
         added = 0
+        map_keys_patched = 0
         code_to_id = {c: a.id for c, a in existing.items()}
         for code, name, name_en, atype, parent_code, map_key, postable, sort in DEFAULT_CHART:
             if code in existing:
+                acc = existing[code]
+                if map_key and not (acc.map_key or '').strip():
+                    acc.map_key = map_key
+                    map_keys_patched += 1
                 continue
             parent_id = code_to_id.get(parent_code) if parent_code else None
             acc = Account(
@@ -209,7 +218,7 @@ def ensure_chart_for_org(organization_id: int | None) -> int:
             code_to_id[code] = acc.id
             existing[code] = acc
             added += 1
-        if added:
+        if added or map_keys_patched:
             db.session.commit()
         return added
 

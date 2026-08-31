@@ -440,12 +440,30 @@ function isRenewalRevenueType(rt) {
   return t === 'تجديد عقد' || t === 'الدفعات المستحقة' || t === 'عقد صيانة';
 }
 
+function isNewContractRevenueType(rt) {
+  const t = String(rt || '').trim();
+  return t === 'عقد جديد' || t === 'عقد تركيب' || t === 'عقد تحديث';
+}
+
+function revenueTypeForPendingOp(op) {
+  if (!op) return 'زيارة';
+  if (op.source_type === 'invoice') return 'عقد جديد';
+  if (op.source_type === 'parts_billing') return 'قطع غيار';
+  if (op.source_type === 'contract') {
+    const t = String(op.title || '');
+    if (t.indexOf('تركيب') >= 0) return 'عقد تركيب';
+    if (t.indexOf('تحديث') >= 0) return 'عقد تحديث';
+    return 'الدفعات المستحقة';
+  }
+  return REV_TYPE_BY_SOURCE[op.source_type] || 'زيارة';
+}
+
 function updateStats() {
   const sum = (rows) => rows.reduce((s, r) => s + r.total, 0);
   const cnt = (rows) => (window.LiftCoreDisplay ? LiftCoreDisplay.fmtTransactionsCount(rows.length) : rows.length + ' عملية');
   const renewal = REVENUES.filter(r => isRenewalRevenueType(r.revenue_type));
   const parts = REVENUES.filter(r => (r.revenue_type || '').includes('قطع غيار'));
-  const newContracts = REVENUES.filter(r => r.revenue_type === 'عقد جديد');
+  const newContracts = REVENUES.filter(r => isNewContractRevenueType(r.revenue_type));
   setText('s-total', sum(REVENUES).toLocaleString('ar-SA'));
   setText('s-total-sub', cnt(REVENUES));
   setText('s-renewal', sum(renewal).toLocaleString('ar-SA'));
@@ -565,7 +583,7 @@ function rowMatchesStatCard(r, kind) {
   if (!kind || kind === 'all') return true;
   if (kind === 'renewal') return isRenewalRevenueType(r.revenue_type);
   if (kind === 'parts') return String(r.revenue_type || '').includes('قطع غيار');
-  if (kind === 'new') return r.revenue_type === 'عقد جديد';
+  if (kind === 'new') return isNewContractRevenueType(r.revenue_type);
   if (kind === 'pending') return !['محصّل', 'محصل'].includes(r.status);
   return true;
 }
@@ -719,7 +737,7 @@ function applyPendingOpFields(op) {
   document.getElementById('f-source-type').value = op.source_type;
   document.getElementById('f-source-id').value = op.source_id;
   document.getElementById('f-contract-id').value = op.contract_id || '';
-  const revType = REV_TYPE_BY_SOURCE[op.source_type] || 'زيارة';
+  const revType = revenueTypeForPendingOp(op);
   const rt = document.getElementById('f-rev-type');
   if (rt) rt.value = revType;
   const ref = document.getElementById('f-reference');

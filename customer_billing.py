@@ -15,13 +15,15 @@ COLLECTED_REVENUE_STATUSES = ('محصّل', 'محصل', 'مدفوع', 'مدفو�
 UNPAID_INVOICE_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً']
 PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل', 'محصل']
 UNPAID_PARTS_STATUSES = ('غير محصل', 'معلقة', 'بانتظار موافقة العميل', 'بانتظار التوريد')
-CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد', 'مستحق')
+CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد', 'مستحق', 'تركيب', 'تحديث')
 
 REVENUE_TYPE_OPTIONS = [
     'تجديد عقد',
     'الدفعات المستحقة',
     'عقد جديد',
     'عقد صيانة',
+    'عقد تركيب',
+    'عقد تحديث',
     'قطع غيار',
     'بيع قطع غيار',
     'زيارة',
@@ -275,6 +277,16 @@ SOURCE_REVENUE_TYPES = {
     'invoice': 'عقد جديد',
     'parts_billing': 'قطع غيار',
 }
+
+
+def revenue_type_for_contract(contract: Contract) -> str:
+    """نوع الإيراد عند تحصيل متبقي عقد — يفرّق صيانة عن تركيب/تحديث."""
+    ct = (getattr(contract, 'contract_type', None) or '').strip()
+    if 'تركيب' in ct:
+        return 'عقد تركيب'
+    if 'تحديث' in ct:
+        return 'عقد تحديث'
+    return SOURCE_REVENUE_TYPES['contract']
 
 
 def invoice_remaining(inv: Invoice) -> float:
@@ -826,7 +838,7 @@ def apply_payment_to_source(
             'contract_id': c.id,
             'invoice_id': None,
             'parts_billing_id': None,
-            'revenue_type': SOURCE_REVENUE_TYPES['contract'],
+            'revenue_type': revenue_type_for_contract(c),
             'reference_note': f'تحصيل عقد {c.code}',
         }
 
@@ -1007,7 +1019,8 @@ def customer_financial_totals(revenues, parts, invoices) -> dict:
         invoice_extra.append(inv)
 
     contract_rev_types = (
-        'عقد صيانة', 'عقد ضمان', 'عقد تركيب', 'تجديد عقد', 'عقد جديد', 'صيانة',
+        'عقد صيانة', 'عقد ضمان', 'عقد تركيب', 'عقد تحديث',
+        'تجديد عقد', 'الدفعات المستحقة', 'عقد جديد', 'صيانة',
     )
     contract_payments = sum(
         r.total or 0 for r in revenues

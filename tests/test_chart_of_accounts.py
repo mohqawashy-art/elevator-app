@@ -62,6 +62,13 @@ def test_resolve_revenue_and_expense_map_keys(client):
         due_id = resolve_revenue_account_id('الدفعات المستحقة')
         assert due_id == renew_id
 
+        install_id = resolve_revenue_account_id('عقد تركيب')
+        assert install_id == resolve_revenue_account_id('عقد جديد')
+
+        upgrade_id = resolve_revenue_account_id('عقد تحديث')
+        upgrade = db.session.get(Account, upgrade_id)
+        assert upgrade and upgrade.code == '4220'
+
         prior_id = resolve_revenue_account_id('عقد صيانة', 'تحصيل مالك سابق — قبل استلام جما')
         prior = db.session.get(Account, prior_id)
         assert prior and prior.code == '4910'
