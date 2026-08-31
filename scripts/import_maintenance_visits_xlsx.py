@@ -82,7 +82,7 @@ def _map_status(raw: str) -> str:
     s = _str(raw)
     if not s:
         return 'مجدولة'
-    if 'مكتمل' in s:
+    if 'مكتمل' in s or 'اصلاح' in s or 'إصلاح' in s or 'تم ال' in s:
         return 'مكتملة'
     if 'ملغ' in s:
         return 'ملغية'
@@ -97,6 +97,10 @@ def _map_status(raw: str) -> str:
 
 def _map_visit_type(raw: str) -> str:
     s = _str(raw)
+    if 'متابعة' in s or 'مرجعة' in s:
+        return 'زيارة متابعة'
+    if 'دور' in s:
+        return 'صيانة دورية'
     return s or 'صيانة دورية'
 
 
@@ -265,7 +269,7 @@ def import_visits(
         contract = _lookup(contracts, cn_code) if cn_code else None
         technician = _lookup(technicians, tech_code) if tech_code else None
 
-        visit_type = 'صيانة دورية'
+        visit_type = _map_visit_type(row[6] if len(row) > 6 else '')
         status = 'مكتملة' if force_completed else _map_status(row[9] if len(row) > 9 else '')
         if force_completed:
             status = 'مكتملة'
