@@ -44,6 +44,8 @@ lc_git() {
   shift
   git -c "safe.directory=$app_dir" -C "$app_dir" "$@"
 }
+
+lc_fix_platform_env_perms() {
   local platform_env="${1:-/etc/liftcore/platform.env}"
   local run_user="${SUDO_USER:-$USER}"
 
