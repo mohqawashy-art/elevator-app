@@ -112,12 +112,10 @@ def get_report_faults(db, Fault):
 
 
 def get_report_revenues(db, Revenue, year=None, month=None):
-    if year is None:
-        year = datetime.now().year
     q = tenant_query(Revenue)
-    if year:
+    if year is not None:
         q = q.filter(extract('year', Revenue.revenue_date) == int(year))
-    if month:
+    if month is not None:
         q = q.filter(extract('month', Revenue.revenue_date) == int(month))
     revs = q.order_by(Revenue.revenue_date.desc()).all()
     return [{
@@ -137,12 +135,10 @@ def get_report_revenues(db, Revenue, year=None, month=None):
 
 
 def get_report_expenses(db, Expense, year=None, month=None):
-    if year is None:
-        year = datetime.now().year
     q = tenant_query(Expense)
-    if year:
+    if year is not None:
         q = q.filter(extract('year', Expense.expense_date) == int(year))
-    if month:
+    if month is not None:
         q = q.filter(extract('month', Expense.expense_date) == int(month))
     exps = q.order_by(Expense.expense_date.desc()).all()
     return [{

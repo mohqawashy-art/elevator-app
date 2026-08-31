@@ -379,8 +379,12 @@ function hookReportPagination(reset) {
         ];
       case 'report-revenues': {
         var totalRev = sumField('total');
-        var collected = data.filter(function (r) { return r.status === 'محصّل'; }).reduce(function (s, r) { return s + (r.total || 0); }, 0);
-        var pending = data.filter(function (r) { return r.status === 'معلق'; }).reduce(function (s, r) { return s + (r.total || 0); }, 0);
+        var collected = data.filter(function (r) {
+          return isCollectedRevenueStatus(r.status);
+        }).reduce(function (s, r) { return s + (r.total || 0); }, 0);
+        var pending = data.filter(function (r) {
+          return isPendingRevenueStatus(r.status);
+        }).reduce(function (s, r) { return s + (r.total || 0); }, 0);
         return [
           fmtNum(totalRev) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>',
           fmtNum(collected) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>',
@@ -500,12 +504,23 @@ function hookReportPagination(reset) {
     }
   }
 
+  function isCollectedRevenueStatus(status) {
+    var s = String(status || '').trim();
+    return s === 'محصّل' || s === 'محصل' || s === 'مدفوع' || s === 'مدفوعة';
+  }
+
+  function isPendingRevenueStatus(status) {
+    var s = String(status || '').trim();
+    return s === 'معلق' || s === 'غير محصّل' || s === 'غير محصل';
+  }
+
   function passesFieldFilter(id, actual) {
     var sel = document.getElementById(id);
     if (!sel) return true;
-    if (global.lcAllows) return global.lcAllows(sel, actual);
+    var actualNorm = String(actual == null ? '' : actual).trim();
+    if (global.lcAllows) return global.lcAllows(sel, actualNorm);
     if (!sel.value) return true;
-    return String(actual) === String(sel.value);
+    return actualNorm === String(sel.value).trim();
   }
 
   function rowPassesFilters(reportId, row) {

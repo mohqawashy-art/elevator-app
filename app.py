@@ -13399,16 +13399,20 @@ def api_report_faults():
 @app.route('/api/reports/revenues')
 def api_report_revenues():
     from report_data import get_report_revenues
-    year = request.args.get('year', datetime.now().year)
-    month = request.args.get('month', '') or None
+    year_raw = request.args.get('year')
+    month_raw = request.args.get('month')
+    year = int(year_raw) if year_raw else None
+    month = int(month_raw) if month_raw else None
     return jsonify(get_report_revenues(db, Revenue, year=year, month=month))
 
 
 @app.route('/api/reports/expenses')
 def api_report_expenses():
     from report_data import get_report_expenses
-    year = request.args.get('year', datetime.now().year)
-    month = request.args.get('month', '') or None
+    year_raw = request.args.get('year')
+    month_raw = request.args.get('month')
+    year = int(year_raw) if year_raw else None
+    month = int(month_raw) if month_raw else None
     return jsonify(get_report_expenses(db, Expense, year=year, month=month))
 
 
