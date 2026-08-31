@@ -201,13 +201,21 @@ def load_rows(path: str) -> list[tuple]:
     return out
 
 
-def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = True) -> dict:
+def import_visits(
+    path: str,
+    *,
+    dry_run: bool = False,
+    skip_existing: bool = True,
+    force_completed: bool = True,
+    update_existing: bool = False,
+) -> dict:
     from tenant_scope import assign_organization
 
     rows = load_rows(path)
     stats = {
         'rows': len(rows),
         'imported': 0,
+        'updated': 0,
         'skipped_existing': 0,
         'skipped_missing': 0,
         'skipped_fault': 0,
@@ -218,7 +226,14 @@ def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
     elevators = _build_index(Elevator, 'EL')
     contracts = _build_index(Contract, 'CN')
     technicians = _build_index(Technician, 'Tech')
-    existing_visits = {v.code.upper() for v in MaintenanceVisit.query.all() if v.code}
+    existing_by_code = {
+        (v.code or '').upper(): v
+        for v in MaintenanceVisit.query.all()
+        if v.code
+    }
+
+    # ترتيب خط السير داخل كل يوم
+    day_route: dict[str, int] = {}
 
     for row in rows:
         visit_type_raw = _visit_type_cell(row)
@@ -236,25 +251,59 @@ def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
             stats['errors'] += 1
             continue
 
-        if skip_existing and visit_code.upper() in existing_visits:
-            stats['skipped_existing'] += 1
-            continue
+        day_key = str(visit_date)
+        day_route[day_key] = day_route.get(day_key, 0) + 1
+        route_order = day_route[day_key]
 
         elevator = _lookup(elevators, el_code)
         if not elevator:
             stats['skipped_missing'] += 1
-            if len(missing_samples) < 15:
+            if len(missing_samples) < 20:
                 missing_samples.append(f'{visit_code}: مصعد {el_code} غير موجود')
             continue
 
         contract = _lookup(contracts, cn_code) if cn_code else None
         technician = _lookup(technicians, tech_code) if tech_code else None
 
-        visit_type = _map_visit_type(row[6] if len(row) > 6 else '')
-        status = _map_status(row[9] if len(row) > 9 else '')
-        visit_time = _str(row[8] if len(row) > 8 else '')
+        visit_type = 'صيانة دورية'
+        status = 'مكتملة' if force_completed else _map_status(row[9] if len(row) > 9 else '')
+        if force_completed:
+            status = 'مكتملة'
+        visit_time = _str(row[8] if len(row) > 8 else '') or None
         notes = _compose_notes(row)
         plan_month = visit_date.strftime('%Y-%m')
+        works = _str(row[10] if len(row) > 10 else '')
+        observations = _str(row[16] if len(row) > 16 else '')
+
+        existing = existing_by_code.get(visit_code.upper())
+        if existing:
+            if update_existing:
+                if dry_run:
+                    stats['updated'] += 1
+                    continue
+                existing.contract_id = contract.id if contract else existing.contract_id
+                existing.elevator_id = elevator.id
+                if technician:
+                    existing.technician_id = technician.id
+                existing.visit_type = visit_type
+                existing.visit_date = visit_date
+                existing.visit_time = visit_time
+                existing.status = status
+                existing.plan_month = plan_month
+                existing.route_order = route_order
+                if works:
+                    existing.works_done = works
+                if observations:
+                    existing.observations = observations
+                if notes:
+                    existing.notes = notes
+                if status == 'مكتملة' and not existing.completed_at:
+                    existing.completed_at = datetime.utcnow()
+                stats['updated'] += 1
+                continue
+            if skip_existing:
+                stats['skipped_existing'] += 1
+                continue
 
         if dry_run:
             stats['imported'] += 1
@@ -270,20 +319,22 @@ def import_visits(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
             visit_time=visit_time,
             status=status,
             plan_month=plan_month,
-            works_done=_str(row[10] if len(row) > 10 else ''),
-            observations=_str(row[16] if len(row) > 16 else ''),
+            route_order=route_order,
+            works_done=works or None,
+            observations=observations or None,
             notes=notes or None,
             completed_at=datetime.utcnow() if status == 'مكتملة' else None,
         )
         assign_organization(visit)
         db.session.add(visit)
-        existing_visits.add(visit_code.upper())
+        existing_by_code[visit_code.upper()] = visit
         stats['imported'] += 1
 
     if not dry_run:
         db.session.commit()
 
     stats['missing_samples'] = missing_samples
+    stats['plan_days'] = len(day_route)
     return stats
 
 
@@ -292,7 +343,11 @@ def main() -> int:
     parser.add_argument('xlsx', help='Path to Excel file')
     parser.add_argument('--slug', default='jama', help='Organization slug')
     parser.add_argument('--dry-run', action='store_true', help='Preview only')
-    parser.add_argument('--force', action='store_true', help='Import even if visit code exists')
+    parser.add_argument('--force', action='store_true', help='Import even if visit code exists (create duplicate risk)')
+    parser.add_argument('--update-existing', action='store_true',
+                        help='Update existing visit codes instead of skipping')
+    parser.add_argument('--keep-status', action='store_true',
+                        help='Keep Excel status instead of forcing مكتملة')
     args = parser.parse_args()
 
     if not os.path.isfile(args.xlsx):
@@ -310,33 +365,39 @@ def main() -> int:
             return 1
         g.organization = org
         g.organization_id = org.id
-        print(f'Tenant: {org.name} ({org.slug})')
+        print(f'Tenant: {org.name} ({org.slug}) id={org.id}')
 
         result = import_visits(
             args.xlsx,
             dry_run=args.dry_run,
             skip_existing=not args.force,
+            force_completed=not args.keep_status,
+            update_existing=args.update_existing,
         )
         print(f"Rows in file: {result['rows']}")
         if args.dry_run:
-            print(f"Dry run: would import {result['imported']}")
+            print(f"Dry run: would import {result['imported']} / update {result['updated']}")
         else:
             print(f"Imported: {result['imported']}")
+            print(f"Updated: {result['updated']}")
         print(f"Skipped (existing): {result['skipped_existing']}")
-        print(f"Skipped (missing elevator/contract): {result['skipped_missing']}")
-        print(f"Skipped (non-routine / faults bucket): {result['skipped_fault']}")
+        print(f"Skipped (missing elevator): {result['skipped_missing']}")
+        print(f"Skipped (non-routine / faults): {result['skipped_fault']}")
         print(f"Errors: {result['errors']}")
-        print('\n=== النتيجة — زيارات الصيانة ===')
+        print(f"Plan days organized: {result.get('plan_days', 0)}")
+        print('\n=== النتيجة — زيارات الصيانة الدورية ===')
         print(f"  مستوردة: {result['imported']}")
+        print(f"  محدّثة: {result['updated']}")
         print(f"  موجودة مسبقاً: {result['skipped_existing']}")
-        print(f"  مصعد/عقد ناقص: {result['skipped_missing']}")
-        print(f"  صفوف أعطال (تُستورد لاحقاً): {result['skipped_fault']}")
+        print(f"  مصعد ناقص: {result['skipped_missing']}")
         if result.get('missing_samples'):
             print('Missing samples:')
             for line in result['missing_samples']:
                 print(' ', line)
         if not args.dry_run:
             print('  visits in tenant:', MaintenanceVisit.query.filter_by(organization_id=org.id).count())
+            done = MaintenanceVisit.query.filter_by(organization_id=org.id, status='مكتملة').count()
+            print('  completed in tenant:', done)
     return 0
 
 
