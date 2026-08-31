@@ -79,12 +79,18 @@ def _build_summary_ar(
         )
         if clusters:
             lines.append(
-                f'   تجميع جغرافي: {clusters} مجموعة — حتى {gen.get("max_per_cluster", MAX_VISITS_PER_TEAM_DAY)} مصعد/مجموعة/يوم'
+                f'   تجميع جغرافي: {clusters} مجموعة — حد {gen.get("max_per_day", MAX_VISITS_PER_TEAM_DAY)} زيارة/يوم'
             )
+        if gen.get('district_filter'):
+            lines.append(f'   فلتر المنطقة: {gen["district_filter"]}')
+        peak = gen.get('peak_day_visits')
+        if peak is not None:
+            lines.append(f'   أقصى زيارات في يوم واحد بالمسودة: {peak}')
         pending_after = readiness['unassigned_visits'] + would_create
+        cap = gen.get('max_per_day') or MAX_VISITS_PER_TEAM_DAY
         lines.append(
             f'سيُوزَّع بعد التأكيد: نحو {pending_after} زيارة '
-            f'(حد {MAX_VISITS_PER_TEAM_DAY}/فريق/يوم — نطاق ~{DEFAULT_CLUSTER_RADIUS_KM} كم)'
+            f'(حد التخطيط {cap}/يوم — نطاق ~{DEFAULT_CLUSTER_RADIUS_KM} كم)'
         )
         if readiness['coords_missing'] and pending_after:
             lines.append(
@@ -110,11 +116,13 @@ def _build_summary_ar(
 
 def preview_full_plan(
     year: int, month: int, *, replace_draft: bool = False, max_per_day: int | None = None,
+    district: str | None = None,
 ) -> dict:
     plan_month = f'{year}-{month:02d}'
     readiness = get_plan_readiness(plan_month)
     gen = generate_monthly_plan(
-        year, month, replace_draft=replace_draft, preview_only=True, max_per_day=max_per_day,
+        year, month, replace_draft=replace_draft, preview_only=True,
+        max_per_day=max_per_day, district=district,
     )
     dist = distribute_plan_to_teams(plan_month, preview_only=True) if readiness['teams_ready'] else {
         'error': 'لا توجد فرق صيانة نشطة',
@@ -138,6 +146,8 @@ def preview_full_plan(
         'distribute': dist,
         'draft_visits': gen.get('draft_visits') or [],
         'max_per_day': gen.get('max_per_day') or max_per_day or MAX_VISITS_PER_TEAM_DAY,
+        'district_filter': gen.get('district_filter'),
+        'available_districts': gen.get('available_districts') or [],
         'would_distribute_total': readiness['unassigned_visits'] + would_create,
         'can_confirm': can_run,
         'summary_lines': _build_summary_ar(plan_month, readiness, gen, dist, after_confirm=False),
@@ -147,6 +157,7 @@ def preview_full_plan(
 def run_full_plan(
     year: int, month: int, *, replace_draft: bool = False, max_per_day: int | None = None,
     draft_visits: list | None = None,
+    district: str | None = None,
 ) -> dict:
     plan_month = f'{year}-{month:02d}'
     readiness = get_plan_readiness(plan_month)
@@ -160,7 +171,8 @@ def run_full_plan(
             return gen
     else:
         gen = generate_monthly_plan(
-            year, month, replace_draft=replace_draft, preview_only=False, max_per_day=max_per_day,
+            year, month, replace_draft=replace_draft, preview_only=False,
+            max_per_day=max_per_day, district=district,
         )
 
     dist = distribute_plan_to_teams(plan_month, preview_only=False)

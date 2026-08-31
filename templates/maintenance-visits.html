@@ -577,6 +577,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <input type="month" id="plan-month" value="{{ plan_default_month }}" style="direction:ltr;min-width:160px" onchange="onPlanMonthChange()">
         </div>
         <div class="field" style="margin:0">
+          <label>المنطقة</label>
+          <select id="plan-district" onchange="reloadPlanDraft()" style="min-width:180px;max-width:260px">
+            <option value="">كل المناطق</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0">
           <label>حد الزيارات / اليوم</label>
           <select id="plan-max-per-day" onchange="reloadPlanDraft()" style="min-width:100px">
             <option value="4">4</option>
@@ -1054,6 +1060,7 @@ function openPlanModal() {
   initDispatchDate();
   refreshMaintenanceTeams();
   renderDispatchTeamSelect();
+  fillPlanDistrictOptions(PLAN_DISTRICTS);
   loadPlanReadiness();
   loadPlan();
   reloadPlanDraft();
@@ -1068,6 +1075,26 @@ function planMaxPerDay() {
   return isNaN(n) ? 6 : n;
 }
 
+function planDistrictFilter() {
+  var el = document.getElementById('plan-district');
+  return el && el.value ? el.value : '';
+}
+
+function fillPlanDistrictOptions(list) {
+  var sel = document.getElementById('plan-district');
+  if (!sel) return;
+  var current = sel.value || '';
+  var districts = (list && list.length) ? list.slice() : (PLAN_DISTRICTS || []).slice();
+  districts = districts.filter(Boolean).sort();
+  sel.innerHTML = '<option value="">كل المناطق</option>' +
+    districts.map(function (d) {
+      return '<option value="' + escHtml(d) + '"' + (d === current ? ' selected' : '') + '>' + escHtml(d) + '</option>';
+    }).join('');
+  if (current && !districts.some(function (d) { return d === current; })) {
+    sel.value = '';
+  }
+}
+
 function reloadPlanDraft() {
   const ym = planMonth();
   const box = document.getElementById('plan-full-preview-box');
@@ -1075,15 +1102,23 @@ function reloadPlanDraft() {
   if (!ym) return;
   if (box) box.innerHTML = 'جاري تحضير المسودة...';
   if (btn) { btn.disabled = true; }
-  fetchPlanApi('/api/maintenance/run-plan', {
+  var payload = {
     plan_month: ym,
     preview: true,
     max_per_day: planMaxPerDay(),
     replace: true,
-  })
+  };
+  var dist = planDistrictFilter();
+  if (dist) payload.district = dist;
+  fetchPlanApi('/api/maintenance/run-plan', payload)
     .then(function (data) {
       PLAN_DRAFT_META = data;
       var gen = data.generate || {};
+      fillPlanDistrictOptions(data.available_districts || gen.available_districts || PLAN_DISTRICTS);
+      if (dist) {
+        var sel = document.getElementById('plan-district');
+        if (sel) sel.value = dist;
+      }
       PLAN_DRAFT = (data.draft_visits || gen.draft_visits || []).map(function (r, i) {
         return Object.assign({}, r, { _key: String(r.elevator_id) + ':' + i });
       });
@@ -1106,6 +1141,12 @@ function renderDraftSummary(data) {
   var lines = (data && data.summary_lines) || [];
   var html = '<strong>معاينة المسودة — لم يُنشأ شيء بعد</strong><br>';
   lines.forEach(function (line) { html += escHtml(line) + '<br>'; });
+  var maxDay = planMaxPerDay();
+  var peak = gen.peak_day_visits != null ? gen.peak_day_visits : null;
+  if (peak != null) {
+    html += '<span style="color:' + (peak > maxDay ? 'var(--danger)' : 'var(--text3)') + '">حد اليوم المختار: ' + maxDay +
+      ' — أقصى يوم في المسودة: ' + peak + '</span><br>';
+  }
   html += '<span style="color:var(--text3)">الترتيب حسب القرب الجغرافي (تقريب خط السير). عدّل التاريخ أو احذف صفاً ثم اعتمد.</span>';
   box.innerHTML = html;
   box.style.display = 'block';
@@ -1836,19 +1877,20 @@ function renderPlanDistricts() {
         var elev = v.elevator || '—';
         var bld = (v.building || '').trim() || '—';
         var order = v.route_order || (idx + 1);
-        return '<div style="display:grid;grid-template-columns:40px minmax(150px,1.3fr) 70px minmax(110px,.9fr) 140px 70px;gap:8px;align-items:center;padding:8px 8px;border-bottom:1px solid var(--border);font-size:13px">' +
+        return '<div style="display:grid;grid-template-columns:40px minmax(150px,1.3fr) 70px minmax(110px,.9fr) minmax(90px,.7fr) 140px 70px;gap:8px;align-items:center;padding:8px 8px;border-bottom:1px solid var(--border);font-size:13px">' +
           '<div style="color:var(--accent);font-weight:700;font-family:var(--font-en)">' + order + '</div>' +
           '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(cust) + '">' + escHtml(cust) + '</div>' +
           '<div style="font-family:var(--font-en);direction:ltr;color:var(--accent);font-weight:600">' + escHtml(elev) + '</div>' +
           '<div style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(bld) + '">' + escHtml(bld) + '</div>' +
+          '<div style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(v.district || '') + '">' + escHtml(v.district || '—') + '</div>' +
           '<div><input type="date" lang="en-GB" value="' + escHtml(v.visit_date || '') + '" min="' + bounds.from + '" max="' + bounds.to + '" style="direction:ltr;width:100%;font-size:12px;padding:4px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text1)" onchange="changeDraftDate(\'' + escHtml(v._key) + '\', this.value)"></div>' +
           '<div><button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px" onclick="removeDraftRow(\'' + escHtml(v._key) + '\')">حذف</button></div>' +
         '</div>';
       }).join('');
       return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">' +
-        '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>' + escHtml(formatPlanDayLabel(day)) + '</strong><span style="color:var(--text3);font-size:12px">' + visits.length + ' زيارة · ترتيب خط السير</span></div>' +
-        '<div style="display:grid;grid-template-columns:40px minmax(150px,1.3fr) 70px minmax(110px,.9fr) 140px 70px;gap:8px;padding:0 8px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
-          '<span>#</span><span>العميل</span><span>المصعد</span><span>المبنى</span><span>التاريخ</span><span></span>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>' + escHtml(formatPlanDayLabel(day)) + '</strong><span style="color:var(--text3);font-size:12px">' + visits.length + ' زيارة · ترتيب خط السير' + (visits.length > planMaxPerDay() ? ' · تجاوز الحد' : '') + '</span></div>' +
+        '<div style="display:grid;grid-template-columns:40px minmax(150px,1.3fr) 70px minmax(110px,.9fr) minmax(90px,.7fr) 140px 70px;gap:8px;padding:0 8px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
+          '<span>#</span><span>العميل</span><span>المصعد</span><span>المبنى</span><span>المنطقة</span><span>التاريخ</span><span></span>' +
         '</div>' + rows + '</div>';
     }).join('');
     return;

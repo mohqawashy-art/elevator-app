@@ -8690,17 +8690,19 @@ def api_run_plan():
         max_per_day = int(max_per_day) if max_per_day not in (None, '') else None
     except (TypeError, ValueError):
         max_per_day = None
+    district = (data.get('district') or '').strip() or None
     draft_visits = data.get('draft_visits')
     if not isinstance(draft_visits, list):
         draft_visits = None
     if preview:
         return jsonify(preview_full_plan(
-            year, month, replace_draft=replace, max_per_day=max_per_day,
+            year, month, replace_draft=replace, max_per_day=max_per_day, district=district,
         ))
     if not confirmed:
         return jsonify({'error': 'راجع المسودة ثم اضغط «اعتماد الخطة»'}), 400
     result = run_full_plan(
-        year, month, replace_draft=replace, max_per_day=max_per_day, draft_visits=draft_visits,
+        year, month, replace_draft=replace, max_per_day=max_per_day,
+        draft_visits=draft_visits, district=district,
     )
     if result.get('error'):
         return jsonify(result), 400
