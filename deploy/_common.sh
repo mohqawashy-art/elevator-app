@@ -38,7 +38,12 @@ lc_resolve_venv() {
   echo "$app_dir/.venv"
 }
 
-lc_fix_platform_env_perms() {
+# git آمن عند تشغيل النشر كـ root على مستودع info
+lc_git() {
+  local app_dir="$1"
+  shift
+  git -c "safe.directory=$app_dir" -C "$app_dir" "$@"
+}
   local platform_env="${1:-/etc/liftcore/platform.env}"
   local run_user="${SUDO_USER:-$USER}"
 
@@ -76,8 +81,8 @@ lc_pip_install_requirements() {
 
 lc_git_version() {
   local app_dir="${1:-.}"
-  if git -C "$app_dir" rev-parse --short HEAD >/dev/null 2>&1; then
-    git -C "$app_dir" rev-parse --short HEAD
+  if lc_git "$app_dir" rev-parse --short HEAD >/dev/null 2>&1; then
+    lc_git "$app_dir" rev-parse --short HEAD
   else
     echo "unknown"
   fi

@@ -41,8 +41,8 @@ for db in "$APP_DIR/instance/liftcore.db" "$APP_DIR/liftcore.db"; do
 done
 
 echo "==> git pull (never reset --hard)"
-git fetch origin main
-git pull --ff-only origin main
+lc_git "$APP_DIR" fetch origin main
+lc_git "$APP_DIR" pull --ff-only origin main
 
 if [ -x "$VENV/bin/python" ]; then
   echo "==> pip install ($VENV)"
