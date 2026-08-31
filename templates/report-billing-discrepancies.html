@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore — فروقات الفوترة</title>
+<title>LiftCore � ?????? ???????</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -68,45 +68,45 @@ tbody tr:hover td{background:rgba(42,127,255,.04)}
   <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
 </aside>
 <div class="main">
-  {% set page_title = 'فروقات الفوترة' %}
+  {% set page_title = '?????? ???????' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
       <div>
-        <div class="page-title">تقرير فروقات الفوترة</div>
-        <div class="page-subtitle">مقارنة المبالغ المخزّنة في العقود والفواتير والقطع مع الإيرادات المحصّلة</div>
+        <div class="page-title">????? ?????? ???????</div>
+        <div class="page-subtitle">?????? ??????? ???????? ?? ?????? ????????? ?????? ?? ????????? ????????</div>
       </div>
       <div class="page-actions">
-        <a href="/reports" class="btn btn-secondary btn-sm">← كل التقارير</a>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="loadReport()">تحديث</button>
+        <a href="/reports" class="btn btn-secondary btn-sm">? ?? ????????</a>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadReport()">?????</button>
         {% if auth_user and auth_user.role == 'admin' %}
-        <button type="button" class="btn btn-danger btn-sm" id="btn-repair" onclick="runRepair()">إصلاح تلقائي</button>
+        <button type="button" class="btn btn-danger btn-sm" id="btn-repair" onclick="runRepair()">????? ??????</button>
         {% endif %}
       </div>
     </div>
 
-    <div id="banner" class="banner"><h2>جاري التحميل...</h2></div>
+    <div id="banner" class="banner"><h2>???? ???????...</h2></div>
 
     <div class="stats">
-      <div class="stat"><div class="lbl">عقود</div><div class="val" id="s-contracts">—</div></div>
-      <div class="stat"><div class="lbl">فواتير</div><div class="val" id="s-invoices">—</div></div>
-      <div class="stat"><div class="lbl">قطع غيار</div><div class="val" id="s-parts">—</div></div>
-      <div class="stat"><div class="lbl">مجموع الفروقات (مطلق)</div><div class="val" id="s-delta">—</div></div>
+      <div class="stat"><div class="lbl">????</div><div class="val" id="s-contracts">�</div></div>
+      <div class="stat"><div class="lbl">??????</div><div class="val" id="s-invoices">�</div></div>
+      <div class="stat"><div class="lbl">??? ????</div><div class="val" id="s-parts">�</div></div>
+      <div class="stat"><div class="lbl">????? ???????? (????)</div><div class="val" id="s-delta">�</div></div>
     </div>
 
     <div class="toolbar">
-      <input type="search" class="search" id="f-search" placeholder="بحث بالكود أو العميل..." oninput="filterRows()">
+      <input type="search" class="search" id="f-search" placeholder="??? ?????? ?? ??????..." oninput="filterRows()">
     </div>
 
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>النوع</th><th>الكود</th><th>العميل</th><th>البيان</th>
-            <th>مخزّن</th><th>محسوب</th><th>الفرق</th><th></th>
+            <th>?????</th><th>?????</th><th>??????</th><th>??????</th>
+            <th>?????</th><th>?????</th><th>?????</th><th></th>
           </tr>
         </thead>
-        <tbody id="tbody"><tr><td colspan="8" class="empty">جاري التحميل...</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="8" class="empty">???? ???????...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -122,11 +122,11 @@ function renderBanner(d) {
   var el = document.getElementById('banner');
   if (d.ok) {
     el.className = 'banner ok';
-    el.innerHTML = '<h2>لا توجد فروقات</h2><p>كاش العقود والفواتير متوافق مع الإيرادات المحصّلة.</p>';
+    el.innerHTML = '<h2>?? ???? ??????</h2><p>??? ?????? ????????? ?????? ?? ????????? ????????.</p>';
   } else {
     el.className = 'banner warn';
-    el.innerHTML = '<h2>' + d.issue_count + ' فرقاً يحتاج مراجعة</h2>' +
-      '<p>قد يحدث بسبب استيراد بيانات قديمة أو تعديل يدوي. استخدم «إصلاح تلقائي» (مدير النظام) بعد المراجعة.</p>';
+    el.innerHTML = '<h2>' + d.issue_count + ' ????? ????? ??????</h2>' +
+      '<p>?? ???? ???? ??????? ?????? ????? ?? ????? ????. ?????? �????? ??????� (???? ??????) ??? ????????.</p>';
   }
 }
 
@@ -134,17 +134,17 @@ function renderTable(rows) {
   reportRows = rows || [];
   var tb = document.getElementById('tbody');
   if (!reportRows.length) {
-    tb.innerHTML = '<tr><td colspan="8" class="empty">لا توجد فروقات — البيانات متسقة</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" class="empty">?? ???? ?????? � ???????? ?????</td></tr>';
     return;
   }
   tb.innerHTML = reportRows.map(function (r) {
     var dc = (r.delta || 0) >= 0 ? 'delta-pos' : 'delta-neg';
-    var link = r.link ? '<a class="link-btn" href="' + r.link + '" target="_blank">فتح</a>' : '';
+    var link = r.link ? '<a class="link-btn" href="' + r.link + '" target="_blank">???</a>' : '';
     return '<tr data-search="' + (r.code + ' ' + r.customer + ' ' + r.entity_label).toLowerCase() + '">' +
       '<td><span class="badge">' + r.entity_label + '</span></td>' +
-      '<td class="td-code">' + (r.code || '—') + '</td>' +
-      '<td>' + (r.customer || '—') + '</td>' +
-      '<td>' + (r.detail || '—') + '</td>' +
+      '<td class="td-code">' + (r.code || '�') + '</td>' +
+      '<td>' + (r.customer || '�') + '</td>' +
+      '<td>' + (r.detail || '�') + '</td>' +
       '<td class="td-num">' + fmt(r.stored) + '</td>' +
       '<td class="td-num">' + fmt(r.computed) + '</td>' +
       '<td class="td-num ' + dc + '">' + fmt(r.delta) + '</td>' +
@@ -174,19 +174,19 @@ function loadReport() {
       renderTable(d.rows);
     })
     .catch(function () {
-      document.getElementById('banner').innerHTML = '<h2>تعذّر تحميل التقرير</h2>';
+      document.getElementById('banner').innerHTML = '<h2>????? ????? ???????</h2>';
     });
 }
 
 function runRepair() {
-  if (!confirm('إصلاح كاش الفوترة لجميع العقود والفواتير والقطع؟')) return;
+  if (!confirm('????? ??? ??????? ????? ?????? ????????? ???????')) return;
   fetch('/api/admin/billing/consistency/repair', { method: 'POST' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
-      alert('تم الإصلاح. متبقي: ' + (d.remaining_issues || 0) + ' فرق');
+      alert('?? ???????. ?????: ' + (d.remaining_issues || 0) + ' ???');
       loadReport();
     })
-    .catch(function () { alert('فشل الإصلاح'); });
+    .catch(function () { alert('??? ???????'); });
 }
 
 document.addEventListener('DOMContentLoaded', loadReport);
