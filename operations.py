@@ -564,10 +564,21 @@ def _existing_plan_codes(plan_month: str) -> set[str]:
 
 def generate_monthly_plan(
     year: int, month: int, *, replace_draft: bool = False, preview_only: bool = False,
+    max_per_day: int | None = None,
 ) -> dict:
     """توليد زيارات دورية لشهر محدد من العقود النشطة."""
     start, end = _month_bounds(year, month)
     plan_month = f'{year}-{month:02d}'
+
+    from maintenance_teams import (
+        cluster_by_geography, item_cluster_key, item_coordinates,
+        order_items_nearest_neighbor, MAX_VISITS_PER_TEAM_DAY,
+    )
+    per_day = int(max_per_day or MAX_VISITS_PER_TEAM_DAY)
+    if per_day < 1:
+        per_day = 1
+    if per_day > 12:
+        per_day = 12
 
     drafts_to_replace = 0
     if replace_draft:
@@ -587,13 +598,11 @@ def generate_monthly_plan(
         or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
     ).all()
 
-    district_groups: dict[str, list[dict]] = defaultdict(list)
     created = 0
     skipped = 0
     linked = 0
     existing = _existing_plan_codes(plan_month)
 
-    work_days = [start + timedelta(days=i) for i in range((end - start).days + 1)]
     from work_calendar import work_days_between
     work_days = work_days_between(start, end)
 
@@ -615,51 +624,74 @@ def generate_monthly_plan(
                 'district': district,
             })
 
-    from maintenance_teams import (
-        cluster_by_geography, item_cluster_key, item_coordinates, MAX_VISITS_PER_TEAM_DAY,
-    )
-
     geo_clusters = cluster_by_geography(
         flat_items,
-        max_size=MAX_VISITS_PER_TEAM_DAY,
+        max_size=per_day,
         coords_fn=item_coordinates,
         district_fn=item_cluster_key,
     )
+    # ترتيب المجموعات نفسها تقريباً من الشمال/الغرب للجنوب/الشرق
+    def _cluster_sort_key(cluster):
+        coords = [item_coordinates(it) for it in cluster]
+        coords = [c for c in coords if c]
+        if not coords:
+            return (999.0, 999.0)
+        return (min(c[0] for c in coords), min(c[1] for c in coords))
+
+    geo_clusters = sorted(geo_clusters, key=_cluster_sort_key)
 
     next_code_num = int(next_code(MaintenanceVisit, 'VI-', digits=5).replace('VI-', ''))
     day_idx = 0
-    preview_samples: list[dict] = []
+    draft_visits: list[dict] = []
     for cluster in geo_clusters:
         visit_day = work_days[day_idx % len(work_days)] if work_days else start
         day_idx += 1
-        districts_in_cluster = sorted({it.get('district') or 'غير محدد' for it in cluster})
-        districts_in_cluster = sorted({it.get('district') or 'غير محدد' for it in cluster})
-        for item in cluster:
+        ordered = order_items_nearest_neighbor(cluster, item_coordinates)
+        districts_in_cluster = sorted({it.get('district') or 'غير محدد' for it in ordered})
+        route_i = 0
+        for item in ordered:
             elev = item['elevator']
             contract = item['contract']
             customer = item['customer']
             district = item.get('district') or 'غير محدد'
             existing_v = _periodic_visit_in_month(elev.id, year, month)
             if existing_v:
-                action = _link_existing_to_plan_month(existing_v, plan_month, preview_only=preview_only)
-                if action == 'linked':
-                    linked += 1
-                else:
-                    skipped += 1
-                continue
+                # في معاينة الاستبدال: تجاهل الزيارات المجدولة التي ستُستبدل عند الاعتماد
+                will_replace = (
+                    replace_draft
+                    and existing_v.status in ('مجدولة', 'مُرسلة للفني')
+                )
+                if not (preview_only and will_replace):
+                    action = _link_existing_to_plan_month(
+                        existing_v, plan_month, preview_only=preview_only,
+                    )
+                    if action == 'linked':
+                        linked += 1
+                    else:
+                        skipped += 1
+                    continue
             key = f'{elev.id}:{visit_day}'
-            if key in existing:
+            if key in existing and not (preview_only and replace_draft):
                 skipped += 1
                 continue
 
-            if preview_only and len(preview_samples) < 12:
-                preview_samples.append({
-                    'elevator': elev.code,
-                    'customer': customer.name if customer else '—',
-                    'district': district,
-                    'districts_group': districts_in_cluster,
-                    'visit_date': str(visit_day),
-                })
+            route_i += 1
+            coords = item_coordinates(item)
+            draft_row = {
+                'elevator_id': elev.id,
+                'contract_id': contract.id,
+                'elevator': elev.code,
+                'customer': customer.name if customer else '—',
+                'customer_id': customer.id if customer else None,
+                'building': (elev.building_name or '').strip(),
+                'district': district,
+                'districts_group': districts_in_cluster,
+                'visit_date': str(visit_day),
+                'route_order': route_i,
+                'lat': coords[0] if coords else None,
+                'lng': coords[1] if coords else None,
+            }
+            draft_visits.append(draft_row)
 
             if not preview_only:
                 visit_code = f'VI-{str(next_code_num).zfill(5)}'
@@ -673,7 +705,7 @@ def generate_monthly_plan(
                     priority='عادية',
                     status='مجدولة',
                     plan_month=plan_month,
-                    route_order=0,
+                    route_order=route_i,
                     observations=f'خطة شهر {plan_month} — {district}',
                 )
                 assign_organization(v)
@@ -697,10 +729,12 @@ def generate_monthly_plan(
             'elevators_in_scope': len(seen_elevator_ids),
             'districts': len(district_groups),
             'geo_clusters': len(geo_clusters),
-            'max_per_cluster': MAX_VISITS_PER_TEAM_DAY,
+            'max_per_cluster': per_day,
+            'max_per_day': per_day,
             'drafts_to_replace': drafts_to_replace if replace_draft else 0,
             'current_total': current.get('total', 0),
-            'samples': preview_samples,
+            'samples': draft_visits[:12],
+            'draft_visits': draft_visits,
         }
         if not district_groups:
             payload['hint'] = (
@@ -720,7 +754,8 @@ def generate_monthly_plan(
         'skipped': skipped,
         'districts': len(district_groups),
         'geo_clusters': len(geo_clusters),
-        'max_per_cluster': MAX_VISITS_PER_TEAM_DAY,
+        'max_per_cluster': per_day,
+        'max_per_day': per_day,
         'confirmed': True,
     }
     if not district_groups:
@@ -731,6 +766,100 @@ def generate_monthly_plan(
     elif created == 0 and linked == 0 and not result.get('total'):
         payload['hint'] = 'لم يُنشأ شيء — قد تكون الزيارات موجودة مسبقاً أو المصاعد بدون عقد نشط.'
     return payload
+
+
+def create_plan_from_draft(
+    plan_month: str,
+    draft_visits: list[dict],
+    *,
+    replace_draft: bool = True,
+) -> dict:
+    """إنشاء الخطة من مسودة مراجعة ومعدّلة من الواجهة."""
+    if not plan_month or '-' not in plan_month:
+        return {'error': 'شهر الخطة غير صالح'}
+    year, month = map(int, plan_month.split('-', 1))
+    start, end = _month_bounds(year, month)
+
+    if replace_draft:
+        from app import _purge_visit_dependencies
+        old = tenant_query(MaintenanceVisit).filter(
+            MaintenanceVisit.plan_month == plan_month,
+            MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
+        ).all()
+        for v in old:
+            _purge_visit_dependencies(v.id)
+            db.session.delete(v)
+        db.session.flush()
+
+    created = 0
+    skipped = 0
+    next_code_num = int(next_code(MaintenanceVisit, 'VI-', digits=5).replace('VI-', ''))
+    existing = _existing_plan_codes(plan_month)
+
+    for i, row in enumerate(draft_visits or []):
+        elev_id = row.get('elevator_id')
+        visit_date_raw = (row.get('visit_date') or '').strip()[:10]
+        if not elev_id or not visit_date_raw:
+            skipped += 1
+            continue
+        try:
+            vdate = date.fromisoformat(visit_date_raw)
+        except ValueError:
+            skipped += 1
+            continue
+        if vdate < start or vdate > end:
+            skipped += 1
+            continue
+        elev = tenant_query(Elevator).filter_by(id=int(elev_id)).first()
+        if not elev:
+            skipped += 1
+            continue
+        if _elevator_has_periodic_in_month(elev.id, year, month):
+            existing_v = _periodic_visit_in_month(elev.id, year, month)
+            if existing_v:
+                _link_existing_to_plan_month(existing_v, plan_month, preview_only=False)
+            skipped += 1
+            continue
+        key = f'{elev.id}:{vdate}'
+        if key in existing:
+            skipped += 1
+            continue
+        contract_id = row.get('contract_id')
+        if not contract_id:
+            from entity_links import active_contract_for_elevator
+            contract = active_contract_for_elevator(elev.id, vdate)
+            contract_id = contract.id if contract else None
+        route_order = int(row.get('route_order') or (i + 1))
+        visit_code = f'VI-{str(next_code_num).zfill(5)}'
+        next_code_num += 1
+        district = (row.get('district') or '').strip() or _customer_district(elev.customer, elev)
+        v = MaintenanceVisit(
+            code=visit_code,
+            contract_id=int(contract_id) if contract_id else None,
+            elevator_id=elev.id,
+            visit_type='دورية',
+            visit_date=vdate,
+            priority='عادية',
+            status='مجدولة',
+            plan_month=plan_month,
+            route_order=route_order,
+            observations=f'خطة شهر {plan_month} — {district}',
+        )
+        assign_organization(v)
+        db.session.add(v)
+        db.session.flush()
+        created += 1
+        existing.add(key)
+
+    db.session.commit()
+    result = get_plan(plan_month)
+    return {
+        **result,
+        'created': created,
+        'skipped': skipped,
+        'confirmed': True,
+        'from_draft': True,
+    }
 
 
 def cancel_monthly_plan(plan_month: str, *, dry_run: bool = False) -> dict:
