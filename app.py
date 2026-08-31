@@ -1106,6 +1106,8 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
     is_renewed = bool(getattr(c, '_is_renewed', False))
     if renewed_ids is not None and cid is not None:
         is_renewed = int(cid) in renewed_ids
+    total = _money_round(c.total or 0)
+    paid = _money_round(c.paid_amount or 0)
     return {
         'id': c.id,
         'code': c.code,
@@ -1129,9 +1131,10 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
         'value': _money_round(c.value or 0),
         'tax_pct': c.tax_pct or 15,
         'tax_amount': _money_round(c.tax_amount or 0),
-        'total': _money_round(c.total or 0),
+        'total': total,
+        'remaining': _money_round(max(total - paid, 0)),
         'pay_terms': c.payment_terms or '',
-        'paid_amount': _money_round(c.paid_amount or 0),
+        'paid_amount': paid,
         'inv_status': c.invoice_status or 'غير مدفوع',
         'status': c.status or 'نشط',
         'renewed': is_renewed,

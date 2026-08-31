@@ -336,7 +336,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
       <div class="stat-mini" style="--sm-color:var(--danger)" onclick="openContractDrill('unpaid', this)">
         <div class="stat-mini-val" id="stat-unpaid-val">0</div>
-        <div class="stat-mini-label">غير مدفوع (<span class="lc-sar" role="img" aria-label="ريال"></span>)</div>
+        <div class="stat-mini-label">مستحقات غير مسددة (<span class="lc-sar" role="img" aria-label="ريال"></span>)</div>
       </div>
     </div>
 
@@ -457,7 +457,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <th class="th-sort" data-sort-col="end_date">تاريخ الانتهاء <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="days_left">الأيام <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
-              <th class="th-sort" data-sort-col="value">قيمة العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="remaining">المبلغ المستحق <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="total">الإجمالي <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="due_date">الاستحقاق <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
@@ -1154,6 +1154,19 @@ function getCustomerById(id) {
   return CUSTOMERS.find(function(x) { return x.id === id; });
 }
 
+function contractOutstanding(c) {
+  if (!c) return 0;
+  if (c.remaining != null && !isNaN(c.remaining)) return Number(c.remaining);
+  return Math.max(Number(c.total || 0) - Number(c.paid_amount || 0), 0);
+}
+
+function formatContractOutstandingCell(c) {
+  var amt = contractOutstanding(c);
+  var style = amt > 0.01 ? 'color:var(--warning);font-weight:600' : 'color:var(--text3)';
+  return '<td class="td-amount" style="' + style + '">' + fmtMoneyAmt(amt) +
+    ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>';
+}
+
 function contractNeedsCollection(c) {
   return c && (c.inv_status === 'غير مدفوع' || c.inv_status === 'متأخر' || c.inv_status === 'مدفوع جزئياً');
 }
@@ -1166,8 +1179,8 @@ function updateStats() {
   var expiring = CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'على وشك الانتهاء'; }).length;
   var totalVal = sumMoneyAmounts(CONTRACTS.map(function(c) { return c.total; }));
   var unpaid = sumMoneyAmounts(CONTRACTS.filter(function(c) {
-    return c.inv_status === 'غير مدفوع' || c.inv_status === 'متأخر';
-  }).map(function(c) { return c.total; }));
+    return contractOutstanding(c) > 0.01;
+  }).map(function(c) { return contractOutstanding(c); }));
 
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-active').textContent = active;
@@ -1266,7 +1279,7 @@ var DRILL_TITLES = {
   active: 'العقود النشطة',
   expired: 'العقود المنتهية',
   expiring: 'عقود على وشك الانتهاء',
-  unpaid: 'عقود غير مدفوعة / متأخرة'
+  unpaid: 'عقود بمبالغ مستحقة غير مسددة'
 };
 
 let currentDeleteId = null;
@@ -1277,7 +1290,7 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'asc',
   dateCols: ['start_date', 'end_date', 'due_date'],
-  numberCols: ['elevators', 'value', 'total', 'days_left'],
+  numberCols: ['elevators', 'remaining', 'total', 'days_left'],
   getters: {
     customer: function (c) {
       return window.LiftCoreDisplay ? LiftCoreDisplay.name(c.customer, c.customer_name_en) : c.customer;
@@ -1305,9 +1318,7 @@ function getContractsByDrill(type) {
   if (type === 'active') return CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'نشط'; });
   if (type === 'expired') return CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'منتهي'; });
   if (type === 'expiring') return CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'على وشك الانتهاء'; });
-  if (type === 'unpaid') return CONTRACTS.filter(function(c) {
-    return c.inv_status === 'غير مدفوع' || c.inv_status === 'متأخر';
-  });
+  if (type === 'unpaid') return CONTRACTS.filter(function(c) { return contractOutstanding(c) > 0.01; });
   return CONTRACTS.slice();
 }
 
@@ -1391,7 +1402,7 @@ function renderTable(data) {
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
       '<td>' + formatContractDaysCell(c) + '</td>' +
       '<td style="text-align:center" title="' + esc(buildingLabels(c.elevator_ids)) + '">' + c.elevators + '</td>' +
-      '<td class="td-amount">' + fmtMoneyAmt(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
+      formatContractOutstandingCell(c) +
       '<td class="td-amount">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + formatContractDueCell(c) + '</td>' +
       '<td><span class="badge ' + (STATUS_BADGE[disp] || 'badge-active') + '">' + esc(D(disp)) + '</span></td>' +
@@ -2048,6 +2059,7 @@ function viewContract(id) {
       '<div class="view-item"><div class="view-label">المبنى</div><div class="view-val">' + esc(c.buildings || buildingLabels(c.elevator_ids)) + '</div></div>' +
       '<div class="view-item"><div class="view-label">عدد المصاعد</div><div class="view-val">' + (c.elevators || 0) + '</div></div>' +
       '<div class="view-item"><div class="view-label">حالة العقد</div><div class="view-val"><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></div></div>' +
+      '<div class="view-item"><div class="view-label">المبلغ المستحق</div><div class="view-val" style="color:var(--warning)">' + fmtMoneyAmt(contractOutstanding(c)) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></div></div>' +
       '<div class="view-item"><div class="view-label">حالة الفاتورة</div><div class="view-val"><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span> <span style="font-size:12px;color:var(--text3)">(' + fmtMoneyAmt(c.paid_amount || 0) + ' / ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>)</span></div></div>' +
       '<div class="view-section">التواريخ والصيانة</div>' +
       '<div class="view-item"><div class="view-label">تاريخ البداية</div><div class="view-val" style="direction:ltr">' + esc(c.start_date) + '</div></div>' +
@@ -2814,7 +2826,7 @@ function contractGroupMapInfo(group) {
   var rows = group.contracts.map(function(c) {
     return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' +
       '<strong>' + esc(c.code) + '</strong> — ' + esc(c.contract_type) + '<br>' +
-      esc(getContractDisplayStatus(c)) + ' · ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>' +
+      esc(getContractDisplayStatus(c)) + ' · مستحق ' + fmtMoneyAmt(contractOutstanding(c)) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>' +
       ' · ' + esc(c.inv_status) +
       '<br><button class="map-info-btn" style="margin-top:6px" onclick="viewContract(' + c.id + ')">عرض العقد</button></div>';
   }).join('');
@@ -2827,7 +2839,7 @@ function contractMapInfo(c, exact) {
   var locNote = exact ? 'موقع GPS دقيق' : 'موقع تقريبي';
   return '<div class="map-info"><div class="map-info-title">' + esc(c.code) + '</div>' +
     '<div class="map-info-sub">' + esc(c.customer) + '<br>' + esc(c.contract_type) + '<br>' +
-    'الإجمالي: ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span><br>' + esc(getContractDisplayStatus(c)) + ' · ' + esc(c.inv_status) +
+    'المستحق: ' + fmtMoneyAmt(contractOutstanding(c)) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span> · إجمالي ' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span><br>' + esc(getContractDisplayStatus(c)) + ' · ' + esc(c.inv_status) +
     '<br><span style="color:#888;font-size:11px">' + locNote + '</span></div>' +
     '<button class="map-info-btn" onclick="viewContract(' + c.id + ')">عرض العقد</button></div>';
 }
