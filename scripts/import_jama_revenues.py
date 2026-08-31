@@ -31,7 +31,9 @@ from models import Contract, Customer, Invoice, PartsBilling, Revenue
 from tenant_scope import assign_organization, tenant_query
 
 PARTS_REVENUE_TYPES = frozenset({'قطع غيار', 'بيع قطع غيار', 'زيارة'})
-CONTRACT_REVENUE_TYPES = frozenset({'تجديد عقد', 'عقد صيانة', 'عقد جديد', 'ضمان'})
+CONTRACT_REVENUE_TYPES = frozenset({
+    'تجديد عقد', 'الدفعات المستحقة', 'عقد صيانة', 'عقد جديد', 'ضمان',
+})
 
 # ملف إيرادات جما: عمود «المبلغ» = الإجمالي المحصّل (شامل الضريبة)
 JAMA_EXCEL_AMOUNT_IS_INCLUSIVE = True
@@ -72,8 +74,13 @@ def _normalize_revenue_type(raw: str) -> str:
         return 'قطع غيار'
     if s == 'زيارة':
         return 'أعمال إضافية'
-    if s in ('تجديد عقد', 'عقد جديد', 'قطع غيار', 'عقد صيانة', 'أعمال إضافية', 'أخرى'):
+    if s in (
+        'تجديد عقد', 'الدفعات المستحقة', 'عقد جديد', 'قطع غيار',
+        'عقد صيانة', 'أعمال إضافية', 'أخرى',
+    ):
         return s
+    if 'مستحق' in s and 'دفعات' in s:
+        return 'الدفعات المستحقة'
     if 'تجديد' in s or 'صيانة' in s:
         return 'تجديد عقد'
     if 'عقد' in s and 'جديد' in s:

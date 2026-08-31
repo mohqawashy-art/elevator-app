@@ -250,7 +250,7 @@ def _classify_revenue(revenue_type):
     if 'قطع غيار' in rt or rt in ('زيارة', 'أعمال إضافية', 'بيع قطع غيار'):
         return 'parts'
     if rt in (
-        'تجديد عقد', 'عقد صيانة', 'عقد ضمان', 'صيانة',
+        'تجديد عقد', 'الدفعات المستحقة', 'عقد صيانة', 'عقد ضمان', 'صيانة',
     ) or ('عقد' in rt and 'جديد' not in rt):
         return 'renewed'
     return 'renewed'

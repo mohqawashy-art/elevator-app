@@ -9804,7 +9804,7 @@ def fault_delete(id):
 @app.route('/revenues')
 def revenues():
     from sqlalchemy.orm import joinedload
-    from customer_billing import tenant_outstanding_collectible
+    from customer_billing import REVENUE_TYPE_OPTIONS, tenant_outstanding_collectible
 
     _ensure_tenant_chart()
     revs = (
@@ -9824,6 +9824,7 @@ def revenues():
         outstanding_total=outstanding.get('total') or 0,
         outstanding_count=outstanding.get('items_count') or 0,
         outstanding_contracts=outstanding.get('contracts_count') or 0,
+        revenue_type_options=REVENUE_TYPE_OPTIONS,
     )
 
 def _revenue_from_form(form, existing: Revenue | None = None):

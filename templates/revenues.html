@@ -243,11 +243,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="filter-label">نوع الإيراد</div>
         <select class="filter-select" id="f-type" onchange="onTypeStatusChange()">
           <option value="">الكل</option>
-          <option>تجديد عقد</option>
-          <option>عقد جديد</option>
-          <option>قطع غيار</option>
-          <option>بيع قطع غيار</option>
-          <option>زيارة</option>
+          {% for t in revenue_type_options %}
+          <option>{{ t }}</option>
+          {% endfor %}
         </select>
       </div>
       <div class="filter-group">
@@ -341,11 +339,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="field">
           <label>نوع الإيراد <span>*</span></label>
           <select id="f-rev-type">
-            <option>تجديد عقد</option>
-            <option>عقد جديد</option>
-            <option>قطع غيار</option>
-            <option>بيع قطع غيار</option>
-            <option>زيارة</option>
+            {% for t in revenue_type_options %}
+            <option>{{ t }}</option>
+            {% endfor %}
           </select>
         </div>
         {% with prefix='revtax', before_field_id='f-amount', total_field_id='f-total', pct_id='f-tax-pct' %}
@@ -439,10 +435,15 @@ var OUTSTANDING_TOTAL = {{ (outstanding_total or 0)|tojson }};
 var OUTSTANDING_COUNT = {{ (outstanding_count or 0)|tojson }};
 var OUTSTANDING_CONTRACTS = {{ (outstanding_contracts or 0)|tojson }};
 
+function isRenewalRevenueType(rt) {
+  const t = String(rt || '').trim();
+  return t === 'تجديد عقد' || t === 'الدفعات المستحقة' || t === 'عقد صيانة';
+}
+
 function updateStats() {
   const sum = (rows) => rows.reduce((s, r) => s + r.total, 0);
   const cnt = (rows) => (window.LiftCoreDisplay ? LiftCoreDisplay.fmtTransactionsCount(rows.length) : rows.length + ' عملية');
-  const renewal = REVENUES.filter(r => r.revenue_type === 'تجديد عقد');
+  const renewal = REVENUES.filter(r => isRenewalRevenueType(r.revenue_type));
   const parts = REVENUES.filter(r => (r.revenue_type || '').includes('قطع غيار'));
   const newContracts = REVENUES.filter(r => r.revenue_type === 'عقد جديد');
   setText('s-total', sum(REVENUES).toLocaleString('ar-SA'));
@@ -562,7 +563,7 @@ var activeStatCard = 'all';
 
 function rowMatchesStatCard(r, kind) {
   if (!kind || kind === 'all') return true;
-  if (kind === 'renewal') return r.revenue_type === 'تجديد عقد';
+  if (kind === 'renewal') return isRenewalRevenueType(r.revenue_type);
   if (kind === 'parts') return String(r.revenue_type || '').includes('قطع غيار');
   if (kind === 'new') return r.revenue_type === 'عقد جديد';
   if (kind === 'pending') return !['محصّل', 'محصل'].includes(r.status);
@@ -639,7 +640,7 @@ function escHtml(s) {
 }
 
 const REV_TYPE_BY_SOURCE = {
-  contract: 'تجديد عقد',
+  contract: 'الدفعات المستحقة',
   invoice: 'عقد جديد',
   parts_billing: 'قطع غيار',
 };
@@ -847,7 +848,7 @@ function openAddModal(preselectedCustomerId, opts) {
   const dateEl = document.getElementById('f-date');
   if (dateEl) dateEl.value = today;
   const revType = document.getElementById('f-rev-type');
-  if (revType) revType.value = 'تجديد عقد';
+  if (revType) revType.value = 'الدفعات المستحقة';
   const statusEl = document.getElementById('f-status-sel');
   if (statusEl) statusEl.value = 'محصّل';
   const taxBlock = document.querySelector('#modal-add .lc-tax-block');

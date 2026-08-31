@@ -15,7 +15,19 @@ COLLECTED_REVENUE_STATUSES = ('محصّل', 'محصل', 'مدفوع', 'مدفو�
 UNPAID_INVOICE_STATUSES = ['غير مدفوعة', 'غير مدفوع', 'متأخر', 'متأخرة', 'مدفوع جزئياً']
 PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل', 'محصل']
 UNPAID_PARTS_STATUSES = ('غير محصل', 'معلقة', 'بانتظار موافقة العميل', 'بانتظار التوريد')
-CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد')
+CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد', 'مستحق')
+
+REVENUE_TYPE_OPTIONS = [
+    'تجديد عقد',
+    'الدفعات المستحقة',
+    'عقد جديد',
+    'عقد صيانة',
+    'قطع غيار',
+    'بيع قطع غيار',
+    'زيارة',
+    'أعمال إضافية',
+    'أخرى',
+]
 # إيرادات لا تُنقص رصيد عقد الصيانة حتى لو رُبطت به للمرجعية
 _NON_CONTRACT_BALANCE_TYPES = frozenset({'زيارة', 'أعمال إضافية'})
 # يدعم CN-00042 و CN-00042-2026 و CN-00042-2026-2 (لا تقطع لاحقة التجديد)
@@ -259,7 +271,7 @@ def repair_contract_payment_links(commit: bool = True) -> int:
 
 
 SOURCE_REVENUE_TYPES = {
-    'contract': 'تجديد عقد',
+    'contract': 'الدفعات المستحقة',
     'invoice': 'عقد جديد',
     'parts_billing': 'قطع غيار',
 }
