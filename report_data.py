@@ -4,17 +4,44 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import extract, case
-from contract_cost_allocation import contract_duration_months, contract_planned_visits
 from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
+
+_MAINT_FREQ_INTERVAL_MONTHS = {
+    'شهري': 1,
+    'كل شهرين': 2,
+    'ربع سنوي': 3,
+    'نصف سنوي': 6,
+    'سنوي': 12,
+}
+
+
+def _contract_duration_months(contract) -> int:
+    dm = int(getattr(contract, 'duration_months', None) or 0)
+    if dm > 0:
+        return dm
+    start = getattr(contract, 'start_date', None)
+    end = getattr(contract, 'end_date', None)
+    if start and end and end > start:
+        return max(1, (end.year - start.year) * 12 + (end.month - start.month))
+    return 12
+
+
+def _contract_total_planned_visits(contract) -> int:
+    """إجمالي زيارات العقد (حقل visits_per_month يخزّن الإجمالي وليس الشهري)."""
+    v = int(getattr(contract, 'visits_per_month', None) or 0)
+    if v > 0:
+        return v
+    duration = _contract_duration_months(contract)
+    freq = (getattr(contract, 'maint_frequency', None) or '').strip()
+    interval = _MAINT_FREQ_INTERVAL_MONTHS.get(freq, 1)
+    import math
+    return max(1, math.ceil(duration / interval))
 
 
 def _period_planned_visits(contract, months_in_period: int) -> float:
-    """حصة الفترة من إجمالي زيارات العقد.
-
-    ملاحظة: حقل visits_per_month في العقود يخزّن إجمالي الزيارات للعقد وليس المعدّل الشهري.
-    """
-    total = float(contract_planned_visits(contract))
-    duration = max(1, int(contract_duration_months(contract)))
+    """حصة الفترة من إجمالي زيارات العقد."""
+    total = float(_contract_total_planned_visits(contract))
+    duration = max(1, _contract_duration_months(contract))
     return total * (max(1, int(months_in_period)) / duration)
 
 
