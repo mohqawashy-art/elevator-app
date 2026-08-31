@@ -18,6 +18,17 @@
   --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
   --r:12px;--r-sm:8px;--trans:.18s ease;
 }
+html[data-theme="light"]{
+  --bg:#f0f4fa;--bg2:#ffffff;--bg3:#e8eef6;--bg4:#dce4f0;
+  --card:#ffffff;--border:rgba(30,60,120,.12);--border2:rgba(30,60,120,.2);
+  --text1:#1a2433;--text2:#4a5a72;--text3:#7a8aa0;
+}
+html[data-theme="light"] .hero-status.success{background:linear-gradient(135deg,rgba(31,184,122,.12),#fff);border-color:rgba(31,184,122,.28)}
+html[data-theme="light"] .hero-status.warning{background:linear-gradient(135deg,rgba(224,144,48,.12),#fff);border-color:rgba(224,144,48,.28)}
+html[data-theme="light"] .hero-status.danger{background:linear-gradient(135deg,rgba(224,72,72,.14),#fff);border-color:rgba(224,72,72,.3)}
+html[data-theme="light"] .tip.high{background:linear-gradient(180deg,rgba(224,72,72,.08),#fff 40%)}
+html[data-theme="light"] .tip.medium{background:linear-gradient(180deg,rgba(224,144,48,.08),#fff 40%)}
+html[data-theme="light"] .tip.low{background:linear-gradient(180deg,rgba(31,184,122,.06),#fff 40%)}
 html[dir="rtl"]{font-family:var(--font-ar)}
 body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
 .sidebar{width:240px;min-width:240px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}

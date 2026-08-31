@@ -778,16 +778,16 @@ ROLE_LABELS_EN = {
 USER_THEMES = frozenset({'dark', 'light', 'report', 'premium'})
 
 USER_THEME_OPTIONS = (
-    {'id': 'dark', 'label_ar': 'داكن', 'hint_ar': 'الوضع الافتراضي', 'swatch': 'swatch-dark'},
-    {'id': 'light', 'label_ar': 'فاتح', 'hint_ar': 'مناسب للإضاءة القوية', 'swatch': 'swatch-light'},
+    {'id': 'light', 'label_ar': 'فاتح', 'hint_ar': 'الوضع الافتراضي — أوضح للقراءة', 'swatch': 'swatch-light'},
+    {'id': 'dark', 'label_ar': 'داكن', 'hint_ar': 'مناسب للإضاءة الخافتة', 'swatch': 'swatch-dark'},
     {'id': 'report', 'label_ar': 'احترافي', 'hint_ar': 'كحلي وذهبي — مثل التقارير', 'swatch': 'swatch-report'},
     {'id': 'premium', 'label_ar': 'LiftCore', 'hint_ar': 'أسود وذهبي — مثل شاشة الدخول', 'swatch': 'swatch-premium'},
 )
 
 
 def normalize_user_theme(value):
-    theme = (value or 'dark').strip()
-    return theme if theme in USER_THEMES else 'dark'
+    theme = (value or 'light').strip()
+    return theme if theme in USER_THEMES else 'light'
 
 
 def resolve_user_language(user=None):
@@ -883,7 +883,7 @@ def inject_global_template_vars():
             user = db.session.get(User, uid)
         except Exception:
             db.session.rollback()
-    theme = 'dark'
+    theme = 'light'
     if user and getattr(user, 'theme', None):
         theme = normalize_user_theme(user.theme)
     lang = resolve_user_language(user)
