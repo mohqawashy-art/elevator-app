@@ -915,6 +915,16 @@ def create_plan_from_draft(
         assign_organization(v)
         db.session.add(v)
         db.session.flush()
+        team_id = row.get('team_id')
+        if team_id:
+            try:
+                from maintenance_teams import assign_visit_to_team
+                from models import MaintenanceTeam as _MT
+                team = _MT.query.get(int(team_id))
+                if team and team.active:
+                    assign_visit_to_team(v, team)
+            except (TypeError, ValueError):
+                pass
         created += 1
         existing.add(key)
 
@@ -1009,9 +1019,110 @@ def elevators_for_district(district: str) -> list[dict]:
             'customer_id': c.id if c else None,
             'customer_name': c.name if c else '—',
             'customer_code': c.code if c else '',
+            'building': (e.building_name or '').strip(),
             'district': district,
         })
     return sort_by_natural_code(rows, code_attr='elevator_code')
+
+
+def plan_work_days(plan_month: str) -> list[str]:
+    """أيام العمل في شهر الخطة."""
+    if not plan_month or '-' not in plan_month:
+        return []
+    year, month = map(int, plan_month.split('-', 1))
+    start, end = _month_bounds(year, month)
+    from work_calendar import work_days_between
+    return [str(d) for d in work_days_between(start, end)]
+
+
+def plan_candidates_for_district(plan_month: str, district: str) -> dict:
+    """عملاء/مصاعد منطقة ضمن عقود الصيانة للشهر — مرتّبون جغرافياً."""
+    from maintenance_teams import item_coordinates, order_items_nearest_neighbor
+    from entity_links import active_contract_for_elevator
+
+    district = (district or '').strip()
+    if not district:
+        return {'error': 'اختر المنطقة', 'candidates': []}
+    if not plan_month or '-' not in plan_month:
+        return {'error': 'شهر الخطة غير صالح', 'candidates': []}
+    year, month = map(int, plan_month.split('-', 1))
+    start, end = _month_bounds(year, month)
+
+    contracts = tenant_query(Contract).filter(
+        Contract.start_date <= end,
+        Contract.end_date >= start,
+        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+    ).all()
+
+    flat_items: list[dict] = []
+    seen: set[int] = set()
+    for contract in contracts:
+        if not _is_maintenance_contract(contract):
+            continue
+        customer = contract.customer
+        for elev in _elevators_for_maintenance_plan(contract):
+            if elev.id in seen:
+                continue
+            dist_name = _customer_district(customer, elev)
+            if dist_name != district:
+                continue
+            seen.add(elev.id)
+            flat_items.append({
+                'contract': contract,
+                'elevator': elev,
+                'customer': customer,
+                'district': dist_name,
+            })
+
+    # إن لم تُوجد عبر العقود: اعرض مصاعد المنطقة (مع عقد نشط إن وُجد)
+    if not flat_items:
+        for e in tenant_query(Elevator).join(Customer).order_by(Customer.name).all():
+            if e.id in seen:
+                continue
+            if _customer_district(e.customer, e) != district:
+                continue
+            seen.add(e.id)
+            c = e.customer
+            contract = active_contract_for_elevator(e.id, start)
+            flat_items.append({
+                'contract': contract,
+                'elevator': e,
+                'customer': c,
+                'district': district,
+            })
+
+    ordered = order_items_nearest_neighbor(flat_items, item_coordinates)
+    candidates = []
+    for i, item in enumerate(ordered):
+        elev = item['elevator']
+        customer = item['customer']
+        contract = item.get('contract')
+        coords = item_coordinates(item)
+        already = _periodic_visit_in_month(elev.id, year, month)
+        candidates.append({
+            'elevator_id': elev.id,
+            'elevator': elev.code,
+            'elevator_code': elev.code,
+            'contract_id': contract.id if contract else None,
+            'customer': customer.name if customer else '—',
+            'customer_name': customer.name if customer else '—',
+            'customer_id': customer.id if customer else None,
+            'building': (elev.building_name or '').strip(),
+            'district': district,
+            'route_order': i + 1,
+            'lat': coords[0] if coords else None,
+            'lng': coords[1] if coords else None,
+            'already_planned': bool(already),
+            'existing_visit_id': already.id if already else None,
+            'existing_visit_date': str(already.visit_date) if already and already.visit_date else None,
+        })
+    return {
+        'plan_month': plan_month,
+        'district': district,
+        'count': len(candidates),
+        'candidates': candidates,
+        'work_days': plan_work_days(plan_month),
+    }
 
 
 def get_plan(plan_month: str) -> dict:

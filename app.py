@@ -8456,6 +8456,32 @@ def api_district_elevators(district):
     return jsonify({'elevators': elevators_for_district(district)})
 
 
+@app.route('/api/maintenance/plan/work-days', methods=['GET'])
+def api_plan_work_days():
+    from operations import plan_work_days
+
+    ym = (request.args.get('plan_month') or '').strip()
+    if not ym or '-' not in ym:
+        return jsonify({'error': 'حدد شهر الخطة'}), 400
+    return jsonify({'plan_month': ym, 'work_days': plan_work_days(ym)})
+
+
+@app.route('/api/maintenance/plan/candidates', methods=['GET'])
+def api_plan_candidates():
+    from operations import plan_candidates_for_district
+
+    ym = (request.args.get('plan_month') or '').strip()
+    district = (request.args.get('district') or '').strip()
+    if not ym or '-' not in ym:
+        return jsonify({'error': 'حدد شهر الخطة'}), 400
+    if not district:
+        return jsonify({'error': 'اختر المنطقة'}), 400
+    result = plan_candidates_for_district(ym, district)
+    if result.get('error') and not result.get('candidates'):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
 @app.route('/api/maintenance/plan/add-visit', methods=['POST'])
 def api_plan_add_visit():
     from operations import add_manual_plan_visit, get_plan
