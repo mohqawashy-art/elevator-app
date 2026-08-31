@@ -259,7 +259,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <div class="field">
           <label>نوع الإيراد</label>
-          <select onchange="filterTable()"><option value="">الكل</option></select>
+          <select id="f-revenue-type" data-lc-static-options="1" onchange="filterTable()">
+            <option value="">الكل</option>
+            {% for t in revenue_type_options %}
+            <option>{{ t }}</option>
+            {% endfor %}
+          </select>
         </div>
         <div class="field">
           <label>طريقة الدفع</label>
@@ -361,9 +366,10 @@ function setLang(l){if(window.LiftCoreI18n&&window.LiftCoreI18n.setLang){window.
 })();
 </script>
 <script>
+window.__LC_REVENUE_TYPE_OPTIONS = {{ revenue_type_options|tojson }};
 window.__LC_REPORT_ROWS = {{ report_rows|tojson }};
 window.__LC_REPORT_ID = {{ report_id|tojson }};
 </script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=12"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=13"></script>
 </body>
 </html>

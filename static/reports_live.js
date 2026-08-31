@@ -472,9 +472,12 @@ function hookReportPagination(reset) {
       }).sort();
     }
 
-    function fillSelect(sel, field) {
+    function fillSelect(sel, field, staticOptions) {
       if (!sel || sel.dataset.liveReady) return;
-      var vals = unique((data || []).map(function (r) { return r[field]; }));
+      var fromData = (data || []).map(function (r) { return r[field]; });
+      var vals = unique(
+        (staticOptions && staticOptions.length ? staticOptions.concat(fromData) : fromData)
+      );
       sel.innerHTML = '<option value="">الكل</option>' + vals.map(function (v) {
         return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
       }).join('');
@@ -482,11 +485,23 @@ function hookReportPagination(reset) {
     }
 
     var cfg = REPORT_FILTER_FIELDS[reportId];
-    if (cfg && data && data.length) {
+    if (cfg) {
       cfg.forEach(function (item, i) {
         var sel = selects[i];
         if (!sel) return;
-        sel.id = item.id;
+        if (!sel.id) sel.id = item.id;
+        if (sel.dataset.lcStaticOptions === '1') {
+          var staticOpts = global.__LC_REVENUE_TYPE_OPTIONS;
+          if (reportId === 'report-revenues' && item.field === 'revenue_type' && staticOpts) {
+            fillSelect(sel, item.field, staticOpts);
+          } else if (!sel.dataset.liveReady) {
+            fillSelect(sel, item.field, Array.prototype.map.call(sel.options || [], function (o) {
+              return o.value;
+            }).filter(function (v) { return v; }));
+          }
+          return;
+        }
+        if (!data || !data.length) return;
         fillSelect(sel, item.field);
       });
     }

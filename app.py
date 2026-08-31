@@ -12155,10 +12155,17 @@ def _report_ctx():
 
 def _render_report_page(report_id, template):
     from report_data import fetch_report_rows
+
+    extra = {}
+    if report_id == 'report-revenues':
+        from customer_billing import REVENUE_TYPE_OPTIONS
+        extra['revenue_type_options'] = REVENUE_TYPE_OPTIONS
+
     return render_template(
         template,
         report_rows=fetch_report_rows(report_id, _report_ctx()),
         report_id=report_id,
+        **extra,
     )
 
 
