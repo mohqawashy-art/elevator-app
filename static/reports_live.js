@@ -8,6 +8,7 @@ var __lcReportDomPager = null;
   var __lcDashboardCharts = [];
   var __lcReportData = [];
   var __lcReportId = null;
+  var __lcReportSummary = null;
   var __lcDashboardCache = null;
   var __lcReportLoaded = false;
 
@@ -314,6 +315,55 @@ function hookReportPagination(reset) {
 
   global.__lcSyncPrintFromScreen = __lcSyncPrintFromScreen;
 
+  var REVENUE_TYPE_FILTER_GROUPS = [
+    ['تجديد عقد', 'الدفعات المستحقة', 'عقد صيانة', 'صيانة', 'عقد ضمان', 'ضمان'],
+    ['عقد جديد', 'عقد تركيب', 'تركيب'],
+    ['عقد تحديث', 'تحديث'],
+  ];
+
+  function revenueTypeFilterMatch(selected, actual) {
+    var sel = String(selected || '').trim();
+    var act = String(actual == null ? '' : actual).trim();
+    if (!sel) return true;
+    if (act === sel) return true;
+    for (var i = 0; i < REVENUE_TYPE_FILTER_GROUPS.length; i++) {
+      var g = REVENUE_TYPE_FILTER_GROUPS[i];
+      if (g.indexOf(sel) >= 0 && g.indexOf(act) >= 0) return true;
+    }
+    return false;
+  }
+
+  function passesRevenueTypeFilter(actual) {
+    var sel = document.getElementById('f-revenue-type');
+    if (!sel) return true;
+    var vals = global.lcFilterValues ? global.lcFilterValues(sel) : (sel.value ? [sel.value] : []);
+    if (!vals.length) return true;
+    return vals.some(function (v) { return revenueTypeFilterMatch(v, actual); });
+  }
+
+  function passesRevenueStatusFilter(actual) {
+    var sel = document.getElementById('f-status');
+    if (!sel) return true;
+    return global.lcAllows(sel, actual, {
+      aliases: { 'محصل': ['محصّل'], 'غير محصل': ['غير محصّل'] },
+    });
+  }
+
+  function updateReportStats(reportId, data) {
+    if (reportId === 'report-revenues' && __lcReportSummary) {
+      var s = __lcReportSummary;
+      var sar = ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>';
+      setStatValues([
+        fmtNum(s.total) + sar,
+        fmtNum(s.collected) + sar,
+        fmtNum(s.pending) + sar,
+        fmtNum(s.count),
+      ]);
+      return;
+    }
+    setStatValues(computeReportStats(reportId, data));
+  }
+
   function computeReportStats(reportId, data) {
     var today = new Date();
     var month = today.getMonth() + 1;
@@ -452,10 +502,6 @@ function hookReportPagination(reset) {
     }
   }
 
-  function updateReportStats(reportId, data) {
-    setStatValues(computeReportStats(reportId, data));
-  }
-
   function populateFilterSelects(reportId, data) {
     var card = document.querySelector('.filter-card');
     if (!card) return;
@@ -552,7 +598,17 @@ function hookReportPagination(reset) {
     var filters = REPORT_FILTER_FIELDS[reportId];
     if (filters) {
       for (var fi = 0; fi < filters.length; fi++) {
-        if (!passesFieldFilter(filters[fi].id, row[filters[fi].field])) return false;
+        var field = filters[fi].field;
+        var val = row[field];
+        if (reportId === 'report-revenues' && field === 'revenue_type') {
+          if (!passesRevenueTypeFilter(val)) return false;
+          continue;
+        }
+        if (reportId === 'report-revenues' && field === 'status') {
+          if (!passesRevenueStatusFilter(val)) return false;
+          continue;
+        }
+        if (!passesFieldFilter(filters[fi].id, val)) return false;
       }
     }
 
@@ -627,13 +683,19 @@ function hookReportPagination(reset) {
     if (typeof global.filterTable === 'function') global.filterTable();
   }
 
-  function applyReportPayload(reportId, data) {
-    var rows = Array.isArray(data) ? data : [];
+  function applyReportPayload(reportId, data, summary) {
+    var rows = data;
+    if (data && !Array.isArray(data) && data.rows) {
+      summary = data.summary || summary;
+      rows = data.rows;
+    }
+    rows = Array.isArray(rows) ? rows : [];
     if (reportId === 'report-maintenance' || reportId === 'report-faults' || reportId === 'report-elevators') {
       rows = naturalCodeSortRows(rows, 'code');
     }
     __lcReportData = rows;
     __lcReportId = reportId;
+    __lcReportSummary = summary || null;
     __lcReportLoaded = true;
     populateFilterSelects(reportId, __lcReportData);
     installLiveFilterTable(reportId);
@@ -1131,7 +1193,8 @@ function hookReportPagination(reset) {
     if (!apiUrl) return;
     fetch(apiUrl)
       .then(function (r) { return r.json(); })
-      .then(function (rows) {
+      .then(function (payload) {
+        var rows = Array.isArray(payload) ? payload : (payload.rows || []);
         download(rows.map(function (row) { return reportRowCells(reportId, row); }));
       });
   }
@@ -1198,8 +1261,9 @@ function hookReportPagination(reset) {
 
     var bootId = global.__LC_REPORT_ID;
     var bootRows = global.__LC_REPORT_ROWS;
+    var bootSummary = global.__LC_REPORT_SUMMARY;
     if (bootId && REPORT_API[bootId] && Array.isArray(bootRows)) {
-      applyReportPayload(bootId, bootRows);
+      applyReportPayload(bootId, bootRows, bootSummary);
     } else {
       var reportId = document.body && document.body.getAttribute('data-report-id');
       if (reportId && REPORT_API[reportId]) {

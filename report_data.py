@@ -111,14 +111,60 @@ def get_report_faults(db, Fault):
     } for f in faults]
 
 
-def get_report_revenues(db, Revenue, year=None, month=None):
-    q = tenant_query(Revenue)
+_COLLECTED_REVENUE_STATUSES = frozenset({'محصّل', 'محصل', 'مدفوع', 'مدفوعة'})
+_PENDING_REVENUE_STATUSES = frozenset({'معلق', 'غير محصّل', 'غير محصل'})
+
+
+def summarize_revenue_rows(rows):
+    """إجماليات الإيرادات — مصدر واحد لصفحة الإيرادات وتقرير الإيرادات."""
+    total = 0.0
+    collected = 0.0
+    pending = 0.0
+    cancelled = 0.0
+    count = len(rows)
+    cancelled_count = 0
+    for row in rows:
+        if isinstance(row, dict):
+            st = (row.get('status') or '').strip()
+            amt = float(row.get('total') or 0)
+        else:
+            st = (getattr(row, 'status', None) or '').strip()
+            amt = float(getattr(row, 'total', None) or 0)
+        total += amt
+        if st == 'ملغي':
+            cancelled += amt
+            cancelled_count += 1
+            continue
+        if st in _COLLECTED_REVENUE_STATUSES:
+            collected += amt
+        if st in _PENDING_REVENUE_STATUSES:
+            pending += amt
+    return {
+        'total': _round_money(total),
+        'collected': _round_money(collected),
+        'pending': _round_money(pending),
+        'cancelled': _round_money(cancelled),
+        'count': count,
+        'cancelled_count': cancelled_count,
+    }
+
+
+def _revenues_report_query(Revenue, year=None, month=None):
+    from sqlalchemy.orm import joinedload
+
+    q = tenant_query(Revenue).options(
+        joinedload(Revenue.customer),
+        joinedload(Revenue.contract),
+    )
     if year is not None:
         q = q.filter(extract('year', Revenue.revenue_date) == int(year))
     if month is not None:
         q = q.filter(extract('month', Revenue.revenue_date) == int(month))
-    revs = q.order_by(Revenue.revenue_date.desc()).all()
-    return [{
+    return q.order_by(Revenue.revenue_date.desc())
+
+
+def _revenue_report_row_dict(r):
+    return {
         'code': r.code,
         'customer': r.customer.name if r.customer else '—',
         'contract': r.contract.code if r.contract else '—',
@@ -131,7 +177,20 @@ def get_report_revenues(db, Revenue, year=None, month=None):
         'total': r.total or 0,
         'status': r.status or '',
         'created_by': (getattr(r, 'created_by_name', None) or '—'),
-    } for r in revs]
+    }
+
+
+def get_revenue_report_payload(db, Revenue, year=None, month=None):
+    revs = _revenues_report_query(Revenue, year=year, month=month).all()
+    rows = [_revenue_report_row_dict(r) for r in revs]
+    return {
+        'rows': rows,
+        'summary': summarize_revenue_rows(rows),
+    }
+
+
+def get_report_revenues(db, Revenue, year=None, month=None):
+    return get_revenue_report_payload(db, Revenue, year=year, month=month)['rows']
 
 
 def get_report_expenses(db, Expense, year=None, month=None):

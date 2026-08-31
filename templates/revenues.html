@@ -422,6 +422,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <script>
 // ===== البيانات من Flask =====
 var REVENUES = {{ revenues_js|tojson }};
+var REVENUE_SUMMARY = {{ revenue_summary|tojson }};
 
 var CUSTOMERS = {{ customers_js|tojson }};
 
@@ -459,13 +460,14 @@ function revenueTypeForPendingOp(op) {
 }
 
 function updateStats() {
-  const sum = (rows) => rows.reduce((s, r) => s + r.total, 0);
+  const sum = (rows) => rows.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
   const cnt = (rows) => (window.LiftCoreDisplay ? LiftCoreDisplay.fmtTransactionsCount(rows.length) : rows.length + ' عملية');
   const renewal = REVENUES.filter(r => isRenewalRevenueType(r.revenue_type));
   const parts = REVENUES.filter(r => (r.revenue_type || '').includes('قطع غيار'));
   const newContracts = REVENUES.filter(r => isNewContractRevenueType(r.revenue_type));
-  setText('s-total', sum(REVENUES).toLocaleString('ar-SA'));
-  setText('s-total-sub', cnt(REVENUES));
+  const summary = REVENUE_SUMMARY || {};
+  setText('s-total', Number(summary.total != null ? summary.total : sum(REVENUES)).toLocaleString('ar-SA'));
+  setText('s-total-sub', cnt({ length: summary.count != null ? summary.count : REVENUES.length }));
   setText('s-renewal', sum(renewal).toLocaleString('ar-SA'));
   setText('s-renewal-sub', cnt(renewal));
   setText('s-parts', sum(parts).toLocaleString('ar-SA'));

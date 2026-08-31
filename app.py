@@ -9808,6 +9808,7 @@ def fault_delete(id):
 def revenues():
     from sqlalchemy.orm import joinedload
     from customer_billing import REVENUE_TYPE_OPTIONS, tenant_outstanding_collectible
+    from report_data import summarize_revenue_rows
 
     _ensure_tenant_chart()
     revs = (
@@ -9823,6 +9824,7 @@ def revenues():
         revenues=revs,
         customers=customers,
         revenues_js=[revenue_to_js_dict(r) for r in revs],
+        revenue_summary=summarize_revenue_rows(revs),
         customers_js=[{'id': c.id, 'name': c.name, 'code': c.code} for c in customers],
         outstanding_total=outstanding.get('total') or 0,
         outstanding_count=outstanding.get('items_count') or 0,
@@ -12159,14 +12161,25 @@ def _report_ctx():
 def _render_report_page(report_id, template):
     from report_data import fetch_report_rows
 
+    ctx = _report_ctx()
     extra = {}
     if report_id == 'report-revenues':
         from customer_billing import REVENUE_TYPE_OPTIONS
+        from report_data import get_revenue_report_payload
+
+        payload = get_revenue_report_payload(ctx['db'], ctx['Revenue'])
         extra['revenue_type_options'] = REVENUE_TYPE_OPTIONS
+        extra['report_summary'] = payload['summary']
+        return render_template(
+            template,
+            report_rows=payload['rows'],
+            report_id=report_id,
+            **extra,
+        )
 
     return render_template(
         template,
-        report_rows=fetch_report_rows(report_id, _report_ctx()),
+        report_rows=fetch_report_rows(report_id, ctx),
         report_id=report_id,
         **extra,
     )
@@ -13410,12 +13423,12 @@ def api_report_faults():
 
 @app.route('/api/reports/revenues')
 def api_report_revenues():
-    from report_data import get_report_revenues
+    from report_data import get_revenue_report_payload
     year_raw = request.args.get('year')
     month_raw = request.args.get('month')
     year = int(year_raw) if year_raw else None
     month = int(month_raw) if month_raw else None
-    return jsonify(get_report_revenues(db, Revenue, year=year, month=month))
+    return jsonify(get_revenue_report_payload(db, Revenue, year=year, month=month))
 
 
 @app.route('/api/reports/expenses')
