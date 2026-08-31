@@ -2449,3 +2449,14 @@ body:has(#sidebar) .filters-bar {
 body:has(#sidebar) .stats-row {
   margin-bottom: 12px !important;
 }
+
+/* مجاميع الفلترة بجانب ترقيم الجدول */
+.table-info .lc-filter-sums,
+.page-info .lc-filter-sums,
+#table-info .lc-filter-sums,
+#page-info .lc-filter-sums {
+  color: var(--accent, #2a7fff);
+  font-weight: 600;
+  font-family: var(--font-en, 'DM Sans', sans-serif);
+  white-space: normal;
+}

@@ -524,6 +524,9 @@ var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
   container: '#page-btns',
   infoEl: '#page-info',
   onPageChange: function () { renderTable(filtered); },
+  sumFields: [
+    { key: 'total', label: 'الإجمالي', labelEn: 'Total' },
+  ],
 }) : null;
 
 function revFmtDate(iso) {

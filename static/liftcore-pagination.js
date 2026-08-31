@@ -38,6 +38,60 @@
     return 'عرض ' + start + '–' + end + ' من ' + (master != null ? master : filtered);
   }
 
+  function numVal(v) {
+    if (v == null || v === '') return 0;
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    var s = String(v).replace(/,/g, '').replace(/[^\d.-]/g, '');
+    var n = parseFloat(s);
+    return isFinite(n) ? n : 0;
+  }
+
+  function fmtMoneySum(n) {
+    n = numVal(n);
+    try {
+      return n.toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+    } catch (e) {
+      return String(Math.round(n * 100) / 100);
+    }
+  }
+
+  function isEnUi() {
+    return (document.documentElement.getAttribute('lang') || '').toLowerCase().indexOf('en') === 0
+      || (document.documentElement.getAttribute('dir') || '') === 'ltr';
+  }
+
+  /** حساب مجاميع الفلترة من الصفوف المعروضة (كل النتائج المصفاة وليس الصفحة فقط) */
+  function buildFilterSums(rows, sumFields) {
+    if (!sumFields || !sumFields.length || !rows || !rows.length) return '';
+    var en = isEnUi();
+    var parts = [];
+    sumFields.forEach(function (spec) {
+      if (!spec) return;
+      var total = 0;
+      var getter = typeof spec.get === 'function'
+        ? spec.get
+        : function (row) { return row && (spec.key != null ? row[spec.key] : null); };
+      for (var i = 0; i < rows.length; i++) total += numVal(getter(rows[i]));
+      var label = en ? (spec.labelEn || spec.label || spec.key) : (spec.label || spec.labelEn || spec.key);
+      parts.push(label + ': ' + fmtMoneySum(total));
+    });
+    return parts.join(en ? ' · ' : ' · ');
+  }
+
+  function writeInfo(infoEl, start, end, filtered, master, sumText) {
+    if (!infoEl) return;
+    var base = fmtInfo(start, end, filtered, master);
+    infoEl.textContent = base;
+    var prev = infoEl.querySelector('.lc-filter-sums');
+    if (prev) prev.remove();
+    if (!sumText) return;
+    var span = document.createElement('span');
+    span.className = 'lc-filter-sums';
+    span.setAttribute('data-i18n-skip', '');
+    span.textContent = ' · ' + sumText;
+    infoEl.appendChild(span);
+  }
+
   /** مفتاح حفظ الصفحة الحالية — لكل جدول في كل صفحة */
   function storageKey(options) {
     if (options.persist === false) return null;
@@ -74,6 +128,8 @@
     var filteredTotal = 0;
     var getMasterTotal = options.getMasterTotal || null;
     var onPageChange = options.onPageChange || null;
+    var sumFields = options.sumFields || null;
+    var lastFilteredRows = [];
 
     function totalPages() {
       return Math.max(1, Math.ceil(filteredTotal / pageSize));
@@ -112,7 +168,9 @@
     }
 
     function paginate(data, masterTotal) {
-      var len = Array.isArray(data) ? data.length : (data && data.length != null ? Number(data.length) || 0 : 0);
+      var list = Array.isArray(data) ? data : [];
+      lastFilteredRows = list;
+      var len = list.length;
       setTotal(len);
       var master = masterTotal != null ? masterTotal : filteredTotal;
       if (!filteredTotal) {
@@ -124,9 +182,10 @@
           masterTotal: master,
           page: 1,
           pages: 1,
+          sumText: '',
         };
       }
-      var rows = slice(data);
+      var rows = slice(list);
       var startIdx = (page - 1) * pageSize + 1;
       var endIdx = Math.min(page * pageSize, filteredTotal);
       return {
@@ -137,6 +196,7 @@
         masterTotal: master,
         page: page,
         pages: totalPages(),
+        sumText: buildFilterSums(list, sumFields),
       };
     }
 
@@ -152,10 +212,17 @@
       var tp = meta.pages || totalPages();
       var cur = meta.page || page;
       var master = meta.masterTotal != null ? meta.masterTotal : filteredTotal;
+      var sumText = meta.sumText;
+      if (sumText == null) sumText = buildFilterSums(lastFilteredRows, sumFields);
 
-      if (infoEl) {
-        infoEl.textContent = fmtInfo(meta.start || 0, meta.end || 0, meta.filteredTotal || filteredTotal, master);
-      }
+      writeInfo(
+        infoEl,
+        meta.start || 0,
+        meta.end || 0,
+        meta.filteredTotal != null ? meta.filteredTotal : filteredTotal,
+        master,
+        sumText
+      );
 
       if (!container) return;
 
