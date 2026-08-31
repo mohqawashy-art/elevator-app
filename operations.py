@@ -565,6 +565,7 @@ def _existing_plan_codes(plan_month: str) -> set[str]:
 def generate_monthly_plan(
     year: int, month: int, *, replace_draft: bool = False, preview_only: bool = False,
     max_per_day: int | None = None,
+    district: str | None = None,
 ) -> dict:
     """توليد زيارات دورية لشهر محدد من العقود النشطة."""
     start, end = _month_bounds(year, month)
@@ -579,6 +580,9 @@ def generate_monthly_plan(
         per_day = 1
     if per_day > 12:
         per_day = 12
+    district_filter = (district or '').strip()
+    if district_filter in ('', 'الكل', 'كل المناطق', '*'):
+        district_filter = ''
 
     drafts_to_replace = 0
     if replace_draft:
@@ -608,6 +612,7 @@ def generate_monthly_plan(
 
     flat_items: list[dict] = []
     seen_elevator_ids: set[int] = set()
+    all_districts: set[str] = set()
     for contract in contracts:
         if not _is_maintenance_contract(contract):
             continue
@@ -616,12 +621,15 @@ def generate_monthly_plan(
             if elev.id in seen_elevator_ids:
                 continue
             seen_elevator_ids.add(elev.id)
-            district = _customer_district(customer, elev)
+            dist_name = _customer_district(customer, elev)
+            all_districts.add(dist_name)
+            if district_filter and dist_name != district_filter:
+                continue
             flat_items.append({
                 'contract': contract,
                 'elevator': elev,
                 'customer': customer,
-                'district': district,
+                'district': dist_name,
             })
 
     geo_clusters = cluster_by_geography(
@@ -640,83 +648,119 @@ def generate_monthly_plan(
 
     geo_clusters = sorted(geo_clusters, key=_cluster_sort_key)
 
-    next_code_num = int(next_code(MaintenanceVisit, 'VI-', digits=5).replace('VI-', ''))
-    day_idx = 0
-    draft_visits: list[dict] = []
+    # صفّ كل المجموعات بترتيب خط السير ثم عبّئ أيام العمل بحد صارم لكل يوم
+    ordered_stream: list[dict] = []
     for cluster in geo_clusters:
-        visit_day = work_days[day_idx % len(work_days)] if work_days else start
-        day_idx += 1
         ordered = order_items_nearest_neighbor(cluster, item_coordinates)
         districts_in_cluster = sorted({it.get('district') or 'غير محدد' for it in ordered})
-        route_i = 0
-        for item in ordered:
-            elev = item['elevator']
-            contract = item['contract']
-            customer = item['customer']
-            district = item.get('district') or 'غير محدد'
-            existing_v = _periodic_visit_in_month(elev.id, year, month)
-            if existing_v:
-                # في معاينة الاستبدال: تجاهل الزيارات المجدولة التي ستُستبدل عند الاعتماد
-                will_replace = (
-                    replace_draft
-                    and existing_v.status in ('مجدولة', 'مُرسلة للفني')
+        for it in ordered:
+            it = dict(it)
+            it['_districts_group'] = districts_in_cluster
+            ordered_stream.append(it)
+
+    day_loads: dict = defaultdict(int)
+    day_routes: dict = defaultdict(int)
+    work_i = 0
+    overflow_days = 0
+
+    def _pick_visit_day():
+        nonlocal work_i, overflow_days
+        if not work_days:
+            return start
+        n = len(work_days)
+        for _ in range(n):
+            d = work_days[work_i % n]
+            if day_loads[d] < per_day:
+                return d
+            work_i += 1
+        # كل الأيام ممتلئة بالحد — وزّع على الأقل ازدحاماً (مع تنبيه)
+        d = min(work_days, key=lambda x: day_loads[x])
+        overflow_days += 1
+        return d
+
+    next_code_num = int(next_code(MaintenanceVisit, 'VI-', digits=5).replace('VI-', ''))
+    draft_visits: list[dict] = []
+    for item in ordered_stream:
+        elev = item['elevator']
+        contract = item['contract']
+        customer = item['customer']
+        district_name = item.get('district') or 'غير محدد'
+        visit_day = _pick_visit_day()
+
+        existing_v = _periodic_visit_in_month(elev.id, year, month)
+        if existing_v:
+            will_replace = (
+                replace_draft
+                and existing_v.status in ('مجدولة', 'مُرسلة للفني')
+            )
+            if not (preview_only and will_replace):
+                action = _link_existing_to_plan_month(
+                    existing_v, plan_month, preview_only=preview_only,
                 )
-                if not (preview_only and will_replace):
-                    action = _link_existing_to_plan_month(
-                        existing_v, plan_month, preview_only=preview_only,
-                    )
-                    if action == 'linked':
-                        linked += 1
-                    else:
-                        skipped += 1
-                    continue
-            key = f'{elev.id}:{visit_day}'
-            if key in existing and not (preview_only and replace_draft):
-                skipped += 1
+                if action == 'linked':
+                    linked += 1
+                else:
+                    skipped += 1
                 continue
+        key = f'{elev.id}:{visit_day}'
+        if key in existing and not (preview_only and replace_draft):
+            skipped += 1
+            continue
 
-            route_i += 1
-            coords = item_coordinates(item)
-            draft_row = {
-                'elevator_id': elev.id,
-                'contract_id': contract.id,
-                'elevator': elev.code,
-                'customer': customer.name if customer else '—',
-                'customer_id': customer.id if customer else None,
-                'building': (elev.building_name or '').strip(),
-                'district': district,
-                'districts_group': districts_in_cluster,
-                'visit_date': str(visit_day),
-                'route_order': route_i,
-                'lat': coords[0] if coords else None,
-                'lng': coords[1] if coords else None,
-            }
-            draft_visits.append(draft_row)
+        day_loads[visit_day] += 1
+        day_routes[visit_day] += 1
+        route_i = day_routes[visit_day]
+        if work_days and day_loads[visit_day] >= per_day:
+            # انتقل لليوم التالي في التعبئة المتسلسلة
+            try:
+                work_i = work_days.index(visit_day) + 1
+            except ValueError:
+                work_i += 1
 
-            if not preview_only:
-                visit_code = f'VI-{str(next_code_num).zfill(5)}'
-                next_code_num += 1
-                v = MaintenanceVisit(
-                    code=visit_code,
-                    contract_id=contract.id,
-                    elevator_id=elev.id,
-                    visit_type='دورية',
-                    visit_date=visit_day,
-                    priority='عادية',
-                    status='مجدولة',
-                    plan_month=plan_month,
-                    route_order=route_i,
-                    observations=f'خطة شهر {plan_month} — {district}',
-                )
-                assign_organization(v)
-                db.session.add(v)
-                db.session.flush()
-            created += 1
-            existing.add(key)
+        coords = item_coordinates(item)
+        draft_row = {
+            'elevator_id': elev.id,
+            'contract_id': contract.id,
+            'elevator': elev.code,
+            'customer': customer.name if customer else '—',
+            'customer_id': customer.id if customer else None,
+            'building': (elev.building_name or '').strip(),
+            'district': district_name,
+            'districts_group': item.get('_districts_group') or [district_name],
+            'visit_date': str(visit_day),
+            'route_order': route_i,
+            'lat': coords[0] if coords else None,
+            'lng': coords[1] if coords else None,
+        }
+        draft_visits.append(draft_row)
+
+        if not preview_only:
+            visit_code = f'VI-{str(next_code_num).zfill(5)}'
+            next_code_num += 1
+            v = MaintenanceVisit(
+                code=visit_code,
+                contract_id=contract.id,
+                elevator_id=elev.id,
+                visit_type='دورية',
+                visit_date=visit_day,
+                priority='عادية',
+                status='مجدولة',
+                plan_month=plan_month,
+                route_order=route_i,
+                observations=f'خطة شهر {plan_month} — {district_name}',
+            )
+            assign_organization(v)
+            db.session.add(v)
+            db.session.flush()
+        created += 1
+        existing.add(key)
 
     district_groups = defaultdict(list)
     for it in flat_items:
         district_groups[it.get('district') or 'غير محدد'].append(it)
+
+    peak_day = max(day_loads.values()) if day_loads else 0
+    month_capacity = (len(work_days) * per_day) if work_days else per_day
 
     if preview_only:
         current = get_plan(plan_month)
@@ -726,23 +770,37 @@ def generate_monthly_plan(
             'would_create': created,
             'would_link': linked,
             'would_skip': skipped,
-            'elevators_in_scope': len(seen_elevator_ids),
+            'elevators_in_scope': len(flat_items),
+            'elevators_total': len(seen_elevator_ids),
             'districts': len(district_groups),
+            'district_filter': district_filter or None,
+            'available_districts': sorted(all_districts),
             'geo_clusters': len(geo_clusters),
             'max_per_cluster': per_day,
             'max_per_day': per_day,
+            'peak_day_visits': peak_day,
+            'month_capacity': month_capacity,
+            'overflow': overflow_days > 0 or peak_day > per_day,
             'drafts_to_replace': drafts_to_replace if replace_draft else 0,
             'current_total': current.get('total', 0),
             'samples': draft_visits[:12],
             'draft_visits': draft_visits,
         }
-        if not district_groups:
+        if not flat_items and district_filter:
+            payload['hint'] = f'لا مصاعد في منطقة «{district_filter}» لهذا الشهر.'
+        elif not district_groups:
             payload['hint'] = (
                 'لا توجد عقود صيانة نشطة تغطي هذا الشهر — '
                 'تأكد من العقود (نوع صيانة/ضمان)، الحالة «نشط»، وربط المصاعد.'
             )
         elif created == 0 and linked == 0:
             payload['hint'] = 'لا زيارات جديدة — قد تكون موجودة مسبقاً.'
+        elif peak_day > per_day:
+            payload['hint'] = (
+                f'عدد المصاعد ({created}) أكبر من سعة الشهر ({month_capacity} = '
+                f'{len(work_days)} يوم عمل × {per_day}). '
+                f'بعض الأيام تجاوزت الحد (أقصاها {peak_day}). زد الحد أو قلّص المنطقة.'
+            )
         return payload
 
     db.session.commit()
@@ -753,18 +811,27 @@ def generate_monthly_plan(
         'linked': linked,
         'skipped': skipped,
         'districts': len(district_groups),
+        'district_filter': district_filter or None,
         'geo_clusters': len(geo_clusters),
         'max_per_cluster': per_day,
         'max_per_day': per_day,
+        'peak_day_visits': peak_day,
         'confirmed': True,
     }
-    if not district_groups:
+    if not flat_items and district_filter:
+        payload['hint'] = f'لا مصاعد في منطقة «{district_filter}» لهذا الشهر.'
+    elif not district_groups:
         payload['hint'] = (
             'لا توجد عقود صيانة نشطة تغطي هذا الشهر — '
             'تأكد من العقود (نوع صيانة/ضمان)، الحالة «نشط»، وربط المصاعد.'
         )
     elif created == 0 and linked == 0 and not result.get('total'):
         payload['hint'] = 'لم يُنشأ شيء — قد تكون الزيارات موجودة مسبقاً أو المصاعد بدون عقد نشط.'
+    elif peak_day > per_day:
+        payload['hint'] = (
+            f'تنبيه: بعض الأيام تجاوزت حد {per_day} (أقصاها {peak_day}) '
+            f'لأن المصاعد أكثر من سعة أيام العمل.'
+        )
     return payload
 
 
