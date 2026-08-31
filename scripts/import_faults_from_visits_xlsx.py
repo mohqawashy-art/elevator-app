@@ -99,7 +99,13 @@ def load_fault_rows(path: str) -> list[tuple]:
     return [row for row in vx.load_rows(path) if _is_fault_row(row)]
 
 
-def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = True) -> dict:
+def import_faults(
+    path: str,
+    *,
+    dry_run: bool = False,
+    skip_existing: bool = True,
+    force_completed: bool = True,
+) -> dict:
     from tenant_scope import assign_organization
 
     rows = load_fault_rows(path)
@@ -127,6 +133,14 @@ def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
         f.visit_id
         for f in Fault.query.filter(Fault.visit_id.isnot(None)).all()
     }
+    existing_fault_keys = {
+        (
+            f.elevator_id,
+            (f.reported_at.date() if f.reported_at else None),
+            (f.description or '')[:80],
+        )
+        for f in Fault.query.all()
+    }
 
     for row in rows:
         visit_code = vx._norm_visit_code(row[1] if len(row) > 1 else '')
@@ -147,15 +161,18 @@ def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
         elevator = vx._lookup(elevators, el_code)
         if not elevator:
             stats['skipped_missing'] += 1
-            if len(missing_samples) < 15:
+            if len(missing_samples) < 20:
                 label = visit_code or el_code
                 missing_samples.append(f'{label}: مصعد {el_code} غير موجود')
             continue
 
         technician = vx._lookup(technicians, tech_code) if tech_code else None
-        client_report = vx._str(row[18] if len(row) > 18 else '') or vx._str(row[13] if len(row) > 13 else '')
+        client_report = vx._str(row[18] if len(row) > 18 else '') or vx._str(row[10] if len(row) > 10 else '')
         fault_type = vx._str(row[19] if len(row) > 19 else '') or 'عطل'
-        status = _map_fault_status(row[9] if len(row) > 9 else '')
+        if force_completed:
+            status = 'تم الاصلاح'
+        else:
+            status = _map_fault_status(row[9] if len(row) > 9 else '')
         parts_text = vx._str(row[17] if len(row) > 17 else '')
         notes = _compose_notes(row)
         resolution = _compose_resolution(row)
@@ -172,8 +189,15 @@ def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
         if meta:
             notes = '\n'.join([notes] + meta) if notes else '\n'.join(meta)
 
+        desc = client_report or resolution or fault_type
+        dedupe_key = (elevator.id, reported_at.date(), (desc or '')[:80])
+        if skip_existing and dedupe_key in existing_fault_keys:
+            stats['skipped_existing'] += 1
+            continue
+
         if dry_run:
             stats['imported'] += 1
+            existing_fault_keys.add(dedupe_key)
             continue
 
         fault = Fault(
@@ -181,7 +205,7 @@ def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
             elevator_id=elevator.id,
             technician_id=technician.id if technician else None,
             fault_type=fault_type,
-            description=client_report or resolution or fault_type,
+            description=desc,
             client_report=client_report or None,
             tech_notes=tech_notes or None,
             needs_parts=bool(parts_text),
@@ -195,6 +219,7 @@ def import_faults(path: str, *, dry_run: bool = False, skip_existing: bool = Tru
         assign_organization(fault)
         db.session.add(fault)
         db.session.flush()
+        existing_fault_keys.add(dedupe_key)
 
         if visit:
             link_fault_to_visit(fault, visit)
@@ -216,6 +241,8 @@ def main() -> int:
     parser.add_argument('--slug', default='jama', help='Organization slug')
     parser.add_argument('--dry-run', action='store_true', help='Preview only')
     parser.add_argument('--force', action='store_true', help='Import even if visit already has a fault')
+    parser.add_argument('--keep-status', action='store_true',
+                        help='Keep Excel status instead of forcing تم الاصلاح')
     args = parser.parse_args()
 
     if not os.path.isfile(args.xlsx):
@@ -233,12 +260,13 @@ def main() -> int:
             return 1
         g.organization = org
         g.organization_id = org.id
-        print(f'Tenant: {org.name} ({org.slug})')
+        print(f'Tenant: {org.name} ({org.slug}) id={org.id}')
 
         result = import_faults(
             args.xlsx,
             dry_run=args.dry_run,
             skip_existing=not args.force,
+            force_completed=not args.keep_status,
         )
         print(f"Fault rows in file: {result['rows']}")
         if args.dry_run:
@@ -257,7 +285,10 @@ def main() -> int:
             for line in result['missing_samples']:
                 print(' ', line)
         if not args.dry_run:
-            print('  faults in tenant:', Fault.query.filter_by(organization_id=org.id).count())
+            total = Fault.query.filter_by(organization_id=org.id).count()
+            done = Fault.query.filter_by(organization_id=org.id, status='تم الاصلاح').count()
+            print('  faults in tenant:', total)
+            print('  completed (تم الاصلاح):', done)
     return 0
 
 
