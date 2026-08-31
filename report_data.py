@@ -650,7 +650,9 @@ def _period_monthly_totals(
     db, extract, func, date_from, date_to, date_col, value_col,
     exclude_cancelled=False, status_col=None,
 ):
-    """مجاميع شهرية لفترة من→إلى مع تسميات عربية."""
+    """مجاميع شهرية لفترة من→إلى مع تسميات عربية — ضمن المستأجر الحالي."""
+    from flask import g
+
     month_keys = _month_keys_between(date_from, date_to)
     index = {k: i for i, k in enumerate(month_keys)}
     result = [0.0] * len(month_keys)
@@ -660,6 +662,7 @@ def _period_monthly_totals(
         for y, m in month_keys
     ]
 
+    model = getattr(date_col, 'class_', None)
     q = db.session.query(
         extract('year', date_col).label('y'),
         extract('month', date_col).label('m'),
@@ -668,6 +671,9 @@ def _period_monthly_totals(
         date_col >= date_from,
         date_col <= date_to,
     )
+    oid = getattr(g, 'organization_id', None)
+    if oid is not None and model is not None and hasattr(model, 'organization_id'):
+        q = q.filter(model.organization_id == oid)
     if exclude_cancelled and status_col is not None:
         q = q.filter(status_col != 'ملغي')
     rows = q.group_by('y', 'm').all()
@@ -681,7 +687,7 @@ def _period_monthly_totals(
 def _expense_buckets(expenses):
     buckets = {
         'fuel': 0.0, 'parts': 0.0, 'salaries': 0.0,
-        'vehicles': 0.0, 'other': 0.0,
+        'vehicles': 0.0, 'maint_ops': 0.0, 'other': 0.0,
     }
     for e in expenses:
         et = (e.expense_type or '').strip()
@@ -690,12 +696,16 @@ def _expense_buckets(expenses):
             buckets['fuel'] += amt
         elif et == 'قطع غيار' or 'قطع غيار' in et:
             buckets['parts'] += amt
-        elif et in ('رواتب',) or 'راتب' in (e.description or ''):
+        elif et in ('رواتب',) or 'راتب' in et or 'راتب' in (e.description or ''):
             buckets['salaries'] += amt
-        elif et in ('مصروفات أساسية', 'مصروفات اساسية'):
-            buckets['other'] += amt
         elif et in ('صيانة سيارات', 'صيانه سيارات'):
             buckets['vehicles'] += amt
+        elif et in ('مصاريف صيانة', 'مصروفات صيانة') or (
+            'صيانة' in et and 'سيارات' not in et and 'تجديد' not in et and 'تحديث' not in et
+        ):
+            buckets['maint_ops'] += amt
+        elif et in ('مصروفات أساسية', 'مصروفات اساسية'):
+            buckets['other'] += amt
         else:
             buckets['other'] += amt
     return {k: _round_money(v) for k, v in buckets.items()}
@@ -769,6 +779,7 @@ def _build_health_tips(
             f'تشمل محروقات {maint.get("fuel", 0):,.2f}، '
             f'قطع غيار {maint.get("parts", 0):,.2f}، '
             f'صيانة سيارات {maint.get("vehicles", 0):,.2f}، '
+            f'مصاريف صيانة {maint.get("maint_ops", 0):,.2f}، '
             f'ورواتب فنيين {maint.get("salaries", 0):,.2f}.'
         ),
         'action': 'قارن تكلفة الزيارة مع إيراد العقد لكل مصعد',
@@ -936,15 +947,18 @@ def get_financial_health_report(
             Technician.status.in_(['نشط', 'متاح', 'مشغول'])
         ).all()
     ))
-    if tech_salaries_annual > 0:
-        tech_salaries_period = _round_money(tech_salaries_annual * (months_in_period / 12.0))
-        exp_buckets['salaries'] = _round_money(exp_buckets['salaries'] + tech_salaries_period)
+    # تقدير الرواتب من بطاقات الفنيين فقط إن لم تُسجَّل رواتب في المصروفات (لتفادي المضاعفة)
+    salary_addon = 0.0
+    if tech_salaries_annual > 0 and exp_buckets['salaries'] < 0.01:
+        salary_addon = _round_money(tech_salaries_annual * (months_in_period / 12.0))
+        exp_buckets['salaries'] = salary_addon
 
     expense_breakdown = {
         'محروقات ووقود': exp_buckets['fuel'],
         'قطع غيار وزيوت': exp_buckets['parts'],
         'رواتب وأجور': exp_buckets['salaries'],
         'صيانة سيارات': exp_buckets['vehicles'],
+        'مصاريف صيانة ميدانية': exp_buckets.get('maint_ops', 0),
         'مصروفات أخرى': exp_buckets['other'],
     }
 
@@ -978,21 +992,27 @@ def get_financial_health_report(
         if active_contracts else 0
     )
 
-    visits_done = int(db.session.query(func.count(MaintenanceVisit.id)).filter(
+    visits_done = tenant_query(MaintenanceVisit).filter(
         MaintenanceVisit.visit_date >= df,
         MaintenanceVisit.visit_date <= dt,
         MaintenanceVisit.status == 'مكتملة',
-    ).scalar() or 0)
+    ).count()
     visits_for_pricing = annual_visits_planned or visits_done or 1
 
-    variable_cost = exp_buckets['fuel'] + exp_buckets['parts']
-    # مصروفات الصيانة التشغيلية (مباشرة + أسطول + رواتب فنيين)
+    variable_cost = exp_buckets['fuel'] + exp_buckets['parts'] + exp_buckets.get('maint_ops', 0)
+    # مصروفات الصيانة التشغيلية (مباشرة + أسطول + رواتب فنيين + مصاريف صيانة)
     maintenance_total = _round_money(
         exp_buckets['fuel'] + exp_buckets['parts']
         + exp_buckets['vehicles'] + exp_buckets['salaries']
+        + exp_buckets.get('maint_ops', 0)
     )
     other_expenses = _round_money(exp_buckets['other'])
-    # إجمالي المصروفات المعروض = المسجّل + رواتب تقديرية إن وُجدت
+    # إجمالي المصروفات المعروض = المسجّل + رواتب تقديرية إن وُجدت فقط عند غياب قيود رواتب
+    if salary_addon:
+        total_expenses = _round_money(total_expenses + salary_addon)
+        net_profit = _round_money(total_revenue - total_expenses)
+        margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
+        health_text, health_level = _health_label(margin_pct, net_profit)
     expenses_for_pct = max(total_expenses, maintenance_total + other_expenses) or 1.0
     maintenance_costs = {
         'total': maintenance_total,
@@ -1001,6 +1021,7 @@ def get_financial_health_report(
         'parts': exp_buckets['parts'],
         'vehicles': exp_buckets['vehicles'],
         'salaries': exp_buckets['salaries'],
+        'maint_ops': exp_buckets.get('maint_ops', 0),
         'other': other_expenses,
         'items': [
             {
@@ -1032,16 +1053,26 @@ def get_financial_health_report(
                 'is_maintenance': True,
             },
             {
+                'key': 'maint_ops',
+                'label': 'مصاريف صيانة ميدانية',
+                'hint': 'مصاريف صيانة عامة غير المصنّفة أعلاه',
+                'amount': exp_buckets.get('maint_ops', 0),
+                'is_maintenance': True,
+            },
+            {
                 'key': 'other',
                 'label': 'مصروفات أخرى (غير صيانة)',
-                'hint': 'إدارية وضيافة ومتنوعة',
+                'hint': 'إدارية وضيافة ومتنوعة وتجديدات',
                 'amount': other_expenses,
                 'is_maintenance': False,
             },
         ],
     }
 
-    fixed_cost = exp_buckets['salaries'] + exp_buckets['vehicles'] + exp_buckets['other']
+    fixed_cost = (
+        exp_buckets['salaries'] + exp_buckets['vehicles']
+        + exp_buckets.get('maint_ops', 0) + exp_buckets['other']
+    )
     operating_cost = _round_money(max(total_expenses, variable_cost + fixed_cost))
     cost_per_visit = _round_money(variable_cost / visits_for_pricing) if visits_for_pricing else 0.0
     cost_per_elevator_year = _round_money(
