@@ -4,10 +4,18 @@
 
 set -euo pipefail
 
-for try in "$HOME/liftcore/elevator-app" "/var/www/elevator-app"; do
-  if [ -d "$try/.git" ]; then APP_DIR="$try"; break; fi
-done
-APP_DIR="${APP_DIR:-$HOME/liftcore/elevator-app}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DEFAULT_ROOT="/home/info/liftcore/elevator-app"
+
+if [ -n "${APP_DIR:-}" ] && [ -d "$APP_DIR/.git" ]; then
+  :
+else
+  APP_DIR=""
+  for try in "$DEFAULT_ROOT" "$HOME/liftcore/elevator-app" "/var/www/elevator-app"; do
+    if [ -d "$try/.git" ]; then APP_DIR="$try"; break; fi
+  done
+fi
+APP_DIR="${APP_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 echo "==> LiftCore server update: $APP_DIR"
 cd "$APP_DIR"

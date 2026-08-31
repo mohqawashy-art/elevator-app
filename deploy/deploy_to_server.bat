@@ -18,12 +18,12 @@ echo اذا فشل SSH، اتصل بـ Hetzner Console ^> SSH
 echo وشغّل: bash deploy/server_update_now.sh
 echo.
 
-ssh -i "%SSH_KEY%" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new %USER%@%SERVER% "cd %APP% 2>/dev/null || cd /var/www/elevator-app; bash deploy/server_update_now.sh"
+ssh -i "%SSH_KEY%" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new %USER%@%SERVER% "export APP_DIR=%APP%; bash %APP%/deploy/server_update_now.sh"
 
 if errorlevel 1 (
   echo.
   echo فشل الاتصال. جرّب SSH يدوياً:
-  echo   cd ~/liftcore/elevator-app ^&^& bash deploy/server_update_now.sh
+  echo   ssh -i %%USERPROFILE%%\.ssh\id_ed25519 root@2.29.6.41 "export APP_DIR=/home/info/liftcore/elevator-app; bash /home/info/liftcore/elevator-app/deploy/server_update_now.sh"
   pause
   exit /b 1
 )

@@ -15,6 +15,8 @@ if [ -n "${APP_DIR:-}" ] && [ -d "$APP_DIR/.git" ]; then
 elif [ "$(basename "$SCRIPT_ROOT")" = "jama-elevator-app" ] && [ -d "$SCRIPT_ROOT/.git" ]; then
   APP_DIR="$SCRIPT_ROOT"
   SERVICE_NAME="${SERVICE_NAME:-liftcore-jama}"
+elif [ -d "/home/info/liftcore/elevator-app/.git" ]; then
+  APP_DIR="/home/info/liftcore/elevator-app"
 elif [ -d "$HOME/liftcore/elevator-app/.git" ]; then
   APP_DIR="$HOME/liftcore/elevator-app"
 elif [ -d "/var/www/elevator-app/.git" ]; then
