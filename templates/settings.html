@@ -804,10 +804,10 @@ input[type=range]{padding:0;background:transparent;border:none}
     <form class="card" method="post" action="{{ url_for('settings_theme_save') }}" id="theme-form">
       <div class="section">مظهر البرنامج</div>
       <p class="hint" style="margin-bottom:14px">يُحفظ لحسابك فقط — كل مستخدم يختار المظهر المناسب له.</p>
-      <input type="hidden" name="theme" id="theme-input" value="{{ current_user.theme or 'dark' }}">
+      <input type="hidden" name="theme" id="theme-input" value="{{ current_user.theme or 'light' }}">
       <div class="theme-pick">
         {% for opt in user_theme_options %}
-        <div class="theme-card {% if (current_user.theme or 'dark') == opt.id %}selected{% endif %}" data-theme-val="{{ opt.id }}" onclick="pickTheme('{{ opt.id }}')">
+        <div class="theme-card {% if (current_user.theme or 'light') == opt.id %}selected{% endif %}" data-theme-val="{{ opt.id }}" onclick="pickTheme('{{ opt.id }}')">
           <div class="swatch {{ opt.swatch }}"></div>
           <strong>{{ opt.label_ar }}</strong>
           <p class="hint">{{ opt.hint_ar }}</p>
