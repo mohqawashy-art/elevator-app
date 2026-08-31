@@ -610,6 +610,74 @@ def _monthly_totals(db, extract, func, year, date_col, value_col, exclude_cancel
     return result
 
 
+
+_MONTH_NAMES_AR = (
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+)
+
+
+def _parse_report_date(raw):
+    if raw is None:
+        return None
+    if isinstance(raw, date) and not isinstance(raw, datetime):
+        return raw
+    text = str(raw).strip()[:10]
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _month_keys_between(date_from: date, date_to: date) -> list[tuple[int, int]]:
+    """قائمة (سنة، شهر) من تاريخ البداية إلى النهاية شاملة."""
+    if date_to < date_from:
+        date_from, date_to = date_to, date_from
+    keys = []
+    y, m = date_from.year, date_from.month
+    while (y, m) <= (date_to.year, date_to.month):
+        keys.append((y, m))
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    return keys
+
+
+def _period_monthly_totals(
+    db, extract, func, date_from, date_to, date_col, value_col,
+    exclude_cancelled=False, status_col=None,
+):
+    """مجاميع شهرية لفترة من→إلى مع تسميات عربية."""
+    month_keys = _month_keys_between(date_from, date_to)
+    index = {k: i for i, k in enumerate(month_keys)}
+    result = [0.0] * len(month_keys)
+    multi_year = date_from.year != date_to.year
+    labels = [
+        f'{_MONTH_NAMES_AR[m - 1]} {y}' if multi_year else _MONTH_NAMES_AR[m - 1]
+        for y, m in month_keys
+    ]
+
+    q = db.session.query(
+        extract('year', date_col).label('y'),
+        extract('month', date_col).label('m'),
+        func.sum(value_col),
+    ).filter(
+        date_col >= date_from,
+        date_col <= date_to,
+    )
+    if exclude_cancelled and status_col is not None:
+        q = q.filter(status_col != 'ملغي')
+    rows = q.group_by('y', 'm').all()
+    for y, m, val in rows:
+        key = (int(y), int(m))
+        if key in index:
+            result[index[key]] = round(float(val or 0), 2)
+    return labels, result
+
+
 def _expense_buckets(expenses):
     buckets = {
         'fuel': 0.0, 'parts': 0.0, 'salaries': 0.0,
@@ -620,17 +688,182 @@ def _expense_buckets(expenses):
         amt = float(e.amount or 0)
         if et in ('محروقات', 'وقود'):
             buckets['fuel'] += amt
-        elif et == 'قطع غيار':
+        elif et == 'قطع غيار' or 'قطع غيار' in et:
             buckets['parts'] += amt
         elif et in ('رواتب',) or 'راتب' in (e.description or ''):
             buckets['salaries'] += amt
         elif et in ('مصروفات أساسية', 'مصروفات اساسية'):
             buckets['other'] += amt
-        elif et == 'صيانة سيارات':
+        elif et in ('صيانة سيارات', 'صيانه سيارات'):
             buckets['vehicles'] += amt
         else:
             buckets['other'] += amt
     return {k: _round_money(v) for k, v in buckets.items()}
+
+
+def _build_health_tips(
+    *,
+    health_text,
+    health_level,
+    margin_pct,
+    net_profit,
+    total_revenue,
+    total_expenses,
+    maint,
+    pricing,
+    visits_done,
+    visits_planned,
+    active_contracts_count,
+    avg_contract_value,
+):
+    """نصائح واقتراحات دائمة — تُبرز دائماً في التقرير."""
+    tips = []
+    maint_total = float(maint.get('total') or 0)
+    maint_pct = float(maint.get('pct_of_expenses') or 0)
+    cost_visit = float(pricing.get('cost_per_visit') or 0)
+    price_gap = float(pricing.get('price_gap') or 0)
+    suggested = float(pricing.get('suggested_elevator_price') or 0)
+    avg_elev = float(pricing.get('avg_elevator_value') or 0)
+
+    if health_level == 'danger' and net_profit < -0.01:
+        tips.append({
+            'priority': 'high',
+            'category': 'وضع مالي',
+            'title': 'الوضع الحالي: خسارة',
+            'text': (
+                f'صافي الفترة سالب بمقدار {abs(net_profit):,.2f} ريال. '
+                'ركّز على زيادة التحصيل أو خفض مصروفات الصيانة المباشرة أولاً.'
+            ),
+            'action': 'راجع قائمة العقود غير المحصّلة وبنود المحروقات وقطع الغيار',
+        })
+    elif health_level == 'warning':
+        tips.append({
+            'priority': 'medium',
+            'category': 'وضع مالي',
+            'title': f'الوضع: {health_text} — هامش ضعيف',
+            'text': (
+                f'هامش الربح {margin_pct:.1f}% فقط. الهدف التشغيلي المعتاد حوالي 15–20% '
+                'لتغطية الطوارئ والتجديدات.'
+            ),
+            'action': 'ارفع تسعير العقود الجديدة أو راجع تكاليف الزيارة',
+        })
+    else:
+        tips.append({
+            'priority': 'low',
+            'category': 'وضع مالي',
+            'title': f'الوضع: {health_text}',
+            'text': (
+                f'صافي الربح {net_profit:,.2f} ريال بهامش {margin_pct:.1f}%. '
+                'حافظ على السيطرة على مصروفات الصيانة ولا تُهمل التحصيل.'
+            ),
+            'action': 'تابع المستحقات شهرياً وراقب تكلفة الزيارة',
+        })
+
+    tips.append({
+        'priority': 'high' if maint_pct >= 70 else ('medium' if maint_pct >= 45 else 'low'),
+        'category': 'مصروفات صيانة',
+        'title': 'مصروفات الصيانة التشغيلية',
+        'text': (
+            f'مصروفات الصيانة في الفترة: {maint_total:,.2f} ريال '
+            f'({maint_pct:.0f}% من إجمالي المصروفات). '
+            f'تشمل محروقات {maint.get("fuel", 0):,.2f}، '
+            f'قطع غيار {maint.get("parts", 0):,.2f}، '
+            f'صيانة سيارات {maint.get("vehicles", 0):,.2f}، '
+            f'ورواتب فنيين {maint.get("salaries", 0):,.2f}.'
+        ),
+        'action': 'قارن تكلفة الزيارة مع إيراد العقد لكل مصعد',
+    })
+
+    if cost_visit > 0:
+        tips.append({
+            'priority': 'medium' if cost_visit > 150 else 'low',
+            'category': 'كفاءة الصيانة',
+            'title': 'تكلفة الزيارة',
+            'text': (
+                f'متوسط تكلفة الزيارة من مصروفات الصيانة المباشرة '
+                f'(محروقات + قطع غيار) ≈ {cost_visit:,.2f} ريال. '
+                f'الزيارات المكتملة: {visits_done} من المخطط {visits_planned}.'
+            ),
+            'action': 'حسّن مسارات الفنيين وقلّل الزيارات غير الضرورية',
+        })
+
+    if price_gap > 50:
+        tips.append({
+            'priority': 'high',
+            'category': 'تسعير',
+            'title': 'فجوة تسعير الصيانة',
+            'text': (
+                f'متوسط قيمة المصعد الحالية {avg_elev:,.2f} ريال أقل من السعر المقترح '
+                f'{suggested:,.2f} ريال (بفارق {price_gap:,.2f}). '
+                'العقود الحالية قد لا تغطي تكلفة التشغيل بهامش آمن.'
+            ),
+            'action': 'راجع أسعار التجديد والعقود الجديدة',
+        })
+
+    if visits_planned > 0 and visits_done < visits_planned * 0.7:
+        tips.append({
+            'priority': 'medium',
+            'category': 'تشغيل',
+            'title': 'نقص في إنجاز الزيارات',
+            'text': (
+                f'أُنجز {visits_done} زيارة فقط من أصل {visits_planned} مخططة في الفترة '
+                f'({_round_money(visits_done / visits_planned * 100) if visits_planned else 0}%). '
+                'انخفاض الإنجاز يضعف جودة الخدمة ويزيد الأعطال لاحقاً.'
+            ),
+            'action': 'راجع جدول الصيانة الدورية وتوزيع الفنيين',
+        })
+
+    if net_profit < -0.01:
+        gap = abs(net_profit)
+        if avg_contract_value > 0:
+            import math
+            need = math.ceil(gap / avg_contract_value)
+            tips.append({
+                'priority': 'high',
+                'category': 'تعافٍ',
+                'title': 'زيادة العقود للتعادل',
+                'text': (
+                    f'لتغطية الخسارة تحتاج تقريباً {need} عقداً جديداً '
+                    f'بمتوسط قيمة {avg_contract_value:,.2f} ريال.'
+                ),
+                'action': 'فعّل عروض التجديد والمبيعات على العملاء المحتملين',
+            })
+        if active_contracts_count > 0:
+            inc = _round_money(gap / active_contracts_count)
+            tips.append({
+                'priority': 'medium',
+                'category': 'تعافٍ',
+                'title': 'رفع أسعار العقود النشطة',
+                'text': (
+                    f'رفع متوسط كل عقد من العقود النشطة ({active_contracts_count}) '
+                    f'بمقدار {inc:,.2f} ريال يغطي فجوة الفترة.'
+                ),
+                'action': 'طبّق الزيادة عند التجديد أو بملاحق تعاقدية',
+            })
+        if total_expenses > 0:
+            pct = _round_money(gap / total_expenses * 100)
+            tips.append({
+                'priority': 'medium',
+                'category': 'تعافٍ',
+                'title': 'خفض المصروفات',
+                'text': f'خفض إجمالي المصروفات بنسبة {pct:.1f}% يصل بك لنقطة التعادل.',
+                'action': 'ابدأ بمحروقات وقطع الغيار غير الضرورية',
+            })
+    elif margin_pct < 10 and total_revenue > 0:
+        tips.append({
+            'priority': 'medium',
+            'category': 'تحسين',
+            'title': 'تحسين الهامش',
+            'text': (
+                'الهامش أقل من 10%. راقب مصروفات الصيانة نسبةً للإيراد، '
+                'وارفع أسعار العقود الجديدة تدريجياً.'
+            ),
+            'action': 'حدد سقفاً شهرياً للمحروقات وقطع الغيار',
+        })
+
+    order = {'high': 0, 'medium': 1, 'low': 2}
+    tips.sort(key=lambda t: order.get(t.get('priority'), 9))
+    return tips
 
 
 def _health_label(margin_pct, net):
@@ -647,26 +880,43 @@ def _health_label(margin_pct, net):
 
 def get_financial_health_report(
     db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit,
-    year=None, today=None, contract_status_fn=None, target_margin=0.20,
+    year=None, date_from=None, date_to=None, today=None,
+    contract_status_fn=None, target_margin=0.20,
 ):
-    """تقرير الصحة المالية: رسوم، ربحية، توصيات التعافي، وتسعير العقود."""
+    """تقرير الصحة المالية: رسوم، ربحية، توصيات التعافي، وتسعير العقود.
+
+    يدعم فترة من→إلى. إن وُجدت سنة فقط (توافق قديم) تُستخدم كامل تلك السنة.
+    """
     from sqlalchemy import extract, func
 
     if today is None:
         today = date.today()
-    if year is None:
-        year = today.year
-    year = int(year)
 
-    monthly_revenue = _monthly_totals(
-        db, extract, func, year, Revenue.revenue_date, Revenue.total,
+    df = _parse_report_date(date_from)
+    dt = _parse_report_date(date_to)
+    if df is None and dt is None and year is not None:
+        year = int(year)
+        df = date(year, 1, 1)
+        dt = date(year, 12, 31)
+    if df is None:
+        df = date(today.year, 1, 1)
+    if dt is None:
+        dt = today
+    if dt < df:
+        df, dt = dt, df
+
+    months_in_period = max(1, len(_month_keys_between(df, dt)))
+
+    month_labels, monthly_revenue = _period_monthly_totals(
+        db, extract, func, df, dt, Revenue.revenue_date, Revenue.total,
         exclude_cancelled=True, status_col=Revenue.status,
     )
-    monthly_expenses = _monthly_totals(
-        db, extract, func, year, Expense.expense_date, Expense.amount,
+    _, monthly_expenses = _period_monthly_totals(
+        db, extract, func, df, dt, Expense.expense_date, Expense.amount,
     )
     monthly_profit = [
-        _round_money(monthly_revenue[i] - monthly_expenses[i]) for i in range(12)
+        _round_money(monthly_revenue[i] - monthly_expenses[i])
+        for i in range(len(monthly_revenue))
     ]
 
     total_revenue = _round_money(sum(monthly_revenue))
@@ -675,16 +925,20 @@ def get_financial_health_report(
     margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
     health_text, health_level = _health_label(margin_pct, net_profit)
 
-    year_expenses = tenant_query(Expense).filter(extract('year', Expense.expense_date) == year).all()
-    exp_buckets = _expense_buckets(year_expenses)
+    period_expenses = tenant_query(Expense).filter(
+        Expense.expense_date >= df,
+        Expense.expense_date <= dt,
+    ).all()
+    exp_buckets = _expense_buckets(period_expenses)
 
-    tech_salaries = _round_money(sum(
+    tech_salaries_annual = _round_money(sum(
         float(t.salary or 0) for t in tenant_query(Technician).filter(
             Technician.status.in_(['نشط', 'متاح', 'مشغول'])
         ).all()
     ))
-    if tech_salaries > 0:
-        exp_buckets['salaries'] = _round_money(exp_buckets['salaries'] + tech_salaries)
+    if tech_salaries_annual > 0:
+        tech_salaries_period = _round_money(tech_salaries_annual * (months_in_period / 12.0))
+        exp_buckets['salaries'] = _round_money(exp_buckets['salaries'] + tech_salaries_period)
 
     expense_breakdown = {
         'محروقات ووقود': exp_buckets['fuel'],
@@ -706,7 +960,8 @@ def get_financial_health_report(
             Elevator.status.in_(['نشط', 'تحت الصيانة'])
         ).count()
 
-    annual_visits_planned = sum((c.visits_per_month or 1) * 12 for c in active_contracts)
+    # زيارات مخططة تناسب طول الفترة (شهري × عدد الأشهر)
+    annual_visits_planned = sum((c.visits_per_month or 1) * months_in_period for c in active_contracts)
     contract_values = [_contract_forecast_amount(c) for c in active_contracts]
     elevator_values = []
     for c in active_contracts:
@@ -724,12 +979,68 @@ def get_financial_health_report(
     )
 
     visits_done = int(db.session.query(func.count(MaintenanceVisit.id)).filter(
-        extract('year', MaintenanceVisit.visit_date) == year,
+        MaintenanceVisit.visit_date >= df,
+        MaintenanceVisit.visit_date <= dt,
         MaintenanceVisit.status == 'مكتملة',
     ).scalar() or 0)
     visits_for_pricing = annual_visits_planned or visits_done or 1
 
     variable_cost = exp_buckets['fuel'] + exp_buckets['parts']
+    # مصروفات الصيانة التشغيلية (مباشرة + أسطول + رواتب فنيين)
+    maintenance_total = _round_money(
+        exp_buckets['fuel'] + exp_buckets['parts']
+        + exp_buckets['vehicles'] + exp_buckets['salaries']
+    )
+    other_expenses = _round_money(exp_buckets['other'])
+    # إجمالي المصروفات المعروض = المسجّل + رواتب تقديرية إن وُجدت
+    expenses_for_pct = max(total_expenses, maintenance_total + other_expenses) or 1.0
+    maintenance_costs = {
+        'total': maintenance_total,
+        'pct_of_expenses': _round_money(maintenance_total / expenses_for_pct * 100),
+        'fuel': exp_buckets['fuel'],
+        'parts': exp_buckets['parts'],
+        'vehicles': exp_buckets['vehicles'],
+        'salaries': exp_buckets['salaries'],
+        'other': other_expenses,
+        'items': [
+            {
+                'key': 'fuel',
+                'label': 'محروقات ووقود',
+                'hint': 'تنقل الفنيين لمواقع الصيانة',
+                'amount': exp_buckets['fuel'],
+                'is_maintenance': True,
+            },
+            {
+                'key': 'parts',
+                'label': 'قطع غيار وزيوت',
+                'hint': 'قطع مستخدمة في الصيانة والأعطال',
+                'amount': exp_buckets['parts'],
+                'is_maintenance': True,
+            },
+            {
+                'key': 'vehicles',
+                'label': 'صيانة سيارات',
+                'hint': 'أسطول خدمة الصيانة الميدانية',
+                'amount': exp_buckets['vehicles'],
+                'is_maintenance': True,
+            },
+            {
+                'key': 'salaries',
+                'label': 'رواتب الفنيين',
+                'hint': 'تكلفة العمالة للصيانة الدورية',
+                'amount': exp_buckets['salaries'],
+                'is_maintenance': True,
+            },
+            {
+                'key': 'other',
+                'label': 'مصروفات أخرى (غير صيانة)',
+                'hint': 'إدارية وضيافة ومتنوعة',
+                'amount': other_expenses,
+                'is_maintenance': False,
+            },
+        ],
+    }
+
     fixed_cost = exp_buckets['salaries'] + exp_buckets['vehicles'] + exp_buckets['other']
     operating_cost = _round_money(max(total_expenses, variable_cost + fixed_cost))
     cost_per_visit = _round_money(variable_cost / visits_for_pricing) if visits_for_pricing else 0.0
@@ -744,9 +1055,9 @@ def get_financial_health_report(
     visits_per_elevator = []
     for c in active_contracts:
         n_elev = len(c.elevators) or 1
-        visits_y = (c.visits_per_month or 1) * 12
-        visits_per_elevator.append(round(visits_y / n_elev, 1))
-        contract_cost = cost_per_visit * visits_y + fixed_per_contract
+        visits_period = (c.visits_per_month or 1) * months_in_period
+        visits_per_elevator.append(round(visits_period / n_elev, 1))
+        contract_cost = cost_per_visit * visits_period + fixed_per_contract
         elevator_cost_estimates.append(contract_cost / n_elev)
     avg_visits_per_elevator = (
         round(sum(visits_per_elevator) / len(visits_per_elevator), 1)
@@ -780,54 +1091,40 @@ def get_financial_health_report(
         'price_gap': _round_money(suggested_elevator_price - avg_elevator_value),
     }
 
-    recommendations = []
-    if net_profit < -0.01:
-        gap = abs(net_profit)
-        if avg_contract_value > 0:
-            import math
-            need = math.ceil(gap / avg_contract_value)
-            recommendations.append({
-                'icon': 'contracts',
-                'title': 'زيادة عدد العقود',
-                'text': f'تحتاج نحو {need} عقداً جديداً بمتوسط قيمة {avg_contract_value:,.2f} ريال لتغطية الخسارة.',
-                'value': need,
-            })
-        if active_contracts:
-            inc = _round_money(gap / len(active_contracts))
-            recommendations.append({
-                'icon': 'price',
-                'title': 'رفع أسعار العقود',
-                'text': f'رفع قيمة كل عقد نشط ({len(active_contracts)} عقد) بمقدار {inc:,.2f} ريال سنوياً.',
-                'value': inc,
-            })
-        if total_expenses > 0:
-            pct = _round_money(gap / total_expenses * 100)
-            recommendations.append({
-                'icon': 'cost',
-                'title': 'خفض المصروفات',
-                'text': f'خفض إجمالي المصروفات بنسبة {pct:.1f}% للوصول لنقطة التعادل.',
-                'value': pct,
-            })
-        if pricing['price_gap'] > 0:
-            recommendations.append({
-                'icon': 'pricing',
-                'title': 'مراجعة تسعير الصيانة',
-                'text': (
-                    f'متوسط قيمة المصعد الحالية ({avg_elevator_value:,.2f} ريال) أقل من التكلفة المقترحة '
-                    f'({suggested_elevator_price:,.2f} ريال للمصعد) — راجع أسعار العقود.'
-                ),
-                'value': pricing['price_gap'],
-            })
-    elif margin_pct < 5 and active_contracts:
-        recommendations.append({
-            'icon': 'pricing',
-            'title': 'تحسين الهامش',
-            'text': 'الهامش منخفض — راجع تكاليف المحروقات وقطع الغيار أو ارفع قيمة العقود تدريجياً.',
-            'value': margin_pct,
-        })
+    tips = _build_health_tips(
+        health_text=health_text,
+        health_level=health_level,
+        margin_pct=margin_pct,
+        net_profit=net_profit,
+        total_revenue=total_revenue,
+        total_expenses=total_expenses,
+        maint=maintenance_costs,
+        pricing=pricing,
+        visits_done=visits_done,
+        visits_planned=annual_visits_planned,
+        active_contracts_count=len(active_contracts),
+        avg_contract_value=avg_contract_value,
+    )
+    # توافق قديم للواجهة السابقة
+    recommendations = [
+        {
+            'icon': t.get('category'),
+            'title': t.get('title'),
+            'text': t.get('text'),
+            'value': None,
+            'priority': t.get('priority'),
+            'action': t.get('action'),
+            'category': t.get('category'),
+        }
+        for t in tips
+    ]
 
+    period_label = f'{df.isoformat()} → {dt.isoformat()}'
     return {
-        'year': year,
+        'year': df.year if df.year == dt.year else None,
+        'date_from': df.isoformat(),
+        'date_to': dt.isoformat(),
+        'period_label': period_label,
         'summary': {
             'revenue': total_revenue,
             'expenses': total_expenses,
@@ -835,15 +1132,20 @@ def get_financial_health_report(
             'margin_pct': margin_pct,
             'health': health_text,
             'health_level': health_level,
+            'maintenance_expenses': maintenance_total,
+            'other_expenses': other_expenses,
             'parts_profit_note': None,
         },
         'monthly': {
+            'labels': month_labels,
             'revenue': monthly_revenue,
             'expenses': monthly_expenses,
             'profit': monthly_profit,
         },
         'expense_breakdown': expense_breakdown,
+        'maintenance_costs': maintenance_costs,
         'pricing': pricing,
+        'tips': tips,
         'recommendations': recommendations,
         'is_loss': net_profit < -0.01,
     }
