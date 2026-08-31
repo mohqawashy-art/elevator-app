@@ -164,20 +164,20 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .cal-nav{display:flex;gap:6px}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border)}
 .cal-day-header{background:var(--bg3);padding:8px;text-align:center;font-size:11px;color:var(--text3);font-weight:500}
-.cal-day{background:var(--card);min-height:80px;padding:6px;cursor:pointer;transition:var(--trans);border:1px solid transparent;display:flex;flex-direction:column;gap:4px}
+.cal-day{background:var(--card);min-height:110px;padding:6px;cursor:pointer;transition:var(--trans);border:1px solid transparent;display:flex;flex-direction:column;gap:3px;overflow:hidden}
 .cal-day:hover{background:var(--bg3)}
 .cal-day.today{background:rgba(42,127,255,.06);border-color:rgba(42,127,255,.25)}
 .cal-day.other-month{opacity:.4}
 .cal-day-name{background:var(--bg3);padding:8px;text-align:center;font-size:11px;color:var(--text3);font-weight:600}
-.cal-day.has-events{background:rgba(42,127,255,.08);border-color:rgba(42,127,255,.22);min-height:92px}
+.cal-day.has-events{background:rgba(42,127,255,.08);border-color:rgba(42,127,255,.22);min-height:120px}
 .cal-day.has-events small{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;margin-top:auto;align-self:flex-start}
 .cal-day .cal-date{font-size:12px;font-weight:600;color:var(--text1);line-height:1;margin-bottom:2px}
 .cal-day .cal-date.today-num{background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
-.cal-day .cal-event{font-size:10px;line-height:1.35;padding:3px 6px;border-radius:4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.cal-day .cal-event{font-size:11px;line-height:1.35;padding:3px 5px;border-radius:4px;margin-top:2px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:100%;word-break:break-word}
 .cal-day.empty{min-height:0;cursor:default;pointer-events:none}
 .cal-date{font-size:12px;font-family:var(--font-en);color:var(--text2);margin-bottom:4px}
 .cal-date.today-num{background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px}
-.cal-event{font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cal-event{font-size:11px;padding:3px 5px;border-radius:4px;margin-bottom:2px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;cursor:pointer;word-break:break-word}
 .cal-event.scheduled{background:rgba(42,127,255,.2);color:var(--accent)}
 .cal-event.completed{background:rgba(31,184,122,.2);color:var(--success)}
 .cal-event.delayed{background:rgba(224,72,72,.2);color:var(--danger)}
@@ -559,21 +559,21 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   </div>
 </div>
 
-<!-- PLAN MODAL — مبسّط -->
+<!-- PLAN MODAL — مبسّط وواضح -->
 <div class="modal-overlay" id="modal-plan">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:960px;width:96vw;max-height:92vh">
     <div class="modal-head">
       <div class="modal-title">تخطيط الشهر</div>
       <button class="modal-close" onclick="closeModal('modal-plan')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="overflow-y:auto;max-height:calc(92vh - 120px)">
       <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px">
         اختر الشهر ثم أنشئ الخطة. النظام يوزّع زيارة لكل مصعد على أيام العمل ويعيّن الفرق تلقائياً.
       </p>
 
       <div class="field" style="margin-bottom:14px">
         <label>الشهر</label>
-        <input type="month" id="plan-month" value="{{ plan_default_month }}" style="direction:ltr;max-width:200px" onchange="onPlanMonthChange()">
+        <input type="month" id="plan-month" value="{{ plan_default_month }}" style="direction:ltr;max-width:220px" onchange="onPlanMonthChange()">
         <p id="plan-month-hint" style="font-size:11px;color:var(--text3);margin-top:6px"></p>
       </div>
 
@@ -585,20 +585,20 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <button class="btn btn-secondary" type="button" onclick="cancelPlan()">إلغاء الخطة</button>
       </div>
 
-      <div id="plan-summary" style="font-size:12px;color:var(--text3);margin-bottom:8px"></div>
+      <div id="plan-summary" style="font-size:13px;color:var(--text2);margin-bottom:8px"></div>
       <div id="plan-tech-summary" style="font-size:12px;margin-bottom:12px"></div>
-      <div id="plan-districts" style="margin-bottom:16px;max-height:220px;overflow:auto"></div>
+      <div id="plan-districts" style="margin-bottom:16px;max-height:min(420px,42vh);overflow:auto"></div>
 
       <div style="padding-top:12px;border-top:1px solid var(--border)">
         <div style="font-size:13px;font-weight:600;margin-bottom:8px">إرسال خط السير (واتساب)</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
-          <div class="field" style="margin:0;min-width:140px;flex:1">
+          <div class="field" style="margin:0;min-width:180px;flex:1">
             <label>الفريق</label>
             <select id="dispatch-team" onchange="onDispatchTeamChange()">
               <option value="">اختر الفريق</option>
             </select>
           </div>
-          <div class="field" style="margin:0;min-width:120px">
+          <div class="field" style="margin:0;min-width:140px">
             <label>اليوم</label>
             <select id="dispatch-day" onchange="onDispatchDayShortcut()">
               <option value="today">اليوم</option>
@@ -1700,11 +1700,22 @@ function filterPlanDistrict(district) {
   }
 }
 
+function planVisitCustomerName(v) {
+  if (!v) return '—';
+  var name = (v.customer || '').trim();
+  if (name && name !== '—') return name;
+  if (v.customer_id && typeof CUSTOMERS !== 'undefined') {
+    var c = CUSTOMERS.find(function (x) { return String(x.id) === String(v.customer_id); });
+    if (c && c.name) return c.name;
+  }
+  return '—';
+}
+
 function renderPlanDistricts() {
   const el = document.getElementById('plan-districts');
   if (!el) return;
   if (!PLAN_VISITS.length) {
-    el.innerHTML = '<p style="font-size:12px;color:var(--text3)">لا توجد زيارات في هذه الخطة بعد. اضغط «إنشاء خطة الشهر».</p>';
+    el.innerHTML = '<p style="font-size:13px;color:var(--text3)">لا توجد زيارات في هذه الخطة بعد. اضغط «إنشاء خطة الشهر».</p>';
     return;
   }
   const byDate = {};
@@ -1715,21 +1726,34 @@ function renderPlanDistricts() {
   });
   const sortedDays = Object.keys(byDate).sort();
   el.innerHTML =
-    '<div style="font-size:12px;font-weight:600;margin-bottom:8px">جدول الخطة (' + PLAN_VISITS.length + ' زيارة)</div>' +
+    '<div style="font-size:14px;font-weight:600;margin-bottom:10px">جدول الخطة — ' + PLAN_VISITS.length + ' زيارة</div>' +
     sortedDays.map(function (day) {
-      const visits = byDate[day];
-      const teams = [...new Set(visits.map(function (v) { return v.team || v.technician || '—'; }))].join('، ');
-      const sample = visits.slice(0, 4).map(function (v) {
-        return escHtml(v.elevator || v.customer || '—');
-      }).join(' · ');
-      const more = visits.length > 4 ? ' +' + (visits.length - 4) : '';
-      return '<div style="padding:8px 10px;margin-bottom:6px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:12px">' +
-        '<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:4px">' +
-          '<strong style="direction:ltr">' + escHtml(formatPlanDayLabel(day)) + '</strong>' +
-          '<span style="color:var(--text3)">' + visits.length + ' زيارة</span>' +
+      const visits = byDate[day].slice().sort(function (a, b) {
+        var ca = planVisitCustomerName(a).localeCompare(planVisitCustomerName(b), 'ar');
+        if (ca) return ca;
+        return String(a.elevator || '').localeCompare(String(b.elevator || ''), undefined, { numeric: true });
+      });
+      const rows = visits.map(function (v) {
+        var cust = planVisitCustomerName(v);
+        var elev = (v.elevator || '—');
+        var bld = (v.building || '').trim();
+        var team = (v.team || v.technician || '— بدون فريق —');
+        return '<div style="display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(70px,.5fr) minmax(120px,1fr) minmax(110px,.8fr);gap:10px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);font-size:13px">' +
+          '<div style="font-weight:600;color:var(--text1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(cust) + '">' + escHtml(cust) + '</div>' +
+          '<div style="font-family:var(--font-en);direction:ltr;color:var(--accent);font-weight:600">' + escHtml(elev) + '</div>' +
+          '<div style="color:var(--text2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(bld || '—') + '">' + escHtml(bld || '—') + '</div>' +
+          '<div style="color:var(--text3);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(team) + '</div>' +
+        '</div>';
+      }).join('');
+      return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">' +
+          '<strong style="font-size:13px">' + escHtml(formatPlanDayLabel(day)) + '</strong>' +
+          '<span style="font-size:12px;color:var(--text3)">' + visits.length + ' زيارة</span>' +
         '</div>' +
-        '<div style="color:var(--text3);font-size:11px">' + escHtml(teams) + '</div>' +
-        '<div style="margin-top:4px;color:var(--text2)">' + sample + more + '</div>' +
+        '<div style="display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(70px,.5fr) minmax(120px,1fr) minmax(110px,.8fr);gap:10px;padding:0 10px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
+          '<span>العميل</span><span>المصعد</span><span>المبنى</span><span>الفريق</span>' +
+        '</div>' +
+        rows +
       '</div>';
     }).join('');
 }
