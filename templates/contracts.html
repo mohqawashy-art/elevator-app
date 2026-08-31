@@ -722,16 +722,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <div class="upload-area" id="contract-upload-area" role="button" tabindex="0" aria-label="رفع ملف العقد PDF">
           <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M14 4v14M8 10l6-6 6 6"/><path d="M4 20v2a2 2 0 002 2h16a2 2 0 002-2v-2"/></svg>
           <p>اسحب ملف PDF هنا أو <span>اضغط للرفع</span></p>
-          <p style="margin-top:4px;font-size:11px">PDF فقط — حجم أقصى 10MB</p>
-          <input type="file" id="contract-file" accept=".pdf,application/pdf" style="display:none" onchange="showFileName(this)">
+          <p style="margin-top:4px;font-size:11px">PDF فقط — حتى 20 ملف، 10MB لكل ملف</p>
+          <input type="file" id="contract-file" accept=".pdf,application/pdf" multiple style="display:none" onchange="showContractFiles(this)">
         </div>
         <div id="file-name" style="font-size:12px;color:var(--accent);margin-top:8px;display:none"></div>
         <div id="existing-file-wrap" style="display:none;margin-top:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;color:var(--text2)">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span>الملف الحالي: </span>
-            <a id="existing-file-link" href="#" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none"></a>
-            <button type="button" class="btn btn-danger btn-sm lc-admin-delete" id="btn-remove-contract-file" onclick="removeContractAttachment()" style="margin-inline-start:auto">حذف المرفق</button>
-          </div>
+          <div id="existing-contract-files-list"></div>
           <input type="hidden" id="f-remove-contract-file" value="0">
         </div>
       </div>
@@ -862,21 +858,69 @@ function lcDisp(s) {
 }
 
 function contractAttachmentCell(c) {
-  if (!c.file_url) return '<span class="contract-attach-empty">—</span>';
-  return '<a class="contract-attach-link" href="' + esc(c.file_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + esc(c.file_name || 'PDF') + '">📄 PDF</a>';
+  var files = (c.files && c.files.length) ? c.files : (c.file_url ? [{ url: c.file_url, name: c.file_name || 'PDF' }] : []);
+  if (!files.length) return '<span class="contract-attach-empty">—</span>';
+  if (files.length === 1) {
+    return '<a class="contract-attach-link" href="' + esc(files[0].url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + esc(files[0].name || 'PDF') + '">📄 ' + esc(files[0].name || 'PDF') + '</a>';
+  }
+  return '<span class="contract-attach-link" title="' + files.length + ' ملف">📄 ' + files.length + ' ملف</span>';
 }
 
 function contractAttachmentBlock(c) {
-  if (!c.file_url) {
+  var files = (c.files && c.files.length) ? c.files : (c.file_url ? [{ url: c.file_url, name: c.file_name || 'فتح المرفق', index: 0 }] : []);
+  if (!files.length) {
     return '<div class="view-section">المرفقات</div>' +
-      '<div class="view-item view-full"><div class="view-label">ملف العقد</div><div class="view-val contract-attach-empty">لا يوجد مرفق</div></div>';
+      '<div class="view-item view-full"><div class="view-label">ملفات العقد</div><div class="view-val contract-attach-empty">لا يوجد مرفق</div></div>';
   }
+  var listHtml = window.LiftCoreMultiAttach
+    ? LiftCoreMultiAttach.proofsHtml(files, { recordId: c.id, removeFn: 'removeContractAttachmentAt', empty: '—' })
+    : files.map(function (f) {
+      return '<a class="contract-attach-link" href="' + esc(f.url) + '" target="_blank" rel="noopener">📄 ' + esc(f.name || 'PDF') + '</a>';
+    }).join('<br>');
   return '<div class="view-section">المرفقات</div>' +
-    '<div class="view-item view-full"><div class="view-label">ملف العقد (PDF)</div><div class="view-val" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-    '<a class="contract-attach-link" href="' + esc(c.file_url) + '" target="_blank" rel="noopener">📄 ' + esc(c.file_name || 'فتح المرفق') + '</a>' +
-    (window.__LC_IS_ADMIN ?
-      '<button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="removeContractAttachmentFromView(' + c.id + ')">حذف المرفق</button>' : '') +
-    '</div></div>';
+    '<div class="view-item view-full"><div class="view-label">ملفات العقد (PDF)</div><div class="view-val" style="line-height:1.6">' +
+    listHtml + '</div></div>';
+}
+
+function removeContractAttachmentAt(contractId, index) {
+  if (!contractId) return;
+  if (!window.LiftCoreAdminDelete) {
+    alert('تعذّر تحميل أداة الحذف — حدّث الصفحة وحاول مجدداً');
+    return;
+  }
+  LiftCoreAdminDelete.post('/contracts/' + contractId + '/remove-file', {
+    message: 'حذف هذا المرفق من العقد؟',
+    extraBody: { index: index },
+    onSuccess: function () {
+      var idx = CONTRACTS.findIndex(function(x) { return String(x.id) === String(contractId); });
+      if (idx >= 0 && CONTRACTS[idx].files) {
+        CONTRACTS[idx].files = CONTRACTS[idx].files.filter(function (f) {
+          return Number(f.index) !== Number(index);
+        });
+        CONTRACTS[idx].files.forEach(function (f, i) { f.index = i; });
+        if (CONTRACTS[idx].files.length) {
+          CONTRACTS[idx].file_url = CONTRACTS[idx].files[0].url;
+          CONTRACTS[idx].file_name = CONTRACTS[idx].files[0].name;
+          CONTRACTS[idx].has_file = true;
+        } else {
+          CONTRACTS[idx].file_url = '';
+          CONTRACTS[idx].file_name = '';
+          CONTRACTS[idx].has_file = false;
+        }
+      }
+      if (typeof renderTable === 'function') renderTable();
+      var modalAdd = document.getElementById('modal-add');
+      if (modalAdd && modalAdd.classList.contains('open') && modalAdd.dataset.editId === String(contractId)) {
+        var c = CONTRACTS.find(function(x) { return String(x.id) === String(contractId); });
+        if (c) setContractFileUi(c);
+      }
+      var viewModal = document.getElementById('modal-view');
+      if (viewModal && viewModal.classList.contains('open')) {
+        var c2 = CONTRACTS.find(function(x) { return String(x.id) === String(contractId); });
+        if (c2 && typeof viewContract === 'function') viewContract(c2.id);
+      }
+    }
+  });
 }
 
 function removeContractAttachmentFromView(contractId) {
@@ -886,13 +930,15 @@ function removeContractAttachmentFromView(contractId) {
     return;
   }
   LiftCoreAdminDelete.post('/contracts/' + contractId + '/remove-file', {
-    message: 'حذف مرفق العقد نهائياً؟',
-    title: 'حذف المرفق',
+    message: 'حذف كل مرفقات العقد نهائياً؟',
+    title: 'حذف المرفقات',
     onSuccess: function () {
       var idx = CONTRACTS.findIndex(function(x) { return String(x.id) === String(contractId); });
       if (idx >= 0) {
         CONTRACTS[idx].file_url = '';
         CONTRACTS[idx].file_name = '';
+        CONTRACTS[idx].files = [];
+        CONTRACTS[idx].has_file = false;
       }
       if (typeof renderTable === 'function') renderTable();
       var c = CONTRACTS.find(function(x) { return String(x.id) === String(contractId); });
@@ -905,18 +951,22 @@ function removeContractAttachmentFromView(contractId) {
 function setContractFileUi(c) {
   var fn = document.getElementById('file-name');
   var wrap = document.getElementById('existing-file-wrap');
-  var link = document.getElementById('existing-file-link');
+  var listEl = document.getElementById('existing-contract-files-list');
   var input = document.getElementById('contract-file');
   var removeFlag = document.getElementById('f-remove-contract-file');
   if (input) input.value = '';
   if (removeFlag) removeFlag.value = '0';
-  if (fn) { fn.style.display = 'none'; fn.textContent = ''; }
-  if (c && c.file_url && wrap && link) {
-    wrap.style.display = 'block';
-    link.href = c.file_url;
-    link.textContent = c.file_name || 'contract.pdf';
-  } else if (wrap) {
-    wrap.style.display = 'none';
+  if (fn) { fn.style.display = 'none'; fn.innerHTML = ''; }
+  var files = (c && c.files && c.files.length) ? c.files : [];
+  if (wrap) wrap.style.display = files.length ? 'block' : 'none';
+  if (window.LiftCoreMultiAttach && listEl) {
+    LiftCoreMultiAttach.renderExisting(listEl, files, {
+      label: 'ملفات العقد الحالية:',
+      adminOnly: true,
+      recordId: c ? c.id : 0,
+      onRemove: 'removeContractAttachmentAt',
+      hintAfter: files.length ? 'أضف PDF جديد ليُضاف إلى القائمة' : '',
+    });
   }
 }
 
@@ -1812,8 +1862,8 @@ function buildContractFormData(adminPassword) {
   fd.append('notes', document.getElementById('f-notes').value);
   getSelectedElevatorIds().forEach(function(id) { fd.append('elevator_ids', id); });
   var fileInput = document.getElementById('contract-file');
-  if (fileInput && fileInput.files && fileInput.files.length) {
-    fd.append('contract_file', fileInput.files[0]);
+  if (fileInput && window.LiftCoreMultiAttach) {
+    LiftCoreMultiAttach.appendToFormData(fd, fileInput, 'contract_file');
   }
   if (adminPassword) fd.append('admin_password', adminPassword);
   var removeFlag = document.getElementById('f-remove-contract-file');
@@ -3027,55 +3077,56 @@ function isContractPdfFile(file) {
   return name.endsWith('.pdf') || type === 'application/pdf';
 }
 
-function applyContractFile(file) {
+function mergeContractInputFiles(newFiles) {
   var input = document.getElementById('contract-file');
-  var fn = document.getElementById('file-name');
-  var removeFlag = document.getElementById('f-remove-contract-file');
-  if (!file || !input) return false;
-  if (!isContractPdfFile(file)) {
+  if (!input || !newFiles || !newFiles.length) return false;
+  var valid = [];
+  for (var i = 0; i < newFiles.length; i++) {
+    var file = newFiles[i];
+    if (!isContractPdfFile(file)) continue;
+    if (file.size > CONTRACT_FILE_MAX_BYTES) {
+      alert('حجم الملف ' + file.name + ' أكبر من 10MB');
+      continue;
+    }
+    valid.push(file);
+  }
+  if (!valid.length) {
     alert('يُسمح بملف PDF فقط');
     return false;
   }
-  if (file.size > CONTRACT_FILE_MAX_BYTES) {
-    alert('حجم الملف أكبر من 10MB');
-    return false;
-  }
+  var existing = input.files ? Array.from(input.files) : [];
+  var merged = existing.concat(valid);
   try {
     var dt = new DataTransfer();
-    dt.items.add(file);
+    merged.forEach(function (f) { dt.items.add(f); });
     input.files = dt.files;
   } catch (err) {
     alert('تعذّر إرفاق الملف — جرّب الضغط للرفع');
     return false;
   }
-  if (removeFlag) removeFlag.value = '0';
-  if (fn) {
-    fn.textContent = '📄 ' + file.name;
-    fn.style.display = 'block';
-  }
+  showContractFiles(input);
   return true;
 }
 
-function showFileName(input) {
-  if (!input || !input.files || !input.files.length) return;
-  var file = input.files[0];
-  if (!isContractPdfFile(file)) {
-    input.value = '';
-    alert('يُسمح بملف PDF فقط');
-    return;
-  }
-  if (file.size > CONTRACT_FILE_MAX_BYTES) {
-    input.value = '';
-    alert('حجم الملف أكبر من 10MB');
-    return;
-  }
+function applyContractFile(file) {
+  return mergeContractInputFiles([file]);
+}
+
+function showContractFiles(input) {
+  if (!input) return;
   var removeFlag = document.getElementById('f-remove-contract-file');
   if (removeFlag) removeFlag.value = '0';
   var fn = document.getElementById('file-name');
-  if (fn) {
-    fn.textContent = '📄 ' + file.name;
+  if (window.LiftCoreMultiAttach && fn) {
+    LiftCoreMultiAttach.formatNewFilesPreview(input, fn);
+  } else if (fn && input.files && input.files.length) {
+    fn.textContent = '📄 ' + input.files.length + ' ملف';
     fn.style.display = 'block';
   }
+}
+
+function showFileName(input) {
+  showContractFiles(input);
 }
 
 function bindContractFileDropzone() {
@@ -3118,7 +3169,7 @@ function bindContractFileDropzone() {
     area.classList.remove('is-dragover');
     var files = e.dataTransfer && e.dataTransfer.files;
     if (!files || !files.length) return;
-    applyContractFile(files[0]);
+    mergeContractInputFiles(Array.from(files));
   });
 }
 

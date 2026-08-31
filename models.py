@@ -321,7 +321,7 @@ class Contract(TenantMixin, db.Model):
     city            = db.Column(db.String(100))
     district        = db.Column(db.String(100))
     address         = db.Column(db.Text)
-    file_path       = db.Column(db.String(300))
+    file_path       = db.Column(db.Text)  # ملفات العقد PDF — مسار واحد أو JSON متعدد
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -608,7 +608,7 @@ class Revenue(TenantMixin, db.Model):
     total           = db.Column(db.Float, nullable=False)
     status          = db.Column(db.String(30), default='محصّل')  # محصّل / معلق / ملغي
     reference       = db.Column(db.String(500))  # رقم الشيك أو التحويل / مرفقات
-    proof_path      = db.Column(db.String(300))  # إثبات الدفع (صورة/PDF)
+    proof_path      = db.Column(db.Text)  # إثبات الدفع — مسار واحد أو JSON متعدد
     notes           = db.Column(db.Text)
     account_id      = db.Column(db.Integer, db.ForeignKey('accounts.id'), index=True)
     created_by_user_id = db.Column(db.Integer)
@@ -725,7 +725,7 @@ class Expense(TenantMixin, db.Model):
     payment_method  = db.Column(db.String(50))
     amount          = db.Column(db.Float, nullable=False)
     reference       = db.Column(db.String(500))
-    proof_path      = db.Column(db.String(300))  # إثبات الصرف (صورة/PDF)
+    proof_path      = db.Column(db.Text)  # إثبات الصرف — مسار واحد أو JSON متعدد
     notes           = db.Column(db.Text)
     account_id      = db.Column(db.Integer, db.ForeignKey('accounts.id'), index=True)
     created_by_user_id = db.Column(db.Integer)

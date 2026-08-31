@@ -373,9 +373,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <input id="f-reference" placeholder="رقم العقد أو المرجع">
         </div>
         <div class="field form-full">
-          <label>مرفق إثبات الدفع</label>
-          <input type="file" id="f-proof" accept=".pdf,image/png,image/jpeg,image/webp" style="direction:ltr">
-          <span class="field-hint" id="f-proof-hint" style="margin-top:4px;font-size:11px;color:var(--text3)">اختياري — PDF أو صورة</span>
+          <label>مرفقات إثبات الدفع</label>
+          <input type="file" id="f-proof" accept=".pdf,image/png,image/jpeg,image/webp" multiple style="direction:ltr">
+          <span class="field-hint" id="f-proof-hint" style="margin-top:4px;font-size:11px;color:var(--text3)">اختياري — PDF أو صورة — يمكن اختيار عدة ملفات</span>
+          <div id="f-proof-new" style="display:none;margin-top:4px"></div>
           <div id="f-proof-existing" style="display:none;margin-top:6px;font-size:12px"></div>
         </div>
         <div class="field form-full">
@@ -484,6 +485,7 @@ function revenueHasPaymentWhatsApp(r) {
 
 let currentDeleteId = null;
 let currentProofDeleteId = null;
+let currentProofDeleteIndex = null;
 var filtered = [...REVENUES];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
@@ -798,6 +800,34 @@ function clearRevenueSource() {
   });
 }
 
+function renderRevenueProofExisting(r) {
+  var proofEx = document.getElementById('f-proof-existing');
+  var proofHint = document.getElementById('f-proof-hint');
+  var proofs = (r && r.proofs && r.proofs.length) ? r.proofs : [];
+  if (window.LiftCoreMultiAttach && proofEx) {
+    LiftCoreMultiAttach.renderExisting(proofEx, proofs, {
+      label: 'المرفقات الحالية:',
+      adminOnly: true,
+      recordId: r ? r.id : 0,
+      onRemove: 'removeRevenueProofAt',
+      hintAfter: proofs.length ? 'يمكنك إضافة ملفات جديدة دون حذف الموجود' : '',
+    });
+  }
+  if (proofHint) {
+    proofHint.textContent = proofs.length
+      ? 'اختياري — أضف ملفات جديدة (تُضاف إلى الموجود)'
+      : 'اختياري — PDF أو صورة — يمكن اختيار عدة ملفات';
+  }
+}
+
+function clearRevenueProofFields() {
+  var proofInp = document.getElementById('f-proof');
+  if (proofInp) proofInp.value = '';
+  var proofNew = document.getElementById('f-proof-new');
+  if (proofNew) { proofNew.style.display = 'none'; proofNew.innerHTML = ''; }
+  renderRevenueProofExisting(null);
+}
+
 // ===== إضافة =====
 function openAddModal(preselectedCustomerId, opts) {
   opts = opts || {};
@@ -807,12 +837,9 @@ function openAddModal(preselectedCustomerId, opts) {
   const cid = preselectedCustomerId || '';
   syncRevenueCustomerSelectors(cid);
   ['f-title', 'f-reference', 'f-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  var proofInp = document.getElementById('f-proof');
-  if (proofInp) proofInp.value = '';
-  var proofEx = document.getElementById('f-proof-existing');
-  if (proofEx) { proofEx.style.display = 'none'; proofEx.innerHTML = ''; }
+  clearRevenueProofFields();
   var proofHint = document.getElementById('f-proof-hint');
-  if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة';
+  if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة — يمكن اختيار عدة ملفات';
   clearRevenueSource();
   const wrap = document.getElementById('rev-billable-wrap');
   if (!cid && wrap) wrap.style.display = 'none';
@@ -849,7 +876,6 @@ function saveRevenue() {
   if (taxBlock && taxBlock._lcTaxCalc) taxBlock._lcTaxCalc.update();
   const editId = document.getElementById('modal-add').dataset.editId;
   const proofInput = document.getElementById('f-proof');
-  const hasNewProof = proofInput && proofInput.files && proofInput.files[0];
   const fd = new FormData();
   [['customer_id', 'f-customer-sel'], ['revenue_date', 'f-date'],
     ['title', 'f-title'], ['revenue_type', 'f-rev-type'], ['payment_method', 'f-pay-method'],
@@ -861,7 +887,9 @@ function saveRevenue() {
     [['source_type', 'f-source-type'], ['source_id', 'f-source-id'], ['contract_id', 'f-contract-id']]
       .forEach(([f, i]) => { const el = document.getElementById(i); if (el && el.value) fd.append(f, el.value); });
   }
-  if (hasNewProof) fd.append('proof_file', proofInput.files[0]);
+  if (proofInput && window.LiftCoreMultiAttach) {
+    LiftCoreMultiAttach.appendToFormData(fd, proofInput, 'proof_file');
+  }
   fetch(editId ? `/revenues/edit/${editId}` : '/revenues/add', { method: 'POST', body: fd, credentials: 'same-origin' })
     .then(r => {
       if (r.redirected && r.url) {
@@ -894,22 +922,9 @@ function editRevenue(id) {
   Object.entries(map).forEach(([k,v])=>{ const el=document.getElementById(k); if(el) el.value=v||''; });
   var proofInp = document.getElementById('f-proof');
   if (proofInp) proofInp.value = '';
-  var proofEx = document.getElementById('f-proof-existing');
-  var proofHint = document.getElementById('f-proof-hint');
-  if (r.has_proof && r.proof_url) {
-    if (proofEx) {
-      proofEx.style.display = 'block';
-      proofEx.innerHTML = 'المرفق الحالي: <a href="' + r.proof_url + '" target="_blank" rel="noopener">عرض المستند</a>' +
-        (window.__LC_IS_ADMIN
-          ? ' <button type="button" class="btn btn-danger btn-sm lc-admin-delete" style="margin-inline-start:8px" onclick="removeRevenueProof(' + r.id + ', event)">حذف المرفق</button>'
-          : '') +
-        ' — أو ارفع ملفاً جديداً لاستبداله';
-    }
-    if (proofHint) proofHint.textContent = 'اختياري — ارفع ملفاً جديداً للاستبدال';
-  } else {
-    if (proofEx) { proofEx.style.display = 'none'; proofEx.innerHTML = ''; }
-    if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة';
-  }
+  var proofNew = document.getElementById('f-proof-new');
+  if (proofNew) { proofNew.style.display = 'none'; proofNew.innerHTML = ''; }
+  renderRevenueProofExisting(r);
   clearRevenueSource();
   pendingOps = [];
   const wrap = document.getElementById('rev-billable-wrap');
@@ -946,7 +961,7 @@ function viewRevenue(id) {
       <div class="view-item"><div class="view-label">نوع الإيراد</div><div class="view-val">${r.revenue_type}</div></div>
       <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${r.pay_method}</div></div>
       <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${r.reference||'—'}</div></div>
-      <div class="view-item"><div class="view-label">إثبات الدفع</div><div class="view-val">${r.proof_url ? '<a href="'+r.proof_url+'" target="_blank" rel="noopener">عرض المستند</a>' + (window.__LC_IS_ADMIN ? ' <button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="removeRevenueProof(' + r.id + ', event)">حذف المرفق</button>' : '') : '—'}</div></div>
+      <div class="view-item"><div class="view-label">إثبات الدفع</div><div class="view-val">${window.LiftCoreMultiAttach ? LiftCoreMultiAttach.proofsHtml(r.proofs, { recordId: r.id, removeFn: 'removeRevenueProofAt', empty: '—' }) : (r.proof_url ? '<a href="'+r.proof_url+'" target="_blank" rel="noopener">عرض المستند</a>' : '—')}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[r.status]||'badge-active'}">${r.status}</span></div></div>
       <div class="view-item"><div class="view-label">سجّله</div><div class="view-val">${escHtml(r.created_by || '—')}</div></div>
       ${r.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${r.notes}</div></div>`:''}
@@ -961,6 +976,7 @@ function closeRevenueDeleteModal() {
   if (modal) modal.classList.remove('open');
   currentDeleteId = null;
   currentProofDeleteId = null;
+  currentProofDeleteIndex = null;
   var title = document.getElementById('modal-delete-title');
   var msg = document.getElementById('modal-delete-message');
   var btn = document.getElementById('btn-confirm-revenue-delete');
@@ -989,6 +1005,26 @@ function openRevenueDeleteModal(opts) {
   }
 }
 
+function removeRevenueProofAt(id, index, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  if (ev && ev.preventDefault) ev.preventDefault();
+  id = parseInt(id, 10);
+  index = parseInt(index, 10);
+  if (!id) return;
+  if (!window.__LC_IS_ADMIN) {
+    alert('حذف المرفقات متاح لمدير النظام فقط.');
+    return;
+  }
+  currentDeleteId = null;
+  currentProofDeleteId = id;
+  currentProofDeleteIndex = index;
+  openRevenueDeleteModal({
+    title: 'حذف المرفق',
+    message: 'حذف هذا المرفق من الإيراد؟ لن يُحذف سجل الإيراد.',
+    confirmLabel: 'حذف المرفق',
+  });
+}
+
 function removeRevenueProof(id, ev) {
   if (ev && ev.stopPropagation) ev.stopPropagation();
   if (ev && ev.preventDefault) ev.preventDefault();
@@ -1000,15 +1036,17 @@ function removeRevenueProof(id, ev) {
   }
   currentDeleteId = null;
   currentProofDeleteId = id;
+  currentProofDeleteIndex = null;
   openRevenueDeleteModal({
-    title: 'حذف المرفق',
-    message: 'حذف إثبات الدفع لهذا الإيراد؟ لن يُحذف سجل الإيراد.',
-    confirmLabel: 'حذف المرفق',
+    title: 'حذف المرفقات',
+    message: 'حذف كل مرفقات الإيراد؟ لن يُحذف سجل الإيراد.',
+    confirmLabel: 'حذف المرفقات',
   });
 }
 
 function deleteRevenue(id) {
   currentProofDeleteId = null;
+  currentProofDeleteIndex = null;
   currentDeleteId = id;
   openRevenueDeleteModal({
     title: 'تأكيد الحذف',
@@ -1024,9 +1062,15 @@ function confirmDelete() {
   }
   if (currentProofDeleteId) {
     var proofId = currentProofDeleteId;
+    var extraBody = {};
+    if (currentProofDeleteIndex != null && !isNaN(currentProofDeleteIndex)) {
+      extraBody.index = currentProofDeleteIndex;
+    }
     LiftCoreAdminDelete.confirmFromOpenModal('/revenues/' + proofId + '/remove-proof', {
+      extraBody: extraBody,
       onSuccess: function () {
         currentProofDeleteId = null;
+        currentProofDeleteIndex = null;
         window.location.reload();
       }
     });
@@ -1064,6 +1108,15 @@ function initRevenuesPage() {
   if (tableSort) tableSort.bindHeaders();
   initRevenueClientSelects();
   renderTable(REVENUES);
+  var proofInp = document.getElementById('f-proof');
+  if (proofInp && !proofInp.dataset.lcBound) {
+    proofInp.dataset.lcBound = '1';
+    proofInp.addEventListener('change', function () {
+      if (window.LiftCoreMultiAttach) {
+        LiftCoreMultiAttach.formatNewFilesPreview(proofInp, document.getElementById('f-proof-new'));
+      }
+    });
+  }
   var params = new URLSearchParams(window.location.search);
   if (params.get('action') === 'add') {
     openAddModal(params.get('customer_id'), {

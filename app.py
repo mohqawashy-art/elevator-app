@@ -1142,8 +1142,10 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
         'district': c.district or '',
         'address': c.address or '',
         'notes': c.notes or '',
-        'file_url': upload_url(c.file_path),
-        'file_name': contract_file_display_name(c.file_path),
+        'file_url': _contract_js_primary_url(c),
+        'file_name': _contract_js_primary_name(c),
+        'files': _contract_js_files(c),
+        'has_file': _contract_has_files(c),
     }
 
 
@@ -1268,8 +1270,9 @@ def expense_to_js_dict(e):
         'pay_method': e.payment_method or '',
         'amount': e.amount or 0,
         'reference': e.reference or '',
-        'proof_url': _upload_url_fast(e.proof_path) if getattr(e, 'proof_path', None) else '',
-        'has_proof': bool(getattr(e, 'proof_path', None)),
+        'proof_url': _fin_proof_js_primary_url(e),
+        'has_proof': _fin_proof_has(e),
+        'proofs': _fin_proof_js_items(e),
         'notes': e.notes or '',
         'created_by': created_by_display(e) or '—',
     }
@@ -1292,8 +1295,9 @@ def revenue_to_js_dict(r):
         'total': r.total or 0,
         'status': r.status or 'محصّل',
         'reference': r.reference or '',
-        'proof_url': _upload_url_fast(r.proof_path) if getattr(r, 'proof_path', None) else '',
-        'has_proof': bool(getattr(r, 'proof_path', None)),
+        'proof_url': _fin_proof_js_primary_url(r),
+        'has_proof': _fin_proof_has(r),
+        'proofs': _fin_proof_js_items(r),
         'notes': r.notes or '',
         'created_by': created_by_display(r) or '—',
     }
@@ -1787,6 +1791,7 @@ ALLOWED_FIN_PROOF_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 MAX_CONTRACT_FILE_BYTES = 10 * 1024 * 1024
 MAX_FIN_PROOF_BYTES = 10 * 1024 * 1024
 FIN_PROOF_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'financial_proofs')
+MAX_ATTACHMENT_FILES = 20
 
 # =============================================
 # Helper — توليد الكودات التلقائية
@@ -6591,6 +6596,49 @@ def _sync_customer_location_from_contract_form(customer_id, form):
         cust.maps_url = maps_url[:500]
 
 
+def _fin_proof_js_items(row) -> list[dict]:
+    from attachment_paths import attachment_items
+    return attachment_items(
+        getattr(row, 'proof_path', None),
+        _upload_url_fast,
+        name_fn=contract_file_display_name,
+    )
+
+
+def _fin_proof_js_primary_url(row) -> str:
+    items = _fin_proof_js_items(row)
+    return items[0]['url'] if items else ''
+
+
+def _fin_proof_has(row) -> bool:
+    from attachment_paths import attachment_has
+    return attachment_has(getattr(row, 'proof_path', None))
+
+
+def _contract_js_files(c) -> list[dict]:
+    from attachment_paths import attachment_items
+    return attachment_items(
+        c.file_path,
+        upload_url,
+        name_fn=contract_file_display_name,
+    )
+
+
+def _contract_js_primary_url(c) -> str:
+    items = _contract_js_files(c)
+    return items[0]['url'] if items else ''
+
+
+def _contract_js_primary_name(c) -> str:
+    items = _contract_js_files(c)
+    return items[0]['name'] if items else ''
+
+
+def _contract_has_files(c) -> bool:
+    from attachment_paths import attachment_has
+    return attachment_has(c.file_path)
+
+
 def _fin_proof_upload_dir(kind, row_id):
     path = os.path.join(FIN_PROOF_UPLOAD_ROOT, kind, str(row_id))
     os.makedirs(path, exist_ok=True)
@@ -6598,16 +6646,71 @@ def _fin_proof_upload_dir(kind, row_id):
 
 
 def _remove_fin_proof(row):
-    path = getattr(row, 'proof_path', None) or ''
-    if not path:
-        return
-    full = os.path.join(app.root_path, 'static', path.replace('/', os.sep))
-    if os.path.isfile(full):
-        try:
-            os.remove(full)
-        except OSError:
-            pass
+    from attachment_paths import parse_attachment_paths, delete_attachment_file
+    for path in parse_attachment_paths(getattr(row, 'proof_path', None)):
+        delete_attachment_file(app.root_path, path)
     row.proof_path = None
+
+
+def _remove_fin_proof_at(row, index: int) -> bool:
+    from attachment_paths import (
+        delete_attachment_file,
+        parse_attachment_paths,
+        serialize_attachment_paths,
+    )
+    paths = parse_attachment_paths(getattr(row, 'proof_path', None))
+    if index < 0 or index >= len(paths):
+        return False
+    delete_attachment_file(app.root_path, paths[index])
+    paths.pop(index)
+    row.proof_path = serialize_attachment_paths(paths)
+    return True
+
+
+def _store_fin_proof_file(row, file_storage, *, kind: str) -> str:
+    ok, err = _upload_ok(file_storage, ALLOWED_FIN_PROOF_EXT)
+    if not ok:
+        raise ValueError('مستند الإثبات: ' + (err or 'نوع الملف غير مسموح'))
+    file_storage.seek(0, os.SEEK_END)
+    size = file_storage.tell()
+    file_storage.seek(0)
+    if size > MAX_FIN_PROOF_BYTES:
+        raise ValueError('مستند الإثبات أكبر من الحد المسموح (10 ميجا)')
+    if not row.id:
+        db.session.flush()
+    stored = _safe_stored_upload_name(
+        file_storage.filename,
+        allowed=ALLOWED_FIN_PROOF_EXT,
+        default_stem='proof',
+    )
+    abs_path = os.path.join(_fin_proof_upload_dir(kind, row.id), stored)
+    file_storage.save(abs_path)
+    return f'uploads/financial_proofs/{kind}/{row.id}/{stored}'
+
+
+def _add_fin_proof_files(row, file_storages, *, kind: str, required: bool = False):
+    """يضيف مرفقات إثبات دون حذف الموجود."""
+    from attachment_paths import attachment_has, parse_attachment_paths, serialize_attachment_paths
+
+    files = [f for f in (file_storages or []) if f and getattr(f, 'filename', None)]
+    if not files:
+        if required and not attachment_has(getattr(row, 'proof_path', None)):
+            raise ValueError('يجب إرفاق مستند إثبات الدفع أو الصرف (PDF أو صورة)')
+        return
+    paths = parse_attachment_paths(getattr(row, 'proof_path', None))
+    if len(paths) + len(files) > MAX_ATTACHMENT_FILES:
+        raise ValueError(f'يمكن إرفاق حتى {MAX_ATTACHMENT_FILES} مستندات')
+    for file_storage in files:
+        paths.append(_store_fin_proof_file(row, file_storage, kind=kind))
+    row.proof_path = serialize_attachment_paths(paths)
+
+
+def _save_fin_proof(row, file_storage, *, kind: str, required: bool = False):
+    """يحفظ إثبات دفع/صرف — ملف واحد أو يُضاف لقائمة المرفقات."""
+    if file_storage and file_storage.filename:
+        _add_fin_proof_files(row, [file_storage], kind=kind, required=False)
+    elif required and not _fin_proof_has(row):
+        raise ValueError('يجب إرفاق مستند إثبات الدفع أو الصرف (PDF أو صورة)')
 
 
 def enforce_admin_attachment_delete(*, json_response=False):
@@ -6620,34 +6723,6 @@ def enforce_admin_attachment_delete(*, json_response=False):
         bad_password_ar='كلمة المرور غير صحيحة — لم يتم حذف المرفق.',
         bad_password_en='Incorrect password — attachment was not deleted.',
     )
-
-
-def _save_fin_proof(row, file_storage, *, kind: str, required: bool = False):
-    """يحفظ إثبات دفع/صرف إن وُجد ملف. required=True يفرض وجود مرفق."""
-    has_file = bool(file_storage and file_storage.filename)
-    if not has_file:
-        if required and not getattr(row, 'proof_path', None):
-            raise ValueError('يجب إرفاق مستند إثبات الدفع أو الصرف (PDF أو صورة)')
-        return
-    ok, err = _upload_ok(file_storage, ALLOWED_FIN_PROOF_EXT)
-    if not ok:
-        raise ValueError('مستند الإثبات: ' + (err or 'نوع الملف غير مسموح'))
-    file_storage.seek(0, os.SEEK_END)
-    size = file_storage.tell()
-    file_storage.seek(0)
-    if size > MAX_FIN_PROOF_BYTES:
-        raise ValueError('مستند الإثبات أكبر من الحد المسموح (10 ميجا)')
-    if not row.id:
-        db.session.flush()
-    _remove_fin_proof(row)
-    stored = _safe_stored_upload_name(
-        file_storage.filename,
-        allowed=ALLOWED_FIN_PROOF_EXT,
-        default_stem='proof',
-    )
-    abs_path = os.path.join(_fin_proof_upload_dir(kind, row.id), stored)
-    file_storage.save(abs_path)
-    row.proof_path = f'uploads/financial_proofs/{kind}/{row.id}/{stored}'
 
 
 def _contract_upload_dir(contract_id):
@@ -6666,30 +6741,39 @@ def contract_file_display_name(relative_path):
 
 
 def _remove_contract_file(c):
-    if not c.file_path:
-        return
-    full = os.path.join(app.root_path, 'static', c.file_path.replace('/', os.sep))
-    if os.path.isfile(full):
-        try:
-            os.remove(full)
-        except OSError:
-            pass
+    from attachment_paths import parse_attachment_paths, delete_attachment_file
+    for path in parse_attachment_paths(c.file_path):
+        delete_attachment_file(app.root_path, path)
     c.file_path = None
 
 
-def _save_contract_file(c, file_storage):
+def _remove_contract_file_at(c, index: int) -> bool:
+    from attachment_paths import (
+        delete_attachment_file,
+        parse_attachment_paths,
+        serialize_attachment_paths,
+    )
+    paths = parse_attachment_paths(c.file_path)
+    if index < 0 or index >= len(paths):
+        return False
+    delete_attachment_file(app.root_path, paths[index])
+    paths.pop(index)
+    c.file_path = serialize_attachment_paths(paths)
+    return True
+
+
+def _store_contract_file(c, file_storage) -> str | None:
     if not file_storage or not file_storage.filename:
-        return
+        return None
     if not _ext_ok(file_storage.filename, ALLOWED_CONTRACT_FILE_EXT):
-        return
+        raise ValueError('يُسمح بملف PDF فقط للعقد')
     file_storage.seek(0, os.SEEK_END)
     size = file_storage.tell()
     file_storage.seek(0)
     if size > MAX_CONTRACT_FILE_BYTES:
-        return
+        raise ValueError('حجم ملف العقد أكبر من الحد المسموح (10 ميجا)')
     if not c.id:
         db.session.flush()
-    _remove_contract_file(c)
     stored = _safe_stored_upload_name(
         file_storage.filename,
         allowed=ALLOWED_CONTRACT_FILE_EXT,
@@ -6697,7 +6781,27 @@ def _save_contract_file(c, file_storage):
     )
     abs_path = os.path.join(_contract_upload_dir(c.id), stored)
     file_storage.save(abs_path)
-    c.file_path = f'uploads/contracts/{c.id}/{stored}'
+    return f'uploads/contracts/{c.id}/{stored}'
+
+
+def _add_contract_files(c, file_storages):
+    from attachment_paths import parse_attachment_paths, serialize_attachment_paths
+    files = [f for f in (file_storages or []) if f and getattr(f, 'filename', None)]
+    if not files:
+        return
+    paths = parse_attachment_paths(c.file_path)
+    if len(paths) + len(files) > MAX_ATTACHMENT_FILES:
+        raise ValueError(f'يمكن إرفاق حتى {MAX_ATTACHMENT_FILES} ملفات PDF')
+    for file_storage in files:
+        rel = _store_contract_file(c, file_storage)
+        if rel:
+            paths.append(rel)
+    c.file_path = serialize_attachment_paths(paths)
+
+
+def _save_contract_file(c, file_storage):
+    if file_storage and file_storage.filename:
+        _add_contract_files(c, [file_storage])
 
 
 # =============================================
@@ -6866,9 +6970,9 @@ def contract_edit(id):
             return auth_err
     try:
         _apply_contract_form(c, request.form)
-        upload = request.files.get('contract_file')
-        if upload and upload.filename:
-            _save_contract_file(c, upload)
+        uploads = request.files.getlist('contract_file')
+        if uploads and any(f and f.filename for f in uploads):
+            _add_contract_files(c, uploads)
         elif (request.form.get('remove_contract_file') or '').strip().lower() in (
             '1', 'true', 'yes', 'on',
         ):
@@ -6957,7 +7061,7 @@ def contract_add():
             db.session.flush()
         if renew_src and (renew_src.status or '') not in ('تم تجديده', 'ملغي'):
             renew_src.status = 'تم تجديده'
-        _save_contract_file(c, request.files.get('contract_file'))
+        _add_contract_files(c, request.files.getlist('contract_file'))
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
         db.session.commit()
     except Exception as exc:
@@ -6978,8 +7082,19 @@ def contract_remove_file(id):
     if err:
         return err
     c = tenant_get_or_404(Contract, id)
-    if not c.file_path:
+    if not _contract_has_files(c):
         return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    data = request.get_json(silent=True) or {}
+    index = data.get('index')
+    if index is not None:
+        try:
+            idx = int(index)
+        except (TypeError, ValueError):
+            return jsonify({'ok': False, 'message': 'فهرس المرفق غير صالح'}), 400
+        if not _remove_contract_file_at(c, idx):
+            return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+        db.session.commit()
+        return jsonify({'ok': True, 'removed': True, 'id': c.id, 'code': c.code, 'index': idx})
     _remove_contract_file(c)
     db.session.commit()
     return jsonify({'ok': True, 'removed': True, 'id': c.id, 'code': c.code})
@@ -9790,7 +9905,7 @@ def revenue_edit(id):
     old_contract_id = r.contract_id
     try:
         _revenue_from_form(request.form, existing=r)
-        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=False)
+        _add_fin_proof_files(r, request.files.getlist('proof_file'), kind='revenues', required=False)
     except (ValueError, KeyError) as exc:
         db.session.rollback()
         flash(str(exc) or 'تعذّر تحديث الإيراد', 'error')
@@ -9818,7 +9933,7 @@ def revenue_add():
     try:
         r = _revenue_from_form(request.form)
         db.session.flush()
-        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=False)
+        _add_fin_proof_files(r, request.files.getlist('proof_file'), kind='revenues', required=False)
     except (ValueError, KeyError) as exc:
         db.session.rollback()
         flash(str(exc) or 'تعذّر حفظ الإيراد', 'error')
@@ -9866,8 +9981,19 @@ def revenue_remove_proof(id):
     if err:
         return err
     r = tenant_get_or_404(Revenue, id)
-    if not r.proof_path:
+    if not _fin_proof_has(r):
         return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    data = request.get_json(silent=True) or {}
+    index = data.get('index')
+    if index is not None:
+        try:
+            idx = int(index)
+        except (TypeError, ValueError):
+            return jsonify({'ok': False, 'message': 'فهرس المرفق غير صالح'}), 400
+        if not _remove_fin_proof_at(r, idx):
+            return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+        db.session.commit()
+        return jsonify({'ok': True, 'removed': True, 'id': r.id, 'index': idx})
     _remove_fin_proof(r)
     db.session.commit()
     return jsonify({'ok': True, 'removed': True, 'id': r.id})
@@ -10354,7 +10480,7 @@ def expense_edit(id):
             e.account_id = resolve_expense_account_id(e.expense_type)
         except Exception:
             pass
-        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)
+        _add_fin_proof_files(e, request.files.getlist('proof_file'), kind='expenses', required=False)
         try:
             from accounting_journals import post_expense_journal
             post_expense_journal(e)
@@ -10391,7 +10517,7 @@ def expense_add():
         stamp_created_by(e)
         db.session.add(e)
         db.session.flush()
-        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)
+        _add_fin_proof_files(e, request.files.getlist('proof_file'), kind='expenses', required=False)
         try:
             from accounting_journals import post_expense_journal
             post_expense_journal(e)
@@ -10428,8 +10554,19 @@ def expense_remove_proof(id):
     if err:
         return err
     e = tenant_get_or_404(Expense, id)
-    if not e.proof_path:
+    if not _fin_proof_has(e):
         return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    data = request.get_json(silent=True) or {}
+    index = data.get('index')
+    if index is not None:
+        try:
+            idx = int(index)
+        except (TypeError, ValueError):
+            return jsonify({'ok': False, 'message': 'فهرس المرفق غير صالح'}), 400
+        if not _remove_fin_proof_at(e, idx):
+            return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+        db.session.commit()
+        return jsonify({'ok': True, 'removed': True, 'id': e.id, 'index': idx})
     _remove_fin_proof(e)
     db.session.commit()
     return jsonify({'ok': True, 'removed': True, 'id': e.id})

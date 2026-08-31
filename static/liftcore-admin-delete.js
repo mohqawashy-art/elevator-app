@@ -59,7 +59,13 @@
     }
   }
 
-  function postDelete(url, password) {
+  function postDelete(url, password, extraBody) {
+    var body = { admin_password: password };
+    if (extraBody && typeof extraBody === 'object') {
+      Object.keys(extraBody).forEach(function (k) {
+        if (extraBody[k] != null) body[k] = extraBody[k];
+      });
+    }
     var opts = {
       method: 'POST',
       credentials: 'same-origin',
@@ -68,7 +74,7 @@
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ admin_password: password }),
+      body: JSON.stringify(body),
     };
     return fetch(url, opts).then(function (res) {
       if (res.status === 403 || res.status === 401) {
@@ -142,7 +148,7 @@
       btn.disabled = true;
       btn.textContent = msg('جاري الحذف...', 'Deleting...');
     }
-    return postDelete(url, pwd)
+    return postDelete(url, pwd, opts.extraBody)
       .then(function (res) {
         closeModal(modal);
         if (typeof opts.onSuccess === 'function') opts.onSuccess(res);
@@ -208,7 +214,7 @@
       if (!opts.url) return Promise.reject(new Error('no url'));
       var pwd = global.prompt(msg('كلمة مرور المسؤول للحذف:', 'Admin password to delete:'));
       if (!pwd) return Promise.reject(new Error('cancelled'));
-      return postDelete(opts.url, pwd);
+      return postDelete(opts.url, pwd, opts.extraBody);
     }
     var msgEl = modal.querySelector('[data-lc-delete-message]');
     if (msgEl) msgEl.textContent = opts.message || msg('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete?');
@@ -220,6 +226,7 @@
     });
     modal.dataset.lcDeleteUrl = opts.url || '';
     modal.dataset.lcPasswordOnly = '';
+    modal._lcDeleteExtra = opts.extraBody || null;
     modal._lcOnSuccess = typeof opts.onSuccess === 'function' ? opts.onSuccess : null;
     openModal(modal);
     return new Promise(function (resolve, reject) {
@@ -249,13 +256,14 @@
     if (!url) return;
     var btn = modal.querySelector('[data-lc-delete-confirm]');
     if (btn) btn.disabled = true;
-    postDelete(url, pwd)
+    postDelete(url, pwd, modal._lcDeleteExtra)
       .then(function (res) {
         var onSuccess = modal._lcOnSuccess;
         var resolve = modal._lcResolve;
         modal._lcOnSuccess = null;
         modal._lcResolve = null;
         modal._lcReject = null;
+        modal._lcDeleteExtra = null;
         closeModal(modal);
         if (typeof onSuccess === 'function') onSuccess(res);
         else if (res.redirected) global.location.href = res.url;
@@ -300,6 +308,7 @@
       return confirm({
         url: url,
         message: opts.message || '',
+        extraBody: opts.extraBody || null,
         onSuccess: opts.onSuccess || function () { global.location.reload(); },
       });
     },

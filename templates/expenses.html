@@ -324,9 +324,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <input id="m-attach" placeholder="رقم الفاتورة أو المرجع النصي">
         </div>
         <div class="field form-full">
-          <label>مرفق إثبات الصرف</label>
-          <input type="file" id="m-proof" accept=".pdf,image/png,image/jpeg,image/webp" style="direction:ltr">
-          <span class="field-hint" id="m-proof-hint" style="margin-top:4px;font-size:11px;color:var(--text3)">اختياري — PDF أو صورة</span>
+          <label>مرفقات إثبات الصرف</label>
+          <input type="file" id="m-proof" accept=".pdf,image/png,image/jpeg,image/webp" multiple style="direction:ltr">
+          <span class="field-hint" id="m-proof-hint" style="margin-top:4px;font-size:11px;color:var(--text3)">اختياري — PDF أو صورة — يمكن اختيار عدة ملفات</span>
+          <div id="m-proof-new" style="display:none;margin-top:4px"></div>
           <div id="m-proof-existing" style="display:none;margin-top:6px;font-size:12px"></div>
         </div>
         <div class="field form-full">
@@ -447,6 +448,34 @@ function clearFilters() {
   renderTable(filtered);
 }
 
+function renderExpenseProofExisting(e) {
+  var proofEx = document.getElementById('m-proof-existing');
+  var proofHint = document.getElementById('m-proof-hint');
+  var proofs = (e && e.proofs && e.proofs.length) ? e.proofs : [];
+  if (window.LiftCoreMultiAttach && proofEx) {
+    LiftCoreMultiAttach.renderExisting(proofEx, proofs, {
+      label: 'المرفقات الحالية:',
+      adminOnly: true,
+      recordId: e ? e.id : 0,
+      onRemove: 'removeExpenseProofAt',
+      hintAfter: proofs.length ? 'يمكنك إضافة ملفات جديدة دون حذف الموجود' : '',
+    });
+  }
+  if (proofHint) {
+    proofHint.textContent = proofs.length
+      ? 'اختياري — أضف ملفات جديدة (تُضاف إلى الموجود)'
+      : 'اختياري — PDF أو صورة — يمكن اختيار عدة ملفات';
+  }
+}
+
+function clearExpenseProofFields() {
+  var proofInp = document.getElementById('m-proof');
+  if (proofInp) proofInp.value = '';
+  var proofNew = document.getElementById('m-proof-new');
+  if (proofNew) { proofNew.style.display = 'none'; proofNew.innerHTML = ''; }
+  renderExpenseProofExisting(null);
+}
+
 function openModal(editId) {
   const modal = document.getElementById('modal');
   modal.dataset.editId = editId || '';
@@ -461,12 +490,9 @@ function openModal(editId) {
     document.getElementById('m-assigned').value = '';
     document.getElementById('m-attach').value = '';
     document.getElementById('m-notes').value = '';
-    var proofInp = document.getElementById('m-proof');
-    if (proofInp) proofInp.value = '';
-    var proofEx = document.getElementById('m-proof-existing');
-    if (proofEx) { proofEx.style.display = 'none'; proofEx.innerHTML = ''; }
+    clearExpenseProofFields();
     var proofHint = document.getElementById('m-proof-hint');
-    if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة';
+    if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة — يمكن اختيار عدة ملفات';
   }
   modal.classList.add('open');
 }
@@ -484,7 +510,6 @@ function saveRecord() {
   if (!amount || Number(amount) <= 0) { alert('المبلغ مطلوب'); return; }
   const editId = document.getElementById('modal').dataset.editId;
   const proofInput = document.getElementById('m-proof');
-  const hasNewProof = proofInput && proofInput.files && proofInput.files[0];
   const fd = new FormData();
   fd.append('expense_date', date);
   fd.append('expense_type', document.getElementById('m-type').value);
@@ -494,7 +519,9 @@ function saveRecord() {
   fd.append('amount', amount);
   fd.append('reference', document.getElementById('m-attach').value);
   fd.append('notes', document.getElementById('m-notes').value);
-  if (hasNewProof) fd.append('proof_file', proofInput.files[0]);
+  if (proofInput && window.LiftCoreMultiAttach) {
+    LiftCoreMultiAttach.appendToFormData(fd, proofInput, 'proof_file');
+  }
   const url = editId ? `/expenses/edit/${editId}` : '/expenses/add';
   fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' })
     .then(r => {
@@ -519,26 +546,29 @@ function editExpense(id) {
   document.getElementById('m-notes').value = e.notes || '';
   var proofInp = document.getElementById('m-proof');
   if (proofInp) proofInp.value = '';
-  var proofEx = document.getElementById('m-proof-existing');
-  var proofHint = document.getElementById('m-proof-hint');
-  if (e.has_proof && e.proof_url) {
-    if (proofEx) {
-      proofEx.style.display = 'block';
-      proofEx.innerHTML = 'المرفق الحالي: <a href="' + e.proof_url + '" target="_blank" rel="noopener">عرض المستند</a>' +
-        (window.__LC_IS_ADMIN
-          ? ' <button type="button" class="btn btn-danger btn-sm lc-admin-delete" style="margin-inline-start:8px" onclick="removeExpenseProof(' + e.id + ')">حذف المرفق</button>'
-          : '') +
-        ' — أو ارفع ملفاً جديداً لاستبداله';
-    }
-    if (proofHint) proofHint.textContent = 'اختياري — ارفع ملفاً جديداً للاستبدال';
-  } else {
-    if (proofEx) { proofEx.style.display = 'none'; proofEx.innerHTML = ''; }
-    if (proofHint) proofHint.textContent = 'اختياري — PDF أو صورة';
-  }
+  var proofNew = document.getElementById('m-proof-new');
+  if (proofNew) { proofNew.style.display = 'none'; proofNew.innerHTML = ''; }
+  renderExpenseProofExisting(e);
 }
 
 function viewExpense(id) {
   editExpense(id);
+}
+
+function removeExpenseProofAt(id, index) {
+  if (!window.__LC_IS_ADMIN) {
+    alert('حذف المرفقات متاح لمدير النظام فقط.');
+    return;
+  }
+  if (!window.LiftCoreAdminDelete) {
+    alert('تعذّر تحميل أداة الحذف — حدّث الصفحة وحاول مجدداً');
+    return;
+  }
+  LiftCoreAdminDelete.post('/expenses/' + id + '/remove-proof', {
+    message: 'حذف هذا المرفق من المصروف؟',
+    title: 'حذف المرفق',
+    extraBody: { index: index },
+  });
 }
 
 function removeExpenseProof(id) {
@@ -551,9 +581,9 @@ function removeExpenseProof(id) {
     return;
   }
   LiftCoreAdminDelete.confirmPassword({
-    title: 'حذف المرفق',
-    message: 'حذف إثبات الصرف لهذا المصروف؟',
-    confirmLabel: 'حذف المرفق',
+    title: 'حذف المرفقات',
+    message: 'حذف كل مرفقات هذا المصروف؟',
+    confirmLabel: 'حذف المرفقات',
     confirmClass: 'btn btn-danger',
     titleColor: 'var(--danger)',
   }).then(function (pwd) {
@@ -610,6 +640,16 @@ const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء
 const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 var hDateEl = document.getElementById('h-date');
 if (hDateEl) hDateEl.textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+
+var expProofInp = document.getElementById('m-proof');
+if (expProofInp && !expProofInp.dataset.lcBound) {
+  expProofInp.dataset.lcBound = '1';
+  expProofInp.addEventListener('change', function () {
+    if (window.LiftCoreMultiAttach) {
+      LiftCoreMultiAttach.formatNewFilesPreview(expProofInp, document.getElementById('m-proof-new'));
+    }
+  });
+}
 
 updateStats();
 if (tableSort) tableSort.bindHeaders();
