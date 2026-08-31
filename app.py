@@ -12288,9 +12288,11 @@ def report_contract_forecast():
 
 @app.route('/reports/financial-health')
 def report_financial_health():
+    today = date.today()
     return render_template(
         'report-financial-health.html',
-        current_year=date.today().year,
+        default_from=date(today.year, 1, 1).isoformat(),
+        default_to=today.isoformat(),
     )
 
 
@@ -13480,10 +13482,14 @@ def api_report_contract_forecast():
 @app.route('/api/reports/financial-health')
 def api_report_financial_health():
     from report_data import get_financial_health_report
-    year = int(request.args.get('year', date.today().year))
+    date_from = request.args.get('from') or request.args.get('date_from')
+    date_to = request.args.get('to') or request.args.get('date_to')
+    year_raw = (request.args.get('year') or '').strip()
+    year = int(year_raw) if year_raw.isdigit() else None
     return jsonify(get_financial_health_report(
         db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit,
-        year=year, contract_status_fn=contract_display_status,
+        year=year, date_from=date_from, date_to=date_to,
+        contract_status_fn=contract_display_status,
     ))
 
 

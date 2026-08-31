@@ -482,6 +482,73 @@ def _monthly_totals(db, extract, func, year, date_col, value_col, exclude_cancel
     return result
 
 
+_MONTH_NAMES_AR = (
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+)
+
+
+def _parse_report_date(raw):
+    if raw is None:
+        return None
+    if isinstance(raw, date) and not isinstance(raw, datetime):
+        return raw
+    text = str(raw).strip()[:10]
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _month_keys_between(date_from: date, date_to: date) -> list[tuple[int, int]]:
+    """قائمة (سنة، شهر) من تاريخ البداية إلى النهاية شاملة."""
+    if date_to < date_from:
+        date_from, date_to = date_to, date_from
+    keys = []
+    y, m = date_from.year, date_from.month
+    while (y, m) <= (date_to.year, date_to.month):
+        keys.append((y, m))
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    return keys
+
+
+def _period_monthly_totals(
+    db, extract, func, date_from, date_to, date_col, value_col,
+    exclude_cancelled=False, status_col=None,
+):
+    """مجاميع شهرية لفترة من→إلى مع تسميات عربية."""
+    month_keys = _month_keys_between(date_from, date_to)
+    index = {k: i for i, k in enumerate(month_keys)}
+    result = [0.0] * len(month_keys)
+    multi_year = date_from.year != date_to.year
+    labels = [
+        f'{_MONTH_NAMES_AR[m - 1]} {y}' if multi_year else _MONTH_NAMES_AR[m - 1]
+        for y, m in month_keys
+    ]
+
+    q = db.session.query(
+        extract('year', date_col).label('y'),
+        extract('month', date_col).label('m'),
+        func.sum(value_col),
+    ).filter(
+        date_col >= date_from,
+        date_col <= date_to,
+    )
+    if exclude_cancelled and status_col is not None:
+        q = q.filter(status_col != 'ملغي')
+    rows = q.group_by('y', 'm').all()
+    for y, m, val in rows:
+        key = (int(y), int(m))
+        if key in index:
+            result[index[key]] = round(float(val or 0), 2)
+    return labels, result
+
+
 def _expense_buckets(expenses):
     buckets = {
         'fuel': 0.0, 'parts': 0.0, 'salaries': 0.0,
@@ -519,26 +586,43 @@ def _health_label(margin_pct, net):
 
 def get_financial_health_report(
     db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit,
-    year=None, today=None, contract_status_fn=None, target_margin=0.20,
+    year=None, date_from=None, date_to=None, today=None,
+    contract_status_fn=None, target_margin=0.20,
 ):
-    """تقرير الصحة المالية: رسوم، ربحية، توصيات التعافي، وتسعير العقود."""
+    """تقرير الصحة المالية: رسوم، ربحية، توصيات التعافي، وتسعير العقود.
+
+    يدعم فترة من→إلى. إن وُجدت سنة فقط (توافق قديم) تُستخدم كامل تلك السنة.
+    """
     from sqlalchemy import extract, func
 
     if today is None:
         today = date.today()
-    if year is None:
-        year = today.year
-    year = int(year)
 
-    monthly_revenue = _monthly_totals(
-        db, extract, func, year, Revenue.revenue_date, Revenue.total,
+    df = _parse_report_date(date_from)
+    dt = _parse_report_date(date_to)
+    if df is None and dt is None and year is not None:
+        year = int(year)
+        df = date(year, 1, 1)
+        dt = date(year, 12, 31)
+    if df is None:
+        df = date(today.year, 1, 1)
+    if dt is None:
+        dt = today
+    if dt < df:
+        df, dt = dt, df
+
+    months_in_period = max(1, len(_month_keys_between(df, dt)))
+
+    month_labels, monthly_revenue = _period_monthly_totals(
+        db, extract, func, df, dt, Revenue.revenue_date, Revenue.total,
         exclude_cancelled=True, status_col=Revenue.status,
     )
-    monthly_expenses = _monthly_totals(
-        db, extract, func, year, Expense.expense_date, Expense.amount,
+    _, monthly_expenses = _period_monthly_totals(
+        db, extract, func, df, dt, Expense.expense_date, Expense.amount,
     )
     monthly_profit = [
-        _round_money(monthly_revenue[i] - monthly_expenses[i]) for i in range(12)
+        _round_money(monthly_revenue[i] - monthly_expenses[i])
+        for i in range(len(monthly_revenue))
     ]
 
     total_revenue = _round_money(sum(monthly_revenue))
@@ -547,16 +631,20 @@ def get_financial_health_report(
     margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
     health_text, health_level = _health_label(margin_pct, net_profit)
 
-    year_expenses = tenant_query(Expense).filter(extract('year', Expense.expense_date) == year).all()
-    exp_buckets = _expense_buckets(year_expenses)
+    period_expenses = tenant_query(Expense).filter(
+        Expense.expense_date >= df,
+        Expense.expense_date <= dt,
+    ).all()
+    exp_buckets = _expense_buckets(period_expenses)
 
-    tech_salaries = _round_money(sum(
+    tech_salaries_annual = _round_money(sum(
         float(t.salary or 0) for t in tenant_query(Technician).filter(
             Technician.status.in_(['نشط', 'متاح', 'مشغول'])
         ).all()
     ))
-    if tech_salaries > 0:
-        exp_buckets['salaries'] = _round_money(exp_buckets['salaries'] + tech_salaries)
+    if tech_salaries_annual > 0:
+        tech_salaries_period = _round_money(tech_salaries_annual * (months_in_period / 12.0))
+        exp_buckets['salaries'] = _round_money(exp_buckets['salaries'] + tech_salaries_period)
 
     expense_breakdown = {
         'محروقات ووقود': exp_buckets['fuel'],
@@ -578,7 +666,8 @@ def get_financial_health_report(
             Elevator.status.in_(['نشط', 'تحت الصيانة'])
         ).count()
 
-    annual_visits_planned = sum((c.visits_per_month or 1) * 12 for c in active_contracts)
+    # زيارات مخططة تناسب طول الفترة (شهري × عدد الأشهر)
+    annual_visits_planned = sum((c.visits_per_month or 1) * months_in_period for c in active_contracts)
     contract_values = [_contract_forecast_amount(c) for c in active_contracts]
     elevator_values = []
     for c in active_contracts:
@@ -596,7 +685,8 @@ def get_financial_health_report(
     )
 
     visits_done = int(db.session.query(func.count(MaintenanceVisit.id)).filter(
-        extract('year', MaintenanceVisit.visit_date) == year,
+        MaintenanceVisit.visit_date >= df,
+        MaintenanceVisit.visit_date <= dt,
         MaintenanceVisit.status == 'مكتملة',
     ).scalar() or 0)
     visits_for_pricing = annual_visits_planned or visits_done or 1
@@ -616,9 +706,9 @@ def get_financial_health_report(
     visits_per_elevator = []
     for c in active_contracts:
         n_elev = len(c.elevators) or 1
-        visits_y = (c.visits_per_month or 1) * 12
-        visits_per_elevator.append(round(visits_y / n_elev, 1))
-        contract_cost = cost_per_visit * visits_y + fixed_per_contract
+        visits_period = (c.visits_per_month or 1) * months_in_period
+        visits_per_elevator.append(round(visits_period / n_elev, 1))
+        contract_cost = cost_per_visit * visits_period + fixed_per_contract
         elevator_cost_estimates.append(contract_cost / n_elev)
     avg_visits_per_elevator = (
         round(sum(visits_per_elevator) / len(visits_per_elevator), 1)
@@ -698,8 +788,12 @@ def get_financial_health_report(
             'value': margin_pct,
         })
 
+    period_label = f'{df.isoformat()} → {dt.isoformat()}'
     return {
-        'year': year,
+        'year': df.year if df.year == dt.year else None,
+        'date_from': df.isoformat(),
+        'date_to': dt.isoformat(),
+        'period_label': period_label,
         'summary': {
             'revenue': total_revenue,
             'expenses': total_expenses,
@@ -710,6 +804,7 @@ def get_financial_health_report(
             'parts_profit_note': None,
         },
         'monthly': {
+            'labels': month_labels,
             'revenue': monthly_revenue,
             'expenses': monthly_expenses,
             'profit': monthly_profit,
