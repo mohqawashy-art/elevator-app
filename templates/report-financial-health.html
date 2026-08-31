@@ -144,20 +144,118 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
   .hero-title{font-size:22px}
 }
 @media(max-width:560px){.pricing-grid,.hero-kpis{grid-template-columns:1fr}}
+
+/* ── طباعة ── */
+.fh-print-header{display:none}
+.fh-print-footer{display:none}
+
 @media print{
-  .sidebar,.page-header,.toolbar,.screen-only,.hamburger,.mobile-overlay{display:none!important}
-  body{background:#fff;color:#111}
-  .content{padding:0}
-  .hero-status,.kpi,.tip,.maint-summary,.maint-chart,.chart-card,.pricing-item{background:#fff;border-color:#ddd;box-shadow:none}
-  .hero-title,.sec-title,.kpi-lab,.tip h4{color:#222}
-  .tip p,.sec-note,.maint-row-hint{color:#555}
+  @page{size:A4 portrait;margin:10mm 12mm 14mm}
+  .sidebar,.page-header,.toolbar,.screen-only,.hamburger,.mobile-overlay,
+  .header,.lc-header,aside#sidebar,nav.sidebar-nav,.page-actions{display:none!important}
+
+  html,body{
+    background:#fff!important;color:#111!important;
+    width:100%!important;height:auto!important;overflow:visible!important;
+    display:block!important;min-height:0!important;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;
+  }
+  body{display:block!important}
+  .main,.content{
+    display:block!important;width:100%!important;min-width:0!important;
+    margin:0!important;padding:0!important;overflow:visible!important;
+    background:#fff!important;position:static!important;
+  }
+  #health-print{padding:0!important}
+
+  .fh-print-header{
+    display:flex!important;align-items:center;justify-content:space-between;
+    padding-bottom:10px;margin-bottom:14px;border-bottom:3px solid #1a4fa0;
+  }
+  .fh-print-header .fh-logo img{height:42px;object-fit:contain}
+  .fh-print-header .fh-center{text-align:center;flex:1;padding:0 12px}
+  .fh-print-header h1{font-size:16px;font-weight:700;color:#1a4fa0;margin:0 0 2px}
+  .fh-print-header h2{font-size:10px;color:#666;font-weight:400;margin:0;font-family:var(--font-en)}
+  .fh-print-header .fh-meta{font-size:10px;color:#444;margin-top:4px}
+  .fh-print-header .fh-brand-sub{font-size:9px;color:#555;text-align:center;margin-top:2px}
+
+  .fh-print-footer{
+    display:flex!important;justify-content:space-between;align-items:center;
+    margin-top:16px;padding-top:8px;border-top:1px solid #ccc;
+    font-size:9px;color:#888;
+  }
+
+  .hero{display:grid!important;grid-template-columns:1.3fr 1fr!important;gap:10px;margin-bottom:12px;break-inside:avoid}
+  .hero-status,.kpi,.tip,.maint-summary,.maint-chart,.chart-card,.pricing-item{
+    background:#fff!important;border:1px solid #c5d0e6!important;box-shadow:none!important;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;
+  }
+  .hero-status{padding:14px 16px}
+  .hero-status::before{width:3px}
+  .hero-status.success{background:#f0faf5!important;border-color:#9ad4b8!important}
+  .hero-status.warning{background:#fff8ef!important;border-color:#e6c48a!important}
+  .hero-status.danger{background:#fff0f0!important;border-color:#e6a0a0!important}
+  .hero-status.success .hero-title,.hero-status.success .hero-margin-val{color:#0f8f5a!important}
+  .hero-status.warning .hero-title,.hero-status.warning .hero-margin-val{color:#c07820!important}
+  .hero-status.danger .hero-title,.hero-status.danger .hero-margin-val{color:#c0392b!important}
+  .hero-title{font-size:18px!important;color:#111!important}
+  .hero-kicker,.hero-period,.hero-margin-lab,.kpi-lab,.sec-note,.maint-row-hint,.tip-cat{color:#555!important}
+  .hero-margin-val{font-size:26px!important}
+  .kpi{padding:10px 12px}
+  .kpi-val{font-size:15px!important;color:#111!important}
+  .kpi-val.green{color:#0f8f5a!important}
+  .kpi-val.red{color:#c0392b!important}
+  .kpi-val.blue{color:#1a4fa0!important}
+  .kpi-val.gold{color:#a07830!important}
+
+  .sec{margin-bottom:14px;break-inside:avoid-page}
+  .sec-title{font-size:13px!important;color:#1a4fa0!important;margin-bottom:6px}
+  .sec-title::before{background:#1a4fa0!important}
+  .sec-note{font-size:10px!important;max-width:none}
+
+  .tips-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px}
+  .tip{padding:10px 12px;gap:4px;break-inside:avoid}
+  .tip.high{background:#fff5f5!important;border-color:#e6a0a0!important}
+  .tip.medium{background:#fff8ef!important;border-color:#e6c48a!important}
+  .tip.low{background:#f0faf5!important;border-color:#9ad4b8!important}
+  .tip h4{font-size:12px!important;color:#111!important}
+  .tip p{font-size:10px!important;color:#333!important;line-height:1.5}
+  .tip-action{font-size:10px!important;padding:6px 8px;color:#1a4fa0!important;background:#f0f5ff!important;border-color:#c5d0e6!important}
+  .tip-action strong{color:#111!important}
+  .tip-badge{font-size:9px!important}
+
+  .maint-layout{display:grid!important;grid-template-columns:1.1fr .9fr!important;gap:10px;break-inside:avoid}
+  .maint-big{font-size:20px!important;color:#a07830!important}
+  .maint-explain{font-size:10px!important;color:#555!important;background:#f5f8ff!important;border-color:#c5d0e6!important;padding:8px}
+  .maint-row-lab{font-size:11px!important;color:#111!important}
+  .maint-row-amt{font-size:11px!important;color:#111!important}
+  .maint-bar{height:5px;background:#eee!important}
+  .maint-bar > span{background:#c8a055!important}
+  .maint-pill{background:#fff3d9!important;color:#a07830!important}
+
+  .charts-grid{display:grid!important;grid-template-columns:1.3fr .7fr!important;gap:10px}
+  .chart-card,.maint-chart{padding:10px 12px;break-inside:avoid}
+  .chart-title{font-size:11px!important;color:#1a4fa0!important;margin-bottom:8px}
+  .chart-wrap,.chart-wrap-lg{height:200px!important}
+  .chart-wrap canvas,.chart-wrap-lg canvas{max-width:100%!important}
+
+  .pricing-grid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px}
+  .pricing-item{padding:8px 10px;break-inside:avoid}
+  .pricing-item .pl{font-size:9px!important;color:#555!important;margin-bottom:4px}
+  .pricing-item .pv{font-size:12px!important;color:#111!important}
+  .pricing-item.highlight{background:#f0f5ff!important;border-color:#8ab0e0!important}
+  .pricing-item.highlight .pv{font-size:14px!important;color:#1a4fa0!important}
+
+  .empty-tips{border-color:#ccc!important;color:#666!important}
 }
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
 <link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
+<link rel="stylesheet" href="{{ url_for('static', filename='reports-print.css') }}?v=5">
+<script src="{{ url_for('static', filename='reports-print.js') }}?v=2"></script>
 </head>
-<body>
+<body data-report-id="report-financial-health">
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
@@ -171,6 +269,21 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
   {% include 'partials/app_header.html' %}
   <div class="content" id="health-print">
 
+    <div class="fh-print-header">
+      <div style="width:48px;height:48px;border:2px solid #1a4fa0;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1a4fa0" stroke-width="1.5" width="28" height="28"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+      </div>
+      <div class="fh-center">
+        <h1>تقرير الصحة المالية</h1>
+        <h2>Financial Health Report</h2>
+        <div class="fh-meta" id="fh-print-period">—</div>
+      </div>
+      <div class="fh-logo">
+        <img src="{{ brand_logo_url }}" alt="LiftCore">
+        <div class="fh-brand-sub">الإدارة الذكية للمصاعد</div>
+      </div>
+    </div>
+
     <div class="page-header screen-only">
       <div>
         <div class="page-title">الصحة المالية</div>
@@ -179,7 +292,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
       <div class="page-actions">
         <a href="/reports" class="btn btn-sm">← كل التقارير</a>
         <a href="{{ url_for('report_contract_forecast') }}" class="btn btn-sm">توقعات التحصيل</a>
-        <button type="button" class="btn btn-sm" onclick="window.print()">طباعة</button>
+        <button type="button" class="btn btn-sm" onclick="printHealthReport()">طباعة</button>
       </div>
     </div>
 
@@ -279,6 +392,12 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
       </div>
       <div class="pricing-grid" id="pricing-grid"></div>
     </section>
+
+    <div class="fh-print-footer">
+      <span>LiftCore — الإدارة الذكية للمصاعد</span>
+      <span id="fh-print-date"></span>
+      <span>تقرير الصحة المالية</span>
+    </div>
 
   </div>
 </div>
@@ -433,7 +552,7 @@ function renderMaintenance(mc) {
       label: 'التوزيع',
       data: [maintAmt, otherAmt],
       backgroundColor: [CHART_COLORS.maint.fill, CHART_COLORS.other.fill],
-      borderColor: cssVar('--card', '#131b27'),
+      borderColor: '#ffffff',
       borderWidth: 2,
       hoverOffset: 6,
     }]
@@ -504,6 +623,7 @@ function loadHealth() {
       document.getElementById('health-title').textContent = 'الوضع المالي: ' + (s.health || '—');
       document.getElementById('health-sub').textContent = fmtPeriodLabel(d.date_from, d.date_to);
       document.getElementById('health-margin').textContent = (s.margin_pct || 0) + '%';
+      syncPrintMeta(d.date_from, d.date_to);
 
       setMoney('s-rev', s.revenue);
       setMoney('s-exp', s.expenses);
@@ -561,6 +681,58 @@ function loadHealth() {
       document.getElementById('tips-grid').innerHTML = '<div class="empty-tips">تعذّر تحميل النصائح — حدّث الصفحة</div>';
     });
 }
+
+function syncPrintMeta(fromIso, toIso) {
+  var periodEl = document.getElementById('fh-print-period');
+  if (periodEl) periodEl.textContent = fmtPeriodLabel(fromIso, toIso);
+  var dateEl = document.getElementById('fh-print-date');
+  if (dateEl) {
+    var now = new Date();
+    if (window.LiftCoreFormat && LiftCoreFormat.reportDateNumeric) {
+      dateEl.textContent = LiftCoreFormat.reportDateNumeric(now);
+    } else {
+      dateEl.textContent = now.toLocaleDateString('en-GB');
+    }
+  }
+}
+
+function resizeHealthCharts() {
+  Object.keys(charts).forEach(function (k) {
+    try { if (charts[k]) charts[k].resize(); } catch (e) { /* ignore */ }
+  });
+}
+
+function prepareHealthPrint() {
+  syncPrintMeta(
+    (document.getElementById('f-from') || {}).value,
+    (document.getElementById('f-to') || {}).value
+  );
+  var sub = document.getElementById('health-sub');
+  var periodEl = document.getElementById('fh-print-period');
+  if (periodEl && sub && sub.textContent) periodEl.textContent = sub.textContent;
+  document.documentElement.classList.add('lc-printing');
+  resizeHealthCharts();
+}
+
+function cleanupHealthPrint() {
+  document.documentElement.classList.remove('lc-printing');
+  resizeHealthCharts();
+}
+
+function printHealthReport() {
+  prepareHealthPrint();
+  setTimeout(function () {
+    if (window.LiftCorePrint && typeof LiftCorePrint.report === 'function') {
+      // استخدم print الأصلي بعد التحضير لتجنب تكرار prepare
+      window.print();
+    } else {
+      window.print();
+    }
+  }, 180);
+}
+
+window.addEventListener('beforeprint', prepareHealthPrint);
+window.addEventListener('afterprint', cleanupHealthPrint);
 
 function openSidebar(){var s=document.getElementById('sidebar'),o=document.getElementById('overlay');if(s)s.classList.add('open');if(o)o.classList.add('open');}
 function closeSidebar(){var s=document.getElementById('sidebar'),o=document.getElementById('overlay');if(s)s.classList.remove('open');if(o)o.classList.remove('open');}
