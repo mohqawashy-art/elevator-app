@@ -1,4 +1,4 @@
-{# lc-admin-compact-ui v52 — تبويبات + إحصائيات مضغوطة (كل الصفحات) + شريط أدوات #}
+{# lc-admin-compact-ui v53 — تبويبات + إحصائيات + جداول مضغوطة #}
 <style id="lc-view-tabs-compact">
 /* ── كروت إحصائية مضغوطة — نفس شكل صفحة العملاء ── */
 #sidebar ~ .main .content .stats-row,
@@ -148,5 +148,62 @@ html[dir="ltr"] .main .content > .lc-page-toolbar .tabs .tab {
 #sidebar ~ .main .filters-bar,
 .main .content > .filters-bar {
   margin-bottom: 8px !important;
+}
+
+/* ── جداول مضغوطة — تقليل المسافة بين الصفوف (كل صفحات الإدارة) ── */
+#sidebar ~ .main .content .table-scroll table:not(.rpt-table):not(.q-tbl) thead th,
+.main .content .table-scroll table:not(.rpt-table):not(.q-tbl) thead th,
+#sidebar ~ .main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) thead th,
+.main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) thead th {
+  padding: 6px 8px !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+}
+#sidebar ~ .main .content .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td,
+.main .content .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td,
+#sidebar ~ .main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td,
+.main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td {
+  padding: 5px 8px !important;
+  line-height: 1.3 !important;
+}
+#sidebar ~ .main .content .table-scroll table:not(.rpt-table):not(.q-tbl) thead th:first-child,
+.main .content .table-scroll table:not(.rpt-table):not(.q-tbl) thead th:first-child,
+#sidebar ~ .main .content .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td:first-child,
+.main .content .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td:first-child,
+#sidebar ~ .main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) thead th:first-child,
+.main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) thead th:first-child,
+#sidebar ~ .main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td:first-child,
+.main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td:first-child {
+  padding-inline-start: 10px !important;
+}
+#sidebar ~ .main .content .table-scroll table:not(.rpt-table):not(.q-tbl) thead th:last-child,
+.main .content .table-scroll table:not(.rpt-table):not(.q-tbl) thead th:last-child,
+#sidebar ~ .main .content .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td:last-child,
+.main .content .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td:last-child,
+#sidebar ~ .main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) thead th:last-child,
+.main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) thead th:last-child,
+#sidebar ~ .main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td:last-child,
+.main .content .lc-table-scroll-host .table-scroll table:not(.rpt-table):not(.q-tbl) tbody td:last-child {
+  padding-inline-end: 10px !important;
+}
+#sidebar ~ .main .content .card-table th,
+.main .content .card-table th,
+#sidebar ~ .main .content .card-table td,
+.main .content .card-table td {
+  padding: 6px 8px !important;
+}
+#sidebar ~ .main .content .table-footer,
+.main .content .table-footer {
+  padding: 8px 12px !important;
+}
+#sidebar ~ .main .content .table-wrap .btn-icon,
+.main .content .table-wrap .btn-icon {
+  width: 26px !important;
+  height: 26px !important;
+}
+#sidebar ~ .main .content .table-wrap .btn-wa,
+.main .content .table-wrap .btn-wa {
+  padding: 3px 6px !important;
+  font-size: 10px !important;
 }
 </style>
