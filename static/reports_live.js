@@ -361,7 +361,8 @@ function hookReportPagination(reset) {
       ]);
       return;
     }
-    setStatValues(computeReportStats(reportId, data));
+    var statsData = (__lcReportData && __lcReportData.length) ? __lcReportData : data;
+    setStatValues(computeReportStats(reportId, statsData));
   }
 
   function computeReportStats(reportId, data) {
@@ -390,12 +391,7 @@ function hookReportPagination(reset) {
         ];
       case 'report-contracts': {
         var active = data.filter(function (r) { return r.status === 'نشط'; }).length;
-        var expiring = data.filter(function (r) {
-          if (!r.end_date) return false;
-          var d = new Date(r.end_date);
-          var diff = (d - today) / 86400000;
-          return diff >= 0 && diff <= 30;
-        }).length;
+        var expiring = data.filter(function (r) { return r.status === 'على وشك الانتهاء'; }).length;
         return [
           fmtNum(data.length),
           fmtNum(active),

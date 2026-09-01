@@ -4629,11 +4629,7 @@ def get_dashboard_stats():
     )
     overdue_count = len(overdue_invoices)
 
-    expiring_contracts = tenant_query(Contract).filter(
-        Contract.status == 'نشط',
-        Contract.end_date >= today,
-        Contract.end_date <= in_30_days,
-    ).order_by(Contract.end_date).all()
+    expiring_contracts = _contracts_expiring_display_status(today)
 
     low_stock_items = tenant_query(InventoryItem).filter(
         InventoryItem.min_qty > 0,
@@ -4857,15 +4853,12 @@ def api_dashboard_drill(card_type):
             'rows': rows,
         }
     elif card_type == 'expiring_contracts':
-        in_30_days = today + timedelta(days=30)
+        expiring = _contracts_expiring_display_status(today)
         rows = [
             [c.code, c.customer.name, c.contract_type or '—',
-             str(c.end_date), f'{(c.end_date - today).days} يوم', c.status]
-            for c in tenant_query(Contract).filter(
-                Contract.status == 'نشط',
-                Contract.end_date >= today,
-                Contract.end_date <= in_30_days,
-            ).order_by(Contract.end_date).all()
+             str(c.end_date), f'{(c.end_date - today).days} يوم',
+             contract_display_status(c)]
+            for c in expiring
         ]
         payload = {
             'title': 'عقود تنتهي خلال 30 يوم', 'link': '/contracts',
@@ -6140,6 +6133,19 @@ def api_elevators_by_customer(customer_id):
             'active_contract': ac,
         })
     return jsonify(rows)
+
+def _contracts_expiring_display_status(today=None):
+    """عقود بحالة العرض «على وشك الانتهاء» — نفس منطق صفحة العقود."""
+    today = today or date.today()
+    all_c = tenant_query(Contract).all()
+    renewed_ids = _annotate_contract_renewals(all_c)
+    rows = [
+        c for c in all_c
+        if contract_display_status(c, today=today, renewed_ids=renewed_ids) == 'على وشك الانتهاء'
+    ]
+    rows.sort(key=lambda c: c.end_date or date.max)
+    return rows
+
 
 def contract_display_status(contract, today=None, *, renewed_ids=None):
     """حالة العرض: نشط / على وشك الانتهاء / تم تجديده / منتهي / ملغي."""

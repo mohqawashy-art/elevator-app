@@ -76,21 +76,32 @@ def get_report_elevators(db, Elevator):
     } for e in elevs]
 
 
-def get_report_contracts(db, Contract):
+def get_report_contracts(db, Contract, contract_display_status=None):
+    from contract_codes import build_superseded_contract_ids
+
     contracts = tenant_query(Contract).order_by(Contract.id).all()
-    return [{
-        'code': c.code,
-        'customer': c.customer.name,
-        'contract_type': c.contract_type or '',
-        'start_date': str(c.start_date or ''),
-        'end_date': str(c.end_date or ''),
-        'elevators': len(c.elevators),
-        'value': c.value or 0,
-        'total': c.total or 0,
-        'status': c.status,
-        'inv_status': c.invoice_status or '',
-        'due_date': str(getattr(c, 'due_date', None) or ''),
-    } for c in contracts]
+    renewed_ids = build_superseded_contract_ids(contracts)
+    rows = []
+    for c in contracts:
+        display = (
+            contract_display_status(c, renewed_ids=renewed_ids)
+            if contract_display_status
+            else (c.status or '')
+        )
+        rows.append({
+            'code': c.code,
+            'customer': c.customer.name,
+            'contract_type': c.contract_type or '',
+            'start_date': str(c.start_date or ''),
+            'end_date': str(c.end_date or ''),
+            'elevators': len(c.elevators),
+            'value': c.value or 0,
+            'total': c.total or 0,
+            'status': display,
+            'inv_status': c.invoice_status or '',
+            'due_date': str(getattr(c, 'due_date', None) or ''),
+        })
+    return rows
 
 
 def get_report_technicians(db, Technician):
@@ -1490,7 +1501,8 @@ def get_customer_profitability_report(
 REPORT_FETCHERS = {
     'report-clients': lambda ctx: get_report_clients(ctx['db'], ctx['Customer'], ctx['contract_display_status']),
     'report-elevators': lambda ctx: get_report_elevators(ctx['db'], ctx['Elevator']),
-    'report-contracts': lambda ctx: get_report_contracts(ctx['db'], ctx['Contract']),
+    'report-contracts': lambda ctx: get_report_contracts(
+        ctx['db'], ctx['Contract'], ctx['contract_display_status']),
     'report-technicians': lambda ctx: get_report_technicians(ctx['db'], ctx['Technician']),
     'report-maintenance': lambda ctx: get_report_visits(ctx['db'], ctx['MaintenanceVisit']),
     'report-faults': lambda ctx: get_report_faults(ctx['db'], ctx['Fault']),
