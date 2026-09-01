@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — ربحية عميل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;
+  --border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:12px;--r-sm:8px;
+}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:240px;min-width:240px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:60px}
+.sidebar-logo img{width:150px;height:44px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px;overflow-y:auto}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:20px;font-weight:700}
+.page-subtitle{font-size:13px;color:var(--text3);margin-top:6px;line-height:1.55;max-width:560px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-family:inherit;text-decoration:none}
+.btn:hover{background:#1c2535;color:var(--text1)}
+.btn-primary{background:var(--accent);color:#fff;border-color:transparent}
+.btn-primary:hover{background:#1e6fe8;color:#fff}
+.btn-sm{padding:6px 12px;font-size:12px}
+.toolbar{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.field{display:flex;flex-direction:column;gap:6px;min-width:160px}
+.field label{font-size:12px;color:var(--text2);font-weight:500}
+.field select,.field input{padding:8px 12px;background:#161e2b;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;font-family:inherit}
+.hero{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-bottom:18px}
+.hero-status{border-radius:var(--r);padding:22px 24px;border:1px solid var(--border);background:var(--card);position:relative}
+.hero-status::before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;border-radius:var(--r)}
+.hero-status.success::before{background:var(--success)}
+.hero-status.warning::before{background:var(--warning)}
+.hero-status.danger::before{background:var(--danger)}
+.hero-status.success .hero-title{color:var(--success)}
+.hero-status.warning .hero-title{color:var(--warning)}
+.hero-status.danger .hero-title{color:var(--danger)}
+.hero-kicker{font-size:11px;color:var(--text3);margin-bottom:8px}
+.hero-title{font-size:24px;font-weight:700;margin-bottom:8px}
+.hero-period{font-size:13px;color:var(--text2);margin-bottom:14px}
+.hero-margin{display:flex;align-items:baseline;gap:10px}
+.hero-margin-val{font-size:34px;font-weight:700;font-family:var(--font-en)}
+.hero-margin-lab{font-size:12px;color:var(--text3)}
+.hero-kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.kpi-lab{font-size:11px;color:var(--text3);margin-bottom:8px}
+.kpi-val{font-size:17px;font-weight:700;font-family:var(--font-en)}
+.kpi-val.green{color:var(--success)}.kpi-val.red{color:var(--danger)}.kpi-val.blue{color:var(--accent)}.kpi-val.gold{color:var(--gold)}
+.sec{margin-bottom:20px}
+.sec-title{font-size:15px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec-title::before{content:'';width:3px;height:16px;background:var(--accent);border-radius:2px}
+.sec-note{font-size:12px;color:var(--text3);line-height:1.65;margin-bottom:12px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm)}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.data-table th{background:#161e2b;color:var(--text2);padding:10px 12px;text-align:right;font-weight:600;font-size:12px}
+.data-table td{padding:9px 12px;border-top:1px solid var(--border);color:var(--text1)}
+.data-table tr:hover td{background:rgba(42,127,255,.04)}
+.data-table .num{font-family:var(--font-en);direction:ltr;text-align:left}
+.empty-hint{text-align:center;padding:40px 24px;color:var(--text3);background:var(--card);border:1px dashed var(--border2);border-radius:var(--r)}
+.split-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.hero,.split-grid{grid-template-columns:1fr}}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s;z-index:100}
+  .sidebar.open{right:0}
+  .mobile-overlay.open{display:block}
+  .content{padding:16px}
+}
+@media print{
+  .sidebar,.toolbar,.page-header,.btn,.mobile-overlay{display:none!important}
+  body,.main,.content{background:#fff!important;color:#111!important;display:block!important}
+  .hero-status,.kpi,.data-table,.sec-note{background:#fff!important;border-color:#ccc!important}
+}
+</style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
+<script src="/static/liftcore-dates.js" defer></script>
+</head>
+<body data-report-id="report-customer-profitability">
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+
+<div class="main">
+  {% set page_title = 'ربحية عميل' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content" id="profit-print">
+
+    <div class="page-header">
+      <div>
+        <div class="page-title">ربحية عميل</div>
+        <div class="page-subtitle">إيرادات محصّلة للعميل مقابل تكلفة تشغيل تقديرية (نفس منطق الصحة المالية) — اختر العميل والفترة.</div>
+      </div>
+      <div class="page-actions">
+        <a href="/reports" class="btn btn-sm">← كل التقارير</a>
+        <a href="/reports/financial-health" class="btn btn-sm">الصحة المالية</a>
+        <button type="button" class="btn btn-sm" onclick="window.print()">طباعة</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="field" style="flex:1;min-width:200px">
+        <label for="sel-client">العميل</label>
+        <select id="sel-client">
+          <option value="">— اختر العميل —</option>
+          {% for c in customers %}
+          <option value="{{ c.id }}" {% if selected_id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-from">من</label>
+        <input type="date" lang="en-GB" id="f-from" value="{{ default_from }}">
+      </div>
+      <div class="field">
+        <label for="f-to">إلى</label>
+        <input type="date" lang="en-GB" id="f-to" value="{{ default_to }}">
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" onclick="loadReport()">عرض التقرير</button>
+    </div>
+
+    <div id="report-empty" class="empty-hint">
+      اختر العميل ثم اضغط «عرض التقرير» لحساب الإيرادات والتكلفة التقديرية والربح.
+    </div>
+
+    <div id="report-body" style="display:none">
+      <div class="hero">
+        <div id="hero-status" class="hero-status">
+          <div class="hero-kicker" id="cust-label">—</div>
+          <div class="hero-title" id="health-title">—</div>
+          <div class="hero-period" id="health-period">—</div>
+          <div class="hero-margin">
+            <div class="hero-margin-val" id="health-margin">—</div>
+            <div class="hero-margin-lab">هامش الربح</div>
+          </div>
+        </div>
+        <div class="hero-kpis">
+          <div class="kpi"><div class="kpi-lab">إجمالي الإيرادات (محصّل)</div><div class="kpi-val green" id="s-rev">—</div></div>
+          <div class="kpi"><div class="kpi-lab">التكلفة التقديرية</div><div class="kpi-val red" id="s-cost">—</div></div>
+          <div class="kpi"><div class="kpi-lab">صافي الربح</div><div class="kpi-val" id="s-profit">—</div></div>
+          <div class="kpi"><div class="kpi-lab">ربح قطع الغيار</div><div class="kpi-val gold" id="s-parts-profit">—</div></div>
+        </div>
+      </div>
+
+      <div class="split-grid">
+        <div class="sec">
+          <div class="sec-title">تفصيل الإيرادات</div>
+          <table class="data-table">
+            <tbody>
+              <tr><td>عقود وصيانة</td><td class="num" id="rev-contracts">—</td></tr>
+              <tr><td>قطع غيار وأعمال</td><td class="num" id="rev-parts">—</td></tr>
+              <tr><td>أخرى</td><td class="num" id="rev-other">—</td></tr>
+              <tr><td><strong>الإجمالي</strong></td><td class="num"><strong id="rev-total">—</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="sec">
+          <div class="sec-title">تفصيل التكلفة التقديرية</div>
+          <table class="data-table">
+            <tbody>
+              <tr><td>زيارات مكتملة</td><td class="num" id="visits-done">—</td></tr>
+              <tr><td>تكلفة الزيارات (متوسط × زيارات)</td><td class="num" id="cost-visits">—</td></tr>
+              <tr><td>حصة ثابتة (عقود نشطة)</td><td class="num" id="cost-fixed">—</td></tr>
+              <tr><td>متوسط تكلفة الزيارة (مؤسسة)</td><td class="num" id="cost-per-visit">—</td></tr>
+              <tr><td><strong>إجمالي التكلفة</strong></td><td class="num"><strong id="cost-total">—</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">العقود النشطة في الفترة</div>
+        <table class="data-table" id="contracts-table">
+          <thead>
+            <tr>
+              <th>العقد</th><th>النوع</th><th>زيارات</th><th>إيراد</th><th>تكلفة</th><th>ربح</th><th>هامش</th>
+            </tr>
+          </thead>
+          <tbody id="contracts-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">سجل الإيرادات في الفترة</div>
+        <table class="data-table">
+          <thead>
+            <tr><th>تاريخ</th><th>رقم</th><th>نوع</th><th>عقد</th><th>مبلغ</th></tr>
+          </thead>
+          <tbody id="revenues-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="sec-note" id="methodology">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PRESELECT = {{ selected_id|tojson }};
+
+function fmt(n) {
+  return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function setText(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
+function setMoney(id, v) { setText(id, fmt(v)); }
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+
+function renderReport(data) {
+  var s = data.summary || {};
+  document.getElementById('report-empty').style.display = 'none';
+  document.getElementById('report-body').style.display = '';
+
+  var hero = document.getElementById('hero-status');
+  hero.className = 'hero-status ' + (s.health_level || 'warning');
+
+  setText('cust-label', (data.customer_name || '') + ' · ' + (data.customer_code || ''));
+  setText('health-title', s.health || '—');
+  setText('health-period', data.period_label || '—');
+  setText('health-margin', (s.margin_pct != null ? s.margin_pct.toFixed(1) + '%' : '—'));
+
+  setMoney('s-rev', s.revenue_total);
+  setMoney('s-cost', s.total_cost);
+  var profitEl = document.getElementById('s-profit');
+  profitEl.textContent = fmt(s.net_profit);
+  profitEl.className = 'kpi-val ' + (Number(s.net_profit) < 0 ? 'red' : 'green');
+  setMoney('s-parts-profit', s.parts_profit);
+
+  setMoney('rev-contracts', s.revenue_contracts);
+  setMoney('rev-parts', s.revenue_parts);
+  setMoney('rev-other', s.revenue_other);
+  setMoney('rev-total', s.revenue_total);
+
+  setText('visits-done', String(s.visits_done || 0));
+  setMoney('cost-visits', s.visit_cost);
+  setMoney('cost-fixed', s.fixed_cost);
+  setMoney('cost-per-visit', s.cost_per_visit);
+  setMoney('cost-total', s.total_cost);
+
+  var contracts = data.contracts || [];
+  var ctbody = document.getElementById('contracts-tbody');
+  if (!contracts.length) {
+    ctbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3)">لا عقود نشطة في هذه الفترة</td></tr>';
+  } else {
+    ctbody.innerHTML = contracts.map(function (c) {
+      return '<tr>' +
+        '<td>' + esc(c.code) + '</td>' +
+        '<td>' + esc(c.type) + '</td>' +
+        '<td class="num">' + (c.visits_done || 0) + '</td>' +
+        '<td class="num">' + fmt(c.revenue) + '</td>' +
+        '<td class="num">' + fmt(c.total_cost) + '</td>' +
+        '<td class="num">' + fmt(c.net_profit) + '</td>' +
+        '<td class="num">' + Number(c.margin_pct || 0).toFixed(1) + '%</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  var lines = data.revenue_lines || [];
+  var rtbody = document.getElementById('revenues-tbody');
+  if (!lines.length) {
+    rtbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3)">لا إيرادات محصّلة في الفترة</td></tr>';
+  } else {
+    rtbody.innerHTML = lines.map(function (r) {
+      return '<tr>' +
+        '<td>' + esc(r.date) + '</td>' +
+        '<td>' + esc(r.code) + '</td>' +
+        '<td>' + esc(r.type) + '</td>' +
+        '<td>' + esc(r.contract) + '</td>' +
+        '<td class="num">' + fmt(r.amount) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  setText('methodology', data.methodology || '');
+}
+
+async function loadReport() {
+  var id = document.getElementById('sel-client').value;
+  if (!id) { alert('اختر العميل أولاً'); return; }
+  var from = document.getElementById('f-from').value;
+  var to = document.getElementById('f-to').value;
+  var url = new URL(window.location.href);
+  url.searchParams.set('customer_id', id);
+  history.replaceState({}, '', url);
+  var qs = new URLSearchParams({ from: from, to: to });
+  try {
+    var res = await fetch('/api/reports/customer-profitability/' + id + '?' + qs.toString(), { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('failed');
+    renderReport(await res.json());
+  } catch (e) {
+    alert('تعذّر تحميل تقرير الربحية');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (PRESELECT) {
+    document.getElementById('sel-client').value = String(PRESELECT);
+    loadReport();
+  }
+});
+</script>
+</body>
+</html>

@@ -612,6 +612,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
     <div class="modal-foot">
       <a class="btn btn-secondary btn-sm" id="card-report-clients" href="/reports/clients" style="margin-left:auto">تقرير العملاء</a>
       <a class="btn btn-primary btn-sm" id="card-report-statement" href="/reports/customer-statement">كشف حساب</a>
+      <a class="btn btn-primary btn-sm" id="card-report-profitability" href="/reports/customer-profitability">ربحية</a>
       <a class="btn btn-primary btn-sm" id="card-report-annual" href="/reports/client-annual">تقرير سنوي</a>
       <a class="btn btn-primary btn-sm" id="card-new-contract" href="/contracts?action=add" style="display:none">إضافة عقد</a>
       <button type="button" class="btn btn-secondary" onclick="closeClientCard()">إغلاق</button>
@@ -1711,10 +1712,12 @@ function openClientCard(id) {
   openModal('modal-client-card');
   var annualLink = document.getElementById('card-report-annual');
   var statementLink = document.getElementById('card-report-statement');
+  var profitabilityLink = document.getElementById('card-report-profitability');
   var clientsLink = document.getElementById('card-report-clients');
   var contractLink = document.getElementById('card-new-contract');
   if (annualLink) annualLink.href = '/reports/client-annual?customer_id=' + encodeURIComponent(id);
   if (statementLink) statementLink.href = '/reports/customer-statement?customer_id=' + encodeURIComponent(id);
+  if (profitabilityLink) profitabilityLink.href = '/reports/customer-profitability?customer_id=' + encodeURIComponent(id);
   if (clientsLink) clientsLink.href = '/reports/clients?q=' + encodeURIComponent(c.code || c.name || '');
   if (contractLink) {
     contractLink.href = '/contracts?action=add&customer_id=' + encodeURIComponent(id);

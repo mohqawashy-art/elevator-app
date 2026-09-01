@@ -12276,6 +12276,23 @@ def report_client_annual():
     )
 
 
+@app.route('/reports/customer-profitability')
+def report_customer_profitability():
+    """ربحية عميل — إيرادات محصّلة مقابل تكلفة تشغيل تقديرية."""
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    selected_id = request.args.get('customer_id', type=int)
+    today = date.today()
+    settings = tenant_query(Settings).first()
+    return render_template(
+        'report-customer-profitability.html',
+        customers=customers,
+        selected_id=selected_id,
+        default_from=date(today.year, 1, 1).isoformat(),
+        default_to=today.isoformat(),
+        brand_logo_url=brand_logo_url(settings),
+    )
+
+
 @app.route('/reports/customer-statement')
 def report_customer_statement():
     """كشف حساب عميل — مدين/دائن/رصيد مستحق."""
@@ -13576,6 +13593,23 @@ def api_report_financial_health():
     year = int(year_raw) if year_raw.isdigit() else None
     return jsonify(get_financial_health_report(
         db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit,
+        year=year, date_from=date_from, date_to=date_to,
+        contract_status_fn=contract_display_status,
+    ))
+
+
+@app.route('/api/reports/customer-profitability/<int:customer_id>')
+def api_customer_profitability(customer_id):
+    from report_data import get_customer_profitability_report
+
+    date_from = request.args.get('from') or request.args.get('date_from')
+    date_to = request.args.get('to') or request.args.get('date_to')
+    year_raw = (request.args.get('year') or '').strip()
+    year = int(year_raw) if year_raw.isdigit() else None
+    return jsonify(get_customer_profitability_report(
+        customer_id,
+        db, Customer, Revenue, Expense, Contract, Technician, Elevator,
+        MaintenanceVisit, PartsBilling,
         year=year, date_from=date_from, date_to=date_to,
         contract_status_fn=contract_display_status,
     ))

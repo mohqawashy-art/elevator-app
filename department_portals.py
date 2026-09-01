@@ -169,6 +169,7 @@ DEPARTMENT_PORTALS = {
             ('الصحة المالية', 'Financial Health', '/reports/financial-health', 'report_financial_health.read'),
             ('توقعات التحصيل', 'Collection Forecast', '/reports/contract-forecast', 'report_contract_forecast.read'),
             ('كشف حساب عميل', 'Customer Statement', '/reports/customer-statement', 'report_customer_statement.read'),
+            ('ربحية عميل', 'Customer Profitability', '/reports/customer-profitability', 'report_customer_profitability.read'),
             ('تقرير الإيرادات', 'Revenues Report', '/reports/revenues', 'report_revenues.read'),
             ('تقرير المصروفات', 'Expenses Report', '/reports/expenses', 'report_expenses.read'),
             ('تقرير الفواتير', 'Invoices Report', '/reports/invoices', 'report_invoices.read'),

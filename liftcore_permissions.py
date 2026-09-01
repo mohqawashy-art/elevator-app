@@ -48,6 +48,7 @@ PAGE_DEFS: tuple[dict[str, str], ...] = (
     {'slug': 'report_expenses', 'label_ar': 'تقرير المصروفات', 'label_en': 'Expenses Report', 'group_ar': 'التقارير'},
     {'slug': 'report_invoices', 'label_ar': 'تقرير الفواتير', 'label_en': 'Invoices Report', 'group_ar': 'التقارير'},
     {'slug': 'report_customer_statement', 'label_ar': 'كشف حساب عميل', 'label_en': 'Customer Statement', 'group_ar': 'التقارير'},
+    {'slug': 'report_customer_profitability', 'label_ar': 'ربحية عميل', 'label_en': 'Customer Profitability', 'group_ar': 'التقارير'},
     {'slug': 'report_inventory', 'label_ar': 'تقرير الأصناف', 'label_en': 'Inventory Report', 'group_ar': 'التقارير'},
     {'slug': 'report_stock', 'label_ar': 'تقرير حركة المخزن', 'label_en': 'Stock Movement Report', 'group_ar': 'التقارير'},
 )
@@ -222,6 +223,7 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/reports/expenses', 'report_expenses'),
     ('/reports/invoices', 'report_invoices'),
     ('/reports/customer-statement', 'report_customer_statement'),
+    ('/reports/customer-profitability', 'report_customer_profitability'),
     ('/reports/inventory', 'report_inventory'),
     ('/reports/stock-movements', 'report_stock'),
     ('/reports', 'reports_home'),
@@ -387,6 +389,7 @@ PAGE_HOME_PATHS: dict[str, str] = {
     'report_expenses': '/reports/expenses',
     'report_invoices': '/reports/invoices',
     'report_customer_statement': '/reports/customer-statement',
+    'report_customer_profitability': '/reports/customer-profitability',
     'report_inventory': '/reports/inventory',
     'report_stock': '/reports/stock-movements',
 }
