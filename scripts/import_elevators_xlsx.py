@@ -86,6 +86,15 @@ def _cell(row: dict[str, str], *names: str) -> str:
     return ''
 
 
+def _building_name_from_row(row: dict[str, str]) -> str:
+    """اسم المبنى من Excel فقط — بدون دمج اسم العميل أو رقم المصعد."""
+    return _str(_cell(
+        row,
+        'اسم المبنى', 'اسم المبني', 'المبنى',
+        'الوحدة', 'رقم الوحدة', 'ملاحظات المصعد',
+    )).strip()
+
+
 def _normalize_name(text: str) -> str:
     return re.sub(r'\s+', ' ', _str(text)).strip()
 
@@ -180,13 +189,7 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
             print(f'  [تخطي] {el_code}: لا عميل/عقد لـ {cn_code or _cell(row, "Title")}')
             continue
 
-        title = _cell(row, 'Title', 'Link to Contracts / العقود')
-        base_name = _normalize_name(re.sub(r'^CN-\d+\s*', '', title)) or customer.name
-        unit = _str(_cell(row, 'اسم المبنى', 'الوحدة', 'المبنى', 'رقم الوحدة', 'ملاحظات المصعد')).strip()
-        if unit and unit != base_name:
-            building = unit
-        else:
-            building = f'{base_name} — {el_code}'
+        building = _building_name_from_row(row)
         warranty = _cell(row, 'حالة الضمان')
         notes = f'حالة الضمان: {warranty}' if warranty else ''
 
@@ -231,23 +234,79 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
     return stats
 
 
+def sync_building_names_from_xlsx(path: str, dry_run: bool = False) -> dict[str, int]:
+    """تحديث خانة المبنى للمصاعد الموجودة من عمود اسم المبنى/المبني في Excel."""
+    rows = load_rows(path)
+    stats = {'rows': len(rows), 'updated': 0, 'unchanged': 0, 'missing': 0, 'set_empty': 0}
+
+    for row in rows:
+        el_code = _extract_el(_cell(row, 'رقم المصعد'))
+        if not el_code:
+            stats['missing'] += 1
+            continue
+        building = _building_name_from_row(row)
+        elev = Elevator.query.filter_by(code=el_code).first()
+        if not elev:
+            stats['missing'] += 1
+            continue
+        current = (elev.building_name or '').strip()
+        if current == building:
+            stats['unchanged'] += 1
+            continue
+        if dry_run:
+            stats['updated'] += 1
+            if not building:
+                stats['set_empty'] += 1
+            continue
+        elev.building_name = building
+        stats['updated'] += 1
+        if not building:
+            stats['set_empty'] += 1
+
+    if not dry_run:
+        db.session.commit()
+    return stats
+
+
 def main():
     parser = argparse.ArgumentParser(description='Import elevators Excel into LiftCore DB')
     parser.add_argument('xlsx', help='Path to elevators .xlsx file')
+    parser.add_argument('--slug', default='jama', help='Organization slug (multi-tenant)')
     parser.add_argument('--dry-run', action='store_true', help='Preview only, no DB writes')
+    parser.add_argument(
+        '--sync-buildings-only',
+        action='store_true',
+        help='Update building_name from Excel for existing elevators (no new rows)',
+    )
     args = parser.parse_args()
 
     path = args.xlsx
     if not os.path.isfile(path):
         raise SystemExit(f'File not found: {path}')
 
+    from flask import g
+    from models import Organization
+
     with app.app_context():
+        slug = (args.slug or 'jama').strip().lower()
+        org = Organization.query.filter_by(slug=slug).first()
+        if not org:
+            raise SystemExit(f'ERROR: لا توجد مؤسسة slug={slug!r}')
+        g.organization = org
+        g.organization_id = org.id
+
         db.create_all()
         db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        print(f'Tenant: {org.name} ({slug}) id={org.id}')
         print(f'Database: {db_uri}')
         print(f'File: {path}')
-        stats = import_elevators(path, dry_run=args.dry_run)
-        print('\n=== النتيجة ===')
+
+        if args.sync_buildings_only:
+            stats = sync_building_names_from_xlsx(path, dry_run=args.dry_run)
+            print('\n=== تحديث اسم المبنى ===')
+        else:
+            stats = import_elevators(path, dry_run=args.dry_run)
+            print('\n=== النتيجة ===')
         for key, val in stats.items():
             print(f'  {key}: {val}')
 
