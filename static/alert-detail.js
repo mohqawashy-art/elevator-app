@@ -70,11 +70,17 @@
       var title = data.title || 'تفاصيل التنبيه';
       var count = data.count != null ? data.count : (data.rows || []).length;
       var countTxt = '(' + count + ' سجل)';
+      document.title = 'LiftCore — ' + title;
 
       document.getElementById('screen-title').textContent = title;
       document.getElementById('screen-count').textContent = countTxt;
       document.getElementById('print-title').textContent = title;
       document.getElementById('footer-label').textContent = title;
+      var info = document.getElementById('table-info');
+      if (info) info.textContent = 'عرض ' + count + ' سجل';
+
+      var back = document.getElementById('alert-back-link');
+      if (back && data.link) back.href = data.link;
 
       var src = document.getElementById('alert-source-link');
       if (src && data.link) {
