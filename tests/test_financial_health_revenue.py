@@ -1,17 +1,12 @@
-"""إجمالي الإيرادات في الصحة المالية = صفحة الإيرادات (نفس الفترة والمنطق)."""
+"""إجمالي الإيرادات في الصحة المالية = صفحة الإيرادات."""
 from datetime import date
 
 from app import app, db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit
 from models import Organization
-from report_data import (
-    get_financial_health_report,
-    summarize_revenue_rows,
-    _tenant_revenue_date_bounds,
-)
-from tenant_scope import tenant_query
+from report_data import get_financial_health_report, tenant_revenue_totals
 
 
-def test_financial_health_revenue_matches_summarize(client):
+def test_financial_health_revenue_kpi_matches_revenues_page(client):
     with app.app_context():
         from flask import g
 
@@ -35,18 +30,24 @@ def test_financial_health_revenue_matches_summarize(client):
                 total=500,
                 status='ملغي',
             ),
+            Revenue(
+                organization_id=org.id,
+                code='REV-FH3',
+                revenue_date=date(2027, 1, 1),
+                amount=200,
+                total=200,
+                status='محصّل',
+            ),
         ])
         db.session.commit()
 
-        today = date(2026, 8, 31)
-        df, dt = _tenant_revenue_date_bounds(Revenue, today)
-        expected = summarize_revenue_rows(tenant_query(Revenue).all())['total']
-
+        expected = tenant_revenue_totals(Revenue)['total']
         report = get_financial_health_report(
             db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit,
-            date_from=df.isoformat(),
-            date_to=dt.isoformat(),
-            today=today,
+            date_from='2026-01-01',
+            date_to='2026-08-31',
+            today=date(2026, 8, 31),
         )
         assert report['summary']['revenue'] == expected
-        assert report['summary']['revenue'] == 1500.0
+        assert report['summary']['revenue'] == 1700.0
+        assert report['summary']['revenue_period'] == 0.0

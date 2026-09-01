@@ -187,6 +187,11 @@ def summarize_revenue_rows(rows):
     }
 
 
+def tenant_revenue_totals(Revenue):
+    """إجمالي الإيرادات للمؤسسة — نفس منطق بطاقة صفحة الإيرادات."""
+    return summarize_revenue_rows(tenant_query(Revenue).all())
+
+
 def _revenues_report_query(Revenue, year=None, month=None):
     from sqlalchemy.orm import joinedload
 
@@ -941,7 +946,8 @@ def get_financial_health_report(
     period_revenues = _filter_revenues(Revenue, date_from=df, date_to=dt)
     period_expenses = _filter_expenses(Expense, date_from=df, date_to=dt)
     rev_summary = summarize_revenue_rows(period_revenues)
-    total_revenue = rev_summary['total']
+    period_revenue = rev_summary['total']
+    all_rev_summary = tenant_revenue_totals(Revenue)
 
     month_labels, monthly_revenue = _monthly_totals_from_records(
         period_revenues, df, dt,
@@ -959,8 +965,8 @@ def get_financial_health_report(
     ]
 
     total_expenses = _round_money(sum(float(e.amount or 0) for e in period_expenses))
-    net_profit = _round_money(total_revenue - total_expenses)
-    margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
+    net_profit = _round_money(period_revenue - total_expenses)
+    margin_pct = _round_money(net_profit / period_revenue * 100) if period_revenue else 0.0
     health_text, health_level = _health_label(margin_pct, net_profit)
 
     exp_buckets = _expense_buckets(period_expenses)
@@ -1158,7 +1164,7 @@ def get_financial_health_report(
         health_level=health_level,
         margin_pct=margin_pct,
         net_profit=net_profit,
-        total_revenue=total_revenue,
+        total_revenue=period_revenue,
         total_expenses=total_expenses,
         maint=maintenance_costs,
         pricing=pricing,
@@ -1191,8 +1197,11 @@ def get_financial_health_report(
         'date_to': dt.isoformat(),
         'period_label': period_label,
         'summary': {
-            'revenue': total_revenue,
-            'revenue_count': rev_summary['count'],
+            'revenue': all_rev_summary['total'],
+            'revenue_all_time': all_rev_summary['total'],
+            'revenue_period': period_revenue,
+            'revenue_count': all_rev_summary['count'],
+            'revenue_period_count': rev_summary['count'],
             'expenses': total_expenses,
             'profit': net_profit,
             'margin_pct': margin_pct,

@@ -9880,7 +9880,7 @@ def fault_delete(id):
 def revenues():
     from sqlalchemy.orm import joinedload
     from customer_billing import REVENUE_TYPE_OPTIONS, tenant_outstanding_collectible
-    from report_data import summarize_revenue_rows
+    from report_data import tenant_revenue_totals
 
     _ensure_tenant_chart()
     revs = (
@@ -9896,7 +9896,7 @@ def revenues():
         revenues=revs,
         customers=customers,
         revenues_js=[revenue_to_js_dict(r) for r in revs],
-        revenue_summary=summarize_revenue_rows(revs),
+        revenue_summary=tenant_revenue_totals(Revenue),
         customers_js=[{'id': c.id, 'name': c.name, 'code': c.code} for c in customers],
         outstanding_total=outstanding.get('total') or 0,
         outstanding_count=outstanding.get('items_count') or 0,
