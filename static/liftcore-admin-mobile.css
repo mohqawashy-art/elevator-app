@@ -135,22 +135,21 @@
   }
 
   body:has(#sidebar):has(.main) .stat-card {
-    padding: 14px 12px !important;
+    padding: 6px 10px !important;
   }
 
-  body:has(#sidebar):has(.main) .stat-val {
-    font-size: 22px !important;
+  body:has(#sidebar):has(.main) .stat-val,
+  body:has(#sidebar):has(.main) .stat-value {
+    font-size: 16px !important;
   }
 }
 
 /* ── تابلت: 3 أعمدة للبطاقات + ساعة ── */
 @media (min-width: 768px) and (max-width: 1100px) {
-  body:has(#sidebar):has(.main) .stats-grid,
-  body:has(#sidebar):has(.main) .content .stats-grid,
   body:has(#sidebar):has(.main) .content .stats-row,
   body:has(#sidebar):has(.main) .kpi-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 12px !important;
+    gap: 6px !important;
   }
 
   body:has(#sidebar):has(.main) .main > .content,

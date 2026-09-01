@@ -1,24 +1,71 @@
-{# lc-admin-compact-ui v51 — تبويبات + إحصائيات + شريط أدوات #}
+{# lc-admin-compact-ui v52 — تبويبات + إحصائيات مضغوطة (كل الصفحات) + شريط أدوات #}
 <style id="lc-view-tabs-compact">
-#sidebar ~ .main .stats-row.lc-stats-compact,
-.main .content > .stats-row.lc-stats-compact {
+/* ── كروت إحصائية مضغوطة — نفس شكل صفحة العملاء ── */
+#sidebar ~ .main .content .stats-row,
+.main .content .stats-row {
   gap: 6px !important;
   margin-bottom: 8px !important;
 }
-#sidebar ~ .main .stats-row.lc-stats-compact .stat-mini,
-.main .content > .stats-row.lc-stats-compact .stat-mini {
+#sidebar ~ .main .content .stats-row .stat-mini,
+.main .content .stats-row .stat-mini,
+#sidebar ~ .main .content .stats-row .stat-card,
+.main .content .stats-row .stat-card {
   padding: 6px 10px !important;
   border-radius: var(--r-sm, 8px) !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column-reverse !important;
+  align-items: flex-start !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
-#sidebar ~ .main .stats-row.lc-stats-compact .stat-mini-val,
-.main .content > .stats-row.lc-stats-compact .stat-mini-val {
+#sidebar ~ .main .content .stats-row .stat-card::before,
+.main .content .stats-row .stat-card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: var(--sm-color, var(--accent)) !important;
+  opacity: 0.55 !important;
+}
+#sidebar ~ .main .content .stats-row .stat-mini-val,
+.main .content .stats-row .stat-mini-val,
+#sidebar ~ .main .content .stats-row .stat-value,
+.main .content .stats-row .stat-value {
   font-size: 16px !important;
+  line-height: 1.1 !important;
   margin-bottom: 1px !important;
 }
-#sidebar ~ .main .stats-row.lc-stats-compact .stat-mini-label,
-.main .content > .stats-row.lc-stats-compact .stat-mini-label {
+#sidebar ~ .main .content .stats-row .stat-mini-label,
+.main .content .stats-row .stat-mini-label,
+#sidebar ~ .main .content .stats-row .stat-label,
+.main .content .stats-row .stat-label {
   font-size: 10px !important;
   line-height: 1.2 !important;
+  margin-bottom: 0 !important;
+  font-weight: 500 !important;
+}
+#sidebar ~ .main .content .stats-row .stat-sub,
+.main .content .stats-row .stat-sub {
+  font-size: 9px !important;
+  line-height: 1.15 !important;
+  margin-top: 1px !important;
+}
+#sidebar ~ .main .content > .alerts-row,
+.main .content > .alerts-row {
+  gap: 6px !important;
+  margin-bottom: 8px !important;
+}
+#sidebar ~ .main .content > .alerts-row .alert-chip,
+.main .content > .alerts-row .alert-chip {
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+}
+#sidebar ~ .main .content > .page-header,
+.main .content > .page-header {
+  margin-bottom: 10px !important;
 }
 #sidebar ~ .main .lc-page-toolbar,
 .main .content > .lc-page-toolbar {
