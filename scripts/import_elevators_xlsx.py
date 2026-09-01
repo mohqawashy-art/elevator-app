@@ -182,7 +182,7 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
 
         title = _cell(row, 'Title', 'Link to Contracts / العقود')
         base_name = _normalize_name(re.sub(r'^CN-\d+\s*', '', title)) or customer.name
-        unit = _str(_cell(row, 'الوحدة', 'المبنى', 'رقم الوحدة', 'ملاحظات المصعد')).strip()
+        unit = _str(_cell(row, 'اسم المبنى', 'الوحدة', 'المبنى', 'رقم الوحدة', 'ملاحظات المصعد')).strip()
         if unit and unit != base_name:
             building = unit
         else:
