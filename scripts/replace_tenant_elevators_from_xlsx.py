@@ -32,8 +32,6 @@ def _delete_tenant_elevators(org_id: int, dry_run: bool) -> dict[str, int]:
     from models import (
         ContractElevator,
         Elevator,
-        ElevatorEstimate,
-        ElevatorEstimateLine,
         Fault,
         FaultTechnician,
         MaintenanceVisit,
@@ -73,20 +71,9 @@ def _delete_tenant_elevators(org_id: int, dry_run: bool) -> dict[str, int]:
             .all()
         )
     ]
-    estimate_ids = [
-        e.id for e in (
-            ElevatorEstimate.query.execution_options(skip_tenant=True)
-            .filter(
-                ElevatorEstimate.organization_id == org_id,
-                ElevatorEstimate.elevator_id.in_(elev_ids),
-            )
-            .all()
-        )
-    ]
 
     stats['visits'] = len(visit_ids)
     stats['faults'] = len(fault_ids)
-    stats['estimates'] = len(estimate_ids)
 
     if dry_run:
         stats['contract_links'] = (
@@ -113,14 +100,6 @@ def _delete_tenant_elevators(org_id: int, dry_run: bool) -> dict[str, int]:
         ).delete(synchronize_session=False)
         Fault.query.execution_options(skip_tenant=True).filter(
             Fault.id.in_(fault_ids),
-        ).delete(synchronize_session=False)
-
-    if estimate_ids:
-        ElevatorEstimateLine.query.execution_options(skip_tenant=True).filter(
-            ElevatorEstimateLine.estimate_id.in_(estimate_ids),
-        ).delete(synchronize_session=False)
-        ElevatorEstimate.query.execution_options(skip_tenant=True).filter(
-            ElevatorEstimate.id.in_(estimate_ids),
         ).delete(synchronize_session=False)
 
     PartsBilling.query.execution_options(skip_tenant=True).filter(
