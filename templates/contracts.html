@@ -440,6 +440,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <option>غير مدفوع</option>
         <option>متأخر</option>
       </select>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-show-renewed" onclick="toggleShowRenewedContracts()" style="display:none" title="إظهار العقود القديمة التي تم تجديدها">عرض العقود المجددة</button>
     </div>
 
     <!-- TABLE -->
@@ -1166,18 +1167,70 @@ function formatContractOutstandingCell(c) {
     ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>';
 }
 
+function isRenewedSupersededContract(c) {
+  return c && (c.renewed || getContractDisplayStatus(c) === 'تم تجديده');
+}
+
+var SHOW_RENEWED_CONTRACTS = false;
+
+function shouldHideRenewedContract(c) {
+  if (SHOW_RENEWED_CONTRACTS) return false;
+  var statusFilter = (document.getElementById('f-status') && document.getElementById('f-status').value) || '';
+  if (statusFilter === 'تم تجديده') return false;
+  return isRenewedSupersededContract(c);
+}
+
+function contractsVisiblePool() {
+  return CONTRACTS.filter(function (c) { return !shouldHideRenewedContract(c); });
+}
+
+function contractsForStats() {
+  if (SHOW_RENEWED_CONTRACTS) return CONTRACTS.slice();
+  return CONTRACTS.filter(function (c) { return !isRenewedSupersededContract(c); });
+}
+
+function renewedContractsCount() {
+  return CONTRACTS.filter(isRenewedSupersededContract).length;
+}
+
+function updateRenewedToggleButton() {
+  var btn = document.getElementById('btn-show-renewed');
+  if (!btn) return;
+  var n = renewedContractsCount();
+  if (!n) {
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = '';
+  btn.classList.toggle('active', SHOW_RENEWED_CONTRACTS);
+  btn.textContent = SHOW_RENEWED_CONTRACTS
+    ? ('إخفاء العقود المجددة (' + n + ')')
+    : ('عرض العقود المجددة (' + n + ')');
+}
+
+function toggleShowRenewedContracts() {
+  SHOW_RENEWED_CONTRACTS = !SHOW_RENEWED_CONTRACTS;
+  updateRenewedToggleButton();
+  filterTable();
+  updateStats();
+  if (document.getElementById('tab-map') && document.getElementById('tab-map').style.display !== 'none') {
+    refreshContractMap(false);
+  }
+}
+
 function contractNeedsCollection(c) {
   return c && (c.inv_status === 'غير مدفوع' || c.inv_status === 'متأخر' || c.inv_status === 'مدفوع جزئياً');
 }
 
 // ===== إحصائيات =====
 function updateStats() {
-  var total = CONTRACTS.length;
-  var active = CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'نشط'; }).length;
-  var expired = CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'منتهي'; }).length;
-  var expiring = CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'على وشك الانتهاء'; }).length;
-  var totalVal = sumMoneyAmounts(CONTRACTS.map(function(c) { return c.total; }));
-  var unpaid = sumMoneyAmounts(CONTRACTS.filter(function(c) {
+  var pool = contractsForStats();
+  var total = pool.length;
+  var active = pool.filter(function(c) { return getContractDisplayStatus(c) === 'نشط'; }).length;
+  var expired = pool.filter(function(c) { return getContractDisplayStatus(c) === 'منتهي'; }).length;
+  var expiring = pool.filter(function(c) { return getContractDisplayStatus(c) === 'على وشك الانتهاء'; }).length;
+  var totalVal = sumMoneyAmounts(pool.map(function(c) { return c.total; }));
+  var unpaid = sumMoneyAmounts(pool.filter(function(c) {
     return contractOutstanding(c) > 0.01;
   }).map(function(c) { return contractOutstanding(c); }));
 
@@ -1205,6 +1258,7 @@ function updateStats() {
   } else if (alertBox) {
     alertBox.style.display = 'none';
   }
+  updateRenewedToggleButton();
 }
 
 function contractDistrict(c) {
@@ -1284,7 +1338,7 @@ var DRILL_TITLES = {
 let currentDeleteId = null;
 let currentViewId = null;
 let contractSaving = false;
-var filtered = CONTRACTS.slice();
+var filtered = contractsVisiblePool();
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'asc',
@@ -1317,12 +1371,13 @@ var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
 }) : null;
 
 function getContractsByDrill(type) {
-  if (type === 'all') return CONTRACTS.slice();
-  if (type === 'active') return CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'نشط'; });
-  if (type === 'expired') return CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'منتهي'; });
-  if (type === 'expiring') return CONTRACTS.filter(function(c) { return getContractDisplayStatus(c) === 'على وشك الانتهاء'; });
-  if (type === 'unpaid') return CONTRACTS.filter(function(c) { return contractOutstanding(c) > 0.01; });
-  return CONTRACTS.slice();
+  var pool = contractsForStats();
+  if (type === 'all') return pool.slice();
+  if (type === 'active') return pool.filter(function(c) { return getContractDisplayStatus(c) === 'نشط'; });
+  if (type === 'expired') return pool.filter(function(c) { return getContractDisplayStatus(c) === 'منتهي'; });
+  if (type === 'expiring') return pool.filter(function(c) { return getContractDisplayStatus(c) === 'على وشك الانتهاء'; });
+  if (type === 'unpaid') return pool.filter(function(c) { return contractOutstanding(c) > 0.01; });
+  return pool.slice();
 }
 
 function renderDrillTable(rows) {
@@ -1382,17 +1437,18 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
-  var pg = tablePager ? tablePager.apply(data, CONTRACTS.length) : { rows: data };
+  var poolLen = contractsVisiblePool().length;
+  var pg = tablePager ? tablePager.apply(data, poolLen) : { rows: data };
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   var D = lcDisp;
   var LC = window.LiftCoreDisplay;
   if (LC) {
     LC.setCountEl('contracts-count', LC.fmtContractsCount(data.length));
-    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, CONTRACTS.length));
+    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, poolLen));
   } else {
     document.getElementById('contracts-count').textContent = data.length + ' عقد';
-    if (!tablePager) document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + CONTRACTS.length;
+    if (!tablePager) document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + poolLen;
   }
   tbody.innerHTML = pg.rows.map(function(c) {
     var disp = getContractDisplayStatus(c);
@@ -1425,7 +1481,8 @@ function renderTable(data) {
 
 function filterTable() {
   const s   = (document.getElementById('search-input')?.value||'');
-  filtered = CONTRACTS.filter(c=>
+  const pool = contractsVisiblePool();
+  filtered = pool.filter(c=>
     LcSearch.match(s, [c.code, c.customer, c.customer_name_en, contractBuildingName(c), contractDistrict(c), c.contract_type, c.notes]) &&
     lcAllows('f-client', c.customer) &&
     lcAllows('f-filter-district', contractDistrict(c)) &&
@@ -2797,7 +2854,7 @@ function makeContractPin(color) {
 
 function buildContractLocationGroups() {
   var groups = {};
-  CONTRACTS.forEach(function(c) {
+  contractsVisiblePool().forEach(function(c) {
     var pos = getContractPosition(c);
     if (!pos) return;
     var key = c.customer_id + '@' + pos.lat.toFixed(6) + ',' + pos.lng.toFixed(6);
@@ -3213,7 +3270,7 @@ if (window.LiftCoreLocation) {
   LiftCoreLocation.setLookup(getCustomerById);
 }
 
-try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(CONTRACTS); initContractClientSelect(); } catch (bootErr) { console.error('contracts boot', bootErr); }
+try { if (tableSort) tableSort.bindHeaders(); initFilters(); updateStats(); renderTable(filtered); initContractClientSelect(); } catch (bootErr) { console.error('contracts boot', bootErr); }
 window.__lcRefreshPage = function () {
   if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : CONTRACTS);
