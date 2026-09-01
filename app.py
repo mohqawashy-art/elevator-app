@@ -633,6 +633,56 @@ def enforce_auth():
         return jsonify({'error': 'يجب تسجيل الدخول'}), 401
     return redirect(url_for('login', next=request.path))
 
+
+def _plan_feature_ok(feature_key: str) -> bool:
+    """هل ميزة الباقة مفعّلة للمؤسسة الحالية؟"""
+    try:
+        from entitlements import has_feature
+        from tenant_scope import effective_organization_id
+        from models import Organization
+
+        oid = effective_organization_id()
+        if not oid:
+            return True
+        org = db.session.get(Organization, oid)
+        return has_feature(feature_key, org=org) if org else True
+    except Exception:
+        db.session.rollback()
+        return True
+
+
+@app.before_request
+def enforce_plan_features():
+    """يمنع الوصول لمسارات غير مفعّلة في باقة المؤسسة."""
+    from platform_admin import is_admin_host
+
+    if is_admin_host() or getattr(g, 'platform_admin_host', False):
+        return None
+    path = request.path or ''
+    if path.startswith('/field') or path.startswith('/api/field'):
+        return None
+    if not current_user():
+        return None
+    from entitlements import gate_request_plan_feature
+    from tenant_scope import effective_organization_id
+    from models import Organization
+
+    oid = effective_organization_id()
+    if not oid:
+        return None
+    org = db.session.get(Organization, oid)
+    if not org:
+        return None
+    gate = gate_request_plan_feature(path, org)
+    if gate.get('ok'):
+        return None
+    msg = gate.get('error') or 'هذه الميزة غير متاحة في باقتك.'
+    if path.startswith('/api/'):
+        return jsonify({'error': msg}), 403
+    flash(msg, 'warn')
+    return redirect(url_for('dashboard'))
+
+
 APP_VERSION = os.environ.get('LIFTCORE_VERSION', '4a0a9d8-auth')
 
 
@@ -937,6 +987,7 @@ def inject_global_template_vars():
                     portal for portal in visible_department_portals(
                         permission_ok=_perm_ok,
                         install_enabled=install_module_enabled(),
+                        feature_ok=_plan_feature_ok,
                         lang=lang,
                     )
                     if portal['slug'] == active_department
@@ -989,6 +1040,11 @@ def inject_global_template_vars():
         **support,
         'ui': lambda ar, en: en if lang == 'en' else ar,
     }
+
+
+@app.template_global()
+def has_plan_feature(feature_key: str) -> bool:
+    return _plan_feature_ok(feature_key)
 
 
 @app.template_global()
@@ -2463,6 +2519,7 @@ def home():
         departments=visible_department_portals(
             permission_ok=has_perm,
             install_enabled=install_module_enabled(),
+            feature_ok=_plan_feature_ok,
             lang=lang,
         ),
         home_ui=home_ui(lang),
@@ -2481,6 +2538,7 @@ def department_portal(department):
         for portal in visible_department_portals(
             permission_ok=has_perm,
             install_enabled=install_module_enabled(),
+            feature_ok=_plan_feature_ok,
             lang=lang,
         )
     }

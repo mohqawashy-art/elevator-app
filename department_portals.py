@@ -223,10 +223,34 @@ def _localize_portal(portal: dict, lang: str) -> dict:
     return localized
 
 
-def visible_department_portals(*, permission_ok, install_enabled, lang: str = 'ar'):
+DEPARTMENT_REQUIRED_FEATURES = {
+    'maintenance': 'maintenance_core',
+    'installations': 'installation',
+    'marketing': 'maintenance_core',
+    'personnel': 'maintenance_core',
+    'accounting': 'advanced_finance',
+}
+
+
+def visible_department_portals(
+    *,
+    permission_ok,
+    install_enabled,
+    feature_ok=None,
+    lang: str = 'ar',
+):
     """فلترة المنصات وروابطها وفق صلاحيات المستخدم والباقة."""
+    if feature_ok is None:
+        feature_ok = lambda _key: True
+
     visible = []
     for slug, definition in DEPARTMENT_PORTALS.items():
+        required = DEPARTMENT_REQUIRED_FEATURES.get(slug)
+        if required and not feature_ok(required):
+            continue
+        if slug == 'inventory' and not feature_ok('inventory') and not feature_ok('purchasing'):
+            continue
+
         portal = dict(definition)
         portal['slug'] = slug
         for group in ('links', 'reports'):
@@ -236,6 +260,12 @@ def visible_department_portals(*, permission_ok, install_enabled, lang: str = 'a
                 install_only = bool(flags and flags[0])
                 if install_only and not install_enabled:
                     continue
+                if href.startswith('/inventory') or href.startswith('/stock-movements'):
+                    if not feature_ok('inventory'):
+                        continue
+                if href.startswith('/purchase-orders'):
+                    if not feature_ok('purchasing'):
+                        continue
                 if permission_ok(permission):
                     separator = '&' if '?' in href else '?'
                     allowed.append({
