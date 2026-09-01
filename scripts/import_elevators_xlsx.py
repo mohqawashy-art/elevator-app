@@ -47,8 +47,9 @@ def _int(val, default=0) -> int:
 
 
 def _extract_cn(text: str) -> str | None:
-    m = re.search(r'CN-\d+', _str(text))
-    return m.group(0) if m else None
+    s = _str(text).replace(' ', '')
+    m = re.search(r'CN-\d+(?:-\d{4})?(?:-\d+)?', s, re.I)
+    return m.group(0).upper() if m else None
 
 
 def _extract_el(text: str) -> str | None:
@@ -155,11 +156,61 @@ def load_rows(path: str) -> list[dict[str, str]]:
     return out
 
 
+def _contracts_for_elevator_row(customer_id: int, cn_code: str | None, all_contracts: list) -> list:
+    """كل عقود العميل لنفس أساس رقم العقد (نشط + مجدّد مثل CN-00055 و CN-00055-2026)."""
+    from contract_codes import contract_base_code
+
+    if not cn_code:
+        return []
+    row_base = contract_base_code(cn_code) or cn_code.strip().upper()
+    out: list = []
+    seen: set[int] = set()
+    for c in all_contracts:
+        if int(c.customer_id) != int(customer_id):
+            continue
+        if contract_base_code(c.code) != row_base:
+            continue
+        cid = int(c.id)
+        if cid in seen:
+            continue
+        seen.add(cid)
+        out.append(c)
+    return out
+
+
+def _ensure_elevator_contract_links(
+    elevator: Elevator,
+    customer_id: int,
+    cn_code: str | None,
+    all_contracts: list,
+    dry_run: bool,
+) -> int:
+    """يربط المصعد بعقود العميل (الساري والمجدّد) دون حذف الروابط الموجودة."""
+    from tenant_scope import assign_organization
+
+    linked = 0
+    for ct in _contracts_for_elevator_row(customer_id, cn_code, all_contracts):
+        exists = ContractElevator.query.filter_by(
+            contract_id=ct.id, elevator_id=elevator.id
+        ).first()
+        if exists:
+            continue
+        if dry_run:
+            linked += 1
+            continue
+        link = ContractElevator(contract_id=ct.id, elevator_id=elevator.id)
+        assign_organization(link)
+        db.session.add(link)
+        linked += 1
+    return linked
+
+
 def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
     rows = load_rows(path)
     stats = {'rows': len(rows), 'added': 0, 'linked': 0, 'skipped_existing': 0, 'skipped_no_customer': 0, 'errors': 0}
 
     contracts = {c.code: c for c in Contract.query.all() if c.code}
+    all_contracts = list(Contract.query.all())
     customers_by_name = {_normalize_name(c.name): c for c in Customer.query.all() if c.name}
 
     touched_customers: set[int] = set()
@@ -176,7 +227,6 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
             continue
 
         title = _cell(row, 'Title', 'Link to Contracts / العقود')
-        contract = contracts.get(cn_code or '')
         customer = None
         cust_code = _cell(row, 'كود العميل', 'customer_code')
         m_code = re.match(r'C-(\d+)', cust_code, re.I) if cust_code else None
@@ -208,6 +258,9 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
         )
         if dry_run:
             stats['added'] += 1
+            stats['linked'] += len(_contracts_for_elevator_row(
+                customer.id, cn_code, all_contracts,
+            ))
             print(f'  [معاينة] {el_code} → {customer.name} ({cn_code or "—"})')
             continue
 
@@ -216,13 +269,9 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
         stats['added'] += 1
         touched_customers.add(customer.id)
 
-        if contract:
-            exists = ContractElevator.query.filter_by(
-                contract_id=contract.id, elevator_id=elev.id
-            ).first()
-            if not exists:
-                db.session.add(ContractElevator(contract_id=contract.id, elevator_id=elev.id))
-                stats['linked'] += 1
+        stats['linked'] += _ensure_elevator_contract_links(
+            elev, customer.id, cn_code, all_contracts, dry_run=False,
+        )
 
     if not dry_run:
         for cid in touched_customers:
@@ -231,6 +280,55 @@ def import_elevators(path: str, dry_run: bool = False) -> dict[str, int]:
                 sync_customer_from_elevators(cust)
         db.session.commit()
 
+    return stats
+
+
+def relink_contract_elevators_from_xlsx(path: str, dry_run: bool = False) -> dict[str, int]:
+    """إعادة ربط المصاعد الموجودة بعقود العميل (نشط + مجدّد) من عمود رقم العقد في Excel."""
+    rows = load_rows(path)
+    all_contracts = list(Contract.query.all())
+    stats = {
+        'rows': len(rows),
+        'links_added': 0,
+        'already_linked': 0,
+        'missing_elevator': 0,
+        'missing_customer': 0,
+        'errors': 0,
+    }
+
+    for row in rows:
+        el_code = _extract_el(_cell(row, 'رقم المصعد'))
+        cn_code = _extract_cn(_cell(row, 'رقم العقد', 'Link to Contracts / العقود', 'Title'))
+        if not el_code:
+            stats['errors'] += 1
+            continue
+        elev = Elevator.query.filter_by(code=el_code).first()
+        if not elev:
+            stats['missing_elevator'] += 1
+            continue
+        if not elev.customer_id:
+            stats['missing_customer'] += 1
+            continue
+        targets = _contracts_for_elevator_row(int(elev.customer_id), cn_code, all_contracts)
+        for ct in targets:
+            exists = ContractElevator.query.filter_by(
+                contract_id=ct.id, elevator_id=elev.id
+            ).first()
+            if exists:
+                stats['already_linked'] += 1
+                continue
+            if dry_run:
+                stats['links_added'] += 1
+                continue
+            from tenant_scope import assign_organization
+
+            link = ContractElevator(contract_id=ct.id, elevator_id=elev.id)
+            assign_organization(link)
+            db.session.add(link)
+            stats['links_added'] += 1
+
+    if not dry_run:
+        db.session.commit()
     return stats
 
 
@@ -278,6 +376,11 @@ def main():
         action='store_true',
         help='Update building_name from Excel for existing elevators (no new rows)',
     )
+    parser.add_argument(
+        '--relink-contracts-only',
+        action='store_true',
+        help='Re-link existing elevators to active and renewed contracts from Excel',
+    )
     args = parser.parse_args()
 
     path = args.xlsx
@@ -304,6 +407,9 @@ def main():
         if args.sync_buildings_only:
             stats = sync_building_names_from_xlsx(path, dry_run=args.dry_run)
             print('\n=== تحديث اسم المبنى ===')
+        elif args.relink_contracts_only:
+            stats = relink_contract_elevators_from_xlsx(path, dry_run=args.dry_run)
+            print('\n=== إعادة ربط المصاعد بالعقود ===')
         else:
             stats = import_elevators(path, dry_run=args.dry_run)
             print('\n=== النتيجة ===')
