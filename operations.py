@@ -1608,6 +1608,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
         alerts.append({
             'level': 'danger',
             'filter': 'late',
+            'alert_id': 'visits_late',
             'text': f'{late} زيارة متأخرة — تجاوزت الموعد المحدد',
         })
     critical = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
@@ -1618,6 +1619,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
         alerts.append({
             'level': 'warning',
             'filter': 'critical',
+            'alert_id': 'visits_critical',
             'text': f'{critical} زيارة حرجة لم تُكتمل بعد',
         })
     tomorrow = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
@@ -1628,6 +1630,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
         alerts.append({
             'level': 'info',
             'filter': 'tomorrow',
+            'alert_id': 'visits_tomorrow',
             'text': f'{tomorrow} زيارة مجدولة غداً',
         })
     return alerts
@@ -1662,12 +1665,14 @@ def fault_alerts() -> list[dict]:
     if critical:
         alerts.append({
             'level': 'critical',
+            'alert_id': 'faults_critical',
             'text': f'{len(critical)} عطل حرج يحتاج تدخلاً فورياً',
         })
     waiting = tenant_query(Fault).filter_by(status='انتظار قطع').count()
     if waiting:
         alerts.append({
             'level': 'warning',
+            'alert_id': 'faults_waiting_parts',
             'text': f'{waiting} عطل بانتظار توفير قطع الغيار',
         })
     old = tenant_query(Fault).filter(
@@ -1677,6 +1682,7 @@ def fault_alerts() -> list[dict]:
     if old:
         alerts.append({
             'level': 'warning',
+            'alert_id': 'faults_old',
             'text': f'{old} عطل تجاوز 48 ساعة بدون إغلاق',
         })
     return alerts
@@ -1698,12 +1704,14 @@ def parts_alerts() -> list[dict]:
     if n:
         alerts.append({
             'level': 'warning',
+            'alert_id': 'parts_waiting_faults',
             'text': f'{n} طلب قطع غيار من الفنيين بانتظار المكتب',
         })
     n2 = tenant_query(PartsBilling).filter_by(status='بانتظار موافقة العميل').count()
     if n2:
         alerts.append({
             'level': 'info',
+            'alert_id': 'parts_awaiting_client',
             'text': f'{n2} عرض سعر بانتظار موافقة العميل',
         })
     return alerts

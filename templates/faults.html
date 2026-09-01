@@ -308,8 +308,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="alerts-row">
       {% for a in fault_alerts %}
       <div class="alert-chip {{ a.level }}" role="button" tabindex="0"
-           onclick='filterFromAlert({{ a.text|tojson }})'
-           title="اضغط للفلترة في الجدول">
+           onclick="window.location.href='/alerts/{{ a.alert_id }}'"
+           title="اضغط لعرض التفاصيل والطباعة">
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>{{ a.text }}
       </div>
       {% endfor %}

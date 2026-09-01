@@ -297,7 +297,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <!-- ALERTS -->
     <div class="alerts-row">
       {% for a in visit_alerts %}
-      <div class="alert-chip {{ a.level }}{% if a.filter %} clickable{% endif %}" {% if a.filter %}data-visit-filter="{{ a.filter }}" onclick="filterByVisitFilter('{{ a.filter }}')" title="اضغط لعرض الزيارات في الجدول"{% endif %}>
+      <div class="alert-chip {{ a.level }}{% if a.alert_id %} clickable{% endif %}" {% if a.alert_id %}onclick="window.location.href='/alerts/{{ a.alert_id }}'" title="اضغط لعرض التفاصيل والطباعة"{% endif %}>
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>{{ a.text }}
       </div>
       {% endfor %}

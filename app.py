@@ -4720,10 +4720,22 @@ def _invoice_drill_wa(i):
     return None, None
 
 
+@app.route('/alerts/<alert_id>')
+def alert_detail_page(alert_id):
+    """صفحة تفاصيل التنبيه — عرض وطباعة."""
+    return render_template('alert-detail.html', alert_id=(alert_id or '').strip())
+
+
 @app.route('/api/dashboard/drill/<card_type>')
 def api_dashboard_drill(card_type):
-    """بيانات تفصيلية لكل كارت في لوحة التحكم."""
+    """بيانات تفصيلية لكل كارت في لوحة التحكم وصفحات التنبيهات."""
     today = date.today()
+
+    _ALERT_ALIASES = {
+        'contracts_expiring': 'expiring_contracts',
+        'contracts_expired': 'expired_contracts',
+    }
+    card_type = _ALERT_ALIASES.get(card_type, card_type)
 
     if card_type == 'customers':
         rows = [
@@ -4877,6 +4889,189 @@ def api_dashboard_drill(card_type):
         payload = {
             'title': 'أصناف تحت الحد الأدنى', 'link': '/inventory',
             'columns': ['الكود', 'الصنف', 'الفئة', 'الكمية', 'الحد الأدنى', 'الوحدة', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'visits_late':
+        from operations import exclude_fault_visits, VISIT_DONE
+        visits = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
+            MaintenanceVisit.visit_date < today,
+            ~MaintenanceVisit.status.in_(VISIT_DONE),
+        ).order_by(MaintenanceVisit.visit_date).all()
+        rows = [
+            [v.code,
+             v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
+             v.elevator.code if v.elevator else '—',
+             str(v.visit_date), v.visit_type or '—',
+             v.technician.name if v.technician else '—', v.status]
+            for v in visits
+        ]
+        payload = {
+            'title': 'زيارات متأخرة', 'link': '/maintenance-visits',
+            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'visits_critical':
+        from operations import exclude_fault_visits, VISIT_DONE
+        visits = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
+            MaintenanceVisit.priority == 'حرجة',
+            ~MaintenanceVisit.status.in_(VISIT_DONE),
+        ).order_by(MaintenanceVisit.visit_date).all()
+        rows = [
+            [v.code,
+             v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
+             v.elevator.code if v.elevator else '—',
+             str(v.visit_date), v.visit_type or '—',
+             v.technician.name if v.technician else '—', v.status]
+            for v in visits
+        ]
+        payload = {
+            'title': 'زيارات حرجة لم تُكتمل', 'link': '/maintenance-visits',
+            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'visits_tomorrow':
+        from operations import exclude_fault_visits
+        visits = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
+            MaintenanceVisit.visit_date == today + timedelta(days=1),
+            MaintenanceVisit.status == 'مجدولة',
+        ).order_by(MaintenanceVisit.visit_time).all()
+        rows = [
+            [v.code,
+             v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
+             v.elevator.code if v.elevator else '—',
+             str(v.visit_date), v.visit_type or '—',
+             v.technician.name if v.technician else '—', v.status]
+            for v in visits
+        ]
+        payload = {
+            'title': 'زيارات مجدولة غداً', 'link': '/maintenance-visits',
+            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'faults_critical':
+        from operations import FAULT_OPEN
+        faults = tenant_query(Fault).filter(
+            Fault.priority == 'حرجة',
+            Fault.status.in_(FAULT_OPEN),
+        ).order_by(Fault.reported_at.desc()).all()
+        rows = [
+            [f.code, f.elevator.customer.name, f.elevator.code,
+             f.fault_type or '—', f.priority or '—',
+             f.technician.name if f.technician else 'غير مكلف', f.status]
+            for f in faults
+        ]
+        payload = {
+            'title': 'أعطال حرجة', 'link': '/faults',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'faults_waiting_parts':
+        faults = tenant_query(Fault).filter_by(status='انتظار قطع').order_by(Fault.reported_at.desc()).all()
+        rows = [
+            [f.code, f.elevator.customer.name, f.elevator.code,
+             f.fault_type or '—', f.priority or '—',
+             f.technician.name if f.technician else '—', f.status]
+            for f in faults
+        ]
+        payload = {
+            'title': 'أعطال بانتظار قطع الغيار', 'link': '/faults',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'faults_old':
+        from operations import FAULT_OPEN
+        cutoff = datetime.utcnow() - timedelta(hours=48)
+        faults = tenant_query(Fault).filter(
+            Fault.status.in_(FAULT_OPEN),
+            Fault.reported_at < cutoff,
+        ).order_by(Fault.reported_at).all()
+        rows = [
+            [f.code, f.elevator.customer.name, f.elevator.code,
+             f.fault_type or '—', f.priority or '—',
+             f.technician.name if f.technician else '—', f.status,
+             f.reported_at.strftime('%Y-%m-%d %H:%M') if f.reported_at else '—']
+            for f in faults
+        ]
+        payload = {
+            'title': 'أعطال تجاوزت 48 ساعة بدون إغلاق', 'link': '/faults',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة', 'تاريخ البلاغ'],
+            'rows': rows,
+        }
+    elif card_type == 'faults_unassigned':
+        faults = tenant_query(Fault).filter(
+            Fault.technician_id.is_(None),
+            Fault.status.in_(OPEN_FAULT_STATUSES),
+        ).order_by(Fault.reported_at.desc()).all()
+        rows = [
+            [f.code, f.elevator.customer.name, f.elevator.code,
+             f.fault_type or '—', f.priority or '—', f.status]
+            for f in faults
+        ]
+        payload = {
+            'title': 'أعطال بدون فني', 'link': '/faults',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'parts_waiting_faults':
+        faults = tenant_query(Fault).filter_by(status='انتظار قطع').order_by(Fault.reported_at.desc()).all()
+        rows = [
+            [f.code,
+             f.elevator.customer.name if f.elevator and f.elevator.customer else '—',
+             f.elevator.code if f.elevator else '—',
+             f.fault_type or '—',
+             f.technician.name if f.technician else '—', f.status]
+            for f in faults
+        ]
+        payload = {
+            'title': 'طلبات قطع غيار من الفنيين', 'link': '/parts-billing',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'parts_awaiting_client':
+        parts = tenant_query(PartsBilling).filter_by(status='بانتظار موافقة العميل').order_by(PartsBilling.billing_date.desc()).all()
+        rows = [
+            [p.code,
+             p.customer.name if p.customer else '—',
+             str(p.billing_date or '—'),
+             p.description or '—',
+             f'{p.sell_price:,.0f} \u20c1' if p.sell_price else '—',
+             p.status]
+            for p in parts
+        ]
+        payload = {
+            'title': 'عروض أسعار بانتظار موافقة العميل', 'link': '/parts-billing',
+            'columns': ['الكود', 'العميل', 'التاريخ', 'البيان', 'المطلوب', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'tech_emergency_unavailable':
+        techs = tenant_query(Technician).order_by(Technician.name).all()
+        rows = []
+        for t in techs:
+            if not t.emergency:
+                continue
+            ds = technician_display_status(t, today)
+            if ds != 'متاح':
+                rows.append([
+                    t.code, t.name, t.phone or '—',
+                    t.specialization or '—', t.city or '—', ds,
+                ])
+        payload = {
+            'title': 'فنيو طوارئ غير متاحين', 'link': '/technicians',
+            'columns': ['الكود', 'الاسم', 'الهاتف', 'التخصص', 'المدينة', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'tech_busy':
+        techs = tenant_query(Technician).order_by(Technician.name).all()
+        rows = [
+            [t.code, t.name, t.phone or '—',
+             t.specialization or '—', t.city or '—',
+             technician_display_status(t, today)]
+            for t in techs
+            if technician_display_status(t, today) == 'مشغول'
+        ]
+        payload = {
+            'title': 'فنيون مشغولون الآن', 'link': '/technicians',
+            'columns': ['الكود', 'الاسم', 'الهاتف', 'التخصص', 'المدينة', 'الحالة'],
             'rows': rows,
         }
     elif card_type == 'all_invoices':

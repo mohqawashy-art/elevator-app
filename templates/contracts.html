@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -361,13 +361,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
 
     <!-- EXPIRED ALERT -->
-    <div class="alert-expired" id="expired-alert" style="display:none" onclick="openContractDrill('expired', this)" title="عرض العقود المنتهية">
+    <div class="alert-expired" id="expired-alert" style="display:none" onclick="window.location.href='/alerts/contracts_expired'" title="عرض العقود المنتهية">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
       <span>تنبيه: <strong id="expired-count">0 عقود</strong> منتهية — يُرجى مراجعة العقود وتجديدها أو إغلاقها.</span>
     </div>
 
     <!-- EXPIRY ALERT -->
-    <div class="alert-expiry" id="expiry-alert" style="display:none" onclick="openContractDrill('expiring', this)" title="عرض العقود على وشك الانتهاء">
+    <div class="alert-expiry" id="expiry-alert" style="display:none" onclick="window.location.href='/alerts/contracts_expiring'" title="عرض العقود على وشك الانتهاء">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1L1 14h14L8 1z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="12" r=".6" fill="currentColor"/></svg>
       <span>تنبيه: <strong id="expiry-count">0 عقود</strong> على وشك الانتهاء خلال 30 يوماً — يُنصح بالتجديد قبل انتهاء المدة.</span>
     </div>

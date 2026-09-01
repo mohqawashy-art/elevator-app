@@ -176,6 +176,7 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/settings/theme', 'dashboard'),
     ('/settings/password', 'dashboard'),
     ('/dashboard', 'dashboard'),
+    ('/alerts/', 'dashboard'),
     ('/clients', 'clients'),
     ('/api/clients', 'clients'),
     ('/api/customers', 'clients'),

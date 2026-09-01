@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — تفاصيل التنبيه</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
+<link rel="stylesheet" href="{{ url_for('static', filename='reports-print.css') }}?v=5">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;
+  --border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;
+}
+html[dir="ltr"]{font-family:var(--font-en)}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100}
+html[dir="ltr"] .sidebar{border-left:none;border-right:1px solid var(--border)}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:150px;height:44px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:7px;font-size:13px;color:var(--text2);text-decoration:none}
+.nav-item:hover{background:var(--bg3);color:var(--text1)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:inherit;text-decoration:none}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:#1c2535;color:var(--text1)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1e6fe8}
+.print-wrap{margin-bottom:20px}
+.rpt-page{background:#fff;color:#111;padding:20px;border-radius:10px}
+.rpt-header{display:flex;align-items:center;gap:16px;margin-bottom:16px;border-bottom:2px solid #1a4fa0;padding-bottom:12px}
+.rpt-header h1{font-size:18px;color:#1a4fa0;margin:0}
+.rpt-header h2{font-size:12px;color:#555;margin:4px 0 0}
+.rpt-meta{font-size:11px;color:#666;margin-bottom:12px}
+.rpt-table{width:100%;border-collapse:collapse;font-size:12px}
+.rpt-table th,.rpt-table td{border:1px solid #c5d0e6;padding:8px 10px;text-align:right}
+html[dir="ltr"] .rpt-table th,html[dir="ltr"] .rpt-table td{text-align:left}
+.rpt-table thead th{background:#f0f4fc;color:#333;font-weight:600}
+.rpt-footer-line{display:flex;justify-content:space-between;margin-top:14px;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:8px}
+.screen-table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.screen-table-wrap table{width:100%;border-collapse:collapse;font-size:13px}
+.screen-table-wrap thead th{padding:12px 14px;text-align:right;color:var(--text3);font-size:11px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.screen-table-wrap tbody td{padding:12px 14px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
+.screen-table-wrap tbody tr:last-child td{border-bottom:none}
+.td-code{font-family:var(--font-en);color:var(--accent);font-weight:500}
+.td-name{color:var(--text1);font-weight:500}
+.alert-loading{padding:40px;text-align:center;color:var(--text3)}
+.alert-error{padding:40px;text-align:center;color:var(--danger)}
+</style>
+<script src="/static/liftcore-dates.js" defer></script>
+<script src="{{ url_for('static', filename='reports-print.js') }}?v=1"></script>
+</head>
+<body data-alert-id="{{ alert_id }}">
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% set page_title = 'تفاصيل التنبيه' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header screen-only">
+      <div>
+        <div class="page-title" id="screen-title">تفاصيل التنبيه</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px" id="screen-count"></div>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-secondary" id="alert-back-link" href="/dashboard">رجوع</a>
+        <a class="btn btn-secondary" id="alert-source-link" href="#" style="display:none">فتح الصفحة الأصلية</a>
+        <button type="button" class="btn btn-primary" onclick="LiftCorePrint.report()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg>
+          طباعة
+        </button>
+      </div>
+    </div>
+    <div class="print-wrap">
+      <div class="rpt-page">
+        <div class="rpt-header">
+          <div style="width:48px;height:48px;border:2px solid #1a4fa0;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#1a4fa0" stroke-width="1.5" width="28" height="28"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          </div>
+          <div style="flex:1">
+            <h1 id="print-title">تفاصيل التنبيه</h1>
+            <h2>Alert Detail Report</h2>
+            <p class="rpt-meta" id="rpt-date-range">تاريخ التقرير: —</p>
+          </div>
+          <div><img src="{{ brand_logo_url }}" alt="LiftCore" style="height:44px;object-fit:contain"></div>
+        </div>
+        <table class="rpt-table" id="print-table">
+          <thead><tr id="print-head"></tr></thead>
+          <tbody id="print-body"><tr><td colspan="12" class="alert-loading">جاري التحميل...</td></tr></tbody>
+        </table>
+        <div class="rpt-footer-line">
+          <span>LiftCore — الإدارة الذكية للمصاعد</span>
+          <span id="footer-date"></span>
+          <span id="footer-label">تفاصيل التنبيه</span>
+        </div>
+      </div>
+    </div>
+    <div class="screen-table-wrap screen-only">
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr id="screen-head"></tr></thead>
+          <tbody id="screen-body"><tr><td colspan="12" class="alert-loading">جاري التحميل...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='alert-detail.js') }}?v=1"></script>
+</body>
+</html>

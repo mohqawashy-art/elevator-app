@@ -248,7 +248,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     {% if parts_alerts %}
     <div class="alerts-row" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
       {% for a in parts_alerts %}
-      <div class="alert-chip {{ a.level }}" style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;font-size:12px;{% if a.level=='warning' %}background:rgba(224,144,48,.1);color:var(--warning){% else %}background:rgba(42,127,255,.08);color:var(--accent){% endif %}">{{ a.text }}</div>
+      <div class="alert-chip {{ a.level }}" role="button" tabindex="0" onclick="window.location.href='/alerts/{{ a.alert_id }}'" title="اضغط لعرض التفاصيل والطباعة" style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer;{% if a.level=='warning' %}background:rgba(224,144,48,.1);color:var(--warning){% else %}background:rgba(42,127,255,.08);color:var(--accent){% endif %}">{{ a.text }}</div>
       {% endfor %}
     </div>
     {% endif %}

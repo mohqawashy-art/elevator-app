@@ -494,7 +494,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
         <div class="panel-body">
           <div class="alert-list">
             {% if alerts.expiring_contracts_count > 0 %}
-            <div class="alert-item danger" onclick="openDrill('expiring_contracts',this)">
+            <div class="alert-item danger" onclick="window.location.href='/alerts/expiring_contracts'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a1">عقود تنتهي خلال 30 يوم</div>
@@ -504,7 +504,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
             </div>
             {% endif %}
             {% if alerts.low_stock_count > 0 %}
-            <div class="alert-item warning" onclick="openDrill('low_stock',this)">
+            <div class="alert-item warning" onclick="window.location.href='/alerts/low_stock'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a2">مخزون قطع غيار تحت الحد الأدنى</div>
@@ -514,7 +514,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
             </div>
             {% endif %}
             {% if stats.faults_open > 0 %}
-            <div class="alert-item danger" onclick="openDrill('faults_open',this)">
+            <div class="alert-item danger" onclick="window.location.href='/alerts/faults_open'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a3">أعطال مفتوحة تحتاج متابعة</div>
@@ -524,7 +524,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
             </div>
             {% endif %}
             {% if stats.outstanding_collectible > 0 %}
-            <div class="alert-item warning" onclick="openDrill('outstanding_collectible',this)">
+            <div class="alert-item warning" onclick="window.location.href='/alerts/outstanding_collectible'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a4">مبالغ مستحقة التحصيل</div>
@@ -533,7 +533,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
               <span class="alert-count">{{ '{:,.0f}'.format(stats.outstanding_collectible) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
             </div>
             {% elif stats.unpaid_total > 0 %}
-            <div class="alert-item warning" onclick="openDrill('unpaid_invoices',this)">
+            <div class="alert-item warning" onclick="window.location.href='/alerts/unpaid_invoices'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a4">فواتير مستحقة السداد</div>

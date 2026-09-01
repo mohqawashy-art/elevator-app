@@ -1087,16 +1087,16 @@ function updateAlerts() {
   var emergOffList = getEmergencyUnavailableTechs();
   if (emergOffList.length) {
     var emergNames = emergOffList.map(function(t) { return esc(techDisplayName(t)); }).join('، ');
-    html += '<div class="alert-chip danger" onclick="openTechDrill(\'emergency_unavailable\', null)" title="اضغط لعرض التفاصيل">' +
+    html += '<div class="alert-chip danger" onclick="window.location.href=\'/alerts/tech_emergency_unavailable\'" title="اضغط لعرض التفاصيل والطباعة">' +
       '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="7.5"/></svg>' +
       'فني طوارئ غير متاح — ' + emergOffList.length + ' (' + emergNames + ')</div>';
   }
   if (UNASSIGNED_FAULTS > 0) {
-    html += '<div class="alert-chip warning" onclick="window.location.href=\'/faults\'"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>أعطال بدون فني — ' + UNASSIGNED_FAULTS + '</div>';
+    html += '<div class="alert-chip warning" onclick="window.location.href=\'/alerts/faults_unassigned\'" title="اضغط لعرض التفاصيل والطباعة"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>أعطال بدون فني — ' + UNASSIGNED_FAULTS + '</div>';
   }
   var busy = TECHNICIANS.filter(function(t) { return t.display_status === 'مشغول'; }).length;
   if (busy) {
-    html += '<div class="alert-chip warning" onclick="openTechDrill(\'مشغول\', null)"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>فنيون مشغولون الآن — ' + busy + '</div>';
+    html += '<div class="alert-chip warning" onclick="window.location.href=\'/alerts/tech_busy\'" title="اضغط لعرض التفاصيل والطباعة"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M7 1L1 13h12L7 1z"/><line x1="7" y1="5" x2="7" y2="9"/></svg>فنيون مشغولون الآن — ' + busy + '</div>';
   }
   bar.innerHTML = html;
 }
