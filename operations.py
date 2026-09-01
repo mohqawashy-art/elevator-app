@@ -1125,6 +1125,70 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
     }
 
 
+def get_plan_coverage_gaps(plan_month: str, *, limit: int = 300) -> dict:
+    """عملاء/مصاعد عقود الصيانة النشطة بدون زيارة دورية في شهر الخطة."""
+    if not plan_month or '-' not in plan_month:
+        return {'error': 'شهر الخطة غير صالح'}
+    year, month = map(int, plan_month.split('-', 1))
+    start, end = _month_bounds(year, month)
+
+    contracts = tenant_query(Contract).filter(
+        Contract.start_date <= end,
+        Contract.end_date >= start,
+        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+    ).all()
+
+    seen_elevator_ids: set[int] = set()
+    missing: list[dict] = []
+    expected = 0
+
+    for contract in contracts:
+        if not _is_maintenance_contract(contract):
+            continue
+        customer = contract.customer
+        for elev in _elevators_for_maintenance_plan(contract):
+            if elev.id in seen_elevator_ids:
+                continue
+            seen_elevator_ids.add(elev.id)
+            expected += 1
+            if _periodic_visit_in_month(elev.id, year, month):
+                continue
+            dist_name = _customer_district(customer, elev)
+            missing.append({
+                'elevator_id': elev.id,
+                'elevator_code': elev.code or '',
+                'customer_id': customer.id if customer else None,
+                'customer_name': customer.name if customer else '—',
+                'customer_code': customer.code if customer else '',
+                'contract_id': contract.id,
+                'contract_code': contract.code or '',
+                'district': dist_name,
+                'building': (elev.building_name or '').strip(),
+            })
+
+    missing.sort(key=lambda x: (
+        x.get('district') or '',
+        x.get('customer_name') or '',
+        x.get('elevator_code') or '',
+    ))
+    customer_ids = {m['customer_id'] for m in missing if m.get('customer_id')}
+    by_district: dict[str, int] = defaultdict(int)
+    for row in missing:
+        by_district[row.get('district') or 'غير محدد'] += 1
+
+    capped = missing[:limit]
+    return {
+        'plan_month': plan_month,
+        'expected_elevators': expected,
+        'covered_elevators': expected - len(missing),
+        'missing_elevators': len(missing),
+        'missing_customers': len(customer_ids),
+        'missing': capped,
+        'has_more': len(missing) > limit,
+        'by_district': dict(sorted(by_district.items(), key=lambda x: (-x[1], x[0]))),
+    }
+
+
 def get_plan(plan_month: str) -> dict:
     visits = _visits_for_plan_month(plan_month)
     rows = [_visit_plan_row(v) for v in visits]

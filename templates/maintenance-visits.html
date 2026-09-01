@@ -581,6 +581,15 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
       <div id="plan-readiness-box" style="margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);font-size:13px;line-height:1.7"></div>
 
+      <div id="plan-missing-box" style="margin-bottom:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid rgba(224,144,48,.35);background:rgba(224,144,48,.06);font-size:13px;line-height:1.6;display:none">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <div style="font-weight:600;color:var(--warning)" id="plan-missing-title">عملاء نشطون بدون زيارة في هذا الشهر</div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-missing-list" onclick="togglePlanMissingList()">عرض القائمة</button>
+        </div>
+        <div id="plan-missing-summary" style="font-size:12px;color:var(--text2);margin-bottom:6px"></div>
+        <div id="plan-missing-list" style="display:none;max-height:min(280px,36vh);overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg2)"></div>
+      </div>
+
       <div style="margin-bottom:16px;padding:14px;border-radius:var(--r-sm);border:1px solid rgba(42,127,255,.28);background:rgba(42,127,255,.05)">
         <div style="font-size:14px;font-weight:600;margin-bottom:12px">إضافة يوم للمسودة</div>
         <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px">
@@ -1770,7 +1779,94 @@ function renderPlanReadiness(r) {
   html += '<div>زيارات الخطة الحالية: <b>' + (r.plan_visits_total || 0) + '</b>';
   if (r.unassigned_visits) html += ' · بدون فريق: <b>' + r.unassigned_visits + '</b>';
   html += '</div>';
+  if (r.expected_elevators != null) {
+    html += '<div style="margin-top:4px">تغطية الشهر: <b>' + (r.covered_elevators || 0) + '</b> من <b>' + (r.expected_elevators || 0) + '</b> مصعد';
+    if (r.missing_elevators) {
+      html += ' · <span style="color:var(--warning)">بدون زيارة: <b>' + r.missing_elevators + '</b> مصعد';
+      if (r.missing_customers) html += ' (' + r.missing_customers + ' عميل)';
+      html += '</span>';
+    }
+    html += '</div>';
+  }
   box.innerHTML = html;
+  renderPlanMissingCoverage(r.coverage || null);
+}
+
+let PLAN_MISSING_EXPANDED = false;
+
+function togglePlanMissingList() {
+  PLAN_MISSING_EXPANDED = !PLAN_MISSING_EXPANDED;
+  var list = document.getElementById('plan-missing-list');
+  var btn = document.getElementById('btn-toggle-missing-list');
+  if (list) list.style.display = PLAN_MISSING_EXPANDED ? '' : 'none';
+  if (btn) btn.textContent = PLAN_MISSING_EXPANDED ? 'إخفاء القائمة' : 'عرض القائمة';
+}
+
+function focusPlanMissingDistrict(district) {
+  var sel = document.getElementById('plan-district');
+  if (!sel || !district) return;
+  sel.value = district;
+  loadWizardCandidates();
+  var block = document.getElementById('plan-missing-box');
+  if (block) block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderPlanMissingCoverage(coverage) {
+  var wrap = document.getElementById('plan-missing-box');
+  var summary = document.getElementById('plan-missing-summary');
+  var list = document.getElementById('plan-missing-list');
+  var title = document.getElementById('plan-missing-title');
+  if (!wrap || !summary || !list) return;
+  var missingN = coverage && coverage.missing_elevators ? coverage.missing_elevators : 0;
+  if (!missingN) {
+    wrap.style.display = 'none';
+    list.innerHTML = '';
+    summary.textContent = '';
+    PLAN_MISSING_EXPANDED = false;
+    return;
+  }
+  wrap.style.display = '';
+  if (title) {
+    title.textContent = 'عملاء نشطون لم تُشمَلهم الزيارات (' + (coverage.missing_customers || 0) + ' عميل · ' + missingN + ' مصعد)';
+  }
+  var parts = [];
+  parts.push('عقود صيانة نشطة في الشهر بدون زيارة دورية (مجدولة أو مكتملة). أضِفهم من «إضافة يوم للمسودة» أدناه.');
+  if (coverage.by_district && Object.keys(coverage.by_district).length) {
+    parts.push('حسب المنطقة: ' + Object.keys(coverage.by_district).slice(0, 8).map(function (d) {
+      return escHtml(d) + ' (' + coverage.by_district[d] + ')';
+    }).join(' · '));
+  }
+  if (coverage.has_more) parts.push('يُعرض جزء من القائمة — الباقي في النظام.');
+  summary.textContent = parts.join(' ');
+  var rows = coverage.missing || [];
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg3)">' +
+    '<th style="padding:6px 8px;text-align:right">العميل</th>' +
+    '<th style="padding:6px 8px;text-align:right">المصعد</th>' +
+    '<th style="padding:6px 8px;text-align:right">المنطقة</th>' +
+    '<th style="padding:6px 8px;text-align:right">العقد</th>' +
+    '<th style="padding:6px 8px"></th></tr></thead><tbody>';
+  rows.forEach(function (row) {
+    var custCell = escHtml(row.customer_name || '—');
+    if (row.customer_id) {
+      custCell = '<a href="/clients?open=' + row.customer_id + '" style="color:var(--accent)" target="_blank" rel="noopener">' + escHtml(row.customer_name || '—') + '</a>';
+    }
+    html += '<tr style="border-top:1px solid var(--border)">' +
+      '<td style="padding:5px 8px">' + custCell + '</td>' +
+      '<td style="padding:5px 8px;font-family:var(--font-en)">' + escHtml(row.elevator_code || '—') + '</td>' +
+      '<td style="padding:5px 8px">' + escHtml(row.district || '—') + '</td>' +
+      '<td style="padding:5px 8px;font-family:var(--font-en)">' + escHtml(row.contract_code || '—') + '</td>' +
+      '<td style="padding:5px 8px"><button type="button" class="btn btn-secondary btn-sm" onclick="focusPlanMissingDistrict(\'' + escAttr(row.district || '') + '\')">إضافة</button></td>' +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  list.innerHTML = html;
+  list.style.display = PLAN_MISSING_EXPANDED ? '' : 'none';
+  var btn = document.getElementById('btn-toggle-missing-list');
+  if (btn) btn.textContent = PLAN_MISSING_EXPANDED ? 'إخفاء القائمة' : 'عرض القائمة';
+}
+
+function escAttr(s) {
+  return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 function loadPlanReadiness() {

@@ -22,6 +22,8 @@ def _truthy(val, default: bool = True) -> bool:
 
 
 def get_plan_readiness(plan_month: str) -> dict:
+    from operations import get_plan_coverage_gaps
+
     teams = list_active_teams()
     visits = _visits_for_plan_month(plan_month)
     pending = [
@@ -29,6 +31,7 @@ def get_plan_readiness(plan_month: str) -> dict:
         if v.status in ('مجدولة', 'مُرسلة للفني') and not v.maintenance_team_id
     ]
     with_coords = sum(1 for v in pending if visit_coordinates(v))
+    coverage = get_plan_coverage_gaps(plan_month)
     return {
         'plan_month': plan_month,
         'teams_count': len(teams),
@@ -40,6 +43,11 @@ def get_plan_readiness(plan_month: str) -> dict:
         'teams_ready': len(teams) > 0,
         'max_per_team_day': MAX_VISITS_PER_TEAM_DAY,
         'geo_radius_km': DEFAULT_CLUSTER_RADIUS_KM,
+        'coverage': coverage,
+        'expected_elevators': coverage.get('expected_elevators', 0),
+        'covered_elevators': coverage.get('covered_elevators', 0),
+        'missing_elevators': coverage.get('missing_elevators', 0),
+        'missing_customers': coverage.get('missing_customers', 0),
     }
 
 
@@ -110,6 +118,15 @@ def _build_summary_ar(
         lines.append('ملاحظة: ' + str(gen['hint']))
     if gen.get('team_distribution_error'):
         lines.append('تنبيه التوزيع: ' + str(gen['team_distribution_error']))
+
+    from operations import get_plan_coverage_gaps
+    gaps = get_plan_coverage_gaps(plan_month)
+    miss = gaps.get('missing_elevators', 0)
+    if miss:
+        lines.append(
+            f'تنبيه: {miss} مصعد ({gaps.get("missing_customers", 0)} عميل) بدون زيارة دورية في الشهر — '
+            'راجع «عملاء لم تُشمَلهم الزيارات» في نافذة التخطيط'
+        )
 
     return lines
 
