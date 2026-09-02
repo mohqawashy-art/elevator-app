@@ -20,7 +20,32 @@
   <div class="stat-card"><div class="stat-label">الإيرادات</div><div class="stat-value green">{{ '%.2f'|format(report.revenue) }}</div></div>
   <div class="stat-card"><div class="stat-label">المصروفات</div><div class="stat-value red">{{ '%.2f'|format(report.expense) }}</div></div>
   <div class="stat-card"><div class="stat-label">صافي الدخل</div><div class="stat-value {{ 'green' if report.net>=0 else 'red' }}">{{ '%.2f'|format(report.net) }}</div></div>
+  {% if report.unearned_revenue %}
+  <div class="stat-card"><div class="stat-label">إيراد غير مكتسب (عقود صيانة)</div><div class="stat-value" style="color:var(--warning)">{{ '%.2f'|format(report.unearned_revenue) }}</div></div>
+  {% endif %}
 </div>
+{% if report.maintenance_contract_lines %}
+<div class="panel" style="margin-bottom:16px">
+  <div class="panel-h">إيراد عقود الصيانة — تفصيل بالزيارات</div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>العقد</th><th>قيمة العقد</th><th>زيارات</th><th>مستحق الفترة</th><th>غير مكتسب</th></tr></thead>
+      <tbody>
+        {% for row in report.maintenance_contract_lines %}
+        <tr>
+          <td class="td-name"><span class="td-code">{{ row.code }}</span> {{ row.contract_type }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.contract_total) }}</td>
+          <td class="td-num">{{ row.completed_visits }}/{{ row.planned_visits }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.earned_in_period) }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.unearned) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:12px;color:var(--text3);padding:8px 12px 0;margin:0">يُحسب الإيراد = (قيمة العقد ÷ الزيارات المخططة) × الزيارات المكتملة — وليس قيمة العقد كاملة.</p>
+</div>
+{% endif %}
 <div class="two-col">
   <div class="panel">
     <div class="panel-h">الإيرادات</div>

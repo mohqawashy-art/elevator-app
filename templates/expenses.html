@@ -292,12 +292,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="field">
           <label>نوع المصروف <span>*</span></label>
           <select id="m-type">
-            <option>محروقات</option>
-            <option>قطع غيار</option>
-            <option>صيانة سيارات</option>
-            <option>ضيافة</option>
-            <option>متنوعة</option>
-            <option>أخرى</option>
+            {% for t in expense_type_options %}
+            <option>{{ t }}</option>
+            {% endfor %}
           </select>
         </div>
         <div class="field form-full">

@@ -118,3 +118,102 @@ def collection_gap_fields(accrued: float, collected: float) -> dict:
         'collection_gap': round(accrued - collected, 2),
         'collection_status': collection_gap_status(accrued, collected),
     }
+
+
+def _is_maintenance_contract(contract) -> bool:
+    """عقود صيانة/ضمان — لا تشمل تركيب أو تحديث."""
+    ct = (getattr(contract, 'contract_type', None) or '').strip()
+    if not ct:
+        return False
+    if 'تركيب' in ct or 'تحديث' in ct:
+        return False
+    return any(k in ct for k in ('صيانة', 'ضمان', 'دوري'))
+
+
+def count_completed_visits(
+    contract,
+    *,
+    period_from: date | None = None,
+    period_to: date | None = None,
+) -> int:
+    """عد الزيارات المكتملة لعقد — اختيارياً ضمن فترة."""
+    from sqlalchemy import and_, or_
+
+    from models import MaintenanceVisit
+    from tenant_scope import tenant_query
+
+    elev_ids = [
+        int(ce.elevator_id) for ce in (getattr(contract, 'elevators', None) or [])
+        if getattr(ce, 'elevator_id', None)
+    ]
+    q = tenant_query(MaintenanceVisit).filter(MaintenanceVisit.status == 'مكتملة')
+    if period_from:
+        q = q.filter(MaintenanceVisit.visit_date >= period_from)
+    if period_to:
+        q = q.filter(MaintenanceVisit.visit_date <= period_to)
+    if elev_ids:
+        q = q.filter(or_(
+            MaintenanceVisit.contract_id == contract.id,
+            and_(
+                MaintenanceVisit.contract_id.is_(None),
+                MaintenanceVisit.elevator_id.in_(elev_ids),
+            ),
+        ))
+    else:
+        q = q.filter(MaintenanceVisit.contract_id == contract.id)
+    return q.count()
+
+
+def maintenance_contracts_pnl_summary(
+    *,
+    period_from: date | None = None,
+    period_to: date | None = None,
+) -> dict:
+    """إيراد عقود الصيانة المستحق بالزيارات + المتبقي غير المكتسب."""
+    from models import Contract
+    from tenant_scope import tenant_query
+
+    today = period_to or date.today()
+    earned_in_period = 0.0
+    unearned_total = 0.0
+    contract_lines: list[dict] = []
+
+    for contract in tenant_query(Contract).all():
+        if not _is_maintenance_contract(contract):
+            continue
+        alloc = contract_cost_allocation(contract)
+        total = float(alloc.get('contract_total') or 0)
+        per_visit = float(alloc.get('per_visit_value') or 0)
+        planned = int(alloc.get('planned_visits') or 0)
+        if total <= 0 or per_visit <= 0:
+            continue
+
+        visits_in_period = count_completed_visits(
+            contract, period_from=period_from, period_to=period_to or today,
+        )
+        visits_to_date = count_completed_visits(contract, period_to=period_to or today)
+        earned_period = round(per_visit * visits_in_period, 2)
+        earned_total = round(per_visit * visits_to_date, 2)
+        unearned = round(max(total - earned_total, 0), 2)
+
+        earned_in_period += earned_period
+        unearned_total += unearned
+        if earned_period > 0 or unearned > 0 or visits_to_date > 0:
+            contract_lines.append({
+                'code': contract.code,
+                'contract_type': contract.contract_type or 'عقد صيانة',
+                'contract_total': total,
+                'planned_visits': planned,
+                'completed_visits': visits_to_date,
+                'visits_in_period': visits_in_period,
+                'per_visit_value': per_visit,
+                'earned_in_period': earned_period,
+                'earned_total': earned_total,
+                'unearned': unearned,
+            })
+
+    return {
+        'earned_in_period': round(earned_in_period, 2),
+        'unearned_total': round(unearned_total, 2),
+        'contract_lines': contract_lines,
+    }

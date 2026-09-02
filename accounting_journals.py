@@ -11,6 +11,7 @@ from tenant_scope import assign_organization, effective_organization_id, tenant_
 from chart_of_accounts import (
     account_by_map_key,
     ensure_chart_schema,
+    MAINTENANCE_REVENUE_ACCOUNT_CODES,
     resolve_expense_account_id,
     resolve_revenue_account_id,
 )
@@ -468,22 +469,55 @@ def income_statement(date_from: date | None = None, date_to: date | None = None)
 
     revenue_lines = []
     expense_lines = []
+    maintenance_journal_revenue = 0.0
     for code, name, atype, debit, credit in detail_q.all():
         if atype == 'revenue':
             amt = _round2(credit - debit)
             if amt:
                 revenue_lines.append({'code': code, 'name': name, 'amount': amt})
+                if code in MAINTENANCE_REVENUE_ACCOUNT_CODES:
+                    maintenance_journal_revenue = _round2(maintenance_journal_revenue + amt)
         else:
             amt = _round2(debit - credit)
             if amt:
                 expense_lines.append({'code': code, 'name': name, 'amount': amt})
 
+    # إيراد عقود الصيانة: مستحق بالزيارات المكتملة (لا قيمة العقد كاملة)
+    from contract_cost_allocation import maintenance_contracts_pnl_summary
+
+    maint = maintenance_contracts_pnl_summary(period_from=date_from, period_to=date_to)
+    visit_earned = maint['earned_in_period']
+    unearned_revenue = maint['unearned_total']
+    has_maint_contracts = bool(maint.get('contract_lines'))
+
+    adjusted_revenue = revenue
+    if has_maint_contracts:
+        if visit_earned > 0 or maintenance_journal_revenue > 0:
+            revenue_lines = [
+                ln for ln in revenue_lines
+                if ln['code'] not in MAINTENANCE_REVENUE_ACCOUNT_CODES
+            ]
+            if visit_earned > 0:
+                revenue_lines.append({
+                    'code': '4110',
+                    'name': 'عقود صيانة — مستحق بالزيارات',
+                    'amount': visit_earned,
+                })
+            revenue_lines.sort(key=lambda x: x['code'])
+        adjusted_revenue = _round2(revenue - maintenance_journal_revenue + visit_earned)
+
+    adjusted_net = _round2(adjusted_revenue - expense)
+
     return {
-        'revenue': revenue,
+        'revenue': adjusted_revenue,
         'expense': expense,
-        'net': _round2(revenue - expense),
+        'net': adjusted_net,
         'revenue_lines': revenue_lines,
         'expense_lines': expense_lines,
+        'maintenance_journal_revenue': maintenance_journal_revenue,
+        'maintenance_earned_by_visits': visit_earned,
+        'unearned_revenue': unearned_revenue,
+        'maintenance_contract_lines': maint.get('contract_lines') or [],
     }
 
 

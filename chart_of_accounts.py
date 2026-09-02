@@ -95,7 +95,7 @@ DEFAULT_CHART: list[tuple] = [
     ('4330', 'استدعاءات طوارئ', 'Emergency Call-outs', 'revenue', '4300', None, True, 4330),
     ('4900', 'إيرادات أخرى', 'Other Revenue', 'revenue', '4000', None, False, 4900),
     ('4910', 'تسوية تحصيل مالك سابق', 'Prior-owner Settlement', 'revenue', '4900', 'revenue:تسوية مالك سابق', True, 4910),
-    ('4920', 'إيرادات متنوعة', 'Miscellaneous Revenue', 'revenue', '4900', None, True, 4920),
+    ('4920', 'إيرادات متنوعة', 'Miscellaneous Revenue', 'revenue', '4900', 'revenue:أخرى', True, 4920),
 
     ('5000', 'تكلفة الإيراد', 'Cost of Revenue', 'expense', None, None, False, 5000),
     ('5100', 'تكلفة قطع غيار مباعة', 'Cost of Parts Sold', 'expense', '5000', 'expense:قطع غيار', True, 5100),
@@ -154,8 +154,20 @@ _REVENUE_TYPE_ALIASES = {
     'بيع قطع غيار': 'revenue:قطع غيار',
     'أعمال إضافية': 'revenue:أعمال إضافية',
     'زيارة': 'revenue:أعمال إضافية',
-    'أخرى': 'revenue:أعمال إضافية',
+    'أخرى': 'revenue:أخرى',
+    'إيرادات متنوعة': 'revenue:أخرى',
 }
+
+# خيارات نموذج «إضافة مصروف» — مطابقة لحسابات شجرة الدخل
+EXPENSE_TYPE_OPTIONS = [
+    'محروقات',
+    'قطع غيار',
+    'صيانة سيارات',
+    'رواتب',
+    'أدوات',
+    'إيجار',
+    'مصروفات متنوعة',
+]
 
 _EXPENSE_TYPE_ALIASES = {
     'محروقات': 'expense:محروقات',
@@ -163,11 +175,20 @@ _EXPENSE_TYPE_ALIASES = {
     'قطع غيار': 'expense:قطع غيار',
     'صيانة سيارات': 'expense:صيانة سيارات',
     'رواتب': 'expense:رواتب',
+    'رواتب فنيين': 'expense:رواتب',
     'أجور': 'expense:رواتب',
     'أدوات': 'expense:أدوات',
+    'أدوات ومستلزمات': 'expense:أدوات',
     'إيجار': 'expense:إيجار',
     'ايجار': 'expense:إيجار',
+    'مصروفات متنوعة': 'expense:أخرى',
+    'متنوعة': 'expense:أخرى',
+    'ضيافة': 'expense:أخرى',
+    'أخرى': 'expense:أخرى',
 }
+
+# حسابات إيراد عقود الصيانة في القيود — تُستبدل بإيراد مستحق بالزيارات في قائمة الدخل
+MAINTENANCE_REVENUE_ACCOUNT_CODES = frozenset({'4110', '4120'})
 
 
 def _is_prior_owner_note(notes: str | None) -> bool:

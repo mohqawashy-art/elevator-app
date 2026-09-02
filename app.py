@@ -10804,12 +10804,15 @@ def balance_sheet():
 # =============================================
 @app.route('/expenses')
 def expenses():
+    from chart_of_accounts import EXPENSE_TYPE_OPTIONS
+
     _ensure_tenant_chart()
     exps = tenant_query(Expense).order_by(Expense.expense_date.desc()).all()
     return render_template(
         'expenses.html',
         expenses=exps,
         expenses_js=[expense_to_js_dict(e) for e in exps],
+        expense_type_options=EXPENSE_TYPE_OPTIONS,
     )
 @app.route('/expenses/edit/<int:id>', methods=['POST'])
 def expense_edit(id):

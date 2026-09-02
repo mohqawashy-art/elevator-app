@@ -77,6 +77,20 @@ def test_resolve_revenue_and_expense_map_keys(client):
         fuel = db.session.get(Account, fuel_id)
         assert fuel and fuel.code == '6210'
 
+        misc_id = resolve_expense_account_id('مصروفات متنوعة')
+        misc = db.session.get(Account, misc_id)
+        assert misc and misc.code == '6910'
+        assert resolve_expense_account_id('ضيافة') == misc_id
+        assert resolve_expense_account_id('متنوعة') == misc_id
+
+        salary_id = resolve_expense_account_id('رواتب')
+        salary = db.session.get(Account, salary_id)
+        assert salary and salary.code == '6110'
+
+        other_rev_id = resolve_revenue_account_id('أخرى')
+        other_rev = db.session.get(Account, other_rev_id)
+        assert other_rev and other_rev.code == '4920'
+
 
 def test_create_custom_account_under_parent(client):
     with client.application.app_context():
