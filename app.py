@@ -1768,6 +1768,20 @@ def _startup_schema_and_data_sync():
                 db.session.commit()
                 app.logger.info('Added elevator_estimates.%s column', col_name)
                 est_cols.add(col_name)
+        if 'contracts' in tables:
+            contract_cols = {c['name'] for c in insp.get_columns('contracts')}
+            for col_name, column_type in (
+                ('lat', 'VARCHAR(20)'),
+                ('lng', 'VARCHAR(20)'),
+                ('maps_url', 'VARCHAR(500)'),
+            ):
+                if col_name in contract_cols:
+                    continue
+                db.session.execute(text(
+                    f'ALTER TABLE contracts ADD COLUMN {col_name} {column_type}'
+                ))
+                db.session.commit()
+                app.logger.info('Added contracts.%s column', col_name)
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('settings/customers column ensure skip: %s', exc)
