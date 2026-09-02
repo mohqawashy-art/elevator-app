@@ -7,7 +7,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from flask import g
 from sqlalchemy import create_engine, inspect, text
@@ -131,7 +131,8 @@ def restore_codes(backup: Path, org_slug: str, codes: list[str], dry_run: bool) 
         raise SystemExit('PostgreSQL only')
     pg = parse_pg_uri(uri)
     temp_name = temp_db_name(pg['dbname'])
-    temp_uri = uri.replace(f'/{pg["dbname"]}', f'/{temp_name}')
+    parsed = urlparse(normalize_database_url(uri))
+    temp_uri = urlunparse(parsed._replace(path=f'/{temp_name}'))
 
     with app.app_context():
         org = Organization.query.filter_by(slug=org_slug).one()
