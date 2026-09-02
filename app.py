@@ -3161,9 +3161,9 @@ def onboard_form(token):
     """فورم العميل عبر رابط دعوة لمرة واحدة — على نطاق المنصة فقط."""
     from liftcore_security import ensure_csrf_token
     from operator_onboarding import get_invite, invite_is_open, submit_invite_form
-    from tenant_signup import is_signup_host, require_signup_host
+    from tenant_signup import is_onboard_host, require_onboard_host
 
-    require_signup_host()
+    require_onboard_host()
     if session.get('user_id'):
         session.clear()
     ensure_csrf_token()
@@ -3182,7 +3182,7 @@ def onboard_form(token):
             success=False,
             closed='رابط الدعوة غير صالح أو منتهي. اطلب رابطاً جديداً من فريق LiftCore.',
             form={},
-            signup_host=is_signup_host(),
+            signup_host=is_onboard_host(),
         ), 404
 
     if request.method == 'POST':
@@ -3205,7 +3205,7 @@ def onboard_form(token):
         success=success,
         closed=closed,
         form=form,
-        signup_host=is_signup_host(),
+        signup_host=is_onboard_host(),
     )
 
 

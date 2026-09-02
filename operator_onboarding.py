@@ -88,7 +88,11 @@ def create_invite(
 
 
 def invite_public_url(token: str) -> str:
-    base = os.environ.get('LIFTCORE_PUBLIC_BASE', 'https://liftcoreapp.com').rstrip('/')
+    """رابط الدعوة — دائماً على النطاق التسويقي (ليس app.*)."""
+    base = (
+        os.environ.get('LIFTCORE_INVITE_BASE', '').strip()
+        or 'https://liftcoreapp.com'
+    ).rstrip('/')
     return f'{base}/onboard/{token}'
 
 

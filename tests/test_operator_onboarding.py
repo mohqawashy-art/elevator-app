@@ -95,6 +95,23 @@ def test_onboard_on_tenant_host_404(ob_client):
     assert r.status_code == 404
 
 
+def test_onboard_on_app_host_works_for_legacy_links(ob_client):
+    """روابط قديمة على app.* — كانت تُرسل قبل فصل LIFTCORE_INVITE_BASE."""
+    with app.app_context():
+        token = create_invite(contact_email='legacy@test.com')['invite'].token
+    r = ob_client.get(f'/onboard/{token}', base_url=APP_URL)
+    assert r.status_code == 200
+    assert 'بيانات الشركة' in r.get_data(as_text=True)
+
+
+def test_invite_url_uses_marketing_domain_not_public_base(monkeypatch):
+    monkeypatch.setenv('LIFTCORE_PUBLIC_BASE', 'https://app.liftcoreapp.com')
+    monkeypatch.delenv('LIFTCORE_INVITE_BASE', raising=False)
+    with app.app_context():
+        result = create_invite(contact_email='url@test.com')
+    assert result['url'].startswith('https://liftcoreapp.com/onboard/')
+
+
 def test_activate_creates_active_org(ob_client):
     with app.app_context():
         inv = create_invite(
