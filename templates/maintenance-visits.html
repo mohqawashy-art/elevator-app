@@ -745,6 +745,12 @@ var VISITS = {{ visits_js|tojson }};
 var CUSTOMERS = {{ customers_js|tojson }};
 var ELEVATORS = {{ elevators_js|tojson }};
 var CONTRACTS = {{ contracts_js|tojson }};
+
+function formatElevatorSelectLabel(e) {
+  var code = e.code || e.elevator_code || '';
+  var building = (e.building || '').trim();
+  return code + ' — ' + (building || '—');
+}
 var TECHNICIANS = {{ technicians_js|tojson }};
 var VISIT_MAP_POINTS = {{ visit_map_points|tojson }};
 const NEXT_VISIT_CODE = {{ next_visit_code|tojson }};
@@ -1057,7 +1063,7 @@ function loadClientElevators() {
   if (!esel) return;
   const list = cid ? ELEVATORS.filter(e => e.customer_id === cid) : ELEVATORS;
   esel.innerHTML = '<option value="">اختر المصعد</option>' +
-    list.map(e => `<option value="${e.id}">${e.code} — ${e.customer}</option>`).join('');
+    list.map(e => `<option value="${e.id}">${formatElevatorSelectLabel(e)}</option>`).join('');
   if (csel) {
     const contracts = cid ? CONTRACTS.filter(c => c.customer_id === cid) : [];
     csel.innerHTML = '<option value="">بدون عقد</option>' +
@@ -2084,7 +2090,7 @@ function loadDistrictElevators() {
     .then(data => {
       sel.innerHTML = '<option value="">اختر المصعد</option>' +
         (data.elevators || []).map(e =>
-          `<option value="${e.elevator_id}">${e.elevator_code} — ${e.customer_name}</option>`
+          `<option value="${e.elevator_id}">${formatElevatorSelectLabel(e)}</option>`
         ).join('');
     });
 }
