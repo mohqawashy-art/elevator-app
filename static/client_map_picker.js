@@ -123,9 +123,8 @@
   }
 
   function preferLeaflet() {
-    if (global.liftcoreGoogleMapsUsable) return !global.liftcoreGoogleMapsUsable();
-    if (global.__gmapsAuthFailed) return true;
     if (!global.LIFTCORE_GOOGLE_MAPS_KEY) return true;
+    if (global.__gmapsAuthFailed) return true;
     return false;
   }
 
@@ -690,7 +689,7 @@
   }
 
   function scheduleGoogleErrorCheck() {
-    [1000, 2500, 5000, 8000].forEach(function (ms) {
+    [1500, 4000].forEach(function (ms) {
       setTimeout(fallbackFromGoogleError, ms);
     });
   }

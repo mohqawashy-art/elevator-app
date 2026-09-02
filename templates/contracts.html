@@ -16,7 +16,7 @@
 <script src="/static/client_location.js?v=8"></script>
 <script src="/static/client_geocode.js?v=8"></script>
 <script src="/static/liftcore_map.js?v=4"></script>
-<script src="/static/client_map_picker.js?v=12"></script>
+<script src="/static/client_map_picker.js?v=13"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -2996,11 +2996,21 @@ function renderContractMapMarkers(fitAgain) {
 
 var osmContractMap = null;
 var osmContractMarkers = [];
+var osmContractCluster = null;
 var CONTRACT_MAP_OSM_RADIUS = 7;
 
 function useOsmContractMaps() {
-  if (window.liftcoreGoogleMapsUsable) return !window.liftcoreGoogleMapsUsable();
-  return !window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed || typeof google === 'undefined' || !google.maps;
+  if (!window.LIFTCORE_GOOGLE_MAPS_KEY) return true;
+  if (window.__gmapsAuthFailed) return true;
+  return typeof google === 'undefined' || !google.maps;
+}
+
+function osmContractMapSummarySuffix() {
+  var reason = window.liftcoreMapsFallbackReason ? window.liftcoreMapsFallbackReason() : '';
+  if (reason === 'auth_failed') {
+    return ' — تعذّر Google Maps (راجع قيود المفتاح لـ jama.liftcoreapp.com و app.liftcoreapp.com)';
+  }
+  return '';
 }
 
 function destroyOsmContractMap() {
@@ -3009,6 +3019,7 @@ function destroyOsmContractMap() {
   }
   osmContractMap = null;
   osmContractMarkers = [];
+  osmContractCluster = null;
   var mapEl = document.getElementById('map');
   if (mapEl) {
     mapEl.innerHTML = '';
@@ -3035,9 +3046,16 @@ function refreshContractMapOsm() {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'
     }).addTo(osmContractMap);
+    osmContractCluster = typeof L.markerClusterGroup === 'function'
+      ? L.markerClusterGroup({ maxClusterRadius: 52, showCoverageOnHover: false })
+      : null;
+    if (osmContractCluster) osmContractMap.addLayer(osmContractCluster);
   }
-  osmContractMarkers.forEach(function (m) { osmContractMap.removeLayer(m); });
-  osmContractMarkers = [];
+  if (osmContractCluster) osmContractCluster.clearLayers();
+  else {
+    osmContractMarkers.forEach(function (m) { osmContractMap.removeLayer(m); });
+    osmContractMarkers = [];
+  }
   var groups = buildContractLocationGroups();
   var shownContracts = 0;
   var bounds = [];
@@ -3053,26 +3071,28 @@ function refreshContractMapOsm() {
       fillOpacity: 1
     }).addTo(osmContractMap);
     marker.bindPopup(contractGroupMapInfo(group));
+    if (osmContractCluster) osmContractCluster.addLayer(marker);
+    else marker.addTo(osmContractMap);
     osmContractMarkers.push(marker);
     bounds.push([pos.lat, pos.lng]);
   });
   if (summary) {
     summary.textContent = shownContracts
-      ? ('OpenStreetMap — ' + shownContracts + ' عقد في ' + groups.length + ' موقع (عملاء نشطون فقط)')
-      : 'لا مواقع لعقود عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة';
+      ? ('OpenStreetMap — ' + shownContracts + ' عقد في ' + groups.length + ' موقع (عملاء نشطون فقط)' + osmContractMapSummarySuffix())
+      : ('لا مواقع لعقود عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة' + osmContractMapSummarySuffix());
   }
   if (bounds.length) {
-    osmContractMap.fitBounds(bounds, { padding: [48, 48] });
+    if (osmContractCluster && osmContractCluster.getBounds) {
+      osmContractMap.fitBounds(osmContractCluster.getBounds(), { padding: [48, 48] });
+    } else {
+      osmContractMap.fitBounds(bounds, { padding: [48, 48] });
+    }
     if (bounds.length === 1) osmContractMap.setZoom(14);
   }
   setTimeout(function () { osmContractMap.invalidateSize(); }, 250);
 }
 
 function refreshContractMap(fitAgain) {
-  if (window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && window.liftcoreGoogleMapsUsable && !window.liftcoreGoogleMapsUsable()) {
-    refreshContractMapOsm();
-    return;
-  }
   if (window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && (typeof google === 'undefined' || !google.maps)) {
     var summaryWait = document.getElementById('map-summary');
     if (summaryWait) summaryWait.textContent = 'جاري تحميل خرائط Google...';
