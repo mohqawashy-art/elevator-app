@@ -160,8 +160,27 @@ def get_report_faults(db, Fault):
     } for f in faults]
 
 
-_COLLECTED_REVENUE_STATUSES = frozenset({'محصّل', 'محصل', 'مدفوع', 'مدفوعة'})
+_COLLECTED_REVENUE_STATUSES = frozenset({
+    'محصّل', 'محصل', 'مدفوع', 'مدفوعة', 'مسددة', 'مكتملة', 'Paid', 'paid',
+})
 _PENDING_REVENUE_STATUSES = frozenset({'معلق', 'غير محصّل', 'غير محصل'})
+
+
+def _is_revenue_collected_status(status) -> bool:
+    """هل الإيراد محصّل — يشمل القيم الفارغة (الافتراضي في النموذج: محصّل)."""
+    s = (status or '').strip()
+    if not s:
+        return True
+    if s == 'ملغي' or 'ملغ' in s:
+        return False
+    if s in _COLLECTED_REVENUE_STATUSES:
+        return True
+    norm = s.replace('ّ', '')
+    if 'غير' in s and 'محصل' in norm:
+        return False
+    if 'محصل' in norm or s.startswith('مدفو'):
+        return True
+    return False
 
 
 def summarize_revenue_rows(rows):
@@ -184,7 +203,7 @@ def summarize_revenue_rows(rows):
             cancelled += amt
             cancelled_count += 1
             continue
-        if st in _COLLECTED_REVENUE_STATUSES:
+        if _is_revenue_collected_status(st):
             collected += amt
         if st in _PENDING_REVENUE_STATUSES:
             pending += amt
@@ -196,38 +215,6 @@ def summarize_revenue_rows(rows):
         'count': count,
         'cancelled_count': cancelled_count,
     }
-
-
-def _sum_registered_maintenance_contract_revenue(revenues, Contract):
-    """مجموع إيرادات عقود الصيانة المسجّلة في الفترة (قبل استبدالها بالمكتسب بالزيارات)."""
-    from contract_cost_allocation import _is_maintenance_contract
-    from customer_billing import revenue_counts_toward_contract
-
-    contract_ids = {
-        r.contract_id for r in revenues
-        if getattr(r, 'contract_id', None)
-    }
-    contracts_by_id = {}
-    if contract_ids:
-        for c in tenant_query(Contract).filter(Contract.id.in_(contract_ids)).all():
-            contracts_by_id[c.id] = c
-
-    total = 0.0
-    for r in revenues:
-        if (getattr(r, 'status', None) or '').strip() == 'ملغي':
-            continue
-        if not revenue_counts_toward_contract(r):
-            continue
-        is_maint = False
-        if r.contract_id and r.contract_id in contracts_by_id:
-            is_maint = _is_maintenance_contract(contracts_by_id[r.contract_id])
-        else:
-            rt = (getattr(r, 'revenue_type', None) or '').strip()
-            if rt and 'تركيب' not in rt and 'تحديث' not in rt:
-                is_maint = any(k in rt for k in ('صيانة', 'ضمان', 'تجديد', 'عقد'))
-        if is_maint:
-            total += float(getattr(r, 'total', None) or 0)
-    return _round_money(total)
 
 
 def tenant_revenue_totals(Revenue):
@@ -996,11 +983,11 @@ def get_financial_health_report(
     from contract_cost_allocation import maintenance_contracts_pnl_summary
 
     maint_pnl = maintenance_contracts_pnl_summary(period_from=df, period_to=dt)
-    maint_registered = _sum_registered_maintenance_contract_revenue(period_revenues, Contract)
-    period_revenue_earned = _round_money(
-        period_revenue_registered - maint_registered + maint_pnl['earned_in_period']
-    )
     period_revenue_unearned = maint_pnl['unearned_total']
+    # المكتسب = المحصّل − قيمة الصيانة غير المنفذة حتى تاريخ نهاية الفترة
+    period_revenue_earned = _round_money(
+        max(0.0, period_revenue_collected - period_revenue_unearned)
+    )
     period_revenue = period_revenue_earned
 
     month_labels, monthly_revenue = _monthly_totals_from_records(

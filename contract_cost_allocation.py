@@ -28,12 +28,16 @@ def contract_duration_months(contract) -> int:
 def contract_planned_visits(contract) -> int:
     """إجمالي الزيارات المخططة (visits_per_month = إجمالي العقد وليس شهرياً)."""
     v = int(getattr(contract, 'visits_per_month', None) or 0)
-    if v > 0:
-        return v
     duration = contract_duration_months(contract)
     freq = (getattr(contract, 'maint_frequency', None) or '').strip()
     interval = MAINT_FREQ_INTERVAL_MONTHS.get(freq, 1)
-    return max(1, math.ceil(duration / interval))
+    from_frequency = max(1, math.ceil(duration / interval))
+    if v <= 0:
+        return from_frequency
+    # استيراد قديم: visits_per_month=1 رغم برنامج صيانة أكثر (مثلاً شهري × 12 شهر)
+    if v == 1 and from_frequency > 1:
+        return from_frequency
+    return v
 
 
 def _contract_total(contract) -> float:
