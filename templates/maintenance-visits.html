@@ -554,7 +554,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5V2h8v3M3 9H1V5h12v4h-2M3 9v3h8V9"/></svg>
         طباعة
       </button>
-      <button class="btn btn-primary" onclick="closeModal('modal-view');openAddModal()">تعديل</button>
+      <button class="btn btn-primary" onclick="editVisitFromView()">تعديل</button>
     </div>
   </div>
 </div>
@@ -1029,11 +1029,17 @@ function filterTable() {
 }
 
 // ===== إضافة =====
-function fillClientSelect() {
+function fillClientSelect(selectedId) {
   if (typeof LcClientSelect !== 'undefined') {
-    LcClientSelect.setCustomers('f-client-sel', CUSTOMERS);
+    if (selectedId !== undefined) {
+      LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, selectedId);
+    } else {
+      LcClientSelect.setCustomers('f-client-sel', CUSTOMERS);
+    }
     return;
   }
+  var sel = document.getElementById('f-client-sel');
+  if (sel && selectedId !== undefined) sel.value = selectedId || '';
 }
 
 function initVisitClientSelect() {
@@ -1059,7 +1065,7 @@ function loadClientElevators() {
   }
 }
 
-function loadElevatorContracts() {
+function loadElevatorContracts(preferredContractId) {
   const eid = parseInt(document.getElementById('f-elevator-sel').value, 10);
   const csel = document.getElementById('f-contract-sel');
   if (!eid || !csel) return;
@@ -1068,10 +1074,18 @@ function loadElevatorContracts() {
     .then(data => {
       csel.innerHTML = '<option value="">بدون عقد</option>' +
         (data.contracts || []).map(c =>
-          `<option value="${c.id}"${c.id === data.default_contract_id ? ' selected' : ''}>${c.code}</option>`
+          `<option value="${c.id}">${c.code}</option>`
         ).join('');
+      var pick = preferredContractId || data.default_contract_id;
+      if (pick) csel.value = pick;
       const clientSel = document.getElementById('f-client-sel');
-      if (clientSel && data.customer_id) clientSel.value = data.customer_id;
+      if (clientSel && data.customer_id) {
+        if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('f-client-sel')) {
+          LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, data.customer_id);
+        } else {
+          clientSel.value = data.customer_id;
+        }
+      }
     })
     .catch(() => {});
 }
@@ -2510,7 +2524,7 @@ function openAddModal() {
   if (typeView) typeView.value = 'صيانة دورية';
   const prioEl = document.getElementById('f-priority-sel');
   if (prioEl) prioEl.value = 'عادية';
-  fillClientSelect();
+  fillClientSelect('');
   loadClientElevators();
   renderTechSelect([]);
   document.getElementById('modal-add').classList.add('open');
@@ -2593,22 +2607,19 @@ function editVisit(id) {
   }
   document.getElementById('modal-title').textContent = 'تعديل الزيارة';
   document.getElementById('modal-add').dataset.editId = id;
-  fillClientSelect();
-  const clientSel = document.getElementById('f-client-sel');
-  if (clientSel) clientSel.value = v.customer_id || '';
+  fillClientSelect(v.customer_id || '');
   loadClientElevators();
   const esel = document.getElementById('f-elevator-sel');
   if (esel) esel.value = v.elevator_id || '';
-  loadElevatorContracts();
-  const csel = document.getElementById('f-contract-sel');
-  if (csel && v.contract_id) csel.value = v.contract_id;
+  loadElevatorContracts(v.contract_id || null);
   renderTechSelect(v.tech_ids && v.tech_ids.length ? v.tech_ids : (v.tech_id ? [v.tech_id] : []));
   const codeEl = document.getElementById('f-code');
   if (codeEl) codeEl.value = v.code;
+  const visitType = v.visit_type || 'صيانة دورية';
   const typeEl = document.getElementById('f-type-sel');
-  if (typeEl) typeEl.value = 'صيانة دورية';
+  if (typeEl) typeEl.value = visitType;
   const typeView = document.getElementById('f-type-view');
-  if (typeView) typeView.value = 'صيانة دورية';
+  if (typeView) typeView.value = visitType;
   const map = {
     'f-date': v.visit_date, 'f-time': v.visit_time,
     'f-priority-sel': 'عادية', 'f-status-sel': v.status, 'f-work-done': v.works_done,
@@ -2644,9 +2655,12 @@ function renderVisitFlaggedItems(v) {
   return '<div class="view-item view-full"><div class="view-label">بنود الفحص</div><div class="view-val checklist-flagged-list">' + rows + '</div></div>';
 }
 
+let currentViewVisitId = null;
+
 function viewVisit(id) {
   const v = VISITS.find(x=>x.id===id);
   if(!v) return;
+  currentViewVisitId = id;
   document.getElementById('view-title').textContent = v.code + ' — ' + v.customer;
   document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
@@ -2670,6 +2684,12 @@ function viewVisit(id) {
     rpt.href = '/maintenance-visits/' + v.id + '/report';
     rpt.style.display = '';
   }
+}
+
+function editVisitFromView() {
+  if (!currentViewVisitId) return;
+  closeModal('modal-view');
+  editVisit(currentViewVisitId);
 }
 
 // ===== حذف =====
