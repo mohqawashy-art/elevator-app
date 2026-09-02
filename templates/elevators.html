@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -15,8 +15,8 @@
 <script src="/static/elevator_profile.js"></script>
 <script src="/static/client_location.js?v=8"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=3"></script>
-<script src="/static/client_map_picker.js?v=7"></script>
+<script src="/static/liftcore_map.js?v=4"></script>
+<script src="/static/client_map_picker.js?v=12"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1697,6 +1697,7 @@ var MAP_POI_HIDDEN = [
 ];
 
 function useOsmElevMaps() {
+  if (window.liftcoreGoogleMapsUsable) return !window.liftcoreGoogleMapsUsable();
   return !window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed || typeof google === 'undefined' || !google.maps;
 }
 
@@ -1840,6 +1841,10 @@ function refreshElevatorMapOsm() {
 }
 
 function refreshElevatorMap(fitAgain) {
+  if (window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && window.liftcoreGoogleMapsUsable && !window.liftcoreGoogleMapsUsable()) {
+    refreshElevatorMapOsm();
+    return;
+  }
   if (window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && (typeof google === 'undefined' || !google.maps)) {
     var summaryWait = document.getElementById('map-summary');
     if (summaryWait) summaryWait.textContent = 'جاري تحميل خرائط Google...';

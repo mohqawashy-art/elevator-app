@@ -20,8 +20,56 @@
     });
     return window.__gmapsMarkerLoading;
   };
+  window.liftcoreMapElHasGoogleError = function (el) {
+    if (!el) return false;
+    if (el.querySelector('.gm-err-container, .gm-err-title, .gm-err-message')) return true;
+    var t = (el.innerText || el.textContent || '').toLowerCase();
+    if (t.indexOf('for development purposes only') >= 0) return true;
+    if (t.indexOf("can't load google maps") >= 0 || t.indexOf('cant load google maps') >= 0) return true;
+    if (t.indexOf('يتعذ') >= 0 && t.indexOf('خرائط') >= 0) return true;
+    if (t.indexOf('do you own this website') >= 0) return true;
+    return false;
+  };
+  window.liftcoreScanMapContainersForErrors = function () {
+    var failed = false;
+    document.querySelectorAll('.client-map-picker, #map').forEach(function (el) {
+      if (window.liftcoreMapElHasGoogleError(el)) failed = true;
+    });
+    if (failed) window.__gmapsAuthFailed = true;
+    return failed;
+  };
+  window.liftcoreGoogleMapsUsable = function () {
+    return !!(window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && window.google && window.google.maps);
+  };
+  window.liftcoreNotifyMapsFallback = function () {
+    if (window.LiftCoreMapPicker && window.LiftCoreMapPicker._lastOpts) {
+      try {
+        window.LiftCoreMapPicker.hardReset();
+        window.LiftCoreMapPicker.init(window.LiftCoreMapPicker._lastOpts);
+      } catch (e) { console.error(e); }
+    }
+    if (typeof refreshContractMap === 'function') refreshContractMap(true);
+    if (typeof refreshElevatorMap === 'function') refreshElevatorMap(true);
+    if (typeof refreshMainMap === 'function') refreshMainMap(true);
+  };
+  window.liftcoreProbeGoogleMaps = function () {
+    if (!window.google || !window.google.maps || window.__gmapsAuthFailed) return;
+    if (window.liftcoreScanMapContainersForErrors()) {
+      window.liftcoreNotifyMapsFallback();
+      return;
+    }
+    try {
+      var g = new google.maps.Geocoder();
+      g.geocode({ address: 'Makkah', componentRestrictions: { country: 'SA' } }, function (_res, status) {
+        if (status === 'REQUEST_DENIED' || status === 'OVER_QUERY_LIMIT') {
+          window.__gmapsAuthFailed = true;
+          window.liftcoreNotifyMapsFallback();
+        }
+      });
+    } catch (e) { /* ignore */ }
+  };
   window.whenGoogleMapsReady = function (fn) {
-    if (!window.LIFTCORE_GOOGLE_MAPS_KEY || window.__gmapsAuthFailed) { fn(); return; }
+    if (!window.liftcoreGoogleMapsUsable()) { fn(); return; }
     if (!window.google || !window.google.maps) {
       window.__gmapsQueue.push(fn);
       return;
@@ -31,23 +79,21 @@
   window.initGoogleMapsApi = function () {
     flushGmapsQueue();
     window.loadGmapsMarkerLib().catch(function () {});
+    [1200, 3000, 6000].forEach(function (ms) {
+      setTimeout(function () {
+        window.liftcoreProbeGoogleMaps();
+      }, ms);
+    });
   };
   window.gm_authFailure = function () {
     window.__gmapsAuthFailed = true;
-    if (window.LiftCoreMapPicker && window.LiftCoreMapPicker._lastOpts) {
-      var opts = window.LiftCoreMapPicker._lastOpts;
-      LiftCoreMapPicker.hardReset();
-      LiftCoreMapPicker.init(opts);
-      setTimeout(function () { LiftCoreMapPicker.resize(); }, 200);
-    }
-    if (typeof refreshElevatorMap === 'function') refreshElevatorMap(true);
-    if (typeof refreshMainMap === 'function') refreshMainMap(true);
+    window.liftcoreNotifyMapsFallback();
   };
 </script>
 {% if google_maps_api_key %}
 <script async
   src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async&language=ar&region=SA&libraries={{ gmaps_libraries|default('places,marker') }}&callback=initGoogleMapsApi"
-  onerror="window.__gmapsAuthFailed=true"></script>
+  onerror="window.__gmapsAuthFailed=true;window.liftcoreNotifyMapsFallback&&window.liftcoreNotifyMapsFallback()"></script>
 {% endif %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>

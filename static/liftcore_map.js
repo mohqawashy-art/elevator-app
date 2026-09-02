@@ -7,7 +7,7 @@
 
   var DEFAULT_CENTER = { lat: 21.4225, lng: 39.8262 };
   var DEFAULT_ZOOM = 12;
-  var DEFAULT_MAP_ID = 'DEMO_MAP_ID';
+  /* لا نستخدم DEMO_MAP_ID افتراضياً — يفرض خرائط Vector وقد يعطل الخرائط بدون فوترة/Map ID صالح */
 
   var POI_HIDDEN = [
     { featureType: 'poi', stylers: [{ visibility: 'off' }] },
@@ -31,7 +31,8 @@
   }
 
   function getMapId() {
-    return (global.LIFTCORE_GOOGLE_MAP_ID || DEFAULT_MAP_ID);
+    var id = (global.LIFTCORE_GOOGLE_MAP_ID || '').trim();
+    return id || null;
   }
 
   function canUseAdvancedMarkers() {
@@ -48,7 +49,9 @@
   function mergeMapOptions(options) {
     options = options || {};
     var merged = Object.assign({}, options);
-    merged.mapId = merged.mapId || getMapId();
+    var mapId = merged.mapId || getMapId();
+    if (mapId) merged.mapId = mapId;
+    else delete merged.mapId;
     return merged;
   }
 

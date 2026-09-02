@@ -123,6 +123,7 @@
   }
 
   function preferLeaflet() {
+    if (global.liftcoreGoogleMapsUsable) return !global.liftcoreGoogleMapsUsable();
     if (global.__gmapsAuthFailed) return true;
     if (!global.LIFTCORE_GOOGLE_MAPS_KEY) return true;
     return false;
@@ -668,8 +669,8 @@
   }
 
   function mapHasGoogleError(mapEl) {
+    if (global.liftcoreMapElHasGoogleError) return global.liftcoreMapElHasGoogleError(mapEl);
     if (!mapEl) return false;
-    // فقط حاوية خطأ Google الرسمية — لا تعتمد على نص «تحميل» وغيره (كانت تحوّل OSM بالخطأ)
     return !!mapEl.querySelector('.gm-err-container, .gm-err-title, .gm-err-message');
   }
 
@@ -680,7 +681,7 @@
     global.__gmapsAuthFailed = true;
     var coords = state.opts && $(state.opts.coordsEl);
     if (coords) {
-      coords.textContent = 'تعذّر تحميل Google Maps — تحقق من قيود المفتاح (HTTP referrers) لـ jama.liftcoreapp.com';
+      coords.textContent = lcT('تعذّر تحميل Google Maps — تم التحويل إلى OpenStreetMap');
       coords.style.color = 'var(--warning)';
     }
     var opts = state.opts;
@@ -689,8 +690,7 @@
   }
 
   function scheduleGoogleErrorCheck() {
-    // فحص متأخر فقط لحاوية الخطأ الرسمية — بعد اكتمال التحميل
-    [2000, 4000].forEach(function (ms) {
+    [1000, 2500, 5000, 8000].forEach(function (ms) {
       setTimeout(fallbackFromGoogleError, ms);
     });
   }
