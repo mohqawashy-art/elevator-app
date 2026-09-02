@@ -15,6 +15,7 @@ from installation.models import (
     normalize_cost_category,
 )
 from models import db
+from tenant_scope import tenant_query
 
 _cost_phases_migrated = False
 
@@ -175,6 +176,27 @@ def _migrate_legacy_cost_categories() -> None:
 def cost_phase_label(category: str) -> str:
     cat = (category or '').strip()
     return COST_PHASE_LABELS.get(cat, cat or '—')
+
+
+def delete_install_project(project: InstallProject) -> str:
+    """حذف مشروع تركيب (عروضه، كارت المشروع، جدول التنفيذ). يُرجع كود المشروع."""
+    from models import ElevatorEstimate
+
+    code = project.code or ''
+    lead = project.lead
+    if lead and lead.status == 'تم تحويله لمشروع':
+        lead.status = 'جاري التواصل'
+
+    for est in tenant_query(ElevatorEstimate).filter_by(result_project_id=project.id).all():
+        est.result_project_id = None
+        est.result_quotation_id = None
+
+    project.accepted_quotation_id = None
+    project.contract_id = None
+    project.lead_id = None
+    db.session.flush()
+    db.session.delete(project)
+    return code
 
 
 def project_contract_value(project: InstallProject) -> float:

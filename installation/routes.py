@@ -263,6 +263,20 @@ def projects_list():
     )
 
 
+@install_bp.route('/projects/<int:project_id>/delete', methods=['POST'])
+def project_delete(project_id):
+    from installation.project_card import delete_install_project
+
+    project = tenant_get_or_404(InstallProject, project_id)
+    if project.execution_active:
+        flash('لا يمكن حذف مشروع بدأ تنفيذه — أغلقه من جدول التنفيذ أولاً', 'error')
+        return redirect(url_for('installation.projects_list'))
+    code = delete_install_project(project)
+    db.session.commit()
+    flash(f'تم حذف المشروع {code}', 'success')
+    return redirect(url_for('installation.projects_list'))
+
+
 @install_bp.route('/projects/<int:project_id>')
 def project_detail(project_id):
     from installation.project_card import build_project_card, ensure_project_card_schema

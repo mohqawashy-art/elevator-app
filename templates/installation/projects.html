@@ -13,6 +13,12 @@
       <div class="page-title">مشاريع التركيب</div>
     </div>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
     <div class="panel">
       <table>
         <thead>
@@ -22,6 +28,7 @@
             <th>الحالة</th>
             <th>تاريخ الإنشاء</th>
             <th></th>
+            <th style="width:72px">حذف</th>
           </tr>
         </thead>
         <tbody>
@@ -46,9 +53,19 @@
               <a href="/installation/projects/{{ p.id }}" class="btn btn-secondary btn-sm">فتح</a>
               {% endif %}
             </td>
+            <td>
+              {% if p.execution_active %}
+              <span style="color:var(--text3);font-size:11px">—</span>
+              {% else %}
+              <form method="post" action="/installation/projects/{{ p.id }}/delete" onsubmit="return confirm('حذف المشروع {{ p.code }}؟ لا يمكن التراجع.')" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger)">حذف</button>
+              </form>
+              {% endif %}
+            </td>
           </tr>
           {% else %}
-          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">لا توجد مشاريع بعد — تظهر هنا بعد موافقة عرض من المبيعات</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">لا توجد مشاريع بعد — تظهر هنا بعد موافقة عرض من المبيعات</td></tr>
           {% endfor %}
         </tbody>
       </table>

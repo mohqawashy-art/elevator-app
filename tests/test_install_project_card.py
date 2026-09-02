@@ -427,3 +427,32 @@ def test_project_card_rejects_maintenance_contract_link(client):
     with client.application.app_context():
         p = db.session.get(InstallProject, pid)
         assert p.contract_id == iid
+
+
+def test_project_delete_from_list(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-DEL-01',
+            title='مشروع للحذف',
+            status='تسعير',
+        )
+        db.session.add(project)
+        db.session.commit()
+        pid = project.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        f'/installation/projects/{pid}/delete',
+        data={'csrf_token': 'test-csrf'},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    body = resp.data.decode('utf-8', errors='ignore')
+    assert 'تم حذف المشروع' in body
+    with client.application.app_context():
+        assert db.session.get(InstallProject, pid) is None
