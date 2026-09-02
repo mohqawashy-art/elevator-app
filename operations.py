@@ -1099,6 +1099,8 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
         contract = item.get('contract')
         coords = item_coordinates(item)
         already = _periodic_visit_in_month(elev.id, year, month)
+        if already:
+            continue
         candidates.append({
             'elevator_id': elev.id,
             'elevator': elev.code,
@@ -1109,12 +1111,9 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
             'customer_id': customer.id if customer else None,
             'building': (elev.building_name or '').strip(),
             'district': district,
-            'route_order': i + 1,
+            'route_order': len(candidates) + 1,
             'lat': coords[0] if coords else None,
             'lng': coords[1] if coords else None,
-            'already_planned': bool(already),
-            'existing_visit_id': already.id if already else None,
-            'existing_visit_date': str(already.visit_date) if already and already.visit_date else None,
         })
     return {
         'plan_month': plan_month,

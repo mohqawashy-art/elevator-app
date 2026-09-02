@@ -1230,6 +1230,15 @@ function draftElevatorIds() {
   return set;
 }
 
+function wizardCandidatePool(list) {
+  var used = draftElevatorIds();
+  return (list || []).filter(function (c) {
+    if (used[String(c.elevator_id)]) return false;
+    if (c.already_planned) return false;
+    return true;
+  });
+}
+
 function loadWizardCandidates() {
   var ym = planMonth();
   var district = planDistrictFilter();
@@ -1254,12 +1263,11 @@ function loadWizardCandidates() {
         fillPlanDayOptions();
       }
       renderWizardCandidates(PLAN_CANDIDATES);
-      var avail = PLAN_CANDIDATES.filter(function (c) {
-        return !draftElevatorIds()[String(c.elevator_id)];
-      }).length;
+      var avail = wizardCandidatePool(PLAN_CANDIDATES).length;
       if (meta) {
-        meta.textContent = 'المنطقة «' + district + '»: ' + PLAN_CANDIDATES.length +
-          ' مصعد — المتاح للإضافة: ' + avail + ' (مرتّب جغرافياً)';
+        meta.textContent = avail
+          ? ('المنطقة «' + district + '»: ' + avail + ' مصعد لم يُجدول بعد (مرتّب جغرافياً)')
+          : ('المنطقة «' + district + '»: كل المصاعد مجدولة أو مُضافة للمسودة');
       }
     })
     .catch(function (err) {
@@ -1272,23 +1280,17 @@ function loadWizardCandidates() {
 function renderWizardCandidates(list) {
   var el = document.getElementById('plan-candidates');
   if (!el) return;
-  var used = draftElevatorIds();
-  var rows = (list || []).filter(function (c) {
-    return !used[String(c.elevator_id)];
-  });
+  var rows = wizardCandidatePool(list);
   if (!rows.length) {
-    el.innerHTML = '<p style="padding:12px;color:var(--text3);font-size:13px">لا عملاء متاحين لهذه المنطقة (أو أُضيفوا للمسودة مسبقاً).</p>';
+    el.innerHTML = '<p style="padding:12px;color:var(--text3);font-size:13px">لا يوجد عملاء غير مجدولين في هذه المنطقة — أضف من منطقة أخرى أو اعرض «عملاء لم تُشمَلهم الزيارات» أعلاه.</p>';
     return;
   }
   el.innerHTML =
-    '<div style="display:grid;grid-template-columns:36px minmax(160px,1.4fr) 70px minmax(100px,.9fr) 90px;gap:6px;padding:8px 10px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
-      '<span></span><span>العميل</span><span>المصعد</span><span>المبنى</span><span>حالة</span>' +
+    '<div style="display:grid;grid-template-columns:36px minmax(160px,1.4fr) 70px minmax(100px,1fr);gap:6px;padding:8px 10px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
+      '<span></span><span>العميل</span><span>المصعد</span><span>المبنى</span>' +
     '</div>' +
     rows.map(function (c) {
-      var status = c.already_planned
-        ? ('في الخطة ' + (c.existing_visit_date || ''))
-        : ('#' + (c.route_order || ''));
-      return '<label style="display:grid;grid-template-columns:36px minmax(160px,1.4fr) 70px minmax(100px,.9fr) 90px;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">' +
+      return '<label style="display:grid;grid-template-columns:36px minmax(160px,1.4fr) 70px minmax(100px,1fr);gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">' +
         '<input type="checkbox" class="plan-cand-cb" value="' + c.elevator_id + '" data-elevator-id="' + c.elevator_id + '">' +
         '<span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(c.customer || c.customer_name || '') + '">' +
           escHtml(c.customer || c.customer_name || '—') + '</span>' +
@@ -1296,7 +1298,6 @@ function renderWizardCandidates(list) {
           escHtml(c.elevator || c.elevator_code || '') + '</span>' +
         '<span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
           escHtml(c.building || '—') + '</span>' +
-        '<span style="font-size:11px;color:var(--text3)">' + escHtml(status) + '</span>' +
       '</label>';
     }).join('');
 }
