@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
+import re
 import urllib.error
 import urllib.request
 
 logger = logging.getLogger(__name__)
+_URL_RE = re.compile(r'https?://[^\s<>"\']+')
 
 
 def _mail_from() -> str:
@@ -63,6 +66,32 @@ def _parse_resend_error(body: bytes | str) -> str:
     return text[:180]
 
 
+def _plain_to_html(body_text: str) -> str:
+    """HTML بسيط RTL — بعض عملاء البريد لا يعرضون text/plain العربي."""
+    safe = html.escape(body_text or '', quote=False)
+
+    def _linkify(match: re.Match[str]) -> str:
+        url = match.group(0)
+        return (
+            f'<a href="{html.escape(url, quote=True)}" '
+            f'style="color:#1a56db;word-break:break-all">{html.escape(url, quote=False)}</a>'
+        )
+
+    linked = _URL_RE.sub(_linkify, safe)
+    linked = linked.replace('\n\n', '</p><p style="margin:0 0 12px">')
+    linked = linked.replace('\n', '<br>\n')
+    return (
+        '<!DOCTYPE html>\n'
+        '<html lang="ar" dir="rtl">\n'
+        '<head><meta charset="utf-8">'
+        '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head>\n'
+        '<body style="margin:0;padding:16px;font-family:Tahoma,Arial,sans-serif;'
+        'font-size:15px;line-height:1.7;color:#1a1a1a;background:#ffffff">\n'
+        f'<div style="max-width:640px;margin:0 auto"><p style="margin:0 0 12px">{linked}</p></div>\n'
+        '</body></html>'
+    )
+
+
 def _send_email(
     *,
     to_email: str,
@@ -70,13 +99,22 @@ def _send_email(
     body_text: str,
     log_tag: str,
     reply_to: str | None = None,
+    html_body: str | None = None,
 ) -> dict:
     """يرجع {ok, reason, detail?} — ok=True فقط عند إرسال فعلي ناجح."""
     _ensure_mail_env()
     to_email = (to_email or '').strip()
+    subject = (subject or '').strip()
+    body_text = (body_text or '').strip()
     if not to_email:
         logger.warning('%s skipped — empty recipient', log_tag)
         return {'ok': False, 'reason': 'empty_recipient'}
+    if not subject:
+        logger.warning('%s skipped — empty subject', log_tag)
+        return {'ok': False, 'reason': 'empty_subject'}
+    if not body_text:
+        logger.warning('%s skipped — empty body', log_tag)
+        return {'ok': False, 'reason': 'empty_body'}
 
     api_key = os.environ.get('MAIL_API_KEY', '').strip()
     if not api_key:
@@ -91,6 +129,7 @@ def _send_email(
         'to': [to_email],
         'subject': subject,
         'text': body_text,
+        'html': html_body or _plain_to_html(body_text),
     }
     reply = (reply_to or '').strip()
     if reply and '@' in reply:
@@ -161,26 +200,58 @@ def send_onboarding_invite_email(
     invite_url: str,
     plan: str = 'basic',
     days: int | None = None,
-) -> bool:
+) -> dict:
     """يرسل رابط تعبئة بيانات الشركة للعميل بعد الاتفاق التجاري."""
+    from plan_catalog import PLAN_CATALOG
+
     name = (contact_name or '').strip() or 'عميلنا الكريم'
-    plan_label = (plan or 'basic').strip()
+    link = (invite_url or '').strip()
+    if not link:
+        logger.warning('onboarding invite skipped — empty invite_url')
+        return {'ok': False, 'reason': 'empty_invite_url'}
+
+    plan_key = (plan or 'basic').strip().lower()
+    plan_meta = PLAN_CATALOG.get(plan_key) or {}
+    plan_label = plan_meta.get('label_ar') or plan_meta.get('label') or plan_key
     ttl = f'\nصلاحية الرابط: {days} يوماً.\n' if days else '\n'
     subject = 'دعوة إكمال بيانات شركتك في LiftCore'
     body_text = (
         f'مرحباً {name},\n\n'
         'شكراً لاختيارك LiftCore.\n'
         'يرجى إكمال بيانات شركتك عبر الرابط التالي حتى نجهّز حسابك:\n\n'
-        f'{invite_url}\n'
+        f'{link}\n'
         f'{ttl}'
         f'الباقة المتفق عليها: {plan_label}\n\n'
         'بعد استلام البيانات سنراجعها ونفعّل الحساب ونرسل لك بيانات الدخول.\n\n'
         '— فريق LiftCore'
     )
+    html_body = (
+        '<!DOCTYPE html>\n'
+        '<html lang="ar" dir="rtl">\n'
+        '<head><meta charset="utf-8">'
+        '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head>\n'
+        '<body style="margin:0;padding:16px;font-family:Tahoma,Arial,sans-serif;'
+        'font-size:15px;line-height:1.7;color:#1a1a1a;background:#ffffff">\n'
+        '<div style="max-width:640px;margin:0 auto">\n'
+        f'<p style="margin:0 0 12px">مرحباً {html.escape(name, quote=False)},</p>\n'
+        '<p style="margin:0 0 12px">شكراً لاختيارك <strong>LiftCore</strong>.</p>\n'
+        '<p style="margin:0 0 12px">يرجى إكمال بيانات شركتك عبر الرابط التالي حتى نجهّز حسابك:</p>\n'
+        f'<p style="margin:0 0 16px"><a href="{html.escape(link, quote=True)}" '
+        f'style="display:inline-block;padding:12px 18px;background:#1a56db;color:#fff;'
+        f'text-decoration:none;border-radius:8px;font-weight:600">إكمال بيانات الشركة</a></p>\n'
+        f'<p style="margin:0 0 12px;word-break:break-all;color:#555">{html.escape(link, quote=False)}</p>\n'
+        + (f'<p style="margin:0 0 12px">صلاحية الرابط: {int(days)} يوماً.</p>\n' if days else '')
+        + f'<p style="margin:0 0 12px">الباقة المتفق عليها: {html.escape(str(plan_label), quote=False)}</p>\n'
+        '<p style="margin:0 0 12px">بعد استلام البيانات سنراجعها ونفعّل الحساب '
+        'ونرسل لك بيانات الدخول.</p>\n'
+        '<p style="margin:16px 0 0;color:#555">— فريق LiftCore</p>\n'
+        '</div></body></html>'
+    )
     return _send_email(
         to_email=to_email,
         subject=subject,
         body_text=body_text,
+        html_body=html_body,
         log_tag='onboarding invite',
     )
 
@@ -348,6 +419,10 @@ def mail_result_message(result: dict | bool, *, to_email: str) -> tuple[str, str
         )
     if reason == 'empty_recipient':
         return 'لم يُرسل البريد: لا يوجد عنوان مستلم.', 'warn'
+    if reason == 'empty_body':
+        return 'لم يُرسل البريد: محتوى الرسالة فارغ.', 'warn'
+    if reason == 'empty_invite_url':
+        return 'لم يُرسل البريد: رابط الدعوة فارغ — انسخ الرابط من لوحة المشغّل.', 'warn'
     detail = (result.get('detail') or '').strip()
     if detail:
         return f'تعذّر إرسال البريد إلى {to_email} ({reason}): {detail}', 'warn'
