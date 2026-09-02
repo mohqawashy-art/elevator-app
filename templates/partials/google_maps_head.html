@@ -56,17 +56,9 @@
     if (!window.google || !window.google.maps || window.__gmapsAuthFailed) return;
     if (window.liftcoreScanMapContainersForErrors()) {
       window.liftcoreNotifyMapsFallback();
-      return;
     }
-    try {
-      var g = new google.maps.Geocoder();
-      g.geocode({ address: 'Makkah', componentRestrictions: { country: 'SA' } }, function (_res, status) {
-        if (status === 'REQUEST_DENIED' || status === 'OVER_QUERY_LIMIT') {
-          window.__gmapsAuthFailed = true;
-          window.liftcoreNotifyMapsFallback();
-        }
-      });
-    } catch (e) { /* ignore */ }
+    /* لا نستخدم Geocoder للتحقق — فشله (مثلاً Geocoding API غير مفعّل على المفتاح)
+       كان يعطّل خرائط Google بالكامل رغم أن Maps JavaScript API يعمل. */
   };
   window.whenGoogleMapsReady = function (fn) {
     if (!window.liftcoreGoogleMapsUsable()) { fn(); return; }
