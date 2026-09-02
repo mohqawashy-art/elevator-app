@@ -321,6 +321,9 @@ class Contract(TenantMixin, db.Model):
     city            = db.Column(db.String(100))
     district        = db.Column(db.String(100))
     address         = db.Column(db.Text)
+    lat             = db.Column(db.String(20))
+    lng             = db.Column(db.String(20))
+    maps_url        = db.Column(db.String(500))
     file_path       = db.Column(db.Text)  # ملفات العقد PDF — مسار واحد أو JSON متعدد
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)

@@ -140,6 +140,7 @@
         <div class="field form-full map-picker-section">
           <label>{{ ui('موقع العميل على الخريطة', 'Client Location on Map') }}</label>
           <p class="map-picker-hint">{{ ui('اكتب العنوان في خانة البحث واضغط «بحث»، أو انقر على الخريطة، أو استخدم «تطبيق على الخريطة» بعد إدخال المدينة والحي والعنوان.', 'Enter the address in the search box and click Search, click the map, or use Apply to Map after entering city, district, and address.') }}</p>
+          <p class="map-picker-hint" style="color:var(--warning)">{{ ui('تخطيط زيارات الصيانة يعتمد على عنوان العقد — وليس على هذا الحقل.', 'Maintenance visit planning uses the contract address — not this client field.') }}</p>
           <div class="map-picker-toolbar">
             <input type="text" id="client-map-search" class="map-picker-search" placeholder="{{ ui('ابحث: برج، شارع، حي، مكة...', 'Search: tower, street, district, Makkah...') }}">
             <button type="button" class="btn btn-primary btn-sm" id="client-map-search-btn" onclick="searchClientMap()">{{ ui('بحث', 'Search') }}</button>

@@ -600,7 +600,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6.5 1C4.57 1 3 2.57 3 4.5S6.5 12 6.5 12 10 6.43 10 4.5 8.43 1 6.5 1z"/><circle cx="6.5" cy="4.5" r="1.3"/></svg>
           موقع العقد على الخريطة
         </div>
-        <p class="map-picker-hint" style="margin-bottom:12px">ابحث عن المبنى وثبّت الدبوس ثم احفظ العقد — الموقع يُخزَّن مع العميل ولا يعود لإحداثيات الحرم الافتراضية</p>
+        <p class="map-picker-hint" style="margin-bottom:12px">موقع الخدمة على العقد — يُستخدم في تخطيط زيارات الصيانة (وليس عنوان العميل في صفحة العملاء)</p>
         <div class="map-picker-toolbar">
           <input type="text" id="contract-map-search" class="map-picker-search" placeholder="ابحث عن المبنى أو الحي...">
           <button type="button" class="btn btn-primary btn-sm" id="contract-map-search-btn">بحث</button>
@@ -624,7 +624,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <label>العنوان التفصيلي</label>
               <button type="button" class="btn btn-secondary btn-sm" onclick="copyContractAddressFromClient()">عنوان العميل</button>
             </div>
-            <input type="text" id="f-contract-address" placeholder="يُنسخ من بيانات العميل أو يُدخل يدوياً">
+            <input type="text" id="f-contract-address" placeholder="عنوان موقع الخدمة لهذا العقد">
           </div>
         </div>
       </div>
@@ -1733,45 +1733,28 @@ function hasUsableGps(lat, lng) {
 }
 
 function persistContractPinToCustomer(data) {
+  /* يُحفظ مع العقد عند الحفظ — لا يُحدَّث عنوان العميل تلقائياً */
   if (!data || !hasUsableGps(data.lat, data.lng)) return;
-  var sel = document.getElementById('f-client-sel');
-  var cid = sel && sel.value;
-  if (!cid) return;
-  var lat = String(data.lat);
-  var lng = String(data.lng);
-  var mapsUrl = data.maps_url || ('https://www.google.com/maps?q=' + lat + ',' + lng);
-  var rec = CUSTOMERS.find(function(x) { return String(x.id) === String(cid); });
-  if (rec) {
-    rec.lat = lat;
-    rec.lng = lng;
-    rec.maps_url = mapsUrl;
-  }
-  fetch('/api/customers/' + cid + '/location', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ lat: lat, lng: lng, maps_url: mapsUrl })
-  }).catch(function() {});
 }
 
 function placeContractMap(cust, loc) {
   loc = loc || {};
   if (typeof LiftCoreMapPicker === 'undefined') return;
-  if (cust && hasUsableGps(cust.lat, cust.lng)) {
-    LiftCoreMapPicker.setLocation(cust.lat, cust.lng, {
-      address: loc.address || cust.address || '',
-      city: loc.city || cust.city || '',
-      district: loc.district || cust.district || '',
-      maps_url: cust.maps_url || ('https://www.google.com/maps?q=' + cust.lat + ',' + cust.lng),
-      formatted_address: loc.address || cust.address || '',
+  if (hasUsableGps(loc.lat, loc.lng)) {
+    LiftCoreMapPicker.setLocation(loc.lat, loc.lng, {
+      address: loc.address || '',
+      city: loc.city || '',
+      district: loc.district || '',
+      maps_url: loc.maps_url || ('https://www.google.com/maps?q=' + loc.lat + ',' + loc.lng),
+      formatted_address: loc.address || '',
     });
-    if (cust.maps_url) document.getElementById('f-contract-maps-url').value = cust.maps_url;
-    document.getElementById('f-contract-lat').value = cust.lat;
-    document.getElementById('f-contract-lng').value = cust.lng;
+    if (loc.maps_url) document.getElementById('f-contract-maps-url').value = loc.maps_url;
+    document.getElementById('f-contract-lat').value = loc.lat;
+    document.getElementById('f-contract-lng').value = loc.lng;
     if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
     return;
   }
-  var mapQuery = buildClientLocationQuery(loc) || (cust ? buildClientLocationQuery(cust) : '');
+  var mapQuery = buildClientLocationQuery(loc);
   if (mapQuery) {
     whenGoogleMapsReady(function () {
       LiftCoreMapPicker.geocodeAddress(mapQuery, function () {
@@ -1797,16 +1780,22 @@ function applyContractClientData(options) {
     if (typeof LiftCoreMapPicker !== 'undefined') LiftCoreMapPicker.reset();
     return;
   }
-  document.getElementById('f-contract-city').value = c.city || '';
-  document.getElementById('f-contract-district').value = c.district || '';
-  document.getElementById('f-contract-address').value = c.address || '';
-  if (!c.address && !c.city && !c.district && !c.lat) {
-    if (!options.silent) alert('لا يوجد عنوان مسجّل لهذا العميل في صفحة العملاء');
+  if (options.copyFromClient) {
+    document.getElementById('f-contract-city').value = c.city || '';
+    document.getElementById('f-contract-district').value = c.district || '';
+    document.getElementById('f-contract-address').value = c.address || '';
+    var mapQuery = buildClientLocationQuery(c);
+    setContractMapSearchQuery(c.address || mapQuery);
+    placeContractMap(null, c);
+    if (!options.silent && !c.address && !c.city && !c.district) {
+      alert('لا يوجد عنوان مسجّل لهذا العميل في صفحة العملاء');
+    }
     return;
   }
-  var mapQuery = buildClientLocationQuery(c);
-  setContractMapSearchQuery(c.address || mapQuery);
-  placeContractMap(c, c);
+  if (!options.silent) {
+    alert('حدّد موقع الخدمة على العقد (مدينة، حي، خريطة) — تخطيط الزيارات يعتمد على عنوان العقد وليس عنوان العميل');
+  }
+  if (typeof LiftCoreMapPicker !== 'undefined') LiftCoreMapPicker.reset();
 }
 
 function onContractClientSelected() {
@@ -1830,7 +1819,7 @@ function copyContractAddressFromClient() {
     alert('اختر العميل أولاً');
     return;
   }
-  applyContractClientData({ silent: false });
+  applyContractClientData({ silent: false, copyFromClient: true });
 }
 
 function onContractMapPickerUpdate(data) {
@@ -2081,6 +2070,9 @@ function editContract(id) {
   document.getElementById('f-contract-city').value = c.city || '';
   document.getElementById('f-contract-district').value = c.district || '';
   document.getElementById('f-contract-address').value = c.address || '';
+  document.getElementById('f-contract-lat').value = c.lat || '';
+  document.getElementById('f-contract-lng').value = c.lng || '';
+  document.getElementById('f-contract-maps-url').value = c.maps_url || '';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock && window.LiftCoreTaxCalc) {
     if (c.total != null && LiftCoreTaxCalc.loadInclusiveElement) {
@@ -2093,12 +2085,18 @@ function editContract(id) {
   calcTotalVisits();
   setContractFileUi(c);
   openContractFormModal(function () {
-    var loc = { address: c.address, district: c.district, city: c.city };
+    var loc = {
+      address: c.address,
+      district: c.district,
+      city: c.city,
+      lat: c.lat,
+      lng: c.lng,
+      maps_url: c.maps_url,
+    };
     if (c.address || c.city || c.district) {
       setContractMapSearchQuery(c.address || buildClientLocationQuery(loc));
     }
-    var cust = CUSTOMERS.find(function(x) { return x.id === c.customer_id; });
-    placeContractMap(cust, loc);
+    placeContractMap(null, loc);
   });
 }
 
@@ -2819,6 +2817,10 @@ function getContractPosition(c) {
   var cust = getCustomerRecord(c.customer_id);
   if (cust && (cust.status || 'نشط') === 'غير نشط') return null;
   if (window.LiftCoreMap) {
+    var fromContract = LiftCoreMap.coordsForRecord({
+      lat: c.lat, lng: c.lng, city: c.city
+    });
+    if (fromContract) return fromContract;
     var fromMap = LiftCoreMap.coordsForRecord(cust || {
       lat: c.customer_lat, lng: c.customer_lng, city: c.customer_city
     });

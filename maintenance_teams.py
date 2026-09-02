@@ -22,7 +22,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def location_district(elev, cust=None) -> str:
-    """منطقة/موقع الزيارة — أساسها المصعد ثم العميل."""
+    """منطقة/موقع المصعد — للعرض العام (مصعد ثم عميل)."""
     if elev and (getattr(elev, 'district', None) or '').strip():
         return elev.district.strip()
     if elev and (getattr(elev, 'building_name', None) or '').strip():
@@ -36,11 +36,58 @@ def location_district(elev, cust=None) -> str:
     return 'غير محدد'
 
 
+def visit_site_district(contract=None, elev=None, cust=None) -> str:
+    """منطقة موقع الخدمة لتخطيط الزيارات — من العقد أولاً (وليس عنوان العميل)."""
+    if contract:
+        d = (getattr(contract, 'district', None) or '').strip()
+        if d:
+            return d
+        c = (getattr(contract, 'city', None) or '').strip()
+        if c:
+            return c
+    if elev and (getattr(elev, 'district', None) or '').strip():
+        return elev.district.strip()
+    if elev and (getattr(elev, 'building_name', None) or '').strip():
+        return elev.building_name.strip()
+    if elev and (getattr(elev, 'city', None) or '').strip():
+        return elev.city.strip()
+    return 'غير محدد'
+
+
+def _parse_coords(lat_raw, lng_raw) -> tuple[float, float] | None:
+    if not lat_raw or not lng_raw:
+        return None
+    try:
+        la = float(str(lat_raw).strip().replace(',', '.'))
+        ln = float(str(lng_raw).strip().replace(',', '.'))
+    except (TypeError, ValueError):
+        return None
+    if la == 0 and ln == 0:
+        return None
+    return la, ln
+
+
+def visit_site_coordinates(contract=None, elev=None, cust=None) -> tuple[float, float] | None:
+    """إحداثيات موقع الخدمة — عقد ثم مصعد (بدون عنوان العميل)."""
+    if contract:
+        coords = _parse_coords(getattr(contract, 'lat', None), getattr(contract, 'lng', None))
+        if coords:
+            return coords
+    if elev:
+        coords = _parse_coords(getattr(elev, 'lat', None), getattr(elev, 'lng', None))
+        if coords:
+            return coords
+    return None
+
+
 def item_cluster_key(item: dict) -> str:
-    """مفتاح تجميع بدون إحداثيات — مبني على موقع المصعد، مع تجميع مصاعد نفس المبنى."""
+    """مفتاح تجميع بدون إحداثيات — موقع العقد/المصعد."""
+    contract = item.get('contract')
     elev = item.get('elevator')
     cust = item.get('customer') or (elev.customer if elev else None)
-    base = location_district(elev, cust)
+    base = visit_site_district(contract, elev, cust)
+    if contract and (contract.address or '').strip():
+        return f'{base}|{(contract.address or "").strip()[:48]}'
     if elev:
         building = (elev.building_name or '').strip()
         address = (elev.address or '').strip()
@@ -48,8 +95,9 @@ def item_cluster_key(item: dict) -> str:
             return f'{base}|{building}'
         if address:
             return f'{base}|{address[:48]}'
-    if cust and cust.lat and cust.lng:
-        return f'{base}|@{cust.lat},{cust.lng}'
+    coords = visit_site_coordinates(contract, elev, cust)
+    if coords:
+        return f'{base}|@{coords[0]},{coords[1]}'
     if elev:
         return f'{base}|elev:{elev.id}'
     return base
@@ -58,21 +106,18 @@ def item_cluster_key(item: dict) -> str:
 def visit_coordinates(v: MaintenanceVisit) -> tuple[float, float] | None:
     elev = v.elevator
     cust = elev.customer if elev else None
-    if elev and getattr(elev, 'lat', None) and getattr(elev, 'lng', None):
-        return float(elev.lat), float(elev.lng)
-    if cust and cust.lat and cust.lng:
-        return float(cust.lat), float(cust.lng)
-    return None
+    contract = v.contract
+    if not contract and elev and v.visit_date:
+        from entity_links import active_contract_for_elevator
+        contract = active_contract_for_elevator(elev.id, v.visit_date)
+    return visit_site_coordinates(contract, elev, cust)
 
 
 def item_coordinates(item: dict) -> tuple[float, float] | None:
+    contract = item.get('contract')
     elev = item.get('elevator')
     cust = item.get('customer') or (elev.customer if elev else None)
-    if elev and getattr(elev, 'lat', None) and getattr(elev, 'lng', None):
-        return float(elev.lat), float(elev.lng)
-    if cust and cust.lat and cust.lng:
-        return float(cust.lat), float(cust.lng)
-    return None
+    return visit_site_coordinates(contract, elev, cust)
 
 
 def order_items_nearest_neighbor(items: list, coords_fn) -> list:

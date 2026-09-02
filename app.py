@@ -1200,6 +1200,9 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
         'city': c.city or '',
         'district': c.district or '',
         'address': c.address or '',
+        'lat': (c.lat or '') if hasattr(c, 'lat') else '',
+        'lng': (c.lng or '') if hasattr(c, 'lng') else '',
+        'maps_url': (c.maps_url or '') if hasattr(c, 'maps_url') else '',
         'notes': c.notes or '',
         'file_url': _contract_js_primary_url(c),
         'file_name': _contract_js_primary_name(c),
@@ -1555,6 +1558,9 @@ def _sqlite_legacy_schema_patches():
                 ('district', 'VARCHAR(100)'),
                 ('address', 'TEXT'),
                 ('paid_amount', 'FLOAT'),
+                ('lat', 'VARCHAR(20)'),
+                ('lng', 'VARCHAR(20)'),
+                ('maps_url', 'VARCHAR(500)'),
             ],
             'parts_billing': [
                 ('visit_id', 'INTEGER'), ('fault_id', 'INTEGER'), ('paid_amount', 'FLOAT'),
@@ -6828,34 +6834,30 @@ def _apply_contract_form(c, form):
     c.city = form.get('city', '')
     c.district = form.get('district', '')
     c.address = form.get('address', '')
-    c.notes = form.get('notes', '')
-    _apply_contract_paid_from_form(c, form)
-    _sync_customer_location_from_contract_form(c.customer_id, form)
-
-
-def _sync_customer_location_from_contract_form(customer_id, form):
-    """حفظ إحداثيات خريطة العقد على العميل حتى لا ترجع الدبوس لإحداثيات الحرم الافتراضية."""
-    if not customer_id:
-        return
     lat = (form.get('lat') or '').strip().replace(',', '.')
     lng = (form.get('lng') or '').strip().replace(',', '.')
     maps_url = (form.get('maps_url') or '').strip()
-    try:
-        la = float(lat)
-        ln = float(lng)
-    except (TypeError, ValueError):
-        return
-    if la == 0 and ln == 0:
-        return
-    if abs(la - 21.4225) < 0.0012 and abs(ln - 39.8262) < 0.0012:
-        return
-    cust = tenant_query(Customer).filter_by(id=int(customer_id)).first()
-    if not cust:
-        return
-    cust.lat = str(la)
-    cust.lng = str(ln)
-    if maps_url:
-        cust.maps_url = maps_url[:500]
+    if lat and lng:
+        try:
+            la, ln = float(lat), float(lng)
+            if la or ln:
+                if abs(la - 21.4225) < 0.0012 and abs(ln - 39.8262) < 0.0012:
+                    c.lat = None
+                    c.lng = None
+                else:
+                    c.lat = str(la)
+                    c.lng = str(ln)
+                    if maps_url:
+                        c.maps_url = maps_url[:500]
+        except (TypeError, ValueError):
+            pass
+    c.notes = form.get('notes', '')
+    _apply_contract_paid_from_form(c, form)
+
+
+def _sync_customer_location_from_contract_form(customer_id, form):
+    """مُعطّل — موقع الخدمة يُحفظ على العقد وليس على العميل (تخطيط الزيارات)."""
+    return
 
 
 def _fin_proof_js_items(row) -> list[dict]:
