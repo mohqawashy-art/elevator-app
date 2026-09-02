@@ -748,8 +748,11 @@ var CONTRACTS = {{ contracts_js|tojson }};
 
 function formatElevatorSelectLabel(e) {
   var code = e.code || e.elevator_code || '';
-  var building = (e.building || '').trim();
-  return code + ' — ' + (building || '—');
+  var place = (e.building || e.building_name || '').trim();
+  if (!place && (e.address || '').trim()) {
+    place = String(e.address).trim().split(/\r?\n/)[0].trim();
+  }
+  return place ? (code + ' — ' + place) : code;
 }
 var TECHNICIANS = {{ technicians_js|tojson }};
 var VISIT_MAP_POINTS = {{ visit_map_points|tojson }};

@@ -8322,11 +8322,7 @@ def maintenance_visits():
         technicians=technicians,
         visits_js=_visits_js_list(visits),
         customers_js=[{'id': c.id, 'code': c.code, 'name': c.name} for c in customers],
-        elevators_js=[
-            {'id': e.id, 'code': e.code, 'customer_id': e.customer_id,
-             'customer': e.customer.name if e.customer else ''}
-            for e in elevators
-        ],
+        elevators_js=[elevator_to_js_dict(e) for e in elevators],
         contracts_js=[
             {'id': c.id, 'code': c.code, 'customer_id': c.customer_id} for c in contracts
         ],
