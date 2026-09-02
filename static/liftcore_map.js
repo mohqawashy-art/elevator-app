@@ -36,6 +36,7 @@
   }
 
   function canUseAdvancedMarkers() {
+    if (!getMapId()) return false;
     var mc = getMarkerClasses();
     return !!(mc && mc.AdvancedMarkerElement);
   }
@@ -104,6 +105,7 @@
   }
 
   function requireMarkerClasses() {
+    if (!canUseAdvancedMarkers()) return null;
     var mc = getMarkerClasses();
     if (!mc || !mc.AdvancedMarkerElement) {
       return null;
@@ -114,18 +116,26 @@
   function createClusterMarker(cluster, unitLabel) {
     var count = cluster.count;
     var title = count + ' ' + (unitLabel || 'موقع');
-    var mc = requireMarkerClasses();
-    if (!mc) return null;
     var icon = makeClusterIcon(count);
-    var img = document.createElement('img');
-    img.src = icon.url;
-    img.width = icon.scaledSize.width;
-    img.height = icon.scaledSize.height;
-    img.alt = title;
-    return new mc.AdvancedMarkerElement({
+    var mc = requireMarkerClasses();
+    if (mc && mc.AdvancedMarkerElement) {
+      var img = document.createElement('img');
+      img.src = icon.url;
+      img.width = icon.scaledSize.width;
+      img.height = icon.scaledSize.height;
+      img.alt = title;
+      return new mc.AdvancedMarkerElement({
+        position: cluster.position,
+        title: title,
+        content: img,
+        zIndex: clusterZIndex(count)
+      });
+    }
+    if (!global.google || !global.google.maps || !global.google.maps.Marker) return null;
+    return new global.google.maps.Marker({
       position: cluster.position,
       title: title,
-      content: img,
+      icon: icon,
       zIndex: clusterZIndex(count)
     });
   }
@@ -146,14 +156,18 @@
     var scale = opts.scale || 1.2;
     var mc = requireMarkerClasses();
     if (mc && mc.AdvancedMarkerElement) {
-      return new mc.AdvancedMarkerElement({
-        map: opts.map || null,
-        position: position,
-        title: opts.title || '',
-        content: makePinContent(color, scale),
-        gmpDraggable: !!opts.draggable,
-        zIndex: opts.zIndex
-      });
+      try {
+        return new mc.AdvancedMarkerElement({
+          map: opts.map || null,
+          position: position,
+          title: opts.title || '',
+          content: makePinContent(color, scale),
+          gmpDraggable: !!opts.draggable,
+          zIndex: opts.zIndex
+        });
+      } catch (advErr) {
+        console.warn('LiftCoreMap: AdvancedMarkerElement failed, using classic marker', advErr);
+      }
     }
     if (!global.google || !global.google.maps || !global.google.maps.Marker) return null;
     return new global.google.maps.Marker({
@@ -305,11 +319,13 @@
   }
 
   function ensureMarkerLibReady(fn) {
+    if (!fn) return Promise.resolve();
     if (!global.google || !global.google.maps || global.__gmapsAuthFailed) {
+      fn();
       return Promise.resolve();
     }
     if (canUseAdvancedMarkers()) {
-      if (fn) fn();
+      fn();
       return Promise.resolve();
     }
     var loader;
@@ -323,13 +339,28 @@
         return lib;
       });
     } else {
+      fn();
       return Promise.resolve();
     }
     return loader.then(function () {
-      if (fn && canUseAdvancedMarkers()) fn();
+      fn();
     }).catch(function (err) {
       console.error('LiftCoreMap: failed to load marker library', err);
+      fn();
     });
+  }
+
+  var markerLibWaitAttempted = false;
+
+  /** انتظر مكتبة العلامات مرة واحدة فقط عند وجود mapId — وإلا تعلّق/حلقة لا نهائية */
+  function ensureMapMarkersReady(fn) {
+    if (!fn) return Promise.resolve();
+    if (!getMapId() || canUseAdvancedMarkers() || markerLibWaitAttempted) {
+      fn();
+      return Promise.resolve();
+    }
+    markerLibWaitAttempted = true;
+    return ensureMarkerLibReady(fn);
   }
 
   if (global.__gmapsMarkerLib) {
@@ -361,6 +392,7 @@
     coordsForRecord: coordsForRecord,
     bindMarkerHover: bindMarkerHover,
     geocodeMissing: geocodeMissing,
-    ensureMarkerLibReady: ensureMarkerLibReady
+    ensureMarkerLibReady: ensureMarkerLibReady,
+    ensureMapMarkersReady: ensureMapMarkersReady
   };
 })(typeof window !== 'undefined' ? window : this);

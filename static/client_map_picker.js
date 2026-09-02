@@ -329,10 +329,7 @@
       setLeafletMarker(lat, lng, pan, skipReverseGeocode);
       return;
     }
-    if (global.LiftCoreMap && LiftCoreMap.ensureMarkerLibReady && !LiftCoreMap.canUseAdvancedMarkers()) {
-      LiftCoreMap.ensureMarkerLibReady(function () { setMarkerPosition(lat, lng, panOrOpts); });
-      return;
-    }
+    function applyGoogleMarkerPosition() {
     var pos = { lat: lat, lng: lng };
     if (!state.marker) {
       state.marker = createMapMarker(pos);
@@ -371,6 +368,13 @@
       if (state.map.getZoom() < 15) state.map.setZoom(16);
     }
     if (!skipReverseGeocode) reverseGeocode(lat, lng);
+    }
+
+    if (global.LiftCoreMap && LiftCoreMap.ensureMapMarkersReady) {
+      LiftCoreMap.ensureMapMarkersReady(applyGoogleMarkerPosition);
+      return;
+    }
+    applyGoogleMarkerPosition();
   }
 
   function setLeafletMarker(lat, lng, pan, skipReverseGeocode) {
