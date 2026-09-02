@@ -328,7 +328,9 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overf
         </div>
       </div>
       <div class="hero-kpis">
-        <div class="kpi"><div class="kpi-lab">إجمالي الإيرادات</div><div class="kpi-val green" id="s-rev">—</div><div class="kpi-note" id="s-rev-note" style="font-size:11px;color:var(--text3);margin-top:4px">كل السجلات — يطابق صفحة الإيرادات</div></div>
+        <div class="kpi"><div class="kpi-lab">الإيراد المكتسب</div><div class="kpi-val green" id="s-rev">—</div><div class="kpi-note" id="s-rev-note" style="font-size:11px;color:var(--text3);margin-top:4px">مستحق بالزيارات — بعد خصم غير المكتسب</div></div>
+        <div class="kpi"><div class="kpi-lab">إيراد غير مكتسب</div><div class="kpi-val blue" id="s-unearned">—</div><div class="kpi-note" style="font-size:11px;color:var(--text3);margin-top:4px">عقود صيانة — لم تُنفَّذ زياراتها بعد</div></div>
+        <div class="kpi"><div class="kpi-lab">المبالغ المحصّلة</div><div class="kpi-val green" id="s-collected">—</div><div class="kpi-note" style="font-size:11px;color:var(--text3);margin-top:4px">ما دُفع فعلياً في الفترة</div></div>
         <div class="kpi"><div class="kpi-lab">إجمالي المصروفات</div><div class="kpi-val red" id="s-exp">—</div></div>
         <div class="kpi"><div class="kpi-lab">صافي الربح / الخسارة</div><div class="kpi-val" id="s-profit">—</div></div>
         <div class="kpi"><div class="kpi-lab">مصروفات الصيانة</div><div class="kpi-val gold" id="s-maint">—</div></div>
@@ -636,7 +638,9 @@ function loadHealth() {
       document.getElementById('health-margin').textContent = (s.margin_pct || 0) + '%';
       syncPrintMeta(d.date_from, d.date_to);
 
-      setMoney('s-rev', s.revenue);
+      setMoney('s-rev', s.revenue_earned != null ? s.revenue_earned : s.revenue);
+      setMoney('s-unearned', s.revenue_unearned);
+      setMoney('s-collected', s.revenue_collected);
       setMoney('s-exp', s.expenses);
       setMoney('s-profit', s.profit);
       var profitEl = document.getElementById('s-profit');

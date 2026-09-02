@@ -198,6 +198,38 @@ def summarize_revenue_rows(rows):
     }
 
 
+def _sum_registered_maintenance_contract_revenue(revenues, Contract):
+    """مجموع إيرادات عقود الصيانة المسجّلة في الفترة (قبل استبدالها بالمكتسب بالزيارات)."""
+    from contract_cost_allocation import _is_maintenance_contract
+    from customer_billing import revenue_counts_toward_contract
+
+    contract_ids = {
+        r.contract_id for r in revenues
+        if getattr(r, 'contract_id', None)
+    }
+    contracts_by_id = {}
+    if contract_ids:
+        for c in tenant_query(Contract).filter(Contract.id.in_(contract_ids)).all():
+            contracts_by_id[c.id] = c
+
+    total = 0.0
+    for r in revenues:
+        if (getattr(r, 'status', None) or '').strip() == 'ملغي':
+            continue
+        if not revenue_counts_toward_contract(r):
+            continue
+        is_maint = False
+        if r.contract_id and r.contract_id in contracts_by_id:
+            is_maint = _is_maintenance_contract(contracts_by_id[r.contract_id])
+        else:
+            rt = (getattr(r, 'revenue_type', None) or '').strip()
+            if rt and 'تركيب' not in rt and 'تحديث' not in rt:
+                is_maint = any(k in rt for k in ('صيانة', 'ضمان', 'تجديد', 'عقد'))
+        if is_maint:
+            total += float(getattr(r, 'total', None) or 0)
+    return _round_money(total)
+
+
 def tenant_revenue_totals(Revenue):
     """إجمالي الإيرادات للمؤسسة — نفس منطق بطاقة صفحة الإيرادات."""
     return summarize_revenue_rows(tenant_query(Revenue).all())
@@ -957,8 +989,19 @@ def get_financial_health_report(
     period_revenues = _filter_revenues(Revenue, date_from=df, date_to=dt)
     period_expenses = _filter_expenses(Expense, date_from=df, date_to=dt)
     rev_summary = summarize_revenue_rows(period_revenues)
-    period_revenue = rev_summary['total']
+    period_revenue_registered = rev_summary['total']
+    period_revenue_collected = rev_summary['collected']
     all_rev_summary = tenant_revenue_totals(Revenue)
+
+    from contract_cost_allocation import maintenance_contracts_pnl_summary
+
+    maint_pnl = maintenance_contracts_pnl_summary(period_from=df, period_to=dt)
+    maint_registered = _sum_registered_maintenance_contract_revenue(period_revenues, Contract)
+    period_revenue_earned = _round_money(
+        period_revenue_registered - maint_registered + maint_pnl['earned_in_period']
+    )
+    period_revenue_unearned = maint_pnl['unearned_total']
+    period_revenue = period_revenue_earned
 
     month_labels, monthly_revenue = _monthly_totals_from_records(
         period_revenues, df, dt,
@@ -1058,8 +1101,8 @@ def get_financial_health_report(
     # إجمالي المصروفات المعروض = المسجّل + رواتب تقديرية إن وُجدت فقط عند غياب قيود رواتب
     if salary_addon:
         total_expenses = _round_money(total_expenses + salary_addon)
-        net_profit = _round_money(total_revenue - total_expenses)
-        margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
+        net_profit = _round_money(period_revenue - total_expenses)
+        margin_pct = _round_money(net_profit / period_revenue * 100) if period_revenue else 0.0
         health_text, health_level = _health_label(margin_pct, net_profit)
     expenses_for_pct = max(total_expenses, maintenance_total + other_expenses) or 1.0
     maintenance_costs = {
@@ -1208,9 +1251,13 @@ def get_financial_health_report(
         'date_to': dt.isoformat(),
         'period_label': period_label,
         'summary': {
-            'revenue': all_rev_summary['total'],
+            'revenue': period_revenue_earned,
+            'revenue_earned': period_revenue_earned,
+            'revenue_collected': period_revenue_collected,
+            'revenue_unearned': period_revenue_unearned,
+            'revenue_registered_period': period_revenue_registered,
             'revenue_all_time': all_rev_summary['total'],
-            'revenue_period': period_revenue,
+            'revenue_period': period_revenue_earned,
             'revenue_count': all_rev_summary['count'],
             'revenue_period_count': rev_summary['count'],
             'expenses': total_expenses,
