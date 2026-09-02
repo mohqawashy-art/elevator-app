@@ -59,6 +59,23 @@ def run_pg(cmd: list[str], env: dict) -> None:
 
 
 def run_pg_admin(cmd: list[str], env: dict) -> None:
+    """createdb/dropdb كمستخدم postgres محلياً (بدون طلب كلمة مرور)."""
+    base = cmd[0]
+    if base in ('createdb', 'dropdb'):
+        args = cmd[1:]
+        # أزل -h/-p/-U لاستخدام peer auth مع postgres
+        cleaned = []
+        skip_next = False
+        for i, a in enumerate(args):
+            if skip_next:
+                skip_next = False
+                continue
+            if a in ('-h', '-p', '-U'):
+                skip_next = True
+                continue
+            cleaned.append(a)
+        run_pg(['sudo', '-u', 'postgres', base, *cleaned], env)
+        return
     try:
         run_pg(cmd, env)
     except subprocess.CalledProcessError:
@@ -67,12 +84,8 @@ def run_pg_admin(cmd: list[str], env: dict) -> None:
 
 def ensure_temp_db(pg: dict, temp_name: str, backup: Path) -> None:
     env = _pg_env(pg)
-    run_pg_admin([
-        'dropdb', '-h', pg['host'], '-p', pg['port'], '--if-exists', temp_name,
-    ], env)
-    run_pg_admin([
-        'createdb', '-h', pg['host'], '-p', pg['port'], '-O', pg['user'], temp_name,
-    ], env)
+    run_pg_admin(['dropdb', '--if-exists', temp_name], env)
+    run_pg_admin(['createdb', '-O', pg['user'], temp_name], env)
     run_pg([
         'pg_restore', '-h', pg['host'], '-p', pg['port'], '-U', pg['user'],
         '-d', temp_name, '--no-owner', '--role', pg['user'], str(backup),
@@ -139,9 +152,7 @@ def restore_codes(backup: Path, org_slug: str, codes: list[str], dry_run: bool) 
                     {'id': pid},
                 ).one()
             print(f'WOULD_RESTORE id={pid} code={row[0]} status={row[1]} title={row[2] or ""}')
-        run_pg_admin([
-            'dropdb', '-h', pg['host'], '-p', pg['port'], '--if-exists', temp_name,
-        ], _pg_env(pg))
+        run_pg_admin(['dropdb', '--if-exists', temp_name], _pg_env(pg))
         return
 
     ensure_temp_db(pg, temp_name, backup)
@@ -199,10 +210,7 @@ def restore_codes(backup: Path, org_slug: str, codes: list[str], dry_run: bool) 
                 ).first()
             print(f'RESTORED {pid} {row[0] if row else "?"}')
 
-    env = _pg_env(pg)
-    run_pg_admin([
-        'dropdb', '-h', pg['host'], '-p', pg['port'], '--if-exists', temp_name,
-    ], env)
+    run_pg_admin(['dropdb', '--if-exists', temp_name], _pg_env(pg))
 
 
 def expand_code_range(spec: str) -> list[str]:
