@@ -31,19 +31,6 @@
           <span class="field-hint">{{ ui('يُترجم تلقائياً أثناء الكتابة بالعربية', 'Auto-translated while typing in Arabic') }}</span>
         </div>
         <div class="field">
-          <label>{{ ui('المدينة', 'City') }}</label>
-          <div class="select-with-add">
-            <select id="f-city-sel" style="flex:1;width:100%">
-              <option value="">{{ ui('اختر المدينة', 'Select city') }}</option>
-            </select>
-            <button type="button" class="add-opt-btn" onclick="addNewCity()" title="{{ ui('إضافة مدينة جديدة', 'Add new city') }}">+</button>
-          </div>
-        </div>
-        <div class="field">
-          <label>{{ ui('الحي', 'District') }}</label>
-          <input type="text" id="f-district" placeholder="{{ ui('اسم الحي', 'District name') }}">
-        </div>
-        <div class="field">
           <label>{{ ui('اسم المسؤول', 'Contact Person') }}</label>
           <input type="text" id="f-contact" placeholder="{{ ui('اسم المسؤول', 'Contact person') }}">
           <div class="contact-actions">
@@ -137,27 +124,7 @@
           <div id="f-fleet-status" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;color:var(--text1)">{{ ui('بدون مصاعد', 'No elevators') }}</div>
           <span class="field-hint">{{ ui('تُحدَّث تلقائياً عند إضافة المصاعد', 'Updates automatically when elevators are added') }}</span>
         </div>
-        <div class="field form-full map-picker-section">
-          <label>{{ ui('موقع العميل على الخريطة', 'Client Location on Map') }}</label>
-          <p class="map-picker-hint">{{ ui('اكتب العنوان في خانة البحث واضغط «بحث»، أو انقر على الخريطة، أو استخدم «تطبيق على الخريطة» بعد إدخال المدينة والحي والعنوان.', 'Enter the address in the search box and click Search, click the map, or use Apply to Map after entering city, district, and address.') }}</p>
-          <p class="map-picker-hint" style="color:var(--warning)">{{ ui('تخطيط زيارات الصيانة يعتمد على عنوان العقد — وليس على هذا الحقل.', 'Maintenance visit planning uses the contract address — not this client field.') }}</p>
-          <div class="map-picker-toolbar">
-            <input type="text" id="client-map-search" class="map-picker-search" placeholder="{{ ui('ابحث: برج، شارع، حي، مكة...', 'Search: tower, street, district, Makkah...') }}">
-            <button type="button" class="btn btn-primary btn-sm" id="client-map-search-btn" onclick="searchClientMap()">{{ ui('بحث', 'Search') }}</button>
-          </div>
-          <div id="client-map-picker" class="client-map-picker"></div>
-          <div class="map-picker-coords" id="client-map-coords">{{ ui('لم يُحدَّد موقع بعد — ابحث أو اضغط على الخريطة لتحديد العنوان', 'No location set yet — search or click the map to set the address') }}</div>
-          <input type="hidden" id="f-maps-url">
-          <input type="hidden" id="f-lat">
-          <input type="hidden" id="f-lng">
-        </div>
-        <div class="field form-full">
-          <label>{{ ui('العنوان التفصيلي', 'Detailed Address') }}</label>
-          <input type="text" id="f-address" placeholder="{{ ui('يُعبَّأ من الخريطة — يمكنك تعديله يدوياً', 'Filled from the map — you can edit manually') }}" onkeydown="if(event.key==='Enter'){event.preventDefault();applyClientFormAddressToMap();}">
-          <div class="contact-actions">
-            <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="applyClientFormAddressToMap()">{{ ui('← تطبيق العنوان على الخريطة', '← Apply address to map') }}</span>
-          </div>
-        </div>
+        <p class="field-hint form-full" style="margin:0">{{ ui('عنوان الخدمة وتخطيط الزيارات يُسجَّلان في العقد — وليس في بيانات العميل.', 'Service address and visit planning are recorded on the contract — not on the client record.') }}</p>
         <div class="field form-full">
           <label>{{ ui('صورة المبنى', 'Building Photo') }}</label>
           <div class="cloc-building-row">

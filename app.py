@@ -5921,6 +5921,16 @@ def api_contract_detail(contract_id):
     return jsonify(_contract_json(c))
 
 
+def _clear_customer_service_location(customer):
+    """عنوان الخدمة والخرائط تُدار من العقد وليس من سجل العميل."""
+    customer.city = ''
+    customer.district = ''
+    customer.address = ''
+    customer.lat = ''
+    customer.lng = ''
+    customer.maps_url = ''
+
+
 @app.route('/clients/add', methods=['POST'])
 def client_add():
     from form_validation import customer_name_error
@@ -5968,9 +5978,6 @@ def client_add():
         code         = next_code(Customer, 'C-', digits=4),
         name         = request.form['name'],
         name_en      = request.form.get('name_en', ''),
-        city         = request.form.get('city',''),
-        district     = request.form.get('district',''),
-        address      = request.form.get('address',''),
         phone        = phone,
         phone2       = wa,
         extra_phones = serialize_customer_extra_phones(extra_phones),
@@ -5984,10 +5991,8 @@ def client_add():
         national_address = request.form.get('national_address',''),
         status       = _client_account_status(request.form.get('status', 'نشط')),
         notes        = request.form.get('notes',''),
-        lat          = request.form.get('lat',''),
-        lng          = request.form.get('lng',''),
-        maps_url     = request.form.get('maps_url',''),
     )
+    _clear_customer_service_location(c)
     assign_organization(c)
     db.session.add(c)
     db.session.flush()
@@ -6043,9 +6048,6 @@ def client_edit(id):
             return redirect(url_for('clients'))
     c.name           = request.form['name']
     c.name_en        = request.form.get('name_en', '')
-    c.city           = request.form.get('city','')
-    c.district       = request.form.get('district','')
-    c.address        = request.form.get('address','')
     c.phone          = phone
     c.phone2         = wa
     c.extra_phones   = serialize_customer_extra_phones(extra_phones)
@@ -6059,9 +6061,7 @@ def client_edit(id):
     c.cr_number      = request.form.get('cr_number','')
     c.vat_number     = request.form.get('vat_number','')
     c.national_address = request.form.get('national_address','')
-    c.lat            = request.form.get('lat','')
-    c.lng            = request.form.get('lng','')
-    c.maps_url       = request.form.get('maps_url','')
+    _clear_customer_service_location(c)
     sync_customer_from_elevators(c)
     upload = request.files.get('building_photo')
     if upload and upload.filename:
