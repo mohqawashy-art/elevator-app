@@ -16,7 +16,7 @@
 <script src="/static/client_location.js?v=8"></script>
 <script src="/static/client_geocode.js"></script>
 <script src="/static/liftcore_map.js?v=4"></script>
-<script src="/static/client_map_picker.js?v=13"></script>
+<script src="/static/client_map_picker.js?v=14"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1688,7 +1688,7 @@ function exportExcel() {
 
 // ===== خريطة المصاعد =====
 var elevMap = null, elevMarkers = [], elevCluster = null, elevInfoWindow = null, elevInfoPinned = false, elevHoverTimer = null;
-var osmElevMap = null, osmElevMarkers = [];
+var osmElevMap = null, osmElevMarkers = [], osmElevCluster = null;
 var ELEV_MAP_OSM_RADIUS = 7;
 
 var MAP_POI_HIDDEN = [
@@ -1708,6 +1708,7 @@ function destroyOsmElevMap() {
   }
   osmElevMap = null;
   osmElevMarkers = [];
+  osmElevCluster = null;
   var mapEl = document.getElementById('map');
   if (mapEl) {
     mapEl.innerHTML = '';
@@ -1806,9 +1807,16 @@ function refreshElevatorMapOsm() {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'
     }).addTo(osmElevMap);
+    osmElevCluster = typeof L.markerClusterGroup === 'function'
+      ? L.markerClusterGroup({ maxClusterRadius: 52, showCoverageOnHover: false })
+      : null;
+    if (osmElevCluster) osmElevMap.addLayer(osmElevCluster);
   }
-  osmElevMarkers.forEach(function (m) { osmElevMap.removeLayer(m); });
-  osmElevMarkers = [];
+  if (osmElevCluster) osmElevCluster.clearLayers();
+  else {
+    osmElevMarkers.forEach(function (m) { osmElevMap.removeLayer(m); });
+    osmElevMarkers = [];
+  }
   var bounds = [];
   var shown = 0;
   ELEVATORS.forEach(function (e) {
@@ -1823,8 +1831,10 @@ function refreshElevatorMapOsm() {
       weight: 2,
       fillColor: color,
       fillOpacity: 1
-    }).addTo(osmElevMap);
+    });
     marker.bindPopup(elevMapInfo(e));
+    if (osmElevCluster) osmElevCluster.addLayer(marker);
+    else marker.addTo(osmElevMap);
     osmElevMarkers.push(marker);
     bounds.push([pos.lat, pos.lng]);
   });
@@ -1974,6 +1984,7 @@ function switchElevTab(tab, el) {
     } else {
       whenGoogleMapsReady(function () {
         setTimeout(function() { refreshElevatorMap(true); }, 200);
+        if (window.liftcoreScheduleMapErrorWatch) window.liftcoreScheduleMapErrorWatch();
       });
     }
     setTimeout(function() {

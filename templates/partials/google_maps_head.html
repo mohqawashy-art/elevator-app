@@ -22,7 +22,33 @@
   };
   window.liftcoreMapElHasGoogleError = function (el) {
     if (!el) return false;
-    return !!el.querySelector('.gm-err-container, .gm-err-title, .gm-err-message');
+    if (el.querySelector('.gm-err-container, .gm-err-title, .gm-err-message')) return true;
+    var t = (el.innerText || el.textContent || '').toLowerCase();
+    if (t.indexOf('for development purposes only') >= 0) return true;
+    if (t.indexOf("can't load google maps") >= 0 || t.indexOf('cant load google maps') >= 0) return true;
+    if (t.indexOf('يتعذ') >= 0 && t.indexOf('خرائط') >= 0) return true;
+    if (t.indexOf('do you own this website') >= 0) return true;
+    return false;
+  };
+  window.liftcoreFailGoogleMaps = function () {
+    if (window.__gmapsAuthFailed) return;
+    window.__gmapsAuthFailed = true;
+    window.liftcoreNotifyMapPickerFallback();
+    if (typeof refreshContractMap === 'function') refreshContractMap(true);
+    if (typeof refreshElevatorMap === 'function') refreshElevatorMap(true);
+  };
+  window.liftcoreScanMapContainersForErrors = function () {
+    var failed = false;
+    document.querySelectorAll('.client-map-picker, #map').forEach(function (el) {
+      if (window.liftcoreMapElHasGoogleError(el)) failed = true;
+    });
+    if (failed) window.liftcoreFailGoogleMaps();
+    return failed;
+  };
+  window.liftcoreScheduleMapErrorWatch = function () {
+    [600, 1500, 3000, 5000, 8000].forEach(function (ms) {
+      setTimeout(window.liftcoreScanMapContainersForErrors, ms);
+    });
   };
   window.liftcoreGoogleMapsUsable = function () {
     return !!(window.LIFTCORE_GOOGLE_MAPS_KEY && !window.__gmapsAuthFailed && window.google && window.google.maps);
@@ -52,12 +78,10 @@
   window.initGoogleMapsApi = function () {
     flushGmapsQueue();
     window.loadGmapsMarkerLib().catch(function () {});
+    window.liftcoreScheduleMapErrorWatch();
   };
   window.gm_authFailure = function () {
-    window.__gmapsAuthFailed = true;
-    window.liftcoreNotifyMapPickerFallback();
-    if (typeof refreshContractMap === 'function') refreshContractMap(true);
-    if (typeof refreshElevatorMap === 'function') refreshElevatorMap(true);
+    window.liftcoreFailGoogleMaps();
   };
 </script>
 {% if google_maps_api_key %}

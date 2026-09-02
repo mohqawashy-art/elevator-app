@@ -677,7 +677,8 @@
     if (state.provider !== 'google') return;
     var mapEl = state.opts && $(state.opts.mapEl);
     if (!mapHasGoogleError(mapEl)) return;
-    global.__gmapsAuthFailed = true;
+    if (global.liftcoreFailGoogleMaps) global.liftcoreFailGoogleMaps();
+    else global.__gmapsAuthFailed = true;
     var coords = state.opts && $(state.opts.coordsEl);
     if (coords) {
       coords.textContent = lcT('تعذّر تحميل Google Maps — تم التحويل إلى OpenStreetMap');
@@ -689,7 +690,7 @@
   }
 
   function scheduleGoogleErrorCheck() {
-    [1500, 4000].forEach(function (ms) {
+    [600, 1500, 3000, 5000].forEach(function (ms) {
       setTimeout(fallbackFromGoogleError, ms);
     });
   }
