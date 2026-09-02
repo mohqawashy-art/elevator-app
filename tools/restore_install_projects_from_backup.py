@@ -47,16 +47,32 @@ def temp_db_name(main: str) -> str:
     return base[:63]
 
 
+def _pg_env(pg: dict) -> dict:
+    env = os.environ.copy()
+    if pg['password']:
+        env['PGPASSWORD'] = pg['password']
+    return env
+
+
 def run_pg(cmd: list[str], env: dict) -> None:
     subprocess.run(cmd, check=True, env=env)
 
 
+def run_pg_admin(cmd: list[str], env: dict) -> None:
+    try:
+        run_pg(cmd, env)
+    except subprocess.CalledProcessError:
+        run_pg(['sudo', '-u', 'postgres', *cmd], env)
+
+
 def ensure_temp_db(pg: dict, temp_name: str, backup: Path) -> None:
-    env = os.environ.copy()
-    if pg['password']:
-        env['PGPASSWORD'] = pg['password']
-    run_pg(['dropdb', '-h', pg['host'], '-p', pg['port'], '-U', pg['user'], '--if-exists', temp_name], env)
-    run_pg(['createdb', '-h', pg['host'], '-p', pg['port'], '-U', pg['user'], temp_name], env)
+    env = _pg_env(pg)
+    run_pg_admin([
+        'dropdb', '-h', pg['host'], '-p', pg['port'], '--if-exists', temp_name,
+    ], env)
+    run_pg_admin([
+        'createdb', '-h', pg['host'], '-p', pg['port'], '-O', pg['user'], temp_name,
+    ], env)
     run_pg([
         'pg_restore', '-h', pg['host'], '-p', pg['port'], '-U', pg['user'],
         '-d', temp_name, '--no-owner', '--role', pg['user'], str(backup),
@@ -123,9 +139,9 @@ def restore_codes(backup: Path, org_slug: str, codes: list[str], dry_run: bool) 
                     {'id': pid},
                 ).one()
             print(f'WOULD_RESTORE id={pid} code={row[0]} status={row[1]} title={row[2] or ""}')
-        run_pg([
-            'dropdb', '-h', pg['host'], '-p', pg['port'], '-U', pg['user'], '--if-exists', temp_name,
-        ], {**os.environ, **({'PGPASSWORD': pg['password']} if pg['password'] else {})})
+        run_pg_admin([
+            'dropdb', '-h', pg['host'], '-p', pg['port'], '--if-exists', temp_name,
+        ], _pg_env(pg))
         return
 
     ensure_temp_db(pg, temp_name, backup)
@@ -183,10 +199,10 @@ def restore_codes(backup: Path, org_slug: str, codes: list[str], dry_run: bool) 
                 ).first()
             print(f'RESTORED {pid} {row[0] if row else "?"}')
 
-    env = os.environ.copy()
-    if pg['password']:
-        env['PGPASSWORD'] = pg['password']
-    run_pg(['dropdb', '-h', pg['host'], '-p', pg['port'], '-U', pg['user'], '--if-exists', temp_name], env)
+    env = _pg_env(pg)
+    run_pg_admin([
+        'dropdb', '-h', pg['host'], '-p', pg['port'], '--if-exists', temp_name,
+    ], env)
 
 
 def expand_code_range(spec: str) -> list[str]:
