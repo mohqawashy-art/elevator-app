@@ -40,6 +40,18 @@ def test_ensure_chart_creates_default_accounts(client):
             .count()
         )
         assert count == len(DEFAULT_CHART)
+        box = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1110')
+            .first()
+        )
+        bank = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1120')
+            .first()
+        )
+        assert box.map_key == 'cash'
+        assert bank.map_key == 'bank'
         # ثانية لا تكرر
         assert ensure_chart_for_org(org.id) == 0
 
@@ -129,6 +141,35 @@ def test_create_custom_account_under_parent(client):
             assert False, 'expected duplicate code'
         except ValueError as exc:
             assert 'مستخدم' in str(exc)
+
+
+def test_relocate_cash_map_key_from_bank_to_cashbox(client):
+    with client.application.app_context():
+        org = Organization(slug='coa-reloc', name='نقل كاش', status='active')
+        db.session.add(org)
+        db.session.commit()
+        ensure_chart_for_org(org.id)
+        box = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1110')
+            .first()
+        )
+        bank = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1120')
+            .first()
+        )
+        box.map_key = None
+        bank.map_key = 'cash'
+        db.session.commit()
+        from flask import g
+        g.organization_id = org.id
+        g.organization = org
+        ensure_chart_for_org(org.id)
+        db.session.refresh(box)
+        db.session.refresh(bank)
+        assert box.map_key == 'cash'
+        assert bank.map_key == 'bank'
 
 
 def test_accounts_add_route_creates_account(client):

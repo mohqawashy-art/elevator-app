@@ -34,8 +34,8 @@ def ensure_chart_schema() -> None:
 DEFAULT_CHART: list[tuple] = [
     ('1000', 'الأصول', 'Assets', 'asset', None, None, False, 1000),
     ('1100', 'الأصول المتداولة', 'Current Assets', 'asset', '1000', None, False, 1100),
-    ('1110', 'الصندوق', 'Cash on Hand', 'asset', '1100', None, True, 1110),
-    ('1120', 'البنك', 'Bank', 'asset', '1100', 'cash', True, 1120),
+    ('1110', 'الصندوق', 'Cash on Hand', 'asset', '1100', 'cash', True, 1110),
+    ('1120', 'البنك', 'Bank', 'asset', '1100', 'bank', True, 1120),
     ('1130', 'عهد نقدية — فنيين', 'Technician Petty Cash', 'asset', '1100', None, True, 1130),
     ('1140', 'ذمم عملاء — عقود صيانة', 'AR — Maintenance Contracts', 'asset', '1100', 'ar', True, 1140),
     ('1141', 'ذمم عملاء — تركيب وقطع', 'AR — Installation & Parts', 'asset', '1100', None, True, 1141),
@@ -211,7 +211,7 @@ def ensure_chart_for_org(organization_id: int | None) -> int:
     if existing:
         # أكمل الحسابات الناقصة فقط (لا تكرر)
         added = 0
-        map_keys_patched = 0
+        map_keys_patched = _relocate_cash_bank_map_keys(existing)
         code_to_id = {c: a.id for c, a in existing.items()}
         for code, name, name_en, atype, parent_code, map_key, postable, sort in DEFAULT_CHART:
             if code in existing:
@@ -241,6 +241,13 @@ def ensure_chart_for_org(organization_id: int | None) -> int:
             added += 1
         if added or map_keys_patched:
             db.session.commit()
+        if map_keys_patched:
+            try:
+                from accounting_journals import backfill_journals
+
+                backfill_journals()
+            except Exception:
+                pass
         return added
 
     code_to_id: dict[str, int] = {}
@@ -264,6 +271,49 @@ def ensure_chart_for_org(organization_id: int | None) -> int:
         code_to_id[code] = acc.id
     db.session.commit()
     return len(DEFAULT_CHART)
+
+
+def _relocate_cash_bank_map_keys(existing: dict) -> int:
+    """ينقل map_key=cash من البنك 1120 إلى الصندوق 1110 إن وُجد الربط القديم الخاطئ."""
+    acc_cash = existing.get('1110')
+    acc_bank = existing.get('1120')
+    if not acc_cash or not acc_bank:
+        return 0
+    mk_cash = (acc_cash.map_key or '').strip()
+    mk_bank = (acc_bank.map_key or '').strip()
+    patched = 0
+    if mk_bank == 'cash' and mk_cash != 'cash':
+        acc_cash.map_key = 'cash'
+        acc_bank.map_key = 'bank'
+        return 2
+    if mk_cash == 'cash' and mk_bank not in ('bank', 'cash') and not mk_bank:
+        acc_bank.map_key = 'bank'
+        patched += 1
+    return patched
+
+
+def repair_cash_bank_map_keys_for_org(organization_id: int | None) -> int:
+    """يصحّح ربط الصندوق/البنك دون إنشاء شجرة كاملة."""
+    if not organization_id:
+        return 0
+    existing = {
+        (a.code or '').strip(): a
+        for a in (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=organization_id)
+            .all()
+        )
+    }
+    patched = _relocate_cash_bank_map_keys(existing)
+    if patched:
+        db.session.commit()
+        try:
+            from accounting_journals import backfill_journals
+
+            backfill_journals()
+        except Exception:
+            pass
+    return patched
 
 
 ROOT_GROUPS = [row for row in DEFAULT_CHART if row[4] is None]

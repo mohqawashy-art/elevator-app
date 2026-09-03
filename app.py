@@ -10352,10 +10352,14 @@ def revenue_remove_proof(id):
 # شجرة الحسابات (مرحلة 1)
 # =============================================
 def _ensure_tenant_chart():
-    from chart_of_accounts import ensure_chart_schema
+    from chart_of_accounts import ensure_chart_schema, repair_cash_bank_map_keys_for_org
+    from tenant_scope import effective_organization_id
 
     try:
         ensure_chart_schema()
+        oid = getattr(g, 'organization_id', None) or effective_organization_id()
+        if oid:
+            repair_cash_bank_map_keys_for_org(oid)
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('ensure_chart_schema: %s', exc)
@@ -10584,7 +10588,8 @@ def journals_backfill():
         stats = backfill_journals()
         flash(
             f"تم الترحيل: {stats.get('revenues', 0)} إيراد · {stats.get('expenses', 0)} مصروف"
-            + (f" · تخطي {stats.get('skipped', 0)}" if stats.get('skipped') else ''),
+            + (f" · تخطي {stats.get('skipped', 0)}" if stats.get('skipped') else '')
+            + (f" · تصحيح صندوق/بنك {stats.get('repaired', 0)}" if stats.get('repaired') else ''),
             'success',
         )
     except Exception as exc:
