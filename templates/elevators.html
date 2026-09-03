@@ -13,9 +13,9 @@
 <link rel="stylesheet" href="/static/client_location.css">
 <script src="/static/customer_profile.js"></script>
 <script src="/static/elevator_profile.js"></script>
-<script src="/static/client_location.js?v=9"></script>
+<script src="/static/client_location.js?v=10"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=6"></script>
+<script src="/static/liftcore_map.js?v=7"></script>
 <script src="/static/client_map_picker.js?v=16"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -959,26 +959,72 @@ function fillClientSelect(selectedId) {
   sel.value = selectedId || '';
 }
 
+function hasUsableGps(lat, lng) {
+  if (lat == null || lng == null || lat === '' || lng === '') return false;
+  if (window.LiftCoreLocation && LiftCoreLocation.hasCoordinates) {
+    return LiftCoreLocation.hasCoordinates({ lat: lat, lng: lng });
+  }
+  return true;
+}
+
+function buildElevLocationQuery(c) {
+  return [c.address, c.district, c.city, c.building, 'Saudi Arabia'].filter(Boolean).join(', ');
+}
+
+function placeElevMap(loc) {
+  loc = loc || {};
+  if (typeof LiftCoreMapPicker === 'undefined') return;
+  if (hasUsableGps(loc.lat, loc.lng)) {
+    LiftCoreMapPicker.setLocation(loc.lat, loc.lng, {
+      address: loc.address || loc.building || '',
+      city: loc.city || '',
+      district: loc.district || '',
+      maps_url: loc.maps_url || ('https://www.google.com/maps?q=' + loc.lat + ',' + loc.lng),
+    });
+    var latEl = document.getElementById('f-lat');
+    var lngEl = document.getElementById('f-lng');
+    var urlEl = document.getElementById('f-maps-url');
+    if (latEl) latEl.value = loc.lat;
+    if (lngEl) lngEl.value = loc.lng;
+    if (urlEl && loc.maps_url) urlEl.value = loc.maps_url;
+    return;
+  }
+  var mapQuery = buildElevLocationQuery(loc);
+  if (mapQuery && LiftCoreMapPicker.geocodeAddress) {
+    LiftCoreMapPicker.geocodeAddress(mapQuery, function () {}, { previewOnly: true });
+    return;
+  }
+  LiftCoreMapPicker.reset();
+}
+
 function fillClientData() {
   var id = parseInt(document.getElementById('f-client-sel').value, 10);
   var c = CUSTOMERS.find(function(x) { return x.id === id; });
   if (!c) return;
-  document.getElementById('f-elev-city').value = c.city || '';
-  document.getElementById('f-elev-district').value = c.district || '';
-  if (c.lat && c.lng && typeof LiftCoreMapPicker !== 'undefined') {
-    LiftCoreMapPicker.setLocation(c.lat, c.lng, {
-      address: c.address || '',
-      city: c.city || '',
-      district: c.district || '',
-      maps_url: 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng,
-    });
-  }
+  var cityEl = document.getElementById('f-elev-city');
+  var distEl = document.getElementById('f-elev-district');
+  if (cityEl && !String(cityEl.value || '').trim()) cityEl.value = c.city || '';
+  if (distEl && !String(distEl.value || '').trim()) distEl.value = c.district || '';
+  placeElevMap({
+    lat: c.lat,
+    lng: c.lng,
+    city: c.city,
+    district: c.district,
+    address: c.address,
+    maps_url: c.maps_url,
+  });
 }
 
 function onElevMapPickerUpdate(data) {
   if (!data) return;
-  if (data.city) document.getElementById('f-elev-city').value = data.city;
-  if (data.district) document.getElementById('f-elev-district').value = data.district;
+  if (data.city) {
+    var cityEl = document.getElementById('f-elev-city');
+    if (cityEl && !String(cityEl.value || '').trim()) cityEl.value = data.city;
+  }
+  if (data.district) {
+    var distEl = document.getElementById('f-elev-district');
+    if (distEl && !String(distEl.value || '').trim()) distEl.value = data.district;
+  }
   if (data.lat) document.getElementById('f-lat').value = data.lat;
   if (data.lng) document.getElementById('f-lng').value = data.lng;
   if (data.maps_url) document.getElementById('f-maps-url').value = data.maps_url;
@@ -1369,6 +1415,9 @@ function saveElevator() {
   fd.append('maint_frequency', document.getElementById('f-maint-freq').value);
   fd.append('status', document.getElementById('f-elev-status').value);
   fd.append('notes', document.getElementById('f-notes').value);
+  fd.append('lat', (document.getElementById('f-lat') || {}).value || '');
+  fd.append('lng', (document.getElementById('f-lng') || {}).value || '');
+  fd.append('maps_url', (document.getElementById('f-maps-url') || {}).value || '');
   fetch(editId ? '/elevators/edit/' + editId : '/elevators/add', {method: 'POST', body: fd, credentials: 'same-origin'})
     .then(function(res) {
       if (res.redirected || res.ok) {
@@ -1415,17 +1464,20 @@ function editElevator(id) {
   document.getElementById('f-maint-freq').value = e.maint_freq || 'شهري';
   document.getElementById('f-elev-status').value = e.status || 'نشط';
   document.getElementById('f-notes').value = e.notes || '';
+  document.getElementById('f-lat').value = e.lat || '';
+  document.getElementById('f-lng').value = e.lng || '';
+  document.getElementById('f-maps-url').value = e.maps_url || '';
   openElevFormModal(function () {
-    var c = CUSTOMERS.find(function(x) { return x.id === e.customer_id; });
-    if (c && c.lat && c.lng && window.LiftCoreMapPicker) {
-      LiftCoreMapPicker.setLocation(c.lat, c.lng, {
-        city: e.city || c.city || '',
-        district: e.district || c.district || '',
-        address: e.building || '',
-      });
-    } else if (window.LiftCoreMapPicker) {
-      LiftCoreMapPicker.reset();
-    }
+    var c = CUSTOMERS.find(function(x) { return x.id === e.customer_id; }) || {};
+    placeElevMap({
+      lat: e.lat || c.lat,
+      lng: e.lng || c.lng,
+      city: e.city || c.city,
+      district: e.district || c.district,
+      address: e.address || e.building || c.address,
+      building: e.building,
+      maps_url: e.maps_url || c.maps_url,
+    });
   });
 }
 
@@ -1727,35 +1779,30 @@ function destroyGoogleElevMap() {
 function getElevatorPosition(e) {
   if ((e.customer_status || 'نشط') === 'غير نشط') return null;
   var cust = CUSTOMERS.find(function(c) { return c.id === e.customer_id; });
+  var record = { lat: e.lat, lng: e.lng };
   if (window.LiftCoreMap && LiftCoreMap.coordsForRecord) {
+    var fromElev = LiftCoreMap.coordsForRecord(record);
+    if (fromElev && fromElev.exact) {
+      var spread = (e.id % 8) * 0.00012;
+      return { lat: fromElev.lat + spread, lng: fromElev.lng + spread * 0.8, exact: true };
+    }
     var fromMap = LiftCoreMap.coordsForRecord(cust || {
-      lat: e.customer_lat, lng: e.customer_lng, city: e.city
+      lat: e.customer_lat, lng: e.customer_lng
     });
-    if (fromMap) {
-      if (fromMap.exact) {
-        var spread = (e.id % 8) * 0.00012;
-        return { lat: fromMap.lat + spread, lng: fromMap.lng + spread * 0.8, exact: true };
-      }
-      return fromMap;
+    if (fromMap && fromMap.exact) {
+      var spreadC = (e.id % 8) * 0.00012;
+      return { lat: fromMap.lat + spreadC, lng: fromMap.lng + spreadC * 0.8, exact: true };
     }
   }
   if (window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer) {
-    var fromCust = LiftCoreLocation.coordsForCustomer(cust || {
-      lat: e.customer_lat, lng: e.customer_lng, city: e.city
+    var fromCust = LiftCoreLocation.coordsForCustomer({
+      lat: e.lat || (cust && cust.lat) || e.customer_lat,
+      lng: e.lng || (cust && cust.lng) || e.customer_lng
     });
-    if (fromCust) {
-      if (fromCust.exact) {
-        var spread2 = (e.id % 8) * 0.00012;
-        return { lat: fromCust.lat + spread2, lng: fromCust.lng + spread2 * 0.8, exact: true };
-      }
-      return fromCust;
+    if (fromCust && fromCust.exact) {
+      var spread2 = (e.id % 8) * 0.00012;
+      return { lat: fromCust.lat + spread2, lng: fromCust.lng + spread2 * 0.8, exact: true };
     }
-  }
-  var lat = parseFloat(e.customer_lat), lng = parseFloat(e.customer_lng);
-  if (!isNaN(lat) && !isNaN(lng) && window.LiftCoreLocation && LiftCoreLocation.hasCoordinates &&
-      LiftCoreLocation.hasCoordinates({ lat: e.customer_lat, lng: e.customer_lng })) {
-    var spread3 = (e.id % 8) * 0.00012;
-    return { lat: lat + spread3, lng: lng + spread3 * 0.8, exact: true };
   }
   return null;
 }

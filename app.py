@@ -1280,8 +1280,13 @@ def client_to_js_dict(c, *, scope: str | None = None):
     }
 
 
-def elevator_to_js_dict(e):
-    """تسلسل مصعد لـ JSON (مع علاقة العميل)."""
+def elevator_to_js_dict(e, *, site=None):
+    """تسلسل مصعد لـ JSON (مع علاقة العميل). site: (lat, lng, maps_url) إن وُجد."""
+    if site is None:
+        site = _elevator_site_coords_map([e]).get(e.id)
+    lat = lng = maps_url = ''
+    if site:
+        lat, lng, maps_url = site[0], site[1], site[2]
     return {
         'id': e.id,
         'code': e.code,
@@ -1315,6 +1320,9 @@ def elevator_to_js_dict(e):
         'address': e.address or '',
         'status': e.status,
         'notes': e.notes or '',
+        'lat': lat,
+        'lng': lng,
+        'maps_url': maps_url,
         'customer_lat': (e.customer.lat if e.customer else '') or '',
         'customer_lng': (e.customer.lng if e.customer else '') or '',
         'customer_status': ((e.customer.status or 'نشط') if e.customer else 'نشط'),
@@ -6197,10 +6205,11 @@ def elevators():
         .all()
     )
     customers = tenant_query(Customer).order_by(Customer.name).all()
+    site_map = _elevator_site_coords_map(elevs)
     return render_template(
         'elevators.html',
         elevators=elevs,
-        elevators_js=[elevator_to_js_dict(e) for e in elevs],
+        elevators_js=[elevator_to_js_dict(e, site=site_map.get(e.id)) for e in elevs],
         customers=customers,
         customers_js=[
             {
@@ -6209,8 +6218,10 @@ def elevators():
                 'name': c.name,
                 'city': c.city or '',
                 'district': c.district or '',
+                'address': c.address or '',
                 'lat': c.lat or '',
                 'lng': c.lng or '',
+                'maps_url': c.maps_url or '',
                 'status': c.status or 'نشط',
             }
             for c in customers
@@ -6304,6 +6315,7 @@ def elevator_add():
     assign_organization(e)
     db.session.add(e)
     db.session.flush()
+    _apply_elevator_map_pin(e, request.form)
     sync_customer_from_elevators(e.customer)
     db.session.commit()
     if wants_json:
@@ -6347,6 +6359,7 @@ def elevator_edit(id):
     e.maint_frequency  = request.form.get('maint_frequency', '')
     e.status           = request.form.get('status', 'نشط')
     e.notes            = request.form.get('notes', '')
+    _apply_elevator_map_pin(e, request.form)
     sync_customer_from_elevators(e.customer)
     db.session.commit()
     return redirect(url_for('elevators'))
@@ -6891,21 +6904,94 @@ def _is_generic_city_pin(lat: float, lng: float, tol: float = 0.0035) -> bool:
     return False
 
 
-def _sync_customer_location_from_contract_form(customer_id, form):
-    """ينسخ إحداثيات الدبوس الدقيق من العقد إلى العميل (دون تغيير نص العنوان)."""
-    if not customer_id:
-        return
+def _parse_form_gps(form):
     lat = (form.get('lat') or '').strip().replace(',', '.')
     lng = (form.get('lng') or '').strip().replace(',', '.')
     maps_url = (form.get('maps_url') or '').strip()
     if not lat or not lng:
-        return
+        return None
     try:
         la, ln = float(lat), float(lng)
     except (TypeError, ValueError):
-        return
+        return None
     if not (la or ln) or _is_generic_city_pin(la, ln):
+        return None
+    return la, ln, maps_url
+
+
+def _usable_stored_gps(lat, lng):
+    if lat in (None, '') or lng in (None, ''):
+        return None
+    try:
+        la = float(str(lat).replace(',', '.'))
+        ln = float(str(lng).replace(',', '.'))
+    except (TypeError, ValueError):
+        return None
+    if not (la or ln) or _is_generic_city_pin(la, ln):
+        return None
+    return la, ln
+
+
+def _elevator_site_coords_map(elevators) -> dict:
+    """موقع المصعد على الخريطة: GPS العقد المرتبط ثم GPS العميل الدقيق."""
+    elevators = list(elevators or [])
+    out: dict = {}
+    for e in elevators:
+        cust = getattr(e, 'customer', None)
+        if not cust:
+            continue
+        gps = _usable_stored_gps(cust.lat, cust.lng)
+        if gps:
+            out[e.id] = (str(gps[0]), str(gps[1]), cust.maps_url or '')
+    ids = [e.id for e in elevators if getattr(e, 'id', None)]
+    if not ids:
+        return out
+    links = tenant_query(ContractElevator).filter(ContractElevator.elevator_id.in_(ids)).all()
+    contract_ids = list({lk.contract_id for lk in links})
+    contracts = {
+        c.id: c
+        for c in tenant_query(Contract).filter(Contract.id.in_(contract_ids)).all()
+    } if contract_ids else {}
+    for lk in links:
+        c = contracts.get(lk.contract_id)
+        if not c or (c.status or '') == 'ملغي':
+            continue
+        gps = _usable_stored_gps(c.lat, c.lng)
+        if gps:
+            out[lk.elevator_id] = (str(gps[0]), str(gps[1]), c.maps_url or '')
+    return out
+
+
+def _apply_elevator_map_pin(elevator, form):
+    """يحفظ دبوس الخريطة الدقيق على العميل والعقود المرتبطة بالمصعد."""
+    _sync_customer_location_from_contract_form(elevator.customer_id, form)
+    parsed = _parse_form_gps(form)
+    if not parsed or not getattr(elevator, 'id', None):
         return
+    la, ln, maps_url = parsed
+    links = tenant_query(ContractElevator).filter_by(elevator_id=elevator.id).all()
+    if not links:
+        return
+    contracts = tenant_query(Contract).filter(
+        Contract.id.in_([lk.contract_id for lk in links])
+    ).all()
+    for c in contracts:
+        if (c.status or '') == 'ملغي':
+            continue
+        c.lat = str(la)
+        c.lng = str(ln)
+        if maps_url:
+            c.maps_url = maps_url[:500]
+
+
+def _sync_customer_location_from_contract_form(customer_id, form):
+    """ينسخ إحداثيات الدبوس الدقيق من العقد إلى العميل (دون تغيير نص العنوان)."""
+    if not customer_id:
+        return
+    parsed = _parse_form_gps(form)
+    if not parsed:
+        return
+    la, ln, maps_url = parsed
     cust = tenant_query(Customer).filter_by(id=int(customer_id)).first()
     if not cust:
         return
@@ -8372,6 +8458,7 @@ def maintenance_visits():
     maint_teams = [team_to_dict(t) for t in teams_all if t.active]
     all_teams = [team_to_dict(t) for t in teams_all]
     duplicate_visit_ids = find_duplicate_visit_ids_from(visits)
+    elev_site = _elevator_site_coords_map(elevators)
     return render_template(
         'maintenance-visits.html',
         visits=visits,
@@ -8381,7 +8468,7 @@ def maintenance_visits():
         technicians=technicians,
         visits_js=_visits_js_list(visits),
         customers_js=[{'id': c.id, 'code': c.code, 'name': c.name} for c in customers],
-        elevators_js=[elevator_to_js_dict(e) for e in elevators],
+        elevators_js=[elevator_to_js_dict(e, site=elev_site.get(e.id)) for e in elevators],
         contracts_js=[
             {'id': c.id, 'code': c.code, 'customer_id': c.customer_id} for c in contracts
         ],
