@@ -15,7 +15,7 @@
 <script src="/static/elevator_profile.js"></script>
 <script src="/static/client_location.js?v=10"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=7"></script>
+<script src="/static/liftcore_map.js?v=8"></script>
 <script src="/static/client_map_picker.js?v=16"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -1206,6 +1206,9 @@ function filterTable() {
   });
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
+  if (document.getElementById('tab-map') && document.getElementById('tab-map').style.display !== 'none') {
+    refreshElevatorMap(true);
+  }
 }
 
 // ===== نماذج =====
@@ -1778,33 +1781,56 @@ function destroyGoogleElevMap() {
 
 function getElevatorPosition(e) {
   if ((e.customer_status || 'نشط') === 'غير نشط') return null;
-  var cust = CUSTOMERS.find(function(c) { return c.id === e.customer_id; });
-  var record = { lat: e.lat, lng: e.lng };
-  if (window.LiftCoreMap && LiftCoreMap.coordsForRecord) {
-    var fromElev = LiftCoreMap.coordsForRecord(record);
-    if (fromElev && fromElev.exact) {
-      var spread = (e.id % 8) * 0.00012;
-      return { lat: fromElev.lat + spread, lng: fromElev.lng + spread * 0.8, exact: true };
-    }
-    var fromMap = LiftCoreMap.coordsForRecord(cust || {
-      lat: e.customer_lat, lng: e.customer_lng
-    });
-    if (fromMap && fromMap.exact) {
-      var spreadC = (e.id % 8) * 0.00012;
-      return { lat: fromMap.lat + spreadC, lng: fromMap.lng + spreadC * 0.8, exact: true };
-    }
+  var cust = CUSTOMERS.find(function(c) { return c.id === e.customer_id; }) || {};
+  var lat = e.lat || cust.lat || e.customer_lat;
+  var lng = e.lng || cust.lng || e.customer_lng;
+  if (!hasUsableGps(lat, lng)) return null;
+  if (window.LiftCoreLocation && LiftCoreLocation.parseCoords) {
+    var parsed = LiftCoreLocation.parseCoords(lat, lng);
+    if (!parsed) return null;
+    return { lat: parsed.lat, lng: parsed.lng, exact: true };
   }
-  if (window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer) {
-    var fromCust = LiftCoreLocation.coordsForCustomer({
-      lat: e.lat || (cust && cust.lat) || e.customer_lat,
-      lng: e.lng || (cust && cust.lng) || e.customer_lng
-    });
-    if (fromCust && fromCust.exact) {
-      var spread2 = (e.id % 8) * 0.00012;
-      return { lat: fromCust.lat + spread2, lng: fromCust.lng + spread2 * 0.8, exact: true };
+  var la = parseFloat(String(lat).replace(',', '.'));
+  var ln = parseFloat(String(lng).replace(',', '.'));
+  if (isNaN(la) || isNaN(ln)) return null;
+  return { lat: la, lng: ln, exact: true };
+}
+
+function elevatorsMapPool() {
+  return Array.isArray(filtered) ? filtered : ELEVATORS.slice();
+}
+
+function buildElevatorLocationGroups() {
+  var groups = {};
+  elevatorsMapPool().forEach(function (e) {
+    if ((e.customer_status || 'نشط') === 'غير نشط') return;
+    var pos = getElevatorPosition(e);
+    if (!pos) return;
+    var key = String(e.customer_id || '') + '@' + pos.lat.toFixed(6) + ',' + pos.lng.toFixed(6);
+    if (!groups[key]) {
+      groups[key] = {
+        pos: pos,
+        customer_id: e.customer_id,
+        customer: e.customer,
+        building: e.building,
+        elevators: []
+      };
     }
-  }
-  return null;
+    groups[key].elevators.push(e);
+  });
+  return Object.values(groups);
+}
+
+function elevGroupMapInfo(group) {
+  var rows = group.elevators.map(function (e) {
+    return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.08)">' +
+      '<strong>' + esc(e.code) + '</strong> — ' + esc(lcDisp(e.building || '—')) + '<br>' +
+      esc(lcDisp(e.elev_type || '')) + ' · ' + esc(lcDisp(e.status)) +
+      '<br><button class="map-info-btn" style="margin-top:6px" onclick="viewElevator(' + e.id + ')">عرض المصعد</button></div>';
+  }).join('');
+  return '<div class="map-info"><div class="map-info-title">' + esc(group.customer || '') + '</div>' +
+    '<div class="map-info-sub">' + group.elevators.length + ' مصعد · موقع GPS من العقد</div>' +
+    rows + '</div>';
 }
 
 function makeElevPin(color) {
@@ -1863,12 +1889,10 @@ function refreshElevatorMapOsm() {
   }
   var bounds = [];
   var shown = 0;
-  ELEVATORS.forEach(function (e) {
-    if ((e.customer_status || 'نشط') === 'غير نشط') return;
-    var pos = getElevatorPosition(e);
-    if (!pos) return;
-    shown++;
-    var color = ELEV_PIN_COLORS[e.status] || '#2a7fff';
+  buildElevatorLocationGroups().forEach(function (group) {
+    var pos = group.pos;
+    shown += group.elevators.length;
+    var color = ELEV_PIN_COLORS[group.elevators[0].status] || '#2a7fff';
     var marker = L.circleMarker([pos.lat, pos.lng], {
       radius: ELEV_MAP_OSM_RADIUS,
       color: '#ffffff',
@@ -1876,7 +1900,7 @@ function refreshElevatorMapOsm() {
       fillColor: color,
       fillOpacity: 1
     });
-    marker.bindPopup(elevMapInfo(e));
+    marker.bindPopup(elevGroupMapInfo(group));
     if (osmElevCluster) osmElevCluster.addLayer(marker);
     else marker.addTo(osmElevMap);
     osmElevMarkers.push(marker);
@@ -1916,16 +1940,14 @@ function refreshElevatorMap(fitAgain) {
   if (osmElevMap) destroyOsmElevMap();
 
   if (!elevMap) {
-    var elevMapOpts = {
-      center: {lat: 21.4225, lng: 39.8262}, zoom: 12, mapTypeId: 'satellite',
-      clickableIcons: false, streetViewControl: false, zoomControl: true,
-      mapTypeControlOptions: {mapTypeIds: ['satellite', 'hybrid', 'roadmap']},
-      styles: MAP_POI_HIDDEN
-    };
-    if (window.LiftCoreMap && LiftCoreMap.mergeMapOptions) {
-      elevMapOpts = LiftCoreMap.mergeMapOptions(elevMapOpts);
-    }
-    elevMap = new google.maps.Map(mapEl, elevMapOpts);
+    elevMap = window.LiftCoreMap
+      ? LiftCoreMap.initMap(mapEl, null)
+      : new google.maps.Map(mapEl, {
+          center: {lat: 21.4225, lng: 39.8262}, zoom: 12, mapTypeId: 'roadmap',
+          clickableIcons: false, streetViewControl: false, zoomControl: true,
+          mapTypeControlOptions: {mapTypeIds: ['roadmap', 'satellite', 'hybrid']},
+          styles: MAP_POI_HIDDEN
+        });
     elevInfoWindow = new google.maps.InfoWindow();
     elevMap.addListener('click', function() { elevInfoPinned = false; elevInfoWindow.close(); });
   }
@@ -1933,23 +1955,22 @@ function refreshElevatorMap(fitAgain) {
   clearElevMapMarkers();
   var bounds = new google.maps.LatLngBounds();
   var shown = 0;
+  var groups = buildElevatorLocationGroups();
 
-  ELEVATORS.forEach(function(e) {
-    if ((e.customer_status || 'نشط') === 'غير نشط') return;
-    var pos = getElevatorPosition(e);
-    if (!pos) return;
-    shown++;
-    var color = ELEV_PIN_COLORS[e.status] || '#2a7fff';
+  groups.forEach(function(group) {
+    var pos = group.pos;
+    shown += group.elevators.length;
+    var color = ELEV_PIN_COLORS[group.elevators[0].status] || '#2a7fff';
     var marker = LiftCoreMap.createPinMarker({
       position: {lat: pos.lat, lng: pos.lng},
       color: color,
       scale: 1.25,
-      zIndex: e.status === 'نشط' ? 2 : 1
+      zIndex: 2
     });
     if (!marker) return;
     marker.addListener('mouseover', function() {
       if (elevHoverTimer) clearTimeout(elevHoverTimer);
-      elevInfoWindow.setContent(elevMapInfo(e));
+      elevInfoWindow.setContent(elevGroupMapInfo(group));
       if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(elevInfoWindow, elevMap, marker);
       else elevInfoWindow.open(elevMap, marker);
     });
@@ -1960,7 +1981,7 @@ function refreshElevatorMap(fitAgain) {
     marker.addListener('click', function() {
       if (elevHoverTimer) clearTimeout(elevHoverTimer);
       elevInfoPinned = true;
-      elevInfoWindow.setContent(elevMapInfo(e));
+      elevInfoWindow.setContent(elevGroupMapInfo(group));
       if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(elevInfoWindow, elevMap, marker);
       else elevInfoWindow.open(elevMap, marker);
     });
@@ -1984,7 +2005,7 @@ function refreshElevatorMap(fitAgain) {
   if (shown && typeof markerClusterer !== 'undefined' && markerClusterer.MarkerClusterer) {
     elevCluster = new markerClusterer.MarkerClusterer({
       map: elevMap, markers: elevMarkers, renderer: elevClusterRenderer,
-      algorithm: new markerClusterer.SuperClusterAlgorithm({radius: 80, maxZoom: 15}),
+      algorithm: new markerClusterer.SuperClusterAlgorithm({radius: 80, maxZoom: 18}),
       onClusterClick: function(_e, cluster, map) { map.fitBounds(cluster.bounds); }
     });
   } else {

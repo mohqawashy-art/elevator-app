@@ -6957,8 +6957,13 @@ def _elevator_site_coords_map(elevators) -> dict:
         if not c or (c.status or '') == 'ملغي':
             continue
         gps = _usable_stored_gps(c.lat, c.lng)
-        if gps:
-            out[lk.elevator_id] = (str(gps[0]), str(gps[1]), c.maps_url or '')
+        if not gps:
+            continue
+        prev = out.get(lk.elevator_id)
+        is_active = (c.status or '') == 'نشط'
+        if prev and not is_active:
+            continue
+        out[lk.elevator_id] = (str(gps[0]), str(gps[1]), c.maps_url or '')
     return out
 
 
