@@ -187,6 +187,94 @@ _EXPENSE_TYPE_ALIASES = {
     'أخرى': 'expense:أخرى',
 }
 
+# قواعد استنتاج نوع المصروف من الوصف/الملاحظات (الأكثر تحديداً أولاً)
+_EXPENSE_INFER_RULES: list[tuple[str, tuple[str, ...]]] = [
+    (
+        'قطع غيار',
+        ('قطع غيار', 'قطع الغيار', 'قطع غ', 'spare'),
+    ),
+    (
+        'صيانة سيارات',
+        (
+            'صيانة سيارات', 'صيانه سيارات', 'صيانة السيارة', 'صيانة سيارة',
+            'صيانة السيارات', 'اسطول', 'زيت سيارة', 'تأمين سيارة',
+        ),
+    ),
+    (
+        'رواتب',
+        ('رواتب', 'راتب', 'أجور', 'اجور', 'سلف'),
+    ),
+    (
+        'محروقات',
+        ('محروقات', 'محروق', 'وقود', 'بنزين', 'ديزل', 'تعبئة', 'وقودية'),
+    ),
+    (
+        'إيجار',
+        ('إيجار', 'ايجار'),
+    ),
+    (
+        'أدوات',
+        ('أدوات', 'مستلزمات', 'مكتبية', 'عدد ورشة'),
+    ),
+    (
+        'مصروفات متنوعة',
+        (
+            'ضيافة', 'مصاريف صيانة', 'مصروفات أساسية', 'نقل', 'تجديد',
+            'مصاريف تجديد', 'متنوع', 'أخرى',
+        ),
+    ),
+]
+
+
+def _expense_map_key_to_option(map_key: str) -> str:
+    for opt in EXPENSE_TYPE_OPTIONS:
+        if _EXPENSE_TYPE_ALIASES.get(opt) == map_key:
+            return opt
+    return 'مصروفات متنوعة'
+
+
+def normalize_expense_type_label(raw: str | None) -> str:
+    """يحوّل نص نوع المصروف إلى أحد خيارات النموذج."""
+    s = (raw or '').strip()
+    if not s:
+        return 'مصروفات متنوعة'
+    if s in EXPENSE_TYPE_OPTIONS:
+        return s
+    mk = _EXPENSE_TYPE_ALIASES.get(s)
+    if mk:
+        return _expense_map_key_to_option(mk)
+    for alias, alias_mk in _EXPENSE_TYPE_ALIASES.items():
+        if alias in s:
+            return _expense_map_key_to_option(alias_mk)
+    for opt in EXPENSE_TYPE_OPTIONS:
+        if opt in s:
+            return opt
+    return 'مصروفات متنوعة'
+
+
+def infer_expense_type(
+    description: str | None = None,
+    notes: str | None = None,
+    expense_type: str | None = None,
+) -> str:
+    """يستنتج نوع المصروف محاسبياً من الوصف والملاحظات."""
+    parts = [
+        (description or '').strip(),
+        (notes or '').strip(),
+    ]
+    text = ' '.join(p for p in parts if p)
+    if text:
+        for opt in EXPENSE_TYPE_OPTIONS:
+            if opt in text:
+                return opt
+        text_cf = text.casefold()
+        for opt, keywords in _EXPENSE_INFER_RULES:
+            for kw in keywords:
+                if kw.casefold() in text_cf:
+                    return opt
+    return normalize_expense_type_label(expense_type)
+
+
 # حسابات إيراد عقود الصيانة في القيود — تُستبدل بإيراد مستحق بالزيارات في قائمة الدخل
 MAINTENANCE_REVENUE_ACCOUNT_CODES = frozenset({'4110', '4120'})
 
@@ -449,11 +537,42 @@ def backfill_missing_account_links(limit: int = 5000) -> dict[str, int]:
             rev.account_id = aid
             stats['revenues'] += 1
     for exp in tenant_query(Expense).filter(Expense.account_id.is_(None)).limit(limit).all():
+        inferred = infer_expense_type(exp.description, exp.notes, exp.expense_type)
+        if inferred != (exp.expense_type or '').strip():
+            exp.expense_type = inferred
         aid = resolve_expense_account_id(exp.expense_type)
         if aid:
             exp.account_id = aid
             stats['expenses'] += 1
     if stats['revenues'] or stats['expenses']:
+        db.session.commit()
+    return stats
+
+
+def reclassify_expenses_from_description(limit: int = 5000) -> dict[str, int]:
+    """يصحّح نوع المصروف والحساب من الوصف ثم يعيد ترحيل القيود."""
+    from models import Expense
+
+    stats = {'updated': 0, 'skipped': 0, 'journals': 0}
+    for exp in tenant_query(Expense).order_by(Expense.id.asc()).limit(limit).all():
+        old_type = (exp.expense_type or '').strip()
+        new_type = infer_expense_type(exp.description, exp.notes, exp.expense_type)
+        new_aid = resolve_expense_account_id(new_type)
+        changed = new_type != old_type or (new_aid and new_aid != exp.account_id)
+        if not changed:
+            stats['skipped'] += 1
+            continue
+        exp.expense_type = new_type
+        if new_aid:
+            exp.account_id = new_aid
+        stats['updated'] += 1
+        try:
+            from accounting_journals import post_expense_journal
+            post_expense_journal(exp)
+            stats['journals'] += 1
+        except Exception:
+            pass
+    if stats['updated']:
         db.session.commit()
     return stats
 

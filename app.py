@@ -10954,20 +10954,44 @@ def expenses():
         expenses_js=[expense_to_js_dict(e) for e in exps],
         expense_type_options=EXPENSE_TYPE_OPTIONS,
     )
+@app.route('/expenses/reclassify', methods=['POST'])
+def expenses_reclassify():
+    from chart_of_accounts import reclassify_expenses_from_description
+
+    _ensure_tenant_chart()
+    try:
+        stats = reclassify_expenses_from_description()
+        flash(
+            f"تم تصنيف {stats.get('updated', 0)} مصروف · تخطي {stats.get('skipped', 0)}"
+            + (f" · قيود {stats.get('journals', 0)}" if stats.get('journals') else ''),
+            'success',
+        )
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('expenses_reclassify failed')
+        flash(f'تعذّر تصنيف المصروفات: {exc}', 'danger')
+    return redirect(url_for('expenses'))
+
+
 @app.route('/expenses/edit/<int:id>', methods=['POST'])
 def expense_edit(id):
     e = tenant_get_or_404(Expense, id)
     try:
+        from chart_of_accounts import infer_expense_type, resolve_expense_account_id
+
         e.expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date()
-        e.expense_type   = request.form.get('expense_type','')
         e.description    = request.form.get('description','')
+        e.notes          = request.form.get('notes','')
+        e.expense_type   = infer_expense_type(
+            e.description,
+            e.notes,
+            request.form.get('expense_type', ''),
+        )
         e.responsible    = request.form.get('responsible','')
         e.payment_method = request.form.get('payment_method','')
         e.amount         = float(request.form.get('amount', 0))
         e.reference      = request.form.get('reference','')
-        e.notes          = request.form.get('notes','')
         try:
-            from chart_of_accounts import resolve_expense_account_id
             _ensure_tenant_chart()
             e.account_id = resolve_expense_account_id(e.expense_type)
         except Exception:
@@ -10988,19 +11012,27 @@ def expense_edit(id):
 @app.route('/expenses/add', methods=['POST'])
 def expense_add():
     try:
+        from chart_of_accounts import infer_expense_type, resolve_expense_account_id
+
+        description = request.form.get('description', '')
+        notes = request.form.get('notes', '')
+        expense_type = infer_expense_type(
+            description,
+            notes,
+            request.form.get('expense_type', ''),
+        )
         e = Expense(
             code           = next_code(Expense, 'EXP-', digits=3),
             expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date(),
-            expense_type   = request.form.get('expense_type',''),
-            description    = request.form.get('description',''),
+            expense_type   = expense_type,
+            description    = description,
             responsible    = request.form.get('responsible',''),
             payment_method = request.form.get('payment_method',''),
             amount         = float(request.form.get('amount', 0)),
             reference      = request.form.get('reference',''),
-            notes          = request.form.get('notes',''),
+            notes          = notes,
         )
         try:
-            from chart_of_accounts import resolve_expense_account_id
             _ensure_tenant_chart()
             e.account_id = resolve_expense_account_id(e.expense_type)
         except Exception:
