@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
 <head>
 <meta charset="UTF-8">
@@ -696,19 +696,27 @@ function applyTrends(tr) {
 }
 
 // تحديث الأرقام فور التحميل (من API عند التحديث)
+function formatOutstandingAmount(n) {
+  return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+function setOutstandingCollectibleDisplay(amount, count) {
+  const outEl = document.getElementById('outstanding-collectible-val');
+  if (outEl) outEl.textContent = formatOutstandingAmount(amount);
+  const outTrend = document.getElementById('tr7');
+  if (outTrend && count != null) outTrend.textContent = (count || 0) + ' بند';
+}
+
 function updateDashboard() {
-  const vals = document.querySelectorAll('.stat-val');
+  const vals = document.querySelectorAll('.stats-grid .stat-val');
   if(vals[0]) vals[0].textContent = STATS.customers;
   if(vals[1]) vals[1].textContent = STATS.elevators;
   if(vals[2]) vals[2].textContent = STATS.contracts;
   if(vals[3]) vals[3].textContent = STATS.expired_contracts;
   if(vals[4]) vals[4].textContent = STATS.visits_today;
   if(vals[5]) vals[5].textContent = STATS.faults_open;
-  if(vals[6]) vals[6].textContent = Number(STATS.outstanding_collectible || 0).toLocaleString('en-US', {maximumFractionDigits: 0});
+  setOutstandingCollectibleDisplay(STATS.outstanding_collectible, STATS.outstanding_count);
   if(vals[7]) vals[7].textContent = STATS.technicians;
-
-  const outTrend = document.getElementById('tr7');
-  if (outTrend) outTrend.textContent = (STATS.outstanding_count || 0) + ' بند';
 
   // تحديث الإيرادات لو موجودة
   const revEl = document.getElementById('total-revenue');
@@ -823,14 +831,17 @@ async function loadCharts() {
     }
 
     // تحديث الأرقام من API
-    const vals = document.querySelectorAll('.stat-val');
+    const vals = document.querySelectorAll('.stats-grid .stat-val');
     if(vals[0]) vals[0].textContent = data.customers;
     if(vals[1]) vals[1].textContent = data.elevators;
     if(vals[2]) vals[2].textContent = data.contracts;
     if(vals[3]) vals[3].textContent = data.expired_contracts;
     if(vals[4]) vals[4].textContent = data.visits_today;
     if(vals[5]) vals[5].textContent = data.faults_open;
-    if(vals[6]) vals[6].textContent = data.unpaid_invoices;
+    setOutstandingCollectibleDisplay(
+      data.outstanding_collectible,
+      data.outstanding_count
+    );
     if(vals[7]) vals[7].textContent = data.technicians;
     if (data.trends) applyTrends(data.trends);
 
