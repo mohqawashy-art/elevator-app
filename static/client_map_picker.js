@@ -595,7 +595,8 @@
     bindSearchEnterKey(input);
   }
 
-  function geocodeAddressOsm(query, callback) {
+  function geocodeAddressOsm(query, callback, options) {
+    options = options || {};
     fetch(
       'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=sa&q=' +
         encodeURIComponent(query),
@@ -606,6 +607,18 @@
         if (rows && rows[0]) {
           var lat = parseFloat(rows[0].lat);
           var lng = parseFloat(rows[0].lon);
+          if (options.previewOnly) {
+            if (state.map) {
+              if (state.provider === 'leaflet' && state.map.setView) {
+                state.map.setView([lat, lng], 15);
+              } else if (state.map.setCenter) {
+                state.map.setCenter({ lat: lat, lng: lng });
+                if (state.map.getZoom && state.map.getZoom() < 14) state.map.setZoom(15);
+              }
+            }
+            if (callback) callback(true);
+            return;
+          }
           setMarkerPosition(lat, lng);
           applyOsmAddress({ display_name: rows[0].display_name, address: {} }, lat, lng);
           if (callback) callback(true);
@@ -850,12 +863,12 @@
       return;
     }
     if (state.provider === 'leaflet' || preferLeaflet()) {
-      geocodeAddressOsm(query, callback);
+      geocodeAddressOsm(query, callback, options);
       return;
     }
     var g = getGeocoder();
     if (!g) {
-      geocodeAddressOsm(query, callback);
+      geocodeAddressOsm(query, callback, options);
       return;
     }
     g.geocode({ address: query, componentRestrictions: { country: 'SA' }, region: 'SA' }, function (results, status) {
@@ -870,6 +883,10 @@
             state.map.setCenter({ lat: lat, lng: lng });
             if (state.map.getZoom() < 15) state.map.setZoom(16);
           }
+        }
+        if (options.previewOnly) {
+          if (callback) callback(true);
+          return;
         }
         setMarkerPosition(lat, lng, { pan: false, skipReverseGeocode: true });
         applyGeocodeResult({
@@ -887,7 +904,7 @@
         if (callback) callback(true);
         return;
       }
-      geocodeAddressOsm(query, callback);
+      geocodeAddressOsm(query, callback, options);
     });
   }
 

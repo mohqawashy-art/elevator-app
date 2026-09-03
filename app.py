@@ -6855,7 +6855,7 @@ def _apply_contract_form(c, form):
         try:
             la, ln = float(lat), float(lng)
             if la or ln:
-                if abs(la - 21.4225) < 0.0012 and abs(ln - 39.8262) < 0.0012:
+                if _is_generic_city_pin(la, ln):
                     c.lat = None
                     c.lng = None
                 else:
@@ -6869,9 +6869,50 @@ def _apply_contract_form(c, form):
     _apply_contract_paid_from_form(c, form)
 
 
+_GENERIC_CITY_PINS = (
+    (21.4225, 39.8262),  # مكة / الحرم — افتراضي الخرائط
+    (21.5433, 39.1728),  # جدة
+    (21.2703, 40.4158),  # الطائف
+    (24.4672, 39.6111),  # المدينة
+    (24.7136, 46.6753),  # الرياض
+    (26.4207, 50.0888),  # الدمام
+    (26.2172, 50.1971),  # الخبر
+    (18.2164, 42.5053),  # أبها
+    (28.3838, 36.5550),  # تبوك
+    (26.3259, 43.9740),  # بريدة
+)
+
+
+def _is_generic_city_pin(lat: float, lng: float, tol: float = 0.0035) -> bool:
+    """مركز مدينة/الحرم — ليس موقع مبنى، لا يُحفظ كـ GPS دقيق."""
+    for cla, cln in _GENERIC_CITY_PINS:
+        if abs(lat - cla) < tol and abs(lng - cln) < tol:
+            return True
+    return False
+
+
 def _sync_customer_location_from_contract_form(customer_id, form):
-    """مُعطّل — موقع الخدمة يُحفظ على العقد وليس على العميل (تخطيط الزيارات)."""
-    return
+    """ينسخ إحداثيات الدبوس الدقيق من العقد إلى العميل (دون تغيير نص العنوان)."""
+    if not customer_id:
+        return
+    lat = (form.get('lat') or '').strip().replace(',', '.')
+    lng = (form.get('lng') or '').strip().replace(',', '.')
+    maps_url = (form.get('maps_url') or '').strip()
+    if not lat or not lng:
+        return
+    try:
+        la, ln = float(lat), float(lng)
+    except (TypeError, ValueError):
+        return
+    if not (la or ln) or _is_generic_city_pin(la, ln):
+        return
+    cust = tenant_query(Customer).filter_by(id=int(customer_id)).first()
+    if not cust:
+        return
+    cust.lat = str(la)
+    cust.lng = str(ln)
+    if maps_url:
+        cust.maps_url = maps_url[:500]
 
 
 def _fin_proof_js_items(row) -> list[dict]:
@@ -7248,6 +7289,7 @@ def contract_edit(id):
             return auth_err
     try:
         _apply_contract_form(c, request.form)
+        _sync_customer_location_from_contract_form(c.customer_id, request.form)
         uploads = request.files.getlist('contract_file')
         if uploads and any(f and f.filename for f in uploads):
             _add_contract_files(c, uploads)
@@ -7333,6 +7375,7 @@ def contract_add():
     c = existing or Contract(code=code)
     try:
         _apply_contract_form(c, request.form)
+        _sync_customer_location_from_contract_form(c.customer_id, request.form)
         if existing is None:
             assign_organization(c)
             db.session.add(c)

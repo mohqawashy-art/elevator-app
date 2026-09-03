@@ -13,10 +13,10 @@
 <link rel="stylesheet" href="/static/client_location.css">
 <script src="/static/customer_profile.js"></script>
 <script src="/static/elevator_profile.js"></script>
-<script src="/static/client_location.js?v=8"></script>
+<script src="/static/client_location.js?v=9"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=5"></script>
-<script src="/static/client_map_picker.js?v=15"></script>
+<script src="/static/liftcore_map.js?v=6"></script>
+<script src="/static/client_map_picker.js?v=16"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1752,15 +1752,12 @@ function getElevatorPosition(e) {
     }
   }
   var lat = parseFloat(e.customer_lat), lng = parseFloat(e.customer_lng);
-  if (!isNaN(lat) && !isNaN(lng)) {
+  if (!isNaN(lat) && !isNaN(lng) && window.LiftCoreLocation && LiftCoreLocation.hasCoordinates &&
+      LiftCoreLocation.hasCoordinates({ lat: e.customer_lat, lng: e.customer_lng })) {
     var spread3 = (e.id % 8) * 0.00012;
     return { lat: lat + spread3, lng: lng + spread3 * 0.8, exact: true };
   }
-  var city = (window.LiftCoreLocation && LiftCoreLocation.resolveCityCoords)
-    ? LiftCoreLocation.resolveCityCoords(e.city)
-    : CITY_COORDS[e.city];
-  if (!city) return null;
-  return { lat: city.lat, lng: city.lng, exact: false };
+  return null;
 }
 
 function makeElevPin(color) {
