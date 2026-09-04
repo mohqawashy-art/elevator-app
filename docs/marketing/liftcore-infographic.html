@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#070a10">
+<title>LiftCore — عرض تعريفي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="whatsapp-pack/images/liftcore-header-logo.png">
+<style>
+  :root {
+    --bg:#070a10; --surface:#111925; --surface2:#151e2c;
+    --gold:#c9a14a; --gold-light:#e8cd86; --text:#f2f5fa; --muted:#8b97a8;
+    --line:rgba(255,255,255,.08); --hair:rgba(201,161,74,.22);
+    --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;touch-action:manipulation}
+  body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);line-height:1.55;padding-top:var(--safe-t)}
+  .deck{position:relative;width:100vw;height:100dvh;overflow:hidden}
+  .deck::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(70% 50% at 85% 5%,rgba(201,161,74,.14),transparent 55%)}
+  .slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:16px 18px calc(88px + var(--safe-b));opacity:0;visibility:hidden;transform:translateY(24px);transition:opacity .55s,transform .55s,visibility .55s;z-index:1;overflow-y:auto}
+  .slide.is-active{opacity:1;visibility:visible;transform:none;z-index:2}
+  .slide.is-leaving{opacity:0;transform:translateY(-16px)}
+  .slide-inner{width:min(480px,100%);text-align:center}
+  .slide-inner--wide{width:min(520px,100%)}
+  .logo-wrap{position:relative;display:inline-block;margin-bottom:20px}
+  .logo-wrap img{width:min(340px,92vw);height:auto;display:block;animation:logoIn 1s cubic-bezier(.22,1,.36,1) both;filter:drop-shadow(0 8px 28px rgba(201,161,74,.22))}
+  .logo-shimmer{position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.15) 50%,transparent 65%);background-size:200% 100%;animation:shimmer 3s ease-in-out 1s infinite;pointer-events:none;mix-blend-mode:overlay}
+  @keyframes logoIn{from{opacity:0;transform:scale(.9) translateY(20px)}to{opacity:1;transform:none}}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .intro-sub{font-size:1rem;color:var(--muted);max-width:34ch;margin:0 auto}
+  .kicker{display:inline-block;font-size:.78rem;font-weight:700;color:var(--gold-light);margin-bottom:12px;padding:5px 14px;border:1px solid var(--hair);border-radius:999px;background:rgba(201,161,74,.06)}
+  .slide h1{font-size:clamp(1.35rem,5.5vw,1.85rem);font-weight:800;line-height:1.45;margin-bottom:12px}
+  .slide h1 em{font-style:normal;color:var(--gold-light)}
+  .slide-desc{color:var(--muted);font-size:.95rem;max-width:40ch;margin:0 auto}
+  .section-label{font-size:1rem;font-weight:800;color:var(--gold-light);margin-bottom:16px}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 12px;opacity:0;transform:translateY(16px)}
+  .slide.is-active .stat{animation:popIn .5s ease forwards}
+  .slide.is-active .stat:nth-child(1){animation-delay:.1s}
+  .slide.is-active .stat:nth-child(2){animation-delay:.2s}
+  .slide.is-active .stat:nth-child(3){animation-delay:.3s}
+  .slide.is-active .stat:nth-child(4){animation-delay:.4s}
+  @keyframes popIn{to{opacity:1;transform:none}}
+  .stat-num{font-size:1.65rem;font-weight:800;color:var(--gold-light);margin-bottom:6px}
+  .stat-label{font-size:.78rem;color:var(--muted)}
+  .shot{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface);text-align:right;opacity:0;transform:translateY(20px) scale(.97)}
+  .slide.is-active .shot{animation:shotIn .65s cubic-bezier(.22,1,.36,1) .15s forwards}
+  @keyframes shotIn{to{opacity:1;transform:none}}
+  .shot-frame{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.02)}
+  .shot-dots{display:flex;gap:5px}.shot-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.16)}
+  .shot-dots i:nth-child(1){background:#e07070}.shot-dots i:nth-child(2){background:#e0c070}.shot-dots i:nth-child(3){background:#70c090}
+  .shot-title{font-size:.76rem;color:var(--muted)}
+  .shot img{width:100%;height:auto;display:block;background:#0b0f17}
+  .shot-caption{padding:12px 14px 14px}.shot-caption h3{font-size:.95rem;font-weight:700;color:var(--gold-light);margin-bottom:4px}
+  .shot-caption p{font-size:.8rem;color:var(--muted);line-height:1.5}
+  .workflow-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -18px;padding:0 18px 8px;scrollbar-width:none}
+  .workflow-scroll::-webkit-scrollbar{display:none}
+  .workflow{display:flex;gap:10px;min-width:min-content}
+  .step{flex:0 0 130px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 10px;text-align:center;opacity:0;transform:translateY(12px)}
+  .slide.is-active .step{animation:popIn .45s ease forwards}
+  .slide.is-active .step:nth-child(1){animation-delay:.1s}.slide.is-active .step:nth-child(2){animation-delay:.22s}
+  .slide.is-active .step:nth-child(3){animation-delay:.34s}.slide.is-active .step:nth-child(4){animation-delay:.46s}
+  .slide.is-active .step:nth-child(5){animation-delay:.58s}
+  .step-num{width:32px;height:32px;margin:0 auto 8px;border-radius:50%;background:var(--surface2);border:2px solid var(--hair);display:grid;place-items:center;font-size:.9rem;font-weight:800;color:var(--gold-light)}
+  .step h3{font-size:.82rem;font-weight:700;margin-bottom:4px}.step p{font-size:.72rem;color:var(--muted)}
+  .dept-list{display:flex;flex-direction:column;gap:8px;text-align:right}
+  .dept-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;border-right:3px solid var(--c);opacity:0;transform:translateX(-12px)}
+  .slide.is-active .dept-row{animation:slideIn .4s ease forwards}
+  .slide.is-active .dept-row:nth-child(1){animation-delay:.05s}.slide.is-active .dept-row:nth-child(2){animation-delay:.12s}
+  .slide.is-active .dept-row:nth-child(3){animation-delay:.19s}.slide.is-active .dept-row:nth-child(4){animation-delay:.26s}
+  .slide.is-active .dept-row:nth-child(5){animation-delay:.33s}.slide.is-active .dept-row:nth-child(6){animation-delay:.40s}
+  .slide.is-active .dept-row:nth-child(7){animation-delay:.47s}
+  @keyframes slideIn{to{opacity:1;transform:none}}
+  .dept-row h3{font-size:.85rem;font-weight:700;flex:1}.dept-row span{font-size:.72rem;color:var(--muted)}
+  .cta-url{font-size:clamp(1.5rem,6vw,2rem);font-weight:800;color:var(--gold-light);direction:ltr;margin:16px 0 10px}
+  .cta-note{font-size:.88rem;color:var(--muted);max-width:34ch;margin:0 auto}
+  .touch-zones{position:fixed;inset:0;z-index:5;display:flex;pointer-events:none}
+  .touch-zones span{flex:1;pointer-events:auto}
+  .controls{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 16px calc(14px + var(--safe-b));background:linear-gradient(transparent,rgba(7,10,16,.95) 35%)}
+  .ctrl-btn{font-family:inherit;font-size:1.1rem;width:48px;height:48px;border-radius:50%;border:1px solid var(--hair);background:var(--surface2);color:var(--gold-light);display:grid;place-items:center}
+  .dots{display:flex;gap:6px;max-width:140px;flex-wrap:wrap;justify-content:center}
+  .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);border:none;padding:0}
+  .dot.is-on{background:var(--gold-light);transform:scale(1.35)}
+  .progress-wrap{position:fixed;top:var(--safe-t);left:0;right:0;height:3px;z-index:50;background:rgba(255,255,255,.04)}
+  .progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-light))}
+  .swipe-hint{position:fixed;bottom:calc(72px + var(--safe-b));left:50%;transform:translateX(-50%);font-size:.72rem;color:var(--muted);opacity:.7;z-index:40;pointer-events:none;animation:hintFade 4s ease 2s forwards}
+  @keyframes hintFade{0%,70%{opacity:.7}100%{opacity:0}}
+</style>
+</head>
+<body>
+<div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+<div class="swipe-hint">← اسحب للتنقل →</div>
+<div class="touch-zones"><span id="tapPrev"></span><span id="tapNext"></span></div>
+<div class="deck" id="deck">
+
+<section class="slide is-active">
+  <div class="slide-inner">
+    <div class="logo-wrap">
+      <img src="whatsapp-pack/images/liftcore-header-logo.png" alt="LiftCore — الإدارة الذكية للمصاعد">
+      <div class="logo-shimmer"></div>
+    </div>
+    <p class="intro-sub">نظام تشغيل متكامل لشركات صيانة وتركيب المصاعد في السعودية</p>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="slide-inner">
+    <div class="kicker">منصة واحدة</div>
+    <h1>من <em>العقد</em> إلى زيارة الفني <em>والفواتير</em></h1>
+    <p class="slide-desc">LiftCore يغطي دورة تشغيل شركة المصاعد: عملاء، عقود، ميدان، مخزون، حسابات، وتقارير.</p>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="slide-inner">
+    <div class="section-label">بالأرقام</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-num" data-count="7">0</div><div class="stat-label">منصات أقسام</div></div>
+      <div class="stat"><div class="stat-num" data-count="20" data-suffix="+">0</div><div class="stat-label">تقرير تشغيلي</div></div>
+      <div class="stat"><div class="stat-num">QR</div><div class="stat-label">فواتير ZATCA</div></div>
+      <div class="stat"><div class="stat-num">24/7</div><div class="stat-label">بوابة فني</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide"><div class="slide-inner slide-inner--wide"><div class="section-label">من داخل النظام</div>
+<figure class="shot"><div class="shot-frame"><div class="shot-dots"><i></i><i></i><i></i></div><div class="shot-title">لوحة التحكم</div></div>
+<img src="whatsapp-pack/images/screens/dashboard.png" alt="لوحة التحكم" loading="lazy"><figcaption class="shot-caption"><h3>رؤية تشغيلية في شاشة واحدة</h3><p>عملاء، مصاعد، عقود، زيارات، أعطال، ومستحقات.</p></figcaption></figure></div></section>
+
+<section class="slide"><div class="slide-inner slide-inner--wide"><div class="section-label">من داخل النظام</div>
+<figure class="shot"><div class="shot-frame"><div class="shot-dots"><i></i><i></i><i></i></div><div class="shot-title">خريطة المصاعد</div></div>
+<img src="whatsapp-pack/images/screens/elevators-map.png" alt="خريطة المصاعد" loading="lazy"><figcaption class="shot-caption"><h3>أسطولك على الخريطة</h3><p>تتبع مواقع المصاعد وتصفية الحالة.</p></figcaption></figure></div></section>
+
+<section class="slide"><div class="slide-inner slide-inner--wide"><div class="section-label">من داخل النظام</div>
+<figure class="shot"><div class="shot-frame"><div class="shot-dots"><i></i><i></i><i></i></div><div class="shot-title">زيارات الصيانة</div></div>
+<img src="whatsapp-pack/images/screens/visits.png" alt="زيارات الصيانة" loading="lazy"><figcaption class="shot-caption"><h3>جدولة ميدانية واضحة</h3><p>جدول زيارات مع الفني والحالة والتاريخ.</p></figcaption></figure></div></section>
+
+<section class="slide"><div class="slide-inner slide-inner--wide"><div class="section-label">من داخل النظام</div>
+<figure class="shot"><div class="shot-frame"><div class="shot-dots"><i></i><i></i><i></i></div><div class="shot-title">العملاء</div></div>
+<img src="whatsapp-pack/images/screens/customers.png" alt="العملاء" loading="lazy"><figcaption class="shot-caption"><h3>سجل العملاء والعقود</h3><p>بيانات العملاء، حالة العقد، وعدد المصاعد.</p></figcaption></figure></div></section>
+
+<section class="slide"><div class="slide-inner slide-inner--wide"><div class="section-label">من داخل النظام</div>
+<figure class="shot"><div class="shot-frame"><div class="shot-dots"><i></i><i></i><i></i></div><div class="shot-title">العقود</div></div>
+<img src="whatsapp-pack/images/screens/contracts.png" alt="العقود" loading="lazy"><figcaption class="shot-caption"><h3>دورة حياة العقد كاملة</h3><p>عقود نشطة ومنتهية وتنبيهات التجديد.</p></figcaption></figure></div></section>
+
+<section class="slide"><div class="slide-inner slide-inner--wide"><div class="section-label">من داخل النظام</div>
+<figure class="shot"><div class="shot-frame"><div class="shot-dots"><i></i><i></i><i></i></div><div class="shot-title">الفريق الفني</div></div>
+<img src="whatsapp-pack/images/screens/technicians-list.png" alt="الفريق الفني" loading="lazy"><figcaption class="shot-caption"><h3>إدارة الفنيين والتخصص</h3><p>حالة كل فني، التخصص، والطوارئ.</p></figcaption></figure></div></section>
+
+<section class="slide"><div class="slide-inner slide-inner--wide"><div class="section-label">من داخل النظام</div>
+<figure class="shot"><div class="shot-frame"><div class="shot-dots"><i></i><i></i><i></i></div><div class="shot-title">إدارة المخازن</div></div>
+<img src="whatsapp-pack/images/screens/warehouse.png" alt="المخازن" loading="lazy"><figcaption class="shot-caption"><h3>مخزون قطع المصاعد</h3><p>أصناف الرفع والجر وتنبيهات النفاد.</p></figcaption></figure></div></section>
+
+<section class="slide"><div class="slide-inner slide-inner--wide"><div class="section-label">دورة التشغيل</div>
+<div class="workflow-scroll"><div class="workflow">
+<div class="step"><div class="step-num">1</div><h3>العميل والعقد</h3><p>تسجيل العميل</p></div>
+<div class="step"><div class="step-num">2</div><h3>الجدولة</h3><p>زيارات وفني</p></div>
+<div class="step"><div class="step-num">3</div><h3>الميدان</h3><p>تقرير موقّع</p></div>
+<div class="step"><div class="step-num">4</div><h3>المخزون</h3><p>صرف قطع</p></div>
+<div class="step"><div class="step-num">5</div><h3>الفوترة</h3><p>فواتير QR</p></div>
+</div></div></div></section>
+
+<section class="slide"><div class="slide-inner slide-inner--wide"><div class="section-label">7 منصات أقسام</div>
+<div class="dept-list">
+<div class="dept-row" style="--c:#2a7fff"><h3>الصيانة والأعطال</h3><span>زيارات · أعطال</span></div>
+<div class="dept-row" style="--c:#c8a055"><h3>التركيبات والتحديث</h3><span>مشروعات</span></div>
+<div class="dept-row" style="--c:#14b8a6"><h3>التسويق والمبيعات</h3><span>عروض</span></div>
+<div class="dept-row" style="--c:#1fb87a"><h3>المخازن والمشتريات</h3><span>مخزون</span></div>
+<div class="dept-row" style="--c:#8c6cff"><h3>شؤون العاملين</h3><span>فنيون</span></div>
+<div class="dept-row" style="--c:#e09030"><h3>الحسابات والمالية</h3><span>ZATCA</span></div>
+<div class="dept-row" style="--c:#e04f6f"><h3>الإدارة والمتابعة</h3><span>KPI</span></div>
+</div></div></section>
+
+<section class="slide"><div class="slide-inner">
+<div class="logo-wrap"><img src="whatsapp-pack/images/liftcore-header-logo.png" alt="LiftCore"></div>
+<div class="cta-url">liftcoreapp.com</div>
+<p class="cta-note">اطلب عرضاً تجريبياً — برنامج إدارة المصاعد لشركات الصيانة والتركيب</p>
+</div></section>
+
+</div>
+<div class="controls">
+<button type="button" class="ctrl-btn" id="prevBtn">&#8594;</button>
+<div class="dots" id="dots"></div>
+<button type="button" class="ctrl-btn" id="nextBtn">&#8592;</button>
+</div>
+<script>
+(function(){
+  var SLIDE_MS=5500,slides=[].slice.call(document.querySelectorAll('.slide')),total=slides.length,current=0,timer=null,raf=null,statsIdx=2;
+  var bar=document.getElementById('progressBar'),dotsEl=document.getElementById('dots');
+  slides.forEach(function(_,i){var d=document.createElement('button');d.type='button';d.className='dot'+(i?'':' is-on');d.onclick=function(){goTo(i)};dotsEl.appendChild(d)});
+  var dots=[].slice.call(dotsEl.querySelectorAll('.dot'));
+  function countUp(s){s.querySelectorAll('[data-count]').forEach(function(el){var t=+el.dataset.count,suf=el.dataset.suffix||'',n=0,st=Math.max(1,Math.ceil(t/25)),iv=setInterval(function(){n+=st;if(n>=t){n=t;clearInterval(iv)}el.textContent=n+suf},45)})}
+  function reset(s){s.querySelectorAll('.stat,.step,.dept-row,.shot').forEach(function(el){el.style.animation='none';void el.offsetWidth;el.style.animation=''});s.querySelectorAll('[data-count]').forEach(function(el){el.textContent='0'+(el.dataset.suffix||'')})}
+  function goTo(idx){if(idx===current&&slides[idx].classList.contains('is-active'))return;var p=slides[current];p.classList.remove('is-active');p.classList.add('is-leaving');reset(p);current=((idx%total)+total)%total;setTimeout(function(){p.classList.remove('is-leaving');slides[current].classList.add('is-active');if(current===statsIdx)countUp(slides[current]);dots.forEach(function(d,i){d.classList.toggle('is-on',i===current)});restart()},300)}
+  function next(){goTo(current+1>=total?0:current+1)}function prev(){goTo(current-1)}
+  function restart(){clearTimeout(timer);var t0=performance.now();function frame(now){var pct=Math.min((now-t0)/SLIDE_MS*100,100);bar.style.width=pct+'%';if(pct<100)raf=requestAnimationFrame(frame)}raf=requestAnimationFrame(frame);timer=setTimeout(next,SLIDE_MS)}
+  document.getElementById('nextBtn').onclick=next;document.getElementById('prevBtn').onclick=prev;
+  document.getElementById('tapNext').onclick=next;document.getElementById('tapPrev').onclick=prev;
+  var tx=0,ty=0;document.addEventListener('touchstart',function(e){tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+  document.addEventListener('touchend',function(e){var dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40)(dx<0?next:prev)()},{passive:true});
+  restart();
+})();
+</script>
+</body>
+</html>

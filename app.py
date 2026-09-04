@@ -214,7 +214,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
     'coming_soon', 'pricing', 'product_landing', 'demo_request',
     'robots_txt', 'sitemap_xml', 'google_site_verification',
-    'ads_landing', 'ads_thanks', 'seo_elevator_management',
+    'ads_landing', 'ads_thanks', 'seo_elevator_management', 'marketing_deck',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
@@ -2588,6 +2588,23 @@ def pricing():
 def product_landing():
     """مسار مباشر للصفحة التعريفية (مفيد من روابط الأسعار)."""
     return render_template('landing.html', **_pricing_context(seo_page='landing'))
+
+
+@app.route('/deck')
+def marketing_deck():
+    """عرض تسويقي متحرك للجوال — للمشاركة عبر واتساب."""
+    from marketing_site import DECK_SHOTS, marketing_seo_context
+
+    ctx = marketing_seo_context(page='landing')
+    ctx['deck_shots'] = DECK_SHOTS
+    ctx['page_title'] = 'LiftCore — عرض تعريفي'
+    ctx['page_description'] = 'شاهد LiftCore: برنامج إدارة المصاعد لشركات الصيانة في السعودية.'
+    ctx['og_image_url'] = url_for(
+        'static',
+        filename='images/liftcore-marketing-header-logo.png',
+        _external=True,
+    )
+    return render_template('marketing_deck.html', **ctx)
 
 
 @app.route('/برنامج-ادارة-المصاعد')

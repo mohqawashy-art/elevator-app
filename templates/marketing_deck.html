@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+{% include 'partials/marketing_gtag.html' %}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#070a10">
+<title>{{ page_title }}</title>
+<meta name="description" content="{{ page_description }}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ page_title }}">
+<meta property="og:description" content="{{ page_description }}">
+<meta property="og:image" content="{{ og_image_url }}">
+<meta property="og:url" content="https://liftcoreapp.com/deck">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}">
+<style>
+  :root {
+    --bg: #070a10;
+    --surface: #111925;
+    --surface2: #151e2c;
+    --gold: #c9a14a;
+    --gold-light: #e8cd86;
+    --text: #f2f5fa;
+    --muted: #8b97a8;
+    --line: rgba(255,255,255,.08);
+    --hair: rgba(201,161,74,.22);
+    --blue: #2a7fff;
+    --install: #c8a055;
+    --sales: #14b8a6;
+    --inventory: #1fb87a;
+    --personnel: #8c6cff;
+    --finance: #e09030;
+    --mgmt: #e04f6f;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-t: env(safe-area-inset-top, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    padding-top: var(--safe-t);
+  }
+
+  .deck {
+    position: relative;
+    width: 100vw;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .deck::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(70% 50% at 85% 5%, rgba(201,161,74,.14), transparent 55%),
+      radial-gradient(55% 40% at 8% 20%, rgba(42,127,255,.07), transparent 50%);
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 16px 18px calc(88px + var(--safe-b));
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(24px);
+    transition: opacity .55s ease, transform .55s ease, visibility .55s;
+    z-index: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .slide.is-active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    z-index: 2;
+  }
+
+  .slide.is-leaving {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+
+  .slide-inner {
+    width: min(480px, 100%);
+    text-align: center;
+  }
+
+  .slide-inner--wide { width: min(520px, 100%); }
+
+  /* Logo */
+  .logo-wrap {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 20px;
+  }
+
+  .logo-wrap img {
+    width: min(340px, 92vw);
+    height: auto;
+    display: block;
+    animation: logoIn 1s cubic-bezier(.22,1,.36,1) both;
+    filter: drop-shadow(0 8px 28px rgba(201,161,74,.22));
+  }
+
+  .logo-shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.15) 50%, transparent 65%);
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out 1s infinite;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  @keyframes logoIn {
+    from { opacity: 0; transform: scale(.9) translateY(20px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .intro-sub {
+    font-size: 1rem;
+    color: var(--muted);
+    max-width: 34ch;
+    margin: 0 auto;
+    animation: fadeUp .7s ease .4s both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .kicker {
+    display: inline-block;
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: .08em;
+    margin-bottom: 12px;
+    padding: 5px 14px;
+    border: 1px solid var(--hair);
+    border-radius: 999px;
+    background: rgba(201,161,74,.06);
+  }
+
+  .slide h1 {
+    font-size: clamp(1.35rem, 5.5vw, 1.85rem);
+    font-weight: 800;
+    line-height: 1.45;
+    margin-bottom: 12px;
+  }
+
+  .slide h1 em { font-style: normal; color: var(--gold-light); }
+
+  .slide-desc {
+    color: var(--muted);
+    font-size: .95rem;
+    max-width: 40ch;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--gold-light);
+    margin-bottom: 16px;
+  }
+
+  /* Stats */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 12px;
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  .slide.is-active .stat { animation: popIn .5s ease forwards; }
+  .slide.is-active .stat:nth-child(1) { animation-delay: .1s; }
+  .slide.is-active .stat:nth-child(2) { animation-delay: .2s; }
+  .slide.is-active .stat:nth-child(3) { animation-delay: .3s; }
+  .slide.is-active .stat:nth-child(4) { animation-delay: .4s; }
+
+  @keyframes popIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stat-num {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: var(--gold-light);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label { font-size: .78rem; color: var(--muted); }
+
+  /* Screenshot slide */
+  .shot {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--surface);
+    text-align: right;
+    opacity: 0;
+    transform: translateY(20px) scale(.97);
+  }
+
+  .slide.is-active .shot {
+    animation: shotIn .65s cubic-bezier(.22,1,.36,1) .15s forwards;
+  }
+
+  @keyframes shotIn {
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .shot-frame {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,.02);
+  }
+
+  .shot-dots { display: flex; gap: 5px; }
+  .shot-dots i {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.16);
+  }
+  .shot-dots i:nth-child(1) { background: #e07070; }
+  .shot-dots i:nth-child(2) { background: #e0c070; }
+  .shot-dots i:nth-child(3) { background: #70c090; }
+
+  .shot-title { font-size: .76rem; color: var(--muted); }
+
+  .shot img {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: #0b0f17;
+  }
+
+  .shot-caption { padding: 12px 14px 14px; }
+  .shot-caption h3 {
+    font-size: .95rem;
+    font-weight: 700;
+    color: var(--gold-light);
+    margin-bottom: 4px;
+  }
+  .shot-caption p { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+  /* Workflow — scroll horizontal on mobile */
+  .workflow-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -18px;
+    padding: 0 18px 8px;
+    scrollbar-width: none;
+  }
+  .workflow-scroll::-webkit-scrollbar { display: none; }
+
+  .workflow {
+    display: flex;
+    gap: 10px;
+    min-width: min-content;
+    padding-bottom: 4px;
+  }
+
+  .step {
+    flex: 0 0 130px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  .slide.is-active .step { animation: popIn .45s ease forwards; }
+  .slide.is-active .step:nth-child(1) { animation-delay: .1s; }
+  .slide.is-active .step:nth-child(2) { animation-delay: .22s; }
+  .slide.is-active .step:nth-child(3) { animation-delay: .34s; }
+  .slide.is-active .step:nth-child(4) { animation-delay: .46s; }
+  .slide.is-active .step:nth-child(5) { animation-delay: .58s; }
+
+  .step-num {
+    width: 32px; height: 32px;
+    margin: 0 auto 8px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--hair);
+    display: grid;
+    place-items: center;
+    font-size: .9rem;
+    font-weight: 800;
+    color: var(--gold-light);
+  }
+
+  .step h3 { font-size: .82rem; font-weight: 700; margin-bottom: 4px; }
+  .step p  { font-size: .72rem; color: var(--muted); line-height: 1.4; }
+
+  /* Departments compact */
+  .dept-list { display: flex; flex-direction: column; gap: 8px; text-align: right; }
+
+  .dept-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    border-right: 3px solid var(--c, var(--gold));
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+
+  .slide.is-active .dept-row { animation: slideIn .4s ease forwards; }
+  .slide.is-active .dept-row:nth-child(1) { animation-delay: .05s; }
+  .slide.is-active .dept-row:nth-child(2) { animation-delay: .12s; }
+  .slide.is-active .dept-row:nth-child(3) { animation-delay: .19s; }
+  .slide.is-active .dept-row:nth-child(4) { animation-delay: .26s; }
+  .slide.is-active .dept-row:nth-child(5) { animation-delay: .33s; }
+  .slide.is-active .dept-row:nth-child(6) { animation-delay: .40s; }
+  .slide.is-active .dept-row:nth-child(7) { animation-delay: .47s; }
+
+  @keyframes slideIn {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .dept-row h3 { font-size: .85rem; font-weight: 700; flex: 1; }
+  .dept-row span { font-size: .72rem; color: var(--muted); }
+
+  /* CTA */
+  .cta-url {
+    font-size: clamp(1.5rem, 6vw, 2rem);
+    font-weight: 800;
+    color: var(--gold-light);
+    direction: ltr;
+    margin: 16px 0 10px;
+  }
+
+  .cta-note { font-size: .88rem; color: var(--muted); max-width: 34ch; margin: 0 auto 16px; }
+
+  .cta-btn {
+    display: inline-block;
+    font-family: inherit;
+    font-size: .92rem;
+    font-weight: 700;
+    padding: 14px 28px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #d4b05a, var(--gold));
+    color: #1a1205;
+    text-decoration: none;
+    margin-top: 4px;
+  }
+
+  /* Touch zones */
+  .touch-zones {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    pointer-events: none;
+  }
+
+  .touch-zones span {
+    flex: 1;
+    pointer-events: auto;
+  }
+
+  /* Controls */
+  .controls {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 16px calc(14px + var(--safe-b));
+    background: linear-gradient(transparent, rgba(7,10,16,.95) 35%);
+  }
+
+  .ctrl-btn {
+    font-family: inherit;
+    font-size: 1.1rem;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 1px solid var(--hair);
+    background: var(--surface2);
+    color: var(--gold-light);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+
+  .dots { display: flex; gap: 6px; max-width: 140px; overflow: hidden; flex-wrap: wrap; justify-content: center; }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.18);
+    border: none;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background .3s, transform .3s;
+  }
+
+  .dot.is-on { background: var(--gold-light); transform: scale(1.35); }
+
+  .progress-wrap {
+    position: fixed;
+    top: var(--safe-t); left: 0; right: 0;
+    height: 3px;
+    z-index: 50;
+    background: rgba(255,255,255,.04);
+  }
+
+  .progress-bar {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  }
+
+  .swipe-hint {
+    position: fixed;
+    bottom: calc(72px + var(--safe-b));
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: .72rem;
+    color: var(--muted);
+    opacity: .7;
+    z-index: 40;
+    pointer-events: none;
+    animation: hintFade 4s ease 2s forwards;
+  }
+
+  @keyframes hintFade {
+    0%, 70% { opacity: .7; }
+    100% { opacity: 0; }
+  }
+
+  @media (min-width: 768px) {
+    .slide { padding-left: 48px; padding-right: 48px; }
+    .stats { grid-template-columns: repeat(4, 1fr); }
+    .logo-wrap img { width: min(480px, 60vw); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      transition-duration: .01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="swipe-hint no-print">← اسحب للتنقل →</div>
+
+  <div class="touch-zones" aria-hidden="true">
+    <span id="tapPrev"></span>
+    <span id="tapNext"></span>
+  </div>
+
+  <div class="deck" id="deck">
+
+    <section class="slide is-active">
+      <div class="slide-inner">
+        <div class="logo-wrap">
+          <img src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}" alt="LiftCore — الإدارة الذكية للمصاعد">
+          <div class="logo-shimmer"></div>
+        </div>
+        <p class="intro-sub">نظام تشغيل متكامل لشركات صيانة وتركيب المصاعد في السعودية</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <div class="kicker">منصة واحدة</div>
+        <h1>من <em>العقد</em> إلى زيارة الفني <em>والفواتير</em></h1>
+        <p class="slide-desc">LiftCore يغطي دورة تشغيل شركة المصاعد: عملاء، عقود، ميدان، مخزون، حسابات، وتقارير.</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <div class="section-label">بالأرقام</div>
+        <div class="stats">
+          <div class="stat"><div class="stat-num" data-count="7">0</div><div class="stat-label">منصات أقسام</div></div>
+          <div class="stat"><div class="stat-num" data-count="20" data-suffix="+">0</div><div class="stat-label">تقرير تشغيلي</div></div>
+          <div class="stat"><div class="stat-num">QR</div><div class="stat-label">فواتير ZATCA</div></div>
+          <div class="stat"><div class="stat-num">24/7</div><div class="stat-label">بوابة فني</div></div>
+        </div>
+      </div>
+    </section>
+
+    {% for shot in deck_shots %}
+    <section class="slide">
+      <div class="slide-inner slide-inner--wide">
+        <div class="section-label">من داخل النظام</div>
+        <figure class="shot">
+          <div class="shot-frame">
+            <div class="shot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="shot-title">{{ shot.title }}</div>
+          </div>
+          <img src="{{ url_for('static', filename=shot.file) }}" alt="{{ shot.caption }}" loading="lazy" decoding="async">
+          <figcaption class="shot-caption">
+            <h3>{{ shot.caption }}</h3>
+            <p>{{ shot.desc }}</p>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+    {% endfor %}
+
+    <section class="slide">
+      <div class="slide-inner slide-inner--wide">
+        <div class="section-label">دورة التشغيل</div>
+        <div class="workflow-scroll">
+          <div class="workflow">
+            <div class="step"><div class="step-num">1</div><h3>العميل والعقد</h3><p>تسجيل العميل وعقد الصيانة</p></div>
+            <div class="step"><div class="step-num">2</div><h3>الجدولة</h3><p>زيارات وتعيين فني</p></div>
+            <div class="step"><div class="step-num">3</div><h3>الميدان</h3><p>تقرير موقّع ومتابعة</p></div>
+            <div class="step"><div class="step-num">4</div><h3>المخزون</h3><p>صرف قطع وطلبات</p></div>
+            <div class="step"><div class="step-num">5</div><h3>الفوترة</h3><p>إيرادات وفواتير QR</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner slide-inner--wide">
+        <div class="section-label">7 منصات أقسام</div>
+        <div class="dept-list">
+          <div class="dept-row" style="--c:#2a7fff"><h3>الصيانة والأعطال</h3><span>زيارات · أعطال</span></div>
+          <div class="dept-row" style="--c:#c8a055"><h3>التركيبات والتحديث</h3><span>مشروعات</span></div>
+          <div class="dept-row" style="--c:#14b8a6"><h3>التسويق والمبيعات</h3><span>عروض · Leads</span></div>
+          <div class="dept-row" style="--c:#1fb87a"><h3>المخازن والمشتريات</h3><span>مخزون</span></div>
+          <div class="dept-row" style="--c:#8c6cff"><h3>شؤون العاملين</h3><span>فنيون</span></div>
+          <div class="dept-row" style="--c:#e09030"><h3>الحسابات والمالية</h3><span>ZATCA · تقارير</span></div>
+          <div class="dept-row" style="--c:#e04f6f"><h3>الإدارة والمتابعة</h3><span>KPI</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <div class="logo-wrap">
+          <img src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}" alt="LiftCore">
+        </div>
+        <div class="cta-url">liftcoreapp.com</div>
+        <p class="cta-note">اطلب عرضاً تجريبياً — برنامج إدارة المصاعد لشركات الصيانة والتركيب</p>
+        <a class="cta-btn" href="{{ url_for('index') }}">زيارة الموقع</a>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="controls">
+    <button type="button" class="ctrl-btn" id="prevBtn" aria-label="السابق">&#8594;</button>
+    <div class="dots" id="dots"></div>
+    <button type="button" class="ctrl-btn" id="nextBtn" aria-label="التالي">&#8592;</button>
+  </div>
+
+  <script>
+  (function () {
+    var SLIDE_MS = 5500;
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var total = slides.length;
+    var current = 0;
+    var timer = null;
+    var progressRAF = null;
+    var statsIdx = 2;
+
+    var progressBar = document.getElementById('progressBar');
+    var dotsEl = document.getElementById('dots');
+
+    slides.forEach(function (_, i) {
+      var d = document.createElement('button');
+      d.type = 'button';
+      d.className = 'dot' + (i === 0 ? ' is-on' : '');
+      d.setAttribute('aria-label', 'شريحة ' + (i + 1));
+      d.addEventListener('click', function () { goTo(i); });
+      dotsEl.appendChild(d);
+    });
+    var dots = Array.prototype.slice.call(dotsEl.querySelectorAll('.dot'));
+
+    function countUp(slide) {
+      slide.querySelectorAll('[data-count]').forEach(function (el) {
+        var target = parseInt(el.dataset.count, 10);
+        var suffix = el.dataset.suffix || '';
+        var n = 0;
+        var step = Math.max(1, Math.ceil(target / 25));
+        var iv = setInterval(function () {
+          n += step;
+          if (n >= target) { n = target; clearInterval(iv); }
+          el.textContent = n + suffix;
+        }, 45);
+      });
+    }
+
+    function resetSlide(slide) {
+      slide.querySelectorAll('.stat, .step, .dept-row, .shot').forEach(function (el) {
+        el.style.animation = 'none';
+        void el.offsetWidth;
+        el.style.animation = '';
+      });
+      slide.querySelectorAll('[data-count]').forEach(function (el) {
+        el.textContent = '0' + (el.dataset.suffix || '');
+      });
+    }
+
+    function goTo(idx) {
+      if (idx === current && slides[idx].classList.contains('is-active')) return;
+      var prev = slides[current];
+      prev.classList.remove('is-active');
+      prev.classList.add('is-leaving');
+      resetSlide(prev);
+      current = ((idx % total) + total) % total;
+      setTimeout(function () {
+        prev.classList.remove('is-leaving');
+        slides[current].classList.add('is-active');
+        if (current === statsIdx) countUp(slides[current]);
+        updateUI();
+        restartTimer();
+      }, 300);
+    }
+
+    function next() { goTo(current + 1 >= total ? 0 : current + 1); }
+    function prev() { goTo(current - 1); }
+
+    function updateUI() {
+      dots.forEach(function (d, i) { d.classList.toggle('is-on', i === current); });
+    }
+
+    function tickProgress() {
+      if (progressRAF) cancelAnimationFrame(progressRAF);
+      var slideStart = performance.now();
+      function frame(now) {
+        var pct = Math.min((now - slideStart) / SLIDE_MS * 100, 100);
+        progressBar.style.width = pct + '%';
+        if (pct < 100) progressRAF = requestAnimationFrame(frame);
+      }
+      progressRAF = requestAnimationFrame(frame);
+    }
+
+    function restartTimer() {
+      clearTimeout(timer);
+      tickProgress();
+      timer = setTimeout(next, SLIDE_MS);
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('prevBtn').addEventListener('click', prev);
+    document.getElementById('tapNext').addEventListener('click', next);
+    document.getElementById('tapPrev').addEventListener('click', prev);
+
+    var touchX = 0, touchY = 0;
+    document.addEventListener('touchstart', function (e) {
+      touchX = e.touches[0].clientX;
+      touchY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - touchX;
+      var dy = e.changedTouches[0].clientY - touchY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+        dx < 0 ? next() : prev();
+      }
+    }, { passive: true });
+
+    restartTimer();
+  })();
+  </script>
+</body>
+</html>
