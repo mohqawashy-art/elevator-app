@@ -130,8 +130,43 @@ def _create_entry(
     return je
 
 
+_CASH_PAY_MARKERS = ('كاش', 'نقد', 'نقدا', 'نقداً', 'نقدي', 'cash')
+_BANK_PAY_MARKERS = (
+    'تحويل', 'بنك', 'بنكي', 'حوالة', 'transfer', 'bank',
+    'بطاقة', 'card', 'شبكة', 'مدى', 'visa', 'mada',
+    'شيك', 'شيكات', 'cheque', 'check',
+)
+
+
+def _norm_pay(payment_method: str | None) -> str:
+    return (payment_method or '').strip().lower()
+
+
+def _is_cash_payment(payment_method: str | None) -> bool:
+    raw = _norm_pay(payment_method)
+    if not raw:
+        return False
+    return any(m.lower() in raw for m in _CASH_PAY_MARKERS)
+
+
+def _is_bank_payment(payment_method: str | None) -> bool:
+    raw = _norm_pay(payment_method)
+    if not raw or _is_cash_payment(payment_method):
+        return False
+    return any(m.lower() in raw for m in _BANK_PAY_MARKERS)
+
+
+def _treasury_account(payment_method: str | None):
+    """كاش/نقد → الصندوق. تحويل/بطاقة/شيك → البنك. غير المحدد → الصندوق."""
+    bank = account_by_map_key('bank')
+    cash = account_by_map_key('cash')
+    if _is_bank_payment(payment_method):
+        return bank or cash
+    return cash or bank
+
+
 def post_revenue_journal(revenue: Revenue) -> JournalEntry | None:
-    """قيد تحصيل إيراد: مدين نقدية / دائن إيراد (+ ضريبة إن وجدت)."""
+    """قيد تحصيل إيراد: مدين صندوق أو بنك حسب طريقة الدفع / دائن إيراد (+ ضريبة)."""
     revenue_id = revenue.id
     ensure_journal_schema()
     if revenue_id:
@@ -147,10 +182,10 @@ def post_revenue_journal(revenue: Revenue) -> JournalEntry | None:
         _void_source_journals('revenue', revenue.id)
         return None
 
-    cash = account_by_map_key('cash')
+    treasury = _treasury_account(getattr(revenue, 'payment_method', None))
     vat = account_by_map_key('vat_payable')
     rev_id = revenue.account_id or resolve_revenue_account_id(revenue.revenue_type, revenue.notes)
-    if not cash or not rev_id:
+    if not treasury or not rev_id:
         return None
 
     total = _round2(revenue.total if revenue.total is not None else (revenue.amount or 0) + (revenue.tax_amount or 0))
@@ -167,7 +202,7 @@ def post_revenue_journal(revenue: Revenue) -> JournalEntry | None:
         net = _round2(total - tax)
 
     lines: list[tuple[int, float, float, str | None]] = [
-        (cash.id, total, 0.0, f'تحصيل {revenue.code}'),
+        (treasury.id, total, 0.0, f'تحصيل {revenue.code}'),
         (rev_id, 0.0, net, revenue.revenue_type or 'إيراد'),
     ]
     if tax > 0 and vat:
@@ -189,7 +224,7 @@ def post_revenue_journal(revenue: Revenue) -> JournalEntry | None:
 
 
 def post_expense_journal(expense: Expense) -> JournalEntry | None:
-    """قيد مصروف: مدين مصروف / دائن نقدية."""
+    """قيد مصروف: مدين مصروف / دائن صندوق أو بنك حسب طريقة الدفع."""
     expense_id = expense.id
     ensure_journal_schema()
     if expense_id:
@@ -201,10 +236,10 @@ def post_expense_journal(expense: Expense) -> JournalEntry | None:
         with db.session.no_autoflush:
             ensure_chart_schema()
 
-    cash = account_by_map_key('cash')
+    treasury = _treasury_account(getattr(expense, 'payment_method', None))
     exp_id = expense.account_id or resolve_expense_account_id(expense.expense_type)
     amount = _round2(expense.amount)
-    if not cash or not exp_id or amount <= 0:
+    if not treasury or not exp_id or amount <= 0:
         _void_source_journals('expense', expense.id)
         return None
 
@@ -218,7 +253,7 @@ def post_expense_journal(expense: Expense) -> JournalEntry | None:
         source_id=expense.id,
         lines=[
             (exp_id, amount, 0.0, expense.description or expense.expense_type or 'مصروف'),
-            (cash.id, 0.0, amount, f'صرف {expense.code}'),
+            (treasury.id, 0.0, amount, f'صرف {expense.code}'),
         ],
     )
 
@@ -267,6 +302,24 @@ def void_manual_journal(journal_id: int) -> bool:
     return True
 
 
+def _repair_treasury_if_needed(source_type: str, record, post_fn) -> bool:
+    """يعيد ترحيل القيد إن وُضع التحصيل/الصرف في البنك بينما الطريقة كاش (أو العكس)."""
+    expected = _treasury_account(getattr(record, 'payment_method', None))
+    if not expected:
+        return False
+    je = (
+        tenant_query(JournalEntry)
+        .filter_by(source_type=source_type, source_id=record.id, status='posted')
+        .order_by(JournalEntry.id.desc())
+        .first()
+    )
+    if not je:
+        return False
+    if any(l.account_id == expected.id for l in je.lines):
+        return False
+    return post_fn(record) is not None
+
+
 def backfill_journals(limit: int = 5000) -> dict[str, int]:
     """ترحيل قيود للإيرادات/المصروفات التي بلا قيد مرحّل."""
     ensure_journal_schema()
@@ -289,9 +342,11 @@ def backfill_journals(limit: int = 5000) -> dict[str, int]:
         if je.source_id
     }
 
-    stats = {'revenues': 0, 'expenses': 0, 'skipped': 0}
+    stats = {'revenues': 0, 'expenses': 0, 'skipped': 0, 'repaired': 0}
     for rev in tenant_query(Revenue).order_by(Revenue.id.asc()).limit(limit).all():
         if rev.id in posted_rev:
+            if _repair_treasury_if_needed('revenue', rev, post_revenue_journal):
+                stats['repaired'] += 1
             continue
         if (rev.status or '') not in COLLECTED_REVENUE_STATUSES:
             stats['skipped'] += 1
@@ -306,6 +361,8 @@ def backfill_journals(limit: int = 5000) -> dict[str, int]:
 
     for exp in tenant_query(Expense).order_by(Expense.id.asc()).limit(limit).all():
         if exp.id in posted_exp:
+            if _repair_treasury_if_needed('expense', exp, post_expense_journal):
+                stats['repaired'] += 1
             continue
         if not exp.account_id:
             exp.account_id = resolve_expense_account_id(exp.expense_type)

@@ -282,8 +282,11 @@
 
   function coordsForRecord(record) {
     if (!record) return null;
-    if (global.LiftCoreLocation && global.LiftCoreLocation.coordsForCustomer) {
-      return global.LiftCoreLocation.coordsForCustomer(record);
+    if (global.LiftCoreLocation && global.LiftCoreLocation.hasCoordinates && global.LiftCoreLocation.parseCoords) {
+      if (!global.LiftCoreLocation.hasCoordinates(record)) return null;
+      var parsed = global.LiftCoreLocation.parseCoords(record.lat, record.lng);
+      if (!parsed) return null;
+      return { lat: parsed.lat, lng: parsed.lng, exact: true };
     }
     var lat = parseFloat(record.lat);
     var lng = parseFloat(record.lng);

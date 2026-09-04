@@ -127,3 +127,58 @@ def test_contract_edit_ignores_haram_default_pin(client):
         saved = db.session.get(Customer, cust_id)
         assert saved.lat == '21.4'
         assert saved.lng == '39.8'
+
+
+def test_contract_edit_without_pin_keeps_customer_coords(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        cust = Customer(
+            organization_id=oid,
+            code='C-MAP3',
+            name='عميل ثابت',
+            status='نشط',
+            lat='21.4012',
+            lng='39.8123',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        c = Contract(
+            organization_id=oid,
+            code='CN-MAP3',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date.today(),
+            end_date=date.today() + timedelta(days=365),
+            status='نشط',
+            value=0,
+            tax_pct=15,
+            tax_amount=0,
+            total=0,
+        )
+        db.session.add(c)
+        db.session.commit()
+        cid, cust_id = c.id, cust.id
+
+    r = client.post(
+        f'/contracts/edit/{cid}',
+        data={
+            'customer_id': str(cust_id),
+            'contract_type': 'عقد صيانة',
+            'start_date': date.today().isoformat(),
+            'end_date': (date.today() + timedelta(days=365)).isoformat(),
+            'value': '0',
+            'tax_pct': '15',
+            'total': '0',
+            'status': 'نشط',
+            'city': 'مكة',
+            'district': 'العوالي',
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
+        follow_redirects=False,
+    )
+    assert r.status_code in (200, 302)
+    with client.application.app_context():
+        saved = db.session.get(Customer, cust_id)
+        assert saved.lat == '21.4012'
+        assert saved.lng == '39.8123'

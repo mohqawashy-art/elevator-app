@@ -13,10 +13,10 @@
 <link rel="stylesheet" href="/static/client_location.css">
 <script src="/static/customer_profile.js"></script>
 <script src="/static/elevator_profile.js"></script>
-<script src="/static/client_location.js?v=8"></script>
+<script src="/static/client_location.js?v=10"></script>
 <script src="/static/client_geocode.js"></script>
-<script src="/static/liftcore_map.js?v=5"></script>
-<script src="/static/client_map_picker.js?v=15"></script>
+<script src="/static/liftcore_map.js?v=8"></script>
+<script src="/static/client_map_picker.js?v=16"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -959,26 +959,72 @@ function fillClientSelect(selectedId) {
   sel.value = selectedId || '';
 }
 
+function hasUsableGps(lat, lng) {
+  if (lat == null || lng == null || lat === '' || lng === '') return false;
+  if (window.LiftCoreLocation && LiftCoreLocation.hasCoordinates) {
+    return LiftCoreLocation.hasCoordinates({ lat: lat, lng: lng });
+  }
+  return true;
+}
+
+function buildElevLocationQuery(c) {
+  return [c.address, c.district, c.city, c.building, 'Saudi Arabia'].filter(Boolean).join(', ');
+}
+
+function placeElevMap(loc) {
+  loc = loc || {};
+  if (typeof LiftCoreMapPicker === 'undefined') return;
+  if (hasUsableGps(loc.lat, loc.lng)) {
+    LiftCoreMapPicker.setLocation(loc.lat, loc.lng, {
+      address: loc.address || loc.building || '',
+      city: loc.city || '',
+      district: loc.district || '',
+      maps_url: loc.maps_url || ('https://www.google.com/maps?q=' + loc.lat + ',' + loc.lng),
+    });
+    var latEl = document.getElementById('f-lat');
+    var lngEl = document.getElementById('f-lng');
+    var urlEl = document.getElementById('f-maps-url');
+    if (latEl) latEl.value = loc.lat;
+    if (lngEl) lngEl.value = loc.lng;
+    if (urlEl && loc.maps_url) urlEl.value = loc.maps_url;
+    return;
+  }
+  var mapQuery = buildElevLocationQuery(loc);
+  if (mapQuery && LiftCoreMapPicker.geocodeAddress) {
+    LiftCoreMapPicker.geocodeAddress(mapQuery, function () {}, { previewOnly: true });
+    return;
+  }
+  LiftCoreMapPicker.reset();
+}
+
 function fillClientData() {
   var id = parseInt(document.getElementById('f-client-sel').value, 10);
   var c = CUSTOMERS.find(function(x) { return x.id === id; });
   if (!c) return;
-  document.getElementById('f-elev-city').value = c.city || '';
-  document.getElementById('f-elev-district').value = c.district || '';
-  if (c.lat && c.lng && typeof LiftCoreMapPicker !== 'undefined') {
-    LiftCoreMapPicker.setLocation(c.lat, c.lng, {
-      address: c.address || '',
-      city: c.city || '',
-      district: c.district || '',
-      maps_url: 'https://www.google.com/maps?q=' + c.lat + ',' + c.lng,
-    });
-  }
+  var cityEl = document.getElementById('f-elev-city');
+  var distEl = document.getElementById('f-elev-district');
+  if (cityEl && !String(cityEl.value || '').trim()) cityEl.value = c.city || '';
+  if (distEl && !String(distEl.value || '').trim()) distEl.value = c.district || '';
+  placeElevMap({
+    lat: c.lat,
+    lng: c.lng,
+    city: c.city,
+    district: c.district,
+    address: c.address,
+    maps_url: c.maps_url,
+  });
 }
 
 function onElevMapPickerUpdate(data) {
   if (!data) return;
-  if (data.city) document.getElementById('f-elev-city').value = data.city;
-  if (data.district) document.getElementById('f-elev-district').value = data.district;
+  if (data.city) {
+    var cityEl = document.getElementById('f-elev-city');
+    if (cityEl && !String(cityEl.value || '').trim()) cityEl.value = data.city;
+  }
+  if (data.district) {
+    var distEl = document.getElementById('f-elev-district');
+    if (distEl && !String(distEl.value || '').trim()) distEl.value = data.district;
+  }
   if (data.lat) document.getElementById('f-lat').value = data.lat;
   if (data.lng) document.getElementById('f-lng').value = data.lng;
   if (data.maps_url) document.getElementById('f-maps-url').value = data.maps_url;
@@ -1160,6 +1206,9 @@ function filterTable() {
   });
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
+  if (document.getElementById('tab-map') && document.getElementById('tab-map').style.display !== 'none') {
+    refreshElevatorMap(true);
+  }
 }
 
 // ===== نماذج =====
@@ -1369,6 +1418,9 @@ function saveElevator() {
   fd.append('maint_frequency', document.getElementById('f-maint-freq').value);
   fd.append('status', document.getElementById('f-elev-status').value);
   fd.append('notes', document.getElementById('f-notes').value);
+  fd.append('lat', (document.getElementById('f-lat') || {}).value || '');
+  fd.append('lng', (document.getElementById('f-lng') || {}).value || '');
+  fd.append('maps_url', (document.getElementById('f-maps-url') || {}).value || '');
   fetch(editId ? '/elevators/edit/' + editId : '/elevators/add', {method: 'POST', body: fd, credentials: 'same-origin'})
     .then(function(res) {
       if (res.redirected || res.ok) {
@@ -1415,17 +1467,20 @@ function editElevator(id) {
   document.getElementById('f-maint-freq').value = e.maint_freq || 'شهري';
   document.getElementById('f-elev-status').value = e.status || 'نشط';
   document.getElementById('f-notes').value = e.notes || '';
+  document.getElementById('f-lat').value = e.lat || '';
+  document.getElementById('f-lng').value = e.lng || '';
+  document.getElementById('f-maps-url').value = e.maps_url || '';
   openElevFormModal(function () {
-    var c = CUSTOMERS.find(function(x) { return x.id === e.customer_id; });
-    if (c && c.lat && c.lng && window.LiftCoreMapPicker) {
-      LiftCoreMapPicker.setLocation(c.lat, c.lng, {
-        city: e.city || c.city || '',
-        district: e.district || c.district || '',
-        address: e.building || '',
-      });
-    } else if (window.LiftCoreMapPicker) {
-      LiftCoreMapPicker.reset();
-    }
+    var c = CUSTOMERS.find(function(x) { return x.id === e.customer_id; }) || {};
+    placeElevMap({
+      lat: e.lat || c.lat,
+      lng: e.lng || c.lng,
+      city: e.city || c.city,
+      district: e.district || c.district,
+      address: e.address || e.building || c.address,
+      building: e.building,
+      maps_url: e.maps_url || c.maps_url,
+    });
   });
 }
 
@@ -1726,41 +1781,56 @@ function destroyGoogleElevMap() {
 
 function getElevatorPosition(e) {
   if ((e.customer_status || 'نشط') === 'غير نشط') return null;
-  var cust = CUSTOMERS.find(function(c) { return c.id === e.customer_id; });
-  if (window.LiftCoreMap && LiftCoreMap.coordsForRecord) {
-    var fromMap = LiftCoreMap.coordsForRecord(cust || {
-      lat: e.customer_lat, lng: e.customer_lng, city: e.city
-    });
-    if (fromMap) {
-      if (fromMap.exact) {
-        var spread = (e.id % 8) * 0.00012;
-        return { lat: fromMap.lat + spread, lng: fromMap.lng + spread * 0.8, exact: true };
-      }
-      return fromMap;
+  var cust = CUSTOMERS.find(function(c) { return c.id === e.customer_id; }) || {};
+  var lat = e.lat || cust.lat || e.customer_lat;
+  var lng = e.lng || cust.lng || e.customer_lng;
+  if (!hasUsableGps(lat, lng)) return null;
+  if (window.LiftCoreLocation && LiftCoreLocation.parseCoords) {
+    var parsed = LiftCoreLocation.parseCoords(lat, lng);
+    if (!parsed) return null;
+    return { lat: parsed.lat, lng: parsed.lng, exact: true };
+  }
+  var la = parseFloat(String(lat).replace(',', '.'));
+  var ln = parseFloat(String(lng).replace(',', '.'));
+  if (isNaN(la) || isNaN(ln)) return null;
+  return { lat: la, lng: ln, exact: true };
+}
+
+function elevatorsMapPool() {
+  return Array.isArray(filtered) ? filtered : ELEVATORS.slice();
+}
+
+function buildElevatorLocationGroups() {
+  var groups = {};
+  elevatorsMapPool().forEach(function (e) {
+    if ((e.customer_status || 'نشط') === 'غير نشط') return;
+    var pos = getElevatorPosition(e);
+    if (!pos) return;
+    var key = String(e.customer_id || '') + '@' + pos.lat.toFixed(6) + ',' + pos.lng.toFixed(6);
+    if (!groups[key]) {
+      groups[key] = {
+        pos: pos,
+        customer_id: e.customer_id,
+        customer: e.customer,
+        building: e.building,
+        elevators: []
+      };
     }
-  }
-  if (window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer) {
-    var fromCust = LiftCoreLocation.coordsForCustomer(cust || {
-      lat: e.customer_lat, lng: e.customer_lng, city: e.city
-    });
-    if (fromCust) {
-      if (fromCust.exact) {
-        var spread2 = (e.id % 8) * 0.00012;
-        return { lat: fromCust.lat + spread2, lng: fromCust.lng + spread2 * 0.8, exact: true };
-      }
-      return fromCust;
-    }
-  }
-  var lat = parseFloat(e.customer_lat), lng = parseFloat(e.customer_lng);
-  if (!isNaN(lat) && !isNaN(lng)) {
-    var spread3 = (e.id % 8) * 0.00012;
-    return { lat: lat + spread3, lng: lng + spread3 * 0.8, exact: true };
-  }
-  var city = (window.LiftCoreLocation && LiftCoreLocation.resolveCityCoords)
-    ? LiftCoreLocation.resolveCityCoords(e.city)
-    : CITY_COORDS[e.city];
-  if (!city) return null;
-  return { lat: city.lat, lng: city.lng, exact: false };
+    groups[key].elevators.push(e);
+  });
+  return Object.values(groups);
+}
+
+function elevGroupMapInfo(group) {
+  var rows = group.elevators.map(function (e) {
+    return '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.08)">' +
+      '<strong>' + esc(e.code) + '</strong> — ' + esc(lcDisp(e.building || '—')) + '<br>' +
+      esc(lcDisp(e.elev_type || '')) + ' · ' + esc(lcDisp(e.status)) +
+      '<br><button class="map-info-btn" style="margin-top:6px" onclick="viewElevator(' + e.id + ')">عرض المصعد</button></div>';
+  }).join('');
+  return '<div class="map-info"><div class="map-info-title">' + esc(group.customer || '') + '</div>' +
+    '<div class="map-info-sub">' + group.elevators.length + ' مصعد · موقع GPS من العقد</div>' +
+    rows + '</div>';
 }
 
 function makeElevPin(color) {
@@ -1819,12 +1889,10 @@ function refreshElevatorMapOsm() {
   }
   var bounds = [];
   var shown = 0;
-  ELEVATORS.forEach(function (e) {
-    if ((e.customer_status || 'نشط') === 'غير نشط') return;
-    var pos = getElevatorPosition(e);
-    if (!pos) return;
-    shown++;
-    var color = ELEV_PIN_COLORS[e.status] || '#2a7fff';
+  buildElevatorLocationGroups().forEach(function (group) {
+    var pos = group.pos;
+    shown += group.elevators.length;
+    var color = ELEV_PIN_COLORS[group.elevators[0].status] || '#2a7fff';
     var marker = L.circleMarker([pos.lat, pos.lng], {
       radius: ELEV_MAP_OSM_RADIUS,
       color: '#ffffff',
@@ -1832,7 +1900,7 @@ function refreshElevatorMapOsm() {
       fillColor: color,
       fillOpacity: 1
     });
-    marker.bindPopup(elevMapInfo(e));
+    marker.bindPopup(elevGroupMapInfo(group));
     if (osmElevCluster) osmElevCluster.addLayer(marker);
     else marker.addTo(osmElevMap);
     osmElevMarkers.push(marker);
@@ -1872,16 +1940,14 @@ function refreshElevatorMap(fitAgain) {
   if (osmElevMap) destroyOsmElevMap();
 
   if (!elevMap) {
-    var elevMapOpts = {
-      center: {lat: 21.4225, lng: 39.8262}, zoom: 12, mapTypeId: 'satellite',
-      clickableIcons: false, streetViewControl: false, zoomControl: true,
-      mapTypeControlOptions: {mapTypeIds: ['satellite', 'hybrid', 'roadmap']},
-      styles: MAP_POI_HIDDEN
-    };
-    if (window.LiftCoreMap && LiftCoreMap.mergeMapOptions) {
-      elevMapOpts = LiftCoreMap.mergeMapOptions(elevMapOpts);
-    }
-    elevMap = new google.maps.Map(mapEl, elevMapOpts);
+    elevMap = window.LiftCoreMap
+      ? LiftCoreMap.initMap(mapEl, null)
+      : new google.maps.Map(mapEl, {
+          center: {lat: 21.4225, lng: 39.8262}, zoom: 12, mapTypeId: 'roadmap',
+          clickableIcons: false, streetViewControl: false, zoomControl: true,
+          mapTypeControlOptions: {mapTypeIds: ['roadmap', 'satellite', 'hybrid']},
+          styles: MAP_POI_HIDDEN
+        });
     elevInfoWindow = new google.maps.InfoWindow();
     elevMap.addListener('click', function() { elevInfoPinned = false; elevInfoWindow.close(); });
   }
@@ -1889,23 +1955,22 @@ function refreshElevatorMap(fitAgain) {
   clearElevMapMarkers();
   var bounds = new google.maps.LatLngBounds();
   var shown = 0;
+  var groups = buildElevatorLocationGroups();
 
-  ELEVATORS.forEach(function(e) {
-    if ((e.customer_status || 'نشط') === 'غير نشط') return;
-    var pos = getElevatorPosition(e);
-    if (!pos) return;
-    shown++;
-    var color = ELEV_PIN_COLORS[e.status] || '#2a7fff';
+  groups.forEach(function(group) {
+    var pos = group.pos;
+    shown += group.elevators.length;
+    var color = ELEV_PIN_COLORS[group.elevators[0].status] || '#2a7fff';
     var marker = LiftCoreMap.createPinMarker({
       position: {lat: pos.lat, lng: pos.lng},
       color: color,
       scale: 1.25,
-      zIndex: e.status === 'نشط' ? 2 : 1
+      zIndex: 2
     });
     if (!marker) return;
     marker.addListener('mouseover', function() {
       if (elevHoverTimer) clearTimeout(elevHoverTimer);
-      elevInfoWindow.setContent(elevMapInfo(e));
+      elevInfoWindow.setContent(elevGroupMapInfo(group));
       if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(elevInfoWindow, elevMap, marker);
       else elevInfoWindow.open(elevMap, marker);
     });
@@ -1916,7 +1981,7 @@ function refreshElevatorMap(fitAgain) {
     marker.addListener('click', function() {
       if (elevHoverTimer) clearTimeout(elevHoverTimer);
       elevInfoPinned = true;
-      elevInfoWindow.setContent(elevMapInfo(e));
+      elevInfoWindow.setContent(elevGroupMapInfo(group));
       if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(elevInfoWindow, elevMap, marker);
       else elevInfoWindow.open(elevMap, marker);
     });
@@ -1940,7 +2005,7 @@ function refreshElevatorMap(fitAgain) {
   if (shown && typeof markerClusterer !== 'undefined' && markerClusterer.MarkerClusterer) {
     elevCluster = new markerClusterer.MarkerClusterer({
       map: elevMap, markers: elevMarkers, renderer: elevClusterRenderer,
-      algorithm: new markerClusterer.SuperClusterAlgorithm({radius: 80, maxZoom: 15}),
+      algorithm: new markerClusterer.SuperClusterAlgorithm({radius: 80, maxZoom: 18}),
       onClusterClick: function(_e, cluster, map) { map.fitBounds(cluster.bounds); }
     });
   } else {

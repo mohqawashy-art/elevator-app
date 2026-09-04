@@ -6,6 +6,8 @@ from chart_of_accounts import (
     delete_account,
     ensure_chart_for_org,
     ensure_chart_schema,
+    infer_expense_type,
+    normalize_expense_type_label,
     resolve_expense_account_id,
     resolve_revenue_account_id,
     seed_root_groups_for_org,
@@ -40,8 +42,31 @@ def test_ensure_chart_creates_default_accounts(client):
             .count()
         )
         assert count == len(DEFAULT_CHART)
+        box = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1110')
+            .first()
+        )
+        bank = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1120')
+            .first()
+        )
+        assert box.map_key == 'cash'
+        assert bank.map_key == 'bank'
         # ثانية لا تكرر
         assert ensure_chart_for_org(org.id) == 0
+
+
+def test_infer_expense_type_from_description(client):
+    assert infer_expense_type('وقود فني مكة', None, 'متنوعة') == 'محروقات'
+    assert infer_expense_type('تعبئة بنزين', None, '') == 'محروقات'
+    assert infer_expense_type('قطع غيار مصعد', None, 'محروقات') == 'قطع غيار'
+    assert infer_expense_type('رواتب شهر فبراير', None, '') == 'رواتب'
+    assert infer_expense_type('صيانة سيارات اسطول', None, '') == 'صيانة سيارات'
+    assert infer_expense_type('ضيافة عميل', None, '') == 'مصروفات متنوعة'
+    assert normalize_expense_type_label('وقود') == 'محروقات'
+    assert normalize_expense_type_label('ضيافة') == 'مصروفات متنوعة'
 
 
 def test_resolve_revenue_and_expense_map_keys(client):
@@ -129,6 +154,35 @@ def test_create_custom_account_under_parent(client):
             assert False, 'expected duplicate code'
         except ValueError as exc:
             assert 'مستخدم' in str(exc)
+
+
+def test_relocate_cash_map_key_from_bank_to_cashbox(client):
+    with client.application.app_context():
+        org = Organization(slug='coa-reloc', name='نقل كاش', status='active')
+        db.session.add(org)
+        db.session.commit()
+        ensure_chart_for_org(org.id)
+        box = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1110')
+            .first()
+        )
+        bank = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1120')
+            .first()
+        )
+        box.map_key = None
+        bank.map_key = 'cash'
+        db.session.commit()
+        from flask import g
+        g.organization_id = org.id
+        g.organization = org
+        ensure_chart_for_org(org.id)
+        db.session.refresh(box)
+        db.session.refresh(bank)
+        assert box.map_key == 'cash'
+        assert bank.map_key == 'bank'
 
 
 def test_accounts_add_route_creates_account(client):

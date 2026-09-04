@@ -124,6 +124,68 @@ def test_backfill_journals_skips_already_posted(client):
         assert count2 == count1
 
 
+def test_cash_payment_posts_to_cashbox_transfer_to_bank(client):
+    with client.application.app_context():
+        org = Organization(slug='je-pay', name='طرق دفع', status='active')
+        db.session.add(org)
+        db.session.commit()
+        ensure_chart_for_org(org.id)
+        from flask import g
+        g.organization_id = org.id
+        g.organization = org
+        from accounting_journals import ensure_journal_schema
+        ensure_journal_schema()
+
+        box = Account.query.execution_options(skip_tenant=True).filter_by(
+            organization_id=org.id, code='1110'
+        ).first()
+        bank = Account.query.execution_options(skip_tenant=True).filter_by(
+            organization_id=org.id, code='1120'
+        ).first()
+        assert box.map_key == 'cash'
+        assert bank.map_key == 'bank'
+        renew = Account.query.execution_options(skip_tenant=True).filter_by(
+            organization_id=org.id, map_key='revenue:تجديد عقد'
+        ).first()
+
+        cash_rev = Revenue(
+            organization_id=org.id,
+            code='REV-CASH',
+            revenue_date=date(2026, 3, 1),
+            revenue_type='تجديد عقد',
+            payment_method='كاش',
+            amount=200,
+            tax_amount=0,
+            total=200,
+            status='محصّل',
+            account_id=renew.id,
+        )
+        bank_rev = Revenue(
+            organization_id=org.id,
+            code='REV-TRN',
+            revenue_date=date(2026, 3, 2),
+            revenue_type='تجديد عقد',
+            payment_method='تحويل',
+            amount=300,
+            tax_amount=0,
+            total=300,
+            status='محصّل',
+            account_id=renew.id,
+        )
+        db.session.add_all([cash_rev, bank_rev])
+        db.session.commit()
+        cash_id, bank_id = cash_rev.id, bank_rev.id
+        box_id, bank_acc_id = box.id, bank.id
+        je_c = post_revenue_journal(db.session.get(Revenue, cash_id))
+        je_b = post_revenue_journal(db.session.get(Revenue, bank_id))
+        db.session.commit()
+        from models import JournalLine
+        lines_c = JournalLine.query.execution_options(skip_tenant=True).filter_by(journal_id=je_c.id).all()
+        lines_b = JournalLine.query.execution_options(skip_tenant=True).filter_by(journal_id=je_b.id).all()
+        assert any(l.account_id == box_id and round(l.debit or 0, 2) == 200 for l in lines_c)
+        assert any(l.account_id == bank_acc_id and round(l.debit or 0, 2) == 300 for l in lines_b)
+
+
 def test_create_and_void_manual_journal_updates_trial_balance(client):
     with client.application.app_context():
         org = Organization(slug='je-man', name='يدوي', status='active')

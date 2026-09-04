@@ -1280,8 +1280,13 @@ def client_to_js_dict(c, *, scope: str | None = None):
     }
 
 
-def elevator_to_js_dict(e):
-    """تسلسل مصعد لـ JSON (مع علاقة العميل)."""
+def elevator_to_js_dict(e, *, site=None):
+    """تسلسل مصعد لـ JSON (مع علاقة العميل). site: (lat, lng, maps_url) إن وُجد."""
+    if site is None:
+        site = _elevator_site_coords_map([e]).get(e.id)
+    lat = lng = maps_url = ''
+    if site:
+        lat, lng, maps_url = site[0], site[1], site[2]
     return {
         'id': e.id,
         'code': e.code,
@@ -1315,6 +1320,9 @@ def elevator_to_js_dict(e):
         'address': e.address or '',
         'status': e.status,
         'notes': e.notes or '',
+        'lat': lat,
+        'lng': lng,
+        'maps_url': maps_url,
         'customer_lat': (e.customer.lat if e.customer else '') or '',
         'customer_lng': (e.customer.lng if e.customer else '') or '',
         'customer_status': ((e.customer.status or 'نشط') if e.customer else 'نشط'),
@@ -6214,10 +6222,11 @@ def elevators():
         .all()
     )
     customers = tenant_query(Customer).order_by(Customer.name).all()
+    site_map = _elevator_site_coords_map(elevs)
     return render_template(
         'elevators.html',
         elevators=elevs,
-        elevators_js=[elevator_to_js_dict(e) for e in elevs],
+        elevators_js=[elevator_to_js_dict(e, site=site_map.get(e.id)) for e in elevs],
         customers=customers,
         customers_js=[
             {
@@ -6226,8 +6235,10 @@ def elevators():
                 'name': c.name,
                 'city': c.city or '',
                 'district': c.district or '',
+                'address': c.address or '',
                 'lat': c.lat or '',
                 'lng': c.lng or '',
+                'maps_url': c.maps_url or '',
                 'status': c.status or 'نشط',
             }
             for c in customers
@@ -6321,6 +6332,7 @@ def elevator_add():
     assign_organization(e)
     db.session.add(e)
     db.session.flush()
+    _apply_elevator_map_pin(e, request.form)
     sync_customer_from_elevators(e.customer)
     db.session.commit()
     if wants_json:
@@ -6364,6 +6376,7 @@ def elevator_edit(id):
     e.maint_frequency  = request.form.get('maint_frequency', '')
     e.status           = request.form.get('status', 'نشط')
     e.notes            = request.form.get('notes', '')
+    _apply_elevator_map_pin(e, request.form)
     sync_customer_from_elevators(e.customer)
     db.session.commit()
     return redirect(url_for('elevators'))
@@ -6872,7 +6885,7 @@ def _apply_contract_form(c, form):
         try:
             la, ln = float(lat), float(lng)
             if la or ln:
-                if abs(la - 21.4225) < 0.0012 and abs(ln - 39.8262) < 0.0012:
+                if _is_generic_city_pin(la, ln):
                     c.lat = None
                     c.lng = None
                 else:
@@ -6886,9 +6899,128 @@ def _apply_contract_form(c, form):
     _apply_contract_paid_from_form(c, form)
 
 
+_GENERIC_CITY_PINS = (
+    (21.4225, 39.8262),  # مكة / الحرم — افتراضي الخرائط
+    (21.5433, 39.1728),  # جدة
+    (21.2703, 40.4158),  # الطائف
+    (24.4672, 39.6111),  # المدينة
+    (24.7136, 46.6753),  # الرياض
+    (26.4207, 50.0888),  # الدمام
+    (26.2172, 50.1971),  # الخبر
+    (18.2164, 42.5053),  # أبها
+    (28.3838, 36.5550),  # تبوك
+    (26.3259, 43.9740),  # بريدة
+)
+
+
+def _is_generic_city_pin(lat: float, lng: float, tol: float = 0.0035) -> bool:
+    """مركز مدينة/الحرم — ليس موقع مبنى، لا يُحفظ كـ GPS دقيق."""
+    for cla, cln in _GENERIC_CITY_PINS:
+        if abs(lat - cla) < tol and abs(lng - cln) < tol:
+            return True
+    return False
+
+
+def _parse_form_gps(form):
+    lat = (form.get('lat') or '').strip().replace(',', '.')
+    lng = (form.get('lng') or '').strip().replace(',', '.')
+    maps_url = (form.get('maps_url') or '').strip()
+    if not lat or not lng:
+        return None
+    try:
+        la, ln = float(lat), float(lng)
+    except (TypeError, ValueError):
+        return None
+    if not (la or ln) or _is_generic_city_pin(la, ln):
+        return None
+    return la, ln, maps_url
+
+
+def _usable_stored_gps(lat, lng):
+    if lat in (None, '') or lng in (None, ''):
+        return None
+    try:
+        la = float(str(lat).replace(',', '.'))
+        ln = float(str(lng).replace(',', '.'))
+    except (TypeError, ValueError):
+        return None
+    if not (la or ln) or _is_generic_city_pin(la, ln):
+        return None
+    return la, ln
+
+
+def _elevator_site_coords_map(elevators) -> dict:
+    """موقع المصعد على الخريطة: GPS العقد المرتبط ثم GPS العميل الدقيق."""
+    elevators = list(elevators or [])
+    out: dict = {}
+    for e in elevators:
+        cust = getattr(e, 'customer', None)
+        if not cust:
+            continue
+        gps = _usable_stored_gps(cust.lat, cust.lng)
+        if gps:
+            out[e.id] = (str(gps[0]), str(gps[1]), cust.maps_url or '')
+    ids = [e.id for e in elevators if getattr(e, 'id', None)]
+    if not ids:
+        return out
+    links = tenant_query(ContractElevator).filter(ContractElevator.elevator_id.in_(ids)).all()
+    contract_ids = list({lk.contract_id for lk in links})
+    contracts = {
+        c.id: c
+        for c in tenant_query(Contract).filter(Contract.id.in_(contract_ids)).all()
+    } if contract_ids else {}
+    for lk in links:
+        c = contracts.get(lk.contract_id)
+        if not c or (c.status or '') == 'ملغي':
+            continue
+        gps = _usable_stored_gps(c.lat, c.lng)
+        if not gps:
+            continue
+        prev = out.get(lk.elevator_id)
+        is_active = (c.status or '') == 'نشط'
+        if prev and not is_active:
+            continue
+        out[lk.elevator_id] = (str(gps[0]), str(gps[1]), c.maps_url or '')
+    return out
+
+
+def _apply_elevator_map_pin(elevator, form):
+    """يحفظ دبوس الخريطة الدقيق على العميل والعقود المرتبطة بالمصعد."""
+    _sync_customer_location_from_contract_form(elevator.customer_id, form)
+    parsed = _parse_form_gps(form)
+    if not parsed or not getattr(elevator, 'id', None):
+        return
+    la, ln, maps_url = parsed
+    links = tenant_query(ContractElevator).filter_by(elevator_id=elevator.id).all()
+    if not links:
+        return
+    contracts = tenant_query(Contract).filter(
+        Contract.id.in_([lk.contract_id for lk in links])
+    ).all()
+    for c in contracts:
+        if (c.status or '') == 'ملغي':
+            continue
+        c.lat = str(la)
+        c.lng = str(ln)
+        if maps_url:
+            c.maps_url = maps_url[:500]
+
+
 def _sync_customer_location_from_contract_form(customer_id, form):
-    """مُعطّل — موقع الخدمة يُحفظ على العقد وليس على العميل (تخطيط الزيارات)."""
-    return
+    """ينسخ إحداثيات الدبوس الدقيق من العقد إلى العميل (دون تغيير نص العنوان)."""
+    if not customer_id:
+        return
+    parsed = _parse_form_gps(form)
+    if not parsed:
+        return
+    la, ln, maps_url = parsed
+    cust = tenant_query(Customer).filter_by(id=int(customer_id)).first()
+    if not cust:
+        return
+    cust.lat = str(la)
+    cust.lng = str(ln)
+    if maps_url:
+        cust.maps_url = maps_url[:500]
 
 
 def _fin_proof_js_items(row) -> list[dict]:
@@ -7265,6 +7397,7 @@ def contract_edit(id):
             return auth_err
     try:
         _apply_contract_form(c, request.form)
+        _sync_customer_location_from_contract_form(c.customer_id, request.form)
         uploads = request.files.getlist('contract_file')
         if uploads and any(f and f.filename for f in uploads):
             _add_contract_files(c, uploads)
@@ -7350,6 +7483,7 @@ def contract_add():
     c = existing or Contract(code=code)
     try:
         _apply_contract_form(c, request.form)
+        _sync_customer_location_from_contract_form(c.customer_id, request.form)
         if existing is None:
             assign_organization(c)
             db.session.add(c)
@@ -8346,6 +8480,7 @@ def maintenance_visits():
     maint_teams = [team_to_dict(t) for t in teams_all if t.active]
     all_teams = [team_to_dict(t) for t in teams_all]
     duplicate_visit_ids = find_duplicate_visit_ids_from(visits)
+    elev_site = _elevator_site_coords_map(elevators)
     return render_template(
         'maintenance-visits.html',
         visits=visits,
@@ -8355,7 +8490,7 @@ def maintenance_visits():
         technicians=technicians,
         visits_js=_visits_js_list(visits),
         customers_js=[{'id': c.id, 'code': c.code, 'name': c.name} for c in customers],
-        elevators_js=[elevator_to_js_dict(e) for e in elevators],
+        elevators_js=[elevator_to_js_dict(e, site=elev_site.get(e.id)) for e in elevators],
         contracts_js=[
             {'id': c.id, 'code': c.code, 'customer_id': c.customer_id} for c in contracts
         ],
@@ -10369,10 +10504,14 @@ def revenue_remove_proof(id):
 # شجرة الحسابات (مرحلة 1)
 # =============================================
 def _ensure_tenant_chart():
-    from chart_of_accounts import ensure_chart_schema
+    from chart_of_accounts import ensure_chart_schema, repair_cash_bank_map_keys_for_org
+    from tenant_scope import effective_organization_id
 
     try:
         ensure_chart_schema()
+        oid = getattr(g, 'organization_id', None) or effective_organization_id()
+        if oid:
+            repair_cash_bank_map_keys_for_org(oid)
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('ensure_chart_schema: %s', exc)
@@ -10601,7 +10740,8 @@ def journals_backfill():
         stats = backfill_journals()
         flash(
             f"تم الترحيل: {stats.get('revenues', 0)} إيراد · {stats.get('expenses', 0)} مصروف"
-            + (f" · تخطي {stats.get('skipped', 0)}" if stats.get('skipped') else ''),
+            + (f" · تخطي {stats.get('skipped', 0)}" if stats.get('skipped') else '')
+            + (f" · تصحيح صندوق/بنك {stats.get('repaired', 0)}" if stats.get('repaired') else ''),
             'success',
         )
     except Exception as exc:
@@ -10831,20 +10971,44 @@ def expenses():
         expenses_js=[expense_to_js_dict(e) for e in exps],
         expense_type_options=EXPENSE_TYPE_OPTIONS,
     )
+@app.route('/expenses/reclassify', methods=['POST'])
+def expenses_reclassify():
+    from chart_of_accounts import reclassify_expenses_from_description
+
+    _ensure_tenant_chart()
+    try:
+        stats = reclassify_expenses_from_description()
+        flash(
+            f"تم تصنيف {stats.get('updated', 0)} مصروف · تخطي {stats.get('skipped', 0)}"
+            + (f" · قيود {stats.get('journals', 0)}" if stats.get('journals') else ''),
+            'success',
+        )
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('expenses_reclassify failed')
+        flash(f'تعذّر تصنيف المصروفات: {exc}', 'danger')
+    return redirect(url_for('expenses'))
+
+
 @app.route('/expenses/edit/<int:id>', methods=['POST'])
 def expense_edit(id):
     e = tenant_get_or_404(Expense, id)
     try:
+        from chart_of_accounts import infer_expense_type, resolve_expense_account_id
+
         e.expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date()
-        e.expense_type   = request.form.get('expense_type','')
         e.description    = request.form.get('description','')
+        e.notes          = request.form.get('notes','')
+        e.expense_type   = infer_expense_type(
+            e.description,
+            e.notes,
+            request.form.get('expense_type', ''),
+        )
         e.responsible    = request.form.get('responsible','')
         e.payment_method = request.form.get('payment_method','')
         e.amount         = float(request.form.get('amount', 0))
         e.reference      = request.form.get('reference','')
-        e.notes          = request.form.get('notes','')
         try:
-            from chart_of_accounts import resolve_expense_account_id
             _ensure_tenant_chart()
             e.account_id = resolve_expense_account_id(e.expense_type)
         except Exception:
@@ -10865,19 +11029,27 @@ def expense_edit(id):
 @app.route('/expenses/add', methods=['POST'])
 def expense_add():
     try:
+        from chart_of_accounts import infer_expense_type, resolve_expense_account_id
+
+        description = request.form.get('description', '')
+        notes = request.form.get('notes', '')
+        expense_type = infer_expense_type(
+            description,
+            notes,
+            request.form.get('expense_type', ''),
+        )
         e = Expense(
             code           = next_code(Expense, 'EXP-', digits=3),
             expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date(),
-            expense_type   = request.form.get('expense_type',''),
-            description    = request.form.get('description',''),
+            expense_type   = expense_type,
+            description    = description,
             responsible    = request.form.get('responsible',''),
             payment_method = request.form.get('payment_method',''),
             amount         = float(request.form.get('amount', 0)),
             reference      = request.form.get('reference',''),
-            notes          = request.form.get('notes',''),
+            notes          = notes,
         )
         try:
-            from chart_of_accounts import resolve_expense_account_id
             _ensure_tenant_chart()
             e.account_id = resolve_expense_account_id(e.expense_type)
         except Exception:

@@ -13,10 +13,10 @@
 <link rel="stylesheet" href="/static/client_location.css">
 <link rel="stylesheet" href="/static/tax_calc.css">
 <script src="/static/customer_profile.js"></script>
-<script src="/static/client_location.js?v=8"></script>
+<script src="/static/client_location.js?v=9"></script>
 <script src="/static/client_geocode.js?v=8"></script>
-<script src="/static/liftcore_map.js?v=5"></script>
-<script src="/static/client_map_picker.js?v=15"></script>
+<script src="/static/liftcore_map.js?v=6"></script>
+<script src="/static/client_map_picker.js?v=16"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1728,6 +1728,9 @@ function isHaramDefaultPin(lat, lng) {
 
 function hasUsableGps(lat, lng) {
   if (lat == null || lng == null || lat === '' || lng === '') return false;
+  if (window.LiftCoreLocation && LiftCoreLocation.hasCoordinates) {
+    return LiftCoreLocation.hasCoordinates({ lat: lat, lng: lng });
+  }
   if (isHaramDefaultPin(lat, lng)) return false;
   return true;
 }
@@ -1759,7 +1762,7 @@ function placeContractMap(cust, loc) {
     whenGoogleMapsReady(function () {
       LiftCoreMapPicker.geocodeAddress(mapQuery, function () {
         if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
-      });
+      }, { previewOnly: true });
     });
     return;
   }
@@ -1824,8 +1827,14 @@ function copyContractAddressFromClient() {
 
 function onContractMapPickerUpdate(data) {
   if (!data) return;
-  if (data.city) document.getElementById('f-contract-city').value = data.city;
-  if (data.district) document.getElementById('f-contract-district').value = data.district;
+  if (data.city) {
+    var cityEl = document.getElementById('f-contract-city');
+    if (cityEl && !String(cityEl.value || '').trim()) cityEl.value = data.city;
+  }
+  if (data.district) {
+    var distEl = document.getElementById('f-contract-district');
+    if (distEl && !String(distEl.value || '').trim()) distEl.value = data.district;
+  }
   if (data.address) {
     var addr = document.getElementById('f-contract-address');
     if (addr && !addr.value.trim()) addr.value = data.address;
@@ -2837,12 +2846,11 @@ function getContractPosition(c) {
   var parsed = window.LiftCoreLocation && LiftCoreLocation.parseCoords
     ? LiftCoreLocation.parseCoords(c.customer_lat, c.customer_lng)
     : null;
-  if (parsed) return { lat: parsed.lat, lng: parsed.lng, exact: true };
-  var city = window.LiftCoreLocation && LiftCoreLocation.resolveCityCoords
-    ? LiftCoreLocation.resolveCityCoords(c.customer_city)
-    : CITY_COORDS[c.customer_city];
-  if (!city) return null;
-  return { lat: city.lat, lng: city.lng, exact: false };
+  if (parsed && window.LiftCoreLocation.hasCoordinates &&
+      LiftCoreLocation.hasCoordinates({ lat: c.customer_lat, lng: c.customer_lng })) {
+    return { lat: parsed.lat, lng: parsed.lng, exact: true };
+  }
+  return null;
 }
 
 function makeContractPin(color) {
