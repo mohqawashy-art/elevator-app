@@ -129,8 +129,9 @@
         <table class="pc-sheet">
           <thead>
             <tr>
-              <th style="width:44%">البند</th>
-              <th style="width:22%">المبلغ</th>
+              <th style="width:36%">البند</th>
+              <th style="width:16%">المبلغ</th>
+              <th style="width:14%">تاريخ الدفع</th>
               <th style="width:34%">الحالة / ملاحظة</th>
             </tr>
           </thead>
@@ -145,6 +146,9 @@
               </td>
               <td class="pc-amount" style="font-family:var(--font-en);direction:ltr">
                 {% if row.amount is not none %}{{ '{:,.0f}'.format(row.amount) }}{% else %}—{% endif %}
+              </td>
+              <td class="pc-pay-date" style="font-family:var(--font-en);direction:ltr">
+                {% if row.pay_date %}{{ row.pay_date }}{% else %}—{% endif %}
               </td>
               <td class="pc-status">
                 {% if row.kind == 'value' %}
@@ -333,6 +337,7 @@
       margin-top:6px;padding:6px 10px;background:rgba(200,160,85,.1);border-right:3px solid var(--gold);
       font-size:12px;color:var(--text2);line-height:1.5;white-space:pre-wrap;border-radius:0 6px 6px 0
     }
+    .pc-pay-date{font-size:12px;color:var(--text2);white-space:nowrap}
     .pc-note{font-size:12px;color:var(--text3)}
     .pc-note-block{width:100%;margin-bottom:4px;color:var(--text2);line-height:1.5}
     .pc-project-notes{

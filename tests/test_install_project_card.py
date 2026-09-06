@@ -192,11 +192,16 @@ def test_project_card_costs_and_receipts(client):
         assert 'دفعة ثالثة' in labels
         line_notes = [r['note'] for r in card['sheet_rows'] if r['kind'] == 'line']
         assert 'تحويل بنكي — مرجع 123' in line_notes
+        line_dates = [r['pay_date'] for r in card['sheet_rows'] if r['kind'] == 'line' and r.get('pay_date')]
+        assert line_dates
+        receipt_dates = [r['pay_date'] for r in card['sheet_rows'] if r['kind'] == 'receipt' and r.get('pay_date')]
+        assert receipt_dates
 
     resp = client.get(f'/installation/projects/{pid}')
     assert resp.status_code == 200
     body = resp.data.decode('utf-8', errors='ignore')
     assert 'كارت المشروع' in body
+    assert 'تاريخ الدفع' in body
     assert 'دفعة أولى' in body
     assert 'تحويل بنكي — مرجع 123' in body
     assert 'مدفوعة' in body

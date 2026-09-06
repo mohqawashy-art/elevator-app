@@ -26,6 +26,7 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
 .row-section td{background:#f3e8cf;font-weight:700;color:#0a2647}
 .row-category td{background:#f7f8fb;font-weight:600}
 .indent{padding-right:28px!important;color:#44556b}
+.item-note{margin-top:5px;padding:5px 8px;background:#f7f3e8;border-right:3px solid #c9a14a;font-size:12px;color:#5a6478;line-height:1.5;white-space:pre-wrap;border-radius:0 4px 4px 0}
 .amount{font-variant-numeric:tabular-nums;direction:ltr;text-align:left;white-space:nowrap}
 .status-ok{color:#1a7a4c;font-weight:600}
 .status-warn{color:#b86a00;font-weight:600}
@@ -73,9 +74,10 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
   <table>
     <thead>
       <tr>
-        <th style="width:46%">البند</th>
-        <th style="width:22%">المبلغ (ر.س)</th>
-        <th style="width:32%">الحالة / ملاحظة</th>
+        <th style="width:38%">البند</th>
+        <th style="width:18%">المبلغ (ر.س)</th>
+        <th style="width:14%">تاريخ الدفع</th>
+        <th style="width:30%">الحالة / ملاحظة</th>
       </tr>
     </thead>
     <tbody>
@@ -84,6 +86,9 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
         <td class="{% if row.kind in ('line','receipt') %}indent{% endif %}">{{ row.label }}</td>
         <td class="amount">
           {% if row.amount is not none %}{{ '{:,.0f}'.format(row.amount) }}{% else %}—{% endif %}
+        </td>
+        <td class="amount" style="color:#6b7a90">
+          {% if row.pay_date %}{{ row.pay_date }}{% else %}—{% endif %}
         </td>
         <td>
           {% if row.kind == 'category' and row.note %}{{ row.note }}

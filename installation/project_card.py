@@ -82,6 +82,14 @@ def installment_label(n: int | None, title: str | None = None) -> str:
     return f'دفعة {ord_ar}'
 
 
+def _row_pay_date(value: date | datetime | None) -> str | None:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        value = value.date()
+    return value.isoformat()
+
+
 def ensure_project_card_schema() -> None:
     """إنشاء جداول الكارت وعمود قيمة العقد وحالة السداد إن غابا."""
     from installation.models import InstallProjectCostItem, InstallProjectReceipt
@@ -324,6 +332,7 @@ def build_project_card(project: InstallProject) -> dict:
                 'amount': float(item.amount or 0),
                 'status': status,
                 'note': (item.notes or '').strip() or None,
+                'pay_date': _row_pay_date(item.cost_date),
                 'item': item,
                 'category': cat,
             })
@@ -357,6 +366,7 @@ def build_project_card(project: InstallProject) -> dict:
                 'amount': float(r.amount or 0),
                 'status': 'مدفوعة' if (r.status or '') == 'مستلمة' else 'غير مدفوعة',
                 'note': (r.notes or '').strip() or None,
+                'pay_date': _row_pay_date(r.received_date),
                 'item': r,
                 'category': None,
             })
