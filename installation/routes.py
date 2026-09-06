@@ -329,10 +329,15 @@ def project_detail(project_id):
             if is_installation_contract_type(c.contract_type)
         ][:50]
 
+    approved_quotations = [q for q in quotations if q.status == 'مقبول']
+    pending_quotations = [q for q in quotations if q.status not in ('مقبول', 'مرفوض')]
+
     return render_template(
         'installation/project_detail.html',
         project=project,
         quotations=quotations,
+        approved_quotations=approved_quotations,
+        pending_quotations=pending_quotations,
         latest_draft=latest_draft,
         execution_progress=progress,
         execution_complete=execution_complete,
@@ -574,8 +579,10 @@ def project_quote(project_id):
     if quotation_id:
         quotation = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
         if quotation.status == 'مقبول':
-            flash('هذا العرض مقبول — افتح صفحة التنفيذ', 'error')
-            return redirect(url_for('installation.project_execution', project_id=project.id))
+            if project.execution_active:
+                return redirect(url_for('installation.project_execution', project_id=project.id))
+            flash('هذا العرض معتمد — اضغط «بدء التنفيذ» من صفحة المشروع', 'error')
+            return redirect(url_for('installation.project_detail', project_id=project.id))
         saved = _quotation_to_dict(quotation)
     next_code = quotation.code if quotation else _next_code(InstallQuotation, 'Q-', 4)
     customers = _active_customers()
@@ -764,20 +771,27 @@ def quote_approve(project_id, quotation_id):
     if project.accepted_quotation_id and project.accepted_quotation_id != q.id:
         flash('يوجد عرض مقبول آخر على هذا المشروع', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
-    q.status = 'مقبول'
-    q.approved_at = datetime.utcnow()
-    project.accepted_quotation_id = q.id
+
+    if q.status == 'مقبول' and project.accepted_quotation_id == q.id and project.execution_active:
+        return redirect(url_for('installation.project_execution', project_id=project.id))
+
+    repairing = q.status == 'مقبول' and project.accepted_quotation_id == q.id
+    if not repairing:
+        q.status = 'مقبول'
+        q.approved_at = datetime.utcnow()
+        project.accepted_quotation_id = q.id
+        project.status = 'عقد'
+        if not project.customer_id and q.customer_id:
+            project.customer_id = q.customer_id
+        try:
+            from app import next_code
+            from sales.service import create_install_contract_from_quotation
+            create_install_contract_from_quotation(project, q, next_code_fn=next_code)
+        except Exception as exc:
+            from flask import current_app
+            current_app.logger.warning('install contract from quote skipped: %s', exc)
+
     project.execution_started_at = project.execution_started_at or datetime.utcnow()
-    project.status = 'عقد'
-    if not project.customer_id and q.customer_id:
-        project.customer_id = q.customer_id
-    try:
-        from app import next_code
-        from sales.service import create_install_contract_from_quotation
-        create_install_contract_from_quotation(project, q, next_code_fn=next_code)
-    except Exception as exc:
-        from flask import current_app
-        current_app.logger.warning('install contract from quote skipped: %s', exc)
     create_execution_timeline(project, db.session)
     sync_project_auto_amounts(project, force=True)
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
@@ -787,13 +801,14 @@ def quote_approve(project_id, quotation_id):
         apply_auto_amount(steps[0], q, force=True)
     db.session.commit()
     flash(
-        f'تم قبول العرض {q.code} — حُوِّل لقسم المشاريع (كارت المشروع / التنفيذ).',
+        f'تم قبول العرض {q.code} — بدء تنفيذ المشروع.'
+        if not repairing else f'تم تفعيل تنفيذ المشروع للعرض {q.code}.',
         'success',
     )
     next_dest = (request.form.get('next') or request.args.get('next') or '').strip().lower()
     if next_dest == 'sales':
         return redirect(url_for('sales.quotes_inbox', kind='install'))
-    return redirect(url_for('installation.project_detail', project_id=project.id))
+    return redirect(url_for('installation.project_execution', project_id=project.id))
 
 
 @install_bp.route('/projects/<int:project_id>/execution')

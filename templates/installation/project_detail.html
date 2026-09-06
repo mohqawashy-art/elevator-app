@@ -43,6 +43,13 @@
         <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">تنفيذ المشروع</a>
         <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm">محضر استلام</a>
         <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير</a>
+        {% elif approved_quotations %}
+        <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ approved_quotations[0].id }}/approve" style="display:inline" onsubmit="return confirm('بدء تنفيذ المشروع من العرض المعتمد؟')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-primary btn-sm">بدء التنفيذ</button>
+        </form>
+        {% elif not project.execution_active %}
+        <a href="{{ url_for('installation.project_quote', project_id=project.id, new=1) }}" class="btn btn-secondary btn-sm">+ إضافة عرض</a>
         {% endif %}
       </div>
     </div>
@@ -416,7 +423,12 @@
     {% endif %}
 
     <div class="panel">
-      <div class="panel-title">العرض المعتمد</div>
+      <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>العرض المعتمد</span>
+        {% if not project.execution_active %}
+        <a href="{{ url_for('installation.project_quote', project_id=project.id, new=1) }}" class="btn btn-primary btn-sm">+ إضافة عرض</a>
+        {% endif %}
+      </div>
       <table>
         <thead>
           <tr>
@@ -428,26 +440,68 @@
           </tr>
         </thead>
         <tbody>
-          {% for q in quotations if q.status == 'مقبول' %}
+          {% for q in approved_quotations %}
           <tr>
             <td style="font-family:var(--font-en)">{{ q.code }}</td>
             <td>{{ q.quote_type_short }}</td>
             <td><span class="badge badge-ok">{{ q.status }}</span></td>
             <td style="font-family:var(--font-en)">{{ '{:,.0f}'.format(q.grand_total) }} ر.س</td>
             <td style="white-space:nowrap">
-              <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm">طباعة</a>
-              <a href="#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
+              <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>
+              <a href="#project-card" class="btn btn-secondary btn-sm">كارت المشروع</a>
               {% if project.execution_active %}
-              <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-secondary btn-sm">تنفيذ المشروع</a>
+              <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">تنفيذ المشروع</a>
+              {% else %}
+              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('بدء تنفيذ المشروع من هذا العرض؟')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary btn-sm">بدء التنفيذ</button>
+              </form>
               {% endif %}
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">لا يوجد عرض معتمد بعد — تتم الموافقة من قسم المبيعات</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">لا يوجد عرض معتمد بعد — أضف عرضاً أو وافق عليه من المبيعات</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+
+    {% if pending_quotations and not project.execution_active %}
+    <div class="panel" style="border-color:rgba(42,127,255,.25)">
+      <div class="panel-title">عروض قيد الإعداد</div>
+      <table>
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>النوع</th>
+            <th>الحالة</th>
+            <th>الإجمالي</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for q in pending_quotations %}
+          <tr>
+            <td style="font-family:var(--font-en)">{{ q.code }}</td>
+            <td>{{ q.quote_type_short }}</td>
+            <td><span class="badge badge-new">{{ q.status }}</span></td>
+            <td style="font-family:var(--font-en)">{{ '{:,.0f}'.format(q.grand_total or 0) }} ر.س</td>
+            <td style="white-space:nowrap">
+              <a href="{{ url_for('installation.project_quote', project_id=project.id, quotation_id=q.id) }}" class="btn btn-secondary btn-sm">تعديل</a>
+              <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>
+              {% if q.status in ('مُرسل', 'تفاوض') %}
+              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('موافقة العميل وبدء التنفيذ؟')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary btn-sm">موافقة وبدء التنفيذ</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
   </div>
 </div>
 <script>
