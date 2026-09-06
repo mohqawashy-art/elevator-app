@@ -109,8 +109,8 @@
             نسخ قيمة العقد إلى قيمة المشروع
           </label>
           <button type="submit" class="btn btn-primary btn-sm">حفظ الربط</button>
-          {% if project.contract_id %}
-          <a href="/contracts/{{ project.contract_id }}/print" class="btn btn-secondary btn-sm" target="_blank">فتح العقد</a>
+          {% if customer_contracts %}
+          <a href="{% if project.contract_id %}/contracts/{{ project.contract_id }}/print{% else %}#{% endif %}" id="pc-open-contract" class="btn btn-secondary btn-sm" target="_blank" rel="noopener" {% if not project.contract_id %}hidden{% endif %}>فتح العقد</a>
           {% endif %}
         </form>
         {% if not customer_contracts %}
@@ -132,6 +132,9 @@
             <tr class="pc-row-{{ row.kind }}">
               <td class="pc-label{% if row.kind == 'line' or row.kind == 'receipt' %} pc-indent{% endif %}">
                 {{ row.label }}
+                {% if row.note and row.kind in ('line', 'receipt') %}
+                <div class="pc-item-note">{{ row.note }}</div>
+                {% endif %}
               </td>
               <td class="pc-amount" style="font-family:var(--font-en);direction:ltr">
                 {% if row.amount is not none %}{{ '{:,.0f}'.format(row.amount) }}{% else %}—{% endif %}
@@ -147,7 +150,6 @@
                 <span class="pc-note">{{ row.note }}</span>
                 {% elif row.kind == 'line' and row.item %}
                 <div class="pc-status-actions">
-                  {% if row.note %}<div class="pc-note pc-note-block">{{ row.note }}</div>{% endif %}
                   {% if row.status %}
                   <form method="post" action="/installation/projects/{{ project.id }}/card/costs/{{ row.item.id }}/status" class="pc-inline-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -211,7 +213,6 @@
                 </div>
                 {% elif row.kind == 'receipt' and row.item %}
                 <div class="pc-status-actions">
-                  {% if row.note %}<div class="pc-note pc-note-block">{{ row.note }}</div>{% endif %}
                   <span class="badge {{ 'badge-ok' if row.status == 'مدفوعة' else 'badge-warn' }}">{{ row.status }}</span>
                   <form method="post" action="/installation/projects/{{ project.id }}/card/receipts/{{ row.item.id }}/delete" onsubmit="return confirm('حذف الدفعة؟')" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -321,6 +322,10 @@
     .pc-row-category td{background:var(--bg3);font-weight:600}
     .pc-row-empty td{color:var(--text3);font-style:italic}
     .pc-indent{padding-right:28px!important;color:var(--text2)}
+    .pc-item-note{
+      margin-top:6px;padding:6px 10px;background:rgba(200,160,85,.1);border-right:3px solid var(--gold);
+      font-size:12px;color:var(--text2);line-height:1.5;white-space:pre-wrap;border-radius:0 6px 6px 0
+    }
     .pc-note{font-size:12px;color:var(--text3)}
     .pc-note-block{width:100%;margin-bottom:4px;color:var(--text2);line-height:1.5}
     .pc-project-notes{
@@ -445,5 +450,26 @@
     </div>
   </div>
 </div>
+<script>
+(function () {
+  const form = document.querySelector('.pc-contract-form');
+  if (!form) return;
+  const sel = form.querySelector('select[name="contract_id"]');
+  const openBtn = document.getElementById('pc-open-contract');
+  if (!sel || !openBtn) return;
+  function syncOpenContract() {
+    const id = (sel.value || '').trim();
+    if (id) {
+      openBtn.href = '/contracts/' + id + '/print';
+      openBtn.hidden = false;
+    } else {
+      openBtn.href = '#';
+      openBtn.hidden = true;
+    }
+  }
+  sel.addEventListener('change', syncOpenContract);
+  syncOpenContract();
+})();
+</script>
 </body>
 </html>

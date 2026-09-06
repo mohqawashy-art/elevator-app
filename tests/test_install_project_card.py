@@ -350,6 +350,9 @@ def test_project_card_link_contract(client):
     )
     assert resp.status_code == 200
     assert 'تم ربط الكارت بالعقد' in resp.data.decode('utf-8', errors='ignore')
+    body = resp.data.decode('utf-8', errors='ignore')
+    assert 'id="pc-open-contract"' in body
+    assert 'syncOpenContract' in body
     with client.application.app_context():
         p = db.session.get(InstallProject, pid)
         assert p.contract_id == cid

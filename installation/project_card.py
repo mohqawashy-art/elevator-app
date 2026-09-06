@@ -300,12 +300,14 @@ def build_project_card(project: InstallProject) -> dict:
         detail_lines = [
             item for item in lines
             if item.installment_no
+            or (item.notes or '').strip()
             or (item.title or '').strip() not in ('', cat, phase_label)
         ]
         if (
             len(lines) == 1
             and not lines[0].installment_no
             and (lines[0].title or '').strip() in ('', cat, phase_label)
+            and not (lines[0].notes or '').strip()
         ):
             detail_lines = []
         for item in detail_lines:
