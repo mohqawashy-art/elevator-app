@@ -373,15 +373,6 @@
 
   window.syncDeviceClass = syncDeviceClass;
 
-  window.LiftCoreShell = {
-    afterNavigate: function () {
-      if (window.LiftCoreFastNav && typeof window.LiftCoreFastNav.bind === 'function') {
-        window.LiftCoreFastNav.bind();
-      }
-    },
-    highlightActiveNav: highlightActiveNav,
-  };
-
   document.addEventListener('DOMContentLoaded', function () {
     syncDeviceClass();
     syncMobileScroll();
