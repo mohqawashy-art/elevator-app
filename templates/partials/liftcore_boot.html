@@ -1,0 +1,11 @@
+<style id="lc-critical-paint">html,body{background:#0b0f17;color:#e4eaf5;color-scheme:dark}html[data-theme="light"],html[data-theme="light"] body{background:#f0f4fa;color:#1a2433;color-scheme:light}html[data-theme="report"],html[data-theme="report"] body{background:#f5f0e8;color:#1a2433}html[data-theme="premium"],html[data-theme="premium"] body{background:#070a10;color:#f2f5fa}</style>
+<script>
+(function () {
+  var theme = {{ user_theme|tojson }};
+  if (theme) document.documentElement.setAttribute('data-theme', theme);
+  var lang = {{ user_language|default('ar')|tojson }};
+  if (lang !== 'ar' && lang !== 'en') lang = 'ar';
+  document.documentElement.setAttribute('lang', lang);
+  document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+})();
+</script>

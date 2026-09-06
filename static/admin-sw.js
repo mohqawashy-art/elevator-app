@@ -1,7 +1,8 @@
 /* LiftCore Admin PWA — static shell + visited pages + offline fallback */
 'use strict';
 
-const CACHE = 'liftcore-admin-v19';
+const CACHE = 'liftcore-admin-v20';
+const NAV_PREFETCH = 'liftcore-nav-prefetch-v1';
 const OFFLINE_FALLBACK = '/static/admin-offline-fallback.html';
 const PRECACHE = [
   '/static/liftcore-shell.css?v=53',
@@ -134,8 +135,26 @@ self.addEventListener('fetch', function (event) {
   }
 
   event.respondWith(
-    fetch(event.request).catch(function () {
-      return caches.match(OFFLINE_FALLBACK);
+    caches.open(NAV_PREFETCH).then(function (navCache) {
+      return navCache.match(event.request).then(function (prefetched) {
+        var network = fetch(event.request).then(function (resp) {
+          if (resp && resp.ok) {
+            try { navCache.put(event.request, resp.clone()); } catch (_e) { /* ignore */ }
+          }
+          return resp;
+        });
+        if (prefetched) {
+          network.catch(function () { /* ignore */ });
+          return prefetched;
+        }
+        return network.catch(function () {
+          return caches.match(OFFLINE_FALLBACK);
+        });
+      });
+    }).catch(function () {
+      return fetch(event.request).catch(function () {
+        return caches.match(OFFLINE_FALLBACK);
+      });
     })
   );
 });

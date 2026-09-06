@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="{{ user_language|default('ar') }}" dir="{{ 'ltr' if user_language == 'en' else 'rtl' }}">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LiftCore — {{ portal.title }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
