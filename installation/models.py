@@ -345,9 +345,11 @@ class InstallQuotation(TenantMixin, db.Model):
         order_by='InstallQuotationLine.sort_order',
     )
 
+    @property
     def quote_type_label(self):
         return QUOTE_TYPE_LABELS.get(self.quote_type or 'new', QUOTE_TYPE_LABELS['new'])
 
+    @property
     def quote_type_short(self):
         return QUOTE_TYPE_SHORT.get(self.quote_type or 'new', QUOTE_TYPE_SHORT['new'])
 
