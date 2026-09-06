@@ -7546,6 +7546,16 @@ def contract_delete(id):
     return redirect(url_for('contracts'))
 
 
+@app.route('/contracts/<int:contract_id>/open')
+def contract_open(contract_id):
+    """يفتح ملف العقد المرفق (سكان/ PDF) إن وُجد، وإلا صفحة طباعة العقد."""
+    c = tenant_get_or_404(Contract, contract_id)
+    file_url = _contract_js_primary_url(c)
+    if file_url:
+        return redirect(file_url)
+    return redirect(url_for('contract_print_page', contract_id=contract_id))
+
+
 @app.route('/contracts/<int:contract_id>/print')
 def contract_print_page(contract_id):
     from contract_print import contract_print_payload

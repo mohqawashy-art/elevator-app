@@ -436,6 +436,75 @@ def test_project_card_rejects_maintenance_contract_link(client):
         assert p.contract_id == iid
 
 
+def test_contract_open_prefers_attached_file(client):
+    from models import Customer, Contract
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-SCN',
+            name='عميل سكان',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CI-SCN1',
+            customer_id=cust.id,
+            contract_type='عقد تركيب',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=10000,
+            total=10000,
+            status='نشط',
+            file_path='uploads/contracts/99/signed-scan.pdf',
+        )
+        db.session.add(contract)
+        db.session.commit()
+        cid = contract.id
+
+    r = client.get(f'/contracts/{cid}/open')
+    assert r.status_code in (302, 303)
+    assert 'signed-scan.pdf' in (r.headers.get('Location') or '')
+
+
+def test_contract_open_falls_back_to_print(client):
+    from models import Customer, Contract
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-NOF',
+            name='عميل بلا مرفق',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CI-NOF1',
+            customer_id=cust.id,
+            contract_type='عقد تركيب',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=5000,
+            total=5000,
+            status='نشط',
+        )
+        db.session.add(contract)
+        db.session.commit()
+        cid = contract.id
+
+    r = client.get(f'/contracts/{cid}/open')
+    assert r.status_code in (302, 303)
+    assert f'/contracts/{cid}/print' in (r.headers.get('Location') or '')
+
+
 def test_project_delete_from_list(client):
     login_as(client, role='admin')
     with client.application.app_context():

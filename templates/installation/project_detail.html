@@ -110,7 +110,7 @@
           </label>
           <button type="submit" class="btn btn-primary btn-sm">حفظ الربط</button>
           {% if customer_contracts %}
-          <a href="{% if project.contract_id %}/contracts/{{ project.contract_id }}/print{% else %}#{% endif %}" id="pc-open-contract" class="btn btn-secondary btn-sm" target="_blank" rel="noopener" {% if not project.contract_id %}hidden{% endif %}>فتح العقد</a>
+          <a href="{% if project.contract_id %}/contracts/{{ project.contract_id }}/open{% else %}#{% endif %}" id="pc-open-contract" class="btn btn-secondary btn-sm" target="_blank" rel="noopener" {% if not project.contract_id %}hidden{% endif %}>فتح العقد</a>
           {% endif %}
         </form>
         {% if not customer_contracts %}
@@ -460,7 +460,7 @@
   function syncOpenContract() {
     const id = (sel.value || '').trim();
     if (id) {
-      openBtn.href = '/contracts/' + id + '/print';
+      openBtn.href = '/contracts/' + id + '/open';
       openBtn.hidden = false;
     } else {
       openBtn.href = '#';
