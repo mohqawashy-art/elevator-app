@@ -52,6 +52,8 @@
 
   function sessionLockedUi() {
     var root = global.document.documentElement;
+    var body = global.document.body;
+    if (body && body.classList.contains('lc-idle-locked')) return true;
     if (root && root.classList.contains('lc-session-locked')) return true;
     return !!global.document.getElementById('lc-idle-screensaver.open');
   }
@@ -59,11 +61,8 @@
   function onSessionLocked() {
     try { global.sessionStorage.setItem('lc_idle_locked', '1'); } catch (e) { /* ignore */ }
     global.__LC_SESSION_LOCKED = true;
-    if (global.document.documentElement) {
-      global.document.documentElement.classList.add('lc-session-locked');
-    }
     if (global.LiftCoreIdleScreensaver && typeof global.LiftCoreIdleScreensaver.show === 'function') {
-      global.LiftCoreIdleScreensaver.show();
+      global.LiftCoreIdleScreensaver.show({ showUnlock: true });
     }
   }
 

@@ -1,16 +1,16 @@
 /* LiftCore Admin PWA — static shell + visited pages + offline fallback */
 'use strict';
 
-const CACHE = 'liftcore-admin-v18';
+const CACHE = 'liftcore-admin-v19';
 const OFFLINE_FALLBACK = '/static/admin-offline-fallback.html';
 const PRECACHE = [
-  '/static/liftcore-shell.css?v=51',
+  '/static/liftcore-shell.css?v=53',
   '/static/liftcore-admin-mobile.css?v=7',
   '/static/liftcore-mobile-touch.css?v=2',
   '/static/liftcore-theme.css',
   '/static/liftcore-layout.css?v=5',
   '/static/liftcore-sticky-top.css?v=6',
-  '/static/liftcore-shell.js?v=24',
+  '/static/liftcore-shell.js?v=25',
   '/static/liftcore-hotkeys.js?v=4',
   '/static/contracts-zero-hotfix.js?v=3',
   '/static/liftcore-mobile-touch.js?v=2',

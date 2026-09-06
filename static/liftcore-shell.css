@@ -2118,6 +2118,38 @@ html[data-lc-can-write="0"] .lc-write-only {
   animation: lc-spin 0.7s linear infinite;
 }
 
+/* شريط تقدّم خفيف أثناء التنقل بين الصفحات */
+html::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 100001;
+  background: linear-gradient(90deg, transparent, var(--accent, #2a7fff), transparent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+html[dir="rtl"]::before {
+  transform-origin: right center;
+}
+
+html.lc-nav-pending::before {
+  opacity: 1;
+  animation: lc-nav-progress 1.1s ease-in-out infinite;
+}
+
+@keyframes lc-nav-progress {
+  0% { transform: scaleX(0.08); }
+  50% { transform: scaleX(0.72); }
+  100% { transform: scaleX(0.2); }
+}
+
 @keyframes lc-spin {
   to { transform: rotate(360deg); }
 }

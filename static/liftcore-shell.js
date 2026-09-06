@@ -251,16 +251,47 @@
 
   function bindSidebarNav() {
     bindNavGroups();
-    document.querySelectorAll('#sidebar .nav-item[href], .sidebar .nav-item[href]').forEach(function (a) {
+    document.querySelectorAll('#sidebar .nav-item[href], .sidebar .nav-item[href], #sidebar .nav-item-single[href], .sidebar .nav-item-single[href]').forEach(function (a) {
       if (a.dataset.lcNavBound) return;
       a.dataset.lcNavBound = '1';
+      a.addEventListener('mouseenter', function () { prefetchNavHref(a.getAttribute('href')); });
+      a.addEventListener('focus', function () { prefetchNavHref(a.getAttribute('href')); });
       a.addEventListener('click', function () {
         closeAllNavGroups();
         window.closeSidebar();
         scrollNavItemIntoView(a);
+        markNavPending(a.getAttribute('href'));
       });
     });
     highlightActiveNav();
+  }
+
+  var prefetchedHrefs = Object.create(null);
+
+  function prefetchNavHref(href) {
+    if (!href || href === '#' || href.indexOf('javascript:') === 0) return;
+    try {
+      var u = new URL(href, location.origin);
+      if (u.origin !== location.origin) return;
+      var key = u.pathname + u.search;
+      if (prefetchedHrefs[key]) return;
+      prefetchedHrefs[key] = true;
+      var link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = key;
+      link.as = 'document';
+      document.head.appendChild(link);
+    } catch (e) { /* ignore */ }
+  }
+
+  function markNavPending(href) {
+    if (!href || href === '#') return;
+    try {
+      var u = new URL(href, location.origin);
+      if (u.origin !== location.origin) return;
+      if (u.pathname === location.pathname && u.search === location.search) return;
+    } catch (e) { return; }
+    document.documentElement.classList.add('lc-nav-pending');
   }
 
   function scrollNavItemIntoView(link) {

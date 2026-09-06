@@ -27,7 +27,7 @@ body.lc-idle-locked {
   overflow: hidden !important;
 }
 
-html.lc-session-locked body > *:not(#lc-idle-screensaver) {
+body.lc-idle-locked > *:not(#lc-idle-screensaver) {
   visibility: hidden;
   pointer-events: none;
 }
