@@ -65,6 +65,9 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
     <div><b>كود العميل:</b> {{ project.customer.code if project.customer else '—' }}</div>
     <div><b>حالة المشروع:</b> {{ project.status or '—' }}</div>
     <div><b>مصدر القيمة:</b> {{ card.value_source }}</div>
+    {% if project.notes %}
+    <div style="grid-column:1/-1"><b>ملاحظات:</b> {{ project.notes }}</div>
+    {% endif %}
   </div>
 
   <table>
@@ -86,7 +89,11 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
           {% if row.kind == 'category' and row.note %}{{ row.note }}
           {% elif row.status %}
           <span class="{% if row.status in ('مدفوعة','مستلمة') %}status-ok{% else %}status-warn{% endif %}">{{ row.status }}</span>
-          {% else %}—{% endif %}
+          {% endif %}
+          {% if row.note and row.kind != 'category' %}
+          {% if row.status %}<br>{% endif %}<span style="color:#6b7a90;font-size:12px">{{ row.note }}</span>
+          {% endif %}
+          {% if not row.status and not row.note %}—{% endif %}
         </td>
       </tr>
       {% endfor %}

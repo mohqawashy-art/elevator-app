@@ -83,6 +83,13 @@
       <p style="font-size:13px;color:var(--danger);margin:0 0 12px">تعذّر تحميل جداول الكارت: {{ card.schema_error }}</p>
       {% endif %}
 
+      {% if project.notes %}
+      <div class="pc-project-notes">
+        <span class="pc-project-notes-label">ملاحظات المشروع</span>
+        <p>{{ project.notes }}</p>
+      </div>
+      {% endif %}
+
       <div class="pc-contract-bar">
         <form method="post" action="/installation/projects/{{ project.id }}/card/link-contract" class="pc-contract-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -140,6 +147,7 @@
                 <span class="pc-note">{{ row.note }}</span>
                 {% elif row.kind == 'line' and row.item %}
                 <div class="pc-status-actions">
+                  {% if row.note %}<div class="pc-note pc-note-block">{{ row.note }}</div>{% endif %}
                   {% if row.status %}
                   <form method="post" action="/installation/projects/{{ project.id }}/card/costs/{{ row.item.id }}/status" class="pc-inline-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -203,6 +211,7 @@
                 </div>
                 {% elif row.kind == 'receipt' and row.item %}
                 <div class="pc-status-actions">
+                  {% if row.note %}<div class="pc-note pc-note-block">{{ row.note }}</div>{% endif %}
                   <span class="badge {{ 'badge-ok' if row.status == 'مدفوعة' else 'badge-warn' }}">{{ row.status }}</span>
                   <form method="post" action="/installation/projects/{{ project.id }}/card/receipts/{{ row.item.id }}/delete" onsubmit="return confirm('حذف الدفعة؟')" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -211,6 +220,9 @@
                 </div>
                 {% elif row.status %}
                 <span class="badge {{ 'badge-ok' if row.status == 'مدفوعة' else 'badge-warn' }}">{{ row.status }}</span>
+                {% if row.note %}<span class="pc-note">{{ row.note }}</span>{% endif %}
+                {% elif row.note %}
+                <span class="pc-note">{{ row.note }}</span>
                 {% else %}—{% endif %}
               </td>
             </tr>
@@ -253,6 +265,10 @@
                 <label>التاريخ</label>
                 <input type="date" name="cost_date" value="{{ today }}">
               </div>
+              <div class="pc-edit-notes">
+                <label>ملاحظة</label>
+                <input type="text" name="notes" placeholder="اختياري">
+              </div>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">+ إضافة بند</button>
           </form>
@@ -286,6 +302,10 @@
                 <label>التاريخ</label>
                 <input type="date" name="received_date" value="{{ today }}">
               </div>
+              <div class="pc-edit-notes">
+                <label>ملاحظة</label>
+                <input type="text" name="notes" placeholder="اختياري">
+              </div>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">+ تحصيل</button>
           </form>
@@ -302,6 +322,12 @@
     .pc-row-empty td{color:var(--text3);font-style:italic}
     .pc-indent{padding-right:28px!important;color:var(--text2)}
     .pc-note{font-size:12px;color:var(--text3)}
+    .pc-note-block{width:100%;margin-bottom:4px;color:var(--text2);line-height:1.5}
+    .pc-project-notes{
+      margin:0 0 14px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm)
+    }
+    .pc-project-notes-label{display:block;font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px}
+    .pc-project-notes p{margin:0;font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap}
     .pc-inline-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
     .pc-inline-form input[type=number],.pc-inline-form select{
       padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-family:var(--font-en);max-width:140px

@@ -142,6 +142,7 @@ def test_project_card_costs_and_receipts(client):
             installment_no=1,
             payment_status='مدفوعة',
             cost_date=date.today(),
+            notes='تحويل بنكي — مرجع 123',
         ))
         db.session.add(InstallProjectCostItem(
             organization_id=org.id,
@@ -189,12 +190,15 @@ def test_project_card_costs_and_receipts(client):
         assert 'دفعة أولى' in labels
         assert 'دفعة ثانية' in labels
         assert 'دفعة ثالثة' in labels
+        line_notes = [r['note'] for r in card['sheet_rows'] if r['kind'] == 'line']
+        assert 'تحويل بنكي — مرجع 123' in line_notes
 
     resp = client.get(f'/installation/projects/{pid}')
     assert resp.status_code == 200
     body = resp.data.decode('utf-8', errors='ignore')
     assert 'كارت المشروع' in body
     assert 'دفعة أولى' in body
+    assert 'تحويل بنكي — مرجع 123' in body
     assert 'مدفوعة' in body
     assert 'مرحلة 1 — السكك والأبواب' in body
     assert 'تعديل' in body

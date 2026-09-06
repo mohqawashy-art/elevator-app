@@ -321,7 +321,7 @@ def build_project_card(project: InstallProject) -> dict:
                 'label': label,
                 'amount': float(item.amount or 0),
                 'status': status,
-                'note': None,
+                'note': (item.notes or '').strip() or None,
                 'item': item,
                 'category': cat,
             })
@@ -354,7 +354,7 @@ def build_project_card(project: InstallProject) -> dict:
                 'label': r.label or installment_label(r.installment_no),
                 'amount': float(r.amount or 0),
                 'status': 'مدفوعة' if (r.status or '') == 'مستلمة' else 'غير مدفوعة',
-                'note': None,
+                'note': (r.notes or '').strip() or None,
                 'item': r,
                 'category': None,
             })
