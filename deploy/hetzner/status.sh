@@ -6,6 +6,8 @@ echo "IP: $PUBLIC_IP"
 echo "timezone: $(timedatectl show -p Timezone --value 2>/dev/null || true)"
 echo
 systemctl is-active liftcore && echo "liftcore: active" || echo "liftcore: DOWN"
+systemctl is-active liftcore-jama 2>/dev/null && echo "liftcore-jama: active" || echo "liftcore-jama: DOWN"
+systemctl is-active liftcore-staging 2>/dev/null && echo "liftcore-staging (test): active" || echo "liftcore-staging (test): DOWN"
 systemctl is-active nginx && echo "nginx: active" || echo "nginx: DOWN"
 systemctl is-active postgresql && echo "postgres: active" || echo "postgres: DOWN"
 echo

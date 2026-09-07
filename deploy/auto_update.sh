@@ -69,6 +69,8 @@ update_app() {
 }
 
 log "==> auto update start (force=$FORCE)"
+# test (liftcore-staging) معزول — فرع staging/department-hubs ومجلد test-elevator-app
+# يُنشر فقط عبر: sudo bash ~/liftcore/test-elevator-app/deploy/staging/deploy_staging.sh
 ERR=0
 update_app liftcore "$HOME/liftcore/elevator-app" || ERR=1
 update_app liftcore-jama "$HOME/liftcore/jama-elevator-app" || ERR=1

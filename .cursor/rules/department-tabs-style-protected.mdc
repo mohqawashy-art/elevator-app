@@ -1,0 +1,52 @@
+---
+description: ممنوع تعديل ستايل تبويبات الأقسام (department tabs) في أي مهمة أخرى
+alwaysApply: true
+---
+
+# حماية ستايل تبويبات الأقسام
+
+## النطاق: test أولاً
+
+عند العمل على **test** (`test.liftcoreapp.com`، مجلد `test-elevator-app`، فرع `staging/department-hubs`، خدمة `liftcore-staging`):
+
+- أي تعديل UI/ترجمة/تنحيف **لا يمس** تبويبات الأقسام.
+- test **منفصل تماماً** عن app و jama — لا نشر test على الإنتاج ولا العكس.
+- التعديلات المطلوبة (تبويبات جدول/خريطة، topnav، إحصائيات…) تُجرى في test فقط على الملفات غير المحمية.
+
+نفس الحماية تنطبق على app/jama إلا إذا طُلب تعديل تبويبات الأقسام صراحة.
+
+## المقصود (محمي — لا تعدّل)
+
+أي تعديل على البرنامج **لا يمس** مظهر أو CSS أو تخطيط **تبويبات الأقسام** (شريط المنصة تحت الهيدر: «كل الأقسام»، روابط القسم، التقارير).
+
+- `.department-tabs-wrap`, `.department-tabs`, `.department-tab`, `.department-tab--report`
+- `.department-tabs-title`, `.department-tabs-label`
+- `templates/partials/department_tabs.html`
+- `static/liftcore-departments.css`
+- قواعد `.department-*` داخل `templates/department_portal.html`
+
+هذه التبويبات تظهر داخل **منصات الأقسام** (`/home`, `/departments/<slug>`) وليس في القائمة العلوية العامة.
+
+## غير محمي (يمكن تعديله عند الطلب — لا تخلطه مع الأقسام)
+
+- القائمة العلوية: `.nav-group`, `.nav-group-btn`, `app_sidebar_nav.html`
+- تبويبات صفحة العرض: `.lc-view-tabs`, `.tabs` في `clients.html` / `maintenance-visits.html` (جدول/خريطة)
+- كروت الإحصائيات: `.stats-row`, `.stat-mini`
+
+## عند أي مهمة (UI، i18n، نشر، test)
+
+1. **لا** تضف/تعدّل/تحذف CSS أو classes أو padding/margin/font لـ `.department-tab*` أو `liftcore-departments.css` إلا إذا طلب المستخدم **صراحة** «تبويبات الأقسام» أو «department tabs».
+2. **لا** تنسخ قواعد `lc-view-tabs` أو `liftcore-shell.css` (topnav) إلى ملفات الأقسام.
+3. **لا** تضمّن `department_tabs.html` أو `liftcore-departments.css` في refactors عامة للـ shell.
+4. إن احتاج المستخدم تنحيف/تبويبات أخرى، عدّل الملفات المذكورة في «غير محمي» فقط.
+
+## النشر
+
+- **test** (`test.liftcoreapp.com`): مجلد `~/liftcore/test-elevator-app` (محلياً `D:\LiftCore\test-elevator-app`) — فرع `staging/department-hubs` — `deploy/staging/deploy_staging.sh` فقط.
+- **app**: `~/liftcore/elevator-app` — `origin/main` فقط.
+- **jama**: `~/liftcore/jama-elevator-app` — `origin/main` فقط.
+- **ممنوع** `cp` أو `rsync` بين الإنتاج و staging.
+
+## إذا طُلب تعديل محمي صراحة
+
+وثّق السبب في الرد، وعدّل **الحد الأدنى** في الملفات المحمية فقط — دون تغييرات جانبية.

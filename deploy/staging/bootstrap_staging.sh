@@ -3,6 +3,26 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+MAIN_DIR="${MAIN_DIR:-$HOME/liftcore/elevator-app}"
+TEST_DIR="${TEST_DIR:-$HOME/liftcore/test-elevator-app}"
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "ERROR: run with sudo"
+  exit 1
+fi
+
+if [ ! -d "$TEST_DIR/.git" ]; then
+  echo "==> إنشاء مجلد test المنفصل أولاً"
+  if [ -f "$SCRIPT_DIR/provision_test_clone.sh" ]; then
+    bash "$SCRIPT_DIR/provision_test_clone.sh" "$TEST_DIR"
+  elif [ -f "$MAIN_DIR/deploy/staging/provision_test_clone.sh" ]; then
+    bash "$MAIN_DIR/deploy/staging/provision_test_clone.sh" "$TEST_DIR"
+  else
+    echo "ERROR: run provision_test_clone.sh first"
+    exit 1
+  fi
+fi
+
 SERVICE_USER="liftcore-staging"
 DB_NAME="liftcore_staging"
 DB_USER="liftcore_staging"

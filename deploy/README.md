@@ -9,6 +9,16 @@
 سجل النقل: [`deploy/hetzner/README.md`](hetzner/README.md) — GCP أُلغي أغسطس 2026  
 الكود على: **https://github.com/mohqawashy-art/elevator-app**
 
+### ثلاث بيئات منفصلة
+
+| البيئة | النطاق | مجلد السيرفر | الفرع |
+|--------|--------|--------------|-------|
+| إنتاج | app.liftcoreapp.com | `~/liftcore/elevator-app` | `main` |
+| جما | jama.liftcoreapp.com | `~/liftcore/jama-elevator-app` | `main` |
+| **test** | test.liftcoreapp.com | **`~/liftcore/test-elevator-app`** | **`staging/department-hubs`** |
+
+تفاصيل: [`deploy/ENVIRONMENTS.md`](ENVIRONMENTS.md) — test **لا** يُحدَّث عبر `gcp_update.sh`.
+
 ### تثبيت تطبيق الإدارة (جوال / تابلت)
 
 1. افتح **https://app.liftcoreapp.com/login** وسجّل الدخول
