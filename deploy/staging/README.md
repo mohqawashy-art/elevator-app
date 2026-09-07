@@ -48,12 +48,16 @@ sudo bash deploy/staging/bootstrap_staging.sh
 
 ## كل تحديث تجريبي
 
-بعد دفع التغييرات إلى فرع التجربة فقط:
+**لا تستخدم `STAGING_BRANCH=main`** إلا لاختبار تغييرات محددة من الإنتاج. الوضع الافتراضي للتجربة هو فرع `staging/department-hubs` (منصات الأقسام والواجهات المنفصلة).
 
 ```bash
-cd /tmp/liftcore-staging-bootstrap
-git pull --ff-only origin staging/department-hubs
 sudo bash deploy/staging/deploy_staging.sh
+```
+
+استعادة كاملة لأواخر أغسطس (قاعدة + كود + واجهات) **بدون لمس جما أو الإنتاج**:
+
+```bash
+sudo bash deploy/staging/restore_august_test.sh
 ```
 
 ## التحقق
