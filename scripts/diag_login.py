@@ -7,7 +7,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-USERNAME = 'محمد عبدالعزيز'
+USERNAMES = ('mohammed', 'محمد عبدالعزيز', 'mohammed@jama.local')
 PASSWORD = 'Bf@123456'
 
 
@@ -19,7 +19,7 @@ def main():
         print('=== DB users matching login ===')
         for u in User.query.filter(
             User.is_active.is_(True),
-            (User.username == USERNAME) | (User.full_name == USERNAME),
+            (User.username.in_(USERNAMES)) | (User.full_name.in_(USERNAMES)),
         ).all():
             org = Organization.query.get(u.organization_id)
             print(
@@ -37,31 +37,21 @@ def main():
         'app.liftcoreapp.com',
         'jama.liftcoreapp.com',
     ]
-    for host in hosts:
-        print(f'\n=== POST /login host={host} ===')
+    for login_name in USERNAMES:
+        print(f'\n=== POST /login user={login_name!r} host=app.liftcoreapp.com ===')
         with client.session_transaction() as sess:
             sess['_csrf_token'] = 'diag-csrf'
         r = client.post(
             '/login',
             data={
                 'csrf_token': 'diag-csrf',
-                'username': USERNAME,
+                'username': login_name,
                 'password': PASSWORD,
             },
-            headers={'Host': host},
+            headers={'Host': 'app.liftcoreapp.com'},
             follow_redirects=False,
         )
-        print('status', r.status_code)
-        print('location', r.headers.get('Location', '-'))
-        body = r.get_data(as_text=True)
-        if 'محاولات كثيرة' in body:
-            print('error: rate limited')
-        elif 'غير صحيحة' in body or 'غير صحيح' in body:
-            print('error: bad credentials')
-        elif r.status_code in (302, 303):
-            print('ok: redirect login success')
-        else:
-            print('body_snip', body[:300].replace('\n', ' '))
+        print('status', r.status_code, 'location', r.headers.get('Location', '-'))
 
     with app.app_context():
         cleared = RateLimitEvent.query.filter_by(scope='login').delete(synchronize_session=False)
