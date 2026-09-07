@@ -80,11 +80,11 @@ if [ -f scripts/init_install_module.py ]; then
     LIFTCORE_ENV_FILE="$ENV_FILE" \
     "$VENV/bin/python" scripts/init_install_module.py
 fi
-if [ -f "$SCRIPT_DIR/seed_staging.py" ]; then
+if [ -f "$RELEASE/deploy/staging/seed_staging.py" ]; then
   sudo -u liftcore-staging env \
     DATABASE_URL="$DATABASE_URL" \
     LIFTCORE_ENV_FILE="$ENV_FILE" \
-    "$VENV/bin/python" "$SCRIPT_DIR/seed_staging.py"
+    "$VENV/bin/python" "$RELEASE/deploy/staging/seed_staging.py"
 fi
 
 ln -sfn "$RELEASE" "$CURRENT"
