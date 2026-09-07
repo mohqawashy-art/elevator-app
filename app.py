@@ -2671,7 +2671,11 @@ def _find_login_user(login_id):
         return None
     return tenant_query(User).filter(
         User.is_active.is_(True),
-        or_(User.username == login_id, db.func.lower(User.email) == login_id.lower()),
+        or_(
+            User.username == login_id,
+            User.full_name == login_id,
+            db.func.lower(User.email) == login_id.lower(),
+        ),
     ).first()
 
 
@@ -2728,7 +2732,11 @@ def _find_user_in_org(org_id: int, login_id: str):
     return User.query.filter(  # tenant: platform — org محدد صراحةً
         User.organization_id == org_id,
         User.is_active.is_(True),
-        or_(User.username == login_id, db.func.lower(User.email) == login_id.lower()),
+        or_(
+            User.username == login_id,
+            User.full_name == login_id,
+            db.func.lower(User.email) == login_id.lower(),
+        ),
     ).first()
 
 

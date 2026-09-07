@@ -28,6 +28,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--username', required=True)
     parser.add_argument('--full-name', default='')
+    parser.add_argument('--email', default='')
     parser.add_argument('--password', required=True)
     parser.add_argument(
         '--org-slug',
@@ -48,6 +49,7 @@ def main() -> int:
 
     username = args.username.strip()
     full_name = (args.full_name or username).strip()
+    email = (args.email or '').strip()
     password = args.password
     pwd_hash = hash_password(password)
     must_change = is_weak_password(password)
@@ -75,7 +77,7 @@ def main() -> int:
                     organization_id=org.id,
                     username=username,
                     full_name=full_name,
-                    email='',
+                    email=email or '',
                     role='admin',
                     is_active=True,
                 )
@@ -85,6 +87,8 @@ def main() -> int:
                 action = 'updated'
             user.username = username
             user.full_name = full_name or user.full_name or username
+            if email:
+                user.email = email
             user.password_hash = pwd_hash
             user.is_active = True
             user.must_change_password = must_change
