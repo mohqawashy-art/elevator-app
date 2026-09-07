@@ -1161,6 +1161,11 @@ def _quote_stage_blocks(quotation):
     """تجميع بنود العرض حسب مرحلة التركيب + توزيع الأجور على المراحل الموجودة فقط."""
     factor = 1 + float(quotation.profit_pct or 0) / 100.0
     cost_breakdown, labor_sell = _quote_cost_breakdown(quotation, factor)
+    labor_pool = (
+        float(quotation.labor or 0)
+        + float(quotation.transport or 0)
+        + float(quotation.other_costs or 0)
+    )
     shares = [
         ('مرحلة 1 — سكك وأبواب', 'أجور وتركيب — سكك وأبواب', 0.30),
         ('مرحلة 2 — تركيب كبينة وأحبال وماكينة', 'أجور وتركيب — كبينة وأحبال وماكينة', 0.45),
@@ -1200,6 +1205,7 @@ def _quote_stage_blocks(quotation):
     for st in final_order:
         lines = by_stage.get(st, [])
         lines_total = round(sum(float(ln.line_total or 0) * factor for ln in lines), 2)
+        labor_label, labor_amt = labor_by_stage.get(st, (None, 0))
         blocks.append({
             'stage': st,
             'lines': [
@@ -1211,7 +1217,9 @@ def _quote_stage_blocks(quotation):
                 }
                 for ln in lines
             ],
-            'total': lines_total,
+            'labor_label': labor_label if is_new else None,
+            'labor_amount': labor_amt if is_new else 0,
+            'total': round(lines_total + (labor_amt if is_new else 0), 2),
         })
     return blocks, labor_sell, cost_breakdown
 
