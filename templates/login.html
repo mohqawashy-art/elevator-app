@@ -1,5 +1,6 @@
+{% set splash_lock_theme = true %}
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="premium">
 <head>
 <meta charset="UTF-8">
 {% include 'partials/liftcore_boot.html' %}
@@ -18,12 +19,13 @@
   --field:rgba(255,255,255,.035);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{
+html,html[data-theme]{height:100%;background:#070a10;color-scheme:dark}
+html[data-theme] body,body{
   font-family:'Tajawal',sans-serif;
+  height:100%;
   background:radial-gradient(140% 100% at 50% 0%, var(--bg-2), var(--bg) 60%);
   color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;
-  padding:24px;overflow:hidden;position:relative;
+  padding:24px;overflow:hidden;position:relative;color-scheme:dark;
 }
 body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.025;z-index:5;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}

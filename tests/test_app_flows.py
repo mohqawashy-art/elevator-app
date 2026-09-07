@@ -7,6 +7,10 @@ from tests.conftest import login_as
 def test_login_page_ok(client):
     r = client.get('/login')
     assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "data-theme=\"premium\"" in body
+    assert "theme = 'premium'" in body
+    assert 'background:#f0f4fa' not in body
 
 
 def test_login_success_redirects(client):
