@@ -28,7 +28,8 @@ th,td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:right}
 th{color:var(--text3);font-size:11px}
 .field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
 .field label{font-size:12px;color:var(--text2)}
-.field input,.field select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);padding:8px 10px;font-family:inherit;width:100%}
+.table-lines input,.table-lines select{min-width:100px}
+.lines-table input,.lines-table select{min-width:100px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .flash{padding:10px 12px;border-radius:var(--r-sm);margin-bottom:12px;font-size:13px}
 .flash-success{background:rgba(31,184,122,.12);color:var(--success)}
@@ -54,6 +55,7 @@ th{color:var(--text3);font-size:11px}
     <div class="page-header">
       <div class="page-title">قائمة أسعار الموردين (Price List)</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="/suppliers" class="btn btn-secondary btn-sm">الموردون</a>
         <a href="/supplier-rfqs" class="btn btn-secondary btn-sm">طلبات عروض الأسعار</a>
         <a href="/purchase-orders" class="btn btn-secondary btn-sm">طلبات الشراء</a>
         <a href="/inventory" class="btn btn-secondary btn-sm">← الأصناف</a>
@@ -121,28 +123,17 @@ th{color:var(--text3);font-size:11px}
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="field">
-            <label>المورد (من القائمة)</label>
-            <select name="supplier_id" id="supplier_id">
-              <option value="">— اختر —</option>
+            <label>المورد *</label>
+            <select name="supplier_id" id="supplier_id" required>
+              <option value="">— اختر مورد —</option>
               {% for s in suppliers %}
               <option value="{{ s.id }}" {% if filter_supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
               {% endfor %}
             </select>
-          </div>
-          <div class="field">
-            <label>أو اسم مورد جديد</label>
-            <input name="supplier_name" placeholder="اسم المورد">
-          </div>
-          <div class="field">
-            <label>جوال</label>
-            <input name="supplier_phone" placeholder="05XXXXXXXX" style="direction:ltr">
-          </div>
-          <div class="field">
-            <label>إيميل</label>
-            <input name="supplier_email" placeholder="supplier@example.com" style="direction:ltr">
+            <a href="/suppliers" class="btn btn-secondary btn-sm" style="margin-top:8px;width:fit-content">+ إضافة مورد</a>
           </div>
         </div>
-        <table id="price-lines">
+        <table id="price-lines" class="lines-table lc-table-inputs">
           <thead>
             <tr><th>صنف المخزن</th><th>سعر الشراء</th><th>مدة التوريد (يوم)</th><th>ملاحظات</th><th></th></tr>
           </thead>
@@ -156,7 +147,7 @@ th{color:var(--text3);font-size:11px}
                   {% endfor %}
                 </select>
               </td>
-              <td><input type="number" name="unit_price" min="0" step="0.01" required></td>
+              <td><input type="number" name="unit_price" class="lc-input--money" min="0" step="0.01" required placeholder="0.00"></td>
               <td><input type="number" name="lead_days" min="0" step="1" placeholder="—"></td>
               <td><input type="text" name="price_notes" placeholder="اختياري"></td>
               <td><button type="button" class="btn btn-secondary btn-sm" onclick="removePriceLine(this)">حذف</button></td>
@@ -182,7 +173,7 @@ th{color:var(--text3);font-size:11px}
         {% endfor %}
       </select>
     </td>
-    <td><input type="number" name="unit_price" min="0" step="0.01" required></td>
+    <td><input type="number" name="unit_price" class="lc-input--money" min="0" step="0.01" required placeholder="0.00"></td>
     <td><input type="number" name="lead_days" min="0" step="1" placeholder="—"></td>
     <td><input type="text" name="price_notes" placeholder="اختياري"></td>
     <td><button type="button" class="btn btn-secondary btn-sm" onclick="removePriceLine(this)">حذف</button></td>

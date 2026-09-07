@@ -97,6 +97,7 @@ th{color:var(--text3);font-size:11px;font-weight:500}
     <div class="page-header">
       <div class="page-title">طلبات الشراء</div>
       <div class="page-actions">
+        <a href="/suppliers" class="btn btn-secondary btn-sm">الموردون</a>
         <a href="/supplier-price-list" class="btn btn-secondary btn-sm">قائمة الأسعار</a>
         <a href="/inventory" class="btn btn-secondary btn-sm">← الأصناف</a>
       </div>
@@ -117,12 +118,15 @@ th{color:var(--text3);font-size:11px;font-weight:500}
           <div class="field">
             <label>المورد</label>
             <select name="supplier_id" id="po_supplier_id" onchange="syncPoSupplier()">
-              <option value="">— اختر —</option>
+              <option value="">— اختر مورد —</option>
               {% for s in suppliers %}
               <option value="{{ s.id }}" data-name="{{ s.name }}" data-phone="{{ s.phone or '' }}" data-email="{{ s.email or '' }}">{{ s.name }}</option>
               {% endfor %}
             </select>
-            <input name="supplier" id="po_supplier_name" placeholder="أو اسم مورد" style="margin-top:6px">
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+              <input name="supplier" id="po_supplier_name" placeholder="أو اسم مورد" style="flex:1;min-width:160px">
+              <a href="/suppliers" class="btn btn-secondary btn-sm">+ مورد</a>
+            </div>
           </div>
           <div class="field">
             <label>جوال المورد (واتساب)</label>
@@ -145,7 +149,7 @@ th{color:var(--text3);font-size:11px;font-weight:500}
             <textarea name="notes" rows="2"></textarea>
           </div>
         </div>
-        <table class="lines-table">
+        <table class="lines-table lc-table-inputs">
           <thead>
             <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th></th></tr>
           </thead>

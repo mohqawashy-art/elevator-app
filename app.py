@@ -12283,6 +12283,98 @@ def supplier_rfqs_delete(request_id):
     return redirect(url_for('supplier_rfqs'))
 
 
+@app.route('/suppliers')
+def suppliers():
+    from supplier_price_schema import ensure_supplier_price_schema
+    ensure_supplier_price_schema()
+    edit_id = request.args.get('edit', type=int)
+    search_q = (request.args.get('q') or '').strip()
+    filter_active = request.args.get('active', '1')
+    q = tenant_query(Supplier)
+    if filter_active == '1':
+        q = q.filter(Supplier.active.is_(True))
+    elif filter_active == '0':
+        q = q.filter(Supplier.active.is_(False))
+    if search_q:
+        like = f'%{search_q}%'
+        q = q.filter(db.or_(Supplier.name.ilike(like), Supplier.phone.ilike(like), Supplier.email.ilike(like)))
+    suppliers_list = q.order_by(Supplier.name).all()
+    price_counts = {}
+    if suppliers_list:
+        from sqlalchemy import func
+        rows = (
+            tenant_query(SupplierPrice)
+            .filter(SupplierPrice.supplier_id.in_([s.id for s in suppliers_list]))
+            .with_entities(SupplierPrice.supplier_id, func.count(SupplierPrice.id))
+            .group_by(SupplierPrice.supplier_id)
+            .all()
+        )
+        price_counts = {sid: cnt for sid, cnt in rows}
+    edit_supplier = tenant_get_or_404(Supplier, edit_id) if edit_id else None
+    return render_template(
+        'suppliers.html',
+        suppliers=suppliers_list,
+        edit_supplier=edit_supplier,
+        search_q=search_q,
+        filter_active=filter_active,
+        price_counts=price_counts,
+    )
+
+
+@app.route('/suppliers/save', methods=['POST'])
+def suppliers_save():
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import find_supplier_by_name
+    ensure_supplier_price_schema()
+    supplier_id_raw = request.form.get('supplier_id', '').strip()
+    name = request.form.get('name', '').strip()
+    phone = request.form.get('phone', '').strip()
+    email = request.form.get('email', '').strip()
+    notes = request.form.get('notes', '').strip()
+    active = request.form.get('active', '1') == '1'
+    if not name:
+        flash('اسم المورد مطلوب', 'error')
+        return redirect(url_for('suppliers'))
+    if supplier_id_raw.isdigit():
+        sup = tenant_get_or_404(Supplier, int(supplier_id_raw))
+        other = find_supplier_by_name(name)
+        if other and other.id != sup.id:
+            flash('يوجد مورد آخر بنفس الاسم', 'error')
+            return redirect(url_for('suppliers', edit=sup.id))
+        sup.name = name
+        sup.phone = phone or None
+        sup.email = email or None
+        sup.notes = notes or None
+        sup.active = active
+        flash('تم تحديث بيانات المورد', 'success')
+        db.session.commit()
+        return redirect(url_for('suppliers', edit=sup.id))
+    existing = find_supplier_by_name(name)
+    if existing:
+        flash('المورد موجود مسبقاً — يمكنك تعديله من القائمة', 'error')
+        return redirect(url_for('suppliers', edit=existing.id))
+    sup = Supplier(name=name, phone=phone or None, email=email or None, notes=notes or None, active=active)
+    assign_organization(sup)
+    db.session.add(sup)
+    db.session.commit()
+    flash('تم إضافة المورد', 'success')
+    return redirect(url_for('suppliers', edit=sup.id))
+
+
+@app.route('/api/suppliers')
+def api_suppliers():
+    from supplier_price_schema import ensure_supplier_price_schema
+    ensure_supplier_price_schema()
+    rows = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
+    return jsonify({
+        'ok': True,
+        'suppliers': [
+            {'id': s.id, 'name': s.name, 'phone': s.phone or '', 'email': s.email or ''}
+            for s in rows
+        ],
+    })
+
+
 @app.route('/supplier-price-list')
 def supplier_price_list():
     from supplier_price_schema import ensure_supplier_price_schema
