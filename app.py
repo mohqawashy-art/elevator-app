@@ -11459,14 +11459,52 @@ def inventory_add():
     db.session.commit()
     return redirect(url_for('inventory'))
 
+def prepare_inventory_item_deletion(item_id: int) -> tuple[bool, str | None]:
+    """تنظيف الارتباطات القابلة للحذف والتحقق من العوائق قبل حذف الصنف."""
+    po_count = tenant_query(PurchaseOrderLine).filter_by(item_id=item_id).count()
+    if po_count:
+        return False, f'لا يمكن حذف الصنف — مرتبط بـ {po_count} بند في طلبات شراء.'
+    mv_count = tenant_query(StockMovement).filter_by(item_id=item_id).count()
+    if mv_count:
+        return False, (
+            f'لا يمكن حذف الصنف — له {mv_count} حركة مخزن. '
+            'احذف حركات المخزن المرتبطة أولاً أو أوقف استخدام الصنف.'
+        )
+    tenant_query(SupplierPrice).filter_by(item_id=item_id).delete(synchronize_session=False)
+    tenant_query(SupplierQuoteRequestLine).filter_by(item_id=item_id).update(
+        {SupplierQuoteRequestLine.item_id: None},
+        synchronize_session=False,
+    )
+    return True, None
+
+
 @app.route('/inventory/delete/<int:id>', methods=['POST'])
 def inventory_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
     item = tenant_get_or_404(InventoryItem, id)
-    db.session.delete(item)
-    db.session.commit()
+    as_json = _admin_delete_wants_json()
+    ok, block_msg = prepare_inventory_item_deletion(item.id)
+    if not ok:
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('delete_blocked', 409, message_ar=block_msg)
+        flash(block_msg, 'error')
+        return redirect(url_for('inventory'))
+    try:
+        db.session.delete(item)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        msg = 'تعذّر حذف الصنف — يوجد بيانات مرتبطة به في النظام.'
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('delete_failed', 409, message_ar=msg)
+        flash(msg, 'error')
+        return redirect(url_for('inventory'))
+    if as_json:
+        return jsonify({'ok': True})
     return redirect(url_for('inventory'))
 
 

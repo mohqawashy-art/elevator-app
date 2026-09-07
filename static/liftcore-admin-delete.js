@@ -84,7 +84,12 @@
       }
       if (!res.ok && !res.redirected) {
         return res.json().catch(function () { return {}; }).then(function (data) {
-          throw new Error(data.message || msg('تعذّر الحذف', 'Delete failed'));
+          throw new Error(
+            data.message
+            || data.message_ar
+            || data.error
+            || msg('تعذّر الحذف', 'Delete failed')
+          );
         });
       }
       return res;
