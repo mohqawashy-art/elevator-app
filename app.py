@@ -34,11 +34,15 @@ import string
 
 def _load_env_file():
     """تحميل إعدادات المنصة — مرة واحدة لكل العملاء (LiftCore + جما + أي subdomain)."""
-    paths = [
+    paths = []
+    env_file = (os.environ.get('LIFTCORE_ENV_FILE') or '').strip()
+    if env_file:
+        paths.append(env_file)
+    paths.extend([
         os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'),
         '/home/info/liftcore/.env',
         '/etc/liftcore/platform.env',
-    ]
+    ])
     for path in paths:
         if not os.path.isfile(path):
             continue

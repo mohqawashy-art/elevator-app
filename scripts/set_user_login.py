@@ -33,7 +33,7 @@ def main() -> int:
     parser.add_argument(
         '--org-slug',
         action='append',
-        default=['default'],
+        default=None,
         help='منشأة محددة (default) أو all لكل المنشآت',
     )
     parser.add_argument('--apply', action='store_true')
@@ -56,7 +56,8 @@ def main() -> int:
 
     with app.app_context():
         cleared = RateLimitEvent.query.filter_by(scope='login').delete(synchronize_session=False)
-        orgs = _target_orgs(db, args.org_slug)
+        org_slugs = args.org_slug if args.org_slug else ['default']
+        orgs = _target_orgs(db, org_slugs)
         if not orgs:
             print('ERROR: no organizations matched')
             return 1
