@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = 'm2m8week34_install_warranty'
-down_revision = 'l1l7week33_revenue_title'
+down_revision = 'm2m8week34_attach_text'
 branch_labels = None
 depends_on = None
 
