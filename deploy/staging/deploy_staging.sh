@@ -2,7 +2,7 @@
 # نشر فرع التجربة فقط. لا يلمس checkout أو خدمة أو قاعدة الإنتاج.
 set -euo pipefail
 
-BRANCH="staging/department-hubs"
+BRANCH="${STAGING_BRANCH:-staging/department-hubs}"
 REPO_URL="${REPO_URL:-https://github.com/mohqawashy-art/elevator-app.git}"
 ROOT="/opt/liftcore-staging"
 MIRROR="$ROOT/repository.git"
