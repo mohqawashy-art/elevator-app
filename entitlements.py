@@ -144,6 +144,64 @@ def has_feature(feature_key: str, org: Organization | None = None) -> bool:
     return bool(ent['features'].get(feature_key))
 
 
+def assert_feature(feature_key: str, org: Organization | None = None) -> dict[str, Any]:
+    if has_feature(feature_key, org=org):
+        return {'ok': True, 'feature': feature_key}
+    label = FEATURE_LABELS_AR.get(feature_key, feature_key)
+    return {
+        'ok': False,
+        'feature': feature_key,
+        'error': f'ميزة «{label}» غير متاحة في باقتك. تواصل مع LiftCore للترقية أو التفعيل.',
+    }
+
+
+_PATH_FEATURE_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (('/purchase-orders',), 'purchasing'),
+    (('/inventory', '/stock-movements'), 'inventory'),
+    (
+        (
+            '/accounts',
+            '/journals',
+            '/ledger',
+            '/trial-balance',
+            '/pnl',
+            '/balance-sheet',
+            '/reports/financial',
+            '/reports/financial-health',
+        ),
+        'advanced_finance',
+    ),
+    (
+        (
+            '/maintenance-visits',
+            '/faults',
+            '/parts-billing',
+            '/reports/maintenance-visits',
+            '/reports/faults',
+        ),
+        'maintenance_core',
+    ),
+    (('/reports/inventory', '/reports/stock-movements'), 'inventory'),
+    (('/clients/import', '/parts-billing/import'), 'excel_import'),
+)
+
+
+def required_feature_for_path(path: str) -> str | None:
+    normalized = (path or '').split('?')[0].rstrip('/') or '/'
+    for prefixes, feature_key in _PATH_FEATURE_RULES:
+        for prefix in prefixes:
+            if normalized == prefix or normalized.startswith(prefix + '/'):
+                return feature_key
+    return None
+
+
+def gate_request_plan_feature(path: str, org: Organization | None) -> dict[str, Any]:
+    feature_key = required_feature_for_path(path)
+    if not feature_key:
+        return {'ok': True}
+    return assert_feature(feature_key, org=org)
+
+
 def assert_capacity(resource: str, *, requested: int = 1, org_id: int | None = None) -> dict[str, Any]:
     """تحقق من السعة قبل الإنشاء. resource: elevators|office_users|technicians."""
     if resource not in ('elevators', 'office_users', 'technicians'):
@@ -190,6 +248,9 @@ def upsert_org_addon(
     created_by_user_id: int | None = None,
     ends_at: datetime | None = None,
 ) -> dict[str, Any]:
+    if normalize_plan(org.plan) == CUSTOM_PLAN_KEY:
+        return {'ok': False, 'errors': ['باقة التخصيص لا تستخدم الإضافات القياسية.']}
+
     spec = addon_definition(addon_key)
     if not spec:
         return {'ok': False, 'errors': ['إضافة غير معروفة.']}

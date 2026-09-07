@@ -27,6 +27,14 @@ def test_public_landing_and_pricing_anonymous():
     assert body.count('googletagmanager.com/gtag/js?id=AW-18388162918') == 1
     assert body.count("gtag('config', 'AW-18388162918')") == 1
 
+    r = client.get('/deck', base_url=PUBLIC)
+    assert r.status_code == 200
+    deck = r.get_data(as_text=True)
+    assert 'liftcore-marketing-header-logo.png' in deck
+    assert 'images/marketing/screens/dashboard.png' in deck
+    assert '100dvh' in deck
+    assert 'اسحب للتنقل' in deck
+
     r = client.get('/pricing', base_url=PUBLIC)
     assert r.status_code == 200
     body = r.get_data(as_text=True)

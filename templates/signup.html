@@ -1,7 +1,9 @@
+{% set splash_lock_theme = true %}
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="premium">
 <head>
 <meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — تسجيل شركة جديدة</title>
 <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -10,9 +12,10 @@
 <style>
 :root{--bg:#070a10;--gold:#c9a14a;--gold-light:#e8cd86;--text:#f2f5fa;--muted:#5e6b7e;--err:#f87171;--ok:#4ade80}
 *{box-sizing:border-box;margin:0;padding:0}
-body{
+html,html[data-theme]{background:#070a10;color-scheme:dark}
+html[data-theme] body,body{
   font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
-  display:flex;align-items:center;justify-content:center;padding:20px;
+  display:flex;align-items:center;justify-content:center;padding:20px;color-scheme:dark;
   background-image:radial-gradient(120% 80% at 50% -10%, rgba(201,161,74,.08), transparent 55%),linear-gradient(180deg,#0b1018 0%,#070a10 40%);
 }
 .card{width:100%;max-width:420px;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),#111925;border:1px solid rgba(201,161,74,.14);border-radius:14px;padding:28px 24px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.18)}

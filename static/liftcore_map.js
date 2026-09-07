@@ -7,6 +7,7 @@
 
   var DEFAULT_CENTER = { lat: 21.4225, lng: 39.8262 };
   var DEFAULT_ZOOM = 12;
+  /* لا نستخدم DEMO_MAP_ID افتراضياً — يفرض خرائط Vector وقد يعطل الخرائط بدون فوترة/Map ID صالح */
 
   var POI_HIDDEN = [
     { featureType: 'poi', stylers: [{ visibility: 'off' }] },
@@ -50,13 +51,8 @@
     options = options || {};
     var merged = Object.assign({}, options);
     var mapId = merged.mapId || getMapId();
-    if (mapId) {
-      merged.mapId = mapId;
-      /* Vector maps (mapId) reject legacy styles in the constructor */
-      if (merged.styles) delete merged.styles;
-    } else if (merged.mapId) {
-      delete merged.mapId;
-    }
+    if (mapId) merged.mapId = mapId;
+    else delete merged.mapId;
     return merged;
   }
 
@@ -109,6 +105,7 @@
   }
 
   function requireMarkerClasses() {
+    if (!canUseAdvancedMarkers()) return null;
     var mc = getMarkerClasses();
     if (!mc || !mc.AdvancedMarkerElement) {
       return null;
@@ -119,18 +116,26 @@
   function createClusterMarker(cluster, unitLabel) {
     var count = cluster.count;
     var title = count + ' ' + (unitLabel || 'موقع');
-    var mc = requireMarkerClasses();
-    if (!mc) return null;
     var icon = makeClusterIcon(count);
-    var img = document.createElement('img');
-    img.src = icon.url;
-    img.width = icon.scaledSize.width;
-    img.height = icon.scaledSize.height;
-    img.alt = title;
-    return new mc.AdvancedMarkerElement({
+    var mc = requireMarkerClasses();
+    if (mc && mc.AdvancedMarkerElement) {
+      var img = document.createElement('img');
+      img.src = icon.url;
+      img.width = icon.scaledSize.width;
+      img.height = icon.scaledSize.height;
+      img.alt = title;
+      return new mc.AdvancedMarkerElement({
+        position: cluster.position,
+        title: title,
+        content: img,
+        zIndex: clusterZIndex(count)
+      });
+    }
+    if (!global.google || !global.google.maps || !global.google.maps.Marker) return null;
+    return new global.google.maps.Marker({
       position: cluster.position,
       title: title,
-      content: img,
+      icon: icon,
       zIndex: clusterZIndex(count)
     });
   }
@@ -277,8 +282,11 @@
 
   function coordsForRecord(record) {
     if (!record) return null;
-    if (global.LiftCoreLocation && global.LiftCoreLocation.coordsForCustomer) {
-      return global.LiftCoreLocation.coordsForCustomer(record);
+    if (global.LiftCoreLocation && global.LiftCoreLocation.hasCoordinates && global.LiftCoreLocation.parseCoords) {
+      if (!global.LiftCoreLocation.hasCoordinates(record)) return null;
+      var parsed = global.LiftCoreLocation.parseCoords(record.lat, record.lng);
+      if (!parsed) return null;
+      return { lat: parsed.lat, lng: parsed.lng, exact: true };
     }
     var lat = parseFloat(record.lat);
     var lng = parseFloat(record.lng);

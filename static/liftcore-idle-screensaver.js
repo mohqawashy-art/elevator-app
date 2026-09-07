@@ -197,6 +197,14 @@
     overlay.classList.remove('unlock');
     if (unlockPanel) unlockPanel.hidden = true;
     overlay.classList.add('open');
+
+    var resumeUnlock = !!(opts.showUnlock || storageGet(STORAGE_UNLOCK) === '1' || global.__LC_SESSION_LOCKED);
+    if (resumeUnlock) {
+      unlockArmed = true;
+      showUnlock();
+      return;
+    }
+
     video.currentTime = 0;
     var playPromise = video.play();
     if (playPromise && typeof playPromise.catch === 'function') {
@@ -204,7 +212,6 @@
     }
     setTimeout(function () {
       if (active && !unlockVisible) unlockArmed = true;
-      if (opts.showUnlock || storageGet(STORAGE_UNLOCK) === '1') showUnlock();
     }, 350);
   }
 

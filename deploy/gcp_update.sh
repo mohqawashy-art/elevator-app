@@ -15,6 +15,8 @@ if [ -n "${APP_DIR:-}" ] && [ -d "$APP_DIR/.git" ]; then
 elif [ "$(basename "$SCRIPT_ROOT")" = "jama-elevator-app" ] && [ -d "$SCRIPT_ROOT/.git" ]; then
   APP_DIR="$SCRIPT_ROOT"
   SERVICE_NAME="${SERVICE_NAME:-liftcore-jama}"
+elif [ -d "/home/info/liftcore/elevator-app/.git" ]; then
+  APP_DIR="/home/info/liftcore/elevator-app"
 elif [ -d "$HOME/liftcore/elevator-app/.git" ]; then
   APP_DIR="$HOME/liftcore/elevator-app"
 elif [ -d "/var/www/elevator-app/.git" ]; then
@@ -39,8 +41,8 @@ for db in "$APP_DIR/instance/liftcore.db" "$APP_DIR/liftcore.db"; do
 done
 
 echo "==> git pull (never reset --hard)"
-git fetch origin main
-git pull --ff-only origin main
+lc_git "$APP_DIR" fetch origin main
+lc_git "$APP_DIR" pull --ff-only origin main
 
 if [ -x "$VENV/bin/python" ]; then
   echo "==> pip install ($VENV)"

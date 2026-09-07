@@ -313,8 +313,6 @@ class Contract(TenantMixin, db.Model):
     tax_amount      = db.Column(db.Float, default=0)
     total           = db.Column(db.Float, default=0)
     payment_terms   = db.Column(db.String(50))   # دفعة واحدة / ربع سنوي / نصف سنوي / سنوي
-    # عقود التركيب/التحديث فقط: بعد المشروع | بدون
-    install_warranty = db.Column(db.String(30))
     invoice_status  = db.Column(db.String(30), default='غير مدفوع')  # مدفوع / مدفوع جزئياً / غير مدفوع / متأخر
     paid_amount     = db.Column(db.Float, default=0)                 # محصّل العقد (مخزّن — يُحدَّث عند الدفع)
     status          = db.Column(db.String(30), default='نشط')        # نشط / على وشك الانتهاء / منتهي / ملغي
@@ -323,7 +321,10 @@ class Contract(TenantMixin, db.Model):
     city            = db.Column(db.String(100))
     district        = db.Column(db.String(100))
     address         = db.Column(db.Text)
-    file_path       = db.Column(db.String(300))
+    lat             = db.Column(db.String(20))
+    lng             = db.Column(db.String(20))
+    maps_url        = db.Column(db.String(500))
+    file_path       = db.Column(db.Text)  # ملفات العقد PDF — مسار واحد أو JSON متعدد
     notes           = db.Column(db.Text)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -610,7 +611,7 @@ class Revenue(TenantMixin, db.Model):
     total           = db.Column(db.Float, nullable=False)
     status          = db.Column(db.String(30), default='محصّل')  # محصّل / معلق / ملغي
     reference       = db.Column(db.String(500))  # رقم الشيك أو التحويل / مرفقات
-    proof_path      = db.Column(db.String(300))  # إثبات الدفع (صورة/PDF)
+    proof_path      = db.Column(db.Text)  # إثبات الدفع — مسار واحد أو JSON متعدد
     notes           = db.Column(db.Text)
     account_id      = db.Column(db.Integer, db.ForeignKey('accounts.id'), index=True)
     created_by_user_id = db.Column(db.Integer)
@@ -727,7 +728,7 @@ class Expense(TenantMixin, db.Model):
     payment_method  = db.Column(db.String(50))
     amount          = db.Column(db.Float, nullable=False)
     reference       = db.Column(db.String(500))
-    proof_path      = db.Column(db.String(300))  # إثبات الصرف (صورة/PDF)
+    proof_path      = db.Column(db.Text)  # إثبات الصرف — مسار واحد أو JSON متعدد
     notes           = db.Column(db.Text)
     account_id      = db.Column(db.Integer, db.ForeignKey('accounts.id'), index=True)
     created_by_user_id = db.Column(db.Integer)
@@ -909,6 +910,7 @@ class PurchaseOrder(TenantMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(20), nullable=False)
     supplier = db.Column(db.String(200))
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=True, index=True)
     supplier_phone = db.Column(db.String(30))
     supplier_email = db.Column(db.String(120))
     order_date = db.Column(db.Date, default=date.today)
@@ -917,12 +919,14 @@ class PurchaseOrder(TenantMixin, db.Model):
     notes = db.Column(db.Text)
     signature_data = db.Column(db.Text)
     pdf_path = db.Column(db.String(300))
+    rfq_id = db.Column(db.Integer, db.ForeignKey('supplier_quote_requests.id'), nullable=True, index=True)
     received_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     lines = db.relationship(
         'PurchaseOrderLine', back_populates='order', cascade='all, delete-orphan', lazy='joined'
     )
+    supplier_ref = db.relationship('Supplier', foreign_keys=[supplier_id])
 
 
 class PurchaseOrderLine(TenantMixin, db.Model):
@@ -955,6 +959,7 @@ class SupplierQuoteRequest(TenantMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(20), nullable=False)
     supplier = db.Column(db.String(200))
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=True, index=True)
     supplier_phone = db.Column(db.String(30))
     supplier_email = db.Column(db.String(120))
     request_date = db.Column(db.Date, default=date.today)
@@ -973,6 +978,7 @@ class SupplierQuoteRequest(TenantMixin, db.Model):
         cascade='all, delete-orphan',
         lazy='joined',
     )
+    supplier_ref = db.relationship('Supplier', foreign_keys=[supplier_id])
 
 
 class SupplierQuoteRequestLine(TenantMixin, db.Model):
@@ -985,9 +991,64 @@ class SupplierQuoteRequestLine(TenantMixin, db.Model):
     unit = db.Column(db.String(30), default='قطعة')
     specs = db.Column(db.String(500))
     item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=True)
+    quoted_unit_price = db.Column(db.Float, nullable=True)
 
     request = db.relationship('SupplierQuoteRequest', back_populates='lines')
     item = db.relationship('InventoryItem')
+
+
+# =============================================
+# 11ج. الموردون وقوائم الأسعار
+# =============================================
+class Supplier(TenantMixin, db.Model):
+    __tablename__ = 'suppliers'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'name', name='uq_supplier_org_name'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    phone = db.Column(db.String(30))
+    email = db.Column(db.String(120))
+    notes = db.Column(db.Text)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    prices = db.relationship('SupplierPrice', back_populates='supplier', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<Supplier {self.name}>'
+
+
+class SupplierPrice(TenantMixin, db.Model):
+    """سعر صنف مخزن لدى مورد — يُحدَّث من RFQ أو PO أو الإدخال اليدوي."""
+    __tablename__ = 'supplier_prices'
+    __table_args__ = (
+        db.UniqueConstraint(
+            'organization_id', 'supplier_id', 'item_id',
+            name='uq_supplier_price_org_supplier_item',
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False, index=True)
+    item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=False, index=True)
+    unit_price = db.Column(db.Float, nullable=False, default=0)
+    currency = db.Column(db.String(10), default='SAR')
+    min_qty = db.Column(db.Float, default=0)
+    lead_days = db.Column(db.Integer)
+    valid_from = db.Column(db.Date)
+    valid_to = db.Column(db.Date)
+    source = db.Column(db.String(30))  # manual / rfq / po
+    source_ref = db.Column(db.String(50))
+    notes = db.Column(db.String(300))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    supplier = db.relationship('Supplier', back_populates='prices')
+    item = db.relationship('InventoryItem')
+
+    def __repr__(self):
+        return f'<SupplierPrice s={self.supplier_id} i={self.item_id} p={self.unit_price}>'
 
 
 # =============================================
@@ -1160,7 +1221,6 @@ class Settings(TenantMixin, db.Model):
     default_sign_method = db.Column(db.String(20), default='both')  # draw | pin | both
     idle_screensaver_enabled = db.Column(db.Boolean, default=True)
     idle_screensaver_seconds = db.Column(db.Integer, default=60)
-    azkar_ticker_enabled = db.Column(db.Boolean, default=True)
     checklist_template_key = db.Column(db.String(50), default='liftcore_standard_v1')  # SaaS: قالب الفحص الافتراضي
     google_maps_api_key = db.Column(db.String(200))  # اختياري — يُستخدم إن لم يُضبط GOOGLE_MAPS_API_KEY
     company_website   = db.Column(db.String(200))
@@ -1218,7 +1278,7 @@ class User(TenantMixin, db.Model):
     full_name       = db.Column(db.String(100))
     email           = db.Column(db.String(100))
     role            = db.Column(db.String(30), default='viewer')  # admin / manager / viewer / custom
-    theme           = db.Column(db.String(10), default='light')  # dark / light
+    theme           = db.Column(db.String(10), default='light')  # dark / light / report / premium
     language        = db.Column(db.String(10), default='ar')  # ar / en
     photo_path      = db.Column(db.String(300))
     is_active       = db.Column(db.Boolean, default=True)

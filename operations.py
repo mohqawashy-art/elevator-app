@@ -113,16 +113,11 @@ def tech_whatsapp_phone(tech: Technician) -> str:
 
 
 def due_contract_reminders(*, on_date: date | None = None, days_ahead: int = 0):
-    """عقود صيانة لها reminder_date خلال [اليوم .. اليوم+days_ahead] وحالتها نشطة.
-
-    يستبعد عقود التركيب/التحديث (لا تُجدَّد بالتقويم).
-    """
-    from contract_codes import is_installation_contract_type
-
+    """عقود لها reminder_date خلال [اليوم .. اليوم+days_ahead] وحالتها نشطة."""
     today = on_date or date.today()
     end = today + timedelta(days=max(0, int(days_ahead)))
     active = ('نشط', 'على وشك الانتهاء')
-    rows = (
+    return (
         tenant_query(Contract)
         .filter(
             Contract.reminder_date.isnot(None),
@@ -137,7 +132,6 @@ def due_contract_reminders(*, on_date: date | None = None, days_ahead: int = 0):
         .order_by(Contract.reminder_date.asc(), Contract.id.asc())
         .all()
     )
-    return [c for c in rows if not is_installation_contract_type(c.contract_type)]
 
 
 def build_contract_reminder_message(contract: Contract, *, company_name: str = '') -> str:
@@ -627,7 +621,7 @@ def generate_monthly_plan(
             if elev.id in seen_elevator_ids:
                 continue
             seen_elevator_ids.add(elev.id)
-            dist_name = _customer_district(customer, elev)
+            dist_name = _visit_site_district(contract, elev, customer)
             all_districts.add(dist_name)
             if district_filter and dist_name != district_filter:
                 continue
@@ -905,7 +899,15 @@ def create_plan_from_draft(
         route_order = int(row.get('route_order') or (i + 1))
         visit_code = f'VI-{str(next_code_num).zfill(5)}'
         next_code_num += 1
-        district = (row.get('district') or '').strip() or _customer_district(elev.customer, elev)
+        district = (row.get('district') or '').strip()
+        if not district:
+            contract = None
+            if contract_id:
+                contract = tenant_query(Contract).filter_by(id=int(contract_id)).first()
+            if not contract:
+                from entity_links import active_contract_for_elevator
+                contract = active_contract_for_elevator(elev.id, vdate)
+            district = _visit_site_district(contract, elev, elev.customer)
         v = MaintenanceVisit(
             code=visit_code,
             contract_id=int(contract_id) if contract_id else None,
@@ -983,51 +985,75 @@ def cancel_monthly_plan(plan_month: str, *, dry_run: bool = False) -> dict:
     }
 
 
-def _customer_district(cust: Customer | None, elev: Elevator | None = None) -> str:
-    from maintenance_teams import location_district
-    return location_district(elev, cust)
+def _visit_site_district(contract=None, elev=None, cust=None) -> str:
+    from maintenance_teams import visit_site_district
+    return visit_site_district(contract, elev, cust)
 
 
 def visit_district_name(v: MaintenanceVisit) -> str:
     elev = v.elevator
     cust = elev.customer if elev else None
-    return _customer_district(cust, elev)
+    contract = v.contract
+    if not contract and elev and v.visit_date:
+        from entity_links import active_contract_for_elevator
+        contract = active_contract_for_elevator(elev.id, v.visit_date)
+    return _visit_site_district(contract, elev, cust)
 
 
 def list_districts() -> list[str]:
+    """مناطق تخطيط الشهر — من عقود الصيانة النشطة (وليس عنوان العميل)."""
+    from datetime import date
+
+    today = date.today()
+    start, end = _month_bounds(today.year, today.month)
+    contracts = tenant_query(Contract).filter(
+        Contract.start_date <= end,
+        Contract.end_date >= start,
+        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+    ).all()
     districts: set[str] = set()
-    for c in tenant_query(Customer).all():
-        d = _customer_district(c, None)
-        if d != 'غير محدد':
-            districts.add(d)
-    for e in tenant_query(Elevator).all():
-        d = _customer_district(e.customer if e.customer else None, e)
-        if d != 'غير محدد':
+    for contract in contracts:
+        if not _is_maintenance_contract(contract):
+            continue
+        d = _visit_site_district(contract, None, contract.customer)
+        if d and d != 'غير محدد':
             districts.add(d)
     return sorted(districts) if districts else ['غير محدد']
 
 
 def elevators_for_district(district: str) -> list[dict]:
     from entity_links import sort_by_natural_code
+    from datetime import date
 
+    district = (district or '').strip()
+    today = date.today()
+    start, end = _month_bounds(today.year, today.month)
+    contracts = tenant_query(Contract).filter(
+        Contract.start_date <= end,
+        Contract.end_date >= start,
+        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+    ).all()
     seen: set[int] = set()
     rows: list[dict] = []
-    for e in tenant_query(Elevator).join(Customer).order_by(Customer.name).all():
-        if e.id in seen:
+    for contract in contracts:
+        if not _is_maintenance_contract(contract):
             continue
-        if _customer_district(e.customer, e) != district:
-            continue
-        seen.add(e.id)
-        c = e.customer
-        rows.append({
-            'elevator_id': e.id,
-            'elevator_code': e.code,
-            'customer_id': c.id if c else None,
-            'customer_name': c.name if c else '—',
-            'customer_code': c.code if c else '',
-            'building': (e.building_name or '').strip(),
-            'district': district,
-        })
+        for e in _elevators_for_maintenance_plan(contract):
+            if e.id in seen:
+                continue
+            if _visit_site_district(contract, e, contract.customer) != district:
+                continue
+            seen.add(e.id)
+            c = contract.customer
+            rows.append({
+                'elevator_id': e.id,
+                'elevator_code': e.code,
+                'customer_id': c.id if c else None,
+                'customer_name': c.name if c else '—',
+                'customer_code': c.code if c else '',
+                'building': (e.building_name or '').strip(),
+                'district': district,
+            })
     return sort_by_natural_code(rows, code_attr='elevator_code')
 
 
@@ -1069,7 +1095,7 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
         for elev in _elevators_for_maintenance_plan(contract):
             if elev.id in seen:
                 continue
-            dist_name = _customer_district(customer, elev)
+            dist_name = _visit_site_district(contract, elev, customer)
             if dist_name != district:
                 continue
             seen.add(elev.id)
@@ -1085,11 +1111,11 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
         for e in tenant_query(Elevator).join(Customer).order_by(Customer.name).all():
             if e.id in seen:
                 continue
-            if _customer_district(e.customer, e) != district:
-                continue
-            seen.add(e.id)
             c = e.customer
             contract = active_contract_for_elevator(e.id, start)
+            if _visit_site_district(contract, e, c) != district:
+                continue
+            seen.add(e.id)
             flat_items.append({
                 'contract': contract,
                 'elevator': e,
@@ -1105,6 +1131,8 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
         contract = item.get('contract')
         coords = item_coordinates(item)
         already = _periodic_visit_in_month(elev.id, year, month)
+        if already:
+            continue
         candidates.append({
             'elevator_id': elev.id,
             'elevator': elev.code,
@@ -1115,12 +1143,9 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
             'customer_id': customer.id if customer else None,
             'building': (elev.building_name or '').strip(),
             'district': district,
-            'route_order': i + 1,
+            'route_order': len(candidates) + 1,
             'lat': coords[0] if coords else None,
             'lng': coords[1] if coords else None,
-            'already_planned': bool(already),
-            'existing_visit_id': already.id if already else None,
-            'existing_visit_date': str(already.visit_date) if already and already.visit_date else None,
         })
     return {
         'plan_month': plan_month,
@@ -1128,6 +1153,70 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
         'count': len(candidates),
         'candidates': candidates,
         'work_days': plan_work_days(plan_month),
+    }
+
+
+def get_plan_coverage_gaps(plan_month: str, *, limit: int = 300) -> dict:
+    """عملاء/مصاعد عقود الصيانة النشطة بدون زيارة دورية في شهر الخطة."""
+    if not plan_month or '-' not in plan_month:
+        return {'error': 'شهر الخطة غير صالح'}
+    year, month = map(int, plan_month.split('-', 1))
+    start, end = _month_bounds(year, month)
+
+    contracts = tenant_query(Contract).filter(
+        Contract.start_date <= end,
+        Contract.end_date >= start,
+        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+    ).all()
+
+    seen_elevator_ids: set[int] = set()
+    missing: list[dict] = []
+    expected = 0
+
+    for contract in contracts:
+        if not _is_maintenance_contract(contract):
+            continue
+        customer = contract.customer
+        for elev in _elevators_for_maintenance_plan(contract):
+            if elev.id in seen_elevator_ids:
+                continue
+            seen_elevator_ids.add(elev.id)
+            expected += 1
+            if _periodic_visit_in_month(elev.id, year, month):
+                continue
+            dist_name = _visit_site_district(contract, elev, customer)
+            missing.append({
+                'elevator_id': elev.id,
+                'elevator_code': elev.code or '',
+                'customer_id': customer.id if customer else None,
+                'customer_name': customer.name if customer else '—',
+                'customer_code': customer.code if customer else '',
+                'contract_id': contract.id,
+                'contract_code': contract.code or '',
+                'district': dist_name,
+                'building': (elev.building_name or '').strip(),
+            })
+
+    missing.sort(key=lambda x: (
+        x.get('district') or '',
+        x.get('customer_name') or '',
+        x.get('elevator_code') or '',
+    ))
+    customer_ids = {m['customer_id'] for m in missing if m.get('customer_id')}
+    by_district: dict[str, int] = defaultdict(int)
+    for row in missing:
+        by_district[row.get('district') or 'غير محدد'] += 1
+
+    capped = missing[:limit]
+    return {
+        'plan_month': plan_month,
+        'expected_elevators': expected,
+        'covered_elevators': expected - len(missing),
+        'missing_elevators': len(missing),
+        'missing_customers': len(customer_ids),
+        'missing': capped,
+        'has_more': len(missing) > limit,
+        'by_district': dict(sorted(by_district.items(), key=lambda x: (-x[1], x[0]))),
     }
 
 
@@ -1225,7 +1314,7 @@ def generate_district_plan(
         for elev in _elevators_for_maintenance_plan(contract):
             if elev.id in seen_elevator_ids:
                 continue
-            if _customer_district(customer, elev) != district:
+            if _visit_site_district(contract, elev, customer) != district:
                 continue
             seen_elevator_ids.add(elev.id)
             flat_items.append({
@@ -1318,7 +1407,7 @@ def add_manual_plan_visit(plan_month: str, elevator_id: int, visit_date: str) ->
     if not elev:
         raise ValueError('المصعد غير موجود')
     cust = elev.customer
-    district = _customer_district(cust, elev)
+    district = _visit_site_district(contract, elev, cust)
     vdate = datetime.strptime(visit_date[:10], '%Y-%m-%d').date()
     from work_calendar import work_day_validation_error
     werr = work_day_validation_error(vdate)
@@ -1614,6 +1703,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
         alerts.append({
             'level': 'danger',
             'filter': 'late',
+            'alert_id': 'visits_late',
             'text': f'{late} زيارة متأخرة — تجاوزت الموعد المحدد',
         })
     critical = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
@@ -1624,6 +1714,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
         alerts.append({
             'level': 'warning',
             'filter': 'critical',
+            'alert_id': 'visits_critical',
             'text': f'{critical} زيارة حرجة لم تُكتمل بعد',
         })
     tomorrow = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
@@ -1634,6 +1725,7 @@ def visit_alerts(today: date | None = None) -> list[dict]:
         alerts.append({
             'level': 'info',
             'filter': 'tomorrow',
+            'alert_id': 'visits_tomorrow',
             'text': f'{tomorrow} زيارة مجدولة غداً',
         })
     return alerts
@@ -1668,12 +1760,14 @@ def fault_alerts() -> list[dict]:
     if critical:
         alerts.append({
             'level': 'critical',
+            'alert_id': 'faults_critical',
             'text': f'{len(critical)} عطل حرج يحتاج تدخلاً فورياً',
         })
     waiting = tenant_query(Fault).filter_by(status='انتظار قطع').count()
     if waiting:
         alerts.append({
             'level': 'warning',
+            'alert_id': 'faults_waiting_parts',
             'text': f'{waiting} عطل بانتظار توفير قطع الغيار',
         })
     old = tenant_query(Fault).filter(
@@ -1683,6 +1777,7 @@ def fault_alerts() -> list[dict]:
     if old:
         alerts.append({
             'level': 'warning',
+            'alert_id': 'faults_old',
             'text': f'{old} عطل تجاوز 48 ساعة بدون إغلاق',
         })
     return alerts
@@ -1704,12 +1799,14 @@ def parts_alerts() -> list[dict]:
     if n:
         alerts.append({
             'level': 'warning',
+            'alert_id': 'parts_waiting_faults',
             'text': f'{n} طلب قطع غيار من الفنيين بانتظار المكتب',
         })
     n2 = tenant_query(PartsBilling).filter_by(status='بانتظار موافقة العميل').count()
     if n2:
         alerts.append({
             'level': 'info',
+            'alert_id': 'parts_awaiting_client',
             'text': f'{n2} عرض سعر بانتظار موافقة العميل',
         })
     return alerts

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — الموردون</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--success:#1fb87a;--danger:#e04848;--r:10px;--r-sm:7px;--trans:.18s ease;--font-en:'DM Sans',sans-serif}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;font-family:'IBM Plex Sans Arabic',sans-serif}
+.sidebar{width:240px;min-width:240px;background:var(--bg2);border-left:1px solid var(--border);height:100vh;position:sticky;top:0}
+.sidebar-logo{padding:10px 16px;border-bottom:1px solid var(--border);min-height:60px;display:flex;align-items:center;justify-content:center}
+.sidebar-logo img{max-width:150px;height:auto}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.page-title{font-size:18px;font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-sm);font-size:13px;border:none;cursor:pointer;font-family:inherit;text-decoration:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.panel-title{font-size:15px;font-weight:600;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:right}
+th{color:var(--text3);font-size:11px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-full{grid-column:1/-1}
+.flash{padding:10px 12px;border-radius:var(--r-sm);margin-bottom:12px;font-size:13px}
+.flash-success{background:rgba(31,184,122,.12);color:var(--success)}
+.flash-error{background:rgba(224,72,72,.12);color:var(--danger)}
+.badge{display:inline-flex;padding:3px 9px;border-radius:10px;font-size:11px}
+.badge-ok{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-off{background:rgba(224,72,72,.1);color:var(--danger)}
+.td-code{font-family:var(--font-en)}
+.search-row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:768px){.sidebar{position:fixed;right:-240px;z-index:100}.sidebar.open{right:0}.mobile-overlay.open{display:block}.form-grid{grid-template-columns:1fr}}
+</style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% set page_title = 'الموردون' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">الموردون</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="/supplier-price-list" class="btn btn-secondary btn-sm">قائمة الأسعار</a>
+        <a href="/supplier-rfqs" class="btn btn-secondary btn-sm">عروض الأسعار</a>
+        <a href="/purchase-orders" class="btn btn-secondary btn-sm">طلبات الشراء</a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="panel" id="supplier-form-panel">
+      <h2 class="panel-title">{% if edit_supplier %}تعديل مورد{% else %}إضافة مورد{% endif %}</h2>
+      <form method="post" action="/suppliers/save">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if edit_supplier %}<input type="hidden" name="supplier_id" value="{{ edit_supplier.id }}">{% endif %}
+        <div class="form-grid">
+          <div class="field">
+            <label>اسم المورد *</label>
+            <input name="name" required placeholder="مثال: شركة المصاعد المتحدة" value="{{ edit_supplier.name if edit_supplier else '' }}">
+          </div>
+          <div class="field">
+            <label>جوال / واتساب</label>
+            <input type="tel" name="phone" placeholder="05XXXXXXXX" style="direction:ltr;font-family:var(--font-en)" value="{{ edit_supplier.phone or '' if edit_supplier else '' }}">
+          </div>
+          <div class="field">
+            <label>إيميل</label>
+            <input type="email" name="email" placeholder="supplier@example.com" style="direction:ltr;font-family:var(--font-en)" value="{{ edit_supplier.email or '' if edit_supplier else '' }}">
+          </div>
+          <div class="field">
+            <label>الحالة</label>
+            <select name="active">
+              <option value="1" {% if not edit_supplier or edit_supplier.active %}selected{% endif %}>نشط</option>
+              <option value="0" {% if edit_supplier and not edit_supplier.active %}selected{% endif %}>موقوف</option>
+            </select>
+          </div>
+          <div class="field form-full">
+            <label>ملاحظات</label>
+            <textarea name="notes" rows="2" placeholder="شروط الدفع، مدة التوريد الافتراضية…">{{ edit_supplier.notes or '' if edit_supplier else '' }}</textarea>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="submit" class="btn btn-primary btn-sm">{% if edit_supplier %}حفظ التعديل{% else %}إضافة المورد{% endif %}</button>
+          {% if edit_supplier %}
+          <a href="{{ url_for('suppliers') }}" class="btn btn-secondary btn-sm">إلغاء</a>
+          <a href="{{ url_for('supplier_price_list', supplier_id=edit_supplier.id) }}" class="btn btn-secondary btn-sm">أسعار هذا المورد</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="search-row">
+        <form method="get" action="/suppliers" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;flex:1">
+          <div class="field" style="min-width:220px;margin:0;flex:1">
+            <label>بحث</label>
+            <input name="q" value="{{ search_q or '' }}" placeholder="اسم المورد، جوال، إيميل…">
+          </div>
+          <div class="field" style="margin:0">
+            <label>الحالة</label>
+            <select name="active" onchange="this.form.submit()">
+              <option value="all" {% if filter_active == 'all' %}selected{% endif %}>الكل</option>
+              <option value="1" {% if filter_active == '1' %}selected{% endif %}>نشط فقط</option>
+              <option value="0" {% if filter_active == '0' %}selected{% endif %}>موقوف</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">بحث</button>
+        </form>
+      </div>
+
+      <h2 class="panel-title">قائمة الموردين ({{ suppliers|length }})</h2>
+      {% if suppliers %}
+      <table>
+        <thead>
+          <tr>
+            <th>الاسم</th><th>جوال</th><th>إيميل</th><th>عدد الأسعار</th><th>الحالة</th><th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in suppliers %}
+          <tr{% if edit_supplier and edit_supplier.id == s.id %} style="background:rgba(42,127,255,.06)"{% endif %}>
+            <td><strong>{{ s.name }}</strong></td>
+            <td dir="ltr" class="td-code">{{ s.phone or '—' }}</td>
+            <td dir="ltr" class="td-code">{{ s.email or '—' }}</td>
+            <td>{{ price_counts.get(s.id, 0) }}</td>
+            <td>
+              {% if s.active %}<span class="badge badge-ok">نشط</span>{% else %}<span class="badge badge-off">موقوف</span>{% endif %}
+            </td>
+            <td style="white-space:nowrap">
+              <a href="{{ url_for('suppliers', edit=s.id) }}#supplier-form-panel" class="btn btn-secondary btn-sm">تعديل</a>
+              <a href="{{ url_for('supplier_price_list', supplier_id=s.id) }}" class="btn btn-secondary btn-sm">الأسعار</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:var(--text3);font-size:13px">لا يوجد موردون بعد. أضف المورد الأول من النموذج أعلاه.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<script>
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+</script>
+</body>
+</html>

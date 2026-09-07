@@ -1,7 +1,9 @@
+{% set splash_lock_theme = true %}
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="premium">
 <head>
 <meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — تسجيل الدخول</title>
 {% include 'partials/liftcore_pwa_head.html' %}
@@ -17,12 +19,13 @@
   --field:rgba(255,255,255,.035);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{
+html,html[data-theme]{height:100%;background:#070a10;color-scheme:dark}
+html[data-theme] body,body{
   font-family:'Tajawal',sans-serif;
+  height:100%;
   background:radial-gradient(140% 100% at 50% 0%, var(--bg-2), var(--bg) 60%);
   color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;
-  padding:24px;overflow:hidden;position:relative;
+  padding:24px;overflow:hidden;position:relative;color-scheme:dark;
 }
 body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.025;z-index:5;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
@@ -68,6 +71,15 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 .input-wrap{position:relative}
 .input-wrap .ic{position:absolute;top:50%;transform:translateY(-50%);right:0;color:var(--muted);
   font-size:15px;width:34px;text-align:center;pointer-events:none;transition:color .2s}
+.input-wrap--password input{padding-left:38px}
+.pw-toggle{position:absolute;top:50%;left:0;transform:translateY(-50%);width:34px;height:34px;
+  border:none;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;padding:0;transition:color .2s}
+.pw-toggle:hover,.pw-toggle:focus{color:var(--gold-light);outline:none}
+.pw-toggle svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6}
+.pw-toggle .eye-off{display:none}
+.pw-toggle.is-visible .eye-on{display:none}
+.pw-toggle.is-visible .eye-off{display:block}
 .field input{width:100%;padding:12px 34px 12px 6px;background:transparent;border:none;
   border-bottom:1px solid var(--hair);color:var(--text);font-family:inherit;font-size:15px;transition:.25s}
 .field input::placeholder{color:#3f4a5c}
@@ -147,8 +159,12 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
     </div>
     <div class="field">
       <label for="pass">كلمة المرور</label>
-      <div class="input-wrap">
+      <div class="input-wrap input-wrap--password">
         <input type="password" id="pass" name="password" placeholder="••••••••" autocomplete="current-password" required>
+        <button type="button" class="pw-toggle" id="pwToggle" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
+          <svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
         <span class="ic">⚿</span>
       </div>
     </div>
@@ -171,6 +187,17 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   var form=document.getElementById('loginForm'), btn=document.getElementById('loginBtn'), sending=false;
+  var pass=document.getElementById('pass'), pwToggle=document.getElementById('pwToggle');
+  if (pwToggle && pass) {
+    pwToggle.addEventListener('click', function(){
+      var show = pass.type === 'password';
+      pass.type = show ? 'text' : 'password';
+      pwToggle.classList.toggle('is-visible', show);
+      pwToggle.setAttribute('aria-label', show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+      pwToggle.setAttribute('title', show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+      pass.focus();
+    });
+  }
   form.addEventListener('submit', function(e){
     if(sending) return;
     e.preventDefault();

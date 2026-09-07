@@ -19,6 +19,8 @@ RESERVED_SLUGS = frozenset({
 }) | MARKETING_SLUGS
 
 SIGNUP_HOSTS = frozenset({'liftcoreapp.com', 'www.liftcoreapp.com', 'localhost', '127.0.0.1'})
+# /onboard/* — النطاق التسويقي + app (روابط قديمة أُرسلت قبل فصل INVITE_BASE)
+ONBOARD_HOSTS = SIGNUP_HOSTS | frozenset({'app.liftcoreapp.com'})
 
 
 def signup_enabled() -> bool:
@@ -45,6 +47,20 @@ def is_signup_host(host: str | None = None) -> bool:
 
 def require_signup_host():
     if not is_signup_host():
+        abort(404)
+
+
+def is_onboard_host(host: str | None = None) -> bool:
+    if host is None:
+        if not has_request_context():
+            return False
+        host = request.host or ''
+    host = (host or '').split(':')[0].lower().rstrip('.')
+    return host in ONBOARD_HOSTS
+
+
+def require_onboard_host():
+    if not is_onboard_host():
         abort(404)
 
 

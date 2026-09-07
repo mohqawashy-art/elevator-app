@@ -17,7 +17,7 @@
   function hasCoordinates(c) {
     var parsed = parseCoords(c && c.lat, c && c.lng);
     if (!parsed) return false;
-    return !isHaramDefaultPin(parsed.lat, parsed.lng);
+    return !isGenericCityPin(parsed.lat, parsed.lng);
   }
 
   /** تحليل lat/lng مع تصحيح الانقلاب الشائع في السعودية */
@@ -42,6 +42,16 @@
 
   function isHaramDefaultPin(la, ln) {
     return Math.abs(la - 21.4225) < 0.0012 && Math.abs(ln - 39.8262) < 0.0012;
+  }
+
+  function isGenericCityPin(la, ln) {
+    if (isHaramDefaultPin(la, ln)) return true;
+    var keys = Object.keys(CITY_COORDS);
+    for (var i = 0; i < keys.length; i++) {
+      var c = CITY_COORDS[keys[i]];
+      if (Math.abs(la - c.lat) < 0.0035 && Math.abs(ln - c.lng) < 0.0035) return true;
+    }
+    return false;
   }
 
   var CITY_COORDS = {
@@ -78,11 +88,9 @@
   function coordsForCustomer(c) {
     if (!c) return null;
     var parsed = parseCoords(c.lat, c.lng);
-    if (parsed && !isHaramDefaultPin(parsed.lat, parsed.lng)) {
+    if (parsed && !isGenericCityPin(parsed.lat, parsed.lng)) {
       return { lat: parsed.lat, lng: parsed.lng, exact: true };
     }
-    var city = resolveCityCoords(c.city);
-    if (city) return { lat: city.lat, lng: city.lng, exact: false };
     return null;
   }
 
@@ -290,6 +298,8 @@
     formatAddress: formatAddress,
     parseCoords: parseCoords,
     hasCoordinates: hasCoordinates,
+    isGenericCityPin: isGenericCityPin,
+    isHaramDefaultPin: isHaramDefaultPin,
     resolveCityCoords: resolveCityCoords,
     coordsForCustomer: coordsForCustomer,
     CITY_COORDS: CITY_COORDS,

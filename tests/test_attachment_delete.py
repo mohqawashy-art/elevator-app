@@ -135,6 +135,48 @@ def test_revenue_remove_proof_admin_ok(client):
         assert db.session.get(Revenue, rid).proof_path is None
 
 
+def test_revenue_remove_proof_at_index(client):
+    login_as(client, 'admin')
+    app = client.application
+    with app.app_context():
+        oid = ensure_test_organization()
+        cust = Customer(
+            organization_id=oid, code='C-ATT6', name='إيراد2', phone='+966500000006', status='نشط'
+        )
+        db.session.add(cust)
+        db.session.flush()
+        p1 = _touch_static(app, 'uploads/financial_proofs/revenues/9006/a.pdf', b'%PDF1')
+        p2 = _touch_static(app, 'uploads/financial_proofs/revenues/9006/b.pdf', b'%PDF2')
+        from attachment_paths import serialize_attachment_paths
+
+        rev = Revenue(
+            organization_id=oid,
+            code='REV-ATT2',
+            customer_id=cust.id,
+            revenue_date=date.today(),
+            amount=100,
+            tax_amount=15,
+            total=115,
+            status='محصّل',
+            proof_path=serialize_attachment_paths([p1, p2]),
+        )
+        db.session.add(rev)
+        db.session.commit()
+        rid = rev.id
+
+    r = client.post(
+        f'/revenues/{rid}/remove-proof',
+        json={'admin_password': 'TestPass123!', 'index': 0},
+        headers={'X-LC-Admin-Delete': '1', 'Accept': 'application/json'},
+    )
+    assert r.status_code == 200
+    with app.app_context():
+        from attachment_paths import parse_attachment_paths
+
+        paths = parse_attachment_paths(db.session.get(Revenue, rid).proof_path)
+        assert paths == [p2]
+
+
 def test_expense_remove_proof_admin_ok(client):
     login_as(client, 'admin')
     app = client.application

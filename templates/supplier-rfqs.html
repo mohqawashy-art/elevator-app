@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — طلبات عروض أسعار الموردين</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -80,6 +81,8 @@ th{color:var(--text3);font-size:11px;font-weight:500}
     <div class="page-header">
       <div class="page-title">طلب عرض سعر من مورد</div>
       <div class="page-actions">
+        <a href="/suppliers" class="btn btn-secondary btn-sm">الموردون</a>
+        <a href="/supplier-price-list" class="btn btn-secondary btn-sm">قائمة الأسعار</a>
         <a href="/purchase-orders" class="btn btn-secondary btn-sm">طلبات الشراء</a>
         <a href="/inventory" class="btn btn-secondary btn-sm">← الأصناف</a>
       </div>
@@ -121,7 +124,16 @@ th{color:var(--text3);font-size:11px;font-weight:500}
           </div>
           <div class="field">
             <label>المورد</label>
-            <input name="supplier" placeholder="اسم المورد" value="{{ edit_rfq.supplier or '' if edit_rfq else '' }}" required>
+            <select name="supplier_id" id="supplier_id" onchange="syncSupplierFromSelect()">
+              <option value="">— اختر مورد —</option>
+              {% for s in suppliers %}
+              <option value="{{ s.id }}" data-name="{{ s.name }}" data-phone="{{ s.phone or '' }}" data-email="{{ s.email or '' }}" {% if edit_rfq and edit_rfq.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+              {% endfor %}
+            </select>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+              <input name="supplier" id="supplier_name" placeholder="أو اسم مورد جديد" value="{{ edit_rfq.supplier or '' if edit_rfq else '' }}" style="flex:1;min-width:160px" required>
+              <a href="/suppliers" class="btn btn-secondary btn-sm">+ مورد</a>
+            </div>
           </div>
           <div class="field">
             <label>جوال المورد (واتساب)</label>
@@ -148,13 +160,15 @@ th{color:var(--text3);font-size:11px;font-weight:500}
             <textarea name="notes" rows="2" placeholder="مدة التوريد المطلوبة، شروط الدفع…">{{ edit_rfq.notes or '' if edit_rfq else '' }}</textarea>
           </div>
         </div>
-        <table class="lines-table">
+        <table class="lines-table lc-table-inputs">
           <thead>
             <tr>
-              <th style="width:38%">الصنيف / البند</th>
-              <th style="width:12%">الكمية</th>
-              <th style="width:12%">الوحدة</th>
-              <th style="width:28%">المواصفات</th>
+              <th style="width:22%">الصنيف / البند</th>
+              <th style="width:18%">صنف المخزن</th>
+              <th style="width:10%">الكمية</th>
+              <th style="width:10%">الوحدة</th>
+              <th style="width:18%">المواصفات</th>
+              <th style="width:12%">سعر العرض</th>
               <th></th>
             </tr>
           </thead>
@@ -163,9 +177,18 @@ th{color:var(--text3);font-size:11px;font-weight:500}
             {% for line in rfq_lines %}
             <tr class="line-row">
               <td><input type="text" name="description" placeholder="ماكينة، سكك، كبينة…" value="{{ line.description if line else '' }}" {% if not edit_rfq %}required{% endif %}></td>
+              <td>
+                <select name="item_id">
+                  <option value="">— اختياري —</option>
+                  {% for it in items %}
+                  <option value="{{ it.id }}" {% if line and line.item_id == it.id %}selected{% endif %}>{{ it.code }} — {{ it.name }}</option>
+                  {% endfor %}
+                </select>
+              </td>
               <td><input type="number" name="quantity" min="0.01" step="0.01" value="{{ line.quantity if line else 1 }}"></td>
               <td><input type="text" name="unit" value="{{ line.unit if line else 'قطعة' }}"></td>
               <td><input type="text" name="specs" placeholder="مواصفات" value="{{ line.specs or '' if line else '' }}"></td>
+              <td><input type="number" name="quoted_unit_price" class="lc-input--money" min="0" step="0.01" placeholder="0.00" value="{{ line.quoted_unit_price if line and line.quoted_unit_price else '' }}"></td>
               <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
             </tr>
             {% endfor %}
@@ -176,10 +199,14 @@ th{color:var(--text3);font-size:11px;font-weight:500}
           <button type="submit" class="btn btn-primary btn-sm">{% if edit_rfq %}حفظ التعديل{% else %}حفظ وطباعة / إرسال{% endif %}</button>
           {% if edit_rfq %}
           <a href="{{ url_for('supplier_rfq_print', request_id=edit_rfq.id) }}" class="btn btn-secondary btn-sm lc-open-tab">طباعة / إرسال</a>
+          <form method="post" action="/supplier-rfqs/{{ edit_rfq.id }}/to-po" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-secondary btn-sm">→ طلب شراء</button>
+          </form>
           {% endif %}
         </div>
       </form>
-      <p style="font-size:11px;color:var(--text3);margin-top:10px">يُنشأ مستند RFQ بدون أسعار — للإرسال للمورد عبر واتساب أو إيميل. بعد استلام العرض يمكنك إنشاء طلب شراء.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:10px">أرسل RFQ بدون أسعار. عند استلام عرض المورد: اضبط الحالة «مستلم»، اربط البنود بأصناف المخزن، وأدخل أسعار العرض — تُحدَّث قائمة الأسعار تلقائياً.</p>
     </div>
 
     <div class="panel">
@@ -216,14 +243,34 @@ th{color:var(--text3);font-size:11px;font-weight:500}
 <template id="line-tpl">
   <tr class="line-row">
     <td><input type="text" name="description" placeholder="الصنيف / البند"></td>
+    <td>
+      <select name="item_id">
+        <option value="">— اختياري —</option>
+        {% for it in items %}
+        <option value="{{ it.id }}">{{ it.code }} — {{ it.name }}</option>
+        {% endfor %}
+      </select>
+    </td>
     <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
     <td><input type="text" name="unit" value="قطعة"></td>
     <td><input type="text" name="specs" placeholder="مواصفات"></td>
+    <td><input type="number" name="quoted_unit_price" min="0" step="0.01" placeholder="بعد الرد"></td>
     <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
   </tr>
 </template>
 
 <script>
+function syncSupplierFromSelect() {
+  var sel = document.getElementById('supplier_id');
+  var opt = sel && sel.selectedOptions[0];
+  if (!opt || !opt.value) return;
+  var name = document.getElementById('supplier_name');
+  var phone = document.querySelector('input[name="supplier_phone"]');
+  var email = document.querySelector('input[name="supplier_email"]');
+  if (name) name.value = opt.dataset.name || '';
+  if (phone && opt.dataset.phone) phone.value = opt.dataset.phone;
+  if (email && opt.dataset.email) email.value = opt.dataset.email;
+}
 function addLine() {
   const body = document.getElementById('lines-body');
   const row = document.getElementById('line-tpl').content.cloneNode(true).querySelector('tr');

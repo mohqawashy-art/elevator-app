@@ -1,0 +1,153 @@
+/* LiftCore — حقول إدخال ناعمة (app-wide) */
+:root {
+  --lc-input-radius: 12px;
+  --lc-input-radius-sm: 10px;
+  --lc-input-bg: rgba(22, 30, 43, 0.72);
+  --lc-input-border: rgba(100, 160, 255, 0.14);
+  --lc-input-border-focus: rgba(42, 127, 255, 0.45);
+  --lc-input-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255, 255, 255, 0.03);
+  --lc-input-focus-ring: 0 0 0 3px rgba(42, 127, 255, 0.14);
+}
+
+html[data-theme="light"] {
+  --lc-input-bg: rgba(232, 238, 246, 0.9);
+  --lc-input-border: rgba(30, 60, 120, 0.12);
+  --lc-input-border-focus: rgba(42, 127, 255, 0.5);
+  --lc-input-shadow: inset 0 1px 2px rgba(30, 60, 120, 0.06);
+  --lc-input-focus-ring: 0 0 0 3px rgba(42, 127, 255, 0.12);
+}
+
+/* حقول عامة — استثناء الأزرار والمربعات */
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not(.lang-opt):not(.lc-filter-multi-search input),
+select:not(.lang-opt):not(.lc-filter-multi-btn),
+textarea,
+.lc-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--lc-input-bg) !important;
+  border: 1px solid var(--lc-input-border) !important;
+  border-radius: var(--lc-input-radius) !important;
+  box-shadow: var(--lc-input-shadow);
+  color: var(--text1, #e4eaf5);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  outline: none;
+  padding: 10px 14px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  width: 100%;
+  max-width: 100%;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not(.lang-opt):focus,
+select:not(.lang-opt):focus,
+textarea:focus,
+.lc-input:focus {
+  border-color: var(--lc-input-border-focus) !important;
+  box-shadow: var(--lc-input-shadow), var(--lc-input-focus-ring);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text3, #4a5a72);
+  opacity: 0.9;
+}
+
+select:not(.lang-opt) {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text3, #4a5a72) 50%),
+    linear-gradient(135deg, var(--text3, #4a5a72) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 13px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  padding-inline-end: 34px;
+}
+
+html[dir="rtl"] select:not(.lang-opt) {
+  background-position:
+    18px calc(50% - 2px),
+    13px calc(50% - 2px);
+  padding-inline-start: 34px;
+  padding-inline-end: 14px;
+}
+
+/* حقول داخل الجداول */
+.lines-table input,
+.lines-table select,
+.lines-table textarea,
+#price-lines input,
+#price-lines select,
+table.pricing-items input,
+table.pricing-items select,
+.lc-table-inputs input,
+.lc-table-inputs select {
+  border-radius: var(--lc-input-radius-sm) !important;
+  font-size: 12px;
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
+.lines-table input[type="number"],
+#price-lines input[type="number"],
+table.pricing-items input[type="number"],
+.lc-input--money {
+  font-family: var(--font-en, 'DM Sans', sans-serif);
+  text-align: center;
+  direction: ltr;
+}
+
+/* غلاف حقل السعر مع لاحقة */
+.lc-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.lc-input-wrap input {
+  flex: 1;
+  min-width: 0;
+  padding-inline-end: 42px !important;
+}
+
+.lc-input-wrap--money .lc-input-suffix {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 12px;
+  transform: translateY(-50%);
+  color: var(--text3, #4a5a72);
+  font-size: 11px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* حقول النماذج داخل .field */
+.field input:not([type="checkbox"]):not([type="radio"]),
+.field select,
+.field textarea {
+  border-radius: var(--lc-input-radius) !important;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2, #8a9bb8);
+}
+
+/* فلاتر وبحث */
+.search-input,
+.filter-input,
+.filter-select {
+  border-radius: var(--lc-input-radius) !important;
+}
+
+/* تعطيل */
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

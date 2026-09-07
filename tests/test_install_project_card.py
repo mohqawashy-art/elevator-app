@@ -142,6 +142,7 @@ def test_project_card_costs_and_receipts(client):
             installment_no=1,
             payment_status='مدفوعة',
             cost_date=date.today(),
+            notes='تحويل بنكي — مرجع 123',
         ))
         db.session.add(InstallProjectCostItem(
             organization_id=org.id,
@@ -189,12 +190,20 @@ def test_project_card_costs_and_receipts(client):
         assert 'دفعة أولى' in labels
         assert 'دفعة ثانية' in labels
         assert 'دفعة ثالثة' in labels
+        line_notes = [r['note'] for r in card['sheet_rows'] if r['kind'] == 'line']
+        assert 'تحويل بنكي — مرجع 123' in line_notes
+        line_dates = [r['pay_date'] for r in card['sheet_rows'] if r['kind'] == 'line' and r.get('pay_date')]
+        assert line_dates
+        receipt_dates = [r['pay_date'] for r in card['sheet_rows'] if r['kind'] == 'receipt' and r.get('pay_date')]
+        assert receipt_dates
 
     resp = client.get(f'/installation/projects/{pid}')
     assert resp.status_code == 200
     body = resp.data.decode('utf-8', errors='ignore')
     assert 'كارت المشروع' in body
+    assert 'تاريخ الدفع' in body
     assert 'دفعة أولى' in body
+    assert 'تحويل بنكي — مرجع 123' in body
     assert 'مدفوعة' in body
     assert 'مرحلة 1 — السكك والأبواب' in body
     assert 'تعديل' in body
@@ -346,6 +355,9 @@ def test_project_card_link_contract(client):
     )
     assert resp.status_code == 200
     assert 'تم ربط الكارت بالعقد' in resp.data.decode('utf-8', errors='ignore')
+    body = resp.data.decode('utf-8', errors='ignore')
+    assert 'id="pc-open-contract"' in body
+    assert 'syncOpenContract' in body
     with client.application.app_context():
         p = db.session.get(InstallProject, pid)
         assert p.contract_id == cid
@@ -427,3 +439,101 @@ def test_project_card_rejects_maintenance_contract_link(client):
     with client.application.app_context():
         p = db.session.get(InstallProject, pid)
         assert p.contract_id == iid
+
+
+def test_contract_open_prefers_attached_file(client):
+    from models import Customer, Contract
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-SCN',
+            name='عميل سكان',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CI-SCN1',
+            customer_id=cust.id,
+            contract_type='عقد تركيب',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=10000,
+            total=10000,
+            status='نشط',
+            file_path='uploads/contracts/99/signed-scan.pdf',
+        )
+        db.session.add(contract)
+        db.session.commit()
+        cid = contract.id
+
+    r = client.get(f'/contracts/{cid}/open')
+    assert r.status_code in (302, 303)
+    assert 'signed-scan.pdf' in (r.headers.get('Location') or '')
+
+
+def test_contract_open_falls_back_to_print(client):
+    from models import Customer, Contract
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-NOF',
+            name='عميل بلا مرفق',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CI-NOF1',
+            customer_id=cust.id,
+            contract_type='عقد تركيب',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=5000,
+            total=5000,
+            status='نشط',
+        )
+        db.session.add(contract)
+        db.session.commit()
+        cid = contract.id
+
+    r = client.get(f'/contracts/{cid}/open')
+    assert r.status_code in (302, 303)
+    assert f'/contracts/{cid}/print' in (r.headers.get('Location') or '')
+
+
+def test_project_delete_from_list(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-DEL-01',
+            title='مشروع للحذف',
+            status='تسعير',
+        )
+        db.session.add(project)
+        db.session.commit()
+        pid = project.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        f'/installation/projects/{pid}/delete',
+        data={'csrf_token': 'test-csrf'},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    body = resp.data.decode('utf-8', errors='ignore')
+    assert 'تم حذف المشروع' in body
+    with client.application.app_context():
+        assert db.session.get(InstallProject, pid) is None

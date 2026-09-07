@@ -4,15 +4,27 @@
 
 ## العزل
 
-- الفرع: `staging/department-hubs`
+- الفرع: `staging/department-hubs` (أو `STAGING_BRANCH=main` للنشر من main)
 - الخدمة: `liftcore-staging`
 - المنفذ: `127.0.0.1:5003`
 - النطاق: `test.liftcoreapp.com`
-- قاعدة PostgreSQL: `liftcore_staging`
+- قاعدة PostgreSQL: `liftcore_staging` (**منفصلة تماماً عن `liftcore` الإنتاج**)
 - البيئة: `/etc/liftcore/staging.env`
 - البيانات: `/var/lib/liftcore-staging`
 - الإصدارات: `/opt/liftcore-staging/releases`
 - النسخ الاحتياطية: `/var/backups/liftcore-staging`
+
+**مهم:** لا تنسخ قاعدة الإنتاج إلى staging. أي سكربت صيانة على staging يُشغَّل عبر:
+
+```bash
+sudo bash deploy/staging/run_staging_script.sh scripts/set_user_login.py --help
+```
+
+استعادة بيئة تجربة نظيفة (قبل أي نسخ من جما):
+
+```bash
+sudo bash deploy/staging/restore_clean_test.sh
+```
 
 الخدمة تضبط `LIFTCORE_ENV_FILE`، ولذلك لا يقرأ التطبيق
 `/etc/liftcore/platform.env` أو مفاتيح الدفع والبريد الخاصة بالإنتاج.
@@ -36,12 +48,16 @@ sudo bash deploy/staging/bootstrap_staging.sh
 
 ## كل تحديث تجريبي
 
-بعد دفع التغييرات إلى فرع التجربة فقط:
+**لا تستخدم `STAGING_BRANCH=main`** إلا لاختبار تغييرات محددة من الإنتاج. الوضع الافتراضي للتجربة هو فرع `staging/department-hubs` (منصات الأقسام والواجهات المنفصلة).
 
 ```bash
-cd /tmp/liftcore-staging-bootstrap
-git pull --ff-only origin staging/department-hubs
 sudo bash deploy/staging/deploy_staging.sh
+```
+
+استعادة كاملة لأواخر أغسطس (قاعدة + كود + واجهات) **بدون لمس جما أو الإنتاج**:
+
+```bash
+sudo bash deploy/staging/restore_august_test.sh
 ```
 
 ## التحقق

@@ -123,8 +123,8 @@
   }
 
   function preferLeaflet() {
-    if (global.__gmapsAuthFailed) return true;
     if (!global.LIFTCORE_GOOGLE_MAPS_KEY) return true;
+    if (global.__gmapsAuthFailed) return true;
     return false;
   }
 
@@ -329,7 +329,6 @@
       setLeafletMarker(lat, lng, pan, skipReverseGeocode);
       return;
     }
-
     function applyGoogleMarkerPosition() {
     var pos = { lat: lat, lng: lng };
     if (!state.marker) {
@@ -596,7 +595,8 @@
     bindSearchEnterKey(input);
   }
 
-  function geocodeAddressOsm(query, callback) {
+  function geocodeAddressOsm(query, callback, options) {
+    options = options || {};
     fetch(
       'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=sa&q=' +
         encodeURIComponent(query),
@@ -607,6 +607,18 @@
         if (rows && rows[0]) {
           var lat = parseFloat(rows[0].lat);
           var lng = parseFloat(rows[0].lon);
+          if (options.previewOnly) {
+            if (state.map) {
+              if (state.provider === 'leaflet' && state.map.setView) {
+                state.map.setView([lat, lng], 15);
+              } else if (state.map.setCenter) {
+                state.map.setCenter({ lat: lat, lng: lng });
+                if (state.map.getZoom && state.map.getZoom() < 14) state.map.setZoom(15);
+              }
+            }
+            if (callback) callback(true);
+            return;
+          }
           setMarkerPosition(lat, lng);
           applyOsmAddress({ display_name: rows[0].display_name, address: {} }, lat, lng);
           if (callback) callback(true);
@@ -673,8 +685,8 @@
   }
 
   function mapHasGoogleError(mapEl) {
+    if (global.liftcoreMapElHasGoogleError) return global.liftcoreMapElHasGoogleError(mapEl);
     if (!mapEl) return false;
-    // فقط حاوية خطأ Google الرسمية — لا تعتمد على نص «تحميل» وغيره (كانت تحوّل OSM بالخطأ)
     return !!mapEl.querySelector('.gm-err-container, .gm-err-title, .gm-err-message');
   }
 
@@ -682,10 +694,11 @@
     if (state.provider !== 'google') return;
     var mapEl = state.opts && $(state.opts.mapEl);
     if (!mapHasGoogleError(mapEl)) return;
-    global.__gmapsAuthFailed = true;
+    if (global.liftcoreFailGoogleMaps) global.liftcoreFailGoogleMaps();
+    else global.__gmapsAuthFailed = true;
     var coords = state.opts && $(state.opts.coordsEl);
     if (coords) {
-      coords.textContent = 'تعذّر تحميل Google Maps — تحقق من قيود المفتاح (HTTP referrers) لـ jama.liftcoreapp.com';
+      coords.textContent = lcT('تعذّر تحميل Google Maps — تم التحويل إلى OpenStreetMap');
       coords.style.color = 'var(--warning)';
     }
     var opts = state.opts;
@@ -694,8 +707,7 @@
   }
 
   function scheduleGoogleErrorCheck() {
-    // فحص متأخر فقط لحاوية الخطأ الرسمية — بعد اكتمال التحميل
-    [2000, 4000].forEach(function (ms) {
+    [600, 1500, 3000, 5000].forEach(function (ms) {
       setTimeout(fallbackFromGoogleError, ms);
     });
   }
@@ -851,12 +863,12 @@
       return;
     }
     if (state.provider === 'leaflet' || preferLeaflet()) {
-      geocodeAddressOsm(query, callback);
+      geocodeAddressOsm(query, callback, options);
       return;
     }
     var g = getGeocoder();
     if (!g) {
-      geocodeAddressOsm(query, callback);
+      geocodeAddressOsm(query, callback, options);
       return;
     }
     g.geocode({ address: query, componentRestrictions: { country: 'SA' }, region: 'SA' }, function (results, status) {
@@ -871,6 +883,10 @@
             state.map.setCenter({ lat: lat, lng: lng });
             if (state.map.getZoom() < 15) state.map.setZoom(16);
           }
+        }
+        if (options.previewOnly) {
+          if (callback) callback(true);
+          return;
         }
         setMarkerPosition(lat, lng, { pan: false, skipReverseGeocode: true });
         applyGeocodeResult({
@@ -888,7 +904,7 @@
         if (callback) callback(true);
         return;
       }
-      geocodeAddressOsm(query, callback);
+      geocodeAddressOsm(query, callback, options);
     });
   }
 

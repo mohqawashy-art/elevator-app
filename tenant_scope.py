@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from flask import abort, g, has_request_context, request
 from sqlalchemy import event
 from sqlalchemy.orm import with_loader_criteria
@@ -125,7 +127,20 @@ def _bind_app_host_default_org():
 
     g._resolving_default_org = True
     try:
-        org = Organization.query.filter_by(slug='default').first()
+        env_slug = (os.environ.get('LIFTCORE_APP_ORG_SLUG') or '').strip()
+        slug_candidates = []
+        if env_slug:
+            slug_candidates.append(env_slug)
+        slug_candidates.extend(['default', 'jama'])
+        org = None
+        seen = set()
+        for slug in slug_candidates:
+            if not slug or slug in seen:
+                continue
+            seen.add(slug)
+            org = Organization.query.filter_by(slug=slug).first()
+            if org:
+                break
     finally:
         g._resolving_default_org = False
     if not org:

@@ -1,7 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — تقرير الفنيين</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -393,6 +394,6 @@ function exportExcel(){
 window.__LC_REPORT_ROWS = {{ report_rows|tojson }};
 window.__LC_REPORT_ID = {{ report_id|tojson }};
 </script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=10"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=11"></script>
 </body>
 </html>

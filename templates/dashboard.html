@@ -1,7 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
 <head>
 <meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>LiftCore — لوحة التحكم</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -494,7 +495,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
         <div class="panel-body">
           <div class="alert-list">
             {% if alerts.expiring_contracts_count > 0 %}
-            <div class="alert-item danger" onclick="openDrill('expiring_contracts',this)">
+            <div class="alert-item danger" onclick="window.location.href='/alerts/expiring_contracts'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a1">عقود تنتهي خلال 30 يوم</div>
@@ -504,7 +505,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
             </div>
             {% endif %}
             {% if alerts.low_stock_count > 0 %}
-            <div class="alert-item warning" onclick="openDrill('low_stock',this)">
+            <div class="alert-item warning" onclick="window.location.href='/alerts/low_stock'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a2">مخزون قطع غيار تحت الحد الأدنى</div>
@@ -514,7 +515,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
             </div>
             {% endif %}
             {% if stats.faults_open > 0 %}
-            <div class="alert-item danger" onclick="openDrill('faults_open',this)">
+            <div class="alert-item danger" onclick="window.location.href='/alerts/faults_open'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a3">أعطال مفتوحة تحتاج متابعة</div>
@@ -524,7 +525,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
             </div>
             {% endif %}
             {% if stats.outstanding_collectible > 0 %}
-            <div class="alert-item warning" onclick="openDrill('outstanding_collectible',this)">
+            <div class="alert-item warning" onclick="window.location.href='/alerts/outstanding_collectible'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a4">مبالغ مستحقة التحصيل</div>
@@ -533,7 +534,7 @@ tbody td{padding:10px 12px;color:var(--text2);white-space:nowrap}
               <span class="alert-count">{{ '{:,.0f}'.format(stats.outstanding_collectible) }} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span>
             </div>
             {% elif stats.unpaid_total > 0 %}
-            <div class="alert-item warning" onclick="openDrill('unpaid_invoices',this)">
+            <div class="alert-item warning" onclick="window.location.href='/alerts/unpaid_invoices'">
               <div class="alert-dot"></div>
               <div>
                 <div class="alert-text" id="a4">فواتير مستحقة السداد</div>
@@ -696,19 +697,27 @@ function applyTrends(tr) {
 }
 
 // تحديث الأرقام فور التحميل (من API عند التحديث)
+function formatOutstandingAmount(n) {
+  return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+function setOutstandingCollectibleDisplay(amount, count) {
+  const outEl = document.getElementById('outstanding-collectible-val');
+  if (outEl) outEl.textContent = formatOutstandingAmount(amount);
+  const outTrend = document.getElementById('tr7');
+  if (outTrend && count != null) outTrend.textContent = (count || 0) + ' بند';
+}
+
 function updateDashboard() {
-  const vals = document.querySelectorAll('.stat-val');
+  const vals = document.querySelectorAll('.stats-grid .stat-val');
   if(vals[0]) vals[0].textContent = STATS.customers;
   if(vals[1]) vals[1].textContent = STATS.elevators;
   if(vals[2]) vals[2].textContent = STATS.contracts;
   if(vals[3]) vals[3].textContent = STATS.expired_contracts;
   if(vals[4]) vals[4].textContent = STATS.visits_today;
   if(vals[5]) vals[5].textContent = STATS.faults_open;
-  if(vals[6]) vals[6].textContent = Number(STATS.outstanding_collectible || 0).toLocaleString('en-US', {maximumFractionDigits: 0});
+  setOutstandingCollectibleDisplay(STATS.outstanding_collectible, STATS.outstanding_count);
   if(vals[7]) vals[7].textContent = STATS.technicians;
-
-  const outTrend = document.getElementById('tr7');
-  if (outTrend) outTrend.textContent = (STATS.outstanding_count || 0) + ' بند';
 
   // تحديث الإيرادات لو موجودة
   const revEl = document.getElementById('total-revenue');
@@ -823,14 +832,17 @@ async function loadCharts() {
     }
 
     // تحديث الأرقام من API
-    const vals = document.querySelectorAll('.stat-val');
+    const vals = document.querySelectorAll('.stats-grid .stat-val');
     if(vals[0]) vals[0].textContent = data.customers;
     if(vals[1]) vals[1].textContent = data.elevators;
     if(vals[2]) vals[2].textContent = data.contracts;
     if(vals[3]) vals[3].textContent = data.expired_contracts;
     if(vals[4]) vals[4].textContent = data.visits_today;
     if(vals[5]) vals[5].textContent = data.faults_open;
-    if(vals[6]) vals[6].textContent = data.unpaid_invoices;
+    setOutstandingCollectibleDisplay(
+      data.outstanding_collectible,
+      data.outstanding_count
+    );
     if(vals[7]) vals[7].textContent = data.technicians;
     if (data.trends) applyTrends(data.trends);
 

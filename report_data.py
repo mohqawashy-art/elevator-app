@@ -76,21 +76,32 @@ def get_report_elevators(db, Elevator):
     } for e in elevs]
 
 
-def get_report_contracts(db, Contract):
+def get_report_contracts(db, Contract, contract_display_status=None):
+    from contract_codes import build_superseded_contract_ids
+
     contracts = tenant_query(Contract).order_by(Contract.id).all()
-    return [{
-        'code': c.code,
-        'customer': c.customer.name,
-        'contract_type': c.contract_type or '',
-        'start_date': str(c.start_date or ''),
-        'end_date': str(c.end_date or ''),
-        'elevators': len(c.elevators),
-        'value': c.value or 0,
-        'total': c.total or 0,
-        'status': c.status,
-        'inv_status': c.invoice_status or '',
-        'due_date': str(getattr(c, 'due_date', None) or ''),
-    } for c in contracts]
+    renewed_ids = build_superseded_contract_ids(contracts)
+    rows = []
+    for c in contracts:
+        display = (
+            contract_display_status(c, renewed_ids=renewed_ids)
+            if contract_display_status
+            else (c.status or '')
+        )
+        rows.append({
+            'code': c.code,
+            'customer': c.customer.name,
+            'contract_type': c.contract_type or '',
+            'start_date': str(c.start_date or ''),
+            'end_date': str(c.end_date or ''),
+            'elevators': len(c.elevators),
+            'value': c.value or 0,
+            'total': c.total or 0,
+            'status': display,
+            'inv_status': c.invoice_status or '',
+            'due_date': str(getattr(c, 'due_date', None) or ''),
+        })
+    return rows
 
 
 def get_report_technicians(db, Technician):
@@ -149,16 +160,84 @@ def get_report_faults(db, Fault):
     } for f in faults]
 
 
-def get_report_revenues(db, Revenue, year=None, month=None):
-    if year is None:
-        year = datetime.now().year
-    q = tenant_query(Revenue)
-    if year:
+_COLLECTED_REVENUE_STATUSES = frozenset({
+    'محصّل', 'محصل', 'مدفوع', 'مدفوعة', 'مسددة', 'مكتملة', 'Paid', 'paid',
+})
+_PENDING_REVENUE_STATUSES = frozenset({'معلق', 'غير محصّل', 'غير محصل'})
+
+
+def _is_revenue_collected_status(status) -> bool:
+    """هل الإيراد محصّل — يشمل القيم الفارغة (الافتراضي في النموذج: محصّل)."""
+    s = (status or '').strip()
+    if not s:
+        return True
+    if s == 'ملغي' or 'ملغ' in s:
+        return False
+    if s in _COLLECTED_REVENUE_STATUSES:
+        return True
+    norm = s.replace('ّ', '')
+    if 'غير' in s and 'محصل' in norm:
+        return False
+    if 'محصل' in norm or s.startswith('مدفو'):
+        return True
+    return False
+
+
+def summarize_revenue_rows(rows):
+    """إجماليات الإيرادات — مصدر واحد لصفحة الإيرادات وتقرير الإيرادات."""
+    total = 0.0
+    collected = 0.0
+    pending = 0.0
+    cancelled = 0.0
+    count = len(rows)
+    cancelled_count = 0
+    for row in rows:
+        if isinstance(row, dict):
+            st = (row.get('status') or '').strip()
+            amt = float(row.get('total') or 0)
+        else:
+            st = (getattr(row, 'status', None) or '').strip()
+            amt = float(getattr(row, 'total', None) or 0)
+        total += amt
+        if st == 'ملغي':
+            cancelled += amt
+            cancelled_count += 1
+            continue
+        if _is_revenue_collected_status(st):
+            collected += amt
+        if st in _PENDING_REVENUE_STATUSES:
+            pending += amt
+    return {
+        'total': _round_money(total),
+        'collected': _round_money(collected),
+        'pending': _round_money(pending),
+        'cancelled': _round_money(cancelled),
+        'count': count,
+        'cancelled_count': cancelled_count,
+    }
+
+
+def tenant_revenue_totals(Revenue):
+    """إجمالي الإيرادات للمؤسسة — نفس منطق بطاقة صفحة الإيرادات."""
+    return summarize_revenue_rows(tenant_query(Revenue).all())
+
+
+def _revenues_report_query(Revenue, year=None, month=None):
+    from sqlalchemy.orm import joinedload
+
+    q = tenant_query(Revenue).options(
+        joinedload(Revenue.customer),
+        joinedload(Revenue.contract),
+    )
+    if year is not None:
         q = q.filter(extract('year', Revenue.revenue_date) == int(year))
-    if month:
+    if month is not None:
         q = q.filter(extract('month', Revenue.revenue_date) == int(month))
-    revs = q.order_by(Revenue.revenue_date.desc()).all()
-    return [{
+    return q.order_by(Revenue.revenue_date.desc())
+
+
+def _revenue_report_row_dict(r):
+    return {
         'code': r.code,
         'customer': r.customer.name if r.customer else '—',
         'contract': r.contract.code if r.contract else '—',
@@ -171,16 +250,27 @@ def get_report_revenues(db, Revenue, year=None, month=None):
         'total': r.total or 0,
         'status': r.status or '',
         'created_by': (getattr(r, 'created_by_name', None) or '—'),
-    } for r in revs]
+    }
+
+
+def get_revenue_report_payload(db, Revenue, year=None, month=None):
+    revs = _revenues_report_query(Revenue, year=year, month=month).all()
+    rows = [_revenue_report_row_dict(r) for r in revs]
+    return {
+        'rows': rows,
+        'summary': summarize_revenue_rows(rows),
+    }
+
+
+def get_report_revenues(db, Revenue, year=None, month=None):
+    return get_revenue_report_payload(db, Revenue, year=year, month=month)['rows']
 
 
 def get_report_expenses(db, Expense, year=None, month=None):
-    if year is None:
-        year = datetime.now().year
     q = tenant_query(Expense)
-    if year:
+    if year is not None:
         q = q.filter(extract('year', Expense.expense_date) == int(year))
-    if month:
+    if month is not None:
         q = q.filter(extract('month', Expense.expense_date) == int(month))
     exps = q.order_by(Expense.expense_date.desc()).all()
     return [{
@@ -283,15 +373,13 @@ def _revenue_total(revenue):
 
 def _classify_revenue(revenue_type):
     rt = (revenue_type or '').strip()
-    if rt in ('عقد جديد', 'عقد تركيب', 'تركيب مصعد', 'تحديث مصعد', 'عقد تحديث') or (
-        'جديد' in rt and 'عقد' in rt
-    ):
+    if rt in ('عقد جديد', 'عقد تركيب', 'عقد تحديث') or ('جديد' in rt and 'عقد' in rt):
         return 'new'
     if 'قطع غيار' in rt or rt in ('زيارة', 'أعمال إضافية', 'بيع قطع غيار'):
         return 'parts'
     if rt in (
-        'تجديد عقد', 'عقد صيانة', 'عقد ضمان', 'صيانة',
-    ) or ('عقد' in rt and 'جديد' not in rt and 'تركيب' not in rt and 'تحديث' not in rt):
+        'تجديد عقد', 'الدفعات المستحقة', 'عقد صيانة', 'عقد ضمان', 'صيانة',
+    ) or ('عقد' in rt and 'جديد' not in rt):
         return 'renewed'
     return 'renewed'
 
@@ -403,125 +491,6 @@ def get_financial_report(db, Revenue, Expense, date_from=None, date_to=None, tod
     }
 
 
-def _completed_visits_for_contract(MaintenanceVisit, contract, period_from, period_to):
-    """زيارات مكتملة مرتبطة بالعقد أو بمصاعده ضمن الفترة."""
-    from sqlalchemy import or_
-
-    start = contract.start_date
-    end = contract.end_date
-    if start and end:
-        visit_from = max(period_from, start)
-        visit_to = min(period_to, end)
-    else:
-        visit_from, visit_to = period_from, period_to
-
-    if visit_to < visit_from:
-        return 0
-
-    q = tenant_query(MaintenanceVisit).filter(
-        MaintenanceVisit.status == 'مكتملة',
-        MaintenanceVisit.visit_date >= visit_from,
-        MaintenanceVisit.visit_date <= visit_to,
-    )
-
-    conditions = []
-    if getattr(contract, 'id', None):
-        conditions.append(MaintenanceVisit.contract_id == contract.id)
-    elev_ids = [ce.elevator_id for ce in (contract.elevators or [])]
-    if elev_ids:
-        conditions.append(MaintenanceVisit.elevator_id.in_(elev_ids))
-    if not conditions:
-        return 0
-
-    return int(q.filter(or_(*conditions)).count())
-
-
-def get_contract_cost_allocation_report(
-    Contract,
-    MaintenanceVisit,
-    Revenue,
-    date_from=None,
-    date_to=None,
-    contract_status_fn=None,
-    today=None,
-):
-    """توزيع قيمة العقود — استحقاق الفترة ومقارنة المحصّل (فجوة التحصيل)."""
-    from contract_cost_allocation import contract_cost_allocation, collection_gap_fields
-
-    if today is None:
-        today = date.today()
-    if date_to is None:
-        date_to = today
-    if date_from is None:
-        date_from = date(today.year, 1, 1)
-    if date_from > date_to:
-        date_from, date_to = date_to, date_from
-
-    contracts = tenant_query(Contract).filter(Contract.status != 'ملغي').order_by(Contract.code).all()
-    rows = []
-    totals = {
-        'contract_total': 0.0,
-        'monthly_accrual': 0.0,
-        'period_accrued': 0.0,
-        'period_collected': 0.0,
-        'collection_gap': 0.0,
-        'earned_by_visits': 0.0,
-        'planned_visits': 0,
-        'completed_visits': 0,
-    }
-
-    for c in contracts:
-        st = contract_status_fn(c) if contract_status_fn else (c.status or '')
-        if st not in ('نشط', 'على وشك الانتهاء', 'منتهي'):
-            continue
-        if not c.start_date or not c.end_date:
-            continue
-        if c.end_date < date_from or c.start_date > date_to:
-            continue
-
-        completed = _completed_visits_for_contract(MaintenanceVisit, c, date_from, date_to)
-        alloc = contract_cost_allocation(
-            c,
-            period_from=date_from,
-            period_to=date_to,
-            completed_visits=completed,
-        )
-        if not alloc.get('contract_total'):
-            continue
-
-        period_collected = _collected_for_contract_in_period(Revenue, c.id, date_from, date_to)
-        gap = collection_gap_fields(alloc.get('period_accrued') or 0, period_collected)
-
-        rows.append({
-            'code': c.code,
-            'customer': c.customer.name if c.customer else '—',
-            'start_date': str(c.start_date),
-            'end_date': str(c.end_date),
-            'status': st,
-            **alloc,
-            'period_collected': period_collected,
-            **gap,
-        })
-        totals['contract_total'] += alloc['contract_total']
-        totals['monthly_accrual'] += alloc['monthly_accrual']
-        totals['period_accrued'] += alloc.get('period_accrued') or 0
-        totals['period_collected'] += period_collected
-        totals['collection_gap'] += gap['collection_gap']
-        totals['earned_by_visits'] += alloc.get('earned_by_visits') or 0
-        totals['planned_visits'] += alloc['planned_visits']
-        totals['completed_visits'] += completed
-
-    for key in totals:
-        totals[key] = _round_money(totals[key]) if key not in ('planned_visits', 'completed_visits') else totals[key]
-
-    return {
-        'date_from': str(date_from),
-        'date_to': str(date_to),
-        'rows': rows,
-        'totals': totals,
-    }
-
-
 def _month_bounds(year, month):
     from calendar import monthrange
     year, month = int(year), int(month)
@@ -552,9 +521,7 @@ def _renewal_collection_status(expected, collected):
 
 
 def get_contract_renewal_forecast(Contract, Revenue, year, month, contract_status_fn=None):
-    """توقع تحصيل تجديد العقود — العقود المنتهية في الشهر المحدد (صيانة فقط)."""
-    from contract_codes import is_installation_contract_type
-
+    """توقع تحصيل تجديد العقود — العقود المنتهية في الشهر المحدد."""
     year, month = int(year), int(month)
     first, last = _month_bounds(year, month)
 
@@ -563,7 +530,6 @@ def get_contract_renewal_forecast(Contract, Revenue, year, month, contract_statu
         Contract.end_date <= last,
         Contract.status != 'ملغي',
     ).order_by(Contract.end_date).all()
-    contracts = [c for c in contracts if not is_installation_contract_type(c.contract_type)]
 
     rows = []
     total_expected = 0.0
@@ -648,7 +614,6 @@ def _monthly_totals(db, extract, func, year, date_col, value_col, exclude_cancel
     return result
 
 
-
 _MONTH_NAMES_AR = (
     'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
     'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
@@ -682,6 +647,48 @@ def _month_keys_between(date_from: date, date_to: date) -> list[tuple[int, int]]
             m = 1
             y += 1
     return keys
+
+
+def _tenant_revenue_date_bounds(Revenue, today=None):
+    """أول تاريخ إيراد → اليوم (لتطابق إجمالي صفحة الإيرادات عند الفترة الكاملة)."""
+    from sqlalchemy import func
+
+    if today is None:
+        today = date.today()
+    min_date = tenant_query(Revenue).with_entities(func.min(Revenue.revenue_date)).scalar()
+    if min_date:
+        return min_date, today
+    return date(today.year, 1, 1), today
+
+
+def _monthly_totals_from_records(
+    records,
+    date_from: date,
+    date_to: date,
+    date_fn,
+    value_fn,
+):
+    """مجاميع شهرية من سجلات مفلترة بالمؤسسة — نفس منطق الجمع اليدوي."""
+    month_keys = _month_keys_between(date_from, date_to)
+    index = {k: i for i, k in enumerate(month_keys)}
+    result = [0.0] * len(month_keys)
+    multi_year = date_from.year != date_to.year
+    labels = [
+        f'{_MONTH_NAMES_AR[m - 1]} {y}' if multi_year else _MONTH_NAMES_AR[m - 1]
+        for y, m in month_keys
+    ]
+    for rec in records:
+        d = date_fn(rec)
+        if not d:
+            continue
+        if isinstance(d, datetime):
+            d = d.date()
+        if d < date_from or d > date_to:
+            continue
+        key = (d.year, d.month)
+        if key in index:
+            result[index[key]] = _round_money(result[index[key]] + value_fn(rec))
+    return labels, result
 
 
 def _period_monthly_totals(
@@ -954,37 +961,55 @@ def get_financial_health_report(
         year = int(year)
         df = date(year, 1, 1)
         dt = date(year, 12, 31)
-    if df is None:
-        df = date(today.year, 1, 1)
-    if dt is None:
-        dt = today
+    elif df is None and dt is None:
+        df, dt = _tenant_revenue_date_bounds(Revenue, today)
+    else:
+        if df is None:
+            df = date(today.year, 1, 1)
+        if dt is None:
+            dt = today
     if dt < df:
         df, dt = dt, df
 
     months_in_period = max(1, len(_month_keys_between(df, dt)))
 
-    month_labels, monthly_revenue = _period_monthly_totals(
-        db, extract, func, df, dt, Revenue.revenue_date, Revenue.total,
-        exclude_cancelled=True, status_col=Revenue.status,
+    period_revenues = _filter_revenues(Revenue, date_from=df, date_to=dt)
+    period_expenses = _filter_expenses(Expense, date_from=df, date_to=dt)
+    rev_summary = summarize_revenue_rows(period_revenues)
+    period_revenue_registered = rev_summary['total']
+    period_revenue_collected = rev_summary['collected']
+    all_rev_summary = tenant_revenue_totals(Revenue)
+
+    from contract_cost_allocation import maintenance_contracts_pnl_summary
+
+    maint_pnl = maintenance_contracts_pnl_summary(period_from=df, period_to=dt)
+    period_revenue_unearned = maint_pnl['unearned_total']
+    # المكتسب = المحصّل − قيمة الصيانة غير المنفذة حتى تاريخ نهاية الفترة
+    period_revenue_earned = _round_money(
+        max(0.0, period_revenue_collected - period_revenue_unearned)
     )
-    _, monthly_expenses = _period_monthly_totals(
-        db, extract, func, df, dt, Expense.expense_date, Expense.amount,
+    period_revenue = period_revenue_earned
+
+    month_labels, monthly_revenue = _monthly_totals_from_records(
+        period_revenues, df, dt,
+        lambda r: r.revenue_date,
+        lambda r: float(r.total or 0),
+    )
+    _, monthly_expenses = _monthly_totals_from_records(
+        period_expenses, df, dt,
+        lambda e: e.expense_date,
+        lambda e: float(e.amount or 0),
     )
     monthly_profit = [
         _round_money(monthly_revenue[i] - monthly_expenses[i])
         for i in range(len(monthly_revenue))
     ]
 
-    total_revenue = _round_money(sum(monthly_revenue))
-    total_expenses = _round_money(sum(monthly_expenses))
-    net_profit = _round_money(total_revenue - total_expenses)
-    margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
+    total_expenses = _round_money(sum(float(e.amount or 0) for e in period_expenses))
+    net_profit = _round_money(period_revenue - total_expenses)
+    margin_pct = _round_money(net_profit / period_revenue * 100) if period_revenue else 0.0
     health_text, health_level = _health_label(margin_pct, net_profit)
 
-    period_expenses = tenant_query(Expense).filter(
-        Expense.expense_date >= df,
-        Expense.expense_date <= dt,
-    ).all()
     exp_buckets = _expense_buckets(period_expenses)
 
     tech_salaries_annual = _round_money(sum(
@@ -1063,8 +1088,8 @@ def get_financial_health_report(
     # إجمالي المصروفات المعروض = المسجّل + رواتب تقديرية إن وُجدت فقط عند غياب قيود رواتب
     if salary_addon:
         total_expenses = _round_money(total_expenses + salary_addon)
-        net_profit = _round_money(total_revenue - total_expenses)
-        margin_pct = _round_money(net_profit / total_revenue * 100) if total_revenue else 0.0
+        net_profit = _round_money(period_revenue - total_expenses)
+        margin_pct = _round_money(net_profit / period_revenue * 100) if period_revenue else 0.0
         health_text, health_level = _health_label(margin_pct, net_profit)
     expenses_for_pct = max(total_expenses, maintenance_total + other_expenses) or 1.0
     maintenance_costs = {
@@ -1180,7 +1205,7 @@ def get_financial_health_report(
         health_level=health_level,
         margin_pct=margin_pct,
         net_profit=net_profit,
-        total_revenue=total_revenue,
+        total_revenue=period_revenue,
         total_expenses=total_expenses,
         maint=maintenance_costs,
         pricing=pricing,
@@ -1213,7 +1238,15 @@ def get_financial_health_report(
         'date_to': dt.isoformat(),
         'period_label': period_label,
         'summary': {
-            'revenue': total_revenue,
+            'revenue': period_revenue_earned,
+            'revenue_earned': period_revenue_earned,
+            'revenue_collected': period_revenue_collected,
+            'revenue_unearned': period_revenue_unearned,
+            'revenue_registered_period': period_revenue_registered,
+            'revenue_all_time': all_rev_summary['total'],
+            'revenue_period': period_revenue_earned,
+            'revenue_count': all_rev_summary['count'],
+            'revenue_period_count': rev_summary['count'],
             'expenses': total_expenses,
             'profit': net_profit,
             'margin_pct': margin_pct,
@@ -1238,10 +1271,272 @@ def get_financial_health_report(
     }
 
 
+def _contract_overlaps_period(contract, period_start, period_end):
+    start = getattr(contract, 'start_date', None)
+    end = getattr(contract, 'end_date', None)
+    if not start or not end:
+        return False
+    return start <= period_end and end >= period_start
+
+
+def _count_completed_visits_for_contract(contract, period_start, period_end, MaintenanceVisit):
+    from sqlalchemy import and_, or_
+
+    c_start = getattr(contract, 'start_date', None) or period_start
+    c_end = getattr(contract, 'end_date', None) or period_end
+    visit_from = max(period_start, c_start)
+    visit_to = min(period_end, c_end)
+    if visit_to < visit_from:
+        return 0
+
+    elev_ids = [
+        int(ce.elevator_id) for ce in (contract.elevators or [])
+        if getattr(ce, 'elevator_id', None)
+    ]
+    q = tenant_query(MaintenanceVisit).filter(
+        MaintenanceVisit.visit_date >= visit_from,
+        MaintenanceVisit.visit_date <= visit_to,
+        MaintenanceVisit.status == 'مكتملة',
+    )
+    if elev_ids:
+        q = q.filter(or_(
+            MaintenanceVisit.contract_id == contract.id,
+            and_(
+                MaintenanceVisit.contract_id.is_(None),
+                MaintenanceVisit.elevator_id.in_(elev_ids),
+            ),
+        ))
+    else:
+        q = q.filter(MaintenanceVisit.contract_id == contract.id)
+    return q.count()
+
+
+def get_customer_profitability_report(
+    customer_id: int,
+    db,
+    Customer,
+    Revenue,
+    Expense,
+    Contract,
+    Technician,
+    Elevator,
+    MaintenanceVisit,
+    PartsBilling,
+    year=None,
+    date_from=None,
+    date_to=None,
+    today=None,
+    contract_status_fn=None,
+):
+    """ربحية عميل: إيرادات محصّلة − تكلفة تشغيل تقديرية (نفس منطق الصحة المالية)."""
+    from customer_billing import COLLECTED_REVENUE_STATUSES
+
+    customer = tenant_get_or_404(Customer, customer_id)
+
+    if today is None:
+        today = date.today()
+
+    df = _parse_report_date(date_from)
+    dt = _parse_report_date(date_to)
+    if df is None and dt is None and year is not None:
+        year = int(year)
+        df = date(year, 1, 1)
+        dt = date(year, 12, 31)
+    elif df is None and dt is None:
+        df = date(today.year, 1, 1)
+        dt = today
+    else:
+        if df is None:
+            df = date(today.year, 1, 1)
+        if dt is None:
+            dt = today
+    if dt < df:
+        df, dt = dt, df
+
+    org_health = get_financial_health_report(
+        db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit,
+        year=year, date_from=df, date_to=dt, today=today,
+        contract_status_fn=contract_status_fn,
+    )
+    pricing = org_health.get('pricing') or {}
+    cost_per_visit = float(pricing.get('cost_per_visit') or 0)
+    active_org_contracts = max(int(pricing.get('active_contracts') or 0), 1)
+    fixed_per_contract = _round_money(float(pricing.get('fixed_cost') or 0) / active_org_contracts)
+
+    revenues = (
+        tenant_query(Revenue)
+        .filter(
+            Revenue.customer_id == customer_id,
+            Revenue.revenue_date >= df,
+            Revenue.revenue_date <= dt,
+            Revenue.status.in_(COLLECTED_REVENUE_STATUSES),
+        )
+        .order_by(Revenue.revenue_date.asc(), Revenue.id.asc())
+        .all()
+    )
+
+    rev_buckets = {'renewed': 0.0, 'parts': 0.0, 'new': 0.0, 'other': 0.0}
+    for r in revenues:
+        key = _classify_revenue(r.revenue_type)
+        rev_buckets[key] += float(r.total or 0)
+    revenue_total = _round_money(sum(rev_buckets.values()))
+    revenue_contracts = _round_money(rev_buckets['renewed'] + rev_buckets['new'])
+    revenue_parts = _round_money(rev_buckets['parts'])
+    revenue_other = _round_money(rev_buckets['other'])
+
+    parts_rows = (
+        tenant_query(PartsBilling)
+        .filter(
+            PartsBilling.customer_id == customer_id,
+            PartsBilling.billing_date >= df,
+            PartsBilling.billing_date <= dt,
+        )
+        .order_by(PartsBilling.billing_date.asc(), PartsBilling.id.asc())
+        .all()
+    )
+    parts_cost = _round_money(sum(float(p.cost_price or 0) for p in parts_rows))
+    parts_sell = _round_money(sum(float(p.sell_price or 0) for p in parts_rows))
+    parts_profit = _round_money(sum(float(p.profit or 0) for p in parts_rows))
+
+    customer_contracts = (
+        tenant_query(Contract)
+        .filter_by(customer_id=customer_id)
+        .order_by(Contract.start_date.asc(), Contract.id.asc())
+        .all()
+    )
+    contracts_in_period = []
+    for c in customer_contracts:
+        if (c.status or '') == 'ملغي':
+            continue
+        st = contract_status_fn(c) if contract_status_fn else (c.status or '')
+        if st not in ('نشط', 'على وشك الانتهاء'):
+            continue
+        if not _contract_overlaps_period(c, df, dt):
+            continue
+        contracts_in_period.append(c)
+
+    elev_ids = [
+        int(e.id) for e in tenant_query(Elevator).filter_by(customer_id=customer_id).all()
+    ]
+    visits_done = 0
+    if elev_ids:
+        visits_done = tenant_query(MaintenanceVisit).filter(
+            MaintenanceVisit.visit_date >= df,
+            MaintenanceVisit.visit_date <= dt,
+            MaintenanceVisit.status == 'مكتملة',
+            MaintenanceVisit.elevator_id.in_(elev_ids),
+        ).count()
+
+    contract_rows = []
+    visit_cost_total = 0.0
+    fixed_cost_total = 0.0
+    for c in contracts_in_period:
+        c_st = contract_status_fn(c) if contract_status_fn else (c.status or '')
+        c_visits = _count_completed_visits_for_contract(c, df, dt, MaintenanceVisit)
+        c_visit_cost = _round_money(cost_per_visit * c_visits)
+        c_fixed = fixed_per_contract
+        c_cost = _round_money(c_visit_cost + c_fixed)
+        c_revenue = _round_money(
+            sum(float(r.total or 0) for r in revenues if int(r.contract_id or 0) == int(c.id))
+        )
+        c_profit = _round_money(c_revenue - c_cost)
+        c_margin = _round_money(c_profit / c_revenue * 100) if c_revenue else 0.0
+        visit_cost_total += c_visit_cost
+        fixed_cost_total += c_fixed
+        contract_rows.append({
+            'id': c.id,
+            'code': c.code,
+            'type': c.contract_type or '',
+            'status': c_st,
+            'start': str(c.start_date or ''),
+            'end': str(c.end_date or ''),
+            'elevators': len(c.elevators or []),
+            'revenue': c_revenue,
+            'visits_done': c_visits,
+            'visit_cost': c_visit_cost,
+            'fixed_cost': c_fixed,
+            'total_cost': c_cost,
+            'net_profit': c_profit,
+            'margin_pct': c_margin,
+        })
+
+    if not contracts_in_period and visits_done:
+        visit_cost_total = _round_money(cost_per_visit * visits_done)
+
+    visit_cost_total = _round_money(visit_cost_total)
+    fixed_cost_total = _round_money(fixed_cost_total)
+    total_cost = _round_money(visit_cost_total + fixed_cost_total)
+    net_profit = _round_money(revenue_total - total_cost)
+    margin_pct = _round_money(net_profit / revenue_total * 100) if revenue_total else 0.0
+    health_text, health_level = _health_label(margin_pct, net_profit)
+
+    revenue_without_contract = _round_money(
+        sum(float(r.total or 0) for r in revenues if not r.contract_id)
+    )
+
+    contract_codes = {int(c.id): c.code for c in customer_contracts}
+
+    revenue_lines = [{
+        'date': str(r.revenue_date or ''),
+        'code': r.code,
+        'type': r.revenue_type or 'إيراد',
+        'contract': contract_codes.get(int(r.contract_id), '—') if r.contract_id else '—',
+        'amount': _round_money(r.total),
+        'notes': (r.notes or '')[:120],
+    } for r in revenues]
+
+    period_label = f'{df.isoformat()} → {dt.isoformat()}'
+
+    return {
+        'customer_id': customer_id,
+        'customer_code': customer.code,
+        'customer_name': customer.name,
+        'customer_phone': customer.phone or '',
+        'customer_city': customer.city or '',
+        'date_from': df.isoformat(),
+        'date_to': dt.isoformat(),
+        'period_label': period_label,
+        'summary': {
+            'revenue_total': revenue_total,
+            'revenue_contracts': revenue_contracts,
+            'revenue_parts': revenue_parts,
+            'revenue_other': revenue_other,
+            'revenue_without_contract': revenue_without_contract,
+            'visit_cost': visit_cost_total,
+            'fixed_cost': fixed_cost_total,
+            'total_cost': total_cost,
+            'net_profit': net_profit,
+            'margin_pct': margin_pct,
+            'health': health_text,
+            'health_level': health_level,
+            'visits_done': visits_done,
+            'active_contracts': len(contracts_in_period),
+            'elevators': len(elev_ids),
+            'parts_cost': parts_cost,
+            'parts_sell': parts_sell,
+            'parts_profit': parts_profit,
+            'cost_per_visit': _round_money(cost_per_visit),
+            'fixed_per_contract': fixed_per_contract,
+            'revenue_count': len(revenues),
+        },
+        'contracts': contract_rows,
+        'revenue_lines': revenue_lines,
+        'parts_count': len(parts_rows),
+        'methodology': (
+            'التكلفة التشغيلية تقديرية: متوسط تكلفة الزيارة من مصروفات المؤسسة للفترة '
+            '× زيارات العميل المكتملة، مضافاً لها حصة ثابتة لكل عقد نشط (رواتب، أسطول، مصاريف عامة). '
+            'ربح القطع من سجلات قطع الغيار (سعر البيع − التكلفة). '
+            'للمقارنة مع تقرير الصحة المالية على مستوى المؤسسة.'
+        ),
+        'generated_at': today.isoformat(),
+    }
+
+
 REPORT_FETCHERS = {
     'report-clients': lambda ctx: get_report_clients(ctx['db'], ctx['Customer'], ctx['contract_display_status']),
     'report-elevators': lambda ctx: get_report_elevators(ctx['db'], ctx['Elevator']),
-    'report-contracts': lambda ctx: get_report_contracts(ctx['db'], ctx['Contract']),
+    'report-contracts': lambda ctx: get_report_contracts(
+        ctx['db'], ctx['Contract'], ctx['contract_display_status']),
     'report-technicians': lambda ctx: get_report_technicians(ctx['db'], ctx['Technician']),
     'report-maintenance': lambda ctx: get_report_visits(ctx['db'], ctx['MaintenanceVisit']),
     'report-faults': lambda ctx: get_report_faults(ctx['db'], ctx['Fault']),

@@ -71,3 +71,48 @@ def test_quote_approve_starts_execution(client):
     assert page.status_code == 200
     body = page.data.decode('utf-8', errors='ignore')
     assert 'التنفيذ' in body or 'المهمة الحالية' in body
+
+
+def test_project_detail_shows_start_execution_for_approved_quote(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        ensure_project_card_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-APPR2',
+            name='عميل بدء تنفيذ',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-APPR2',
+            title='مشروع بدون تنفيذ',
+            status='عرض سعر',
+            customer_id=cust.id,
+        )
+        db.session.add(project)
+        db.session.flush()
+        q = InstallQuotation(
+            organization_id=org.id,
+            code='QT-APPR2',
+            project_id=project.id,
+            customer_id=cust.id,
+            quote_type='new',
+            status='مقبول',
+            approved_at=__import__('datetime').datetime.utcnow(),
+            grand_total=90000,
+        )
+        db.session.add(q)
+        db.session.flush()
+        project.accepted_quotation_id = q.id
+        db.session.commit()
+        pid = project.id
+
+    resp = client.get(f'/installation/projects/{pid}')
+    assert resp.status_code == 200
+    body = resp.data.decode('utf-8', errors='ignore')
+    assert 'بدء التنفيذ' in body
+    assert '+ إضافة عرض' in body

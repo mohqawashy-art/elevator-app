@@ -200,6 +200,60 @@ def build_compare_table(plans: list[dict[str, Any]] | None = None) -> list[dict[
     return rows
 
 
+# لقطات العرض التسويقي (/deck) — أهم الشاشات للجوال
+DECK_SHOTS: tuple[dict[str, str], ...] = (
+    {
+        'id': 'dashboard',
+        'file': 'images/marketing/screens/dashboard.png',
+        'title': 'لوحة التحكم',
+        'caption': 'رؤية تشغيلية في شاشة واحدة',
+        'desc': 'عملاء، مصاعد، عقود، زيارات، أعطال، ومستحقات — مع إجراءات سريعة.',
+    },
+    {
+        'id': 'map',
+        'file': 'images/marketing/screens/elevators-map.png',
+        'title': 'خريطة المصاعد',
+        'caption': 'أسطولك على الخريطة',
+        'desc': 'تتبع مواقع المصاعد وتصفية الحالة: نشط، صيانة، متوقف.',
+    },
+    {
+        'id': 'visits',
+        'file': 'images/marketing/screens/visits.png',
+        'title': 'زيارات الصيانة',
+        'caption': 'جدولة ميدانية واضحة',
+        'desc': 'جدول زيارات مع الفني والحالة والتاريخ وتقارير الصيانة.',
+    },
+    {
+        'id': 'customers',
+        'file': 'images/marketing/screens/customers.png',
+        'title': 'العملاء',
+        'caption': 'سجل العملاء والعقود',
+        'desc': 'بيانات العملاء، حالة العقد، عدد المصاعد، واستيراد Excel.',
+    },
+    {
+        'id': 'contracts',
+        'file': 'images/marketing/screens/contracts.png',
+        'title': 'العقود',
+        'caption': 'دورة حياة العقد كاملة',
+        'desc': 'عقود نشطة ومنتهية، تنبيهات التجديد، والمستحقات.',
+    },
+    {
+        'id': 'technicians',
+        'file': 'images/marketing/screens/technicians-list.png',
+        'title': 'الفريق الفني',
+        'caption': 'إدارة الفنيين والتخصص',
+        'desc': 'حالة كل فني، التخصص، الطوارئ، وتقارير الفريق.',
+    },
+    {
+        'id': 'warehouse',
+        'file': 'images/marketing/screens/warehouse.png',
+        'title': 'إدارة المخازن',
+        'caption': 'مخزون قطع المصاعد',
+        'desc': 'أصناف الرفع والجر وتنبيهات النفاد مع تقارير الأصناف.',
+    },
+)
+
+
 # لقطات حقيقية من النظام — للصفحة التعريفية
 LANDING_SHOTS: tuple[dict[str, str], ...] = (
     {

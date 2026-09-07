@@ -51,7 +51,7 @@ _db_store_disabled = False  # يُعطّل تلقائياً إن فشل الجد
 
 LOGIN_MAX_ATTEMPTS = int(os.environ.get('LIFTCORE_LOGIN_MAX_ATTEMPTS', '5'))
 LOGIN_WINDOW_SEC = int(os.environ.get('LIFTCORE_LOGIN_WINDOW_SEC', '900'))
-LOGIN_LOCKOUT_SEC = int(os.environ.get('LIFTCORE_LOGIN_LOCKOUT_SEC', '900'))
+LOGIN_LOCKOUT_SEC = int(os.environ.get('LIFTCORE_LOGIN_LOCKOUT_SEC', '90'))
 
 FIELD_PIN_MAX_ATTEMPTS = int(os.environ.get('LIFTCORE_FIELD_PIN_MAX_ATTEMPTS', '5'))
 FIELD_PIN_WINDOW_SEC = int(os.environ.get('LIFTCORE_FIELD_PIN_WINDOW_SEC', '900'))

@@ -8,6 +8,7 @@ var __lcReportDomPager = null;
   var __lcDashboardCharts = [];
   var __lcReportData = [];
   var __lcReportId = null;
+  var __lcReportSummary = null;
   var __lcDashboardCache = null;
   var __lcReportLoaded = false;
 
@@ -43,6 +44,66 @@ var __lcReportDomPager = null;
     'report-invoices': 'date',
     'report-parts': 'date',
     'report-stock': 'date',
+  };
+
+  /** فلاتر كل تقرير: id للـ select + حقل البيان */
+  var REPORT_FILTER_FIELDS = {
+    'report-clients': [
+      { id: 'f-city', field: 'city' },
+      { id: 'f-contract-status', field: 'contract_status' },
+      { id: 'f-status', field: 'status' },
+    ],
+    'report-elevators': [
+      { id: 'f-city', field: 'city' },
+      { id: 'f-elev-type', field: 'elev_type' },
+      { id: 'f-status', field: 'status' },
+    ],
+    'report-contracts': [
+      { id: 'f-contract-type', field: 'contract_type' },
+      { id: 'f-status', field: 'status' },
+      { id: 'f-inv-status', field: 'inv_status' },
+    ],
+    'report-technicians': [
+      { id: 'f-city', field: 'city' },
+      { id: 'f-specialization', field: 'specialization' },
+      { id: 'f-status', field: 'status' },
+    ],
+    'report-maintenance': [
+      { id: 'f-visit-type', field: 'visit_type' },
+      { id: 'f-priority', field: 'priority' },
+      { id: 'f-status', field: 'status' },
+    ],
+    'report-faults': [
+      { id: 'f-priority', field: 'priority' },
+      { id: 'f-status', field: 'status' },
+      { id: 'f-billed', field: 'billed' },
+    ],
+    'report-revenues': [
+      { id: 'f-revenue-type', field: 'revenue_type' },
+      { id: 'f-pay-method', field: 'pay_method' },
+      { id: 'f-status', field: 'status' },
+    ],
+    'report-expenses': [
+      { id: 'f-expense-type', field: 'expense_type' },
+      { id: 'f-pay-method', field: 'pay_method' },
+    ],
+    'report-invoices': [
+      { id: 'f-invoice-type', field: 'invoice_type' },
+      { id: 'f-pay-method', field: 'pay_method' },
+      { id: 'f-status', field: 'status' },
+    ],
+    'report-parts': [
+      { id: 'f-status', field: 'status' },
+      { id: 'f-pay-method', field: 'pay_method' },
+    ],
+    'report-inventory': [
+      { id: 'f-category', field: 'category' },
+      { id: 'f-order-status', field: 'order_status' },
+    ],
+    'report-stock': [
+      { id: 'f-direction', field: 'direction' },
+      { id: 'f-movement-type', field: 'movement_type' },
+    ],
   };
 
   var MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -262,6 +323,56 @@ function hookReportPagination(reset) {
 
   global.__lcSyncPrintFromScreen = __lcSyncPrintFromScreen;
 
+  var REVENUE_TYPE_FILTER_GROUPS = [
+    ['تجديد عقد', 'الدفعات المستحقة', 'عقد صيانة', 'صيانة', 'عقد ضمان', 'ضمان'],
+    ['عقد جديد', 'عقد تركيب', 'تركيب'],
+    ['عقد تحديث', 'تحديث'],
+  ];
+
+  function revenueTypeFilterMatch(selected, actual) {
+    var sel = String(selected || '').trim();
+    var act = String(actual == null ? '' : actual).trim();
+    if (!sel) return true;
+    if (act === sel) return true;
+    for (var i = 0; i < REVENUE_TYPE_FILTER_GROUPS.length; i++) {
+      var g = REVENUE_TYPE_FILTER_GROUPS[i];
+      if (g.indexOf(sel) >= 0 && g.indexOf(act) >= 0) return true;
+    }
+    return false;
+  }
+
+  function passesRevenueTypeFilter(actual) {
+    var sel = document.getElementById('f-revenue-type');
+    if (!sel) return true;
+    var vals = global.lcFilterValues ? global.lcFilterValues(sel) : (sel.value ? [sel.value] : []);
+    if (!vals.length) return true;
+    return vals.some(function (v) { return revenueTypeFilterMatch(v, actual); });
+  }
+
+  function passesRevenueStatusFilter(actual) {
+    var sel = document.getElementById('f-status');
+    if (!sel) return true;
+    return global.lcAllows(sel, actual, {
+      aliases: { 'محصل': ['محصّل'], 'غير محصل': ['غير محصّل'] },
+    });
+  }
+
+  function updateReportStats(reportId, data) {
+    if (reportId === 'report-revenues' && __lcReportSummary) {
+      var s = __lcReportSummary;
+      var sar = ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>';
+      setStatValues([
+        fmtNum(s.total) + sar,
+        fmtNum(s.collected) + sar,
+        fmtNum(s.pending) + sar,
+        fmtNum(s.count),
+      ]);
+      return;
+    }
+    var statsData = (__lcReportData && __lcReportData.length) ? __lcReportData : data;
+    setStatValues(computeReportStats(reportId, statsData));
+  }
+
   function computeReportStats(reportId, data) {
     var today = new Date();
     var month = today.getMonth() + 1;
@@ -288,12 +399,7 @@ function hookReportPagination(reset) {
         ];
       case 'report-contracts': {
         var active = data.filter(function (r) { return r.status === 'نشط'; }).length;
-        var expiring = data.filter(function (r) {
-          if (!r.end_date) return false;
-          var d = new Date(r.end_date);
-          var diff = (d - today) / 86400000;
-          return diff >= 0 && diff <= 30;
-        }).length;
+        var expiring = data.filter(function (r) { return r.status === 'على وشك الانتهاء'; }).length;
         return [
           fmtNum(data.length),
           fmtNum(active),
@@ -327,8 +433,12 @@ function hookReportPagination(reset) {
         ];
       case 'report-revenues': {
         var totalRev = sumField('total');
-        var collected = data.filter(function (r) { return r.status === 'محصّل'; }).reduce(function (s, r) { return s + (r.total || 0); }, 0);
-        var pending = data.filter(function (r) { return r.status === 'معلق'; }).reduce(function (s, r) { return s + (r.total || 0); }, 0);
+        var collected = data.filter(function (r) {
+          return isCollectedRevenueStatus(r.status);
+        }).reduce(function (s, r) { return s + (r.total || 0); }, 0);
+        var pending = data.filter(function (r) {
+          return isPendingRevenueStatus(r.status);
+        }).reduce(function (s, r) { return s + (r.total || 0); }, 0);
         return [
           fmtNum(totalRev) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>',
           fmtNum(collected) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span>',
@@ -396,13 +506,9 @@ function hookReportPagination(reset) {
     }
   }
 
-  function updateReportStats(reportId, data) {
-    setStatValues(computeReportStats(reportId, data));
-  }
-
   function populateFilterSelects(reportId, data) {
     var card = document.querySelector('.filter-card');
-    if (!card || !data.length) return;
+    if (!card) return;
     var selects = card.querySelectorAll('select');
     if (!selects.length) return;
 
@@ -416,42 +522,39 @@ function hookReportPagination(reset) {
       }).sort();
     }
 
-    var cityIdx = -1;
-    var statusIdx = -1;
-    if (reportId === 'report-clients') {
-      cityIdx = 0;
-      if (selects[1]) selects[1].id = 'f-contract-status';
-      if (selects[2]) selects[2].id = 'f-status';
-    } else if (reportId === 'report-elevators') {
-      cityIdx = 0;
-      if (selects[1]) selects[1].id = 'f-status';
-    } else if (reportId === 'report-contracts') {
-      if (selects[0]) selects[0].id = 'f-status';
-      if (selects[1]) selects[1].id = 'f-inv-status';
-    } else if (reportId === 'report-faults' || reportId === 'report-maintenance') {
-      if (selects[0]) selects[0].id = 'f-status';
-    }
-
-    if (cityIdx >= 0 && selects[cityIdx] && !selects[cityIdx].dataset.liveReady) {
-      var cities = unique(data.map(function (r) { return r.city; }));
-      selects[cityIdx].id = 'f-city';
-      selects[cityIdx].innerHTML = '<option value="">الكل</option>' + cities.map(function (c) {
-        return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
-      }).join('');
-      selects[cityIdx].dataset.liveReady = '1';
-    }
-
-    ['f-status', 'f-contract-status', 'f-inv-status'].forEach(function (id) {
-      var sel = document.getElementById(id);
+    function fillSelect(sel, field, staticOptions) {
       if (!sel || sel.dataset.liveReady) return;
-      var field = id === 'f-contract-status' ? 'contract_status' : (id === 'f-inv-status' ? 'inv_status' : 'status');
-      var vals = unique(data.map(function (r) { return r[field]; }));
-      if (!vals.length) return;
+      var fromData = (data || []).map(function (r) { return r[field]; });
+      var vals = unique(
+        (staticOptions && staticOptions.length ? staticOptions.concat(fromData) : fromData)
+      );
       sel.innerHTML = '<option value="">الكل</option>' + vals.map(function (v) {
         return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
       }).join('');
       sel.dataset.liveReady = '1';
-    });
+    }
+
+    var cfg = REPORT_FILTER_FIELDS[reportId];
+    if (cfg) {
+      cfg.forEach(function (item, i) {
+        var sel = selects[i];
+        if (!sel) return;
+        if (!sel.id) sel.id = item.id;
+        if (sel.dataset.lcStaticOptions === '1') {
+          var staticOpts = global.__LC_REVENUE_TYPE_OPTIONS;
+          if (reportId === 'report-revenues' && item.field === 'revenue_type' && staticOpts) {
+            fillSelect(sel, item.field, staticOpts);
+          } else if (!sel.dataset.liveReady) {
+            fillSelect(sel, item.field, Array.prototype.map.call(sel.options || [], function (o) {
+              return o.value;
+            }).filter(function (v) { return v; }));
+          }
+          return;
+        }
+        if (!data || !data.length) return;
+        fillSelect(sel, item.field);
+      });
+    }
 
     selects.forEach(function (sel) {
       if (global.LiftCoreFilter) LiftCoreFilter.upgrade(sel);
@@ -466,6 +569,25 @@ function hookReportPagination(reset) {
     }
   }
 
+  function isCollectedRevenueStatus(status) {
+    var s = String(status || '').trim();
+    return s === 'محصّل' || s === 'محصل' || s === 'مدفوع' || s === 'مدفوعة';
+  }
+
+  function isPendingRevenueStatus(status) {
+    var s = String(status || '').trim();
+    return s === 'معلق' || s === 'غير محصّل' || s === 'غير محصل';
+  }
+
+  function passesFieldFilter(id, actual) {
+    var sel = document.getElementById(id);
+    if (!sel) return true;
+    var actualNorm = String(actual == null ? '' : actual).trim();
+    if (global.lcAllows) return global.lcAllows(sel, actualNorm);
+    if (!sel.value) return true;
+    return actualNorm === String(sel.value).trim();
+  }
+
   function rowPassesFilters(reportId, row) {
     var searchEl = document.getElementById('f-search');
     var q = searchEl ? searchEl.value.trim() : '';
@@ -477,21 +599,22 @@ function hookReportPagination(reset) {
       if (!hit) return false;
     }
 
-    var citySel = document.getElementById('f-city');
-    if (citySel && global.lcAllows && !global.lcAllows(citySel, row.city)) return false;
-    if (citySel && !global.lcAllows && citySel.value && row.city !== citySel.value) return false;
-
-    var statusSel = document.getElementById('f-status');
-    if (statusSel && global.lcAllows && !global.lcAllows(statusSel, row.status)) return false;
-    if (statusSel && !global.lcAllows && statusSel.value && row.status !== statusSel.value) return false;
-
-    var contractSel = document.getElementById('f-contract-status');
-    if (contractSel && global.lcAllows && !global.lcAllows(contractSel, row.contract_status)) return false;
-    if (contractSel && !global.lcAllows && contractSel.value && row.contract_status !== contractSel.value) return false;
-
-    var invSel = document.getElementById('f-inv-status');
-    if (invSel && global.lcAllows && !global.lcAllows(invSel, row.inv_status)) return false;
-    if (invSel && !global.lcAllows && invSel.value && row.inv_status !== invSel.value) return false;
+    var filters = REPORT_FILTER_FIELDS[reportId];
+    if (filters) {
+      for (var fi = 0; fi < filters.length; fi++) {
+        var field = filters[fi].field;
+        var val = row[field];
+        if (reportId === 'report-revenues' && field === 'revenue_type') {
+          if (!passesRevenueTypeFilter(val)) return false;
+          continue;
+        }
+        if (reportId === 'report-revenues' && field === 'status') {
+          if (!passesRevenueStatusFilter(val)) return false;
+          continue;
+        }
+        if (!passesFieldFilter(filters[fi].id, val)) return false;
+      }
+    }
 
     var dateField = REPORT_DATE_FIELD[reportId];
     if (dateField && row[dateField]) {
@@ -564,13 +687,19 @@ function hookReportPagination(reset) {
     if (typeof global.filterTable === 'function') global.filterTable();
   }
 
-  function applyReportPayload(reportId, data) {
-    var rows = Array.isArray(data) ? data : [];
+  function applyReportPayload(reportId, data, summary) {
+    var rows = data;
+    if (data && !Array.isArray(data) && data.rows) {
+      summary = data.summary || summary;
+      rows = data.rows;
+    }
+    rows = Array.isArray(rows) ? rows : [];
     if (reportId === 'report-maintenance' || reportId === 'report-faults' || reportId === 'report-elevators') {
       rows = naturalCodeSortRows(rows, 'code');
     }
     __lcReportData = rows;
     __lcReportId = reportId;
+    __lcReportSummary = summary || null;
     __lcReportLoaded = true;
     populateFilterSelects(reportId, __lcReportData);
     installLiveFilterTable(reportId);
@@ -1068,7 +1197,8 @@ function hookReportPagination(reset) {
     if (!apiUrl) return;
     fetch(apiUrl)
       .then(function (r) { return r.json(); })
-      .then(function (rows) {
+      .then(function (payload) {
+        var rows = Array.isArray(payload) ? payload : (payload.rows || []);
         download(rows.map(function (row) { return reportRowCells(reportId, row); }));
       });
   }
@@ -1135,8 +1265,9 @@ function hookReportPagination(reset) {
 
     var bootId = global.__LC_REPORT_ID;
     var bootRows = global.__LC_REPORT_ROWS;
+    var bootSummary = global.__LC_REPORT_SUMMARY;
     if (bootId && REPORT_API[bootId] && Array.isArray(bootRows)) {
-      applyReportPayload(bootId, bootRows);
+      applyReportPayload(bootId, bootRows, bootSummary);
     } else {
       var reportId = document.body && document.body.getAttribute('data-report-id');
       if (reportId && REPORT_API[reportId]) {

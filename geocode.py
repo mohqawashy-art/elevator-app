@@ -31,10 +31,18 @@ def _geocode_google(query: str, *, api_key: str) -> tuple[float, float, str] | N
     if data.get("status") != "OK" or not data.get("results"):
         return None
 
-    result = data["results"][0]
-    loc = result["geometry"]["location"]
+    chosen = None
+    for result in data["results"]:
+        loc_type = ((result.get("geometry") or {}).get("location_type") or "").upper()
+        if loc_type in ("ROOFTOP", "RANGE_INTERPOLATED"):
+            chosen = result
+            break
+    if chosen is None:
+        return None
+
+    loc = chosen["geometry"]["location"]
     lat, lng = float(loc["lat"]), float(loc["lng"])
-    return lat, lng, _maps_url(lat, lng, result.get("place_id"))
+    return lat, lng, _maps_url(lat, lng, chosen.get("place_id"))
 
 
 def _geocode_nominatim(query: str) -> tuple[float, float, str] | None:
@@ -110,7 +118,7 @@ def geocode_customer(
         address=query_address if query_address is not None else (customer.address or ""),
         city=customer.city or "",
         district=customer.district or "",
-        prefer_nominatim=True,
+        prefer_nominatim=False,
     )
     if delay:
         time.sleep(max(delay, 0.25))

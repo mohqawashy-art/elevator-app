@@ -2,7 +2,7 @@
 # نشر فرع التجربة فقط. لا يلمس checkout أو خدمة أو قاعدة الإنتاج.
 set -euo pipefail
 
-BRANCH="staging/department-hubs"
+BRANCH="${STAGING_BRANCH:-staging/department-hubs}"
 REPO_URL="${REPO_URL:-https://github.com/mohqawashy-art/elevator-app.git}"
 ROOT="/opt/liftcore-staging"
 MIRROR="$ROOT/repository.git"
@@ -69,12 +69,22 @@ PGPASSWORD="${PGPASSWORD:?PGPASSWORD missing}" pg_dump \
   --format=custom --file="$BACKUP"
 
 cd "$RELEASE"
-"$VENV/bin/python" deploy/migrate_db.py
+sudo -u liftcore-staging env \
+  DATABASE_URL="$DATABASE_URL" \
+  LIFTCORE_ENV_FILE="$ENV_FILE" \
+  LIFTCORE_ALEMBIC=1 \
+  "$VENV/bin/python" deploy/migrate_db.py
 if [ -f scripts/init_install_module.py ]; then
-  "$VENV/bin/python" scripts/init_install_module.py
+  sudo -u liftcore-staging env \
+    DATABASE_URL="$DATABASE_URL" \
+    LIFTCORE_ENV_FILE="$ENV_FILE" \
+    "$VENV/bin/python" scripts/init_install_module.py
 fi
-if [ -f "$SCRIPT_DIR/seed_staging.py" ]; then
-  "$VENV/bin/python" "$SCRIPT_DIR/seed_staging.py"
+if [ -f "$RELEASE/deploy/staging/seed_staging.py" ]; then
+  sudo -u liftcore-staging env \
+    DATABASE_URL="$DATABASE_URL" \
+    LIFTCORE_ENV_FILE="$ENV_FILE" \
+    "$VENV/bin/python" "$RELEASE/deploy/staging/seed_staging.py"
 fi
 
 ln -sfn "$RELEASE" "$CURRENT"

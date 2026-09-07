@@ -2,9 +2,9 @@
 from datetime import datetime, timedelta
 
 from app import app, db, hash_password
-from entitlements import assert_capacity, resolve_entitlements, upsert_org_addon
+from entitlements import assert_capacity, resolve_entitlements, set_custom_package, upsert_org_addon
 from models import Elevator, Organization, Settings, Technician, User
-from plan_catalog import PLAN_CATALOG, normalize_plan
+from plan_catalog import CUSTOM_PLAN_KEY, PLAN_CATALOG, normalize_plan
 
 
 def _ctx():
@@ -58,6 +58,39 @@ def test_basic_limits_and_addon_elevators():
         ent3 = resolve_entitlements(org=org)
         assert ent3['features']['inventory'] is True
         assert ent3['features']['excel_import'] is True
+
+
+def test_custom_package_features_and_limits():
+    gen = _ctx()
+    org_id = next(gen)
+    with app.app_context():
+        org = db.session.get(Organization, org_id)
+        result = set_custom_package(
+            org,
+            features={
+                'maintenance_core': True,
+                'inventory': True,
+                'purchasing': False,
+                'advanced_finance': False,
+                'excel_import': False,
+                'installation': False,
+                'zatca_phase2': False,
+                'priority_support': False,
+            },
+            elevators=25,
+            office_users=4,
+            technicians=3,
+            storage_gb=5,
+            amount=750.0,
+            cycle='monthly',
+        )
+        assert result['ok']
+        assert org.plan == CUSTOM_PLAN_KEY
+        ent = resolve_entitlements(org=org)
+        assert ent['is_custom']
+        assert ent['features']['inventory'] is True
+        assert ent['features']['purchasing'] is False
+        assert ent['limits']['elevators'] == 25
 
 
 def test_assert_capacity_blocks_when_full():

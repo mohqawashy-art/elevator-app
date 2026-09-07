@@ -4,30 +4,42 @@
 
 set -euo pipefail
 
-for try in "$HOME/liftcore/elevator-app" "/var/www/elevator-app"; do
-  if [ -d "$try/.git" ]; then APP_DIR="$try"; break; fi
-done
-APP_DIR="${APP_DIR:-$HOME/liftcore/elevator-app}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=_common.sh
+source "$SCRIPT_DIR/_common.sh"
+
+DEFAULT_ROOT="/home/info/liftcore/elevator-app"
+
+if [ -n "${APP_DIR:-}" ] && [ -d "$APP_DIR/.git" ]; then
+  :
+else
+  APP_DIR=""
+  for try in "$DEFAULT_ROOT" "$HOME/liftcore/elevator-app" "/var/www/elevator-app"; do
+    if [ -d "$try/.git" ]; then APP_DIR="$try"; break; fi
+  done
+fi
+APP_DIR="${APP_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 echo "==> LiftCore server update: $APP_DIR"
 cd "$APP_DIR"
 
 echo "==> قبل:"
-git log -1 --oneline 2>/dev/null || echo "(no git)"
+lc_git "$APP_DIR" log -1 --oneline 2>/dev/null || echo "(no git)"
 
 echo "==> جلب آخر main من GitHub"
-git fetch origin main
+lc_git "$APP_DIR" fetch origin main
 
-if ! git pull --ff-only origin main 2>/dev/null; then
+if ! lc_git "$APP_DIR" pull --ff-only origin main 2>/dev/null; then
   echo "==> pull فشل — مزامنة إجبارية"
-  git reset --hard origin/main
+  lc_git "$APP_DIR" reset --hard origin/main
 fi
 
 echo "==> بعد:"
-git log -1 --oneline
+lc_git "$APP_DIR" log -1 --oneline
 test -d installation && echo "  installation/: OK" || { echo "  ERROR: installation/ missing"; exit 1; }
 
 echo "==> تشغيل gcp_update.sh"
+export APP_DIR
 bash deploy/gcp_update.sh
 
 echo ""

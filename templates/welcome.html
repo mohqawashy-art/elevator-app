@@ -1,7 +1,9 @@
+{% set splash_lock_theme = true %}
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="premium">
 <head>
 <meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,12 +20,13 @@
   --hair:rgba(201,161,74,.14);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{
+html,html[data-theme]{height:100%;background:#070a10;color-scheme:dark}
+html[data-theme] body,body{
   font-family:'Tajawal',sans-serif;
+  height:100%;
   background:radial-gradient(140% 100% at 50% 0%, var(--bg-2), var(--bg) 60%);
   color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;
-  overflow:hidden;position:relative;
+  overflow:hidden;position:relative;color-scheme:dark;
 }
 
 /* حُبيبات خفيفة جداً (film grain) تعطي إحساساً سينمائياً */

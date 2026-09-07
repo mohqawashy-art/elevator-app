@@ -1,7 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — تقرير الداشبورد</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -420,6 +421,6 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 function setLang(l){if(window.LiftCoreI18n&&window.LiftCoreI18n.setLang){window.LiftCoreI18n.setLang(l);return;}document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');var a=document.getElementById('btn-ar'),e=document.getElementById('btn-en');if(a)a.classList.toggle('active',l==='ar');if(e)e.classList.toggle('active',l==='en');}
 </script>
 <script>window.__LC_DASHBOARD_YEAR = {{ current_year|default(2026) }};</script>
-<script src="{{ url_for('static', filename='reports_live.js') }}?v=10"></script>
+<script src="{{ url_for('static', filename='reports_live.js') }}?v=11"></script>
 </body>
 </html>

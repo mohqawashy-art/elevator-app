@@ -6,6 +6,8 @@ from chart_of_accounts import (
     delete_account,
     ensure_chart_for_org,
     ensure_chart_schema,
+    infer_expense_type,
+    normalize_expense_type_label,
     resolve_expense_account_id,
     resolve_revenue_account_id,
     seed_root_groups_for_org,
@@ -40,8 +42,31 @@ def test_ensure_chart_creates_default_accounts(client):
             .count()
         )
         assert count == len(DEFAULT_CHART)
+        box = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1110')
+            .first()
+        )
+        bank = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1120')
+            .first()
+        )
+        assert box.map_key == 'cash'
+        assert bank.map_key == 'bank'
         # ثانية لا تكرر
         assert ensure_chart_for_org(org.id) == 0
+
+
+def test_infer_expense_type_from_description(client):
+    assert infer_expense_type('وقود فني مكة', None, 'متنوعة') == 'محروقات'
+    assert infer_expense_type('تعبئة بنزين', None, '') == 'محروقات'
+    assert infer_expense_type('قطع غيار مصعد', None, 'محروقات') == 'قطع غيار'
+    assert infer_expense_type('رواتب شهر فبراير', None, '') == 'رواتب'
+    assert infer_expense_type('صيانة سيارات اسطول', None, '') == 'صيانة سيارات'
+    assert infer_expense_type('ضيافة عميل', None, '') == 'مصروفات متنوعة'
+    assert normalize_expense_type_label('وقود') == 'محروقات'
+    assert normalize_expense_type_label('ضيافة') == 'مصروفات متنوعة'
 
 
 def test_resolve_revenue_and_expense_map_keys(client):
@@ -59,6 +84,16 @@ def test_resolve_revenue_and_expense_map_keys(client):
         acc = db.session.get(Account, renew_id)
         assert acc and acc.code == '4120'
 
+        due_id = resolve_revenue_account_id('الدفعات المستحقة')
+        assert due_id == renew_id
+
+        install_id = resolve_revenue_account_id('عقد تركيب')
+        assert install_id == resolve_revenue_account_id('عقد جديد')
+
+        upgrade_id = resolve_revenue_account_id('عقد تحديث')
+        upgrade = db.session.get(Account, upgrade_id)
+        assert upgrade and upgrade.code == '4220'
+
         prior_id = resolve_revenue_account_id('عقد صيانة', 'تحصيل مالك سابق — قبل استلام جما')
         prior = db.session.get(Account, prior_id)
         assert prior and prior.code == '4910'
@@ -66,6 +101,20 @@ def test_resolve_revenue_and_expense_map_keys(client):
         fuel_id = resolve_expense_account_id('محروقات')
         fuel = db.session.get(Account, fuel_id)
         assert fuel and fuel.code == '6210'
+
+        misc_id = resolve_expense_account_id('مصروفات متنوعة')
+        misc = db.session.get(Account, misc_id)
+        assert misc and misc.code == '6910'
+        assert resolve_expense_account_id('ضيافة') == misc_id
+        assert resolve_expense_account_id('متنوعة') == misc_id
+
+        salary_id = resolve_expense_account_id('رواتب')
+        salary = db.session.get(Account, salary_id)
+        assert salary and salary.code == '6110'
+
+        other_rev_id = resolve_revenue_account_id('أخرى')
+        other_rev = db.session.get(Account, other_rev_id)
+        assert other_rev and other_rev.code == '4920'
 
 
 def test_create_custom_account_under_parent(client):
@@ -105,6 +154,35 @@ def test_create_custom_account_under_parent(client):
             assert False, 'expected duplicate code'
         except ValueError as exc:
             assert 'مستخدم' in str(exc)
+
+
+def test_relocate_cash_map_key_from_bank_to_cashbox(client):
+    with client.application.app_context():
+        org = Organization(slug='coa-reloc', name='نقل كاش', status='active')
+        db.session.add(org)
+        db.session.commit()
+        ensure_chart_for_org(org.id)
+        box = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1110')
+            .first()
+        )
+        bank = (
+            Account.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=org.id, code='1120')
+            .first()
+        )
+        box.map_key = None
+        bank.map_key = 'cash'
+        db.session.commit()
+        from flask import g
+        g.organization_id = org.id
+        g.organization = org
+        ensure_chart_for_org(org.id)
+        db.session.refresh(box)
+        db.session.refresh(bank)
+        assert box.map_key == 'cash'
+        assert bank.map_key == 'bank'
 
 
 def test_accounts_add_route_creates_account(client):

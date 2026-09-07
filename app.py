@@ -12,6 +12,7 @@ from models import VisitTechnician, FaultTechnician, WhatsAppInbox
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
 from models import SupplierQuoteRequest, SupplierQuoteRequestLine, RFQ_STATUSES
+from models import Supplier, SupplierPrice
 from models import ElevatorEstimate, ElevatorEstimateLine
 from elevator_estimate_calc import (
     calculate_lines, summarize_lines, MACHINE_TYPES, ELEV_TYPES,
@@ -33,21 +34,20 @@ import string
 
 def _load_env_file():
     """تحميل إعدادات المنصة — مرة واحدة لكل العملاء (LiftCore + جما + أي subdomain)."""
-    configured_path = (os.environ.get('LIFTCORE_ENV_FILE') or '').strip()
-    if configured_path:
-        # بيئات staging تستخدم ملفاً واحداً معزولاً ولا تقرأ أسرار الإنتاج.
-        paths = [configured_path]
-    else:
-        paths = [
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'),
-            '/home/info/liftcore/.env',
-            '/etc/liftcore/platform.env',
-        ]
+    paths = []
+    env_file = (os.environ.get('LIFTCORE_ENV_FILE') or '').strip()
+    if env_file:
+        paths.append(env_file)
+    paths.extend([
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'),
+        '/home/info/liftcore/.env',
+        '/etc/liftcore/platform.env',
+    ])
     for path in paths:
         if not os.path.isfile(path):
             continue
         # platform.env دائماً يغلب (أسرار الإنتاج)
-        override = bool(configured_path) or path.rstrip('/').endswith('platform.env')
+        override = path.rstrip('/').endswith('platform.env')
         try:
             with open(path, encoding='utf-8') as fh:
                 for raw in fh:
@@ -219,7 +219,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
     'coming_soon', 'pricing', 'product_landing', 'demo_request',
     'robots_txt', 'sitemap_xml', 'google_site_verification',
-    'ads_landing', 'ads_thanks', 'seo_elevator_management',
+    'ads_landing', 'ads_thanks', 'seo_elevator_management', 'marketing_deck',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
@@ -638,6 +638,56 @@ def enforce_auth():
         return jsonify({'error': 'يجب تسجيل الدخول'}), 401
     return redirect(url_for('login', next=request.path))
 
+
+def _plan_feature_ok(feature_key: str) -> bool:
+    """هل ميزة الباقة مفعّلة للمؤسسة الحالية؟"""
+    try:
+        from entitlements import has_feature
+        from tenant_scope import effective_organization_id
+        from models import Organization
+
+        oid = effective_organization_id()
+        if not oid:
+            return True
+        org = db.session.get(Organization, oid)
+        return has_feature(feature_key, org=org) if org else True
+    except Exception:
+        db.session.rollback()
+        return True
+
+
+@app.before_request
+def enforce_plan_features():
+    """يمنع الوصول لمسارات غير مفعّلة في باقة المؤسسة."""
+    from platform_admin import is_admin_host
+
+    if is_admin_host() or getattr(g, 'platform_admin_host', False):
+        return None
+    path = request.path or ''
+    if path.startswith('/field') or path.startswith('/api/field'):
+        return None
+    if not current_user():
+        return None
+    from entitlements import gate_request_plan_feature
+    from tenant_scope import effective_organization_id
+    from models import Organization
+
+    oid = effective_organization_id()
+    if not oid:
+        return None
+    org = db.session.get(Organization, oid)
+    if not org:
+        return None
+    gate = gate_request_plan_feature(path, org)
+    if gate.get('ok'):
+        return None
+    msg = gate.get('error') or 'هذه الميزة غير متاحة في باقتك.'
+    if path.startswith('/api/'):
+        return jsonify({'error': msg}), 403
+    flash(msg, 'warn')
+    return redirect(url_for('dashboard'))
+
+
 APP_VERSION = os.environ.get('LIFTCORE_VERSION', '4a0a9d8-auth')
 
 
@@ -780,18 +830,18 @@ ROLE_LABELS_EN = {
     'custom': 'Custom',
 }
 
-USER_THEMES = frozenset({'dark', 'light'})
+USER_THEMES = frozenset({'dark', 'light', 'report', 'premium'})
 
 USER_THEME_OPTIONS = (
     {'id': 'light', 'label_ar': 'فاتح', 'hint_ar': 'الوضع الافتراضي — أوضح للقراءة', 'swatch': 'swatch-light'},
     {'id': 'dark', 'label_ar': 'داكن', 'hint_ar': 'مناسب للإضاءة الخافتة', 'swatch': 'swatch-dark'},
+    {'id': 'report', 'label_ar': 'احترافي', 'hint_ar': 'كحلي وذهبي — مثل التقارير', 'swatch': 'swatch-report'},
+    {'id': 'premium', 'label_ar': 'LiftCore', 'hint_ar': 'أسود وذهبي — مثل شاشة الدخول', 'swatch': 'swatch-premium'},
 )
 
 
 def normalize_user_theme(value):
     theme = (value or 'light').strip()
-    if theme in ('report', 'premium'):
-        return 'light'
     return theme if theme in USER_THEMES else 'light'
 
 
@@ -942,6 +992,7 @@ def inject_global_template_vars():
                     portal for portal in visible_department_portals(
                         permission_ok=_perm_ok,
                         install_enabled=install_module_enabled(),
+                        feature_ok=_plan_feature_ok,
                         lang=lang,
                     )
                     if portal['slug'] == active_department
@@ -994,6 +1045,11 @@ def inject_global_template_vars():
         **support,
         'ui': lambda ar, en: en if lang == 'en' else ar,
     }
+
+
+@app.template_global()
+def has_plan_feature(feature_key: str) -> bool:
+    return _plan_feature_ok(feature_key)
 
 
 @app.template_global()
@@ -1111,6 +1167,8 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
     is_renewed = bool(getattr(c, '_is_renewed', False))
     if renewed_ids is not None and cid is not None:
         is_renewed = int(cid) in renewed_ids
+    total = _money_round(c.total or 0)
+    paid = _money_round(c.paid_amount or 0)
     return {
         'id': c.id,
         'code': c.code,
@@ -1134,10 +1192,10 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
         'value': _money_round(c.value or 0),
         'tax_pct': c.tax_pct or 15,
         'tax_amount': _money_round(c.tax_amount or 0),
-        'total': _money_round(c.total or 0),
+        'total': total,
+        'remaining': _money_round(max(total - paid, 0)),
         'pay_terms': c.payment_terms or '',
-        'install_warranty': getattr(c, 'install_warranty', None) or '',
-        'paid_amount': _money_round(c.paid_amount or 0),
+        'paid_amount': paid,
         'inv_status': c.invoice_status or 'غير مدفوع',
         'status': c.status or 'نشط',
         'renewed': is_renewed,
@@ -1147,39 +1205,21 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
         'city': c.city or '',
         'district': c.district or '',
         'address': c.address or '',
+        'lat': (c.lat or '') if hasattr(c, 'lat') else '',
+        'lng': (c.lng or '') if hasattr(c, 'lng') else '',
+        'maps_url': (c.maps_url or '') if hasattr(c, 'maps_url') else '',
         'notes': c.notes or '',
-        'file_url': upload_url(c.file_path),
-        'file_name': contract_file_display_name(c.file_path),
-        'cost_allocation': _contract_cost_allocation_js(c),
+        'file_url': _contract_js_primary_url(c),
+        'file_name': _contract_js_primary_name(c),
+        'files': _contract_js_files(c),
+        'has_file': _contract_has_files(c),
     }
-
-
-def _contract_cost_allocation_js(c):
-    """توزيع العقد + المستحق حتى اليوم مقابل المحصّل (صيانة فقط)."""
-    from contract_codes import is_installation_contract_type
-    from contract_cost_allocation import contract_cost_allocation, collection_gap_fields
-
-    if is_installation_contract_type(getattr(c, 'contract_type', None)):
-        return None
-
-    alloc = contract_cost_allocation(c)
-    paid = _money_round(c.paid_amount or 0)
-    accrued_to_date = 0.0
-    if c.start_date and c.end_date:
-        to_d = min(date.today(), c.end_date)
-        if to_d >= c.start_date:
-            td = contract_cost_allocation(c, period_from=c.start_date, period_to=to_d)
-            accrued_to_date = td.get('period_accrued') or 0
-    alloc['accrued_to_date'] = accrued_to_date
-    alloc.update(collection_gap_fields(accrued_to_date, paid))
-    return alloc
 
 
 def contract_customer_js_dict(c):
     return {
         'id': c.id,
         'name': c.name,
-        'name_en': c.name_en or '',
         'code': c.code,
         'city': c.city or '',
         'district': c.district or '',
@@ -1245,8 +1285,13 @@ def client_to_js_dict(c, *, scope: str | None = None):
     }
 
 
-def elevator_to_js_dict(e):
-    """تسلسل مصعد لـ JSON (مع علاقة العميل)."""
+def elevator_to_js_dict(e, *, site=None):
+    """تسلسل مصعد لـ JSON (مع علاقة العميل). site: (lat, lng, maps_url) إن وُجد."""
+    if site is None:
+        site = _elevator_site_coords_map([e]).get(e.id)
+    lat = lng = maps_url = ''
+    if site:
+        lat, lng, maps_url = site[0], site[1], site[2]
     return {
         'id': e.id,
         'code': e.code,
@@ -1280,6 +1325,9 @@ def elevator_to_js_dict(e):
         'address': e.address or '',
         'status': e.status,
         'notes': e.notes or '',
+        'lat': lat,
+        'lng': lng,
+        'maps_url': maps_url,
         'customer_lat': (e.customer.lat if e.customer else '') or '',
         'customer_lng': (e.customer.lng if e.customer else '') or '',
         'customer_status': ((e.customer.status or 'نشط') if e.customer else 'نشط'),
@@ -1297,8 +1345,9 @@ def expense_to_js_dict(e):
         'pay_method': e.payment_method or '',
         'amount': e.amount or 0,
         'reference': e.reference or '',
-        'proof_url': _upload_url_fast(e.proof_path) if getattr(e, 'proof_path', None) else '',
-        'has_proof': bool(getattr(e, 'proof_path', None)),
+        'proof_url': _fin_proof_js_primary_url(e),
+        'has_proof': _fin_proof_has(e),
+        'proofs': _fin_proof_js_items(e),
         'notes': e.notes or '',
         'created_by': created_by_display(e) or '—',
     }
@@ -1321,8 +1370,9 @@ def revenue_to_js_dict(r):
         'total': r.total or 0,
         'status': r.status or 'محصّل',
         'reference': r.reference or '',
-        'proof_url': _upload_url_fast(r.proof_path) if getattr(r, 'proof_path', None) else '',
-        'has_proof': bool(getattr(r, 'proof_path', None)),
+        'proof_url': _fin_proof_js_primary_url(r),
+        'has_proof': _fin_proof_has(r),
+        'proofs': _fin_proof_js_items(r),
         'notes': r.notes or '',
         'created_by': created_by_display(r) or '—',
     }
@@ -1521,7 +1571,9 @@ def _sqlite_legacy_schema_patches():
                 ('district', 'VARCHAR(100)'),
                 ('address', 'TEXT'),
                 ('paid_amount', 'FLOAT'),
-                ('install_warranty', 'VARCHAR(30)'),
+                ('lat', 'VARCHAR(20)'),
+                ('lng', 'VARCHAR(20)'),
+                ('maps_url', 'VARCHAR(500)'),
             ],
             'parts_billing': [
                 ('visit_id', 'INTEGER'), ('fault_id', 'INTEGER'), ('paid_amount', 'FLOAT'),
@@ -1692,14 +1744,6 @@ def _startup_schema_and_data_sync():
                 db.session.execute(text('ALTER TABLE revenues ADD COLUMN title VARCHAR(300)'))
                 db.session.commit()
                 app.logger.info('Added revenues.title column')
-        if 'contracts' in tables:
-            contract_cols = {c['name'] for c in insp.get_columns('contracts')}
-            if 'install_warranty' not in contract_cols:
-                db.session.execute(text(
-                    'ALTER TABLE contracts ADD COLUMN install_warranty VARCHAR(30)'
-                ))
-                db.session.commit()
-                app.logger.info('Added contracts.install_warranty column')
         if 'settings' in tables:
             settings_cols = {c['name'] for c in insp.get_columns('settings')}
             seal_columns = {
@@ -1737,6 +1781,20 @@ def _startup_schema_and_data_sync():
                 db.session.commit()
                 app.logger.info('Added elevator_estimates.%s column', col_name)
                 est_cols.add(col_name)
+        if 'contracts' in tables:
+            contract_cols = {c['name'] for c in insp.get_columns('contracts')}
+            for col_name, column_type in (
+                ('lat', 'VARCHAR(20)'),
+                ('lng', 'VARCHAR(20)'),
+                ('maps_url', 'VARCHAR(500)'),
+            ):
+                if col_name in contract_cols:
+                    continue
+                db.session.execute(text(
+                    f'ALTER TABLE contracts ADD COLUMN {col_name} {column_type}'
+                ))
+                db.session.commit()
+                app.logger.info('Added contracts.%s column', col_name)
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('settings/customers column ensure skip: %s', exc)
@@ -1764,6 +1822,12 @@ def _startup_schema_and_data_sync():
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Supplier RFQ schema ensure skip: %s', exc)
+    try:
+        from supplier_price_schema import ensure_supplier_price_schema
+        ensure_supplier_price_schema()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Supplier price schema ensure skip: %s', exc)
     try:
         from installation.schema import ensure_install_tenant_uniques
         ensure_install_tenant_uniques()
@@ -1825,6 +1889,7 @@ ALLOWED_FIN_PROOF_EXT = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 MAX_CONTRACT_FILE_BYTES = 10 * 1024 * 1024
 MAX_FIN_PROOF_BYTES = 10 * 1024 * 1024
 FIN_PROOF_UPLOAD_ROOT = os.path.join(app.root_path, 'static', 'uploads', 'financial_proofs')
+MAX_ATTACHMENT_FILES = 20
 
 # =============================================
 # Helper — توليد الكودات التلقائية
@@ -2493,6 +2558,7 @@ def home():
         departments=visible_department_portals(
             permission_ok=has_perm,
             install_enabled=install_module_enabled(),
+            feature_ok=_plan_feature_ok,
             lang=lang,
         ),
         home_ui=home_ui(lang),
@@ -2511,6 +2577,7 @@ def department_portal(department):
         for portal in visible_department_portals(
             permission_ok=has_perm,
             install_enabled=install_module_enabled(),
+            feature_ok=_plan_feature_ok,
             lang=lang,
         )
     }
@@ -2540,6 +2607,23 @@ def pricing():
 def product_landing():
     """مسار مباشر للصفحة التعريفية (مفيد من روابط الأسعار)."""
     return render_template('landing.html', **_pricing_context(seo_page='landing'))
+
+
+@app.route('/deck')
+def marketing_deck():
+    """عرض تسويقي متحرك للجوال — للمشاركة عبر واتساب."""
+    from marketing_site import DECK_SHOTS, marketing_seo_context
+
+    ctx = marketing_seo_context(page='landing')
+    ctx['deck_shots'] = DECK_SHOTS
+    ctx['page_title'] = 'LiftCore — عرض تعريفي'
+    ctx['page_description'] = 'شاهد LiftCore: برنامج إدارة المصاعد لشركات الصيانة في السعودية.'
+    ctx['og_image_url'] = url_for(
+        'static',
+        filename='images/liftcore-marketing-header-logo.png',
+        _external=True,
+    )
+    return render_template('marketing_deck.html', **ctx)
 
 
 @app.route('/برنامج-ادارة-المصاعد')
@@ -2591,7 +2675,11 @@ def _find_login_user(login_id):
         return None
     return tenant_query(User).filter(
         User.is_active.is_(True),
-        or_(User.username == login_id, db.func.lower(User.email) == login_id.lower()),
+        or_(
+            User.username == login_id,
+            User.full_name == login_id,
+            db.func.lower(User.email) == login_id.lower(),
+        ),
     ).first()
 
 
@@ -2648,7 +2736,11 @@ def _find_user_in_org(org_id: int, login_id: str):
     return User.query.filter(  # tenant: platform — org محدد صراحةً
         User.organization_id == org_id,
         User.is_active.is_(True),
-        or_(User.username == login_id, db.func.lower(User.email) == login_id.lower()),
+        or_(
+            User.username == login_id,
+            User.full_name == login_id,
+            db.func.lower(User.email) == login_id.lower(),
+        ),
     ).first()
 
 
@@ -3113,9 +3205,9 @@ def onboard_form(token):
     """فورم العميل عبر رابط دعوة لمرة واحدة — على نطاق المنصة فقط."""
     from liftcore_security import ensure_csrf_token
     from operator_onboarding import get_invite, invite_is_open, submit_invite_form
-    from tenant_signup import is_signup_host, require_signup_host
+    from tenant_signup import is_onboard_host, require_onboard_host
 
-    require_signup_host()
+    require_onboard_host()
     if session.get('user_id'):
         session.clear()
     ensure_csrf_token()
@@ -3134,7 +3226,7 @@ def onboard_form(token):
             success=False,
             closed='رابط الدعوة غير صالح أو منتهي. اطلب رابطاً جديداً من فريق LiftCore.',
             form={},
-            signup_host=is_signup_host(),
+            signup_host=is_onboard_host(),
         ), 404
 
     if request.method == 'POST':
@@ -3157,7 +3249,7 @@ def onboard_form(token):
         success=success,
         closed=closed,
         form=form,
-        signup_host=is_signup_host(),
+        signup_host=is_onboard_host(),
     )
 
 
@@ -4659,11 +4751,7 @@ def get_dashboard_stats():
     )
     overdue_count = len(overdue_invoices)
 
-    expiring_contracts = tenant_query(Contract).filter(
-        Contract.status == 'نشط',
-        Contract.end_date >= today,
-        Contract.end_date <= in_30_days,
-    ).order_by(Contract.end_date).all()
+    expiring_contracts = _contracts_expiring_display_status(today)
 
     low_stock_items = tenant_query(InventoryItem).filter(
         InventoryItem.min_qty > 0,
@@ -4754,10 +4842,22 @@ def _invoice_drill_wa(i):
     return None, None
 
 
+@app.route('/alerts/<alert_id>')
+def alert_detail_page(alert_id):
+    """صفحة تفاصيل التنبيه — عرض وطباعة."""
+    return render_template('alert-detail.html', alert_id=(alert_id or '').strip())
+
+
 @app.route('/api/dashboard/drill/<card_type>')
 def api_dashboard_drill(card_type):
-    """بيانات تفصيلية لكل كارت في لوحة التحكم."""
+    """بيانات تفصيلية لكل كارت في لوحة التحكم وصفحات التنبيهات."""
     today = date.today()
+
+    _ALERT_ALIASES = {
+        'contracts_expiring': 'expiring_contracts',
+        'contracts_expired': 'expired_contracts',
+    }
+    card_type = _ALERT_ALIASES.get(card_type, card_type)
 
     if card_type == 'customers':
         rows = [
@@ -4887,15 +4987,12 @@ def api_dashboard_drill(card_type):
             'rows': rows,
         }
     elif card_type == 'expiring_contracts':
-        in_30_days = today + timedelta(days=30)
+        expiring = _contracts_expiring_display_status(today)
         rows = [
             [c.code, c.customer.name, c.contract_type or '—',
-             str(c.end_date), f'{(c.end_date - today).days} يوم', c.status]
-            for c in tenant_query(Contract).filter(
-                Contract.status == 'نشط',
-                Contract.end_date >= today,
-                Contract.end_date <= in_30_days,
-            ).order_by(Contract.end_date).all()
+             str(c.end_date), f'{(c.end_date - today).days} يوم',
+             contract_display_status(c)]
+            for c in expiring
         ]
         payload = {
             'title': 'عقود تنتهي خلال 30 يوم', 'link': '/contracts',
@@ -4914,6 +5011,189 @@ def api_dashboard_drill(card_type):
         payload = {
             'title': 'أصناف تحت الحد الأدنى', 'link': '/inventory',
             'columns': ['الكود', 'الصنف', 'الفئة', 'الكمية', 'الحد الأدنى', 'الوحدة', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'visits_late':
+        from operations import exclude_fault_visits, VISIT_DONE
+        visits = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
+            MaintenanceVisit.visit_date < today,
+            ~MaintenanceVisit.status.in_(VISIT_DONE),
+        ).order_by(MaintenanceVisit.visit_date).all()
+        rows = [
+            [v.code,
+             v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
+             v.elevator.code if v.elevator else '—',
+             str(v.visit_date), v.visit_type or '—',
+             v.technician.name if v.technician else '—', v.status]
+            for v in visits
+        ]
+        payload = {
+            'title': 'زيارات متأخرة', 'link': '/maintenance-visits',
+            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'visits_critical':
+        from operations import exclude_fault_visits, VISIT_DONE
+        visits = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
+            MaintenanceVisit.priority == 'حرجة',
+            ~MaintenanceVisit.status.in_(VISIT_DONE),
+        ).order_by(MaintenanceVisit.visit_date).all()
+        rows = [
+            [v.code,
+             v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
+             v.elevator.code if v.elevator else '—',
+             str(v.visit_date), v.visit_type or '—',
+             v.technician.name if v.technician else '—', v.status]
+            for v in visits
+        ]
+        payload = {
+            'title': 'زيارات حرجة لم تُكتمل', 'link': '/maintenance-visits',
+            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'visits_tomorrow':
+        from operations import exclude_fault_visits
+        visits = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
+            MaintenanceVisit.visit_date == today + timedelta(days=1),
+            MaintenanceVisit.status == 'مجدولة',
+        ).order_by(MaintenanceVisit.visit_time).all()
+        rows = [
+            [v.code,
+             v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
+             v.elevator.code if v.elevator else '—',
+             str(v.visit_date), v.visit_type or '—',
+             v.technician.name if v.technician else '—', v.status]
+            for v in visits
+        ]
+        payload = {
+            'title': 'زيارات مجدولة غداً', 'link': '/maintenance-visits',
+            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'faults_critical':
+        from operations import FAULT_OPEN
+        faults = tenant_query(Fault).filter(
+            Fault.priority == 'حرجة',
+            Fault.status.in_(FAULT_OPEN),
+        ).order_by(Fault.reported_at.desc()).all()
+        rows = [
+            [f.code, f.elevator.customer.name, f.elevator.code,
+             f.fault_type or '—', f.priority or '—',
+             f.technician.name if f.technician else 'غير مكلف', f.status]
+            for f in faults
+        ]
+        payload = {
+            'title': 'أعطال حرجة', 'link': '/faults',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'faults_waiting_parts':
+        faults = tenant_query(Fault).filter_by(status='انتظار قطع').order_by(Fault.reported_at.desc()).all()
+        rows = [
+            [f.code, f.elevator.customer.name, f.elevator.code,
+             f.fault_type or '—', f.priority or '—',
+             f.technician.name if f.technician else '—', f.status]
+            for f in faults
+        ]
+        payload = {
+            'title': 'أعطال بانتظار قطع الغيار', 'link': '/faults',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'faults_old':
+        from operations import FAULT_OPEN
+        cutoff = datetime.utcnow() - timedelta(hours=48)
+        faults = tenant_query(Fault).filter(
+            Fault.status.in_(FAULT_OPEN),
+            Fault.reported_at < cutoff,
+        ).order_by(Fault.reported_at).all()
+        rows = [
+            [f.code, f.elevator.customer.name, f.elevator.code,
+             f.fault_type or '—', f.priority or '—',
+             f.technician.name if f.technician else '—', f.status,
+             f.reported_at.strftime('%Y-%m-%d %H:%M') if f.reported_at else '—']
+            for f in faults
+        ]
+        payload = {
+            'title': 'أعطال تجاوزت 48 ساعة بدون إغلاق', 'link': '/faults',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة', 'تاريخ البلاغ'],
+            'rows': rows,
+        }
+    elif card_type == 'faults_unassigned':
+        faults = tenant_query(Fault).filter(
+            Fault.technician_id.is_(None),
+            Fault.status.in_(OPEN_FAULT_STATUSES),
+        ).order_by(Fault.reported_at.desc()).all()
+        rows = [
+            [f.code, f.elevator.customer.name, f.elevator.code,
+             f.fault_type or '—', f.priority or '—', f.status]
+            for f in faults
+        ]
+        payload = {
+            'title': 'أعطال بدون فني', 'link': '/faults',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'parts_waiting_faults':
+        faults = tenant_query(Fault).filter_by(status='انتظار قطع').order_by(Fault.reported_at.desc()).all()
+        rows = [
+            [f.code,
+             f.elevator.customer.name if f.elevator and f.elevator.customer else '—',
+             f.elevator.code if f.elevator else '—',
+             f.fault_type or '—',
+             f.technician.name if f.technician else '—', f.status]
+            for f in faults
+        ]
+        payload = {
+            'title': 'طلبات قطع غيار من الفنيين', 'link': '/parts-billing',
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الفني', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'parts_awaiting_client':
+        parts = tenant_query(PartsBilling).filter_by(status='بانتظار موافقة العميل').order_by(PartsBilling.billing_date.desc()).all()
+        rows = [
+            [p.code,
+             p.customer.name if p.customer else '—',
+             str(p.billing_date or '—'),
+             p.description or '—',
+             f'{p.sell_price:,.0f} \u20c1' if p.sell_price else '—',
+             p.status]
+            for p in parts
+        ]
+        payload = {
+            'title': 'عروض أسعار بانتظار موافقة العميل', 'link': '/parts-billing',
+            'columns': ['الكود', 'العميل', 'التاريخ', 'البيان', 'المطلوب', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'tech_emergency_unavailable':
+        techs = tenant_query(Technician).order_by(Technician.name).all()
+        rows = []
+        for t in techs:
+            if not t.emergency:
+                continue
+            ds = technician_display_status(t, today)
+            if ds != 'متاح':
+                rows.append([
+                    t.code, t.name, t.phone or '—',
+                    t.specialization or '—', t.city or '—', ds,
+                ])
+        payload = {
+            'title': 'فنيو طوارئ غير متاحين', 'link': '/technicians',
+            'columns': ['الكود', 'الاسم', 'الهاتف', 'التخصص', 'المدينة', 'الحالة'],
+            'rows': rows,
+        }
+    elif card_type == 'tech_busy':
+        techs = tenant_query(Technician).order_by(Technician.name).all()
+        rows = [
+            [t.code, t.name, t.phone or '—',
+             t.specialization or '—', t.city or '—',
+             technician_display_status(t, today)]
+            for t in techs
+            if technician_display_status(t, today) == 'مشغول'
+        ]
+        payload = {
+            'title': 'فنيون مشغولون الآن', 'link': '/technicians',
+            'columns': ['الكود', 'الاسم', 'الهاتف', 'التخصص', 'المدينة', 'الحالة'],
             'rows': rows,
         }
     elif card_type == 'all_invoices':
@@ -5022,25 +5302,13 @@ def clients():
     from sqlalchemy.orm import joinedload
 
     from contract_codes import customer_matches_scope
-    from installation.project_card import ensure_project_card_schema
-
-    # يضمن وجود أعمدة مشاريع التركيب (مثل warranty_contract_id) قبل joinedload
-    try:
-        ensure_project_card_schema()
-    except Exception:
-        db.session.rollback()
 
     client_scope = (request.args.get('scope') or '').strip().lower()
     if client_scope not in ('maintenance', 'installation'):
         client_scope = ''
     customers = (
         tenant_query(Customer)
-        .options(
-            joinedload(Customer.elevators),
-            joinedload(Customer.contracts),
-            joinedload(Customer.installation_projects),
-            joinedload(Customer.installation_leads),
-        )
+        .options(joinedload(Customer.elevators), joinedload(Customer.contracts))
         .order_by(Customer.id.desc())
         .all()
     )
@@ -5074,13 +5342,8 @@ def _admin_html_no_cache(response):
 
 @app.route('/clients/template')
 def clients_import_template():
-    """تحميل نموذج استيراد العملاء (عربي أو إنجليزي حسب لغة الواجهة)."""
-    lang = request.args.get('lang')
-    if lang not in ('ar', 'en'):
-        lang = resolve_user_language(getattr(g, 'auth_user', None))
-    basename = 'clients_template_en.xlsx' if lang == 'en' else 'clients_template.xlsx'
-    download_name = 'clients_import_template_en.xlsx' if lang == 'en' else 'clients_import_template.xlsx'
-    path = os.path.join(app.root_path, 'static', 'templates', basename)
+    """تحميل نموذج استيراد العملاء."""
+    path = os.path.join(app.root_path, 'static', 'templates', 'clients_template.xlsx')
     if not os.path.isfile(path):
         script = os.path.join(app.root_path, 'scripts', 'build_clients_template.py')
         if os.path.isfile(script):
@@ -5089,14 +5352,14 @@ def clients_import_template():
             if spec and spec.loader:
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
-                mod.build_xlsx(path, lang=lang)
+                mod.build_xlsx(path)
         if not os.path.isfile(path):
             abort(404)
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),
         as_attachment=True,
-        download_name=download_name,
+        download_name='clients_template.xlsx',
     )
 
 
@@ -5247,10 +5510,7 @@ def api_customer_geocode(customer_id):
 @app.route('/api/customers/<int:customer_id>/profile')
 def api_customer_profile(customer_id):
     contract_id = request.args.get('contract_id', type=int)
-    scope = (request.args.get('scope') or '').strip().lower()
-    if scope not in ('maintenance', 'installation'):
-        scope = None
-    return jsonify(build_customer_profile(customer_id, contract_id, scope=scope))
+    return jsonify(build_customer_profile(customer_id, contract_id))
 
 
 @app.route('/api/customers/<int:customer_id>/invoicable-revenues')
@@ -5705,6 +5965,16 @@ def api_contract_detail(contract_id):
     return jsonify(_contract_json(c))
 
 
+def _clear_customer_service_location(customer):
+    """عنوان الخدمة والخرائط تُدار من العقد وليس من سجل العميل."""
+    customer.city = ''
+    customer.district = ''
+    customer.address = ''
+    customer.lat = ''
+    customer.lng = ''
+    customer.maps_url = ''
+
+
 @app.route('/clients/add', methods=['POST'])
 def client_add():
     from form_validation import customer_name_error
@@ -5752,9 +6022,6 @@ def client_add():
         code         = next_code(Customer, 'C-', digits=4),
         name         = request.form['name'],
         name_en      = request.form.get('name_en', ''),
-        city         = request.form.get('city',''),
-        district     = request.form.get('district',''),
-        address      = request.form.get('address',''),
         phone        = phone,
         phone2       = wa,
         extra_phones = serialize_customer_extra_phones(extra_phones),
@@ -5768,10 +6035,8 @@ def client_add():
         national_address = request.form.get('national_address',''),
         status       = _client_account_status(request.form.get('status', 'نشط')),
         notes        = request.form.get('notes',''),
-        lat          = request.form.get('lat',''),
-        lng          = request.form.get('lng',''),
-        maps_url     = request.form.get('maps_url',''),
     )
+    _clear_customer_service_location(c)
     assign_organization(c)
     db.session.add(c)
     db.session.flush()
@@ -5827,9 +6092,6 @@ def client_edit(id):
             return redirect(url_for('clients'))
     c.name           = request.form['name']
     c.name_en        = request.form.get('name_en', '')
-    c.city           = request.form.get('city','')
-    c.district       = request.form.get('district','')
-    c.address        = request.form.get('address','')
     c.phone          = phone
     c.phone2         = wa
     c.extra_phones   = serialize_customer_extra_phones(extra_phones)
@@ -5843,9 +6105,7 @@ def client_edit(id):
     c.cr_number      = request.form.get('cr_number','')
     c.vat_number     = request.form.get('vat_number','')
     c.national_address = request.form.get('national_address','')
-    c.lat            = request.form.get('lat','')
-    c.lng            = request.form.get('lng','')
-    c.maps_url       = request.form.get('maps_url','')
+    _clear_customer_service_location(c)
     sync_customer_from_elevators(c)
     upload = request.files.get('building_photo')
     if upload and upload.filename:
@@ -5981,10 +6241,11 @@ def elevators():
         .all()
     )
     customers = tenant_query(Customer).order_by(Customer.name).all()
+    site_map = _elevator_site_coords_map(elevs)
     return render_template(
         'elevators.html',
         elevators=elevs,
-        elevators_js=[elevator_to_js_dict(e) for e in elevs],
+        elevators_js=[elevator_to_js_dict(e, site=site_map.get(e.id)) for e in elevs],
         customers=customers,
         customers_js=[
             {
@@ -5993,8 +6254,10 @@ def elevators():
                 'name': c.name,
                 'city': c.city or '',
                 'district': c.district or '',
+                'address': c.address or '',
                 'lat': c.lat or '',
                 'lng': c.lng or '',
+                'maps_url': c.maps_url or '',
                 'status': c.status or 'نشط',
             }
             for c in customers
@@ -6005,13 +6268,8 @@ def elevators():
 
 @app.route('/elevators/template')
 def elevators_import_template():
-    """تحميل نموذج استيراد المصاعد (عربي أو إنجليزي)."""
-    lang = request.args.get('lang')
-    if lang not in ('ar', 'en'):
-        lang = resolve_user_language(getattr(g, 'auth_user', None))
-    basename = 'elevators_template_en.xlsx' if lang == 'en' else 'elevators_template.xlsx'
-    download_name = 'elevators_import_template_en.xlsx' if lang == 'en' else 'elevators_import_template.xlsx'
-    path = os.path.join(app.root_path, 'static', 'templates', basename)
+    """تحميل نموذج استيراد المصاعد."""
+    path = os.path.join(app.root_path, 'static', 'templates', 'elevators_template.xlsx')
     if not os.path.isfile(path):
         script = os.path.join(app.root_path, 'scripts', 'build_elevators_template.py')
         if os.path.isfile(script):
@@ -6020,14 +6278,14 @@ def elevators_import_template():
             if spec and spec.loader:
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
-                mod.build_xlsx(path, lang=lang)
+                mod.build_xlsx(path)
         if not os.path.isfile(path):
             abort(404)
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),
         as_attachment=True,
-        download_name=download_name,
+        download_name='elevators_template.xlsx',
     )
 
 
@@ -6093,6 +6351,7 @@ def elevator_add():
     assign_organization(e)
     db.session.add(e)
     db.session.flush()
+    _apply_elevator_map_pin(e, request.form)
     sync_customer_from_elevators(e.customer)
     db.session.commit()
     if wants_json:
@@ -6136,6 +6395,7 @@ def elevator_edit(id):
     e.maint_frequency  = request.form.get('maint_frequency', '')
     e.status           = request.form.get('status', 'نشط')
     e.notes            = request.form.get('notes', '')
+    _apply_elevator_map_pin(e, request.form)
     sync_customer_from_elevators(e.customer)
     db.session.commit()
     return redirect(url_for('elevators'))
@@ -6196,13 +6456,21 @@ def api_elevators_by_customer(customer_id):
         })
     return jsonify(rows)
 
+def _contracts_expiring_display_status(today=None):
+    """عقود بحالة العرض «على وشك الانتهاء» — نفس منطق صفحة العقود."""
+    today = today or date.today()
+    all_c = tenant_query(Contract).all()
+    renewed_ids = _annotate_contract_renewals(all_c)
+    rows = [
+        c for c in all_c
+        if contract_display_status(c, today=today, renewed_ids=renewed_ids) == 'على وشك الانتهاء'
+    ]
+    rows.sort(key=lambda c: c.end_date or date.max)
+    return rows
+
+
 def contract_display_status(contract, today=None, *, renewed_ids=None):
-    """حالة العرض: نشط / على وشك الانتهاء / تم تجديده / منتهي / ملغي.
-
-    عقود التركيب/التحديث: لا تُنهى بالتقويم — تُغلق عند تسليم أعمال المشروع فقط.
-    """
-    from contract_codes import is_installation_contract_type
-
+    """حالة العرض: نشط / على وشك الانتهاء / تم تجديده / منتهي / ملغي."""
     today = today or date.today()
     raw = (contract.status or 'نشط').strip()
     if raw in ('ملغي', 'معلق'):
@@ -6217,10 +6485,6 @@ def contract_display_status(contract, today=None, *, renewed_ids=None):
         is_renewed = bool(contract._is_renewed)
     if is_renewed:
         return 'تم تجديده'
-    if is_installation_contract_type(getattr(contract, 'contract_type', None)):
-        if raw == 'منتهي':
-            return 'مكتمل'
-        return 'نشط'
     if raw == 'منتهي' or (contract.end_date and contract.end_date < today):
         return 'منتهي'
     if raw == 'على وشك الانتهاء':
@@ -6311,53 +6575,22 @@ def _customer_in_period_filter(model, contract, date_field):
     )
 
 
-def build_customer_profile(customer_id, contract_id=None, scope=None):
-    from contract_codes import contracts_for_scope, is_installation_contract_type
+def build_customer_profile(customer_id, contract_id=None):
     from customer_billing import customer_uncollected_ops
 
     customer = tenant_get_or_404(Customer, customer_id)
-    scope_key = (scope or '').strip().lower()
-    if scope_key not in ('maintenance', 'installation'):
-        scope_key = ''
-
     if contract_id:
         contract = tenant_query(Contract).filter_by(
             id=contract_id, customer_id=customer_id
         ).first_or_404()
-        if scope_key and not (
-            (scope_key == 'installation' and is_installation_contract_type(contract.contract_type))
-            or (scope_key == 'maintenance' and not is_installation_contract_type(contract.contract_type))
-        ):
-            contract = None
     else:
-        contract = None
+        contract = customer_primary_contract(customer)
 
     contracts = (
         tenant_query(Contract).filter_by(customer_id=customer_id)
         .order_by(Contract.start_date.desc())
         .all()
     )
-    contracts = contracts_for_scope(contracts, scope_key or None)
-    if contract is None:
-        # اختر عقداً أساسياً ضمن النطاق فقط
-        primary_pool = contracts
-        if primary_pool:
-            from datetime import date as _date
-            renewed_ids = _annotate_contract_renewals(primary_pool)
-            for ct in sorted(
-                primary_pool,
-                key=lambda x: (x.end_date or _date.min, x.id or 0),
-                reverse=True,
-            ):
-                st = contract_display_status(ct, renewed_ids=renewed_ids)
-                if st in ('نشط', 'على وشك الانتهاء'):
-                    contract = ct
-                    break
-            if contract is None:
-                contract = primary_pool[0]
-    elif scope_key:
-        # تجاهل عقد خارج النطاق إن مُرّر بالخطأ
-        pass
 
     rev_q = tenant_query(Revenue).filter(
         Revenue.customer_id == customer_id,
@@ -6400,27 +6633,24 @@ def build_customer_profile(customer_id, contract_id=None, scope=None):
     else:
         balance = 0
 
-    # الزيارات والأعطال للصيانة فقط — لا تُعرض في نطاق التركيب
-    visits = []
-    faults = []
-    if scope_key != 'installation':
-        visit_q = tenant_query(MaintenanceVisit).join(Elevator).filter(
-            Elevator.customer_id == customer_id
+    visit_q = tenant_query(MaintenanceVisit).join(Elevator).filter(
+        Elevator.customer_id == customer_id
+    )
+    fault_q = tenant_query(Fault).join(Elevator).filter(
+        Elevator.customer_id == customer_id
+    )
+    if contract:
+        visit_q = visit_q.filter(
+            MaintenanceVisit.visit_date >= contract.start_date,
+            MaintenanceVisit.visit_date <= contract.end_date,
         )
-        fault_q = tenant_query(Fault).join(Elevator).filter(
-            Elevator.customer_id == customer_id
+        fault_q = fault_q.filter(
+            db.func.date(Fault.reported_at) >= contract.start_date,
+            db.func.date(Fault.reported_at) <= contract.end_date,
         )
-        if contract:
-            visit_q = visit_q.filter(
-                MaintenanceVisit.visit_date >= contract.start_date,
-                MaintenanceVisit.visit_date <= contract.end_date,
-            )
-            fault_q = fault_q.filter(
-                db.func.date(Fault.reported_at) >= contract.start_date,
-                db.func.date(Fault.reported_at) <= contract.end_date,
-            )
-        visits = visit_q.order_by(MaintenanceVisit.visit_date.desc()).limit(50).all()
-        faults = fault_q.order_by(Fault.reported_at.desc()).limit(50).all()
+
+    visits = visit_q.order_by(MaintenanceVisit.visit_date.desc()).limit(50).all()
+    faults = fault_q.order_by(Fault.reported_at.desc()).limit(50).all()
 
     timeline = []
     for r in revenues:
@@ -6570,7 +6800,6 @@ def build_customer_profile(customer_id, contract_id=None, scope=None):
         },
         'timeline': timeline[:80],
         'sections': sections,
-        'scope': scope_key,
         'counts': {
             'revenues': len(revenues),
             'parts': len(parts),
@@ -6647,68 +6876,163 @@ def _apply_contract_form(c, form):
             amount_ex_vat=value_raw,
             tax_pct=tax_pct,
         )
-    from contract_codes import is_installation_contract_type
-
     start = _parse_date(form.get('start_date'))
     end = _parse_date(form.get('end_date'))
     c.customer_id = form['customer_id']
     c.contract_type = form.get('contract_type', '')
     c.start_date = start
-    # عقود التركيب: الانتهاء = التسليم — لا تُفرض مدة صيانة؛ إن لم يُحدد نهاية تُساوى البداية
-    if is_installation_contract_type(c.contract_type):
-        if not end or (start and end < start):
-            end = start
-        c.end_date = end
-        c.duration_months = _contract_duration_months(start, end) if end and start and end > start else None
-        c.maint_frequency = ''
-        c.visits_per_month = 0
-        c.reminder_date = None
-        raw_w = (form.get('install_warranty') or '').strip()
-        if raw_w in ('بدون', 'بدون ضمان', 'none', 'no'):
-            c.install_warranty = 'بدون'
-        else:
-            c.install_warranty = 'بعد المشروع'
-    else:
-        c.end_date = end
-        c.duration_months = _contract_duration_months(start, end)
-        c.maint_frequency = form.get('maint_frequency', '')
-        visits = form.get('visits_per_month') or 1
-        c.visits_per_month = int(visits) if str(visits).isdigit() else 1
-        c.reminder_date = _parse_date(form.get('reminder_date'))
-        c.install_warranty = None
+    c.end_date = end
+    c.duration_months = _contract_duration_months(start, end)
+    c.maint_frequency = form.get('maint_frequency', '')
+    visits = form.get('visits_per_month') or 1
+    c.visits_per_month = int(visits) if str(visits).isdigit() else 1
     c.value = value
     c.tax_pct = tax_pct
     c.tax_amount = tax_amount
     c.total = total
     c.payment_terms = form.get('payment_terms', '')
     c.status = form.get('status', 'نشط')
-    if is_installation_contract_type(c.contract_type) and (c.status or '').strip() == 'مكتمل':
-        c.status = 'منتهي'
+    c.reminder_date = _parse_date(form.get('reminder_date'))
     c.due_date = _parse_date(form.get('due_date'))
     c.city = form.get('city', '')
     c.district = form.get('district', '')
     c.address = form.get('address', '')
-    c.notes = form.get('notes', '')
-    _apply_contract_paid_from_form(c, form)
-    _sync_customer_location_from_contract_form(c.customer_id, form)
-
-
-def _sync_customer_location_from_contract_form(customer_id, form):
-    """حفظ إحداثيات خريطة العقد على العميل حتى لا ترجع الدبوس لإحداثيات الحرم الافتراضية."""
-    if not customer_id:
-        return
     lat = (form.get('lat') or '').strip().replace(',', '.')
     lng = (form.get('lng') or '').strip().replace(',', '.')
     maps_url = (form.get('maps_url') or '').strip()
+    if lat and lng:
+        try:
+            la, ln = float(lat), float(lng)
+            if la or ln:
+                if _is_generic_city_pin(la, ln):
+                    c.lat = None
+                    c.lng = None
+                else:
+                    c.lat = str(la)
+                    c.lng = str(ln)
+                    if maps_url:
+                        c.maps_url = maps_url[:500]
+        except (TypeError, ValueError):
+            pass
+    c.notes = form.get('notes', '')
+    _apply_contract_paid_from_form(c, form)
+
+
+_GENERIC_CITY_PINS = (
+    (21.4225, 39.8262),  # مكة / الحرم — افتراضي الخرائط
+    (21.5433, 39.1728),  # جدة
+    (21.2703, 40.4158),  # الطائف
+    (24.4672, 39.6111),  # المدينة
+    (24.7136, 46.6753),  # الرياض
+    (26.4207, 50.0888),  # الدمام
+    (26.2172, 50.1971),  # الخبر
+    (18.2164, 42.5053),  # أبها
+    (28.3838, 36.5550),  # تبوك
+    (26.3259, 43.9740),  # بريدة
+)
+
+
+def _is_generic_city_pin(lat: float, lng: float, tol: float = 0.0035) -> bool:
+    """مركز مدينة/الحرم — ليس موقع مبنى، لا يُحفظ كـ GPS دقيق."""
+    for cla, cln in _GENERIC_CITY_PINS:
+        if abs(lat - cla) < tol and abs(lng - cln) < tol:
+            return True
+    return False
+
+
+def _parse_form_gps(form):
+    lat = (form.get('lat') or '').strip().replace(',', '.')
+    lng = (form.get('lng') or '').strip().replace(',', '.')
+    maps_url = (form.get('maps_url') or '').strip()
+    if not lat or not lng:
+        return None
     try:
-        la = float(lat)
-        ln = float(lng)
+        la, ln = float(lat), float(lng)
     except (TypeError, ValueError):
+        return None
+    if not (la or ln) or _is_generic_city_pin(la, ln):
+        return None
+    return la, ln, maps_url
+
+
+def _usable_stored_gps(lat, lng):
+    if lat in (None, '') or lng in (None, ''):
+        return None
+    try:
+        la = float(str(lat).replace(',', '.'))
+        ln = float(str(lng).replace(',', '.'))
+    except (TypeError, ValueError):
+        return None
+    if not (la or ln) or _is_generic_city_pin(la, ln):
+        return None
+    return la, ln
+
+
+def _elevator_site_coords_map(elevators) -> dict:
+    """موقع المصعد على الخريطة: GPS العقد المرتبط ثم GPS العميل الدقيق."""
+    elevators = list(elevators or [])
+    out: dict = {}
+    for e in elevators:
+        cust = getattr(e, 'customer', None)
+        if not cust:
+            continue
+        gps = _usable_stored_gps(cust.lat, cust.lng)
+        if gps:
+            out[e.id] = (str(gps[0]), str(gps[1]), cust.maps_url or '')
+    ids = [e.id for e in elevators if getattr(e, 'id', None)]
+    if not ids:
+        return out
+    links = tenant_query(ContractElevator).filter(ContractElevator.elevator_id.in_(ids)).all()
+    contract_ids = list({lk.contract_id for lk in links})
+    contracts = {
+        c.id: c
+        for c in tenant_query(Contract).filter(Contract.id.in_(contract_ids)).all()
+    } if contract_ids else {}
+    for lk in links:
+        c = contracts.get(lk.contract_id)
+        if not c or (c.status or '') == 'ملغي':
+            continue
+        gps = _usable_stored_gps(c.lat, c.lng)
+        if not gps:
+            continue
+        prev = out.get(lk.elevator_id)
+        is_active = (c.status or '') == 'نشط'
+        if prev and not is_active:
+            continue
+        out[lk.elevator_id] = (str(gps[0]), str(gps[1]), c.maps_url or '')
+    return out
+
+
+def _apply_elevator_map_pin(elevator, form):
+    """يحفظ دبوس الخريطة الدقيق على العميل والعقود المرتبطة بالمصعد."""
+    _sync_customer_location_from_contract_form(elevator.customer_id, form)
+    parsed = _parse_form_gps(form)
+    if not parsed or not getattr(elevator, 'id', None):
         return
-    if la == 0 and ln == 0:
+    la, ln, maps_url = parsed
+    links = tenant_query(ContractElevator).filter_by(elevator_id=elevator.id).all()
+    if not links:
         return
-    if abs(la - 21.4225) < 0.0012 and abs(ln - 39.8262) < 0.0012:
+    contracts = tenant_query(Contract).filter(
+        Contract.id.in_([lk.contract_id for lk in links])
+    ).all()
+    for c in contracts:
+        if (c.status or '') == 'ملغي':
+            continue
+        c.lat = str(la)
+        c.lng = str(ln)
+        if maps_url:
+            c.maps_url = maps_url[:500]
+
+
+def _sync_customer_location_from_contract_form(customer_id, form):
+    """ينسخ إحداثيات الدبوس الدقيق من العقد إلى العميل (دون تغيير نص العنوان)."""
+    if not customer_id:
         return
+    parsed = _parse_form_gps(form)
+    if not parsed:
+        return
+    la, ln, maps_url = parsed
     cust = tenant_query(Customer).filter_by(id=int(customer_id)).first()
     if not cust:
         return
@@ -6718,6 +7042,49 @@ def _sync_customer_location_from_contract_form(customer_id, form):
         cust.maps_url = maps_url[:500]
 
 
+def _fin_proof_js_items(row) -> list[dict]:
+    from attachment_paths import attachment_items
+    return attachment_items(
+        getattr(row, 'proof_path', None),
+        _upload_url_fast,
+        name_fn=contract_file_display_name,
+    )
+
+
+def _fin_proof_js_primary_url(row) -> str:
+    items = _fin_proof_js_items(row)
+    return items[0]['url'] if items else ''
+
+
+def _fin_proof_has(row) -> bool:
+    from attachment_paths import attachment_has
+    return attachment_has(getattr(row, 'proof_path', None))
+
+
+def _contract_js_files(c) -> list[dict]:
+    from attachment_paths import attachment_items
+    return attachment_items(
+        c.file_path,
+        upload_url,
+        name_fn=contract_file_display_name,
+    )
+
+
+def _contract_js_primary_url(c) -> str:
+    items = _contract_js_files(c)
+    return items[0]['url'] if items else ''
+
+
+def _contract_js_primary_name(c) -> str:
+    items = _contract_js_files(c)
+    return items[0]['name'] if items else ''
+
+
+def _contract_has_files(c) -> bool:
+    from attachment_paths import attachment_has
+    return attachment_has(c.file_path)
+
+
 def _fin_proof_upload_dir(kind, row_id):
     path = os.path.join(FIN_PROOF_UPLOAD_ROOT, kind, str(row_id))
     os.makedirs(path, exist_ok=True)
@@ -6725,16 +7092,71 @@ def _fin_proof_upload_dir(kind, row_id):
 
 
 def _remove_fin_proof(row):
-    path = getattr(row, 'proof_path', None) or ''
-    if not path:
-        return
-    full = os.path.join(app.root_path, 'static', path.replace('/', os.sep))
-    if os.path.isfile(full):
-        try:
-            os.remove(full)
-        except OSError:
-            pass
+    from attachment_paths import parse_attachment_paths, delete_attachment_file
+    for path in parse_attachment_paths(getattr(row, 'proof_path', None)):
+        delete_attachment_file(app.root_path, path)
     row.proof_path = None
+
+
+def _remove_fin_proof_at(row, index: int) -> bool:
+    from attachment_paths import (
+        delete_attachment_file,
+        parse_attachment_paths,
+        serialize_attachment_paths,
+    )
+    paths = parse_attachment_paths(getattr(row, 'proof_path', None))
+    if index < 0 or index >= len(paths):
+        return False
+    delete_attachment_file(app.root_path, paths[index])
+    paths.pop(index)
+    row.proof_path = serialize_attachment_paths(paths)
+    return True
+
+
+def _store_fin_proof_file(row, file_storage, *, kind: str) -> str:
+    ok, err = _upload_ok(file_storage, ALLOWED_FIN_PROOF_EXT)
+    if not ok:
+        raise ValueError('مستند الإثبات: ' + (err or 'نوع الملف غير مسموح'))
+    file_storage.seek(0, os.SEEK_END)
+    size = file_storage.tell()
+    file_storage.seek(0)
+    if size > MAX_FIN_PROOF_BYTES:
+        raise ValueError('مستند الإثبات أكبر من الحد المسموح (10 ميجا)')
+    if not row.id:
+        db.session.flush()
+    stored = _safe_stored_upload_name(
+        file_storage.filename,
+        allowed=ALLOWED_FIN_PROOF_EXT,
+        default_stem='proof',
+    )
+    abs_path = os.path.join(_fin_proof_upload_dir(kind, row.id), stored)
+    file_storage.save(abs_path)
+    return f'uploads/financial_proofs/{kind}/{row.id}/{stored}'
+
+
+def _add_fin_proof_files(row, file_storages, *, kind: str, required: bool = False):
+    """يضيف مرفقات إثبات دون حذف الموجود."""
+    from attachment_paths import attachment_has, parse_attachment_paths, serialize_attachment_paths
+
+    files = [f for f in (file_storages or []) if f and getattr(f, 'filename', None)]
+    if not files:
+        if required and not attachment_has(getattr(row, 'proof_path', None)):
+            raise ValueError('يجب إرفاق مستند إثبات الدفع أو الصرف (PDF أو صورة)')
+        return
+    paths = parse_attachment_paths(getattr(row, 'proof_path', None))
+    if len(paths) + len(files) > MAX_ATTACHMENT_FILES:
+        raise ValueError(f'يمكن إرفاق حتى {MAX_ATTACHMENT_FILES} مستندات')
+    for file_storage in files:
+        paths.append(_store_fin_proof_file(row, file_storage, kind=kind))
+    row.proof_path = serialize_attachment_paths(paths)
+
+
+def _save_fin_proof(row, file_storage, *, kind: str, required: bool = False):
+    """يحفظ إثبات دفع/صرف — ملف واحد أو يُضاف لقائمة المرفقات."""
+    if file_storage and file_storage.filename:
+        _add_fin_proof_files(row, [file_storage], kind=kind, required=False)
+    elif required and not _fin_proof_has(row):
+        raise ValueError('يجب إرفاق مستند إثبات الدفع أو الصرف (PDF أو صورة)')
 
 
 def enforce_admin_attachment_delete(*, json_response=False):
@@ -6747,34 +7169,6 @@ def enforce_admin_attachment_delete(*, json_response=False):
         bad_password_ar='كلمة المرور غير صحيحة — لم يتم حذف المرفق.',
         bad_password_en='Incorrect password — attachment was not deleted.',
     )
-
-
-def _save_fin_proof(row, file_storage, *, kind: str, required: bool = False):
-    """يحفظ إثبات دفع/صرف إن وُجد ملف. required=True يفرض وجود مرفق."""
-    has_file = bool(file_storage and file_storage.filename)
-    if not has_file:
-        if required and not getattr(row, 'proof_path', None):
-            raise ValueError('يجب إرفاق مستند إثبات الدفع أو الصرف (PDF أو صورة)')
-        return
-    ok, err = _upload_ok(file_storage, ALLOWED_FIN_PROOF_EXT)
-    if not ok:
-        raise ValueError('مستند الإثبات: ' + (err or 'نوع الملف غير مسموح'))
-    file_storage.seek(0, os.SEEK_END)
-    size = file_storage.tell()
-    file_storage.seek(0)
-    if size > MAX_FIN_PROOF_BYTES:
-        raise ValueError('مستند الإثبات أكبر من الحد المسموح (10 ميجا)')
-    if not row.id:
-        db.session.flush()
-    _remove_fin_proof(row)
-    stored = _safe_stored_upload_name(
-        file_storage.filename,
-        allowed=ALLOWED_FIN_PROOF_EXT,
-        default_stem='proof',
-    )
-    abs_path = os.path.join(_fin_proof_upload_dir(kind, row.id), stored)
-    file_storage.save(abs_path)
-    row.proof_path = f'uploads/financial_proofs/{kind}/{row.id}/{stored}'
 
 
 def _contract_upload_dir(contract_id):
@@ -6793,30 +7187,39 @@ def contract_file_display_name(relative_path):
 
 
 def _remove_contract_file(c):
-    if not c.file_path:
-        return
-    full = os.path.join(app.root_path, 'static', c.file_path.replace('/', os.sep))
-    if os.path.isfile(full):
-        try:
-            os.remove(full)
-        except OSError:
-            pass
+    from attachment_paths import parse_attachment_paths, delete_attachment_file
+    for path in parse_attachment_paths(c.file_path):
+        delete_attachment_file(app.root_path, path)
     c.file_path = None
 
 
-def _save_contract_file(c, file_storage):
+def _remove_contract_file_at(c, index: int) -> bool:
+    from attachment_paths import (
+        delete_attachment_file,
+        parse_attachment_paths,
+        serialize_attachment_paths,
+    )
+    paths = parse_attachment_paths(c.file_path)
+    if index < 0 or index >= len(paths):
+        return False
+    delete_attachment_file(app.root_path, paths[index])
+    paths.pop(index)
+    c.file_path = serialize_attachment_paths(paths)
+    return True
+
+
+def _store_contract_file(c, file_storage) -> str | None:
     if not file_storage or not file_storage.filename:
-        return
+        return None
     if not _ext_ok(file_storage.filename, ALLOWED_CONTRACT_FILE_EXT):
-        return
+        raise ValueError('يُسمح بملف PDF فقط للعقد')
     file_storage.seek(0, os.SEEK_END)
     size = file_storage.tell()
     file_storage.seek(0)
     if size > MAX_CONTRACT_FILE_BYTES:
-        return
+        raise ValueError('حجم ملف العقد أكبر من الحد المسموح (10 ميجا)')
     if not c.id:
         db.session.flush()
-    _remove_contract_file(c)
     stored = _safe_stored_upload_name(
         file_storage.filename,
         allowed=ALLOWED_CONTRACT_FILE_EXT,
@@ -6824,7 +7227,27 @@ def _save_contract_file(c, file_storage):
     )
     abs_path = os.path.join(_contract_upload_dir(c.id), stored)
     file_storage.save(abs_path)
-    c.file_path = f'uploads/contracts/{c.id}/{stored}'
+    return f'uploads/contracts/{c.id}/{stored}'
+
+
+def _add_contract_files(c, file_storages):
+    from attachment_paths import parse_attachment_paths, serialize_attachment_paths
+    files = [f for f in (file_storages or []) if f and getattr(f, 'filename', None)]
+    if not files:
+        return
+    paths = parse_attachment_paths(c.file_path)
+    if len(paths) + len(files) > MAX_ATTACHMENT_FILES:
+        raise ValueError(f'يمكن إرفاق حتى {MAX_ATTACHMENT_FILES} ملفات PDF')
+    for file_storage in files:
+        rel = _store_contract_file(c, file_storage)
+        if rel:
+            paths.append(rel)
+    c.file_path = serialize_attachment_paths(paths)
+
+
+def _save_contract_file(c, file_storage):
+    if file_storage and file_storage.filename:
+        _add_contract_files(c, [file_storage])
 
 
 # =============================================
@@ -6870,25 +7293,16 @@ def contracts():
     from sqlalchemy.orm import joinedload
 
     from contract_codes import contracts_for_scope
-    from installation.timeline import sync_closed_install_projects_to_contracts
 
-    # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة
-    if request.args.get('z') != '6':
+    # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة التي ترفض القيمة 0
+    if request.args.get('z') != '4':
         args = request.args.to_dict(flat=True)
-        args['z'] = '6'
+        args['z'] = '4'
         return redirect(url_for('contracts', **args))
 
     contract_scope = (request.args.get('scope') or '').strip().lower()
     if contract_scope not in ('maintenance', 'installation'):
         contract_scope = ''
-
-    # مزامنة: مشاريع مكتملة → إغلاق عقود التركيب (بيانات سابقة قبل الربط)
-    try:
-        if sync_closed_install_projects_to_contracts(commit=True):
-            pass
-    except Exception:
-        db.session.rollback()
-        app.logger.exception('sync_closed_install_projects_to_contracts failed')
 
     contracts_list = (
         tenant_query(Contract)
@@ -6936,13 +7350,8 @@ def contracts():
 
 @app.route('/contracts/template')
 def contracts_import_template():
-    """تحميل نموذج استيراد العقود (عربي أو إنجليزي حسب لغة الواجهة)."""
-    lang = request.args.get('lang')
-    if lang not in ('ar', 'en'):
-        lang = resolve_user_language(getattr(g, 'auth_user', None))
-    basename = 'contracts_template_en.xlsx' if lang == 'en' else 'contracts_template.xlsx'
-    download_name = 'contracts_import_template_en.xlsx' if lang == 'en' else 'contracts_import_template.xlsx'
-    path = os.path.join(app.root_path, 'static', 'templates', basename)
+    """تحميل نموذج استيراد العقود."""
+    path = os.path.join(app.root_path, 'static', 'templates', 'contracts_template.xlsx')
     if not os.path.isfile(path):
         script = os.path.join(app.root_path, 'scripts', 'build_contracts_template.py')
         if os.path.isfile(script):
@@ -6951,48 +7360,20 @@ def contracts_import_template():
             if spec and spec.loader:
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
-                mod.build_xlsx(path, lang=lang)
+                mod.build_xlsx(path)
         if not os.path.isfile(path):
             abort(404)
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),
         as_attachment=True,
-        download_name=download_name,
+        download_name='contracts_template.xlsx',
     )
-
-
-def _contracts_page_url(*, contract=None, form=None):
-    """رابط قائمة العقود مع الحفاظ على نطاق التركيب/الصيانة."""
-    from contract_codes import is_installation_contract_type
-
-    form = form if form is not None else request.form
-    scope = (
-        (form.get('scope') if form is not None else None)
-        or request.args.get('scope')
-        or ''
-    )
-    scope = str(scope or '').strip().lower()
-    if scope not in ('maintenance', 'installation'):
-        ctype = None
-        if contract is not None:
-            ctype = getattr(contract, 'contract_type', None)
-        if not ctype and form is not None:
-            ctype = form.get('contract_type')
-        if is_installation_contract_type(ctype):
-            scope = 'installation'
-        else:
-            scope = ''
-    kwargs = {'z': '6'}
-    if scope:
-        kwargs['scope'] = scope
-    return url_for('contracts', **kwargs)
 
 
 @app.route('/contracts/edit/<int:id>', methods=['POST'])
 def contract_edit(id):
     from form_validation import contract_form_error
-    from installation.timeline import resync_install_contract_if_project_closed
 
     wants_json = (
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -7003,7 +7384,7 @@ def contract_edit(id):
         if wants_json:
             return jsonify({'ok': False, 'message': err}), 400
         flash(err, 'error')
-        return redirect(_contracts_page_url())
+        return redirect(url_for('contracts'))
     c = tenant_get_or_404(Contract, id)
     raw_cid = (request.form.get('customer_id') or '').strip()
     try:
@@ -7035,9 +7416,10 @@ def contract_edit(id):
             return auth_err
     try:
         _apply_contract_form(c, request.form)
-        upload = request.files.get('contract_file')
-        if upload and upload.filename:
-            _save_contract_file(c, upload)
+        _sync_customer_location_from_contract_form(c.customer_id, request.form)
+        uploads = request.files.getlist('contract_file')
+        if uploads and any(f and f.filename for f in uploads):
+            _add_contract_files(c, uploads)
         elif (request.form.get('remove_contract_file') or '').strip().lower() in (
             '1', 'true', 'yes', 'on',
         ):
@@ -7046,9 +7428,8 @@ def contract_edit(id):
             if wants_json:
                 return jsonify({'ok': False, 'message': msg}), 403
             flash(msg, 'error')
-            return redirect(_contracts_page_url(contract=c))
+            return redirect(url_for('contracts'))
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
-        resync_install_contract_if_project_closed(c)
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
@@ -7056,11 +7437,10 @@ def contract_edit(id):
         if wants_json:
             return jsonify({'ok': False, 'message': str(exc) or 'تعذّر حفظ العقد'}), 400
         flash(str(exc) or 'تعذّر حفظ العقد', 'error')
-        return redirect(_contracts_page_url(contract=c))
-    redirect_to = _contracts_page_url(contract=c)
+        return redirect(url_for('contracts'))
     if wants_json:
-        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': redirect_to})
-    return redirect(redirect_to)
+        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': url_for('contracts')})
+    return redirect(url_for('contracts'))
 
 
 @app.route('/contracts/add', methods=['POST'])
@@ -7077,7 +7457,7 @@ def contract_add():
         if wants_json:
             return jsonify({'ok': False, 'message': err}), 400
         flash(err, 'error')
-        return redirect(_contracts_page_url())
+        return redirect(url_for('contracts'))
 
     renew_from_id = request.form.get('renew_from_id', type=int)
     renew_src = tenant_get_or_404(Contract, renew_from_id) if renew_from_id else None
@@ -7105,7 +7485,7 @@ def contract_add():
             if wants_json:
                 return jsonify({'ok': False, 'message': 'رقم العقد الناتج أطول من المسموح'}), 400
             flash('رقم العقد الناتج أطول من المسموح', 'error')
-            return redirect(_contracts_page_url())
+            return redirect(url_for('contracts'))
     else:
         from contract_codes import CONTRACT_CODE_DIGITS, contract_prefix_for_type
 
@@ -7117,18 +7497,19 @@ def contract_add():
         if wants_json:
             return jsonify({'ok': False, 'message': msg}), 400
         flash(msg, 'error')
-        return redirect(_contracts_page_url())
+        return redirect(url_for('contracts'))
 
     c = existing or Contract(code=code)
     try:
         _apply_contract_form(c, request.form)
+        _sync_customer_location_from_contract_form(c.customer_id, request.form)
         if existing is None:
             assign_organization(c)
             db.session.add(c)
             db.session.flush()
         if renew_src and (renew_src.status or '') not in ('تم تجديده', 'ملغي'):
             renew_src.status = 'تم تجديده'
-        _save_contract_file(c, request.files.get('contract_file'))
+        _add_contract_files(c, request.files.getlist('contract_file'))
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
         db.session.commit()
     except Exception as exc:
@@ -7137,11 +7518,10 @@ def contract_add():
         if wants_json:
             return jsonify({'ok': False, 'message': str(exc) or 'تعذّر حفظ العقد'}), 400
         flash(str(exc) or 'تعذّر حفظ العقد', 'error')
-        return redirect(_contracts_page_url(contract=c if getattr(c, 'id', None) else None))
-    redirect_to = _contracts_page_url(contract=c)
+        return redirect(url_for('contracts'))
     if wants_json:
-        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': redirect_to})
-    return redirect(redirect_to)
+        return jsonify({'ok': True, 'id': c.id, 'code': c.code, 'redirect': url_for('contracts')})
+    return redirect(url_for('contracts'))
 
 @app.route('/contracts/<int:id>/remove-file', methods=['POST'])
 def contract_remove_file(id):
@@ -7150,8 +7530,19 @@ def contract_remove_file(id):
     if err:
         return err
     c = tenant_get_or_404(Contract, id)
-    if not c.file_path:
+    if not _contract_has_files(c):
         return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    data = request.get_json(silent=True) or {}
+    index = data.get('index')
+    if index is not None:
+        try:
+            idx = int(index)
+        except (TypeError, ValueError):
+            return jsonify({'ok': False, 'message': 'فهرس المرفق غير صالح'}), 400
+        if not _remove_contract_file_at(c, idx):
+            return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+        db.session.commit()
+        return jsonify({'ok': True, 'removed': True, 'id': c.id, 'code': c.code, 'index': idx})
     _remove_contract_file(c)
     db.session.commit()
     return jsonify({'ok': True, 'removed': True, 'id': c.id, 'code': c.code})
@@ -7163,7 +7554,6 @@ def contract_delete(id):
     if err:
         return err
     c = tenant_get_or_404(Contract, id)
-    scope_hint = type('T', (), {'contract_type': c.contract_type})()
     try:
         _remove_contract_file(c)
         _purge_contract_dependencies(id)
@@ -7172,8 +7562,17 @@ def contract_delete(id):
     except Exception:
         db.session.rollback()
         flash('تعذّر حذف العقد — تحقق من السجلات المرتبطة', 'error')
-        return redirect(_contracts_page_url(contract=scope_hint))
-    return redirect(_contracts_page_url(contract=scope_hint))
+    return redirect(url_for('contracts'))
+
+
+@app.route('/contracts/<int:contract_id>/open')
+def contract_open(contract_id):
+    """يفتح ملف العقد المرفق (سكان/ PDF) إن وُجد، وإلا صفحة طباعة العقد."""
+    c = tenant_get_or_404(Contract, contract_id)
+    file_url = _contract_js_primary_url(c)
+    if file_url:
+        return redirect(file_url)
+    return redirect(url_for('contract_print_page', contract_id=contract_id))
 
 
 @app.route('/contracts/<int:contract_id>/print')
@@ -8110,6 +8509,7 @@ def maintenance_visits():
     maint_teams = [team_to_dict(t) for t in teams_all if t.active]
     all_teams = [team_to_dict(t) for t in teams_all]
     duplicate_visit_ids = find_duplicate_visit_ids_from(visits)
+    elev_site = _elevator_site_coords_map(elevators)
     return render_template(
         'maintenance-visits.html',
         visits=visits,
@@ -8119,11 +8519,7 @@ def maintenance_visits():
         technicians=technicians,
         visits_js=_visits_js_list(visits),
         customers_js=[{'id': c.id, 'code': c.code, 'name': c.name} for c in customers],
-        elevators_js=[
-            {'id': e.id, 'code': e.code, 'customer_id': e.customer_id,
-             'customer': e.customer.name if e.customer else ''}
-            for e in elevators
-        ],
+        elevators_js=[elevator_to_js_dict(e, site=elev_site.get(e.id)) for e in elevators],
         contracts_js=[
             {'id': c.id, 'code': c.code, 'customer_id': c.customer_id} for c in contracts
         ],
@@ -9935,7 +10331,8 @@ def fault_delete(id):
 @app.route('/revenues')
 def revenues():
     from sqlalchemy.orm import joinedload
-    from customer_billing import tenant_outstanding_collectible
+    from customer_billing import REVENUE_TYPE_OPTIONS, tenant_outstanding_collectible
+    from report_data import tenant_revenue_totals
 
     _ensure_tenant_chart()
     revs = (
@@ -9951,10 +10348,12 @@ def revenues():
         revenues=revs,
         customers=customers,
         revenues_js=[revenue_to_js_dict(r) for r in revs],
+        revenue_summary=tenant_revenue_totals(Revenue),
         customers_js=[{'id': c.id, 'name': c.name, 'code': c.code} for c in customers],
         outstanding_total=outstanding.get('total') or 0,
         outstanding_count=outstanding.get('items_count') or 0,
         outstanding_contracts=outstanding.get('contracts_count') or 0,
+        revenue_type_options=REVENUE_TYPE_OPTIONS,
     )
 
 def _revenue_from_form(form, existing: Revenue | None = None):
@@ -9971,7 +10370,7 @@ def _revenue_from_form(form, existing: Revenue | None = None):
     contract_id = form.get('contract_id') or None
     invoice_id = None
     parts_billing_id = None
-    revenue_type = (form.get('revenue_type') or '').strip()
+    revenue_type = form.get('revenue_type', '')
     customer_id = form.get('customer_id') or None
 
     if source_type and source_id and not existing:
@@ -9980,8 +10379,7 @@ def _revenue_from_form(form, existing: Revenue | None = None):
         contract_id = link['contract_id']
         invoice_id = link['invoice_id']
         parts_billing_id = link['parts_billing_id']
-        if not revenue_type:
-            revenue_type = link['revenue_type']
+        revenue_type = link['revenue_type']
         ref_note = link.get('reference_note') or ''
         if ref_note and ref_note not in (notes or ''):
             notes = (ref_note + (' — ' + notes if notes else '')).strip()
@@ -10037,7 +10435,7 @@ def revenue_edit(id):
     old_contract_id = r.contract_id
     try:
         _revenue_from_form(request.form, existing=r)
-        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=False)
+        _add_fin_proof_files(r, request.files.getlist('proof_file'), kind='revenues', required=False)
     except (ValueError, KeyError) as exc:
         db.session.rollback()
         flash(str(exc) or 'تعذّر تحديث الإيراد', 'error')
@@ -10065,7 +10463,7 @@ def revenue_add():
     try:
         r = _revenue_from_form(request.form)
         db.session.flush()
-        _save_fin_proof(r, request.files.get('proof_file'), kind='revenues', required=False)
+        _add_fin_proof_files(r, request.files.getlist('proof_file'), kind='revenues', required=False)
     except (ValueError, KeyError) as exc:
         db.session.rollback()
         flash(str(exc) or 'تعذّر حفظ الإيراد', 'error')
@@ -10113,8 +10511,19 @@ def revenue_remove_proof(id):
     if err:
         return err
     r = tenant_get_or_404(Revenue, id)
-    if not r.proof_path:
+    if not _fin_proof_has(r):
         return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    data = request.get_json(silent=True) or {}
+    index = data.get('index')
+    if index is not None:
+        try:
+            idx = int(index)
+        except (TypeError, ValueError):
+            return jsonify({'ok': False, 'message': 'فهرس المرفق غير صالح'}), 400
+        if not _remove_fin_proof_at(r, idx):
+            return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+        db.session.commit()
+        return jsonify({'ok': True, 'removed': True, 'id': r.id, 'index': idx})
     _remove_fin_proof(r)
     db.session.commit()
     return jsonify({'ok': True, 'removed': True, 'id': r.id})
@@ -10124,10 +10533,14 @@ def revenue_remove_proof(id):
 # شجرة الحسابات (مرحلة 1)
 # =============================================
 def _ensure_tenant_chart():
-    from chart_of_accounts import ensure_chart_schema
+    from chart_of_accounts import ensure_chart_schema, repair_cash_bank_map_keys_for_org
+    from tenant_scope import effective_organization_id
 
     try:
         ensure_chart_schema()
+        oid = getattr(g, 'organization_id', None) or effective_organization_id()
+        if oid:
+            repair_cash_bank_map_keys_for_org(oid)
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('ensure_chart_schema: %s', exc)
@@ -10356,7 +10769,8 @@ def journals_backfill():
         stats = backfill_journals()
         flash(
             f"تم الترحيل: {stats.get('revenues', 0)} إيراد · {stats.get('expenses', 0)} مصروف"
-            + (f" · تخطي {stats.get('skipped', 0)}" if stats.get('skipped') else ''),
+            + (f" · تخطي {stats.get('skipped', 0)}" if stats.get('skipped') else '')
+            + (f" · تصحيح صندوق/بنك {stats.get('repaired', 0)}" if stats.get('repaired') else ''),
             'success',
         )
     except Exception as exc:
@@ -10576,32 +10990,59 @@ def balance_sheet():
 # =============================================
 @app.route('/expenses')
 def expenses():
+    from chart_of_accounts import EXPENSE_TYPE_OPTIONS
+
     _ensure_tenant_chart()
     exps = tenant_query(Expense).order_by(Expense.expense_date.desc()).all()
     return render_template(
         'expenses.html',
         expenses=exps,
         expenses_js=[expense_to_js_dict(e) for e in exps],
+        expense_type_options=EXPENSE_TYPE_OPTIONS,
     )
+@app.route('/expenses/reclassify', methods=['POST'])
+def expenses_reclassify():
+    from chart_of_accounts import reclassify_expenses_from_description
+
+    _ensure_tenant_chart()
+    try:
+        stats = reclassify_expenses_from_description()
+        flash(
+            f"تم تصنيف {stats.get('updated', 0)} مصروف · تخطي {stats.get('skipped', 0)}"
+            + (f" · قيود {stats.get('journals', 0)}" if stats.get('journals') else ''),
+            'success',
+        )
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception('expenses_reclassify failed')
+        flash(f'تعذّر تصنيف المصروفات: {exc}', 'danger')
+    return redirect(url_for('expenses'))
+
+
 @app.route('/expenses/edit/<int:id>', methods=['POST'])
 def expense_edit(id):
     e = tenant_get_or_404(Expense, id)
     try:
+        from chart_of_accounts import infer_expense_type, resolve_expense_account_id
+
         e.expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date()
-        e.expense_type   = request.form.get('expense_type','')
         e.description    = request.form.get('description','')
+        e.notes          = request.form.get('notes','')
+        e.expense_type   = infer_expense_type(
+            e.description,
+            e.notes,
+            request.form.get('expense_type', ''),
+        )
         e.responsible    = request.form.get('responsible','')
         e.payment_method = request.form.get('payment_method','')
         e.amount         = float(request.form.get('amount', 0))
         e.reference      = request.form.get('reference','')
-        e.notes          = request.form.get('notes','')
         try:
-            from chart_of_accounts import resolve_expense_account_id
             _ensure_tenant_chart()
             e.account_id = resolve_expense_account_id(e.expense_type)
         except Exception:
             pass
-        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)
+        _add_fin_proof_files(e, request.files.getlist('proof_file'), kind='expenses', required=False)
         try:
             from accounting_journals import post_expense_journal
             post_expense_journal(e)
@@ -10617,19 +11058,27 @@ def expense_edit(id):
 @app.route('/expenses/add', methods=['POST'])
 def expense_add():
     try:
+        from chart_of_accounts import infer_expense_type, resolve_expense_account_id
+
+        description = request.form.get('description', '')
+        notes = request.form.get('notes', '')
+        expense_type = infer_expense_type(
+            description,
+            notes,
+            request.form.get('expense_type', ''),
+        )
         e = Expense(
             code           = next_code(Expense, 'EXP-', digits=3),
             expense_date   = datetime.strptime(request.form['expense_date'], '%Y-%m-%d').date(),
-            expense_type   = request.form.get('expense_type',''),
-            description    = request.form.get('description',''),
+            expense_type   = expense_type,
+            description    = description,
             responsible    = request.form.get('responsible',''),
             payment_method = request.form.get('payment_method',''),
             amount         = float(request.form.get('amount', 0)),
             reference      = request.form.get('reference',''),
-            notes          = request.form.get('notes',''),
+            notes          = notes,
         )
         try:
-            from chart_of_accounts import resolve_expense_account_id
             _ensure_tenant_chart()
             e.account_id = resolve_expense_account_id(e.expense_type)
         except Exception:
@@ -10638,7 +11087,7 @@ def expense_add():
         stamp_created_by(e)
         db.session.add(e)
         db.session.flush()
-        _save_fin_proof(e, request.files.get('proof_file'), kind='expenses', required=False)
+        _add_fin_proof_files(e, request.files.getlist('proof_file'), kind='expenses', required=False)
         try:
             from accounting_journals import post_expense_journal
             post_expense_journal(e)
@@ -10675,8 +11124,19 @@ def expense_remove_proof(id):
     if err:
         return err
     e = tenant_get_or_404(Expense, id)
-    if not e.proof_path:
+    if not _fin_proof_has(e):
         return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+    data = request.get_json(silent=True) or {}
+    index = data.get('index')
+    if index is not None:
+        try:
+            idx = int(index)
+        except (TypeError, ValueError):
+            return jsonify({'ok': False, 'message': 'فهرس المرفق غير صالح'}), 400
+        if not _remove_fin_proof_at(e, idx):
+            return jsonify({'ok': True, 'removed': False, 'message': 'لا يوجد مرفق'})
+        db.session.commit()
+        return jsonify({'ok': True, 'removed': True, 'id': e.id, 'index': idx})
     _remove_fin_proof(e)
     db.session.commit()
     return jsonify({'ok': True, 'removed': True, 'id': e.id})
@@ -11011,26 +11471,59 @@ def inventory_add():
     db.session.commit()
     return redirect(url_for('inventory'))
 
+def prepare_inventory_item_deletion(item_id: int) -> tuple[bool, str | None]:
+    """تنظيف الارتباطات القابلة للحذف والتحقق من العوائق قبل حذف الصنف."""
+    po_count = tenant_query(PurchaseOrderLine).filter_by(item_id=item_id).count()
+    if po_count:
+        return False, f'لا يمكن حذف الصنف — مرتبط بـ {po_count} بند في طلبات شراء.'
+    mv_count = tenant_query(StockMovement).filter_by(item_id=item_id).count()
+    if mv_count:
+        return False, (
+            f'لا يمكن حذف الصنف — له {mv_count} حركة مخزن. '
+            'احذف حركات المخزن المرتبطة أولاً أو أوقف استخدام الصنف.'
+        )
+    tenant_query(SupplierPrice).filter_by(item_id=item_id).delete(synchronize_session=False)
+    tenant_query(SupplierQuoteRequestLine).filter_by(item_id=item_id).update(
+        {SupplierQuoteRequestLine.item_id: None},
+        synchronize_session=False,
+    )
+    return True, None
+
+
 @app.route('/inventory/delete/<int:id>', methods=['POST'])
 def inventory_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
     item = tenant_get_or_404(InventoryItem, id)
-    db.session.delete(item)
-    db.session.commit()
+    as_json = _admin_delete_wants_json()
+    ok, block_msg = prepare_inventory_item_deletion(item.id)
+    if not ok:
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('delete_blocked', 409, message_ar=block_msg)
+        flash(block_msg, 'error')
+        return redirect(url_for('inventory'))
+    try:
+        db.session.delete(item)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        msg = 'تعذّر حذف الصنف — يوجد بيانات مرتبطة به في النظام.'
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('delete_failed', 409, message_ar=msg)
+        flash(msg, 'error')
+        return redirect(url_for('inventory'))
+    if as_json:
+        return jsonify({'ok': True})
     return redirect(url_for('inventory'))
 
 
 @app.route('/inventory/template')
 def inventory_import_template():
-    """تحميل نموذج استيراد الأصناف (عربي أو إنجليزي)."""
-    lang = request.args.get('lang')
-    if lang not in ('ar', 'en'):
-        lang = resolve_user_language(getattr(g, 'auth_user', None))
-    basename = 'inventory_template_en.xlsx' if lang == 'en' else 'inventory_template.xlsx'
-    download_name = 'inventory_import_template_en.xlsx' if lang == 'en' else 'inventory_import_template.xlsx'
-    path = os.path.join(app.root_path, 'static', 'templates', basename)
+    """تحميل نموذج استيراد الأصناف."""
+    path = os.path.join(app.root_path, 'static', 'templates', 'inventory_template.xlsx')
     if not os.path.isfile(path):
         script = os.path.join(app.root_path, 'scripts', 'build_inventory_template.py')
         if os.path.isfile(script):
@@ -11039,14 +11532,14 @@ def inventory_import_template():
             if spec and spec.loader:
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
-                mod.build_xlsx(path, lang=lang)
+                mod.build_xlsx(path)
         if not os.path.isfile(path):
             abort(404)
     return send_from_directory(
         os.path.dirname(path),
         os.path.basename(path),
         as_attachment=True,
-        download_name=download_name,
+        download_name='inventory_template.xlsx',
     )
 
 
@@ -11253,25 +11746,53 @@ def _po_status_bilingual(status):
 def _apply_purchase_receipt(order):
     if order.status != 'مستلم' or order.received_at:
         return
+    from supplier_prices import find_or_create_supplier, upsert_supplier_price
+
     db.session.flush()
     updated = False
+    supplier_row = None
+    if order.supplier_id:
+        supplier_row = db.session.get(Supplier, order.supplier_id)
+    elif order.supplier:
+        supplier_row = find_or_create_supplier(
+            order.supplier, order.supplier_phone, order.supplier_email, assign_organization,
+        )
+        order.supplier_id = supplier_row.id if supplier_row else None
     for line in order.lines:
         item = db.session.get(InventoryItem, line.item_id)
         if item:
             item.current_qty = (item.current_qty or 0) + (line.quantity or 0)
+            if line.unit_price and float(line.unit_price) > 0:
+                item.buy_price = float(line.unit_price)
+                if order.supplier:
+                    item.supplier = order.supplier
             updated = True
+            if supplier_row and line.unit_price and float(line.unit_price) > 0:
+                upsert_supplier_price(
+                    supplier_row.id,
+                    line.item_id,
+                    float(line.unit_price),
+                    source='po',
+                    source_ref=order.code,
+                    assign_org_fn=assign_organization,
+                    sync_inventory=False,
+                )
     if updated:
         order.received_at = datetime.utcnow()
 
 
 @app.route('/purchase-orders')
 def purchase_orders():
+    from supplier_price_schema import ensure_supplier_price_schema
+    ensure_supplier_price_schema()
     orders = tenant_query(PurchaseOrder).order_by(PurchaseOrder.order_date.desc().nullslast()).all()
     items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
     return render_template(
         'purchase-orders.html',
         orders=orders,
         items=items,
+        suppliers=suppliers,
         statuses=PO_STATUSES,
         next_po_code=next_code(PurchaseOrder, 'PO-', digits=4),
         today=date.today().isoformat(),
@@ -11280,10 +11801,15 @@ def purchase_orders():
 
 @app.route('/purchase-orders/save', methods=['POST'])
 def purchase_orders_save():
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import find_or_create_supplier, upsert_supplier_price
+    ensure_supplier_price_schema()
     order_id = request.form.get('order_id', '').strip()
     supplier = request.form.get('supplier', '').strip()
+    supplier_id_raw = request.form.get('supplier_id', '').strip()
     supplier_phone = request.form.get('supplier_phone', '').strip()
     supplier_email = request.form.get('supplier_email', '').strip()
+    rfq_id_raw = request.form.get('rfq_id', '').strip()
     order_date_raw = request.form.get('order_date', '').strip()
     status = request.form.get('status', 'مسودة').strip()
     notes = request.form.get('notes', '').strip()
@@ -11320,9 +11846,16 @@ def purchase_orders_save():
         db.session.add(order)
 
     old_status = order.status
-    order.supplier = supplier or None
+    sup_row = None
+    if supplier_id_raw.isdigit():
+        sup_row = tenant_get_or_404(Supplier, int(supplier_id_raw))
+    elif supplier:
+        sup_row = find_or_create_supplier(supplier, supplier_phone, supplier_email, assign_organization)
+    order.supplier = supplier or (sup_row.name if sup_row else None)
+    order.supplier_id = sup_row.id if sup_row else None
     order.supplier_phone = supplier_phone or None
     order.supplier_email = supplier_email or None
+    order.rfq_id = int(rfq_id_raw) if rfq_id_raw.isdigit() else None
     order.order_date = order_date
     order.notes = notes or None
     order.status = status if status in PO_STATUSES else 'مسودة'
@@ -11339,6 +11872,18 @@ def purchase_orders_save():
         order.lines.append(line)
         total += row['line_total']
     order.total_amount = total
+    if sup_row:
+        for row in lines_data:
+            if row['unit_price'] > 0:
+                upsert_supplier_price(
+                    sup_row.id,
+                    row['item_id'],
+                    row['unit_price'],
+                    source='po',
+                    source_ref=order.code,
+                    assign_org_fn=assign_organization,
+                    sync_inventory=True,
+                )
     if order.status == 'مستلم' and old_status != 'مستلم':
         _apply_purchase_receipt(order)
     db.session.commit()
@@ -11585,7 +12130,9 @@ def _resolve_rfq_project(project_id_raw):
 @app.route('/supplier-rfqs')
 def supplier_rfqs():
     from supplier_rfq_schema import ensure_supplier_rfq_schema
+    from supplier_price_schema import ensure_supplier_price_schema
     ensure_supplier_rfq_schema()
+    ensure_supplier_price_schema()
     requests_list = tenant_query(SupplierQuoteRequest).order_by(
         SupplierQuoteRequest.request_date.desc().nullslast()
     ).all()
@@ -11594,6 +12141,8 @@ def supplier_rfqs():
     edit_id = request.args.get('edit', type=int)
     if edit_id:
         edit_rfq = tenant_get_or_404(SupplierQuoteRequest, edit_id)
+    items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
     return render_template(
         'supplier-rfqs.html',
         requests=requests_list,
@@ -11602,15 +12151,21 @@ def supplier_rfqs():
         today=date.today().isoformat(),
         project=project,
         edit_rfq=edit_rfq,
+        items=items,
+        suppliers=suppliers,
     )
 
 
 @app.route('/supplier-rfqs/save', methods=['POST'])
 def supplier_rfqs_save():
     from supplier_rfq_schema import ensure_supplier_rfq_schema
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import apply_rfq_quoted_prices, find_or_create_supplier
     ensure_supplier_rfq_schema()
+    ensure_supplier_price_schema()
     req_id = request.form.get('request_id', '').strip()
     supplier = request.form.get('supplier', '').strip()
+    supplier_id_raw = request.form.get('supplier_id', '').strip()
     supplier_phone = request.form.get('supplier_phone', '').strip()
     supplier_email = request.form.get('supplier_email', '').strip()
     subject = request.form.get('subject', '').strip()
@@ -11623,24 +12178,34 @@ def supplier_rfqs_save():
     except ValueError:
         request_date = date.today()
 
+    from itertools import zip_longest
     descriptions = request.form.getlist('description')
     quantities = request.form.getlist('quantity')
     units = request.form.getlist('unit')
     specs_list = request.form.getlist('specs')
+    item_ids = request.form.getlist('item_id')
+    quoted_prices = request.form.getlist('quoted_unit_price')
     lines_data = []
-    for desc, qty, unit, specs in zip(descriptions, quantities, units, specs_list):
+    for desc, qty, unit, specs, item_raw, price_raw in zip_longest(
+        descriptions, quantities, units, specs_list, item_ids, quoted_prices, fillvalue=''
+    ):
         description = (desc or '').strip()
         if not description:
             continue
         quantity = float(qty or 0)
         if quantity <= 0:
             quantity = 1
+        item_id = int(item_raw) if (item_raw or '').strip().isdigit() else None
+        quoted = float(price_raw or 0) if (price_raw or '').strip() else None
+        if quoted is not None and quoted <= 0:
+            quoted = None
         lines_data.append({
             'description': description,
             'quantity': quantity,
             'unit': (unit or 'قطعة').strip() or 'قطعة',
             'specs': (specs or '').strip() or None,
-            'item_id': None,
+            'item_id': item_id,
+            'quoted_unit_price': quoted,
         })
     if not lines_data:
         flash('أضف بنداً واحداً على الأقل', 'error')
@@ -11654,7 +12219,13 @@ def supplier_rfqs_save():
         db.session.add(rfq)
 
     project = _resolve_rfq_project(project_id_raw)
-    rfq.supplier = supplier or None
+    sup_row = None
+    if supplier_id_raw.isdigit():
+        sup_row = tenant_get_or_404(Supplier, int(supplier_id_raw))
+    elif supplier:
+        sup_row = find_or_create_supplier(supplier, supplier_phone, supplier_email, assign_organization)
+    rfq.supplier = supplier or (sup_row.name if sup_row else None)
+    rfq.supplier_id = sup_row.id if sup_row else None
     rfq.supplier_phone = supplier_phone or None
     rfq.supplier_email = supplier_email or None
     rfq.subject = subject or None
@@ -11671,9 +12242,12 @@ def supplier_rfqs_save():
             unit=row['unit'],
             specs=row['specs'],
             item_id=row['item_id'],
+            quoted_unit_price=row['quoted_unit_price'],
         )
         assign_organization(line)
         rfq.lines.append(line)
+    if rfq.status == 'مستلم' and rfq.supplier_id:
+        apply_rfq_quoted_prices(rfq, assign_organization)
     db.session.commit()
     flash('تم تحديث طلب عرض السعر' if req_id else 'تم حفظ طلب عرض السعر', 'success')
     return redirect(url_for('supplier_rfq_print', request_id=rfq.id))
@@ -11757,6 +12331,256 @@ def supplier_rfqs_delete(request_id):
     db.session.commit()
     flash('تم حذف طلب عرض السعر', 'success')
     return redirect(url_for('supplier_rfqs'))
+
+
+@app.route('/suppliers')
+def suppliers():
+    from supplier_price_schema import ensure_supplier_price_schema
+    ensure_supplier_price_schema()
+    edit_id = request.args.get('edit', type=int)
+    search_q = (request.args.get('q') or '').strip()
+    filter_active = request.args.get('active', '1')
+    q = tenant_query(Supplier)
+    if filter_active == '1':
+        q = q.filter(Supplier.active.is_(True))
+    elif filter_active == '0':
+        q = q.filter(Supplier.active.is_(False))
+    if search_q:
+        like = f'%{search_q}%'
+        q = q.filter(db.or_(Supplier.name.ilike(like), Supplier.phone.ilike(like), Supplier.email.ilike(like)))
+    suppliers_list = q.order_by(Supplier.name).all()
+    price_counts = {}
+    if suppliers_list:
+        from sqlalchemy import func
+        rows = (
+            tenant_query(SupplierPrice)
+            .filter(SupplierPrice.supplier_id.in_([s.id for s in suppliers_list]))
+            .with_entities(SupplierPrice.supplier_id, func.count(SupplierPrice.id))
+            .group_by(SupplierPrice.supplier_id)
+            .all()
+        )
+        price_counts = {sid: cnt for sid, cnt in rows}
+    edit_supplier = tenant_get_or_404(Supplier, edit_id) if edit_id else None
+    return render_template(
+        'suppliers.html',
+        suppliers=suppliers_list,
+        edit_supplier=edit_supplier,
+        search_q=search_q,
+        filter_active=filter_active,
+        price_counts=price_counts,
+    )
+
+
+@app.route('/suppliers/save', methods=['POST'])
+def suppliers_save():
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import find_supplier_by_name
+    ensure_supplier_price_schema()
+    supplier_id_raw = request.form.get('supplier_id', '').strip()
+    name = request.form.get('name', '').strip()
+    phone = request.form.get('phone', '').strip()
+    email = request.form.get('email', '').strip()
+    notes = request.form.get('notes', '').strip()
+    active = request.form.get('active', '1') == '1'
+    if not name:
+        flash('اسم المورد مطلوب', 'error')
+        return redirect(url_for('suppliers'))
+    if supplier_id_raw.isdigit():
+        sup = tenant_get_or_404(Supplier, int(supplier_id_raw))
+        other = find_supplier_by_name(name)
+        if other and other.id != sup.id:
+            flash('يوجد مورد آخر بنفس الاسم', 'error')
+            return redirect(url_for('suppliers', edit=sup.id))
+        sup.name = name
+        sup.phone = phone or None
+        sup.email = email or None
+        sup.notes = notes or None
+        sup.active = active
+        flash('تم تحديث بيانات المورد', 'success')
+        db.session.commit()
+        return redirect(url_for('suppliers', edit=sup.id))
+    existing = find_supplier_by_name(name)
+    if existing:
+        flash('المورد موجود مسبقاً — يمكنك تعديله من القائمة', 'error')
+        return redirect(url_for('suppliers', edit=existing.id))
+    sup = Supplier(name=name, phone=phone or None, email=email or None, notes=notes or None, active=active)
+    assign_organization(sup)
+    db.session.add(sup)
+    db.session.commit()
+    flash('تم إضافة المورد', 'success')
+    return redirect(url_for('suppliers', edit=sup.id))
+
+
+@app.route('/api/suppliers')
+def api_suppliers():
+    from supplier_price_schema import ensure_supplier_price_schema
+    ensure_supplier_price_schema()
+    rows = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
+    return jsonify({
+        'ok': True,
+        'suppliers': [
+            {'id': s.id, 'name': s.name, 'phone': s.phone or '', 'email': s.email or ''}
+            for s in rows
+        ],
+    })
+
+
+@app.route('/supplier-price-list')
+def supplier_price_list():
+    from supplier_price_schema import ensure_supplier_price_schema
+    ensure_supplier_price_schema()
+    supplier_id = request.args.get('supplier_id', type=int)
+    q = tenant_query(SupplierPrice).join(Supplier).join(InventoryItem)
+    if supplier_id:
+        q = q.filter(SupplierPrice.supplier_id == supplier_id)
+    prices = q.order_by(Supplier.name, InventoryItem.name).all()
+    suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
+    items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    return render_template(
+        'supplier-price-list.html',
+        prices=prices,
+        suppliers=suppliers,
+        items=items,
+        filter_supplier_id=supplier_id,
+    )
+
+
+@app.route('/supplier-price-list/save', methods=['POST'])
+def supplier_price_list_save():
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import find_or_create_supplier, upsert_supplier_price
+    ensure_supplier_price_schema()
+    supplier_id_raw = request.form.get('supplier_id', '').strip()
+    supplier_name = request.form.get('supplier_name', '').strip()
+    supplier_phone = request.form.get('supplier_phone', '').strip()
+    supplier_email = request.form.get('supplier_email', '').strip()
+    item_ids = request.form.getlist('item_id')
+    unit_prices = request.form.getlist('unit_price')
+    lead_days_list = request.form.getlist('lead_days')
+    notes_list = request.form.getlist('price_notes')
+
+    sup = None
+    if supplier_id_raw.isdigit():
+        sup = tenant_get_or_404(Supplier, int(supplier_id_raw))
+    elif supplier_name:
+        sup = find_or_create_supplier(supplier_name, supplier_phone, supplier_email, assign_organization)
+    if not sup:
+        flash('اختر مورداً أو أدخل اسم مورد', 'error')
+        return redirect(url_for('supplier_price_list'))
+
+    saved = 0
+    from itertools import zip_longest
+    for item_raw, price_raw, lead_raw, note_raw in zip_longest(
+        item_ids, unit_prices, lead_days_list, notes_list, fillvalue=''
+    ):
+        if not (item_raw or '').strip().isdigit():
+            continue
+        price = float(price_raw or 0)
+        if price <= 0:
+            continue
+        lead = int(lead_raw) if (lead_raw or '').strip().isdigit() else None
+        upsert_supplier_price(
+            sup.id,
+            int(item_raw),
+            price,
+            source='manual',
+            notes=(note_raw or '').strip() or None,
+            lead_days=lead,
+            assign_org_fn=assign_organization,
+        )
+        saved += 1
+    db.session.commit()
+    flash(f'تم حفظ {saved} سعر في قائمة المورد' if saved else 'لم يُحفظ أي سعر', 'success' if saved else 'error')
+    return redirect(url_for('supplier_price_list', supplier_id=sup.id))
+
+
+@app.route('/supplier-price-list/delete/<int:price_id>', methods=['POST'])
+def supplier_price_list_delete(price_id):
+    err = enforce_admin_delete()
+    if err:
+        return err
+    row = tenant_get_or_404(SupplierPrice, price_id)
+    sid = row.supplier_id
+    db.session.delete(row)
+    db.session.commit()
+    flash('تم حذف السعر', 'success')
+    return redirect(url_for('supplier_price_list', supplier_id=sid))
+
+
+@app.route('/api/supplier-prices/lookup')
+def api_supplier_price_lookup():
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import lookup_price
+    ensure_supplier_price_schema()
+    item_id = request.args.get('item_id', type=int)
+    supplier_id = request.args.get('supplier_id', type=int)
+    supplier_name = request.args.get('supplier_name', '').strip()
+    if not item_id:
+        return jsonify({'ok': False, 'error': 'item_id required'}), 400
+    price = lookup_price(supplier_id, item_id, supplier_name or None)
+    return jsonify({'ok': True, 'unit_price': price or 0})
+
+
+@app.route('/api/inventory/<int:item_id>/supplier-prices')
+def api_item_supplier_prices(item_id):
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import prices_for_item
+    ensure_supplier_price_schema()
+    tenant_get_or_404(InventoryItem, item_id)
+    return jsonify({'ok': True, 'prices': prices_for_item(item_id)})
+
+
+@app.route('/supplier-rfqs/<int:request_id>/to-po', methods=['POST'])
+def supplier_rfq_to_po(request_id):
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import lookup_price
+    ensure_supplier_price_schema()
+    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
+    lines_data = []
+    for line in rfq.lines or []:
+        if not line.item_id:
+            continue
+        qty = float(line.quantity or 1)
+        price = line.quoted_unit_price
+        if price is None or float(price) <= 0:
+            price = lookup_price(rfq.supplier_id, line.item_id, rfq.supplier)
+        price = float(price or 0)
+        lines_data.append({
+            'item_id': line.item_id,
+            'quantity': qty,
+            'unit_price': price,
+            'line_total': qty * price,
+        })
+    if not lines_data:
+        flash('اربط البنود بأصناف المخزن وأدخل أسعار العرض أولاً', 'error')
+        return redirect(url_for('supplier_rfqs', edit=request_id))
+
+    order = PurchaseOrder(code=next_code(PurchaseOrder, 'PO-', digits=4))
+    assign_organization(order)
+    order.supplier = rfq.supplier
+    order.supplier_id = rfq.supplier_id
+    order.supplier_phone = rfq.supplier_phone
+    order.supplier_email = rfq.supplier_email
+    order.order_date = date.today()
+    order.status = 'مسودة'
+    order.rfq_id = rfq.id
+    order.notes = f'من RFQ {rfq.code}'
+    total = 0.0
+    for row in lines_data:
+        pline = PurchaseOrderLine(
+            item_id=row['item_id'],
+            quantity=row['quantity'],
+            unit_price=row['unit_price'],
+            line_total=row['line_total'],
+        )
+        assign_organization(pline)
+        order.lines.append(pline)
+        total += row['line_total']
+    order.total_amount = total
+    db.session.add(order)
+    db.session.commit()
+    flash(f'تم إنشاء طلب شراء {order.code} من عرض السعر', 'success')
+    return redirect(url_for('purchase_order_print', order_id=order.id))
 
 
 # =============================================
@@ -12269,10 +13093,28 @@ def _report_ctx():
 
 def _render_report_page(report_id, template):
     from report_data import fetch_report_rows
+
+    ctx = _report_ctx()
+    extra = {}
+    if report_id == 'report-revenues':
+        from customer_billing import REVENUE_TYPE_OPTIONS
+        from report_data import get_revenue_report_payload
+
+        payload = get_revenue_report_payload(ctx['db'], ctx['Revenue'])
+        extra['revenue_type_options'] = REVENUE_TYPE_OPTIONS
+        extra['report_summary'] = payload['summary']
+        return render_template(
+            template,
+            report_rows=payload['rows'],
+            report_id=report_id,
+            **extra,
+        )
+
     return render_template(
         template,
-        report_rows=fetch_report_rows(report_id, _report_ctx()),
+        report_rows=fetch_report_rows(report_id, ctx),
         report_id=report_id,
+        **extra,
     )
 
 
@@ -12292,6 +13134,23 @@ def report_client_annual():
         customers_json=customers_json,
         report_years=report_years,
         current_year=cur_year,
+    )
+
+
+@app.route('/reports/customer-profitability')
+def report_customer_profitability():
+    """ربحية عميل — إيرادات محصّلة مقابل تكلفة تشغيل تقديرية."""
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    selected_id = request.args.get('customer_id', type=int)
+    today = date.today()
+    settings = tenant_query(Settings).first()
+    return render_template(
+        'report-customer-profitability.html',
+        customers=customers,
+        selected_id=selected_id,
+        default_from=date(today.year, 1, 1).isoformat(),
+        default_to=today.isoformat(),
+        brand_logo_url=brand_logo_url(settings),
     )
 
 
@@ -12392,11 +13251,14 @@ def report_contract_forecast():
 
 @app.route('/reports/financial-health')
 def report_financial_health():
+    from report_data import _tenant_revenue_date_bounds
+
     today = date.today()
+    df, dt = _tenant_revenue_date_bounds(Revenue, today)
     return render_template(
         'report-financial-health.html',
-        default_from=date(today.year, 1, 1).isoformat(),
-        default_to=today.isoformat(),
+        default_from=df.isoformat(),
+        default_to=dt.isoformat(),
     )
 
 
@@ -13514,17 +14376,21 @@ def api_report_faults():
 
 @app.route('/api/reports/revenues')
 def api_report_revenues():
-    from report_data import get_report_revenues
-    year = request.args.get('year', datetime.now().year)
-    month = request.args.get('month', '') or None
-    return jsonify(get_report_revenues(db, Revenue, year=year, month=month))
+    from report_data import get_revenue_report_payload
+    year_raw = request.args.get('year')
+    month_raw = request.args.get('month')
+    year = int(year_raw) if year_raw else None
+    month = int(month_raw) if month_raw else None
+    return jsonify(get_revenue_report_payload(db, Revenue, year=year, month=month))
 
 
 @app.route('/api/reports/expenses')
 def api_report_expenses():
     from report_data import get_report_expenses
-    year = request.args.get('year', datetime.now().year)
-    month = request.args.get('month', '') or None
+    year_raw = request.args.get('year')
+    month_raw = request.args.get('month')
+    year = int(year_raw) if year_raw else None
+    month = int(month_raw) if month_raw else None
     return jsonify(get_report_expenses(db, Expense, year=year, month=month))
 
 
@@ -13562,20 +14428,6 @@ def api_report_financial():
     return jsonify(get_financial_report(db, Revenue, Expense, date_from=date_from, date_to=date_to))
 
 
-@app.route('/api/reports/contract-cost-allocation')
-def api_report_contract_cost_allocation():
-    from report_data import get_contract_cost_allocation_report, _parse_report_date
-    today = date.today()
-    date_from = _parse_report_date(request.args.get('date_from')) or date(today.year, 1, 1)
-    date_to = _parse_report_date(request.args.get('date_to')) or today
-    return jsonify(get_contract_cost_allocation_report(
-        Contract, MaintenanceVisit, Revenue,
-        date_from=date_from,
-        date_to=date_to,
-        contract_status_fn=contract_display_status,
-    ))
-
-
 @app.route('/api/reports/contract-forecast')
 def api_report_contract_forecast():
     from report_data import get_contract_renewal_forecast, get_contract_renewal_overview
@@ -13602,6 +14454,23 @@ def api_report_financial_health():
     year = int(year_raw) if year_raw.isdigit() else None
     return jsonify(get_financial_health_report(
         db, Revenue, Expense, Contract, Technician, Elevator, MaintenanceVisit,
+        year=year, date_from=date_from, date_to=date_to,
+        contract_status_fn=contract_display_status,
+    ))
+
+
+@app.route('/api/reports/customer-profitability/<int:customer_id>')
+def api_customer_profitability(customer_id):
+    from report_data import get_customer_profitability_report
+
+    date_from = request.args.get('from') or request.args.get('date_from')
+    date_to = request.args.get('to') or request.args.get('date_to')
+    year_raw = (request.args.get('year') or '').strip()
+    year = int(year_raw) if year_raw.isdigit() else None
+    return jsonify(get_customer_profitability_report(
+        customer_id,
+        db, Customer, Revenue, Expense, Contract, Technician, Elevator,
+        MaintenanceVisit, PartsBilling,
         year=year, date_from=date_from, date_to=date_to,
         contract_status_fn=contract_display_status,
     ))

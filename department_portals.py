@@ -115,11 +115,14 @@ DEPARTMENT_PORTALS = {
         'title_en': 'Warehouses & Purchasing Platform',
         'short_title': 'المخازن والمشتريات',
         'short_title_en': 'Warehouses & Purchasing',
-        'description': 'الأصناف وحركة المخزون وطلبات الشراء وتقارير المخازن',
-        'description_en': 'Items, stock movements, purchase orders, and warehouse reports',
+        'description': 'الأصناف والموردون وحركة المخزون وطلبات الشراء وقوائم الأسعار',
+        'description_en': 'Items, suppliers, stock movements, purchase orders, and price lists',
         'color': '#1fb87a',
         'links': (
             ('الأصناف', 'Inventory Items', '/inventory', 'inventory.read'),
+            ('الموردون', 'Suppliers', '/suppliers', 'suppliers.read'),
+            ('قائمة أسعار الموردين', 'Supplier Price List', '/supplier-price-list', 'supplier_prices.read'),
+            ('طلبات عروض الموردين', 'Supplier RFQs', '/supplier-rfqs', 'supplier_rfqs.read'),
             ('حركة المخزن', 'Stock Movements', '/stock-movements', 'stock_movements.read'),
             ('طلبات الشراء', 'Purchase Orders', '/purchase-orders', 'purchase_orders.read'),
         ),
@@ -168,6 +171,7 @@ DEPARTMENT_PORTALS = {
             ('الصحة المالية', 'Financial Health', '/reports/financial-health', 'report_financial_health.read'),
             ('توقعات التحصيل', 'Collection Forecast', '/reports/contract-forecast', 'report_contract_forecast.read'),
             ('كشف حساب عميل', 'Customer Statement', '/reports/customer-statement', 'report_customer_statement.read'),
+            ('ربحية عميل', 'Customer Profitability', '/reports/customer-profitability', 'report_customer_profitability.read'),
             ('تقرير الإيرادات', 'Revenues Report', '/reports/revenues', 'report_revenues.read'),
             ('تقرير المصروفات', 'Expenses Report', '/reports/expenses', 'report_expenses.read'),
             ('تقرير الفواتير', 'Invoices Report', '/reports/invoices', 'report_invoices.read'),
@@ -221,10 +225,34 @@ def _localize_portal(portal: dict, lang: str) -> dict:
     return localized
 
 
-def visible_department_portals(*, permission_ok, install_enabled, lang: str = 'ar'):
+DEPARTMENT_REQUIRED_FEATURES = {
+    'maintenance': 'maintenance_core',
+    'installations': 'installation',
+    'marketing': 'maintenance_core',
+    'personnel': 'maintenance_core',
+    'accounting': 'advanced_finance',
+}
+
+
+def visible_department_portals(
+    *,
+    permission_ok,
+    install_enabled,
+    feature_ok=None,
+    lang: str = 'ar',
+):
     """فلترة المنصات وروابطها وفق صلاحيات المستخدم والباقة."""
+    if feature_ok is None:
+        feature_ok = lambda _key: True
+
     visible = []
     for slug, definition in DEPARTMENT_PORTALS.items():
+        required = DEPARTMENT_REQUIRED_FEATURES.get(slug)
+        if required and not feature_ok(required):
+            continue
+        if slug == 'inventory' and not feature_ok('inventory') and not feature_ok('purchasing'):
+            continue
+
         portal = dict(definition)
         portal['slug'] = slug
         for group in ('links', 'reports'):
@@ -234,6 +262,12 @@ def visible_department_portals(*, permission_ok, install_enabled, lang: str = 'a
                 install_only = bool(flags and flags[0])
                 if install_only and not install_enabled:
                     continue
+                if href.startswith('/inventory') or href.startswith('/stock-movements'):
+                    if not feature_ok('inventory'):
+                        continue
+                if href.startswith('/purchase-orders'):
+                    if not feature_ok('purchasing'):
+                        continue
                 if permission_ok(permission):
                     separator = '&' if '?' in href else '?'
                     allowed.append({

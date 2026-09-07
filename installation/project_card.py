@@ -15,6 +15,7 @@ from installation.models import (
     normalize_cost_category,
 )
 from models import db
+from tenant_scope import tenant_query
 
 _cost_phases_migrated = False
 
@@ -79,6 +80,14 @@ def installment_label(n: int | None, title: str | None = None) -> str:
         return 'دفعة'
     ord_ar = _AR_ORDINAL.get(int(n), str(n))
     return f'دفعة {ord_ar}'
+
+
+def _row_pay_date(value: date | datetime | None) -> str | None:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        value = value.date()
+    return value.isoformat()
 
 
 def ensure_project_card_schema() -> None:
@@ -211,6 +220,27 @@ def cost_phase_label(category: str) -> str:
     return COST_PHASE_LABELS.get(cat, cat or '—')
 
 
+def delete_install_project(project: InstallProject) -> str:
+    """حذف مشروع تركيب (عروضه، كارت المشروع، جدول التنفيذ). يُرجع كود المشروع."""
+    from models import ElevatorEstimate
+
+    code = project.code or ''
+    lead = project.lead
+    if lead and lead.status == 'تم تحويله لمشروع':
+        lead.status = 'جاري التواصل'
+
+    for est in tenant_query(ElevatorEstimate).filter_by(result_project_id=project.id).all():
+        est.result_project_id = None
+        est.result_quotation_id = None
+
+    project.accepted_quotation_id = None
+    project.contract_id = None
+    project.lead_id = None
+    db.session.flush()
+    db.session.delete(project)
+    return code
+
+
 def project_contract_value(project: InstallProject) -> float:
     if project.contract_value is not None and float(project.contract_value) > 0:
         return round(float(project.contract_value), 2)
@@ -312,12 +342,14 @@ def build_project_card(project: InstallProject) -> dict:
         detail_lines = [
             item for item in lines
             if item.installment_no
+            or (item.notes or '').strip()
             or (item.title or '').strip() not in ('', cat, phase_label)
         ]
         if (
             len(lines) == 1
             and not lines[0].installment_no
             and (lines[0].title or '').strip() in ('', cat, phase_label)
+            and not (lines[0].notes or '').strip()
         ):
             detail_lines = []
         for item in detail_lines:
@@ -333,7 +365,8 @@ def build_project_card(project: InstallProject) -> dict:
                 'label': label,
                 'amount': float(item.amount or 0),
                 'status': status,
-                'note': None,
+                'note': (item.notes or '').strip() or None,
+                'pay_date': _row_pay_date(item.cost_date),
                 'item': item,
                 'category': cat,
             })
@@ -366,7 +399,8 @@ def build_project_card(project: InstallProject) -> dict:
                 'label': r.label or installment_label(r.installment_no),
                 'amount': float(r.amount or 0),
                 'status': 'مدفوعة' if (r.status or '') == 'مستلمة' else 'غير مدفوعة',
-                'note': None,
+                'note': (r.notes or '').strip() or None,
+                'pay_date': _row_pay_date(r.received_date),
                 'item': r,
                 'category': None,
             })
