@@ -2,15 +2,15 @@
   <div class="lc-header-bar">
     <div class="lc-header-slot lc-header-slot--tenant">
       {% if header_solo %}
-      <a class="lc-back-link" href="{{ url_for('dashboard') }}" data-i18n="back_dashboard">← لوحة التحكم</a>
+      <a class="lc-back-link" href="{{ url_for('home') }}">← الرئيسية</a>
       {% else %}
-      <a class="lc-header-tenant-brand" href="{{ url_for('dashboard') }}" title="{{ brand_name|default('LiftCore') }}" aria-label="{{ brand_name|default('LiftCore') }}" data-i18n-skip>
+      <a class="lc-header-tenant-brand" href="{{ url_for('home') }}" title="{{ brand_name|default('LiftCore') }}" aria-label="{{ brand_name|default('LiftCore') }}" data-i18n-skip>
         <img src="{{ brand_logo_url }}" alt="{{ brand_name|default('LiftCore') }}" class="lc-header-tenant-logo" data-i18n-skip>
       </a>
       {% endif %}
     </div>
 
-    <a class="lc-header-slot lc-header-slot--center header-center-brand" href="{{ url_for('dashboard') }}" title="LiftCore" aria-label="LiftCore" dir="ltr" data-i18n-skip>
+    <a class="lc-header-slot lc-header-slot--center header-center-brand" href="{{ url_for('home') }}" title="LiftCore" aria-label="LiftCore" dir="ltr" data-i18n-skip>
       <img src="{{ liftcore_logo_url }}?v=10" alt="LiftCore" class="lc-header-logo" data-i18n-skip
            onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='{{ url_for('static', filename='images/liftcore-brand-logo.png') }}?v=8';}">
     </a>

@@ -2903,7 +2903,7 @@ def login():
         if admin_console and is_platform_operator(current_user()):
             return redirect(url_for('platform_home'))
         if not platform and not admin_console:
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('home'))
     if request.method == 'GET':
         ensure_csrf_token()
     if request.method == 'POST':
@@ -4594,7 +4594,7 @@ def welcome():
     if not user:
         return redirect(url_for('login'))
     if not session.pop('just_logged_in', False):
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('home'))
     display_name = session.get('username') or user.full_name or user.username
     return render_template('welcome.html', current_user_name=display_name)
 
