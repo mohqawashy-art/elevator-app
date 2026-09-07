@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# استعادة بيئة الاختبار من نسخة نظيفة قبل نسخ بيانات جما.
+# استعادة بيئة الاختبار من نسخة احتياطية (افتراضي: 30 أغسطس قبل نسخ جما).
 set -euo pipefail
 
-BACKUP="${1:-/var/backups/liftcore-staging/pre-c2ef0da0e6e6-20260828111407.dump}"
+BACKUP="${1:-/var/backups/liftcore-staging/pre-f9e4516ba726-20260830211651.dump}"
 ENV_FILE="/etc/liftcore/staging.env"
 SERVICE="liftcore-staging"
 VENV="/opt/liftcore-staging/venv/bin/python"
