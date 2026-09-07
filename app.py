@@ -12,6 +12,7 @@ from models import VisitTechnician, FaultTechnician, WhatsAppInbox
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
 from models import PurchaseOrder, PurchaseOrderLine
 from models import SupplierQuoteRequest, SupplierQuoteRequestLine, RFQ_STATUSES
+from models import Supplier, SupplierPrice
 from models import ElevatorEstimate, ElevatorEstimateLine
 from elevator_estimate_calc import (
     calculate_lines, summarize_lines, MACHINE_TYPES, ELEV_TYPES,
@@ -1817,6 +1818,12 @@ def _startup_schema_and_data_sync():
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('Supplier RFQ schema ensure skip: %s', exc)
+    try:
+        from supplier_price_schema import ensure_supplier_price_schema
+        ensure_supplier_price_schema()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('Supplier price schema ensure skip: %s', exc)
     try:
         from installation.schema import ensure_install_tenant_uniques
         ensure_install_tenant_uniques()
@@ -11689,25 +11696,53 @@ def _po_status_bilingual(status):
 def _apply_purchase_receipt(order):
     if order.status != 'مستلم' or order.received_at:
         return
+    from supplier_prices import find_or_create_supplier, upsert_supplier_price
+
     db.session.flush()
     updated = False
+    supplier_row = None
+    if order.supplier_id:
+        supplier_row = db.session.get(Supplier, order.supplier_id)
+    elif order.supplier:
+        supplier_row = find_or_create_supplier(
+            order.supplier, order.supplier_phone, order.supplier_email, assign_organization,
+        )
+        order.supplier_id = supplier_row.id if supplier_row else None
     for line in order.lines:
         item = db.session.get(InventoryItem, line.item_id)
         if item:
             item.current_qty = (item.current_qty or 0) + (line.quantity or 0)
+            if line.unit_price and float(line.unit_price) > 0:
+                item.buy_price = float(line.unit_price)
+                if order.supplier:
+                    item.supplier = order.supplier
             updated = True
+            if supplier_row and line.unit_price and float(line.unit_price) > 0:
+                upsert_supplier_price(
+                    supplier_row.id,
+                    line.item_id,
+                    float(line.unit_price),
+                    source='po',
+                    source_ref=order.code,
+                    assign_org_fn=assign_organization,
+                    sync_inventory=False,
+                )
     if updated:
         order.received_at = datetime.utcnow()
 
 
 @app.route('/purchase-orders')
 def purchase_orders():
+    from supplier_price_schema import ensure_supplier_price_schema
+    ensure_supplier_price_schema()
     orders = tenant_query(PurchaseOrder).order_by(PurchaseOrder.order_date.desc().nullslast()).all()
     items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
     return render_template(
         'purchase-orders.html',
         orders=orders,
         items=items,
+        suppliers=suppliers,
         statuses=PO_STATUSES,
         next_po_code=next_code(PurchaseOrder, 'PO-', digits=4),
         today=date.today().isoformat(),
@@ -11716,10 +11751,15 @@ def purchase_orders():
 
 @app.route('/purchase-orders/save', methods=['POST'])
 def purchase_orders_save():
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import find_or_create_supplier, upsert_supplier_price
+    ensure_supplier_price_schema()
     order_id = request.form.get('order_id', '').strip()
     supplier = request.form.get('supplier', '').strip()
+    supplier_id_raw = request.form.get('supplier_id', '').strip()
     supplier_phone = request.form.get('supplier_phone', '').strip()
     supplier_email = request.form.get('supplier_email', '').strip()
+    rfq_id_raw = request.form.get('rfq_id', '').strip()
     order_date_raw = request.form.get('order_date', '').strip()
     status = request.form.get('status', 'مسودة').strip()
     notes = request.form.get('notes', '').strip()
@@ -11756,9 +11796,16 @@ def purchase_orders_save():
         db.session.add(order)
 
     old_status = order.status
-    order.supplier = supplier or None
+    sup_row = None
+    if supplier_id_raw.isdigit():
+        sup_row = tenant_get_or_404(Supplier, int(supplier_id_raw))
+    elif supplier:
+        sup_row = find_or_create_supplier(supplier, supplier_phone, supplier_email, assign_organization)
+    order.supplier = supplier or (sup_row.name if sup_row else None)
+    order.supplier_id = sup_row.id if sup_row else None
     order.supplier_phone = supplier_phone or None
     order.supplier_email = supplier_email or None
+    order.rfq_id = int(rfq_id_raw) if rfq_id_raw.isdigit() else None
     order.order_date = order_date
     order.notes = notes or None
     order.status = status if status in PO_STATUSES else 'مسودة'
@@ -11775,6 +11822,18 @@ def purchase_orders_save():
         order.lines.append(line)
         total += row['line_total']
     order.total_amount = total
+    if sup_row:
+        for row in lines_data:
+            if row['unit_price'] > 0:
+                upsert_supplier_price(
+                    sup_row.id,
+                    row['item_id'],
+                    row['unit_price'],
+                    source='po',
+                    source_ref=order.code,
+                    assign_org_fn=assign_organization,
+                    sync_inventory=True,
+                )
     if order.status == 'مستلم' and old_status != 'مستلم':
         _apply_purchase_receipt(order)
     db.session.commit()
@@ -12021,7 +12080,9 @@ def _resolve_rfq_project(project_id_raw):
 @app.route('/supplier-rfqs')
 def supplier_rfqs():
     from supplier_rfq_schema import ensure_supplier_rfq_schema
+    from supplier_price_schema import ensure_supplier_price_schema
     ensure_supplier_rfq_schema()
+    ensure_supplier_price_schema()
     requests_list = tenant_query(SupplierQuoteRequest).order_by(
         SupplierQuoteRequest.request_date.desc().nullslast()
     ).all()
@@ -12030,6 +12091,8 @@ def supplier_rfqs():
     edit_id = request.args.get('edit', type=int)
     if edit_id:
         edit_rfq = tenant_get_or_404(SupplierQuoteRequest, edit_id)
+    items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
     return render_template(
         'supplier-rfqs.html',
         requests=requests_list,
@@ -12038,15 +12101,21 @@ def supplier_rfqs():
         today=date.today().isoformat(),
         project=project,
         edit_rfq=edit_rfq,
+        items=items,
+        suppliers=suppliers,
     )
 
 
 @app.route('/supplier-rfqs/save', methods=['POST'])
 def supplier_rfqs_save():
     from supplier_rfq_schema import ensure_supplier_rfq_schema
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import apply_rfq_quoted_prices, find_or_create_supplier
     ensure_supplier_rfq_schema()
+    ensure_supplier_price_schema()
     req_id = request.form.get('request_id', '').strip()
     supplier = request.form.get('supplier', '').strip()
+    supplier_id_raw = request.form.get('supplier_id', '').strip()
     supplier_phone = request.form.get('supplier_phone', '').strip()
     supplier_email = request.form.get('supplier_email', '').strip()
     subject = request.form.get('subject', '').strip()
@@ -12059,24 +12128,34 @@ def supplier_rfqs_save():
     except ValueError:
         request_date = date.today()
 
+    from itertools import zip_longest
     descriptions = request.form.getlist('description')
     quantities = request.form.getlist('quantity')
     units = request.form.getlist('unit')
     specs_list = request.form.getlist('specs')
+    item_ids = request.form.getlist('item_id')
+    quoted_prices = request.form.getlist('quoted_unit_price')
     lines_data = []
-    for desc, qty, unit, specs in zip(descriptions, quantities, units, specs_list):
+    for desc, qty, unit, specs, item_raw, price_raw in zip_longest(
+        descriptions, quantities, units, specs_list, item_ids, quoted_prices, fillvalue=''
+    ):
         description = (desc or '').strip()
         if not description:
             continue
         quantity = float(qty or 0)
         if quantity <= 0:
             quantity = 1
+        item_id = int(item_raw) if (item_raw or '').strip().isdigit() else None
+        quoted = float(price_raw or 0) if (price_raw or '').strip() else None
+        if quoted is not None and quoted <= 0:
+            quoted = None
         lines_data.append({
             'description': description,
             'quantity': quantity,
             'unit': (unit or 'قطعة').strip() or 'قطعة',
             'specs': (specs or '').strip() or None,
-            'item_id': None,
+            'item_id': item_id,
+            'quoted_unit_price': quoted,
         })
     if not lines_data:
         flash('أضف بنداً واحداً على الأقل', 'error')
@@ -12090,7 +12169,13 @@ def supplier_rfqs_save():
         db.session.add(rfq)
 
     project = _resolve_rfq_project(project_id_raw)
-    rfq.supplier = supplier or None
+    sup_row = None
+    if supplier_id_raw.isdigit():
+        sup_row = tenant_get_or_404(Supplier, int(supplier_id_raw))
+    elif supplier:
+        sup_row = find_or_create_supplier(supplier, supplier_phone, supplier_email, assign_organization)
+    rfq.supplier = supplier or (sup_row.name if sup_row else None)
+    rfq.supplier_id = sup_row.id if sup_row else None
     rfq.supplier_phone = supplier_phone or None
     rfq.supplier_email = supplier_email or None
     rfq.subject = subject or None
@@ -12107,9 +12192,12 @@ def supplier_rfqs_save():
             unit=row['unit'],
             specs=row['specs'],
             item_id=row['item_id'],
+            quoted_unit_price=row['quoted_unit_price'],
         )
         assign_organization(line)
         rfq.lines.append(line)
+    if rfq.status == 'مستلم' and rfq.supplier_id:
+        apply_rfq_quoted_prices(rfq, assign_organization)
     db.session.commit()
     flash('تم تحديث طلب عرض السعر' if req_id else 'تم حفظ طلب عرض السعر', 'success')
     return redirect(url_for('supplier_rfq_print', request_id=rfq.id))
@@ -12193,6 +12281,164 @@ def supplier_rfqs_delete(request_id):
     db.session.commit()
     flash('تم حذف طلب عرض السعر', 'success')
     return redirect(url_for('supplier_rfqs'))
+
+
+@app.route('/supplier-price-list')
+def supplier_price_list():
+    from supplier_price_schema import ensure_supplier_price_schema
+    ensure_supplier_price_schema()
+    supplier_id = request.args.get('supplier_id', type=int)
+    q = tenant_query(SupplierPrice).join(Supplier).join(InventoryItem)
+    if supplier_id:
+        q = q.filter(SupplierPrice.supplier_id == supplier_id)
+    prices = q.order_by(Supplier.name, InventoryItem.name).all()
+    suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
+    items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    return render_template(
+        'supplier-price-list.html',
+        prices=prices,
+        suppliers=suppliers,
+        items=items,
+        filter_supplier_id=supplier_id,
+    )
+
+
+@app.route('/supplier-price-list/save', methods=['POST'])
+def supplier_price_list_save():
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import find_or_create_supplier, upsert_supplier_price
+    ensure_supplier_price_schema()
+    supplier_id_raw = request.form.get('supplier_id', '').strip()
+    supplier_name = request.form.get('supplier_name', '').strip()
+    supplier_phone = request.form.get('supplier_phone', '').strip()
+    supplier_email = request.form.get('supplier_email', '').strip()
+    item_ids = request.form.getlist('item_id')
+    unit_prices = request.form.getlist('unit_price')
+    lead_days_list = request.form.getlist('lead_days')
+    notes_list = request.form.getlist('price_notes')
+
+    sup = None
+    if supplier_id_raw.isdigit():
+        sup = tenant_get_or_404(Supplier, int(supplier_id_raw))
+    elif supplier_name:
+        sup = find_or_create_supplier(supplier_name, supplier_phone, supplier_email, assign_organization)
+    if not sup:
+        flash('اختر مورداً أو أدخل اسم مورد', 'error')
+        return redirect(url_for('supplier_price_list'))
+
+    saved = 0
+    from itertools import zip_longest
+    for item_raw, price_raw, lead_raw, note_raw in zip_longest(
+        item_ids, unit_prices, lead_days_list, notes_list, fillvalue=''
+    ):
+        if not (item_raw or '').strip().isdigit():
+            continue
+        price = float(price_raw or 0)
+        if price <= 0:
+            continue
+        lead = int(lead_raw) if (lead_raw or '').strip().isdigit() else None
+        upsert_supplier_price(
+            sup.id,
+            int(item_raw),
+            price,
+            source='manual',
+            notes=(note_raw or '').strip() or None,
+            lead_days=lead,
+            assign_org_fn=assign_organization,
+        )
+        saved += 1
+    db.session.commit()
+    flash(f'تم حفظ {saved} سعر في قائمة المورد' if saved else 'لم يُحفظ أي سعر', 'success' if saved else 'error')
+    return redirect(url_for('supplier_price_list', supplier_id=sup.id))
+
+
+@app.route('/supplier-price-list/delete/<int:price_id>', methods=['POST'])
+def supplier_price_list_delete(price_id):
+    err = enforce_admin_delete()
+    if err:
+        return err
+    row = tenant_get_or_404(SupplierPrice, price_id)
+    sid = row.supplier_id
+    db.session.delete(row)
+    db.session.commit()
+    flash('تم حذف السعر', 'success')
+    return redirect(url_for('supplier_price_list', supplier_id=sid))
+
+
+@app.route('/api/supplier-prices/lookup')
+def api_supplier_price_lookup():
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import lookup_price
+    ensure_supplier_price_schema()
+    item_id = request.args.get('item_id', type=int)
+    supplier_id = request.args.get('supplier_id', type=int)
+    supplier_name = request.args.get('supplier_name', '').strip()
+    if not item_id:
+        return jsonify({'ok': False, 'error': 'item_id required'}), 400
+    price = lookup_price(supplier_id, item_id, supplier_name or None)
+    return jsonify({'ok': True, 'unit_price': price or 0})
+
+
+@app.route('/api/inventory/<int:item_id>/supplier-prices')
+def api_item_supplier_prices(item_id):
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import prices_for_item
+    ensure_supplier_price_schema()
+    tenant_get_or_404(InventoryItem, item_id)
+    return jsonify({'ok': True, 'prices': prices_for_item(item_id)})
+
+
+@app.route('/supplier-rfqs/<int:request_id>/to-po', methods=['POST'])
+def supplier_rfq_to_po(request_id):
+    from supplier_price_schema import ensure_supplier_price_schema
+    from supplier_prices import lookup_price
+    ensure_supplier_price_schema()
+    rfq = tenant_get_or_404(SupplierQuoteRequest, request_id)
+    lines_data = []
+    for line in rfq.lines or []:
+        if not line.item_id:
+            continue
+        qty = float(line.quantity or 1)
+        price = line.quoted_unit_price
+        if price is None or float(price) <= 0:
+            price = lookup_price(rfq.supplier_id, line.item_id, rfq.supplier)
+        price = float(price or 0)
+        lines_data.append({
+            'item_id': line.item_id,
+            'quantity': qty,
+            'unit_price': price,
+            'line_total': qty * price,
+        })
+    if not lines_data:
+        flash('اربط البنود بأصناف المخزن وأدخل أسعار العرض أولاً', 'error')
+        return redirect(url_for('supplier_rfqs', edit=request_id))
+
+    order = PurchaseOrder(code=next_code(PurchaseOrder, 'PO-', digits=4))
+    assign_organization(order)
+    order.supplier = rfq.supplier
+    order.supplier_id = rfq.supplier_id
+    order.supplier_phone = rfq.supplier_phone
+    order.supplier_email = rfq.supplier_email
+    order.order_date = date.today()
+    order.status = 'مسودة'
+    order.rfq_id = rfq.id
+    order.notes = f'من RFQ {rfq.code}'
+    total = 0.0
+    for row in lines_data:
+        pline = PurchaseOrderLine(
+            item_id=row['item_id'],
+            quantity=row['quantity'],
+            unit_price=row['unit_price'],
+            line_total=row['line_total'],
+        )
+        assign_organization(pline)
+        order.lines.append(pline)
+        total += row['line_total']
+    order.total_amount = total
+    db.session.add(order)
+    db.session.commit()
+    flash(f'تم إنشاء طلب شراء {order.code} من عرض السعر', 'success')
+    return redirect(url_for('purchase_order_print', order_id=order.id))
 
 
 # =============================================

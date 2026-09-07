@@ -910,6 +910,7 @@ class PurchaseOrder(TenantMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(20), nullable=False)
     supplier = db.Column(db.String(200))
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=True, index=True)
     supplier_phone = db.Column(db.String(30))
     supplier_email = db.Column(db.String(120))
     order_date = db.Column(db.Date, default=date.today)
@@ -918,12 +919,14 @@ class PurchaseOrder(TenantMixin, db.Model):
     notes = db.Column(db.Text)
     signature_data = db.Column(db.Text)
     pdf_path = db.Column(db.String(300))
+    rfq_id = db.Column(db.Integer, db.ForeignKey('supplier_quote_requests.id'), nullable=True, index=True)
     received_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     lines = db.relationship(
         'PurchaseOrderLine', back_populates='order', cascade='all, delete-orphan', lazy='joined'
     )
+    supplier_ref = db.relationship('Supplier', foreign_keys=[supplier_id])
 
 
 class PurchaseOrderLine(TenantMixin, db.Model):
@@ -956,6 +959,7 @@ class SupplierQuoteRequest(TenantMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(20), nullable=False)
     supplier = db.Column(db.String(200))
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=True, index=True)
     supplier_phone = db.Column(db.String(30))
     supplier_email = db.Column(db.String(120))
     request_date = db.Column(db.Date, default=date.today)
@@ -974,6 +978,7 @@ class SupplierQuoteRequest(TenantMixin, db.Model):
         cascade='all, delete-orphan',
         lazy='joined',
     )
+    supplier_ref = db.relationship('Supplier', foreign_keys=[supplier_id])
 
 
 class SupplierQuoteRequestLine(TenantMixin, db.Model):
@@ -986,9 +991,64 @@ class SupplierQuoteRequestLine(TenantMixin, db.Model):
     unit = db.Column(db.String(30), default='قطعة')
     specs = db.Column(db.String(500))
     item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=True)
+    quoted_unit_price = db.Column(db.Float, nullable=True)
 
     request = db.relationship('SupplierQuoteRequest', back_populates='lines')
     item = db.relationship('InventoryItem')
+
+
+# =============================================
+# 11ج. الموردون وقوائم الأسعار
+# =============================================
+class Supplier(TenantMixin, db.Model):
+    __tablename__ = 'suppliers'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'name', name='uq_supplier_org_name'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    phone = db.Column(db.String(30))
+    email = db.Column(db.String(120))
+    notes = db.Column(db.Text)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    prices = db.relationship('SupplierPrice', back_populates='supplier', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<Supplier {self.name}>'
+
+
+class SupplierPrice(TenantMixin, db.Model):
+    """سعر صنف مخزن لدى مورد — يُحدَّث من RFQ أو PO أو الإدخال اليدوي."""
+    __tablename__ = 'supplier_prices'
+    __table_args__ = (
+        db.UniqueConstraint(
+            'organization_id', 'supplier_id', 'item_id',
+            name='uq_supplier_price_org_supplier_item',
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False, index=True)
+    item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=False, index=True)
+    unit_price = db.Column(db.Float, nullable=False, default=0)
+    currency = db.Column(db.String(10), default='SAR')
+    min_qty = db.Column(db.Float, default=0)
+    lead_days = db.Column(db.Integer)
+    valid_from = db.Column(db.Date)
+    valid_to = db.Column(db.Date)
+    source = db.Column(db.String(30))  # manual / rfq / po
+    source_ref = db.Column(db.String(50))
+    notes = db.Column(db.String(300))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    supplier = db.relationship('Supplier', back_populates='prices')
+    item = db.relationship('InventoryItem')
+
+    def __repr__(self):
+        return f'<SupplierPrice s={self.supplier_id} i={self.item_id} p={self.unit_price}>'
 
 
 # =============================================

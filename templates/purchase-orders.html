@@ -97,6 +97,7 @@ th{color:var(--text3);font-size:11px;font-weight:500}
     <div class="page-header">
       <div class="page-title">طلبات الشراء</div>
       <div class="page-actions">
+        <a href="/supplier-price-list" class="btn btn-secondary btn-sm">قائمة الأسعار</a>
         <a href="/inventory" class="btn btn-secondary btn-sm">← الأصناف</a>
       </div>
     </div>
@@ -115,7 +116,13 @@ th{color:var(--text3);font-size:11px;font-weight:500}
           </div>
           <div class="field">
             <label>المورد</label>
-            <input name="supplier" placeholder="اسم المورد">
+            <select name="supplier_id" id="po_supplier_id" onchange="syncPoSupplier()">
+              <option value="">— اختر —</option>
+              {% for s in suppliers %}
+              <option value="{{ s.id }}" data-name="{{ s.name }}" data-phone="{{ s.phone or '' }}" data-email="{{ s.email or '' }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+            <input name="supplier" id="po_supplier_name" placeholder="أو اسم مورد" style="margin-top:6px">
           </div>
           <div class="field">
             <label>جوال المورد (واتساب)</label>
@@ -218,6 +225,30 @@ th{color:var(--text3);font-size:11px;font-weight:500}
 </template>
 
 <script>
+function syncPoSupplier() {
+  var sel = document.getElementById('po_supplier_id');
+  var opt = sel && sel.selectedOptions[0];
+  if (!opt || !opt.value) return;
+  var name = document.getElementById('po_supplier_name');
+  var phone = document.querySelector('input[name="supplier_phone"]');
+  var email = document.querySelector('input[name="supplier_email"]');
+  if (name) name.value = opt.dataset.name || '';
+  if (phone && opt.dataset.phone) phone.value = opt.dataset.phone;
+  if (email && opt.dataset.email) email.value = opt.dataset.email;
+  document.querySelectorAll('.line-row').forEach(bindLine);
+}
+function fetchSupplierPrice(itemId, priceInput) {
+  var sel = document.getElementById('po_supplier_id');
+  var sid = sel && sel.value;
+  var sname = document.getElementById('po_supplier_name') && document.getElementById('po_supplier_name').value;
+  if (!itemId || (!sid && !sname)) return;
+  var url = '/api/supplier-prices/lookup?item_id=' + encodeURIComponent(itemId);
+  if (sid) url += '&supplier_id=' + encodeURIComponent(sid);
+  else if (sname) url += '&supplier_name=' + encodeURIComponent(sname);
+  fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.ok && d.unit_price > 0 && priceInput) priceInput.value = d.unit_price;
+  }).catch(function () {});
+}
 function bindLine(row) {
   const sel = row.querySelector('select[name="item_id"]');
   const price = row.querySelector('input[name="unit_price"]');
@@ -225,6 +256,7 @@ function bindLine(row) {
     sel.addEventListener('change', function () {
       const p = this.selectedOptions[0]?.dataset.price;
       if (p && (!price.value || price.value === '0')) price.value = p;
+      if (this.value) fetchSupplierPrice(this.value, price);
     });
   }
 }

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — قائمة أسعار الموردين</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--gold:#c8a055;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--success:#1fb87a;--danger:#e04848;--r:10px;--r-sm:7px}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;font-family:'IBM Plex Sans Arabic',sans-serif}
+.sidebar{width:240px;min-width:240px;background:var(--bg2);border-left:1px solid var(--border);height:100vh;position:sticky;top:0}
+.sidebar-logo{padding:10px 16px;border-bottom:1px solid var(--border);min-height:60px;display:flex;align-items:center;justify-content:center}
+.sidebar-logo img{max-width:150px;height:auto}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.page-title{font-size:18px;font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-sm);font-size:13px;border:none;cursor:pointer;font-family:inherit;text-decoration:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.panel-title{font-size:15px;font-weight:600;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:right}
+th{color:var(--text3);font-size:11px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.field label{font-size:12px;color:var(--text2)}
+.field input,.field select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);padding:8px 10px;font-family:inherit;width:100%}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.flash{padding:10px 12px;border-radius:var(--r-sm);margin-bottom:12px;font-size:13px}
+.flash-success{background:rgba(31,184,122,.12);color:var(--success)}
+.flash-error{background:rgba(224,72,72,.12);color:var(--danger)}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+.td-code{font-family:'DM Sans',monospace}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+@media(max-width:768px){.sidebar{position:fixed;right:-240px;z-index:100}.sidebar.open{right:0}.mobile-overlay.open{display:block}.form-grid{grid-template-columns:1fr}}
+</style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% set page_title = 'قائمة أسعار الموردين' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">قائمة أسعار الموردين (Price List)</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="/supplier-rfqs" class="btn btn-secondary btn-sm">طلبات عروض الأسعار</a>
+        <a href="/purchase-orders" class="btn btn-secondary btn-sm">طلبات الشراء</a>
+        <a href="/inventory" class="btn btn-secondary btn-sm">← الأصناف</a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="panel">
+      <div class="filter-bar">
+        <form method="get" action="/supplier-price-list" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+          <div class="field" style="min-width:220px;margin:0">
+            <label>تصفية حسب المورد</label>
+            <select name="supplier_id" onchange="this.form.submit()">
+              <option value="">— كل الموردين —</option>
+              {% for s in suppliers %}
+              <option value="{{ s.id }}" {% if filter_supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+
+      <h2 class="panel-title">الأسعار المحفوظة ({{ prices|length }})</h2>
+      {% if prices %}
+      <table>
+        <thead>
+          <tr>
+            <th>المورد</th><th>كود الصنف</th><th>الصنف</th><th>سعر الشراء</th><th>مدة التوريد</th><th>المصدر</th><th>آخر تحديث</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in prices %}
+          <tr>
+            <td>{{ p.supplier.name if p.supplier else '—' }}</td>
+            <td class="td-code">{{ p.item.code if p.item else '—' }}</td>
+            <td>{{ p.item.name if p.item else '—' }}</td>
+            <td dir="ltr">{{ '%.2f'|format(p.unit_price or 0) }} ر.س</td>
+            <td>{{ (p.lead_days ~ ' يوم') if p.lead_days else '—' }}</td>
+            <td>{{ p.source or '—' }}{% if p.source_ref %} <span class="td-code">{{ p.source_ref }}</span>{% endif %}</td>
+            <td class="lc-date">{{ p.updated_at | dmY if p.updated_at else '—' }}</td>
+            <td>
+              <form method="post" action="/supplier-price-list/delete/{{ p.id }}" style="display:inline" onsubmit="return confirm('حذف هذا السعر؟')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary btn-sm">حذف</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:var(--text3);font-size:13px">لا توجد أسعار محفوظة بعد. أضف أسعاراً من النموذج أدناه أو من طلب عرض سعر (حالة: مستلم).</p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">إضافة / تحديث أسعار</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">عند الحفظ يُحدَّث سعر الشراء في المخزن تلقائياً. إذا كان الصنف موجوداً لنفس المورد يُستبدل السعر.</p>
+      <form method="post" action="/supplier-price-list/save">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-grid">
+          <div class="field">
+            <label>المورد (من القائمة)</label>
+            <select name="supplier_id" id="supplier_id">
+              <option value="">— اختر —</option>
+              {% for s in suppliers %}
+              <option value="{{ s.id }}" {% if filter_supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>أو اسم مورد جديد</label>
+            <input name="supplier_name" placeholder="اسم المورد">
+          </div>
+          <div class="field">
+            <label>جوال</label>
+            <input name="supplier_phone" placeholder="05XXXXXXXX" style="direction:ltr">
+          </div>
+          <div class="field">
+            <label>إيميل</label>
+            <input name="supplier_email" placeholder="supplier@example.com" style="direction:ltr">
+          </div>
+        </div>
+        <table id="price-lines">
+          <thead>
+            <tr><th>صنف المخزن</th><th>سعر الشراء</th><th>مدة التوريد (يوم)</th><th>ملاحظات</th><th></th></tr>
+          </thead>
+          <tbody id="price-lines-body">
+            <tr class="price-line">
+              <td>
+                <select name="item_id" required>
+                  <option value="">— اختر —</option>
+                  {% for it in items %}
+                  <option value="{{ it.id }}">{{ it.code }} — {{ it.name }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td><input type="number" name="unit_price" min="0" step="0.01" required></td>
+              <td><input type="number" name="lead_days" min="0" step="1" placeholder="—"></td>
+              <td><input type="text" name="price_notes" placeholder="اختياري"></td>
+              <td><button type="button" class="btn btn-secondary btn-sm" onclick="removePriceLine(this)">حذف</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addPriceLine()">+ سطر</button>
+          <button type="submit" class="btn btn-primary btn-sm">حفظ الأسعار</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<template id="price-line-tpl">
+  <tr class="price-line">
+    <td>
+      <select name="item_id" required>
+        <option value="">— اختر —</option>
+        {% for it in items %}
+        <option value="{{ it.id }}">{{ it.code }} — {{ it.name }}</option>
+        {% endfor %}
+      </select>
+    </td>
+    <td><input type="number" name="unit_price" min="0" step="0.01" required></td>
+    <td><input type="number" name="lead_days" min="0" step="1" placeholder="—"></td>
+    <td><input type="text" name="price_notes" placeholder="اختياري"></td>
+    <td><button type="button" class="btn btn-secondary btn-sm" onclick="removePriceLine(this)">حذف</button></td>
+  </tr>
+</template>
+<script>
+function addPriceLine() {
+  var body = document.getElementById('price-lines-body');
+  var row = document.getElementById('price-line-tpl').content.cloneNode(true).querySelector('tr');
+  body.appendChild(row);
+}
+function removePriceLine(btn) {
+  var body = document.getElementById('price-lines-body');
+  if (body.querySelectorAll('.price-line').length > 1) btn.closest('tr').remove();
+}
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+</script>
+</body>
+</html>
