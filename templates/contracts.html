@@ -1044,11 +1044,11 @@ function getContractDisplayStatus(c) {
     if (c.renewed) return 'تم تجديده';
     return 'منتهي';
   }
-  if (raw === 'على وشك الانتهاء') return 'على وشك الانتهاء';
-  if (c.end_date && raw === 'نشط') {
+  if (c.end_date && (raw === 'نشط' || raw === 'على وشك الانتهاء')) {
     var diff = (new Date(c.end_date) - new Date()) / (1000 * 60 * 60 * 24);
     if (diff > 0 && diff <= 30) return 'على وشك الانتهاء';
   }
+  if (raw === 'على وشك الانتهاء') return 'نشط';
   return 'نشط';
 }
 

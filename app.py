@@ -6484,13 +6484,16 @@ def api_elevators_by_customer(customer_id):
     return jsonify(rows)
 
 def _contracts_expiring_display_status(today=None):
-    """عقود بحالة العرض «على وشك الانتهاء» — نفس منطق صفحة العقود."""
+    """عقود صيانة بحالة العرض «على وشك الانتهاء» — نفس منطق صفحة عقود الصيانة."""
+    from contract_codes import is_maintenance_contract_type
+
     today = today or date.today()
     all_c = tenant_query(Contract).all()
     renewed_ids = _annotate_contract_renewals(all_c)
     rows = [
         c for c in all_c
-        if contract_display_status(c, today=today, renewed_ids=renewed_ids) == 'على وشك الانتهاء'
+        if is_maintenance_contract_type(getattr(c, 'contract_type', None))
+        and contract_display_status(c, today=today, renewed_ids=renewed_ids) == 'على وشك الانتهاء'
     ]
     rows.sort(key=lambda c: c.end_date or date.max)
     return rows
@@ -6514,12 +6517,12 @@ def contract_display_status(contract, today=None, *, renewed_ids=None):
         return 'تم تجديده'
     if raw == 'منتهي' or (contract.end_date and contract.end_date < today):
         return 'منتهي'
-    if raw == 'على وشك الانتهاء':
-        return 'على وشك الانتهاء'
-    if contract.end_date and raw == 'نشط':
+    if contract.end_date and raw in ('نشط', 'على وشك الانتهاء'):
         days_left = (contract.end_date - today).days
         if 0 < days_left <= 30:
             return 'على وشك الانتهاء'
+    if raw == 'على وشك الانتهاء':
+        return 'نشط'
     return 'نشط'
 
 
@@ -14188,6 +14191,7 @@ def settings_change_password():
 # =============================================
 @app.route('/api/dashboard')
 def api_dashboard():
+    from contract_codes import is_maintenance_contract_type
     from sqlalchemy import extract, case, func
     year = int(request.args.get('year', datetime.now().year))
     today = date.today()
@@ -14243,10 +14247,15 @@ def api_dashboard():
             'status': cust.status or '',
         })
 
-    expiring_list = tenant_query(Contract).filter(
-        Contract.end_date >= today,
-        Contract.end_date <= in_60_days,
-    ).order_by(Contract.end_date).limit(15).all()
+    expiring_list = [
+        c for c in tenant_query(Contract).filter(
+            Contract.end_date.isnot(None),
+            Contract.end_date >= today,
+            Contract.end_date <= in_60_days,
+        ).order_by(Contract.end_date).all()
+        if is_maintenance_contract_type(getattr(c, 'contract_type', None))
+        and contract_display_status(c, today=today) == 'على وشك الانتهاء'
+    ][:15]
 
     expiring_contracts_rows = []
     for c in expiring_list:
