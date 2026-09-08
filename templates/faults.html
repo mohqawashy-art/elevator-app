@@ -362,9 +362,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </select>
         <select class="filter-select" id="f-category" onchange="filterTable()">
           <option value="">كل الأنواع</option>
-          <option>عطل أبواب</option><option>عطل محرك</option><option>عطل لوحة تحكم</option>
-          <option>عطل كهربائي</option><option>عطل نظام أمان</option><option>عطل كابينة</option>
-          <option>عطل إنذار طوارئ</option><option>عطل هيدروليك</option><option>أخرى</option>
+          {% for ft in fault_type_options %}
+          <option>{{ ft }}</option>
+          {% endfor %}
         </select>
         <select class="filter-select" id="filter-billable" onchange="filterTable()">
           <option value="">الكل (فوترة)</option>
@@ -443,9 +443,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>الحي</label><input type="text" id="f-district" placeholder="—" readonly style="background:var(--bg4)"></div>
           <div class="field"><label>نوع العطل</label>
             <select id="f-category-sel">
-              <option>عطل أبواب</option><option>عطل محرك</option><option>عطل لوحة تحكم</option>
-              <option>عطل كهربائي</option><option>عطل نظام أمان</option><option>عطل كابينة</option>
-              <option>عطل إنذار طوارئ</option><option>عطل هيدروليك</option><option>عطل اتصالات</option><option>أخرى</option>
+              {% for ft in fault_type_options %}
+              <option>{{ ft }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="field"><label>الأولوية</label>

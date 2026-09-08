@@ -10038,6 +10038,7 @@ def whatsapp_webhook():
 @app.route('/faults')
 def faults():
     from operations import fault_alerts, fault_stats
+    from fault_report import FAULT_TYPE_OPTIONS
     from sqlalchemy.orm import joinedload
 
     faults_list = (
@@ -10095,6 +10096,7 @@ def faults():
         pending_whatsapp=pending_wa,
         pending_whatsapp_fault_id=pending_wa_fault_id,
         pending_customer_wa=[],
+        fault_type_options=FAULT_TYPE_OPTIONS,
     )
 
 
