@@ -59,29 +59,6 @@ body{
 }
 .w-maint-head{font-weight:700}
 
-.signatures-block{
-  margin-top:20pt;
-  page-break-inside:avoid;
-  break-inside:avoid;
-}
-.signatures-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:28pt;
-  direction:rtl;
-  align-items:start;
-}
-.sig-col{text-align:center;min-width:0}
-.sig-title,.sig-party-name,.sig-label{
-  font-family:"Arial (Body CS)",Arial,Tahoma,sans-serif;
-  font-size:18pt;
-  line-height:1.3;
-}
-.sig-title{font-weight:700;margin-bottom:10pt}
-.sig-party-name{font-weight:600;margin-bottom:6pt;min-height:2em;padding:0 8pt}
-.sig-label{margin-bottom:4pt}
-.sig-pad{height:48pt;margin-top:8pt}
-
 .w-empty{height:14pt}
 .w-empty-top{height:24pt}
 
@@ -198,27 +175,6 @@ body{
 <p class="w-body">21ـ يعمل بهذا العقد لمدة سنة كاملة تبدأ من {{ start_gregorian }} م إلى {{ end_gregorian }} م والتوقيع عليه من الطرفين واستلام الطرف الأول الدفعة المتوجبة.</p>
 <p class="w-body">22ـ حرر هذا العقد من نسختين وتم توقيع الطرفين على جميع صفحاتها وبيد كل طرف نسخة للمعمل بموجبها ولإبرازه عند اللزوم لجهات الاختصاص في أي نزاع لا قدر الله قد ينشأ بين الطرفين. </p>
 <p class="w-empty">&nbsp;</p>
-
-<link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
-<div class="signatures-block">
-  <div class="signatures-row">
-    <div class="sig-col sig-first">
-      <div class="sig-title">الطرف الأول</div>
-      <div class="sig-party-name">{{ company.company_name }}</div>
-      {% with seal_class='doc-seal-contract' %}
-      {% include 'partials/document_company_seal.html' %}
-      {% endwith %}
-      <div class="sig-label">التوقيع /</div>
-      <div class="sig-pad"></div>
-    </div>
-    <div class="sig-col sig-second">
-      <div class="sig-title">الطرف الثاني</div>
-      <div class="sig-label">الاسم / {% if customer %}{{ customer.name }}{% endif %}</div>
-      <div class="sig-label">التوقيع /</div>
-      <div class="sig-pad"></div>
-    </div>
-  </div>
-</div>
 
 </div>
 <script src="/static/liftcore-nav.js?v=3"></script>
