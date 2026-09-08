@@ -3,7 +3,7 @@
 <head>
 {% include 'installation/_layout_head.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='tax_calc.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-contracts.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-contracts.css') }}?v=2">
 <script src="{{ url_for('static', filename='tax_calc.js') }}?v=3"></script>
 </head>
 <body>
@@ -142,10 +142,17 @@
           </div>
           <div class="field form-full">
             <label>المشروع</label>
-            <select id="f-project">
+            <select id="f-project" onchange="window.InstallContracts.onProjectChange()">
               <option value="">— مشروع جديد تلقائياً —</option>
             </select>
             <span class="field-hint">اختر مشروعاً موجوداً بدون عقد، أو اترك فارغاً لإنشاء مشروع جديد</span>
+          </div>
+          <div class="field form-full">
+            <label>عرض السعر</label>
+            <select id="f-quote" onchange="window.InstallContracts.onQuoteChange()">
+              <option value="">— بدون عرض (إدخال يدوي) —</option>
+            </select>
+            <span class="field-hint" id="f-quote-hint">اربط العقد بعرض سعر لتحميل القيمة وجدول الدفعات (دفعة مقدمة، عند التوريد، عند التسليم…)</span>
           </div>
           <div class="field">
             <label>حالة العقد</label>
@@ -187,6 +194,29 @@
       </div>
 
       <div class="form-section">
+        <div class="form-section-title">جدول الدفعات</div>
+        <div class="ic-inst-toolbar">
+          <span class="field-hint" id="ic-inst-summary">0 دفعة — 0 ر.س</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="window.InstallContracts.reloadFromQuote()">تحميل من عرض السعر</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="window.InstallContracts.addInstallmentRow()">+ دفعة</button>
+        </div>
+        <div class="ic-inst-scroll">
+          <table class="ic-inst-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>وصف الدفعة / سبب السداد</th>
+                <th>النسبة %</th>
+                <th>المبلغ</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="ic-inst-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="form-section">
         <div class="form-section-title">ملاحظات</div>
         <div class="field form-full">
           <textarea id="f-notes" rows="3" placeholder="ملاحظات إضافية..."></textarea>
@@ -204,9 +234,9 @@
 window.__INSTALL_CONTRACTS__ = {{ contracts_js|tojson }};
 window.__INSTALL_CONTRACT_CUSTOMERS__ = {{ customers_js|tojson }};
 window.__INSTALL_CONTRACT_PROJECTS__ = {{ projects_js|tojson }};
-window.__INSTALL_CONTRACT_NEXT_CODES__ = {{ next_contract_codes|tojson }};
+window.__INSTALL_CONTRACT_QUOTATIONS__ = {{ quotations_js|tojson }};
 window.__INSTALL_CONTRACT_CSRF__ = {{ csrf_token()|tojson }};
 </script>
-<script src="{{ url_for('static', filename='installation-contracts.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='installation-contracts.js') }}?v=3"></script>
 </body>
 </html>

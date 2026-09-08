@@ -13,6 +13,7 @@ from installation.models import (
     InstallContract,
     InstallContractInstallment,
     InstallProject,
+    InstallQuotation,
 )
 from installation.timeline import timeline_progress
 from models import db
@@ -281,6 +282,19 @@ def install_contract_to_js(contract: InstallContract, project: InstallProject | 
         'project_code': project.code if project else '',
         'project_status': project.status if project else '',
         'days_left': _days_left(contract.end_date),
+        'quotation_id': contract.quotation_id,
+        'quotation_code': contract.quotation.code if contract.quotation else '',
+        'installments': [
+            {
+                'seq': inst.seq,
+                'label': inst.label or '',
+                'pct': float(inst.pct or 0),
+                'amount': float(inst.amount or 0),
+                'collected_amount': float(inst.collected_amount or 0),
+                'status': inst.status or 'مستحقة',
+            }
+            for inst in sorted(contract.installments or [], key=lambda x: x.seq or 0)
+        ],
     }
 
 
@@ -303,7 +317,126 @@ def project_js_dict(project: InstallProject) -> dict:
         'customer_id': project.customer_id,
         'status': project.status or '',
         'has_contract': contract_for_project(project) is not None,
+        'accepted_quotation_id': project.accepted_quotation_id,
     }
+
+
+def quotation_js_dict(quotation: InstallQuotation) -> dict:
+    before = float(quotation.before_tax or 0)
+    vat = float(quotation.vat_amount or 0)
+    total = float(quotation.grand_total or 0)
+    tax_pct = 15.0
+    if before:
+        tax_pct = money_round((vat / before) * 100.0)
+    items = quotation.payment_items()
+    return {
+        'id': quotation.id,
+        'code': quotation.code,
+        'project_id': quotation.project_id,
+        'customer_id': quotation.customer_id,
+        'status': quotation.status or '',
+        'quote_type': quotation.quote_type or 'new',
+        'contract_type': 'عقد تحديث' if (quotation.quote_type or '') == 'upgrade' else 'عقد تركيب',
+        'value': before,
+        'tax_pct': tax_pct,
+        'tax_amount': vat,
+        'total': total,
+        'installments': [
+            {
+                'label': it.get('label') or f'دفعة {i + 1}',
+                'pct': float(it.get('pct') or 0),
+                'amount': float(it.get('amount') or 0),
+                'key': it.get('key') or '',
+            }
+            for i, it in enumerate(items)
+        ],
+    }
+
+
+def parse_installments_payload(form, total: float, quotation: InstallQuotation | None = None) -> tuple[list[dict] | None, str | None]:
+    raw = (form.get('installments_json') or '').strip()
+    rows: list[dict] = []
+    if raw:
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            return None, 'بيانات الدفعات غير صالحة'
+        if not isinstance(data, list) or not data:
+            return None, 'أدخل دفعة واحدة على الأقل'
+        for i, row in enumerate(data, start=1):
+            if not isinstance(row, dict):
+                continue
+            label = (row.get('label') or '').strip() or f'دفعة {i}'
+            try:
+                pct = float(row.get('pct') or 0)
+                amount = money_round(row.get('amount') or 0)
+            except (TypeError, ValueError):
+                return None, 'قيمة الدفعات غير صالحة'
+            if amount <= 0 and pct <= 0:
+                continue
+            if amount <= 0 and total > 0 and pct > 0:
+                amount = money_round(total * pct / 100.0)
+            rows.append({'label': label, 'pct': pct, 'amount': amount})
+    elif quotation:
+        for it in quotation.payment_items():
+            rows.append({
+                'label': it.get('label') or 'دفعة',
+                'pct': float(it.get('pct') or 0),
+                'amount': float(it.get('amount') or 0),
+            })
+    else:
+        rows = [{'label': 'دفعة واحدة', 'pct': 100.0, 'amount': money_round(total)}]
+
+    if not rows:
+        return None, 'أدخل دفعة واحدة على الأقل'
+
+    if total > 0:
+        amount_sum = money_round(sum(float(r['amount'] or 0) for r in rows))
+        if abs(amount_sum - total) > 1.0:
+            pct_sum = sum(float(r.get('pct') or 0) for r in rows)
+            if pct_sum > 0:
+                for r in rows:
+                    if float(r.get('amount') or 0) <= 0:
+                        r['amount'] = money_round(total * float(r['pct'] or 0) / pct_sum)
+                amount_sum = money_round(sum(float(r['amount'] or 0) for r in rows))
+            if abs(amount_sum - total) > 1.0:
+                rows[-1]['amount'] = money_round(max(float(rows[-1]['amount'] or 0) + (total - amount_sum), 0))
+    return rows, None
+
+
+def _replace_contract_installments(contract: InstallContract, rows: list[dict]) -> None:
+    old_collected: dict[int, float] = {}
+    for inst in list(contract.installments or []):
+        old_collected[int(inst.seq or 0)] = float(inst.collected_amount or 0)
+        db.session.delete(inst)
+    db.session.flush()
+    for seq, row in enumerate(rows, start=1):
+        amt = money_round(row.get('amount') or 0)
+        collected = min(old_collected.get(seq, 0.0), amt)
+        if collected >= amt and amt > 0:
+            status = 'محصّلة'
+        elif collected > 0:
+            status = 'جزئية'
+        else:
+            status = 'مستحقة'
+        inst = InstallContractInstallment(
+            contract_id=contract.id,
+            seq=seq,
+            label=(row.get('label') or '').strip() or f'دفعة {seq}',
+            pct=float(row.get('pct') or 0),
+            amount=amt,
+            collected_amount=collected,
+            status=status,
+        )
+        assign_organization(inst)
+        db.session.add(inst)
+
+
+def _schedule_json_from_rows(rows: list[dict]) -> str:
+    return json.dumps(
+        [{'label': r['label'], 'pct': float(r.get('pct') or 0)} for r in rows],
+        ensure_ascii=False,
+    )
 
 
 def parse_install_contract_form(form) -> tuple[dict | None, str | None]:
@@ -365,9 +498,18 @@ def parse_install_contract_form(form) -> tuple[dict | None, str | None]:
         except ValueError:
             return None, 'المشروع غير صالح'
 
+    quotation_id = None
+    quotation_raw = (form.get('quotation_id') or '').strip()
+    if quotation_raw:
+        try:
+            quotation_id = int(quotation_raw)
+        except ValueError:
+            return None, 'عرض السعر غير صالح'
+
     return {
         'customer_id': customer_id,
         'project_id': project_id,
+        'quotation_id': quotation_id,
         'contract_type': contract_type,
         'start_date': start_date,
         'end_date': end_date,
@@ -383,8 +525,10 @@ def parse_install_contract_form(form) -> tuple[dict | None, str | None]:
 
 def _resolve_project_for_contract(customer_id: int, project_id: int | None, *, next_project_code_fn, contract_code: str):
     if project_id:
-        project = tenant_query(InstallProject).filter_by(id=project_id, customer_id=customer_id).first()
+        project = tenant_query(InstallProject).filter_by(id=project_id).first()
         if not project:
+            raise ValueError('المشروع غير موجود')
+        if project.customer_id and int(project.customer_id) != int(customer_id):
             raise ValueError('المشروع غير موجود لهذا العميل')
         if contract_for_project(project):
             raise ValueError('يوجد عقد مسبقاً على هذا المشروع')
@@ -407,6 +551,22 @@ def create_manual_install_contract(form, *, next_code_fn, next_project_code_fn) 
     if err:
         raise ValueError(err)
 
+    quotation = None
+    if fields.get('quotation_id'):
+        quotation = tenant_query(InstallQuotation).filter_by(id=fields['quotation_id']).first()
+        if not quotation:
+            raise ValueError('عرض السعر غير موجود')
+        if quotation.customer_id and quotation.customer_id != fields['customer_id']:
+            raise ValueError('عرض السعر لا يخص هذا العميل')
+        if fields.get('project_id') and quotation.project_id != fields['project_id']:
+            raise ValueError('عرض السعر لا يخص المشروع المختار')
+        if not fields.get('project_id'):
+            fields['project_id'] = quotation.project_id
+
+    rows, ierr = parse_installments_payload(form, fields['total'], quotation)
+    if ierr:
+        raise ValueError(ierr)
+
     prefix = contract_prefix_for_type(fields['contract_type'])
     code = next_code_fn(InstallContract, prefix, digits=CONTRACT_CODE_DIGITS)
     project = _resolve_project_for_contract(
@@ -419,6 +579,7 @@ def create_manual_install_contract(form, *, next_code_fn, next_project_code_fn) 
     contract = InstallContract(
         code=code,
         project_id=project.id,
+        quotation_id=quotation.id if quotation else None,
         customer_id=fields['customer_id'],
         contract_type=fields['contract_type'],
         start_date=fields['start_date'],
@@ -428,28 +589,19 @@ def create_manual_install_contract(form, *, next_code_fn, next_project_code_fn) 
         tax_pct=fields['tax_pct'],
         tax_amount=fields['tax_amount'],
         total=fields['total'],
+        pay_schedule_json=quotation.pay_schedule_json if quotation else _schedule_json_from_rows(rows),
         progress_pct=0,
         collected_amount=0,
         remaining_amount=fields['total'],
         status=fields['status'],
         signed_at=datetime.utcnow(),
-        notes=fields['notes'],
+        notes=fields['notes'] or (f'من عرض السعر {quotation.code}' if quotation else None),
     )
     assign_organization(contract)
     db.session.add(contract)
     db.session.flush()
 
-    inst = InstallContractInstallment(
-        contract_id=contract.id,
-        seq=1,
-        label='دفعة واحدة',
-        pct=100,
-        amount=fields['total'],
-        collected_amount=0,
-        status='مستحقة',
-    )
-    assign_organization(inst)
-    db.session.add(inst)
+    _replace_contract_installments(contract, rows)
     return contract
 
 
@@ -459,6 +611,21 @@ def apply_install_contract_form(contract: InstallContract, form) -> str | None:
         return err
     if fields['customer_id'] != contract.customer_id:
         return 'لا يمكن تغيير العميل — أنشئ عقداً جديداً'
+
+    quotation = None
+    if fields.get('quotation_id'):
+        quotation = tenant_query(InstallQuotation).filter_by(id=fields['quotation_id']).first()
+        if not quotation:
+            return 'عرض السعر غير موجود'
+        if quotation.customer_id and quotation.customer_id != fields['customer_id']:
+            return 'عرض السعر لا يخص هذا العميل'
+        if contract.project_id and quotation.project_id != contract.project_id:
+            return 'عرض السعر لا يخص مشروع هذا العقد'
+
+    rows, ierr = parse_installments_payload(form, fields['total'], quotation)
+    if ierr:
+        return ierr
+
     contract.contract_type = fields['contract_type']
     contract.start_date = fields['start_date']
     contract.end_date = fields['end_date']
@@ -469,7 +636,11 @@ def apply_install_contract_form(contract: InstallContract, form) -> str | None:
     contract.total = fields['total']
     contract.status = fields['status']
     contract.notes = fields['notes']
+    if quotation:
+        contract.quotation_id = quotation.id
+        contract.pay_schedule_json = quotation.pay_schedule_json
+    else:
+        contract.pay_schedule_json = _schedule_json_from_rows(rows)
     contract.remaining_amount = round(max(float(contract.total or 0) - float(contract.collected_amount or 0), 0), 2)
-    if contract.installments and len(contract.installments) == 1:
-        contract.installments[0].amount = fields['total']
+    _replace_contract_installments(contract, rows)
     return None

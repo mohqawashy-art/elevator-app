@@ -299,9 +299,10 @@ def contracts_list():
         ensure_install_contract_schema,
         install_contract_to_js,
         project_js_dict,
+        quotation_js_dict,
         sync_install_contract_from_project,
     )
-    from installation.models import InstallContract
+    from installation.models import InstallContract, InstallQuotation
 
     ensure_install_contract_schema()
     contracts = tenant_query(InstallContract).order_by(InstallContract.created_at.desc()).all()
@@ -315,12 +316,14 @@ def contracts_list():
 
     customers = tenant_query(Customer).order_by(Customer.name).all()
     projects = tenant_query(InstallProject).order_by(InstallProject.created_at.desc()).all()
+    quotations = tenant_query(InstallQuotation).order_by(InstallQuotation.created_at.desc()).all()
 
     return render_template(
         'installation/contracts.html',
         contracts_js=contracts_js,
         customers_js=[customer_js_dict(c) for c in customers],
         projects_js=[project_js_dict(p) for p in projects],
+        quotations_js=[quotation_js_dict(q) for q in quotations],
         next_contract_codes={
             'CI-': _next_code(InstallContract, CONTRACT_PREFIX_INSTALLATION, digits=CONTRACT_CODE_DIGITS),
         },

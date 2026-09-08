@@ -4,6 +4,7 @@
   var CONTRACTS = window.__INSTALL_CONTRACTS__ || [];
   var CUSTOMERS = window.__INSTALL_CONTRACT_CUSTOMERS__ || [];
   var PROJECTS = window.__INSTALL_CONTRACT_PROJECTS__ || [];
+  var QUOTES = window.__INSTALL_CONTRACT_QUOTATIONS__ || [];
   var NEXT_CODES = window.__INSTALL_CONTRACT_NEXT_CODES__ || {};
   var CSRF = window.__INSTALL_CONTRACT_CSRF__ || '';
   if (!CSRF) {
@@ -13,6 +14,7 @@
 
   var filtered = CONTRACTS.slice();
   var saving = false;
+  var installmentRows = [];
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -153,6 +155,187 @@
     return NEXT_CODES[prefix] || NEXT_CODES['CI-'] || 'CI-00001';
   }
 
+  function getQuote(id) {
+    id = parseInt(id, 10);
+    if (!id) return null;
+    for (var i = 0; i < QUOTES.length; i++) {
+      if (QUOTES[i].id === id) return QUOTES[i];
+    }
+    return null;
+  }
+
+  function currentTotal() {
+    return parseFloat(($('f-total') && $('f-total').value) || 0) || 0;
+  }
+
+  function setInstallmentRows(rows) {
+    installmentRows = (rows || []).map(function (r, i) {
+      return {
+        label: r.label || ('دفعة ' + (i + 1)),
+        pct: parseFloat(r.pct || 0) || 0,
+        amount: parseFloat(r.amount || 0) || 0,
+      };
+    });
+    if (!installmentRows.length) {
+      installmentRows = [{ label: 'دفعة واحدة', pct: 100, amount: currentTotal() }];
+    }
+    renderInstallmentRows();
+  }
+
+  function recalcInstallmentAmounts() {
+    var total = currentTotal();
+    var pctSum = installmentRows.reduce(function (s, r) { return s + (parseFloat(r.pct) || 0); }, 0);
+    installmentRows.forEach(function (r) {
+      var pct = parseFloat(r.pct) || 0;
+      if (total > 0 && pct > 0) {
+        r.amount = pctSum > 0 ? Math.round(total * pct / pctSum) : 0;
+      }
+    });
+    var sum = installmentRows.reduce(function (s, r) { return s + (parseFloat(r.amount) || 0); }, 0);
+    if (installmentRows.length && total > 0 && sum !== total) {
+      installmentRows[installmentRows.length - 1].amount += (total - sum);
+    }
+    renderInstallmentRows(false);
+  }
+
+  function renderInstallmentRows(rebind) {
+    var tbody = $('ic-inst-body');
+    if (!tbody) return;
+    if (rebind === undefined) rebind = true;
+    tbody.innerHTML = installmentRows.map(function (r, idx) {
+      return '<tr>' +
+        '<td style="font-family:var(--font-en)">' + (idx + 1) + '</td>' +
+        '<td><input type="text" data-inst-label="' + idx + '" value="' + esc(r.label) + '" placeholder="مثال: دفعة مقدمة / عند التوريد"></td>' +
+        '<td style="width:90px"><input type="number" min="0" max="100" step="0.01" data-inst-pct="' + idx + '" value="' + (r.pct || 0) + '"></td>' +
+        '<td style="width:120px"><input type="number" min="0" step="1" data-inst-amt="' + idx + '" value="' + (r.amount || 0) + '"></td>' +
+        '<td style="width:36px">' + (installmentRows.length > 1 ? '<button type="button" class="inst-del" data-inst-del="' + idx + '">حذف</button>' : '') + '</td>' +
+      '</tr>';
+    }).join('');
+    if (rebind) {
+      tbody.querySelectorAll('[data-inst-label]').forEach(function (el) {
+        el.addEventListener('input', function () {
+          installmentRows[parseInt(el.getAttribute('data-inst-label'), 10)].label = el.value;
+        });
+      });
+      tbody.querySelectorAll('[data-inst-pct]').forEach(function (el) {
+        el.addEventListener('input', function () {
+          installmentRows[parseInt(el.getAttribute('data-inst-pct'), 10)].pct = parseFloat(el.value) || 0;
+          recalcInstallmentAmounts();
+        });
+      });
+      tbody.querySelectorAll('[data-inst-amt]').forEach(function (el) {
+        el.addEventListener('input', function () {
+          installmentRows[parseInt(el.getAttribute('data-inst-amt'), 10)].amount = parseFloat(el.value) || 0;
+          updateInstallmentSummary();
+        });
+      });
+      tbody.querySelectorAll('[data-inst-del]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var i = parseInt(el.getAttribute('data-inst-del'), 10);
+          installmentRows.splice(i, 1);
+          if (!installmentRows.length) installmentRows = [{ label: 'دفعة واحدة', pct: 100, amount: currentTotal() }];
+          renderInstallmentRows();
+        });
+      });
+    }
+    updateInstallmentSummary();
+  }
+
+  function updateInstallmentSummary() {
+    var el = $('ic-inst-summary');
+    if (!el) return;
+    var sum = installmentRows.reduce(function (s, r) { return s + (parseFloat(r.amount) || 0); }, 0);
+    el.textContent = installmentRows.length + ' دفعة — ' + fmtAmt(sum) + ' ر.س';
+  }
+
+  function collectInstallmentRows() {
+    var tbody = $('ic-inst-body');
+    if (!tbody) return installmentRows;
+    tbody.querySelectorAll('[data-inst-label]').forEach(function (el) {
+      installmentRows[parseInt(el.getAttribute('data-inst-label'), 10)].label = el.value;
+    });
+    tbody.querySelectorAll('[data-inst-pct]').forEach(function (el) {
+      installmentRows[parseInt(el.getAttribute('data-inst-pct'), 10)].pct = parseFloat(el.value) || 0;
+    });
+    tbody.querySelectorAll('[data-inst-amt]').forEach(function (el) {
+      installmentRows[parseInt(el.getAttribute('data-inst-amt'), 10)].amount = parseFloat(el.value) || 0;
+    });
+    return installmentRows;
+  }
+
+  function fillQuoteSelect(projectId, selectedId) {
+    var sel = $('f-quote');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— بدون عرض (إدخال يدوي) —</option>';
+    QUOTES.forEach(function (q) {
+      if (projectId && String(q.project_id) !== String(projectId)) return;
+      var o = document.createElement('option');
+      o.value = q.id;
+      o.textContent = q.code + ' — ' + (q.status || '') + ' (' + fmtAmt(q.total) + ' ر.س)';
+      if (String(selectedId) === String(q.id)) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  function applyQuote(quote) {
+    if (!quote) return;
+    $('f-type-sel').value = quote.contract_type || 'عقد تركيب';
+    $('f-value').value = quote.value || '';
+    $('f-tax-pct').value = quote.tax_pct || 15;
+    $('f-tax-amount').value = quote.tax_amount || '';
+    $('f-total').value = quote.total || '';
+    loadTaxValues(quote.value, quote.tax_pct, quote.total);
+    setInstallmentRows(quote.installments || []);
+    var hint = $('f-quote-hint');
+    if (hint) hint.textContent = 'مرتبط بعرض ' + quote.code + ' — ' + (quote.installments || []).length + ' دفعة';
+  }
+
+  function onProjectChange() {
+    var cid = $('f-client-sel') && $('f-client-sel').value;
+    var pid = $('f-project') && $('f-project').value;
+    fillProjectSelect(cid, pid);
+    fillQuoteSelect(pid, '');
+    if ($('f-quote')) $('f-quote').value = '';
+    if (pid) {
+      var project = PROJECTS.find(function (p) { return String(p.id) === String(pid); });
+      if (project && project.accepted_quotation_id) {
+        fillQuoteSelect(pid, project.accepted_quotation_id);
+        if ($('f-quote')) $('f-quote').value = String(project.accepted_quotation_id);
+        onQuoteChange();
+        return;
+      }
+      var latest = null;
+      QUOTES.forEach(function (q) {
+        if (String(q.project_id) !== String(pid)) return;
+        if (!latest || q.id > latest.id) latest = q;
+      });
+      if (latest) {
+        if ($('f-quote')) $('f-quote').value = String(latest.id);
+        onQuoteChange();
+      }
+    }
+  }
+
+  function onQuoteChange() {
+    var qid = $('f-quote') && $('f-quote').value;
+    if (!qid) {
+      var hint = $('f-quote-hint');
+      if (hint) hint.textContent = 'اربط العقد بعرض سعر لتحميل القيمة وجدول الدفعات (دفعة مقدمة، عند التوريد، عند التسليم…)';
+      return;
+    }
+    applyQuote(getQuote(qid));
+  }
+
+  function reloadFromQuote() {
+    onQuoteChange();
+  }
+
+  function addInstallmentRow() {
+    collectInstallmentRows();
+    installmentRows.push({ label: 'دفعة ' + (installmentRows.length + 1), pct: 0, amount: 0 });
+    recalcInstallmentAmounts();
+  }
+
   function fillProjectSelect(customerId, selectedId) {
     var sel = $('f-project');
     if (!sel) return;
@@ -206,6 +389,8 @@
     $('f-total').value = '';
     $('f-notes').value = '';
     fillProjectSelect('');
+    fillQuoteSelect('');
+    setInstallmentRows([{ label: 'دفعة واحدة', pct: 100, amount: 0 }]);
     var taxBlock = document.querySelector('#modal-add .lc-tax-block');
     if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.resetElement(taxBlock);
   }
@@ -220,6 +405,9 @@
   function onClientChange() {
     var cid = $('f-client-sel') && $('f-client-sel').value;
     fillProjectSelect(cid);
+    fillQuoteSelect('');
+    if ($('f-quote')) $('f-quote').value = '';
+    setInstallmentRows([{ label: 'دفعة واحدة', pct: 100, amount: currentTotal() }]);
   }
 
   function initClientSelect() {
@@ -272,6 +460,13 @@
       LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, c.customer_id);
     }
     fillProjectSelect(c.customer_id, c.project_id);
+    fillQuoteSelect(c.project_id, c.quotation_id);
+    if (c.quotation_id && $('f-quote')) $('f-quote').value = String(c.quotation_id);
+    if (c.installments && c.installments.length) {
+      setInstallmentRows(c.installments);
+    } else {
+      setInstallmentRows([{ label: 'دفعة واحدة', pct: 100, amount: c.total || 0 }]);
+    }
     loadTaxValues(c.value, c.tax_pct, c.total);
     openModal('modal-add');
   }
@@ -288,6 +483,7 @@
     fd.append('csrf_token', CSRF);
     fd.append('customer_id', ($('f-client-sel') && $('f-client-sel').value) || '');
     fd.append('project_id', ($('f-project') && $('f-project').value) || '');
+    fd.append('quotation_id', ($('f-quote') && $('f-quote').value) || '');
     fd.append('contract_type', $('f-type-sel').value);
     fd.append('status', $('f-status-sel').value);
     fd.append('start_date', $('f-start').value);
@@ -298,6 +494,10 @@
     fd.append('tax_amount', $('f-tax-amount').value);
     fd.append('total', $('f-total').value);
     fd.append('notes', $('f-notes').value);
+    collectInstallmentRows();
+    fd.append('installments_json', JSON.stringify(installmentRows.map(function (r) {
+      return { label: r.label, pct: r.pct, amount: r.amount };
+    })));
     var url = editId
       ? '/installation/contracts/' + editId + '/edit'
       : '/installation/contracts/add';
@@ -341,6 +541,10 @@
     filter: filterTable,
     calcTax: calcTax,
     syncEnd: syncEndFromDuration,
+    onProjectChange: onProjectChange,
+    onQuoteChange: onQuoteChange,
+    reloadFromQuote: reloadFromQuote,
+    addInstallmentRow: addInstallmentRow,
   };
 
   document.addEventListener('DOMContentLoaded', function () {

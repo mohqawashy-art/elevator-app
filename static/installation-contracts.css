@@ -63,3 +63,11 @@ html[dir="ltr"] .ic-table thead th{text-align:left}
 .contract-days.expiring{color:var(--warning)}
 .contract-days.expired{color:var(--danger)}
 .contract-days.muted{color:var(--text3);font-weight:500}
+.ic-inst-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ic-inst-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r-sm)}
+.ic-inst-table{width:100%;border-collapse:collapse;font-size:12px}
+.ic-inst-table th,.ic-inst-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:right}
+.ic-inst-table th{color:var(--text3);font-size:11px;background:var(--bg3)}
+.ic-inst-table input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);padding:7px 9px;font-size:12px;font-family:inherit}
+.ic-inst-table input[type=number]{direction:ltr;text-align:left;font-family:var(--font-en)}
+.ic-inst-table .inst-del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;padding:4px}
