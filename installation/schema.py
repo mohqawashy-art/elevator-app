@@ -14,22 +14,31 @@ _INSTALL_CODE_TABLES = (
 
 
 def ensure_install_quote_columns() -> None:
-    """عمود جدول الدفعات الحر — يُضاف على Postgres/SQLite إن غاب."""
+    """أعمدة عروض التركيب الناقصة — تُضاف على Postgres/SQLite إن غابت."""
     insp = inspect(db.engine)
     try:
         insp.clear_cache()
     except Exception:
         pass
     tables = set(insp.get_table_names())
-    if 'installation_quotations' not in tables:
-        return
-    cols = {c['name'] for c in insp.get_columns('installation_quotations')}
-    if 'pay_schedule_json' in cols:
-        return
-    db.session.execute(text(
-        'ALTER TABLE installation_quotations ADD COLUMN pay_schedule_json TEXT'
-    ))
-    db.session.commit()
+    if 'installation_quotations' in tables:
+        cols = {c['name'] for c in insp.get_columns('installation_quotations')}
+        if 'pay_schedule_json' not in cols:
+            db.session.execute(text(
+                'ALTER TABLE installation_quotations ADD COLUMN pay_schedule_json TEXT'
+            ))
+            db.session.commit()
+    if 'installation_quotation_lines' in tables:
+        try:
+            insp.clear_cache()
+        except Exception:
+            pass
+        line_cols = {c['name'] for c in insp.get_columns('installation_quotation_lines')}
+        if 'item_id' not in line_cols:
+            db.session.execute(text(
+                'ALTER TABLE installation_quotation_lines ADD COLUMN item_id INTEGER'
+            ))
+            db.session.commit()
 
 
 def ensure_install_tenant_uniques() -> None:

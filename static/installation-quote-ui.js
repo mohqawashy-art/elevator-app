@@ -437,9 +437,65 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   var UNIT_OPTIONS = ['قطعة', 'متر', 'عدد', 'طقم', 'مقطوع', 'باب', 'كجم', 'م²', 'لفة', 'يوم', 'ساعة'];
+  var LINE_COLS = 7;
+  var inventoryItems = cfg.inventoryItems || [];
 
   function escapeAttr(s) {
     return String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function findInventory(itemId) {
+    if (!itemId) return null;
+    var i;
+    for (i = 0; i < inventoryItems.length; i++) {
+      if (String(inventoryItems[i].id) === String(itemId)) return inventoryItems[i];
+    }
+    return null;
+  }
+
+  function inventoryUnitPrice(item) {
+    var sell = Number(item.sell_price) || 0;
+    if (sell > 0) return Math.round(sell);
+    return Math.round(Number(item.buy_price) || 0);
+  }
+
+  function itemSelectHTML(selectedId) {
+    var html = '<select class="f-item"><option value="">— صنف من المخزن —</option>';
+    var i, it, sel, label;
+    for (i = 0; i < inventoryItems.length; i++) {
+      it = inventoryItems[i];
+      sel = String(it.id) === String(selectedId || '') ? ' selected' : '';
+      label = (it.code ? it.code + ' — ' : '') + (it.name || '');
+      html += '<option value="' + it.id + '"' + sel + '>' + escapeAttr(label) + '</option>';
+    }
+    return html + '</select>';
+  }
+
+  function applyInventoryToRow(tr, keepPrice) {
+    var sel = tr.querySelector('.f-item');
+    var item = findInventory(sel ? sel.value : '');
+    if (!item) return;
+    var nameEl = tr.querySelector('.f-name');
+    if (nameEl && item.name) nameEl.value = item.name;
+    if (item.unit) {
+      var unitSel = tr.querySelector('.f-unit');
+      var custom = tr.querySelector('.f-unit-custom');
+      var found = false;
+      var i;
+      if (unitSel) {
+        for (i = 0; i < unitSel.options.length; i++) {
+          if (unitSel.options[i].value === item.unit) { found = true; break; }
+        }
+        if (found) unitSel.value = item.unit;
+        else {
+          unitSel.value = '__custom__';
+          if (custom) custom.value = item.unit;
+        }
+        syncUnitCustomVisibility(tr);
+      }
+    }
+    var priceEl = tr.querySelector('.f-price');
+    if (priceEl && !keepPrice) priceEl.value = inventoryUnitPrice(item);
   }
 
   function unitCellHTML(current) {
@@ -486,6 +542,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function rowHTML(r) {
     return '<tr class="item-row" data-stage="' + escapeAttr(r.stage) + '">'
+      + '<td>' + itemSelectHTML(r.item_id) + '</td>'
       + '<td><input class="w-name f-name" type="text" value="' + escapeAttr(r.name) + '"></td>'
       + '<td>' + unitCellHTML(r.unit) + '</td>'
       + '<td><input class="f-qty" type="number" min="0" step="1" value="' + Math.round(Number(r.qty) || 0) + '"></td>'
@@ -504,10 +561,10 @@ document.addEventListener('DOMContentLoaded', function () {
       byStage[r.stage].push(r);
     }
     for (i = 0; i < stages.length; i++) {
-      html += '<tr class="stage-row" data-stage="' + stages[i] + '"><td colspan="6">📦 ' + stages[i] + '</td></tr>';
+      html += '<tr class="stage-row" data-stage="' + stages[i] + '"><td colspan="' + LINE_COLS + '">📦 ' + stages[i] + '</td></tr>';
       var j, list = byStage[stages[i]];
       for (j = 0; j < list.length; j++) { html += rowHTML(list[j]); }
-      html += '<tr class="stage-total" data-stage="' + stages[i] + '"><td colspan="4">إجمالي ' + stages[i] + '</td><td class="st-val" colspan="2">0</td></tr>';
+      html += '<tr class="stage-total" data-stage="' + stages[i] + '"><td colspan="5">إجمالي ' + stages[i] + '</td><td class="st-val" colspan="2">0</td></tr>';
     }
     el('itemsBody').innerHTML = html;
     bindTable();
@@ -517,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function bindTable() {
     var body = el('itemsBody');
     var inputs = body.querySelectorAll('input');
-    var selects = body.querySelectorAll('select.f-unit');
+    var selects = body.querySelectorAll('select.f-unit, select.f-item');
     var i;
     for (i = 0; i < inputs.length; i++) {
       inputs[i].addEventListener('input', function () {
@@ -528,7 +585,8 @@ document.addEventListener('DOMContentLoaded', function () {
     for (i = 0; i < selects.length; i++) {
       selects[i].addEventListener('change', function () {
         var tr = this.closest('tr');
-        syncUnitCustomVisibility(tr, true);
+        if (this.classList.contains('f-item')) applyInventoryToRow(tr, false);
+        else syncUnitCustomVisibility(tr, true);
         scheduleDraftSave();
         recalc();
       });
@@ -554,6 +612,7 @@ document.addEventListener('DOMContentLoaded', function () {
         unit: readUnit(rows[i]),
         qty: P.num(rows[i].querySelector('.f-qty').value),
         price: P.num(rows[i].querySelector('.f-price').value),
+        item_id: (rows[i].querySelector('.f-item') && rows[i].querySelector('.f-item').value) || '',
       });
     }
     return out;
@@ -813,7 +872,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var tr = document.createElement('tr');
     tr.className = 'item-row';
     tr.setAttribute('data-stage', 'بنود إضافية');
-    tr.innerHTML = '<td><input class="w-name f-name" type="text" placeholder="اسم البند"></td>'
+    tr.innerHTML = '<td>' + itemSelectHTML('') + '</td>'
+      + '<td><input class="w-name f-name" type="text" placeholder="اسم البند"></td>'
       + '<td>' + unitCellHTML('قطعة') + '</td>'
       + '<td><input class="f-qty" type="number" min="0" step="1" value="1"></td>'
       + '<td><input class="f-price" type="number" min="0" step="1" value="0"></td>'
@@ -836,7 +896,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var empty = 'حدد المواصفات ثم اضغط «بناء قائمة القطع»';
     if (mode === 'extend') empty = 'حدد الوقفات الحالية والأدوار المضافة ثم اضغط «بناء قائمة إضافة الأدوار»';
     if (mode === 'upgrade') empty = 'اختر مكونات التحديث ثم اضغط «بناء قائمة التحديث»';
-    el('itemsBody').innerHTML = '<tr><td colspan="6" class="pricing-empty">' + empty + '</td></tr>';
+    el('itemsBody').innerHTML = '<tr><td colspan="' + LINE_COLS + '" class="pricing-empty">' + empty + '</td></tr>';
     el('sumLabor').value = 0;
     syncStagePickStyles();
     if (mode === 'extend') updateExtendHint();

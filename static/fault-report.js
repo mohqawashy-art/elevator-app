@@ -52,8 +52,16 @@
     const tbody = document.getElementById('parts-body');
     if (!tbody) return;
     const tr = document.createElement('tr');
-    const row = data || { name: '', qty: 1, unit_price: 0 };
+    const row = data || { item_id: '', name: '', qty: 1, unit_price: 0 };
+    const items = global.INVENTORY_ITEMS || [];
+    let opts = '<option value="">— صنف من المخزن —</option>';
+    items.forEach(function (it) {
+      const sel = String(it.id) === String(row.item_id || '') ? ' selected' : '';
+      const label = (it.code ? it.code + ' — ' : '') + (it.name || '');
+      opts += '<option value="' + it.id + '"' + sel + '>' + escHtml(label) + '</option>';
+    });
     tr.innerHTML =
+      '<td><select class="part-item-sel">' + opts + '</select></td>' +
       '<td><input type="text" class="part-name" placeholder="اسم القطعة" value="' + escHtml(row.name) + '"></td>' +
       '<td><input type="number" class="qty-input" min="1" value="' + (row.qty || 1) + '" style="direction:ltr"></td>' +
       '<td><input type="number" class="price-input" min="0" step="0.01" value="' + (row.unit_price || '') + '" style="direction:ltr"></td>' +
@@ -62,9 +70,42 @@
     tbody.appendChild(tr);
     const del = tr.querySelector('.del-btn');
     if (del) del.addEventListener('click', function () { tr.remove(); calcTotals(); });
+    const sel = tr.querySelector('.part-item-sel');
+    if (sel) sel.addEventListener('change', function () { onPartItemChange(tr, false); });
     tr.querySelectorAll('.qty-input,.price-input').forEach(function (inp) {
       inp.addEventListener('input', calcTotals);
     });
+    if (row.item_id) onPartItemChange(tr, true);
+    calcTotals();
+  }
+
+  function partUnitPrice(item) {
+    const sell = parseFloat(item.sell_price);
+    if (!isNaN(sell) && sell > 0) return sell;
+    return parseFloat(item.buy_price) || 0;
+  }
+
+  function onPartItemChange(tr, keepPrice) {
+    const sel = tr.querySelector('.part-item-sel');
+    const nameEl = tr.querySelector('.part-name');
+    const priceEl = tr.querySelector('.price-input');
+    const itemId = sel ? sel.value : '';
+    if (!itemId) {
+      if (nameEl) nameEl.readOnly = false;
+      calcTotals();
+      return;
+    }
+    const items = global.INVENTORY_ITEMS || [];
+    const item = items.find(function (x) { return String(x.id) === String(itemId); });
+    if (!item) return;
+    if (nameEl) {
+      nameEl.value = item.name || '';
+      nameEl.readOnly = true;
+    }
+    if (priceEl && !keepPrice) {
+      const unit = partUnitPrice(item);
+      priceEl.value = unit > 0 ? unit.toFixed(2) : '';
+    }
     calcTotals();
   }
 
@@ -116,7 +157,15 @@
       const name = (tr.querySelector('.part-name')?.value || '').trim();
       const qty = parseFloat(tr.querySelector('.qty-input')?.value) || 0;
       const unit_price = parseFloat(tr.querySelector('.price-input')?.value) || 0;
-      if (name || unit_price) out.push({ name: name, qty: qty || 1, unit_price: unit_price });
+      const item_id = tr.querySelector('.part-item-sel')?.value || '';
+      if (name || unit_price || item_id) {
+        out.push({
+          item_id: item_id ? Number(item_id) : null,
+          name: name,
+          qty: qty || 1,
+          unit_price: unit_price,
+        });
+      }
     });
     return out;
   }

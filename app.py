@@ -1437,6 +1437,7 @@ def inventory_item_js_dict(i):
         'name': i.name,
         'unit': i.unit or 'قطعة',
         'buy_price': i.buy_price or 0,
+        'sell_price': i.sell_price or 0,
     }
 
 
@@ -11487,6 +11488,14 @@ def prepare_inventory_item_deletion(item_id: int) -> tuple[bool, str | None]:
         {SupplierQuoteRequestLine.item_id: None},
         synchronize_session=False,
     )
+    try:
+        from installation.models import InstallQuotationLine
+        tenant_query(InstallQuotationLine).filter_by(item_id=item_id).update(
+            {InstallQuotationLine.item_id: None},
+            synchronize_session=False,
+        )
+    except Exception:
+        pass
     return True, None
 
 

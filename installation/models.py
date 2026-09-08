@@ -456,6 +456,7 @@ class InstallQuotationLine(TenantMixin, db.Model):
     unit = db.Column(db.String(40))
     qty = db.Column(db.Float, default=1)
     unit_price = db.Column(db.Float, default=0)
+    item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=True, index=True)
     sort_order = db.Column(db.Integer, default=0)
 
     quotation = db.relationship('InstallQuotation', back_populates='lines')

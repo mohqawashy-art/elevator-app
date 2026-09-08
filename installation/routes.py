@@ -6,7 +6,7 @@ from datetime import datetime, date
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 
-from models import db, Customer, Contract
+from models import db, Customer, Contract, InventoryItem
 from installation.models import (
     InstallLead,
     InstallProject,
@@ -155,6 +155,28 @@ def _customer_to_js(customer):
     }
 
 
+def _inventory_items_js():
+    return [
+        {
+            'id': i.id,
+            'code': i.code or '',
+            'name': i.name or '',
+            'unit': i.unit or 'قطعة',
+            'buy_price': float(i.buy_price or 0),
+            'sell_price': float(i.sell_price or 0),
+        }
+        for i in tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    ]
+
+
+def _parse_quote_item_id(raw):
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return n if n > 0 else None
+
+
 def _active_customers():
     return tenant_query(Customer).filter(
         Customer.status != 'غير نشط'
@@ -228,6 +250,7 @@ def _quotation_to_dict(q):
                 'unit': ln.unit,
                 'qty': ln.qty,
                 'price': ln.unit_price,
+                'item_id': ln.item_id or '',
             }
             for ln in q.lines
         ],
@@ -604,6 +627,7 @@ def project_quote(project_id):
         panel_brands=CONTROL_PANEL_BRANDS,
         default_customer_id=default_customer_id,
         preferred_quote_type=(request.args.get('quote_type') or '').strip() or None,
+        inventory_items_js=_inventory_items_js(),
         page_title=f'تسعير — {project.code}',
     )
 
@@ -691,6 +715,9 @@ def project_quote_save(project_id):
     for i, row in enumerate(lines):
         qty = round(float(row.get('qty') or 0))
         price = round(float(row.get('price') or 0))
+        item_id = _parse_quote_item_id(row.get('item_id'))
+        if item_id and not tenant_query(InventoryItem).filter_by(id=item_id).first():
+            item_id = None
         materials += qty * price
         line = InstallQuotationLine(
             quotation=q,
@@ -699,6 +726,7 @@ def project_quote_save(project_id):
             unit=(row.get('unit') or '—').strip(),
             qty=qty,
             unit_price=price,
+            item_id=item_id,
             sort_order=i,
         )
         assign_organization(line)

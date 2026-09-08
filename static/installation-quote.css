@@ -33,6 +33,10 @@ table.pricing-items input{width:80px;padding:6px 8px;border:1px solid var(--bord
 table.pricing-items input.w-name{width:100%;text-align:right}
 html[dir="ltr"] table.pricing-items input.w-name{text-align:left}
 table.pricing-items .unit-cell{min-width:96px}
+table.pricing-items select.f-item{
+  width:100%;min-width:140px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r-sm);
+  background:var(--bg3);color:var(--text1);font-family:inherit;font-size:12px
+}
 table.pricing-items select.f-unit{
   width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r-sm);
   background:var(--bg3);color:var(--text1);font-family:inherit;font-size:12px
