@@ -305,7 +305,12 @@ def delete_install_contract_for_project(project: InstallProject) -> None:
     contract = contract_for_project(project)
     if not contract:
         return
+    from installation.documents import remove_contract_documents_folder
+
+    contract_id = contract.id
     db.session.delete(contract)
+    db.session.flush()
+    remove_contract_documents_folder(contract_id)
 
 
 def _days_left(end_date: date | None) -> int | None:

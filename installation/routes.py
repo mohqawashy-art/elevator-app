@@ -410,9 +410,11 @@ def contract_detail(contract_id):
         ensure_install_contract_schema,
         sync_install_contract_from_project,
     )
+    from installation.documents import ensure_contract_documents_schema
     from installation.models import InstallContract
 
     ensure_install_contract_schema()
+    ensure_contract_documents_schema()
     contract = tenant_get_or_404(InstallContract, contract_id)
     project = contract.project
     if project:
@@ -426,11 +428,47 @@ def contract_detail(contract_id):
         summary=summary,
         contract=contract,
         project=project,
+        documents=list(contract.documents or []),
         statuses=INSTALL_CONTRACT_STATUSES,
         installment_statuses=INSTALL_CONTRACT_INSTALLMENT_STATUSES,
         page_title=f'عقد {contract.code}',
         today=date_cls.today().isoformat(),
     )
+
+
+@install_bp.route('/contracts/<int:contract_id>/documents', methods=['POST'])
+def contract_document_upload(contract_id):
+    from installation.documents import ensure_contract_documents_schema, save_contract_document
+    from installation.models import InstallContract
+
+    ensure_contract_documents_schema()
+    contract = tenant_get_or_404(InstallContract, contract_id)
+    file_storage = request.files.get('file')
+    label = (request.form.get('label') or '').strip()
+    try:
+        save_contract_document(contract, file_storage, label=label)
+        db.session.commit()
+        flash('تم رفع المرفق', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'error')
+    except Exception:
+        db.session.rollback()
+        flash('تعذّر رفع المرفق', 'error')
+    return redirect(url_for('installation.contract_detail', contract_id=contract.id) + '#contract-documents')
+
+
+@install_bp.route('/contracts/<int:contract_id>/documents/<int:doc_id>/delete', methods=['POST'])
+def contract_document_delete(contract_id, doc_id):
+    from installation.documents import delete_contract_document
+    from installation.models import InstallContract
+
+    contract = tenant_get_or_404(InstallContract, contract_id)
+    if not delete_contract_document(contract, doc_id):
+        flash('المرفق غير موجود', 'error')
+    else:
+        db.session.commit()
+        flash('تم حذف المرفق', 'success')
+    return redirect(url_for('installation.contract_detail', contract_id=contract.id) + '#contract-documents')
 
 
 @install_bp.route('/contracts/<int:contract_id>/installments/<int:seq>/pay', methods=['POST'])

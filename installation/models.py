@@ -673,6 +673,12 @@ class InstallContract(TenantMixin, db.Model):
         cascade='all, delete-orphan',
         order_by='InstallContractInstallment.seq.asc()',
     )
+    documents = db.relationship(
+        'InstallContractDocument',
+        back_populates='contract',
+        cascade='all, delete-orphan',
+        order_by='InstallContractDocument.uploaded_at.desc(), InstallContractDocument.id.desc()',
+    )
 
     @property
     def client_display(self):
@@ -704,3 +710,18 @@ class InstallContractInstallment(TenantMixin, db.Model):
     @property
     def remaining_amount(self):
         return round(max(float(self.amount or 0) - float(self.collected_amount or 0), 0), 2)
+
+
+class InstallContractDocument(TenantMixin, db.Model):
+    """مرفق عقد تركيب — عقد موقّع، فاتورة، مخطط، إلخ."""
+    __tablename__ = 'installation_contract_documents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.Integer, db.ForeignKey('installation_contracts.id'), nullable=False, index=True)
+    label = db.Column(db.String(200))
+    file_path = db.Column(db.String(500), nullable=False)
+    file_name = db.Column(db.String(255))
+    mime_type = db.Column(db.String(100))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    contract = db.relationship('InstallContract', back_populates='documents')

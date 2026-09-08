@@ -346,3 +346,83 @@ def test_contract_installment_pay(client):
         assert float(contract.collected_amount) == 50000
         first = sorted(contract.installments, key=lambda x: x.seq or 0)[0]
         assert first.status == 'محصّلة'
+
+
+def test_contract_document_upload_and_delete(client):
+    import io
+
+    from installation.documents import ensure_contract_documents_schema
+    from installation.models import InstallContract, InstallContractDocument
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        ensure_install_contract_schema()
+        ensure_contract_documents_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(organization_id=org.id, code='C-IC6', name='عميل مرفقات', status='نشط')
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-IC6',
+            title='مشروع مرفقات',
+            status='عقد',
+            customer_id=cust.id,
+        )
+        db.session.add_all([cust, project])
+        db.session.flush()
+        q = InstallQuotation(
+            organization_id=org.id,
+            code='QT-IC6',
+            project_id=project.id,
+            customer_id=cust.id,
+            status='مقبول',
+            grand_total=50000,
+        )
+        db.session.add(q)
+        db.session.flush()
+        project.accepted_quotation_id = q.id
+        db.session.commit()
+        project = db.session.get(InstallProject, project.id)
+        q = db.session.get(InstallQuotation, q.id)
+        contract = create_install_contract_for_project(project, q, next_code_fn=_next_code)
+        db.session.commit()
+        contract_id = contract.id
+        with client.session_transaction() as sess:
+            sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        f'/installation/contracts/{contract_id}/documents',
+        data={
+            'csrf_token': 'test-csrf',
+            'label': 'عقد موقّع',
+            'file': (io.BytesIO(b'%PDF-1.4 test'), 'contract.pdf'),
+        },
+        content_type='multipart/form-data',
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+
+    with client.application.app_context():
+        contract = db.session.get(InstallContract, contract_id)
+        assert len(contract.documents) == 1
+        doc = contract.documents[0]
+        assert doc.label == 'عقد موقّع'
+        doc_id = doc.id
+
+    detail = client.get(f'/installation/contracts/{contract_id}')
+    assert detail.status_code == 200
+    body = detail.data.decode('utf-8', errors='ignore')
+    assert 'مرفقات العقد' in body
+    assert 'عقد موقّع' in body
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        f'/installation/contracts/{contract_id}/documents/{doc_id}/delete',
+        data={'csrf_token': 'test-csrf'},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+
+    with client.application.app_context():
+        assert InstallContractDocument.query.filter_by(contract_id=contract_id).count() == 0
