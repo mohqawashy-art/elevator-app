@@ -108,7 +108,7 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .tab svg{width:13px;height:13px;flex-shrink:0}
 .tab.active{background:var(--accent);color:#fff}
 .tab:hover:not(.active){background:var(--bg3);color:var(--text1)}
-.filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filters-bar{margin-bottom:16px}
 .search-wrap{position:relative;flex:1;min-width:200px}
 .search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
 html[dir="ltr"] .search-wrap svg{right:auto;left:11px}
@@ -250,7 +250,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
   .cal-grid{grid-template-columns:repeat(7,1fr)}
   .cal-day{min-height:50px}
 }
-@media(max-width:480px){.filters-bar{flex-direction:column}.search-wrap{min-width:100%}}
+@media(max-width:480px){.search-wrap{min-width:100%}}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
@@ -359,9 +359,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
 
       <div class="filters-bar">
-        <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 8px">
+        <div class="filter-month-nav">
           <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(-1)" title="الشهر السابق">‹</button>
-          <input type="month" class="date-input" id="work-month" value="{{ plan_default_month }}" style="direction:ltr;min-width:130px" onchange="applyWorkMonth(); filterTableByWorkMonth()">
+          <input type="month" class="date-input" id="work-month" value="{{ plan_default_month }}" onchange="applyWorkMonth(); filterTableByWorkMonth()">
           <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(1)" title="الشهر التالي">›</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="goWorkMonthToday(); filterTableByWorkMonth()">هذا الشهر</button>
         </div>
@@ -385,8 +385,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <option>صيانة دورية</option><option>زيارة طارئة</option>
           <option>زيارة متابعة</option><option>زيارة فحص</option>
         </select>
-        <input type="date" lang="en-GB" class="date-input" id="f-date-from" onchange="filterTable()" title="من تاريخ">
-        <input type="date" lang="en-GB" class="date-input" id="f-date-to" onchange="filterTable()" title="إلى تاريخ">
+        <input type="date" lang="en-GB" class="date-input filter-input" id="f-date-from" onchange="filterTable()" title="من تاريخ">
+        <input type="date" lang="en-GB" class="date-input filter-input" id="f-date-to" onchange="filterTable()" title="إلى تاريخ">
       </div>
 
       <div class="table-wrap">
