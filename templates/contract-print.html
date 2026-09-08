@@ -78,8 +78,9 @@ body{
   line-height:1.3;
 }
 .sig-title{font-weight:700;margin-bottom:10pt}
-.sig-party-name{font-weight:600;margin-bottom:6pt;min-height:2em;padding:0 8pt}
-.sig-label{margin-bottom:4pt}
+.sig-lines{text-align:right;width:100%}
+.sig-party-name{font-weight:600;margin-bottom:6pt;min-height:2em;padding:0}
+.sig-label{margin-bottom:4pt;padding:0}
 .sig-pad{height:48pt;margin-top:8pt}
 
 .w-empty{height:14pt}
@@ -203,15 +204,19 @@ body{
   <div class="signatures-row">
     <div class="sig-col sig-first">
       <div class="sig-title">الطرف الأول</div>
-      <div class="sig-party-name">{{ company.company_name }}</div>
-      <div class="sig-label">التوقيع /</div>
-      <div class="sig-pad"></div>
+      <div class="sig-lines">
+        <div class="sig-party-name">{{ company.company_name }}</div>
+        <div class="sig-label">التوقيع /</div>
+        <div class="sig-pad"></div>
+      </div>
     </div>
     <div class="sig-col sig-second">
       <div class="sig-title">الطرف الثاني</div>
-      <div class="sig-label">الاسم / {% if customer %}{{ customer.name }}{% endif %}</div>
-      <div class="sig-label">التوقيع /</div>
-      <div class="sig-pad"></div>
+      <div class="sig-lines">
+        <div class="sig-label">الاسم / {% if customer %}{{ customer.name }}{% endif %}</div>
+        <div class="sig-label">التوقيع /</div>
+        <div class="sig-pad"></div>
+      </div>
     </div>
   </div>
 </div>
