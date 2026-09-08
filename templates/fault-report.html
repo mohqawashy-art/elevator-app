@@ -6,99 +6,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>LiftCore — تقرير {{ fault.code }}</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#1a3a5c;--navy2:#2a5080;--gold:#f0a500;--red:#c0392b;--green:#27ae60;--orange:#e67e22;--bg:#f0f2f5;--white:#fff;--border:#d0dcea;--text:#1a1a1a;--text2:#555;--text3:#888;--font:'IBM Plex Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif;--font-en:'DM Sans','Segoe UI',sans-serif;--r:8px;--r-sm:4px}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
-.tech-bar{background:var(--red);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:10px;flex-wrap:wrap}
-.tech-bar a{color:rgba(255,255,255,.9);text-decoration:none;font-size:13px;background:rgba(255,255,255,.15);padding:8px 12px;border-radius:var(--r-sm)}
-.tech-bar-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.tech-avatar{width:36px;height:36px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--navy)}
-.tech-name{font-size:13px;font-weight:600}.tech-role{font-size:11px;opacity:.8}
-.save-btn{background:var(--gold);color:var(--navy);border:none;border-radius:var(--r-sm);padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)}
-.page{max-width:820px;margin:8px auto 16px;background:var(--white);border-radius:var(--r);box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:hidden}
-.doc-header{display:flex;justify-content:space-between;align-items:center;padding:4px 16px 0;border-bottom:3px solid var(--red);background:linear-gradient(135deg,#fff,#fff5f5);gap:10px;flex-wrap:wrap}
-.doc-logo{display:flex;align-items:flex-end;line-height:0}
-.doc-logo img{width:auto;height:182px;max-width:286px;object-fit:contain;display:block;vertical-align:bottom}
-.doc-center{text-align:center;flex:1}
-.doc-center h1{font-size:15px;font-weight:800;color:var(--red)}
-.doc-center .sub{font-size:10px;color:var(--text3)}
-.doc-right{text-align:left}
-.doc-badge{background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:var(--r-sm);display:inline-block;margin-bottom:4px}
-.doc-meta{font-size:10px;color:var(--text3)}
-.doc-num{font-size:12px;font-weight:700;color:var(--red);margin-top:3px}
-.priority-bar{background:linear-gradient(135deg,var(--red),#a93226);padding:8px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.priority-item{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.9)}
-.priority-badge{padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;background:rgba(255,255,255,.2);color:#fff}
-.pb-critical{background:#ff3b3b}.pb-high{background:#e04848}.pb-medium{background:#e09030}.pb-low{background:#2a7fff}
-.section{margin:0 16px 12px}
-.sec-title{font-size:11px;font-weight:700;color:#fff;padding:4px 12px;background:var(--navy);border-radius:var(--r-sm);display:flex;align-items:center;gap:6px;margin-bottom:8px}
-.sec-title.red-sec{background:var(--red)}.sec-title.green-sec{background:var(--green)}
-.sec-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block}
-.row{display:grid;gap:8px;margin-bottom:6px}
-.row-2{grid-template-columns:1fr 1fr}.row-3{grid-template-columns:1fr 1fr 1fr}.row-4{grid-template-columns:1fr 1fr 1fr 1fr}
-.field{display:flex;flex-direction:column;gap:4px}
-.field label{font-size:10px;font-weight:600;color:var(--text2)}
-.field input,.field select,.field textarea{font-size:12px;font-family:var(--font);padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:#fafafa;width:100%}
-.field input[readonly],.field select[disabled],.field textarea[readonly]{background:#f0f4f8}
-.checkbox-group{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0}
-.checkbox-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#444;cursor:pointer;background:#f5f7fa;border:1px solid #e5e8ec;border-radius:20px;padding:4px 12px}
-.checkbox-item:has(input:checked){background:#fdf0ee;border-color:var(--red);color:var(--red);font-weight:600}
-.parts-table{width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--border)}
-.parts-table th{text-align:right;font-weight:700;color:#fff;padding:7px 10px;background:var(--navy)}
-.parts-table td{padding:4px 6px;border:1px solid #e0e0e0}
-.parts-table input{border:none;padding:4px 6px;width:100%;font-size:12px;font-family:var(--font);background:transparent}
-.parts-table select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #d0dcea;border-radius:4px;font-family:var(--font);background:#fff}
-.del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;padding:2px 8px}
-.add-row-btn{font-size:12px;color:var(--navy);background:none;border:1px dashed var(--navy);border-radius:var(--r-sm);padding:5px 16px;cursor:pointer;margin-bottom:10px;font-family:var(--font)}
-.totals-box{background:#f5f8fc;border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 14px;margin-top:6px}
-.total-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid #e5eaf0;color:var(--text2)}
-.total-row:last-child{border:none;font-weight:700;font-size:14px;color:var(--red);padding-top:8px}
-.total-val{font-family:var(--font-en);direction:ltr}
-.status-group{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.status-btn{font-size:12px;padding:10px 14px;border:2px solid var(--border);border-radius:20px;background:#fff;color:var(--text2);cursor:pointer;font-weight:600;font-family:var(--font);touch-action:manipulation;min-height:40px}
-.status-btn.active-success{border-color:var(--green)!important;background:#27ae60!important;color:#fff!important}
-.status-btn.active-warning{border-color:var(--orange)!important;background:#e67e22!important;color:#fff!important}
-.status-btn.active-danger{border-color:var(--red)!important;background:#c0392b!important;color:#fff!important}
-.status-btn:disabled{opacity:.55;cursor:not-allowed}
-.photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 16px 10px}
-.photo-slot{border:2px dashed var(--border);border-radius:var(--r);background:#fafafa;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;flex-direction:column}
-.photo-slot.has-img{border-style:solid;border-color:var(--navy);cursor:default}
-.photo-slot img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
-.photo-ph{text-align:center;padding:8px}.photo-ph .icon{font-size:22px}.photo-ph .txt{font-size:10px;color:var(--text3)}
-.photo-remove{position:absolute;top:4px;left:4px;background:rgba(192,57,43,.85);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;display:none;z-index:2}
-.photo-slot.has-img .photo-remove{display:flex;align-items:center;justify-content:center}
-.photo-caption-input{position:absolute;bottom:0;left:0;right:0;font-size:9px;padding:3px 6px;border:none;border-top:1px solid rgba(0,0,0,.1);background:rgba(255,255,255,.9);display:none}
-.photo-slot.has-img .photo-caption-input{display:block}
-.sig-area{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 16px 10px}
-.sig-box{border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;text-align:center;background:#fafafa}
-.sig-label{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px}
-.sig-canvas{width:100%;height:80px;border:1px dashed var(--border);border-radius:3px;background:#fff;touch-action:none}
-.sig-clear{font-size:10px;padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:#fff;cursor:pointer;margin-top:6px;font-family:var(--font)}
-.rating-area{display:flex;align-items:center;gap:12px;padding:8px 0;flex-wrap:wrap}
-.stars{display:flex;gap:6px}.star{font-size:24px;cursor:pointer;color:#ddd}.star.active{color:var(--gold)}
-.doc-footer{margin:0 16px 12px;padding-top:8px;border-top:2px solid var(--red);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:9px;color:var(--text3)}
-.readonly-banner{background:#fff3cd;border-bottom:1px solid #f0c040;color:#7d5a00;padding:10px 16px;font-size:12px;font-weight:600;text-align:center}
-.readonly-banner a{color:var(--navy);font-weight:700}
-.progress-pill{font-size:11px;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:20px}
-@media print{
-  .tech-bar,.add-row-btn,.del-btn,.photo-remove,.sig-clear,.sig-add-btn,.sig-draw-link,.readonly-banner{display:none!important}
-  .page{box-shadow:none;margin:0}
-  .photo-slot:not(.has-img){display:none!important}
-  .section:has(+ .photos-grid:not(:has(.has-img))){display:none!important}
-  .photos-grid:not(:has(.has-img)){display:none!important}
-}
-@media(max-width:768px){.row-3,.row-4{grid-template-columns:1fr 1fr}.photos-grid{grid-template-columns:repeat(2,1fr)}.sig-area{grid-template-columns:1fr}}
-@media(max-width:480px){.row-3,.row-4{grid-template-columns:1fr}.photos-grid{grid-template-columns:1fr}}
-</style>
-<link rel="stylesheet" href="/static/document-signatures.css?v=2">
-<link rel="stylesheet" href="/static/document-company-seal.css?v=2">
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
 <link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
+<link rel="stylesheet" href="/static/fault-report.css?v=1">
+<link rel="stylesheet" href="/static/document-signatures.css?v=2">
+<link rel="stylesheet" href="/static/document-company-seal.css?v=2">
 <script src="/static/liftcore-dates.js" defer></script>
 </head>
-<body data-lc-popup="1" data-lc-idle-screensaver="off">
+<body class="fr-report" data-lc-popup="1" data-lc-idle-screensaver="off">
 
 {% if not editable %}
 <div class="readonly-banner">
@@ -122,7 +38,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <span class="progress-pill" id="progress-pill">{{ fault.report_stats.filled }}/{{ fault.report_stats.total }}</span>
     {% if editable %}
     <button type="button" class="save-btn" onclick="saveReport(false)">💾 حفظ</button>
-    <button type="button" class="save-btn" style="background:#27ae60;color:#fff" onclick="saveReport(true)">✅ حفظ وإغلاق العطل</button>
+    <button type="button" class="save-btn save-btn--success" onclick="saveReport(true)">✅ حفظ وإغلاق العطل</button>
     {% else %}
     <button type="button" class="save-btn" onclick="window.print()">🖨️ طباعة / PDF</button>
     {% endif %}
@@ -146,18 +62,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   </div>
 
   <div class="priority-bar">
-    <div class="priority-item">⚡ {{ fault.code }}</div>
+    <div class="priority-item">⚡ <code>{{ fault.code }}</code></div>
     <div class="priority-item">🔥 {{ fault.priority }}</div>
     <div class="priority-item">📋 {{ fault.status }}</div>
-    <div class="priority-item">⏱ {{ fault.reported_at }}</div>
+    <div class="priority-item">📅 {{ fault.reported_at[:10] if fault.reported_at else '—' }}</div>
   </div>
 
   <div class="section" style="margin-top:12px">
     <div class="sec-title"><span class="sec-dot"></span> بيانات الزيارة</div>
     <div class="row row-4">
-      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" style="direction:ltr" {% if not editable or field_times_locked %}readonly{% endif %}></div>
-      <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" style="direction:ltr" {% if not editable or field_times_locked %}readonly{% endif %}></div>
-      <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" style="direction:ltr" {% if not editable or field_times_locked %}readonly{% endif %}></div>
+      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" {% if not editable or field_times_locked %}readonly{% endif %}></div>
+      <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" {% if not editable or field_times_locked %}readonly{% endif %}></div>
+      <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" {% if not editable or field_times_locked %}readonly{% endif %}></div>
       <div class="field"><label>الفني المنفذ</label><input type="text" value="{{ technician.name }}" readonly></div>
     </div>
   </div>
@@ -188,37 +104,41 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div class="sec-title red-sec"><span class="sec-dot" style="background:#fff"></span> تفاصيل العطل</div>
     <div class="field" style="margin-bottom:8px">
       <label>وصف العطل كما أبلغ عنه العميل</label>
-      <textarea id="client-description" {% if not editable %}readonly{% endif %}></textarea>
+      <textarea id="client-description" rows="2" {% if not editable %}readonly{% endif %}></textarea>
     </div>
     <div class="field" style="margin-bottom:8px">
       <label>نوع العطل</label>
       <div class="checkbox-group" id="fault-types-root"></div>
     </div>
-    <div class="field" style="margin-bottom:8px">
-      <label>التشخيص الفني</label>
-      <textarea id="diagnosis" placeholder="سبب العطل بعد الفحص..." {% if not editable %}readonly{% endif %}></textarea>
+    <div class="row row-2">
+      <div class="field">
+        <label>التشخيص الفني</label>
+        <textarea id="diagnosis" rows="3" placeholder="سبب العطل بعد الفحص..." {% if not editable %}readonly{% endif %}></textarea>
+      </div>
+      <div class="field">
+        <label>الإجراء المتخذ</label>
+        <textarea id="action-taken" rows="3" placeholder="ماذا تم عمله..." {% if not editable %}readonly{% endif %}></textarea>
+      </div>
     </div>
-    <div class="field" style="margin-bottom:8px">
-      <label>الإجراء المتخذ</label>
-      <textarea id="action-taken" placeholder="ماذا تم عمله..." {% if not editable %}readonly{% endif %}></textarea>
-    </div>
-    <div class="field">
+    <div class="field" style="margin-top:8px">
       <label>ضمان عدم التكرار</label>
-      <textarea id="prevention" {% if not editable %}readonly{% endif %}></textarea>
+      <textarea id="prevention" rows="2" {% if not editable %}readonly{% endif %}></textarea>
     </div>
   </div>
 
   <div class="section">
     <div class="sec-title"><span class="sec-dot"></span> قطع الغيار المستخدمة</div>
-    <table class="parts-table">
-      <thead><tr><th>صنف من المخزن</th><th>اسم القطعة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th></tr></thead>
-      <tbody id="parts-body"></tbody>
-    </table>
+    <div class="parts-table-wrap">
+      <table class="parts-table">
+        <thead><tr><th>صنف من المخزن</th><th>اسم القطعة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th></tr></thead>
+        <tbody id="parts-body"></tbody>
+      </table>
+    </div>
     {% if editable %}<button type="button" class="add-row-btn" id="add-part-row">+ إضافة قطعة غيار</button>{% endif %}
     <div class="totals-box">
       <div class="total-row"><span>إجمالي قطع الغيار</span><span class="total-val" id="total-parts">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
       <div class="total-row"><span>تكلفة الزيارة / العمالة</span>
-        <input type="number" id="labor-cost" min="0" step="0.01" style="width:100px;direction:ltr" {% if not editable %}readonly{% endif %}>
+        <input type="number" class="labor-input" id="labor-cost" min="0" step="0.01" {% if not editable %}readonly{% endif %}>
       </div>
       <div class="total-row"><span>المجموع قبل الضريبة</span><span class="total-val" id="subtotal">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
       <div class="total-row"><span>ضريبة القيمة المضافة 15%</span><span class="total-val" id="vat-amount">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
@@ -234,11 +154,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <button type="button" class="status-btn" data-outcome="needs_parts" {% if not editable %}disabled{% endif %}>✗ يحتاج قطعة غيار</button>
     </div>
     <div class="row row-2">
-      <div class="field"><label>موعد الزيارة القادمة</label><input type="date" lang="en-GB" id="next-visit" style="direction:ltr" if not editable readonly endif></div>
-    </div>
-    <div class="field" style="margin-top:8px">
-      <label>ملاحظات ختامية</label>
-      <textarea id="final-notes" {% if not editable %}readonly{% endif %}></textarea>
+      <div class="field"><label>موعد الزيارة القادمة</label><input type="date" lang="en-GB" id="next-visit" {% if not editable %}readonly{% endif %}></div>
+      <div class="field"><label>ملاحظات ختامية</label><textarea id="final-notes" rows="2" {% if not editable %}readonly{% endif %}></textarea></div>
     </div>
   </div>
 
@@ -252,7 +169,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <div class="stars" id="stars">
         <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
       </div>
-      <span id="rating-text" style="font-size:12px;color:var(--text3)">اختر تقييماً</span>
+      <span id="rating-text" class="rating-hint">اختر تقييماً</span>
     </div>
     <div class="field" style="margin-top:6px">
       <label>تعليق العميل</label>
@@ -265,7 +182,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
   <div class="doc-footer">
     <div>LiftCore — الإدارة الذكية للمصاعد</div>
-    <div style="font-weight:700;color:var(--navy)">وثيقة رسمية معتمدة للعميل</div>
+    <div class="doc-footer-brand">وثيقة رسمية معتمدة للعميل</div>
   </div>
 </div>
 
