@@ -18,8 +18,11 @@
   --r:10px;--r-sm:7px;
 }
 body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;margin:0}
-.wrap{max-width:1040px;margin:0 auto;padding:20px 24px 40px}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 24px 40px}
 .page-heading{font-size:22px;font-weight:600;margin-bottom:16px}
+.settings-layout{display:flex;flex-direction:row;align-items:flex-start;gap:24px}
+.settings-tabs{flex:0 0 210px;display:flex;flex-direction:column;gap:4px;margin:0;border-bottom:none;padding-bottom:0;border-inline-start:1px solid var(--border);padding-inline-start:16px;position:sticky;top:72px}
+.settings-main{flex:1;min-width:0}
 .flash{padding:10px 14px;border-radius:var(--r-sm);margin-bottom:14px;font-size:13px;line-height:1.6}
 .flash-ok{background:rgba(31,184,122,.12);border:1px solid rgba(31,184,122,.25);color:var(--success)}
 .flash-warn{background:rgba(224,72,72,.1);border:1px solid rgba(224,72,72,.25);color:var(--danger)}
@@ -27,6 +30,9 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:va
 .generated-box{background:rgba(200,160,85,.1);border:1px solid rgba(200,160,85,.25);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.8}
 .generated-box code{background:var(--bg3);padding:2px 8px;border-radius:4px;direction:ltr;display:inline-block}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:10px}
+.settings-layout .tabs{display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px;margin:0;border-bottom:none;padding-bottom:0;width:100%}
+.settings-layout .tab{width:100%;text-align:start;justify-content:flex-start;padding:10px 14px}
+.settings-layout .tab.active{border-color:rgba(42,127,255,.35);background:rgba(42,127,255,.12);font-weight:600}
 .tab{padding:8px 16px;border-radius:var(--r-sm);font-size:13px;color:var(--text2);cursor:pointer;border:1px solid transparent;background:transparent;font-family:inherit}
 .tab:hover{color:var(--text1);background:var(--bg3)}
 .tab.active{color:var(--accent);border-color:rgba(42,127,255,.35);background:rgba(42,127,255,.08)}
@@ -75,7 +81,13 @@ input[type=range]{padding:0;background:transparent;border:none}
 html[data-theme="report"] .theme-card.selected{border-color:#002147;box-shadow:0 0 0 1px rgba(0,33,71,.15)}
 html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:0 0 0 1px rgba(201,161,74,.25)}
 .row-actions{display:flex;gap:6px;flex-wrap:wrap}
-@media(max-width:768px){.grid,.preview-row{grid-template-columns:1fr}}
+@media(max-width:768px){
+  .grid,.preview-row{grid-template-columns:1fr}
+  .settings-layout{flex-direction:column;gap:16px}
+  .settings-tabs{flex:0 0 auto;width:100%;position:static;border-inline-start:none;border-bottom:1px solid var(--border);padding-inline-start:0;padding-bottom:10px}
+  .settings-layout .tabs{flex-direction:row;flex-wrap:wrap}
+  .settings-layout .tab{width:auto}
+}
 @media(max-width:480px){.content{padding:16px 12px}}
 </style>
 </head>
@@ -100,7 +112,8 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
   </div>
   {% endif %}
 
-  <div class="tabs" role="tablist">
+  <div class="settings-layout">
+  <div class="settings-tabs tabs" role="tablist">
     <button type="button" class="tab {% if active_tab == 'company' %}active{% endif %}" data-tab="company">الشركة والهوية</button>
     {% if current_user.role == 'admin' %}
     <button type="button" class="tab {% if active_tab == 'zatca' %}active{% endif %}" data-tab="zatca">الفوترة الإلكترونية</button>
@@ -113,6 +126,8 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
     <button type="button" class="tab {% if active_tab == 'appearance' %}active{% endif %}" data-tab="appearance">المظهر</button>
     <button type="button" class="tab {% if active_tab == 'plan' %}active{% endif %}" data-tab="plan">الباقة</button>
   </div>
+
+  <div class="settings-main">
 
   <!-- الشركة -->
   <div class="panel {% if active_tab == 'company' %}active{% endif %}" id="panel-company">
@@ -876,6 +891,9 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
       <p class="hint">لا توجد بيانات اشتراك لهذه الجلسة.</p>
       {% endif %}
     </div>
+  </div>
+
+  </div>
   </div>
 </div>
 
