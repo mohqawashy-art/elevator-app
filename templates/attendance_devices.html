@@ -171,7 +171,9 @@ function showToken(token){
   prompt('رمز API — انسخه ولا تشاركه:', token);
 }
 function closeDevModal(){ document.getElementById('modal-dev').classList.remove('open'); }
-renderDevices();
+document.addEventListener('DOMContentLoaded', function () {
+  renderDevices();
+});
 </script>
 </body>
 </html>

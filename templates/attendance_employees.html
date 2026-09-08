@@ -157,7 +157,9 @@ function editEmp(id){
   document.getElementById('modal-emp').classList.add('open');
 }
 function closeEmpModal(){ document.getElementById('modal-emp').classList.remove('open'); }
-renderEmployees();
+document.addEventListener('DOMContentLoaded', function () {
+  renderEmployees();
+});
 </script>
 </body>
 </html>
