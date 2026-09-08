@@ -9,8 +9,13 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import datetime
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 from contract_codes import is_installation_contract_type
 from installation.contracts_service import ensure_install_contract_schema
@@ -74,6 +79,8 @@ def migrate_legacy_install_contracts(
     dry_run: bool = False,
     next_project_code_fn=None,
 ) -> list[dict]:
+    from flask import g
+
     ensure_install_contract_schema()
     if next_project_code_fn is None:
         def next_project_code_fn(model, prefix, digits=4):
@@ -118,6 +125,7 @@ def migrate_legacy_install_contracts(
         if dry_run:
             continue
 
+        g.organization_id = legacy.organization_id
         project = _project_for_legacy(legacy, next_project_code_fn)
         if not project.contract_id:
             project.contract_id = legacy.id
@@ -181,6 +189,12 @@ def main(argv: list[str] | None = None) -> int:
         ids = [int(x.strip()) for x in args.ids.split(',') if x.strip()]
 
     with app.app_context():
+        from flask import g
+        from models import Organization
+
+        org = Organization.query.filter_by(slug=os.environ.get('LIFTCORE_APP_ORG_SLUG') or 'default').first()
+        if org:
+            g.organization_id = org.id
         rows = migrate_legacy_install_contracts(contract_ids=ids, dry_run=args.dry_run)
         if not rows:
             print('No legacy installation contracts to migrate.')
