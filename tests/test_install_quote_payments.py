@@ -103,6 +103,12 @@ def test_two_payment_quote_skips_supply_timeline_step(client):
         follow_redirects=False,
     )
     assert resp.status_code in (302, 303)
+    resp = client.post(
+        f'/installation/projects/{pid}/quotes/{qid}/start-execution',
+        data={'csrf_token': 'test-csrf'},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
 
     with client.application.app_context():
         steps = InstallTimelineStep.query.filter_by(project_id=pid).all()
@@ -164,6 +170,12 @@ def test_four_payment_quote_creates_extra_timeline_steps(client):
 
     resp = client.post(
         f'/installation/projects/{pid}/quotes/{qid}/approve',
+        data={'csrf_token': 'test-csrf'},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+    resp = client.post(
+        f'/installation/projects/{pid}/quotes/{qid}/start-execution',
         data={'csrf_token': 'test-csrf'},
         follow_redirects=False,
     )

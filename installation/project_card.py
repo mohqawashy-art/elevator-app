@@ -104,6 +104,9 @@ def ensure_project_card_schema() -> None:
         InstallProjectCostItem.__table__.create(bind=db.engine, checkfirst=True)
     if 'installation_project_receipts' not in tables:
         InstallProjectReceipt.__table__.create(bind=db.engine, checkfirst=True)
+    if 'installation_project_documents' not in tables:
+        from installation.models import InstallProjectDocument
+        InstallProjectDocument.__table__.create(bind=db.engine, checkfirst=True)
 
     dialect = (db.engine.dialect.name or '').lower()
 
@@ -201,6 +204,11 @@ def delete_install_project(project: InstallProject) -> str:
         est.result_quotation_id = None
 
     delete_install_contract_for_project(project)
+    try:
+        from installation.documents import remove_project_documents_folder
+        remove_project_documents_folder(project.id)
+    except Exception:
+        pass
     project.accepted_quotation_id = None
     project.contract_id = None
     project.lead_id = None
@@ -421,3 +429,35 @@ def build_project_card(project: InstallProject) -> dict:
         'install_summary': install_summary,
         'value_source': value_source,
     }
+
+
+def seed_project_card_from_quotation(project: InstallProject, quotation: InstallQuotation) -> int:
+    """تهيئة كارت المشروع من جدول دفعات العرض المعتمد إن لم تُسجَّل دفعات بعد."""
+    from installation.models import InstallProjectReceipt
+    from tenant_scope import assign_organization
+
+    ensure_project_card_schema()
+    existing = project.receipts or []
+    if len(existing) > 0:
+        return 0
+    items = quotation.payment_items()
+    if not items:
+        return 0
+    count = 0
+    for idx, it in enumerate(items, start=1):
+        amount = float(it.get('amount') or 0)
+        if amount <= 0:
+            continue
+        receipt = InstallProjectReceipt(
+            project_id=project.id,
+            installment_no=idx,
+            label=(it.get('label') or '').strip() or installment_label(idx),
+            amount=amount,
+            status='معلقة',
+        )
+        assign_organization(receipt)
+        db.session.add(receipt)
+        count += 1
+    if project.contract_value is None and quotation.grand_total:
+        project.contract_value = float(quotation.grand_total)
+    return count

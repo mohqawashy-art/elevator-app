@@ -98,8 +98,8 @@ DEPARTMENT_PORTALS = {
         'links': (
             ('لوحة المبيعات', 'Sales Dashboard', '/sales/', 'sales_quotes.read'),
             ('تركيب مصعد جديد', 'New Elevator Installation', '/sales/install/quotes/new', 'installation_projects.read', True),
-            ('عرض سعر تحديث', 'Modernization Quote', '/sales/install/quotes/upgrade', 'installation_projects.read', True),
-            ('إضافة أدوار', 'Add Floors Quote', '/sales/install/quotes/extend', 'installation_projects.read', True),
+            ('عرض سعر تحديث', 'Modernization Quote', '/sales/install/quotes/new?go=1&quote_kind=upgrade', 'installation_projects.read', True),
+            ('إضافة أدوار', 'Add Floors Quote', '/sales/install/quotes/new?go=1&quote_kind=extend', 'installation_projects.read', True),
             ('عروض التركيب', 'Installation Quotes', '/sales/quotes?kind=install', 'installation_projects.read', True),
             ('عرض صيانة جديد', 'New Maintenance Quote', '/sales/maintenance-quotes/new', 'sales_quotes.read'),
             ('عروض الصيانة', 'Maintenance Quotes', '/sales/maintenance-quotes', 'sales_quotes.read'),

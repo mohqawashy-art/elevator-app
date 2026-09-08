@@ -142,6 +142,16 @@ def maintenance_hub():
     return redirect(url_for('sales.maintenance_quotes_list'))
 
 
+@sales_bp.route('/install/quotes/upgrade')
+def install_quote_upgrade_redirect():
+    return redirect(url_for('sales.install_quote_new', go=1, quote_kind='upgrade'))
+
+
+@sales_bp.route('/install/quotes/extend')
+def install_quote_extend_redirect():
+    return redirect(url_for('sales.install_quote_new', go=1, quote_kind='extend'))
+
+
 @sales_bp.route('/install/quotes/new', methods=['GET', 'POST'])
 def install_quote_new():
     """بدء عرض تركيب من المبيعات — ينشئ مشروعاً ويفتح فورم التسعير الحديث."""

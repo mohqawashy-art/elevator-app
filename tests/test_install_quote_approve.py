@@ -1,13 +1,13 @@
 """اختبار قبول عرض السعر وبدء التنفيذ."""
 from datetime import date
 
-from installation.models import InstallProject, InstallQuotation, InstallTimelineStep
+from installation.models import InstallProject, InstallQuotation, InstallTimelineStep, InstallProjectReceipt
 from installation.project_card import ensure_project_card_schema
 from models import Customer, Organization, db
 from tests.conftest import login_as
 
 
-def test_quote_approve_starts_execution(client):
+def test_quote_approve_only_approves(client):
     login_as(client, role='admin')
     with client.application.app_context():
         ensure_project_card_schema()
@@ -56,13 +56,75 @@ def test_quote_approve_starts_execution(client):
     )
     assert resp.status_code in (302, 303), resp.data.decode('utf-8', errors='ignore')[:500]
     loc = resp.headers.get('Location', '')
-    assert f'/installation/projects/{pid}/execution' in loc
+    assert f'/installation/projects/{pid}' in loc
+    assert '/execution' not in loc
 
     with client.application.app_context():
         p = db.session.get(InstallProject, pid)
         assert p.accepted_quotation_id == qid
-        assert p.execution_started_at is not None
+        assert p.execution_started_at is None
         assert p.status == 'عقد'
+        steps = InstallTimelineStep.query.filter_by(project_id=pid).all()
+        assert len(steps) == 0
+        receipts = InstallProjectReceipt.query.filter_by(project_id=pid).all()
+        assert len(receipts) == 3
+        assert sum(r.amount for r in receipts) == 115000
+
+
+def test_quote_start_execution(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        ensure_project_card_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-EXEC1',
+            name='عميل تنفيذ',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-EXEC1',
+            title='مشروع تنفيذ',
+            status='عقد',
+            customer_id=cust.id,
+        )
+        db.session.add(project)
+        db.session.flush()
+        q = InstallQuotation(
+            organization_id=org.id,
+            code='QT-EXEC1',
+            project_id=project.id,
+            customer_id=cust.id,
+            quote_type='new',
+            status='مقبول',
+            grand_total=115000,
+            pay_advance_pct=50,
+            pay_supply_pct=40,
+            pay_final_pct=10,
+        )
+        db.session.add(q)
+        db.session.flush()
+        project.accepted_quotation_id = q.id
+        db.session.commit()
+        pid, qid = project.id, q.id
+        with client.session_transaction() as sess:
+            sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        f'/installation/projects/{pid}/quotes/{qid}/start-execution',
+        data={'csrf_token': 'test-csrf'},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+    loc = resp.headers.get('Location', '')
+    assert f'/installation/projects/{pid}/execution' in loc
+
+    with client.application.app_context():
+        p = db.session.get(InstallProject, pid)
+        assert p.execution_started_at is not None
         steps = InstallTimelineStep.query.filter_by(project_id=pid).all()
         assert len(steps) >= 10
         assert any(s.status == 'جاري' for s in steps)

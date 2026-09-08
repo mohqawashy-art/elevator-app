@@ -177,6 +177,12 @@ class InstallProject(TenantMixin, db.Model):
         cascade='all, delete-orphan',
         order_by='InstallProjectReceipt.installment_no.asc(), InstallProjectReceipt.id.asc()',
     )
+    documents = db.relationship(
+        'InstallProjectDocument',
+        back_populates='project',
+        cascade='all, delete-orphan',
+        order_by='InstallProjectDocument.uploaded_at.desc(), InstallProjectDocument.id.desc()',
+    )
 
     @property
     def execution_active(self):
@@ -585,6 +591,22 @@ class InstallProjectReceipt(TenantMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     project = db.relationship('InstallProject', back_populates='receipts')
+
+
+class InstallProjectDocument(TenantMixin, db.Model):
+    """مرفق مشروع تركيب — عقد موقّع، مخطط، صورة، إلخ."""
+    __tablename__ = 'installation_project_documents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('installation_projects.id'), nullable=False, index=True)
+    step_key = db.Column(db.String(50), nullable=True)
+    label = db.Column(db.String(200))
+    file_path = db.Column(db.String(500), nullable=False)
+    file_name = db.Column(db.String(255))
+    mime_type = db.Column(db.String(100))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    project = db.relationship('InstallProject', back_populates='documents')
 
 
 INSTALL_CONTRACT_STATUSES = (

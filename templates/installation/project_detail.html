@@ -44,7 +44,7 @@
         <a href="/installation/projects/{{ project.id }}/handover" class="btn btn-secondary btn-sm">محضر استلام</a>
         <a href="/installation/projects/{{ project.id }}/report" class="btn btn-secondary btn-sm">تقرير</a>
         {% elif approved_quotations %}
-        <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ approved_quotations[0].id }}/approve" style="display:inline" onsubmit="return confirm('بدء تنفيذ المشروع من العرض المعتمد؟')">
+        <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ approved_quotations[0].id }}/start-execution" style="display:inline" onsubmit="return confirm('بدء تنفيذ المشروع من العرض المعتمد؟')">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-primary btn-sm">بدء التنفيذ</button>
         </form>
@@ -477,7 +477,7 @@
               {% if project.execution_active %}
               <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">تنفيذ المشروع</a>
               {% else %}
-              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('بدء تنفيذ المشروع من هذا العرض؟')">
+              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/start-execution" style="display:inline" onsubmit="return confirm('بدء تنفيذ المشروع من هذا العرض؟')">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-primary btn-sm">بدء التنفيذ</button>
               </form>
@@ -515,9 +515,9 @@
               <a href="{{ url_for('installation.project_quote', project_id=project.id, quotation_id=q.id) }}" class="btn btn-secondary btn-sm">تعديل</a>
               <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>
               {% if q.status in ('مُرسل', 'تفاوض') %}
-              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('موافقة العميل وبدء التنفيذ؟')">
+              <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('تسجيل موافقة العميل على هذا العرض؟')">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-primary btn-sm">موافقة وبدء التنفيذ</button>
+                <button type="submit" class="btn btn-primary btn-sm">موافقة العميل</button>
               </form>
               {% endif %}
             </td>
@@ -529,6 +529,9 @@
     {% endif %}
   </div>
 </div>
+
+{% include 'installation/_project_documents.html' %}
+
 <script>
 (function () {
   const form = document.querySelector('.pc-contract-form');

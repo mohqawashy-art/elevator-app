@@ -15,6 +15,7 @@ from installation.models import (
     InstallTimelineStep,
     InstallProjectCostItem,
     InstallProjectReceipt,
+    InstallProjectDocument,
     InstallContract,
     INSTALL_CONTRACT_STATUSES,
     INSTALL_CONTRACT_INSTALLMENT_STATUSES,
@@ -518,6 +519,10 @@ def project_detail(project_id):
     approved_quotations = [q for q in quotations if q.status == 'مقبول']
     pending_quotations = [q for q in quotations if q.status not in ('مقبول', 'مرفوض')]
 
+    from installation.documents import ensure_project_documents_schema
+    ensure_project_documents_schema()
+    documents = list(project.documents or [])
+
     return render_template(
         'installation/project_detail.html',
         project=project,
@@ -533,6 +538,7 @@ def project_detail(project_id):
         cost_categories=COST_CATEGORIES,
         cost_payment_statuses=COST_PAYMENT_STATUSES,
         receipt_statuses=RECEIPT_STATUSES,
+        documents=documents,
         today=date.today().isoformat(),
         page_title=f'مشروع {project.code}',
     )
@@ -754,6 +760,46 @@ def project_card_receipt_delete(project_id, receipt_id):
     return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
 
 
+@install_bp.route('/projects/<int:project_id>/documents', methods=['POST'])
+def project_document_upload(project_id):
+    from installation.documents import ensure_project_documents_schema, save_project_document
+
+    ensure_project_documents_schema()
+    project = tenant_get_or_404(InstallProject, project_id)
+    file_storage = request.files.get('file')
+    label = (request.form.get('label') or '').strip()
+    step_key = (request.form.get('step_key') or '').strip() or None
+    try:
+        save_project_document(project, file_storage, label=label, step_key=step_key)
+        db.session.commit()
+        flash('تم رفع المرفق', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'error')
+    except Exception:
+        db.session.rollback()
+        flash('تعذّر رفع المرفق', 'error')
+    dest = (request.form.get('next') or '').strip()
+    if dest == 'execution':
+        return redirect(url_for('installation.project_execution', project_id=project.id) + '#project-documents')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-documents')
+
+
+@install_bp.route('/projects/<int:project_id>/documents/<int:doc_id>/delete', methods=['POST'])
+def project_document_delete(project_id, doc_id):
+    from installation.documents import delete_project_document
+
+    project = tenant_get_or_404(InstallProject, project_id)
+    if not delete_project_document(project, doc_id):
+        flash('المرفق غير موجود', 'error')
+    else:
+        db.session.commit()
+        flash('تم حذف المرفق', 'success')
+    dest = (request.form.get('next') or '').strip()
+    if dest == 'execution':
+        return redirect(url_for('installation.project_execution', project_id=project.id) + '#project-documents')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-documents')
+
+
 @install_bp.route('/projects/<int:project_id>/quote')
 def project_quote(project_id):
     project = tenant_get_or_404(InstallProject, project_id)
@@ -972,18 +1018,56 @@ def quote_approve(project_id, quotation_id):
     if project.accepted_quotation_id and project.accepted_quotation_id != q.id:
         flash('يوجد عرض مقبول آخر على هذا المشروع', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
+    if q.status == 'مقبول' and project.accepted_quotation_id == q.id:
+        if project.execution_active:
+            return redirect(url_for('installation.project_execution', project_id=project.id))
+        flash(f'العرض {q.code} مقبول مسبقاً — يمكنك بدء التنفيذ من صفحة المشروع', 'success')
+        return redirect(url_for('installation.project_detail', project_id=project.id))
 
-    if q.status == 'مقبول' and project.accepted_quotation_id == q.id and project.execution_active:
+    q.status = 'مقبول'
+    q.approved_at = datetime.utcnow()
+    project.accepted_quotation_id = q.id
+    project.status = 'عقد'
+    if not project.customer_id and q.customer_id:
+        project.customer_id = q.customer_id
+
+    from installation.project_card import ensure_project_card_schema, seed_project_card_from_quotation
+    ensure_project_card_schema()
+    seed_project_card_from_quotation(project, q)
+    db.session.commit()
+
+    try:
+        from app import next_code
+        from sales.service import create_install_contract_from_quotation
+        from installation.contracts_service import create_install_contract_for_project
+        project = tenant_get_or_404(InstallProject, project_id)
+        q = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
+        legacy = create_install_contract_from_quotation(project, q, next_code_fn=next_code)
+        install_contract = create_install_contract_for_project(project, q, next_code_fn=next_code)
+        if install_contract and legacy:
+            install_contract.legacy_contract_id = legacy.id
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.warning('install contract from quote skipped: %s', exc)
+
+    flash(f'تم قبول العرض {q.code} — يمكنك الآن بدء التنفيذ أو متابعة كارت المشروع', 'success')
+    next_dest = (request.form.get('next') or request.args.get('next') or '').strip().lower()
+    if next_dest == 'sales':
+        return redirect(url_for('sales.quotes_inbox', kind='install'))
+    return redirect(url_for('installation.project_detail', project_id=project.id))
+
+
+@install_bp.route('/projects/<int:project_id>/quotes/<int:quotation_id>/start-execution', methods=['POST'])
+def quote_start_execution(project_id, quotation_id):
+    project = tenant_get_or_404(InstallProject, project_id)
+    q = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
+    if q.status != 'مقبول' or project.accepted_quotation_id != q.id:
+        flash('يجب قبول العرض أولاً قبل بدء التنفيذ', 'error')
+        return redirect(url_for('installation.project_detail', project_id=project.id))
+    if project.execution_active:
         return redirect(url_for('installation.project_execution', project_id=project.id))
-
-    repairing = q.status == 'مقبول' and project.accepted_quotation_id == q.id
-    if not repairing:
-        q.status = 'مقبول'
-        q.approved_at = datetime.utcnow()
-        project.accepted_quotation_id = q.id
-        project.status = 'عقد'
-        if not project.customer_id and q.customer_id:
-            project.customer_id = q.customer_id
 
     project.execution_started_at = project.execution_started_at or datetime.utcnow()
     create_execution_timeline(project, db.session)
@@ -994,32 +1078,7 @@ def quote_approve(project_id, quotation_id):
         steps[0].started_at = project.execution_started_at or datetime.utcnow()
         apply_auto_amount(steps[0], q, force=True)
     db.session.commit()
-
-    if not repairing:
-        try:
-            from app import next_code
-            from sales.service import create_install_contract_from_quotation
-            from installation.contracts_service import create_install_contract_for_project
-            project = tenant_get_or_404(InstallProject, project_id)
-            q = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
-            legacy = create_install_contract_from_quotation(project, q, next_code_fn=next_code)
-            install_contract = create_install_contract_for_project(project, q, next_code_fn=next_code)
-            if install_contract and legacy:
-                install_contract.legacy_contract_id = legacy.id
-            db.session.commit()
-        except Exception as exc:
-            db.session.rollback()
-            from flask import current_app
-            current_app.logger.warning('install contract from quote skipped: %s', exc)
-
-    flash(
-        f'تم قبول العرض {q.code} — بدء تنفيذ المشروع.'
-        if not repairing else f'تم تفعيل تنفيذ المشروع للعرض {q.code}.',
-        'success',
-    )
-    next_dest = (request.form.get('next') or request.args.get('next') or '').strip().lower()
-    if next_dest == 'sales':
-        return redirect(url_for('sales.quotes_inbox', kind='install'))
+    flash(f'تم بدء تنفيذ المشروع من العرض {q.code}', 'success')
     return redirect(url_for('installation.project_execution', project_id=project.id))
 
 
@@ -1027,7 +1086,7 @@ def quote_approve(project_id, quotation_id):
 def project_execution(project_id):
     project = tenant_get_or_404(InstallProject, project_id)
     if not project.execution_active:
-        flash('ابدأ التنفيذ بقبول عرض سعر من صفحة المشروع', 'error')
+        flash('ابدأ التنفيذ من صفحة المشروع بعد موافقة العميل', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
     changed = sync_timeline_from_templates(project)
     accepted = project.accepted_quotation
@@ -1035,6 +1094,8 @@ def project_execution(project_id):
         changed = sync_project_auto_amounts(project, force=True) > 0 or changed
     if changed:
         db.session.commit()
+    from installation.documents import ensure_project_documents_schema
+    ensure_project_documents_schema()
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
     active_steps = active_timeline_steps(steps)
     current_step = current_timeline_step(active_steps)
@@ -1063,6 +1124,7 @@ def project_execution(project_id):
         remaining_count=len(active_steps),
         payments_received=payments_received,
         step_statuses=TIMELINE_STEP_STATUSES,
+        documents=list(project.documents or []),
         page_title=f'تنفيذ — {project.code}',
     )
 

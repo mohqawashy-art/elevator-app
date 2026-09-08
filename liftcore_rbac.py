@@ -92,16 +92,18 @@ def mutation_denied_response(*, as_json: bool, message_ar: str, message_en: str,
 
 
 def _safe_home_path() -> str:
-    """أول صفحة مسموحة للمستخدم الحالي، أو لوحة التحكم."""
+    """منصات العمل للمستخدم المسجّل، أو أول صفحة مسموحة."""
     try:
         from flask import g, url_for
         from liftcore_permissions import first_allowed_path_for_user
 
         user = getattr(g, 'user', None)
+        if user:
+            return url_for('home')
         path = first_allowed_path_for_user(user)
-        return path or url_for('dashboard')
+        return path or url_for('home')
     except Exception:
-        return '/dashboard'
+        return '/home'
 
 
 def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str = 'ar', settings=None):
