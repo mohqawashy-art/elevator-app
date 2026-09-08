@@ -2,13 +2,9 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
 <head>
 {% include 'installation/_layout_head.html' %}
-<style>
-.ic-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
-@media(max-width:900px){.ic-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.ic-progress{height:8px;background:var(--bg3);border-radius:999px;overflow:hidden}
-.ic-progress>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold))}
-.ic-amt{font-family:var(--font-en);font-variant-numeric:tabular-nums;direction:ltr;text-align:left}
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='tax_calc.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-contracts.css') }}?v=1">
+<script src="{{ url_for('static', filename='tax_calc.js') }}?v=3"></script>
 </head>
 <body>
 {% include 'installation/_sidebar.html' %}
@@ -16,12 +12,44 @@
   {% set page_title = 'عقود التركيب' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
-    <div class="page-header">
-      <div class="page-title">عقود التركيب والتحديث</div>
-      <div class="page-actions">
-        <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
+
+    <div class="stats-row">
+      <div class="stat-mini" style="--sm-color:var(--accent)">
+        <div class="stat-mini-val" id="stat-total">0</div>
+        <div class="stat-mini-label">إجمالي العقود</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--success)">
+        <div class="stat-mini-val" id="stat-active">0</div>
+        <div class="stat-mini-label">عقود نشطة</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--gold)">
+        <div class="stat-mini-val" id="stat-done">0</div>
+        <div class="stat-mini-label">مكتملة</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--warning)">
+        <div class="stat-mini-val" id="stat-total-val">0</div>
+        <div class="stat-mini-label">إجمالي القيمة (<span class="lc-sar" role="img" aria-label="ريال"></span>)</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--danger)">
+        <div class="stat-mini-val" id="stat-remaining">0</div>
+        <div class="stat-mini-label">متبقي التحصيل (<span class="lc-sar" role="img" aria-label="ريال"></span>)</div>
       </div>
     </div>
+
+    <div class="lc-page-toolbar">
+      <div class="page-title">عقود التركيب والتحديث <span id="contracts-count" data-i18n-skip>(0 عقد)</span></div>
+      <div class="page-actions">
+        <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
+        <button type="button" class="btn btn-primary btn-sm lc-write-only" onclick="window.InstallContracts.openAdd()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+          إضافة عقد
+        </button>
+      </div>
+    </div>
+
+    <p style="font-size:13px;color:var(--text2);margin:0 0 14px;line-height:1.7">
+      جدول منفصل عن عقود الصيانة — كل عقد مرتبط بمشروع تركيب وكارت المشروع. يعرض مدة التنفيذ، نسبة الإنجاز، والدفعات المحصّلة والمتبقية.
+    </p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for cat, msg in messages %}
@@ -29,66 +57,156 @@
       {% endfor %}
     {% endwith %}
 
-    <p style="font-size:13px;color:var(--text2);margin:0 0 14px;line-height:1.7">
-      جدول منفصل عن عقود الصيانة — كل عقد مرتبط بمشروع تركيب وكارت المشروع. يعرض مدة التنفيذ، نسبة الإنجاز، والدفعات المحصّلة والمتبقية.
-    </p>
+    <div class="filters-bar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+        <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو العميل أو المشروع..." oninput="window.InstallContracts.filter()">
+      </div>
+      <select class="filter-select" id="f-client" onchange="window.InstallContracts.filter()">
+        <option value="">كل العملاء</option>
+      </select>
+      <select class="filter-select" id="f-type" onchange="window.InstallContracts.filter()">
+        <option value="">كل الأنواع</option>
+        <option>عقد تركيب</option>
+        <option>عقد تحديث</option>
+      </select>
+      <select class="filter-select" id="f-status" onchange="window.InstallContracts.filter()">
+        <option value="">كل الحالات</option>
+        {% for st in statuses %}
+        <option>{{ st }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-    <div class="panel">
-      <table>
-        <thead>
-          <tr>
-            <th>رقم العقد</th>
-            <th>العميل</th>
-            <th>المشروع</th>
-            <th>النوع</th>
-            <th>قيمة العقد</th>
-            <th>محصّل</th>
-            <th>متبقي</th>
-            <th>الإنجاز</th>
-            <th>المدة</th>
-            <th>الحالة</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rows %}
-          <tr>
-            <td style="font-family:var(--font-en);font-weight:600">
-              <a href="/installation/contracts/{{ row.contract.id }}" style="color:var(--accent)">{{ row.contract.code }}</a>
-            </td>
-            <td>{{ row.customer_name }}</td>
-            <td>
-              {% if row.project %}
-              <a href="/installation/projects/{{ row.project.id }}" style="font-family:var(--font-en);color:var(--accent)">{{ row.project.code }}</a>
-              {% else %}—{% endif %}
-            </td>
-            <td>{{ row.contract.contract_type or 'عقد تركيب' }}</td>
-            <td class="ic-amt">{{ '{:,.0f}'.format(row.total) }} ر.س</td>
-            <td class="ic-amt" style="color:var(--success)">{{ '{:,.0f}'.format(row.collected) }} ر.س</td>
-            <td class="ic-amt" style="color:var(--warning)">{{ '{:,.0f}'.format(row.remaining) }} ر.س</td>
-            <td style="min-width:110px">
-              <div style="font-size:12px;margin-bottom:4px">{{ row.progress_pct }}%</div>
-              <div class="ic-progress"><span style="width:{{ row.progress_pct }}%"></span></div>
-            </td>
-            <td style="font-size:12px">
-              {% if row.contract.start_date %}{{ row.contract.start_date }}{% else %}—{% endif %}
-              {% if row.contract.end_date %}<br><span style="color:var(--text3)">→ {{ row.contract.end_date }}</span>{% endif %}
-            </td>
-            <td><span class="badge badge-new">{{ row.contract.status }}</span></td>
-            <td style="white-space:nowrap">
-              <a href="/installation/contracts/{{ row.contract.id }}" class="btn btn-primary btn-sm">فتح</a>
-              {% if row.project %}
-              <a href="/installation/projects/{{ row.project.id }}#project-card" class="btn btn-secondary btn-sm">كارت</a>
-              {% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="11" style="text-align:center;color:var(--text3);padding:28px">لا توجد عقود تركيب بعد — تُنشأ تلقائياً عند قبول عرض السعر وبدء التنفيذ.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="ic-table">
+          <thead>
+            <tr>
+              <th class="th-sort" data-sort-col="code">رقم العقد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="project_code">المشروع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract_type">النوع <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="start_date">البداية <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="end_date">الانتهاء <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="days_left">المدة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="progress_pct">الإنجاز <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="collected_amount">محصّل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="remaining_amount">متبقي <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="total">القيمة <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div class="table-info" id="table-info">جاري التحميل...</div>
+        <div class="pagination" id="page-btns"></div>
+      </div>
     </div>
   </div>
 </div>
+
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">إضافة عقد تركيب</div>
+      <button type="button" class="modal-close" onclick="window.InstallContracts.close('modal-add')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section">
+        <div class="form-section-title">البيانات الأساسية</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>كود العقد</label>
+            <input type="text" id="f-code" readonly style="direction:ltr;font-family:var(--font-en);opacity:.85">
+            <span class="field-hint">يُولَّد تلقائياً (CI-)</span>
+          </div>
+          <div class="field">
+            <label>نوع العقد</label>
+            <select id="f-type-sel">
+              <option>عقد تركيب</option>
+              <option>عقد تحديث</option>
+            </select>
+          </div>
+          <div class="field form-full">
+            <label>العميل</label>
+            <select id="f-client-sel">
+              <option value="">اختر العميل</option>
+            </select>
+            <span class="field-hint">ابحث بالاسم أو الكود لاختيار العميل</span>
+          </div>
+          <div class="field form-full">
+            <label>المشروع</label>
+            <select id="f-project">
+              <option value="">— مشروع جديد تلقائياً —</option>
+            </select>
+            <span class="field-hint">اختر مشروعاً موجوداً بدون عقد، أو اترك فارغاً لإنشاء مشروع جديد</span>
+          </div>
+          <div class="field">
+            <label>حالة العقد</label>
+            <select id="f-status-sel">
+              {% for st in statuses %}
+              <option>{{ st }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">التواريخ والمدة</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>تاريخ البداية</label>
+            <input type="date" id="f-start" style="direction:ltr" oninput="window.InstallContracts.syncEnd()">
+          </div>
+          <div class="field">
+            <label>مدة العقد (شهر)</label>
+            <input type="number" id="f-duration" value="12" min="1" max="120" style="direction:ltr" oninput="window.InstallContracts.syncEnd()">
+          </div>
+          <div class="field">
+            <label>تاريخ الانتهاء</label>
+            <input type="date" id="f-end" style="direction:ltr">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">البيانات المالية</div>
+        <div class="form-full">
+          {% with prefix='ictax', before_field_id='f-value', total_field_id='f-total', pct_id='f-tax-pct', before_label='قيمة العقد قبل الضريبة (⃁)', inclusive_label='قيمة العقد شامل الضريبة (⃁)', breakdown_before_label='قيمة العقد قبل الضريبة', full_width=false %}
+          {% include '_tax_amount_block.html' %}
+          {% endwith %}
+          <input type="hidden" id="f-tax-amount">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">ملاحظات</div>
+        <div class="field form-full">
+          <textarea id="f-notes" rows="3" placeholder="ملاحظات إضافية..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" onclick="window.InstallContracts.close('modal-add')">إلغاء</button>
+      <button type="button" class="btn btn-primary lc-write-only" onclick="window.InstallContracts.save()">حفظ العقد</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.__INSTALL_CONTRACTS__ = {{ contracts_js|tojson }};
+window.__INSTALL_CONTRACT_CUSTOMERS__ = {{ customers_js|tojson }};
+window.__INSTALL_CONTRACT_PROJECTS__ = {{ projects_js|tojson }};
+window.__INSTALL_CONTRACT_NEXT_CODES__ = {{ next_contract_codes|tojson }};
+window.__INSTALL_CONTRACT_CSRF__ = {{ csrf_token()|tojson }};
+</script>
+<script src="{{ url_for('static', filename='installation-contracts.js') }}?v=1"></script>
 </body>
 </html>

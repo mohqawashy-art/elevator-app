@@ -293,32 +293,110 @@ def projects_list():
 
 @install_bp.route('/contracts')
 def contracts_list():
-    from installation.contracts_service import ensure_install_contract_schema, sync_install_contract_from_project
+    from contract_codes import CONTRACT_CODE_DIGITS, CONTRACT_PREFIX_INSTALLATION
+    from installation.contracts_service import (
+        customer_js_dict,
+        ensure_install_contract_schema,
+        install_contract_to_js,
+        project_js_dict,
+        sync_install_contract_from_project,
+    )
     from installation.models import InstallContract
 
     ensure_install_contract_schema()
     contracts = tenant_query(InstallContract).order_by(InstallContract.created_at.desc()).all()
-    rows = []
+    contracts_js = []
     for contract in contracts:
         project = contract.project
         if project:
             sync_install_contract_from_project(project)
-        rows.append({
-            'contract': contract,
-            'project': project,
-            'customer_name': contract.client_display,
-            'progress_pct': int(contract.progress_pct or 0),
-            'collected': float(contract.collected_amount or 0),
-            'remaining': float(contract.remaining_amount or 0),
-            'total': float(contract.total or 0),
-        })
+        contracts_js.append(install_contract_to_js(contract, project))
     db.session.commit()
+
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    projects = tenant_query(InstallProject).order_by(InstallProject.created_at.desc()).all()
+
     return render_template(
         'installation/contracts.html',
-        rows=rows,
+        contracts_js=contracts_js,
+        customers_js=[customer_js_dict(c) for c in customers],
+        projects_js=[project_js_dict(p) for p in projects],
+        next_contract_codes={
+            'CI-': _next_code(InstallContract, CONTRACT_PREFIX_INSTALLATION, digits=CONTRACT_CODE_DIGITS),
+        },
         statuses=INSTALL_CONTRACT_STATUSES,
         page_title='عقود التركيب',
     )
+
+
+@install_bp.route('/contracts/add', methods=['POST'])
+def contract_add():
+    from contract_codes import CONTRACT_CODE_DIGITS
+    from installation.contracts_service import create_manual_install_contract, ensure_install_contract_schema
+
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+    ensure_install_contract_schema()
+    try:
+        contract = create_manual_install_contract(
+            request.form,
+            next_code_fn=lambda model, prefix, digits=CONTRACT_CODE_DIGITS: _next_code(
+                model, prefix, digits=digits
+            ),
+            next_project_code_fn=_next_code,
+        )
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        if wants_json:
+            return jsonify({'ok': False, 'message': str(exc)}), 400
+        flash(str(exc), 'error')
+        return redirect(url_for('installation.contracts_list'))
+    except Exception as exc:
+        db.session.rollback()
+        if wants_json:
+            return jsonify({'ok': False, 'message': str(exc) or 'تعذّر حفظ العقد'}), 400
+        flash(str(exc) or 'تعذّر حفظ العقد', 'error')
+        return redirect(url_for('installation.contracts_list'))
+
+    if wants_json:
+        return jsonify({'ok': True, 'id': contract.id, 'code': contract.code})
+    flash(f'تم إنشاء العقد {contract.code}', 'success')
+    return redirect(url_for('installation.contract_detail', contract_id=contract.id))
+
+
+@install_bp.route('/contracts/<int:contract_id>/edit', methods=['POST'])
+def contract_edit(contract_id):
+    from installation.contracts_service import apply_install_contract_form, ensure_install_contract_schema
+    from installation.models import InstallContract
+
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+    ensure_install_contract_schema()
+    contract = tenant_get_or_404(InstallContract, contract_id)
+    err = apply_install_contract_form(contract, request.form)
+    if err:
+        if wants_json:
+            return jsonify({'ok': False, 'message': err}), 400
+        flash(err, 'error')
+        return redirect(url_for('installation.contracts_list'))
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        if wants_json:
+            return jsonify({'ok': False, 'message': str(exc) or 'تعذّر حفظ العقد'}), 400
+        flash(str(exc) or 'تعذّر حفظ العقد', 'error')
+        return redirect(url_for('installation.contracts_list'))
+
+    if wants_json:
+        return jsonify({'ok': True, 'id': contract.id, 'code': contract.code})
+    flash('تم تحديث العقد', 'success')
+    return redirect(url_for('installation.contract_detail', contract_id=contract.id))
 
 
 @install_bp.route('/contracts/<int:contract_id>')

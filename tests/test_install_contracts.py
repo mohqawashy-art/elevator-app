@@ -167,4 +167,50 @@ def test_install_contracts_list_page(client):
     assert resp.status_code == 200
     body = resp.data.decode('utf-8', errors='ignore')
     assert 'عقود التركيب' in body
+    assert 'search-input' in body
+    assert '__INSTALL_CONTRACTS__' in body
     assert 'PRJ-IC3' in body or 'CI-' in body
+
+
+def test_manual_install_contract_add(client):
+    from installation.contracts_service import contract_for_project
+    from installation.models import InstallContract
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        ensure_install_contract_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(organization_id=org.id, code='C-IC4', name='عميل عقد يدوي', status='نشط')
+        db.session.add(cust)
+        db.session.commit()
+        cid = cust.id
+        with client.session_transaction() as sess:
+            sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        '/installation/contracts/add',
+        data={
+            'csrf_token': 'test-csrf',
+            'customer_id': str(cid),
+            'contract_type': 'عقد تركيب',
+            'status': 'نشط',
+            'start_date': '2026-01-01',
+            'duration_months': '12',
+            'value': '100000',
+            'tax_pct': '15',
+            'total': '115000',
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
+    )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data and data.get('ok') is True
+
+    with client.application.app_context():
+        contract = InstallContract.query.filter_by(code=data['code']).first()
+        assert contract is not None
+        assert float(contract.total) == 115000
+        project = contract.project
+        assert project is not None
+        assert project.customer_id == cid
+        assert contract_for_project(project) is not None

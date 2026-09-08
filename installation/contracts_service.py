@@ -244,3 +244,232 @@ def delete_install_contract_for_project(project: InstallProject) -> None:
     if not contract:
         return
     db.session.delete(contract)
+
+
+def _days_left(end_date: date | None) -> int | None:
+    if not end_date:
+        return None
+    return (end_date - date.today()).days
+
+
+def install_contract_to_js(contract: InstallContract, project: InstallProject | None = None) -> dict:
+    if project is None:
+        project = contract.project
+    if project:
+        sync_install_contract_from_project(project)
+    customer = contract.customer
+    return {
+        'id': contract.id,
+        'code': contract.code,
+        'customer_id': contract.customer_id,
+        'customer': customer.name if customer else contract.client_display,
+        'customer_name_en': (customer.name_en or '') if customer else '',
+        'contract_type': contract.contract_type or 'عقد تركيب',
+        'start_date': contract.start_date.isoformat() if contract.start_date else '',
+        'end_date': contract.end_date.isoformat() if contract.end_date else '',
+        'duration': contract.duration_months or 0,
+        'total': float(contract.total or 0),
+        'value': float(contract.value or 0),
+        'tax_pct': float(contract.tax_pct or 15),
+        'tax_amount': float(contract.tax_amount or 0),
+        'collected_amount': float(contract.collected_amount or 0),
+        'remaining_amount': float(contract.remaining_amount or 0),
+        'progress_pct': int(contract.progress_pct or 0),
+        'status': contract.status or 'نشط',
+        'notes': contract.notes or '',
+        'project_id': project.id if project else None,
+        'project_code': project.code if project else '',
+        'project_status': project.status if project else '',
+        'days_left': _days_left(contract.end_date),
+    }
+
+
+def customer_js_dict(customer) -> dict:
+    return {
+        'id': customer.id,
+        'name': customer.name,
+        'code': customer.code,
+        'city': customer.city or '',
+        'phone': customer.phone or '',
+        'status': customer.status or 'نشط',
+    }
+
+
+def project_js_dict(project: InstallProject) -> dict:
+    return {
+        'id': project.id,
+        'code': project.code,
+        'title': project.title or '',
+        'customer_id': project.customer_id,
+        'status': project.status or '',
+        'has_contract': contract_for_project(project) is not None,
+    }
+
+
+def parse_install_contract_form(form) -> tuple[dict | None, str | None]:
+    customer_raw = (form.get('customer_id') or '').strip()
+    if not customer_raw:
+        return None, 'اختر العميل'
+    try:
+        customer_id = int(customer_raw)
+    except ValueError:
+        return None, 'العميل غير صالح'
+
+    contract_type = (form.get('contract_type') or 'عقد تركيب').strip()
+    if contract_type not in ('عقد تركيب', 'عقد تحديث'):
+        contract_type = 'عقد تركيب'
+
+    try:
+        value = money_round(form.get('value') or 0)
+        tax_pct = float(form.get('tax_pct') or 15)
+        tax_amount = money_round(form.get('tax_amount') or 0)
+        total = money_round(form.get('total') or 0)
+    except (TypeError, ValueError):
+        return None, 'قيمة العقد غير صالحة'
+
+    if total <= 0:
+        return None, 'أدخل قيمة العقد'
+
+    start_raw = (form.get('start_date') or '').strip()
+    end_raw = (form.get('end_date') or '').strip()
+    duration_raw = (form.get('duration_months') or '').strip()
+    try:
+        start_date = datetime.strptime(start_raw, '%Y-%m-%d').date() if start_raw else date.today()
+    except ValueError:
+        return None, 'تاريخ البداية غير صالح'
+
+    duration_months = 12
+    if duration_raw:
+        try:
+            duration_months = int(duration_raw)
+        except ValueError:
+            return None, 'مدة العقد غير صالحة'
+    end_date = None
+    if end_raw:
+        try:
+            end_date = datetime.strptime(end_raw, '%Y-%m-%d').date()
+        except ValueError:
+            return None, 'تاريخ النهاية غير صالح'
+    elif duration_months:
+        end_date = add_months(start_date, duration_months)
+
+    status = (form.get('status') or 'نشط').strip()
+    if status not in INSTALL_CONTRACT_STATUSES:
+        status = 'نشط'
+
+    project_id = None
+    project_raw = (form.get('project_id') or '').strip()
+    if project_raw:
+        try:
+            project_id = int(project_raw)
+        except ValueError:
+            return None, 'المشروع غير صالح'
+
+    return {
+        'customer_id': customer_id,
+        'project_id': project_id,
+        'contract_type': contract_type,
+        'start_date': start_date,
+        'end_date': end_date,
+        'duration_months': duration_months,
+        'value': value,
+        'tax_pct': tax_pct,
+        'tax_amount': tax_amount if tax_amount else money_round(max(total - value, 0)),
+        'total': total,
+        'status': status,
+        'notes': (form.get('notes') or '').strip() or None,
+    }, None
+
+
+def _resolve_project_for_contract(customer_id: int, project_id: int | None, *, next_project_code_fn, contract_code: str):
+    if project_id:
+        project = tenant_query(InstallProject).filter_by(id=project_id, customer_id=customer_id).first()
+        if not project:
+            raise ValueError('المشروع غير موجود لهذا العميل')
+        if contract_for_project(project):
+            raise ValueError('يوجد عقد مسبقاً على هذا المشروع')
+        return project
+    project = InstallProject(
+        code=next_project_code_fn(InstallProject, 'PRJ-', 4),
+        title=f'مشروع {contract_code}',
+        status='عقد',
+        customer_id=customer_id,
+    )
+    assign_organization(project)
+    db.session.add(project)
+    db.session.flush()
+    return project
+
+
+def create_manual_install_contract(form, *, next_code_fn, next_project_code_fn) -> InstallContract:
+    ensure_install_contract_schema()
+    fields, err = parse_install_contract_form(form)
+    if err:
+        raise ValueError(err)
+
+    prefix = contract_prefix_for_type(fields['contract_type'])
+    code = next_code_fn(InstallContract, prefix, digits=CONTRACT_CODE_DIGITS)
+    project = _resolve_project_for_contract(
+        fields['customer_id'],
+        fields.get('project_id'),
+        next_project_code_fn=next_project_code_fn,
+        contract_code=code,
+    )
+
+    contract = InstallContract(
+        code=code,
+        project_id=project.id,
+        customer_id=fields['customer_id'],
+        contract_type=fields['contract_type'],
+        start_date=fields['start_date'],
+        end_date=fields['end_date'],
+        duration_months=fields['duration_months'],
+        value=fields['value'],
+        tax_pct=fields['tax_pct'],
+        tax_amount=fields['tax_amount'],
+        total=fields['total'],
+        progress_pct=0,
+        collected_amount=0,
+        remaining_amount=fields['total'],
+        status=fields['status'],
+        signed_at=datetime.utcnow(),
+        notes=fields['notes'],
+    )
+    assign_organization(contract)
+    db.session.add(contract)
+    db.session.flush()
+
+    inst = InstallContractInstallment(
+        contract_id=contract.id,
+        seq=1,
+        label='دفعة واحدة',
+        pct=100,
+        amount=fields['total'],
+        collected_amount=0,
+        status='مستحقة',
+    )
+    assign_organization(inst)
+    db.session.add(inst)
+    return contract
+
+
+def apply_install_contract_form(contract: InstallContract, form) -> str | None:
+    fields, err = parse_install_contract_form(form)
+    if err:
+        return err
+    if fields['customer_id'] != contract.customer_id:
+        return 'لا يمكن تغيير العميل — أنشئ عقداً جديداً'
+    contract.contract_type = fields['contract_type']
+    contract.start_date = fields['start_date']
+    contract.end_date = fields['end_date']
+    contract.duration_months = fields['duration_months']
+    contract.value = fields['value']
+    contract.tax_pct = fields['tax_pct']
+    contract.tax_amount = fields['tax_amount']
+    contract.total = fields['total']
+    contract.status = fields['status']
+    contract.notes = fields['notes']
+    contract.remaining_amount = round(max(float(contract.total or 0) - float(contract.collected_amount or 0), 0), 2)
+    if contract.installments and len(contract.installments) == 1:
+        contract.installments[0].amount = fields['total']
+    return None
