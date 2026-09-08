@@ -5022,7 +5022,7 @@ def api_dashboard_drill(card_type):
             for c in expiring
         ]
         payload = {
-            'title': 'عقود تنتهي خلال 30 يوم', 'link': '/contracts',
+            'title': 'عقود تنتهي خلال 30 يوم', 'link': '/contracts?scope=maintenance',
             'columns': ['الكود', 'العميل', 'النوع', 'تاريخ الانتهاء', 'المتبقي', 'الحالة'],
             'rows': rows,
         }
@@ -7322,7 +7322,7 @@ def api_debug_contract_zero():
 def contracts():
     from sqlalchemy.orm import joinedload
 
-    from contract_codes import contracts_for_scope
+    from contract_codes import MAINTENANCE_CONTRACT_TYPES, contracts_for_scope
 
     # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة التي ترفض القيمة 0
     if request.args.get('z') != '4':
@@ -7330,9 +7330,13 @@ def contracts():
         args['z'] = '4'
         return redirect(url_for('contracts', **args))
 
-    contract_scope = (request.args.get('scope') or '').strip().lower()
-    if contract_scope not in ('maintenance', 'installation'):
-        contract_scope = ''
+    contract_scope = (request.args.get('scope') or 'maintenance').strip().lower()
+    if contract_scope == 'installation':
+        return redirect(url_for('installation.contracts_list'))
+    if contract_scope != 'maintenance':
+        args = request.args.to_dict(flat=True)
+        args['scope'] = 'maintenance'
+        return redirect(url_for('contracts', **args))
 
     contracts_list = (
         tenant_query(Contract)
@@ -7340,8 +7344,7 @@ def contracts():
         .order_by(Contract.id.desc())
         .all()
     )
-    if contract_scope:
-        contracts_list = contracts_for_scope(contracts_list, contract_scope)
+    contracts_list = contracts_for_scope(contracts_list, 'maintenance')
     renewed_ids = _annotate_contract_renewals(contracts_list)
     customers = tenant_query(Customer).order_by(Customer.name).all()
     all_elevators = tenant_query(Elevator).all()
@@ -7361,15 +7364,11 @@ def contracts():
         elev_lookup=elev_lookup,
         next_contract_codes={
             'CN-': next_code(Contract, 'CN-', digits=5),
-            'CI-': next_code(Contract, 'CI-', digits=5),
         },
         next_contract_code=next_code(Contract, 'CN-', digits=5),
-        contract_scope=contract_scope,
-        contracts_page_title=(
-            'عقود الصيانة' if contract_scope == 'maintenance'
-            else 'عقود التركيبات والتحديث' if contract_scope == 'installation'
-            else 'العقود'
-        ),
+        contract_scope='maintenance',
+        contracts_page_title='عقود الصيانة',
+        maintenance_contract_types=MAINTENANCE_CONTRACT_TYPES,
     ))
     # منع كاش المتصفح للنسخة القديمة من سكربت حفظ العقد
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -7403,6 +7402,11 @@ def contracts_import_template():
 
 @app.route('/contracts/edit/<int:id>', methods=['POST'])
 def contract_edit(id):
+    from contract_codes import (
+        is_installation_contract_type,
+        is_maintenance_contract_type,
+        normalize_maintenance_contract_type,
+    )
     from form_validation import contract_form_error
 
     wants_json = (
@@ -7416,6 +7420,18 @@ def contract_edit(id):
         flash(err, 'error')
         return redirect(url_for('contracts'))
     c = tenant_get_or_404(Contract, id)
+    if is_installation_contract_type(c.contract_type):
+        msg = 'هذا عقد تركيب/تحديث — يُعدَّل من قسم التركيبات.'
+        if wants_json:
+            return jsonify({'ok': False, 'message': msg}), 400
+        flash(msg, 'error')
+        return redirect(url_for('contracts'))
+    if not is_maintenance_contract_type(request.form.get('contract_type')):
+        msg = 'عقود التركيب والتحديث تُدار من قسم التركيبات — اختر نوع صيانة أو ضمان أو طوارئ.'
+        if wants_json:
+            return jsonify({'ok': False, 'message': msg}), 400
+        flash(msg, 'error')
+        return redirect(url_for('contracts'))
     raw_cid = (request.form.get('customer_id') or '').strip()
     try:
         new_customer_id = int(raw_cid) if raw_cid else None
@@ -7446,6 +7462,7 @@ def contract_edit(id):
             return auth_err
     try:
         _apply_contract_form(c, request.form)
+        c.contract_type = normalize_maintenance_contract_type(c.contract_type)
         _sync_customer_location_from_contract_form(c.customer_id, request.form)
         uploads = request.files.getlist('contract_file')
         if uploads and any(f and f.filename for f in uploads):
@@ -7476,7 +7493,12 @@ def contract_edit(id):
 @app.route('/contracts/add', methods=['POST'])
 def contract_add():
     from form_validation import contract_form_error
-    from contract_codes import unique_renewal_contract_code
+    from contract_codes import (
+        is_installation_contract_type,
+        is_maintenance_contract_type,
+        normalize_maintenance_contract_type,
+        unique_renewal_contract_code,
+    )
 
     wants_json = (
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -7488,9 +7510,21 @@ def contract_add():
             return jsonify({'ok': False, 'message': err}), 400
         flash(err, 'error')
         return redirect(url_for('contracts'))
+    if not is_maintenance_contract_type(request.form.get('contract_type')):
+        msg = 'عقود التركيب والتحديث تُدار من قسم التركيبات — اختر نوع صيانة أو ضمان أو طوارئ.'
+        if wants_json:
+            return jsonify({'ok': False, 'message': msg}), 400
+        flash(msg, 'error')
+        return redirect(url_for('contracts'))
 
     renew_from_id = request.form.get('renew_from_id', type=int)
     renew_src = tenant_get_or_404(Contract, renew_from_id) if renew_from_id else None
+    if renew_src and is_installation_contract_type(renew_src.contract_type):
+        msg = 'لا يمكن تجديد عقد تركيب/تحديث من صفحة عقود الصيانة.'
+        if wants_json:
+            return jsonify({'ok': False, 'message': msg}), 400
+        flash(msg, 'error')
+        return redirect(url_for('contracts'))
     existing = None
 
     import_code = (request.form.get('code') or '').strip()
@@ -7532,6 +7566,7 @@ def contract_add():
     c = existing or Contract(code=code)
     try:
         _apply_contract_form(c, request.form)
+        c.contract_type = normalize_maintenance_contract_type(c.contract_type)
         _sync_customer_location_from_contract_form(c.customer_id, request.form)
         if existing is None:
             assign_organization(c)

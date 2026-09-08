@@ -420,11 +420,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </select>
       <select class="filter-select" id="f-type" onchange="filterTable()">
         <option value="">كل الأنواع</option>
-        <option>عقد صيانة</option>
-        <option>عقد ضمان</option>
-        <option>عقد تركيب</option>
-        <option>عقد تحديث</option>
-        <option>عقد طوارئ</option>
+        {% for t in maintenance_contract_types %}
+        <option>{{ t }}</option>
+        {% endfor %}
       </select>
       <select class="filter-select" id="f-status" onchange="filterTable()">
         <option value="">كل الحالات</option>
@@ -560,16 +558,14 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field">
             <label>كود العقد</label>
             <input type="text" id="f-code" placeholder="CN-00001" readonly style="direction:ltr;font-family:var(--font-en);opacity:.85">
-            <span class="field-hint" id="f-code-hint">يُولَّد تلقائياً حسب نوع العقد (صيانة CN- / تركيب وتحديث CI-)</span>
+            <span class="field-hint" id="f-code-hint">يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)</span>
           </div>
           <div class="field">
             <label>نوع العقد</label>
             <select id="f-type-sel" onchange="onContractTypeChanged()">
-              <option>عقد صيانة</option>
-              <option>عقد ضمان</option>
-              <option>عقد تركيب</option>
-              <option>عقد تحديث</option>
-              <option>عقد طوارئ</option>
+              {% for t in maintenance_contract_types %}
+              <option>{{ t }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="field">
@@ -809,24 +805,12 @@ const NEXT_CONTRACT_CODES = {{ next_contract_codes|tojson }};
 const NEXT_CONTRACT_CODE = {{ next_contract_code|tojson }};
 
 function contractPrefixForType(contractType) {
-  var raw = String(contractType || '').toLowerCase();
-  if (
-    raw.indexOf('تركيب') >= 0 ||
-    raw.indexOf('تحديث') >= 0 ||
-    raw.indexOf('installation') >= 0 ||
-    raw.indexOf('install') >= 0 ||
-    raw.indexOf('upgrade') >= 0 ||
-    raw.indexOf('modern') >= 0
-  ) {
-    return 'CI-';
-  }
   return 'CN-';
 }
 
 function nextContractCodeForType(contractType) {
-  var prefix = contractPrefixForType(contractType);
   var map = NEXT_CONTRACT_CODES || {};
-  return map[prefix] || (prefix === 'CI-' ? 'CI-00001' : (NEXT_CONTRACT_CODE || 'CN-00001'));
+  return map['CN-'] || (NEXT_CONTRACT_CODE || 'CN-00001');
 }
 
 function isNewContractForm() {
@@ -843,10 +827,7 @@ function onContractTypeChanged() {
   codeEl.value = nextContractCodeForType(typeSel.value);
   var codeHint = document.getElementById('f-code-hint');
   if (codeHint) {
-    var prefix = contractPrefixForType(typeSel.value);
-    codeHint.textContent = prefix === 'CI-'
-      ? 'يُولَّد تلقائياً — تسلسل التركيب والتحديث (CI-)'
-      : 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
+    codeHint.textContent = 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
   }
 }
 
@@ -1596,9 +1577,7 @@ function initContractClientSelect() {
 }
 
 function resetContractForm() {
-  var defaultType = (typeof CONTRACT_SCOPE !== 'undefined' && CONTRACT_SCOPE === 'installation')
-    ? 'عقد تركيب'
-    : 'عقد صيانة';
+  var defaultType = 'عقد صيانة';
   var typeSel = document.getElementById('f-type-sel');
   if (typeSel) {
     typeSel.value = defaultType;
@@ -1607,9 +1586,7 @@ function resetContractForm() {
   document.getElementById('f-code').value = nextContractCodeForType(defaultType);
   var codeHint = document.getElementById('f-code-hint');
   if (codeHint) {
-    codeHint.textContent = defaultType.indexOf('تركيب') >= 0 || defaultType.indexOf('تحديث') >= 0
-      ? 'يُولَّد تلقائياً — تسلسل التركيب والتحديث (CI-)'
-      : 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
+    codeHint.textContent = 'يُولَّد تلقائياً — تسلسل عقود الصيانة (CN-)';
   }
   ['f-end','f-reminder','f-due-date','f-notes','f-visits-month','f-contract-city','f-contract-district','f-contract-address','f-contract-maps-url','f-contract-lat','f-contract-lng'].forEach(function(id) {
     var el = document.getElementById(id);

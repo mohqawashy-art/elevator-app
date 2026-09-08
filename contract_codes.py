@@ -10,6 +10,13 @@ CONTRACT_CODE_DIGITS = 5
 CONTRACT_PREFIX_MAINTENANCE = 'CN-'
 CONTRACT_PREFIX_INSTALLATION = 'CI-'
 
+# أنواع عقود الصيانة فقط — تظهر في /contracts (عقود التركيب في /installation/contracts)
+MAINTENANCE_CONTRACT_TYPES = (
+    'عقد صيانة',
+    'عقد ضمان',
+    'عقد طوارئ',
+)
+
 # CN-00042 أو CI-00003 أو CN-00042-2026 أو CN-00042/2026 أو CN-00042-2026-2
 _YEAR_SUFFIX = re.compile(r'^(.+?)[-/](20\d{2})(?:-(\d+))?$', re.IGNORECASE)
 _PADDED_CODE = re.compile(
@@ -67,6 +74,16 @@ def is_installation_contract_type(contract_type: Optional[str]) -> bool:
 def is_maintenance_contract_type(contract_type: Optional[str]) -> bool:
     """True لعقود الصيانة/الضمان/الطوارئ (ليست تركيب أو تحديث)."""
     return not is_installation_contract_type(contract_type)
+
+
+def normalize_maintenance_contract_type(contract_type: Optional[str]) -> str:
+    """نوع عقد صيانة معروف — أو «عقد صيانة» افتراضياً."""
+    raw = (contract_type or '').strip()
+    if raw in MAINTENANCE_CONTRACT_TYPES:
+        return raw
+    if is_maintenance_contract_type(raw) and raw:
+        return raw
+    return MAINTENANCE_CONTRACT_TYPES[0]
 
 
 def contract_matches_scope(contract_type: Optional[str], scope: Optional[str]) -> bool:
