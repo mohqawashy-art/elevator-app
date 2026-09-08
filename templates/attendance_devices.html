@@ -44,6 +44,10 @@
           <tbody id="dev-body"></tbody>
         </table>
       </div>
+      <div class="table-footer">
+        <div class="table-info" id="table-info">—</div>
+        <div class="pagination" id="page-btns"></div>
+      </div>
     </div>
     {% if has_perm('attendance.create') %}
     <div class="info-panel">
@@ -107,8 +111,17 @@ const DEVICES = {{ devices_js|tojson }};
 const BRANCHES = {{ branches_js|tojson }};
 const PROTOCOL_HELP = {{ protocol_help|tojson }};
 const CAN_EDIT = {{ has_perm('attendance.edit')|tojson }};
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#table-info',
+  persistKey: 'attendance-devices',
+  onPageChange: function () { renderDevices(); },
+}) : null;
 function renderDevices(){
-  document.getElementById('dev-body').innerHTML = DEVICES.map(d => `
+  const pg = tablePager ? tablePager.apply(DEVICES, DEVICES.length) : { rows: DEVICES };
+  const rows = pg.rows || DEVICES;
+  document.getElementById('dev-body').innerHTML = rows.map(d => `
     <tr>
       <td class="td-name">${d.name}${d.auto_registered ? ' <span class="badge badge-no" style="font-size:10px">تلقائي</span>' : ''}</td>
       <td>${d.protocol_label||''}</td>

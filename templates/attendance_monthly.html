@@ -37,7 +37,7 @@
               <th>دقائق تأخير</th><th>ساعات عمل</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="monthly-body">
             {% for row in report.rows %}
             <tr>
               <td class="td-code">{{ row.code }}</td>
@@ -56,8 +56,25 @@
           </tbody>
         </table>
       </div>
+      <div class="table-footer">
+        <div class="table-info" id="table-info">—</div>
+        <div class="pagination" id="page-btns"></div>
+      </div>
     </div>
   </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (!window.LiftCorePagination) return;
+  var pager = LiftCorePagination.createDom({
+    tbody: '#monthly-body',
+    container: '#page-btns',
+    infoEl: '#table-info',
+    persistKey: 'attendance-monthly',
+    pageSize: 10,
+  });
+  pager.apply(true);
+});
+</script>
 </body>
 </html>

@@ -1,10 +1,11 @@
 /**
- * LiftCore — ترقيم صفحات الجداول (10 صفوف لكل صفحة)
+ * LiftCore — ترقيم صفحات الجداول + اختيار عدد الصفوف (10 / 20 / 50 / 100)
  */
 (function (global) {
   'use strict';
 
   var DEFAULT_SIZE = 10;
+  var PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
   var MAX_BTNS = 5;
 
   function $(sel) {
@@ -101,6 +102,58 @@
     return 'lc:page:' + global.location.pathname + '|' + sel;
   }
 
+  function sizeStorageKey(options) {
+    var key = storageKey(options);
+    return key ? key.replace('lc:page:', 'lc:pagesize:') : null;
+  }
+
+  function readStoredSize(key, fallback) {
+    if (!key) return fallback || DEFAULT_SIZE;
+    try {
+      var v = parseInt(global.sessionStorage.getItem(key), 10);
+      return PAGE_SIZE_OPTIONS.indexOf(v) !== -1 ? v : (fallback || DEFAULT_SIZE);
+    } catch (e) {
+      return fallback || DEFAULT_SIZE;
+    }
+  }
+
+  function writeStoredSize(key, value) {
+    if (!key) return;
+    try {
+      global.sessionStorage.setItem(key, String(value));
+    } catch (e) { /* تجاهل */ }
+  }
+
+  function normalizePageSize(raw, fallback) {
+    var n = parseInt(raw, 10);
+    if (PAGE_SIZE_OPTIONS.indexOf(n) !== -1) return n;
+    return fallback || DEFAULT_SIZE;
+  }
+
+  function pageSizeSelectorHtml(current, disabled) {
+    var html = '<label class="lc-page-size-wrap">';
+    html += '<span class="lc-page-size-label">عرض</span>';
+    html += '<select class="lc-page-size-select" aria-label="عدد الصفوف في الجدول"' +
+      (disabled ? ' disabled' : '') + '>';
+    PAGE_SIZE_OPTIONS.forEach(function (n) {
+      html += '<option value="' + n + '"' + (n === current ? ' selected' : '') + '>' + n + '</option>';
+    });
+    html += '</select><span class="lc-page-size-label">صف</span></label>';
+    return html;
+  }
+
+  function bindPageSizeSelect(container, currentSize, onChange) {
+    if (!container) return;
+    var sel = container.querySelector('.lc-page-size-select');
+    if (!sel) return;
+    sel.value = String(currentSize);
+    sel.onchange = function () {
+      var next = normalizePageSize(sel.value, currentSize);
+      if (next === currentSize) return;
+      if (onChange) onChange(next);
+    };
+  }
+
   function readStored(key) {
     if (!key) return 1;
     try {
@@ -120,7 +173,9 @@
 
   function create(options) {
     options = options || {};
-    var pageSize = options.pageSize || DEFAULT_SIZE;
+    var sizeKey = sizeStorageKey(options);
+    var pageSize = readStoredSize(sizeKey, options.pageSize || DEFAULT_SIZE);
+    var showSizeSelector = options.pageSizeSelector !== false;
     var container = $(options.container);
     var infoEl = $(options.infoEl);
     var storeKey = storageKey(options);
@@ -130,6 +185,20 @@
     var onPageChange = options.onPageChange || null;
     var sumFields = options.sumFields || null;
     var lastFilteredRows = [];
+
+    function getPageSize() {
+      return pageSize;
+    }
+
+    function setPageSize(next) {
+      next = normalizePageSize(next, pageSize);
+      if (next === pageSize) return;
+      pageSize = next;
+      writeStoredSize(sizeKey, pageSize);
+      page = 1;
+      writeStored(storeKey, page);
+      if (onPageChange) onPageChange(page);
+    }
 
     function totalPages() {
       return Math.max(1, Math.ceil(filteredTotal / pageSize));
@@ -226,8 +295,15 @@
 
       if (!container) return;
 
+      var html = '';
+      if (showSizeSelector && (meta.filteredTotal || filteredTotal) > 0) {
+        html += pageSizeSelectorHtml(pageSize, false);
+      }
+
       if ((meta.filteredTotal || filteredTotal) <= pageSize) {
-        container.innerHTML = '';
+        container.classList.add('lc-pagination');
+        container.innerHTML = html;
+        bindPageSizeSelect(container, pageSize, setPageSize);
         return;
       }
 
@@ -237,7 +313,6 @@
       var prevLabel = rtl ? 'الصفحة السابقة' : 'Previous page';
       var nextLabel = rtl ? 'الصفحة التالية' : 'Next page';
 
-      var html = '';
       html += '<button type="button" class="page-btn lc-page-nav"' +
         (cur <= 1 ? ' disabled' : '') +
         ' data-page="' + (cur - 1) + '" aria-label="' + prevLabel + '">' + prevChar + '</button>';
@@ -253,6 +328,7 @@
 
       container.classList.add('lc-pagination');
       container.innerHTML = html;
+      bindPageSizeSelect(container, pageSize, setPageSize);
 
       container.querySelectorAll('.page-btn[data-page]').forEach(function (btn) {
         btn.addEventListener('click', function (ev) {
@@ -265,6 +341,8 @@
 
     return {
       pageSize: pageSize,
+      getPageSize: getPageSize,
+      setPageSize: setPageSize,
       resetPage: resetPage,
       setPage: setPage,
       setTotal: setTotal,
@@ -281,8 +359,28 @@
     var tbody = $(options.tbody);
     var container = $(options.container);
     var infoEl = $(options.infoEl);
-    var pageSize = options.pageSize || DEFAULT_SIZE;
+    var sizeKey = sizeStorageKey(options);
+    var pageSize = readStoredSize(sizeKey, options.pageSize || DEFAULT_SIZE);
     var page = 1;
+    var pagerUi = null;
+
+    function getPagerUi() {
+      if (!pagerUi) {
+        pagerUi = create({
+          pageSize: pageSize,
+          container: container,
+          persist: options.persist !== false,
+          persistKey: options.persistKey,
+          pageSizeSelector: options.pageSizeSelector,
+          onPageChange: function () {
+            page = pagerUi.getPage();
+            pageSize = pagerUi.getPageSize();
+            apply(false);
+          },
+        });
+      }
+      return pagerUi;
+    }
 
     function visibleRows() {
       if (!tbody) return [];
@@ -294,16 +392,8 @@
 
     function renderButtons(total, tp) {
       if (!container) return;
-      var pager = create({
-        pageSize: pageSize,
-        container: container,
-        persist: false,
-        onPageChange: function (p) {
-          page = p;
-          apply(false);
-        },
-      });
-      pager.paginate({ length: total }, total);
+      var pager = getPagerUi();
+      pager.setPage(page);
       pager.render({
         start: total ? (page - 1) * pageSize + 1 : 0,
         end: total ? Math.min(page * pageSize, total) : 0,
@@ -316,6 +406,7 @@
 
     function apply(reset) {
       if (reset) page = 1;
+      pageSize = getPagerUi().getPageSize();
       var rows = visibleRows();
       var total = rows.length;
       var tp = Math.max(1, Math.ceil(total / pageSize) || 1);
@@ -351,6 +442,7 @@
     create: create,
     createDom: createDom,
     PAGE_SIZE: DEFAULT_SIZE,
+    PAGE_SIZE_OPTIONS: PAGE_SIZE_OPTIONS,
     /** تهيئة متأخرة — تضمن عمل الترقيم حتى مع تأخر تحميل السكربت */
     bind: function (options) {
       var inst = null;
@@ -372,9 +464,18 @@
           var i = getInst();
           return i ? i.getPage() : 1;
         },
+        getPageSize: function () {
+          var i = getInst();
+          return i ? i.getPageSize() : (options.pageSize || DEFAULT_SIZE);
+        },
+        setPageSize: function (size) {
+          var i = getInst();
+          if (i) i.setPageSize(size);
+        },
         /** رقم الصفحة التي يقع فيها صف بترتيب معيّن (0-based) */
         pageOf: function (index) {
-          var size = options.pageSize || DEFAULT_SIZE;
+          var i = getInst();
+          var size = i ? i.getPageSize() : (options.pageSize || DEFAULT_SIZE);
           index = Number(index);
           if (isNaN(index) || index < 0) return 1;
           return Math.floor(index / size) + 1;

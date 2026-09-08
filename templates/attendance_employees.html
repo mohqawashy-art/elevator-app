@@ -47,6 +47,10 @@
           <tbody id="emp-body"></tbody>
         </table>
       </div>
+      <div class="table-footer">
+        <div class="table-info" id="table-info">—</div>
+        <div class="pagination" id="page-btns"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -91,13 +95,23 @@ const BRANCHES = {{ branches_js|tojson }};
 const NEXT_BIO = {{ next_bio_id|tojson }};
 const CAN_EDIT = {{ has_perm('attendance.edit')|tojson }};
 
+var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
+  pageSize: 10,
+  container: '#page-btns',
+  infoEl: '#table-info',
+  persistKey: 'attendance-employees',
+  onPageChange: function () { renderEmployees(); },
+}) : null;
+
 function badge(status){
   if(status==='نشط') return '<span class="badge badge-available">نشط</span>';
   return '<span class="badge badge-inactive">'+status+'</span>';
 }
 function renderEmployees(){
   const tb = document.getElementById('emp-body');
-  tb.innerHTML = EMPLOYEES.map(e => `
+  const pg = tablePager ? tablePager.apply(EMPLOYEES, EMPLOYEES.length) : { rows: EMPLOYEES };
+  const rows = pg.rows || EMPLOYEES;
+  tb.innerHTML = rows.map(e => `
     <tr>
       <td class="td-code">${e.code||''}</td>
       <td class="td-name">${e.name||''}</td>
@@ -108,6 +122,9 @@ function renderEmployees(){
       <td>${badge(e.status)}</td>
       <td class="td-actions">${CAN_EDIT ? `<button class="btn btn-secondary btn-sm" onclick='editEmp(${e.id})'>تعديل</button>` : ''}</td>
     </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3)">لا يوجد موظفون بعد</td></tr>';
+  if (!tablePager && EMPLOYEES.length) {
+    document.getElementById('table-info').textContent = 'عرض ' + EMPLOYEES.length + ' من ' + EMPLOYEES.length;
+  }
 }
 function fillBranches(sel){
   sel.innerHTML = BRANCHES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');

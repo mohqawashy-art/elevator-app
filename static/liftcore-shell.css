@@ -1402,7 +1402,39 @@ html[data-theme="light"] .lc-welcome-logo {
   direction: rtl;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lc-page-size-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text3);
+  margin-inline-end: 4px;
+}
+
+.lc-page-size-label {
+  white-space: nowrap;
+}
+
+.lc-page-size-select {
+  min-width: 62px;
+  padding: 5px 8px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text1);
+  font-size: 12px;
+  font-family: var(--font-en);
+  cursor: pointer;
+}
+
+.lc-page-size-select:focus {
+  outline: none;
+  border-color: var(--border2);
+  box-shadow: 0 0 0 3px rgba(42, 127, 255, 0.1);
 }
 
 .lc-page-nums {
