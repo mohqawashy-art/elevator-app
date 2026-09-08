@@ -278,6 +278,7 @@ def build_project_card(project: InstallProject) -> dict:
         'note': None,
         'item': None,
         'category': None,
+        'row_key': 'card:value',
     })
     # عنوان قسم التكاليف
     sheet_rows.append({
@@ -314,6 +315,7 @@ def build_project_card(project: InstallProject) -> dict:
             'note': None,
             'item': None,
             'category': cat,
+            'row_key': f'card:cat:{cat}',
         })
         detail_lines = [
             item for item in lines
@@ -345,6 +347,7 @@ def build_project_card(project: InstallProject) -> dict:
                 'pay_date': _row_pay_date(item.cost_date),
                 'item': item,
                 'category': cat,
+                'row_key': f'card:cost:{item.id}',
             })
 
     if not ordered_cats:
@@ -379,6 +382,7 @@ def build_project_card(project: InstallProject) -> dict:
                 'pay_date': _row_pay_date(r.received_date),
                 'item': r,
                 'category': None,
+                'row_key': f'card:receipt:{r.id}',
             })
 
     profit = round(value - total_cost, 2)

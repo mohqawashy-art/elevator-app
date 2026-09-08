@@ -40,12 +40,12 @@
   {% include 'partials/app_header.html' %}
   <div class="content">
     <div class="page-header">
-      <div class="page-title">{{ contract.code }} — {{ contract.contract_type or 'عقد تركيب' }}</div>
+      <div class="page-title">{{ contract.code }} — كارت عقد التركيب</div>
       <div class="page-actions">
         <a href="/installation/contracts" class="btn btn-secondary btn-sm">← عقود التركيب</a>
         {% if project %}
-        <a href="/installation/projects/{{ project.id }}" class="btn btn-secondary btn-sm">المشروع</a>
-        <a href="/installation/projects/{{ project.id }}#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
+        <a href="/installation/projects/{{ project.id }}" class="btn btn-secondary btn-sm">صفحة المشروع</a>
+        <a href="/installation/projects/{{ project.id }}#project-card" class="btn btn-secondary btn-sm">كارت المشروع المالي →</a>
         {% if project.execution_active %}
         <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-secondary btn-sm">التنفيذ</a>
         {% endif %}
@@ -130,7 +130,7 @@
       <div class="panel-title">جدول الدفعات — مجدول / محصّل / متبقي</div>
       <p style="font-size:12px;color:var(--text3);margin:0 0 12px">
         مسدّد <b class="ic-inst-badge"><span>{{ summary.installments_paid }}</span> من {{ summary.installments_total }}</b> دفعة.
-        {% if project %}يمكنك تسجيل السداد مباشرة من هنا أو من <a href="/installation/projects/{{ project.id }}#project-card">كارت المشروع</a>.{% endif %}
+        {% if project %}يمكنك تسجيل السداد مباشرة من هنا أو من <a href="/installation/projects/{{ project.id }}#project-card">كارت المشروع المالي</a>.{% endif %}
       </p>
       <table>
         <thead>

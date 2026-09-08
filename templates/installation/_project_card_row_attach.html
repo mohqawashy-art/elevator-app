@@ -1,0 +1,35 @@
+{% if row.row_key %}
+{% set row_docs = documents_by_step.get(row.row_key, []) %}
+<div class="pc-row-attach">
+  <details class="pc-row-attach-details">
+    <summary class="btn btn-secondary btn-sm pc-attach-btn" title="مرفقات {{ row.label }}">
+      مرفق{% if row_docs|length %} ({{ row_docs|length }}){% endif %}
+    </summary>
+    <div class="pc-row-attach-panel">
+      <form method="post" action="/installation/projects/{{ project.id }}/documents" enctype="multipart/form-data" class="pc-row-attach-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="step_key" value="{{ row.row_key }}">
+        <input type="text" name="label" placeholder="وصف المرفق" style="min-width:120px">
+        <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" required>
+        <button type="submit" class="btn btn-primary btn-sm">رفع</button>
+      </form>
+      {% if row_docs %}
+      <ul class="pc-row-attach-list">
+        {% for doc in row_docs %}
+        <li>
+          <a href="{{ upload_url(doc.file_path) }}" target="_blank" rel="noopener">{{ doc.label or doc.file_name or 'مرفق' }}</a>
+          <form method="post" action="/installation/projects/{{ project.id }}/documents/{{ doc.id }}/delete" style="display:inline" onsubmit="return confirm('حذف المرفق؟')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="step_key" value="{{ row.row_key }}">
+            <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger);padding:2px 6px;font-size:11px">حذف</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="pc-row-attach-empty">لا مرفقات لهذا البند</p>
+      {% endif %}
+    </div>
+  </details>
+</div>
+{% endif %}

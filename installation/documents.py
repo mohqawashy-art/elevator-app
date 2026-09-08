@@ -81,6 +81,14 @@ def delete_project_document(project: InstallProject, doc_id: int) -> bool:
     return True
 
 
+def group_project_documents_by_step(documents) -> dict[str, list]:
+    grouped: dict[str, list] = {}
+    for doc in documents or []:
+        key = (getattr(doc, 'step_key', None) or '').strip() or '_legacy'
+        grouped.setdefault(key, []).append(doc)
+    return grouped
+
+
 def remove_project_documents_folder(project_id: int) -> None:
     root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
     folder = os.path.join(root, 'uploads', 'installation', 'projects', str(project_id))

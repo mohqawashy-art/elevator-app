@@ -613,9 +613,10 @@ def project_detail(project_id):
     approved_quotations = [q for q in quotations if q.status == 'مقبول']
     pending_quotations = [q for q in quotations if q.status not in ('مقبول', 'مرفوض')]
 
-    from installation.documents import ensure_project_documents_schema
+    from installation.documents import ensure_project_documents_schema, group_project_documents_by_step
     ensure_project_documents_schema()
     documents = list(project.documents or [])
+    documents_by_step = group_project_documents_by_step(documents)
 
     return render_template(
         'installation/project_detail.html',
@@ -633,6 +634,7 @@ def project_detail(project_id):
         cost_payment_statuses=COST_PAYMENT_STATUSES,
         receipt_statuses=RECEIPT_STATUSES,
         documents=documents,
+        documents_by_step=documents_by_step,
         today=date.today().isoformat(),
         page_title=f'مشروع {project.code}',
     )
@@ -875,7 +877,11 @@ def project_document_upload(project_id):
     dest = (request.form.get('next') or '').strip()
     if dest == 'execution':
         return redirect(url_for('installation.project_execution', project_id=project.id) + '#project-documents')
-    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-documents')
+    step_key = (request.form.get('step_key') or '').strip()
+    anchor = 'project-card'
+    if step_key:
+        anchor = 'pc-row-' + step_key.replace(':', '-')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#' + anchor)
 
 
 @install_bp.route('/projects/<int:project_id>/documents/<int:doc_id>/delete', methods=['POST'])
@@ -891,7 +897,11 @@ def project_document_delete(project_id, doc_id):
     dest = (request.form.get('next') or '').strip()
     if dest == 'execution':
         return redirect(url_for('installation.project_execution', project_id=project.id) + '#project-documents')
-    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-documents')
+    step_key = (request.form.get('step_key') or '').strip()
+    anchor = 'project-card'
+    if step_key:
+        anchor = 'pc-row-' + step_key.replace(':', '-')
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#' + anchor)
 
 
 @install_bp.route('/projects/<int:project_id>/quote')
