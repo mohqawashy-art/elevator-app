@@ -16,8 +16,8 @@ html[dir="ltr"] .search-input{direction:ltr;padding:8px 12px 8px 36px}
 .table-scroll{overflow-x:auto}
 .ic-table{width:100%;border-collapse:collapse;font-size:13px}
 .ic-table thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
-.ic-table thead th{padding:12px 14px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap}
-html[dir="ltr"] .ic-table thead th{text-align:left}
+.ic-table thead th{padding:12px 14px;text-align:center;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap}
+html[dir="ltr"] .ic-table thead th{text-align:center}
 .ic-table tbody tr{border-bottom:1px solid rgba(100,160,255,.05);cursor:pointer}
 .ic-table tbody tr:hover{background:var(--bg3)}
 .ic-table tbody td{padding:12px 14px;color:var(--text2);white-space:nowrap}

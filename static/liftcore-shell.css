@@ -2597,3 +2597,25 @@ body:has(#sidebar) .stats-row {
     display: none !important;
   }
 }
+
+/* ── v55: توسيط رؤوس أعمدة الجداول في كل الصفحات ── */
+table thead th,
+.table-wrap thead th,
+.table-scroll thead th,
+.drill-panel .table-scroll thead th,
+#drill-panel .tbl-wrap thead th,
+.ic-table thead th,
+.cp-table thead th,
+.card-table thead th,
+.rpt-table thead th,
+th.th-sort {
+  text-align: center !important;
+}
+
+html[dir="ltr"] table thead th,
+html[dir="ltr"] .table-wrap thead th,
+html[dir="ltr"] .table-scroll thead th,
+html[dir="ltr"] .ic-table thead th,
+html[dir="ltr"] th.th-sort {
+  text-align: center !important;
+}
