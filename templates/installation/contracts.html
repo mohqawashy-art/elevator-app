@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% include 'installation/_layout_head.html' %}
+<style>
+.ic-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+@media(max-width:900px){.ic-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ic-progress{height:8px;background:var(--bg3);border-radius:999px;overflow:hidden}
+.ic-progress>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold))}
+.ic-amt{font-family:var(--font-en);font-variant-numeric:tabular-nums;direction:ltr;text-align:left}
+</style>
+</head>
+<body>
+{% include 'installation/_sidebar.html' %}
+<div class="main">
+  {% set page_title = 'عقود التركيب' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">عقود التركيب والتحديث</div>
+      <div class="page-actions">
+        <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <p style="font-size:13px;color:var(--text2);margin:0 0 14px;line-height:1.7">
+      جدول منفصل عن عقود الصيانة — كل عقد مرتبط بمشروع تركيب وكارت المشروع. يعرض مدة التنفيذ، نسبة الإنجاز، والدفعات المحصّلة والمتبقية.
+    </p>
+
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>رقم العقد</th>
+            <th>العميل</th>
+            <th>المشروع</th>
+            <th>النوع</th>
+            <th>قيمة العقد</th>
+            <th>محصّل</th>
+            <th>متبقي</th>
+            <th>الإنجاز</th>
+            <th>المدة</th>
+            <th>الحالة</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td style="font-family:var(--font-en);font-weight:600">
+              <a href="/installation/contracts/{{ row.contract.id }}" style="color:var(--accent)">{{ row.contract.code }}</a>
+            </td>
+            <td>{{ row.customer_name }}</td>
+            <td>
+              {% if row.project %}
+              <a href="/installation/projects/{{ row.project.id }}" style="font-family:var(--font-en);color:var(--accent)">{{ row.project.code }}</a>
+              {% else %}—{% endif %}
+            </td>
+            <td>{{ row.contract.contract_type or 'عقد تركيب' }}</td>
+            <td class="ic-amt">{{ '{:,.0f}'.format(row.total) }} ر.س</td>
+            <td class="ic-amt" style="color:var(--success)">{{ '{:,.0f}'.format(row.collected) }} ر.س</td>
+            <td class="ic-amt" style="color:var(--warning)">{{ '{:,.0f}'.format(row.remaining) }} ر.س</td>
+            <td style="min-width:110px">
+              <div style="font-size:12px;margin-bottom:4px">{{ row.progress_pct }}%</div>
+              <div class="ic-progress"><span style="width:{{ row.progress_pct }}%"></span></div>
+            </td>
+            <td style="font-size:12px">
+              {% if row.contract.start_date %}{{ row.contract.start_date }}{% else %}—{% endif %}
+              {% if row.contract.end_date %}<br><span style="color:var(--text3)">→ {{ row.contract.end_date }}</span>{% endif %}
+            </td>
+            <td><span class="badge badge-new">{{ row.contract.status }}</span></td>
+            <td style="white-space:nowrap">
+              <a href="/installation/contracts/{{ row.contract.id }}" class="btn btn-primary btn-sm">فتح</a>
+              {% if row.project %}
+              <a href="/installation/projects/{{ row.project.id }}#project-card" class="btn btn-secondary btn-sm">كارت</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="11" style="text-align:center;color:var(--text3);padding:28px">لا توجد عقود تركيب بعد — تُنشأ تلقائياً عند قبول عرض السعر وبدء التنفيذ.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

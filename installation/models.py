@@ -135,6 +135,12 @@ class InstallProject(TenantMixin, db.Model):
 
     customer = db.relationship('Customer', backref='installation_projects')
     contract = db.relationship('Contract', foreign_keys=[contract_id], uselist=False)
+    install_contract = db.relationship(
+        'InstallContract',
+        foreign_keys='InstallContract.project_id',
+        back_populates='project',
+        uselist=False,
+    )
     accepted_quotation = db.relationship(
         'InstallQuotation',
         foreign_keys=[accepted_quotation_id],
@@ -579,3 +585,100 @@ class InstallProjectReceipt(TenantMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     project = db.relationship('InstallProject', back_populates='receipts')
+
+
+INSTALL_CONTRACT_STATUSES = (
+    'مسودة',
+    'نشط',
+    'مكتمل',
+    'ملغي',
+)
+
+INSTALL_CONTRACT_INSTALLMENT_STATUSES = (
+    'مستحقة',
+    'جزئية',
+    'محصّلة',
+)
+
+
+class InstallContract(TenantMixin, db.Model):
+    """عقد تركيب/تحديث — منفصل عن عقود الصيانة ومرتبط بمشروع التنفيذ."""
+    __tablename__ = 'installation_contracts'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_install_contract_org_code'),
+        db.UniqueConstraint('project_id', name='uq_install_contract_project'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('installation_projects.id'), nullable=False, index=True)
+    quotation_id = db.Column(db.Integer, db.ForeignKey('installation_quotations.id'), nullable=True, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True, index=True)
+    legacy_contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=True, index=True)
+
+    contract_type = db.Column(db.String(50), default='عقد تركيب')
+    start_date = db.Column(db.Date, default=date.today)
+    end_date = db.Column(db.Date, nullable=True)
+    duration_months = db.Column(db.Integer, default=12)
+
+    value = db.Column(db.Float, default=0)
+    tax_pct = db.Column(db.Float, default=15)
+    tax_amount = db.Column(db.Float, default=0)
+    total = db.Column(db.Float, default=0)
+
+    pay_schedule_json = db.Column(db.Text)
+    progress_pct = db.Column(db.Integer, default=0)
+    collected_amount = db.Column(db.Float, default=0)
+    remaining_amount = db.Column(db.Float, default=0)
+
+    status = db.Column(db.String(30), default='نشط')
+    signed_at = db.Column(db.DateTime, nullable=True)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    project = db.relationship(
+        'InstallProject',
+        foreign_keys=[project_id],
+        back_populates='install_contract',
+    )
+    quotation = db.relationship('InstallQuotation', foreign_keys=[quotation_id], uselist=False)
+    customer = db.relationship('Customer', backref='installation_contracts')
+    legacy_contract = db.relationship('Contract', foreign_keys=[legacy_contract_id], uselist=False)
+    installments = db.relationship(
+        'InstallContractInstallment',
+        back_populates='contract',
+        cascade='all, delete-orphan',
+        order_by='InstallContractInstallment.seq.asc()',
+    )
+
+    @property
+    def client_display(self):
+        if self.customer:
+            return self.customer.name
+        if self.project:
+            return self.project.client_display
+        return '—'
+
+
+class InstallContractInstallment(TenantMixin, db.Model):
+    """دفعة مجدولة على عقد التركيب — تُقارن مع تحصيل كارت المشروع."""
+    __tablename__ = 'installation_contract_installments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.Integer, db.ForeignKey('installation_contracts.id'), nullable=False, index=True)
+    seq = db.Column(db.Integer, nullable=False, default=1)
+    label = db.Column(db.String(200), nullable=False)
+    pct = db.Column(db.Float, default=0)
+    amount = db.Column(db.Float, default=0)
+    due_date = db.Column(db.Date, nullable=True)
+    collected_amount = db.Column(db.Float, default=0)
+    status = db.Column(db.String(30), default='مستحقة')
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    contract = db.relationship('InstallContract', back_populates='installments')
+
+    @property
+    def remaining_amount(self):
+        return round(max(float(self.amount or 0) - float(self.collected_amount or 0), 0), 2)

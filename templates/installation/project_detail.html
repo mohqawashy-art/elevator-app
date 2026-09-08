@@ -75,6 +75,26 @@
     </div>
     {% endif %}
 
+    {% if card.install_contract and card.install_summary %}
+    <div class="panel" style="border-color:rgba(42,127,255,.35);margin-bottom:14px">
+      <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>عقد التركيب — {{ card.install_contract.code }}</span>
+        <a href="/installation/contracts/{{ card.install_contract.id }}" class="btn btn-primary btn-sm">فتح العقد</a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;font-size:13px">
+        <div><span style="color:var(--text3);display:block;font-size:11px">قيمة العقد</span><b style="font-family:var(--font-en)">{{ '{:,.0f}'.format(card.install_summary.total) }} ر.س</b></div>
+        <div><span style="color:var(--text3);display:block;font-size:11px">محصّل</span><b style="font-family:var(--font-en);color:var(--success)">{{ '{:,.0f}'.format(card.install_summary.collected_amount) }} ر.س</b></div>
+        <div><span style="color:var(--text3);display:block;font-size:11px">متبقي</span><b style="font-family:var(--font-en);color:var(--warning)">{{ '{:,.0f}'.format(card.install_summary.remaining_amount) }} ر.س</b></div>
+        <div><span style="color:var(--text3);display:block;font-size:11px">إنجاز المشروع</span><b>{{ card.install_summary.progress_pct }}%</b></div>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin:10px 0 0">
+        المدة: {{ card.install_contract.duration_months or '—' }} شهر
+        {% if card.install_contract.start_date %} · من {{ card.install_contract.start_date }}{% endif %}
+        {% if card.install_contract.end_date %} إلى {{ card.install_contract.end_date }}{% endif %}
+      </p>
+    </div>
+    {% endif %}
+
     {# —— كارت المشروع المالي (نمط جدول Excel) —— #}
     <div class="panel" id="project-card" style="border-color:rgba(200,160,85,.35)">
       <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">

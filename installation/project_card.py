@@ -189,6 +189,7 @@ def cost_phase_label(category: str) -> str:
 def delete_install_project(project: InstallProject) -> str:
     """حذف مشروع تركيب (عروضه، كارت المشروع، جدول التنفيذ). يُرجع كود المشروع."""
     from models import ElevatorEstimate
+    from installation.contracts_service import delete_install_contract_for_project
 
     code = project.code or ''
     lead = project.lead
@@ -199,6 +200,7 @@ def delete_install_project(project: InstallProject) -> str:
         est.result_project_id = None
         est.result_quotation_id = None
 
+    delete_install_contract_for_project(project)
     project.accepted_quotation_id = None
     project.contract_id = None
     project.lead_id = None
@@ -383,14 +385,22 @@ def build_project_card(project: InstallProject) -> dict:
     })
 
     linked_contract = getattr(project, 'contract', None)
+    install_contract = getattr(project, 'install_contract', None)
     if project.contract_value is not None and float(project.contract_value or 0) > 0:
         value_source = 'يدوي'
+    elif install_contract:
+        value_source = f'عقد تركيب {install_contract.code}'
     elif linked_contract:
         value_source = f'عقد {linked_contract.code}'
     elif project.accepted_quotation_id:
         value_source = 'عرض معتمد'
     else:
         value_source = 'عرض محفوظ'
+
+    install_summary = None
+    if install_contract:
+        from installation.contracts_service import build_install_contract_summary
+        install_summary = build_install_contract_summary(install_contract, project)
 
     return {
         'contract_value': value,
@@ -406,5 +416,8 @@ def build_project_card(project: InstallProject) -> dict:
         'quote_code': project.accepted_quotation.code if project.accepted_quotation else None,
         'contract': linked_contract,
         'contract_code': linked_contract.code if linked_contract else None,
+        'install_contract': install_contract,
+        'install_contract_code': install_contract.code if install_contract else None,
+        'install_summary': install_summary,
         'value_source': value_source,
     }

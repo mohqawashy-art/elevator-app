@@ -15,6 +15,9 @@ from installation.models import (
     InstallTimelineStep,
     InstallProjectCostItem,
     InstallProjectReceipt,
+    InstallContract,
+    INSTALL_CONTRACT_STATUSES,
+    INSTALL_CONTRACT_INSTALLMENT_STATUSES,
     LEAD_STATUSES,
     LEAD_SOURCES,
     PROJECT_STATUSES,
@@ -71,8 +74,10 @@ def _ensure_install_schema():
     try:
         from installation.project_card import ensure_project_card_schema
         from installation.schema import ensure_install_tenant_uniques
+        from installation.contracts_service import ensure_install_contract_schema
         ensure_project_card_schema()
         ensure_install_tenant_uniques()
+        ensure_install_contract_schema()
         _schema_ensured = True
     except Exception:
         db.session.rollback()
@@ -286,6 +291,79 @@ def projects_list():
     )
 
 
+@install_bp.route('/contracts')
+def contracts_list():
+    from installation.contracts_service import ensure_install_contract_schema, sync_install_contract_from_project
+    from installation.models import InstallContract
+
+    ensure_install_contract_schema()
+    contracts = tenant_query(InstallContract).order_by(InstallContract.created_at.desc()).all()
+    rows = []
+    for contract in contracts:
+        project = contract.project
+        if project:
+            sync_install_contract_from_project(project)
+        rows.append({
+            'contract': contract,
+            'project': project,
+            'customer_name': contract.client_display,
+            'progress_pct': int(contract.progress_pct or 0),
+            'collected': float(contract.collected_amount or 0),
+            'remaining': float(contract.remaining_amount or 0),
+            'total': float(contract.total or 0),
+        })
+    db.session.commit()
+    return render_template(
+        'installation/contracts.html',
+        rows=rows,
+        statuses=INSTALL_CONTRACT_STATUSES,
+        page_title='عقود التركيب',
+    )
+
+
+@install_bp.route('/contracts/<int:contract_id>')
+def contract_detail(contract_id):
+    from installation.contracts_service import (
+        build_install_contract_summary,
+        ensure_install_contract_schema,
+        sync_install_contract_from_project,
+    )
+    from installation.models import InstallContract
+
+    ensure_install_contract_schema()
+    contract = tenant_get_or_404(InstallContract, contract_id)
+    project = contract.project
+    if project:
+        sync_install_contract_from_project(project)
+        db.session.commit()
+    summary = build_install_contract_summary(contract, project)
+    return render_template(
+        'installation/contract_detail.html',
+        summary=summary,
+        contract=contract,
+        project=project,
+        statuses=INSTALL_CONTRACT_STATUSES,
+        installment_statuses=INSTALL_CONTRACT_INSTALLMENT_STATUSES,
+        page_title=f'عقد {contract.code}',
+    )
+
+
+@install_bp.route('/contracts/<int:contract_id>/update', methods=['POST'])
+def contract_update(contract_id):
+    from installation.contracts_service import ensure_install_contract_schema, update_install_contract_schedule
+    from installation.models import InstallContract
+
+    ensure_install_contract_schema()
+    contract = tenant_get_or_404(InstallContract, contract_id)
+    err = update_install_contract_schedule(contract, request.form)
+    if err:
+        flash(err, 'error')
+    else:
+        db.session.commit()
+        flash('تم تحديث بيانات العقد', 'success')
+    return redirect(url_for('installation.contract_detail', contract_id=contract.id))
+
+
 @install_bp.route('/projects/<int:project_id>/delete', methods=['POST'])
 def project_delete(project_id):
     from installation.project_card import delete_install_project
@@ -331,6 +409,10 @@ def project_detail(project_id):
         ensure_project_card_schema()
         card = build_project_card(project)
         card['schema_error'] = None
+        if project.install_contract:
+            from installation.contracts_service import sync_install_contract_from_project
+            sync_install_contract_from_project(project)
+            db.session.commit()
     except Exception as exc:
         db.session.rollback()
         card['schema_error'] = str(exc)
@@ -566,6 +648,11 @@ def project_card_receipt_add(project_id):
     )
     assign_organization(receipt)
     db.session.add(receipt)
+    try:
+        from installation.contracts_service import sync_install_contract_from_project
+        sync_install_contract_from_project(project)
+    except Exception:
+        pass
     db.session.commit()
     flash(f'تم تسجيل {label}', 'success')
     return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
@@ -576,6 +663,11 @@ def project_card_receipt_delete(project_id, receipt_id):
     project = tenant_get_or_404(InstallProject, project_id)
     receipt = tenant_query(InstallProjectReceipt).filter_by(id=receipt_id, project_id=project.id).first_or_404()
     db.session.delete(receipt)
+    try:
+        from installation.contracts_service import sync_install_contract_from_project
+        sync_install_contract_from_project(project)
+    except Exception:
+        pass
     db.session.commit()
     flash('تم حذف الدفعة', 'success')
     return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
@@ -811,13 +903,6 @@ def quote_approve(project_id, quotation_id):
         project.status = 'عقد'
         if not project.customer_id and q.customer_id:
             project.customer_id = q.customer_id
-        try:
-            from app import next_code
-            from sales.service import create_install_contract_from_quotation
-            create_install_contract_from_quotation(project, q, next_code_fn=next_code)
-        except Exception as exc:
-            from flask import current_app
-            current_app.logger.warning('install contract from quote skipped: %s', exc)
 
     project.execution_started_at = project.execution_started_at or datetime.utcnow()
     create_execution_timeline(project, db.session)
@@ -828,6 +913,24 @@ def quote_approve(project_id, quotation_id):
         steps[0].started_at = project.execution_started_at or datetime.utcnow()
         apply_auto_amount(steps[0], q, force=True)
     db.session.commit()
+
+    if not repairing:
+        try:
+            from app import next_code
+            from sales.service import create_install_contract_from_quotation
+            from installation.contracts_service import create_install_contract_for_project
+            project = tenant_get_or_404(InstallProject, project_id)
+            q = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
+            legacy = create_install_contract_from_quotation(project, q, next_code_fn=next_code)
+            install_contract = create_install_contract_for_project(project, q, next_code_fn=next_code)
+            if install_contract and legacy:
+                install_contract.legacy_contract_id = legacy.id
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            from flask import current_app
+            current_app.logger.warning('install contract from quote skipped: %s', exc)
+
     flash(
         f'تم قبول العرض {q.code} — بدء تنفيذ المشروع.'
         if not repairing else f'تم تفعيل تنفيذ المشروع للعرض {q.code}.',
