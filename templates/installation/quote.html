@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=inv2">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=inv4">
 <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 </head>
 <body>
@@ -301,8 +301,11 @@
           </div>
 
           <div class="pay-schedule">
-            <div class="pay-schedule-head">جدول الدفعات <span class="pay-schedule-note">حسب الاتفاق — المجموع 100%</span></div>
-            <div class="sum-row">
+            <div class="pay-schedule-head">
+              <span>جدول الدفعات</span>
+              <span class="pay-schedule-note">حسب الاتفاق — المجموع 100%</span>
+            </div>
+            <div class="sum-row pay-count-row">
               <span class="lbl">عدد الدفعات</span>
               <select id="payCount">
                 <option value="1">دفعة واحدة</option>
@@ -315,9 +318,12 @@
                 <option value="8">ثمان دفعات</option>
               </select>
             </div>
-            <div id="payRows"></div>
-            <div class="pay-schedule-total" id="payPctTotal">المجموع: <b>100%</b></div>
-            <div class="pay-schedule-preview" id="payPreview"></div>
+            <div id="payRows" class="pay-rows"></div>
+            <div class="sum-row sub">
+              <span class="lbl">مجموع النسب</span>
+              <b class="amt" id="payPctTotal">100%</b>
+            </div>
+            <div id="payPreview" class="pay-preview"></div>
           </div>
 
           <div class="pricing-warn" id="warnBox"></div>
@@ -373,7 +379,7 @@ window.__INSTALL_QUOTE__ = {
 };
 </script>
 <script src="{{ url_for('static', filename='installation-pricing.js') }}?v=market1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=inv2"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=inv4"></script>
 {% include 'partials/quick_customer_modal.html' %}
 </body>
 </html>

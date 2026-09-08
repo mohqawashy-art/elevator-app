@@ -89,21 +89,38 @@ table.pricing-items input.f-unit-custom{
 }
 .sum-row input.amt:focus{outline:none;border-color:var(--accent);background:var(--bg3)}
 .sum-row input.amt-pct{max-width:none}
-.pay-schedule select{width:100%;height:34px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg2);color:var(--text1);font-family:inherit;font-size:12px;text-align:right}
+.pay-schedule select{width:100%;height:34px;padding:6px 8px 6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg2);color:var(--text1);font-family:inherit;font-size:13px;text-align:right;min-width:0}
+.pay-count-row{grid-template-columns:minmax(6.2rem,0.85fr) minmax(9.5rem,1.2fr)}
 .sum-grand{background:linear-gradient(180deg,rgba(200,160,85,.18),rgba(42,127,255,.1));margin:12px -16px 0;padding:16px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;border-top:1px solid var(--border)}
 .sum-grand .k{font-size:12px;font-weight:700;color:var(--gold)}
 .sum-grand .v{font-size:26px;font-weight:800;color:var(--gold);font-family:var(--font-en);font-variant-numeric:tabular-nums;line-height:1.2}
 .sum-grand .hint{font-size:11px;color:var(--text3);font-weight:400}
 .pay-schedule{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
-.pay-schedule-head{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.pay-schedule-head{font-size:13px;font-weight:700;color:var(--text1);margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .pay-schedule-note{font-size:10px;font-weight:500;color:var(--text3)}
-.pay-schedule-total{font-size:11px;color:var(--text3);margin-top:4px}
-.pay-schedule-total b{font-family:var(--font-en);color:var(--text1)}
-.pay-schedule-preview{margin-top:8px;font-size:11px;color:var(--text2);line-height:1.7;background:var(--bg3);border-radius:var(--r-sm);padding:8px 10px}
-.pay-install-row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border)}
-.pay-install-row input{padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);color:var(--text1);font-size:12px}
-.pay-install-row .pay-label{flex:1;min-width:0;width:auto;text-align:right;font-family:inherit}
-.pay-install-row .pay-pct{width:72px;flex-shrink:0;text-align:center;font-family:var(--font-en)}
+.pay-rows{display:flex;flex-direction:column}
+.pay-install-row{display:grid;grid-template-columns:minmax(7.2rem,1fr) 8.2rem;gap:10px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--border)}
+.pay-install-row .pay-label{
+  width:100%;height:34px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);
+  background:var(--bg2);color:var(--text1);font-size:13px;font-family:inherit;text-align:right;box-sizing:border-box
+}
+.pay-pct-wrap{
+  display:flex;align-items:center;gap:4px;height:34px;padding:0 8px 0 10px;border:1px solid var(--border);
+  border-radius:var(--r-sm);background:var(--bg2);box-sizing:border-box;direction:ltr
+}
+.pay-pct-wrap .pay-pct{
+  flex:1;min-width:0;width:100%;height:32px;border:0;background:transparent;padding:0;
+  color:var(--text1);font-family:var(--font-en);font-variant-numeric:tabular-nums;font-size:13px;text-align:left;
+  -moz-appearance:textfield;appearance:textfield
+}
+.pay-pct-wrap .pay-pct:focus{outline:none}
+.pay-pct-wrap .pay-pct::-webkit-outer-spin-button,
+.pay-pct-wrap .pay-pct::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.pay-pct-unit{color:var(--text3);font-size:12px;flex-shrink:0}
+.pay-preview{margin-top:4px}
+.pay-preview .sum-row{border-bottom:1px dashed var(--border)}
+.pay-preview .sum-row:last-child{border-bottom:none}
+.pay-preview-empty{padding:8px 10px;border-radius:var(--r-sm);background:var(--bg3);color:var(--text3);font-size:12px}
 .pricing-warn{background:rgba(224,144,48,.12);color:var(--warning);border-radius:var(--r-sm);padding:8px 10px;font-size:12px;margin-top:10px;display:none}
 #quoteOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;overflow:auto;padding:24px}
 #quoteOverlay.open{display:block}

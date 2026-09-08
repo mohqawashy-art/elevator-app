@@ -729,7 +729,7 @@ document.addEventListener('DOMContentLoaded', function () {
     for (i = 0; i < items.length; i++) {
       html += '<div class="pay-install-row">'
         + '<input class="pay-label" type="text" value="' + escapeAttr(items[i].label || ('دفعة ' + (i + 1))) + '" placeholder="اسم الدفعة">'
-        + '<input class="pay-pct" type="number" min="0" max="100" step="1" value="' + (items[i].pct || 0) + '">'
+        + '<label class="pay-pct-wrap"><input class="pay-pct" type="number" min="0" max="100" step="1" value="' + (items[i].pct || 0) + '"><span class="pay-pct-unit">%</span></label>'
         + '</div>';
     }
     box.innerHTML = html;
@@ -790,19 +790,23 @@ document.addEventListener('DOMContentLoaded', function () {
     var preview = el('payPreview');
     var payWarn = el('payWarnBox');
     if (totalEl) {
-      totalEl.innerHTML = 'المجموع: <b>' + total + '%</b>';
-      totalEl.style.color = total === 100 ? 'var(--text3)' : 'var(--danger)';
+      totalEl.textContent = total + '%';
+      totalEl.style.color = total === 100 ? '' : 'var(--danger)';
     }
-    if (preview && grand > 0) {
-      var html = '';
-      for (i = 0; i < items.length; i++) {
-        if (items[i].pct <= 0) continue;
-        html += (html ? '<br>' : '') + escapeAttr(items[i].label || ('دفعة ' + (i + 1)))
-          + ': <span class="amt">' + fmt(Math.round(grand * items[i].pct / 100)) + '</span>';
+    if (preview) {
+      if (grand > 0) {
+        var html = '';
+        for (i = 0; i < items.length; i++) {
+          if (items[i].pct <= 0) continue;
+          html += '<div class="sum-row">'
+            + '<span class="lbl">' + escapeAttr(items[i].label || ('دفعة ' + (i + 1))) + '</span>'
+            + '<b class="amt">' + fmt(Math.round(grand * items[i].pct / 100)) + '</b>'
+            + '</div>';
+        }
+        preview.innerHTML = html || '<div class="pay-preview-empty">أدخل نسب الدفعات</div>';
+      } else {
+        preview.innerHTML = '<div class="pay-preview-empty">أدخل البنود لحساب مبالغ الدفعات</div>';
       }
-      preview.innerHTML = html || 'أدخل نسب الدفعات';
-    } else if (preview) {
-      preview.innerHTML = 'أدخل البنود لحساب مبالغ الدفعات';
     }
     if (payWarn) {
       if (total !== 100) {
