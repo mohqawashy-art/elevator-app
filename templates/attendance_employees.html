@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — موظفو الحضور</title>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
+{% include 'partials/attendance_styles.html' %}
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% set page_title = 'موظفو الحضور' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content att-wrap">
+    {% include 'partials/flash_messages.html' %}
+    <div class="page-header">
+      <div class="page-title">موظفو الحضور والانصراف</div>
+      <div class="page-actions">
+        {% if has_perm('attendance.create') %}
+        <form method="post" action="/attendance/employees/import-technicians" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-secondary">استيراد الفنيين</button>
+        </form>
+        <button type="button" class="btn btn-primary" onclick="openEmpModal()">إضافة موظف</button>
+        {% endif %}
+      </div>
+    </div>
+    <div class="setup-box">
+      <strong>ربط uFace 800:</strong> سجّل كل موظف برقم بصمة (<code>biometric_user_id</code>) مطابق لرقم المستخدم على الجهاز.
+      الدوام الافتراضي <code>08:00–17:00</code> (الأحد–الخميس).
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>الكود</th><th>الاسم</th><th>الوظيفة</th><th>الفرع</th>
+            <th>رقم البصمة</th><th>الجوال</th><th>الحالة</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="emp-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-emp">
+  <div class="modal">
+    <h3 id="emp-modal-title">إضافة موظف</h3>
+    <form id="emp-form" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="emp_id" id="emp-id">
+      <div class="grid2">
+        <div class="field"><label>الاسم *</label><input name="name" id="f-name" required></div>
+        <div class="field"><label>المسمى الوظيفي</label><input name="job_title" id="f-job"></div>
+        <div class="field"><label>القسم</label><input name="department" id="f-dept"></div>
+        <div class="field"><label>رقم البصمة *</label><input name="biometric_user_id" id="f-bio" required></div>
+        <div class="field"><label>الفرع</label><select name="branch_id" id="f-branch"></select></div>
+        <div class="field"><label>الجوال</label><input name="phone" id="f-phone"></div>
+        <div class="field"><label>تاريخ التعيين</label><input type="date" name="hire_date" id="f-hire"></div>
+        <div class="field"><label>الراتب</label><input type="number" name="salary" id="f-salary"></div>
+        <div class="field"><label>الحالة</label>
+          <select name="status" id="f-status"><option>نشط</option><option>غير نشط</option></select>
+        </div>
+      </div>
+      <div class="field"><label>ملاحظات</label><textarea name="notes" id="f-notes" rows="2"></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button type="button" class="btn btn-secondary" onclick="closeEmpModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary">حفظ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const EMPLOYEES = {{ employees_js|tojson }};
+const BRANCHES = {{ branches_js|tojson }};
+const NEXT_BIO = {{ next_bio_id|tojson }};
+const CAN_EDIT = {{ has_perm('attendance.edit')|tojson }};
+
+function badge(status){
+  if(status==='نشط') return '<span class="badge ok">نشط</span>';
+  return '<span class="badge bad">'+status+'</span>';
+}
+function renderEmployees(){
+  const tb = document.getElementById('emp-body');
+  tb.innerHTML = EMPLOYEES.map(e => `
+    <tr>
+      <td>${e.code||''}</td>
+      <td>${e.name||''}</td>
+      <td>${e.job_title||'—'}</td>
+      <td>${e.branch_name||'—'}</td>
+      <td style="font-family:var(--font-en)">${e.biometric_user_id||''}</td>
+      <td>${e.phone||'—'}</td>
+      <td>${badge(e.status)}</td>
+      <td>${CAN_EDIT ? `<button class="btn btn-secondary btn-sm" onclick='editEmp(${e.id})'>تعديل</button>` : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3)">لا يوجد موظفون بعد</td></tr>';
+}
+function fillBranches(sel){
+  sel.innerHTML = BRANCHES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+}
+function openEmpModal(){
+  document.getElementById('emp-modal-title').textContent = 'إضافة موظف';
+  document.getElementById('emp-form').action = '/attendance/employees/add';
+  document.getElementById('emp-id').value = '';
+  ['f-name','f-job','f-dept','f-phone','f-hire','f-salary','f-notes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('f-bio').value = NEXT_BIO;
+  document.getElementById('f-status').value = 'نشط';
+  fillBranches(document.getElementById('f-branch'));
+  document.getElementById('modal-emp').classList.add('open');
+}
+function editEmp(id){
+  const e = EMPLOYEES.find(x => x.id === id);
+  if(!e) return;
+  document.getElementById('emp-modal-title').textContent = 'تعديل موظف';
+  document.getElementById('emp-form').action = '/attendance/employees/edit/' + id;
+  document.getElementById('f-name').value = e.name||'';
+  document.getElementById('f-job').value = e.job_title||'';
+  document.getElementById('f-dept').value = e.department||'';
+  document.getElementById('f-bio').value = e.biometric_user_id||'';
+  document.getElementById('f-phone').value = e.phone||'';
+  document.getElementById('f-hire').value = e.hire_date||'';
+  document.getElementById('f-salary').value = e.salary||'';
+  document.getElementById('f-status').value = e.status||'نشط';
+  document.getElementById('f-notes').value = e.notes||'';
+  fillBranches(document.getElementById('f-branch'));
+  document.getElementById('f-branch').value = e.branch_id||'';
+  document.getElementById('modal-emp').classList.add('open');
+}
+function closeEmpModal(){ document.getElementById('modal-emp').classList.remove('open'); }
+renderEmployees();
+</script>
+<script src="/static/liftcore-shell.js?v=5" defer></script>
+</body>
+</html>

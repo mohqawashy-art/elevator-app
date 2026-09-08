@@ -224,6 +224,10 @@ PUBLIC_ENDPOINTS = frozenset({
     'web_manifest', 'admin_service_worker',
     'moyasar_webhook',
     'whatsapp_webhook',
+    'attendance_adms.iclock_cdata',
+    'attendance_adms.iclock_getrequest',
+    'attendance_adms.iclock_devicecmd',
+    'attendance_adms.iclock_registry',
 })
 PUBLIC_PATH_PREFIXES = ('/static',)
 STATIC_UPLOADS_PREFIX = '/static/uploads'
@@ -14775,6 +14779,9 @@ register_install_module(app)
 
 from sales import register_sales_module
 register_sales_module(app)
+
+from attendance import register_attendance_module
+register_attendance_module(app)
 
 
 def _ensure_installation_project_routes(flask_app):

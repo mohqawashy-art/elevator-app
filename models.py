@@ -1307,6 +1307,124 @@ class AuditLog(TenantMixin, db.Model):
     ip_address   = db.Column(db.String(45))
 
 
+# =============================================
+# الحضور والانصراف — موظفون / فروع / أجهزة ZKTeco
+# =============================================
+class AttendanceBranch(TenantMixin, db.Model):
+    __tablename__ = 'attendance_branches'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_attendance_branch_org_code'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    name_en = db.Column(db.String(120))
+    is_default = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    employees = db.relationship('AttendanceEmployee', backref='branch', lazy=True)
+    devices = db.relationship('BiometricDevice', backref='branch', lazy=True)
+
+
+class AttendanceEmployee(TenantMixin, db.Model):
+    __tablename__ = 'attendance_employees'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_attendance_employee_org_code'),
+        db.UniqueConstraint(
+            'organization_id', 'biometric_user_id',
+            name='uq_attendance_employee_org_bio_id',
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    name_en = db.Column(db.String(100))
+    job_title = db.Column(db.String(100))
+    department = db.Column(db.String(100))
+    branch_id = db.Column(db.Integer, db.ForeignKey('attendance_branches.id'))
+    technician_id = db.Column(db.Integer, db.ForeignKey('technicians.id'))
+    biometric_user_id = db.Column(db.String(20), nullable=False)
+    phone = db.Column(db.String(40))
+    national_id = db.Column(db.String(20))
+    hire_date = db.Column(db.Date)
+    salary = db.Column(db.Float)
+    status = db.Column(db.String(20), default='نشط')
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    technician = db.relationship('Technician', backref='attendance_profile', uselist=False)
+    punches = db.relationship('AttendancePunch', backref='employee', lazy=True)
+    days = db.relationship('AttendanceDay', backref='employee', lazy=True)
+
+
+class BiometricDevice(TenantMixin, db.Model):
+    __tablename__ = 'biometric_devices'
+    __table_args__ = (
+        db.UniqueConstraint('serial_number', name='uq_biometric_device_serial'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey('attendance_branches.id'))
+    serial_number = db.Column(db.String(64), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    model = db.Column(db.String(80), default='ZKTeco uFace 800')
+    auth_token = db.Column(db.String(64))
+    is_active = db.Column(db.Boolean, default=True)
+    last_seen_at = db.Column(db.DateTime)
+    last_ip = db.Column(db.String(45))
+    firmware = db.Column(db.String(40))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    punches = db.relationship('AttendancePunch', backref='device', lazy=True)
+
+
+class AttendancePunch(TenantMixin, db.Model):
+    __tablename__ = 'attendance_punches'
+    __table_args__ = (
+        db.UniqueConstraint(
+            'device_id', 'biometric_user_id', 'punched_at',
+            name='uq_attendance_punch_device_user_time',
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey('biometric_devices.id'))
+    employee_id = db.Column(db.Integer, db.ForeignKey('attendance_employees.id'))
+    biometric_user_id = db.Column(db.String(20), nullable=False)
+    punched_at = db.Column(db.DateTime, nullable=False, index=True)
+    status_code = db.Column(db.Integer, default=0)
+    verify_mode = db.Column(db.Integer, default=0)
+    work_code = db.Column(db.Integer, default=0)
+    raw_line = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class AttendanceDay(TenantMixin, db.Model):
+    __tablename__ = 'attendance_days'
+    __table_args__ = (
+        db.UniqueConstraint(
+            'organization_id', 'employee_id', 'work_date',
+            name='uq_attendance_day_org_employee_date',
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('attendance_employees.id'), nullable=False)
+    work_date = db.Column(db.Date, nullable=False, index=True)
+    check_in = db.Column(db.DateTime)
+    check_out = db.Column(db.DateTime)
+    late_minutes = db.Column(db.Integer, default=0)
+    early_leave_minutes = db.Column(db.Integer, default=0)
+    worked_minutes = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(30), default='غائب')
+    shift_start = db.Column(db.String(5), default='08:00')
+    shift_end = db.Column(db.String(5), default='17:00')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class AppLiveState(db.Model):
     """عداد مركزي — يزيد عند أي تغيير في البيانات لمزامنة واجهات الموظفين."""
     __tablename__ = 'app_live_state'

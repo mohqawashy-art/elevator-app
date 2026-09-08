@@ -23,7 +23,7 @@ TENANT_EXEMPT_PATHS = frozenset({
     '/api/webhooks/moyasar',
     '/api/webhooks/whatsapp',
 })
-TENANT_EXEMPT_PREFIXES = ('/onboard/',)
+TENANT_EXEMPT_PREFIXES = ('/onboard/', '/iclock/')
 
 
 def init_tenant_scope(database):

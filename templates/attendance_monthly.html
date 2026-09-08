@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — تقرير الحضور الشهري</title>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
+{% include 'partials/attendance_styles.html' %}
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% set page_title = 'تقرير الحضور الشهري' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content att-wrap">
+    <div class="page-header">
+      <div class="page-title">تقرير الحضور — {{ report.month }}/{{ report.year }}</div>
+      <form class="filters-bar" method="get">
+        <input type="number" class="filter-input" name="month" min="1" max="12" value="{{ report.month }}" style="width:90px">
+        <input type="number" class="filter-input" name="year" min="2020" max="2100" value="{{ report.year }}" style="width:110px">
+        <button class="btn btn-secondary" type="submit">عرض</button>
+      </form>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>الكود</th><th>الاسم</th><th>رقم البصمة</th>
+            <th>أيام حاضر</th><th>أيام تأخير</th><th>غياب</th><th>ناقص/مبكر</th>
+            <th>دقائق تأخير</th><th>ساعات عمل</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.rows %}
+          <tr>
+            <td>{{ row.code }}</td>
+            <td>{{ row.name }}</td>
+            <td style="font-family:var(--font-en)">{{ row.biometric_user_id }}</td>
+            <td>{{ row.present_days }}</td>
+            <td>{{ row.late_days }}</td>
+            <td>{{ row.absent_days }}</td>
+            <td>{{ row.incomplete_days }}</td>
+            <td>{{ row.total_late_minutes }}</td>
+            <td>{{ '%.1f'|format(row.total_worked_minutes / 60) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9" style="text-align:center;color:var(--text3)">لا يوجد بيانات</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script src="/static/liftcore-shell.js?v=5" defer></script>
+</body>
+</html>

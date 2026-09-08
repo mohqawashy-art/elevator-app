@@ -53,6 +53,7 @@ EXEMPT_PATH_PREFIXES = (
     '/static/',
     '/field/',
     '/api/field/',
+    '/iclock/',
 )
 
 

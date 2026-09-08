@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — أجهزة البصمة</title>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
+{% include 'partials/attendance_styles.html' %}
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% set page_title = 'أجهزة البصمة' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content att-wrap">
+    {% include 'partials/flash_messages.html' %}
+    <div class="page-header">
+      <div class="page-title">أجهزة ZKTeco (uFace 800)</div>
+      {% if has_perm('attendance.create') %}
+      <button type="button" class="btn btn-primary" onclick="openDevModal()">تسجيل جهاز</button>
+      {% endif %}
+    </div>
+    <div class="setup-box">
+      <strong>إعداد uFace 800:</strong> Menu → Comm → Cloud Server Settings → Server mode = <code>PUSH</code>،
+      URL Mode = <code>ON</code>، Server Address = <code>{{ server_host }}</code>، Port = <code>443</code>، HTTPS = <code>ON</code>.
+      <br>سجّل الرقم التسلسلي (SN) من ظهر الجهاز في LiftCore قبل أول اتصال.
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>الاسم</th><th>SN</th><th>الموديل</th><th>الفرع</th><th>الاتصال</th><th>آخر ظهور</th><th></th></tr>
+        </thead>
+        <tbody id="dev-body"></tbody>
+      </table>
+    </div>
+    {% if has_perm('attendance.create') %}
+    <div class="setup-box" style="margin-top:20px">
+      <strong>إضافة فرع جديد:</strong>
+      <form method="post" action="/attendance/branches/add" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input class="filter-input" name="code" placeholder="BR-002" required>
+        <input class="filter-input" name="name" placeholder="اسم الفرع" required>
+        <button class="btn btn-secondary" type="submit">إضافة فرع</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-dev">
+  <div class="modal">
+    <h3 id="dev-modal-title">تسجيل جهاز</h3>
+    <form id="dev-form" method="post" action="/attendance/devices/add">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label>اسم الجهاز *</label><input name="name" id="d-name" placeholder="بصمة المكتب الرئيسي" required></div>
+      <div class="field"><label>الرقم التسلسلي SN *</label><input name="serial_number" id="d-sn" required></div>
+      <div class="field"><label>الموديل</label><input name="model" id="d-model" value="ZKTeco uFace 800"></div>
+      <div class="field"><label>الفرع</label><select name="branch_id" id="d-branch"></select></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button type="button" class="btn btn-secondary" onclick="closeDevModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary">حفظ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const DEVICES = {{ devices_js|tojson }};
+const BRANCHES = {{ branches_js|tojson }};
+const CAN_EDIT = {{ has_perm('attendance.edit')|tojson }};
+function renderDevices(){
+  document.getElementById('dev-body').innerHTML = DEVICES.map(d => `
+    <tr>
+      <td>${d.name}</td>
+      <td style="font-family:var(--font-en)">${d.serial_number}</td>
+      <td>${d.model||''}</td>
+      <td>${d.branch_name||'—'}</td>
+      <td>${d.online ? '<span class="badge ok">متصل</span>' : '<span class="badge bad">غير متصل</span>'}</td>
+      <td>${d.last_seen_at ? d.last_seen_at.replace('T',' ').slice(0,16) : '—'}</td>
+      <td>${CAN_EDIT ? `<button class="btn btn-secondary btn-sm" onclick='editDev(${d.id})'>تعديل</button>` : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3)">لا توجد أجهزة</td></tr>';
+}
+function fillBranches(sel){ sel.innerHTML = BRANCHES.map(b => `<option value="${b.id}">${b.name}</option>`).join(''); }
+function openDevModal(){
+  document.getElementById('dev-form').action = '/attendance/devices/add';
+  document.getElementById('d-name').value = '';
+  document.getElementById('d-sn').value = '';
+  document.getElementById('d-model').value = 'ZKTeco uFace 800';
+  fillBranches(document.getElementById('d-branch'));
+  document.getElementById('modal-dev').classList.add('open');
+}
+function editDev(id){
+  const d = DEVICES.find(x => x.id === id);
+  if(!d) return;
+  document.getElementById('dev-form').action = '/attendance/devices/edit/' + id;
+  document.getElementById('d-name').value = d.name;
+  document.getElementById('d-sn').value = d.serial_number;
+  document.getElementById('d-sn').readOnly = true;
+  document.getElementById('d-model').value = d.model||'';
+  fillBranches(document.getElementById('d-branch'));
+  document.getElementById('d-branch').value = d.branch_id||'';
+  document.getElementById('modal-dev').classList.add('open');
+}
+function closeDevModal(){ document.getElementById('modal-dev').classList.remove('open'); }
+renderDevices();
+</script>
+<script src="/static/liftcore-shell.js?v=5" defer></script>
+</body>
+</html>

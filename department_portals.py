@@ -130,10 +130,16 @@ DEPARTMENT_PORTALS = {
         'description_en': 'Technicians, maintenance teams, and field performance tracking',
         'color': '#8c6cff',
         'links': (
+            ('الموظفون', 'Employees', '/attendance/employees', 'attendance.read'),
+            ('حضور اليوم', 'Today Attendance', '/attendance/today', 'attendance.read'),
+            ('أجهزة البصمة', 'Biometric Devices', '/attendance/devices', 'attendance.read'),
             ('الفنيون', 'Technicians', '/technicians', 'technicians.read'),
             ('فرق الصيانة', 'Maintenance Teams', '/technicians?tab=teams', 'technicians.read'),
         ),
-        'reports': (),
+        'reports': (
+            ('تقرير الحضور الشهري', 'Monthly Attendance', '/attendance/monthly', 'report_attendance.read'),
+            ('تقرير الفنيين', 'Technicians Report', '/reports/technicians', 'report_technicians.read'),
+        ),
     },
     'accounting': {
         'title': 'منصة الحسابات والمالية',

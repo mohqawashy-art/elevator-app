@@ -124,6 +124,10 @@ CSRF_EXEMPT_ENDPOINTS = frozenset({
     'api_version',
     'moyasar_webhook',
     'whatsapp_webhook',
+    'attendance_adms.iclock_cdata',
+    'attendance_adms.iclock_getrequest',
+    'attendance_adms.iclock_devicecmd',
+    'attendance_adms.iclock_registry',
 })
 
 
