@@ -86,6 +86,12 @@ if [ -x "$VENV/bin/python" ] && [ -f "$APP_DIR/deploy/migrate_db.py" ]; then
   echo "==> database migrations (Alembic)"
   # shellcheck disable=SC1091
   source "$VENV/bin/activate"
+  if [ -f "$PLATFORM_ENV" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$PLATFORM_ENV"
+    set +a
+  fi
   python "$APP_DIR/deploy/migrate_db.py" || echo "  WARN: migrate_db failed"
 fi
 
