@@ -229,7 +229,7 @@ var __lcReportDomPager = null;
 function __lcLoadPagination(cb) {
     if (global.LiftCorePagination) { cb(); return; }
   var s = document.createElement('script');
-  s.src = '/static/liftcore-pagination.js?v=4';
+  s.src = '/static/liftcore-pagination.js?v=7';
   s.onload = cb;
   document.head.appendChild(s);
 }
@@ -255,6 +255,7 @@ function hookReportPagination(reset) {
       tbody: tbody,
       container: container,
       infoEl: footer.querySelector('#table-info'),
+      persistKey: 'report-' + (global.location.pathname || 'live'),
       pageSize: 10,
     });
 

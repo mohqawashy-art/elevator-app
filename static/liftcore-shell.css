@@ -1406,13 +1406,32 @@ html[data-theme="light"] .lc-welcome-logo {
   flex-wrap: wrap;
 }
 
+.table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.table-footer .table-info {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.table-footer .pagination.lc-pagination {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+}
+
 .lc-page-size-wrap {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   color: var(--text3);
-  margin-inline-end: 4px;
+  margin-inline-end: 8px;
+  white-space: nowrap;
 }
 
 .lc-page-size-label {
