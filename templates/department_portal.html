@@ -71,10 +71,10 @@ html[lang="en"] .portal-arrow{transform:scaleX(-1)}
       <section class="portal-section portal-section--group" id="group-{{ group.slug }}" style="--group-color: {{ group.color }}">
         <div class="portal-section-head">
           <h2>{{ group.title }}</h2>
-          <span class="portal-count">{{ portal_ui.reports_count.format(n=group.items|length) }}</span>
+          <span class="portal-count">{{ portal_ui.reports_count.format(n=group['items']|length) }}</span>
         </div>
         <div class="portal-links">
-          {% for item in group.items %}
+          {% for item in group['items'] %}
           <a class="portal-link" href="{{ item.href }}"><span>{{ item.label }}</span><span class="portal-arrow">←</span></a>
           {% endfor %}
         </div>
