@@ -3,16 +3,16 @@
 <head>
 {% include 'partials/marketing_gtag.html' %}
 <meta charset="UTF-8">
-{% include 'partials/liftcore_boot.html' %}
+{% include 'partials/marketing_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 {% include 'partials/marketing_seo.html' %}
 <link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=10">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=11">
 <style>
-body.mkt-seo{background:#070a10}
+body.mkt-seo{background:var(--mkt-bg,#f4f7fb)}
 .seo-hero{
   position:relative;padding:28px 0 36px;margin-bottom:10px;
   animation:mkt-rise .75s ease both;
@@ -21,17 +21,17 @@ body.mkt-seo{background:#070a10}
   font-family:'Cormorant Garamond',serif;font-size:clamp(2.2rem,5vw,3rem);
   font-weight:600;direction:ltr;margin-bottom:16px;line-height:.95;
 }
-.seo-hero .brand span{color:var(--mkt-gold-light)}
+.seo-hero .brand span{color:var(--mkt-gold)}
 .seo-hero h1{
   font-size:clamp(1.55rem,3.4vw,2.2rem);font-weight:800;line-height:1.4;
   max-width:22ch;margin-bottom:12px;
 }
-.seo-hero h1 em{font-style:normal;color:var(--mkt-gold-light)}
+.seo-hero h1 em{font-style:normal;color:var(--mkt-gold)}
 .seo-hero .dek{color:var(--mkt-muted);font-size:1.05rem;max-width:48ch;margin-bottom:20px}
 .seo-hero .actions{display:flex;flex-wrap:wrap;gap:10px}
 .seo-article{max-width:760px;padding:8px 0 40px}
 .seo-article h2{
-  font-size:1.35rem;font-weight:800;margin:28px 0 10px;color:var(--mkt-gold-light);
+  font-size:1.35rem;font-weight:800;margin:28px 0 10px;color:var(--mkt-gold);
   padding-top:8px;border-top:1px solid var(--mkt-hair);
 }
 .seo-article h2:first-of-type{border-top:0;padding-top:0;margin-top:8px}
@@ -42,7 +42,7 @@ body.mkt-seo{background:#070a10}
 .seo-cta{
   margin:32px 0 8px;padding:22px 18px;border-radius:18px;
   border:1px solid rgba(201,161,74,.28);
-  background:rgba(17,25,37,.9);
+  background:#fff;
 }
 .seo-cta h2{border:0;margin:0 0 8px;padding:0;font-size:1.2rem}
 .seo-cta p{margin-bottom:14px}

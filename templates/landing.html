@@ -3,14 +3,14 @@
 <head>
 {% include 'partials/marketing_gtag.html' %}
 <meta charset="UTF-8">
-{% include 'partials/liftcore_boot.html' %}
+{% include 'partials/marketing_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 {% include 'partials/marketing_seo.html' %}
 <link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=10">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=11">
 <style>
 /* Hero كامل العرض — تركيبة واحدة، العلامة أولاً */
 .hero-bleed{
@@ -24,7 +24,7 @@
 .hero-bleed__media{
   position:absolute;inset:0;
   background:
-    linear-gradient(105deg, rgba(7,10,16,.94) 0%, rgba(7,10,16,.78) 36%, rgba(7,10,16,.35) 68%, rgba(7,10,16,.55) 100%),
+    linear-gradient(105deg, rgba(244,247,251,.94) 0%, rgba(244,247,251,.82) 36%, rgba(244,247,251,.55) 68%, rgba(238,242,248,.78) 100%),
     url("{{ url_for('static', filename='images/liftcore-brand-hero.png') }}") 72% 42% / cover no-repeat;
 }
 .hero-bleed__inner{
@@ -46,7 +46,7 @@
   font-size:clamp(2.1rem,5vw,3rem);
   font-weight:600;line-height:1;direction:ltr;
 }
-.brand-lockup .name span{color:var(--mkt-gold-light)}
+.brand-lockup .name span{color:var(--mkt-gold)}
 .brand-lockup .sub{
   font-size:.76rem;color:var(--mkt-muted);
   letter-spacing:.14em;margin-top:6px;text-transform:uppercase;
@@ -56,7 +56,7 @@
   font-size:clamp(1.7rem,3.8vw,2.45rem);
   line-height:1.35;margin-bottom:14px;
 }
-.hero-bleed h1 em{font-style:normal;color:var(--mkt-gold-light)}
+.hero-bleed h1 em{font-style:normal;color:var(--mkt-gold)}
 .hero-bleed p{
   color:var(--mkt-muted);font-size:1.06rem;max-width:42ch;margin-bottom:26px;
 }
@@ -65,7 +65,7 @@
 .section{padding:28px 0 10px}
 .section-head{max-width:640px;margin-bottom:22px}
 .eyebrow{
-  display:inline-block;color:var(--mkt-gold-light);font-size:.82rem;font-weight:700;
+  display:inline-block;color:var(--mkt-gold);font-size:.82rem;font-weight:700;
   letter-spacing:.08em;margin-bottom:8px;
 }
 .section-head h2{
@@ -75,7 +75,7 @@
 
 .work{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 .work article{padding:8px 4px 4px;border-top:1px solid var(--mkt-hair)}
-.work h3{font-size:1.05rem;font-weight:700;margin:14px 0 6px;color:var(--mkt-gold-light)}
+.work h3{font-size:1.05rem;font-weight:700;margin:14px 0 6px;color:var(--mkt-gold)}
 .work p{color:var(--mkt-muted);font-size:.95rem}
 
 .shots{display:grid;gap:18px;margin-top:8px}
@@ -91,7 +91,7 @@
 .shot-frame{
   display:flex;align-items:center;gap:8px;
   padding:10px 14px;border-bottom:1px solid var(--mkt-line);
-  background:rgba(255,255,255,.02);
+  background:#f8fafc;
 }
 .shot-dots{display:flex;gap:6px}
 .shot-dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18)}
@@ -99,7 +99,7 @@
 .shot-dots i:nth-child(2){background:#e0c070}
 .shot-dots i:nth-child(3){background:#70c090}
 .shot-title{font-size:.82rem;color:var(--mkt-muted)}
-.shot img{width:100%;height:auto;background:#0b0f17}
+.shot img{width:100%;height:auto;background:#eef2f8}
 .shot-caption{padding:14px 16px 16px}
 .shot-caption h3{font-size:1.05rem;margin-bottom:4px}
 .shot-caption p{color:var(--mkt-muted);font-size:.92rem}
@@ -113,7 +113,7 @@
   transition:border-color .2s ease, color .2s ease, background .2s ease;
 }
 .shot-tabs a:hover,.shot-tabs a.is-on{
-  color:var(--mkt-gold-light);border-color:var(--mkt-hair);
+  color:var(--mkt-gold);border-color:var(--mkt-hair);
   background:rgba(201,161,74,.08);
 }
 
@@ -150,10 +150,10 @@
   border:1px solid var(--mkt-line);
   border-radius:16px;
   padding:16px;
-  background:rgba(255,255,255,.02);
+  background:#fff;
 }
 .contact-card .k{font-size:.78rem;color:var(--mkt-muted2);margin-bottom:4px}
-.contact-card .v{font-size:1.02rem;font-weight:700;color:var(--mkt-gold-light);word-break:break-all}
+.contact-card .v{font-size:1.02rem;font-weight:700;color:var(--mkt-gold);word-break:break-all}
 .contact-card + .contact-card{margin-top:10px}
 
 @media (max-width:980px){
@@ -162,7 +162,7 @@
   .contact{grid-template-columns:1fr}
   .hero-bleed__media{
     background:
-      linear-gradient(180deg, rgba(7,10,16,.5) 0%, rgba(7,10,16,.88) 55%, rgba(7,10,16,.96) 100%),
+      linear-gradient(180deg, rgba(244,247,251,.72) 0%, rgba(244,247,251,.92) 55%, rgba(244,247,251,.98) 100%),
       url("{{ url_for('static', filename='images/liftcore-brand-hero.png') }}") 60% 40% / cover no-repeat;
   }
   .hero-bleed{min-height:auto}

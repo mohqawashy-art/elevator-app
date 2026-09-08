@@ -3,27 +3,27 @@
 <head>
 {% include 'partials/marketing_gtag.html' %}
 <meta charset="UTF-8">
-{% include 'partials/liftcore_boot.html' %}
+{% include 'partials/marketing_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 {% include 'partials/marketing_seo.html' %}
 <link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=10">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=11">
 <style>
 /* ═══════════════════════════════════════════
    /start — تركيبة تحويل سينمائية ضمن هوية LiftCore
    ═══════════════════════════════════════════ */
 :root{
-  --x-bg:#05080f;
-  --x-ink:#f3f6fb;
-  --x-mute:#9aa7bb;
-  --x-gold:#e8cd86;
-  --x-gold2:#c9a14a;
-  --x-line:rgba(255,255,255,.10);
-  --x-panel:rgba(12,18,28,.88);
-  --x-field:#152033;
+  --x-bg:#f4f7fb;
+  --x-ink:#1a2433;
+  --x-mute:#5a6578;
+  --x-gold:#9a7420;
+  --x-gold2:#a8842f;
+  --x-line:rgba(15,23,42,.1);
+  --x-panel:#ffffff;
+  --x-field:#f8fafc;
 }
 
 body.mkt-ads{
@@ -45,9 +45,9 @@ body.mkt-ads::before{display:none}
 .x-stage__fx{
   position:absolute;inset:0;z-index:0;pointer-events:none;
   background:
-    radial-gradient(70% 55% at 78% 18%, rgba(201,161,74,.22), transparent 58%),
-    radial-gradient(55% 45% at 12% 78%, rgba(70,120,190,.14), transparent 55%),
-    linear-gradient(165deg, #0a101a 0%, #05080f 46%, #070b14 100%);
+    radial-gradient(70% 55% at 78% 18%, rgba(201,161,74,.12), transparent 58%),
+    radial-gradient(55% 45% at 12% 78%, rgba(59,130,246,.08), transparent 55%),
+    linear-gradient(165deg, #eef2f8 0%, #f4f7fb 46%, #f8fafc 100%);
 }
 .x-stage__fx::before{
   content:"";
@@ -167,7 +167,7 @@ body.mkt-ads::before{display:none}
   background:linear-gradient(90deg, transparent, rgba(232,205,134,.7), transparent);
 }
 .x-form h2{
-  margin:0 0 4px;font-size:1.18rem;font-weight:800;color:#fff;
+  margin:0 0 4px;font-size:1.18rem;font-weight:800;color:var(--x-ink);
 }
 .x-form .lead{
   margin:0 0 16px;color:var(--x-mute);font-size:.88rem;
@@ -179,13 +179,13 @@ body.mkt-ads::before{display:none}
 }
 .x-fields label{
   display:block;margin-bottom:5px;
-  font-size:.78rem;font-weight:700;color:#c9d3e2;
+  font-size:.78rem;font-weight:700;color:var(--x-mute);
 }
 .x-fields input,
 .x-fields textarea{
   width:100%;
   border-radius:12px;
-  border:1px solid rgba(255,255,255,.14);
+  border:1px solid rgba(15,23,42,.12);
   background:var(--x-field);
   color:var(--x-ink);
   padding:12px 13px;font:inherit;outline:none;
@@ -193,9 +193,9 @@ body.mkt-ads::before{display:none}
 }
 .x-fields input:focus,
 .x-fields textarea:focus{
-  border-color:rgba(232,205,134,.55);
-  background:#1a2a40;
-  box-shadow:0 0 0 3px rgba(201,161,74,.14);
+  border-color:rgba(154,116,32,.45);
+  background:#fff;
+  box-shadow:0 0 0 3px rgba(201,161,74,.12);
 }
 .x-fields textarea{min-height:64px;resize:vertical}
 .x-fields .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
@@ -283,7 +283,7 @@ body.mkt-ads::before{display:none}
 .x-ops figure{
   margin:0;border-radius:18px;overflow:hidden;
   border:1px solid var(--x-line);
-  background:#0d1420;
+  background:#fff;
   transform:translateY(10px);opacity:0;
   animation:x-rise .75s ease forwards;
 }
@@ -308,7 +308,7 @@ body.mkt-ads::before{display:none}
   width:min(1240px,94vw);margin:0 auto;
 }
 .x-foot .mkt-footer{
-  border-top-color:rgba(255,255,255,.08);
+  border-top-color:var(--x-line);
   padding-top:16px;padding-bottom:28px;
 }
 
