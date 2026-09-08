@@ -92,6 +92,7 @@
               <th class="th-sort" data-sort-col="days_left">المدة <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="progress_pct">الإنجاز <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="collected_amount">محصّل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="installments_paid">الدفعات <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="remaining_amount">متبقي <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="total">القيمة <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
@@ -237,6 +238,6 @@ window.__INSTALL_CONTRACT_PROJECTS__ = {{ projects_js|tojson }};
 window.__INSTALL_CONTRACT_QUOTATIONS__ = {{ quotations_js|tojson }};
 window.__INSTALL_CONTRACT_CSRF__ = {{ csrf_token()|tojson }};
 </script>
-<script src="{{ url_for('static', filename='installation-contracts.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='installation-contracts.js') }}?v=4"></script>
 </body>
 </html>

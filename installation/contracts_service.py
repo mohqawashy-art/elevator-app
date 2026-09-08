@@ -162,6 +162,58 @@ def sync_install_contract_from_project(project: InstallProject) -> InstallContra
     return contract
 
 
+def record_installment_payment(
+    contract: InstallContract,
+    seq: int,
+    *,
+    amount: float | None = None,
+    received_date: date | None = None,
+    payment_method: str | None = None,
+    notes: str | None = None,
+) -> str | None:
+    """تسجيل سداد دفعة عقد التركيب عبر كارت المشروع."""
+    from installation.models import InstallProjectReceipt
+    from installation.project_card import ensure_project_card_schema
+
+    project = contract.project
+    if not project:
+        return 'لا يوجد مشروع مرتبط بهذا العقد'
+
+    sync_install_contract_from_project(project)
+    inst = next(
+        (i for i in (contract.installments or []) if int(i.seq or 0) == int(seq)),
+        None,
+    )
+    if not inst:
+        return 'الدفعة غير موجودة'
+
+    remaining = inst.remaining_amount
+    if remaining <= 0:
+        return 'هذه الدفعة مسددة بالكامل'
+
+    pay_amount = money_round(amount if amount and amount > 0 else remaining)
+    if pay_amount <= 0:
+        return 'أدخل مبلغ سداد أكبر من صفر'
+    if pay_amount > remaining:
+        pay_amount = remaining
+
+    ensure_project_card_schema()
+    receipt = InstallProjectReceipt(
+        project_id=project.id,
+        installment_no=int(seq),
+        label=(inst.label or '').strip() or f'دفعة {seq}',
+        amount=pay_amount,
+        received_date=received_date or date.today(),
+        payment_method=(payment_method or '').strip() or None,
+        status='مستلمة',
+        notes=(notes or '').strip() or None,
+    )
+    assign_organization(receipt)
+    db.session.add(receipt)
+    sync_install_contract_from_project(project)
+    return None
+
+
 def build_install_contract_summary(contract: InstallContract, project: InstallProject | None = None) -> dict:
     """ملخص العقد للعرض في الجدول أو صفحة التفاصيل."""
     if project is None:
@@ -169,7 +221,11 @@ def build_install_contract_summary(contract: InstallContract, project: InstallPr
     sync_install_contract_from_project(project) if project else None
 
     installments = []
+    paid_count = 0
     for inst in sorted(contract.installments or [], key=lambda x: x.seq or 0):
+        status = inst.status or 'مستحقة'
+        if status == 'محصّلة':
+            paid_count += 1
         installments.append({
             'id': inst.id,
             'seq': inst.seq,
@@ -178,9 +234,11 @@ def build_install_contract_summary(contract: InstallContract, project: InstallPr
             'amount': float(inst.amount or 0),
             'collected_amount': float(inst.collected_amount or 0),
             'remaining_amount': inst.remaining_amount,
-            'status': inst.status,
+            'status': status,
             'due_date': inst.due_date.isoformat() if inst.due_date else None,
         })
+
+    installments_total = len(installments)
 
     days_total = None
     days_elapsed = None
@@ -192,6 +250,9 @@ def build_install_contract_summary(contract: InstallContract, project: InstallPr
         'contract': contract,
         'project': project,
         'installments': installments,
+        'installments_total': installments_total,
+        'installments_paid': paid_count,
+        'installments_unpaid': max(installments_total - paid_count, 0),
         'collected_amount': float(contract.collected_amount or 0),
         'remaining_amount': float(contract.remaining_amount or 0),
         'total': float(contract.total or 0),
@@ -284,6 +345,10 @@ def install_contract_to_js(contract: InstallContract, project: InstallProject | 
         'days_left': _days_left(contract.end_date),
         'quotation_id': contract.quotation_id,
         'quotation_code': contract.quotation.code if contract.quotation else '',
+        'installments_total': len(contract.installments or []),
+        'installments_paid': sum(
+            1 for inst in (contract.installments or []) if (inst.status or '') == 'محصّلة'
+        ),
         'installments': [
             {
                 'seq': inst.seq,

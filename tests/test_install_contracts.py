@@ -288,3 +288,61 @@ def test_manual_install_contract_add(client):
         assert project is not None
         assert project.customer_id == cid
         assert contract_for_project(project) is not None
+
+
+def test_contract_installment_pay(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        ensure_install_contract_schema()
+        ensure_project_card_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(organization_id=org.id, code='C-IC5', name='عميل سداد', status='نشط')
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-IC5',
+            title='مشروع سداد',
+            status='عقد',
+            customer_id=cust.id,
+        )
+        db.session.add_all([cust, project])
+        db.session.flush()
+        q = InstallQuotation(
+            organization_id=org.id,
+            code='QT-IC5',
+            project_id=project.id,
+            customer_id=cust.id,
+            status='مقبول',
+            grand_total=100000,
+            before_tax=86957,
+            vat_amount=13043,
+            pay_advance_pct=50,
+            pay_supply_pct=50,
+        )
+        db.session.add(q)
+        db.session.flush()
+        project.accepted_quotation_id = q.id
+        db.session.commit()
+        project = db.session.get(InstallProject, project.id)
+        q = db.session.get(InstallQuotation, q.id)
+        contract = create_install_contract_for_project(project, q, next_code_fn=_next_code)
+        db.session.commit()
+        contract_id = contract.id
+        with client.session_transaction() as sess:
+            sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        f'/installation/contracts/{contract_id}/installments/1/pay',
+        data={'csrf_token': 'test-csrf', 'amount': '50000', 'received_date': '2026-03-01'},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+
+    with client.application.app_context():
+        contract = db.session.get(InstallContract, contract_id)
+        sync_install_contract_from_project(contract.project)
+        summary = build_install_contract_summary(contract, contract.project)
+        assert summary['installments_paid'] == 1
+        assert summary['installments_total'] >= 1
+        assert float(contract.collected_amount) == 50000
+        first = sorted(contract.installments, key=lambda x: x.seq or 0)[0]
+        assert first.status == 'محصّلة'

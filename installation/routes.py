@@ -419,6 +419,8 @@ def contract_detail(contract_id):
         sync_install_contract_from_project(project)
         db.session.commit()
     summary = build_install_contract_summary(contract, project)
+    from datetime import date as date_cls
+
     return render_template(
         'installation/contract_detail.html',
         summary=summary,
@@ -427,7 +429,42 @@ def contract_detail(contract_id):
         statuses=INSTALL_CONTRACT_STATUSES,
         installment_statuses=INSTALL_CONTRACT_INSTALLMENT_STATUSES,
         page_title=f'عقد {contract.code}',
+        today=date_cls.today().isoformat(),
     )
+
+
+@install_bp.route('/contracts/<int:contract_id>/installments/<int:seq>/pay', methods=['POST'])
+def contract_installment_pay(contract_id, seq):
+    from datetime import date as date_cls
+
+    from installation.contracts_service import ensure_install_contract_schema, record_installment_payment
+    from installation.models import InstallContract
+
+    ensure_install_contract_schema()
+    contract = tenant_get_or_404(InstallContract, contract_id)
+    try:
+        amount = float(request.form.get('amount') or 0)
+    except (TypeError, ValueError):
+        amount = 0
+    date_raw = (request.form.get('received_date') or '').strip()
+    try:
+        received_date = datetime.strptime(date_raw, '%Y-%m-%d').date() if date_raw else date_cls.today()
+    except ValueError:
+        received_date = date_cls.today()
+    err = record_installment_payment(
+        contract,
+        seq,
+        amount=amount if amount > 0 else None,
+        received_date=received_date,
+        payment_method=(request.form.get('payment_method') or '').strip() or None,
+        notes=(request.form.get('notes') or '').strip() or None,
+    )
+    if err:
+        flash(err, 'error')
+    else:
+        db.session.commit()
+        flash('تم تسجيل السداد', 'success')
+    return redirect(url_for('installation.contract_detail', contract_id=contract.id))
 
 
 @install_bp.route('/contracts/<int:contract_id>/update', methods=['POST'])

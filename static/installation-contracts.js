@@ -36,7 +36,7 @@
     defaultCol: 'code',
     defaultDir: 'desc',
     dateCols: ['start_date', 'end_date'],
-    numberCols: ['total', 'collected_amount', 'remaining_amount', 'progress_pct', 'days_left'],
+    numberCols: ['total', 'collected_amount', 'remaining_amount', 'progress_pct', 'days_left', 'installments_paid'],
     getters: {
       customer: function (c) { return c.customer || ''; },
       project_code: function (c) { return c.project_code || ''; },
@@ -113,10 +113,14 @@
       $('table-info').textContent = 'عرض ' + data.length + ' من ' + CONTRACTS.length;
     }
     if (!pg.rows.length) {
-      tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:var(--text3);padding:28px">لا توجد عقود — اضغط «إضافة عقد» أو قبّل عرض سعر لبدء التنفيذ</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text3);padding:28px">لا توجد عقود — اضغط «إضافة عقد» أو قبّل عرض سعر لبدء التنفيذ</td></tr>';
       return;
     }
     tbody.innerHTML = pg.rows.map(function (c) {
+      var paid = Number(c.installments_paid) || 0;
+      var totalInst = Number(c.installments_total) || 0;
+      var instLabel = totalInst ? (paid + '/' + totalInst) : '—';
+      var canPay = c.project_id && totalInst > 0 && paid < totalInst;
       return '<tr onclick="window.InstallContracts.view(' + c.id + ')">' +
         '<td class="td-code">' + esc(c.code) + '</td>' +
         '<td class="td-name">' + esc(c.customer) + '</td>' +
@@ -127,11 +131,16 @@
         '<td>' + formatDays(c) + '</td>' +
         '<td><div style="font-size:11px;margin-bottom:3px">' + (c.progress_pct || 0) + '%</div><div class="ic-progress"><span style="width:' + (c.progress_pct || 0) + '%"></span></div></td>' +
         '<td class="td-amount" style="color:var(--success)">' + fmtAmt(c.collected_amount) + '</td>' +
+        '<td class="td-amount" title="مسدّد من إجمالي الدفعات">' +
+          '<span style="color:var(--success)">' + instLabel + '</span>' +
+          (totalInst ? ' <span style="font-size:11px;color:var(--text3)">مسدّدة</span>' : '') +
+        '</td>' +
         '<td class="td-amount" style="color:var(--warning)">' + fmtAmt(c.remaining_amount) + '</td>' +
         '<td class="td-amount">' + fmtAmt(c.total) + '</td>' +
         '<td>' + statusBadge(c.status) + '</td>' +
         '<td class="td-actions" onclick="event.stopPropagation()">' +
           '<a href="/installation/contracts/' + c.id + '" class="btn btn-primary btn-sm">فتح</a>' +
+          (canPay ? '<a href="/installation/contracts/' + c.id + '#payments" class="btn btn-secondary btn-sm" style="color:var(--gold)">سداد</a>' : '') +
           '<button type="button" class="btn btn-secondary btn-sm" onclick="window.InstallContracts.edit(' + c.id + ')">تعديل</button>' +
         '</td>' +
       '</tr>';
