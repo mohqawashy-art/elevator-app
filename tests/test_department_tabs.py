@@ -1,5 +1,9 @@
 """اختبارات تبويبات منصات الأقسام."""
-from department_portals import department_href_is_active, resolve_department_slug
+from department_portals import (
+    department_href_is_active,
+    resolve_department_slug,
+    resolve_report_group_slug,
+)
 
 
 def test_resolve_department_from_query():
@@ -38,6 +42,14 @@ def test_department_href_is_active_matches_scope():
     )
 
 
+def test_department_href_is_active_rejects_wrong_scope():
+    assert not department_href_is_active(
+        '/clients?scope=maintenance&department=maintenance',
+        '/clients',
+        {'scope': 'installation', 'department': 'installations'},
+    )
+
+
 def test_resolve_department_reports_path():
     slug = resolve_department_slug('/reports/faults', {}, None)
     assert slug == 'reports'
@@ -47,8 +59,8 @@ def test_resolve_department_reports_home():
     slug = resolve_department_slug('/reports', {'department': 'reports'}, None)
     assert slug == 'reports'
 
-    assert not department_href_is_active(
-        '/clients?scope=maintenance&department=maintenance',
-        '/clients',
-        {'scope': 'installation', 'department': 'installations'},
-    )
+
+def test_resolve_report_group_maintenance():
+    assert resolve_report_group_slug('/reports/faults', {}) == 'maintenance'
+    assert resolve_report_group_slug('/reports/financial', {}) == 'finance'
+    assert resolve_report_group_slug('/reports', {}) is None

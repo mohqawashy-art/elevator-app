@@ -1065,6 +1065,15 @@ def department_href_is_active(href: str) -> bool:
 
 
 @app.template_global()
+def report_group_for_request():
+    from department_portals import resolve_report_group_slug
+    try:
+        return resolve_report_group_slug(request.path, request.args)
+    except Exception:
+        return None
+
+
+@app.template_global()
 def has_plan_feature(feature_key: str) -> bool:
     return _plan_feature_ok(feature_key)
 

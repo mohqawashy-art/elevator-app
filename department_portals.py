@@ -31,6 +31,9 @@ PORTAL_UI = {
         'reports_count': '{n} تقارير',
         'no_links': 'لا توجد تبويبات متاحة لصلاحيات حسابك.',
         'no_reports': 'لا توجد تقارير متاحة لصلاحيات حسابك.',
+        'groups_title': 'أقسام التقارير',
+        'groups_count': '{n} أقسام',
+        'hub_link': 'مركز التقارير',
     },
     'en': {
         'back': '← Back to platforms',
@@ -41,6 +44,9 @@ PORTAL_UI = {
         'reports_count': '{n} reports',
         'no_links': 'No tabs available for your account permissions.',
         'no_reports': 'No reports available for your account permissions.',
+        'groups_title': 'Report categories',
+        'groups_count': '{n} categories',
+        'hub_link': 'Reports hub',
     },
 }
 
@@ -155,30 +161,80 @@ DEPARTMENT_PORTALS = {
         'title_en': 'Reports & Analytics Platform',
         'short_title': 'التقارير',
         'short_title_en': 'Reports',
-        'description': 'كل تقارير الشركة — إدارية، تشغيلية، مالية، ومخازن',
-        'description_en': 'All company reports — management, operations, finance, and inventory',
+        'description': 'تقارير الشركة مقسّمة حسب الأقسام — صيانة، مالية، مخازن، وإدارة',
+        'description_en': 'Company reports by category — maintenance, finance, inventory, and management',
         'color': '#5b7cfa',
         'links': (
-            ('كل التقارير', 'All Reports', '/reports', 'reports_home.read'),
-            ('تقرير الداشبورد', 'Dashboard Report', '/reports/dashboard', 'report_dashboard.read'),
-            ('التقرير السنوي للعميل', 'Client Annual Report', '/reports/client-annual', 'report_client_annual.read'),
-            ('تقرير العملاء', 'Clients Report', '/reports/clients', 'report_clients.read'),
-            ('تقرير المصاعد', 'Elevators Report', '/reports/elevators', 'report_elevators.read'),
-            ('تقرير العقود', 'Contracts Report', '/reports/contracts', 'report_contracts.read'),
-            ('تقرير الفنيين', 'Technicians Report', '/reports/technicians', 'report_technicians.read'),
-            ('تقرير زيارات الصيانة', 'Maintenance Visits Report', '/reports/maintenance-visits', 'report_maintenance.read'),
-            ('تقرير الأعطال', 'Faults Report', '/reports/faults', 'report_faults.read'),
-            ('تقرير قطع الغيار', 'Parts Billing Report', '/reports/parts-billing', 'parts_billing.read'),
-            ('تقرير الأصناف', 'Inventory Report', '/reports/inventory', 'report_inventory.read'),
-            ('تقرير حركة المخزن', 'Stock Movements Report', '/reports/stock-movements', 'report_stock.read'),
-            ('التقرير المالي', 'Financial Report', '/reports/financial', 'report_financial.read'),
-            ('الصحة المالية', 'Financial Health', '/reports/financial-health', 'report_financial_health.read'),
-            ('توقعات التحصيل', 'Collection Forecast', '/reports/contract-forecast', 'report_contract_forecast.read'),
-            ('كشف حساب عميل', 'Customer Statement', '/reports/customer-statement', 'report_customer_statement.read'),
-            ('ربحية عميل', 'Customer Profitability', '/reports/customer-profitability', 'report_customer_profitability.read'),
-            ('تقرير الإيرادات', 'Revenues Report', '/reports/revenues', 'report_revenues.read'),
-            ('تقرير المصروفات', 'Expenses Report', '/reports/expenses', 'report_expenses.read'),
-            ('تقرير الفواتير', 'Invoices Report', '/reports/invoices', 'report_invoices.read'),
+            ('مركز التقارير', 'Reports Hub', '/reports', 'reports_home.read'),
+        ),
+        'report_groups': (
+            {
+                'slug': 'management',
+                'title': 'تقارير إدارية',
+                'title_en': 'Management Reports',
+                'color': '#5b7cfa',
+                'items': (
+                    ('تقرير الداشبورد', 'Dashboard Report', '/reports/dashboard', 'report_dashboard.read'),
+                    ('التقرير السنوي للعميل', 'Client Annual Report', '/reports/client-annual', 'report_client_annual.read'),
+                ),
+            },
+            {
+                'slug': 'clients',
+                'title': 'العملاء والعقود',
+                'title_en': 'Clients & Contracts',
+                'color': '#7c6fff',
+                'items': (
+                    ('تقرير العملاء', 'Clients Report', '/reports/clients', 'report_clients.read'),
+                    ('تقرير المصاعد', 'Elevators Report', '/reports/elevators', 'report_elevators.read'),
+                    ('تقرير العقود', 'Contracts Report', '/reports/contracts', 'report_contracts.read'),
+                ),
+            },
+            {
+                'slug': 'maintenance',
+                'title': 'الصيانة والأعطال',
+                'title_en': 'Maintenance & Faults',
+                'color': '#2a7fff',
+                'items': (
+                    ('تقرير زيارات الصيانة', 'Maintenance Visits Report', '/reports/maintenance-visits', 'report_maintenance.read'),
+                    ('تقرير الأعطال', 'Faults Report', '/reports/faults', 'report_faults.read'),
+                    ('تقرير قطع الغيار', 'Parts Billing Report', '/reports/parts-billing', 'parts_billing.read'),
+                ),
+            },
+            {
+                'slug': 'personnel',
+                'title': 'الفنيين والأداء',
+                'title_en': 'Technicians & Performance',
+                'color': '#8c6cff',
+                'items': (
+                    ('تقرير الفنيين', 'Technicians Report', '/reports/technicians', 'report_technicians.read'),
+                ),
+            },
+            {
+                'slug': 'finance',
+                'title': 'المالية والتحليل',
+                'title_en': 'Finance & Analysis',
+                'color': '#e09030',
+                'items': (
+                    ('التقرير المالي', 'Financial Report', '/reports/financial', 'report_financial.read'),
+                    ('الصحة المالية', 'Financial Health', '/reports/financial-health', 'report_financial_health.read'),
+                    ('توقعات التحصيل', 'Collection Forecast', '/reports/contract-forecast', 'report_contract_forecast.read'),
+                    ('كشف حساب عميل', 'Customer Statement', '/reports/customer-statement', 'report_customer_statement.read'),
+                    ('ربحية عميل', 'Customer Profitability', '/reports/customer-profitability', 'report_customer_profitability.read'),
+                    ('تقرير الإيرادات', 'Revenues Report', '/reports/revenues', 'report_revenues.read'),
+                    ('تقرير المصروفات', 'Expenses Report', '/reports/expenses', 'report_expenses.read'),
+                    ('تقرير الفواتير', 'Invoices Report', '/reports/invoices', 'report_invoices.read'),
+                ),
+            },
+            {
+                'slug': 'inventory',
+                'title': 'المخازن والمشتريات',
+                'title_en': 'Inventory & Purchasing',
+                'color': '#1fb87a',
+                'items': (
+                    ('تقرير الأصناف', 'Inventory Report', '/reports/inventory', 'report_inventory.read'),
+                    ('تقرير حركة المخزن', 'Stock Movements Report', '/reports/stock-movements', 'report_stock.read'),
+                ),
+            },
         ),
         'reports': (),
     },
@@ -211,6 +267,36 @@ def home_ui(lang: str = 'ar') -> dict:
     return HOME_UI[_pick_lang(lang)]
 
 
+def _filter_portal_items(
+    items,
+    *,
+    slug: str,
+    permission_ok,
+    install_enabled,
+    feature_ok,
+):
+    allowed = []
+    for item in items:
+        label_ar, label_en, href, permission, *flags = item
+        install_only = bool(flags and flags[0])
+        if install_only and not install_enabled:
+            continue
+        if href.startswith('/inventory') or href.startswith('/stock-movements') or href.startswith('/reports/inventory') or href.startswith('/reports/stock-movements'):
+            if not feature_ok('inventory'):
+                continue
+        if href.startswith('/purchase-orders'):
+            if not feature_ok('purchasing'):
+                continue
+        if permission_ok(permission):
+            separator = '&' if '?' in href else '?'
+            allowed.append({
+                'label': label_ar,
+                'label_en': label_en,
+                'href': f'{href}{separator}department={slug}',
+            })
+    return allowed
+
+
 def _localize_portal(portal: dict, lang: str) -> dict:
     if _pick_lang(lang) != 'en':
         return portal
@@ -222,6 +308,18 @@ def _localize_portal(portal: dict, lang: str) -> dict:
         localized[group] = [
             {**item, 'label': item.get('label_en') or item['label']}
             for item in portal[group]
+        ]
+    if portal.get('report_groups'):
+        localized['report_groups'] = [
+            {
+                **grp,
+                'title': grp.get('title_en') or grp['title'],
+                'items': [
+                    {**item, 'label': item.get('label_en') or item['label']}
+                    for item in grp['items']
+                ],
+            }
+            for grp in portal['report_groups']
         ]
     return localized
 
@@ -256,28 +354,33 @@ def visible_department_portals(
 
         portal = dict(definition)
         portal['slug'] = slug
+        portal['report_groups'] = []
         for group in ('links', 'reports'):
-            allowed = []
-            for item in definition[group]:
-                label_ar, label_en, href, permission, *flags = item
-                install_only = bool(flags and flags[0])
-                if install_only and not install_enabled:
-                    continue
-                if href.startswith('/inventory') or href.startswith('/stock-movements'):
-                    if not feature_ok('inventory'):
-                        continue
-                if href.startswith('/purchase-orders'):
-                    if not feature_ok('purchasing'):
-                        continue
-                if permission_ok(permission):
-                    separator = '&' if '?' in href else '?'
-                    allowed.append({
-                        'label': label_ar,
-                        'label_en': label_en,
-                        'href': f'{href}{separator}department={slug}',
-                    })
-            portal[group] = allowed
-        if portal['links'] or portal['reports']:
+            portal[group] = _filter_portal_items(
+                definition.get(group, ()),
+                slug=slug,
+                permission_ok=permission_ok,
+                install_enabled=install_enabled,
+                feature_ok=feature_ok,
+            )
+        for group_def in definition.get('report_groups', ()):
+            items = _filter_portal_items(
+                group_def.get('items', ()),
+                slug=slug,
+                permission_ok=permission_ok,
+                install_enabled=install_enabled,
+                feature_ok=feature_ok,
+            )
+            if not items:
+                continue
+            portal['report_groups'].append({
+                'slug': group_def['slug'],
+                'title': group_def['title'],
+                'title_en': group_def.get('title_en', group_def['title']),
+                'color': group_def.get('color', definition.get('color', '#5b7cfa')),
+                'items': items,
+            })
+        if portal['links'] or portal['reports'] or portal['report_groups']:
             visible.append(_localize_portal(portal, lang))
     return visible
 
@@ -287,9 +390,28 @@ def _portal_href_entries():
     out = []
     for slug, definition in DEPARTMENT_PORTALS.items():
         for group in ('links', 'reports'):
-            for item in definition[group]:
+            for item in definition.get(group, ()):
+                out.append((slug, item[2]))
+        for group_def in definition.get('report_groups', ()):
+            for item in group_def.get('items', ()):
                 out.append((slug, item[2]))
     return out
+
+
+def resolve_report_group_slug(path: str, args) -> str | None:
+    """تحديد مجموعة التقارير النشطة من المسار الحالي."""
+    req_path = (path or '/').rstrip('/') or '/'
+    if req_path == '/reports':
+        return None
+    if not req_path.startswith('/reports/'):
+        return None
+    reports_def = DEPARTMENT_PORTALS.get('reports', {})
+    for group_def in reports_def.get('report_groups', ()):
+        for item in group_def.get('items', ()):
+            href_path, _href_q = _parse_href(item[2])
+            if href_path == req_path:
+                return group_def['slug']
+    return None
 
 
 def _parse_href(href: str) -> tuple[str, dict[str, str]]:

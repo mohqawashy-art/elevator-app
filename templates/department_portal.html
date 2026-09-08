@@ -26,18 +26,23 @@ html[lang="en"] body{font-family:'DM Sans',sans-serif}
 .portal-hero p{font-size:12px;color:rgba(255,255,255,.85);margin:0}
 .portal-columns{display:grid;grid-template-columns:1.35fr .85fr;gap:17px}
 .portal-columns--single{grid-template-columns:1fr}
+.portal-hub-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.portal-hub-link{display:inline-flex;align-items:center;gap:8px;padding:11px 16px;text-decoration:none;color:var(--p-text);font-size:12px;font-weight:600;border:1px solid color-mix(in srgb,var(--portal) 45%,var(--p-border));border-radius:12px;background:color-mix(in srgb,var(--portal) 10%,var(--p-card))}
+.portal-hub-link:hover{border-color:color-mix(in srgb,var(--portal) 60%,transparent);background:color-mix(in srgb,var(--portal) 16%,var(--p-card))}
+.portal-report-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .portal-section{background:var(--p-card);border:1px solid var(--p-border);border-radius:16px;padding:19px}
+.portal-section--group{border-color:color-mix(in srgb,var(--group-color,var(--portal)) 28%,var(--p-border))}
 .portal-section-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:13px;margin-bottom:13px;border-bottom:1px solid var(--p-border)}
-.portal-section h2{font-size:15px;margin:0}
+.portal-section h2{font-size:15px;margin:0;color:color-mix(in srgb,var(--group-color,var(--portal)) 88%,#fff)}
 .portal-count{font-size:10px;color:var(--p-muted)}
 .portal-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-.portal-section--reports .portal-links{grid-template-columns:1fr}
+.portal-section--reports .portal-links,.portal-section--group .portal-links{grid-template-columns:1fr}
 .portal-link{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;text-decoration:none;color:var(--p-text);font-size:12px;font-weight:500;border:1px solid var(--p-border);border-radius:10px;background:rgba(255,255,255,.02);transition:.15s}
-.portal-link:hover{border-color:color-mix(in srgb,var(--portal) 50%,transparent);background:color-mix(in srgb,var(--portal) 8%,transparent);color:var(--p-text);transform:translateY(-1px)}
+.portal-link:hover{border-color:color-mix(in srgb,var(--group-color,var(--portal)) 50%,transparent);background:color-mix(in srgb,var(--group-color,var(--portal)) 8%,transparent);color:var(--p-text);transform:translateY(-1px)}
 .portal-arrow{color:var(--p-muted);font-size:15px}
 html[lang="en"] .portal-arrow{transform:scaleX(-1)}
 .portal-empty{color:var(--p-muted);font-size:12px;padding:12px}
-@media(max-width:900px){.portal-columns{grid-template-columns:1fr}.content{padding:20px}}
+@media(max-width:900px){.portal-columns,.portal-report-groups{grid-template-columns:1fr}.content{padding:20px}}
 @media(max-width:560px){.content{padding:14px}.portal-hero{padding:22px 18px}.portal-links{grid-template-columns:1fr}}
 </style>
 </head>
@@ -53,9 +58,33 @@ html[lang="en"] .portal-arrow{transform:scaleX(-1)}
       <p>{{ portal.description }}</p>
     </section>
 
+    {% if portal.report_groups %}
+    {% if portal.links %}
+    <div class="portal-hub-row">
+      {% for item in portal.links %}
+      <a class="portal-hub-link" href="{{ item.href }}">{{ item.label }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="portal-report-groups">
+      {% for group in portal.report_groups %}
+      <section class="portal-section portal-section--group" id="group-{{ group.slug }}" style="--group-color: {{ group.color }}">
+        <div class="portal-section-head">
+          <h2>{{ group.title }}</h2>
+          <span class="portal-count">{{ portal_ui.reports_count.format(n=group.items|length) }}</span>
+        </div>
+        <div class="portal-links">
+          {% for item in group.items %}
+          <a class="portal-link" href="{{ item.href }}"><span>{{ item.label }}</span><span class="portal-arrow">←</span></a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endfor %}
+    </div>
+    {% else %}
     <div class="portal-columns{% if not portal.reports %} portal-columns--single{% endif %}">
       <section class="portal-section">
-        <div class="portal-section-head"><h2>{{ portal_ui.reports_title if portal.slug == 'reports' else portal_ui.ops_title }}</h2><span class="portal-count">{{ (portal_ui.reports_count if portal.slug == 'reports' else portal_ui.ops_count).format(n=portal.links|length) }}</span></div>
+        <div class="portal-section-head"><h2>{{ portal_ui.ops_title }}</h2><span class="portal-count">{{ portal_ui.ops_count.format(n=portal.links|length) }}</span></div>
         <div class="portal-links">
           {% for item in portal.links %}
           <a class="portal-link" href="{{ item.href }}"><span>{{ item.label }}</span><span class="portal-arrow">←</span></a>
@@ -78,8 +107,8 @@ html[lang="en"] .portal-arrow{transform:scaleX(-1)}
       </section>
       {% endif %}
     </div>
+    {% endif %}
   </main>
 </div>
 </body>
 </html>
-

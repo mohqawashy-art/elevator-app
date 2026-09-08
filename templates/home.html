@@ -77,9 +77,15 @@ html[lang="en"] body{font-family:'DM Sans',sans-serif}
           </div>
         </div>
         <div class="platform-preview">
+          {% if department.report_groups %}
+          {% for group in department.report_groups[:4] %}
+          <span>{{ group.title }}</span>
+          {% endfor %}
+          {% else %}
           {% for item in (department.links + department.reports)[:4] %}
           <span>{{ item.label }}</span>
           {% endfor %}
+          {% endif %}
         </div>
         <div class="platform-enter">{{ home_ui.enter }}</div>
       </a>
@@ -91,4 +97,4 @@ html[lang="en"] body{font-family:'DM Sans',sans-serif}
 </div>
 </body>
 </html>
-
+
