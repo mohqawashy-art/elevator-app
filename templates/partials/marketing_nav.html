@@ -1,0 +1,17 @@
+{% if mkt_nav_mode == 'landing' %}
+  <a class="mkt-btn mkt-btn-nav" href="#work">مميزات البرنامج</a>
+  <a class="mkt-btn mkt-btn-nav" href="#shots">شاشات البرنامج</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('pricing') }}">الباقة والأسعار</a>
+{% elif mkt_nav_mode == 'pricing' %}
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('index') }}">الرئيسية</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('index') }}#shots">شاشات البرنامج</a>
+  <a class="mkt-btn mkt-btn-nav mkt-btn-nav--current" href="{{ url_for('pricing') }}" aria-current="page">الباقة والأسعار</a>
+{% else %}
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('index') }}">الرئيسية</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('index') }}#shots">شاشات البرنامج</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('pricing') }}">الباقة والأسعار</a>
+{% endif %}
+<a class="mkt-btn mkt-btn-login" href="{{ url_for('login') }}">دخول العملاء</a>
+{% if mkt_nav_show_signup|default(false) %}
+  <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}"{% if signup_external %} target="_blank" rel="noopener"{% endif %}>{{ signup_label }}</a>
+{% endif %}

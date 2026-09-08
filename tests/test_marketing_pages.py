@@ -46,6 +46,9 @@ def test_public_landing_and_pricing_anonymous():
     assert '2,399' in body or '2399' in body
     assert 'جميع أقسام البرنامج مشمولة' in body
     assert 'الفنيون' not in body
+    assert 'الرئيسية' in body
+    assert 'شاشات البرنامج' in body
+    assert 'mkt-btn-login' in body
     assert 'ر.س' in body
     assert 'login' not in (r.headers.get('Location') or '').lower()
     assert 'إرسال طلب التجربة' in body

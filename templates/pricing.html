@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=5">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=10">
 <style>
 .hero{
   padding:28px 0 18px;text-align:center;max-width:760px;margin:0 auto;
@@ -184,16 +184,15 @@
 </style>
 </head>
 <body class="mkt">
+{% set mkt_nav_mode = 'pricing' %}
+{% set mkt_nav_show_signup = true %}
 <div class="mkt-wrap mkt-wrap--wide">
   <header class="mkt-nav">
     <a class="mkt-nav-brand" href="{{ url_for('index') }}">
       <img class="mkt-nav-logo-full" src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}?v=1" alt="LiftCore — الإدارة الذكية للمصاعد">
     </a>
     <div class="mkt-nav-actions">
-      <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('index') }}">التعريف</a>
-      <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('index') }}#shots">لقطات النظام</a>
-      <a class="mkt-btn mkt-btn-outline" href="{{ url_for('login') }}">دخول العملاء</a>
-      <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}"{% if signup_external %} target="_blank" rel="noopener"{% endif %}>{{ signup_label }}</a>
+    {% include 'partials/marketing_nav.html' with context %}
     </div>
   </header>
 

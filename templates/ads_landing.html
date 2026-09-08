@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=9">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=10">
 <style>
 /* ═══════════════════════════════════════════
    /start — تركيبة تحويل سينمائية ضمن هوية LiftCore
@@ -343,9 +343,9 @@ body.mkt-ads::before{display:none}
         <a class="mkt-nav-brand" href="{{ url_for('index') }}">
           <img src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}?v=4" alt="LiftCore">
         </a>
+        {% set mkt_nav_mode = 'compact' %}
         <div class="mkt-nav-actions">
-          <a class="mkt-btn mkt-btn-ghost" href="{{ url_for('pricing') }}">الأسعار</a>
-          <a class="mkt-btn mkt-btn-outline" href="{{ url_for('login') }}">دخول العملاء</a>
+        {% include 'partials/marketing_nav.html' with context %}
         </div>
       </header>
 
