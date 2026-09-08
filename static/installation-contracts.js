@@ -191,6 +191,8 @@
     } else {
       LiftCoreTaxCalc.resetElement(taxBlock);
     }
+  }
+
   function resetForm() {
     $('f-code').value = nextCodeForType('عقد تركيب');
     $('f-type-sel').value = 'عقد تركيب';
@@ -231,7 +233,10 @@
 
   function calcTax() {
     var taxBlock = document.querySelector('#modal-add .lc-tax-block');
-    if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.recalcElement(taxBlock);
+    if (taxBlock && window.LiftCoreTaxCalc) {
+      var calc = taxBlock._lcTaxCalc || LiftCoreTaxCalc.bindFromElement(taxBlock);
+      if (calc) calc.update();
+    }
   }
 
   function openAdd() {
@@ -302,10 +307,20 @@
       body: fd,
       headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
       credentials: 'same-origin',
-    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+    }).then(function (r) {
+      return r.text().then(function (text) {
+        var j = null;
+        try { j = text ? JSON.parse(text) : null; } catch (e) { j = null; }
+        return { ok: r.ok, body: j, status: r.status, raw: text };
+      });
+    })
       .then(function (res) {
         saving = false;
-        if (!res.ok || !res.body || !res.body.ok) {
+        if (!res.body) {
+          alert(res.status === 403 ? 'انتهت الجلسة أو رُفض الطلب — حدّث الصفحة وسجّل الدخول' : 'تعذّر حفظ العقد (استجابة غير متوقعة)');
+          return;
+        }
+        if (!res.ok || !res.body.ok) {
           alert((res.body && res.body.message) || 'تعذّر حفظ العقد');
           return;
         }
