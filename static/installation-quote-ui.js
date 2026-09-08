@@ -437,8 +437,13 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   var UNIT_OPTIONS = ['قطعة', 'متر', 'عدد', 'طقم', 'مقطوع', 'باب', 'كجم', 'م²', 'لفة', 'يوم', 'ساعة'];
-  var LINE_COLS = 7;
+  var LINE_COLS = 6;
   var inventoryItems = cfg.inventoryItems || [];
+  var DEFAULT_STAGES = [
+    'مرحلة 1 — سكك وأبواب',
+    'مرحلة 2 — تركيب كبينة وأحبال وماكينة',
+    'مرحلة 3 — تركيب كنترول وتشغيل'
+  ];
 
   function escapeAttr(s) {
     return String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -459,8 +464,9 @@ document.addEventListener('DOMContentLoaded', function () {
     return Math.round(Number(item.buy_price) || 0);
   }
 
-  function itemSelectHTML(selectedId) {
-    var html = '<select class="f-item"><option value="">— صنف من المخزن —</option>';
+  function itemSelectHTML(selectedId, currentName) {
+    var emptyLabel = currentName ? currentName : '— اختر البند —';
+    var html = '<select class="f-item" title="' + escapeAttr(emptyLabel) + '"><option value="">' + escapeAttr(emptyLabel) + '</option>';
     var i, it, sel, label;
     for (i = 0; i < inventoryItems.length; i++) {
       it = inventoryItems[i];
@@ -474,9 +480,10 @@ document.addEventListener('DOMContentLoaded', function () {
   function applyInventoryToRow(tr, keepPrice) {
     var sel = tr.querySelector('.f-item');
     var item = findInventory(sel ? sel.value : '');
-    if (!item) return;
     var nameEl = tr.querySelector('.f-name');
+    if (!item) return;
     if (nameEl && item.name) nameEl.value = item.name;
+    if (sel) sel.title = (item.code ? item.code + ' — ' : '') + (item.name || '');
     if (item.unit) {
       var unitSel = tr.querySelector('.f-unit');
       var custom = tr.querySelector('.f-unit-custom');
@@ -542,8 +549,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function rowHTML(r) {
     return '<tr class="item-row" data-stage="' + escapeAttr(r.stage) + '">'
-      + '<td>' + itemSelectHTML(r.item_id) + '</td>'
-      + '<td><input class="w-name f-name" type="text" value="' + escapeAttr(r.name) + '"></td>'
+      + '<td class="col-item">' + itemSelectHTML(r.item_id, r.name)
+      + '<input type="hidden" class="f-name" value="' + escapeAttr(r.name || '') + '"></td>'
       + '<td>' + unitCellHTML(r.unit) + '</td>'
       + '<td><input class="f-qty" type="number" min="0" step="1" value="' + Math.round(Number(r.qty) || 0) + '"></td>'
       + '<td><input class="f-price" type="number" min="0" step="1" value="' + Math.round(Number(r.price) || 0) + '"></td>'
@@ -552,19 +559,49 @@ document.addEventListener('DOMContentLoaded', function () {
       + '</tr>';
   }
 
+  function defaultStages() {
+    if (currentMode === 'upgrade') return ['أعمال التحديث'];
+    return DEFAULT_STAGES.slice();
+  }
+
+  function stageHeaderHTML(stage) {
+    return '<tr class="stage-row" data-stage="' + escapeAttr(stage) + '"><td colspan="' + LINE_COLS + '">'
+      + '<div class="stage-row-bar"><span>📦 ' + escapeAttr(stage) + '</span>'
+      + '<button type="button" class="stage-add-btn" data-stage="' + escapeAttr(stage) + '">+ إضافة بند</button>'
+      + '</div></td></tr>';
+  }
+
+  function findStageNode(cls, stage) {
+    var nodes = el('itemsBody').querySelectorAll('tr.' + cls);
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      if (nodes[i].getAttribute('data-stage') === stage) return nodes[i];
+    }
+    return null;
+  }
+
   function renderRows(rows) {
+    rows = rows || [];
     hasBuiltRows = rows.length > 0;
-    var stages = [], byStage = {}, i, r, html = '';
+    var byStage = {}, i, r, html = '', stages = [], seen = {};
     for (i = 0; i < rows.length; i++) {
       r = rows[i];
-      if (!byStage[r.stage]) { byStage[r.stage] = []; stages.push(r.stage); }
+      if (!byStage[r.stage]) byStage[r.stage] = [];
       byStage[r.stage].push(r);
     }
+    stages = defaultStages();
+    for (i = 0; i < stages.length; i++) seen[stages[i]] = true;
+    for (i = 0; i < rows.length; i++) {
+      if (rows[i].stage && !seen[rows[i].stage]) {
+        stages.push(rows[i].stage);
+        seen[rows[i].stage] = true;
+      }
+    }
     for (i = 0; i < stages.length; i++) {
-      html += '<tr class="stage-row" data-stage="' + stages[i] + '"><td colspan="' + LINE_COLS + '">📦 ' + stages[i] + '</td></tr>';
-      var j, list = byStage[stages[i]];
+      html += stageHeaderHTML(stages[i]);
+      var j, list = byStage[stages[i]] || [];
       for (j = 0; j < list.length; j++) { html += rowHTML(list[j]); }
-      html += '<tr class="stage-total" data-stage="' + stages[i] + '"><td colspan="5">إجمالي ' + stages[i] + '</td><td class="st-val" colspan="2">0</td></tr>';
+      html += '<tr class="stage-total" data-stage="' + escapeAttr(stages[i]) + '"><td colspan="4">إجمالي ' + escapeAttr(stages[i]) + '</td><td class="st-val" colspan="2">0</td></tr>';
     }
     el('itemsBody').innerHTML = html;
     bindTable();
@@ -573,33 +610,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function bindTable() {
     var body = el('itemsBody');
-    var inputs = body.querySelectorAll('input');
-    var selects = body.querySelectorAll('select.f-unit, select.f-item');
-    var i;
-    for (i = 0; i < inputs.length; i++) {
-      inputs[i].addEventListener('input', function () {
+    if (!body) return;
+    if (!body.dataset.lcBound) {
+      body.dataset.lcBound = '1';
+      body.addEventListener('input', function () {
         scheduleDraftSave();
         recalc();
       });
-    }
-    for (i = 0; i < selects.length; i++) {
-      selects[i].addEventListener('change', function () {
-        var tr = this.closest('tr');
-        if (this.classList.contains('f-item')) applyInventoryToRow(tr, false);
-        else syncUnitCustomVisibility(tr, true);
+      body.addEventListener('change', function (e) {
+        var tr = e.target.closest('tr.item-row');
+        if (!tr) return;
+        if (e.target.classList.contains('f-item')) applyInventoryToRow(tr, false);
+        else if (e.target.classList.contains('f-unit')) syncUnitCustomVisibility(tr, true);
         scheduleDraftSave();
         recalc();
       });
-    }
-    var dels = body.querySelectorAll('.pricing-del');
-    for (i = 0; i < dels.length; i++) {
-      dels[i].addEventListener('click', function () {
-        this.closest('tr').remove();
-        recalc();
+      body.addEventListener('click', function (e) {
+        var addBtn = e.target.closest('.stage-add-btn');
+        if (addBtn) {
+          e.preventDefault();
+          addRowToStage(addBtn.getAttribute('data-stage'));
+          return;
+        }
+        var del = e.target.closest('.pricing-del');
+        if (del) {
+          del.closest('tr').remove();
+          recalc();
+        }
       });
     }
     var rows = body.querySelectorAll('tr.item-row');
+    var i;
     for (i = 0; i < rows.length; i++) syncUnitCustomVisibility(rows[i]);
+  }
+
+  function rowName(tr) {
+    var sel = tr.querySelector('.f-item');
+    var item = findInventory(sel && sel.value);
+    if (item && item.name) return item.name;
+    var hidden = tr.querySelector('.f-name');
+    if (hidden && hidden.value) return hidden.value;
+    if (sel && sel.options[sel.selectedIndex]) return (sel.options[sel.selectedIndex].text || '').trim();
+    return 'بند';
   }
 
   function collectRows() {
@@ -608,7 +660,7 @@ document.addEventListener('DOMContentLoaded', function () {
     for (i = 0; i < rows.length; i++) {
       out.push({
         stage: rows[i].getAttribute('data-stage') || '',
-        name: rows[i].querySelector('.f-name').value || 'بند',
+        name: rowName(rows[i]),
         unit: readUnit(rows[i]),
         qty: P.num(rows[i].querySelector('.f-qty').value),
         price: P.num(rows[i].querySelector('.f-price').value),
@@ -864,24 +916,34 @@ document.addEventListener('DOMContentLoaded', function () {
     recalc();
   }
 
-  function addManualRow() {
+  function addRowToStage(stage) {
+    stage = stage || defaultStages()[0];
     var body = el('itemsBody');
-    var note = body.querySelector('.pricing-empty');
-    if (note) { body.innerHTML = ''; }
+    if (!body) return;
     hasBuiltRows = true;
+    if (!findStageNode('stage-row', stage)) {
+      var wrap = document.createElement('tbody');
+      wrap.innerHTML = stageHeaderHTML(stage)
+        + rowHTML({ stage: stage, name: '', unit: 'قطعة', qty: 1, price: 0, item_id: '' })
+        + '<tr class="stage-total" data-stage="' + escapeAttr(stage) + '"><td colspan="4">إجمالي ' + escapeAttr(stage) + '</td><td class="st-val" colspan="2">0</td></tr>';
+      while (wrap.firstChild) body.appendChild(wrap.firstChild);
+      bindTable();
+      recalc();
+      return;
+    }
+    var totalRow = findStageNode('stage-total', stage);
     var tr = document.createElement('tr');
-    tr.className = 'item-row';
-    tr.setAttribute('data-stage', 'بنود إضافية');
-    tr.innerHTML = '<td>' + itemSelectHTML('') + '</td>'
-      + '<td><input class="w-name f-name" type="text" placeholder="اسم البند"></td>'
-      + '<td>' + unitCellHTML('قطعة') + '</td>'
-      + '<td><input class="f-qty" type="number" min="0" step="1" value="1"></td>'
-      + '<td><input class="f-price" type="number" min="0" step="1" value="0"></td>'
-      + '<td class="line-total">0</td>'
-      + '<td><button type="button" class="pricing-del">✕</button></td>';
-    body.appendChild(tr);
+    var holder = document.createElement('tbody');
+    holder.innerHTML = rowHTML({ stage: stage, name: '', unit: 'قطعة', qty: 1, price: 0, item_id: '' });
+    tr = holder.firstChild;
+    if (totalRow) totalRow.parentNode.insertBefore(tr, totalRow);
+    else body.appendChild(tr);
     bindTable();
     recalc();
+  }
+
+  function addManualRow() {
+    addRowToStage(defaultStages()[0]);
   }
 
   function switchTab(mode) {
@@ -893,10 +955,7 @@ document.addEventListener('DOMContentLoaded', function () {
     el('tabUpgBtn').className = 'pricing-tab' + (mode === 'upgrade' ? ' active' : '');
     currentMode = mode;
     hasBuiltRows = false;
-    var empty = 'حدد المواصفات ثم اضغط «بناء قائمة القطع»';
-    if (mode === 'extend') empty = 'حدد الوقفات الحالية والأدوار المضافة ثم اضغط «بناء قائمة إضافة الأدوار»';
-    if (mode === 'upgrade') empty = 'اختر مكونات التحديث ثم اضغط «بناء قائمة التحديث»';
-    el('itemsBody').innerHTML = '<tr><td colspan="' + LINE_COLS + '" class="pricing-empty">' + empty + '</td></tr>';
+    renderRows([]);
     el('sumLabor').value = 0;
     syncStagePickStyles();
     if (mode === 'extend') updateExtendHint();
@@ -1037,8 +1096,6 @@ document.addEventListener('DOMContentLoaded', function () {
       if (showMachine) {
         pushPair('نوع الماكينة', spec.machine === 'gearless' ? 'جيرلس MRL' : 'جير بغرفة ماكينة');
       }
-      if (machineOriginTxt) pushPair('بلد منشئ الماكينة', machineOriginTxt);
-      if (panelOriginTxt) pushPair('بلد منشئ اللوحة', panelOriginTxt);
       if (shaftTxt) pushPair('البئر الداخلي', shaftTxt);
       if (showCabin && cabinCalc && cabinCalc.label) pushPair('مقاس الكبينة', cabinCalc.label);
       if (showCabin && P.CABIN_NAMES[spec.cabin]) pushPair('تشطيب الكبينة', P.CABIN_NAMES[spec.cabin]);
@@ -1335,7 +1392,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (el(id)) el(id).addEventListener('change', onStagePickChange);
   });
   syncStagePickStyles();
-  el('addRowBtn').addEventListener('click', addManualRow);
+  if (el('addRowBtn')) el('addRowBtn').addEventListener('click', addManualRow);
   el('previewBtn').addEventListener('click', buildQuote);
   el('saveBtn').addEventListener('click', saveQuote);
   el('printBtn').addEventListener('click', function () { window.print(); });
@@ -1358,6 +1415,8 @@ document.addEventListener('DOMContentLoaded', function () {
   } else {
     if (cfg.preferredQuoteType && ['new', 'upgrade', 'extend'].indexOf(cfg.preferredQuoteType) >= 0) {
       switchTab(cfg.preferredQuoteType);
+    } else {
+      renderRows([]);
     }
     if (cfg.prefill && cfg.prefill.customer_id) {
       if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('cCustomer')) {

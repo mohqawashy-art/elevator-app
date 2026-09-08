@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="{{ user_theme }}" data-lc-no-live-reload="1">
 <head>
 {% include 'installation/_layout_head.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=inv1">
+<link rel="stylesheet" href="{{ url_for('static', filename='installation-quote.css') }}?v=inv2">
 <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 </head>
 <body>
@@ -63,46 +63,9 @@
           </div>
         </div>
 
-        <div class="pricing-card">
-          <h3><span class="step-no">٢</span> بلد المنشئ والماركة <span class="pricing-hint" style="font-weight:400">— يؤثر على سعر الماكينة واللوحة</span></h3>
-          <div class="pricing-grid">
-            <div class="field form-full" style="grid-column:1/-1;margin-top:0">
-              <div style="font-size:12px;font-weight:700;color:var(--text2)">الماكينة</div>
-            </div>
-            <div class="field"><label>بلد منشئ الماكينة</label>
-              <select id="sOrigin">
-                {% for o in machine_origins %}
-                <option value="{{ o.id }}"{% if o.id == 'chinese' %} selected{% endif %}>{{ o.label }}</option>
-                {% endfor %}
-              </select>
-              <input type="text" id="sOriginCustom" placeholder="اسم البلد (مثال: تايواني)" style="display:none;margin-top:6px">
-            </div>
-            <div class="field"><label>ماركة الماكينة</label>
-              <select id="sBrand"></select>
-              <input type="text" id="sBrandCustom" placeholder="اسم الشركة / المورد" style="display:none;margin-top:6px">
-            </div>
-
-            <div class="field form-full" style="grid-column:1/-1;margin-top:4px">
-              <div style="font-size:12px;font-weight:700;color:var(--text2)">لوحة التحكم + الإنفرتر</div>
-            </div>
-            <div class="field"><label>بلد منشئ اللوحة</label>
-              <select id="sPanelOrigin">
-                {% for o in machine_origins %}
-                <option value="{{ o.id }}"{% if o.id == 'chinese' %} selected{% endif %}>{{ o.label }}</option>
-                {% endfor %}
-              </select>
-              <input type="text" id="sPanelOriginCustom" placeholder="اسم البلد (مثال: سويسري)" style="display:none;margin-top:6px">
-            </div>
-            <div class="field"><label>ماركة اللوحة</label>
-              <select id="sPanelBrand"></select>
-              <input type="text" id="sPanelBrandCustom" placeholder="اسم الشركة / المورد" style="display:none;margin-top:6px">
-            </div>
-          </div>
-        </div>
-
         <div id="paneNew">
           <div class="pricing-card">
-            <h3><span class="step-no">٣</span> مواصفات المصعد</h3>
+            <h3><span class="step-no">٢</span> مواصفات المصعد</h3>
             <div class="pricing-hint" style="margin-bottom:10px">اختر <b>بدون</b> لأي مواصفة لإخفائها من عرض السعر (وعدم إدراج بندها إن كانت معدّة/لوحة/كبينة/أبواب).</div>
             <div class="pricing-grid">
               <div class="field"><label>عدد المصاعد</label>
@@ -209,7 +172,7 @@
 
         <div id="paneExtend" style="display:none">
           <div class="pricing-card">
-            <h3><span class="step-no">٣</span> إضافة أدوار لمصعد قائم</h3>
+            <h3><span class="step-no">٢</span> إضافة أدوار لمصعد قائم</h3>
             <div class="pricing-hint" style="margin-bottom:10px">مثال: مصعد راكب 3 أدوار ويحتاج رفع دورين ليصبح 5 — تُسعَّر أعمال التمديد فقط وليس المصعد كاملاً.</div>
             <div class="pricing-grid">
               <div class="field"><label>عدد المصاعد</label>
@@ -266,7 +229,7 @@
 
         <div id="paneUpg" style="display:none">
           <div class="pricing-card">
-            <h3><span class="step-no">٣</span> مكونات التحديث</h3>
+            <h3><span class="step-no">٢</span> مكونات التحديث</h3>
             <div class="pricing-grid" style="margin-bottom:12px">
               <div class="field"><label>عدد المصاعد</label>
                 <input type="number" id="uElevCount" value="1" min="1" max="50" step="1">
@@ -287,22 +250,34 @@
         </div>
 
         <div class="pricing-card">
-          <h3><span class="step-no">٤</span> قائمة البنود <span class="pricing-hint" style="font-weight:400">— حسب مراحل التركيب</span></h3>
+          <h3><span class="step-no">٣</span> قائمة البنود <span class="pricing-hint" style="font-weight:400">— حسب مراحل التركيب</span></h3>
           <div class="pricing-hint" style="margin-bottom:10px;line-height:1.7">
             التسعير على 3 مراحل:
             <b>١) سكك وأبواب</b> ·
             <b>٢) كبينة وأحبال وماكينة</b> ·
             <b>٣) كنترول وتشغيل</b>
-            <br>اربط البند بصنف من المخزن ليُملأ سعر الوحدة تلقائياً ويُحسب الإجمالي حسب الكمية. يمكن الإبقاء على إدخال يدوي.
+            <br>اختر البند من المخزن ليُملأ سعر الوحدة ويُحسب الإجمالي حسب الكمية — أو أضف بنداً داخل المرحلة.
           </div>
-          <div style="overflow-x:auto">
+          <div class="pricing-items-wrap">
             <table class="pricing-items">
-              <thead><tr><th style="width:22%">صنف المخزن</th><th style="width:22%">البند</th><th>الوحدة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th></tr></thead>
-              <tbody id="itemsBody"><tr><td colspan="7" class="pricing-empty">حدد المواصفات ثم اضغط «بناء قائمة القطع»</td></tr></tbody>
+              <colgroup>
+                <col class="col-item">
+                <col class="col-unit">
+                <col class="col-qty">
+                <col class="col-price">
+                <col class="col-total">
+                <col class="col-del">
+              </colgroup>
+              <thead><tr>
+                <th>البند</th>
+                <th>الوحدة</th>
+                <th>الكمية</th>
+                <th>السعر</th>
+                <th>الإجمالي</th>
+                <th></th>
+              </tr></thead>
+              <tbody id="itemsBody"></tbody>
             </table>
-          </div>
-          <div class="pricing-actions">
-            <button type="button" class="btn btn-secondary btn-sm" id="addRowBtn">+ بند يدوي</button>
           </div>
         </div>
       </div>
@@ -310,15 +285,15 @@
       <aside class="pricing-summary">
         <div class="head">ملخص التكلفة</div>
         <div class="body">
-          <div class="sum-row"><span class="lbl">المواد والقطع</span><b id="sumMat">0</b></div>
-          <div class="sum-row"><span class="lbl">المصنعيات</span><input type="number" id="sumLabor" value="0" min="0" step="1"></div>
-          <div class="sum-row"><span class="lbl">نقل ورافعة</span><input type="number" id="sumTrans" value="2000" min="0" step="1"></div>
-          <div class="sum-row"><span class="lbl">مصاريف أخرى</span><input type="number" id="sumOther" value="0" min="0" step="1"></div>
-          <div class="sum-row sub"><span class="lbl">التكلفة قبل الربح</span><b id="sumCost">0</b></div>
-          <div class="sum-row"><span class="lbl">هامش الربح %</span><input type="number" id="sumProfitP" value="20" min="0" max="100"></div>
-          <div class="sum-row"><span class="lbl">قيمة الربح</span><b id="sumProfit">0</b></div>
-          <div class="sum-row sub"><span class="lbl">قبل الضريبة</span><b id="sumBefore">0</b></div>
-          <div class="sum-row"><span class="lbl">ض.ق.م 15%</span><b id="sumVat">0</b></div>
+          <div class="sum-row"><span class="lbl">المواد والقطع</span><b class="amt" id="sumMat">0</b></div>
+          <div class="sum-row"><span class="lbl">المصنعيات</span><input class="amt" type="number" id="sumLabor" value="0" min="0" step="1"></div>
+          <div class="sum-row"><span class="lbl">نقل ورافعة</span><input class="amt" type="number" id="sumTrans" value="2000" min="0" step="1"></div>
+          <div class="sum-row"><span class="lbl">مصاريف أخرى</span><input class="amt" type="number" id="sumOther" value="0" min="0" step="1"></div>
+          <div class="sum-row sub"><span class="lbl">التكلفة قبل الربح</span><b class="amt" id="sumCost">0</b></div>
+          <div class="sum-row"><span class="lbl">هامش الربح %</span><input class="amt amt-pct" type="number" id="sumProfitP" value="20" min="0" max="100"></div>
+          <div class="sum-row"><span class="lbl">قيمة الربح</span><b class="amt" id="sumProfit">0</b></div>
+          <div class="sum-row sub"><span class="lbl">قبل الضريبة</span><b class="amt" id="sumBefore">0</b></div>
+          <div class="sum-row"><span class="lbl">ض.ق.م 15%</span><b class="amt" id="sumVat">0</b></div>
           <div class="sum-grand">
             <span class="k">سقف العرض التقريبي</span>
             <span class="v" id="sumGrand">0 ر.س</span>
@@ -398,7 +373,7 @@ window.__INSTALL_QUOTE__ = {
 };
 </script>
 <script src="{{ url_for('static', filename='installation-pricing.js') }}?v=market1"></script>
-<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=inv1"></script>
+<script src="{{ url_for('static', filename='installation-quote-ui.js') }}?v=inv2"></script>
 {% include 'partials/quick_customer_modal.html' %}
 </body>
 </html>
