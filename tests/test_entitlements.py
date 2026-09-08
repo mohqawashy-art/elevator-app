@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from app import app, db, hash_password
 from entitlements import assert_capacity, resolve_entitlements, set_custom_package, upsert_org_addon
 from models import Elevator, Organization, Settings, Technician, User
-from plan_catalog import CUSTOM_PLAN_KEY, PLAN_CATALOG, normalize_plan
+from plan_catalog import CUSTOM_PLAN_KEY, DEFAULT_PLAN_KEY, PLAN_CATALOG, normalize_plan
 
 
 def _ctx():
@@ -16,7 +16,7 @@ def _ctx():
         db.session.remove()
         db.drop_all()
         db.create_all()
-        org = Organization(slug='packco', name='Pack Co', status='active', plan='basic')
+        org = Organization(slug='packco', name='Pack Co', status='active', plan=DEFAULT_PLAN_KEY)
         db.session.add(org)
         db.session.flush()
         db.session.add(Settings(organization_id=org.id, company_name='Pack Co', tax_pct=15))
@@ -32,32 +32,36 @@ def _ctx():
         yield org.id
 
 
-def test_plan_catalog_has_plus():
-    assert 'plus' in PLAN_CATALOG
-    assert PLAN_CATALOG['plus']['yearly_sar'] == 4590
-    assert normalize_plan('PLUS') == 'plus'
+def test_plan_catalog_single_liftcore():
+    assert DEFAULT_PLAN_KEY in PLAN_CATALOG
+    assert PLAN_CATALOG[DEFAULT_PLAN_KEY]['yearly_sar'] == 2399
+    assert PLAN_CATALOG[DEFAULT_PLAN_KEY]['limits']['elevators'] == 500
+    assert PLAN_CATALOG[DEFAULT_PLAN_KEY]['limits']['office_users'] == 8
+    assert normalize_plan('PLUS') == DEFAULT_PLAN_KEY
+    assert normalize_plan('basic') == DEFAULT_PLAN_KEY
 
 
-def test_basic_limits_and_addon_elevators():
+def test_liftcore_limits_and_addon_elevators():
     gen = _ctx()
     org_id = next(gen)
     with app.app_context():
         org = db.session.get(Organization, org_id)
         ent = resolve_entitlements(org=org)
-        assert ent['limits']['elevators'] == 50
-        assert ent['limits']['technicians'] == 2
-        assert ent['features']['inventory'] is False
+        assert ent['limits']['elevators'] == 500
+        assert ent['limits']['office_users'] == 8
+        assert ent['limits']['storage_gb'] == 8
+        assert ent['features']['inventory'] is True
+        assert ent['features']['installation'] is True
 
-        result = upsert_org_addon(org, addon_key='elevators_10', quantity=2)
+        result = upsert_org_addon(org, addon_key='elevator_unit', quantity=3)
         assert result['ok']
         ent2 = resolve_entitlements(org=org)
-        assert ent2['limits']['elevators'] == 70  # 50 + 20
+        assert ent2['limits']['elevators'] == 503
 
-        result2 = upsert_org_addon(org, addon_key='inventory_pack')
+        result2 = upsert_org_addon(org, addon_key='office_user', quantity=2)
         assert result2['ok']
         ent3 = resolve_entitlements(org=org)
-        assert ent3['features']['inventory'] is True
-        assert ent3['features']['excel_import'] is True
+        assert ent3['limits']['office_users'] == 10
 
 
 def test_custom_package_features_and_limits():
@@ -98,12 +102,10 @@ def test_assert_capacity_blocks_when_full():
     org_id = next(gen)
     with app.app_context():
         org = db.session.get(Organization, org_id)
-        # مستخدم واحد موجود — Basic يسمح بـ 3
         ok = assert_capacity('office_users', org_id=org_id)
         assert ok['ok']
 
-        # املأ حد الفنيين (2)
-        for i in range(2):
+        for i in range(50):
             db.session.add(Technician(
                 organization_id=org_id,
                 code=f'T-{i}',

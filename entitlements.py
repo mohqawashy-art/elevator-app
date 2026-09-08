@@ -9,6 +9,7 @@ from models import Elevator, Organization, OrganizationAddon, Technician, User, 
 from plan_catalog import (
     ADDON_CATALOG,
     CUSTOM_PLAN_KEY,
+    DEFAULT_PLAN_KEY,
     FEATURE_KEYS,
     FEATURE_LABELS_AR,
     LIMIT_KEYS,
@@ -61,7 +62,7 @@ def resolve_entitlements(org: Organization | None = None, org_id: int | None = N
             org_id = current_org_id()
         org = db.session.get(Organization, org_id) if org_id else None
     if org is None:
-        plan_key = 'basic'
+        plan_key = DEFAULT_PLAN_KEY
         plan = plan_definition(plan_key)
         return {
             'plan': plan_key,

@@ -63,10 +63,10 @@ def _login(client):
 
 
 def test_plan_prices():
-    assert plan_price('basic', 'monthly') == 250.0
-    assert plan_price('plus', 'yearly') == 4590.0
-    assert plan_price('pro', 'yearly') == 5400.0
-    assert plan_price('enterprise', 'monthly') == 1000.0
+    assert plan_price('liftcore', 'monthly') == round(2399 / 12, 2)
+    assert plan_price('liftcore', 'yearly') == 2399.0
+    assert plan_price('basic', 'monthly') == round(2399 / 12, 2)
+    assert plan_price('enterprise', 'yearly') == 2399.0
 
 
 def test_record_payment_extends_period():
@@ -130,4 +130,4 @@ def test_refresh_overdue():
         org.billing_status = 'ok'
         status = refresh_billing_status(org, commit=True)
         assert status == 'overdue'
-        assert effective_amount(org) == 250.0
+        assert effective_amount(org) == round(2399 / 12, 2)

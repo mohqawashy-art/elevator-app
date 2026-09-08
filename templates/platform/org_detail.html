@@ -61,7 +61,7 @@
         <label>الباقة</label>
         <select name="plan" id="org-plan-select">
           {% for p in plan_options or [] %}
-          <option value="{{ p.key }}" {% if p.key == org.plan %}selected{% endif %}>{{ p.label }}{% if p.key == 'custom' %} — يدوي{% endif %}</option>
+          <option value="{{ p.key }}" {% if p.key == entitlements.plan %}selected{% endif %}>{{ p.label }}{% if p.key == 'custom' %} — يدوي{% endif %}</option>
           {% else %}
           {% for p in plans %}
           <option value="{{ p }}" {% if p == org.plan %}selected{% endif %}>{{ p }}</option>
@@ -373,7 +373,7 @@
         <label>الباقة</label>
         <select name="plan">
           {% for p in plan_options or [] %}
-          <option value="{{ p.key }}" {% if p.key == org.plan %}selected{% endif %}>{{ p.label }}</option>
+          <option value="{{ p.key }}" {% if p.key == entitlements.plan %}selected{% endif %}>{{ p.label }}</option>
           {% else %}
           {% for p in plans %}
           <option value="{{ p }}" {% if p == org.plan %}selected{% endif %}>{{ p }}</option>

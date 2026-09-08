@@ -42,9 +42,8 @@ def test_public_landing_and_pricing_anonymous():
     assert body.count("gtag('config', 'AW-18388162918')") == 1
     assert "gtag('event', 'trial_request_submit'" in body
     assert "gtag('event', 'whatsapp_click'" in body
-    assert 'Basic' in body
-    assert 'Plus' in body
-    assert '3,000' in body or '3000' in body
+    assert 'LiftCore' in body
+    assert '2,399' in body or '2399' in body
     assert 'ر.س' in body
     assert 'login' not in (r.headers.get('Location') or '').lower()
     assert 'إرسال طلب التجربة' in body
@@ -281,13 +280,13 @@ def test_pricing_not_forced_login_on_public_host():
 
 def test_marketing_context_matches_catalog():
     from marketing_site import build_pricing_addons, build_pricing_plans
-    from plan_catalog import ADDON_CATALOG, PLAN_CATALOG, PLAN_ORDER
+    from plan_catalog import ADDON_PUBLIC_ORDER, DEFAULT_PLAN_KEY, PLAN_CATALOG, PLAN_ORDER
 
     plans = build_pricing_plans()
     assert [p['key'] for p in plans] == list(PLAN_ORDER)
-    assert plans[0]['yearly_sar'] == PLAN_CATALOG['basic']['yearly_sar']
-    assert any(p['featured'] for p in plans)
+    assert plans[0]['yearly_sar'] == PLAN_CATALOG[DEFAULT_PLAN_KEY]['yearly_sar']
+    assert plans[0]['featured'] is True
 
     addons = build_pricing_addons()
-    assert len(addons) == len(ADDON_CATALOG)
-    assert {a['key'] for a in addons} == set(ADDON_CATALOG)
+    assert len(addons) == len(ADDON_PUBLIC_ORDER)
+    assert {a['key'] for a in addons} == set(ADDON_PUBLIC_ORDER)

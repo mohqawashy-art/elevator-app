@@ -8,79 +8,31 @@ from plan_catalog import (
     LIMIT_LABELS_AR,
     PLAN_CATALOG,
     PLAN_ORDER,
-    known_addon_keys,
+    public_addon_keys,
 )
 
 # نصوص تسويقية قصيرة — منفصلة عن حدود الباقة التقنية
 PLAN_MARKETING: dict[str, dict[str, Any]] = {
-    'basic': {
-        'blurb': 'للشركات الناشئة وبداية تنظيم الصيانة اليومية.',
+    'liftcore': {
+        'blurb': 'باقة واحدة شاملة — كل أقسام البرنامج لشركات الصيانة والتركيب.',
         'bullets': [
-            'عملاء ومصاعد وعقود صيانة',
-            'جدولة زيارات وتقارير موقّعة',
-            'أعطال + بوابة الفني',
-            'فواتير مع QR ضريبي (مرحلة 1)',
-            'تقارير تشغيل أساسية',
+            '500 مصعد · 8 مستخدمين · 8 GB تخزين',
+            'صيانة، مخزون، مشتريات، مالية، وتركيب',
+            'عملاء، عقود، زيارات، أعطال، وبوابة الفني',
+            'فواتير ZATCA وتقارير تشغيل ومالية',
+            'نمو مرن بإضافات بسيطة على المتبقي من السنة',
         ],
-        'cta': 'اختر Basic',
-        'featured': False,
-        'badge': None,
-        'cta_style': 'outline',
-    },
-    'plus': {
-        'blurb': 'نفس حدود Basic مع مخزون ومشتريات ومالية أوضح.',
-        'bullets': [
-            'كل مزايا Basic',
-            'مخزون قطع وحركات المخزون',
-            'أوامر شراء ومالية أوضح',
-            'تقارير تشغيل ومالية أوسع',
-            'استيراد Excel',
-        ],
-        'cta': 'ابدأ مع Plus',
+        'cta': 'ابدأ مع LiftCore',
         'featured': True,
-        'badge': 'الأنسب',
+        'badge': 'الباقة الشاملة',
         'cta_style': 'gold',
-    },
-    'pro': {
-        'blurb': 'نفس مزايا Plus بسعة أكبر للأسطول والفريق.',
-        'bullets': [
-            'كل مزايا Plus',
-            'سعة أعلى للمصاعد والفنيين',
-            'تخزين أكبر للملفات والمحاضر',
-            'مناسب للشركات الشغّالة',
-            'مسار ترقية طبيعي من Plus',
-        ],
-        'cta': 'اختر Pro',
-        'featured': False,
-        'badge': None,
-        'cta_style': 'outline',
-    },
-    'enterprise': {
-        'blurb': 'للشركات الكبيرة ومتطلبات الدعم والتخصيص.',
-        'bullets': [
-            'كل مزايا Pro',
-            'وحدة التركيب مشمولة',
-            'دعم أولوية',
-            'حدود أعلى وتخزين أكبر',
-            'تخصيص وعقد سنوي مرن',
-        ],
-        'cta': 'تواصل للمؤسسات',
-        'featured': False,
-        'badge': None,
-        'cta_style': 'outline',
-        'mailto_only': True,
     },
 }
 
 ADDON_BLURBS_AR: dict[str, str] = {
+    'elevator_unit': 'مصعد إضافي واحد على حد أسطولك',
     'office_user': 'حساب إضافي للإدارة أو المحاسبة',
-    'technician': 'وصول كامل لبوابة الفني والتقارير',
-    'elevators_10': 'باقة نمو مرنة لحجم الأسطول',
-    'storage_10gb': 'للمرفقات والصور والمحاضر',
-    'installation': 'عروض ومشاريع وتسليم تركيب',
-    'zatca_phase2': 'عند التفعيل الكامل للمرحلة الثانية',
-    'priority_support': 'أولوية استجابة — مجاني في Enterprise',
-    'inventory_pack': 'مخزون ومشتريات ومالية لباقة Basic',
+    'storage_gb_unit': 'جيجا إضافي للمرفقات والصور والمحاضر',
 }
 
 COMPARE_ROWS: tuple[dict[str, Any], ...] = (
@@ -151,7 +103,7 @@ def build_pricing_addons() -> list[dict[str, Any]]:
 
     rows: list[dict[str, Any]] = []
     live = _safe_live_addons()
-    for key in known_addon_keys():
+    for key in public_addon_keys():
         ad = live.get(key) or ADDON_CATALOG[key]
         rows.append({
             'key': key,
@@ -188,10 +140,7 @@ def build_compare_table(plans: list[dict[str, Any]] | None = None) -> list[dict[
             elif k == 'installation':
                 cells.append('✓' if feats.get('installation') else 'إضافة')
             elif k == 'priority_support':
-                if feats.get('priority_support'):
-                    cells.append('✓')
-                else:
-                    cells.append('إضافة' if key in ('plus', 'pro', 'enterprise') else '—')
+                cells.append('✓' if feats.get('priority_support') else '—')
             else:
                 cells.append('✓' if feats.get(k) else '—')
         rows.append({'label': spec['label'], 'cells': cells, 'is_check': spec['key'] not in (
