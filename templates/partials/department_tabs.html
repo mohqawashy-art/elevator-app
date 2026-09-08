@@ -18,28 +18,6 @@
 
 {% endfor %}
 
-{% if tabs_portal.report_groups %}
-
-{% set active_report_group = report_group_for_request() %}
-
-{% for group in tabs_portal.report_groups %}
-
-<span class="department-tabs-label" style="--portal: {{ group.color }}">{{ group.title }}</span>
-
-{% for item in group['items'] %}
-
-<a class="department-tab department-tab--report{% if department_href_is_active(item.href) %} active{% endif %}{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}"
-
-   href="{{ item.href }}"
-
-   {% if department_href_is_active(item.href) %}aria-current="page"{% endif %}>{{ item.label }}</a>
-
-{% endfor %}
-
-{% endfor %}
-
-{% endif %}
-
 {% endif %}
 
 
