@@ -98,6 +98,7 @@ def run_webview() -> None:
         min_size=(1024, 640),
         confirm_close=True,
         text_select=True,
+        background_color='#070a10',
     )
 
     icon = str(ICON) if ICON.exists() else None
