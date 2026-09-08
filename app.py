@@ -390,7 +390,7 @@ def enforce_admin_password(
                 message_ar=bad_password_ar, message_en=bad_password_en,
             )
         flash(bad_password_ar, 'error')
-        return redirect(request.referrer or url_for('dashboard'))
+        return redirect(request.referrer or url_for('home'))
     from audit_log import log_audit
     log_audit(
         action,
@@ -685,7 +685,7 @@ def enforce_plan_features():
     if path.startswith('/api/'):
         return jsonify({'error': msg}), 403
     flash(msg, 'warn')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('home'))
 
 
 APP_VERSION = os.environ.get('LIFTCORE_VERSION', '4a0a9d8-auth')
@@ -2824,7 +2824,7 @@ def _complete_user_login(user, *, next_url: str | None = None):
         return redirect(url_for('settings', tab='account', force_password=1))
     if next_url and str(next_url).startswith('/'):
         return redirect(next_url)
-    return redirect(url_for('welcome'))
+    return redirect(url_for('home'))
 
 
 @app.route('/manifest.webmanifest')
@@ -2855,7 +2855,7 @@ def web_manifest():
         'short_name': short_name,
         'description': description,
         'id': f'https://{host}/' if host else '/',
-        'start_url': '/dashboard?source=pwa',
+        'start_url': '/home?source=pwa',
         'scope': '/',
         'display': 'standalone',
         'orientation': 'any',

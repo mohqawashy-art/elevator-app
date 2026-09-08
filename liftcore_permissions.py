@@ -414,20 +414,17 @@ PAGE_HOME_PATHS: dict[str, str] = {
 
 
 def first_allowed_path_for_user(user) -> str:
-    """يرجع أول مسار يملك المستخدم قراءته، أو /dashboard."""
+    """يرجع أول مسار يملك المستخدم قراءته، أو /home."""
     if not user:
-        return '/dashboard'
+        return '/home'
     if not is_custom_role(user):
-        return '/dashboard'
+        return '/home'
     grants = effective_permissions(user)
-    # لوحة التحكم دائماً متاحة كصفحة هبوط
     for page in PAGE_DEFS:
         slug = page['slug']
-        if slug == 'dashboard':
-            continue
         if any(page_perm(slug, a) in grants for a in PERM_ACTIONS):
-            return PAGE_HOME_PATHS.get(slug, '/dashboard')
-    return '/dashboard'
+            return PAGE_HOME_PATHS.get(slug, '/home')
+    return '/home'
 
 
 def permission_groups_for_ui() -> list[dict[str, Any]]:

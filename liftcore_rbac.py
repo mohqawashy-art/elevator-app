@@ -116,9 +116,24 @@ def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str 
     role = user.role or ROLE_VIEWER
     path = path or ''
 
-    # شاشة الترحيب ولوحة التحكم متاحتان لأي مستخدم مسجّل (هيكل التطبيق)
-    if path == '/welcome' or path == '/dashboard' or path.startswith('/api/dashboard'):
+    # شاشة الترحيب متاحة لأي مستخدم مسجّل
+    if path == '/welcome':
         return None
+
+    # لوحة التحكم والتنبيهات والـ API المرتبطة — لمن يملك dashboard.read فقط
+    if (
+        path == '/dashboard'
+        or path.startswith('/api/dashboard')
+        or path.startswith('/alerts/')
+    ):
+        from liftcore_permissions import user_has_permission
+        if not user_has_permission(user, 'dashboard.read', settings):
+            return mutation_denied_response(
+                as_json=path.startswith('/api/'),
+                message_ar='ليس لديك صلاحية لوحة التحكم.',
+                message_en='You do not have permission to access the dashboard.',
+                lang=lang,
+            )
 
     if method in MUTATING_METHODS and ep in SELF_SERVICE_POST_ENDPOINTS:
         return None

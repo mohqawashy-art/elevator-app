@@ -19,7 +19,7 @@ def test_login_success_redirects(client):
         'password': 'TestPass123!',
     }, follow_redirects=False)
     assert r.status_code in (302, 303)
-    assert 'welcome' in (r.location or '') or 'dashboard' in (r.location or '')
+    assert 'home' in (r.location or '') or 'welcome' in (r.location or '')
 
 
 def test_login_wrong_password(client):
