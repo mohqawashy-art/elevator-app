@@ -17,10 +17,10 @@ PLAN_MARKETING: dict[str, dict[str, Any]] = {
         'blurb': 'باقة واحدة شاملة — كل أقسام البرنامج لشركات الصيانة والتركيب.',
         'bullets': [
             '500 مصعد · 8 مستخدمين · 8 GB تخزين',
-            'صيانة، مخزون، مشتريات، مالية، وتركيب',
+            'جميع أقسام البرنامج — صيانة، مخزون، مالية، وتركيب',
             'عملاء، عقود، زيارات، أعطال، وبوابة الفني',
             'فواتير ZATCA وتقارير تشغيل ومالية',
-            'نمو مرن بإضافات بسيطة على المتبقي من السنة',
+            'إضافات مرنة: 5 ر.س/مصعد · 40 ر.س/مستخدم · 45 ر.س/GB',
         ],
         'cta': 'ابدأ مع LiftCore',
         'featured': True,
@@ -31,9 +31,24 @@ PLAN_MARKETING: dict[str, dict[str, Any]] = {
 
 ADDON_BLURBS_AR: dict[str, str] = {
     'elevator_unit': 'مصعد إضافي واحد على حد أسطولك',
-    'office_user': 'حساب إضافي للإدارة أو المحاسبة',
+    'office_user': 'مستخدم مكتبي إضافي للإدارة أو المحاسبة',
     'storage_gb_unit': 'جيجا إضافي للمرفقات والصور والمحاضر',
 }
+
+# حدود تُعرض في صفحة الأسعار العامة (بدون فنيين — مشمولون ضمن التشغيل)
+PUBLIC_LIMIT_KEYS = ('elevators', 'office_users', 'storage_gb')
+
+# أقسام البرنامج المشمولة في الباقة الواحدة
+INCLUDED_MODULES: tuple[dict[str, str], ...] = (
+    {'title': 'العملاء والمصاعد', 'desc': 'سجل العملاء، الأسطول، الخريطة، والاستيراد'},
+    {'title': 'العقود والصيانة', 'desc': 'عقود، زيارات، تقارير موقّعة، وجدولة'},
+    {'title': 'الأعطال والطوارئ', 'desc': 'بلاغات، متابعة، وربط بالفني والزيارة'},
+    {'title': 'بوابة الفني', 'desc': 'تطبيق ميداني للفريق والتقارير اليومية'},
+    {'title': 'المخزون والمشتريات', 'desc': 'قطع الغيار، حركات المخزون، وأوامر الشراء'},
+    {'title': 'المالية والفواتير', 'desc': 'فواتير، تحصيل، QR ضريبي، وتقارير'},
+    {'title': 'وحدة التركيب', 'desc': 'فرص بيع، تقديرات، مشاريع، وتسليم'},
+    {'title': 'التقارير والإدارة', 'desc': 'تشغيل، ربحية، Excel، وصلاحيات المستخدمين'},
+)
 
 COMPARE_ROWS: tuple[dict[str, Any], ...] = (
     {'key': 'price', 'label': 'السعر السنوي (ر.س)'},
@@ -67,7 +82,7 @@ def build_pricing_plans() -> list[dict[str, Any]]:
         limits = cat.get('limits') or {}
         plans.append({
             'key': key,
-            'label': cat.get('label') or key.title(),
+            'label': cat.get('label_ar') or cat.get('label') or key.title(),
             'label_ar': cat.get('label_ar') or key,
             'yearly_sar': cat.get('yearly_sar'),
             'monthly_sar': cat.get('monthly_sar'),
@@ -84,7 +99,7 @@ def build_pricing_plans() -> list[dict[str, Any]]:
                         else str(limits.get(lk))
                     ),
                 }
-                for lk in ('elevators', 'office_users', 'technicians', 'storage_gb')
+                for lk in PUBLIC_LIMIT_KEYS
             ],
             'features': cat.get('features') or {},
             'blurb': mkt.get('blurb') or '',
@@ -324,6 +339,7 @@ def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label:
         'plans': plans,
         'addons': build_pricing_addons(),
         'compare_rows': build_compare_table(plans),
+        'included_modules': INCLUDED_MODULES,
         'plan_labels': [p['label'] for p in plans],
         'sales_email': sales_email,
         'sales_mailto': sales_mailto,
@@ -355,6 +371,11 @@ def marketing_seo_context(*, page: str = 'landing') -> dict[str, Any]:
         },
         'areaServed': 'SA',
     }
+    from plan_catalog import DEFAULT_PLAN_KEY, PLAN_CATALOG, _safe_live_plans
+
+    live = _safe_live_plans()
+    plan = live.get(DEFAULT_PLAN_KEY) or PLAN_CATALOG[DEFAULT_PLAN_KEY]
+    yearly_price = int(float(plan.get('yearly_sar') or 2399))
     software = {
         '@type': 'SoftwareApplication',
         'name': 'LiftCore',
@@ -363,7 +384,7 @@ def marketing_seo_context(*, page: str = 'landing') -> dict[str, Any]:
         'offers': {
             '@type': 'Offer',
             'priceCurrency': 'SAR',
-            'price': '3000',
+            'price': str(yearly_price),
             'url': f'{base}/pricing',
         },
         'description': (
@@ -376,10 +397,11 @@ def marketing_seo_context(*, page: str = 'landing') -> dict[str, Any]:
 
     if page == 'pricing':
         return {
-            'page_title': 'أسعار LiftCore — باقات صيانة المصاعد في السعودية',
+            'page_title': 'أسعار LiftCore — باقة واحدة شاملة لصيانة المصاعد',
             'page_description': (
-                'باقات LiftCore لشركات صيانة المصاعد في السعودية — '
-                'اشتراك سنوي من 3,000 ر.س، حدود مصاعد وفنيين واضحة، وإضافات للنمو.'
+                f'باقة LiftCore الواحدة لشركات صيانة المصاعد في السعودية — '
+                f'{yearly_price:,} ر.س سنوياً · 500 مصعد · 8 مستخدمين · 8 GB · '
+                'جميع أقسام البرنامج مشمولة.'
             ),
             'canonical_url': f'{base}/pricing',
             'og_image_url': og_image,

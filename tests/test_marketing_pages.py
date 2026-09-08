@@ -44,6 +44,8 @@ def test_public_landing_and_pricing_anonymous():
     assert "gtag('event', 'whatsapp_click'" in body
     assert 'LiftCore' in body
     assert '2,399' in body or '2399' in body
+    assert 'جميع أقسام البرنامج مشمولة' in body
+    assert 'الفنيون' not in body
     assert 'ر.س' in body
     assert 'login' not in (r.headers.get('Location') or '').lower()
     assert 'إرسال طلب التجربة' in body
@@ -290,3 +292,8 @@ def test_marketing_context_matches_catalog():
     addons = build_pricing_addons()
     assert len(addons) == len(ADDON_PUBLIC_ORDER)
     assert {a['key'] for a in addons} == set(ADDON_PUBLIC_ORDER)
+
+    from marketing_site import INCLUDED_MODULES, PUBLIC_LIMIT_KEYS, marketing_page_context
+    ctx = marketing_page_context(signup_open=False, signup_href='#contact', signup_label='test')
+    assert len(ctx['included_modules']) == len(INCLUDED_MODULES)
+    assert len(plans[0]['limit_rows']) == len(PUBLIC_LIMIT_KEYS)
