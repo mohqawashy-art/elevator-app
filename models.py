@@ -1308,7 +1308,7 @@ class AuditLog(TenantMixin, db.Model):
 
 
 # =============================================
-# الحضور والانصراف — موظفون / فروع / أجهزة ZKTeco
+# الحضور والانصراف — موظفون / فروع / أجهزة بصمة
 # =============================================
 class AttendanceBranch(TenantMixin, db.Model):
     __tablename__ = 'attendance_branches'
@@ -1370,8 +1370,10 @@ class BiometricDevice(TenantMixin, db.Model):
     branch_id = db.Column(db.Integer, db.ForeignKey('attendance_branches.id'))
     serial_number = db.Column(db.String(64), nullable=False)
     name = db.Column(db.String(120), nullable=False)
-    model = db.Column(db.String(80), default='ZKTeco uFace 800')
+    model = db.Column(db.String(80), default='ZKTeco')
+    protocol = db.Column(db.String(32), default='adms_zkteco')
     auth_token = db.Column(db.String(64))
+    auto_registered = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     last_seen_at = db.Column(db.DateTime)
     last_ip = db.Column(db.String(45))

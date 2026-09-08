@@ -17,6 +17,7 @@
   {% set page_title = 'حضور اليوم' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
+    {% include 'partials/flash_messages.html' %}
     {% include 'partials/attendance_subnav.html' %}
     <div class="page-header">
       <div class="page-title">حضور اليوم <span>{{ summary.work_date }}</span></div>
@@ -25,7 +26,38 @@
         <input type="date" class="filter-input" name="date" value="{{ summary.work_date }}" lang="en-GB">
         <button class="btn btn-secondary btn-sm" type="submit">عرض</button>
       </form>
+      {% if has_perm('attendance.create') %}
+      <button type="button" class="btn btn-primary btn-sm" onclick="toggleManualPunch()">تسجيل يدوي</button>
+      {% endif %}
     </div>
+    {% if has_perm('attendance.create') %}
+    <div class="info-panel" id="manual-punch" style="display:none;margin-bottom:14px">
+      <strong>تسجيل حضور/انصراف يدوي</strong> — بدون جهاز بصمة (مفيد حتى يُصلَح الجهاز أو لأجهزة غير مدعومة).
+      <form method="post" action="/attendance/punch/manual" class="filters-bar" style="margin-top:10px;margin-bottom:0;flex-wrap:wrap">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if request.args.get('department') %}<input type="hidden" name="department" value="{{ request.args.get('department') }}">{% endif %}
+        <select class="filter-input" name="employee_id" required style="min-width:200px">
+          <option value="">— الموظف —</option>
+          {% for e in employees_js %}
+          <option value="{{ e.id }}">{{ e.name }} ({{ e.biometric_user_id }})</option>
+          {% endfor %}
+        </select>
+        <input type="date" class="filter-input" name="punch_date" value="{{ summary.work_date }}" required lang="en-GB">
+        <input type="time" class="filter-input" name="punch_time" required>
+        <select class="filter-input" name="punch_type">
+          <option value="in">حضور</option>
+          <option value="out">انصراف</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" type="submit">حفظ</button>
+      </form>
+    </div>
+    <script>
+    function toggleManualPunch(){
+      const el = document.getElementById('manual-punch');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+    </script>
+    {% endif %}
     <div class="stats-row">
       <div class="stat-mini" style="--sm-color:var(--accent)">
         <div class="stat-mini-val">{{ summary.stats.total }}</div>

@@ -1,4 +1,4 @@
-"""ZKTeco ADMS — استقبال uFace 800 وغيره."""
+"""ZKTeco ADMS — استقبال أجهزة ZKTeco المتوافقة مع PUSH."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from flask import Response, request
 
 from attendance.service import (
     bind_device_tenant,
-    find_device_by_serial,
+    get_or_register_adms_device,
     ingest_attendance_punch,
     parse_punch_timestamp,
 )
@@ -28,7 +28,7 @@ def _ok_response(extra: str = '') -> Response:
 
 def _require_device():
     sn = _device_serial()
-    device = find_device_by_serial(sn)
+    device = get_or_register_adms_device(sn)
     if not device:
         return None, Response('Unknown device', status=403, mimetype='text/plain')
     bind_device_tenant(device)

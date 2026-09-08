@@ -1,4 +1,4 @@
-"""موديول الحضور والانصراف — ZKTeco ADMS + واجهات."""
+"""موديول الحضور والانصراف — ADMS + API عام + إدخال يدوي."""
 
 from __future__ import annotations
 

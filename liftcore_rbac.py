@@ -54,6 +54,7 @@ EXEMPT_PATH_PREFIXES = (
     '/field/',
     '/api/field/',
     '/iclock/',
+    '/attendance/api/',
 )
 
 

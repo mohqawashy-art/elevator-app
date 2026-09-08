@@ -228,6 +228,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'attendance_adms.iclock_getrequest',
     'attendance_adms.iclock_devicecmd',
     'attendance_adms.iclock_registry',
+    'attendance.api_punch',
 })
 PUBLIC_PATH_PREFIXES = ('/static',)
 STATIC_UPLOADS_PREFIX = '/static/uploads'

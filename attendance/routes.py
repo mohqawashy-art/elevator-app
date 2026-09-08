@@ -6,13 +6,19 @@ from datetime import date, datetime
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
+from attendance.protocols import PROTOCOL_CHOICES, PROTOCOL_HELP, normalize_protocol
 from attendance.service import (
     device_to_js_dict,
     employee_to_js_dict,
     ensure_default_branch,
+    ensure_manual_device,
     import_technicians_as_employees,
+    ingest_attendance_punch,
     monthly_report,
+    new_device_auth_token,
     next_biometric_user_id,
+    parse_punch_timestamp,
+    punch_status_from_event,
     today_summary,
 )
 from models import AttendanceBranch, AttendanceEmployee, BiometricDevice, db
@@ -142,7 +148,14 @@ def today_page():
     work_date_raw = (request.args.get('date') or '').strip()
     work_date = date.fromisoformat(work_date_raw) if work_date_raw else None
     summary = today_summary(work_date)
-    return render_template('attendance_today.html', summary=summary)
+    employees = tenant_query(AttendanceEmployee).filter_by(status='نشط').order_by(
+        AttendanceEmployee.name.asc(),
+    ).all()
+    return render_template(
+        'attendance_today.html',
+        summary=summary,
+        employees_js=[employee_to_js_dict(e) for e in employees],
+    )
 
 
 @attendance_bp.route('/monthly')
@@ -158,11 +171,14 @@ def monthly_page():
 def devices_page():
     ensure_default_branch()
     devices = tenant_query(BiometricDevice).order_by(BiometricDevice.id.desc()).all()
+    host = (request.host or '').split(':')[0]
     return render_template(
         'attendance_devices.html',
         devices_js=[device_to_js_dict(d) for d in devices],
         branches_js=_branches_js(),
-        server_host='app.liftcoreapp.com',
+        protocol_choices=PROTOCOL_CHOICES,
+        protocol_help=PROTOCOL_HELP,
+        server_host=host,
     )
 
 
@@ -172,6 +188,10 @@ def devices_add():
     branch_id = request.form.get('branch_id', type=int) or branch.id
     serial = (request.form.get('serial_number') or '').strip()
     name = (request.form.get('name') or '').strip()
+    protocol = normalize_protocol(request.form.get('protocol'))
+    if protocol == 'manual':
+        from attendance.service import effective_organization_id_for_attendance
+        serial = serial or f'MANUAL-ORG-{effective_organization_id_for_attendance()}'
     if not serial or not name:
         flash('الرقم التسلسلي واسم الجهاز مطلوبان.', 'error')
         return redirect(url_for('attendance.devices_page', department=request.args.get('department')))
@@ -183,7 +203,9 @@ def devices_add():
         branch_id=branch_id,
         serial_number=serial,
         name=name,
-        model=(request.form.get('model') or 'ZKTeco uFace 800').strip(),
+        model=(request.form.get('model') or 'ZKTeco').strip(),
+        protocol=protocol,
+        auth_token=new_device_auth_token(),
         is_active=True,
     )
     assign_organization(device)
@@ -199,6 +221,7 @@ def devices_edit(device_id):
     device.name = (request.form.get('name') or device.name).strip()
     device.model = (request.form.get('model') or device.model).strip()
     device.branch_id = request.form.get('branch_id', type=int) or device.branch_id
+    device.protocol = normalize_protocol(request.form.get('protocol'), device.protocol or 'adms_zkteco')
     device.is_active = (request.form.get('status') or 'نشط') == 'نشط'
     db.session.commit()
     flash('تم تحديث الجهاز.', 'success')
@@ -227,6 +250,41 @@ def branches_add():
     db.session.commit()
     flash('تمت إضافة الفرع.', 'success')
     return redirect(request.referrer or url_for('attendance.devices_page'))
+
+
+@attendance_bp.route('/punch/manual', methods=['POST'])
+def punch_manual():
+    emp_id = request.form.get('employee_id', type=int)
+    emp = tenant_get_or_404(AttendanceEmployee, emp_id) if emp_id else None
+    if not emp or emp.status != 'نشط':
+        flash('اختر موظفاً نشطاً.', 'error')
+        return redirect(url_for('attendance.today_page', department=request.args.get('department')))
+
+    date_raw = (request.form.get('punch_date') or '').strip()
+    time_raw = (request.form.get('punch_time') or '').strip()
+    ts = parse_punch_timestamp(f'{date_raw} {time_raw}')
+    if not ts:
+        flash('التاريخ أو الوقت غير صالح.', 'error')
+        return redirect(url_for('attendance.today_page', department=request.args.get('department')))
+
+    device = ensure_manual_device()
+    status_code = punch_status_from_event(request.form.get('punch_type') or 'in', default=0)
+    ingest_attendance_punch(
+        device=device,
+        biometric_user_id=emp.biometric_user_id,
+        punched_at=ts,
+        status_code=status_code,
+        verify_mode=0,
+        raw_line='manual',
+    )
+    flash('تم تسجيل الحركة.', 'success')
+    return redirect(url_for('attendance.today_page', date=date_raw, department=request.args.get('department')))
+
+
+@attendance_bp.route('/api/punch', methods=['POST'])
+def api_punch():
+    from attendance.webhook import handle_webhook_punch
+    return handle_webhook_punch()
 
 
 @adms_bp.route('/cdata', methods=['GET', 'POST'])

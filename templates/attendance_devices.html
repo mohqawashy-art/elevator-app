@@ -20,7 +20,7 @@
     {% include 'partials/flash_messages.html' %}
     {% include 'partials/attendance_subnav.html' %}
     <div class="page-header">
-      <div class="page-title">أجهزة ZKTeco (uFace 800)</div>
+      <div class="page-title">أجهزة الحضور والانصراف</div>
       {% if has_perm('attendance.create') %}
       <div class="page-actions">
         <button type="button" class="btn btn-primary btn-sm" onclick="openDevModal()">تسجيل جهاز</button>
@@ -28,15 +28,18 @@
       {% endif %}
     </div>
     <div class="info-panel">
-      <strong>إعداد uFace 800:</strong> Menu → Comm → Cloud Server Settings → Server mode = <code>PUSH</code>،
-      URL Mode = <code>ON</code>، Server Address = <code>{{ server_host }}</code>، Port = <code>443</code>، HTTPS = <code>ON</code>.
-      <br>سجّل الرقم التسلسلي (SN) من ظهر الجهاز في LiftCore قبل أول اتصال.
+      <strong>التوافق:</strong> LiftCore يدعم أكثر من طريقة — اختر البروتوكول عند التسجيل.
+      <ul style="margin:8px 0 0;padding-right:18px;line-height:1.7">
+        <li><strong>ZKTeco ADMS/PUSH</strong> — معظم أجهزة ZKTeco (uFace، SpeedFace، iFace، K40…). يُسجَّل الجهاز تلقائياً عند أول اتصال من نفس النطاق (<code>{{ server_host }}</code>).</li>
+        <li><strong>API عام</strong> — أي جهاز أو تطبيق يرسل HTTP POST برمز الجهاز.</li>
+        <li><strong>إدخال يدوي</strong> — من صفحة «حضور اليوم» بدون جهاز.</li>
+      </ul>
     </div>
     <div class="table-wrap">
       <div class="table-scroll">
         <table>
           <thead>
-            <tr><th>الاسم</th><th>SN</th><th>الموديل</th><th>الفرع</th><th>الاتصال</th><th>آخر ظهور</th><th>إجراءات</th></tr>
+            <tr><th>الاسم</th><th>البروتوكول</th><th>SN / المعرف</th><th>الموديل</th><th>الفرع</th><th>الاتصال</th><th>آخر ظهور</th><th>إجراءات</th></tr>
           </thead>
           <tbody id="dev-body"></tbody>
         </table>
@@ -68,9 +71,28 @@
       <div class="modal-body">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field"><label>اسم الجهاز *</label><input name="name" id="d-name" placeholder="بصمة المكتب الرئيسي" required></div>
-        <div class="field"><label>الرقم التسلسلي SN *</label><input name="serial_number" id="d-sn" required class="td-code"></div>
-        <div class="field"><label>الموديل</label><input name="model" id="d-model" value="ZKTeco uFace 800"></div>
+        <div class="field">
+          <label>البروتوكول *</label>
+          <select name="protocol" id="d-protocol" onchange="syncProtocolFields()">
+            {% for key, label in protocol_choices.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="field-hint" id="d-protocol-help">{{ protocol_help['adms_zkteco'] }}</div>
+        </div>
+        <div class="field" id="d-sn-wrap"><label>الرقم التسلسلي SN</label><input name="serial_number" id="d-sn" class="td-code" placeholder="من About على الجهاز"></div>
+        <div class="field"><label>الموديل</label><input name="model" id="d-model" value="ZKTeco"></div>
         <div class="field"><label>الفرع</label><select name="branch_id" id="d-branch"></select></div>
+        <div class="info-panel" id="d-setup-adms" style="margin-top:8px;font-size:13px">
+          <strong>إعداد ZKTeco:</strong> Comm → Cloud Server → PUSH، URL ON،
+          <code>{{ server_host }}</code>، Port <code>443</code>، HTTPS ON.
+        </div>
+        <div class="info-panel" id="d-setup-webhook" style="display:none;margin-top:8px;font-size:13px">
+          <strong>API:</strong> POST <code>https://{{ server_host }}/attendance/api/punch</code>
+          مع Header <code>Authorization: Bearer &lt;token&gt;</code>
+          وجسم JSON: <code>{"user_id":"1001","timestamp":"2026-09-08 08:00:00","event":"in"}</code>
+          <div id="d-token-preview" style="margin-top:6px"></div>
+        </div>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-secondary btn-sm" onclick="closeDevModal()">إلغاء</button>
@@ -83,27 +105,39 @@
 <script>
 const DEVICES = {{ devices_js|tojson }};
 const BRANCHES = {{ branches_js|tojson }};
+const PROTOCOL_HELP = {{ protocol_help|tojson }};
 const CAN_EDIT = {{ has_perm('attendance.edit')|tojson }};
 function renderDevices(){
   document.getElementById('dev-body').innerHTML = DEVICES.map(d => `
     <tr>
-      <td class="td-name">${d.name}</td>
+      <td class="td-name">${d.name}${d.auto_registered ? ' <span class="badge badge-no" style="font-size:10px">تلقائي</span>' : ''}</td>
+      <td>${d.protocol_label||''}</td>
       <td class="td-code">${d.serial_number}</td>
       <td>${d.model||''}</td>
       <td>${d.branch_name||'—'}</td>
       <td>${d.online ? '<span class="badge badge-available">متصل</span>' : '<span class="badge badge-no">غير متصل</span>'}</td>
       <td class="td-code">${d.last_seen_at ? d.last_seen_at.replace('T',' ').slice(0,16) : '—'}</td>
-      <td class="td-actions">${CAN_EDIT ? `<button class="btn btn-secondary btn-sm" onclick='editDev(${d.id})'>تعديل</button>` : ''}</td>
-    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3)">لا توجد أجهزة</td></tr>';
+      <td class="td-actions">${CAN_EDIT ? `<button class="btn btn-secondary btn-sm" onclick='editDev(${d.id})'>تعديل</button>` : ''}${d.auth_token && d.protocol==='webhook' ? `<button class="btn btn-secondary btn-sm" onclick='showToken(${JSON.stringify(d.auth_token)})'>رمز API</button>` : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3)">لا توجد أجهزة — أو سيُسجَّل أول ZKTeco تلقائياً عند الاتصال</td></tr>';
 }
 function fillBranches(sel){ sel.innerHTML = BRANCHES.map(b => `<option value="${b.id}">${b.name}</option>`).join(''); }
+function syncProtocolFields(){
+  const p = document.getElementById('d-protocol').value;
+  document.getElementById('d-protocol-help').textContent = PROTOCOL_HELP[p] || '';
+  document.getElementById('d-setup-adms').style.display = p === 'adms_zkteco' ? 'block' : 'none';
+  document.getElementById('d-setup-webhook').style.display = p === 'webhook' ? 'block' : 'none';
+  document.getElementById('d-sn-wrap').style.display = p === 'manual' ? 'none' : 'block';
+  if (p === 'manual') document.getElementById('d-name').placeholder = 'إدخال يدوي';
+}
 function openDevModal(){
   document.getElementById('dev-form').action = '/attendance/devices/add';
   document.getElementById('d-name').value = '';
   document.getElementById('d-sn').value = '';
   document.getElementById('d-sn').readOnly = false;
-  document.getElementById('d-model').value = 'ZKTeco uFace 800';
+  document.getElementById('d-model').value = 'ZKTeco';
+  document.getElementById('d-protocol').value = 'adms_zkteco';
   fillBranches(document.getElementById('d-branch'));
+  syncProtocolFields();
   document.getElementById('modal-dev').classList.add('open');
 }
 function editDev(id){
@@ -114,9 +148,14 @@ function editDev(id){
   document.getElementById('d-sn').value = d.serial_number;
   document.getElementById('d-sn').readOnly = true;
   document.getElementById('d-model').value = d.model||'';
+  document.getElementById('d-protocol').value = d.protocol||'adms_zkteco';
   fillBranches(document.getElementById('d-branch'));
   document.getElementById('d-branch').value = d.branch_id||'';
+  syncProtocolFields();
   document.getElementById('modal-dev').classList.add('open');
+}
+function showToken(token){
+  prompt('رمز API — انسخه ولا تشاركه:', token);
 }
 function closeDevModal(){ document.getElementById('modal-dev').classList.remove('open'); }
 renderDevices();

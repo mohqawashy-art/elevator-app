@@ -128,6 +128,7 @@ CSRF_EXEMPT_ENDPOINTS = frozenset({
     'attendance_adms.iclock_getrequest',
     'attendance_adms.iclock_devicecmd',
     'attendance_adms.iclock_registry',
+    'attendance.api_punch',
 })
 
 

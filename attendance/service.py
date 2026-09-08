@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import os
+import secrets
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from flask import g
+from flask import g, request
+
+from attendance.protocols import (
+    PROTOCOL_ADMS_ZKTECO,
+    PROTOCOL_MANUAL,
+    PROTOCOL_WEBHOOK,
+    normalize_protocol,
+    protocol_label,
+)
 from sqlalchemy import and_
 
 from models import (
@@ -17,7 +27,7 @@ from models import (
     Technician,
     db,
 )
-from tenant_scope import assign_organization, tenant_query
+from tenant_scope import assign_organization, tenant_query, _tenant_slug_from_host
 
 RIYADH = ZoneInfo('Asia/Riyadh')
 SHIFT_START = time(8, 0)
@@ -111,23 +121,67 @@ def employee_to_js_dict(emp: AttendanceEmployee) -> dict:
     }
 
 
+def new_device_auth_token() -> str:
+    return secrets.token_urlsafe(24)
+
+
+def punch_status_from_event(raw: str, default: int = 0) -> int:
+    text = (raw or '').strip().lower()
+    if text in ('in', 'checkin', 'check_in', 'check-in', '0', 'حضور'):
+        return 0
+    if text in ('out', 'checkout', 'check_out', 'check-out', '1', 'انصراف'):
+        return 1
+    if text.isdigit():
+        return int(text)
+    return default
+
+
+def resolve_organization_from_host() -> int | None:
+    from models import Organization
+
+    host = (request.host or '').split(':')[0].lower()
+    slug = _tenant_slug_from_host(host)
+    if slug:
+        org = Organization.query.filter_by(slug=slug).first()
+        if org and org.status != 'suspended':
+            return org.id
+        return None
+
+    if host == 'app.liftcoreapp.com':
+        env_slug = (os.environ.get('LIFTCORE_APP_ORG_SLUG') or '').strip()
+        for candidate in filter(None, [env_slug, 'default', 'jama']):
+            org = Organization.query.filter_by(slug=candidate).first()
+            if org:
+                return org.id
+
+    if host in ('127.0.0.1', 'localhost', '::1'):
+        org = Organization.query.filter_by(slug='default').first()
+        return org.id if org else None
+    return None
+
+
 def device_to_js_dict(device: BiometricDevice) -> dict:
     branch_name = device.branch.name if device.branch else ''
     online = False
     if device.last_seen_at:
         online = (datetime.utcnow() - device.last_seen_at) < timedelta(minutes=10)
+    protocol = normalize_protocol(device.protocol)
     return {
         'id': device.id,
         'serial_number': device.serial_number or '',
         'name': device.name or '',
         'model': device.model or '',
+        'protocol': protocol,
+        'protocol_label': protocol_label(protocol),
         'branch_id': device.branch_id,
         'branch_name': branch_name,
         'is_active': bool(device.is_active),
+        'auto_registered': bool(device.auto_registered),
         'online': online,
         'last_seen_at': device.last_seen_at.isoformat() if device.last_seen_at else '',
         'last_ip': device.last_ip or '',
         'firmware': device.firmware or '',
+        'auth_token': device.auth_token or '',
     }
 
 
@@ -140,6 +194,93 @@ def find_device_by_serial(serial_number: str) -> BiometricDevice | None:
         .filter_by(serial_number=sn, is_active=True)
         .first()
     )
+
+
+def find_device_by_token(token: str) -> BiometricDevice | None:
+    tok = (token or '').strip()
+    if not tok:
+        return None
+    return (
+        BiometricDevice.query.execution_options(skip_tenant=True)
+        .filter_by(auth_token=tok, is_active=True)
+        .first()
+    )
+
+
+def get_or_register_adms_device(serial_number: str) -> BiometricDevice | None:
+    sn = (serial_number or '').strip()
+    if not sn:
+        return None
+
+    device = find_device_by_serial(sn)
+    org_id = resolve_organization_from_host()
+    if device:
+        if not device.is_active:
+            return None
+        if normalize_protocol(device.protocol) != PROTOCOL_ADMS_ZKTECO:
+            return None
+        if org_id and device.organization_id != org_id:
+            return None
+        return device
+
+    if not org_id:
+        return None
+
+    g.organization_id = org_id
+    branch = ensure_default_branch()
+    device = BiometricDevice(
+        branch_id=branch.id,
+        serial_number=sn,
+        name=f'جهاز ADMS {sn}',
+        model='ZKTeco',
+        protocol=PROTOCOL_ADMS_ZKTECO,
+        auth_token=new_device_auth_token(),
+        auto_registered=True,
+        is_active=True,
+        organization_id=org_id,
+    )
+    db.session.add(device)
+    db.session.commit()
+    return device
+
+
+def ensure_manual_device() -> BiometricDevice:
+    org_id = effective_organization_id_for_attendance()
+    g.organization_id = org_id
+    branch = ensure_default_branch()
+    serial = f'MANUAL-ORG-{org_id}'
+    device = tenant_query(BiometricDevice).filter_by(
+        serial_number=serial,
+        protocol=PROTOCOL_MANUAL,
+    ).first()
+    if device:
+        return device
+    device = BiometricDevice(
+        branch_id=branch.id,
+        serial_number=serial,
+        name='إدخال يدوي',
+        model='LiftCore',
+        protocol=PROTOCOL_MANUAL,
+        auth_token=new_device_auth_token(),
+        is_active=True,
+    )
+    assign_organization(device)
+    db.session.add(device)
+    db.session.commit()
+    return device
+
+
+def effective_organization_id_for_attendance() -> int:
+    oid = getattr(g, 'organization_id', None)
+    if oid:
+        return oid
+    from tenant_scope import effective_organization_id
+
+    resolved = effective_organization_id()
+    if not resolved:
+        from flask import abort
+        abort(404, description='المؤسسة غير معروفة')
+    return resolved
 
 
 def bind_device_tenant(device: BiometricDevice) -> None:
