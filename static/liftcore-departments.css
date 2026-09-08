@@ -1,0 +1,133 @@
+/* LiftCore — تبويبات منصات الأقسام (تحت الشريط العلوي) */
+
+.department-tabs-wrap {
+  --portal: var(--lc-dept-color, var(--accent, #2a7fff));
+  --p-bg: var(--bg2, #111720);
+  --p-border: var(--border, rgba(100, 160, 255, 0.13));
+  --p-text: var(--text1, #e7edf8);
+  --p-muted: var(--text2, #8a9bb8);
+  background: var(--p-bg);
+  border-bottom: 1px solid var(--p-border);
+  position: sticky;
+  top: var(--lc-header-h, 104px);
+  z-index: 175;
+  width: 100%;
+}
+
+.department-tabs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.department-tabs-title,
+.department-tab,
+.department-tabs-label {
+  display: inline-flex !important;
+  align-items: center;
+  min-height: 32px;
+  margin: 0;
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--p-border);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-decoration: none !important;
+  white-space: nowrap;
+  color: var(--p-muted) !important;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.department-tabs-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--p-text) !important;
+  border-inline-end: 1px solid var(--p-border);
+  border-radius: 0;
+  padding-inline: 2px 14px;
+  margin-inline-end: 8px;
+  background: var(--p-bg) !important;
+}
+
+.department-tabs-label {
+  border-style: dashed;
+  cursor: default;
+}
+
+.department-tab:hover,
+.department-tab.active,
+.department-tab[aria-current="page"] {
+  border-color: color-mix(in srgb, var(--portal) 50%, transparent);
+  background: color-mix(in srgb, var(--portal) 9%, transparent);
+  color: var(--p-text) !important;
+}
+
+.department-tab.active,
+.department-tab[aria-current="page"] {
+  background: color-mix(in srgb, var(--portal) 18%, transparent);
+  border-color: color-mix(in srgb, var(--portal) 55%, transparent);
+  font-weight: 600;
+}
+
+html[data-theme="light"] .department-tabs-wrap {
+  --p-bg: #f8f9fa;
+  --p-border: rgba(26, 26, 46, 0.1);
+  --p-text: #1a1a2e;
+  --p-muted: #4a5568;
+}
+
+html[data-theme="light"] .department-tabs-title,
+html[data-theme="light"] .department-tab,
+html[data-theme="light"] .department-tabs-label {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .department-tabs-title {
+  background: #f8f9fa !important;
+}
+
+html[data-theme="light"] .department-tab:hover:not(.active):not([aria-current="page"]) {
+  background: #e9ecef !important;
+}
+
+html[data-theme="light"] .department-tab.active,
+html[data-theme="light"] .department-tab[aria-current="page"] {
+  background: color-mix(in srgb, var(--portal) 22%, #ffffff) !important;
+  color: var(--p-text) !important;
+}
+
+/* تموضع الشبكة: هيدر → قائمة → تبويبات القسم → المحتوى */
+@media (min-width: 1101px) {
+  html.lc-has-dept-tabs body:has(#sidebar):has(.main) {
+    grid-template-rows: var(--lc-header-h, 104px) auto auto 1fr !important;
+  }
+
+  html.lc-has-dept-tabs body:has(#sidebar) > #sidebar,
+  html.lc-has-dept-tabs body:has(#sidebar) > .sidebar {
+    grid-row: 2 !important;
+  }
+
+  html.lc-has-dept-tabs body:has(#sidebar) > .department-tabs-wrap {
+    grid-row: 3 !important;
+    grid-column: 1 / -1 !important;
+    position: sticky !important;
+    top: calc(var(--lc-header-h, 104px) + var(--lc-topnav-h, 0px)) !important;
+  }
+
+  html.lc-has-dept-tabs body:has(#sidebar) .main > .content {
+    grid-row: 4 !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .department-tabs-wrap {
+    top: 0;
+    position: relative;
+  }
+}

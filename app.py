@@ -967,7 +967,12 @@ def inject_global_template_vars():
     except Exception:
         platform_op = False
     support = _platform_support_context(user=user, settings=s, lang=lang)
-    from department_portals import DEPARTMENT_PORTALS, visible_department_portals
+    from department_portals import (
+        DEPARTMENT_PORTALS,
+        department_href_is_active,
+        resolve_department_slug,
+        visible_department_portals,
+    )
 
     def _perm_ok(perm):
         if not user:
@@ -978,12 +983,15 @@ def inject_global_template_vars():
         except Exception:
             return False
 
-    requested_department = (request.args.get('department') or '').strip()
-    if requested_department in DEPARTMENT_PORTALS:
-        session['active_department'] = requested_department
-    active_department = (
-        requested_department or session.get('active_department') or ''
-    ).strip()
+    session_department = (session.get('active_department') or '').strip()
+    resolved_department = resolve_department_slug(
+        request.path,
+        request.args,
+        session_department,
+    )
+    if resolved_department in DEPARTMENT_PORTALS:
+        session['active_department'] = resolved_department
+    active_department = resolved_department or ''
     active_department_portal = None
     if user and active_department:
         try:
@@ -1045,6 +1053,15 @@ def inject_global_template_vars():
         **support,
         'ui': lambda ar, en: en if lang == 'en' else ar,
     }
+
+
+@app.template_global()
+def department_href_is_active(href: str) -> bool:
+    from department_portals import department_href_is_active as _active
+    try:
+        return _active(href, request.path, request.args)
+    except Exception:
+        return False
 
 
 @app.template_global()

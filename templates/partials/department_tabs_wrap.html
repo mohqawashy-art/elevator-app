@@ -1,0 +1,24 @@
+{% if active_department_portal %}
+<nav class="department-tabs-wrap" aria-label="{{ active_department_portal.short_title }}"
+     style="--portal: {{ active_department_portal.color }}; --lc-dept-color: {{ active_department_portal.color }}">
+  <div class="department-tabs">
+    {% include 'partials/department_tabs.html' %}
+  </div>
+</nav>
+<script>
+(function () {
+  var wrap = document.currentScript && document.currentScript.previousElementSibling;
+  if (!wrap || !wrap.classList || !wrap.classList.contains('department-tabs-wrap')) return;
+  if (wrap.dataset.lcDeptTabsMounted === '1') return;
+  var sidebar = document.getElementById('sidebar');
+  if (!sidebar || !sidebar.parentNode) {
+    document.documentElement.classList.add('lc-has-dept-tabs');
+    return;
+  }
+  sidebar.parentNode.insertBefore(wrap, sidebar.nextSibling);
+  wrap.dataset.lcDeptTabsMounted = '1';
+  document.documentElement.classList.add('lc-has-dept-tabs');
+  if (window.syncTopNavLayout) window.syncTopNavLayout();
+})();
+</script>
+{% endif %}

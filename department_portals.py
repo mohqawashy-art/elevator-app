@@ -277,3 +277,94 @@ def visible_department_portals(
         if portal['links'] or portal['reports']:
             visible.append(_localize_portal(portal, lang))
     return visible
+
+
+def _portal_href_entries():
+    """(slug, raw_href) لكل رابط في تعريفات المنصات."""
+    out = []
+    for slug, definition in DEPARTMENT_PORTALS.items():
+        for group in ('links', 'reports'):
+            for item in definition[group]:
+                out.append((slug, item[2]))
+    return out
+
+
+def _parse_href(href: str) -> tuple[str, dict[str, str]]:
+    from urllib.parse import parse_qs, urlparse
+
+    parsed = urlparse(href or '')
+    path = (parsed.path or '/').rstrip('/') or '/'
+    query = {}
+    for key, vals in parse_qs(parsed.query, keep_blank_values=True).items():
+        if vals:
+            query[key] = vals[0]
+    return path, query
+
+
+def _request_query_map(args) -> dict[str, str]:
+    if not args:
+        return {}
+    try:
+        return {k: (args.get(k) or '') for k in args.keys()}
+    except Exception:
+        return {}
+
+
+def department_href_is_active(href: str, path: str, args) -> bool:
+    """هل الرابط الحالي يطابق تبويب القسم؟"""
+    href_path, href_q = _parse_href(href)
+    req_path = (path or '/').rstrip('/') or '/'
+    if href_path != req_path:
+        return False
+    req_q = _request_query_map(args)
+    for key, value in href_q.items():
+        if key == 'department':
+            continue
+        if str(req_q.get(key, '')) != str(value):
+            return False
+    return True
+
+
+def resolve_department_slug(path: str, args, session_slug: str | None = None) -> str | None:
+    """تحديد منصة القسم من ?department= أو من مسار الصفحة أو الجلسة."""
+    explicit = (args.get('department') if args else '') or ''
+    explicit = str(explicit).strip()
+    if explicit in DEPARTMENT_PORTALS:
+        return explicit
+
+    req_path = (path or '/').rstrip('/') or '/'
+    if req_path.startswith('/departments/'):
+        parts = [p for p in req_path.split('/') if p]
+        if len(parts) >= 2 and parts[1] in DEPARTMENT_PORTALS:
+            return parts[1]
+
+    req_q = _request_query_map(args)
+    candidates: list[tuple[int, str]] = []
+
+    for slug, href in _portal_href_entries():
+        href_path, href_q = _parse_href(href)
+        if href_path != req_path:
+            continue
+        ok = True
+        for key, value in href_q.items():
+            if str(req_q.get(key, '')) != str(value):
+                ok = False
+                break
+        if not ok:
+            continue
+        if not href_q and any(k in req_q for k in ('scope', 'kind', 'tab')):
+            continue
+        candidates.append((len(href_q), slug))
+
+    if not candidates:
+        sess = (session_slug or '').strip()
+        return sess if sess in DEPARTMENT_PORTALS else None
+
+    candidates.sort(key=lambda x: (-x[0], x[1]))
+    slugs = [slug for _, slug in candidates]
+    if len(slugs) == 1:
+        return slugs[0]
+    sess = (session_slug or '').strip()
+    if sess in slugs:
+        return sess
+    return slugs[0]
