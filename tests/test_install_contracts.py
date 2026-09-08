@@ -426,3 +426,63 @@ def test_contract_document_upload_and_delete(client):
 
     with client.application.app_context():
         assert InstallContractDocument.query.filter_by(contract_id=contract_id).count() == 0
+
+
+def test_contract_installment_edit(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        ensure_install_contract_schema()
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(organization_id=org.id, code='C-IC7', name='عميل تعديل دفعة', status='نشط')
+        project = InstallProject(
+            organization_id=org.id,
+            code='PRJ-IC7',
+            title='مشروع تعديل',
+            status='عقد',
+            customer_id=cust.id,
+        )
+        db.session.add_all([cust, project])
+        db.session.flush()
+        q = InstallQuotation(
+            organization_id=org.id,
+            code='QT-IC7',
+            project_id=project.id,
+            customer_id=cust.id,
+            status='مقبول',
+            grand_total=100000,
+        )
+        db.session.add(q)
+        db.session.flush()
+        project.accepted_quotation_id = q.id
+        db.session.commit()
+        project = db.session.get(InstallProject, project.id)
+        q = db.session.get(InstallQuotation, q.id)
+        contract = create_install_contract_for_project(project, q, next_code_fn=_next_code)
+        db.session.commit()
+        contract_id = contract.id
+        first = sorted(contract.installments, key=lambda x: x.seq or 0)[0]
+        seq = first.seq
+        with client.session_transaction() as sess:
+            sess['_csrf_token'] = 'test-csrf'
+
+    resp = client.post(
+        f'/installation/contracts/{contract_id}/installments/{seq}/edit',
+        data={
+            'csrf_token': 'test-csrf',
+            'label': 'دفعة مقدمة معدّلة',
+            'pct': '55',
+            'amount': '55000',
+            'due_date': '2026-06-01',
+            'notes': 'تعديل اختبار',
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+
+    with client.application.app_context():
+        contract = db.session.get(InstallContract, contract_id)
+        inst = next(i for i in contract.installments if i.seq == seq)
+        assert inst.label == 'دفعة مقدمة معدّلة'
+        assert float(inst.amount) == 55000
+        assert inst.due_date.isoformat() == '2026-06-01'
+        assert inst.notes == 'تعديل اختبار'

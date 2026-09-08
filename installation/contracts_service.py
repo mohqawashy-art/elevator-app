@@ -214,6 +214,66 @@ def record_installment_payment(
     return None
 
 
+def update_install_contract_installment(
+    contract: InstallContract,
+    seq: int,
+    form,
+) -> str | None:
+    """تعديل بيانات دفعة مجدولة على عقد التركيب."""
+    inst = next(
+        (i for i in (contract.installments or []) if int(i.seq or 0) == int(seq)),
+        None,
+    )
+    if not inst:
+        return 'الدفعة غير موجودة'
+
+    label = (form.get('label') or '').strip()
+    if not label:
+        return 'أدخل وصف الدفعة'
+    try:
+        pct = float(form.get('pct') or 0)
+        amount = money_round(form.get('amount') or 0)
+    except (TypeError, ValueError):
+        return 'المبلغ أو النسبة غير صالحة'
+    if amount <= 0:
+        return 'أدخل مبلغ الدفعة'
+
+    collected = float(inst.collected_amount or 0)
+    if amount < collected:
+        return 'مبلغ الدفعة لا يمكن أن يكون أقل من المحصّل'
+
+    due_raw = (form.get('due_date') or '').strip()
+    due_date = None
+    if due_raw:
+        try:
+            due_date = datetime.strptime(due_raw, '%Y-%m-%d').date()
+        except ValueError:
+            return 'تاريخ الاستحقاق غير صالح'
+
+    inst.label = label
+    inst.pct = pct
+    inst.amount = amount
+    inst.due_date = due_date
+    inst.notes = (form.get('notes') or '').strip() or None
+    if collected >= amount:
+        inst.status = 'محصّلة'
+    elif collected > 0:
+        inst.status = 'جزئية'
+    else:
+        inst.status = 'مستحقة'
+
+    rows = [
+        {'label': i.label, 'pct': float(i.pct or 0)}
+        for i in sorted(contract.installments or [], key=lambda x: x.seq or 0)
+    ]
+    contract.pay_schedule_json = json.dumps(rows, ensure_ascii=False)
+
+    project = contract.project
+    if project:
+        sync_install_contract_from_project(project)
+    return None
+
+
 def build_install_contract_summary(contract: InstallContract, project: InstallProject | None = None) -> dict:
     """ملخص العقد للعرض في الجدول أو صفحة التفاصيل."""
     if project is None:
@@ -236,6 +296,7 @@ def build_install_contract_summary(contract: InstallContract, project: InstallPr
             'remaining_amount': inst.remaining_amount,
             'status': status,
             'due_date': inst.due_date.isoformat() if inst.due_date else None,
+            'notes': inst.notes or '',
         })
 
     installments_total = len(installments)

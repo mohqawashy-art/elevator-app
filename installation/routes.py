@@ -471,6 +471,25 @@ def contract_document_delete(contract_id, doc_id):
     return redirect(url_for('installation.contract_detail', contract_id=contract.id) + '#contract-documents')
 
 
+@install_bp.route('/contracts/<int:contract_id>/installments/<int:seq>/edit', methods=['POST'])
+def contract_installment_edit(contract_id, seq):
+    from installation.contracts_service import (
+        ensure_install_contract_schema,
+        update_install_contract_installment,
+    )
+    from installation.models import InstallContract
+
+    ensure_install_contract_schema()
+    contract = tenant_get_or_404(InstallContract, contract_id)
+    err = update_install_contract_installment(contract, seq, request.form)
+    if err:
+        flash(err, 'error')
+    else:
+        db.session.commit()
+        flash('تم تحديث الدفعة', 'success')
+    return redirect(url_for('installation.contract_detail', contract_id=contract.id) + '#payments')
+
+
 @install_bp.route('/contracts/<int:contract_id>/installments/<int:seq>/pay', methods=['POST'])
 def contract_installment_pay(contract_id, seq):
     from datetime import date as date_cls
