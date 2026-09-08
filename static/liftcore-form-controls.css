@@ -144,6 +144,66 @@ table.pricing-items input[type="number"],
   border-radius: var(--lc-input-radius) !important;
 }
 
+/* شريط الفلاتر — كل الحقول في سطر واحد (تجاوز width:100% العام) */
+.filters-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filters-bar .search-wrap {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.filters-bar .search-wrap .search-input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.filters-bar > .filter-input,
+.filters-bar > .filter-select,
+.filters-bar > .filter-group,
+.filters-bar > .btn {
+  flex: 0 0 auto;
+}
+
+.filters-bar .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.filters-bar .filter-group .filter-input,
+.filters-bar .filter-group .filter-select,
+.filters-bar > .filter-input,
+.filters-bar > .filter-select {
+  width: auto !important;
+  max-width: none !important;
+}
+
+.filters-bar .filter-input[type="date"],
+.filters-bar .filter-input[type="month"] {
+  min-width: 132px;
+}
+
+.filters-bar .filter-select {
+  min-width: 120px;
+  max-width: 220px;
+}
+
+.filters-bar .filter-label {
+  font-size: 10px;
+  color: var(--text3, #4a5a72);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* تعطيل */
 input:disabled,
 select:disabled,
