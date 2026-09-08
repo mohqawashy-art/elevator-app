@@ -71,7 +71,7 @@
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-label', L('شاشة الحفظ', 'Screensaver'));
     overlay.innerHTML =
-      '<video id="lc-idle-screensaver-video" playsinline muted loop preload="auto"></video>'
+      '<video id="lc-idle-screensaver-video" playsinline muted loop preload="none"></video>'
       + '<div class="lc-idle-hint">' + L('حرّك الماوس أو اضغط أي مفتاح لإدخال كلمة المرور', 'Move mouse or press a key to unlock') + '</div>'
       + '<div class="lc-idle-unlock" hidden>'
       + '  <div class="lc-idle-unlock-card">'
@@ -96,7 +96,7 @@
     document.body.appendChild(overlay);
 
     video = overlay.querySelector('video');
-    video.src = VIDEO_SRC;
+    video.preload = 'none';
     unlockPanel = overlay.querySelector('.lc-idle-unlock');
     passwordInput = overlay.querySelector('#lc-idle-unlock-pw');
     unlockBtn = overlay.querySelector('#lc-idle-unlock-btn');
@@ -206,6 +206,10 @@
     }
 
     video.currentTime = 0;
+    if (!video.src) {
+      video.preload = 'auto';
+      video.src = VIDEO_SRC;
+    }
     var playPromise = video.play();
     if (playPromise && typeof playPromise.catch === 'function') {
       playPromise.catch(function () {});
@@ -301,7 +305,10 @@
   function init() {
     if (!document.body || document.body.getAttribute('data-lc-idle-screensaver') === 'off') return;
     var cfg = saverConfig();
-    var resumeLocked = global.__LC_SESSION_LOCKED || isClientLocked();
+    if (isClientLocked() && !global.__LC_SESSION_LOCKED) {
+      clearClientLock();
+    }
+    var resumeLocked = !!global.__LC_SESSION_LOCKED;
     if (!cfg.enabled && !resumeLocked) return;
 
     var events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel', 'click'];
@@ -313,8 +320,8 @@
       if (!document.hidden && !active && (cfg.enabled || resumeLocked)) schedule();
     });
 
-    global.addEventListener('pagehide', function () {
-      if (active) beaconLockSession();
+    window.addEventListener('pageshow', function () {
+      document.documentElement.classList.remove('lc-nav-pending');
     });
 
     if (resumeLocked) {

@@ -270,8 +270,23 @@
       var u = new URL(href, location.origin);
       if (u.origin !== location.origin) return;
       if (u.pathname === location.pathname && u.search === location.search) return;
+      if (/(?:^|[?&])(popup|print)=1(?:&|$)/.test(u.search)) return;
     } catch (e) { return; }
     document.documentElement.classList.add('lc-nav-pending');
+  }
+
+  function bindGlobalNavPending() {
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('a[href]');
+      if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+      if (a.closest('[data-lc-no-instant]')) return;
+      var href = a.getAttribute('href');
+      if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
+      markNavPending(href);
+    }, true);
+    window.addEventListener('pageshow', function () {
+      document.documentElement.classList.remove('lc-nav-pending');
+    });
   }
 
   function scrollNavItemIntoView(link) {
@@ -380,6 +395,7 @@
     window.addEventListener('resize', syncDeviceClass);
     updateFullscreenIcon();
     bindSidebarNav();
+    bindGlobalNavPending();
     bindSidebarLayout();
     if (window.LiftCoreFormat) {
       LiftCoreFormat.initHeaderDates();

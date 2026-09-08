@@ -36,12 +36,12 @@
 {% include 'partials/liftcore_i18n_scripts.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-currency.css') }}?v=17">
 <link rel="stylesheet" href="{{ url_for('static', filename='lc-client-select.css') }}?v=4">
-<script src="{{ url_for('static', filename='lc-client-select.js') }}?v=8"></script>
+<script src="{{ url_for('static', filename='lc-client-select.js') }}?v=8" defer></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-filter-multi.css') }}?v=1">
-<script src="{{ url_for('static', filename='liftcore-filter-multi.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='liftcore-format.js') }}?v=21"></script>
-<script src="{{ url_for('static', filename='liftcore-csv-export.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='liftcore-nav.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='liftcore-filter-multi.js') }}?v=1" defer></script>
+<script src="{{ url_for('static', filename='liftcore-format.js') }}?v=21" defer></script>
+<script src="{{ url_for('static', filename='liftcore-csv-export.js') }}?v=1" defer></script>
+<script src="{{ url_for('static', filename='liftcore-nav.js') }}?v=3" defer></script>
 <script>
 (function () {
   if (!Number.prototype.__lcWesternPatched) {
@@ -83,26 +83,26 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-sticky-top.css') }}?v=6">
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-mobile-touch.css') }}?v=2">
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-departments.css') }}?v=12">
-<script src="{{ url_for('static', filename='liftcore-live.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='liftcore-shell.js') }}?v=26"></script>
-<script src="{{ url_for('static', filename='liftcore-instant-nav.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='liftcore-live.js') }}?v=6" defer></script>
+<script src="{{ url_for('static', filename='liftcore-shell.js') }}?v=27" defer></script>
+<script src="{{ url_for('static', filename='liftcore-instant-nav.js') }}?v=4" defer></script>
 <script src="{{ url_for('static', filename='admin-offline.js') }}?v=1" defer></script>
-<script src="{{ url_for('static', filename='liftcore-hotkeys.js') }}?v=4"></script>
-<script src="{{ url_for('static', filename='contracts-zero-hotfix.js') }}?v=3"></script>
-<script src="{{ url_for('static', filename='liftcore-csrf.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='liftcore-viewer-ui.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='liftcore-hotkeys.js') }}?v=4" defer></script>
+<script src="{{ url_for('static', filename='contracts-zero-hotfix.js') }}?v=3" defer></script>
+<script src="{{ url_for('static', filename='liftcore-csrf.js') }}?v=1" defer></script>
+<script src="{{ url_for('static', filename='liftcore-viewer-ui.js') }}?v=2" defer></script>
 <script src="{{ url_for('static', filename='liftcore-sticky-top.js') }}?v=8" defer></script>
 <script src="{{ url_for('static', filename='liftcore-mobile-touch.js') }}?v=2" defer></script>
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-idle-screensaver.css') }}?v=9">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-idle-screensaver.css') }}?v=10">
 {% if session_locked %}
-<script src="{{ url_for('static', filename='liftcore-idle-screensaver.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='liftcore-idle-screensaver.js') }}?v=10"></script>
 {% else %}
-<script src="{{ url_for('static', filename='liftcore-idle-screensaver.js') }}?v=9" defer></script>
+<script src="{{ url_for('static', filename='liftcore-idle-screensaver.js') }}?v=10" defer></script>
 {% endif %}
-<script src="{{ url_for('static', filename='liftcore-admin-delete.js') }}?v=7"></script>
-<script src="{{ url_for('static', filename='liftcore-multi-attach.js') }}?v=1"></script>
+<script src="{{ url_for('static', filename='liftcore-admin-delete.js') }}?v=7" defer></script>
+<script src="{{ url_for('static', filename='liftcore-multi-attach.js') }}?v=1" defer></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='liftcore-financial-wa.css') }}?v=4">
-<script src="{{ url_for('static', filename='liftcore-financial-wa.js') }}?v=4"></script>
+<script src="{{ url_for('static', filename='liftcore-financial-wa.js') }}?v=4" defer></script>
 {% if auth_user and auth_user.role == 'admin' %}
 {% include 'partials/admin_delete_modal.html' %}
 {% endif %}

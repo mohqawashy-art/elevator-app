@@ -37,12 +37,14 @@
   }
 
   function bind(root) {
-    (root || document).querySelectorAll('#sidebar a[href], .sidebar a[href]').forEach(function (a) {
+    var selector = '#sidebar a[href], .sidebar a[href], .main a[href], .department-tabs a[href], .department-tab[href]';
+    (root || document).querySelectorAll(selector).forEach(function (a) {
       if (a.dataset.lcPrefetchBound) return;
       if (!shouldPrefetch(a)) return;
       a.dataset.lcPrefetchBound = '1';
       a.addEventListener('mouseenter', function () { prefetch(a.getAttribute('href')); }, { passive: true });
       a.addEventListener('focus', function () { prefetch(a.getAttribute('href')); });
+      a.addEventListener('touchstart', function () { prefetch(a.getAttribute('href')); }, { passive: true });
     });
   }
 
