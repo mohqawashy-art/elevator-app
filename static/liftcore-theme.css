@@ -3,16 +3,18 @@
 
 /* LiftCore — Light theme (html[data-theme="light"]) */
 html[data-theme="light"] {
-  --bg: #f0f4fa;
+  --bg: #f5f6f8;
   --bg2: #ffffff;
-  --bg3: #e8eef6;
-  --bg4: #dce4f0;
+  --bg3: #e9ecef;
+  --bg4: #dee2e6;
   --card: #ffffff;
-  --border: rgba(30, 60, 120, 0.12);
-  --border2: rgba(30, 60, 120, 0.2);
-  --text1: #1a2433;
-  --text2: #4a5a72;
-  --text3: #7a8aa0;
+  --border: rgba(26, 26, 46, 0.1);
+  --border2: rgba(26, 26, 46, 0.16);
+  --text1: #1a1a2e;
+  --text2: #4a5568;
+  --text3: #6b7280;
+  --gold: #c9a14a;
+  --gold2: #a07830;
 }
 
 html[data-theme="light"] body {
@@ -20,8 +22,52 @@ html[data-theme="light"] body {
   color: var(--text1);
 }
 
-html[data-theme="light"] .sidebar {
-  background: var(--bg2);
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] body:has(#sidebar):has(.main) #sidebar,
+html[data-theme="light"] body:has(#sidebar):has(.main) .sidebar,
+html[data-theme="light"].lc-shell-ready body:has(#sidebar) > #sidebar,
+html[data-theme="light"].lc-shell-ready body:has(#sidebar) > .sidebar {
+  background: #f8f9fa !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="light"] .lc-header,
+html[data-theme="light"] .header {
+  background: #ffffff !important;
+  color: var(--text1);
+  border-bottom-color: var(--border) !important;
+  box-shadow: 0 1px 3px rgba(26, 26, 46, 0.06) !important;
+}
+
+html[data-theme="light"] .content,
+html[data-theme="light"] #sidebar ~ .main .content,
+html[data-theme="light"] body:has(#sidebar) .main > .content {
+  background: var(--bg);
+  color: var(--text1);
+}
+
+html[data-theme="light"] .lang-toggle {
+  background: var(--bg3);
+  border-color: var(--border);
+}
+
+html[data-theme="light"] .lang-opt {
+  color: var(--text3);
+}
+
+html[data-theme="light"] .icon-btn {
+  color: var(--text2);
+  border-color: var(--border);
+}
+
+html[data-theme="light"] .icon-btn:hover {
+  background: var(--bg3);
+  color: var(--text1);
+  border-color: var(--border2);
+}
+
+html[data-theme="light"] .hamburger {
+  color: var(--text2);
 }
 
 html[data-theme="light"] input,
@@ -72,7 +118,88 @@ html[data-theme="light"] .generated-box code {
 }
 
 html[data-theme="light"] .nav-item:hover {
+  background: #e9ecef;
+  color: var(--text1);
+}
+
+html[data-theme="light"] #sidebar .nav-item,
+html[data-theme="light"] .sidebar .nav-item,
+html[data-theme="light"] body:has(#sidebar) .nav-item-single {
+  color: var(--text2) !important;
+}
+
+html[data-theme="light"] #sidebar .nav-item:hover,
+html[data-theme="light"] .sidebar .nav-item:hover,
+html[data-theme="light"] body:has(#sidebar) .nav-item-single:hover {
+  color: var(--text1) !important;
+  background: #e9ecef !important;
+}
+
+html[data-theme="light"] #sidebar .nav-item.active,
+html[data-theme="light"] .sidebar .nav-item.active,
+html[data-theme="light"] body:has(#sidebar) .nav-item-single.active {
+  color: #fff !important;
+  background: var(--gold, #c9a14a) !important;
+}
+
+html[data-theme="light"] #sidebar .nav-item.active::before,
+html[data-theme="light"] .sidebar .nav-item.active::before,
+html[data-theme="light"] body:has(#sidebar) .nav-item-single.active::before {
+  display: none !important;
+}
+
+html[data-theme="light"] body:has(#sidebar) .nav-group-btn {
+  color: var(--text2);
+}
+
+html[data-theme="light"] body:has(#sidebar) .nav-group-btn:hover,
+html[data-theme="light"] body:has(#sidebar) .nav-group.open > .nav-group-btn {
+  background: #e9ecef !important;
+  color: var(--text1) !important;
+  border-color: transparent !important;
+}
+
+html[data-theme="light"] body:has(#sidebar) .nav-group.has-active > .nav-group-btn {
+  background: var(--gold, #c9a14a) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+html[data-theme="light"] body:has(#sidebar) .nav-group-menu {
+  background: #ffffff !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 12px 32px rgba(26, 26, 46, 0.12) !important;
+}
+
+html[data-theme="light"] thead tr {
   background: var(--bg3);
+  color: var(--text1);
+}
+
+html[data-theme="light"] thead th {
+  color: var(--text1);
+}
+
+html[data-theme="light"] tbody tr {
+  border-bottom-color: var(--border);
+}
+
+html[data-theme="light"] tbody tr:nth-child(even) > td {
+  background: rgba(26, 26, 46, 0.025);
+}
+
+html[data-theme="light"] tbody tr:hover > td {
+  background: rgba(42, 127, 255, 0.06) !important;
+}
+
+html[data-theme="light"] .table-wrap {
+  border-color: var(--border);
+}
+
+html[data-theme="light"] .table-footer {
+  background: var(--bg3);
+  color: var(--text2);
+  border-color: var(--border);
 }
 
 html[data-theme="light"] .nav-group-menu .nav-item:hover,
@@ -87,6 +214,34 @@ html[data-theme="light"] .quick-card,
 html[data-theme="light"] .alert-panel {
   background: var(--card);
   border-color: var(--border);
+  color: var(--text1);
+  box-shadow: 0 1px 2px rgba(26, 26, 46, 0.04);
+}
+
+html[data-theme="light"] .stat-mini {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--text1);
+  box-shadow: 0 1px 2px rgba(26, 26, 46, 0.04);
+}
+
+html[data-theme="light"] .stat-mini-val,
+html[data-theme="light"] .stat-value {
+  color: var(--text1);
+}
+
+html[data-theme="light"] .stat-mini-label,
+html[data-theme="light"] .stat-label {
+  color: var(--text3);
+}
+
+html[data-theme="light"] .stat-mini:hover {
+  border-color: var(--border2);
+}
+
+html[data-theme="light"] .stat-mini.active {
+  border-color: var(--gold, #c9a14a);
+  box-shadow: 0 0 0 1px rgba(201, 161, 74, 0.25);
 }
 
 /* LiftCore — Report / corporate theme (html[data-theme="report"]) */

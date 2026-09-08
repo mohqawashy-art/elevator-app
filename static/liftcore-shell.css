@@ -2492,3 +2492,108 @@ body:has(#sidebar) .stats-row {
   font-family: var(--font-en, 'DM Sans', sans-serif);
   white-space: normal;
 }
+
+/* ── v54: شريط التنقل العلوي — تبويبات pill (مثل جدول/خريطة) ── */
+@media (min-width: 1101px) {
+  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .sidebar-nav,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .sidebar-nav,
+  html.lc-shell-ready body:has(#sidebar) .sidebar-nav,
+  html.lc-shell-ready body:has(#sidebar) #sidebar:not(:has(.sidebar-nav)) {
+    display: inline-flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    padding: 3px !important;
+    margin: 0 auto !important;
+    width: fit-content !important;
+    max-width: calc(100% - 16px) !important;
+    background: var(--bg3, #161e2b) !important;
+    border: 1px solid var(--border, rgba(100, 160, 255, 0.1)) !important;
+    border-radius: var(--r-sm, 8px) !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-group,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-group,
+  html.lc-shell-ready body:has(#sidebar) .nav-group {
+    margin: 0 !important;
+    flex-shrink: 0;
+  }
+
+  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-group-btn,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-group-btn,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-btn,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-item-single,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-item-single,
+  html.lc-shell-ready body:has(#sidebar) .nav-item-single {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 5px 12px !important;
+    margin: 0 !important;
+    border-radius: 6px !important;
+    border: none !important;
+    background: transparent !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    color: var(--text2, #8a9bb8) !important;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+  }
+
+  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-group-btn .nav-group-chevron,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-group-btn .nav-group-chevron,
+  html.lc-shell-ready body:has(#sidebar) .nav-group-btn .nav-group-chevron {
+    width: 10px !important;
+    height: 10px !important;
+    opacity: 0.75;
+    flex-shrink: 0;
+  }
+
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-group-btn:hover,
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-group-btn:hover,
+  html:not([data-theme="light"]).lc-shell-ready body:has(#sidebar) .nav-group-btn:hover,
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-item-single:hover,
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-item-single:hover,
+  html:not([data-theme="light"]).lc-shell-ready body:has(#sidebar) .nav-item-single:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--text1, #e4eaf5) !important;
+    border-color: transparent !important;
+  }
+
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-group.open > .nav-group-btn,
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-group.open > .nav-group-btn,
+  html:not([data-theme="light"]).lc-shell-ready body:has(#sidebar) .nav-group.open > .nav-group-btn {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: var(--text1, #e4eaf5) !important;
+    border-color: transparent !important;
+  }
+
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-group.has-active > .nav-group-btn,
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-group.has-active > .nav-group-btn,
+  html:not([data-theme="light"]).lc-shell-ready body:has(#sidebar) .nav-group.has-active > .nav-group-btn,
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-item-single.active,
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-item-single.active,
+  html:not([data-theme="light"]).lc-shell-ready body:has(#sidebar) .nav-item-single.active {
+    background: var(--gold, #c9a14a) !important;
+    color: #fff !important;
+    border-color: transparent !important;
+  }
+
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-group.has-active.open > .nav-group-btn,
+  html:not([data-theme="light"]).lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-group.has-active.open > .nav-group-btn,
+  html:not([data-theme="light"]).lc-shell-ready body:has(#sidebar) .nav-group.has-active.open > .nav-group-btn {
+    background: var(--gold, #c9a14a) !important;
+    color: #fff !important;
+  }
+
+  html.lc-layout-topnav body:has(#sidebar):has(.main) #sidebar .nav-item-single.active::before,
+  html.lc-layout-topnav body:has(#sidebar):has(.main) .sidebar .nav-item-single.active::before,
+  html.lc-shell-ready body:has(#sidebar) .nav-item-single.active::before {
+    display: none !important;
+  }
+}
