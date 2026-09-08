@@ -7,7 +7,7 @@ HOME_UI = {
         'page_title': 'منصات العمل',
         'kicker': 'اختر القسم',
         'title': 'منصات LiftCore',
-        'subtitle': 'كل قسم له عملاؤه وعقوده وعملياته وتقاريره في مكان واحد.',
+        'subtitle': 'كل قسم له عملاؤه وعقوده وعملياته في مكان واحد — والتقارير في قسم مستقل.',
         'enter': 'دخول المنصة ←',
         'empty': 'لا توجد منصات متاحة لصلاحيات حسابك.',
     },
@@ -15,7 +15,7 @@ HOME_UI = {
         'page_title': 'Work Platforms',
         'kicker': 'Choose a department',
         'title': 'LiftCore Platforms',
-        'subtitle': 'Each department has its clients, contracts, operations, and reports in one place.',
+        'subtitle': 'Each department has its clients, contracts, and operations in one place — reports live in a dedicated section.',
         'enter': 'Enter platform →',
         'empty': 'No platforms are available for your account permissions.',
     },
@@ -61,12 +61,7 @@ DEPARTMENT_PORTALS = {
             ('الأعطال والبلاغات', 'Faults & Reports', '/faults', 'faults.read'),
             ('تركيب قطع الغيار', 'Parts Installation', '/parts-billing', 'parts_billing.read'),
         ),
-        'reports': (
-            ('تقرير زيارات الصيانة', 'Maintenance Visits Report', '/reports/maintenance-visits', 'report_maintenance.read'),
-            ('تقرير الأعطال', 'Faults Report', '/reports/faults', 'report_faults.read'),
-            ('تقرير العقود', 'Contracts Report', '/reports/contracts', 'report_contracts.read'),
-            ('تقرير المصاعد', 'Elevators Report', '/reports/elevators', 'report_elevators.read'),
-        ),
+        'reports': (),
     },
     'installations': {
         'title': 'منصة التركيبات والتحديث',
@@ -82,10 +77,7 @@ DEPARTMENT_PORTALS = {
             ('مشروعات التركيبات', 'Installation Projects', '/installation/projects', 'installation_projects.read', True),
             ('لوحة تنفيذ المشروعات', 'Project Execution Board', '/installation/', 'installation_projects.read', True),
         ),
-        'reports': (
-            ('بطاقات وتقارير المشروعات', 'Project Cards & Reports', '/installation/projects', 'installation_projects.read', True),
-            ('تقرير العقود', 'Contracts Report', '/reports/contracts', 'report_contracts.read'),
-        ),
+        'reports': (),
     },
     'marketing': {
         'title': 'منصة التسويق والمبيعات',
@@ -106,10 +98,7 @@ DEPARTMENT_PORTALS = {
             ('تقدير تكلفة مصعد', 'Elevator Cost Estimate', '/elevator-estimates', 'elevator_estimates.read'),
             ('فرص البيع', 'Sales Leads', '/installation/leads', 'installation_projects.read', True),
         ),
-        'reports': (
-            ('تقرير العملاء', 'Clients Report', '/reports/clients', 'report_clients.read'),
-            ('تقرير العقود', 'Contracts Report', '/reports/contracts', 'report_contracts.read'),
-        ),
+        'reports': (),
     },
     'inventory': {
         'title': 'منصة المخازن والمشتريات',
@@ -124,10 +113,7 @@ DEPARTMENT_PORTALS = {
             ('حركة المخزن', 'Stock Movements', '/stock-movements', 'stock_movements.read'),
             ('طلبات الشراء', 'Purchase Orders', '/purchase-orders', 'purchase_orders.read'),
         ),
-        'reports': (
-            ('تقرير الأصناف', 'Inventory Report', '/reports/inventory', 'report_inventory.read'),
-            ('تقرير حركة المخزن', 'Stock Movements Report', '/reports/stock-movements', 'report_stock.read'),
-        ),
+        'reports': (),
     },
     'personnel': {
         'title': 'منصة شؤون العاملين والفنيين',
@@ -141,9 +127,7 @@ DEPARTMENT_PORTALS = {
             ('الفنيون', 'Technicians', '/technicians', 'technicians.read'),
             ('فرق الصيانة', 'Maintenance Teams', '/technicians?tab=teams', 'technicians.read'),
         ),
-        'reports': (
-            ('تقرير الفنيين', 'Technicians Report', '/reports/technicians', 'report_technicians.read'),
-        ),
+        'reports': (),
     },
     'accounting': {
         'title': 'منصة الحسابات والمالية',
@@ -164,7 +148,29 @@ DEPARTMENT_PORTALS = {
             ('قائمة الدخل', 'Income Statement', '/pnl', 'revenues.read'),
             ('المركز المالي', 'Balance Sheet', '/balance-sheet', 'revenues.read'),
         ),
-        'reports': (
+        'reports': (),
+    },
+    'reports': {
+        'title': 'منصة التقارير والتحليل',
+        'title_en': 'Reports & Analytics Platform',
+        'short_title': 'التقارير',
+        'short_title_en': 'Reports',
+        'description': 'كل تقارير الشركة — إدارية، تشغيلية، مالية، ومخازن',
+        'description_en': 'All company reports — management, operations, finance, and inventory',
+        'color': '#5b7cfa',
+        'links': (
+            ('كل التقارير', 'All Reports', '/reports', 'reports_home.read'),
+            ('تقرير الداشبورد', 'Dashboard Report', '/reports/dashboard', 'report_dashboard.read'),
+            ('التقرير السنوي للعميل', 'Client Annual Report', '/reports/client-annual', 'report_client_annual.read'),
+            ('تقرير العملاء', 'Clients Report', '/reports/clients', 'report_clients.read'),
+            ('تقرير المصاعد', 'Elevators Report', '/reports/elevators', 'report_elevators.read'),
+            ('تقرير العقود', 'Contracts Report', '/reports/contracts', 'report_contracts.read'),
+            ('تقرير الفنيين', 'Technicians Report', '/reports/technicians', 'report_technicians.read'),
+            ('تقرير زيارات الصيانة', 'Maintenance Visits Report', '/reports/maintenance-visits', 'report_maintenance.read'),
+            ('تقرير الأعطال', 'Faults Report', '/reports/faults', 'report_faults.read'),
+            ('تقرير قطع الغيار', 'Parts Billing Report', '/reports/parts-billing', 'parts_billing.read'),
+            ('تقرير الأصناف', 'Inventory Report', '/reports/inventory', 'report_inventory.read'),
+            ('تقرير حركة المخزن', 'Stock Movements Report', '/reports/stock-movements', 'report_stock.read'),
             ('التقرير المالي', 'Financial Report', '/reports/financial', 'report_financial.read'),
             ('الصحة المالية', 'Financial Health', '/reports/financial-health', 'report_financial_health.read'),
             ('توقعات التحصيل', 'Collection Forecast', '/reports/contract-forecast', 'report_contract_forecast.read'),
@@ -174,24 +180,21 @@ DEPARTMENT_PORTALS = {
             ('تقرير المصروفات', 'Expenses Report', '/reports/expenses', 'report_expenses.read'),
             ('تقرير الفواتير', 'Invoices Report', '/reports/invoices', 'report_invoices.read'),
         ),
+        'reports': (),
     },
     'management': {
         'title': 'منصة الإدارة والمتابعة',
         'title_en': 'Management & Oversight Platform',
         'short_title': 'الإدارة والمتابعة',
         'short_title_en': 'Management & Oversight',
-        'description': 'لوحة المؤشرات والتقارير العامة وإعدادات النظام',
-        'description_en': 'KPI dashboard, general reports, and system settings',
+        'description': 'لوحة المؤشرات وإعدادات النظام',
+        'description_en': 'KPI dashboard and system settings',
         'color': '#e04f6f',
         'links': (
             ('لوحة المؤشرات العامة', 'Main KPI Dashboard', '/dashboard', 'dashboard.read'),
-            ('كل التقارير', 'All Reports', '/reports', 'reports_home.read'),
             ('إعدادات الحساب والنظام', 'Account & System Settings', '/settings', 'dashboard.read'),
         ),
-        'reports': (
-            ('تقرير الداشبورد', 'Dashboard Report', '/reports/dashboard', 'report_dashboard.read'),
-            ('التقرير السنوي للعميل', 'Client Annual Report', '/reports/client-annual', 'report_client_annual.read'),
-        ),
+        'reports': (),
     },
 }
 
@@ -333,6 +336,9 @@ def resolve_department_slug(path: str, args, session_slug: str | None = None) ->
         return explicit
 
     req_path = (path or '/').rstrip('/') or '/'
+    if req_path == '/reports' or req_path.startswith('/reports/'):
+        return 'reports'
+
     if req_path.startswith('/departments/'):
         parts = [p for p in req_path.split('/') if p]
         if len(parts) >= 2 and parts[1] in DEPARTMENT_PORTALS:

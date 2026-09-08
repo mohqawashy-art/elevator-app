@@ -25,6 +25,7 @@ html[lang="en"] body{font-family:'DM Sans',sans-serif}
 .portal-hero .portal-label{color:rgba(255,255,255,.78)}
 .portal-hero p{font-size:12px;color:rgba(255,255,255,.85);margin:0}
 .portal-columns{display:grid;grid-template-columns:1.35fr .85fr;gap:17px}
+.portal-columns--single{grid-template-columns:1fr}
 .portal-section{background:var(--p-card);border:1px solid var(--p-border);border-radius:16px;padding:19px}
 .portal-section-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:13px;margin-bottom:13px;border-bottom:1px solid var(--p-border)}
 .portal-section h2{font-size:15px;margin:0}
@@ -52,9 +53,9 @@ html[lang="en"] .portal-arrow{transform:scaleX(-1)}
       <p>{{ portal.description }}</p>
     </section>
 
-    <div class="portal-columns">
+    <div class="portal-columns{% if not portal.reports %} portal-columns--single{% endif %}">
       <section class="portal-section">
-        <div class="portal-section-head"><h2>{{ portal_ui.ops_title }}</h2><span class="portal-count">{{ portal_ui.ops_count.format(n=portal.links|length) }}</span></div>
+        <div class="portal-section-head"><h2>{{ portal_ui.reports_title if portal.slug == 'reports' else portal_ui.ops_title }}</h2><span class="portal-count">{{ (portal_ui.reports_count if portal.slug == 'reports' else portal_ui.ops_count).format(n=portal.links|length) }}</span></div>
         <div class="portal-links">
           {% for item in portal.links %}
           <a class="portal-link" href="{{ item.href }}"><span>{{ item.label }}</span><span class="portal-arrow">←</span></a>
@@ -64,6 +65,7 @@ html[lang="en"] .portal-arrow{transform:scaleX(-1)}
         </div>
       </section>
 
+      {% if portal.reports %}
       <section class="portal-section portal-section--reports">
         <div class="portal-section-head"><h2>{{ portal_ui.reports_title }}</h2><span class="portal-count">{{ portal_ui.reports_count.format(n=portal.reports|length) }}</span></div>
         <div class="portal-links">
@@ -74,6 +76,7 @@ html[lang="en"] .portal-arrow{transform:scaleX(-1)}
           {% endfor %}
         </div>
       </section>
+      {% endif %}
     </div>
   </main>
 </div>

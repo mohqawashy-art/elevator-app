@@ -8,12 +8,4 @@
    href="{{ item.href }}"
    {% if department_href_is_active(item.href) %}aria-current="page"{% endif %}>{{ item.label }}</a>
 {% endfor %}
-{% if tabs_portal.reports %}
-<span class="department-tabs-label">{{ 'Reports' if user_language == 'en' else 'التقارير' }}</span>
-{% for item in tabs_portal.reports %}
-<a class="department-tab department-tab--report{% if department_href_is_active(item.href) %} active{% endif %}{% if department_tabs_sidebar|default(false) %} nav-item nav-item-single{% endif %}"
-   href="{{ item.href }}"
-   {% if department_href_is_active(item.href) %}aria-current="page"{% endif %}>{{ item.label }}</a>
-{% endfor %}
-{% endif %}
 {% endif %}

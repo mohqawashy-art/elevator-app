@@ -38,7 +38,15 @@ def test_department_href_is_active_matches_scope():
     )
 
 
-def test_department_href_is_active_rejects_wrong_scope():
+def test_resolve_department_reports_path():
+    slug = resolve_department_slug('/reports/faults', {}, None)
+    assert slug == 'reports'
+
+
+def test_resolve_department_reports_home():
+    slug = resolve_department_slug('/reports', {'department': 'reports'}, None)
+    assert slug == 'reports'
+
     assert not department_href_is_active(
         '/clients?scope=maintenance&department=maintenance',
         '/clients',
