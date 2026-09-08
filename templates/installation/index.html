@@ -44,7 +44,8 @@
             <td>{{ p.client_display }}</td>
             <td><span class="badge badge-new">{{ p.status }}</span></td>
             <td>
-              <a href="/installation/projects/{{ p.id }}#project-card" class="btn btn-primary btn-sm">كارت المشروع</a>
+              <a href="/installation/projects/{{ p.id }}#project-card" class="btn btn-primary btn-sm">كارت المشروع المالي</a>
+              <a href="/installation/projects/{{ p.id }}/card/print" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>
               {% if p.execution_active %}
               <a href="/installation/projects/{{ p.id }}/execution" class="btn btn-secondary btn-sm">تنفيذ</a>
               {% endif %}

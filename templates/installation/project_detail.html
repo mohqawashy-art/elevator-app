@@ -39,6 +39,7 @@
       <div class="page-actions">
         <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
         <a href="#project-card" class="btn btn-primary btn-sm">كارت المشروع المالي</a>
+        <a href="/installation/projects/{{ project.id }}/card/print" class="btn btn-secondary btn-sm" target="_blank">طباعة الكارت المالي</a>
         {% if card and card.install_contract %}
         <a href="/installation/contracts/{{ card.install_contract.id }}" class="btn btn-secondary btn-sm">كارت عقد التركيب</a>
         {% endif %}
@@ -109,7 +110,7 @@
           {% if card.install_contract %}
           <a href="/installation/contracts/{{ card.install_contract.id }}" class="btn btn-secondary btn-sm">كارت عقد التركيب →</a>
           {% endif %}
-          <a href="/installation/projects/{{ project.id }}/card/print" class="btn btn-secondary btn-sm" target="_blank">طباعة الكارت</a>
+          <a href="/installation/projects/{{ project.id }}/card/print" class="btn btn-secondary btn-sm" target="_blank">طباعة الكارت المالي</a>
         </span>
       </div>
       {% if card.schema_error %}

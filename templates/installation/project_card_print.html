@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 {% include 'partials/liftcore_boot.html' %}
-<title>كارت مشروع {{ project.code }}</title>
+<title>كارت المشروع المالي — {{ project.code }}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f6fa;color:#1c2738;font-size:14px;padding:20px}
-.toolbar{max-width:840px;margin:0 auto 12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.toolbar{max-width:900px;margin:0 auto 12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 .btn{padding:8px 16px;border-radius:8px;border:1px solid #e3e8f0;background:#fff;cursor:pointer;font-size:13px;text-decoration:none;color:#0a2647}
 .btn-primary{background:#0a2647;color:#fff;border-color:#0a2647}
-.sheet{background:#fff;max-width:840px;margin:0 auto;padding:34px 40px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.sheet{background:#fff;max-width:900px;margin:0 auto;padding:34px 40px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c9a14a;padding-bottom:16px;margin-bottom:18px;gap:16px}
 .head .brand{display:flex;align-items:center;gap:14px;min-width:0}
 .head .brand img{width:{{ logo_width_report or 150 }}px;max-height:72px;object-fit:contain;display:block}
@@ -20,9 +20,14 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f6fa;color:#1c2738;f
 .title{text-align:center;font-size:18px;font-weight:800;color:#0a2647;margin:8px 0 18px}
 .info{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;font-size:13px;margin-bottom:18px}
 .info b{color:#0a2647}
+.contract-box{background:#eef3fa;border:1px solid #c5d4ea;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:13px}
+.contract-box .ct{font-weight:700;color:#0a2647;margin-bottom:8px}
+.contract-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.contract-grid span{display:block;font-size:11px;color:#6b7a90}
+.contract-grid b{font-family:var(--font-en,Consolas,monospace);font-size:14px;color:#0a2647}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{background:#0a2647;color:#fff;padding:9px 10px;text-align:right}
-td{padding:9px 10px;border:1px solid #e3e8f0}
+td{padding:9px 10px;border:1px solid #e3e8f0;vertical-align:top}
 .row-value td,.row-profit td{background:#eef3fa;font-weight:700}
 .row-section td{background:#f3e8cf;font-weight:700;color:#0a2647}
 .row-category td{background:#f7f8fb;font-weight:600}
@@ -31,11 +36,17 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
 .amount{font-variant-numeric:tabular-nums;direction:ltr;text-align:left;white-space:nowrap}
 .status-ok{color:#1a7a4c;font-weight:600}
 .status-warn{color:#b86a00;font-weight:600}
+.attach-list{margin:0;padding:0;list-style:none;font-size:11px;color:#44556b;line-height:1.6}
+.attach-list li{margin-bottom:2px}
+.attach-empty{color:#9aa5b5;font-size:11px}
 .foot{margin-top:22px;font-size:11px;color:#6b7a90;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 @media print{
   .toolbar{display:none!important}
   body{background:#fff;padding:0}
   .sheet{box-shadow:none;border-radius:0;max-width:100%;padding:12mm}
+}
+@media(max-width:720px){
+  .contract-grid{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
@@ -44,7 +55,7 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
 {% set doc_name = (co.company_name if co and co.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة') %}
 <div class="toolbar">
   <button type="button" class="btn btn-primary" onclick="window.print()">طباعة / PDF</button>
-  <a class="btn" href="/installation/projects/{{ project.id }}#project-card">← المشروع</a>
+  <a class="btn" href="/installation/projects/{{ project.id }}#project-card">← كارت المشروع المالي</a>
 </div>
 
 <div class="sheet">
@@ -54,13 +65,13 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
     </div>
     <div class="meta">
       كود المشروع: <b>{{ project.code }}</b><br>
-      {% if card.contract_code %}العقد: <b>{{ card.contract_code }}</b><br>{% endif %}
+      {% if card.install_contract_code %}عقد التركيب: <b>{{ card.install_contract_code }}</b><br>{% elif card.contract_code %}العقد: <b>{{ card.contract_code }}</b><br>{% endif %}
       {% if card.quote_code %}العرض المعتمد: <b>{{ card.quote_code }}</b><br>{% endif %}
       تاريخ الطباعة: <b>{{ print_date }}</b>
     </div>
   </div>
 
-  <div class="title">كارت مشروع — {{ project.title or project.code }}</div>
+  <div class="title">كارت المشروع المالي — {{ project.title or project.code }}</div>
 
   <div class="info">
     <div><b>العميل:</b> {{ project.client_display }}</div>
@@ -72,19 +83,38 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
     {% endif %}
   </div>
 
+  {% if card.install_contract and card.install_summary %}
+  <div class="contract-box">
+    <div class="ct">ملخص عقد التركيب — {{ card.install_contract.code }}</div>
+    <div class="contract-grid">
+      <div><span>قيمة العقد</span><b>{{ '{:,.0f}'.format(card.install_summary.total) }} ر.س</b></div>
+      <div><span>محصّل</span><b style="color:#1a7a4c">{{ '{:,.0f}'.format(card.install_summary.collected_amount) }} ر.س</b></div>
+      <div><span>متبقي على العميل</span><b style="color:#b86a00">{{ '{:,.0f}'.format(card.install_summary.remaining_amount) }} ر.س</b></div>
+      <div><span>نسبة الإنجاز</span><b>{{ card.install_summary.progress_pct }}%</b></div>
+    </div>
+  </div>
+  {% endif %}
+
   <table>
     <thead>
       <tr>
-        <th style="width:38%">البند</th>
-        <th style="width:18%">المبلغ (ر.س)</th>
-        <th style="width:14%">تاريخ الدفع</th>
-        <th style="width:30%">الحالة / ملاحظة</th>
+        <th style="width:32%">البند</th>
+        <th style="width:14%">المبلغ (ر.س)</th>
+        <th style="width:12%">تاريخ الدفع</th>
+        <th style="width:26%">الحالة / ملاحظة</th>
+        <th style="width:16%">مرفقات</th>
       </tr>
     </thead>
     <tbody>
       {% for row in card.sheet_rows %}
+      {% set row_docs = documents_by_step.get(row.row_key, []) if row.row_key else [] %}
       <tr class="row-{{ row.kind }}">
-        <td class="{% if row.kind in ('line','receipt') %}indent{% endif %}">{{ row.label }}</td>
+        <td class="{% if row.kind in ('line','receipt') %}indent{% endif %}">
+          {{ row.label }}
+          {% if row.note and row.kind in ('line', 'receipt') %}
+          <div class="item-note">{{ row.note }}</div>
+          {% endif %}
+        </td>
         <td class="amount">
           {% if row.amount is not none %}{{ '{:,.0f}'.format(row.amount) }}{% else %}—{% endif %}
         </td>
@@ -96,10 +126,21 @@ td{padding:9px 10px;border:1px solid #e3e8f0}
           {% elif row.status %}
           <span class="{% if row.status in ('مدفوعة','مستلمة') %}status-ok{% else %}status-warn{% endif %}">{{ row.status }}</span>
           {% endif %}
-          {% if row.note and row.kind != 'category' %}
+          {% if row.note and row.kind != 'category' and row.kind not in ('line', 'receipt') %}
           {% if row.status %}<br>{% endif %}<span style="color:#6b7a90;font-size:12px">{{ row.note }}</span>
           {% endif %}
           {% if not row.status and not row.note %}—{% endif %}
+        </td>
+        <td>
+          {% if row_docs %}
+          <ul class="attach-list">
+            {% for doc in row_docs %}
+            <li>{{ doc.label or doc.file_name or 'مرفق' }}</li>
+            {% endfor %}
+          </ul>
+          {% elif row.row_key %}
+          <span class="attach-empty">—</span>
+          {% else %}—{% endif %}
         </td>
       </tr>
       {% endfor %}

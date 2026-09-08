@@ -710,12 +710,15 @@ def project_card_link_contract(project_id):
 
 @install_bp.route('/projects/<int:project_id>/card/print')
 def project_card_print(project_id):
-    """صفحة طباعة كارت المشروع."""
+    """صفحة طباعة كارت المشروع المالي."""
+    from installation.documents import ensure_project_documents_schema, group_project_documents_by_step
     from installation.project_card import build_project_card, ensure_project_card_schema
 
     ensure_project_card_schema()
+    ensure_project_documents_schema()
     project = tenant_get_or_404(InstallProject, project_id)
     card = build_project_card(project)
+    documents_by_step = group_project_documents_by_step(list(project.documents or []))
     settings = None
     try:
         from models import Settings
@@ -726,9 +729,10 @@ def project_card_print(project_id):
         'installation/project_card_print.html',
         project=project,
         card=card,
+        documents_by_step=documents_by_step,
         settings=settings,
         print_date=date.today(),
-        page_title=f'كارت مشروع {project.code}',
+        page_title=f'كارت المشروع المالي — {project.code}',
     )
 
 

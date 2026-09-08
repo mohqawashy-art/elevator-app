@@ -208,13 +208,13 @@ def test_project_card_costs_and_receipts(client):
     assert 'مرحلة 1 — السكك والأبواب' in body
     assert 'تعديل' in body
     assert 'pc-sheet' in body
-    assert 'طباعة الكارت' in body
+    assert 'طباعة الكارت المالي' in body
     assert 'ربط بعقد' in body
 
     resp_print = client.get(f'/installation/projects/{pid}/card/print')
     assert resp_print.status_code == 200
     print_body = resp_print.data.decode('utf-8', errors='ignore')
-    assert 'كارت مشروع' in print_body
+    assert 'كارت المشروع المالي' in print_body
     assert 'دفعة أولى' in print_body
     assert 'window.print' in print_body
 
