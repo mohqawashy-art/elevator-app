@@ -102,32 +102,89 @@ html[data-theme="light"] .department-tab[aria-current="page"] {
   color: var(--p-text) !important;
 }
 
-/* تموضع الشبكة: هيدر → قائمة → تبويبات القسم → المحتوى */
+/* تموضع الشبكة: هيدر → تبويبات القسم (بدل القائمة الرئيسية) → المحتوى */
 @media (min-width: 1101px) {
   html.lc-has-dept-tabs body:has(#sidebar):has(.main) {
-    grid-template-rows: var(--lc-header-h, 104px) auto auto 1fr !important;
+    grid-template-rows: var(--lc-header-h, 104px) auto minmax(0, 1fr) !important;
   }
 
+  /* استبدال القائمة الرئيسية بتبويبات القسم */
   html.lc-has-dept-tabs body:has(#sidebar) > #sidebar,
-  html.lc-has-dept-tabs body:has(#sidebar) > .sidebar {
-    grid-row: 2 !important;
+  html.lc-has-dept-tabs body:has(#sidebar) > .sidebar,
+  html.lc-shell-ready.lc-has-dept-tabs body:has(#sidebar) > #sidebar,
+  html.lc-shell-ready.lc-has-dept-tabs body:has(#sidebar) > .sidebar {
+    display: none !important;
+  }
+
+  html.lc-has-dept-tabs .hamburger {
+    display: none !important;
   }
 
   html.lc-has-dept-tabs body:has(#sidebar) > .department-tabs-wrap {
-    grid-row: 3 !important;
+    grid-row: 2 !important;
     grid-column: 1 / -1 !important;
     position: sticky !important;
-    top: calc(var(--lc-header-h, 104px) + var(--lc-topnav-h, 0px)) !important;
+    top: var(--lc-header-h, 104px) !important;
+    z-index: 180 !important;
   }
 
-  html.lc-has-dept-tabs body:has(#sidebar) .main > .content {
-    grid-row: 4 !important;
+  html.lc-has-dept-tabs body:has(#sidebar) > .main,
+  html.lc-shell-ready.lc-has-dept-tabs body:has(#sidebar) > .main {
+    grid-row: 3 !important;
+    grid-column: 1 / -1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  html.lc-has-dept-tabs body:has(#sidebar) .main > .content,
+  html.lc-shell-ready.lc-has-dept-tabs body:has(#sidebar) .main > .content {
+    grid-row: unset !important;
+    grid-column: unset !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
 @media (max-width: 1100px) {
-  .department-tabs-wrap {
-    top: 0;
-    position: relative;
+  html.lc-has-dept-tabs body:has(#sidebar) #sidebar,
+  html.lc-has-dept-tabs body:has(#sidebar) .sidebar {
+    display: none !important;
   }
+
+  html.lc-has-dept-tabs .hamburger {
+    display: none !important;
+  }
+
+  html.lc-has-dept-tabs .department-tabs-wrap {
+    top: 0;
+    position: sticky;
+    z-index: 170;
+  }
+}
+
+/* وضوح المحتوى في الوضع الفاتح داخل صفحات الأقسام */
+html[data-theme="light"] body:has(#sidebar) .main > .content {
+  color: #1a1a2e;
+}
+
+html[data-theme="light"] body:has(#sidebar) .main > .content .stat-mini,
+html[data-theme="light"] body:has(#sidebar) .main > .content .stat-card,
+html[data-theme="light"] body:has(#sidebar) .main > .content .table-wrap {
+  color: #1a1a2e;
+}
+
+html[data-theme="light"] body:has(#sidebar) .main > .content .stat-mini-val,
+html[data-theme="light"] body:has(#sidebar) .main > .content .page-title,
+html[data-theme="light"] body:has(#sidebar) .main > .content td,
+html[data-theme="light"] body:has(#sidebar) .main > .content th {
+  color: #1a1a2e;
 }

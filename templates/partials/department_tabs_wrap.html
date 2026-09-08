@@ -19,6 +19,7 @@
   wrap.dataset.lcDeptTabsMounted = '1';
   document.documentElement.classList.add('lc-has-dept-tabs');
   if (window.syncTopNavLayout) window.syncTopNavLayout();
+  window.dispatchEvent(new CustomEvent('lc-dept-tabs-mounted'));
 })();
 </script>
 {% endif %}
