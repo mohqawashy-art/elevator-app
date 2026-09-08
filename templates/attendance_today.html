@@ -5,10 +5,7 @@
 {% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — حضور اليوم</title>
-{% include 'partials/liftcore_head.html' %}
-<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
-<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
-{% include 'partials/attendance_styles.html' %}
+{% include 'partials/attendance_page_head.html' %}
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -19,50 +16,65 @@
 <div class="main">
   {% set page_title = 'حضور اليوم' %}
   {% include 'partials/app_header.html' %}
-  <div class="content att-wrap">
+  <div class="content">
+    {% include 'partials/attendance_subnav.html' %}
     <div class="page-header">
-      <div class="page-title">حضور اليوم — {{ summary.work_date }}</div>
-      <form class="filters-bar" method="get">
-        <input type="date" class="filter-input" name="date" value="{{ summary.work_date }}">
-        <button class="btn btn-secondary" type="submit">عرض</button>
+      <div class="page-title">حضور اليوم <span>{{ summary.work_date }}</span></div>
+      <form class="filters-bar" method="get" style="margin:0">
+        {% if request.args.get('department') %}<input type="hidden" name="department" value="{{ request.args.get('department') }}">{% endif %}
+        <input type="date" class="filter-input" name="date" value="{{ summary.work_date }}" lang="en-GB">
+        <button class="btn btn-secondary btn-sm" type="submit">عرض</button>
       </form>
     </div>
     <div class="stats-row">
-      <div class="stat-mini"><div class="stat-mini-val">{{ summary.stats.total }}</div><div class="stat-mini-label">إجمالي الموظفين</div></div>
-      <div class="stat-mini"><div class="stat-mini-val">{{ summary.stats.present }}</div><div class="stat-mini-label">حاضر</div></div>
-      <div class="stat-mini"><div class="stat-mini-val">{{ summary.stats.late }}</div><div class="stat-mini-label">متأخر</div></div>
-      <div class="stat-mini"><div class="stat-mini-val">{{ summary.stats.absent }}</div><div class="stat-mini-label">غائب / لم يحضر</div></div>
+      <div class="stat-mini" style="--sm-color:var(--accent)">
+        <div class="stat-mini-val">{{ summary.stats.total }}</div>
+        <div class="stat-mini-label">إجمالي الموظفين</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--success)">
+        <div class="stat-mini-val">{{ summary.stats.present }}</div>
+        <div class="stat-mini-label">حاضر</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--warning)">
+        <div class="stat-mini-val">{{ summary.stats.late }}</div>
+        <div class="stat-mini-label">متأخر</div>
+      </div>
+      <div class="stat-mini" style="--sm-color:var(--danger)">
+        <div class="stat-mini-val">{{ summary.stats.absent }}</div>
+        <div class="stat-mini-label">غائب / لم يحضر</div>
+      </div>
     </div>
     <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>الكود</th><th>الاسم</th><th>الفرع</th><th>رقم البصمة</th><th>حضور</th><th>انصراف</th><th>تأخير (د)</th><th>الحالة</th></tr>
-        </thead>
-        <tbody>
-          {% for row in summary.rows %}
-          <tr>
-            <td>{{ row.code }}</td>
-            <td>{{ row.name }}</td>
-            <td>{{ row.branch_name or '—' }}</td>
-            <td style="font-family:var(--font-en)">{{ row.biometric_user_id }}</td>
-            <td>{{ row.check_in }}</td>
-            <td>{{ row.check_out }}</td>
-            <td>{{ row.late_minutes }}</td>
-            <td>
-              {% if row.status == 'حاضر' %}<span class="badge ok">{{ row.status }}</span>
-              {% elif 'متأخر' in row.status %}<span class="badge warn">{{ row.status }}</span>
-              {% elif row.status in ['غائب','لم يحضر'] %}<span class="badge bad">{{ row.status }}</span>
-              {% else %}<span class="badge neutral">{{ row.status }}</span>{% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="8" style="text-align:center;color:var(--text3)">لا يوجد موظفون</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>الكود</th><th>الاسم</th><th>الفرع</th><th>رقم البصمة</th><th>حضور</th><th>انصراف</th><th>تأخير (د)</th><th>الحالة</th></tr>
+          </thead>
+          <tbody>
+            {% for row in summary.rows %}
+            <tr>
+              <td class="td-code">{{ row.code }}</td>
+              <td class="td-name">{{ row.name }}</td>
+              <td>{{ row.branch_name or '—' }}</td>
+              <td class="td-code">{{ row.biometric_user_id }}</td>
+              <td class="td-code">{{ row.check_in }}</td>
+              <td class="td-code">{{ row.check_out }}</td>
+              <td class="td-code">{{ row.late_minutes }}</td>
+              <td>
+                {% if row.status == 'حاضر' %}<span class="badge badge-available">{{ row.status }}</span>
+                {% elif 'متأخر' in row.status %}<span class="badge badge-busy">{{ row.status }}</span>
+                {% elif row.status in ['غائب','لم يحضر'] %}<span class="badge badge-no">{{ row.status }}</span>
+                {% else %}<span class="badge badge-leave">{{ row.status }}</span>{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" style="text-align:center;color:var(--text3)">لا يوجد موظفون</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
-<script src="/static/liftcore-shell.js?v=5" defer></script>
 </body>
 </html>

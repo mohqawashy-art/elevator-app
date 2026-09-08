@@ -1,0 +1,7 @@
+{% set dept_qs = ('?department=' ~ request.args.get('department')) if request.args.get('department') else '' %}
+<div class="tabs">
+  <a href="/attendance/employees{{ dept_qs }}" class="tab{% if request.path.endswith('/employees') %} active{% endif %}">الموظفون</a>
+  <a href="/attendance/today{{ dept_qs }}" class="tab{% if request.path.endswith('/today') %} active{% endif %}">حضور اليوم</a>
+  <a href="/attendance/devices{{ dept_qs }}" class="tab{% if request.path.endswith('/devices') %} active{% endif %}">أجهزة البصمة</a>
+  <a href="/attendance/monthly{{ dept_qs }}" class="tab{% if request.path.endswith('/monthly') %} active{% endif %}">التقرير الشهري</a>
+</div>

@@ -5,10 +5,7 @@
 {% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — موظفو الحضور</title>
-{% include 'partials/liftcore_head.html' %}
-<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
-<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
-{% include 'partials/attendance_styles.html' %}
+{% include 'partials/attendance_page_head.html' %}
 </head>
 <body>
 <div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -19,61 +16,70 @@
 <div class="main">
   {% set page_title = 'موظفو الحضور' %}
   {% include 'partials/app_header.html' %}
-  <div class="content att-wrap">
+  <div class="content">
     {% include 'partials/flash_messages.html' %}
+    {% include 'partials/attendance_subnav.html' %}
     <div class="page-header">
       <div class="page-title">موظفو الحضور والانصراف</div>
       <div class="page-actions">
         {% if has_perm('attendance.create') %}
         <form method="post" action="/attendance/employees/import-technicians" style="display:inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-secondary">استيراد الفنيين</button>
+          <button type="submit" class="btn btn-secondary btn-sm">استيراد الفنيين</button>
         </form>
-        <button type="button" class="btn btn-primary" onclick="openEmpModal()">إضافة موظف</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openEmpModal()">إضافة موظف</button>
         {% endif %}
       </div>
     </div>
-    <div class="setup-box">
+    <div class="info-panel">
       <strong>ربط uFace 800:</strong> سجّل كل موظف برقم بصمة (<code>biometric_user_id</code>) مطابق لرقم المستخدم على الجهاز.
       الدوام الافتراضي <code>08:00–17:00</code> (الأحد–الخميس).
     </div>
     <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>الكود</th><th>الاسم</th><th>الوظيفة</th><th>الفرع</th>
-            <th>رقم البصمة</th><th>الجوال</th><th>الحالة</th><th></th>
-          </tr>
-        </thead>
-        <tbody id="emp-body"></tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>الكود</th><th>الاسم</th><th>الوظيفة</th><th>الفرع</th>
+              <th>رقم البصمة</th><th>الجوال</th><th>الحالة</th><th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="emp-body"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-emp">
   <div class="modal">
-    <h3 id="emp-modal-title">إضافة موظف</h3>
+    <div class="modal-head">
+      <div class="modal-title" id="emp-modal-title">إضافة موظف</div>
+      <button type="button" class="modal-close" onclick="closeEmpModal()" aria-label="إغلاق">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg>
+      </button>
+    </div>
     <form id="emp-form" method="post">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="emp_id" id="emp-id">
-      <div class="grid2">
-        <div class="field"><label>الاسم *</label><input name="name" id="f-name" required></div>
-        <div class="field"><label>المسمى الوظيفي</label><input name="job_title" id="f-job"></div>
-        <div class="field"><label>القسم</label><input name="department" id="f-dept"></div>
-        <div class="field"><label>رقم البصمة *</label><input name="biometric_user_id" id="f-bio" required></div>
-        <div class="field"><label>الفرع</label><select name="branch_id" id="f-branch"></select></div>
-        <div class="field"><label>الجوال</label><input name="phone" id="f-phone"></div>
-        <div class="field"><label>تاريخ التعيين</label><input type="date" name="hire_date" id="f-hire"></div>
-        <div class="field"><label>الراتب</label><input type="number" name="salary" id="f-salary"></div>
-        <div class="field"><label>الحالة</label>
-          <select name="status" id="f-status"><option>نشط</option><option>غير نشط</option></select>
+      <div class="modal-body">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-grid">
+          <div class="field"><label>الاسم *</label><input name="name" id="f-name" required></div>
+          <div class="field"><label>المسمى الوظيفي</label><input name="job_title" id="f-job"></div>
+          <div class="field"><label>القسم</label><input name="department" id="f-dept"></div>
+          <div class="field"><label>رقم البصمة *</label><input name="biometric_user_id" id="f-bio" required class="td-code"></div>
+          <div class="field"><label>الفرع</label><select name="branch_id" id="f-branch"></select></div>
+          <div class="field"><label>الجوال</label><input name="phone" id="f-phone" class="td-code"></div>
+          <div class="field"><label>تاريخ التعيين</label><input type="date" name="hire_date" id="f-hire" lang="en-GB"></div>
+          <div class="field"><label>الراتب</label><input type="number" name="salary" id="f-salary" class="td-code"></div>
+          <div class="field"><label>الحالة</label>
+            <select name="status" id="f-status"><option>نشط</option><option>غير نشط</option></select>
+          </div>
+          <div class="field form-full"><label>ملاحظات</label><textarea name="notes" id="f-notes" rows="2"></textarea></div>
         </div>
       </div>
-      <div class="field"><label>ملاحظات</label><textarea name="notes" id="f-notes" rows="2"></textarea></div>
-      <div style="display:flex;gap:8px;margin-top:14px">
-        <button type="button" class="btn btn-secondary" onclick="closeEmpModal()">إلغاء</button>
-        <button type="submit" class="btn btn-primary">حفظ</button>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeEmpModal()">إلغاء</button>
+        <button type="submit" class="btn btn-primary btn-sm">حفظ</button>
       </div>
     </form>
   </div>
@@ -86,21 +92,21 @@ const NEXT_BIO = {{ next_bio_id|tojson }};
 const CAN_EDIT = {{ has_perm('attendance.edit')|tojson }};
 
 function badge(status){
-  if(status==='نشط') return '<span class="badge ok">نشط</span>';
-  return '<span class="badge bad">'+status+'</span>';
+  if(status==='نشط') return '<span class="badge badge-available">نشط</span>';
+  return '<span class="badge badge-inactive">'+status+'</span>';
 }
 function renderEmployees(){
   const tb = document.getElementById('emp-body');
   tb.innerHTML = EMPLOYEES.map(e => `
     <tr>
-      <td>${e.code||''}</td>
-      <td>${e.name||''}</td>
+      <td class="td-code">${e.code||''}</td>
+      <td class="td-name">${e.name||''}</td>
       <td>${e.job_title||'—'}</td>
       <td>${e.branch_name||'—'}</td>
-      <td style="font-family:var(--font-en)">${e.biometric_user_id||''}</td>
-      <td>${e.phone||'—'}</td>
+      <td class="td-code">${e.biometric_user_id||''}</td>
+      <td class="td-code">${e.phone||'—'}</td>
       <td>${badge(e.status)}</td>
-      <td>${CAN_EDIT ? `<button class="btn btn-secondary btn-sm" onclick='editEmp(${e.id})'>تعديل</button>` : ''}</td>
+      <td class="td-actions">${CAN_EDIT ? `<button class="btn btn-secondary btn-sm" onclick='editEmp(${e.id})'>تعديل</button>` : ''}</td>
     </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3)">لا يوجد موظفون بعد</td></tr>';
 }
 function fillBranches(sel){
@@ -109,7 +115,6 @@ function fillBranches(sel){
 function openEmpModal(){
   document.getElementById('emp-modal-title').textContent = 'إضافة موظف';
   document.getElementById('emp-form').action = '/attendance/employees/add';
-  document.getElementById('emp-id').value = '';
   ['f-name','f-job','f-dept','f-phone','f-hire','f-salary','f-notes'].forEach(id => document.getElementById(id).value='');
   document.getElementById('f-bio').value = NEXT_BIO;
   document.getElementById('f-status').value = 'نشط';
@@ -137,6 +142,5 @@ function editEmp(id){
 function closeEmpModal(){ document.getElementById('modal-emp').classList.remove('open'); }
 renderEmployees();
 </script>
-<script src="/static/liftcore-shell.js?v=5" defer></script>
 </body>
 </html>
