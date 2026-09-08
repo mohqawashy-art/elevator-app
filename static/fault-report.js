@@ -48,34 +48,71 @@
     });
   }
 
+  function inventorySelectOptions() {
+    const items = global.INVENTORY_ITEMS || [];
+    return items.map(function (it) {
+      return { id: String(it.id), code: it.code || '', name: it.name || '' };
+    });
+  }
+
+  let partRowSeq = 0;
+
+  function getPartItemId(tr) {
+    const hidden = tr.querySelector('.part-item-id');
+    return hidden ? hidden.value : '';
+  }
+
+  function mountPartItemSelect(tr, selectedId) {
+    const cell = tr.querySelector('.part-item-cell');
+    if (!cell) return;
+    partRowSeq += 1;
+    const uid = 'fr-part-' + partRowSeq;
+    const wrapId = uid + '-wrap';
+    const inputId = uid + '-input';
+    const listId = uid + '-list';
+    const hiddenId = uid + '-id';
+    cell.innerHTML =
+      '<div class="lc-client-select" id="' + escHtml(wrapId) + '">' +
+      '<input type="text" class="lc-client-select-input" id="' + escHtml(inputId) + '" placeholder="ابحث بالكود أو اسم الصنف..." autocomplete="off">' +
+      '<input type="hidden" class="part-item-id" id="' + escHtml(hiddenId) + '" value="' + escHtml(selectedId || '') + '">' +
+      '<ul class="lc-client-select-list" id="' + escHtml(listId) + '" hidden role="listbox"></ul>' +
+      '</div>';
+    if (typeof global.LcClientSelect === 'undefined') return;
+    global.LcClientSelect.mount({
+      wrapId: wrapId,
+      hiddenId: hiddenId,
+      inputId: inputId,
+      listId: listId,
+      customers: inventorySelectOptions(),
+      selectedId: selectedId || '',
+      onChange: function () { onPartItemChange(tr, false); },
+    });
+  }
+
   function addPartsRow(data) {
     const tbody = document.getElementById('parts-body');
     if (!tbody) return;
     const tr = document.createElement('tr');
     const row = data || { item_id: '', name: '', qty: 1, unit_price: 0 };
-    const items = global.INVENTORY_ITEMS || [];
-    let opts = '<option value="">— صنف من المخزن —</option>';
-    items.forEach(function (it) {
-      const sel = String(it.id) === String(row.item_id || '') ? ' selected' : '';
-      const label = (it.code ? it.code + ' — ' : '') + (it.name || '');
-      opts += '<option value="' + it.id + '"' + sel + '>' + escHtml(label) + '</option>';
-    });
     tr.innerHTML =
-      '<td><select class="part-item-sel">' + opts + '</select></td>' +
+      '<td class="part-item-cell"></td>' +
       '<td><input type="text" class="part-name" placeholder="اسم القطعة" value="' + escHtml(row.name) + '"></td>' +
       '<td><input type="number" class="qty-input" min="1" value="' + (row.qty || 1) + '" style="direction:ltr"></td>' +
       '<td><input type="number" class="price-input" min="0" step="0.01" value="' + (row.unit_price || '') + '" style="direction:ltr"></td>' +
       '<td><input type="text" class="row-total" readonly style="direction:ltr;font-family:var(--font-en)"></td>' +
       '<td><button type="button" class="del-btn">×</button></td>';
     tbody.appendChild(tr);
+    mountPartItemSelect(tr, row.item_id || '');
     const del = tr.querySelector('.del-btn');
     if (del) del.addEventListener('click', function () { tr.remove(); calcTotals(); });
-    const sel = tr.querySelector('.part-item-sel');
-    if (sel) sel.addEventListener('change', function () { onPartItemChange(tr, false); });
     tr.querySelectorAll('.qty-input,.price-input').forEach(function (inp) {
       inp.addEventListener('input', calcTotals);
     });
     if (row.item_id) onPartItemChange(tr, true);
+    else {
+      const nameEl = tr.querySelector('.part-name');
+      if (nameEl) nameEl.readOnly = false;
+    }
     calcTotals();
   }
 
@@ -86,12 +123,14 @@
   }
 
   function onPartItemChange(tr, keepPrice) {
-    const sel = tr.querySelector('.part-item-sel');
     const nameEl = tr.querySelector('.part-name');
     const priceEl = tr.querySelector('.price-input');
-    const itemId = sel ? sel.value : '';
+    const itemId = getPartItemId(tr);
     if (!itemId) {
-      if (nameEl) nameEl.readOnly = false;
+      if (nameEl) {
+        nameEl.readOnly = false;
+        nameEl.placeholder = 'اكتب اسم القطعة يدوياً';
+      }
       calcTotals();
       return;
     }
@@ -118,7 +157,10 @@
     if (!editable) {
       tbody.querySelectorAll('input,button').forEach(function (el) {
         if (el.classList.contains('del-btn')) el.style.display = 'none';
-        else el.readOnly = true;
+        else if (!el.classList.contains('part-item-id')) el.readOnly = true;
+      });
+      tbody.querySelectorAll('.part-item-id').forEach(function (hidden) {
+        if (global.LcClientSelect) global.LcClientSelect.setDisabled(hidden.id, true);
       });
       const addBtn = document.getElementById('add-part-row');
       if (addBtn) addBtn.style.display = 'none';
@@ -157,7 +199,7 @@
       const name = (tr.querySelector('.part-name')?.value || '').trim();
       const qty = parseFloat(tr.querySelector('.qty-input')?.value) || 0;
       const unit_price = parseFloat(tr.querySelector('.price-input')?.value) || 0;
-      const item_id = tr.querySelector('.part-item-sel')?.value || '';
+      const item_id = getPartItemId(tr);
       if (name || unit_price || item_id) {
         out.push({
           item_id: item_id ? Number(item_id) : null,
