@@ -464,17 +464,87 @@ document.addEventListener('DOMContentLoaded', function () {
     return Math.round(Number(item.buy_price) || 0);
   }
 
-  function itemSelectHTML(selectedId, currentName) {
-    var emptyLabel = currentName ? currentName : '— اختر البند —';
-    var html = '<select class="f-item" title="' + escapeAttr(emptyLabel) + '"><option value="">' + escapeAttr(emptyLabel) + '</option>';
-    var i, it, sel, label;
+  var quoteItemSeq = 0;
+
+  function inventorySelectOptions() {
+    var out = [], i, it;
     for (i = 0; i < inventoryItems.length; i++) {
       it = inventoryItems[i];
-      sel = String(it.id) === String(selectedId || '') ? ' selected' : '';
-      label = (it.code ? it.code + ' — ' : '') + (it.name || '');
-      html += '<option value="' + it.id + '"' + sel + '>' + escapeAttr(label) + '</option>';
+      out.push({ id: String(it.id), code: it.code || '', name: it.name || '' });
     }
-    return html + '</select>';
+    return out;
+  }
+
+  function itemSelectHTML(selectedId, currentName) {
+    quoteItemSeq += 1;
+    var uid = 'qitem-' + quoteItemSeq;
+    var val = selectedId ? String(selectedId) : '';
+    var placeholder = currentName ? currentName : 'ابحث بالكود أو اسم الصنف...';
+    if (typeof LcClientSelect === 'undefined') {
+      var emptyLabel = currentName ? currentName : '— اختر البند —';
+      var html = '<select class="f-item" title="' + escapeAttr(emptyLabel) + '"><option value="">' + escapeAttr(emptyLabel) + '</option>';
+      var i, it, sel, label;
+      for (i = 0; i < inventoryItems.length; i++) {
+        it = inventoryItems[i];
+        sel = String(it.id) === String(selectedId || '') ? ' selected' : '';
+        label = (it.code ? it.code + ' — ' : '') + (it.name || '');
+        html += '<option value="' + it.id + '"' + sel + '>' + escapeAttr(label) + '</option>';
+      }
+      return html + '</select>';
+    }
+    return '<div class="lc-client-select f-item-select" id="' + uid + '-wrap">'
+      + '<input type="text" class="lc-client-select-input" id="' + uid + '-input" placeholder="' + escapeAttr(placeholder) + '" autocomplete="off">'
+      + '<input type="hidden" class="f-item" id="' + uid + '-id" value="' + escapeAttr(val) + '">'
+      + '<ul class="lc-client-select-list lc-item-select-list" id="' + uid + '-list" hidden role="listbox"></ul>'
+      + '</div>';
+  }
+
+  function cleanupFloatingItemLists() {
+    var lists = document.querySelectorAll('.lc-item-select-list');
+    var i, wrapId;
+    for (i = 0; i < lists.length; i++) {
+      wrapId = String(lists[i].id || '').replace(/-list$/, '-wrap');
+      if (lists[i].parentNode === document.body && wrapId && !document.getElementById(wrapId)) {
+        lists[i].remove();
+      }
+    }
+  }
+
+  function mountItemSelect(wrap) {
+    if (!wrap || wrap.dataset.lcMounted || typeof LcClientSelect === 'undefined') return;
+    wrap.dataset.lcMounted = '1';
+    var wrapId = wrap.id;
+    var uid = wrapId.replace(/-wrap$/, '');
+    var tr = wrap.closest('tr.item-row');
+    var hidden = wrap.querySelector('.f-item');
+    LcClientSelect.mount({
+      wrapId: wrapId,
+      hiddenId: uid + '-id',
+      inputId: uid + '-input',
+      listId: uid + '-list',
+      customers: inventorySelectOptions(),
+      selectedId: hidden ? hidden.value : '',
+      onChange: function () {
+        if (!tr) return;
+        applyInventoryToRow(tr, false);
+        scheduleDraftSave();
+        recalc();
+      },
+    });
+    var input = wrap.querySelector('.lc-client-select-input');
+    var nameEl = tr && tr.querySelector('.f-name');
+    if (input && hidden && !hidden.value && nameEl && nameEl.value) {
+      input.value = nameEl.value;
+    }
+  }
+
+  function mountAllItemSelects() {
+    var body = el('itemsBody');
+    if (!body) return;
+    cleanupFloatingItemLists();
+    var wraps = body.querySelectorAll('.f-item-select');
+    var i;
+    for (i = 0; i < wraps.length; i++) mountItemSelect(wraps[i]);
   }
 
   function applyInventoryToRow(tr, keepPrice) {
@@ -642,6 +712,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var rows = body.querySelectorAll('tr.item-row');
     var i;
     for (i = 0; i < rows.length; i++) syncUnitCustomVisibility(rows[i]);
+    mountAllItemSelects();
   }
 
   function rowName(tr) {
@@ -650,7 +721,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (item && item.name) return item.name;
     var hidden = tr.querySelector('.f-name');
     if (hidden && hidden.value) return hidden.value;
-    if (sel && sel.options[sel.selectedIndex]) return (sel.options[sel.selectedIndex].text || '').trim();
+    if (sel && sel.options && sel.selectedIndex >= 0) return (sel.options[sel.selectedIndex].text || '').trim();
+    var typed = tr.querySelector('.lc-client-select-input');
+    if (typed && typed.value) return typed.value.trim();
     return 'بند';
   }
 

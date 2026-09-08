@@ -50,6 +50,12 @@ table.pricing-items select.f-item{
   width:100%;min-width:0;max-width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r-sm);
   background:var(--bg3);color:var(--text1);font-family:inherit;font-size:12px;line-height:1.45
 }
+table.pricing-items .f-item-select{min-width:0;width:100%}
+table.pricing-items .f-item-select .lc-client-select-input{
+  max-width:none;width:100%;text-align:right;font-family:inherit;font-size:12px;
+  padding:6px 8px;padding-inline-end:34px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r-sm);color:var(--text1);box-sizing:border-box
+}
 table.pricing-items select.f-unit{
   width:100%;padding:5px 6px;border:1px solid var(--border);border-radius:var(--r-sm);
   background:var(--bg3);color:var(--text1);font-family:inherit;font-size:12px
