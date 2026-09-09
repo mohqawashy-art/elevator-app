@@ -13023,6 +13023,10 @@ def parts_edit(id):
     from operations import apply_parts_billing_inventory, parse_fault_parts_lines
 
     p = tenant_get_or_404(PartsBilling, id)
+    billing_date_raw = (request.form.get('billing_date') or '').strip()
+    if not billing_date_raw:
+        flash('أدخل تاريخ العملية', 'error')
+        return redirect(url_for('parts_billing'))
     lines = parse_fault_parts_lines(request.form.get('parts_lines'))
     user_notes = request.form.get('notes', '')
     cost = float(request.form.get('cost_price', 0))
@@ -13045,7 +13049,7 @@ def parts_edit(id):
     p.technician_id  = links['technician_id']
     p.visit_id       = links['visit_id']
     p.fault_id       = links['fault_id']
-    p.billing_date = datetime.strptime(request.form['billing_date'], '%Y-%m-%d').date()
+    p.billing_date = datetime.strptime(billing_date_raw, '%Y-%m-%d').date()
     p.payment_note = (request.form.get('payment_note') or '').strip() or None
     # الحالة تُحدَّث من تسجيل الإيراد — لا تُغيَّر من نموذج التعديل
     if lines:
@@ -13078,6 +13082,11 @@ def parts_add():
     from entity_links import resolve_parts_links
     from operations import apply_parts_billing_inventory, parse_fault_parts_lines
 
+    billing_date_raw = (request.form.get('billing_date') or '').strip()
+    if not billing_date_raw:
+        flash('أدخل تاريخ العملية', 'error')
+        return redirect(url_for('parts_billing'))
+
     lines = parse_fault_parts_lines(request.form.get('parts_lines'))
     user_notes = request.form.get('notes', '')
     cost = float(request.form.get('cost_price', 0))
@@ -13102,7 +13111,7 @@ def parts_add():
         technician_id = links['technician_id'],
         visit_id      = links['visit_id'],
         fault_id      = links['fault_id'],
-        billing_date=datetime.strptime(request.form['billing_date'], '%Y-%m-%d').date(),
+        billing_date=datetime.strptime(billing_date_raw, '%Y-%m-%d').date(),
         description=request.form.get('description', ''),
         cost_price=cost,
         sell_price=sell,
@@ -13121,6 +13130,10 @@ def parts_add():
             db.session.rollback()
             flash(str(exc), 'error')
             return redirect(url_for('parts_billing'))
+    elif not (request.form.get('description') or '').strip():
+        db.session.rollback()
+        flash('أضف قطعة غيار واحدة على الأقل', 'error')
+        return redirect(url_for('parts_billing'))
     if links['fault_id']:
         fault = tenant_query(Fault).filter_by(id=links['fault_id']).first()
         if fault:

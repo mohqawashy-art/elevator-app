@@ -179,6 +179,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 
   <div class="content">
+    {% include 'partials/flash_messages.html' %}
     <!-- STATS -->
     <div class="stats-row">
       <div class="stat-card">
@@ -665,6 +666,7 @@ function inventorySelectOptions() {
 function mountPbPartItemSelect(tr, selectedId) {
   const cell = tr.querySelector('.part-item-cell');
   if (!cell) return;
+  if (cell.dataset.pbItemMounted === '1') return;
   pbPartRowSeq += 1;
   const uid = 'pb-part-' + pbPartRowSeq;
   const wrapId = uid + '-wrap';
@@ -677,7 +679,12 @@ function mountPbPartItemSelect(tr, selectedId) {
     '<input type="hidden" class="part-item-id" id="' + hiddenId + '" value="' + (selectedId || '') + '">' +
     '<ul class="lc-client-select-list" id="' + listId + '" hidden role="listbox"></ul>' +
     '</div>';
-  if (typeof LcClientSelect === 'undefined') return;
+  if (typeof LcClientSelect === 'undefined') {
+    cell.dataset.pbNeedMount = '1';
+    return;
+  }
+  cell.dataset.pbNeedMount = '';
+  cell.dataset.pbItemMounted = '1';
   LcClientSelect.mount({
     wrapId: wrapId,
     hiddenId: hiddenId,
@@ -686,6 +693,19 @@ function mountPbPartItemSelect(tr, selectedId) {
     customers: inventorySelectOptions(),
     selectedId: selectedId || '',
     onChange: function () { onPbPartItemChange(tr); },
+  });
+}
+
+function remountPbPartItemSelects() {
+  if (typeof LcClientSelect === 'undefined') return;
+  document.querySelectorAll('#pb-parts-body tr').forEach(function (tr) {
+    const cell = tr.querySelector('.part-item-cell');
+    if (!cell || cell.dataset.pbNeedMount !== '1') return;
+    const hidden = tr.querySelector('.part-item-id');
+    const selectedId = hidden ? hidden.value : '';
+    cell.dataset.pbItemMounted = '';
+    cell.dataset.pbNeedMount = '';
+    mountPbPartItemSelect(tr, selectedId);
   });
 }
 
@@ -999,6 +1019,21 @@ function initPartsClientSelect() {
     customers: CUSTOMERS,
     onChange: onPartsCustomerChange,
   });
+  remountPbPartItemSelects();
+}
+
+function getPbClientId() {
+  const el = document.getElementById('m-client-sel');
+  return el && el.value ? String(el.value).trim() : '';
+}
+
+function pbPartLineInvalid(l) {
+  const qty = parseFloat(l.qty) || 0;
+  const unit = parseFloat(l.unit_price) || 0;
+  const gross = qty * unit;
+  if (gross > 0) return false;
+  if ((parseFloat(l.cost_price) || 0) > 0 && (l.name || '').trim()) return false;
+  return true;
 }
 
 function onPartsCustomerChange() {
@@ -1082,22 +1117,30 @@ function updateProfit() {
 function saveRecord() {
   const editId = document.getElementById('modal-box').dataset.editId;
   const cn = document.getElementById('m-cn').value.trim();
-  const clientEl = document.getElementById('m-client-sel');
-  if (!clientEl || !clientEl.value) { alert('اختر العميل'); return; }
+  const clientId = getPbClientId();
+  if (!clientId) { alert('اختر العميل من القائمة'); return; }
+  const billingDate = document.getElementById('m-date')?.value;
+  if (!billingDate) { alert('أدخل تاريخ العملية'); return; }
   const lines = collectPbParts();
-  if (!lines.length) { alert('أضف قطعة غيار واحدة على الأقل من ملف الأصناف'); return; }
-  const invalid = lines.find(l => !l.unit_price || l.unit_price <= 0);
-  if (invalid) { alert('أدخل سعر العميل لكل قطعة — للتركيب المجاني استخدم الخصم أو «على حساب الشركة»'); return; }
+  if (!lines.length) { alert('أضف قطعة غيار واحدة على الأقل'); return; }
+  const invalid = lines.find(pbPartLineInvalid);
+  if (invalid) {
+    alert('أدخل سعر العميل أو التكلفة لكل قطعة — للتركيب المجاني استخدم «على حساب الشركة»');
+    return;
+  }
   const techId = document.getElementById('m-tech-sel')?.value;
   if (!techId) { alert('اختر الفني — يظهر اسمه في حركة المخزون'); return; }
-  const customer = CUSTOMERS.find(c => String(c.id) === String(clientEl.value));
+  const customer = CUSTOMERS.find(c => String(c.id) === clientId);
+  const clientInput = document.getElementById('m-client-sel-input');
   const contract = CONTRACTS.find(c => c.code.toUpperCase() === cn.toUpperCase());
   const fd = new FormData();
+  const csrf = document.querySelector('meta[name="csrf-token"]');
+  if (csrf && csrf.content) fd.append('csrf_token', csrf.content);
   if (contract) fd.append('contract_id', contract.id);
   fd.append('contract_code', cn);
-  if (customer) fd.append('customer_id', customer.id);
-  fd.append('customer_name', customer ? customer.name : '');
-  fd.append('billing_date', document.getElementById('m-date').value);
+  fd.append('customer_id', clientId);
+  fd.append('customer_name', customer ? customer.name : (clientInput ? clientInput.value : ''));
+  fd.append('billing_date', billingDate);
   fd.append('description', buildPbDescription(lines));
   fd.append('parts_lines', JSON.stringify(lines));
   fd.append('cost_price', document.getElementById('m-cost').value || 0);
@@ -1114,8 +1157,25 @@ function saveRecord() {
   const faultCode = (faultSel && faultSel.value) || document.getElementById('m-fault')?.value.trim();
   if (visitCode) fd.append('visit_code', visitCode);
   if (faultCode) fd.append('fault_code', faultCode);
-  fetch(editId ? `/parts-billing/edit/${editId}` : '/parts-billing/add', {method:'POST', body:fd})
-    .then(() => window.location.reload());
+  const saveBtn = document.querySelector('#modal .modal-foot .btn-primary');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'جاري الحفظ…'; }
+  fetch(editId ? `/parts-billing/edit/${editId}` : '/parts-billing/add', {
+    method: 'POST',
+    body: fd,
+    credentials: 'same-origin',
+  })
+    .then(function (r) {
+      if (r.redirected && r.url) {
+        window.location.href = r.url;
+        return;
+      }
+      if (!r.ok) throw new Error('save-failed');
+      window.location.reload();
+    })
+    .catch(function () {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'حفظ'; }
+      alert('تعذر حفظ العملية — تحقق من البيانات أو أعد تحميل الصفحة');
+    });
 }
 
 function editPart(id) {
