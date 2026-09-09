@@ -69,6 +69,9 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
 .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .panel-h{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);font-size:13px;font-weight:600}
 .total-row td{font-weight:600;color:var(--text1);background:rgba(255,255,255,.02)}
+th.th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+th.th-sort:hover{color:var(--text1)}
+th.th-sort .sort-ind{display:inline-block;margin-inline-start:4px;font-size:10px;color:var(--accent);min-width:10px;opacity:.45}
 @media(max-width:900px){.stats-row,.two-col{grid-template-columns:1fr}.content{padding:16px}}
 </style>
 {% include 'partials/liftcore_head.html' %}
@@ -96,5 +99,12 @@ tbody td{padding:11px 14px;color:var(--text2);vertical-align:middle}
     {% block accounting_body %}{% endblock %}
   </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.LiftCoreTableSort && LiftCoreTableSort.bindDomTables) {
+    LiftCoreTableSort.bindDomTables(document);
+  }
+});
+</script>
 </body>
 </html>
