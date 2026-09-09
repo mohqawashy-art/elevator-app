@@ -847,7 +847,7 @@ USER_THEME_OPTIONS = (
 
 def normalize_user_theme(value):
     theme = (value or 'light').strip()
-    return theme if theme in USER_THEMES else 'light'
+    return theme if theme in USER_THEMES else 'premium'
 
 
 def resolve_user_language(user=None):
@@ -943,7 +943,7 @@ def inject_global_template_vars():
             user = db.session.get(User, uid)
         except Exception:
             db.session.rollback()
-    theme = 'light'
+    theme = 'premium'
     if user and getattr(user, 'theme', None):
         theme = normalize_user_theme(user.theme)
     lang = resolve_user_language(user)
@@ -2864,8 +2864,8 @@ def web_manifest():
         'scope': '/',
         'display': 'standalone',
         'orientation': 'any',
-        'background_color': '#0b0f17',
-        'theme_color': '#0b0f17',
+        'background_color': '#070a10',
+        'theme_color': '#070a10',
         'lang': 'ar',
         'dir': 'rtl',
         'categories': ['business', 'productivity'],

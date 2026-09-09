@@ -1,8 +1,4 @@
-{% if splash_lock_theme|default(false) %}
-<style id="lc-critical-paint">html,body,html[data-theme],html[data-theme] body{background:#070a10;color:#f2f5fa;color-scheme:dark}</style>
-{% else %}
-<style id="lc-critical-paint">html,body{background:#0b0f17;color:#e4eaf5;color-scheme:dark;min-height:100%}html[data-theme="light"],html[data-theme="light"] body{background:#f0f4fa;color:#1a2433;color-scheme:light}html[data-theme="report"],html[data-theme="report"] body{background:#f5f0e8;color:#1a2433}html[data-theme="premium"],html[data-theme="premium"] body{background:#070a10;color:#f2f5fa}</style>
-{% endif %}
+<style id="lc-critical-paint">html,body,html[data-theme],html[data-theme] body{background:#070a10;color:#f2f5fa;color-scheme:dark;min-height:100%}</style>
 <script>
 (function () {
   var theme = {% if splash_lock_theme|default(false) %}'premium'{% else %}{{ user_theme|tojson }}{% endif %};
