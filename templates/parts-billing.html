@@ -606,13 +606,29 @@ function renderTable(data) {
   }
 }
 
+function partsSearchMatch(s, fields) {
+  if (window.LcSearch && typeof LcSearch.match === 'function') {
+    return LcSearch.match(s, fields);
+  }
+  if (!s) return true;
+  const q = String(s).toLowerCase();
+  return fields.some(function (v) { return String(v || '').toLowerCase().indexOf(q) >= 0; });
+}
+
+function partsFilterAllows(el, actual, opts) {
+  if (typeof window.lcAllows === 'function') {
+    return lcAllows(el, actual, opts);
+  }
+  return true;
+}
+
 function applyFilters() {
   const s  = (document.getElementById('f-search')?.value || '');
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = PARTS.filter(p =>
-    LcSearch.match(s, [p.code, p.customer, p.customer_name_en, p.contract, p.elevator, p.description, p.payment_note, p.notes, p.technician]) &&
-    lcAllows('f-status', p.status, { aliases: { 'محصل': ['مكتملة'] } }) &&
+    partsSearchMatch(s, [p.code, p.customer, p.customer_name_en, p.contract, p.elevator, p.description, p.payment_note, p.notes, p.technician]) &&
+    partsFilterAllows('f-status', p.status, { aliases: { 'محصل': ['مكتملة'] } }) &&
     (!fd || p.billing_date >= fd) &&
     (!td || p.billing_date <= td)
   );
@@ -1291,12 +1307,16 @@ const months = ['يناير','فبراير','مارس','أبريل','مايو','
 var hDateEl = document.getElementById('h-date');
 if (hDateEl) hDateEl.textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
-window.__lcPageBoot = function () {
+function bootPartsBillingPage() {
   initPartsClientSelect();
   updateStats();
   if (tableSort) tableSort.bindHeaders();
   fillTechnicianSelect('');
   applyFilters();
+}
+
+window.__lcPageBoot = function () {
+  bootPartsBillingPage();
   const fc = new URLSearchParams(window.location.search).get('fault');
   if (fc) {
     openModal();
@@ -1323,6 +1343,7 @@ window.__lcPageBoot = function () {
 };
 window.__lcRefreshPage = function () {
   updateStats();
+  if (typeof applyFilters === 'function') { applyFilters(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : PARTS);
 };
 </script>
