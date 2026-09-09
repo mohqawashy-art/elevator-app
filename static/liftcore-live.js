@@ -19,6 +19,8 @@
     if (path.indexOf('/print') >= 0 || path.indexOf('/report') >= 0) return null;
     if (path.indexOf('/field') === 0) return null;
     if (path.indexOf('visit-report') >= 0 || path.indexOf('fault-report') >= 0) return null;
+    // تقارير محاسبية — لا مزامنة حية (غير مدعومة وتسبّب إعادة تحميل كاملة)
+    if (/^\/(pnl|balance-sheet|accounts|journals|ledger|trial-balance)(\/|$)/.test(path)) return null;
     // صفحات تحرير طويلة — لا إعادة تحميل أثناء العمل (مثل تسعير التركيب)
     if (path.indexOf('/installation/') >= 0 && (
       path.indexOf('/quote') >= 0
