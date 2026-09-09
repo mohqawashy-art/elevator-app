@@ -22,7 +22,10 @@
     <div class="panel-h">الأصول</div>
     <div class="table-scroll">
       <table>
-        <thead><tr><th>الحساب</th><th>الرصيد</th></tr></thead>
+        <thead><tr>
+          <th class="th-sort" data-sort-col="account">الحساب <span class="sort-ind"></span></th>
+          <th class="th-sort" data-sort-col="amount" data-sort-type="num">الرصيد <span class="sort-ind"></span></th>
+        </tr></thead>
         <tbody>
           {% for line in report.assets %}
           <tr><td class="td-name"><span class="td-code">{{ line.code }}</span> {{ line.name }}</td><td class="td-num">{{ '%.2f'|format(line.amount) }}</td></tr>
@@ -38,7 +41,10 @@
     <div class="panel-h">الخصوم وحقوق الملكية</div>
     <div class="table-scroll">
       <table>
-        <thead><tr><th>الحساب</th><th>الرصيد</th></tr></thead>
+        <thead><tr>
+          <th class="th-sort" data-sort-col="account">الحساب <span class="sort-ind"></span></th>
+          <th class="th-sort" data-sort-col="amount" data-sort-type="num">الرصيد <span class="sort-ind"></span></th>
+        </tr></thead>
         <tbody>
           {% for line in report.liabilities %}
           <tr><td class="td-name"><span class="td-code">{{ line.code }}</span> {{ line.name }}</td><td class="td-num">{{ '%.2f'|format(line.amount) }}</td></tr>
