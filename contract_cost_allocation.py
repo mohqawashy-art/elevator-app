@@ -168,82 +168,12 @@ def count_completed_visits(
     return q.count()
 
 
-def _visit_counts_for_contracts(
-    contracts: list,
-    *,
-    period_from: date | None = None,
-    period_to: date | None = None,
-) -> tuple[dict[int, int], dict[int, int]]:
-    """عد زيارات مكتملة لكل عقد: (ضمن الفترة، حتى تاريخ النهاية)."""
-    from sqlalchemy import and_, or_
-
-    from models import MaintenanceVisit
-    from tenant_scope import tenant_query
-
-    contract_ids: list[int] = []
-    elev_to_contract: dict[int, int] = {}
-    for contract in contracts:
-        cid = int(contract.id)
-        contract_ids.append(cid)
-        for ce in (getattr(contract, 'elevators', None) or []):
-            eid = getattr(ce, 'elevator_id', None)
-            if eid:
-                elev_to_contract[int(eid)] = cid
-
-    in_period = {cid: 0 for cid in contract_ids}
-    to_date = {cid: 0 for cid in contract_ids}
-    if not contract_ids:
-        return in_period, to_date
-
-    def owner(contract_id, elevator_id):
-        if contract_id:
-            return int(contract_id)
-        if elevator_id and int(elevator_id) in elev_to_contract:
-            return elev_to_contract[int(elevator_id)]
-        return None
-
-    clauses = []
-    if contract_ids:
-        clauses.append(MaintenanceVisit.contract_id.in_(contract_ids))
-    if elev_to_contract:
-        clauses.append(and_(
-            MaintenanceVisit.contract_id.is_(None),
-            MaintenanceVisit.elevator_id.in_(list(elev_to_contract.keys())),
-        ))
-    if not clauses:
-        return in_period, to_date
-
-    q = tenant_query(MaintenanceVisit).filter(
-        MaintenanceVisit.status == 'مكتملة',
-        or_(*clauses),
-    )
-    end = period_to or date.today()
-    q = q.filter(MaintenanceVisit.visit_date <= end)
-
-    for cid, eid, vdate in q.with_entities(
-        MaintenanceVisit.contract_id,
-        MaintenanceVisit.elevator_id,
-        MaintenanceVisit.visit_date,
-    ).all():
-        key = owner(cid, eid)
-        if key is None:
-            continue
-        to_date[key] = to_date.get(key, 0) + 1
-        if period_from and vdate and vdate < period_from:
-            continue
-        in_period[key] = in_period.get(key, 0) + 1
-
-    return in_period, to_date
-
-
 def maintenance_contracts_pnl_summary(
     *,
     period_from: date | None = None,
     period_to: date | None = None,
 ) -> dict:
     """إيراد عقود الصيانة المستحق بالزيارات + المتبقي غير المكتسب."""
-    from sqlalchemy.orm import joinedload
-
     from models import Contract
     from tenant_scope import tenant_query
 
@@ -252,19 +182,9 @@ def maintenance_contracts_pnl_summary(
     unearned_total = 0.0
     contract_lines: list[dict] = []
 
-    all_contracts = (
-        tenant_query(Contract)
-        .options(joinedload(Contract.elevators))
-        .all()
-    )
-    maintenance_contracts = [c for c in all_contracts if _is_maintenance_contract(c)]
-    visits_in_period, visits_to_date = _visit_counts_for_contracts(
-        maintenance_contracts,
-        period_from=period_from,
-        period_to=period_to or today,
-    )
-
-    for contract in maintenance_contracts:
+    for contract in tenant_query(Contract).all():
+        if not _is_maintenance_contract(contract):
+            continue
         alloc = contract_cost_allocation(contract)
         total = float(alloc.get('contract_total') or 0)
         per_visit = float(alloc.get('per_visit_value') or 0)
@@ -272,23 +192,24 @@ def maintenance_contracts_pnl_summary(
         if total <= 0 or per_visit <= 0:
             continue
 
-        cid = int(contract.id)
-        visits_in_period_n = visits_in_period.get(cid, 0)
-        visits_to_date_n = visits_to_date.get(cid, 0)
-        earned_period = round(per_visit * visits_in_period_n, 2)
-        earned_total = round(per_visit * visits_to_date_n, 2)
+        visits_in_period = count_completed_visits(
+            contract, period_from=period_from, period_to=period_to or today,
+        )
+        visits_to_date = count_completed_visits(contract, period_to=period_to or today)
+        earned_period = round(per_visit * visits_in_period, 2)
+        earned_total = round(per_visit * visits_to_date, 2)
         unearned = round(max(total - earned_total, 0), 2)
 
         earned_in_period += earned_period
         unearned_total += unearned
-        if earned_period > 0 or unearned > 0 or visits_to_date_n > 0:
+        if earned_period > 0 or unearned > 0 or visits_to_date > 0:
             contract_lines.append({
                 'code': contract.code,
                 'contract_type': contract.contract_type or 'عقد صيانة',
                 'contract_total': total,
                 'planned_visits': planned,
-                'completed_visits': visits_to_date_n,
-                'visits_in_period': visits_in_period_n,
+                'completed_visits': visits_to_date,
+                'visits_in_period': visits_in_period,
                 'per_visit_value': per_visit,
                 'earned_in_period': earned_period,
                 'earned_total': earned_total,
