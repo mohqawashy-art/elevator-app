@@ -1,31 +1,32 @@
+{% set splash_lock_theme = true %}
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="light">
+<html lang="ar" dir="rtl" data-theme="premium">
 <head>
 <meta charset="UTF-8">
-{% include 'partials/marketing_boot.html' %}
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f4f7fb;
-  --bg-2:#eef2f8;
-  --gold:#9a7420;
-  --gold-light:#c9a14a;
-  --gold-dim:rgba(154,116,32,.45);
-  --text:#1a2433;
-  --muted:#64748b;
-  --hair:rgba(154,116,32,.22);
+  --bg:#070a10;
+  --bg-2:#0b1018;
+  --gold:#c9a14a;
+  --gold-light:#e8cd86;
+  --gold-dim:rgba(201,161,74,.5);
+  --text:#f2f5fa;
+  --muted:#5e6b7e;
+  --hair:rgba(201,161,74,.14);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,html[data-theme]{height:100%;background:#f4f7fb;color-scheme:light}
+html,html[data-theme]{height:100%;background:#070a10;color-scheme:dark}
 html[data-theme] body,body{
   font-family:'Tajawal',sans-serif;
   height:100%;
   background:radial-gradient(140% 100% at 50% 0%, var(--bg-2), var(--bg) 60%);
   color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;
-  overflow:hidden;position:relative;color-scheme:light;
+  overflow:hidden;position:relative;color-scheme:dark;
 }
 
 /* حُبيبات خفيفة جداً (film grain) تعطي إحساساً سينمائياً */

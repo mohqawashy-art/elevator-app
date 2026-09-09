@@ -1,30 +1,32 @@
+{% set splash_lock_theme = true %}
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="light">
+<html lang="ar" dir="rtl" data-theme="premium">
 <head>
 <meta charset="UTF-8">
-{% include 'partials/marketing_boot.html' %}
+{% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — تسجيل الدخول</title>
 {% include 'partials/liftcore_pwa_head.html' %}
+<meta name="theme-color" content="#070a10">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f4f7fb; --bg-2:#eef2f8;
-  --gold:#9a7420; --gold-light:#c9a14a; --gold-dim:rgba(154,116,32,.45);
-  --text:#1a2433; --muted:#64748b;
-  --hair:rgba(154,116,32,.22);
-  --field:#fff;
+  --bg:#070a10; --bg-2:#0b1018;
+  --gold:#c9a14a; --gold-light:#e8cd86; --gold-dim:rgba(201,161,74,.5);
+  --text:#f2f5fa; --muted:#5e6b7e;
+  --hair:rgba(201,161,74,.14);
+  --field:rgba(255,255,255,.035);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,html[data-theme]{height:100%;background:#f4f7fb;color-scheme:light}
+html,html[data-theme]{height:100%;background:#070a10;color-scheme:dark}
 html[data-theme] body,body{
   font-family:'Tajawal',sans-serif;
   height:100%;
   background:radial-gradient(140% 100% at 50% 0%, var(--bg-2), var(--bg) 60%);
   color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;
-  padding:24px;overflow:hidden;position:relative;color-scheme:light;
+  padding:24px;overflow:hidden;position:relative;color-scheme:dark;
 }
 body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.025;z-index:5;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
@@ -81,7 +83,7 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 .pw-toggle.is-visible .eye-off{display:block}
 .field input{width:100%;padding:12px 34px 12px 6px;background:transparent;border:none;
   border-bottom:1px solid var(--hair);color:var(--text);font-family:inherit;font-size:15px;transition:.25s}
-.field input::placeholder{color:#94a3b8}
+.field input::placeholder{color:#3f4a5c}
 .field input:focus{outline:none;border-bottom-color:var(--gold)}
 .field input:focus ~ .ic{color:var(--gold-light)}
 /* خط ذهبي يمتد عند الفوكس */
@@ -101,7 +103,7 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 .btn span{position:relative;z-index:2}
 .btn::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--gold),var(--gold-light));
   transform:scaleX(0);transform-origin:right;transition:transform .35s ease;z-index:1}
-.btn:hover{color:#fff;border-color:var(--gold-light)}
+.btn:hover{color:var(--bg);border-color:var(--gold-light)}
 .btn:hover::before{transform:scaleX(1)}
 .btn .spin{display:none;width:15px;height:15px;border:2px solid rgba(232,205,134,.3);
   border-top-color:var(--gold-light);border-radius:50%;animation:sp .7s linear infinite;
@@ -110,7 +112,7 @@ form{margin-top:34px;text-align:right;opacity:0;animation:soft .8s ease 1.9s for
 .btn.loading{pointer-events:none}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-.footer{margin-top:28px;font-size:10.5px;color:#94a3b8;letter-spacing:.05em;
+.footer{margin-top:28px;font-size:10.5px;color:#3f4a5c;letter-spacing:.05em;
   opacity:0;animation:soft .8s ease 2.1s forwards}
 
 @media (prefers-reduced-motion: reduce){
