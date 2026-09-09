@@ -18,8 +18,14 @@ from chart_of_accounts import (
 from customer_billing import COLLECTED_REVENUE_STATUSES
 
 
+_journal_schema_checked = False
+
+
 def ensure_journal_schema() -> None:
     """إنشاء جداول القيود إن غابت (Postgres قد لا يشغّل Alembic تلقائياً)."""
+    global _journal_schema_checked
+    if _journal_schema_checked:
+        return
     ensure_chart_schema()
     insp = inspect(db.engine)
     tables = set(insp.get_table_names())
@@ -36,6 +42,7 @@ def ensure_journal_schema() -> None:
             db.session.expire_all()
         except Exception:
             pass
+    _journal_schema_checked = True
 
 
 def _round2(value: float | int | None) -> float:
