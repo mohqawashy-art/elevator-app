@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+{% include 'partials/marketing_gtag.html' %}
+<meta charset="UTF-8">
+{% include 'partials/marketing_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% include 'partials/marketing_seo.html' %}
+<link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=11">
+<style>
+.hero{padding:28px 0 10px;text-align:center;max-width:780px;margin:0 auto}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  color:var(--mkt-gold);font-size:.78rem;font-weight:700;
+  letter-spacing:.12em;margin-bottom:16px;
+}
+.eyebrow::before,.eyebrow::after{content:"";width:28px;height:1px;background:var(--mkt-hair)}
+.hero h1{
+  font-weight:800;font-size:clamp(1.75rem,4.4vw,2.65rem);
+  line-height:1.35;margin-bottom:14px;
+}
+.hero h1 em{font-style:normal;color:var(--mkt-gold)}
+.hero p{color:var(--mkt-muted);font-size:1.05rem;max-width:52ch;margin:0 auto 20px;line-height:1.7}
+.hero-ctas{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+.pill{
+  display:inline-flex;align-items:center;gap:8px;
+  background:#fff;border:1px solid var(--mkt-line);
+  border-radius:999px;padding:8px 14px;font-size:.84rem;color:var(--mkt-muted2);
+}
+.pill strong{color:var(--mkt-gold)}
+
+.compare{
+  display:grid;grid-template-columns:1fr 1fr;gap:16px;
+  max-width:860px;margin:28px auto 8px;
+}
+.col{
+  background:#fff;border:1px solid var(--mkt-line);border-radius:20px;padding:22px 18px;
+  box-shadow:var(--mkt-shadow);
+}
+.col.is-buy{
+  border-color:rgba(201,161,74,.4);
+  background:linear-gradient(180deg, rgba(201,161,74,.1), #fff 42%);
+}
+.col h2{font-size:1.15rem;font-weight:800;margin-bottom:6px}
+.col .tag{font-size:.82rem;color:var(--mkt-muted2);margin-bottom:14px;line-height:1.55}
+.col ul{list-style:none;margin:0}
+.col li{padding:8px 0;border-bottom:1px solid var(--mkt-line);font-size:.9rem;color:var(--mkt-muted)}
+.col li:last-child{border-bottom:none}
+.col li b{color:var(--mkt-text);font-weight:700}
+
+.section{padding:42px 0 8px}
+.section-head{max-width:640px;margin:0 auto 22px;text-align:center}
+.section-head h2{font-size:clamp(1.4rem,3vw,1.9rem);font-weight:800;margin-bottom:8px}
+.section-head p{color:var(--mkt-muted)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{
+  background:#fff;border:1px solid var(--mkt-line);border-radius:16px;padding:18px 16px;
+}
+.card h3{font-size:.98rem;font-weight:700;color:var(--mkt-gold);margin-bottom:6px}
+.card p{font-size:.86rem;color:var(--mkt-muted2);line-height:1.6;margin:0}
+
+.modules{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.module{
+  background:#fff;border:1px solid var(--mkt-line);border-radius:14px;padding:16px 14px;min-height:110px;
+}
+.module h3{font-size:.9rem;font-weight:700;color:var(--mkt-gold);margin-bottom:6px}
+.module p{font-size:.78rem;color:var(--mkt-muted2);line-height:1.55;margin:0}
+
+.shots{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.shot{
+  border:1px solid var(--mkt-line);border-radius:18px;overflow:hidden;background:#fff;
+  box-shadow:var(--mkt-shadow);
+}
+.shot-frame{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;border-bottom:1px solid var(--mkt-line);background:#f8fafc;
+}
+.shot-title{font-size:.82rem;color:var(--mkt-muted)}
+.shot img{width:100%;height:auto;background:#eef2f8}
+.shot-caption{padding:12px 14px 14px}
+.shot-caption h3{font-size:1rem;margin-bottom:4px}
+.shot-caption p{color:var(--mkt-muted);font-size:.86rem}
+
+.cta{
+  margin:42px 0 28px;padding:36px 28px;border-radius:24px;text-align:center;
+  border:1px solid var(--mkt-hair);
+  background:
+    radial-gradient(80% 120% at 100% 0%, rgba(201,161,74,.14), transparent 55%),
+    var(--mkt-surface);
+}
+.cta h2{font-size:clamp(1.35rem,3vw,1.85rem);font-weight:800;margin-bottom:10px}
+.cta p{color:var(--mkt-muted);max-width:48ch;margin:0 auto 18px}
+
+.contact{
+  margin:12px 0 48px;padding:28px 24px;border-radius:22px;
+  border:1px solid var(--mkt-hair);
+  background:linear-gradient(135deg, rgba(42,127,255,.08), transparent 45%), var(--mkt-surface);
+  display:grid;grid-template-columns:1.2fr .8fr;gap:22px;
+}
+.contact h2{font-size:clamp(1.25rem,2.8vw,1.7rem);font-weight:800;margin-bottom:8px}
+.contact p{color:var(--mkt-muted);margin-bottom:14px;max-width:46ch}
+.contact-card{
+  border:1px solid var(--mkt-line);border-radius:16px;padding:16px;background:#fff;
+}
+.contact-card .k{font-size:.78rem;color:var(--mkt-muted2);margin-bottom:4px}
+.contact-card .v{font-size:1.02rem;font-weight:700;color:var(--mkt-gold);word-break:break-all}
+.contact-card + .contact-card{margin-top:10px}
+
+@media (max-width:980px){
+  .compare,.shots,.contact{grid-template-columns:1fr}
+  .grid,.modules{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:640px){
+  .grid,.modules{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body class="mkt">
+{% set mkt_nav_mode = 'buy' %}
+{% set mkt_nav_show_signup = true %}
+<div class="mkt-wrap">
+  <header class="mkt-nav">
+    <a class="mkt-nav-brand" href="{{ url_for('index') }}">
+      <img class="mkt-nav-logo-full" src="{{ url_for('static', filename='images/liftcore-marketing-header-logo.png') }}?v=1" alt="LiftCore — الإدارة الذكية للمصاعد">
+    </a>
+    <div class="mkt-nav-actions">
+    {% include 'partials/marketing_nav.html' with context %}
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">للبيع — ليس إيجاراً</div>
+    <h1>اشترِ <em>البرنامج كامل</em> لشركتك</h1>
+    <p>LiftCore يُباع رخصة تشغيل داخلية: كل الأقسام، على سيرفرك أو نشر مُدار باسم شركتك. تدفع صفقة شراء — لا اشتراك سنوي يوقف النظام إذا انتهى الإيجار.</p>
+    <div class="hero-ctas">
+      <a class="mkt-btn mkt-btn-gold" href="#contact">اطلب عرض شراء</a>
+      <a class="mkt-btn mkt-btn-outline" href="#shots">شاهد شاشات البرنامج</a>
+    </div>
+    <div class="pill">السعر <strong>عرض مخصص</strong> حسب حجم الأسطول وخيار النشر — قبل الضريبة 15%</div>
+  </section>
+
+  <section class="compare" aria-label="شراء مقابل إيجار">
+    <article class="col is-buy">
+      <h2>شراء البرنامج كامل</h2>
+      <div class="tag">ما نعرضه هنا — ملكية تشغيل لشركتك</div>
+      <ul>
+        <li><b>دفعة واحدة</b> حسب عقد الشراء</li>
+        <li><b>الرخصة لشركتك</b> — استخدام داخلي دائم ضمن العقد</li>
+        <li><b>كل أقسام البرنامج</b> كما تعمل اليوم</li>
+        <li><b>تثبيت وتدريب</b> ضمن التسليم</li>
+        <li><b>بياناتك تبقى عندك</b> حتى بعد انتهاء الدعم إن رغبت</li>
+      </ul>
+    </article>
+    <article class="col">
+      <h2>إيجار / اشتراك سنوي</h2>
+      <div class="tag">مسار آخر موجود في صفحة الباقات إن فضّلته</div>
+      <ul>
+        <li><b>تدفع كل سنة</b> لتبقى الخدمة مفتوحة</li>
+        <li><b>الاستخدام مرتبط بالاشتراك</b> وليس صفقة تمليك</li>
+        <li>نفس الأقسام ضمن باقة LiftCore السحابية</li>
+        <li>النشر على منصة مشتركة حسب الاتفاق</li>
+        <li>التوقف وارد إذا لم يُجدَّد الإيجار</li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="section" id="included">
+    <div class="section-head">
+      <h2>ماذا يشمل البيع؟</h2>
+      <p>البرنامج كامل كما هو في التشغيل — مع تسليم ودعم حسب عرض السعر، لا نسخة مجتزأة.</p>
+    </div>
+    <div class="grid">
+      {% for item in buy_included %}
+      <article class="card">
+        <h3>{{ item.title }}</h3>
+        <p>{{ item.desc }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>أقسام البرنامج المشمولة</h2>
+      <p>نفس ما تراه في العرض والشاشات أدناه — صيانة، ميدان، مخزون، مالية، وتركيب.</p>
+    </div>
+    <div class="modules">
+      {% for mod in included_modules %}
+      <div class="module">
+        <h3>{{ mod.title }}</h3>
+        <p>{{ mod.desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="section" id="shots">
+    <div class="section-head">
+      <h2>شاشات حقيقية من البرنامج</h2>
+      <p>هذا ما تشتريه: لوحة التحكم، الخريطة، الزيارات، العملاء، العقود، المخزون، والتركيب.</p>
+    </div>
+    <div class="shots">
+      {% for shot in landing_shots[:6] %}
+      <figure class="shot">
+        <div class="shot-frame"><div class="shot-title">{{ shot.title }}</div></div>
+        <img src="{{ url_for('static', filename=shot.file) }}?v=3" alt="{{ shot.caption }}" width="1280" height="800" loading="{{ 'eager' if loop.first else 'lazy' }}">
+        <figcaption class="shot-caption">
+          <h3>{{ shot.caption }}</h3>
+          <p>{{ shot.desc }}</p>
+        </figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="cta">
+    <h2>جاهز تشتري البرنامج لشركتك؟</h2>
+    <p>أرسل طلب شراء وسنرد بعرض سعر مكتوب: المشمول، خيار السيرفر، التدريب، ومدة الضمان. ليست فاتورة إيجار سنوي.</p>
+    <a class="mkt-btn mkt-btn-gold" href="#contact">اطلب عرض الشراء</a>
+  </section>
+
+  <section class="contact" id="contact">
+    <div>
+      <div class="eyebrow" style="letter-spacing:.08em;margin-bottom:8px">المبيعات</div>
+      <h2>طلب شراء البرنامج كامل</h2>
+      <p>عبّئ البيانات وسنجهّز عرض تمليك. البريد: <strong dir="ltr">{{ sales_email }}</strong></p>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="mkt-flash mkt-flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+      <form class="mkt-demo-form" method="post" action="{{ url_for('demo_request') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="/buy">
+        <input type="hidden" name="request_type" value="buy">
+        {% include 'partials/utm_hidden_fields.html' %}
+        <div class="hp" aria-hidden="true">
+          <label>الموقع<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+        </div>
+        <div class="row">
+          <div>
+            <label for="buy-company">اسم الشركة</label>
+            <input id="buy-company" name="company_name" required maxlength="120" autocomplete="organization">
+          </div>
+          <div>
+            <label for="buy-name">اسم المسؤول</label>
+            <input id="buy-name" name="contact_name" required maxlength="80" autocomplete="name">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="buy-email">البريد الإلكتروني</label>
+            <input id="buy-email" type="email" name="contact_email" required maxlength="120" autocomplete="email" dir="ltr">
+          </div>
+          <div>
+            <label for="buy-phone">الجوال</label>
+            <input id="buy-phone" type="tel" name="phone" maxlength="20" autocomplete="tel" dir="ltr" placeholder="05xxxxxxxx">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="buy-city">المدينة</label>
+            <input id="buy-city" name="city" maxlength="60" value="مكة المكرمة" autocomplete="address-level2">
+          </div>
+          <div>
+            <label for="buy-elevators">عدد المصاعد تقريباً</label>
+            <input id="buy-elevators" name="elevators" maxlength="20" inputmode="numeric" placeholder="مثلاً 40">
+          </div>
+        </div>
+        <div>
+          <label for="buy-notes">ملاحظات (اختياري)</label>
+          <textarea id="buy-notes" name="notes" maxlength="800" placeholder="سيرفر خاص أو مُدار، عدد المستخدمين، موعد مناسب…"></textarea>
+        </div>
+        <button class="mkt-btn mkt-btn-gold" type="submit">إرسال طلب الشراء</button>
+        <div class="hint">يصل الطلب إلى {{ sales_email }} كـ «شراء البرنامج كامل».</div>
+      </form>
+    </div>
+    <div>
+      <div class="contact-card">
+        <div class="k">بريد المبيعات</div>
+        <div class="v" dir="ltr">{{ sales_email }}</div>
+      </div>
+      <div class="contact-card">
+        <div class="k">واتساب</div>
+        <div class="v"><a href="{{ support_whatsapp_url }}" target="_blank" rel="noopener">{{ support_whatsapp_display }}</a></div>
+      </div>
+      <div class="contact-card">
+        <div class="k">إن فضّلت الإيجار السنوي</div>
+        <div class="v"><a href="{{ url_for('pricing') }}">الباقات والاشتراك</a></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="mkt-footer">
+    <div>جميع الحقوق محفوظة لمؤسسة نسق كور للحلول المتكاملة</div>
+    <div>
+      <a href="{{ url_for('index') }}">الرئيسية</a>
+      ·
+      <a href="{{ url_for('buy_program') }}">شراء البرنامج</a>
+      ·
+      <a href="{{ url_for('pricing') }}">الاشتراك السنوي</a>
+      ·
+      <span dir="ltr">{{ sales_email }}</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

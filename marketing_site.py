@@ -38,6 +38,16 @@ ADDON_BLURBS_AR: dict[str, str] = {
 # حدود تُعرض في صفحة الأسعار العامة (بدون فنيين — مشمولون ضمن التشغيل)
 PUBLIC_LIMIT_KEYS = ('elevators', 'office_users', 'storage_gb')
 
+# ما يشمله شراء البرنامج كامل (رخصة ملكية — ليس إيجاراً)
+BUY_INCLUDED: tuple[dict[str, str], ...] = (
+    {'title': 'رخصة لشركتك', 'desc': 'استخدام داخلي دائم للنظام — تدفع مرة، والبرنامج عندك. ليس اشتراكاً شهرياً أو سنوياً.'},
+    {'title': 'كل أقسام البرنامج', 'desc': 'عملاء، عقود، زيارات، أعطال، مخزون، مالية، تركيب، تقارير، وبوابة الفني.'},
+    {'title': 'تثبيت على سيرفرك أو سيرفر مُدار', 'desc': 'نشر مخصص لشركتك مع نطاقك، وليس حساباً مؤجَّراً على متجر عام.'},
+    {'title': 'تدريب وتسليم', 'desc': 'جلسة تشغيل، حساب مدير، ودليل مستخدم بعد الاستيراد أو البدء من صفر.'},
+    {'title': 'دعم وضمان متفق عليه', 'desc': 'تصحيح أخطاء وتحديثات أمنية ضمن مدة الضمان في عقد الشراء.'},
+    {'title': 'بياناتك ملكك', 'desc': 'تصدير واستعادة وفق العقد — لا يتوقف عملك لأن اشتراكاً انتهى.'},
+)
+
 # أقسام البرنامج المشمولة في الباقة الواحدة
 INCLUDED_MODULES: tuple[dict[str, str], ...] = (
     {'title': 'العملاء والمصاعد', 'desc': 'سجل العملاء، الأسطول، الخريطة، والاستيراد'},
@@ -349,6 +359,7 @@ def marketing_page_context(*, signup_open: bool, signup_href: str, signup_label:
         'support_whatsapp_url': support_whatsapp_url,
         'support_whatsapp_display': '0566299626',
         'landing_shots': LANDING_SHOTS,
+        'buy_included': BUY_INCLUDED,
     }
 
 
@@ -394,6 +405,44 @@ def marketing_seo_context(*, page: str = 'landing') -> dict[str, Any]:
         'inLanguage': 'ar',
         'provider': {'@type': 'Organization', 'name': 'LiftCore'},
     }
+
+    if page == 'buy':
+        buy_url = f'{base}/buy'
+        return {
+            'page_title': 'شراء LiftCore كامل — رخصة ملكية وليست إيجاراً',
+            'page_description': (
+                'اشترِ برنامج LiftCore كاملاً لشركتك: كل الأقسام، تثبيت مخصص، تدريب، '
+                'ورخصة استخدام داخلي — بيع مرة واحدة وليس اشتراك إيجار سنوي.'
+            ),
+            'canonical_url': buy_url,
+            'og_image_url': og_image,
+            'json_ld': {
+                '@context': 'https://schema.org',
+                '@graph': [org, {
+                    '@type': 'SoftwareApplication',
+                    'name': 'LiftCore',
+                    'applicationCategory': 'BusinessApplication',
+                    'operatingSystem': 'Web',
+                    'offers': {
+                        '@type': 'Offer',
+                        'priceCurrency': 'SAR',
+                        'availability': 'https://schema.org/InStock',
+                        'url': buy_url,
+                        'description': 'رخصة شراء البرنامج كامل — عرض سعر مخصص',
+                    },
+                    'description': (
+                        'برنامج إدارة المصاعد لشركات الصيانة في السعودية — يُباع رخصة كاملة لشركتك.'
+                    ),
+                    'inLanguage': 'ar',
+                    'provider': {'@type': 'Organization', 'name': 'LiftCore'},
+                }, {
+                    '@type': 'WebPage',
+                    'name': 'شراء برنامج LiftCore كامل',
+                    'url': buy_url,
+                    'isPartOf': {'@type': 'WebSite', 'url': base, 'name': 'LiftCore'},
+                }],
+            },
+        }
 
     if page == 'pricing':
         return {

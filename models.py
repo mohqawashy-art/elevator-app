@@ -171,7 +171,7 @@ class SalesLead(db.Model):
     __tablename__ = 'sales_leads'
 
     id = db.Column(db.Integer, primary_key=True)
-    request_type = db.Column(db.String(20), default='demo')  # demo | quote
+    request_type = db.Column(db.String(20), default='demo')  # demo | quote | buy
     status = db.Column(db.String(20), default='new')  # new | contacted | fulfilled | closed
     company_name = db.Column(db.String(200), nullable=False)
     contact_name = db.Column(db.String(100), nullable=False)

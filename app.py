@@ -217,7 +217,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'login', 'logout', 'static', 'index', 'api_version', 'api_health',
     'api_debug_contract_zero',
     'signup', 'api_signup', 'onboard_form', 'auth_handoff',
-    'coming_soon', 'pricing', 'product_landing', 'demo_request',
+    'coming_soon', 'pricing', 'buy_program', 'product_landing', 'demo_request',
     'robots_txt', 'sitemap_xml', 'google_site_verification',
     'ads_landing', 'ads_thanks', 'seo_elevator_management', 'marketing_deck',
     'field_login', 'field_logout', 'field_manifest', 'field_service_worker',
@@ -2362,6 +2362,7 @@ def robots_txt():
         'User-agent: *\n'
         'Allow: /\n'
         'Allow: /pricing\n'
+        'Allow: /buy\n'
         'Allow: /product\n'
         'Allow: /start\n'
         'Allow: /elevator-management\n'
@@ -2387,6 +2388,7 @@ def sitemap_xml():
     urls = (
         ('https://liftcoreapp.com/', '1.0', 'weekly'),
         ('https://liftcoreapp.com/pricing', '0.9', 'weekly'),
+        ('https://liftcoreapp.com/buy', '0.95', 'weekly'),
         ('https://liftcoreapp.com/start', '0.9', 'weekly'),
         ('https://liftcoreapp.com/برنامج-ادارة-المصاعد', '0.95', 'weekly'),
         ('https://liftcoreapp.com/elevator-management', '0.8', 'weekly'),
@@ -2442,7 +2444,7 @@ def demo_request():
         )
 
     next_url = (request.form.get('next') or '').strip()
-    if next_url not in ('/', '/pricing', '/product', '/start', '/start/thanks'):
+    if next_url not in ('/', '/pricing', '/product', '/buy', '/start', '/start/thanks'):
         next_url = '/'
     # بعد النجاح من صفحة الإعلان → صفحة شكر لتسجيل التحويل
     if next_url == '/start':
@@ -2633,6 +2635,13 @@ def coming_soon():
 def pricing():
     """صفحة الباقات والأسعار — عرض عام للعملاء."""
     return render_template('pricing.html', **_pricing_context(seo_page='pricing'))
+
+
+@app.route('/buy')
+@app.route('/شراء-البرنامج')
+def buy_program():
+    """عرض بيع البرنامج كامل — رخصة ملكية وليست إيجاراً."""
+    return render_template('buy.html', **_pricing_context(seo_page='buy'))
 
 
 @app.route('/product')

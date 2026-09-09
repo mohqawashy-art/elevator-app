@@ -381,7 +381,13 @@ def send_demo_request_email(
     company = (company_name or '').strip() or '—'
     name = (contact_name or '').strip() or '—'
     email = (contact_email or '').strip()
-    kind = 'عرض سعر' if (request_type or '').lower() == 'quote' else 'عرض تجريبي'
+    rtype = (request_type or '').strip().lower()
+    if rtype == 'quote':
+        kind = 'عرض سعر'
+    elif rtype == 'buy':
+        kind = 'شراء البرنامج كامل'
+    else:
+        kind = 'عرض تجريبي'
     subject = f'طلب {kind} — {company}'
     body_text = (
         f'طلب {kind} من صفحة التعريف\n'

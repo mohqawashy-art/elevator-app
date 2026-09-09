@@ -120,7 +120,7 @@
       {% for lead in leads[:10] %}
       <tr>
         <td>{{ lead.id }}</td>
-        <td>{% if lead.request_type == 'quote' %}عرض سعر{% else %}تجربة{% endif %}</td>
+        <td>{% if lead.request_type == 'buy' %}شراء كامل{% elif lead.request_type == 'quote' %}عرض سعر{% else %}تجربة{% endif %}</td>
         <td>
           <strong>{{ lead.company_name }}</strong><br>
           <span class="muted">{{ lead.contact_name }}</span>

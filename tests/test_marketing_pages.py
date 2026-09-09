@@ -54,6 +54,26 @@ def test_public_landing_and_pricing_anonymous():
     assert 'إرسال طلب التجربة' in body
 
 
+def test_buy_program_page_public():
+    client = app.test_client()
+    app.config['TESTING'] = True
+
+    r = client.get('/buy', base_url=PUBLIC)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'شراء البرنامج كامل' in body
+    assert 'ليس إيجاراً' in body or 'مش إيجار' in body or 'وليست إيجاراً' in body
+    assert 'request_type' in body
+    assert 'value="buy"' in body
+    assert 'إرسال طلب الشراء' in body
+    assert 'images/marketing/screens/dashboard.png' in body
+    assert '/pricing' in body
+
+    r2 = client.get('/شراء-البرنامج', base_url=PUBLIC)
+    assert r2.status_code == 200
+    assert 'رخصة' in r2.get_data(as_text=True)
+
+
 def test_robots_and_sitemap_public():
     client = app.test_client()
     app.config['TESTING'] = True
@@ -69,6 +89,7 @@ def test_robots_and_sitemap_public():
     xml = r.get_data(as_text=True)
     assert 'https://liftcoreapp.com/' in xml
     assert 'https://liftcoreapp.com/pricing' in xml
+    assert 'https://liftcoreapp.com/buy' in xml
     assert 'https://liftcoreapp.com/start' in xml
     assert 'برنامج-ادارة-المصاعد' in xml or '%D8%A8%D8%B1%D9%86%D8%A7%D9%85%D8%AC' in xml or 'elevator-management' in xml
 
@@ -139,6 +160,50 @@ def test_demo_request_posts_to_sales_mail(monkeypatch):
         assert lead.request_type == 'quote'
         assert lead.email_sent is True
         assert lead.status == 'new'
+
+
+def test_buy_request_saves_lead(monkeypatch):
+    captured = {}
+
+    def fake_send(**kwargs):
+        captured.update(kwargs)
+        return {'ok': True, 'reason': 'sent'}
+
+    monkeypatch.setattr('liftcore_mail.send_demo_request_email', fake_send)
+
+    client = app.test_client()
+    app.config['TESTING'] = True
+    with app.app_context():
+        from models import SalesLead, db
+        db.create_all()
+
+    r = client.post(
+        '/demo-request',
+        data={
+            'company_name': 'شركة تمليك',
+            'contact_name': 'سارة',
+            'contact_email': 'owner@example.com',
+            'phone': '0566299626',
+            'city': 'جدة',
+            'elevators': '40',
+            'notes': 'شراء كامل',
+            'request_type': 'buy',
+            'next': '/buy',
+        },
+        base_url=PUBLIC,
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    loc = r.headers.get('Location') or ''
+    assert '/buy' in loc
+    assert captured.get('request_type') == 'buy'
+
+    with app.app_context():
+        from models import SalesLead
+        lead = SalesLead.query.filter_by(contact_email='owner@example.com').order_by(SalesLead.id.desc()).first()
+        assert lead is not None
+        assert lead.request_type == 'buy'
+        assert lead.source_path == '/buy'
 
 
 def test_spam_sales_lead_detector():

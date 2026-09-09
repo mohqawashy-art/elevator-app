@@ -201,8 +201,8 @@
         <h1>برنامج <em>إدارة المصاعد</em> لشركات الصيانة</h1>
         <p>من العقد إلى زيارة الفني والفواتير — منصة واحدة تدير أسطولك في السعودية بوضوح وتشغيل يومي مرتب.</p>
         <div class="hero-ctas">
-          <a class="mkt-btn mkt-btn-gold" href="{{ signup_href }}"{% if signup_external %} target="_blank" rel="noopener"{% endif %}>{{ signup_label }}</a>
-          <a class="mkt-btn mkt-btn-outline" href="{{ url_for('pricing') }}">الباقات والأسعار</a>
+          <a class="mkt-btn mkt-btn-gold" href="{{ url_for('buy_program') }}">شراء البرنامج كامل</a>
+          <a class="mkt-btn mkt-btn-outline" href="{{ signup_href }}"{% if signup_external %} target="_blank" rel="noopener"{% endif %}>{{ signup_label }}</a>
         </div>
       </div>
     </div>
@@ -275,11 +275,11 @@
     </section>
 
     <section class="cta" id="cta">
-      <h2>جاهز تشوف الباقة المناسبة لأسطولك؟</h2>
-      <p>أسعار سنوية واضحة، وحدود مصاعد وفنيين، وإضافات تكبر مع نمو شركتك.</p>
+      <h2>البرنامج للبيع كاملاً — مش إيجار</h2>
+      <p>رخصة تمليك لشركتك مع كل الأقسام والتثبيت والتدريب. الاشتراك السنوي يبقى خياراً منفصلاً إن فضّلته.</p>
       <div class="actions">
-        <a class="mkt-btn mkt-btn-gold" href="{{ url_for('pricing') }}">عرض الباقات</a>
-        <a class="mkt-btn mkt-btn-outline" href="#contact">تواصل المبيعات</a>
+        <a class="mkt-btn mkt-btn-gold" href="{{ url_for('buy_program') }}">عرض الشراء الكامل</a>
+        <a class="mkt-btn mkt-btn-outline" href="{{ url_for('pricing') }}">إيجار سنوي</a>
       </div>
     </section>
 
@@ -361,6 +361,8 @@
       <div>جميع الحقوق محفوظة لمؤسسة نسق كور للحلول المتكاملة</div>
       <div>
         <a href="{{ url_for('seo_elevator_management') }}">برنامج إدارة المصاعد</a>
+        ·
+        <a href="{{ url_for('buy_program') }}">شراء البرنامج</a>
         ·
         <a href="{{ url_for('pricing') }}">الأسعار</a>
         ·

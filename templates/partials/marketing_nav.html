@@ -1,15 +1,23 @@
 {% if mkt_nav_mode == 'landing' %}
   <a class="mkt-btn mkt-btn-nav" href="#work">مميزات البرنامج</a>
   <a class="mkt-btn mkt-btn-nav" href="#shots">شاشات البرنامج</a>
-  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('pricing') }}">الباقة والأسعار</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('buy_program') }}">شراء البرنامج كامل</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('pricing') }}">إيجار سنوي</a>
 {% elif mkt_nav_mode == 'pricing' %}
   <a class="mkt-btn mkt-btn-nav" href="{{ url_for('index') }}">الرئيسية</a>
   <a class="mkt-btn mkt-btn-nav" href="{{ url_for('index') }}#shots">شاشات البرنامج</a>
-  <a class="mkt-btn mkt-btn-nav mkt-btn-nav--current" href="{{ url_for('pricing') }}" aria-current="page">الباقة والأسعار</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('buy_program') }}">شراء البرنامج كامل</a>
+  <a class="mkt-btn mkt-btn-nav mkt-btn-nav--current" href="{{ url_for('pricing') }}" aria-current="page">إيجار سنوي</a>
+{% elif mkt_nav_mode == 'buy' %}
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('index') }}">الرئيسية</a>
+  <a class="mkt-btn mkt-btn-nav" href="#shots">شاشات البرنامج</a>
+  <a class="mkt-btn mkt-btn-nav mkt-btn-nav--current" href="{{ url_for('buy_program') }}" aria-current="page">شراء البرنامج كامل</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('pricing') }}">إيجار سنوي</a>
 {% else %}
   <a class="mkt-btn mkt-btn-nav" href="{{ url_for('index') }}">الرئيسية</a>
   <a class="mkt-btn mkt-btn-nav" href="{{ url_for('index') }}#shots">شاشات البرنامج</a>
-  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('pricing') }}">الباقة والأسعار</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('buy_program') }}">شراء البرنامج كامل</a>
+  <a class="mkt-btn mkt-btn-nav" href="{{ url_for('pricing') }}">إيجار سنوي</a>
 {% endif %}
 <a class="mkt-btn mkt-btn-login" href="{{ url_for('login') }}">دخول العملاء</a>
 {% if mkt_nav_show_signup|default(false) %}

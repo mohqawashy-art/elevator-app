@@ -55,6 +55,7 @@ def is_spam_sales_lead(
 REQUEST_TYPES = {
     'demo': 'طلب تجربة',
     'quote': 'عرض سعر',
+    'buy': 'شراء البرنامج كامل',
 }
 
 LEAD_STATUSES = {
