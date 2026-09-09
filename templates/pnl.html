@@ -29,13 +29,7 @@
   <div class="panel-h">إيراد عقود الصيانة — تفصيل بالزيارات</div>
   <div class="table-scroll">
     <table>
-      <thead><tr>
-        <th class="th-sort" data-sort-col="contract">العقد <span class="sort-ind"></span></th>
-        <th class="th-sort" data-sort-col="total" data-sort-type="num">قيمة العقد <span class="sort-ind"></span></th>
-        <th class="th-sort" data-sort-col="visits">زيارات <span class="sort-ind"></span></th>
-        <th class="th-sort" data-sort-col="earned" data-sort-type="num">مستحق الفترة <span class="sort-ind"></span></th>
-        <th class="th-sort" data-sort-col="unearned" data-sort-type="num">غير مكتسب <span class="sort-ind"></span></th>
-      </tr></thead>
+      <thead><tr><th>العقد</th><th>قيمة العقد</th><th>زيارات</th><th>مستحق الفترة</th><th>غير مكتسب</th></tr></thead>
       <tbody>
         {% for row in report.maintenance_contract_lines %}
         <tr>
@@ -57,10 +51,7 @@
     <div class="panel-h">الإيرادات</div>
     <div class="table-scroll">
       <table>
-        <thead><tr>
-          <th class="th-sort" data-sort-col="account">الحساب <span class="sort-ind"></span></th>
-          <th class="th-sort" data-sort-col="amount" data-sort-type="num">المبلغ <span class="sort-ind"></span></th>
-        </tr></thead>
+        <thead><tr><th>الحساب</th><th>المبلغ</th></tr></thead>
         <tbody>
           {% for line in report.revenue_lines %}
           <tr><td class="td-name"><span class="td-code">{{ line.code }}</span> {{ line.name }}</td><td class="td-num">{{ '%.2f'|format(line.amount) }}</td></tr>
@@ -75,10 +66,7 @@
     <div class="panel-h">المصروفات</div>
     <div class="table-scroll">
       <table>
-        <thead><tr>
-          <th class="th-sort" data-sort-col="account">الحساب <span class="sort-ind"></span></th>
-          <th class="th-sort" data-sort-col="amount" data-sort-type="num">المبلغ <span class="sort-ind"></span></th>
-        </tr></thead>
+        <thead><tr><th>الحساب</th><th>المبلغ</th></tr></thead>
         <tbody>
           {% for line in report.expense_lines %}
           <tr><td class="td-name"><span class="td-code">{{ line.code }}</span> {{ line.name }}</td><td class="td-num">{{ '%.2f'|format(line.amount) }}</td></tr>
