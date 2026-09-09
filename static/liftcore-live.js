@@ -20,7 +20,7 @@
     if (path.indexOf('/field') === 0) return null;
     if (path.indexOf('visit-report') >= 0 || path.indexOf('fault-report') >= 0) return null;
     // صفحات بدون مزامنة حية — لا polling ولا إعادة تحميل
-    if (/^\/(pnl|balance-sheet|accounts|journals|ledger|trial-balance|home|settings|welcome|reports|purchase-orders|attendance|whatsapp|departments|installation|supplier|sales|platform|onboard|field|api)(\/|$)/.test(path)) {
+    if (/^\/(pnl|balance-sheet|accounts|journals|ledger|trial-balance|home|settings|welcome|reports|purchase-orders|attendance|whatsapp|departments|installation|supplier|sales|platform|onboard|field|api|parts-billing)(\/|$)/.test(path)) {
       return null;
     }
     // صفحات تحرير طويلة — لا إعادة تحميل أثناء العمل (مثل تسعير التركيب)

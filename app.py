@@ -13016,6 +13016,16 @@ def parts_billing():
         pending_faults=pending_faults,
     )
 
+def _parts_billing_redirect():
+    from urllib.parse import quote
+
+    dept = (request.form.get('_return_department') or request.args.get('department') or '').strip()
+    url = url_for('parts_billing')
+    if dept:
+        url += '?department=' + quote(dept, safe='')
+    return redirect(url)
+
+
 @app.route('/parts-billing/edit/<int:id>', methods=['POST'])
 def parts_edit(id):
     from entity_links import resolve_parts_links
@@ -13026,7 +13036,7 @@ def parts_edit(id):
     billing_date_raw = (request.form.get('billing_date') or '').strip()
     if not billing_date_raw:
         flash('أدخل تاريخ العملية', 'error')
-        return redirect(url_for('parts_billing'))
+        return _parts_billing_redirect()
     lines = parse_fault_parts_lines(request.form.get('parts_lines'))
     user_notes = request.form.get('notes', '')
     cost = float(request.form.get('cost_price', 0))
@@ -13058,7 +13068,7 @@ def parts_edit(id):
         except ValueError as exc:
             db.session.rollback()
             flash(str(exc), 'error')
-            return redirect(url_for('parts_billing'))
+            return _parts_billing_redirect()
     else:
         reverse_stock_by_reference(stock_reference('parts_billing', p.id))
         p.description = request.form.get('description', '')
@@ -13072,10 +13082,11 @@ def parts_edit(id):
             fault.billed = True
     try:
         db.session.commit()
-    except ValueError as exc:
+        flash('تم حفظ التعديل بنجاح', 'success')
+    except Exception as exc:
         db.session.rollback()
-        flash(str(exc), 'error')
-    return redirect(url_for('parts_billing'))
+        flash(f'تعذر حفظ التعديل: {exc}', 'error')
+    return _parts_billing_redirect()
 
 @app.route('/parts-billing/add', methods=['POST'])
 def parts_add():
@@ -13085,7 +13096,7 @@ def parts_add():
     billing_date_raw = (request.form.get('billing_date') or '').strip()
     if not billing_date_raw:
         flash('أدخل تاريخ العملية', 'error')
-        return redirect(url_for('parts_billing'))
+        return _parts_billing_redirect()
 
     lines = parse_fault_parts_lines(request.form.get('parts_lines'))
     user_notes = request.form.get('notes', '')
@@ -13129,21 +13140,22 @@ def parts_add():
         except ValueError as exc:
             db.session.rollback()
             flash(str(exc), 'error')
-            return redirect(url_for('parts_billing'))
+            return _parts_billing_redirect()
     elif not (request.form.get('description') or '').strip():
         db.session.rollback()
         flash('أضف قطعة غيار واحدة على الأقل', 'error')
-        return redirect(url_for('parts_billing'))
+        return _parts_billing_redirect()
     if links['fault_id']:
         fault = tenant_query(Fault).filter_by(id=links['fault_id']).first()
         if fault:
             fault.billed = True
     try:
         db.session.commit()
-    except ValueError as exc:
+        flash(f'تم تسجيل العملية {p.code} بنجاح', 'success')
+    except Exception as exc:
         db.session.rollback()
-        flash(str(exc), 'error')
-    return redirect(url_for('parts_billing'))
+        flash(f'تعذر حفظ العملية: {exc}', 'error')
+    return _parts_billing_redirect()
 
 @app.route('/parts-billing/delete/<int:id>', methods=['POST'])
 def parts_delete(id):

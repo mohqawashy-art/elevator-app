@@ -179,7 +179,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 
   <div class="content">
-    {% include 'partials/flash_messages.html' %}
+    <div id="pb-flash-wrap" style="margin-bottom:12px">
+      {% include 'partials/flash_messages.html' %}
+    </div>
     <!-- STATS -->
     <div class="stats-row">
       <div class="stat-card">
@@ -513,6 +515,7 @@ function partsNeedsCollection(p) {
 }
 
 let currentDeleteId = null;
+window.__lcFilteredSource = 'PARTS';
 var filtered = [...PARTS];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'billing_date',
@@ -1114,9 +1117,19 @@ function updateProfit() {
   el.style.color = profit >= 0 ? 'var(--success)' : 'var(--danger)';
 }
 
+function pbAppendField(form, name, value) {
+  if (value === undefined || value === null) return;
+  const inp = document.createElement('input');
+  inp.type = 'hidden';
+  inp.name = name;
+  inp.value = value;
+  form.appendChild(inp);
+}
+
 function saveRecord() {
   const editId = document.getElementById('modal-box').dataset.editId;
-  const cn = document.getElementById('m-cn').value.trim();
+  const cnEl = document.getElementById('m-cn');
+  const cn = cnEl ? cnEl.value.trim() : '';
   const clientId = getPbClientId();
   if (!clientId) { alert('اختر العميل من القائمة'); return; }
   const billingDate = document.getElementById('m-date')?.value;
@@ -1133,49 +1146,44 @@ function saveRecord() {
   const customer = CUSTOMERS.find(c => String(c.id) === clientId);
   const clientInput = document.getElementById('m-client-sel-input');
   const contract = CONTRACTS.find(c => c.code.toUpperCase() === cn.toUpperCase());
-  const fd = new FormData();
-  const csrf = document.querySelector('meta[name="csrf-token"]');
-  if (csrf && csrf.content) fd.append('csrf_token', csrf.content);
-  if (contract) fd.append('contract_id', contract.id);
-  fd.append('contract_code', cn);
-  fd.append('customer_id', clientId);
-  fd.append('customer_name', customer ? customer.name : (clientInput ? clientInput.value : ''));
-  fd.append('billing_date', billingDate);
-  fd.append('description', buildPbDescription(lines));
-  fd.append('parts_lines', JSON.stringify(lines));
-  fd.append('cost_price', document.getElementById('m-cost').value || 0);
-  fd.append('sell_price', document.getElementById('m-price').value || 0);
-  if (editId) {
-    fd.append('payment_note', document.getElementById('m-payment-note').value);
-  } else {
-    fd.append('status', 'غير محصل');
+  let form = document.getElementById('pb-save-form');
+  if (!form) {
+    form = document.createElement('form');
+    form.id = 'pb-save-form';
+    form.method = 'POST';
+    form.style.display = 'none';
+    document.body.appendChild(form);
   }
-  fd.append('notes', document.getElementById('m-notes').value);
-  fd.append('technician_id', techId);
+  form.action = editId ? ('/parts-billing/edit/' + editId) : '/parts-billing/add';
+  form.innerHTML = '';
+  const csrf = document.querySelector('meta[name="csrf-token"]');
+  if (csrf && csrf.content) pbAppendField(form, 'csrf_token', csrf.content);
+  const dept = new URLSearchParams(window.location.search).get('department');
+  if (dept) pbAppendField(form, '_return_department', dept);
+  if (contract) pbAppendField(form, 'contract_id', contract.id);
+  pbAppendField(form, 'contract_code', cn);
+  pbAppendField(form, 'customer_id', clientId);
+  pbAppendField(form, 'customer_name', customer ? customer.name : (clientInput ? clientInput.value : ''));
+  pbAppendField(form, 'billing_date', billingDate);
+  pbAppendField(form, 'description', buildPbDescription(lines));
+  pbAppendField(form, 'parts_lines', JSON.stringify(lines));
+  pbAppendField(form, 'cost_price', document.getElementById('m-cost')?.value || 0);
+  pbAppendField(form, 'sell_price', document.getElementById('m-price')?.value || 0);
+  if (editId) {
+    pbAppendField(form, 'payment_note', document.getElementById('m-payment-note')?.value || '');
+  } else {
+    pbAppendField(form, 'status', 'غير محصل');
+  }
+  pbAppendField(form, 'notes', document.getElementById('m-notes')?.value || '');
+  pbAppendField(form, 'technician_id', techId);
   const visitCode = document.getElementById('m-visit')?.value.trim();
   const faultSel = document.getElementById('m-fault-sel');
-  const faultCode = (faultSel && faultSel.value) || document.getElementById('m-fault')?.value.trim();
-  if (visitCode) fd.append('visit_code', visitCode);
-  if (faultCode) fd.append('fault_code', faultCode);
+  const faultCode = (faultSel && faultSel.value) || (document.getElementById('m-fault')?.value || '').trim();
+  if (visitCode) pbAppendField(form, 'visit_code', visitCode);
+  if (faultCode) pbAppendField(form, 'fault_code', faultCode);
   const saveBtn = document.querySelector('#modal .modal-foot .btn-primary');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'جاري الحفظ…'; }
-  fetch(editId ? `/parts-billing/edit/${editId}` : '/parts-billing/add', {
-    method: 'POST',
-    body: fd,
-    credentials: 'same-origin',
-  })
-    .then(function (r) {
-      if (r.redirected && r.url) {
-        window.location.href = r.url;
-        return;
-      }
-      if (!r.ok) throw new Error('save-failed');
-      window.location.reload();
-    })
-    .catch(function () {
-      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'حفظ'; }
-      alert('تعذر حفظ العملية — تحقق من البيانات أو أعد تحميل الصفحة');
-    });
+  form.submit();
 }
 
 function editPart(id) {
@@ -1372,7 +1380,19 @@ function bootPartsBillingPage() {
   updateStats();
   if (tableSort) tableSort.bindHeaders();
   fillTechnicianSelect('');
-  applyFilters();
+  try {
+    applyFilters();
+  } catch (e) {
+    console.error('parts-billing applyFilters', e);
+    filtered = PARTS.slice();
+    renderTable(filtered);
+  }
+  const tbody = document.getElementById('bills-tbody');
+  if (tbody && !tbody.children.length && PARTS.length) {
+    filtered = PARTS.slice();
+    if (tablePager) tablePager.resetPage();
+    renderTable(filtered);
+  }
 }
 
 window.__lcPageBoot = function () {
