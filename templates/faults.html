@@ -5,9 +5,6 @@
 {% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiftCore — الأعطال</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/customer_profile.css">
 <script src="/static/customer_profile.js"></script>
 <style>
@@ -1094,19 +1091,11 @@ function renderTable(data) {
   if (window.LiftCoreNav) LiftCoreNav.bindOpenTabLinks(tbody);
 }
 
-function faultSearchMatch(s, fields) {
-  if (window.LcSearch && typeof LcSearch.match === 'function') {
-    return LcSearch.match(s, fields);
-  }
-  if (!s) return true;
-  const q = String(s).toLowerCase();
-  return fields.some(function (v) { return String(v || '').toLowerCase().indexOf(q) >= 0; });
-}
-
 function filterTable() {
   const s  = (document.getElementById('search-input')?.value||'');
+  const searchFn = (window.LcSearch && LcSearch.safeMatch) ? LcSearch.safeMatch : (window.LcSearch && LcSearch.match);
   filtered = FAULTS.filter(f=>
-    faultSearchMatch(s, [f.code, f.customer, f.customer_name_en, f.elevator, f.fault_type, f.client_report, f.description, f.technician, f.notes]) &&
+    (!searchFn || searchFn(s, [f.code, f.customer, f.customer_name_en, f.elevator, f.fault_type, f.client_report, f.description, f.technician, f.notes])) &&
     lcAllows('f-client', f.customer) &&
     lcAllows('f-priority', null, function(pr) { return faultMatchesPriority(f, pr); }) &&
     lcAllows('f-status', f.status) &&
@@ -1492,18 +1481,13 @@ const months = ['يناير','فبراير','مارس','أبريل','مايو','
 var hDateEl = document.getElementById('h-date');
 if (hDateEl) hDateEl.textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
-function bootFaultsPage() {
+window.__lcPageBoot = function () {
   OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
   initFaultClientSelect();
   updateSidebarBadge();
   if (tableSort) tableSort.bindHeaders();
   clearAllFaultFilters();
-}
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bootFaultsPage);
-} else {
-  bootFaultsPage();
-}
+};
 window.__lcRefreshPage = function () {
   if (typeof filterTable === 'function') { filterTable(); return; }
   renderTable(typeof filtered !== 'undefined' ? filtered : FAULTS);

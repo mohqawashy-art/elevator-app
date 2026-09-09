@@ -403,6 +403,9 @@
         LiftCoreFormat.applyWesternDigits(document.body);
       }
     }
+    if (typeof window.__lcPageBoot === 'function') {
+      try { window.__lcPageBoot(); } catch (e) { console.error('lcPageBoot', e); }
+    }
   });
 
   document.addEventListener('liftcore:live-sync', syncTopNavLayout);

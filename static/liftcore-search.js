@@ -157,10 +157,15 @@
     return count;
   }
 
+  function safeMatch(q, fields) {
+    return match(q, fields);
+  }
+
   global.LcSearch = {
     fold: fold,
     compact: compact,
     match: match,
+    safeMatch: safeMatch,
     queryOf: queryOf,
     filterDomRows: filterDomRows,
   };

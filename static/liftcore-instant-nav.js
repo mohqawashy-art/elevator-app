@@ -48,11 +48,27 @@
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bind);
-  } else {
-    bind();
+  function prefetchNavMenu(limit) {
+    var seen = 0;
+    var max = limit || 10;
+    document.querySelectorAll('#sidebar a[href], .sidebar a[href]').forEach(function (a) {
+      if (seen >= max) return;
+      if (!shouldPrefetch(a)) return;
+      seen += 1;
+      prefetch(a.getAttribute('href'));
+    });
   }
 
-  global.LiftCoreFastNav = { prefetch: prefetch, bind: bind };
+  function boot() {
+    bind();
+    prefetchNavMenu(10);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+  global.LiftCoreFastNav = { prefetch: prefetch, bind: bind, prefetchNavMenu: prefetchNavMenu };
 })(typeof window !== 'undefined' ? window : this);

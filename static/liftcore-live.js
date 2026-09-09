@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  var POLL_MS = 4000;
+  var POLL_MS = 15000;
   var lastRevision = null;
   var pendingRevision = null;
   var syncing = false;
@@ -19,8 +19,10 @@
     if (path.indexOf('/print') >= 0 || path.indexOf('/report') >= 0) return null;
     if (path.indexOf('/field') === 0) return null;
     if (path.indexOf('visit-report') >= 0 || path.indexOf('fault-report') >= 0) return null;
-    // تقارير محاسبية — لا مزامنة حية (غير مدعومة وتسبّب إعادة تحميل كاملة)
-    if (/^\/(pnl|balance-sheet|accounts|journals|ledger|trial-balance)(\/|$)/.test(path)) return null;
+    // صفحات بدون مزامنة حية — لا polling ولا إعادة تحميل
+    if (/^\/(pnl|balance-sheet|accounts|journals|ledger|trial-balance|home|settings|welcome|reports|purchase-orders|attendance|whatsapp|departments|installation|supplier|sales|platform|onboard|field|api)(\/|$)/.test(path)) {
+      return null;
+    }
     // صفحات تحرير طويلة — لا إعادة تحميل أثناء العمل (مثل تسعير التركيب)
     if (path.indexOf('/installation/') >= 0 && (
       path.indexOf('/quote') >= 0
@@ -214,15 +216,9 @@
       .then(function (payload) {
         if (!payload) return;
         lastRevision = payload.revision != null ? payload.revision : revision;
-        if (payload.unsupported) {
-          if (canSyncNow()) global.location.reload();
-          return;
-        }
+        if (payload.unsupported) return;
         var merged = applyLiveData(payload.data);
-        if (!merged) {
-          if (canSyncNow()) global.location.reload();
-          return;
-        }
+        if (!merged) return;
         refreshUiAfterLive();
         showToast(global.__LC_LANG === 'en' ? 'Data updated' : 'تم تحديث البيانات');
       })
@@ -248,6 +244,7 @@
   }
 
   function pollRevision() {
+    if (global.document.hidden) return;
     if (!pageKey()) return;
     global.fetch('/api/live/revision', { credentials: 'same-origin' })
       .then(function (r) {
@@ -273,6 +270,9 @@
     if (!pageKey()) return;
     pollRevision();
     setInterval(pollRevision, POLL_MS);
+    global.document.addEventListener('visibilitychange', function () {
+      if (!global.document.hidden) pollRevision();
+    });
     global.document.addEventListener('click', function (e) {
       if (e.target.closest('.modal-close, [onclick*="closeModal"]')) {
         setTimeout(tryPendingSync, 350);
