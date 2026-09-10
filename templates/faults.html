@@ -667,7 +667,7 @@ function renderFaultTechSelect(selectedIds) {
   const sel = new Set((selectedIds || []).map(String));
   const list = FAULT_TECHS.length ? FAULT_TECHS : TECHNICIANS;
   box.innerHTML = list.map(t =>
-    `<label class="tech-option" onclick="event.stopPropagation()"><input type="checkbox" value="${t.id}"${sel.has(String(t.id)) ? ' checked' : ''} onchange="syncFaultTechCards()"><span>${t.code ? esc(t.code) + ' — ' : ''}${esc(t.name)}</span></label>`
+    `<label class="tech-option" onclick="event.stopPropagation()"><input type="checkbox" value="${t.id}"${sel.has(String(t.id)) ? ' checked' : ''} onchange="syncFaultTechCards()"><span>${t.code ? escAttr(t.code) + ' — ' : ''}${escAttr(t.name)}</span></label>`
   ).join('') || '<div style="padding:8px;color:var(--text3);font-size:12px">لا يوجد فنيون متاحون</div>';
   syncFaultTechCards();
 }
