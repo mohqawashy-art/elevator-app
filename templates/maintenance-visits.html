@@ -167,7 +167,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .cal-day:hover{background:var(--bg3)}
 .cal-day.today{background:rgba(42,127,255,.06);border-color:rgba(42,127,255,.25)}
 .cal-day.other-month{opacity:.4}
-.cal-day-name{background:var(--bg3);padding:8px;text-align:center;font-size:11px;color:var(--text3);font-weight:600}
+.cal-day-name{background:var(--bg3);padding:6px 4px;text-align:center;font-size:10px;color:var(--text3);font-weight:600;line-height:1.35}
 .cal-day.has-events{background:rgba(42,127,255,.08);border-color:rgba(42,127,255,.22);min-height:120px}
 .cal-day.has-events small{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;margin-top:auto;align-self:flex-start}
 .cal-day .cal-date{font-size:12px;font-weight:600;color:var(--text1);line-height:1;margin-bottom:2px}
@@ -365,8 +365,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-          <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو العميل أو الفني..." oninput="filterTable()">
+          <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو العميل أو العقد أو المنطقة أو الفني..." oninput="filterTable()">
         </div>
+        <select class="filter-select" id="f-district" onchange="filterTable()" title="المنطقة — يمكن اختيار أكثر من منطقة">
+          <option value="">كل المناطق</option>
+        </select>
         <select class="filter-select" id="f-client" onchange="filterTable()">
           <option value="">كل العملاء</option>
         </select>
@@ -394,6 +397,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
               <tr>
                 <th class="th-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="contract_code">العقد <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="elevator">المصعد <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="building">المبنى / الوحدة <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="technician">الفريق <span class="sort-ind"></span></th>
@@ -715,7 +719,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <script src="/static/liftcore_map.js?v=6"></script>
-<script src="/static/ops-common.js?v=4"></script>
+<script src="/static/ops-common.js?v=5"></script>
 
 <script>
 const OPS_TODAY = {{ ops_today|tojson }};
@@ -879,7 +883,7 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'code',
   defaultDir: 'asc',
   dateCols: ['visit_date'],
-  codeCols: ['code', 'elevator'],
+  codeCols: ['code', 'elevator', 'contract_code'],
   getters: {
     customer: function (v) {
       return window.LiftCoreDisplay ? LiftCoreDisplay.name(v.customer, v.customer_name_en) : v.customer;
@@ -944,9 +948,10 @@ function filterByVisitFilter(key) {
   setActiveVisitFilterUi(key);
   const search = document.getElementById('search-input');
   if (search) search.value = '';
-  ['f-client', 'f-tech', 'f-type', 'f-status', 'f-date-from', 'f-date-to'].forEach(id => {
+  ['f-client', 'f-tech', 'f-type', 'f-status', 'f-date-from', 'f-date-to', 'f-district'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
+    if (el && window.LiftCoreFilter) LiftCoreFilter.set(el, []);
   });
   filtered = VISITS.filter(v => matchVisitFilter(v, key));
   renderTable(filtered);
@@ -984,6 +989,7 @@ function renderTable(data) {
     <tr onclick="viewVisit(${v.id})">
       <td class="td-code lc-code">${v.code}</td>
       <td class="td-name">${D(LC ? LC.name(v.customer, v.customer_name_en) : v.customer)}</td>
+      <td class="lc-code" style="font-size:12px;color:var(--accent)">${v.contract_code || '—'}</td>
       <td class="lc-elev">${v.elevator}</td>
       <td style="font-size:12px;color:var(--text2)">${D(v.building || '—')}</td>
       <td>${D(v.technician)}</td>
@@ -1024,8 +1030,9 @@ function filterTable() {
   const fd = document.getElementById('f-date-from')?.value||'';
   const td = document.getElementById('f-date-to')?.value||'';
   filtered = VISITS.filter(v=>
-    LcSearch.match(s, [v.code, v.customer, v.customer_name_en, v.elevator, v.technician, v.visit_type, v.works_done, v.notes, v.building]) &&
+    LcSearch.match(s, [v.code, v.customer, v.customer_name_en, v.contract_code, v.district, v.elevator, v.technician, v.visit_type, v.works_done, v.notes, v.building]) &&
     lcAllows('f-client', v.customer) &&
+    lcAllows('f-district', v.district) &&
     lcAllows('f-tech', v.technician) &&
     lcAllows('f-type', v.visit_type) &&
     lcAllows('f-status', v.status, { aliases: { 'جاري التنفيذ': ['جارية', 'مُرسلة للفني'] } }) &&
@@ -1626,6 +1633,38 @@ function visitCustomerName(v) {
   return c ? c.name : 'عميل غير محدد';
 }
 
+function allVisitDistricts() {
+  var seen = {}, list = [];
+  (VISITS || []).forEach(function (v) {
+    var d = (v.district || '').trim();
+    if (!d || seen[d]) return;
+    seen[d] = 1;
+    list.push(d);
+  });
+  (PLAN_DISTRICTS || []).forEach(function (d) {
+    d = (d || '').trim();
+    if (d && !seen[d]) { seen[d] = 1; list.push(d); }
+  });
+  return list.sort(function (a, b) { return a.localeCompare(b, 'ar'); });
+}
+
+function fillVisitDistrictFilter(keepSelected) {
+  var sel = document.getElementById('f-district');
+  if (!sel) return;
+  var prev = keepSelected && window.LiftCoreFilter ? LiftCoreFilter.values(sel) : [];
+  var districts = allVisitDistricts();
+  sel.innerHTML = '<option value="">كل المناطق</option>' +
+    districts.map(function (d) {
+      return '<option value="' + String(d).replace(/"/g, '&quot;') + '">' + d + '</option>';
+    }).join('');
+  if (window.LiftCoreFilter) {
+    LiftCoreFilter.refresh(sel);
+    if (keepSelected) LiftCoreFilter.set(sel, prev);
+  } else if (prev[0]) {
+    sel.value = prev[0];
+  }
+}
+
 function visitsInMonth(ym) {
   const b = monthBounds(ym);
   return VISITS
@@ -1662,9 +1701,10 @@ function showAllVisits() {
   });
   const search = document.getElementById('search-input');
   if (search) search.value = '';
-  ['f-client', 'f-tech', 'f-type', 'f-status'].forEach(id => {
+  ['f-client', 'f-tech', 'f-type', 'f-status', 'f-district'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
+    if (el && window.LiftCoreFilter) LiftCoreFilter.set(el, []);
   });
   filtered = [...VISITS];
   renderTable(filtered);
@@ -2676,6 +2716,8 @@ function viewVisit(id) {
       <div class="view-section">بيانات الزيارة</div>
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val lc-code">${v.code}</div></div>
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${v.customer}</div></div>
+      <div class="view-item"><div class="view-label">رقم العقد</div><div class="view-val lc-code">${v.contract_code || '—'}</div></div>
+      <div class="view-item"><div class="view-label">المنطقة</div><div class="view-val">${v.district || '—'}</div></div>
       <div class="view-item"><div class="view-label">المصعد</div><div class="view-val lc-elev">${v.elevator}</div></div>
       <div class="view-item"><div class="view-label">الفنيون</div><div class="view-val">${v.technician}</div></div>
       <div class="view-item"><div class="view-label">نوع الزيارة</div><div class="view-val">${v.visit_type}</div></div>
@@ -2732,6 +2774,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySele
 /* التاريخ في الهيدر: liftcore-format.js */
 
 if (tableSort) tableSort.bindHeaders();
+fillVisitDistrictFilter(false);
 OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
 initVisitClientSelect();
 OpsPage.fillFilterSelect('f-tech', TECHNICIANS.map(t => ({ value: t.name, label: t.name })), 'كل الفنيين');

@@ -175,6 +175,7 @@
     },
     visit: {
       code: 'الكود', customer: 'العميل', customer_name_en: 'اسم العميل إنجليزي',
+      contract_code: 'رقم العقد', district: 'المنطقة',
       elevator: 'المصعد', building: 'المبنى', technician: 'الفني',
       visit_type: 'نوع الزيارة', visit_date: 'التاريخ', plan_month: 'شهر الخطة',
       visit_time: 'الوقت', priority: 'الأولوية', status: 'الحالة',

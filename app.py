@@ -5659,11 +5659,14 @@ def _visits_js_list(visits):
         saved = parse_report_json(v.checklist_json) if (v.checklist_json or '').strip() else {}
         stats = report_completion_stats(saved, v.checklist_template_key) if saved else {'filled': 0, 'total': 0, 'percent': 0}
         filled = int(stats.get('filled', 0) or 0)
+        contract = getattr(v, 'contract', None)
         rows.append({
             'id': v.id,
             'code': v.code,
             'elevator_id': v.elevator_id,
             'contract_id': v.contract_id,
+            'contract_code': (contract.code if contract else '') or '',
+            'district': ((cust.district if cust else '') or (elev.district if elev else '') or '').strip(),
             'fault_id': v.fault_id,
             'fault_code': linked.code if linked else '',
             'customer_id': cust.id if cust else None,
@@ -8576,6 +8579,7 @@ def maintenance_visits():
         tenant_query(MaintenanceVisit).options(
             joinedload(MaintenanceVisit.elevator).joinedload(Elevator.customer),
             joinedload(MaintenanceVisit.technician),
+            joinedload(MaintenanceVisit.contract),
             joinedload(MaintenanceVisit.linked_fault),
         )
     ).all()

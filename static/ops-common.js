@@ -142,7 +142,8 @@ window.OpsPage = (function () {
         eventsByDay[day].push(it);
       }
     });
-    var html = '<div class="cal-day-name">ح</div><div class="cal-day-name">ن</div><div class="cal-day-name">ث</div><div class="cal-day-name">ر</div><div class="cal-day-name">خ</div><div class="cal-day-name">ج</div><div class="cal-day-name">س</div>';
+    var dayNames = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+    var html = dayNames.map(function (n) { return '<div class="cal-day-name">' + n + '</div>'; }).join('');
     var startDay = (first.getDay() + 1) % 7;
     for (var i = 0; i < startDay; i++) html += '<div class="cal-day empty"></div>';
     for (var day = 1; day <= daysInMonth; day++) {
