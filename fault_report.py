@@ -169,8 +169,8 @@ def apply_report_to_fault(fault, data: dict, *, mark_resolved: bool = False) -> 
             raise ValueError(close_err)
         fault.resolved_at = fault.resolved_at or datetime.utcnow()
 
-    if not fault.responded_at and (meta.get('arrival_time') or fault.dispatched_at):
-        fault.responded_at = fault.dispatched_at or datetime.utcnow()
+    if not fault.responded_at and (meta.get('arrival_time') or '').strip():
+        fault.responded_at = fault.responded_at or datetime.utcnow()
 
     fault.response_time = format_response_time(fault.reported_at, fault.responded_at)
     return data

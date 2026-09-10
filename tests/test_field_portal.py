@@ -441,6 +441,47 @@ def test_field_geofence_blocks_far_fault(client):
     assert r.status_code == 403
 
 
+def test_field_geofence_blocks_despite_office_responded_at(client):
+    """responded_at من المكتب لا يُلغي التحقق — يلزم arrival_time من الميدان."""
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-GRA', name='فني عطل مكتب', phone='0505556677', team='أعطال')
+        db.session.add(tech)
+        cust = Customer(
+            organization_id=oid,
+            code='C-GRA',
+            name='عميل عطل مكتب',
+            status='نشط',
+            lat='24.713600',
+            lng='46.675300',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-GRA', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=oid,
+            code='F-GRA1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            status='قيد المعالجة',
+            priority='عادية',
+            reported_at=datetime.utcnow(),
+            dispatched_at=datetime.utcnow(),
+            responded_at=datetime.utcnow(),
+        )
+        db.session.add(fault)
+        db.session.commit()
+        fault_id, tech_id = fault.id, tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    r = client.get(f'/field/fault/{fault_id}?lat=24.800000&lng=46.675300')
+    assert r.status_code == 403
+
+
 def test_field_geofence_blocks_far_fault_in_progress(client):
     """عطل «قيد المعالجة» من المكتب — لا يُفتح بعيداً عن العميل."""
     with client.application.app_context():

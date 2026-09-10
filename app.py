@@ -9703,6 +9703,10 @@ def field_fault(fault_id):
         if tech_id:
             _field_geofence_guard_fault(fault_id, tech_id)
         detail = field_fault_detail(fault_id, tech_id)
+        if tech_id:
+            from operations import stamp_field_fault_arrival
+
+            stamp_field_fault_arrival(fault_id, tech_id=tech_id)
     except PermissionError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}
         return render_template('field.html', error=str(e), payload=None, **ctx), 403

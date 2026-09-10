@@ -89,11 +89,20 @@ def visit_geofence_required(visit: MaintenanceVisit) -> bool:
     return True
 
 
+def fault_field_arrived(fault: Fault) -> bool:
+    """وصول فعلي من الميدان — وقت الوصول في محضر العطل فقط (لا dispatched_at من المكتب)."""
+    from fault_report import parse_fault_report_json
+
+    saved = parse_fault_report_json(fault.report_json)
+    meta = (saved or {}).get('meta') or {}
+    return bool((meta.get('arrival_time') or '').strip())
+
+
 def fault_geofence_required(fault: Fault) -> bool:
     st = (fault.status or '').strip()
     if st in FAULT_GEOFENCE_SKIP:
         return False
-    if fault.responded_at:
+    if fault_field_arrived(fault):
         return False
     return True
 

@@ -2513,8 +2513,8 @@ def stamp_field_visit_report_start(visit_id: int, tech_id: int | None = None) ->
         db.session.commit()
 
 
-def stamp_field_fault_report_start(fault_id: int, tech_id: int | None = None) -> None:
-    """عند فتح الفني لتقرير العطل — تسجيل تاريخ ووقت الوصول (مرة واحدة)."""
+def stamp_field_fault_arrival(fault_id: int, tech_id: int | None = None) -> None:
+    """عند فتح الفني لصفحة العطل — تسجيل وصول الميدان (مرة واحدة)."""
     from fault_report import merge_fault_report, parse_fault_report_json
     from technician_assignments import technician_assigned_to_fault
 
@@ -2536,6 +2536,11 @@ def stamp_field_fault_report_start(fault_id: int, tech_id: int | None = None) ->
     if (f.status or '') in ('', 'مفتوح', 'جديد'):
         f.status = 'قيد المعالجة'
     db.session.commit()
+
+
+def stamp_field_fault_report_start(fault_id: int, tech_id: int | None = None) -> None:
+    """عند فتح الفني لتقرير العطل — تسجيل تاريخ ووقت الوصول (مرة واحدة)."""
+    stamp_field_fault_arrival(fault_id, tech_id=tech_id)
 
 
 def visit_report_payload(
