@@ -24,14 +24,20 @@ ZERO_NOTE = 'تصفير بوابة الفني للاختبار'
 
 
 def zero_field_portal(*, org_id: int | None = None, dry_run: bool = False) -> dict:
-    from models import Fault, MaintenanceVisit, Organization, db
-    from operations import FAULT_OPEN, VISIT_ACTIVE, is_fault_visit_type
+    from models import Fault, MaintenanceVisit, db
+    from operations import (
+        FAULT_OPEN,
+        VISIT_ACTIVE,
+        is_fault_visit_type,
+        repair_field_portal_stale,
+    )
     from tenant_scope import tenant_query
 
     stats = {
         'faults_closed': 0,
         'visits_cancelled': 0,
         'fault_visits_deleted': 0,
+        'repair': {},
     }
 
     fault_q = tenant_query(Fault).filter(Fault.status.in_(FAULT_OPEN))
@@ -78,6 +84,7 @@ def zero_field_portal(*, org_id: int | None = None, dry_run: bool = False) -> di
         db.session.delete(v)
 
     db.session.commit()
+    stats['repair'] = repair_field_portal_stale(org_id)
     return stats
 
 
@@ -116,6 +123,9 @@ def main() -> int:
         print(f'  أعطال مفتوحة → تم الاصلاح: {stats["faults_closed"]}')
         print(f'  زيارات نشطة → ملغاة: {stats["visits_cancelled"]}')
         print(f'  زيارات نوع عطل (حُذفت): {stats["fault_visits_deleted"]}')
+        repair = stats.get('repair') or {}
+        if repair:
+            print(f'  إصلاح ذيل البوابة: {repair}')
         if not args.dry_run:
             print('بوابة الفني الآن فارغة — جرّب إسناد عطل أو زيارة جديدة.')
     return 0

@@ -496,7 +496,7 @@ def _field_tech_api_allowed(path: str, method: str) -> bool:
 
 def _field_portal_context(tech_id: int) -> dict:
     from field_auth import technician_portal_kind, technician_portal_label
-    from operations import FAULT_OPEN
+    from operations import open_faults_filter
     from technician_assignments import faults_for_technician_filter
 
     tech = tenant_get_or_404(Technician, tech_id)
@@ -504,7 +504,7 @@ def _field_portal_context(tech_id: int) -> dict:
     has_faults = (
         tenant_query(Fault).filter(
             faults_for_technician_filter(tech_id),
-            Fault.status.in_(FAULT_OPEN),
+            open_faults_filter(),
         ).count()
         > 0
     )
@@ -10247,7 +10247,7 @@ def _apply_fault_billing_from_form(fault, form, *, is_new: bool = False):
 def fault_edit(id):
     from entity_links import link_fault_to_visit, lookup_visit
     from form_validation import fault_close_error
-    from operations import dispatch_fault
+    from operations import close_field_portal_tasks_for_fault, dispatch_fault, fault_is_open
     from technician_assignments import fault_technician_ids, parse_technician_ids, sync_fault_technicians
     from whatsapp_support import auto_stage_for_fault_status, notify_customer_stage
 
@@ -10296,6 +10296,8 @@ def fault_edit(id):
         cust_wa = None
         if stage:
             cust_wa = notify_customer_stage(f, stage, next_code_fn=next_code)
+        if not fault_is_open(f.status):
+            close_field_portal_tasks_for_fault(f)
         db.session.commit()
         dispatch_result = None
         if tech_ids and (set(tech_ids) != set(old_tech_ids) or not f.dispatched_at):

@@ -205,3 +205,50 @@ def test_field_faults_team_sees_unassigned_open_faults(client):
         payload = field_technician_payload(tech.id, portal_kind='faults')
         assert any(f['id'] == fault.id for f in payload['faults'])
         assert any(f.get('unassigned') for f in payload['faults'] if f['id'] == fault.id)
+
+
+def test_closed_fault_fault_visit_hidden_from_field_portal(client):
+    """زيارة نوع عطل لعطل مغلق لا تظهر في بوابة الفني."""
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-FV',
+            name='فني زيارة عطل',
+            phone='0500000091',
+            team='صيانة',
+        )
+        db.session.add(tech)
+        db.session.flush()
+        cust = Customer(organization_id=oid, code='C-FV', name='عميل زيارة عطل', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-FV', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=oid,
+            code='F-FV1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            status='تم الاصلاح',
+            resolution='أُغلق من المكتب',
+            priority='عادية',
+            reported_at=datetime.utcnow(),
+            resolved_at=datetime.utcnow(),
+        )
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-FV1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            visit_type='عطل — توقف',
+            status='مُرسلة للفني',
+            fault_id=None,
+        )
+        db.session.add_all([fault, visit])
+        db.session.commit()
+        payload = field_technician_payload(tech.id, portal_kind='both')
+        assert not any(v['code'] == visit.code for v in payload.get('visits_today') or [])
+        assert not any(f['code'] == fault.code for f in payload.get('faults') or [])

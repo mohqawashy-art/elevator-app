@@ -263,14 +263,14 @@ def faults_for_technician_filter(tech_id: int):
 
 def ensure_fault_links_for_technician(tech_id: int) -> int:
     """زامن FaultTechnician من technician_id لأي عطل مفتوح مكلّف للفني."""
-    from operations import FAULT_OPEN
+    from operations import open_faults_filter
 
     fixed = 0
     rows = (
         tenant_query(Fault)
         .filter(
             Fault.technician_id == int(tech_id),
-            Fault.status.in_(FAULT_OPEN),
+            open_faults_filter(),
         )
         .all()
     )
@@ -283,11 +283,11 @@ def ensure_fault_links_for_technician(tech_id: int) -> int:
 
 def unassigned_open_faults_filter():
     """أعطال مفتوحة بلا فني رئيسي وبلا صف فريق."""
-    from operations import FAULT_OPEN
+    from operations import open_faults_filter
 
     linked = db.session.query(FaultTechnician.fault_id).execution_options(skip_tenant=True)
     return and_(
-        Fault.status.in_(FAULT_OPEN),
+        open_faults_filter(),
         Fault.technician_id.is_(None),
         ~Fault.id.in_(linked),
     )

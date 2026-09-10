@@ -50,7 +50,92 @@ def exclude_fault_visits(q):
 FAULT_OPEN = ('مفتوح', 'قيد المعالجة', 'انتظار قطع')
 FAULT_STATUS_FIXED = 'تم الاصلاح'
 FAULT_STATUS_FIXED_LEGACY = 'محلول'
-FAULT_CLOSED = (FAULT_STATUS_FIXED, FAULT_STATUS_FIXED_LEGACY, 'مغلق')
+FAULT_CLOSED = (FAULT_STATUS_FIXED, 'تم الإصلاح', FAULT_STATUS_FIXED_LEGACY, 'مغلق')
+
+
+def fault_is_open(status: str | None) -> bool:
+    """هل العطل ما زال يظهر في بوابة الفني؟ (يشمل صيغ الإغلاق المستوردة)."""
+    s = (status or 'مفتوح').strip()
+    if s in FAULT_CLOSED:
+        return False
+    if s in FAULT_OPEN:
+        return True
+    norm = s.replace(' ', '').replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا')
+    if 'اصلاح' in norm:
+        return False
+    if s in ('مكتمل', 'مكتملة'):
+        return False
+    return True
+
+
+def open_faults_filter():
+    """فلتر SQL لأعطال البوابة — يستبعد المغلقة حتى لو الحالة غير معيارية."""
+    return and_(
+        ~Fault.status.in_(FAULT_CLOSED),
+        ~Fault.status.ilike('%اصلاح%'),
+        ~Fault.status.ilike('%إصلاح%'),
+        ~Fault.status.in_(('مكتمل', 'مكتملة')),
+    )
+
+
+def close_field_portal_tasks_for_fault(fault: Fault) -> dict[str, int]:
+    """ألغِ زيارات البوابة المرتبطة بعطل مُغلق (زيارة عطل / fault_id)."""
+    stats = {'visits_cancelled': 0, 'fault_visits_deleted': 0}
+    if fault_is_open(fault.status):
+        return stats
+
+    visit_ids: set[int] = set()
+    if fault.visit_id:
+        visit_ids.add(int(fault.visit_id))
+    for v in tenant_query(MaintenanceVisit).filter_by(fault_id=fault.id).all():
+        visit_ids.add(int(v.id))
+
+    for vid in visit_ids:
+        v = db.session.get(MaintenanceVisit, vid)
+        if not v:
+            continue
+        if is_fault_visit_type(v.visit_type):
+            for linked in tenant_query(Fault).filter_by(visit_id=v.id).all():
+                linked.visit_id = None
+            if v.fault_id:
+                linked = db.session.get(Fault, v.fault_id)
+                if linked and linked.visit_id == v.id:
+                    linked.visit_id = None
+            db.session.delete(v)
+            stats['fault_visits_deleted'] += 1
+        elif v.status in VISIT_ACTIVE:
+            v.status = 'ملغاة'
+            stats['visits_cancelled'] += 1
+    return stats
+
+
+def repair_field_portal_stale(organization_id: int | None = None) -> dict[str, int]:
+    """تنظيف ذيل بوابة الفني: زيارات عطل نشطة وزيارات لأعطال مغلقة."""
+    stats = {'visits_cancelled': 0, 'fault_visits_deleted': 0, 'faults_skipped_closed': 0}
+    visit_q = tenant_query(MaintenanceVisit).filter(MaintenanceVisit.status.in_(VISIT_ACTIVE))
+    if organization_id:
+        visit_q = visit_q.filter(MaintenanceVisit.organization_id == organization_id)
+    for v in visit_q.all():
+        linked = db.session.get(Fault, v.fault_id) if v.fault_id else None
+        if is_fault_visit_type(v.visit_type) or (linked and not fault_is_open(linked.status)):
+            if is_fault_visit_type(v.visit_type):
+                for f in tenant_query(Fault).filter_by(visit_id=v.id).all():
+                    f.visit_id = None
+                db.session.delete(v)
+                stats['fault_visits_deleted'] += 1
+            else:
+                v.status = 'ملغاة'
+                stats['visits_cancelled'] += 1
+
+    fault_q = tenant_query(Fault).filter(open_faults_filter())
+    if organization_id:
+        fault_q = fault_q.filter(Fault.organization_id == organization_id)
+    for f in fault_q.all():
+        if not fault_is_open(f.status):
+            stats['faults_skipped_closed'] += 1
+            close_field_portal_tasks_for_fault(f)
+    db.session.commit()
+    return stats
 
 
 def next_code(model, prefix, field='code', digits=4):
@@ -1834,10 +1919,12 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
     visits: list = []
     if show_visits:
         visits = (
-            tenant_query(MaintenanceVisit).filter(
-                visits_for_technician_filter(tech_id),
-                MaintenanceVisit.visit_date.in_([today, tomorrow]),
-                MaintenanceVisit.status.in_(VISIT_ACTIVE),
+            exclude_fault_visits(
+                tenant_query(MaintenanceVisit).filter(
+                    visits_for_technician_filter(tech_id),
+                    MaintenanceVisit.visit_date.in_([today, tomorrow]),
+                    MaintenanceVisit.status.in_(VISIT_ACTIVE),
+                )
             )
             .order_by(MaintenanceVisit.visit_date, MaintenanceVisit.route_order)
             .all()
@@ -1853,7 +1940,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
     has_assigned_faults = (
         tenant_query(Fault).filter(
             faults_for_technician_filter(tech_id),
-            Fault.status.in_(FAULT_OPEN),
+            open_faults_filter(),
         ).count()
         > 0
     )
@@ -1862,7 +1949,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         assigned_rows = (
             tenant_query(Fault).filter(
                 faults_for_technician_filter(tech_id),
-                Fault.status.in_(FAULT_OPEN),
+                open_faults_filter(),
             )
             .order_by(Fault.reported_at.desc())
             .all()
@@ -1880,10 +1967,11 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
             ):
                 by_id.setdefault(f.id, f)
         faults = sorted(
-            by_id.values(),
+            [f for f in by_id.values() if fault_is_open(f.status)],
             key=lambda x: x.reported_at or datetime.min,
             reverse=True,
         )
+        has_assigned_faults = bool(faults)
 
     return {
         'technician': {
@@ -2543,6 +2631,7 @@ def complete_field_fault(
     f.resolution = resolution
     f.status = status or FAULT_STATUS_FIXED
     f.resolved_at = datetime.utcnow()
+    close_field_portal_tasks_for_fault(f)
     db.session.commit()
 
 
