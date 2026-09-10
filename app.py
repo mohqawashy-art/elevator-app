@@ -586,10 +586,13 @@ def enforce_auth():
         return redirect(url_for('field_login', next=request.path))
 
     if field_tid and _field_tech_api_allowed(path, request.method):
-        g.field_tech_id = field_tid
-        from field_auth import bind_field_technician_tenant
-        bind_field_technician_tenant(field_tid)
-        return None
+        # مستخدم المنصة مسجّل (مثلاً من /maintenance-visits/.../report) — لا تستبدل
+        # سياق المؤسسة بجلسة فني عالقة في نفس المتصفح.
+        if not current_user():
+            g.field_tech_id = field_tid
+            from field_auth import bind_field_technician_tenant
+            bind_field_technician_tenant(field_tid)
+            return None
 
     user = current_user()
     if user:
@@ -9830,11 +9833,13 @@ def _signature_data_url(relative_path: str) -> str:
 def api_save_visit_report(visit_id):
     from operations import save_visit_report
 
+    v = tenant_query(MaintenanceVisit).filter_by(id=visit_id).first()
+    if not v:
+        return jsonify({'ok': False, 'error': 'الزيارة غير موجودة'}), 404
+
     tech_id = getattr(g, 'field_tech_id', None)
-    if tech_id:
-        v = tenant_get_or_404(MaintenanceVisit, visit_id)
-        if v.technician_id and v.technician_id != tech_id:
-            return jsonify({'ok': False, 'error': 'الزيارة غير مخصصة لهذا الفني'}), 403
+    if tech_id and v.technician_id and v.technician_id != tech_id:
+        return jsonify({'ok': False, 'error': 'الزيارة غير مخصصة لهذا الفني'}), 403
 
     data = request.get_json(silent=True) or {}
     mark_complete = bool(data.pop('mark_complete', False))

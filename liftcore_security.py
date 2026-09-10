@@ -153,7 +153,7 @@ def validate_csrf(*, method: str, endpoint: str | None, path: str) -> None:
 
     expected = session.get(CSRF_SESSION_KEY)
     if not expected:
-        abort(403, description='CSRF token missing — أعد تحميل الصفحة')
+        _abort_csrf('CSRF token missing — أعد تحميل الصفحة')
 
     supplied = (
         request.form.get(CSRF_FORM_FIELD)
@@ -161,7 +161,18 @@ def validate_csrf(*, method: str, endpoint: str | None, path: str) -> None:
         or ''
     ).strip()
     if not supplied or not secrets.compare_digest(supplied, expected):
-        abort(403, description='CSRF validation failed')
+        _abort_csrf('CSRF validation failed')
+
+
+def _abort_csrf(message: str) -> None:
+    from flask import abort, jsonify, request
+
+    path = request.path or ''
+    if path.startswith('/api/'):
+        resp = jsonify({'ok': False, 'error': message, 'code': 'csrf_failed'})
+        resp.status_code = 403
+        abort(resp)
+    abort(403, description=message)
 
 
 # ── Rate limit ───────────────────────────────────────────────────

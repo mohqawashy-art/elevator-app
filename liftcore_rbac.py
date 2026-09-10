@@ -144,18 +144,20 @@ def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str 
         check_path_permission,
     )
 
+    api_path = path.startswith('/api/')
+
     if role == ROLE_CUSTOM:
         missing = check_path_permission(user, path=path, method=method, settings=settings)
         if missing:
             return mutation_denied_response(
-                as_json=False,
+                as_json=api_path,
                 message_ar='ليس لديك صلاحية لهذا القسم.',
                 message_en='You do not have permission for this area.',
                 lang=lang,
             )
         if method in MUTATING_METHODS and ep in ADMIN_ONLY_ENDPOINTS:
             return mutation_denied_response(
-                as_json=False,
+                as_json=api_path,
                 message_ar='هذا الإجراء متاح للمسؤول فقط.',
                 message_en='This action is restricted to administrators.',
                 lang=lang,
@@ -170,7 +172,7 @@ def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str 
     if role == ROLE_VIEWER:
         if ep not in SELF_SERVICE_POST_ENDPOINTS:
             return mutation_denied_response(
-                as_json=False,
+                as_json=api_path,
                 message_ar='حساب «عرض فقط» — لا يمكنك تعديل البيانات.',
                 message_en='View-only account — you cannot modify data.',
                 lang=lang,
@@ -178,7 +180,7 @@ def check_rbac(user, *, method: str, endpoint: str | None, path: str, lang: str 
 
     if role == ROLE_MANAGER and ep in ADMIN_ONLY_ENDPOINTS:
         return mutation_denied_response(
-            as_json=False,
+            as_json=api_path,
             message_ar='هذا الإجراء متاح للمسؤول فقط.',
             message_en='This action is restricted to administrators.',
             lang=lang,

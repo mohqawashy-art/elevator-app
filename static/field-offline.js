@@ -150,13 +150,27 @@
           return { ok: true, queued: true };
         });
       }
+      var headers = { 'Content-Type': 'application/json' };
+      var csrf = document.querySelector('meta[name="csrf-token"]');
+      if (csrf && csrf.content) headers['X-CSRF-Token'] = csrf.content;
       return fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify(body),
         credentials: 'same-origin',
       })
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          return r.text().then(function (text) {
+            var data;
+            try { data = text ? JSON.parse(text) : {}; } catch (e) {
+              throw new Error(r.status === 403
+                ? 'انتهت الجلسة — أعد تحميل الصفحة'
+                : 'تعذّر قراءة رد الخادم (' + r.status + ')');
+            }
+            if (!r.ok && !data.error) data.error = 'تعذّر الحفظ (' + r.status + ')';
+            return data;
+          });
+        })
         .then(function (data) {
           if (!data.ok) throw new Error(data.error || 'تعذّر الحفظ');
           if (meta.draftKey) api.deleteDraft(meta.draftKey);

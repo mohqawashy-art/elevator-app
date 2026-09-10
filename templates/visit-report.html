@@ -292,6 +292,28 @@ function updateProgress() {
   LiftCoreChecklist.syncAutoTechNotes(CHECKLIST_TEMPLATE);
 }
 
+function lcReportPostJson(url, payload) {
+  const headers = { 'Content-Type': 'application/json' };
+  const csrf = document.querySelector('meta[name="csrf-token"]');
+  if (csrf && csrf.content) headers['X-CSRF-Token'] = csrf.content;
+  return fetch(url, {
+    method: 'POST',
+    headers: headers,
+    credentials: 'same-origin',
+    body: JSON.stringify(payload),
+  }).then(function (r) {
+    return r.text().then(function (text) {
+      let data;
+      try { data = text ? JSON.parse(text) : {}; } catch (e) {
+        if (r.status === 403) throw new Error('انتهت الجلسة أو رمز الحماية — أعد تحميل الصفحة وحاول مرة أخرى');
+        throw new Error('تعذّر قراءة رد الخادم (' + r.status + ')');
+      }
+      if (!r.ok && !data.error) data.error = 'تعذّر الحفظ (' + r.status + ')';
+      return data;
+    });
+  });
+}
+
 function saveReport(markComplete) {
   if (!REPORT_CFG.editable) return;
   const payload = LiftCoreChecklist.collectReportData(CHECKLIST_TEMPLATE);
@@ -299,13 +321,10 @@ function saveReport(markComplete) {
   payload.status = markComplete ? 'مكتملة' : undefined;
   const url = '/api/maintenance-visits/' + REPORT_CFG.visitId + '/report';
   const draftKey = 'visit:' + REPORT_CFG.visitId;
-  const saver = window.LiftCoreFieldOffline
+  const isField = (REPORT_CFG.backUrl || '').indexOf('/field') >= 0;
+  const saver = isField && window.LiftCoreFieldOffline
     ? LiftCoreFieldOffline.postJson(url, payload, { draftKey: draftKey, label: 'محضر زيارة ' + REPORT_CFG.visitId })
-    : fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload),
-      }).then(r => r.json());
+    : lcReportPostJson(url, payload);
   saver
     .then(data => {
       if (!data.ok) throw new Error(data.error || 'تعذّر الحفظ');
