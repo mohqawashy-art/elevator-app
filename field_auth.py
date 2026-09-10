@@ -54,27 +54,49 @@ def bind_field_technician_tenant(tech_id: int | None):
 
 
 def find_technician_by_login(login_id: str | None) -> Technician | None:
-    """يبحث بالكود أو الجوال — عبر كل المؤسسات ثم يربط سياق الفني."""
+    """يبحث بالكود أو الجوال — يفضّل مؤسسة الـ subdomain ثم يربط سياق الفني."""
+    from tenant_scope import effective_organization_id
+
     raw = (login_id or '').strip()
     if not raw:
         return None
+    oid = effective_organization_id()
     q = Technician.query.execution_options(skip_tenant=True)
-    by_code = q.filter(Technician.code.ilike(raw)).first()
-    if by_code:
-        if (by_code.status or 'متاح') in FIELD_ACTIVE_STATUSES:
-            bind_field_technician_tenant(by_code.id)
-            return by_code
-        return None
+
+    def _accept(tech: Technician | None) -> Technician | None:
+        if not tech:
+            return None
+        if (tech.status or 'متاح') not in FIELD_ACTIVE_STATUSES:
+            return None
+        bind_field_technician_tenant(tech.id)
+        return tech
+
+    code_q = q.filter(Technician.code.ilike(raw))
+    if oid:
+        tech = _accept(code_q.filter(Technician.organization_id == oid).first())
+        if tech:
+            return tech
+    tech = _accept(code_q.first())
+    if tech:
+        return tech
+
     phone = normalize_phone(raw)
     if not phone:
         return None
-    for tech in q.all():
-        st = tech.status or 'متاح'
-        if st not in FIELD_ACTIVE_STATUSES:
-            continue
+    candidates = q.all()
+    if oid:
+        for tech in candidates:
+            if tech.organization_id != oid:
+                continue
+            if normalize_phone(tech.phone) == phone or normalize_phone(tech.phone2) == phone:
+                found = _accept(tech)
+                if found:
+                    return found
+    for tech in candidates:
         if normalize_phone(tech.phone) == phone or normalize_phone(tech.phone2) == phone:
-            bind_field_technician_tenant(tech.id)
-            return tech
+            found = _accept(tech)
+            if found:
+                return found
     return None
 
 

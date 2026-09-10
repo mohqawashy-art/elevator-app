@@ -91,6 +91,9 @@
       {% endfor %}
     {% else %}
     <div class="fp-empty">لا توجد أعطال مكلفة لك حالياً</div>
+    <p style="font-size:11px;color:var(--fp-muted);margin-top:8px;line-height:1.5">
+      الأعطال تظهر للفني <strong>المُسنَّد</strong> فقط. أنت مسجّل كـ <strong>{{ field_tech.code }}</strong> — تأكد أن المكتب أسند العطل لنفس الكود.
+    </p>
     {% endif %}
   </div>
   {% endif %}

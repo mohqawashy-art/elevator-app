@@ -26,6 +26,20 @@ def test_field_api_me_requires_auth(client):
     assert r.status_code in (401, 403)
 
 
+def test_field_session_can_poll_live_revision(client):
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-REV2', name='فني', phone='0500000088', team='أعطال', status='متاح')
+        db.session.add(tech)
+        db.session.commit()
+        tech_id = tech.id
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+    r = client.get('/api/live/revision')
+    assert r.status_code == 200
+    assert 'revision' in (r.get_json() or {})
+
+
 def test_field_payload_includes_alert_stamp(client):
     with client.application.app_context():
         oid = ensure_test_organization()

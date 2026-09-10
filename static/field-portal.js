@@ -85,13 +85,16 @@
       }
       html += '</div>';
     }
-    if (payload.show_faults) {
+    var faultItems = payload.faults || [];
+    var showFaultSection = payload.show_faults || faultItems.length > 0;
+    if (showFaultSection) {
       html += '<div id="faults" style="' + (payload.show_visits ? 'margin-top:8px' : '') + '">';
-      html += '<div class="fp-section">الأعطال المفتوحة <span class="fp-count">' + (payload.faults || []).length + '</span></div>';
-      if (payload.faults && payload.faults.length) {
-        payload.faults.forEach(function (f) { html += faultCard(f); });
+      html += '<div class="fp-section">الأعطال المفتوحة <span class="fp-count">' + faultItems.length + '</span></div>';
+      if (faultItems.length) {
+        faultItems.forEach(function (f) { html += faultCard(f); });
       } else {
         html += '<div class="fp-empty">لا توجد أعطال مكلفة لك حالياً</div>';
+        html += '<p style="font-size:11px;color:var(--fp-muted);margin-top:8px;line-height:1.5">الأعطال تظهر للفني <strong>المُسنَّد</strong> فقط — تأكد من تطابق كود الفني في المكتب.</p>';
       }
       html += '</div>';
     }
@@ -294,6 +297,7 @@
     fetch('/api/field/me?_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
       .then(function (r) {
         if (r.status === 401) throw new Error('auth');
+        if (!r.ok) throw new Error('http');
         return r.json();
       })
       .then(function (data) {
@@ -307,8 +311,8 @@
         }
         if (!opts.silentBootstrap) handleNewTasks(added);
       })
-      .catch(function () {
-        if (!offlineApi) return;
+      .catch(function (err) {
+        if (!offlineApi || (navigator.onLine && err && err.message !== 'auth')) return;
         offlineApi.getMePayload().then(function (p) {
           if (p) renderOfflineHome(p);
         });

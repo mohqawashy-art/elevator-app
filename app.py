@@ -480,8 +480,19 @@ def _resolve_field_technician_id():
     return None
 
 
+def _field_tech_paths_allowed(path: str) -> bool:
+    """مسارات بوابة الفني — جلسة الفني تكفي بدون مستخدم المكتب."""
+    return (
+        path.startswith('/field')
+        or path.startswith('/api/field')
+        or path == '/api/live/revision'
+    )
+
+
 def _field_tech_api_allowed(path: str, method: str) -> bool:
     """واجهات يستخدمها محضر الفني من الجوال (خارج /field و /api/field)."""
+    if path == '/api/live/revision' and method == 'GET':
+        return True
     if method != 'POST':
         return False
     if path == '/api/signatures/verify':
@@ -563,14 +574,14 @@ def enforce_auth():
 
     field_tid = field_session_technician_id()
 
-    if path.startswith('/field') or path.startswith('/api/field'):
+    if _field_tech_paths_allowed(path):
         tech_id = _resolve_field_technician_id()
         if tech_id:
             g.field_tech_id = tech_id
             from field_auth import bind_field_technician_tenant
             bind_field_technician_tenant(tech_id)
             return None
-        if path.startswith('/api/field'):
+        if path.startswith('/api/field') or path == '/api/live/revision':
             return jsonify({'error': 'يجب تسجيل دخول الفني'}), 401
         return redirect(url_for('field_login', next=request.path))
 
@@ -669,7 +680,7 @@ def enforce_plan_features():
     if is_admin_host() or getattr(g, 'platform_admin_host', False):
         return None
     path = request.path or ''
-    if path.startswith('/field') or path.startswith('/api/field'):
+    if _field_tech_paths_allowed(path):
         return None
     if not current_user():
         return None
@@ -10133,8 +10144,8 @@ def faults():
              'city': e.city or '', 'district': e.district or ''}
             for e in elevators
         ],
-        technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],
-        fault_technicians_js=[{'id': t.id, 'name': t.name} for t in fault_techs],
+        technicians_js=[{'id': t.id, 'name': t.name, 'code': t.code or ''} for t in technicians],
+        fault_technicians_js=[{'id': t.id, 'name': t.name, 'code': t.code or ''} for t in fault_techs],
         inventory_items_js=[
             {'id': i.id, 'code': i.code, 'name': i.name,
              'unit': i.unit or 'قطعة', 'buy_price': i.buy_price or 0,
@@ -10157,6 +10168,17 @@ def _wants_json_fault_response() -> bool:
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         or 'application/json' in (request.headers.get('Accept') or '')
     )
+
+
+def _fault_field_portal_hint(tech_ids: list[int]) -> str:
+    """يوضّح من سيرى العطل في بوابة الجوال."""
+    if not tech_ids:
+        return ''
+    techs = tenant_query(Technician).filter(Technician.id.in_(tech_ids)).all()
+    if not techs:
+        return ''
+    labels = [f'{t.code or t.id} ({t.name})' for t in techs]
+    return f' — يظهر في بوابة الجوال للفني: {"، ".join(labels)}'
 
 
 def _fault_dispatch_feedback(dispatch_result: dict | None, tech_ids: list[int]) -> str | None:
@@ -10184,6 +10206,8 @@ def _finish_fault_save(
     flash_ok: str,
     flash_warn: str | None = None,
 ):
+    from technician_assignments import fault_technician_ids
+
     if dispatch_result and dispatch_result.get('whatsapp_url'):
         session['pending_whatsapp'] = dispatch_result['whatsapp_url']
         session['pending_whatsapp_fault_id'] = fault.id
@@ -10191,6 +10215,9 @@ def _finish_fault_save(
         flash(flash_warn, 'warning')
     flash(flash_ok, 'success')
     if _wants_json_fault_response():
+        tech_ids = fault_technician_ids(fault) if hasattr(fault, 'id') else []
+        if not tech_ids and fault.technician_id:
+            tech_ids = [int(fault.technician_id)]
         return jsonify({
             'ok': True,
             'fault_id': fault.id,
@@ -10198,6 +10225,7 @@ def _finish_fault_save(
             'whatsapp_url': (dispatch_result or {}).get('whatsapp_url', ''),
             'dispatched': bool(dispatch_result and not dispatch_result.get('error')),
             'warning': flash_warn or '',
+            'portal_hint': _fault_field_portal_hint(tech_ids),
         })
     return redirect(url_for('faults'))
 
@@ -10387,7 +10415,7 @@ def fault_add():
     return _finish_fault_save(
         f,
         dispatch_result=dispatch_result,
-        flash_ok=f'تم تسجيل العطل {f.code}',
+        flash_ok=f'تم تسجيل العطل {f.code}{_fault_field_portal_hint(tech_ids)}',
         flash_warn=warn,
     )
 
