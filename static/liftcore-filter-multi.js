@@ -98,8 +98,9 @@
   function shouldUpgrade(sel) {
     if (!sel || sel.tagName !== 'SELECT' || sel._lcMulti) return false;
     if (sel.dataset.lcNoMulti === '1' || sel.classList.contains('plan-team-sel')) return false;
-    if (sel.closest('.modal-overlay, .modal, .lc-client-select, .client-card, .lc-filter-multi-panel')) return false;
     var id = sel.id || '';
+    if (id === 'plan-district') return true;
+    if (sel.closest('.modal-overlay, .modal, .lc-client-select, .client-card, .lc-filter-multi-panel')) return false;
     if (id === 'sel-year' || id === 'sel-month') return false;
     if (/-sel$/.test(id)) return false;
     if (sel.classList.contains('filter-select')) {

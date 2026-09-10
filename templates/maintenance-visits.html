@@ -365,11 +365,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </div>
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-          <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو العميل أو العقد أو المنطقة أو الفني..." oninput="filterTable()">
+          <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو العميل أو العقد أو الفني..." oninput="filterTable()">
         </div>
-        <select class="filter-select" id="f-district" onchange="filterTable()" title="المنطقة — يمكن اختيار أكثر من منطقة">
-          <option value="">كل المناطق</option>
-        </select>
         <select class="filter-select" id="f-client" onchange="filterTable()">
           <option value="">كل العملاء</option>
         </select>
@@ -571,7 +568,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     </div>
     <div class="modal-body" style="overflow-y:auto;max-height:calc(92vh - 120px)">
       <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px">
-        خطّط يوماً بيوم: اختر <strong>اليوم</strong> ثم <strong>المنطقة</strong>، حدّد العملاء، عيّن <strong>فريق الصيانة</strong>، أضِف لليوم — ثم كرّر لليوم التالي حتى تكتمل الخطة، ثم اعتمد الإنشاء.
+        خطّط يوماً بيوم: اختر <strong>اليوم</strong> ثم <strong>منطقة أو أكثر</strong>، حدّد العملاء، عيّن <strong>فريق الصيانة</strong>، أضِف لليوم — ثم كرّر لليوم التالي حتى تكتمل الخطة، ثم اعتمد الإنشاء.
       </p>
 
       <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:10px">
@@ -600,9 +597,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <label>اليوم</label>
             <select id="plan-day" style="direction:ltr;min-width:170px" onchange="onWizardDayChange()"></select>
           </div>
-          <div class="field" style="margin:0">
-            <label>المنطقة</label>
-            <select id="plan-district" onchange="loadWizardCandidates()" style="min-width:180px;max-width:260px">
+          <div class="field" style="margin:0;min-width:200px;max-width:280px">
+            <label>المنطقة (واحدة أو أكثر)</label>
+            <select id="plan-district" class="filter-select" onchange="loadWizardCandidates()" style="min-width:200px;max-width:280px;width:100%">
               <option value="">اختر المنطقة</option>
             </select>
           </div>
@@ -948,7 +945,7 @@ function filterByVisitFilter(key) {
   setActiveVisitFilterUi(key);
   const search = document.getElementById('search-input');
   if (search) search.value = '';
-  ['f-client', 'f-tech', 'f-type', 'f-status', 'f-date-from', 'f-date-to', 'f-district'].forEach(id => {
+  ['f-client', 'f-tech', 'f-type', 'f-status', 'f-date-from', 'f-date-to'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
     if (el && window.LiftCoreFilter) LiftCoreFilter.set(el, []);
@@ -1032,7 +1029,6 @@ function filterTable() {
   filtered = VISITS.filter(v=>
     LcSearch.match(s, [v.code, v.customer, v.customer_name_en, v.contract_code, v.district, v.elevator, v.technician, v.visit_type, v.works_done, v.notes, v.building]) &&
     lcAllows('f-client', v.customer) &&
-    lcAllows('f-district', v.district) &&
     lcAllows('f-tech', v.technician) &&
     lcAllows('f-type', v.visit_type) &&
     lcAllows('f-status', v.status, { aliases: { 'جاري التنفيذ': ['جارية', 'مُرسلة للفني'] } }) &&
@@ -1133,23 +1129,35 @@ function planMaxPerDay() {
   return isNaN(n) ? 6 : n;
 }
 
-function planDistrictFilter() {
+function planDistrictFilters() {
   var el = document.getElementById('plan-district');
-  return el && el.value ? el.value : '';
+  if (!el) return [];
+  if (window.LiftCoreFilter) return LiftCoreFilter.values(el) || [];
+  return el.value ? [el.value] : [];
+}
+
+function planDistrictFilter() {
+  var list = planDistrictFilters();
+  return list.length ? list[0] : '';
 }
 
 function fillPlanDistrictOptions(list) {
   var sel = document.getElementById('plan-district');
   if (!sel) return;
-  var current = sel.value || '';
+  var prev = window.LiftCoreFilter ? LiftCoreFilter.values(sel) : [(sel.value || '')].filter(Boolean);
   var districts = (list && list.length) ? list.slice() : (PLAN_DISTRICTS || []).slice();
-  districts = districts.filter(Boolean).sort();
+  districts = districts.filter(Boolean).sort(function (a, b) { return a.localeCompare(b, 'ar'); });
   sel.innerHTML = '<option value="">اختر المنطقة</option>' +
     districts.map(function (d) {
-      return '<option value="' + escHtml(d) + '"' + (d === current ? ' selected' : '') + '>' + escHtml(d) + '</option>';
+      return '<option value="' + escAttr(d) + '">' + escHtml(d) + '</option>';
     }).join('');
-  if (current && !districts.some(function (d) { return d === current; })) {
-    sel.value = '';
+  if (window.LiftCoreFilter) {
+    if (!sel._lcMulti) LiftCoreFilter.upgrade(sel);
+    LiftCoreFilter.refresh(sel);
+    var kept = prev.filter(function (d) { return districts.indexOf(d) >= 0; });
+    if (kept.length) LiftCoreFilter.set(sel, kept);
+  } else if (prev[0] && districts.indexOf(prev[0]) >= 0) {
+    sel.value = prev[0];
   }
 }
 
@@ -1170,7 +1178,7 @@ function initPlanWizard() {
   renderPlanDistricts();
   loadPlanWorkDays().then(function () {
     var daySel = document.getElementById('plan-day');
-    if (daySel && daySel.value && planDistrictFilter()) {
+    if (daySel && daySel.value && planDistrictFilters().length) {
       loadWizardCandidates();
     } else {
       renderWizardCandidates([]);
@@ -1228,7 +1236,7 @@ function fillPlanDayOptions() {
 
 function onWizardDayChange() {
   updateDayCountHint();
-  if (planDistrictFilter()) loadWizardCandidates();
+  if (planDistrictFilters().length) loadWizardCandidates();
 }
 
 function updateDayCountHint() {
@@ -1256,19 +1264,21 @@ function wizardCandidatePool(list) {
 
 function loadWizardCandidates() {
   var ym = planMonth();
-  var district = planDistrictFilter();
+  var districts = planDistrictFilters();
   var box = document.getElementById('plan-candidates');
   var meta = document.getElementById('plan-candidates-meta');
-  if (!ym || !district) {
+  if (!ym || !districts.length) {
     PLAN_CANDIDATES = [];
     renderWizardCandidates([]);
-    if (meta) meta.textContent = 'اختر المنطقة لعرض العملاء.';
+    if (meta) meta.textContent = 'اختر منطقة واحدة أو أكثر لعرض العملاء.';
     return;
   }
-  if (box) box.innerHTML = '<p style="padding:12px;color:var(--text3);font-size:13px">جاري تحميل عملاء المنطقة...</p>';
+  if (box) box.innerHTML = '<p style="padding:12px;color:var(--text3);font-size:13px">جاري تحميل عملاء المناطق...</p>';
   if (meta) meta.textContent = 'جاري التحميل...';
-  fetch('/api/maintenance/plan/candidates?plan_month=' + encodeURIComponent(ym) +
-    '&district=' + encodeURIComponent(district))
+  var districtQs = districts.map(function (d) {
+    return 'districts=' + encodeURIComponent(d);
+  }).join('&');
+  fetch('/api/maintenance/plan/candidates?plan_month=' + encodeURIComponent(ym) + '&' + districtQs)
     .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
     .then(function (res) {
       if (!res.ok) throw new Error(res.j.error || 'تعذّر التحميل');
@@ -1279,10 +1289,13 @@ function loadWizardCandidates() {
       }
       renderWizardCandidates(PLAN_CANDIDATES);
       var avail = wizardCandidatePool(PLAN_CANDIDATES).length;
+      var distLabel = (res.j.districts && res.j.districts.length)
+        ? res.j.districts.join('، ')
+        : districts.join('، ');
       if (meta) {
         meta.textContent = avail
-          ? ('المنطقة «' + district + '»: ' + avail + ' مصعد لم يُجدول بعد (مرتّب جغرافياً)')
-          : ('المنطقة «' + district + '»: كل المصاعد مجدولة أو مُضافة للمسودة');
+          ? ('المناطق «' + distLabel + '»: ' + avail + ' مصعد لم يُجدول بعد (مرتّب جغرافياً)')
+          : ('المناطق «' + distLabel + '»: كل المصاعد مجدولة أو مُضافة للمسودة');
       }
     })
     .catch(function (err) {
@@ -1296,19 +1309,31 @@ function renderWizardCandidates(list) {
   var el = document.getElementById('plan-candidates');
   if (!el) return;
   var rows = wizardCandidatePool(list);
+  var showDistrict = planDistrictFilters().length > 1;
   if (!rows.length) {
-    el.innerHTML = '<p style="padding:12px;color:var(--text3);font-size:13px">لا يوجد عملاء غير مجدولين في هذه المنطقة — أضف من منطقة أخرى أو اعرض «عملاء لم تُشمَلهم الزيارات» أعلاه.</p>';
+    el.innerHTML = '<p style="padding:12px;color:var(--text3);font-size:13px">لا يوجد عملاء غير مجدولين في المناطق المحددة — غيّر المناطق أو اعرض «عملاء لم تُشمَلهم الزيارات» أعلاه.</p>';
     return;
   }
+  var cols = showDistrict
+    ? '36px minmax(140px,1.2fr) minmax(90px,.9fr) 70px minmax(90px,1fr)'
+    : '36px minmax(160px,1.4fr) 70px minmax(100px,1fr)';
+  var head = showDistrict
+    ? '<span></span><span>العميل</span><span>المنطقة</span><span>المصعد</span><span>المبنى</span>'
+    : '<span></span><span>العميل</span><span>المصعد</span><span>المبنى</span>';
   el.innerHTML =
-    '<div style="display:grid;grid-template-columns:36px minmax(160px,1.4fr) 70px minmax(100px,1fr);gap:6px;padding:8px 10px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
-      '<span></span><span>العميل</span><span>المصعد</span><span>المبنى</span>' +
+    '<div style="display:grid;grid-template-columns:' + cols + ';gap:6px;padding:8px 10px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
+      head +
     '</div>' +
     rows.map(function (c) {
-      return '<label style="display:grid;grid-template-columns:36px minmax(160px,1.4fr) 70px minmax(100px,1fr);gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">' +
+      var districtCell = showDistrict
+        ? '<span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escAttr(c.district || '') + '">' +
+            escHtml(c.district || '—') + '</span>'
+        : '';
+      return '<label style="display:grid;grid-template-columns:' + cols + ';gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">' +
         '<input type="checkbox" class="plan-cand-cb" value="' + c.elevator_id + '" data-elevator-id="' + c.elevator_id + '">' +
-        '<span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(c.customer || c.customer_name || '') + '">' +
+        '<span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escAttr(c.customer || c.customer_name || '') + '">' +
           escHtml(c.customer || c.customer_name || '—') + '</span>' +
+        districtCell +
         '<span style="font-family:var(--font-en);direction:ltr;color:var(--accent);font-weight:600">' +
           escHtml(c.elevator || c.elevator_code || '') + '</span>' +
         '<span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
@@ -1326,9 +1351,9 @@ function wizardSelectAll(on) {
 function addWizardDayToDraft() {
   var day = document.getElementById('plan-day');
   var teamSel = document.getElementById('plan-team');
-  var district = planDistrictFilter();
+  var districts = planDistrictFilters();
   if (!day || !day.value) { alert('اختر اليوم'); return; }
-  if (!district) { alert('اختر المنطقة'); return; }
+  if (!districts.length) { alert('اختر منطقة واحدة على الأقل'); return; }
   if (!teamSel || !teamSel.value) { alert('اختر فريق الصيانة'); return; }
   var checked = Array.from(document.querySelectorAll('#plan-candidates .plan-cand-cb:checked'));
   if (!checked.length) { alert('حدّد عميلاً واحداً على الأقل'); return; }
@@ -1354,7 +1379,7 @@ function addWizardDayToDraft() {
       customer: c.customer || c.customer_name,
       customer_id: c.customer_id,
       building: c.building || '',
-      district: district,
+      district: c.district || districts[0] || '',
       visit_date: day.value,
       route_order: dayCount,
       team_id: parseInt(teamSel.value, 10),
@@ -1633,38 +1658,6 @@ function visitCustomerName(v) {
   return c ? c.name : 'عميل غير محدد';
 }
 
-function allVisitDistricts() {
-  var seen = {}, list = [];
-  (VISITS || []).forEach(function (v) {
-    var d = (v.district || '').trim();
-    if (!d || seen[d]) return;
-    seen[d] = 1;
-    list.push(d);
-  });
-  (PLAN_DISTRICTS || []).forEach(function (d) {
-    d = (d || '').trim();
-    if (d && !seen[d]) { seen[d] = 1; list.push(d); }
-  });
-  return list.sort(function (a, b) { return a.localeCompare(b, 'ar'); });
-}
-
-function fillVisitDistrictFilter(keepSelected) {
-  var sel = document.getElementById('f-district');
-  if (!sel) return;
-  var prev = keepSelected && window.LiftCoreFilter ? LiftCoreFilter.values(sel) : [];
-  var districts = allVisitDistricts();
-  sel.innerHTML = '<option value="">كل المناطق</option>' +
-    districts.map(function (d) {
-      return '<option value="' + String(d).replace(/"/g, '&quot;') + '">' + d + '</option>';
-    }).join('');
-  if (window.LiftCoreFilter) {
-    LiftCoreFilter.refresh(sel);
-    if (keepSelected) LiftCoreFilter.set(sel, prev);
-  } else if (prev[0]) {
-    sel.value = prev[0];
-  }
-}
-
 function visitsInMonth(ym) {
   const b = monthBounds(ym);
   return VISITS
@@ -1701,7 +1694,7 @@ function showAllVisits() {
   });
   const search = document.getElementById('search-input');
   if (search) search.value = '';
-  ['f-client', 'f-tech', 'f-type', 'f-status', 'f-district'].forEach(id => {
+  ['f-client', 'f-tech', 'f-type', 'f-status'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
     if (el && window.LiftCoreFilter) LiftCoreFilter.set(el, []);
@@ -1868,7 +1861,12 @@ function togglePlanMissingList() {
 function focusPlanMissingDistrict(district) {
   var sel = document.getElementById('plan-district');
   if (!sel || !district) return;
-  sel.value = district;
+  if (window.LiftCoreFilter) {
+    if (!sel._lcMulti) LiftCoreFilter.upgrade(sel);
+    LiftCoreFilter.set(sel, [district]);
+  } else {
+    sel.value = district;
+  }
   loadWizardCandidates();
   var block = document.getElementById('plan-missing-box');
   if (block) block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2774,7 +2772,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySele
 /* التاريخ في الهيدر: liftcore-format.js */
 
 if (tableSort) tableSort.bindHeaders();
-fillVisitDistrictFilter(false);
 OpsPage.fillFilterSelect('f-client', CUSTOMERS.map(c => ({ value: c.name, label: c.name })), 'كل العملاء');
 initVisitClientSelect();
 OpsPage.fillFilterSelect('f-tech', TECHNICIANS.map(t => ({ value: t.name, label: t.name })), 'كل الفنيين');

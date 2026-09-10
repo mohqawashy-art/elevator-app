@@ -9014,15 +9014,22 @@ def api_plan_work_days():
 
 @app.route('/api/maintenance/plan/candidates', methods=['GET'])
 def api_plan_candidates():
-    from operations import plan_candidates_for_district
+    from operations import plan_candidates_for_district, plan_candidates_for_districts
 
     ym = (request.args.get('plan_month') or '').strip()
+    districts = [d.strip() for d in request.args.getlist('districts') if (d or '').strip()]
     district = (request.args.get('district') or '').strip()
+    if district and district not in districts:
+        districts.insert(0, district)
     if not ym or '-' not in ym:
         return jsonify({'error': 'حدد شهر الخطة'}), 400
-    if not district:
+    if not districts:
         return jsonify({'error': 'اختر المنطقة'}), 400
-    result = plan_candidates_for_district(ym, district)
+    result = (
+        plan_candidates_for_district(ym, districts[0])
+        if len(districts) == 1
+        else plan_candidates_for_districts(ym, districts)
+    )
     if result.get('error') and not result.get('candidates'):
         return jsonify(result), 400
     return jsonify(result)

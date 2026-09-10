@@ -1241,6 +1241,49 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
     }
 
 
+def plan_candidates_for_districts(plan_month: str, districts: list[str]) -> dict:
+    """عملاء/مصاعد لعدة مناطق — دمج بدون تكرار مصعد."""
+    clean: list[str] = []
+    for raw in districts or []:
+        d = (raw or '').strip()
+        if d and d not in clean:
+            clean.append(d)
+    if not clean:
+        return {'error': 'اختر المنطقة', 'candidates': [], 'work_days': plan_work_days(plan_month)}
+    if len(clean) == 1:
+        return plan_candidates_for_district(plan_month, clean[0])
+
+    merged: list[dict] = []
+    seen: set[int] = set()
+    work_days = plan_work_days(plan_month)
+    used: list[str] = []
+    for d in clean:
+        part = plan_candidates_for_district(plan_month, d)
+        if part.get('error') and not part.get('candidates'):
+            continue
+        used.append(d)
+        if part.get('work_days'):
+            work_days = part['work_days']
+        for c in part.get('candidates') or []:
+            eid = int(c.get('elevator_id') or 0)
+            if not eid or eid in seen:
+                continue
+            seen.add(eid)
+            row = dict(c)
+            row['district'] = row.get('district') or d
+            merged.append(row)
+    if not used:
+        return {'error': 'لا توجد مصاعد في المناطق المحددة', 'candidates': [], 'work_days': work_days}
+    return {
+        'plan_month': plan_month,
+        'district': '، '.join(used),
+        'districts': used,
+        'count': len(merged),
+        'candidates': merged,
+        'work_days': work_days,
+    }
+
+
 def get_plan_coverage_gaps(plan_month: str, *, limit: int = 300) -> dict:
     """عملاء/مصاعد عقود الصيانة النشطة بدون زيارة دورية في شهر الخطة."""
     if not plan_month or '-' not in plan_month:
