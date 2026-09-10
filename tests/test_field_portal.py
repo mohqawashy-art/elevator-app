@@ -313,3 +313,129 @@ def test_field_visit_page_sets_at_client_status(client):
     with client.application.app_context():
         v = db.session.get(MaintenanceVisit, visit_id)
         assert v.status == VISIT_FINISHED_AT_CLIENT
+
+
+def test_field_geofence_blocks_far_visit(client):
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-GEO', name='فني موقع', phone='0502223344', team='صيانة')
+        db.session.add(tech)
+        cust = Customer(
+            organization_id=oid,
+            code='C-GEO',
+            name='عميل موقع',
+            status='نشط',
+            lat='24.713600',
+            lng='46.675300',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-GEO', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-GEO1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            status='مُرسلة للفني',
+        )
+        db.session.add(visit)
+        db.session.commit()
+        visit_id, tech_id = visit.id, tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    r = client.get(f'/field/visit/{visit_id}?lat=24.800000&lng=46.675300')
+    assert r.status_code == 403
+    assert 'بعيد' in r.get_data(as_text=True)
+
+    api = client.get(
+        '/api/field/verify-proximity',
+        query_string={'kind': 'visit', 'id': visit_id, 'lat': 24.800000, 'lng': 46.675300},
+    )
+    assert api.status_code == 403
+    assert api.get_json().get('code') == 'too_far'
+
+
+def test_field_geofence_allows_near_visit(client):
+    from operations import VISIT_AT_CLIENT
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-GEO2', name='فني قريب', phone='0502223355', team='صيانة')
+        db.session.add(tech)
+        cust = Customer(
+            organization_id=oid,
+            code='C-GEO2',
+            name='عميل قريب',
+            status='نشط',
+            lat='24.713600',
+            lng='46.675300',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-GEO2', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-GEO2',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            status='مُرسلة للفني',
+        )
+        db.session.add(visit)
+        db.session.commit()
+        visit_id, tech_id = visit.id, tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    r = client.get(f'/field/visit/{visit_id}?lat=24.713650&lng=46.675350')
+    assert r.status_code == 200
+
+    with client.application.app_context():
+        v = db.session.get(MaintenanceVisit, visit_id)
+        assert v.status == VISIT_AT_CLIENT
+
+
+def test_field_geofence_blocks_far_fault(client):
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-GF', name='فني عطل', phone='0503334455', team='أعطال')
+        db.session.add(tech)
+        cust = Customer(
+            organization_id=oid,
+            code='C-GF',
+            name='عميل عطل',
+            status='نشط',
+            lat='24.713600',
+            lng='46.675300',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-GF', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=oid,
+            code='F-GF1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            status='مفتوح',
+            priority='عادية',
+            reported_at=datetime.utcnow(),
+        )
+        db.session.add(fault)
+        db.session.commit()
+        fault_id, tech_id = fault.id, tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    r = client.get(f'/field/fault/{fault_id}?lat=24.800000&lng=46.675300')
+    assert r.status_code == 403

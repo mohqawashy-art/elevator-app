@@ -1803,6 +1803,8 @@ def _startup_schema_and_data_sync():
                 'company_sign_offset_y': 'INTEGER DEFAULT 0',
                 'azkar_ticker_enabled': 'BOOLEAN DEFAULT TRUE',
                 'contract_template_path': 'VARCHAR(300)',
+                'field_geofence_enabled': 'BOOLEAN DEFAULT TRUE',
+                'field_geofence_radius_m': 'INTEGER DEFAULT 300',
             }
             for col_name, column_type in seal_columns.items():
                 if col_name in settings_cols:
@@ -9557,6 +9559,78 @@ def api_field_me():
     return jsonify({'ok': True, **payload})
 
 
+def _field_geofence_guard_visit(visit_id: int, tech_id: int | None) -> None:
+    if not tech_id:
+        return
+    from field_geofence import (
+        assert_field_proximity_for_visit,
+        request_field_coords,
+        visit_geofence_required,
+    )
+
+    visit = tenant_get_or_404(MaintenanceVisit, visit_id)
+    if not visit_geofence_required(visit):
+        return
+    coords = request_field_coords()
+    lat = coords[0] if coords else None
+    lng = coords[1] if coords else None
+    assert_field_proximity_for_visit(visit, lat, lng)
+
+
+def _field_geofence_guard_fault(fault_id: int, tech_id: int | None) -> None:
+    if not tech_id:
+        return
+    from field_geofence import (
+        assert_field_proximity_for_fault,
+        fault_geofence_required,
+        request_field_coords,
+    )
+
+    fault = tenant_get_or_404(Fault, fault_id)
+    if not fault_geofence_required(fault):
+        return
+    coords = request_field_coords()
+    lat = coords[0] if coords else None
+    lng = coords[1] if coords else None
+    assert_field_proximity_for_fault(fault, lat, lng)
+
+
+@app.route('/api/field/verify-proximity')
+def api_field_verify_proximity():
+    from field_geofence import (
+        check_field_proximity,
+        fault_geofence_required,
+        visit_geofence_required,
+    )
+
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    if not tech_id:
+        return jsonify({'ok': False, 'error': 'غير مسجّل'}), 401
+    kind = (request.args.get('kind') or '').strip().lower()
+    item_id = request.args.get('id', type=int)
+    if not item_id or kind not in ('visit', 'fault'):
+        return jsonify({'ok': False, 'error': 'طلب غير صالح'}), 400
+    coords = request.args.get('lat'), request.args.get('lng')
+    from field_geofence import parse_coords
+
+    parsed = parse_coords(coords[0], coords[1])
+    lat = parsed[0] if parsed else None
+    lng = parsed[1] if parsed else None
+    if kind == 'visit':
+        visit = tenant_get_or_404(MaintenanceVisit, item_id)
+        if not visit_geofence_required(visit):
+            return jsonify({'ok': True, 'skipped': True, 'reason': 'already_started'})
+        cust = visit.elevator.customer if visit.elevator else None
+    else:
+        fault = tenant_get_or_404(Fault, item_id)
+        if not fault_geofence_required(fault):
+            return jsonify({'ok': True, 'skipped': True, 'reason': 'already_started'})
+        cust = fault.elevator.customer if fault.elevator else None
+    result = check_field_proximity(lat, lng, cust)
+    status = 200 if result.get('ok') else 403
+    return jsonify(result), status
+
+
 @app.route('/field/visit/<int:visit_id>')
 def field_visit(visit_id):
     from operations import field_visit_detail, stamp_field_visit_arrival
@@ -9564,6 +9638,7 @@ def field_visit(visit_id):
     tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     try:
         if tech_id:
+            _field_geofence_guard_visit(visit_id, tech_id)
             stamp_field_visit_arrival(visit_id, tech_id=tech_id)
         detail = field_visit_detail(visit_id, tech_id)
     except PermissionError as e:
@@ -9583,6 +9658,7 @@ def field_visit_report(visit_id):
     from_field = bool(getattr(g, 'field_tech_id', None))
     try:
         if from_field and not read_only:
+            _field_geofence_guard_visit(visit_id, tech_id)
             stamp_field_visit_report_start(visit_id, tech_id=tech_id)
         payload = visit_report_payload(
             visit_id,
@@ -9624,6 +9700,8 @@ def field_fault(fault_id):
 
     tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     try:
+        if tech_id:
+            _field_geofence_guard_fault(fault_id, tech_id)
         detail = field_fault_detail(fault_id, tech_id)
     except PermissionError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}
@@ -9640,6 +9718,7 @@ def field_fault_report(fault_id):
     from_field = bool(getattr(g, 'field_tech_id', None))
     try:
         if from_field:
+            _field_geofence_guard_fault(fault_id, tech_id)
             stamp_field_fault_report_start(fault_id, tech_id=tech_id)
         payload = fault_report_payload(
             fault_id,

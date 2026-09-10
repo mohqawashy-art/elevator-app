@@ -12,12 +12,92 @@
   var audioUnlocked = false;
   var pollTimer = null;
   var polling = false;
+  var geofenceCfg = { enabled: true, radius_m: 300 };
 
   function esc(s) {
     return String(s || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/"/g, '&quot;');
+  }
+
+  function parseFieldTaskUrl(href) {
+    if (!href) return null;
+    var m = String(href).match(/\/field\/(visit|fault)\/(\d+)(?:\/report)?/);
+    if (!m) return null;
+    return { kind: m[1], id: parseInt(m[2], 10) };
+  }
+
+  function getDevicePosition() {
+    return new Promise(function (resolve, reject) {
+      if (!navigator.geolocation) {
+        reject(new Error('الموقع غير مدعوم على هذا الجوال'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        function () {
+          reject(new Error('فعّل خدمة الموقع (GPS) في الجوال ثم أعد المحاولة.'));
+        },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
+      );
+    });
+  }
+
+  function verifyProximity(kind, id, lat, lng) {
+    var q = '/api/field/verify-proximity?kind=' + encodeURIComponent(kind) +
+      '&id=' + id + '&lat=' + lat + '&lng=' + lng + '&_=' + Date.now();
+    return fetch(q, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) {
+        return r.json().then(function (data) {
+          if (!data.ok) {
+            var err = new Error(data.error || 'يجب الاقتراب من موقع العميل أولاً');
+            err.code = data.code;
+            throw err;
+          }
+          return data;
+        });
+      });
+  }
+
+  function openFieldTask(href) {
+    var task = parseFieldTaskUrl(href);
+    if (!task) {
+      window.location.href = href;
+      return;
+    }
+    if (!navigator.onLine) {
+      alert('يلزم اتصال إنترنت للتحقق من موقعك قبل فتح المهمة.');
+      return;
+    }
+    if (!geofenceCfg.enabled) {
+      window.location.href = href;
+      return;
+    }
+    getDevicePosition()
+      .then(function (pos) {
+        return verifyProximity(task.kind, task.id, pos.lat, pos.lng).then(function () {
+          var join = href.indexOf('?') >= 0 ? '&' : '?';
+          window.location.href = href + join + 'lat=' + pos.lat + '&lng=' + pos.lng;
+        });
+      })
+      .catch(function (err) {
+        alert(err.message || 'تعذّر التحقق من الموقع');
+      });
+  }
+
+  function bindGeofenceCards() {
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('a.fp-card, a.fp-alert-toast-btn, a.fp-btn-report');
+      if (!a) return;
+      var href = a.getAttribute('href');
+      if (!href || href === '#faults') return;
+      if (!parseFieldTaskUrl(href)) return;
+      e.preventDefault();
+      openFieldTask(href);
+    }, true);
   }
 
   function visitCard(v) {
@@ -203,7 +283,7 @@
       });
       n.onclick = function () {
         window.focus();
-        if (first.url) window.location.href = first.url;
+        if (first.url) openFieldTask(first.url);
         n.close();
       };
     } catch (e) { /* ignore */ }
@@ -302,6 +382,7 @@
       })
       .then(function (data) {
         if (!data || !data.ok) return;
+        if (data.geofence) geofenceCfg = data.geofence;
         if (offlineApi) offlineApi.cacheMePayload(data);
         var added = detectNewTasks(data, opts);
         if (document.querySelector('.fp-panel[data-fp-panel="all"]')) {
@@ -435,6 +516,8 @@
     navigator.serviceWorker.register('/field/sw.js', { scope: '/field/' }).catch(function () {});
   }
 
+  bindGeofenceCards();
+
   document.addEventListener('DOMContentLoaded', function () {
     ensureSoundTip();
     bindOfflineForms();
@@ -450,5 +533,6 @@
     pollFieldTasks: pollFieldTasks,
     unlockAudio: unlockAudio,
     playAlertSound: playAlertSound,
+    openFieldTask: openFieldTask,
   };
 })();

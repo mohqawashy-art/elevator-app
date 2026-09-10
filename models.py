@@ -1237,6 +1237,8 @@ class Settings(TenantMixin, db.Model):
     extra_work_days_json = db.Column(db.Text)
     custom_permissions_enabled = db.Column(db.Boolean, default=False)  # صلاحيات اختيارية per-user
     contract_template_path = db.Column(db.String(300))  # نموذج عقد Word لكل مؤسسة
+    field_geofence_enabled = db.Column(db.Boolean, default=True)
+    field_geofence_radius_m = db.Column(db.Integer, default=300)
 
 
 # =============================================

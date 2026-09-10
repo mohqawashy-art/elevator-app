@@ -1958,6 +1958,8 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         visits_for_technician_filter,
     )
 
+    from field_geofence import field_geofence_config
+
     bind_field_technician_tenant(tech_id)
     tech = tenant_get_or_404(Technician, tech_id)
     today = on_date or date.today()
@@ -2042,6 +2044,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         'show_faults': show_faults or bool(faults),
         'has_assigned_faults': has_assigned_faults,
         'alert_stamp': _field_alert_stamp(visits, faults),
+        'geofence': field_geofence_config(),
     }
 
 
