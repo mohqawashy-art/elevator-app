@@ -481,7 +481,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <div class="field"><label>نوع الزيارة</label><input type="text" id="f-type-view" value="صيانة دورية" readonly style="background:var(--bg4)"></div>
           <input type="hidden" id="f-type-sel" value="صيانة دورية">
           <input type="hidden" id="f-priority-sel" value="عادية">
-          <div class="field"><label>الحالة</label><select id="f-status-sel"><option selected>مجدولة</option><option>جارية</option><option>مكتملة</option><option>ملغية</option><option>متأخرة</option></select></div>
+          <div class="field"><label>الحالة</label><select id="f-status-sel"><option selected>مجدولة</option><option>مُرسلة للفني</option><option>عند العميل</option><option>جارية</option><option>أنهى العمل عند العميل</option><option>مكتملة</option><option>ملغية</option><option>متأخرة</option></select></div>
         </div>
       </div>
 
@@ -731,7 +731,7 @@ const OPS_MONTH_END = (function () {
   return s.slice(0, 8) + String(last).padStart(2, '0');
 })();
 const VISIT_DONE_STATUSES = ['مكتملة', 'ملغاة', 'ملغية'];
-const VISIT_IN_PROGRESS = ['جارية', 'مُرسلة للفني', 'جاري التنفيذ'];
+const VISIT_IN_PROGRESS = ['جارية', 'مُرسلة للفني', 'جاري التنفيذ', 'عند العميل', 'أنهى العمل عند العميل'];
 const VISIT_FILTER_LABELS = {
   today: 'زيارات اليوم',
   in_progress: 'جاري التنفيذ',
@@ -775,6 +775,8 @@ function visitStatusColor(status) {
   if (s.indexOf('مكتمل') >= 0) return '#1fb87a';
   if (s.indexOf('متأخر') >= 0) return '#e04848';
   if (s.indexOf('ملغ') >= 0) return '#888888';
+  if (s.indexOf('أنهى') >= 0) return '#9b59b6';
+  if (s.indexOf('عند العميل') >= 0) return '#2a7fff';
   if (s.indexOf('جاري') >= 0 || s.indexOf('جار') >= 0 || s.indexOf('مُرسل') >= 0) return '#e09030';
   return '#2a7fff';
 }
@@ -868,7 +870,9 @@ function switchTab(name) {
 
 const STATUS_BADGE = {
   'مكتملة':'badge-active','مجدولة':'badge-partial',
-  'ملغاة':'badge-cancelled','متأخرة':'badge-expired'
+  'ملغاة':'badge-cancelled','متأخرة':'badge-expired',
+  'عند العميل':'badge-pending','أنهى العمل عند العميل':'badge-partial',
+  'جارية':'badge-pending','مُرسلة للفني':'badge-pending'
 };
 const PRIORITY_BADGE = {
   'عادية':'badge-active','عاجلة':'badge-pending','حرجة':'badge-expired'
@@ -1031,7 +1035,7 @@ function filterTable() {
     lcAllows('f-client', v.customer) &&
     lcAllows('f-tech', v.technician) &&
     lcAllows('f-type', v.visit_type) &&
-    lcAllows('f-status', v.status, { aliases: { 'جاري التنفيذ': ['جارية', 'مُرسلة للفني'] } }) &&
+    lcAllows('f-status', v.status, { aliases: { 'جاري التنفيذ': ['جارية', 'مُرسلة للفني', 'عند العميل', 'أنهى العمل عند العميل'] } }) &&
     (!fd || v.visit_date >= fd) &&
     (!td || v.visit_date <= td)
   );

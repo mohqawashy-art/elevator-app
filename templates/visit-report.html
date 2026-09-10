@@ -170,6 +170,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <span class="progress-pill" id="progress-pill">{{ visit.report_stats.filled }}/{{ visit.report_stats.total }} بند</span>
     {% if editable %}
+    <button type="button" class="save-btn" id="btn-finish-at-client" style="background:#8e44ad;color:#fff;display:none" onclick="markFinishedAtClient()">✅ أنهيت العمل عند العميل</button>
     <button type="button" class="save-btn" onclick="saveReport(false)">💾 حفظ</button>
     <button type="button" class="save-btn" style="background:#27ae60;color:#fff" onclick="saveReport(true)">✅ حفظ وإنهاء</button>
     {% else %}
@@ -277,6 +278,7 @@ const REPORT_CFG = {
   fieldTimesLocked: {{ 'true' if field_times_locked else 'false' }},
   techId: {{ tech_id or 'null' }},
   backUrl: {{ back_url|tojson if back_url else 'null' }},
+  visitStatus: {{ visit.status|tojson }},
 };
 const CHECKLIST_TEMPLATE = {{ template_json|safe }};
 const REPORT_DATA = {{ report_data_json|safe }};
@@ -314,6 +316,28 @@ function lcReportPostJson(url, payload) {
   });
 }
 
+function syncFinishAtClientButton() {
+  var btn = document.getElementById('btn-finish-at-client');
+  if (!btn || !REPORT_CFG.editable) return;
+  var isField = (REPORT_CFG.backUrl || '').indexOf('/field') >= 0;
+  var st = REPORT_CFG.visitStatus || '';
+  var show = isField && st === 'عند العميل';
+  btn.style.display = show ? '' : 'none';
+}
+
+function markFinishedAtClient() {
+  if (!REPORT_CFG.editable) return;
+  var url = '/api/maintenance-visits/' + REPORT_CFG.visitId + '/report';
+  lcReportPostJson(url, { mark_finished_at_client: true })
+    .then(function (data) {
+      if (!data.ok) throw new Error(data.error || 'تعذّر التحديث');
+      REPORT_CFG.visitStatus = data.status || 'أنهى العمل عند العميل';
+      syncFinishAtClientButton();
+      alert('✅ تم تسجيل إنهاء العمل عند العميل');
+    })
+    .catch(function (err) { alert(err.message || err); });
+}
+
 function saveReport(markComplete) {
   if (!REPORT_CFG.editable) return;
   const payload = LiftCoreChecklist.collectReportData(CHECKLIST_TEMPLATE);
@@ -335,6 +359,8 @@ function saveReport(markComplete) {
       }
       updateProgress();
       if (markComplete) {
+        REPORT_CFG.visitStatus = 'مكتملة';
+        syncFinishAtClientButton();
         alert('✅ تم حفظ المحضر وإنهاء الزيارة');
         if (REPORT_CFG.backUrl) (window.LiftCoreNav ? LiftCoreNav.goBack(REPORT_CFG.backUrl) : (window.location.href = REPORT_CFG.backUrl));
       } else {
@@ -370,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('arrival-time').value = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
   }
   updateProgress();
+  syncFinishAtClientButton();
 });
 </script>
 </body>

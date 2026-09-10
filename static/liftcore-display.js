@@ -17,6 +17,7 @@
     'على حساب الشركة': 'On Company Account', 'مكتمل': 'Completed', 'مكتملة': 'Completed',
     'مفتوح': 'Open', 'مغلق': 'Closed', 'قيد التنفيذ': 'In Progress',
     'جاري التنفيذ': 'In Progress', 'جارية': 'In Progress', 'مُرسلة للفني': 'Sent to Technician',
+    'عند العميل': 'At Client', 'أنهى العمل عند العميل': 'Finished at Client',
     'عادية': 'Normal', 'عاجلة': 'Urgent', 'حرجة': 'Critical',
     'قابل للفوترة': 'Billable', 'ضمن العقد': 'Under Contract',
     'مدفوعة': 'Paid', 'غير مدفوعة': 'Unpaid', 'مدفوع جزئياً': 'Partially Paid',

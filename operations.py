@@ -30,8 +30,14 @@ from models import (
 )
 from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
-VISIT_ACTIVE = ('مجدولة', 'مُرسلة للفني', 'جارية')
+VISIT_AT_CLIENT = 'عند العميل'
+VISIT_FINISHED_AT_CLIENT = 'أنهى العمل عند العميل'
+VISIT_ACTIVE = (
+    'مجدولة', 'مُرسلة للفني', 'جارية',
+    VISIT_AT_CLIENT, VISIT_FINISHED_AT_CLIENT,
+)
 VISIT_DONE = ('مكتملة', 'ملغاة')
+VISIT_PRE_ARRIVAL = ('', 'مجدولة', 'مُجدولة', 'مجدول', 'مُرسلة للفني', 'جارية')
 
 
 def is_fault_visit_type(visit_type: str | None) -> bool:
@@ -1794,7 +1800,9 @@ def visit_stats(today: date | None = None) -> dict:
     q = exclude_fault_visits(tenant_query(MaintenanceVisit))
     return {
         'today': q.filter(MaintenanceVisit.visit_date == today).count(),
-        'in_progress': q.filter(MaintenanceVisit.status.in_(('جارية', 'مُرسلة للفني'))).count(),
+        'in_progress': q.filter(MaintenanceVisit.status.in_(
+            ('جارية', 'مُرسلة للفني', VISIT_AT_CLIENT, VISIT_FINISHED_AT_CLIENT),
+        )).count(),
         'late': q.filter(
             MaintenanceVisit.visit_date < today,
             ~MaintenanceVisit.status.in_(VISIT_DONE),
@@ -2420,6 +2428,67 @@ def _preserve_field_start_times(merged: dict, existing: dict | None) -> None:
             meta[key] = em[key]
 
 
+def _stamp_visit_arrival_meta(v: MaintenanceVisit, data: dict) -> bool:
+    """يُسجّل وقت/تاريخ الوصول في محضر الزيارة — مرة واحدة."""
+    meta = data.setdefault('meta', {})
+    if (meta.get('arrival_time') or '').strip():
+        return False
+    parts = _field_stamp_now()
+    meta['visit_date'] = parts['date']
+    meta['arrival_time'] = parts['time']
+    if not v.visit_time:
+        v.visit_time = parts['time']
+    if not v.dispatched_at:
+        v.dispatched_at = parts['dt']
+    return True
+
+
+def stamp_field_visit_arrival(visit_id: int, tech_id: int | None = None) -> None:
+    """عند فتح الفني لصفحة الزيارة — «عند العميل» في جدول الزيارات."""
+    from checklist_templates import merge_report_data, parse_report_json
+    from technician_assignments import technician_assigned_to_visit
+
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
+    if tech_id and not technician_assigned_to_visit(v, tech_id):
+        raise PermissionError('الزيارة غير مخصصة لهذا الفني')
+    if (v.status or '') in VISIT_DONE:
+        return
+    if (v.status or '') in (VISIT_AT_CLIENT, VISIT_FINISHED_AT_CLIENT):
+        return
+
+    template_key = v.checklist_template_key or _default_checklist_template_key()
+    saved = parse_report_json(v.checklist_json)
+    data = merge_report_data(saved, template_key)
+    _stamp_visit_arrival_meta(v, data)
+    v.checklist_json = json.dumps(data, ensure_ascii=False)
+    if (v.status or '') in VISIT_PRE_ARRIVAL:
+        v.status = VISIT_AT_CLIENT
+    db.session.commit()
+
+
+def stamp_field_visit_finished_at_client(visit_id: int, tech_id: int | None = None) -> None:
+    """عند إنهاء الفني العمل في موقع العميل — قبل الاعتماد النهائي."""
+    from checklist_templates import merge_report_data, parse_report_json
+    from technician_assignments import technician_assigned_to_visit
+
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
+    if tech_id and not technician_assigned_to_visit(v, tech_id):
+        raise PermissionError('الزيارة غير مخصصة لهذا الفني')
+    if (v.status or '') in VISIT_DONE:
+        return
+    if (v.status or '') == VISIT_FINISHED_AT_CLIENT:
+        return
+
+    template_key = v.checklist_template_key or _default_checklist_template_key()
+    saved = parse_report_json(v.checklist_json)
+    data = merge_report_data(saved, template_key)
+    data['meta'] = _apply_field_end_timestamp(data.get('meta') or {})
+    v.checklist_json = json.dumps(data, ensure_ascii=False)
+    if (v.status or '') in (VISIT_AT_CLIENT, 'جارية', 'مُرسلة للفني', *VISIT_PRE_ARRIVAL):
+        v.status = VISIT_FINISHED_AT_CLIENT
+    db.session.commit()
+
+
 def stamp_field_visit_report_start(visit_id: int, tech_id: int | None = None) -> None:
     """عند فتح الفني لمحضر الصيانة — تسجيل تاريخ ووقت الوصول (مرة واحدة)."""
     from checklist_templates import merge_report_data, parse_report_json
@@ -2428,24 +2497,17 @@ def stamp_field_visit_report_start(visit_id: int, tech_id: int | None = None) ->
     v = tenant_get_or_404(MaintenanceVisit, visit_id)
     if tech_id and not technician_assigned_to_visit(v, tech_id):
         raise PermissionError('الزيارة غير مخصصة لهذا الفني')
+    if (v.status or '') in VISIT_DONE:
+        return
     template_key = v.checklist_template_key or _default_checklist_template_key()
     saved = parse_report_json(v.checklist_json)
     data = merge_report_data(saved, template_key)
-    meta = data.setdefault('meta', {})
-    if (meta.get('arrival_time') or '').strip():
-        return
-
-    parts = _field_stamp_now()
-    meta['visit_date'] = parts['date']
-    meta['arrival_time'] = parts['time']
-    v.checklist_json = json.dumps(data, ensure_ascii=False)
-    if not v.visit_time:
-        v.visit_time = parts['time']
-    if (v.status or '') in ('', 'مجدولة', 'مُجدولة', 'مجدول'):
-        v.status = 'جارية'
-    if not v.dispatched_at:
-        v.dispatched_at = parts['dt']
-    db.session.commit()
+    stamped = _stamp_visit_arrival_meta(v, data)
+    if stamped or (v.status or '') in VISIT_PRE_ARRIVAL:
+        v.checklist_json = json.dumps(data, ensure_ascii=False)
+        if (v.status or '') in VISIT_PRE_ARRIVAL:
+            v.status = VISIT_AT_CLIENT
+        db.session.commit()
 
 
 def stamp_field_fault_report_start(fault_id: int, tech_id: int | None = None) -> None:

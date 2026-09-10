@@ -9559,10 +9559,12 @@ def api_field_me():
 
 @app.route('/field/visit/<int:visit_id>')
 def field_visit(visit_id):
-    from operations import field_visit_detail
+    from operations import field_visit_detail, stamp_field_visit_arrival
 
     tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     try:
+        if tech_id:
+            stamp_field_visit_arrival(visit_id, tech_id=tech_id)
         detail = field_visit_detail(visit_id, tech_id)
     except PermissionError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}
@@ -9842,6 +9844,18 @@ def api_save_visit_report(visit_id):
         return jsonify({'ok': False, 'error': 'الزيارة غير مخصصة لهذا الفني'}), 403
 
     data = request.get_json(silent=True) or {}
+    if bool(data.pop('mark_finished_at_client', False)):
+        from operations import stamp_field_visit_finished_at_client
+
+        tech_id = getattr(g, 'field_tech_id', None)
+        try:
+            stamp_field_visit_finished_at_client(visit_id, tech_id=tech_id)
+            return jsonify({'ok': True, 'visit_id': visit_id, 'status': 'أنهى العمل عند العميل'})
+        except PermissionError as e:
+            return jsonify({'ok': False, 'error': str(e)}), 403
+        except Exception as e:
+            return jsonify({'ok': False, 'error': str(e)}), 400
+
     mark_complete = bool(data.pop('mark_complete', False))
     status = data.pop('status', 'مكتملة')
     try:

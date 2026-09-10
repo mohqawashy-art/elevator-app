@@ -20,7 +20,7 @@
 <div class="fp-info">
   <div class="fp-row"><span>المصعد</span><span style="font-family:monospace">{{ visit.elevator }}</span></div>
   <div class="fp-row"><span>نوع الزيارة</span><span>{{ visit.visit_type }}</span></div>
-  <div class="fp-row"><span>الحالة</span><span>{{ visit.status }}</span></div>
+  <div class="fp-row"><span>الحالة</span><span id="visit-status-label" style="font-weight:600;color:{% if visit.status == 'عند العميل' %}#2a7fff{% elif visit.status == 'أنهى العمل عند العميل' %}#9b59b6{% elif visit.status == 'مكتملة' %}#1fb87a{% else %}inherit{% endif %}">{{ visit.status }}</span></div>
   <div class="fp-row"><span>العنوان</span><span style="max-width:58%;text-align:left">{{ visit.address or '—' }}</span></div>
 </div>
 
@@ -33,6 +33,40 @@
 </div>
 
 <a class="fp-btn-report" href="{{ visit.report_url }}">📋 فتح محضر الفحص</a>
+
+{% if visit.status == 'عند العميل' %}
+<button type="button" class="fp-btn-report" id="btn-finish-at-client" style="background:#8e44ad;color:#fff;margin-top:8px">✅ أنهيت العمل عند العميل</button>
+<script>
+(function () {
+  var btn = document.getElementById('btn-finish-at-client');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var headers = { 'Content-Type': 'application/json' };
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    if (csrf && csrf.content) headers['X-CSRF-Token'] = csrf.content;
+    btn.disabled = true;
+    fetch('/api/maintenance-visits/{{ visit.id }}/report', {
+      method: 'POST',
+      headers: headers,
+      credentials: 'same-origin',
+      body: JSON.stringify({ mark_finished_at_client: true }),
+    }).then(function (r) { return r.text().then(function (t) {
+      var data; try { data = t ? JSON.parse(t) : {}; } catch (e) { throw new Error('تعذّر قراءة الرد'); }
+      if (!r.ok || !data.ok) throw new Error(data.error || 'تعذّر التحديث');
+      return data;
+    }); }).then(function () {
+      var el = document.getElementById('visit-status-label');
+      if (el) { el.textContent = 'أنهى العمل عند العميل'; el.style.color = '#9b59b6'; }
+      btn.remove();
+      alert('✅ تم تسجيل إنهاء العمل عند العميل');
+    }).catch(function (err) {
+      btn.disabled = false;
+      alert(err.message || err);
+    });
+  });
+})();
+</script>
+{% endif %}
 
 {% if visit.status == 'مكتملة' %}
 <a class="fp-btn-report" style="background:var(--fp-card);border:1px solid var(--fp-border);color:var(--fp-text);font-size:13px;padding:12px" href="{{ url_for('field_visit_report', visit_id=visit.id) }}?print=1">🖨️ معاينة التقرير</a>

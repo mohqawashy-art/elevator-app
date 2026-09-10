@@ -266,3 +266,50 @@ def test_closed_fault_fault_visit_hidden_from_field_portal(client):
         payload = field_technician_payload(tech.id, portal_kind='both')
         assert not any(v['code'] == visit.code for v in payload.get('visits_today') or [])
         assert not any(f['code'] == fault.code for f in payload.get('faults') or [])
+
+
+def test_field_visit_page_sets_at_client_status(client):
+    from operations import VISIT_AT_CLIENT, VISIT_FINISHED_AT_CLIENT
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-VST', name='فني زيارة', phone='0501112233', team='صيانة')
+        db.session.add(tech)
+        cust = Customer(organization_id=oid, code='C-VST', name='عميل زيارة', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-VST', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-VST1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            status='مُرسلة للفني',
+        )
+        db.session.add(visit)
+        db.session.commit()
+        visit_id, tech_id = visit.id, tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    r = client.get(f'/field/visit/{visit_id}')
+    assert r.status_code == 200
+
+    with client.application.app_context():
+        v = db.session.get(MaintenanceVisit, visit_id)
+        assert v.status == VISIT_AT_CLIENT
+
+    fin = client.post(
+        f'/api/maintenance-visits/{visit_id}/report',
+        json={'mark_finished_at_client': True},
+    )
+    assert fin.status_code == 200
+    assert fin.get_json().get('ok') is True
+
+    with client.application.app_context():
+        v = db.session.get(MaintenanceVisit, visit_id)
+        assert v.status == VISIT_FINISHED_AT_CLIENT
