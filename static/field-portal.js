@@ -90,7 +90,7 @@
 
   function bindGeofenceCards() {
     document.addEventListener('click', function (e) {
-      var a = e.target.closest('a.fp-card, a.fp-alert-toast-btn, a.fp-btn-report');
+      var a = e.target.closest('a.fp-card, a.fp-alert-toast-btn, a.fp-btn-report, a.fp-maps');
       if (!a) return;
       var href = a.getAttribute('href');
       if (!href || href === '#faults') return;

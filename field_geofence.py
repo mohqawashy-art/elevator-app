@@ -13,8 +13,8 @@ from tenant_scope import tenant_query
 
 DEFAULT_RADIUS_M = 300
 
+# «قيد المعالجة» من المكتب لا يعني وصول الفني — نتحقق حتى يُسجَّل responded_at
 FAULT_GEOFENCE_SKIP = (
-    'قيد المعالجة',
     'تم الاصلاح',
     'تم الإصلاح',
     'محلول',
