@@ -99,7 +99,8 @@
     if (!sel || sel.tagName !== 'SELECT' || sel._lcMulti) return false;
     if (sel.dataset.lcNoMulti === '1' || sel.classList.contains('plan-team-sel')) return false;
     var id = sel.id || '';
-    if (id === 'plan-district') return true;
+    /* plan-district داخل مودال التخطيط — يُفعَّل عند فتح المودال فقط */
+    if (id === 'plan-district') return false;
     if (sel.closest('.modal-overlay, .modal, .lc-client-select, .client-card, .lc-filter-multi-panel')) return false;
     if (id === 'sel-year' || id === 'sel-month') return false;
     if (/-sel$/.test(id)) return false;
@@ -218,7 +219,9 @@
   function positionPanel(state) {
     var r = state.btn.getBoundingClientRect();
     var panel = state.panel;
+    var sel = state.sel;
     var rtl = document.documentElement.getAttribute('dir') === 'rtl';
+    panel.style.zIndex = (sel && sel.closest('.modal-overlay')) ? '21000' : '4200';
     panel.style.minWidth = Math.max(r.width, 180) + 'px';
     panel.style.top = (r.bottom + 4) + 'px';
     if (rtl) {
@@ -303,10 +306,12 @@
     });
   }
 
-  function upgrade(sel) {
+  function upgrade(sel, opts) {
     sel = $(sel);
     if (!sel || sel._lcMulti) return sel;
-    if (!shouldUpgrade(sel) || !sel.parentNode) return sel;
+    opts = opts || {};
+    if (!opts.force && (!shouldUpgrade(sel) || !sel.parentNode)) return sel;
+    if (!sel.parentNode) return sel;
 
     var wrap = document.createElement('div');
     wrap.className = 'lc-filter-multi';
@@ -354,8 +359,12 @@
       });
     }
 
+    btn.addEventListener('mousedown', function (e) {
+      e.stopPropagation();
+    });
     btn.addEventListener('click', function (e) {
       e.preventDefault();
+      e.stopPropagation();
       openPanel(sel);
     });
     panel.addEventListener('mousedown', function (e) {
@@ -380,11 +389,11 @@
     return sel;
   }
 
-  function refresh(sel) {
+  function refresh(sel, opts) {
     sel = $(sel);
     if (!sel) return;
     if (!sel._lcMulti) {
-      upgrade(sel);
+      upgrade(sel, opts);
       return;
     }
     var kept = (sel._lcSelected || []).filter(function (v) { return optionExists(sel, v); });

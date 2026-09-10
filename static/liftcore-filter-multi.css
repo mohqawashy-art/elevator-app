@@ -6,7 +6,8 @@
   min-width: 0;
 }
 .filter-group > .lc-filter-multi,
-.filter-row .field > .lc-filter-multi {
+.filter-row .field > .lc-filter-multi,
+.field > .lc-filter-multi {
   display: block;
   width: 100%;
 }
@@ -33,7 +34,8 @@
   appearance: none;
 }
 .filter-group > .lc-filter-multi .lc-filter-multi-btn,
-.filter-row .field .lc-filter-multi-btn {
+.filter-row .field .lc-filter-multi-btn,
+.field > .lc-filter-multi .lc-filter-multi-btn {
   width: 100%;
 }
 .lc-filter-multi-btn.has-values {
