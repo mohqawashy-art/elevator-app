@@ -1127,7 +1127,8 @@ function elevatorLabels(ids) {
 }
 
 function getCustomerById(id) {
-  return CUSTOMERS.find(function(x) { return x.id === id; });
+  if (id == null || id === '') return null;
+  return CUSTOMERS.find(function(x) { return String(x.id) === String(id); });
 }
 
 function contractOutstanding(c) {
@@ -1480,13 +1481,13 @@ function setContractClientChangeButton(show) {
 
 function setContractClientEditable(editable) {
   if (typeof LcClientSelect !== 'undefined' && LcClientSelect.setDisabled) {
-    LcClientSelect.setDisabled('f-client-sel', !editable);
+    LcClientSelect.setDisabled('f-client-sel', false);
   }
   var sel = document.getElementById('f-client-sel');
   if (sel && sel.tagName === 'SELECT') sel.disabled = !editable;
   var input = document.getElementById('f-client-sel-input');
   if (input) {
-    input.disabled = !editable;
+    input.disabled = false;
     input.readOnly = !editable;
   }
 }
@@ -1553,13 +1554,27 @@ function requestContractClientChange() {
 function fillClientSelect(selectedId, opts) {
   opts = opts || {};
   var editable = opts.editable !== false;
+  var cid = selectedId != null && selectedId !== '' ? String(selectedId) : '';
   if (typeof LcClientSelect !== 'undefined') {
-    LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, selectedId);
+    if (!LcClientSelect.isUpgraded('f-client-sel')) initContractClientSelect();
+    LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, cid);
+    var cust = getCustomerById(cid);
+    if (!cust && cid && opts.fallbackLabel) {
+      var input = document.getElementById('f-client-sel-input');
+      var hidden = document.getElementById('f-client-sel');
+      if (input && hidden) {
+        hidden.value = cid;
+        input.value = opts.fallbackLabel;
+      }
+    }
     setContractClientEditable(editable);
     return;
   }
   var sel = document.getElementById('f-client-sel');
-  if (sel) sel.disabled = !editable;
+  if (sel) {
+    sel.disabled = !editable;
+    if (cid) sel.value = cid;
+  }
 }
 
 function initContractClientSelect() {
@@ -2003,7 +2018,10 @@ function editContract(id) {
   document.getElementById('modal-add').dataset.clientChangeUnlocked = '';
   contractClientChangePassword = '';
   // مقفول دائماً حتى موافقة المدير — حتى للمسؤول
-  fillClientSelect(c.customer_id, { editable: false });
+  fillClientSelect(c.customer_id, {
+    editable: false,
+    fallbackLabel: (c.customer || '').trim(),
+  });
   setContractClientChangeButton(!!window.__LC_IS_ADMIN);
   renderContractClientSummary(getCustomerById(c.customer_id));
   var clientHint = document.getElementById('f-client-hint');

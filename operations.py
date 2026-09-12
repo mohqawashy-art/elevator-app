@@ -638,11 +638,8 @@ def _elevators_for_contract(contract: Contract) -> list[Elevator]:
 
 
 def _elevators_for_maintenance_plan(contract: Contract) -> list[Elevator]:
-    """زيارة دورية لكل مصعد — وليس زيارة واحدة للعميل."""
-    from entity_links import sort_by_natural_code
-
-    rows = tenant_query(Elevator).filter_by(customer_id=contract.customer_id).all()
-    return sort_by_natural_code(rows)
+    """مصاعد العقد المرتبطة — وليس كل مصاعد العميل."""
+    return _elevators_for_contract(contract)
 
 
 def _existing_plan_codes(plan_month: str) -> set[str]:

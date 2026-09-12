@@ -948,13 +948,24 @@ function onElevCityFilterChange() {
 }
 
 function fillClientSelect(selectedId) {
+  var cid = selectedId != null && selectedId !== '' ? String(selectedId) : '';
   if (typeof LcClientSelect !== 'undefined') {
-    LcClientSelect.setValue('elev-client-select', selectedId || '');
+    LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, cid);
+    var cust = CUSTOMERS.find(function (x) { return String(x.id) === cid; });
+    if (!cust && cid) {
+      var e = ELEVATORS.find(function (x) { return String(x.customer_id) === cid; });
+      var input = document.getElementById('f-client-sel-input');
+      var hidden = document.getElementById('f-client-sel');
+      if (input && hidden && e && e.customer) {
+        hidden.value = cid;
+        input.value = e.customer;
+      }
+    }
     return;
   }
   var sel = document.getElementById('f-client-sel');
   if (!sel) return;
-  sel.value = selectedId || '';
+  sel.value = cid;
 }
 
 function hasUsableGps(lat, lng) {
