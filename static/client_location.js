@@ -200,7 +200,7 @@
   function openDirections(c) {
     var url = directionsUrl(c);
     if (!url) {
-      alert('لا يوجد عنوان أو إحداثيات مسجّلة لهذا العميل');
+      alert('لا يوجد عنوان أو إحداثيات مسجّلة لهذا الموقع');
       return;
     }
     window.open(url, '_blank', 'noopener');
@@ -231,10 +231,14 @@
 
   function openActions(c) {
     ensureModals();
-    global._clocCurrent = c;
-    document.getElementById('cloc-actions-title').textContent = c.name || 'موقع العميل';
-    document.getElementById('cloc-actions-address').textContent = formatAddress(c);
+    global._clocCurrent = normalize(c);
+    document.getElementById('cloc-actions-title').textContent = global._clocCurrent.name || 'موقع العميل';
+    document.getElementById('cloc-actions-address').textContent = formatAddress(global._clocCurrent);
     setModalOpen('modal-cloc-actions', true);
+  }
+
+  function openFromData(c) {
+    openActions(normalize(c));
   }
 
   function closeActions() {
@@ -263,8 +267,11 @@
     options = options || {};
     var addr = formatAddress(c);
     var hint = options.hint || 'اضغط للاتجاهات أو صورة المبنى';
-    var id = c.id || 0;
-    return '<div class="cloc-box" onclick="LiftCoreLocation.openById(' + id + ')">' +
+    var click = options.onclick
+      || (options.useInlineData
+        ? 'LiftCoreLocation.openFromData(' + JSON.stringify(normalize(c)).replace(/</g, '\\u003c') + ')'
+        : 'LiftCoreLocation.openById(' + (c.id || 0) + ')');
+    return '<div class="cloc-box" onclick="' + click + '">' +
       '<div class="cloc-label">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
           '<path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>' +
@@ -307,6 +314,7 @@
     openDirections: openDirections,
     showBuildingPhoto: showBuildingPhoto,
     openActions: openActions,
+    openFromData: openFromData,
     closeActions: closeActions,
     closePhoto: closePhoto,
     renderLocationBlock: renderLocationBlock,

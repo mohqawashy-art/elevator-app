@@ -2,7 +2,12 @@
 from datetime import date
 
 from models import Contract, Customer, Organization, db
-from maintenance_teams import visit_site_district, visit_site_coordinates, visit_site_maps_link
+from maintenance_teams import (
+    visit_site_district,
+    visit_site_coordinates,
+    visit_site_maps_link,
+    _district_from_address,
+)
 from operations import list_districts, plan_candidates_for_district
 
 
@@ -96,6 +101,35 @@ def test_visit_site_maps_link_uses_contract_coords(client):
 
         link = visit_site_maps_link(contract, None)
         assert '21.41' in link and '39.82' in link
+
+
+def test_visit_site_district_from_contract_address_when_fields_empty(client):
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-ADDR-01',
+            name='عميل',
+            district='حي العميل',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CN-ADDR-01',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date(2026, 1, 1),
+            end_date=date(2027, 1, 1),
+            address='9184 شارع 1 محبس الجن - محبس الجن - مكة',
+            status='نشط',
+        )
+        db.session.add(contract)
+        db.session.commit()
+
+        assert _district_from_address(contract.address) == 'محبس الجن'
+        assert visit_site_district(contract, None, cust) == 'محبس الجن'
 
 
 def test_list_districts_from_contract_not_customer(client):

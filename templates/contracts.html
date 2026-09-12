@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="/static/client_location.css">
 <link rel="stylesheet" href="/static/tax_calc.css">
 <script src="/static/customer_profile.js"></script>
-<script src="/static/client_location.js?v=9"></script>
+<script src="/static/client_location.js?v=10"></script>
 <script src="/static/client_geocode.js?v=8"></script>
 <script src="/static/liftcore_map.js?v=6"></script>
 <script src="/static/client_map_picker.js?v=16"></script>
@@ -2059,6 +2059,22 @@ function editContract(id) {
   });
 }
 
+function openContractLocation(id) {
+  var c = CONTRACTS.find(function (x) { return x.id === id; });
+  if (!c || !window.LiftCoreLocation) return;
+  LiftCoreLocation.openFromData({
+    id: c.id,
+    name: (c.code || '') + ' — ' + (c.customer || ''),
+    address: c.address || '',
+    district: c.district || '',
+    city: c.city || '',
+    lat: c.lat || '',
+    lng: c.lng || '',
+    maps_url: c.maps_url || '',
+    building_photo_url: ''
+  });
+}
+
 function viewContract(id) {
   var c = CONTRACTS.find(function(x) { return x.id === id; });
   if (!c) return;
@@ -2071,7 +2087,7 @@ function viewContract(id) {
     lat: c.lat,
     lng: c.lng,
     maps_url: c.maps_url
-  });
+  }, { onclick: 'openContractLocation(' + c.id + ')' });
   document.getElementById('view-body').innerHTML =
     locHtml +
     '<div class="view-grid">' +

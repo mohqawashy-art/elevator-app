@@ -36,6 +36,19 @@ def location_district(elev, cust=None) -> str:
     return 'غير محدد'
 
 
+def _district_from_address(address: str) -> str:
+    """استخراج حي/منطقة من عنوان العقد عند غياب الحقول المنفصلة."""
+    addr = (address or '').strip()
+    if not addr:
+        return ''
+    parts = [p.strip() for p in addr.split(' - ') if p.strip()]
+    if len(parts) >= 3:
+        return parts[-2]
+    if len(parts) == 2:
+        return parts[-1]
+    return addr[:48]
+
+
 def visit_site_district(contract=None, elev=None, cust=None) -> str:
     """منطقة موقع الخدمة لتخطيط الزيارات — من العقد أولاً (وليس عنوان العميل)."""
     if contract:
@@ -45,6 +58,9 @@ def visit_site_district(contract=None, elev=None, cust=None) -> str:
         c = (getattr(contract, 'city', None) or '').strip()
         if c:
             return c
+        from_addr = _district_from_address(getattr(contract, 'address', None) or '')
+        if from_addr:
+            return from_addr
     if elev and (getattr(elev, 'district', None) or '').strip():
         return elev.district.strip()
     if elev and (getattr(elev, 'building_name', None) or '').strip():

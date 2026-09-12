@@ -1211,16 +1211,21 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
         already = _periodic_visit_in_month(elev.id, year, month)
         if already:
             continue
+        from maintenance_teams import visit_site_address_line
+        site_address = visit_site_address_line(contract, elev)
+        site_district = item.get('district') or _visit_site_district(contract, elev, customer)
         candidates.append({
             'elevator_id': elev.id,
             'elevator': elev.code,
             'elevator_code': elev.code,
             'contract_id': contract.id if contract else None,
+            'contract_code': contract.code if contract else '',
             'customer': customer.name if customer else '—',
             'customer_name': customer.name if customer else '—',
             'customer_id': customer.id if customer else None,
             'building': (elev.building_name or '').strip(),
-            'district': district,
+            'district': site_district,
+            'address': site_address,
             'route_order': len(candidates) + 1,
             'lat': coords[0] if coords else None,
             'lng': coords[1] if coords else None,
