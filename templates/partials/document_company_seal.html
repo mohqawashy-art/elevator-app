@@ -1,6 +1,6 @@
-{# ختم وتوقيع الشركة على المستندات المطبوعة — يعتمد company_stamp_url / company_sign_url #}
-{% set show_stamp = company_stamp_url %}
-{% set show_sign = company_sign_url %}
+{# ختم وتوقيع الشركة على المستندات المطبوعة #}
+{% set show_stamp = company_stamp_url and (company_stamp_show|default(true)) %}
+{% set show_sign = company_sign_url and (company_sign_show|default(true)) %}
 {% if show_stamp or show_sign %}
 <div class="doc-company-seal {{ seal_class|default('') }}">
   {% if show_stamp %}

@@ -190,6 +190,36 @@ def test_company_seal_size_and_offsets_save_and_render(client):
         assert 'companySignOffsetX: 42' in quote_html
 
 
+def test_company_seal_remove_and_disable(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        ids = _seed_print_documents()
+
+    disable = client.post('/settings/save', data={
+        'company_name': 'LiftCore Test',
+        'company_seal_options': '1',
+    })
+    assert disable.status_code == 302
+
+    invoice = client.get(f'/invoices/{ids["invoice_id"]}/print')
+    assert invoice.status_code == 200
+    html = invoice.get_data(as_text=True)
+    assert 'doc-seal-stamp' not in html
+    assert 'doc-seal-sign' not in html
+
+    remove = client.post('/settings/save', data={
+        'company_name': 'LiftCore Test',
+        'remove_company_stamp': '1',
+        'remove_company_sign': '1',
+    })
+    assert remove.status_code == 302
+
+    with client.application.app_context():
+        settings = Settings.query.first()
+        assert not settings.company_stamp_path
+        assert not settings.company_sign_path
+
+
 @pytest.mark.parametrize('path', [
     '/contracts/99999/print',
     '/invoices/99999/print',

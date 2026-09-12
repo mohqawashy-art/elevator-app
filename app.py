@@ -1035,6 +1035,12 @@ def inject_global_template_vars():
         'liftcore_logo_url': liftcore_header_logo_url(s),
         'company_stamp_url': upload_url(getattr(s, 'company_stamp_path', None)) if s else '',
         'company_sign_url': upload_url(getattr(s, 'company_sign_path', None)) if s else '',
+        'company_stamp_show': bool(
+            s and getattr(s, 'company_stamp_enabled', True) and getattr(s, 'company_stamp_path', None)
+        ),
+        'company_sign_show': bool(
+            s and getattr(s, 'company_sign_enabled', True) and getattr(s, 'company_sign_path', None)
+        ),
         'company_stamp_width': (getattr(s, 'company_stamp_width', None) or 110) if s else 110,
         'company_stamp_offset_x': (getattr(s, 'company_stamp_offset_x', None) or 0) if s else 0,
         'company_stamp_offset_y': (getattr(s, 'company_stamp_offset_y', None) or 0) if s else 0,
@@ -1791,6 +1797,8 @@ def _startup_schema_and_data_sync():
                 'company_sign_width': 'INTEGER DEFAULT 140',
                 'company_sign_offset_x': 'INTEGER DEFAULT 0',
                 'company_sign_offset_y': 'INTEGER DEFAULT 0',
+                'company_stamp_enabled': 'BOOLEAN DEFAULT TRUE',
+                'company_sign_enabled': 'BOOLEAN DEFAULT TRUE',
                 'azkar_ticker_enabled': 'BOOLEAN DEFAULT TRUE',
                 'contract_template_path': 'VARCHAR(300)',
                 'field_geofence_enabled': 'BOOLEAN DEFAULT TRUE',
@@ -13602,6 +13610,29 @@ def _save_company_logo(settings_row, file_storage):
     return True, 'تم تحديث شعار الشركة.'
 
 
+def _remove_company_image_asset(settings_row, *, attr_name: str, prefix: str, label_ar: str):
+    """يزيل ختم/توقيع الشركة من الإعدادات ويحذف الملف."""
+    rel = (getattr(settings_row, attr_name, None) or '').replace('\\', '/').lstrip('/')
+    if rel:
+        abs_path = os.path.join(app.root_path, 'static', rel)
+        try:
+            if os.path.isfile(abs_path):
+                os.remove(abs_path)
+        except OSError:
+            pass
+        org_id = getattr(settings_row, 'organization_id', None) or 0
+        dest_dir = os.path.join(COMPANY_UPLOAD_ROOT, str(org_id))
+        if os.path.isdir(dest_dir):
+            for old in os.listdir(dest_dir):
+                if old.startswith(prefix):
+                    try:
+                        os.remove(os.path.join(dest_dir, old))
+                    except OSError:
+                        pass
+    setattr(settings_row, attr_name, None)
+    return True, f'تم إلغاء {label_ar}.'
+
+
 def _save_company_image_asset(settings_row, file_storage, *, attr_name: str, prefix: str, label_ar: str):
     """يحفظ ختم/توقيع الشركة للطباعة. يرجع (ok, message_ar|None)."""
     if not file_storage or not file_storage.filename:
@@ -13884,8 +13915,23 @@ def settings_signatures_prefs():
     if sign_method not in ('draw', 'pin', 'both'):
         sign_method = 'pin'
     s.default_sign_method = sign_method
+    if request.form.get('company_stamp_enabled') is not None:
+        s.company_stamp_enabled = request.form.get('company_stamp_enabled') == '1'
+    if request.form.get('company_sign_enabled') is not None:
+        s.company_sign_enabled = request.form.get('company_sign_enabled') == '1'
+    if request.form.get('remove_company_stamp') == '1':
+        _remove_company_image_asset(
+            s, attr_name='company_stamp_path', prefix='stamp', label_ar='ختم الشركة',
+        )
+        session['settings_notice'] = 'تم إلغاء ختم الشركة.'
+    elif request.form.get('remove_company_sign') == '1':
+        _remove_company_image_asset(
+            s, attr_name='company_sign_path', prefix='sign', label_ar='توقيع الشركة',
+        )
+        session['settings_notice'] = 'تم إلغاء توقيع الشركة.'
+    else:
+        session['settings_notice'] = 'تم حفظ إعدادات التوقيع.'
     db.session.commit()
-    session['settings_notice'] = 'تم حفظ إعدادات التوقيع.'
     return _settings_redirect('signatures')
 
 
@@ -14062,15 +14108,28 @@ def settings_save():
     s.company_sign_offset_y = _clamp_document_asset_value(
         request.form.get('company_sign_offset_y'), 0,
     )
+    if request.form.get('company_seal_options') == '1':
+        s.company_stamp_enabled = request.form.get('company_stamp_enabled') == '1'
+        s.company_sign_enabled = request.form.get('company_sign_enabled') == '1'
     logo_ok, logo_msg = _save_company_logo(s, request.files.get('logo'))
-    stamp_ok, stamp_msg = _save_company_image_asset(
-        s, request.files.get('company_stamp'),
-        attr_name='company_stamp_path', prefix='stamp', label_ar='ختم الشركة',
-    )
-    sign_ok, sign_msg = _save_company_image_asset(
-        s, request.files.get('company_sign'),
-        attr_name='company_sign_path', prefix='sign', label_ar='توقيع الشركة',
-    )
+    if request.form.get('remove_company_stamp') == '1':
+        stamp_ok, stamp_msg = _remove_company_image_asset(
+            s, attr_name='company_stamp_path', prefix='stamp', label_ar='ختم الشركة',
+        )
+    else:
+        stamp_ok, stamp_msg = _save_company_image_asset(
+            s, request.files.get('company_stamp'),
+            attr_name='company_stamp_path', prefix='stamp', label_ar='ختم الشركة',
+        )
+    if request.form.get('remove_company_sign') == '1':
+        sign_ok, sign_msg = _remove_company_image_asset(
+            s, attr_name='company_sign_path', prefix='sign', label_ar='توقيع الشركة',
+        )
+    else:
+        sign_ok, sign_msg = _save_company_image_asset(
+            s, request.files.get('company_sign'),
+            attr_name='company_sign_path', prefix='sign', label_ar='توقيع الشركة',
+        )
     tpl_ok, tpl_msg = _save_contract_template(
         s, request.files.get('contract_template'),
         remove=request.form.get('remove_contract_template') == '1',

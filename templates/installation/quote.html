@@ -368,11 +368,11 @@ window.__INSTALL_QUOTE__ = {
   companyName: {{ ((company_settings.company_name if company_settings and company_settings.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة')) | tojson }},
   companyLogoUrl: {{ brand_logo_url | tojson }},
   logoWidth: {{ (logo_width_report or 150) | tojson }},
-  companyStampUrl: {{ (company_stamp_url or '') | tojson }},
+  companyStampUrl: {{ ((company_stamp_url or '') if company_stamp_show else '') | tojson }},
   companyStampWidth: {{ (company_stamp_width or 110) | tojson }},
   companyStampOffsetX: {{ (company_stamp_offset_x or 0) | tojson }},
   companyStampOffsetY: {{ (company_stamp_offset_y or 0) | tojson }},
-  companySignUrl: {{ (company_sign_url or '') | tojson }},
+  companySignUrl: {{ ((company_sign_url or '') if company_sign_show else '') | tojson }},
   companySignWidth: {{ (company_sign_width or 140) | tojson }},
   companySignOffsetX: {{ (company_sign_offset_x or 0) | tojson }},
   companySignOffsetY: {{ (company_sign_offset_y or 0) | tojson }}

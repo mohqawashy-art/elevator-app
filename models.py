@@ -1204,6 +1204,8 @@ class Settings(TenantMixin, db.Model):
     logo_path       = db.Column(db.String(300))
     company_stamp_path = db.Column(db.String(300))  # ختم الشركة للمستندات
     company_sign_path  = db.Column(db.String(300))  # توقيع الشركة المطبوع على المستندات
+    company_stamp_enabled = db.Column(db.Boolean, default=True)  # إظهار الختم على المستندات
+    company_sign_enabled = db.Column(db.Boolean, default=True)   # إظهار التوقيع على المستندات
     company_stamp_width = db.Column(db.Integer, default=110)
     company_stamp_offset_x = db.Column(db.Integer, default=0)
     company_stamp_offset_y = db.Column(db.Integer, default=0)

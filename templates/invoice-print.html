@@ -391,7 +391,7 @@ body.page-a5 .qr-side img{width:85px;height:85px}
     <div class="footer-box" {% if not show_bank %}style="grid-column:1/-1"{% endif %}>
       <h4>ملاحظات</h4>
       <ul>
-        {% if company_stamp_url or company_sign_url %}
+        {% if company_stamp_show or company_sign_show %}
         <li>جميع الأسعار بالريال السعودي{% if is_tax_invoice %} شاملة ضريبة القيمة المضافة{% endif %}.</li>
         {% else %}
         <li>هذه الفاتورة صادرة إلكترونياً ولا تحتاج إلى توقيع أو ختم.</li>

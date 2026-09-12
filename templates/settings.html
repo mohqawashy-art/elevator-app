@@ -306,6 +306,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
       <div class="preview-box">معاينة التقرير<br><img id="prev-report" src="{{ brand_logo_url }}" alt=""></div>
     </div>
 
+    <input type="hidden" name="company_seal_options" value="1">
     <div class="section" style="margin-top:22px">ختم وتوقيع الشركة على المستندات</div>
     <p class="hint" style="margin-bottom:12px">تظهر تلقائياً في عروض الأسعار ومحاضر الاستلام والتقارير عند الطباعة. يُفضّل PNG بخلفية شفافة.</p>
     <div class="logo-upload" style="gap:24px;flex-wrap:wrap">
@@ -332,7 +333,16 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
           <label>تحريك رأسي <strong><span id="stamp-y-label">{{ settings.company_stamp_offset_y or 0 }}</span> px</strong></label>
           <input type="range" name="company_stamp_offset_y" min="-200" max="200" value="{{ settings.company_stamp_offset_y or 0 }}" oninput="syncSealPreview('stamp')">
         </div>
-        <button class="btn btn-secondary" type="button" style="margin-top:10px" onclick="resetSealControls('stamp',110)">إعادة ضبط الختم</button>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;font-weight:600">
+          <input type="checkbox" name="company_stamp_enabled" value="1" {% if settings.company_stamp_enabled is not defined or settings.company_stamp_enabled %}checked{% endif %}>
+          إظهار الختم على المستندات
+        </label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-secondary" type="button" onclick="resetSealControls('stamp',110)">إعادة ضبط الختم</button>
+          {% if company_stamp_url %}
+          <button class="btn btn-danger btn-sm" type="button" onclick="removeCompanySeal('stamp')">إلغاء الختم</button>
+          {% endif %}
+        </div>
       </div>
       <div class="logo-preview-wrap seal-settings-card">
         <div class="seal-preview-stage" id="company-sign-stage">
@@ -357,9 +367,20 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
           <label>تحريك رأسي <strong><span id="sign-y-label">{{ settings.company_sign_offset_y or 0 }}</span> px</strong></label>
           <input type="range" name="company_sign_offset_y" min="-200" max="200" value="{{ settings.company_sign_offset_y or 0 }}" oninput="syncSealPreview('sign')">
         </div>
-        <button class="btn btn-secondary" type="button" style="margin-top:10px" onclick="resetSealControls('sign',140)">إعادة ضبط التوقيع</button>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;font-weight:600">
+          <input type="checkbox" name="company_sign_enabled" value="1" {% if settings.company_sign_enabled is not defined or settings.company_sign_enabled %}checked{% endif %}>
+          إظهار التوقيع على المستندات
+        </label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-secondary" type="button" onclick="resetSealControls('sign',140)">إعادة ضبط التوقيع</button>
+          {% if company_sign_url %}
+          <button class="btn btn-danger btn-sm" type="button" onclick="removeCompanySeal('sign')">إلغاء التوقيع</button>
+          {% endif %}
+        </div>
       </div>
     </div>
+    <input type="hidden" name="remove_company_stamp" id="remove-company-stamp" value="0">
+    <input type="hidden" name="remove_company_sign" id="remove-company-sign" value="0">
 
     <div class="actions">
       <button type="submit" class="btn btn-primary">حفظ بيانات الشركة</button>
@@ -432,6 +453,40 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
   {% if current_user.role == 'admin' %}
   <div class="panel {% if active_tab == 'signatures' %}active{% endif %}" id="panel-signatures">
     <div class="card">
+      <div class="section">ختم وتوقيع الشركة (المستندات)</div>
+      <p class="hint" style="margin-bottom:12px">يُدار الرفع والمعاينة من تبويب «الشركة والهوية». هنا يمكن إيقاف الظهور أو إلغاء الملف نهائياً.</p>
+      <form method="post" action="{{ url_for('settings_signatures_prefs') }}" id="company-seal-prefs-form">
+        <div class="grid">
+          <div class="full">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">
+              <input type="checkbox" name="company_stamp_enabled" value="1" {% if settings.company_stamp_enabled is not defined or settings.company_stamp_enabled %}checked{% endif %}>
+              إظهار ختم الشركة على المستندات
+            </label>
+            <p class="hint" style="margin-top:4px">{% if company_stamp_url %}ختم مرفوع — يمكن إيقافه بدون حذف الملف{% else %}لا يوجد ختم مرفوع حالياً{% endif %}</p>
+          </div>
+          <div class="full">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">
+              <input type="checkbox" name="company_sign_enabled" value="1" {% if settings.company_sign_enabled is not defined or settings.company_sign_enabled %}checked{% endif %}>
+              إظهار توقيع الشركة على المستندات
+            </label>
+            <p class="hint" style="margin-top:4px">{% if company_sign_url %}توقيع مرفوع — يمكن إيقافه بدون حذف الملف{% else %}لا يوجد توقيع مرفوع حالياً{% endif %}</p>
+          </div>
+        </div>
+        <input type="hidden" name="remove_company_stamp" id="sig-remove-company-stamp" value="0">
+        <input type="hidden" name="remove_company_sign" id="sig-remove-company-sign" value="0">
+        <div class="actions" style="margin-top:12px">
+          <button type="submit" class="btn btn-primary btn-sm">حفظ إعدادات الختم والتوقيع</button>
+          {% if company_stamp_url %}
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeCompanySealFromSignatures('stamp')">إلغاء الختم</button>
+          {% endif %}
+          {% if company_sign_url %}
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeCompanySealFromSignatures('sign')">إلغاء التوقيع</button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top:16px">
       <div class="section">إعدادات التوقيع في النماذج</div>
       <form method="post" action="{{ url_for('settings_signatures_prefs') }}">
         <div class="grid">
@@ -974,6 +1029,24 @@ function resetSealControls(kind, defaultWidth) {
   if (offsetX) offsetX.value = 0;
   if (offsetY) offsetY.value = 0;
   syncSealPreview(kind);
+}
+function removeCompanySeal(kind) {
+  var label = kind === 'stamp' ? 'ختم الشركة' : 'توقيع الشركة';
+  if (!confirm('إلغاء ' + label + ' نهائياً؟ سيُحذف الملف ولا يظهر في المستندات.')) return;
+  var form = document.querySelector('form[action="{{ url_for('settings_save') }}"]');
+  if (!form) return;
+  var field = document.getElementById(kind === 'stamp' ? 'remove-company-stamp' : 'remove-company-sign');
+  if (field) field.value = '1';
+  form.submit();
+}
+function removeCompanySealFromSignatures(kind) {
+  var label = kind === 'stamp' ? 'ختم الشركة' : 'توقيع الشركة';
+  if (!confirm('إلغاء ' + label + ' نهائياً؟')) return;
+  var form = document.getElementById('company-seal-prefs-form');
+  if (!form) return;
+  var field = document.getElementById(kind === 'stamp' ? 'sig-remove-company-stamp' : 'sig-remove-company-sign');
+  if (field) field.value = '1';
+  form.submit();
 }
 syncSealPreview('stamp');
 syncSealPreview('sign');
