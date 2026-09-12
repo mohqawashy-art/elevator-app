@@ -80,6 +80,42 @@ def visit_site_coordinates(contract=None, elev=None, cust=None) -> tuple[float, 
     return None
 
 
+def visit_site_address_line(contract=None, elev=None) -> str:
+    """سطر عنوان موقع الخدمة — من العقد ثم المصعد."""
+    if contract:
+        parts = [
+            (getattr(contract, 'address', None) or '').strip(),
+            (getattr(contract, 'district', None) or '').strip(),
+            (getattr(contract, 'city', None) or '').strip(),
+        ]
+        line = ' '.join(p for p in parts if p)
+        if line:
+            return line
+    if elev:
+        parts = [
+            (getattr(elev, 'address', None) or '').strip(),
+            (getattr(elev, 'district', None) or '').strip(),
+            (getattr(elev, 'city', None) or '').strip(),
+        ]
+        line = ' '.join(p for p in parts if p)
+        if line:
+            return line
+    return ''
+
+
+def visit_site_maps_link(contract=None, elev=None) -> str:
+    """رابط خرائط موقع الخدمة — عقد ثم مصعد (بدون عنوان العميل)."""
+    import urllib.parse
+
+    coords = visit_site_coordinates(contract, elev, None)
+    if coords:
+        return f'https://www.google.com/maps?q={coords[0]},{coords[1]}'
+    line = visit_site_address_line(contract, elev)
+    if line:
+        return 'https://www.google.com/maps/search/?api=1&query=' + urllib.parse.quote(line)
+    return ''
+
+
 def item_cluster_key(item: dict) -> str:
     """مفتاح تجميع بدون إحداثيات — موقع العقد/المصعد."""
     contract = item.get('contract')

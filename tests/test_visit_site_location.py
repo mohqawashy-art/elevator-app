@@ -1,6 +1,9 @@
 """اختبار منطقة موقع الخدمة من العقد."""
+from datetime import date
+
 from models import Contract, Customer, Organization, db
-from maintenance_teams import visit_site_district, visit_site_coordinates
+from maintenance_teams import visit_site_district, visit_site_coordinates, visit_site_maps_link
+from operations import list_districts, plan_candidates_for_district
 
 
 def test_visit_site_district_prefers_contract_over_customer(client):
@@ -21,8 +24,8 @@ def test_visit_site_district_prefers_contract_over_customer(client):
             code='CN-SITE-01',
             customer_id=cust.id,
             contract_type='عقد صيانة',
-            start_date=__import__('datetime').date(2026, 1, 1),
-            end_date=__import__('datetime').date(2027, 1, 1),
+            start_date=date(2026, 1, 1),
+            end_date=date(2027, 1, 1),
             district='حي العقد',
             city='مكة',
             status='نشط',
@@ -51,8 +54,8 @@ def test_visit_site_coordinates_from_contract(client):
             code='CN-SITE-02',
             customer_id=cust.id,
             contract_type='عقد صيانة',
-            start_date=__import__('datetime').date(2026, 1, 1),
-            end_date=__import__('datetime').date(2027, 1, 1),
+            start_date=date(2026, 1, 1),
+            end_date=date(2027, 1, 1),
             lat='21.41',
             lng='39.82',
             status='نشط',
@@ -62,3 +65,66 @@ def test_visit_site_coordinates_from_contract(client):
 
         coords = visit_site_coordinates(contract, None, cust)
         assert coords == (21.41, 39.82)
+
+
+def test_visit_site_maps_link_uses_contract_coords(client):
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-SITE-03',
+            name='عميل',
+            lat='21.5',
+            lng='39.9',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CN-SITE-03',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date(2026, 1, 1),
+            end_date=date(2027, 1, 1),
+            lat='21.41',
+            lng='39.82',
+            status='نشط',
+        )
+        db.session.add(contract)
+        db.session.commit()
+
+        link = visit_site_maps_link(contract, None)
+        assert '21.41' in link and '39.82' in link
+
+
+def test_list_districts_from_contract_not_customer(client):
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-PLAN-01',
+            name='عميل تخطيط',
+            district='حي العميل',
+            city='جدة',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CN-PLAN-01',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date(2026, 1, 1),
+            end_date=date(2027, 1, 1),
+            district='حي العقد',
+            city='جدة',
+            status='نشط',
+        )
+        db.session.add(contract)
+        db.session.commit()
+
+        districts = list_districts('2026-06')
+        assert 'حي العقد' in districts
+        assert 'حي العميل' not in districts

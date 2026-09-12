@@ -5629,6 +5629,7 @@ def _coords_from_customer(cust):
 
 def _visits_js_list(visits):
     from checklist_templates import parse_report_json, report_completion_stats, checklist_flagged_items, checklist_all_ok
+    from operations import visit_district_name
     from technician_assignments import (
         _ids_from_rows,
         _names_from_rows,
@@ -5661,7 +5662,7 @@ def _visits_js_list(visits):
             'elevator_id': v.elevator_id,
             'contract_id': v.contract_id,
             'contract_code': (contract.code if contract else '') or '',
-            'district': ((cust.district if cust else '') or (elev.district if elev else '') or '').strip(),
+            'district': visit_district_name(v),
             'fault_id': v.fault_id,
             'fault_code': linked.code if linked else '',
             'customer_id': cust.id if cust else None,
@@ -8958,7 +8959,7 @@ def api_get_plan():
     if not plan_month:
         return jsonify({'error': 'حدد شهر الخطة'}), 400
     try:
-        return jsonify(get_plan(plan_month) | {'district_list': list_districts()})
+        return jsonify(get_plan(plan_month) | {'district_list': list_districts(plan_month)})
     except Exception as exc:
         app.logger.exception('get_plan failed for %s', plan_month)
         return jsonify({'error': f'تعذّر تحميل الخطة: {exc}'}), 500
@@ -8968,14 +8969,16 @@ def api_get_plan():
 def api_list_districts():
     from operations import list_districts
 
-    return jsonify({'districts': list_districts()})
+    plan_month = (request.args.get('plan_month') or '').strip() or None
+    return jsonify({'districts': list_districts(plan_month), 'plan_month': plan_month or ''})
 
 
 @app.route('/api/maintenance/district/<path:district>/elevators', methods=['GET'])
 def api_district_elevators(district):
     from operations import elevators_for_district
 
-    return jsonify({'elevators': elevators_for_district(district)})
+    plan_month = (request.args.get('plan_month') or '').strip() or None
+    return jsonify({'elevators': elevators_for_district(district, plan_month)})
 
 
 @app.route('/api/maintenance/plan/work-days', methods=['GET'])

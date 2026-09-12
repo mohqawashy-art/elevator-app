@@ -1117,10 +1117,11 @@ function openPlanModal() {
     fillPlanTeamOptions();
     renderDispatchTeamSelect();
   });
-  fillPlanDistrictOptions(PLAN_DISTRICTS);
-  loadPlanReadiness();
-  loadPlan();
-  initPlanWizard();
+  refreshPlanDistricts().then(function () {
+    loadPlanReadiness();
+    loadPlan();
+    initPlanWizard();
+  });
 }
 
 let PLAN_DRAFT = [];
@@ -1144,6 +1145,19 @@ function planDistrictFilters() {
 function planDistrictFilter() {
   var list = planDistrictFilters();
   return list.length ? list[0] : '';
+}
+
+function refreshPlanDistricts() {
+  var ym = planMonth();
+  if (!ym) return Promise.resolve();
+  return fetch('/api/maintenance/districts?plan_month=' + encodeURIComponent(ym))
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      fillPlanDistrictOptions(data.districts || PLAN_DISTRICTS || []);
+    })
+    .catch(function () {
+      fillPlanDistrictOptions(PLAN_DISTRICTS || []);
+    });
 }
 
 function fillPlanDistrictOptions(list) {
@@ -1619,9 +1633,10 @@ function onPlanMonthChange() {
   loadPlan();
   PLAN_DRAFT = [];
   PLAN_CANDIDATES = [];
-  fillPlanDistrictOptions(PLAN_DISTRICTS);
-  fillPlanTeamOptions();
-  initPlanWizard();
+  refreshPlanDistricts().then(function () {
+    fillPlanTeamOptions();
+    initPlanWizard();
+  });
 }
 
 function syncPlanMonthFromWork() {
@@ -2130,7 +2145,7 @@ function loadDistrictElevators() {
   const district = document.getElementById('plan-manual-district').value;
   const sel = document.getElementById('plan-manual-elevator');
   if (!district || !sel) return;
-  fetch('/api/maintenance/district/' + encodeURIComponent(district) + '/elevators')
+  fetch('/api/maintenance/district/' + encodeURIComponent(district) + '/elevators?plan_month=' + encodeURIComponent(planMonth()))
     .then(r => r.json())
     .then(data => {
       sel.innerHTML = '<option value="">اختر المصعد</option>' +

@@ -1091,12 +1091,19 @@ def visit_district_name(v: MaintenanceVisit) -> str:
     return _visit_site_district(contract, elev, cust)
 
 
-def list_districts() -> list[str]:
-    """مناطق تخطيط الشهر — من عقود الصيانة النشطة (وليس عنوان العميل)."""
+def _active_contract_month_bounds(plan_month: str | None = None) -> tuple[date, date]:
     from datetime import date
 
+    if plan_month and '-' in plan_month:
+        year, month = _parse_plan_month(plan_month)
+        return _month_bounds(year, month)
     today = date.today()
-    start, end = _month_bounds(today.year, today.month)
+    return _month_bounds(today.year, today.month)
+
+
+def list_districts(plan_month: str | None = None) -> list[str]:
+    """مناطق تخطيط الشهر — من عقود الصيانة النشطة (وليس عنوان العميل)."""
+    start, end = _active_contract_month_bounds(plan_month)
     contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
@@ -1112,13 +1119,11 @@ def list_districts() -> list[str]:
     return sorted(districts) if districts else ['غير محدد']
 
 
-def elevators_for_district(district: str) -> list[dict]:
+def elevators_for_district(district: str, plan_month: str | None = None) -> list[dict]:
     from entity_links import sort_by_natural_code
-    from datetime import date
 
     district = (district or '').strip()
-    today = date.today()
-    start, end = _month_bounds(today.year, today.month)
+    start, end = _active_contract_month_bounds(plan_month)
     contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
@@ -1161,7 +1166,6 @@ def plan_work_days(plan_month: str) -> list[str]:
 def plan_candidates_for_district(plan_month: str, district: str) -> dict:
     """عملاء/مصاعد منطقة ضمن عقود الصيانة للشهر — مرتّبون جغرافياً."""
     from maintenance_teams import item_coordinates, order_items_nearest_neighbor
-    from entity_links import active_contract_for_elevator
 
     district = (district or '').strip()
     if not district:
@@ -1195,23 +1199,6 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
                 'elevator': elev,
                 'customer': customer,
                 'district': dist_name,
-            })
-
-    # إن لم تُوجد عبر العقود: اعرض مصاعد المنطقة (مع عقد نشط إن وُجد)
-    if not flat_items:
-        for e in tenant_query(Elevator).join(Customer).order_by(Customer.name).all():
-            if e.id in seen:
-                continue
-            c = e.customer
-            contract = active_contract_for_elevator(e.id, start)
-            if _visit_site_district(contract, e, c) != district:
-                continue
-            seen.add(e.id)
-            flat_items.append({
-                'contract': contract,
-                'elevator': e,
-                'customer': c,
-                'district': district,
             })
 
     ordered = order_items_nearest_neighbor(flat_items, item_coordinates)
@@ -1541,7 +1528,6 @@ def add_manual_plan_visit(plan_month: str, elevator_id: int, visit_date: str) ->
     if not elev:
         raise ValueError('المصعد غير موجود')
     cust = elev.customer
-    district = _visit_site_district(contract, elev, cust)
     vdate = datetime.strptime(visit_date[:10], '%Y-%m-%d').date()
     from work_calendar import work_day_validation_error
     werr = work_day_validation_error(vdate)
@@ -1555,6 +1541,7 @@ def add_manual_plan_visit(plan_month: str, elevator_id: int, visit_date: str) ->
     from entity_links import active_contract_for_elevator
 
     contract = active_contract_for_elevator(elev.id, vdate)
+    district = _visit_site_district(contract, elev, cust)
     v = MaintenanceVisit(
         code=next_code(MaintenanceVisit, 'VI-', digits=5),
         contract_id=contract.id if contract else None,
@@ -1728,13 +1715,21 @@ def build_route_whatsapp(
         return ''
     title = day_label or 'خط سير الصيانة'
     lines = [f'[صيانة] {title} — {tech.name}', '']
+    from maintenance_teams import visit_site_address_line, visit_site_maps_link
+    from entity_links import active_contract_for_elevator
+
     for i, v in enumerate(visits, start=1):
         cust = v.elevator.customer if v.elevator else None
+        elev = v.elevator
+        contract = v.contract
+        if not contract and elev and v.visit_date:
+            contract = active_contract_for_elevator(elev.id, v.visit_date)
         lines.append(f'{i}. {cust.code if cust else ""} — {cust.name if cust else "—"}')
-        lines.append(f'   المنطقة: {(cust.district if cust else "") or "—"} | {v.visit_date}')
-        if cust and cust.address:
-            lines.append(f'   {cust.address}')
-        link = customer_maps_link(cust) if cust else ''
+        lines.append(f'   المنطقة: {visit_district_name(v)} | {v.visit_date}')
+        address = visit_site_address_line(contract, elev)
+        if address:
+            lines.append(f'   {address}')
+        link = visit_site_maps_link(contract, elev)
         if link:
             lines.append('   الخريطة:')
             lines.append(f'   {link}')
