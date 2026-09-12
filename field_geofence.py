@@ -82,9 +82,23 @@ def haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return 2 * r * math.asin(min(1.0, math.sqrt(a)))
 
 
+def visit_field_arrived(visit: MaintenanceVisit) -> bool:
+    """وصول فعلي من الميدان — وقت الوصول في محضر الزيارة فقط."""
+    from checklist_templates import parse_report_json
+
+    saved = parse_report_json(visit.checklist_json)
+    meta = (saved or {}).get('meta') or {}
+    return bool((meta.get('arrival_time') or '').strip())
+
+
 def visit_geofence_required(visit: MaintenanceVisit) -> bool:
+    """التحقق من الموقع مطلوب لفتح التقرير فقط."""
     st = (visit.status or '').strip()
-    if st in (VISIT_AT_CLIENT, VISIT_FINISHED_AT_CLIENT, 'جارية', 'مكتملة', 'ملغاة', 'ملغية'):
+    if st in ('مكتملة', 'ملغاة', 'ملغية'):
+        return False
+    if visit_field_arrived(visit):
+        return False
+    if st in (VISIT_AT_CLIENT, VISIT_FINISHED_AT_CLIENT):
         return False
     return True
 
@@ -99,6 +113,7 @@ def fault_field_arrived(fault: Fault) -> bool:
 
 
 def fault_geofence_required(fault: Fault) -> bool:
+    """التحقق من الموقع مطلوب لفتح التقرير فقط."""
     st = (fault.status or '').strip()
     if st in FAULT_GEOFENCE_SKIP:
         return False

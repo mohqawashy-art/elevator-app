@@ -29,7 +29,7 @@
 <a class="fp-maps" href="{{ fault.maps_url }}" target="_blank" rel="noopener">🗺 فتح الموقع والتنقل</a>
 {% endif %}
 
-<a class="fp-maps" href="{{ fault.report_url }}" style="background:var(--fp-success);margin-bottom:12px">📋 فتح تقرير العطل</a>
+<a class="fp-btn-report" href="{{ fault.report_url }}" style="background:var(--fp-success);margin-bottom:12px;display:block;text-align:center;text-decoration:none">📋 فتح تقرير العطل</a>
 
 <form method="post" action="/field/fault/{{ fault.id }}/complete">
   <input type="hidden" name="tech_id" value="{{ tech_id or fault.technician_id }}">

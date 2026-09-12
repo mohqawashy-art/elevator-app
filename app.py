@@ -9633,13 +9633,10 @@ def api_field_verify_proximity():
 
 @app.route('/field/visit/<int:visit_id>')
 def field_visit(visit_id):
-    from operations import field_visit_detail, stamp_field_visit_arrival
+    from operations import field_visit_detail
 
     tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     try:
-        if tech_id:
-            _field_geofence_guard_visit(visit_id, tech_id)
-            stamp_field_visit_arrival(visit_id, tech_id=tech_id)
         detail = field_visit_detail(visit_id, tech_id)
     except PermissionError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}
@@ -9700,13 +9697,7 @@ def field_fault(fault_id):
 
     tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
     try:
-        if tech_id:
-            _field_geofence_guard_fault(fault_id, tech_id)
         detail = field_fault_detail(fault_id, tech_id)
-        if tech_id:
-            from operations import stamp_field_fault_arrival
-
-            stamp_field_fault_arrival(fault_id, tech_id=tech_id)
     except PermissionError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}
         return render_template('field.html', error=str(e), payload=None, **ctx), 403

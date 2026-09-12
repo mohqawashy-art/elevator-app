@@ -301,6 +301,13 @@ def test_field_visit_page_sets_at_client_status(client):
 
     with client.application.app_context():
         v = db.session.get(MaintenanceVisit, visit_id)
+        assert v.status == 'مُرسلة للفني'
+
+    rpt = client.get(f'/field/visit/{visit_id}/report')
+    assert rpt.status_code == 200
+
+    with client.application.app_context():
+        v = db.session.get(MaintenanceVisit, visit_id)
         assert v.status == VISIT_AT_CLIENT
 
     fin = client.post(
@@ -348,7 +355,10 @@ def test_field_geofence_blocks_far_visit(client):
     with client.session_transaction() as sess:
         sess['field_tech_id'] = tech_id
 
-    r = client.get(f'/field/visit/{visit_id}?lat=24.800000&lng=46.675300')
+    r = client.get(f'/field/visit/{visit_id}')
+    assert r.status_code == 200
+
+    r = client.get(f'/field/visit/{visit_id}/report?lat=24.800000&lng=46.675300')
     assert r.status_code == 403
     assert 'بعيد' in r.get_data(as_text=True)
 
@@ -395,7 +405,10 @@ def test_field_geofence_allows_near_visit(client):
     with client.session_transaction() as sess:
         sess['field_tech_id'] = tech_id
 
-    r = client.get(f'/field/visit/{visit_id}?lat=24.713650&lng=46.675350')
+    r = client.get(f'/field/visit/{visit_id}')
+    assert r.status_code == 200
+
+    r = client.get(f'/field/visit/{visit_id}/report?lat=24.713650&lng=46.675350')
     assert r.status_code == 200
 
     with client.application.app_context():
@@ -437,7 +450,10 @@ def test_field_geofence_blocks_far_fault(client):
     with client.session_transaction() as sess:
         sess['field_tech_id'] = tech_id
 
-    r = client.get(f'/field/fault/{fault_id}?lat=24.800000&lng=46.675300')
+    r = client.get(f'/field/fault/{fault_id}')
+    assert r.status_code == 200
+
+    r = client.get(f'/field/fault/{fault_id}/report?lat=24.800000&lng=46.675300')
     assert r.status_code == 403
 
 
@@ -478,7 +494,10 @@ def test_field_geofence_blocks_despite_office_responded_at(client):
     with client.session_transaction() as sess:
         sess['field_tech_id'] = tech_id
 
-    r = client.get(f'/field/fault/{fault_id}?lat=24.800000&lng=46.675300')
+    r = client.get(f'/field/fault/{fault_id}')
+    assert r.status_code == 200
+
+    r = client.get(f'/field/fault/{fault_id}/report?lat=24.800000&lng=46.675300')
     assert r.status_code == 403
 
 
@@ -518,5 +537,8 @@ def test_field_geofence_blocks_far_fault_in_progress(client):
     with client.session_transaction() as sess:
         sess['field_tech_id'] = tech_id
 
-    r = client.get(f'/field/fault/{fault_id}?lat=24.800000&lng=46.675300')
+    r = client.get(f'/field/fault/{fault_id}')
+    assert r.status_code == 200
+
+    r = client.get(f'/field/fault/{fault_id}/report?lat=24.800000&lng=46.675300')
     assert r.status_code == 403

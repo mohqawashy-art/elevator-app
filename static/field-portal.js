@@ -21,9 +21,13 @@
       .replace(/"/g, '&quot;');
   }
 
-  function parseFieldTaskUrl(href) {
-    if (!href) return null;
-    var m = String(href).match(/\/field\/(visit|fault)\/(\d+)(?:\/report)?/);
+  function isFieldReportUrl(href) {
+    return /\/field\/(visit|fault)\/\d+\/report/.test(String(href || ''));
+  }
+
+  function parseFieldReportUrl(href) {
+    if (!isFieldReportUrl(href)) return null;
+    var m = String(href).match(/\/field\/(visit|fault)\/(\d+)\/report/);
     if (!m) return null;
     return { kind: m[1], id: parseInt(m[2], 10) };
   }
@@ -62,14 +66,14 @@
       });
   }
 
-  function openFieldTask(href) {
-    var task = parseFieldTaskUrl(href);
+  function openFieldReport(href) {
+    var task = parseFieldReportUrl(href);
     if (!task) {
       window.location.href = href;
       return;
     }
     if (!navigator.onLine) {
-      alert('يلزم اتصال إنترنت للتحقق من موقعك قبل فتح المهمة.');
+      alert('يلزم اتصال إنترنت للتحقق من موقعك قبل فتح التقرير.');
       return;
     }
     if (!geofenceCfg.enabled) {
@@ -90,13 +94,12 @@
 
   function bindGeofenceCards() {
     document.addEventListener('click', function (e) {
-      var a = e.target.closest('a.fp-card, a.fp-alert-toast-btn, a.fp-btn-report, a.fp-maps');
+      var a = e.target.closest('a.fp-btn-report, a.fp-maps[data-fp-report], a.fp-report-link');
       if (!a) return;
       var href = a.getAttribute('href');
-      if (!href || href === '#faults') return;
-      if (!parseFieldTaskUrl(href)) return;
+      if (!href || !isFieldReportUrl(href)) return;
       e.preventDefault();
-      openFieldTask(href);
+      openFieldReport(href);
     }, true);
   }
 
@@ -283,7 +286,7 @@
       });
       n.onclick = function () {
         window.focus();
-        if (first.url) openFieldTask(first.url);
+        if (first.url) window.location.href = first.url;
         n.close();
       };
     } catch (e) { /* ignore */ }
@@ -533,6 +536,6 @@
     pollFieldTasks: pollFieldTasks,
     unlockAudio: unlockAudio,
     playAlertSound: playAlertSound,
-    openFieldTask: openFieldTask,
+    openFieldReport: openFieldReport,
   };
 })();
