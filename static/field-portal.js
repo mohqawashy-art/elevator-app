@@ -104,11 +104,13 @@
   }
 
   function visitCard(v) {
+    var building = (v.building && v.building !== '—') ? '<div class="fp-building">' + esc(v.building) + '</div>' : '';
     return (
       '<a class="fp-card" href="' + esc(v.url) + '">' +
       '<div class="fp-card-top"><span class="fp-code">' + esc(v.code) + '</span>' +
       '<span style="font-size:11px;color:var(--fp-muted)">' + esc(v.status) + '</span></div>' +
       '<div class="fp-title">' + esc(v.customer) + '</div>' +
+      building +
       '<div class="fp-meta">' + esc(v.visit_date) + ' · ' + esc(v.elevator) + '</div>' +
       '<span class="fp-district">' + esc(v.district) + '</span></a>'
     );
@@ -117,11 +119,13 @@
   function faultCard(f) {
     var pr = f.priority === 'حرجة' ? 'fp-p-critical' : (f.priority === 'عالية' || f.priority === 'عاجلة' ? 'fp-p-high' : 'fp-p-normal');
     var un = f.unassigned ? ' <span style="font-size:11px;color:var(--fp-warning)">(غير معيّن)</span>' : '';
+    var building = (f.building && f.building !== '—') ? '<div class="fp-building">' + esc(f.building) + '</div>' : '';
     return (
       '<a class="fp-card" href="' + esc(f.url) + '">' +
       '<div class="fp-card-top"><span class="fp-code">' + esc(f.code) + '</span>' +
       '<span class="fp-priority ' + pr + '">' + esc(f.priority) + '</span></div>' +
       '<div class="fp-title">' + esc(f.customer) + un + '</div>' +
+      building +
       '<div class="fp-meta">' + esc(f.fault_type) + ' · ' + esc(f.status) + '</div>' +
       '<span class="fp-district">' + esc(f.district) + '</span></a>'
     );

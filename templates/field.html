@@ -46,6 +46,7 @@
           <span style="font-size:11px;color:var(--fp-muted)">{{ v.status }}</span>
         </div>
         <div class="fp-title">{{ v.customer }} <span style="font-size:11px;color:var(--fp-muted)">{{ v.customer_code }}</span></div>
+        {% if v.building and v.building != '—' %}<div class="fp-building">{{ v.building }}</div>{% endif %}
         <div class="fp-meta">{{ v.visit_date }} · {{ v.elevator }} · {{ v.visit_type }}</div>
         <span class="fp-district">{{ v.district }}</span>
       </a>
@@ -63,6 +64,7 @@
           <span style="font-size:11px;color:var(--fp-muted)">{{ v.status }}</span>
         </div>
         <div class="fp-title">{{ v.customer }}</div>
+        {% if v.building and v.building != '—' %}<div class="fp-building">{{ v.building }}</div>{% endif %}
         <div class="fp-meta">{{ v.visit_date }} · {{ v.elevator }}</div>
         <span class="fp-district">{{ v.district }}</span>
       </a>
@@ -84,6 +86,7 @@
           <span class="fp-priority {% if f.priority == 'حرجة' %}fp-p-critical{% elif f.priority in ['عالية','عاجلة'] %}fp-p-high{% else %}fp-p-normal{% endif %}">{{ f.priority }}</span>
         </div>
         <div class="fp-title">{{ f.customer }}{% if f.unassigned %} <span style="font-size:11px;color:var(--fp-warning)">(غير معيّن — اضغط للاستلام)</span>{% endif %}</div>
+        {% if f.building and f.building != '—' %}<div class="fp-building">{{ f.building }}</div>{% endif %}
         <div class="fp-meta">{{ f.fault_type }} · {{ f.status }}</div>
         <div class="fp-meta" style="margin-top:6px">{{ f.client_report[:100] }}{% if f.client_report|length > 100 %}…{% endif %}</div>
         <span class="fp-district">{{ f.district }}</span>
@@ -106,6 +109,7 @@
     <a class="fp-card" href="{{ v.url }}">
       <div class="fp-card-top"><span class="fp-code">{{ v.code }}</span><span>{{ v.visit_date }}</span></div>
       <div class="fp-title">{{ v.customer }}</div>
+      {% if v.building and v.building != '—' %}<div class="fp-building">{{ v.building }}</div>{% endif %}
       <div class="fp-meta">{{ v.elevator }} · {{ v.visit_type }}</div>
     </a>
     {% endfor %}
@@ -119,6 +123,7 @@
     <a class="fp-card" href="{{ f.url }}">
       <div class="fp-card-top"><span class="fp-code">{{ f.code }}</span><span class="fp-priority fp-p-high">{{ f.priority }}</span></div>
       <div class="fp-title">{{ f.customer }}</div>
+      {% if f.building and f.building != '—' %}<div class="fp-building">{{ f.building }}</div>{% endif %}
       <div class="fp-meta">{{ f.fault_type }}</div>
     </a>
     {% endfor %}

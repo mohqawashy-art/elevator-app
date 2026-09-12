@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 {% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0b0f17">
+<meta name="theme-color" content="#f3f5f9">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="{{ url_for('field_manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/icon-192.png') }}">
 <title>{% block fp_title %}LiftCore — بوابة الفني{% endblock %}</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=5">
+<link rel="stylesheet" href="{{ url_for('static', filename='field-portal.css') }}?v=6">
 {% block fp_head %}{% endblock %}
 </head>
 <body class="fp-body">
@@ -67,7 +67,7 @@
 {% endif %}
 
 <script src="{{ url_for('static', filename='field-offline.js') }}?v=2" defer></script>
-<script src="{{ url_for('static', filename='field-portal.js') }}?v=9" defer></script>
+<script src="{{ url_for('static', filename='field-portal.js') }}?v=10" defer></script>
 {% block fp_scripts %}{% endblock %}
 </body>
 </html>

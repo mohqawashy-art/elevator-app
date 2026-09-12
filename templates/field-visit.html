@@ -11,6 +11,9 @@
 <a class="fp-back" href="{{ url_for('field_home') }}">← مهامي</a>
 
 <div class="fp-title" style="font-size:17px;margin-bottom:4px">{{ visit.code }} — {{ visit.customer }}</div>
+{% if visit.building and visit.building != '—' %}
+<div class="fp-building" style="font-size:16px;margin-bottom:8px">🏢 {{ visit.building }}</div>
+{% endif %}
 <p style="font-size:12px;color:var(--fp-muted);margin-bottom:14px">{{ visit.customer_code }} · {{ visit.district }} · {{ visit.visit_date }}</p>
 
 {% if visit.building_photo %}
@@ -18,6 +21,9 @@
 {% endif %}
 
 <div class="fp-info">
+  {% if visit.building and visit.building != '—' %}
+  <div class="fp-row"><span>المبنى</span><span style="font-weight:600;max-width:58%;text-align:left">{{ visit.building }}</span></div>
+  {% endif %}
   <div class="fp-row"><span>المصعد</span><span style="font-family:monospace">{{ visit.elevator }}</span></div>
   <div class="fp-row"><span>نوع الزيارة</span><span>{{ visit.visit_type }}</span></div>
   <div class="fp-row"><span>الحالة</span><span id="visit-status-label" style="font-weight:600;color:{% if visit.status == 'عند العميل' %}#2a7fff{% elif visit.status == 'أنهى العمل عند العميل' %}#9b59b6{% elif visit.status == 'مكتملة' %}#1fb87a{% else %}inherit{% endif %}">{{ visit.status }}</span></div>

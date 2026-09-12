@@ -2086,8 +2086,34 @@ def _field_alert_stamp(visits: list, faults: list) -> str:
     return '|'.join(sorted(parts))
 
 
+def _field_site_payload(elev=None, contract=None, visit_date=None, base_url: str = '') -> dict:
+    """موقع المهمة للفني — من العقد/المصعد (وليس عنوان العميل)."""
+    from datetime import date as date_type
+    from entity_links import active_contract_for_elevator
+    from maintenance_teams import visit_site_address_line, visit_site_district, visit_site_maps_link
+
+    if not contract and elev:
+        ref = visit_date if visit_date else date_type.today()
+        contract = active_contract_for_elevator(elev.id, ref)
+    cust = elev.customer if elev else None
+    building = ''
+    if elev and (getattr(elev, 'building_name', None) or '').strip():
+        building = elev.building_name.strip()
+    elif contract and (getattr(contract, 'address', None) or '').strip():
+        building = (contract.address or '').strip().split('\n')[0][:80]
+    return {
+        'building': building or '—',
+        'district': visit_site_district(contract, elev, cust) or '—',
+        'address': visit_site_address_line(contract, elev) or '',
+        'maps_url': visit_site_maps_link(contract, elev) or '',
+        'building_photo': customer_photo_url(cust, base_url) if cust else '',
+    }
+
+
 def field_visit_summary(v: MaintenanceVisit, base_url: str = '') -> dict:
-    cust = v.elevator.customer if v.elevator else None
+    elev = v.elevator
+    cust = elev.customer if elev else None
+    site = _field_site_payload(elev, contract=getattr(v, 'contract', None), visit_date=v.visit_date, base_url=base_url)
     return {
         'id': v.id,
         'code': v.code,
@@ -2098,11 +2124,12 @@ def field_visit_summary(v: MaintenanceVisit, base_url: str = '') -> dict:
         'dispatched_at': v.dispatched_at.isoformat(sep=' ', timespec='seconds') if v.dispatched_at else '',
         'customer': cust.name if cust else '—',
         'customer_code': cust.code if cust else '',
-        'district': (cust.district if cust else '') or '—',
-        'address': cust.address if cust else '',
-        'maps_url': customer_maps_link(cust) if cust else '',
-        'building_photo': customer_photo_url(cust, base_url),
-        'elevator': v.elevator.code if v.elevator else '',
+        'building': site['building'],
+        'district': site['district'],
+        'address': site['address'],
+        'maps_url': site['maps_url'],
+        'building_photo': site['building_photo'],
+        'elevator': elev.code if elev else '',
         'url': f'/field/visit/{v.id}',
     }
 
@@ -2110,6 +2137,8 @@ def field_visit_summary(v: MaintenanceVisit, base_url: str = '') -> dict:
 def field_fault_summary(f: Fault, base_url: str = '') -> dict:
     elev = f.elevator
     cust = elev.customer if elev else None
+    ref_date = f.reported_at.date() if f.reported_at else None
+    site = _field_site_payload(elev, visit_date=ref_date, base_url=base_url)
     return {
         'id': f.id,
         'code': f.code,
@@ -2121,10 +2150,11 @@ def field_fault_summary(f: Fault, base_url: str = '') -> dict:
         'reported_at': f.reported_at.isoformat(sep=' ', timespec='seconds') if f.reported_at else '',
         'customer': cust.name if cust else '—',
         'customer_code': cust.code if cust else '',
-        'district': (cust.district if cust else '') or '—',
-        'address': cust.address if cust else '',
-        'maps_url': customer_maps_link(cust) if cust else '',
-        'building_photo': customer_photo_url(cust, base_url),
+        'building': site['building'],
+        'district': site['district'],
+        'address': site['address'],
+        'maps_url': site['maps_url'],
+        'building_photo': site['building_photo'],
         'elevator': elev.code if elev else '',
         'needs_parts': bool(f.needs_parts),
         'unassigned': not bool(f.technician_id),
@@ -2139,7 +2169,9 @@ def field_visit_detail(visit_id: int, tech_id: int | None = None) -> dict:
     v = tenant_get_or_404(MaintenanceVisit, visit_id)
     if tech_id and not technician_assigned_to_visit(v, tech_id):
         raise PermissionError('الزيارة غير مخصصة لهذا الفني')
-    cust = v.elevator.customer if v.elevator else None
+    elev = v.elevator
+    cust = elev.customer if elev else None
+    site = _field_site_payload(elev, contract=getattr(v, 'contract', None), visit_date=v.visit_date)
     saved = parse_report_json(v.checklist_json)
     stats = report_completion_stats(saved, v.checklist_template_key)
     return {
@@ -2154,11 +2186,12 @@ def field_visit_detail(visit_id: int, tech_id: int | None = None) -> dict:
         'report_stats': stats,
         'customer': cust.name if cust else '—',
         'customer_code': cust.code if cust else '',
-        'district': (cust.district if cust else '') or '—',
-        'address': cust.address if cust else '',
-        'maps_url': customer_maps_link(cust) if cust else '',
-        'building_photo': customer_photo_url(cust),
-        'elevator': v.elevator.code if v.elevator else '',
+        'building': site['building'],
+        'district': site['district'],
+        'address': site['address'],
+        'maps_url': site['maps_url'],
+        'building_photo': site['building_photo'],
+        'elevator': elev.code if elev else '',
         'technician_id': v.technician_id,
         'technician': visit_technicians_label(v),
     }
@@ -2191,6 +2224,8 @@ def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
             raise PermissionError('العطل غير مخصص لهذا الفني')
     elev = f.elevator
     cust = elev.customer if elev else None
+    ref_date = f.reported_at.date() if f.reported_at else None
+    site = _field_site_payload(elev, visit_date=ref_date)
     tech = f.technician
     return {
         'id': f.id,
@@ -2204,10 +2239,11 @@ def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
         'needs_parts': bool(f.needs_parts),
         'customer': cust.name if cust else '—',
         'customer_code': cust.code if cust else '',
-        'district': (cust.district if cust else '') or '—',
-        'address': cust.address if cust else '',
-        'maps_url': customer_maps_link(cust) if cust else '',
-        'building_photo': customer_photo_url(cust),
+        'building': site['building'],
+        'district': site['district'],
+        'address': site['address'],
+        'maps_url': site['maps_url'],
+        'building_photo': site['building_photo'],
         'elevator': elev.code if elev else '',
         'technician_id': f.technician_id,
         'technician_name': tech.name if tech else '—',
