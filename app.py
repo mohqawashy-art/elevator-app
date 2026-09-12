@@ -11584,7 +11584,10 @@ def invoice_delete(id):
 # =============================================
 @app.route('/inventory')
 def inventory():
+    from supplier_price_schema import ensure_supplier_price_schema
+    ensure_supplier_price_schema()
     items = tenant_query(InventoryItem).order_by(InventoryItem.id.desc()).all()
+    suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
     items_json = [
         {
             'id': i.id,
@@ -11608,6 +11611,7 @@ def inventory():
         'inventory.html',
         items=items,
         items_json=items_json,
+        suppliers=suppliers,
         next_item_code=next_code(InventoryItem, '#', digits=3),
     )
 
@@ -11630,9 +11634,13 @@ def inventory_edit(id):
     item.min_qty = float(request.form.get('min_qty', 0) or 0)
     item.buy_price = float(request.form.get('buy_price', 0) or 0)
     item.sell_price = float(request.form.get('sell_price', 0) or 0)
-    item.supplier = request.form.get('supplier', '')
+    supplier_name = (request.form.get('supplier') or '').strip()
+    item.supplier = supplier_name
     item.location = request.form.get('location', '')
     item.notes = request.form.get('notes', '')
+    if supplier_name:
+        from supplier_prices import find_or_create_supplier
+        find_or_create_supplier(supplier_name, assign_org_fn=assign_organization)
     db.session.commit()
     return redirect(url_for('inventory'))
 
@@ -11659,12 +11667,15 @@ def inventory_add():
         min_qty=float(request.form.get('min_qty', 0) or 0),
         buy_price=float(request.form.get('buy_price', 0) or 0),
         sell_price=float(request.form.get('sell_price', 0) or 0),
-        supplier=request.form.get('supplier', ''),
+        supplier=(request.form.get('supplier') or '').strip(),
         location=request.form.get('location', ''),
         notes=request.form.get('notes', ''),
     )
     assign_organization(item)
     db.session.add(item)
+    if item.supplier:
+        from supplier_prices import find_or_create_supplier
+        find_or_create_supplier(item.supplier, assign_org_fn=assign_organization)
     db.session.commit()
     return redirect(url_for('inventory'))
 
