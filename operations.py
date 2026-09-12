@@ -611,6 +611,18 @@ def _visits_for_plan_month(plan_month: str) -> list[MaintenanceVisit]:
     )
 
 
+_PLANNING_CONTRACT_STATUSES = ('نشط', 'على وشك الانتهاء')
+
+
+def _planning_contract_status_filter():
+    """عقود قابلة للتخطيط — نشطة أو على وشك الانتهاء."""
+    return or_(
+        Contract.status.is_(None),
+        Contract.status == '',
+        Contract.status.in_(_PLANNING_CONTRACT_STATUSES),
+    )
+
+
 def _is_maintenance_contract(c: Contract) -> bool:
     ctype = (c.contract_type or '').strip()
     freq = (c.maint_frequency or '').strip()
@@ -687,7 +699,7 @@ def generate_monthly_plan(
     contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
-        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+        _planning_contract_status_filter(),
     ).all()
 
     created = 0
@@ -1104,7 +1116,7 @@ def list_districts(plan_month: str | None = None) -> list[str]:
     contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
-        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+        _planning_contract_status_filter(),
     ).all()
     districts: set[str] = set()
     for contract in contracts:
@@ -1124,7 +1136,7 @@ def elevators_for_district(district: str, plan_month: str | None = None) -> list
     contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
-        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+        _planning_contract_status_filter(),
     ).all()
     seen: set[int] = set()
     rows: list[dict] = []
@@ -1175,7 +1187,7 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
     contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
-        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+        _planning_contract_status_filter(),
     ).all()
 
     flat_items: list[dict] = []
@@ -1289,7 +1301,7 @@ def get_plan_coverage_gaps(plan_month: str, *, limit: int = 300) -> dict:
     contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
-        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+        _planning_contract_status_filter(),
     ).all()
 
     seen_elevator_ids: set[int] = set()
@@ -1419,7 +1431,7 @@ def generate_district_plan(
     contracts = tenant_query(Contract).filter(
         Contract.start_date <= end,
         Contract.end_date >= start,
-        or_(Contract.status == 'نشط', Contract.status.is_(None), Contract.status == ''),
+        _planning_contract_status_filter(),
     ).all()
     existing = _existing_plan_codes(plan_month)
     from work_calendar import work_days_between

@@ -179,6 +179,48 @@ def test_maintenance_plan_uses_contract_elevators_not_all_customer_elevators(cli
         assert codes == {'EL-ON-01'}
 
 
+def test_plan_candidates_include_expiring_contract(client):
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-EXP-01',
+            name='عميل قارب الانتهاء',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(
+            organization_id=org.id,
+            customer_id=cust.id,
+            code='EL-EXP-01',
+            building_name='مبنى',
+            status='نشط',
+        )
+        db.session.add(elev)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CN-EXP-01',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date(2026, 1, 1),
+            end_date=date(2027, 1, 1),
+            district='جبل النور',
+            city='مكة',
+            status='على وشك الانتهاء',
+        )
+        db.session.add(contract)
+        db.session.flush()
+        db.session.add(ContractElevator(contract_id=contract.id, elevator_id=elev.id))
+        db.session.commit()
+
+        from operations import plan_candidates_for_district
+        cand = plan_candidates_for_district('2026-09', 'جبل النور')
+        codes = {row.get('elevator_code') for row in cand.get('candidates') or []}
+        assert 'EL-EXP-01' in codes
+
+
 def test_list_districts_from_contract_not_customer(client):
     with client.application.app_context():
         org = Organization.query.filter_by(slug='default').first()
