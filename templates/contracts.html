@@ -614,10 +614,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
             <input type="text" id="f-contract-district" placeholder="الحي">
           </div>
           <div class="field form-full">
-            <div class="label-row">
-              <label>العنوان التفصيلي</label>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="copyContractAddressFromClient()">عنوان العميل</button>
-            </div>
+            <label>العنوان التفصيلي</label>
             <input type="text" id="f-contract-address" placeholder="عنوان موقع الخدمة لهذا العقد">
           </div>
         </div>
@@ -1643,8 +1640,9 @@ function openAddModal(customerId) {
   });
 }
 
-function buildClientLocationQuery(c) {
-  return [c.address, c.district, c.city, 'Saudi Arabia'].filter(Boolean).join(', ');
+function buildContractLocationQuery(loc) {
+  loc = loc || {};
+  return [loc.address, loc.district, loc.city, 'Saudi Arabia'].filter(Boolean).join(', ');
 }
 
 function setContractMapSearchQuery(text) {
@@ -1676,11 +1674,8 @@ function renderContractClientSummary(c) {
   }
   var rows = [
     { label: 'كود العميل', value: c.code || '—', en: true },
-    { label: 'المدينة', value: c.city || '—' },
-    { label: 'الحي', value: c.district || '—' },
     { label: 'الجوال', value: c.phone || '—', en: true },
     { label: 'مسؤول التواصل', value: c.contact_person || '—' },
-    { label: 'العنوان', value: c.address || '—', full: true },
   ];
   box.style.display = 'block';
   box.innerHTML =
@@ -1732,7 +1727,7 @@ function placeContractMap(cust, loc) {
     if (LiftCoreMapPicker.dismissPlacesAutocomplete) LiftCoreMapPicker.dismissPlacesAutocomplete();
     return;
   }
-  var mapQuery = buildClientLocationQuery(loc);
+  var mapQuery = buildContractLocationQuery(loc);
   if (mapQuery) {
     whenGoogleMapsReady(function () {
       LiftCoreMapPicker.geocodeAddress(mapQuery, function () {
@@ -1758,18 +1753,6 @@ function applyContractClientData(options) {
     if (typeof LiftCoreMapPicker !== 'undefined') LiftCoreMapPicker.reset();
     return;
   }
-  if (options.copyFromClient) {
-    document.getElementById('f-contract-city').value = c.city || '';
-    document.getElementById('f-contract-district').value = c.district || '';
-    document.getElementById('f-contract-address').value = c.address || '';
-    var mapQuery = buildClientLocationQuery(c);
-    setContractMapSearchQuery(c.address || mapQuery);
-    placeContractMap(null, c);
-    if (!options.silent && !c.address && !c.city && !c.district) {
-      alert('لا يوجد عنوان مسجّل لهذا العميل في صفحة العملاء');
-    }
-    return;
-  }
   if (!options.silent) {
     alert('حدّد موقع الخدمة على العقد (مدينة، حي، خريطة) — تخطيط الزيارات يعتمد على عنوان العقد وليس عنوان العميل');
   }
@@ -1790,14 +1773,6 @@ function onContractClientSelected() {
   }
   applyContractClientData({ silent: true });
   loadClientElevators();
-}
-
-function copyContractAddressFromClient() {
-  if (!getSelectedContractCustomer()) {
-    alert('اختر العميل أولاً');
-    return;
-  }
-  applyContractClientData({ silent: false, copyFromClient: true });
 }
 
 function onContractMapPickerUpdate(data) {
@@ -2078,7 +2053,7 @@ function editContract(id) {
       maps_url: c.maps_url,
     };
     if (c.address || c.city || c.district) {
-      setContractMapSearchQuery(c.address || buildClientLocationQuery(loc));
+      setContractMapSearchQuery(c.address || buildContractLocationQuery(loc));
     }
     placeContractMap(null, loc);
   });
@@ -2089,8 +2064,14 @@ function viewContract(id) {
   if (!c) return;
   currentViewId = id;
   document.getElementById('view-title').textContent = c.code + ' — ' + c.customer;
-  var cust = getCustomerById(c.customer_id);
-  var locHtml = cust ? LiftCoreLocation.renderLocationBlock(cust) : '';
+  var locHtml = LiftCoreLocation.renderLocationBlock({
+    address: c.address,
+    district: c.district,
+    city: c.city,
+    lat: c.lat,
+    lng: c.lng,
+    maps_url: c.maps_url
+  });
   document.getElementById('view-body').innerHTML =
     locHtml +
     '<div class="view-grid">' +
@@ -2231,12 +2212,18 @@ function renewContract(id) {
   setContractFileUi(null);
   syncRenewalContractCode();
   openContractFormModal(function () {
-    var loc = { address: c.address, district: c.district, city: c.city };
+    var loc = {
+      address: c.address,
+      district: c.district,
+      city: c.city,
+      lat: c.lat,
+      lng: c.lng,
+      maps_url: c.maps_url
+    };
     if (c.address || c.city || c.district) {
-      setContractMapSearchQuery(c.address || buildClientLocationQuery(loc));
+      setContractMapSearchQuery(c.address || buildContractLocationQuery(loc));
     }
-    var cust = CUSTOMERS.find(function(x) { return x.id === c.customer_id; });
-    placeContractMap(cust, loc);
+    placeContractMap(null, loc);
   });
 }
 
@@ -2800,29 +2787,20 @@ function getContractPosition(c) {
   if ((c.customer_status || 'نشط') === 'غير نشط') return null;
   var cust = getCustomerRecord(c.customer_id);
   if (cust && (cust.status || 'نشط') === 'غير نشط') return null;
+  var record = { lat: c.lat, lng: c.lng, city: c.city };
   if (window.LiftCoreMap) {
-    var fromContract = LiftCoreMap.coordsForRecord({
-      lat: c.lat, lng: c.lng, city: c.city
-    });
+    var fromContract = LiftCoreMap.coordsForRecord(record);
     if (fromContract) return fromContract;
-    var fromMap = LiftCoreMap.coordsForRecord(cust || {
-      lat: c.customer_lat, lng: c.customer_lng, city: c.customer_city
-    });
-    if (fromMap) return fromMap;
   }
   if (window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer) {
-    var fromCust = LiftCoreLocation.coordsForCustomer(cust || {
-      lat: c.customer_lat,
-      lng: c.customer_lng,
-      city: c.customer_city
-    });
-    if (fromCust) return fromCust;
+    var fromContract = LiftCoreLocation.coordsForCustomer(record);
+    if (fromContract) return fromContract;
   }
   var parsed = window.LiftCoreLocation && LiftCoreLocation.parseCoords
-    ? LiftCoreLocation.parseCoords(c.customer_lat, c.customer_lng)
+    ? LiftCoreLocation.parseCoords(c.lat, c.lng)
     : null;
   if (parsed && window.LiftCoreLocation.hasCoordinates &&
-      LiftCoreLocation.hasCoordinates({ lat: c.customer_lat, lng: c.customer_lng })) {
+      LiftCoreLocation.hasCoordinates({ lat: c.lat, lng: c.lng })) {
     return { lat: parsed.lat, lng: parsed.lng, exact: true };
   }
   return null;

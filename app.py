@@ -1221,10 +1221,6 @@ def contract_to_js_dict(c, *, renewed_ids=None, elevator_by_id=None):
         'customer': c.customer.name if c.customer else '',
         'buildings': _contract_building_names(c, elevator_by_id=elevator_by_id),
         'customer_name_en': (c.customer.name_en or '') if c.customer else '',
-        'customer_city': (c.customer.city or '') if c.customer else '',
-        'customer_district': (c.customer.district or '') if c.customer else '',
-        'customer_lat': (c.customer.lat or '') if c.customer else '',
-        'customer_lng': (c.customer.lng or '') if c.customer else '',
         'customer_status': ((c.customer.status or 'نشط') if c.customer else 'نشط'),
         'contract_type': c.contract_type or '',
         'start_date': c.start_date.isoformat() if c.start_date else '',
@@ -1266,14 +1262,8 @@ def contract_customer_js_dict(c):
         'id': c.id,
         'name': c.name,
         'code': c.code,
-        'city': c.city or '',
-        'district': c.district or '',
-        'address': c.address or '',
         'phone': c.phone or '',
         'contact_person': c.contact_person or '',
-        'lat': c.lat or '',
-        'lng': c.lng or '',
-        'maps_url': c.maps_url or '',
         'building_photo_url': upload_url(c.building_photo_path),
         'status': c.status or 'نشط',
     }
@@ -7032,16 +7022,9 @@ def _usable_stored_gps(lat, lng):
 
 
 def _elevator_site_coords_map(elevators) -> dict:
-    """موقع المصعد على الخريطة: GPS العقد المرتبط ثم GPS العميل الدقيق."""
+    """موقع المصعد على الخريطة: GPS العقد المرتبط فقط."""
     elevators = list(elevators or [])
     out: dict = {}
-    for e in elevators:
-        cust = getattr(e, 'customer', None)
-        if not cust:
-            continue
-        gps = _usable_stored_gps(cust.lat, cust.lng)
-        if gps:
-            out[e.id] = (str(gps[0]), str(gps[1]), cust.maps_url or '')
     ids = [e.id for e in elevators if getattr(e, 'id', None)]
     if not ids:
         return out
@@ -7089,20 +7072,8 @@ def _apply_elevator_map_pin(elevator, form):
 
 
 def _sync_customer_location_from_contract_form(customer_id, form):
-    """ينسخ إحداثيات الدبوس الدقيق من العقد إلى العميل (دون تغيير نص العنوان)."""
-    if not customer_id:
-        return
-    parsed = _parse_form_gps(form)
-    if not parsed:
-        return
-    la, ln, maps_url = parsed
-    cust = tenant_query(Customer).filter_by(id=int(customer_id)).first()
-    if not cust:
-        return
-    cust.lat = str(la)
-    cust.lng = str(ln)
-    if maps_url:
-        cust.maps_url = maps_url[:500]
+    """موقع الخدمة يُحفظ على العقد فقط — لا يُنسخ إلى سجل العميل."""
+    return
 
 
 def _fin_proof_js_items(row) -> list[dict]:
@@ -7358,9 +7329,9 @@ def contracts():
     from contract_codes import MAINTENANCE_CONTRACT_TYPES, contracts_for_scope
 
     # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة التي ترفض القيمة 0
-    if request.args.get('z') != '4':
+    if request.args.get('z') != '5':
         args = request.args.to_dict(flat=True)
-        args['z'] = '4'
+        args['z'] = '5'
         return redirect(url_for('contracts', **args))
 
     contract_scope = (request.args.get('scope') or 'maintenance').strip().lower()

@@ -182,29 +182,17 @@ def company_info() -> dict:
 
 
 def customer_address_line(customer, contract=None) -> str:
-    """سطر العنوان كما في Word: وعنوانه / ..."""
-    if contract and ((contract.address or '').strip() or (contract.city or '').strip() or (contract.district or '').strip()):
-        city = (contract.city or '').strip()
-        if city in ('مكة', 'مكة المكرمة'):
-            return 'مكة المكرمــــة –'
-        parts = []
-        if contract.address:
-            parts.append(contract.address.strip())
-        if contract.district:
-            parts.append(contract.district)
-        if city and city not in str(parts):
-            parts.append(city)
-        return ' — '.join(parts) if parts else '—'
-    if not customer:
+    """سطر عنوان موقع الخدمة — من العقد فقط (لا يُجلب من صفحة العميل)."""
+    if not contract:
         return '—'
-    city = (customer.city or '').strip()
+    city = (contract.city or '').strip()
     if city in ('مكة', 'مكة المكرمة'):
         return 'مكة المكرمــــة –'
     parts = []
-    if customer.address:
-        parts.append(customer.address.strip())
-    if customer.district:
-        parts.append(customer.district)
+    if (contract.address or '').strip():
+        parts.append(contract.address.strip())
+    if (contract.district or '').strip():
+        parts.append(contract.district.strip())
     if city and city not in str(parts):
         parts.append(city)
     return ' — '.join(parts) if parts else '—'
