@@ -64,3 +64,51 @@ def test_resolve_report_group_maintenance():
     assert resolve_report_group_slug('/reports/faults', {}) == 'maintenance'
     assert resolve_report_group_slug('/reports/financial', {}) == 'finance'
     assert resolve_report_group_slug('/reports', {}) is None
+
+
+def test_resolve_department_maintenance_quote_edit_ignores_stale_session():
+    slug = resolve_department_slug(
+        '/sales/maintenance-quotes/42',
+        {},
+        'maintenance',
+    )
+    assert slug == 'marketing'
+
+
+def test_resolve_department_install_quote_form_ignores_stale_session():
+    slug = resolve_department_slug(
+        '/installation/projects/7/quote',
+        {},
+        'maintenance',
+    )
+    assert slug == 'marketing'
+
+
+def test_resolve_department_project_detail_is_installations():
+    slug = resolve_department_slug(
+        '/installation/projects/7',
+        {},
+        'marketing',
+    )
+    assert slug == 'installations'
+
+
+def test_resolve_department_faults_is_maintenance():
+    slug = resolve_department_slug('/faults/12/report', {}, 'marketing')
+    assert slug == 'maintenance'
+
+
+def test_department_href_active_on_maintenance_quote_edit():
+    assert department_href_is_active(
+        '/sales/maintenance-quotes?department=marketing',
+        '/sales/maintenance-quotes/42',
+        {'department': 'marketing'},
+    )
+
+
+def test_department_href_active_on_install_quote_form():
+    assert department_href_is_active(
+        '/sales/quotes?kind=install&department=marketing',
+        '/installation/projects/7/quote',
+        {'department': 'marketing'},
+    )

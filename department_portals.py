@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 HOME_UI = {
     'ar': {
         'page_title': 'منصات العمل',
@@ -441,19 +443,127 @@ def _request_query_map(args) -> dict[str, str]:
         return {}
 
 
+# مسارات ديناميكية (تعديل عرض سعر، تفاصيل مشروع…) — قبل الرجوع لجلسة القسم القديمة
+_PATH_DEPARTMENT_PREFIXES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r'^/sales(?:/|$)'), 'marketing'),
+    (re.compile(r'^/elevator-estimates(?:/|$)'), 'marketing'),
+    (re.compile(r'^/installation/projects/\d+/quote'), 'marketing'),
+    (re.compile(r'^/installation/quotes/\d+/print'), 'marketing'),
+    (re.compile(r'^/installation/leads(?:/|$)'), 'marketing'),
+    (re.compile(r'^/installation(?:/|$)'), 'installations'),
+    (re.compile(r'^/maintenance-visits(?:/|$)'), 'maintenance'),
+    (re.compile(r'^/faults(?:/|$)'), 'maintenance'),
+    (re.compile(r'^/parts-billing(?:/|$)'), 'maintenance'),
+    (re.compile(r'^/elevators(?:/|$)'), 'maintenance'),
+    (re.compile(r'^/inventory(?:/|$)'), 'inventory'),
+    (re.compile(r'^/stock-movements(?:/|$)'), 'inventory'),
+    (re.compile(r'^/purchase-orders(?:/|$)'), 'inventory'),
+    (re.compile(r'^/suppliers(?:/|$)'), 'inventory'),
+    (re.compile(r'^/supplier-rfqs(?:/|$)'), 'inventory'),
+    (re.compile(r'^/supplier-price-list(?:/|$)'), 'inventory'),
+    (re.compile(r'^/attendance(?:/|$)'), 'personnel'),
+    (re.compile(r'^/technicians(?:/|$)'), 'personnel'),
+    (re.compile(r'^/revenues(?:/|$)'), 'accounting'),
+    (re.compile(r'^/expenses(?:/|$)'), 'accounting'),
+    (re.compile(r'^/invoices(?:/|$)'), 'accounting'),
+    (re.compile(r'^/accounts(?:/|$)'), 'accounting'),
+    (re.compile(r'^/journals(?:/|$)'), 'accounting'),
+    (re.compile(r'^/ledger(?:/|$)'), 'accounting'),
+    (re.compile(r'^/trial-balance(?:/|$)'), 'accounting'),
+    (re.compile(r'^/pnl(?:/|$)'), 'accounting'),
+    (re.compile(r'^/balance-sheet(?:/|$)'), 'accounting'),
+    (re.compile(r'^/dashboard(?:/|$)'), 'management'),
+    (re.compile(r'^/settings(?:/|$)'), 'management'),
+    (re.compile(r'^/alerts(?:/|$)'), 'management'),
+]
+
+# إبراز التبويب عند صفحات تفصيلية (مثل /sales/maintenance-quotes/12)
+_HREF_CHILD_ROUTE_ACTIVE: list[tuple[str, re.Pattern[str], re.Pattern[str] | None]] = [
+    (
+        '/sales/maintenance-quotes',
+        re.compile(r'^/sales/maintenance-quotes(?:/|$)'),
+        None,
+    ),
+    (
+        '/sales/maintenance-quotes/new',
+        re.compile(r'^/sales/maintenance-quotes/new$'),
+        None,
+    ),
+    (
+        '/sales/quotes',
+        re.compile(r'^/(?:sales/quotes|installation/projects/\d+/quote)'),
+        re.compile(r'^/installation/projects/\d+/quote'),
+    ),
+    (
+        '/elevator-estimates',
+        re.compile(r'^/elevator-estimates(?:/|$)'),
+        None,
+    ),
+    (
+        '/installation/leads',
+        re.compile(r'^/installation/leads(?:/|$)'),
+        None,
+    ),
+    (
+        '/installation/projects',
+        re.compile(r'^/installation/projects(?:/|$)'),
+        re.compile(r'^/installation/projects/\d+/quote'),
+    ),
+    (
+        '/installation/contracts',
+        re.compile(r'^/installation/contracts(?:/|$)'),
+        None,
+    ),
+]
+
+
+def _resolve_department_from_path_prefix(req_path: str, req_q: dict[str, str]) -> str | None:
+    if req_path in ('/clients', '/contracts'):
+        scope = str(req_q.get('scope', '')).strip().lower()
+        if scope == 'installation':
+            return 'installations'
+        if scope == 'maintenance':
+            return 'maintenance'
+    for pattern, slug in _PATH_DEPARTMENT_PREFIXES:
+        if pattern.search(req_path):
+            return slug
+    return None
+
+
 def department_href_is_active(href: str, path: str, args) -> bool:
     """هل الرابط الحالي يطابق تبويب القسم؟"""
     href_path, href_q = _parse_href(href)
     req_path = (path or '/').rstrip('/') or '/'
-    if href_path != req_path:
-        return False
     req_q = _request_query_map(args)
-    for key, value in href_q.items():
-        if key == 'department':
+    if href_path == req_path:
+        for key, value in href_q.items():
+            if key == 'department':
+                continue
+            if str(req_q.get(key, '')) != str(value):
+                return False
+        return True
+
+    for base_href, match_re, exclude_re in _HREF_CHILD_ROUTE_ACTIVE:
+        if href_path != base_href:
             continue
-        if str(req_q.get(key, '')) != str(value):
-            return False
-    return True
+        if exclude_re and exclude_re.search(req_path):
+            continue
+        if not match_re.search(req_path):
+            continue
+        for key, value in href_q.items():
+            if key == 'department':
+                continue
+            if (
+                href_path == '/sales/quotes'
+                and key == 'kind'
+                and value == 'install'
+                and re.match(r'^/installation/projects/\d+/quote', req_path)
+            ):
+                continue
+            if str(req_q.get(key, '')) != str(value):
+                return False
+        return True
+    return False
 
 
 def resolve_department_slug(path: str, args, session_slug: str | None = None) -> str | None:
@@ -491,6 +601,9 @@ def resolve_department_slug(path: str, args, session_slug: str | None = None) ->
         candidates.append((len(href_q), slug))
 
     if not candidates:
+        prefixed = _resolve_department_from_path_prefix(req_path, req_q)
+        if prefixed:
+            return prefixed
         sess = (session_slug or '').strip()
         return sess if sess in DEPARTMENT_PORTALS else None
 
