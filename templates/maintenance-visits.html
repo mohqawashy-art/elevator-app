@@ -1514,7 +1514,7 @@ function confirmDraftPlan() {
   fetchPlanApi('/api/maintenance/run-plan', {
     plan_month: ym,
     confirmed: true,
-    replace: true,
+    replace: false,
     draft_visits: payload,
   })
     .then(function (data) {

@@ -183,7 +183,7 @@ def run_full_plan(
 
     if draft_visits:
         from operations import create_plan_from_draft
-        gen = create_plan_from_draft(plan_month, draft_visits, replace_draft=True)
+        gen = create_plan_from_draft(plan_month, draft_visits, replace_draft=replace_draft)
         if gen.get('error'):
             return gen
     else:

@@ -962,6 +962,17 @@ def create_plan_from_draft(
     skipped = 0
     next_code_num = int(next_code(MaintenanceVisit, 'VI-', digits=5).replace('VI-', ''))
     existing = _existing_plan_codes(plan_month)
+    route_by_day: dict[date, int] = {}
+    if not replace_draft:
+        for v in tenant_query(MaintenanceVisit).filter(
+            MaintenanceVisit.plan_month == plan_month,
+            MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
+        ).all():
+            if v.visit_date:
+                route_by_day[v.visit_date] = max(
+                    route_by_day.get(v.visit_date, 0),
+                    int(v.route_order or 0),
+                )
 
     for i, row in enumerate(draft_visits or []):
         elev_id = row.get('elevator_id')
@@ -996,7 +1007,11 @@ def create_plan_from_draft(
             from entity_links import active_contract_for_elevator
             contract = active_contract_for_elevator(elev.id, vdate)
             contract_id = contract.id if contract else None
-        route_order = int(row.get('route_order') or (i + 1))
+        if replace_draft:
+            route_order = int(row.get('route_order') or (i + 1))
+        else:
+            route_by_day[vdate] = route_by_day.get(vdate, 0) + 1
+            route_order = route_by_day[vdate]
         visit_code = f'VI-{str(next_code_num).zfill(5)}'
         next_code_num += 1
         district = (row.get('district') or '').strip()
