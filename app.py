@@ -1272,6 +1272,12 @@ def contract_customer_js_dict(c):
         'contact_person': c.contact_person or '',
         'building_photo_url': upload_url(c.building_photo_path),
         'status': c.status or 'نشط',
+        'city': c.city or '',
+        'district': c.district or '',
+        'address': c.address or '',
+        'lat': c.lat or '',
+        'lng': c.lng or '',
+        'maps_url': c.maps_url or '',
     }
 
 

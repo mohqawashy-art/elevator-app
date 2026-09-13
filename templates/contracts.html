@@ -1161,6 +1161,25 @@ function contractsVisiblePool() {
   return CONTRACTS.filter(function (c) { return !shouldHideRenewedContract(c); });
 }
 
+function contractsMapPool() {
+  return Array.isArray(filtered) ? filtered : contractsVisiblePool();
+}
+
+function collectContractsMapMissingCustomers() {
+  var missing = [];
+  var seen = {};
+  contractsMapPool().forEach(function (c) {
+    if ((c.customer_status || 'نشط') === 'غير نشط') return;
+    var cust = getCustomerRecord(c.customer_id);
+    if (cust && (cust.status || 'نشط') === 'غير نشط') return;
+    if (getContractPosition(c)) return;
+    if (!cust || seen[cust.id]) return;
+    seen[cust.id] = true;
+    if (window.LiftCoreGeocode && !LiftCoreGeocode.hasGps(cust)) missing.push(cust);
+  });
+  return missing;
+}
+
 function contractsForStats() {
   if (SHOW_RENEWED_CONTRACTS) return CONTRACTS.slice();
   return CONTRACTS.filter(function (c) { return !isRenewedSupersededContract(c); });
@@ -1469,6 +1488,9 @@ function filterTable() {
   );
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
+  if (document.getElementById('tab-map') && document.getElementById('tab-map').style.display !== 'none') {
+    refreshContractMap(false);
+  }
 }
 
 var contractClientChangePassword = '';
@@ -2832,21 +2854,46 @@ function getContractPosition(c) {
   if ((c.customer_status || 'نشط') === 'غير نشط') return null;
   var cust = getCustomerRecord(c.customer_id);
   if (cust && (cust.status || 'نشط') === 'غير نشط') return null;
-  var record = { lat: c.lat, lng: c.lng, city: c.city };
-  if (window.LiftCoreMap) {
-    var fromContract = LiftCoreMap.coordsForRecord(record);
-    if (fromContract) return fromContract;
+
+  function coordsFromLatLng(lat, lng) {
+    if (lat == null || lng == null || lat === '' || lng === '') return null;
+    if (window.LiftCoreMap) {
+      var fromMap = LiftCoreMap.coordsForRecord({ lat: lat, lng: lng });
+      if (fromMap) return fromMap;
+    }
+    if (window.LiftCoreLocation && LiftCoreLocation.parseCoords) {
+      var parsed = LiftCoreLocation.parseCoords(lat, lng);
+      if (parsed && window.LiftCoreLocation.isGenericCityPin &&
+          !LiftCoreLocation.isGenericCityPin(parsed.lat, parsed.lng)) {
+        return { lat: parsed.lat, lng: parsed.lng, exact: true };
+      }
+      if (parsed && !window.LiftCoreLocation.isGenericCityPin) {
+        return { lat: parsed.lat, lng: parsed.lng, exact: true };
+      }
+    }
+    var la = parseFloat(String(lat).replace(',', '.'));
+    var ln = parseFloat(String(lng).replace(',', '.'));
+    if (isNaN(la) || isNaN(ln)) return null;
+    return { lat: la, lng: ln, exact: true };
   }
-  if (window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer) {
-    var fromContract = LiftCoreLocation.coordsForCustomer(record);
-    if (fromContract) return fromContract;
+
+  var fromContract = coordsFromLatLng(c.lat, c.lng);
+  if (fromContract) return fromContract;
+
+  if (cust) {
+    var fromCust = window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer
+      ? LiftCoreLocation.coordsForCustomer(cust)
+      : coordsFromLatLng(cust.lat, cust.lng);
+    if (fromCust) return fromCust;
   }
-  var parsed = window.LiftCoreLocation && LiftCoreLocation.parseCoords
-    ? LiftCoreLocation.parseCoords(c.lat, c.lng)
-    : null;
-  if (parsed && window.LiftCoreLocation.hasCoordinates &&
-      LiftCoreLocation.hasCoordinates({ lat: c.lat, lng: c.lng })) {
-    return { lat: parsed.lat, lng: parsed.lng, exact: true };
+
+  var city = ((c.city || '') + '').trim() || (cust && (cust.city || '').trim()) || '';
+  if (city && window.LiftCoreLocation && LiftCoreLocation.resolveCityCoords) {
+    var cc = LiftCoreLocation.resolveCityCoords(city);
+    if (cc) return { lat: cc.lat, lng: cc.lng, exact: false };
+  }
+  if (city && CITY_COORDS[city]) {
+    return { lat: CITY_COORDS[city].lat, lng: CITY_COORDS[city].lng, exact: false };
   }
   return null;
 }
@@ -2862,7 +2909,7 @@ function makeContractPin(color) {
 
 function buildContractLocationGroups() {
   var groups = {};
-  contractsVisiblePool().forEach(function(c) {
+  contractsMapPool().forEach(function(c) {
     var pos = getContractPosition(c);
     if (!pos) return;
     var key = c.customer_id + '@' + pos.lat.toFixed(6) + ',' + pos.lng.toFixed(6);
@@ -2931,6 +2978,7 @@ function renderContractMapMarkers(fitAgain) {
     var pos = group.pos;
     var color = getGroupPinColor(group);
     var marker = LiftCoreMap.createPinMarker({
+      map: contractMap,
       position: {lat: pos.lat, lng: pos.lng},
       color: color,
       scale: 1.25,
@@ -3045,57 +3093,70 @@ function refreshContractMapOsm() {
   var mapEl = document.getElementById('map');
   var summary = document.getElementById('map-summary');
   if (!mapEl || typeof L === 'undefined') return;
-  if (contractMap) destroyGoogleContractMap();
-  if (!osmContractMap) {
-    osmContractMap = L.map(mapEl).setView([21.4225, 39.8262], 11);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(osmContractMap);
-    osmContractCluster = typeof L.markerClusterGroup === 'function'
-      ? L.markerClusterGroup({ maxClusterRadius: 52, showCoverageOnHover: false })
-      : null;
-    if (osmContractCluster) osmContractMap.addLayer(osmContractCluster);
-  }
-  if (osmContractCluster) osmContractCluster.clearLayers();
-  else {
-    osmContractMarkers.forEach(function (m) { osmContractMap.removeLayer(m); });
-    osmContractMarkers = [];
-  }
-  var groups = buildContractLocationGroups();
-  var shownContracts = 0;
-  var bounds = [];
-  groups.forEach(function (group) {
-    shownContracts += group.contracts.length;
-    var pos = group.pos;
-    var color = getGroupPinColor(group);
-    var marker = L.circleMarker([pos.lat, pos.lng], {
-      radius: CONTRACT_MAP_OSM_RADIUS,
-      color: '#ffffff',
-      weight: 2,
-      fillColor: color,
-      fillOpacity: 1
-    }).addTo(osmContractMap);
-    marker.bindPopup(contractGroupMapInfo(group));
-    if (osmContractCluster) osmContractCluster.addLayer(marker);
-    else marker.addTo(osmContractMap);
-    osmContractMarkers.push(marker);
-    bounds.push([pos.lat, pos.lng]);
-  });
-  if (summary) {
-    summary.textContent = shownContracts
-      ? ('OpenStreetMap — ' + shownContracts + ' عقد في ' + groups.length + ' موقع (عملاء نشطون فقط)' + osmContractMapSummarySuffix())
-      : ('لا مواقع لعقود عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة' + osmContractMapSummarySuffix());
-  }
-  if (bounds.length) {
-    if (osmContractCluster && osmContractCluster.getBounds) {
-      osmContractMap.fitBounds(osmContractCluster.getBounds(), { padding: [48, 48] });
-    } else {
-      osmContractMap.fitBounds(bounds, { padding: [48, 48] });
+
+  function renderOsmMarkers() {
+    if (contractMap) destroyGoogleContractMap();
+    if (!osmContractMap) {
+      osmContractMap = L.map(mapEl).setView([21.4225, 39.8262], 11);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(osmContractMap);
+      osmContractCluster = typeof L.markerClusterGroup === 'function'
+        ? L.markerClusterGroup({ maxClusterRadius: 52, showCoverageOnHover: false })
+        : null;
+      if (osmContractCluster) osmContractMap.addLayer(osmContractCluster);
     }
-    if (bounds.length === 1) osmContractMap.setZoom(14);
+    if (osmContractCluster) osmContractCluster.clearLayers();
+    else {
+      osmContractMarkers.forEach(function (m) { osmContractMap.removeLayer(m); });
+      osmContractMarkers = [];
+    }
+    var groups = buildContractLocationGroups();
+    var shownContracts = 0;
+    var bounds = [];
+    groups.forEach(function (group) {
+      shownContracts += group.contracts.length;
+      var pos = group.pos;
+      var color = getGroupPinColor(group);
+      var marker = L.circleMarker([pos.lat, pos.lng], {
+        radius: CONTRACT_MAP_OSM_RADIUS,
+        color: '#ffffff',
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 1
+      }).addTo(osmContractMap);
+      marker.bindPopup(contractGroupMapInfo(group));
+      if (osmContractCluster) osmContractCluster.addLayer(marker);
+      else marker.addTo(osmContractMap);
+      osmContractMarkers.push(marker);
+      bounds.push([pos.lat, pos.lng]);
+    });
+    if (summary) {
+      summary.textContent = shownContracts
+        ? ('OpenStreetMap — ' + shownContracts + ' عقد في ' + groups.length + ' موقع (عملاء نشطون فقط)' + osmContractMapSummarySuffix())
+        : ('لا مواقع لعقود عملاء نشطين — العملاء غير النشطين لا يظهرون على الخريطة' + osmContractMapSummarySuffix());
+    }
+    if (bounds.length) {
+      if (osmContractCluster && osmContractCluster.getBounds) {
+        osmContractMap.fitBounds(osmContractCluster.getBounds(), { padding: [48, 48] });
+      } else {
+        osmContractMap.fitBounds(bounds, { padding: [48, 48] });
+      }
+      if (bounds.length === 1) osmContractMap.setZoom(14);
+    }
+    setTimeout(function () { osmContractMap.invalidateSize(); }, 250);
   }
-  setTimeout(function () { osmContractMap.invalidateSize(); }, 250);
+
+  var missing = collectContractsMapMissingCustomers();
+  if (missing.length && summary) {
+    summary.textContent = 'جاري تحديد مواقع ' + missing.length + ' عميل...';
+  }
+  if (missing.length && window.LiftCoreGeocode) {
+    LiftCoreGeocode.geocodeAll(missing).then(renderOsmMarkers);
+  } else {
+    renderOsmMarkers();
+  }
 }
 
 function refreshContractMap(fitAgain) {
@@ -3131,17 +3192,7 @@ function refreshContractMap(fitAgain) {
     contractMap.addListener('click', function() { contractInfoPinned = false; contractInfoWindow.close(); });
   }
 
-  var missing = [];
-  var seen = {};
-  CONTRACTS.forEach(function(c) {
-    if ((c.customer_status || 'نشط') === 'غير نشط') return;
-    var cust = getCustomerRecord(c.customer_id);
-    if (cust && (cust.status || 'نشط') === 'غير نشط') return;
-    if (getContractPosition(c)) return;
-    if (!cust || seen[cust.id]) return;
-    seen[cust.id] = true;
-    if (window.LiftCoreGeocode && !LiftCoreGeocode.hasGps(cust)) missing.push(cust);
-  });
+  var missing = collectContractsMapMissingCustomers();
 
   var summary = document.getElementById('map-summary');
   if (missing.length && summary) {
