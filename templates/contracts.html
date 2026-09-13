@@ -2198,6 +2198,16 @@ function syncRenewalContractCode() {
   }
 }
 
+function renewalStartDateFromContract(c) {
+  var endRaw = (c && c.end_date) ? String(c.end_date).trim() : '';
+  if (!endRaw) return new Date().toISOString().split('T')[0];
+  var endD = new Date(endRaw + 'T12:00:00');
+  if (isNaN(endD.getTime())) return endRaw;
+  var y = endD.getFullYear();
+  var m = String(endD.getMonth() + 1).padStart(2, '0');
+  return y + '-' + m + '-01';
+}
+
 function renewContract(id) {
   var c = CONTRACTS.find(function(x) { return x.id === id; });
   if (!c) return;
@@ -2216,7 +2226,7 @@ function renewContract(id) {
   renderContractClientSummary(getCustomerById(c.customer_id));
   document.getElementById('f-type-sel').value = c.contract_type || 'عقد صيانة';
   document.getElementById('f-status-sel').value = 'نشط';
-  document.getElementById('f-start').value = c.end_date || new Date().toISOString().split('T')[0];
+  document.getElementById('f-start').value = renewalStartDateFromContract(c);
   suggestDueDateFromStart(true);
   var durEl = document.getElementById('f-duration');
   if (durEl) {
