@@ -94,14 +94,11 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .stat-mini{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:var(--trans)}
 .stat-mini:hover{border-color:var(--border2)}
 .stat-mini.active{border-color:var(--border2);box-shadow:0 0 0 1px var(--border2)}
-.drill-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:20px;display:none}
-.drill-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.drill-title{font-size:14px;font-weight:600;color:var(--text1)}
-.drill-close{font-size:12px;color:var(--accent);cursor:pointer}
-.drill-close:hover{text-decoration:underline}
 .stat-mini::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--sm-color,var(--accent));opacity:.6}
 .stat-mini-val{font-size:22px;font-weight:600;color:var(--text1);font-family:var(--font-en);line-height:1;margin-bottom:3px}
 .stat-mini-label{font-size:11px;color:var(--text3)}
+#modal-drill .modal{max-width:1080px}
+#modal-drill .table-scroll{max-height:min(62vh,560px)}
 .tabs{display:inline-flex;flex-wrap:nowrap;gap:3px;margin-bottom:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px;width:fit-content;max-width:100%}
 .tab{flex:0 0 auto;padding:5px 10px;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;border-radius:var(--r-sm);transition:var(--trans);display:inline-flex;align-items:center;justify-content:flex-start;gap:5px;white-space:nowrap;line-height:1.2}
 .tab svg{width:13px;height:13px;flex-shrink:0}
@@ -338,26 +335,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
     </div>
 
-    <div class="drill-panel" id="drill-panel">
-      <div class="drill-head">
-        <div class="drill-title">
-          <span id="drill-title">التفاصيل</span>
-          <span id="drill-count" style="font-size:11px;color:var(--text3);font-weight:400"></span>
-        </div>
-        <span class="drill-close" onclick="closeContractDrill()">إغلاق</span>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>الكود</th><th>العميل</th><th>المبنى</th><th>النوع</th><th>الانتهاء</th><th>الأيام</th><th>المصاعد</th><th>الإجمالي</th><th>حالة العقد</th><th>الفاتورة</th>
-            </tr>
-          </thead>
-          <tbody id="drill-body"></tbody>
-        </table>
-      </div>
-    </div>
-
     <!-- EXPIRED ALERT -->
     <div class="alert-expired" id="expired-alert" style="display:none" onclick="window.location.href='/alerts/contracts_expired'" title="عرض العقود المنتهية">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>
@@ -506,6 +483,35 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 </div>
 
 <!-- MODAL: استيراد -->
+<div class="modal-overlay" id="modal-drill">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">
+        <span id="drill-title">التفاصيل</span>
+        <span id="drill-count" style="font-size:11px;color:var(--text3);font-weight:400;margin-right:8px"></span>
+      </div>
+      <button class="modal-close" onclick="closeContractDrill()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="table-wrap" style="margin:0;border:none;border-radius:0">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>الكود</th><th>العميل</th><th>المبنى</th><th>النوع</th><th>الانتهاء</th><th>الأيام</th><th>المصاعد</th><th>الإجمالي</th><th>حالة العقد</th><th>الفاتورة</th>
+              </tr>
+            </thead>
+            <tbody id="drill-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeContractDrill()">إغلاق</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-import">
   <div class="modal" style="max-width:720px">
     <div class="modal-head">
@@ -1383,7 +1389,7 @@ function renderDrillTable(rows) {
     return;
   }
   body.innerHTML = rows.map(function(c) {
-    return '<tr style="cursor:pointer" onclick="viewContract(' + c.id + ')">' +
+    return '<tr style="cursor:pointer" onclick="closeContractDrill(); viewContract(' + c.id + ')">' +
       '<td class="td-code">' + esc(c.code) + '</td>' +
       '<td class="td-name">' + esc(c.customer) + '</td>' +
       '<td class="td-name">' + esc(contractBuildingName(c) || '—') + '</td>' +
@@ -1405,26 +1411,11 @@ function openContractDrill(type, cardEl) {
   document.getElementById('drill-title').textContent = DRILL_TITLES[type] || 'التفاصيل';
   document.getElementById('drill-count').textContent = '(' + rows.length + ' عقد)';
   renderDrillTable(rows);
-  document.getElementById('drill-panel').style.display = 'block';
-  document.getElementById('drill-panel').scrollIntoView({behavior: 'smooth', block: 'nearest'});
-
-  if (type === 'active') document.getElementById('f-status').value = 'نشط';
-  else if (type === 'expired') document.getElementById('f-status').value = 'منتهي';
-  else if (type === 'expiring') document.getElementById('f-status').value = 'على وشك الانتهاء';
-  else if (type === 'unpaid') {
-    document.getElementById('f-status').value = '';
-    document.getElementById('f-invoice').value = type === 'unpaid' ? '' : document.getElementById('f-invoice').value;
-    filtered = rows;
-    renderTable(filtered);
-    return;
-  } else {
-    document.getElementById('f-status').value = '';
-  }
-  filterTable();
+  document.getElementById('modal-drill').classList.add('open');
 }
 
 function closeContractDrill() {
-  document.getElementById('drill-panel').style.display = 'none';
+  closeModal('modal-drill');
   document.querySelectorAll('.stat-mini').forEach(function(el) { el.classList.remove('active'); });
 }
 
