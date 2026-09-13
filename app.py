@@ -11594,12 +11594,15 @@ def invoice_delete(id):
 # =============================================
 @app.route('/inventory')
 def inventory():
+    from inventory_custody import build_technician_custody_snapshot, item_custody_fields
     from supplier_price_schema import ensure_supplier_price_schema
     ensure_supplier_price_schema()
     items = tenant_query(InventoryItem).order_by(InventoryItem.id.desc()).all()
     suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
-    items_json = [
-        {
+    custody_snapshot = build_technician_custody_snapshot()
+    items_json = []
+    for i in items:
+        row = {
             'id': i.id,
             'code': i.code or '',
             'name': i.name or '',
@@ -11615,13 +11618,15 @@ def inventory():
             'location': i.location or '',
             'notes': i.notes or '',
         }
-        for i in items
-    ]
+        row.update(item_custody_fields(i.id, custody_snapshot))
+        items_json.append(row)
     return render_template(
         'inventory.html',
         items=items,
         items_json=items_json,
         suppliers=suppliers,
+        custody_rows=custody_snapshot['rows'],
+        custody_summary=custody_snapshot['summary'],
         next_item_code=next_code(InventoryItem, '#', digits=3),
     )
 

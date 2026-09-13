@@ -219,7 +219,8 @@
       code: 'الكود', name: 'الاسم', category: 'التصنيف', unit: 'الوحدة',
       current_qty: 'الرصيد', min_qty: 'الحد الأدنى',
       buy_price: 'سعر الشراء', sell_price: 'سعر البيع', stock_value: 'قيمة المخزون',
-      order_status: 'حالة الطلب', supplier: 'المورد', location: 'الموقع', notes: 'ملاحظات'
+      order_status: 'حالة الطلب', supplier: 'المورد', location: 'الموقع', notes: 'ملاحظات',
+      custody_qty: 'عهدة الفنيين', custody_summary: 'تفاصيل العهدة'
     },
     parts: {
       code: 'الكود', customer: 'العميل', customer_name_en: 'اسم العميل إنجليزي',
