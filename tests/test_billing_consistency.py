@@ -6,6 +6,7 @@ from billing_consistency import (
     refresh_contract_cache,
     repair_billing_consistency,
     revenue_paid_for_invoice,
+    sync_contract_due_date,
 )
 from models import Contract, Customer, Invoice, Revenue, db
 
@@ -91,6 +92,66 @@ def test_repair_fixes_stale_contract_paid_amount(client):
 
     with client.application.app_context():
         assert audit_billing_consistency()['ok'] is True
+
+
+def test_due_date_cleared_when_contract_fully_paid(client):
+    with client.application.app_context():
+        cid, contract_id = _seed_contract(total=5000)
+        contract = db.session.get(Contract, contract_id)
+        contract.due_date = date(2026, 12, 31)
+        db.session.add(Revenue(
+            code='REV-BC-DUE',
+            customer_id=cid,
+            contract_id=contract_id,
+            revenue_date=date.today(),
+            revenue_type='تحصيل عقد',
+            amount=5000,
+            total=5000,
+            status='محصّل',
+        ))
+        db.session.commit()
+
+    with client.application.app_context():
+        contract = db.session.get(Contract, contract_id)
+        refresh_contract_cache(contract)
+        db.session.commit()
+        assert contract.due_date is None
+        assert contract.invoice_status == 'مدفوع'
+
+
+def test_due_date_kept_when_partial_payment(client):
+    with client.application.app_context():
+        cid, contract_id = _seed_contract(total=5000)
+        due = date(2026, 12, 31)
+        contract = db.session.get(Contract, contract_id)
+        contract.due_date = due
+        db.session.add(Revenue(
+            code='REV-BC-PART',
+            customer_id=cid,
+            contract_id=contract_id,
+            revenue_date=date.today(),
+            revenue_type='تحصيل عقد',
+            amount=2000,
+            total=2000,
+            status='محصّل',
+        ))
+        db.session.commit()
+
+    with client.application.app_context():
+        contract = db.session.get(Contract, contract_id)
+        refresh_contract_cache(contract)
+        db.session.commit()
+        assert contract.due_date == due
+
+
+def test_sync_contract_due_date_from_paid_amount(client):
+    with client.application.app_context():
+        _, contract_id = _seed_contract(total=3000)
+        contract = db.session.get(Contract, contract_id)
+        contract.due_date = date(2026, 6, 1)
+        contract.paid_amount = 3000
+        sync_contract_due_date(contract)
+        assert contract.due_date is None
 
 
 def test_revenue_paid_for_invoice_sums_collected(client):

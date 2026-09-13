@@ -61,6 +61,19 @@ def _contract_invoice_status(contract: Contract, paid: float, today: date | None
     return status
 
 
+def sync_contract_due_date(contract: Contract) -> bool:
+    """إلغاء تاريخ استحقاق التحصيل عند سداد قيمة العقد بالكامل."""
+    total = _round_money(contract.total or 0)
+    if total <= 0.01:
+        return False
+    paid = _round_money(contract.paid_amount or 0)
+    remaining = max(total - paid, 0)
+    if remaining <= 0.01 and getattr(contract, 'due_date', None) is not None:
+        contract.due_date = None
+        return True
+    return False
+
+
 def refresh_contract_cache(contract: Contract) -> bool:
     computed = contract_paid_amount(contract.id)
     stored = _round_money(contract.paid_amount or 0)
@@ -68,6 +81,8 @@ def refresh_contract_cache(contract: Contract) -> bool:
     changed = abs(stored - computed) > 0.01 or (contract.invoice_status or '') != status
     contract.paid_amount = computed
     contract.invoice_status = status
+    if sync_contract_due_date(contract):
+        changed = True
     return changed
 
 

@@ -6984,6 +6984,8 @@ def _apply_contract_form(c, form):
             pass
     c.notes = form.get('notes', '')
     _apply_contract_paid_from_form(c, form)
+    from billing_consistency import sync_contract_due_date
+    sync_contract_due_date(c)
 
 
 _GENERIC_CITY_PINS = (
