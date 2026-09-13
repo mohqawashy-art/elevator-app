@@ -2240,8 +2240,9 @@ function renewContract(id) {
   document.getElementById('f-visits-month').value = c.visits_month || 1;
   document.getElementById('f-payment-terms').value = c.pay_terms || 'دفعة واحدة';
   document.getElementById('f-notes').value = c.notes || '';
-  document.getElementById('f-contract-city').value = c.city || '';
-  document.getElementById('f-contract-district').value = c.district || '';
+  var renewCust = getCustomerById(c.customer_id);
+  document.getElementById('f-contract-city').value = c.city || (renewCust && renewCust.city) || '';
+  document.getElementById('f-contract-district').value = ((renewCust && renewCust.district) || c.district || '').trim();
   document.getElementById('f-contract-address').value = c.address || '';
   var taxBlock = document.querySelector('#modal-add .lc-tax-block');
   if (taxBlock && window.LiftCoreTaxCalc) {

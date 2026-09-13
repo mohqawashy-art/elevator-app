@@ -7580,6 +7580,10 @@ def contract_add():
     try:
         _apply_contract_form(c, request.form)
         c.contract_type = normalize_maintenance_contract_type(c.contract_type)
+        if renew_src and renew_src.end_date:
+            overlap_start = date(renew_src.end_date.year, renew_src.end_date.month, 1)
+            if c.start_date is None or c.start_date > overlap_start:
+                c.start_date = overlap_start
         _sync_customer_location_from_contract_form(c.customer_id, request.form)
         if existing is None:
             assign_organization(c)

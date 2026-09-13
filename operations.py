@@ -676,7 +676,7 @@ def _collect_planning_flat_items(
             continue
         customer = contract.customer
         for elev in _elevators_for_maintenance_plan(contract):
-            dist_name = _visit_site_district(contract, elev, customer)
+            dist_name = _planning_site_district(contract, elev, customer)
             if district_filter and dist_name != district_filter:
                 continue
             item = {
@@ -1069,7 +1069,7 @@ def create_plan_from_draft(
             if not contract:
                 from entity_links import active_contract_for_elevator
                 contract = active_contract_for_elevator(elev.id, vdate)
-            district = _visit_site_district(contract, elev, elev.customer)
+            district = _planning_site_district(contract, elev, elev.customer)
         v = MaintenanceVisit(
             code=visit_code,
             contract_id=int(contract_id) if contract_id else None,
@@ -1152,6 +1152,16 @@ def _visit_site_district(contract=None, elev=None, cust=None) -> str:
     return visit_site_district(contract, elev, cust)
 
 
+def _planning_site_district(contract=None, elev=None, cust=None) -> str:
+    """منطقة تخطيط الزيارات — حيّ العميل أولاً (منصة الأقسام)، ثم موقع العقد."""
+    if cust is None and contract is not None:
+        cust = contract.customer
+    cd = (getattr(cust, 'district', None) or '').strip() if cust else ''
+    if cd:
+        return cd
+    return _visit_site_district(contract, elev, cust)
+
+
 def visit_district_name(v: MaintenanceVisit) -> str:
     elev = v.elevator
     cust = elev.customer if elev else None
@@ -1180,7 +1190,7 @@ def list_districts(plan_month: str | None = None) -> list[str]:
     for contract in contracts:
         if not _is_maintenance_contract(contract):
             continue
-        d = _visit_site_district(contract, None, contract.customer)
+        d = _planning_site_district(contract, None, contract.customer)
         if d and d != 'غير محدد':
             districts.add(d)
     return sorted(districts) if districts else ['غير محدد']
@@ -1250,7 +1260,7 @@ def plan_candidates_for_district(plan_month: str, district: str) -> dict:
             continue
         from maintenance_teams import visit_site_address_line
         site_address = visit_site_address_line(contract, elev)
-        site_district = item.get('district') or _visit_site_district(contract, elev, customer)
+        site_district = item.get('district') or _planning_site_district(contract, elev, customer)
         candidates.append({
             'elevator_id': elev.id,
             'elevator': elev.code,
@@ -1338,7 +1348,7 @@ def get_plan_coverage_gaps(plan_month: str, *, limit: int = 300) -> dict:
         customer = item['customer']
         if _periodic_visit_in_month(elev.id, year, month):
             continue
-        dist_name = item.get('district') or _visit_site_district(contract, elev, customer)
+        dist_name = item.get('district') or _planning_site_district(contract, elev, customer)
         missing.append({
             'elevator_id': elev.id,
             'elevator_code': elev.code or '',
@@ -1553,7 +1563,7 @@ def add_manual_plan_visit(plan_month: str, elevator_id: int, visit_date: str) ->
     from entity_links import active_contract_for_elevator
 
     contract = active_contract_for_elevator(elev.id, vdate)
-    district = _visit_site_district(contract, elev, cust)
+    district = _planning_site_district(contract, elev, cust)
     v = MaintenanceVisit(
         code=next_code(MaintenanceVisit, 'VI-', digits=5),
         contract_id=contract.id if contract else None,

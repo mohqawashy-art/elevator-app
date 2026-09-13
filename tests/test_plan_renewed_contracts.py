@@ -2,7 +2,7 @@
 from datetime import date
 
 from models import Contract, ContractElevator, Customer, Elevator, Organization, db
-from operations import generate_monthly_plan, get_plan_coverage_gaps
+from operations import generate_monthly_plan, get_plan_coverage_gaps, plan_candidates_for_district
 
 
 def _seed_customer_with_elevators(org, suffix: str, n_elevators: int = 2):
@@ -85,3 +85,21 @@ def test_two_elevators_early_renewal_september(client):
         preview = generate_monthly_plan(2026, 9, preview_only=True)
         assert preview.get('would_create') == 2
         assert preview.get('elevators_in_scope') == 2
+
+
+def test_renewed_contract_uses_customer_district_for_planning(client):
+    """عقد قديم بحيّ عنوان مختلف — التخطيط يتبع حيّ العميل."""
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust, elevs = _seed_customer_with_elevators(org, 'C', 1)
+        elev = elevs[0]
+        old = _add_contract(
+            org, cust, elev, 'CN-RN-DIST-OLD',
+            date(2025, 11, 1), date(2026, 10, 1), status='تم تجديده',
+        )
+        old.district = 'حي وادي جليل'
+        db.session.commit()
+        _add_contract(org, cust, elev, 'CN-RN-DIST-2026', date(2026, 10, 1), date(2028, 10, 1))
+        cand = plan_candidates_for_district('2026-09', 'شارع الحج')
+        codes = [r.get('elevator_code') for r in cand.get('candidates') or []]
+        assert elev.code in codes
