@@ -77,6 +77,23 @@ def test_parts_revenue_does_not_count_toward_old_contract(client):
         assert (db.session.get(PartsBilling, pb_id).paid_amount or 0) == 150
 
 
+def test_statement_includes_parts_billing_without_invoice(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        cust_id, contract_id, pb_id = _seed_unpaid_contract_and_parts()
+
+    r = client.get(f'/api/customers/{cust_id}/statement')
+    assert r.status_code == 200
+    data = r.get_json()
+    parts_debits = [d for d in data['debits'] if d.get('source_type') == 'parts_billing']
+    assert len(parts_debits) == 1
+    assert parts_debits[0]['code'] == 'PB-PB01'
+    assert parts_debits[0]['debit'] == 150
+    assert data['total_debit'] >= 3150  # عقد 3000 + قطع 150
+
+
 def test_parts_type_without_source_still_excluded_from_contract(client):
     from tests.conftest import login_as
 

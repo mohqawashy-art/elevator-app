@@ -1064,12 +1064,15 @@ def build_customer_statement(customer_id: int) -> dict:
 
     debits: list[dict] = []
     invoiced_contract_ids: set[int] = set()
+    invoiced_parts_ids: set[int] = set()
     for inv in tax_invoices:
         if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
             continue
         remaining = invoice_remaining(inv)
         if inv.contract_id:
             invoiced_contract_ids.add(int(inv.contract_id))
+        if getattr(inv, 'parts_billing_id', None):
+            invoiced_parts_ids.add(int(inv.parts_billing_id))
         debits.append({
             'date': str(inv.invoice_date or ''),
             'code': inv.code,
@@ -1109,6 +1112,36 @@ def build_customer_statement(customer_id: int) -> dict:
             'status': c.invoice_status or 'غير مدفوع',
             'source_type': 'contract',
             'source_id': c.id,
+        })
+
+    # قطع غيار بلا فاتورة ضريبية — تُسجّل كمدين (مثل العقود)
+    for pb in (
+        tenant_query(PartsBilling).filter_by(customer_id=customer_id)
+        .order_by(PartsBilling.billing_date.asc(), PartsBilling.id.asc())
+        .all()
+    ):
+        if pb.id in invoiced_parts_ids:
+            continue
+        total = _round_money(pb.sell_price)
+        if total <= 0.01:
+            continue
+        paid = _round_money(getattr(pb, 'paid_amount', 0) or 0)
+        remaining = parts_remaining(pb)
+        desc = (pb.description or 'تركيب قطع غيار').strip()
+        if pb.fault and pb.fault.code:
+            desc = f'{desc} — عطل {pb.fault.code}'.strip(' —')
+        debits.append({
+            'date': str(pb.billing_date or ''),
+            'code': pb.code,
+            'type': 'قطع غيار',
+            'description': desc[:200],
+            'debit': total,
+            'credit': 0,
+            'paid': paid,
+            'remaining': remaining,
+            'status': pb.status or 'غير محصل',
+            'source_type': 'parts_billing',
+            'source_id': pb.id,
         })
 
     revenues = (
