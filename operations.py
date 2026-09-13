@@ -2681,6 +2681,93 @@ def visit_report_payload(
     }
 
 
+def visit_report_print_path(visit_id: int) -> str:
+    return f'/maintenance-visits/{int(visit_id)}/report?print=1'
+
+
+def customer_phone_for_visit(visit: MaintenanceVisit) -> str:
+    from whatsapp_support import display_phone, phone_key
+
+    elev = visit.elevator
+    cust = elev.customer if elev else None
+    if cust:
+        for p in (cust.phone2, cust.phone):
+            if p and phone_key(p):
+                return display_phone(p)
+    return ''
+
+
+def build_visit_report_customer_message(
+    visit: MaintenanceVisit,
+    *,
+    report_url: str,
+    company_name: str = '',
+) -> str:
+    elev = visit.elevator
+    cust = elev.customer if elev else None
+    cust_name = (cust.name if cust else '') or 'عميلنا الكريم'
+    company = (company_name or '').strip() or 'LiftCore'
+    elev_code = elev.code if elev else '—'
+    tech_name = visit.technician.name if visit.technician else 'فريق الصيانة'
+    vdate = visit.visit_date.strftime('%Y-%m-%d') if visit.visit_date else '—'
+    pdf = (report_url or '').strip()
+    lines = [
+        f'مرحباً {cust_name}',
+        'محضر صيانة المصعد جاهز.',
+        f'رقم الزيارة: {visit.code}',
+        f'المصعد: {elev_code}',
+        f'تاريخ الزيارة: {vdate}',
+        f'الفني: {tech_name}',
+    ]
+    if pdf:
+        lines.append(f'تقرير الصيانة (PDF): {pdf}')
+    else:
+        lines.append('تقرير الصيانة (PDF) جاهز لدى المكتب — يُرفق مع الرسالة عند الإرسال.')
+    lines.extend([
+        'نأمل أن يكون كل شيء على ما يرام.',
+        f'شكراً لثقتكم — {company}',
+    ])
+    return '\n'.join(lines)
+
+
+def visit_report_customer_whatsapp(visit_id: int, base_url: str = '') -> dict:
+    """تجهيز رسالة واتساب للعميل مع رابط محضر الصيانة للطباعة/PDF."""
+    from checklist_templates import parse_report_json, report_completion_stats
+
+    v = tenant_get_or_404(MaintenanceVisit, visit_id)
+    phone = customer_phone_for_visit(v)
+    if not phone:
+        return {'ok': False, 'error': 'لا يوجد جوال واتساب مسجّل للعميل', 'url': ''}
+
+    template_key = v.checklist_template_key or _default_checklist_template_key()
+    saved = parse_report_json(v.checklist_json)
+    stats = report_completion_stats(saved, template_key)
+    if not saved or stats.get('filled', 0) <= 0:
+        return {'ok': False, 'error': 'المحضر فارغ — عبّئ محضر الفحص أولاً', 'url': ''}
+
+    from models import Settings
+
+    s = tenant_query(Settings).first()
+    company = (s.company_name if s and s.company_name else 'LiftCore')
+    root = (base_url or '').rstrip('/')
+    rel = visit_report_print_path(visit_id)
+    report_url = f'{root}{rel}' if root else rel
+    msg = build_visit_report_customer_message(v, report_url=report_url, company_name=company)
+    url = whatsapp_url(phone, msg)
+    if not url:
+        return {'ok': False, 'error': 'رقم الجوال غير صالح لواتساب', 'url': ''}
+
+    cust = v.elevator.customer if v.elevator else None
+    return {
+        'ok': True,
+        'url': url,
+        'report_url': report_url,
+        'report_print_path': rel,
+        'customer_name': (cust.name if cust else ''),
+        'visit_code': v.code or '',
+    }
+
+
 def _document_sign_config() -> dict:
     from models import Settings
 

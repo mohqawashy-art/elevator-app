@@ -554,6 +554,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5V2h8v3M3 9H1V5h12v4h-2M3 9v3h8V9"/></svg>
         طباعة
       </button>
+      <button class="btn btn-success btn-sm" id="view-send-report-btn" type="button" onclick="sendVisitReportToCustomer(currentViewVisitId)" style="display:none">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><path d="M1 7l4 4 8-8"/></svg>
+        إرسال PDF للعميل
+      </button>
       <button class="btn btn-primary" onclick="editVisitFromView()">تعديل</button>
     </div>
   </div>
@@ -1006,6 +1010,9 @@ function renderTable(data) {
           <a class="btn btn-secondary btn-sm btn-icon lc-open-tab" href="/maintenance-visits/${v.id}/report?print=1" title="طباعة محضر العميل" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10v8H2z"/><path d="M4 2h6v2H4z"/><line x1="5" y1="7" x2="9" y2="7"/><line x1="5" y1="9" x2="8" y2="9"/></svg>
           </a>
+          ${v.has_report ? `<button class="btn btn-success btn-sm btn-icon" type="button" title="إرسال PDF للعميل (واتساب)" onclick="event.stopPropagation();sendVisitReportToCustomer(${v.id})">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7l4 4 8-8"/></svg>
+          </button>` : ''}
           <button class="btn btn-secondary btn-sm btn-icon" onclick="viewVisit(${v.id})">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
           </button>
@@ -2744,7 +2751,7 @@ function viewVisit(id) {
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${v.status}</span></div></div>
       ${renderVisitFlaggedItems(v)}
       ${v.observations?`<div class="view-item view-full"><div class="view-label">الملاحظات</div><div class="view-val">${v.observations}</div></div>`:''}
-      ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" class="lc-open-tab" style="color:var(--accent)">طباعة PDF</a></div></div>`:''}
+      ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" class="lc-open-tab" style="color:var(--accent)">طباعة PDF</a> · <button type="button" class="btn btn-success btn-sm" style="margin-top:6px" onclick="sendVisitReportToCustomer(${v.id})">إرسال PDF للعميل</button></div></div>`:''}
     </div>`;
   document.getElementById('modal-view').classList.add('open');
   if (window.LiftCoreNav) LiftCoreNav.bindOpenTabLinks(document.getElementById('view-body'));
@@ -2752,6 +2759,38 @@ function viewVisit(id) {
   if (rpt) {
     rpt.href = '/maintenance-visits/' + v.id + '/report';
     rpt.style.display = '';
+  }
+  const sendBtn = document.getElementById('view-send-report-btn');
+  if (sendBtn) sendBtn.style.display = v.has_report ? '' : 'none';
+}
+
+async function sendVisitReportToCustomer(visitId) {
+  if (!visitId) return;
+  try {
+    const r = await fetch('/api/maintenance-visits/' + visitId + '/customer-report-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+    });
+    const data = await r.json();
+    if (!data.ok) {
+      alert(data.error || 'تعذّر تجهيز إرسال التقرير');
+      return;
+    }
+    const printPath = data.report_print_path || ('/maintenance-visits/' + visitId + '/report?print=1');
+    window.open(printPath, '_blank', 'noopener');
+    const wa = window.open(data.url, '_blank', 'noopener');
+    if (!wa) {
+      const go = confirm(
+        'رسالة واتساب جاهزة للعميل.\n' +
+        '1) من تبويب التقرير: اطبع أو احفظ PDF\n' +
+        '2) أرفق الملف في واتساب\n\n' +
+        'اضغط موافق لفتح واتساب.'
+      );
+      if (go) window.location.href = data.url;
+    }
+  } catch (e) {
+    alert('تعذّر إرسال التقرير للعميل');
   }
 }
 

@@ -9685,6 +9685,16 @@ def maintenance_visit_report(visit_id):
     return render_template('visit-report.html', **payload)
 
 
+@app.route('/api/maintenance-visits/<int:visit_id>/customer-report-send', methods=['POST'])
+def api_visit_report_customer_send(visit_id):
+    from operations import visit_report_customer_whatsapp
+
+    result = visit_report_customer_whatsapp(visit_id, request.url_root)
+    if not result.get('ok'):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
 @app.route('/field/fault/<int:fault_id>')
 def field_fault(fault_id):
     from operations import field_fault_detail

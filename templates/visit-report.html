@@ -175,6 +175,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <button type="button" class="save-btn" style="background:#27ae60;color:#fff" onclick="saveReport(true)">✅ حفظ وإنهاء</button>
     {% else %}
     <button type="button" class="save-btn" onclick="window.print()">🖨️ طباعة / PDF</button>
+    <button type="button" class="save-btn" style="background:#25D366;color:#fff" onclick="sendVisitReportToCustomer()">📤 إرسال PDF للعميل</button>
     {% endif %}
   </div>
 </div>
@@ -263,6 +264,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   {% if not editable %}
   <div class="action-row">
     <button type="button" class="print-btn" onclick="window.print()">🖨️ طباعة / تصدير PDF للعميل</button>
+    <button type="button" class="print-btn" style="background:#25D366;color:#fff" onclick="sendVisitReportToCustomer()">📤 إرسال PDF للعميل (واتساب)</button>
   </div>
   {% endif %}
 </div>
@@ -368,6 +370,36 @@ function saveReport(markComplete) {
       }
     })
     .catch(err => alert(err.message || err));
+}
+
+async function sendVisitReportToCustomer() {
+  if (!REPORT_CFG.visitId) return;
+  try {
+    const r = await fetch('/api/maintenance-visits/' + REPORT_CFG.visitId + '/customer-report-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+    });
+    const data = await r.json();
+    if (!data.ok) {
+      alert(data.error || 'تعذّر تجهيز إرسال التقرير');
+      return;
+    }
+    const printPath = data.report_print_path || ('/maintenance-visits/' + REPORT_CFG.visitId + '/report?print=1');
+    window.open(printPath, '_blank', 'noopener');
+    const wa = window.open(data.url, '_blank', 'noopener');
+    if (!wa) {
+      const go = confirm(
+        'رسالة واتساب جاهزة للعميل.\n' +
+        '1) من تبويب التقرير: اطبع أو احفظ PDF\n' +
+        '2) أرفق الملف في واتساب\n\n' +
+        'اضغط موافق لفتح واتساب.'
+      );
+      if (go) window.location.href = data.url;
+    }
+  } catch (e) {
+    alert('تعذّر إرسال التقرير للعميل');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
