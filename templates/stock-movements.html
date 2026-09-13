@@ -304,11 +304,10 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="field form-full">
           <label>الصنف <span>*</span></label>
-          <div class="lc-client-select" id="m-item-select-wrap">
-            <input type="text" class="lc-client-select-input" id="m-item-id-input" placeholder="ابحث بالكود أو اسم الصنف..." autocomplete="off">
-            <input type="hidden" id="m-item-id">
-            <ul class="lc-client-select-list" id="m-item-id-list" hidden role="listbox"></ul>
-          </div>
+          <select id="m-item-id" onchange="onItemPicked()">
+            <option value="">— اختر الصنف من المخزون —</option>
+          </select>
+          <p style="font-size:11px;color:var(--text3);margin-top:6px">يُجلب من قائمة الأصناف — لا يُكتب الاسم يدوياً</p>
         </div>
         <div class="field">
           <label>الكمية <span>*</span></label>
@@ -470,8 +469,18 @@ function fillItemFilter() {
   });
 }
 
-function itemSelectOptions() {
-  return ITEMS.map(i => ({ id: String(i.id), code: i.code, name: i.name }));
+function fillModalItemSelect(selectedId) {
+  const sel = document.getElementById('m-item-id');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— اختر الصنف من المخزون —</option>' +
+    ITEMS.map(function (i) {
+      return '<option value="' + i.id + '">' + escHtml(i.code) + ' — ' + escHtml(i.name) + '</option>';
+    }).join('');
+  if (selectedId) sel.value = String(selectedId);
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 }
 
 function onItemPicked() {
@@ -484,28 +493,11 @@ function onItemPicked() {
   calcTotal();
 }
 
-function initItemSelect() {
-  if (typeof LcClientSelect === 'undefined') return;
-  LcClientSelect.mount({
-    wrapId: 'm-item-select-wrap',
-    hiddenId: 'm-item-id',
-    inputId: 'm-item-id-input',
-    listId: 'm-item-id-list',
-    customers: itemSelectOptions(),
-    onChange: onItemPicked,
-  });
-}
-
-function refreshItemSelect() {
-  if (typeof LcClientSelect === 'undefined') return;
-  if (LcClientSelect.isUpgraded('m-item-id')) {
-    LcClientSelect.setCustomers('m-item-id', itemSelectOptions(), '');
-  } else {
-    initItemSelect();
-  }
-}
-
 function openModal() {
+  if (!ITEMS.length) {
+    alert('لا توجد أصناف في المخزون — أضف أصنافاً من صفحة الأصناف أولاً');
+    return;
+  }
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('modal-title').textContent = 'تسجيل حركة مخزن';
   document.getElementById('m-date').value = today;
@@ -515,14 +507,7 @@ function openModal() {
   document.getElementById('m-price').value = '0';
   document.getElementById('m-reason').value = '';
   document.getElementById('m-notes').value = '';
-  if (typeof LcClientSelect !== 'undefined') {
-    LcClientSelect.clearSelection('m-item-id');
-  } else {
-    const isel = document.getElementById('m-item-id');
-    const iinp = document.getElementById('m-item-id-input');
-    if (isel) isel.value = '';
-    if (iinp) iinp.value = '';
-  }
+  fillModalItemSelect('');
   const tsel = document.getElementById('m-tech-id');
   tsel.innerHTML = '<option value="">— بدون فني —</option>' +
     TECHNICIANS.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
@@ -606,11 +591,15 @@ const months = ['يناير','فبراير','مارس','أبريل','مايو','
 var hDateEl = document.getElementById('h-date');
 if (hDateEl) hDateEl.textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
-fillItemFilter();
-initItemSelect();
-updateStats();
-if (tableSort) tableSort.bindHeaders();
-renderTable(MOVEMENTS);
+function bootStockMovementsPage() {
+  fillItemFilter();
+  fillModalItemSelect('');
+  updateStats();
+  if (tableSort) tableSort.bindHeaders();
+  renderTable(MOVEMENTS);
+}
+
+window.__lcPageBoot = bootStockMovementsPage;
 window.__lcRefreshPage = function () {
   updateStats();
   renderTable(typeof filtered !== 'undefined' ? filtered : MOVEMENTS);

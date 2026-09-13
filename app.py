@@ -13019,6 +13019,11 @@ def stock_add():
     direction = request.form.get('direction','صادر')
     unit_price= float(request.form.get('unit_price', 0))
 
+    item = tenant_query(InventoryItem).filter_by(id=item_id).first()
+    if not item:
+        flash('الصنف غير موجود — اختر صنفاً من قائمة المخزون', 'error')
+        return redirect(url_for('stock_movements'))
+
     m = StockMovement(
         code          = next_code(StockMovement, 'MV-', digits=3),
         item_id       = item_id,
@@ -13035,7 +13040,6 @@ def stock_add():
     assign_organization(m)
     db.session.add(m)
 
-    item = tenant_query(InventoryItem).filter_by(id=item_id).first()
     _adjust_inventory_qty(item, direction, qty)
 
     db.session.commit()
