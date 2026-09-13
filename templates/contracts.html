@@ -97,8 +97,13 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .stat-mini::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--sm-color,var(--accent));opacity:.6}
 .stat-mini-val{font-size:22px;font-weight:600;color:var(--text1);font-family:var(--font-en);line-height:1;margin-bottom:3px}
 .stat-mini-label{font-size:11px;color:var(--text3)}
-#modal-drill .modal{max-width:1080px}
-#modal-drill .table-scroll{max-height:min(62vh,560px)}
+#modal-drill.modal-overlay{padding:10px}
+#modal-drill .modal{max-width:min(98vw,1480px);width:100%;max-height:96vh}
+#modal-drill .modal-body{flex:1;min-height:0}
+#modal-drill .table-scroll{max-height:min(78vh,780px);overflow:auto}
+#modal-drill thead th.th-drill-sort{cursor:pointer;user-select:none}
+#modal-drill thead th.th-drill-sort:hover{color:var(--text1)}
+#modal-drill .modal-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tabs{display:inline-flex;flex-wrap:nowrap;gap:3px;margin-bottom:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px;width:fit-content;max-width:100%}
 .tab{flex:0 0 auto;padding:5px 10px;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;border-radius:var(--r-sm);transition:var(--trans);display:inline-flex;align-items:center;justify-content:flex-start;gap:5px;white-space:nowrap;line-height:1.2}
 .tab svg{width:13px;height:13px;flex-shrink:0}
@@ -490,7 +495,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <span id="drill-title">التفاصيل</span>
         <span id="drill-count" style="font-size:11px;color:var(--text3);font-weight:400;margin-right:8px"></span>
       </div>
-      <button class="modal-close" onclick="closeContractDrill()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+      <div class="modal-head-actions">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="printContractDrill()" title="طباعة القائمة">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg>
+          طباعة
+        </button>
+        <button class="modal-close" onclick="closeContractDrill()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+      </div>
     </div>
     <div class="modal-body" style="padding:0">
       <div class="table-wrap" style="margin:0;border:none;border-radius:0">
@@ -498,7 +509,16 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <table>
             <thead>
               <tr>
-                <th>الكود</th><th>العميل</th><th>المبنى</th><th>النوع</th><th>الانتهاء</th><th>الأيام</th><th>المصاعد</th><th>الإجمالي</th><th>حالة العقد</th><th>الفاتورة</th>
+                <th class="th-drill-sort" data-sort-col="code">الكود <span class="sort-ind"></span></th>
+                <th class="th-drill-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
+                <th class="th-drill-sort" data-sort-col="buildings">المبنى <span class="sort-ind"></span></th>
+                <th class="th-drill-sort" data-sort-col="contract_type">النوع <span class="sort-ind"></span></th>
+                <th class="th-drill-sort" data-sort-col="end_date">الانتهاء <span class="sort-ind"></span></th>
+                <th class="th-drill-sort" data-sort-col="days_left">الأيام <span class="sort-ind"></span></th>
+                <th class="th-drill-sort" data-sort-col="elevators">المصاعد <span class="sort-ind"></span></th>
+                <th class="th-drill-sort" data-sort-col="total">الإجمالي <span class="sort-ind"></span></th>
+                <th class="th-drill-sort" data-sort-col="contract_status">حالة العقد <span class="sort-ind"></span></th>
+                <th class="th-drill-sort" data-sort-col="inv_status">الفاتورة <span class="sort-ind"></span></th>
               </tr>
             </thead>
             <tbody id="drill-body"></tbody>
@@ -507,6 +527,10 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </div>
     </div>
     <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="printContractDrill()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg>
+        طباعة
+      </button>
       <button class="btn btn-secondary" onclick="closeContractDrill()">إغلاق</button>
     </div>
   </div>
@@ -1337,6 +1361,65 @@ var DRILL_TITLES = {
   unpaid: 'عقود بمبالغ مستحقة غير مسددة'
 };
 
+var drillRows = [];
+var drillSort = null;
+
+function ensureDrillSort() {
+  if (drillSort || !window.LiftCoreTableSort) return drillSort;
+  drillSort = LiftCoreTableSort.create({
+    defaultCol: 'code',
+    defaultDir: 'asc',
+    dateCols: ['end_date'],
+    numberCols: ['elevators', 'total', 'days_left', 'remaining'],
+    codeCols: ['code'],
+    getters: {
+      customer: function(c) {
+        return window.LiftCoreDisplay ? LiftCoreDisplay.name(c.customer, c.customer_name_en) : c.customer;
+      },
+      buildings: function(c) { return contractBuildingName(c) || ''; },
+      contract_status: function(c) { return getContractDisplayStatus(c); },
+      days_left: function(c) {
+        var d = contractDaysLeft(c);
+        return d === null ? 999999 : d;
+      },
+    },
+    onChange: function() { renderDrillTable(drillRows, true); },
+  });
+  var root = document.getElementById('modal-drill');
+  if (root) {
+    root.querySelectorAll('th.th-drill-sort[data-sort-col]').forEach(function(th) {
+      if (th._lcDrillSortBound) return;
+      th._lcDrillSortBound = true;
+      th.addEventListener('click', function(e) {
+        e.stopPropagation();
+        drillSort.toggle(th.getAttribute('data-sort-col'));
+        renderDrillTable(drillRows, true);
+      });
+    });
+  }
+  return drillSort;
+}
+
+function updateDrillSortIndicators() {
+  if (!drillSort) return;
+  var st = drillSort.getState();
+  document.querySelectorAll('#modal-drill th.th-drill-sort[data-sort-col]').forEach(function(th) {
+    var col = th.getAttribute('data-sort-col');
+    var ind = th.querySelector('.sort-ind');
+    if (!ind) return;
+    if (st.col === col) ind.textContent = st.dir === 'asc' ? '▲' : '▼';
+    else ind.textContent = '';
+  });
+}
+
+function drillDaysText(c) {
+  var d = contractDaysLeft(c);
+  if (d === null) return '—';
+  if (d < 0) return Math.abs(d) + ' يوم متأخر';
+  if (d === 0) return 'اليوم';
+  return d + ' يوم';
+}
+
 let currentDeleteId = null;
 let currentViewId = null;
 let contractSaving = false;
@@ -1382,26 +1465,88 @@ function getContractsByDrill(type) {
   return pool.slice();
 }
 
-function renderDrillTable(rows) {
+function renderDrillTable(rows, keepRows) {
+  if (!keepRows) drillRows = (rows || []).slice();
+  ensureDrillSort();
+  var data = drillSort ? drillSort.apply(drillRows) : drillRows;
+  updateDrillSortIndicators();
   var body = document.getElementById('drill-body');
-  if (!rows.length) {
+  if (!body) return;
+  if (!data.length) {
     body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">لا توجد بيانات</td></tr>';
     return;
   }
-  body.innerHTML = rows.map(function(c) {
+  body.innerHTML = data.map(function(c) {
     return '<tr style="cursor:pointer" onclick="closeContractDrill(); viewContract(' + c.id + ')">' +
       '<td class="td-code">' + esc(c.code) + '</td>' +
       '<td class="td-name">' + esc(c.customer) + '</td>' +
       '<td class="td-name">' + esc(contractBuildingName(c) || '—') + '</td>' +
       '<td>' + esc(c.contract_type) + '</td>' +
       '<td style="direction:ltr;font-family:var(--font-en)">' + esc(c.end_date) + '</td>' +
-      '<td>' + formatContractDaysCell(c) + '</td>' +
+      '<td>' + esc(drillDaysText(c)) + '</td>' +
       '<td style="text-align:center">' + c.elevators + '</td>' +
       '<td style="font-family:var(--font-en)">' + fmtMoneyAmt(c.total) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
-      '<td><span class="badge ' + (STATUS_BADGE[getContractDisplayStatus(c)] || 'badge-active') + '">' + esc(getContractDisplayStatus(c)) + '</span></td>' +
-      '<td><span class="badge ' + (INV_BADGE[c.inv_status] || 'badge-unpaid') + '">' + esc(c.inv_status) + '</span></td>' +
+      '<td>' + esc(getContractDisplayStatus(c)) + '</td>' +
+      '<td>' + esc(c.inv_status) + '</td>' +
     '</tr>';
   }).join('');
+}
+
+function printContractDrill() {
+  ensureDrillSort();
+  var title = (document.getElementById('drill-title') && document.getElementById('drill-title').textContent) || 'قائمة العقود';
+  var count = (document.getElementById('drill-count') && document.getElementById('drill-count').textContent) || '';
+  var data = drillSort ? drillSort.apply(drillRows) : drillRows.slice();
+  if (!data.length) {
+    alert('لا توجد بيانات للطباعة');
+    return;
+  }
+  var printDate = '';
+  try {
+    printDate = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch (e) {
+    printDate = new Date().toLocaleDateString();
+  }
+  var rowsHtml = data.map(function(c) {
+    return '<tr>'
+      + '<td>' + esc(c.code) + '</td>'
+      + '<td>' + esc(c.customer) + '</td>'
+      + '<td>' + esc(contractBuildingName(c) || '—') + '</td>'
+      + '<td>' + esc(c.contract_type) + '</td>'
+      + '<td dir="ltr">' + esc(c.end_date) + '</td>'
+      + '<td>' + esc(drillDaysText(c)) + '</td>'
+      + '<td>' + esc(String(c.elevators || 0)) + '</td>'
+      + '<td dir="ltr">' + esc(fmtMoneyAmt(c.total)) + '</td>'
+      + '<td>' + esc(getContractDisplayStatus(c)) + '</td>'
+      + '<td>' + esc(c.inv_status) + '</td>'
+      + '</tr>';
+  }).join('');
+  var html = '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>'
+    + esc(title) + '</title><style>'
+    + 'body{font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif;margin:24px;color:#111;line-height:1.5}'
+    + 'h1{font-size:20px;margin:0 0 6px} .meta{font-size:13px;color:#555;margin-bottom:16px}'
+    + 'table{width:100%;border-collapse:collapse;font-size:12px}'
+    + 'th,td{border:1px solid #ccc;padding:8px 10px;text-align:right;vertical-align:top}'
+    + 'th{background:#f0f4fa;font-weight:600;color:#333}'
+    + 'tr:nth-child(even){background:#fafbfd}'
+    + '@media print{body{margin:12px} @page{margin:12mm}}'
+    + '</style></head><body>'
+    + '<h1>' + esc(title) + '</h1>'
+    + '<div class="meta">' + esc(count) + ' · تاريخ الطباعة: ' + esc(printDate) + '</div>'
+    + '<table><thead><tr>'
+    + '<th>الكود</th><th>العميل</th><th>المبنى</th><th>النوع</th><th>الانتهاء</th><th>الأيام</th><th>المصاعد</th><th>الإجمالي</th><th>حالة العقد</th><th>الفاتورة</th>'
+    + '</tr></thead><tbody>' + rowsHtml + '</tbody></table>'
+    + '</body></html>';
+  var w = window.open('', '_blank', 'noopener,noreferrer,width=1280,height=900');
+  if (!w) {
+    alert('يُرجى السماح بالنوافذ المنبثقة للطباعة');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(function() { w.print(); }, 350);
 }
 
 function openContractDrill(type, cardEl) {
