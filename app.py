@@ -229,8 +229,9 @@ PUBLIC_ENDPOINTS = frozenset({
     'attendance_adms.iclock_devicecmd',
     'attendance_adms.iclock_registry',
     'attendance.api_punch',
+    'public_visit_report',
 })
-PUBLIC_PATH_PREFIXES = ('/static',)
+PUBLIC_PATH_PREFIXES = ('/static', '/r/visit/')
 STATIC_UPLOADS_PREFIX = '/static/uploads'
 
 
@@ -9682,6 +9683,52 @@ def maintenance_visit_report(visit_id):
         )
     else:
         payload['field_edit_url'] = None
+    return render_template('visit-report.html', **payload)
+
+
+@app.route('/r/visit/<token>')
+def public_visit_report(token):
+    """محضر صيانة للعميل — رابط موقّع بدون تسجيل دخول."""
+    from models import Organization
+    from operations import visit_report_payload
+    from visit_report_share import load_visit_report_share_token
+
+    data = load_visit_report_share_token(token)
+    if not data:
+        return (
+            '<!DOCTYPE html><html dir="rtl" lang="ar"><meta charset="utf-8">'
+            '<body style="font-family:Tahoma,sans-serif;padding:40px;text-align:center">'
+            '<h2>انتهت صلاحية الرابط أو غير صالح</h2>'
+            '<p style="color:#666">تواصل مع شركة الصيانة لإرسال رابط جديد.</p>'
+            '</body></html>',
+            410,
+            {'Content-Type': 'text/html; charset=utf-8'},
+        )
+
+    org = db.session.get(Organization, data['organization_id'])
+    if not org:
+        abort(404)
+    from demo_provisioning import organization_access_allowed
+
+    if not organization_access_allowed(org):
+        abort(404)
+
+    g.organization = org
+    g.organization_id = org.id
+
+    visit_id = data['visit_id']
+    if not tenant_query(MaintenanceVisit).filter_by(id=visit_id).first():
+        abort(404)
+
+    payload = visit_report_payload(
+        visit_id,
+        editable=False,
+        base_url=request.url_root,
+    )
+    payload['back_url'] = None
+    payload['field_edit_url'] = None
+    payload['read_only_mode'] = True
+    payload['public_view'] = True
     return render_template('visit-report.html', **payload)
 
 

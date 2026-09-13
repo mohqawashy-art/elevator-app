@@ -2751,7 +2751,12 @@ def visit_report_customer_whatsapp(visit_id: int, base_url: str = '') -> dict:
     company = (s.company_name if s and s.company_name else 'LiftCore')
     root = (base_url or '').rstrip('/')
     rel = visit_report_print_path(visit_id)
-    report_url = f'{root}{rel}' if root else rel
+    oid = int(v.organization_id or 0)
+    if oid <= 0:
+        return {'ok': False, 'error': 'المؤسسة غير معروفة للزيارة', 'url': ''}
+    from visit_report_share import visit_report_share_url
+
+    report_url = visit_report_share_url(visit_id, oid, base_url)
     msg = build_visit_report_customer_message(v, report_url=report_url, company_name=company)
     url = whatsapp_url(phone, msg)
     if not url:
@@ -2763,6 +2768,7 @@ def visit_report_customer_whatsapp(visit_id: int, base_url: str = '') -> dict:
         'url': url,
         'report_url': report_url,
         'report_print_path': rel,
+        'report_share_path': visit_report_share_url(visit_id, oid, ''),
         'customer_name': (cust.name if cust else ''),
         'visit_code': v.code or '',
     }

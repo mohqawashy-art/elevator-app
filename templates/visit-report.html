@@ -174,8 +174,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <button type="button" class="save-btn" onclick="saveReport(false)">💾 حفظ</button>
     <button type="button" class="save-btn" style="background:#27ae60;color:#fff" onclick="saveReport(true)">✅ حفظ وإنهاء</button>
     {% else %}
+    {% if not public_view %}
     <button type="button" class="save-btn" onclick="window.print()">🖨️ طباعة / PDF</button>
     <button type="button" class="save-btn" style="background:#25D366;color:#fff" onclick="LiftCoreVisitReportSend.send(REPORT_CFG.visitId, { onPrintPage: true })">📤 إرسال للعميل (واتساب)</button>
+    {% else %}
+    <button type="button" class="save-btn" onclick="window.print()">🖨️ طباعة / PDF</button>
+    {% endif %}
     {% endif %}
   </div>
 </div>
@@ -261,10 +265,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div>قالب: {{ checklist_template.key }}</div>
   </div>
 
-  {% if not editable %}
+  {% if not editable and not public_view %}
   <div class="action-row">
     <button type="button" class="print-btn" onclick="window.print()">🖨️ طباعة / تصدير PDF للعميل</button>
     <button type="button" class="print-btn" style="background:#25D366;color:#fff" onclick="LiftCoreVisitReportSend.send(REPORT_CFG.visitId, { onPrintPage: true })">📤 إرسال للعميل (واتساب)</button>
+  </div>
+  {% elif public_view %}
+  <div class="action-row">
+    <button type="button" class="print-btn" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
   </div>
   {% endif %}
 </div>

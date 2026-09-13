@@ -66,7 +66,19 @@ def test_visit_report_whatsapp_ok(client):
         result = visit_report_customer_whatsapp(visit_id, 'https://app.test/')
         assert result['ok'] is True
         assert 'wa.me' in result['url']
-        assert 'report?print=1' in result['report_url']
+        assert '/r/visit/' in result['report_url']
+
+
+def test_public_visit_report_without_login(client):
+    with client.application.app_context():
+        visit_id = _seed_visit()
+        from visit_report_share import visit_report_share_path
+
+        oid = ensure_test_organization()
+        path = visit_report_share_path(visit_id, oid)
+    r = client.get(path)
+    assert r.status_code == 200
+    assert 'محضر صيانة مصعد'.encode('utf-8') in r.data or b'Elevator Maintenance Report' in r.data
 
 
 def test_visit_report_message_includes_pdf_link(client):
@@ -75,7 +87,7 @@ def test_visit_report_message_includes_pdf_link(client):
         visit = db.session.get(MaintenanceVisit, visit_id)
         msg = build_visit_report_customer_message(
             visit,
-            report_url='https://app.test/maintenance-visits/1/report?print=1',
+            report_url='https://app.test/r/visit/test-token',
             company_name='LiftCore Test',
         )
         assert 'محضر صيانة' in msg
@@ -92,3 +104,4 @@ def test_visit_report_customer_send_api(client):
     data = r.get_json()
     assert data['ok'] is True
     assert data['report_print_path'].endswith('/report?print=1')
+    assert '/r/visit/' in data['report_url']
