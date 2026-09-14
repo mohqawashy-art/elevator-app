@@ -92,19 +92,14 @@ DEPARTMENT_PORTALS = {
         'title_en': 'Marketing & Sales Platform',
         'short_title': 'التسويق والمبيعات',
         'short_title_en': 'Marketing & Sales',
-        'description': 'لوحة المبيعات وعروض التركيب والصيانة والتقدير وفرص البيع',
-        'description_en': 'Sales dashboard, installation and maintenance quotes, estimates, and sales leads',
+        'description': 'تسعير وعروض التركيبات والصيانة',
+        'description_en': 'Installation and maintenance pricing and quotes',
         'color': '#14b8a6',
         'links': (
-            ('لوحة المبيعات', 'Sales Dashboard', '/sales/', 'sales_quotes.read'),
-            ('تركيب مصعد جديد', 'New Elevator Installation', '/sales/install/quotes/new', 'installation_projects.read', True),
-            ('عرض سعر تحديث', 'Modernization Quote', '/sales/install/quotes/new?quote_kind=upgrade', 'installation_projects.read', True),
-            ('إضافة أدوار', 'Add Floors Quote', '/sales/install/quotes/new?quote_kind=extend', 'installation_projects.read', True),
-            ('عروض التركيب', 'Installation Quotes', '/sales/quotes?kind=install', 'installation_projects.read', True),
-            ('عرض صيانة جديد', 'New Maintenance Quote', '/sales/maintenance-quotes/new', 'sales_quotes.read'),
+            ('تسعير تركيبات', 'Installation Pricing', '/sales/install/quotes/new', 'installation_projects.read', True),
+            ('عروض التركيبات', 'Installation Quotes', '/sales/quotes?kind=install', 'installation_projects.read', True),
+            ('تسعير صيانة', 'Maintenance Pricing', '/sales/maintenance-quotes/new', 'sales_quotes.read'),
             ('عروض الصيانة', 'Maintenance Quotes', '/sales/maintenance-quotes', 'sales_quotes.read'),
-            ('تقدير تكلفة مصعد', 'Elevator Cost Estimate', '/elevator-estimates', 'elevator_estimates.read'),
-            ('فرص البيع', 'Sales Leads', '/installation/leads', 'installation_projects.read', True),
         ),
         'reports': (),
     },
@@ -490,19 +485,14 @@ _HREF_CHILD_ROUTE_ACTIVE: list[tuple[str, re.Pattern[str], re.Pattern[str] | Non
         None,
     ),
     (
+        '/sales/install/quotes/new',
+        re.compile(r'^/(?:sales/install/quotes/new|installation/projects/\d+/quote)'),
+        None,
+    ),
+    (
         '/sales/quotes',
-        re.compile(r'^/(?:sales/quotes|installation/projects/\d+/quote)'),
+        re.compile(r'^/sales/quotes(?:/|$)'),
         re.compile(r'^/installation/projects/\d+/quote'),
-    ),
-    (
-        '/elevator-estimates',
-        re.compile(r'^/elevator-estimates(?:/|$)'),
-        None,
-    ),
-    (
-        '/installation/leads',
-        re.compile(r'^/installation/leads(?:/|$)'),
-        None,
     ),
     (
         '/installation/projects',
@@ -552,13 +542,6 @@ def department_href_is_active(href: str, path: str, args) -> bool:
             continue
         for key, value in href_q.items():
             if key == 'department':
-                continue
-            if (
-                href_path == '/sales/quotes'
-                and key == 'kind'
-                and value == 'install'
-                and re.match(r'^/installation/projects/\d+/quote', req_path)
-            ):
                 continue
             if str(req_q.get(key, '')) != str(value):
                 return False

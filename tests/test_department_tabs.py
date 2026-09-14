@@ -108,7 +108,7 @@ def test_department_href_active_on_maintenance_quote_edit():
 
 def test_department_href_active_on_install_quote_form():
     assert department_href_is_active(
-        '/sales/quotes?kind=install&department=marketing',
+        '/sales/install/quotes/new?department=marketing',
         '/installation/projects/7/quote',
         {'department': 'marketing'},
     )
