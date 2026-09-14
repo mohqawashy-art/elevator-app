@@ -139,10 +139,10 @@
         <p class="hint">بانتظار تعبئة الفني من بوابة الجوال. بعد الإكمال تظهر المواصفات هنا تلقائياً.</p>
         {% else %}
         <p class="flow" style="margin-bottom:10px">أرسل طلب فحص للفني لزيارة الموقع وتوثيق مواصفات المصاعد والرأي الفني.</p>
-        <form method="post" action="{{ url_for('sales.maintenance_quote_request_survey', quote_id=quote.id) }}" class="mq-grid">
+        <div class="mq-grid">
           <div class="field full">
             <label>الفني *</label>
-            <select name="technician_id" required>
+            <select name="technician_id" form="survey-request-form" required>
               <option value="">— اختر فنياً —</option>
               {% for t in technicians %}
               <option value="{{ t.id }}">{{ t.code }} — {{ t.name }}{% if t.phone %} · {{ t.phone }}{% endif %}</option>
@@ -151,12 +151,12 @@
           </div>
           <div class="field full">
             <label>ملاحظات للفني</label>
-            <textarea name="survey_notes" rows="2" placeholder="موعد الزيارة، جهة التواصل، عدد المصاعد المتوقع…"></textarea>
+            <textarea name="survey_notes" form="survey-request-form" rows="2" placeholder="موعد الزيارة، جهة التواصل، عدد المصاعد المتوقع…"></textarea>
           </div>
           <div class="field full">
-            <button type="submit" class="btn btn-primary btn-sm">إرسال طلب فحص مصعد</button>
+            <button type="submit" form="survey-request-form" class="btn btn-primary btn-sm">إرسال طلب فحص مصعد</button>
           </div>
-        </form>
+        </div>
         {% endif %}
       </section>
 
@@ -274,6 +274,10 @@
       </div>
       {% endif %}
     </form>
+
+    {% if quote and quote.status != 'مقبول' and (not maint_survey or maint_survey.status not in ['مُرسَل','قيد الفحص','مكتمل']) %}
+    <form id="survey-request-form" method="post" action="{{ url_for('sales.maintenance_quote_request_survey', quote_id=quote.id) }}" hidden aria-hidden="true"></form>
+    {% endif %}
 
     {% if quote and quote.status != 'مقبول' %}
     <div class="actions" style="margin-top:12px">

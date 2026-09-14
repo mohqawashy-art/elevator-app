@@ -234,10 +234,43 @@ def test_print_shows_survey_units(client):
     assert 'عرض منفصل' in html
 
 
-def test_field_payload_includes_maint_surveys(client):
+def test_request_survey_route_without_total_validation(client):
+    """طلب الفحص لا يمرّ عبر حفظ العرض (لا يطلب الإجمالي)."""
+    login_as(client, 'admin')
     with client.application.app_context():
         oid = ensure_test_organization()
-        tech = Technician(organization_id=oid, code='T-MQS', name='فني فحص', status='متاح')
+        cust = Customer(organization_id=oid, code='C-SV5', name='عميل طلب', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        tech = Technician(organization_id=oid, code='T-SV5', name='فني', status='متاح')
+        db.session.add(tech)
+        db.session.flush()
+        quote = MaintenanceQuote(
+            code='MQ-SV5',
+            customer_id=cust.id,
+            status='مسودة',
+            duration_months=12,
+            value=0,
+            total=0,
+        )
+        assign_organization(quote)
+        db.session.add(quote)
+        db.session.commit()
+        qid, tid = quote.id, tech.id
+
+    r = client.post(
+        f'/sales/maintenance-quotes/{qid}/request-survey',
+        data={'technician_id': str(tid), 'survey_notes': 'اختبار'},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'أدخل الإجمالي شامل الضريبة' not in html
+    assert 'تم إرسال طلب فحص' in html or 'MQS-' in html
+
+
+def test_field_payload_includes_maint_surveys(client):
+    with client.application.app_context():
         db.session.add(tech)
         db.session.flush()
         cust = Customer(organization_id=oid, code='C-MQS', name='عميل', status='نشط')
