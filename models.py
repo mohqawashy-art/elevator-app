@@ -1093,6 +1093,13 @@ class MaintenanceQuote(TenantMixin, db.Model):
         cascade='all, delete-orphan',
         lazy=True,
     )
+    surveys = db.relationship(
+        'MaintenanceQuoteSurvey',
+        backref='quote',
+        cascade='all, delete-orphan',
+        lazy=True,
+        order_by='MaintenanceQuoteSurvey.id',
+    )
 
 
 class MaintenanceQuoteElevator(TenantMixin, db.Model):
@@ -1100,6 +1107,69 @@ class MaintenanceQuoteElevator(TenantMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     quote_id = db.Column(db.Integer, db.ForeignKey('maintenance_quotes.id'), nullable=False, index=True)
     elevator_id = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=False)
+
+
+class MaintenanceQuoteSurvey(TenantMixin, db.Model):
+    """طلب فحص موقع لعرض صيانة — يعبّئه الفني قبل تثبيت مواصفات المصاعد."""
+    __tablename__ = 'maintenance_quote_surveys'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_maint_quote_survey_org_code'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    quote_id = db.Column(db.Integer, db.ForeignKey('maintenance_quotes.id'), nullable=False, index=True)
+    code = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(30), default='مُرسَل')  # مُرسَل / قيد الفحص / مكتمل / ملغى
+    technician_id = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=False, index=True)
+    request_notes = db.Column(db.Text)
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    technician = db.relationship('Technician', foreign_keys=[technician_id], uselist=False)
+    units = db.relationship(
+        'MaintenanceQuoteSurveyUnit',
+        backref='survey',
+        cascade='all, delete-orphan',
+        lazy=True,
+        order_by='MaintenanceQuoteSurveyUnit.sort_order',
+    )
+
+
+class MaintenanceQuoteSurveyUnit(TenantMixin, db.Model):
+    """مصعد واحد ضمن فحص عرض الصيانة — مواصفات + رأي فني."""
+    __tablename__ = 'maintenance_quote_survey_units'
+
+    id = db.Column(db.Integer, primary_key=True)
+    survey_id = db.Column(db.Integer, db.ForeignKey('maintenance_quote_surveys.id'), nullable=False, index=True)
+    sort_order = db.Column(db.Integer, default=1)
+    elevator_id = db.Column(db.Integer, db.ForeignKey('elevators.id'), nullable=True, index=True)
+    unit_label = db.Column(db.String(80))
+    building_name = db.Column(db.String(200))
+    location_note = db.Column(db.String(200))
+    elev_type = db.Column(db.String(100))
+    brand = db.Column(db.String(100))
+    model = db.Column(db.String(100))
+    capacity_kg = db.Column(db.Integer)
+    capacity_persons = db.Column(db.Integer)
+    floors = db.Column(db.Integer)
+    stops = db.Column(db.Integer)
+    speed = db.Column(db.String(50))
+    machine_type = db.Column(db.String(30))
+    door_type = db.Column(db.String(50))
+    control_type = db.Column(db.String(50))
+    serial_number = db.Column(db.String(100))
+    technical_opinion = db.Column(db.Text)
+    condition_status = db.Column(db.String(40))  # جيد / مقبول / يحتاج متابعة / غير آمن
+    needs_repair = db.Column(db.Boolean, default=False)
+    needs_spare_parts = db.Column(db.Boolean, default=False)
+    repair_scope = db.Column(db.Text)
+    spare_parts_scope = db.Column(db.Text)
+    separate_quote_notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    elevator = db.relationship('Elevator', foreign_keys=[elevator_id], uselist=False)
 
 
 # =============================================

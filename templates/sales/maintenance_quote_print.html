@@ -15,7 +15,7 @@
   'قياسي': 'وقائية + أعطال + تقارير',
   'شامل': 'قياسي + طوارئ 24/7'
 } %}
-{% set elev_count = elevators|length if elevators else 0 %}
+{% set elev_count = survey_units|length if survey_units else 0 %}
 <div class="toolbar">
   <button class="btn btn-primary" type="button" onclick="window.print()">طباعة / PDF</button>
   <a class="btn" href="{{ url_for('sales.maintenance_quote_edit', quote_id=quote.id) }}">← العرض</a>
@@ -140,32 +140,58 @@
       </div>
     </div>
 
-    {% if elevators %}
+    {% if survey_units %}
     <div class="q-sec">
-      <div class="q-sec-h">المصاعد المشمولة ({{ elev_count }})</div>
+      <div class="q-sec-h">المصاعد المفحوصة ({{ elev_count }}){% if survey %} — {{ survey.code }}{% endif %}</div>
       <div class="q-panel">
-        <table class="data">
-          <thead>
-            <tr>
-              <th style="width:16%">الرمز</th>
-              <th style="width:30%">المبنى</th>
-              <th>النوع / المواصفات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for e in elevators %}
-            <tr>
-              <td dir="ltr"><b>{{ e.code }}</b></td>
-              <td>{{ e.building_name or '—' }}</td>
-              <td>
-                {{ e.elev_type or '—' }}
-                {% if e.capacity_kg %} · {{ e.capacity_kg }} كجم{% endif %}
-                {% if e.floors %} · {{ e.floors }} ط{% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        {% for u in survey_units %}
+        <div style="{% if not loop.last %}border-bottom:1px solid var(--q-border,#e2e8f0);padding-bottom:12px;margin-bottom:12px;{% endif %}">
+          <div style="font-weight:700;margin-bottom:6px">{{ u.unit_label or loop.index }}{% if u.building_name %} · {{ u.building_name }}{% endif %}</div>
+          <table class="mq-fields" style="margin-bottom:8px">
+            <tbody>
+              <tr>
+                <td class="lbl">النوع / العلامة</td>
+                <td class="val">{{ u.elev_type or '—' }}{% if u.brand %} · {{ u.brand }}{% endif %}{% if u.model %} · {{ u.model }}{% endif %}</td>
+                <td class="lbl">الحمولة / الطوابق</td>
+                <td class="val">{% if u.capacity_kg %}{{ u.capacity_kg }} كجم{% else %}—{% endif %}{% if u.floors %} · {{ u.floors }} ط{% endif %}{% if u.stops %} · {{ u.stops }} توقف{% endif %}</td>
+              </tr>
+              <tr>
+                <td class="lbl">الماكينة / الباب</td>
+                <td class="val">{{ u.machine_type or '—' }}{% if u.door_type %} · {{ u.door_type }}{% endif %}</td>
+                <td class="lbl">التحكم / السرعة</td>
+                <td class="val">{{ u.control_type or '—' }}{% if u.speed %} · {{ u.speed }}{% endif %}</td>
+              </tr>
+              {% if u.serial_number %}
+              <tr>
+                <td class="lbl">الرقم التسلسلي</td>
+                <td class="val" dir="ltr" colspan="3">{{ u.serial_number }}</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+          {% if u.technical_opinion %}
+          <div style="font-size:12px;line-height:1.6;margin-bottom:6px"><b>الرأي الفني:</b> {{ u.technical_opinion }}</div>
+          {% endif %}
+          {% if u.condition_status %}
+          <div style="font-size:12px;margin-bottom:6px"><b>حالة المصعد:</b> {{ u.condition_status }}</div>
+          {% endif %}
+          {% if u.needs_repair or u.needs_spare_parts %}
+          <div style="font-size:12px;background:rgba(224,144,48,.12);border:1px solid rgba(224,144,48,.35);border-radius:8px;padding:8px 10px;margin-top:6px">
+            <b>⚠ يُشترى بعرض منفصل (خارج عقد الصيانة):</b>
+            {% if u.needs_repair and u.repair_scope %}<div style="margin-top:4px"><b>إصلاح:</b> {{ u.repair_scope }}</div>{% elif u.needs_repair %}<div style="margin-top:4px">إصلاح مطلوب</div>{% endif %}
+            {% if u.needs_spare_parts and u.spare_parts_scope %}<div style="margin-top:4px"><b>قطع غيار:</b> {{ u.spare_parts_scope }}</div>{% elif u.needs_spare_parts %}<div style="margin-top:4px">قطع غيار مطلوبة</div>{% endif %}
+            {% if u.separate_quote_notes %}<div style="margin-top:4px"><b>ملاحظات:</b> {{ u.separate_quote_notes }}</div>{% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="q-sec">
+      <div class="q-sec-h">المصاعد المفحوصة</div>
+      <div class="q-panel">
+        <p style="font-size:13px;color:#64748b;margin:0">بانتظار فحص الفني — تُضاف المواصفات بعد إكمال طلب الفحص.</p>
       </div>
     </div>
     {% endif %}

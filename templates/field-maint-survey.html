@@ -1,0 +1,232 @@
+{% extends 'field_base.html' %}
+{% set fp_nav = 'home' %}
+{% set show_bottom_nav = false %}
+{% block fp_title %}{{ survey.survey_code }} — فحص عرض صيانة{% endblock %}
+
+{% block fp_content %}
+<a class="fp-back" href="{{ survey.back_url }}">← مهامي</a>
+
+<div class="fp-title" style="font-size:17px;margin-bottom:4px">{{ survey.survey_code }} — {{ survey.customer_name }}</div>
+<p style="font-size:12px;color:var(--fp-muted);margin-bottom:14px">
+  {{ survey.customer_code }} · عرض {{ survey.quote_code }} · {{ survey.city }}{% if survey.district %} · {{ survey.district }}{% endif %}
+</p>
+
+{% if survey.request_notes %}
+<div style="background:rgba(48,120,224,.1);border:1px solid rgba(48,120,224,.25);border-radius:10px;padding:12px;margin-bottom:14px">
+  <div style="font-size:11px;color:var(--fp-accent,#3078e0);margin-bottom:6px;font-weight:600">ملاحظات المبيعات</div>
+  <div style="font-size:14px;line-height:1.6">{{ survey.request_notes }}</div>
+</div>
+{% endif %}
+
+<div class="fp-info" style="margin-bottom:14px">
+  <div class="fp-row"><span>العنوان</span><span style="max-width:58%;text-align:left">{{ survey.address or '—' }}</span></div>
+  <div class="fp-row"><span>حالة الفحص</span><span>{{ survey.status }}</span></div>
+</div>
+
+<div id="mqs-msg" class="fp-err" hidden style="margin-bottom:10px"></div>
+<div id="mqs-ok" class="flash flash-success" hidden style="margin-bottom:10px;padding:10px;border-radius:8px"></div>
+
+<form id="mqs-form" {% if read_only %}data-readonly="1"{% endif %}>
+  <div id="mqs-units"></div>
+  {% if not read_only %}
+  <button type="button" id="mqs-add" class="fp-submit" style="background:var(--fp-card);color:var(--fp-text);border:1px dashed var(--fp-border);margin-top:8px">+ إضافة مصعد</button>
+  <button type="button" id="mqs-save" class="fp-submit" style="margin-top:12px">حفظ المسودة</button>
+  {% endif %}
+</form>
+
+{% if not read_only %}
+<form method="post" action="{{ survey.complete_url }}" id="mqs-complete-form" style="margin-top:16px" onsubmit="return mqsBeforeComplete()">
+  <button type="submit" class="fp-submit" style="background:var(--fp-success)">إكمال الفحص وإرسال للمبيعات</button>
+</form>
+{% else %}
+<div class="flash flash-success" style="margin-top:16px;padding:12px;border-radius:10px">تم إكمال هذا الفحص — لا يمكن التعديل</div>
+{% endif %}
+
+<script>
+(function(){
+  var SURVEY = {{ survey|tojson }};
+  var READ_ONLY = {{ 'true' if read_only else 'false' }};
+  var units = (SURVEY.units && SURVEY.units.length) ? SURVEY.units.slice() : [blankUnit(1)];
+
+  function blankUnit(n){
+    return {
+      sort_order: n,
+      unit_label: 'مصعد ' + n,
+      building_name: '',
+      location_note: '',
+      elev_type: '',
+      brand: '',
+      model: '',
+      capacity_kg: '',
+      capacity_persons: '',
+      floors: '',
+      stops: '',
+      speed: '',
+      machine_type: '',
+      door_type: '',
+      control_type: '',
+      serial_number: '',
+      technical_opinion: '',
+      condition_status: '',
+      needs_repair: false,
+      needs_spare_parts: false,
+      repair_scope: '',
+      spare_parts_scope: '',
+      separate_quote_notes: ''
+    };
+  }
+
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  }
+
+  function unitHtml(u, idx){
+    var ro = READ_ONLY ? ' readonly disabled' : '';
+    var chkRepair = u.needs_repair ? ' checked' : '';
+    var chkParts = u.needs_spare_parts ? ' checked' : '';
+    return '<div class="mqs-unit fp-card" data-idx="'+idx+'" style="margin-bottom:12px;padding:12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      + '<b>مصعد #'+(idx+1)+'</b>'
+      + (READ_ONLY ? '' : '<button type="button" class="fp-btn-icon mqs-rm" data-idx="'+idx+'">حذف</button>')
+      + '</div>'
+      + field('unit_label','تسمية المصعد', u.unit_label, ro)
+      + field('building_name','المبنى / البرج', u.building_name, ro)
+      + field('location_note','موقع داخل المبنى', u.location_note, ro)
+      + field('elev_type','نوع المصعد', u.elev_type, ro)
+      + field('brand','الشركة المصنعة', u.brand, ro)
+      + field('model','الموديل', u.model, ro)
+      + field('capacity_kg','الحمولة (كجم)', u.capacity_kg, ro, 'number')
+      + field('capacity_persons','الأشخاص', u.capacity_persons, ro, 'number')
+      + field('floors','عدد الطوابق', u.floors, ro, 'number')
+      + field('stops','عدد التوقفات', u.stops, ro, 'number')
+      + field('speed','السرعة', u.speed, ro)
+      + selectField('machine_type','نوع الماكينة', u.machine_type, ['','MR','MRL','هيدروليك'], ro)
+      + field('door_type','نوع الباب', u.door_type, ro)
+      + field('control_type','نظام التحكم', u.control_type, ro)
+      + field('serial_number','الرقم التسلسلي', u.serial_number, ro)
+      + selectField('condition_status','حالة المصعد', u.condition_status, ['','جيد','مقبول','يحتاج متابعة','غير آمن'], ro)
+      + '<div class="fp-field"><label>الرأي الفني *</label><textarea data-k="technical_opinion" rows="3"'+ro+'>'+esc(u.technical_opinion)+'</textarea></div>'
+      + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 0"><input type="checkbox" data-k="needs_repair"'+chkRepair+ro+'> يحتاج إصلاح — عرض منفصل</label>'
+      + '<div class="fp-field mqs-extra" data-for="needs_repair" style="'+(u.needs_repair?'':'display:none')+'"><label>نطاق الإصلاح</label><textarea data-k="repair_scope" rows="2"'+ro+'>'+esc(u.repair_scope)+'</textarea></div>'
+      + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 0"><input type="checkbox" data-k="needs_spare_parts"'+chkParts+ro+'> يحتاج قطع غيار — عرض منفصل</label>'
+      + '<div class="fp-field mqs-extra" data-for="needs_spare_parts" style="'+(u.needs_spare_parts?'':'display:none')+'"><label>قطع الغيار المطلوبة</label><textarea data-k="spare_parts_scope" rows="2"'+ro+'>'+esc(u.spare_parts_scope)+'</textarea></div>'
+      + '<div class="fp-field"><label>ملاحظات عرض منفصل (إصلاح/قطع)</label><textarea data-k="separate_quote_notes" rows="2"'+ro+' placeholder="يُعرض مع عرض عقد الصيانة — ليس ضمن سعر العقد">'+esc(u.separate_quote_notes)+'</textarea></div>'
+      + '</div>';
+  }
+
+  function field(k, label, val, ro, type){
+    type = type || 'text';
+    return '<div class="fp-field"><label>'+label+'</label><input type="'+type+'" data-k="'+k+'" value="'+esc(val)+'"'+ro+'></div>';
+  }
+
+  function selectField(k, label, val, opts, ro){
+    var h = '<div class="fp-field"><label>'+label+'</label><select data-k="'+k+'"'+ro+'>';
+    opts.forEach(function(o){
+      h += '<option value="'+esc(o)+'"'+(String(val)===String(o)?' selected':'')+'>'+(o||'—')+'</option>';
+    });
+    return h + '</select></div>';
+  }
+
+  function render(){
+    var box = document.getElementById('mqs-units');
+    box.innerHTML = units.map(function(u,i){ return unitHtml(u,i); }).join('');
+    bindUnitEvents();
+  }
+
+  function collectUnits(){
+    var out = [];
+    document.querySelectorAll('.mqs-unit').forEach(function(el, idx){
+      var u = { sort_order: idx + 1 };
+      el.querySelectorAll('[data-k]').forEach(function(inp){
+        var k = inp.getAttribute('data-k');
+        if (inp.type === 'checkbox') u[k] = inp.checked;
+        else u[k] = inp.value;
+      });
+      if (!u.unit_label) u.unit_label = 'مصعد ' + (idx + 1);
+      out.push(u);
+    });
+    return out;
+  }
+
+  function bindUnitEvents(){
+    document.querySelectorAll('.mqs-rm').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var i = Number(btn.getAttribute('data-idx'));
+        if (units.length <= 1) { showMsg('يجب مصعد واحد على الأقل'); return; }
+        units.splice(i, 1);
+        render();
+      });
+    });
+    document.querySelectorAll('.mqs-unit').forEach(function(el){
+      el.querySelectorAll('input[type=checkbox][data-k]').forEach(function(cb){
+        cb.addEventListener('change', function(){
+          var key = cb.getAttribute('data-k');
+          var extra = el.querySelector('.mqs-extra[data-for="'+key+'"]');
+          if (extra) extra.style.display = cb.checked ? 'block' : 'none';
+        });
+      });
+    });
+  }
+
+  function showMsg(t, ok){
+    var err = document.getElementById('mqs-msg');
+    var okEl = document.getElementById('mqs-ok');
+    if (ok) {
+      err.hidden = true;
+      okEl.textContent = t;
+      okEl.hidden = false;
+      setTimeout(function(){ okEl.hidden = true; }, 3500);
+    } else {
+      okEl.hidden = true;
+      err.textContent = t;
+      err.hidden = false;
+    }
+  }
+
+  function saveDraft(){
+    units = collectUnits();
+    return fetch(SURVEY.save_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ units: units })
+    }).then(function(r){ return r.json().then(function(j){ return { status: r.status, body: j }; }); });
+  }
+
+  window.mqsBeforeComplete = function(){
+    units = collectUnits();
+    for (var i = 0; i < units.length; i++) {
+      var u = units[i];
+      if (!(u.elev_type || u.brand || u.capacity_kg || u.floors)) {
+        showMsg('عبّئ مواصفات ' + (u.unit_label || ('مصعد ' + (i+1))));
+        return false;
+      }
+      if (!(u.technical_opinion || '').trim()) {
+        showMsg('أدخل الرأي الفني لـ ' + (u.unit_label || ('مصعد ' + (i+1))));
+        return false;
+      }
+    }
+    return true;
+  };
+
+  document.getElementById('mqs-add') && document.getElementById('mqs-add').addEventListener('click', function(){
+    units = collectUnits();
+    units.push(blankUnit(units.length + 1));
+    render();
+  });
+
+  document.getElementById('mqs-save') && document.getElementById('mqs-save').addEventListener('click', function(){
+    saveDraft().then(function(res){
+      if (res.body && res.body.ok) {
+        units = res.body.units || collectUnits();
+        showMsg('تم حفظ المسودة', true);
+      } else {
+        showMsg((res.body && res.body.error) || 'تعذّر الحفظ');
+      }
+    }).catch(function(){ showMsg('خطأ في الاتصال'); });
+  });
+
+  render();
+})();
+</script>
+{% endblock %}

@@ -15,6 +15,17 @@
   زيارات <strong>اليوم وغداً</strong> فقط — {{ payload.today }} / {{ payload.tomorrow }}
 </p>
 
+{% if payload.maint_surveys|length %}
+<a href="#maint-surveys" class="fp-card" style="border-color:rgba(48,120,224,.45);background:rgba(48,120,224,.08);margin-bottom:12px;text-decoration:none">
+  <div class="fp-card-top">
+    <span class="fp-code" style="color:var(--fp-accent,#3078e0)">فحص عروض صيانة</span>
+    <span class="fp-count">{{ payload.maint_surveys|length }}</span>
+  </div>
+  <div class="fp-title">لديك {{ payload.maint_surveys|length }} طلب فحص — اضغط للانتقال</div>
+  <div class="fp-meta">توثيق مواصفات المصاعد والرأي الفني لعرض الصيانة</div>
+</a>
+{% endif %}
+
 {% if payload.has_assigned_faults and payload.faults|length %}
 <a href="#faults" class="fp-card" style="border-color:rgba(224,72,72,.45);background:rgba(224,72,72,.08);margin-bottom:12px;text-decoration:none">
   <div class="fp-card-top">
@@ -35,6 +46,23 @@
 {% endif %}
 
 <div class="fp-panel on" data-fp-panel="all">
+  {% if payload.maint_surveys|length %}
+  <div id="maint-surveys" style="margin-bottom:12px">
+    <div class="fp-section">فحص عروض صيانة <span class="fp-count">{{ payload.maint_surveys|length }}</span></div>
+    {% for s in payload.maint_surveys %}
+    <a class="fp-card" href="{{ s.url }}">
+      <div class="fp-card-top">
+        <span class="fp-code">{{ s.code }}</span>
+        <span style="font-size:11px;color:var(--fp-muted)">{{ s.status }}</span>
+      </div>
+      <div class="fp-title">{{ s.customer }} <span style="font-size:11px;color:var(--fp-muted)">{{ s.customer_code }}</span></div>
+      <div class="fp-meta">عرض {{ s.quote_code }} · {{ s.city }}{% if s.district %} · {{ s.district }}{% endif %}</div>
+      {% if s.units_count %}<div class="fp-meta">{{ s.units_count }} مصعد مسجّل</div>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if payload.show_visits %}
   <div id="visits">
     <div class="fp-section">زيارات اليوم <span class="fp-count">{{ payload.visits_today|length }}</span></div>

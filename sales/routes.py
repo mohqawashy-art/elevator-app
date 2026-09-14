@@ -5,8 +5,16 @@ from datetime import date, datetime
 
 from flask import flash, redirect, render_template, request, url_for
 
-from models import Customer, Elevator, MaintenanceQuote, MaintenanceQuoteElevator, db
+from models import Customer, MaintenanceQuote, Technician, db
 from sales import sales_bp
+from sales.maint_survey import (
+    SURVEY_DONE,
+    active_survey_for_quote,
+    create_survey_request,
+    latest_survey_for_quote,
+    quote_survey_units_for_display,
+    survey_units_payload,
+)
 from sales.service import (
     apply_total_including_tax,
     create_contract_from_maintenance_quote,
@@ -88,19 +96,29 @@ def _apply_maint_quote_form(quote: MaintenanceQuote, form) -> None:
 
 
 def _maint_form_context(quote=None, *, selected_elevator_ids=None):
+    from models import Technician
+
     customers = tenant_query(Customer).order_by(Customer.name).all()
-    elevators = tenant_query(Elevator).order_by(Elevator.code).limit(800).all()
     package, scope, notes_body = _split_maint_notes(quote.notes if quote else None)
     total_incl_tax = money_round(quote.total if quote else 0)
+    survey = latest_survey_for_quote(quote.id) if quote else None
+    technicians = (
+        tenant_query(Technician)
+        .filter(Technician.status.in_(['نشط', 'متاح', 'مشغول', '']))
+        .order_by(Technician.name)
+        .all()
+    )
+    survey_units = survey_units_payload(survey) if survey and survey.status == SURVEY_DONE else []
     return dict(
         customers=customers,
-        elevators=elevators,
-        selected_elevator_ids=selected_elevator_ids or set(),
         today=date.today().isoformat(),
         package=package,
         scope_items=scope,
         notes_body=notes_body,
         total_incl_tax=total_incl_tax,
+        maint_survey=survey,
+        survey_units=survey_units,
+        technicians=technicians,
     )
 
 
@@ -429,12 +447,8 @@ def maintenance_quote_new():
 
     if request.method == 'POST':
         customer_id = request.form.get('customer_id', type=int)
-        elev_ids = request.form.getlist('elevator_ids')
         if not customer_id:
             flash('اختر العميل', 'error')
-            return redirect(url_for('sales.maintenance_quote_new'))
-        if not elev_ids:
-            flash('اختر مصعداً واحداً على الأقل مشمولاً في العرض', 'error')
             return redirect(url_for('sales.maintenance_quote_new'))
         quote = MaintenanceQuote(code=next_code(MaintenanceQuote, 'MQ-', digits=5))
         assign_organization(quote)
@@ -446,10 +460,8 @@ def maintenance_quote_new():
             flash('أدخل الإجمالي شامل الضريبة', 'error')
             return redirect(url_for('sales.maintenance_quote_new'))
         db.session.add(quote)
-        db.session.flush()
-        sync_quote_elevators(quote.id, elev_ids)
         db.session.commit()
-        flash(f'تم إنشاء عرض {quote.code}', 'success')
+        flash(f'تم إنشاء عرض {quote.code} — أرسل طلب فحص للفني لتحديد مواصفات المصاعد', 'success')
         if (request.form.get('action') or '').strip() == 'save_print':
             return redirect(url_for('sales.maintenance_quote_print', quote_id=quote.id))
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
@@ -470,15 +482,10 @@ def maintenance_quote_edit(quote_id):
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
     if request.method == 'POST':
-        elev_ids = request.form.getlist('elevator_ids')
-        if not elev_ids:
-            flash('اختر مصعداً واحداً على الأقل', 'error')
-            return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
         _apply_maint_quote_form(quote, request.form)
         if money_round(quote.total) <= 0:
             flash('أدخل الإجمالي شامل الضريبة', 'error')
             return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
-        sync_quote_elevators(quote.id, elev_ids)
         quote.updated_at = datetime.utcnow()
         db.session.commit()
         flash('تم حفظ العرض', 'success')
@@ -486,16 +493,41 @@ def maintenance_quote_edit(quote_id):
             return redirect(url_for('sales.maintenance_quote_print', quote_id=quote.id))
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
-    selected = {
-        row.elevator_id
-        for row in tenant_query(MaintenanceQuoteElevator).filter_by(quote_id=quote.id).all()
-    }
     return render_template(
         'sales/maintenance_quote_form.html',
         page_title=f'عرض صيانة {quote.code}',
         quote=quote,
-        **_maint_form_context(quote, selected_elevator_ids=selected),
+        **_maint_form_context(quote),
     )
+
+
+@sales_bp.route('/maintenance-quotes/<int:quote_id>/request-survey', methods=['POST'])
+def maintenance_quote_request_survey(quote_id):
+    from app import next_code
+
+    quote = tenant_get_or_404(MaintenanceQuote, quote_id)
+    if quote.status == 'مقبول':
+        flash('العرض مقبول ولا يمكن إرسال فحص', 'error')
+        return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
+    tech_id = request.form.get('technician_id', type=int)
+    if not tech_id:
+        flash('اختر الفني', 'error')
+        return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
+    notes = (request.form.get('survey_notes') or '').strip()
+    try:
+        survey = create_survey_request(
+            quote,
+            technician_id=tech_id,
+            request_notes=notes,
+            next_code_fn=next_code,
+        )
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+        return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
+    flash(f'تم إرسال طلب فحص {survey.code} للفني', 'success')
+    return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
 
 @sales_bp.route('/maintenance-quotes/<int:quote_id>/send', methods=['POST'])
@@ -522,9 +554,10 @@ def maintenance_quote_approve(quote_id):
     if not quote.customer_id:
         flash('العرض بدون عميل', 'error')
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
-    elev_count = tenant_query(MaintenanceQuoteElevator).filter_by(quote_id=quote.id).count()
-    if elev_count < 1:
-        flash('أضف مصعداً واحداً على الأقل قبل الموافقة', 'error')
+    elev_count = len(quote_survey_units_for_display(quote))
+    survey = active_survey_for_quote(quote.id)
+    if elev_count < 1 or not survey or survey.status != SURVEY_DONE:
+        flash('أكمل فحص المصاعد من الفني قبل الموافقة', 'error')
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
     if money_round(quote.total) <= 0:
         flash('قيمة العرض غير مكتملة', 'error')
@@ -558,18 +591,14 @@ def maintenance_quote_reject(quote_id):
 @sales_bp.route('/maintenance-quotes/<int:quote_id>/print')
 def maintenance_quote_print(quote_id):
     quote = tenant_get_or_404(MaintenanceQuote, quote_id)
-    elev_ids = [
-        r.elevator_id
-        for r in tenant_query(MaintenanceQuoteElevator).filter_by(quote_id=quote.id).all()
-    ]
-    elevators = []
-    if elev_ids:
-        elevators = tenant_query(Elevator).filter(Elevator.id.in_(elev_ids)).all()
+    survey_units = quote_survey_units_for_display(quote)
     package, scope, notes_body = _split_maint_notes(quote.notes if quote else None)
+    survey = latest_survey_for_quote(quote.id)
     return render_template(
         'sales/maintenance_quote_print.html',
         quote=quote,
-        elevators=elevators,
+        survey=survey if survey and survey.status == SURVEY_DONE else None,
+        survey_units=survey_units,
         package=package,
         scope_items=scope,
         notes_body=notes_body,

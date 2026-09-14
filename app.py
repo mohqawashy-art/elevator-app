@@ -9786,6 +9786,75 @@ def api_visit_report_customer_send(visit_id):
     return jsonify(result)
 
 
+@app.route('/field/maint-quote-survey/<int:survey_id>')
+def field_maint_quote_survey(survey_id):
+    from sales.maint_survey import survey_field_payload
+
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    try:
+        detail = survey_field_payload(survey_id, tech_id=tech_id, base_url=request.url_root)
+        db.session.commit()
+    except PermissionError as e:
+        ctx = _field_portal_context(tech_id) if tech_id else {}
+        return render_template('field.html', error=str(e), payload=None, **ctx), 403
+    except ValueError as e:
+        ctx = _field_portal_context(tech_id) if tech_id else {}
+        return render_template('field.html', error=str(e), payload=None, **ctx), 400
+    ctx = _field_portal_context(tech_id)
+    read_only = detail.get('status') == 'مكتمل'
+    return render_template(
+        'field-maint-survey.html',
+        survey=detail,
+        read_only=read_only,
+        **ctx,
+    )
+
+
+@app.route('/api/field/maint-quote-survey/<int:survey_id>', methods=['POST'])
+def api_field_maint_quote_survey_save(survey_id):
+    from sales.maint_survey import save_survey_units, survey_units_payload
+
+    tech_id = getattr(g, 'field_tech_id', None)
+    if not tech_id:
+        return jsonify({'ok': False, 'error': 'غير مصرح'}), 401
+    data = request.get_json(silent=True) or {}
+    units = data.get('units')
+    if units is None:
+        units = []
+    try:
+        survey = save_survey_units(survey_id, tech_id=tech_id, units=units)
+        db.session.commit()
+        return jsonify({'ok': True, 'units': survey_units_payload(survey)})
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+
+@app.route('/field/maint-quote-survey/<int:survey_id>/complete', methods=['POST'])
+def field_maint_quote_survey_complete(survey_id):
+    from sales.maint_survey import complete_survey
+
+    tech_id = getattr(g, 'field_tech_id', None)
+    if not tech_id:
+        return redirect(url_for('field_login'))
+    try:
+        complete_survey(survey_id, tech_id=tech_id, next_elevator_code_fn=next_code)
+        db.session.commit()
+        flash('تم إكمال فحص العرض — المواصفات متاحة للمبيعات', 'success')
+    except PermissionError as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+        return redirect(url_for('field_maint_quote_survey', survey_id=survey_id))
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+        return redirect(url_for('field_maint_quote_survey', survey_id=survey_id))
+    return redirect(url_for('field_home'))
+
+
 @app.route('/field/fault/<int:fault_id>')
 def field_fault(fault_id):
     from operations import field_fault_detail

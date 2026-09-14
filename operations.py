@@ -2043,6 +2043,19 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         )
         has_assigned_faults = bool(faults)
 
+    from models import MaintenanceQuoteSurvey
+    from sales.maint_survey import SURVEY_OPEN, survey_summary_for_field
+
+    maint_surveys = (
+        tenant_query(MaintenanceQuoteSurvey)
+        .filter(
+            MaintenanceQuoteSurvey.technician_id == tech_id,
+            MaintenanceQuoteSurvey.status.in_(tuple(SURVEY_OPEN)),
+        )
+        .order_by(MaintenanceQuoteSurvey.requested_at.desc())
+        .all()
+    )
+
     return {
         'technician': {
             'id': tech.id,
@@ -2060,12 +2073,13 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         'show_visits': show_visits,
         'show_faults': show_faults or bool(faults),
         'has_assigned_faults': has_assigned_faults,
-        'alert_stamp': _field_alert_stamp(visits, faults),
+        'maint_surveys': [survey_summary_for_field(s, base_url) for s in maint_surveys],
+        'alert_stamp': _field_alert_stamp(visits, faults, maint_surveys),
         'geofence': field_geofence_config(),
     }
 
 
-def _field_alert_stamp(visits: list, faults: list) -> str:
+def _field_alert_stamp(visits: list, faults: list, surveys: list | None = None) -> str:
     """بصمة مهام الفني لاكتشاف الإرسال الجديد على الجوال."""
     parts = []
     for v in visits:
@@ -2075,6 +2089,10 @@ def _field_alert_stamp(visits: list, faults: list) -> str:
     for f in faults:
         parts.append(
             f"f{f.id}:{f.status}:{f.dispatched_at.isoformat() if f.dispatched_at else ''}"
+        )
+    for s in surveys or []:
+        parts.append(
+            f"m{s.id}:{s.status}:{s.requested_at.isoformat() if s.requested_at else ''}"
         )
     return '|'.join(sorted(parts))
 

@@ -104,25 +104,60 @@
       </section>
 
       <section class="mq-card">
-        <h2><span class="n">2</span> المصاعد المشمولة</h2>
-        <div class="field full">
-          <div class="elev-box" id="elev-box">
-            {% for e in elevators %}
-            <label class="elev-row" data-customer="{{ e.customer_id }}" style="display:none">
-              <input type="checkbox" name="elevator_ids" value="{{ e.id }}" {% if e.id in selected_elevator_ids %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
-              <span>
-                <b dir="ltr">{{ e.code }}</b>
-                {% if e.building_name %} — {{ e.building_name }}{% endif %}
-                <div class="meta">{{ e.elev_type or '' }}{% if e.capacity_kg %} · {{ e.capacity_kg }} كجم{% endif %}{% if e.floors %} · {{ e.floors }} ط{% endif %}</div>
-              </span>
-            </label>
-            {% else %}
-            <div style="color:var(--text3);font-size:12px;padding:8px">لا توجد مصاعد في النظام.</div>
-            {% endfor %}
-            <div id="elev-empty" style="color:var(--text3);font-size:12px;padding:8px;display:none">اختر العميل أولاً لعرض مصاعده، أو أضف مصاعد من صفحة المصاعد.</div>
+        <h2><span class="n">2</span> فحص المصاعد (من الفني)</h2>
+        {% if not quote %}
+        <p class="flow">بعد حفظ العرض يمكنك إرسال <b>طلب فحص مصعد</b> للفني — يُدخل مواصفات المصاعد والرأي الفني قبل تثبيت العرض.</p>
+        {% elif quote.status == 'مقبول' %}
+        {% if survey_units %}
+        <div class="q-panel" style="border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;background:var(--bg2)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px">نتائج الفحص ({{ survey_units|length }} مصعد)</div>
+          {% for u in survey_units %}
+          <div style="border-bottom:1px solid var(--border);padding:8px 0;font-size:12px">
+            <b>{{ u.unit_label or loop.index }}</b>
+            {% if u.elevator_code %} · <span dir="ltr">{{ u.elevator_code }}</span>{% endif %}
+            — {{ u.elev_type or '—' }}{% if u.capacity_kg %} · {{ u.capacity_kg }} كجم{% endif %}{% if u.floors %} · {{ u.floors }} ط{% endif %}
+            {% if u.needs_repair or u.needs_spare_parts %}
+            <div style="color:var(--warning);margin-top:4px">⚠ يحتاج {% if u.needs_repair %}إصلاح{% endif %}{% if u.needs_repair and u.needs_spare_parts %} + {% endif %}{% if u.needs_spare_parts %}قطع غيار{% endif %} — عرض منفصل</div>
+            {% endif %}
           </div>
-          <div class="hint">عدد المصاعد المحددة: <b id="elev-count">0</b></div>
+          {% endfor %}
         </div>
+        {% endif %}
+        {% elif maint_survey and maint_survey.status == 'مكتمل' %}
+        <div class="flash flash-success">اكتمل فحص {{ maint_survey.code }} — {{ survey_units|length }} مصعد</div>
+        {% for u in survey_units %}
+        <div style="font-size:12px;padding:8px 0;border-bottom:1px dashed var(--border)">
+          <b>{{ u.unit_label }}</b> · {{ u.elev_type or '—' }} · {{ u.capacity_kg or '—' }} كجم · {{ u.floors or '—' }} ط
+          {% if u.technical_opinion %}<div class="hint" style="margin-top:4px">{{ u.technical_opinion[:180] }}{% if u.technical_opinion|length > 180 %}…{% endif %}</div>{% endif %}
+        </div>
+        {% endfor %}
+        {% elif maint_survey and maint_survey.status in ['مُرسَل','قيد الفحص'] %}
+        <div class="flash flash-success" style="margin-bottom:10px">
+          طلب فحص <b>{{ maint_survey.code }}</b> — {{ maint_survey.status }}
+          {% if maint_survey.technician %} · الفني: {{ maint_survey.technician.name }}{% endif %}
+        </div>
+        <p class="hint">بانتظار تعبئة الفني من بوابة الجوال. بعد الإكمال تظهر المواصفات هنا تلقائياً.</p>
+        {% else %}
+        <p class="flow" style="margin-bottom:10px">أرسل طلب فحص للفني لزيارة الموقع وتوثيق مواصفات المصاعد والرأي الفني.</p>
+        <form method="post" action="{{ url_for('sales.maintenance_quote_request_survey', quote_id=quote.id) }}" class="mq-grid">
+          <div class="field full">
+            <label>الفني *</label>
+            <select name="technician_id" required>
+              <option value="">— اختر فنياً —</option>
+              {% for t in technicians %}
+              <option value="{{ t.id }}">{{ t.code }} — {{ t.name }}{% if t.phone %} · {{ t.phone }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field full">
+            <label>ملاحظات للفني</label>
+            <textarea name="survey_notes" rows="2" placeholder="موعد الزيارة، جهة التواصل، عدد المصاعد المتوقع…"></textarea>
+          </div>
+          <div class="field full">
+            <button type="submit" class="btn btn-primary btn-sm">إرسال طلب فحص مصعد</button>
+          </div>
+        </form>
+        {% endif %}
       </section>
 
       <section class="mq-card">
@@ -266,9 +301,6 @@
     'شامل': ['زيارات وقائية','فحص سلامة','تشحيم وضبط','استجابة أعطال','تقارير زيارة','طوارئ خارج الدوام']
   };
   function money(n){ n=Number(n)||0; return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-  function elevCount(){
-    return document.querySelectorAll('#elev-box input[name=elevator_ids]:checked').length;
-  }
   function syncScopeStyles(){
     document.querySelectorAll('#scope-box label').forEach(function(lab){
       var cb = lab.querySelector('input[type=checkbox]');
@@ -288,22 +320,6 @@
   function markPackageSelected(lab){
     document.querySelectorAll('#pkg-box label').forEach(function(x){ x.classList.remove('selected'); });
     if(lab) lab.classList.add('selected');
-  }
-  function filterElev(){
-    var cid = (document.getElementById('customer_id')||{}).value || '';
-    var rows = document.querySelectorAll('.elev-row');
-    var shown = 0;
-    rows.forEach(function(row){
-      var ok = cid && String(row.getAttribute('data-customer')) === String(cid);
-      row.style.display = ok ? 'flex' : 'none';
-      if(!ok){
-        var box = row.querySelector('input');
-        if(box && !locked) box.checked = false;
-      } else shown++;
-    });
-    var empty = document.getElementById('elev-empty');
-    if(empty) empty.style.display = (!cid || shown===0) ? 'block' : 'none';
-    document.getElementById('elev-count').textContent = elevCount();
   }
   function fillCustomerMeta(){
     var sel = document.getElementById('customer_id');
@@ -351,9 +367,8 @@
     document.getElementById('t-tax').textContent = money(tax);
     document.getElementById('t-total').textContent = money(total);
   }
-  function refreshElevCount(){
-    document.getElementById('elev-count').textContent = elevCount();
-  }
+  var cust = document.getElementById('customer_id');
+  if(cust){ cust.addEventListener('change', fillCustomerMeta); }
   document.querySelectorAll('#pkg-box label').forEach(function(lab){
     lab.addEventListener('click', function(){
       if(locked) return;
@@ -369,9 +384,6 @@
     });
   });
   document.getElementById('scope-box').addEventListener('change', syncScopeStyles);
-  var cust = document.getElementById('customer_id');
-  if(cust){ cust.addEventListener('change', function(){ fillCustomerMeta(); filterElev(); }); }
-  document.getElementById('elev-box').addEventListener('change', refreshElevCount);
   ['duration_months','start_date'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.addEventListener('change', function(){ syncEnd(); });
   });
@@ -379,7 +391,6 @@
   document.getElementById('visits_per_month').addEventListener('input', visitsHint);
   document.getElementById('total_incl_tax').addEventListener('input', recalcTotals);
   document.getElementById('tax_pct').addEventListener('input', recalcTotals);
-  filterElev();
   visitsHint();
   if(!document.getElementById('end_date').value) syncEnd();
   recalcTotals();
