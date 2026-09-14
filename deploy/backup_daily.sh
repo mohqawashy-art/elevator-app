@@ -22,14 +22,14 @@ dump_postgres() {
   local dest="$1"
   command -v pg_dump >/dev/null 2>&1 || return 1
   if [ "$(id -u)" = "0" ]; then
-    sudo -u postgres pg_dump -Fc -f "$dest" "$PG_DB"
+    sudo -u postgres pg_dump -Fc "$PG_DB" >"$dest"
     return $?
   fi
-  sudo -n -u postgres pg_dump -Fc -f "$dest" "$PG_DB" 2>/dev/null
+  sudo -n -u postgres pg_dump -Fc "$PG_DB" >"$dest" 2>/dev/null
 }
 
 DUMP_FILE="$DEST/liftcore-${TS}.dump"
-if dump_postgres "$DUMP_FILE"; then
+if dump_postgres "$DUMP_FILE" && [ -s "$DUMP_FILE" ]; then
   found=1
   echo "OK PostgreSQL backup: $DUMP_FILE"
   if id info >/dev/null 2>&1; then
