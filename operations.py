@@ -2624,6 +2624,17 @@ def visit_report_payload(
     template_key = v.checklist_template_key or _default_checklist_template_key()
     saved = parse_report_json(v.checklist_json)
     report_data = merge_report_data(saved, template_key)
+    from visit_report_media import normalize_report_photos, photos_need_migration
+
+    raw_photos = report_data.get('photos') or []
+    if photos_need_migration(raw_photos):
+        from flask import current_app
+
+        report_data['photos'] = normalize_report_photos(
+            current_app.root_path, visit_id, raw_photos
+        )
+        v.checklist_json = json.dumps(report_data, ensure_ascii=False)
+        db.session.commit()
     stats = report_completion_stats(report_data, template_key)
     template = get_template(template_key)
     meta = report_data.get('meta') or {}
@@ -2829,7 +2840,14 @@ def save_visit_report(
                 if key in sig:
                     merged['signatures'][key] = sig.get(key) or ''
         if 'photos' in payload and isinstance(payload.get('photos'), list):
-            merged['photos'] = payload['photos']
+            from flask import current_app
+            from visit_report_media import normalize_report_photos
+
+            merged['photos'] = normalize_report_photos(
+                current_app.root_path,
+                visit_id,
+                payload.get('photos') or [],
+            )
 
     if preserve_field_times:
         _preserve_field_start_times(merged, existing)

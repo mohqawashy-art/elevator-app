@@ -503,6 +503,8 @@ def _field_tech_api_allowed(path: str, method: str) -> bool:
             return True
         if path.startswith('/api/faults/'):
             return True
+    if path.endswith('/report-photo') and path.startswith('/api/maintenance-visits/'):
+        return True
     return False
 
 
@@ -9954,6 +9956,46 @@ def _signature_data_url(relative_path: str) -> str:
             with open(abs_path, 'rb') as fh:
                 return image_data_url(fh.read())
     return ''
+
+
+@app.route('/api/maintenance-visits/<int:visit_id>/report-photo', methods=['POST'])
+def api_upload_visit_report_photo(visit_id):
+    """رفع صورة محضر — يُخزَّن كملف ويُرجَع URL ثابت."""
+    from technician_assignments import technician_assigned_to_visit
+    from visit_report_media import persist_data_url_photo, save_visit_report_photo_bytes
+
+    v = tenant_query(MaintenanceVisit).filter_by(id=visit_id).first()
+    if not v:
+        return jsonify({'ok': False, 'error': 'الزيارة غير موجودة'}), 404
+
+    tech_id = getattr(g, 'field_tech_id', None)
+    if tech_id and not technician_assigned_to_visit(v, tech_id):
+        return jsonify({'ok': False, 'error': 'الزيارة غير مخصصة لهذا الفني'}), 403
+
+    upload = request.files.get('photo')
+    if upload and upload.filename:
+        from app import _ext_ok
+
+        if not _ext_ok(upload.filename, {'jpg', 'jpeg', 'png', 'webp', 'gif'}):
+            return jsonify({'ok': False, 'error': 'صيغة الصورة غير مدعومة'}), 400
+        ext = upload.filename.rsplit('.', 1)[-1].lower()
+        try:
+            url = save_visit_report_photo_bytes(app.root_path, visit_id, upload.read(), ext=ext)
+        except ValueError as e:
+            return jsonify({'ok': False, 'error': str(e)}), 400
+        return jsonify({'ok': True, 'url': url})
+
+    data = request.get_json(silent=True) or {}
+    data_url = (data.get('data_url') or data.get('url') or '').strip()
+    if not data_url:
+        return jsonify({'ok': False, 'error': 'لا توجد صورة'}), 400
+    try:
+        url = persist_data_url_photo(app.root_path, visit_id, data_url)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    if not url:
+        return jsonify({'ok': False, 'error': 'تعذّر حفظ الصورة'}), 400
+    return jsonify({'ok': True, 'url': url})
 
 
 @app.route('/api/maintenance-visits/<int:visit_id>/report', methods=['POST'])

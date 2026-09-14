@@ -250,19 +250,57 @@
   }
 
   function applyPhotos(photos) {
-    (photos || []).forEach((ph, idx) => {
+    document.querySelectorAll('.photo-slot').forEach(function (slot) {
+      const oldImg = slot.querySelector('img');
+      if (oldImg) oldImg.remove();
+      slot.classList.remove('has-img');
+      slot.removeAttribute('data-photo-url');
+      const ph = slot.querySelector('.photo-ph');
+      if (ph) ph.style.display = '';
+      const cap = slot.querySelector('.photo-caption-input');
+      if (cap) cap.value = '';
+    });
+    (photos || []).forEach(function (ph, idx) {
       const i = idx + 1;
-      const slot = document.querySelector(`.photo-slot[data-slot="${i}"]`);
+      const slot = document.querySelector('.photo-slot[data-slot="' + i + '"]');
       if (!slot || !ph.url) return;
-      slot.querySelector('.photo-ph').style.display = 'none';
-      const img = document.createElement('img');
-      img.src = ph.url;
-      slot.insertBefore(img, slot.querySelector('.photo-remove'));
-      slot.classList.add('has-img');
+      showPhotoInSlot(i, ph.url);
       const cap = slot.querySelector('.photo-caption-input');
       if (cap) cap.value = ph.caption || '';
     });
     syncPhotoVisibility();
+  }
+
+  function reportPhotoUploadUrl() {
+    const cfg = global.REPORT_CFG || {};
+    if (!cfg.visitId) return '';
+    return '/api/maintenance-visits/' + cfg.visitId + '/report-photo';
+  }
+
+  function uploadVisitReportPhoto(dataUrl) {
+    const url = reportPhotoUploadUrl();
+    if (!url) return Promise.resolve(dataUrl);
+    const headers = { 'Content-Type': 'application/json' };
+    const csrf = document.querySelector('meta[name="csrf-token"]');
+    if (csrf && csrf.content) headers['X-CSRF-Token'] = csrf.content;
+    return fetch(url, {
+      method: 'POST',
+      headers: headers,
+      credentials: 'same-origin',
+      body: JSON.stringify({ data_url: dataUrl }),
+    }).then(function (r) {
+      return r.text().then(function (text) {
+        var data;
+        try { data = text ? JSON.parse(text) : {}; } catch (e) {
+          throw new Error(r.status === 413 ? 'حجم الصورة كبير' : 'تعذّر رفع الصورة (' + r.status + ')');
+        }
+        if (!r.ok || !data.ok) throw new Error(data.error || 'تعذّر رفع الصورة');
+        return data.url || dataUrl;
+      });
+    }).catch(function (err) {
+      if (!navigator.onLine) return dataUrl;
+      throw err;
+    });
   }
 
   function collectReportData(template) {
@@ -328,14 +366,34 @@
 
   function collectPhotos() {
     const out = [];
-    document.querySelectorAll('.photo-slot.has-img').forEach(slot => {
+    document.querySelectorAll('.photo-slot.has-img').forEach(function (slot) {
       const img = slot.querySelector('img');
       const cap = slot.querySelector('.photo-caption-input');
-      if (img && img.src) {
-        out.push({ url: img.src, caption: cap ? cap.value.trim() : '' });
+      const stored = slot.getAttribute('data-photo-url') || '';
+      const src = stored || (img && img.src) || '';
+      if (src) {
+        out.push({ url: src, caption: cap ? cap.value.trim() : '' });
       }
     });
     return out;
+  }
+
+  function ensurePhotosUploaded() {
+    const jobs = [];
+    document.querySelectorAll('.photo-slot.has-img').forEach(function (slot) {
+      const stored = slot.getAttribute('data-photo-url') || '';
+      if (stored.indexOf('/static/uploads/visits/') === 0) return;
+      const img = slot.querySelector('img');
+      const src = img && img.src;
+      if (!src || src.indexOf('data:') !== 0) return;
+      const i = parseInt(slot.getAttribute('data-slot'), 10);
+      jobs.push(
+        uploadVisitReportPhoto(src).then(function (url) {
+          if (url) showPhotoInSlot(i, url);
+        })
+      );
+    });
+    return jobs.length ? Promise.all(jobs) : Promise.resolve();
   }
 
   function initPhotosGrid(grid) {
@@ -408,9 +466,14 @@
     compressImageFile(file, 1280, 0.78)
       .then(function (dataUrl) {
         showPhotoInSlot(i, dataUrl);
+        return uploadVisitReportPhoto(dataUrl).then(function (storedUrl) {
+          if (storedUrl && storedUrl !== dataUrl) {
+            showPhotoInSlot(i, storedUrl);
+          }
+        });
       })
-      .catch(function () {
-        alert('تعذّر قراءة الصورة — جرّب ملفاً أصغر أو بصيغة JPG/PNG');
+      .catch(function (err) {
+        alert((err && err.message) || 'تعذّر قراءة الصورة — جرّب ملفاً أصغر أو بصيغة JPG/PNG');
       });
   }
 
@@ -452,6 +515,9 @@
     const cap = slot.querySelector('.photo-caption-input');
     slot.insertBefore(img, cap || null);
     slot.classList.add('has-img');
+    if (dataUrl && dataUrl.indexOf('/static/uploads/visits/') === 0) {
+      slot.setAttribute('data-photo-url', dataUrl);
+    }
     syncPhotoVisibility();
   }
 
@@ -561,5 +627,7 @@
     collectPhotos,
     applySignatures,
     applyPhotos,
+    ensurePhotosUploaded,
+    uploadVisitReportPhoto,
   };
 })(window);
