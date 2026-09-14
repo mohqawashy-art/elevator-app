@@ -66,9 +66,15 @@
             <td style="padding:10px" dir="ltr">{{ '%.2f'|format(r.total or 0) }}</td>
             <td style="padding:10px;white-space:nowrap">
               {% if r.kind == 'install' and r.status == 'مقبول' and r.project_url %}
-              <a href="{{ r.project_url }}" class="btn btn-primary btn-sm">فتح المشروع</a>
+              <a href="{{ r.project_url }}#project-card" class="btn btn-primary btn-sm">فتح المشروع</a>
+              {% elif r.kind == 'maintenance' and r.status == 'مقبول' and r.contract_url %}
+              <a href="{{ r.contract_url }}" class="btn btn-primary btn-sm">فتح العقد</a>
               {% elif r.status not in ('مقبول', 'مرفوض') %}
               <a href="{{ r.url }}" class="btn btn-secondary btn-sm">تعديل</a>
+              {% elif r.kind == 'maintenance' and r.contract_url %}
+              <a href="{{ r.contract_url }}" class="btn btn-secondary btn-sm">العقد</a>
+              {% elif r.kind == 'install' and r.project_url %}
+              <a href="{{ r.project_url }}" class="btn btn-secondary btn-sm">المشروع</a>
               {% else %}
               <a href="{{ r.url }}" class="btn btn-secondary btn-sm">فتح</a>
               {% endif %}
@@ -77,14 +83,16 @@
               <a href="{{ r.deliver_wa }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">واتساب</a>
               <a href="{{ r.deliver_email }}" class="btn btn-secondary btn-sm">إيميل</a>
               {% if r.approve_url %}
-              <form method="post" action="{{ r.approve_url }}" style="display:inline" onsubmit="return confirm('موافقة العميل وتحويل العرض لقسم المشاريع؟')">
+              <form method="post" action="{{ r.approve_url }}" style="display:inline" onsubmit="return confirm('موافقة العميل وتحويل العرض لمشروع تركيب؟')">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="next" value="sales">
-                <button type="submit" class="btn btn-primary btn-sm">موافقة → مشاريع</button>
+                <button type="submit" class="btn btn-primary btn-sm">موافقة → مشروع</button>
               </form>
               {% endif %}
-              {% elif r.kind == 'maintenance' and r.contract_id %}
-              <a href="/contracts" class="btn btn-primary btn-sm">العقود</a>
+              {% elif r.kind == 'maintenance' and r.status not in ('مقبول', 'مرفوض') and r.approve_url %}
+              <form method="post" action="{{ r.approve_url }}" style="display:inline" onsubmit="return confirm('موافقة العميل وإنشاء عقد الصيانة؟')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary btn-sm">موافقة → عقد</button>
+              </form>
               {% endif %}
             </td>
           </tr>

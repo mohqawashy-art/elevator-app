@@ -336,6 +336,10 @@ def quotes_inbox():
 
     rows = []
     for q in maint:
+        contract_url = (
+            url_for('contract_print_page', contract_id=q.result_contract_id)
+            if q.result_contract_id else None
+        )
         rows.append({
             'kind': 'maintenance',
             'kind_ar': 'صيانة',
@@ -345,9 +349,11 @@ def quotes_inbox():
             'total': q.total or 0,
             'customer': q.customer.name if q.customer else '—',
             'created_at': q.created_at,
-            'url': url_for('sales.maintenance_quote_edit', quote_id=q.id),
+            'url': contract_url or url_for('sales.maintenance_quote_edit', quote_id=q.id),
             'print_url': url_for('sales.maintenance_quote_print', quote_id=q.id),
             'contract_id': q.result_contract_id,
+            'contract_url': contract_url,
+            'approve_url': url_for('sales.maintenance_quote_approve', quote_id=q.id),
         })
     for q in install:
         cust_name = '—'
@@ -506,7 +512,7 @@ def maintenance_quote_approve(quote_id):
     quote = tenant_get_or_404(MaintenanceQuote, quote_id)
     if quote.status == 'مقبول' and quote.result_contract_id:
         flash('تم تحويل العرض مسبقاً', 'success')
-        return redirect(url_for('contracts'))
+        return redirect(url_for('contract_print_page', contract_id=quote.result_contract_id))
     if not quote.customer_id:
         flash('العرض بدون عميل', 'error')
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
@@ -528,7 +534,7 @@ def maintenance_quote_approve(quote_id):
         flash('تعذّر تحويل العرض لعقد', 'error')
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
     flash(f'تمت موافقة العميل — أُنشئ عقد الصيانة {contract.code} وتحوّل للعقود', 'success')
-    return redirect(url_for('contracts'))
+    return redirect(url_for('contract_print_page', contract_id=contract.id))
 
 
 @sales_bp.route('/maintenance-quotes/<int:quote_id>/reject', methods=['POST'])

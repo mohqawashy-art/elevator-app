@@ -75,6 +75,23 @@ def test_accepted_project_appears_in_projects_list(client):
     assert f'/installation/projects/{pid}'.encode() in page.data
 
 
+def test_accepted_quote_promotes_project_on_detail(client):
+    login_as(client, role='admin')
+    with client.application.app_context():
+        pid, qid = _make_pricing_project(code='PRJ-SCOPE4')
+        quote = db.session.get(InstallQuotation, qid)
+        quote.status = 'مقبول'
+        db.session.commit()
+
+    resp = client.get(f'/installation/projects/{pid}', follow_redirects=False)
+    assert resp.status_code == 200
+
+    with client.application.app_context():
+        project = db.session.get(InstallProject, pid)
+        assert project.accepted_quotation_id == qid
+        assert project.status == 'عقد'
+
+
 def test_is_sales_stage_install_project_rules(client):
     from models import Organization
 

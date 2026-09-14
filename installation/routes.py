@@ -572,9 +572,14 @@ def project_delete(project_id):
 @install_bp.route('/projects/<int:project_id>')
 def project_detail(project_id):
     from installation.project_card import build_project_card, ensure_project_card_schema
-    from installation.project_scope import redirect_if_sales_stage_project
+    from installation.project_scope import (
+        ensure_operational_install_project,
+        redirect_if_sales_stage_project,
+    )
 
     project = tenant_get_or_404(InstallProject, project_id)
+    if ensure_operational_install_project(project):
+        db.session.commit()
     sales_redirect = redirect_if_sales_stage_project(project)
     if sales_redirect is not None:
         return sales_redirect
@@ -1142,11 +1147,13 @@ def quote_cancel(project_id, quotation_id):
 
 @install_bp.route('/projects/<int:project_id>/quotes/<int:quotation_id>/approve', methods=['POST'])
 def quote_approve(project_id, quotation_id):
+    from installation.project_scope import redirect_if_sales_stage_project, sales_stage_project_redirect
+
     project = tenant_get_or_404(InstallProject, project_id)
     q = tenant_query(InstallQuotation).filter_by(id=quotation_id, project_id=project.id).first_or_404()
     if not project.customer_id and not q.customer_id:
         flash('اربط المشروع بعميل مسجّل قبل قبول العرض', 'error')
-        return redirect(url_for('installation.project_detail', project_id=project.id))
+        return redirect(sales_stage_project_redirect(project))
     if project.accepted_quotation_id and project.accepted_quotation_id != q.id:
         flash('يوجد عرض مقبول آخر على هذا المشروع', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
@@ -1185,10 +1192,7 @@ def quote_approve(project_id, quotation_id):
         current_app.logger.warning('install contract from quote skipped: %s', exc)
 
     flash(f'تم قبول العرض {q.code} — يمكنك الآن بدء التنفيذ أو متابعة كارت المشروع', 'success')
-    next_dest = (request.form.get('next') or request.args.get('next') or '').strip().lower()
-    if next_dest == 'sales':
-        return redirect(url_for('sales.quotes_inbox', kind='install'))
-    return redirect(url_for('installation.project_detail', project_id=project.id))
+    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
 
 
 @install_bp.route('/projects/<int:project_id>/quotes/<int:quotation_id>/start-execution', methods=['POST'])
