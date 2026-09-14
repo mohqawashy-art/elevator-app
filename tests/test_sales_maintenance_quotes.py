@@ -60,9 +60,13 @@ def test_maintenance_quote_print_page(client):
     assert r.status_code == 200
     html = r.get_data(as_text=True)
     assert 'MQ-90003' in html
-    assert '2300.00' in html
+    assert '2,300.00' in html
     assert 'قياسي' in html
-    assert 'window.print' in html
+    assert 'عرض سعر — عقد صيانة مصاعد' in html
+    assert 'q-head' in html
+    assert 'q-sign-box' in html
+    assert 'document-company-seal.css' in html
+    assert 'طباعة / PDF' in html
 
 
 def test_approve_maintenance_quote_creates_contract(client):

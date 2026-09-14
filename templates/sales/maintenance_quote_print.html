@@ -3,95 +3,142 @@
 <head>
 <meta charset="UTF-8">
 {% include 'partials/liftcore_boot.html' %}
-<title>عرض سعر صيانة {{ quote.code }}</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-body{font-family:'IBM Plex Sans Arabic',sans-serif;padding:28px;color:#111;max-width:820px;margin:auto;line-height:1.6}
-.brand{font-size:13px;color:#666;margin-bottom:6px}
-h1{font-size:22px;margin:0 0 6px}
-.meta{color:#555;font-size:13px;margin-bottom:20px}
-.sec{margin:18px 0 8px;font-size:14px;font-weight:700}
-table{width:100%;border-collapse:collapse;margin:8px 0 14px}
-td,th{border:1px solid #ddd;padding:9px 10px;text-align:right;font-size:13px;vertical-align:top}
-th{background:#f7f7f7;width:32%;font-weight:600}
-.total-row td{font-size:15px;font-weight:700;background:#faf7f0}
-ul{margin:6px 0 0;padding-right:18px}
-li{margin:3px 0;font-size:13px}
-.note{font-size:13px;white-space:pre-wrap;border:1px solid #eee;padding:10px;border-radius:8px;background:#fafafa}
-@media print{.noprint{display:none} body{padding:0}}
-</style>
+<title>عرض سعر {{ quote.code }}</title>
+{% include 'partials/quote_print_styles.html' %}
 </head>
 <body>
-<button class="noprint" onclick="window.print()">طباعة</button>
-<div class="brand">عرض سعر رسمي — صيانة مصاعد</div>
-<h1>عرض سعر عقد صيانة</h1>
-<div class="meta">رقم العرض: <b dir="ltr">{{ quote.code }}</b>
-  · التاريخ: {{ quote.created_at.strftime('%Y-%m-%d') if quote.created_at else '—' }}
-  · الحالة: {{ quote.status }}
+{% set co = company_settings %}
+{% set doc_name = (co.company_name if co and co.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة') %}
+{% set customer_code = quote.customer.code if quote.customer else '—' %}
+<div class="toolbar">
+  <button class="btn btn-primary" type="button" onclick="window.print()">طباعة / PDF</button>
+  <a class="btn" href="{{ url_for('sales.maintenance_quote_edit', quote_id=quote.id) }}">← العرض</a>
+  <a class="btn" href="{{ url_for('sales.maintenance_quotes_list') }}">قائمة العروض</a>
 </div>
+<div class="sheet">
+  <div class="q-head">
+    <div class="brand">
+      <img src="{{ brand_logo_url }}" alt="{{ doc_name }}">
+    </div>
+    <div class="q-meta">
+      رقم العرض: <b dir="ltr">{{ quote.code }}</b><br>
+      التاريخ: <b>{{ quote.created_at.strftime('%Y-%m-%d') if quote.created_at else '—' }}</b><br>
+      مدة العقد: <b>{{ quote.duration_months or '—' }} شهر</b>
+    </div>
+  </div>
+  <div class="q-title">عرض سعر — عقد صيانة مصاعد</div>
 
-<div class="sec">بيانات العميل والموقع</div>
-<table>
-  <tr><th>العميل</th><td>{{ quote.customer.name if quote.customer else '—' }}</td></tr>
-  <tr><th>المدينة / الحي</th><td>{{ quote.city or '—' }}{% if quote.district %} · {{ quote.district }}{% endif %}</td></tr>
-  <tr><th>العنوان</th><td>{{ quote.address or '—' }}</td></tr>
-</table>
+  <div class="q-sec">
+    <h3>بيانات العميل</h3>
+    <div class="terms">
+      {% if customer_code and customer_code != '—' %}
+      <b>كود العميل:</b> {{ customer_code }} &nbsp;
+      {% endif %}
+      <b>الاسم:</b> {{ quote.customer.name if quote.customer else '—' }} &nbsp;
+      <b>الجوال:</b> {{ quote.customer.phone if quote.customer and quote.customer.phone else '—' }} &nbsp;
+      <b>الموقع:</b> {{ quote.city or '—' }}{% if quote.district %} · {{ quote.district }}{% endif %}{% if quote.address %} — {{ quote.address }}{% endif %}
+    </div>
+  </div>
 
-<div class="sec">مدة العقد والزيارات</div>
-<table>
-  <tr><th>المدة</th><td>{{ quote.duration_months or '—' }} شهر</td></tr>
-  <tr><th>التكرار</th><td>{{ quote.maint_frequency or '—' }} — {{ quote.visits_per_month or 1 }} زيارة لكل فترة</td></tr>
-  <tr><th>الفترة</th><td>{{ quote.start_date or '—' }} → {{ quote.end_date or '—' }}</td></tr>
-  <tr><th>شروط الدفع</th><td>{{ quote.payment_terms or '—' }}</td></tr>
-</table>
+  <div class="q-sec">
+    <h3>باقة الخدمة والنطاق</h3>
+    <table class="q-kv">
+      <tbody>
+        <tr>
+          <th>الباقة</th>
+          <td><b>{{ package or '—' }}</b></td>
+        </tr>
+        {% if scope_items %}
+        <tr>
+          <th>مواصفات النطاق</th>
+          <td>
+            <ul class="q-scope-list">
+              {% for item in scope_items %}
+              <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
 
-{% if elevators %}
-<div class="sec">المصاعد المشمولة ({{ elevators|length }})</div>
-<table>
-  <thead><tr><th style="width:auto">الرمز</th><th style="width:auto">المبنى</th><th style="width:auto">النوع</th></tr></thead>
-  <tbody>
-  {% for e in elevators %}
-  <tr>
-    <td dir="ltr">{{ e.code }}</td>
-    <td>{{ e.building_name or '—' }}</td>
-    <td>{{ e.elev_type or '—' }}{% if e.capacity_kg %} · {{ e.capacity_kg }} كجم{% endif %}</td>
-  </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% endif %}
+  <div class="q-sec">
+    <h3>مدة العقد والزيارات</h3>
+    <table class="q-kv">
+      <tbody>
+        <tr>
+          <th>مدة العقد</th>
+          <td>{{ quote.duration_months or '—' }} شهر</td>
+        </tr>
+        <tr>
+          <th>تكرار الزيارات</th>
+          <td>{{ quote.maint_frequency or '—' }} — {{ quote.visits_per_month or 1 }} زيارة لكل فترة</td>
+        </tr>
+        <tr>
+          <th>فترة العقد</th>
+          <td>{{ quote.start_date or '—' }} → {{ quote.end_date or '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-<div class="sec">القيمة المالية</div>
-<table>
-  <tr><th>القيمة قبل الضريبة</th><td dir="ltr">{{ '%.2f'|format(quote.value or 0) }} ر.س</td></tr>
-  <tr><th>ضريبة القيمة المضافة ({{ quote.tax_pct or 0 }}%)</th><td dir="ltr">{{ '%.2f'|format(quote.tax_amount or 0) }} ر.س</td></tr>
-  <tr class="total-row"><th>الإجمالي شامل الضريبة</th><td dir="ltr">{{ '%.2f'|format(quote.total or 0) }} ر.س</td></tr>
-</table>
-
-{% if package or scope_items %}
-<div class="sec">باقة الخدمة والنطاق</div>
-<table>
-  <tr><th>الباقة</th><td><b>{{ package or '—' }}</b></td></tr>
-  {% if scope_items %}
-  <tr><th>مواصفات النطاق</th><td>
-    <ul>
-    {% for item in scope_items %}
-      <li>{{ item }}</li>
-    {% endfor %}
-    </ul>
-  </td></tr>
+  {% if elevators %}
+  <div class="q-sec">
+    <h3>المصاعد المشمولة ({{ elevators|length }})</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>الرمز</th>
+          <th>المبنى</th>
+          <th>النوع / الحمولة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in elevators %}
+        <tr>
+          <td dir="ltr">{{ e.code }}</td>
+          <td>{{ e.building_name or '—' }}</td>
+          <td>{{ e.elev_type or '—' }}{% if e.capacity_kg %} · {{ e.capacity_kg }} كجم{% endif %}{% if e.floors %} · {{ e.floors }} ط{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
-</table>
-{% endif %}
 
-{% if notes_body %}
-<div class="sec">ملاحظات إضافية</div>
-<div class="note">{{ notes_body }}</div>
-{% elif quote.notes and not package %}
-<div class="sec">الباقة والنطاق والملاحظات</div>
-<div class="note">{{ quote.notes }}</div>
-{% endif %}
+  <div class="totals">
+    <div class="r"><span>الإجمالي قبل الضريبة</span><b dir="ltr">{{ '{:,.2f}'.format(quote.value or 0) }} ر.س</b></div>
+    <div class="r"><span>ضريبة القيمة المضافة ({{ '%.0f'|format(quote.tax_pct or 0) }}%)</span><b dir="ltr">{{ '{:,.2f}'.format(quote.tax_amount or 0) }} ر.س</b></div>
+    <div class="g"><span>الإجمالي شامل الضريبة</span><span dir="ltr">{{ '{:,.2f}'.format(quote.total or 0) }} ر.س</span></div>
+  </div>
 
-{% include 'partials/document_company_seal.html' ignore missing %}
+  <div class="q-sec">
+    <h3>الشروط</h3>
+    <div class="terms">
+      {% if quote.payment_terms %}
+      <b>شروط الدفع:</b> {{ quote.payment_terms }}<br>
+      {% endif %}
+      {% if notes_body %}
+      <b>ملاحظات:</b> {{ notes_body }}
+      {% endif %}
+      {% if not quote.payment_terms and not notes_body %}
+      <span>—</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
+  <div class="q-sign">
+    <div class="q-sign-box">
+      {% with seal_class='q-company-seal' %}
+      {% include 'partials/document_company_seal.html' %}
+      {% endwith %}
+      <div class="q-sign-line">ختم وتوقيع الشركة</div>
+    </div>
+    <div class="q-sign-box"><div class="q-sign-line">موافقة العميل</div></div>
+  </div>
+</div>
 </body>
 </html>
