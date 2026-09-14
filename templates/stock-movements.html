@@ -305,9 +305,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="field form-full">
           <label>الصنف <span>*</span></label>
           <select id="m-item-id" onchange="onItemPicked()">
-            <option value="">— اختر الصنف من المخزون —</option>
+            <option value="">— ابحث بالكود أو اسم الصنف —</option>
           </select>
-          <p style="font-size:11px;color:var(--text3);margin-top:6px">يُجلب من قائمة الأصناف — لا يُكتب الاسم يدوياً</p>
+          <p style="font-size:11px;color:var(--text3);margin-top:6px">ابحث بالكود أو الاسم — يُجلب من أصناف المخزون</p>
         </div>
         <div class="field">
           <label>الكمية <span>*</span></label>
@@ -453,34 +453,54 @@ function applyFilters() {
 
 function clearFilters() {
   ['f-search', 'f-from', 'f-to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  ['f-dir', 'f-type', 'f-item'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['f-dir', 'f-type'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('f-item')) {
+    LcClientSelect.clearSelection('f-item');
+  } else {
+    const el = document.getElementById('f-item');
+    if (el) el.value = '';
+  }
   filtered = [...MOVEMENTS];
   renderTable(filtered);
 }
 
-function fillItemFilter() {
-  const sel = document.getElementById('f-item');
-  if (!sel || sel.options.length > 1) return;
-  ITEMS.forEach(i => {
-    const opt = document.createElement('option');
-    opt.value = i.id;
-    opt.textContent = i.code + ' — ' + i.name;
-    sel.appendChild(opt);
+function inventorySelectOptions() {
+  return ITEMS.map(function (i) {
+    return { id: String(i.id), code: i.code || '', name: i.name || '' };
   });
 }
 
-function fillModalItemSelect(selectedId) {
-  const sel = document.getElementById('m-item-id');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">— اختر الصنف من المخزون —</option>' +
-    ITEMS.map(function (i) {
-      return '<option value="' + i.id + '">' + escHtml(i.code) + ' — ' + escHtml(i.name) + '</option>';
-    }).join('');
-  if (selectedId) sel.value = String(selectedId);
+function initStockItemSelects() {
+  if (typeof LcClientSelect === 'undefined') return;
+  var opts = inventorySelectOptions();
+  var itemPh = 'ابحث بالكود أو اسم الصنف...';
+  if (!LcClientSelect.isUpgraded('f-item')) {
+    LcClientSelect.upgradeSelect('f-item', {
+      customers: opts,
+      placeholder: itemPh,
+      onChange: applyFilters,
+    });
+  } else {
+    LcClientSelect.setCustomers('f-item', opts, '');
+  }
+  if (!LcClientSelect.isUpgraded('m-item-id')) {
+    LcClientSelect.upgradeSelect('m-item-id', {
+      customers: opts,
+      placeholder: itemPh,
+      onChange: onItemPicked,
+    });
+  } else {
+    LcClientSelect.setCustomers('m-item-id', opts, '');
+  }
 }
 
-function escHtml(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+function clearModalItemSelection() {
+  if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('m-item-id')) {
+    LcClientSelect.clearSelection('m-item-id');
+    return;
+  }
+  const el = document.getElementById('m-item-id');
+  if (el) el.value = '';
 }
 
 function onItemPicked() {
@@ -507,7 +527,7 @@ function openModal() {
   document.getElementById('m-price').value = '0';
   document.getElementById('m-reason').value = '';
   document.getElementById('m-notes').value = '';
-  fillModalItemSelect('');
+  clearModalItemSelection();
   const tsel = document.getElementById('m-tech-id');
   tsel.innerHTML = '<option value="">— بدون فني —</option>' +
     TECHNICIANS.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
@@ -592,8 +612,7 @@ var hDateEl = document.getElementById('h-date');
 if (hDateEl) hDateEl.textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
 function bootStockMovementsPage() {
-  fillItemFilter();
-  fillModalItemSelect('');
+  initStockItemSelects();
   updateStats();
   if (tableSort) tableSort.bindHeaders();
   renderTable(MOVEMENTS);
