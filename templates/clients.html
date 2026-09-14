@@ -1914,9 +1914,16 @@ async function confirmImport(){
       return;
     }
     var imported = data.imported || 0;
-    var msg = imported
-      ? ('تم استيراد ' + imported + ' عميل بنجاح')
-      : 'لم يُستورد أي عميل';
+    var skipped = data.skipped || 0;
+    var msg;
+    if (imported > 0) {
+      msg = 'تم استيراد ' + imported + ' عميل بنجاح';
+    } else if (skipped > 0 && !data.failed) {
+      msg = 'العملاء موجودون مسبقاً (' + skipped + ') — لا حاجة لإعادة استيراد العملاء';
+    } else {
+      msg = 'لم يُستورد أي عميل';
+    }
+    if (skipped && imported) msg += '\nتم تخطي ' + skipped + ' موجود مسبقاً';
     if (data.failed) msg += '\nفشل: ' + data.failed;
     if (data.errors && data.errors.length) {
       msg += '\n' + data.errors.slice(0, 5).map(function(e){
@@ -1929,14 +1936,16 @@ async function confirmImport(){
         return '• صف ' + w.row + ': ' + w.warning;
       }).join('\n');
     }
-    if (!imported) {
+    if (!imported && !skipped) {
       alert(msg);
       btn.disabled = false;
       btn.innerHTML = btnHtml;
       return;
     }
     if (CLIENT_SCOPE) {
-      msg += '\n\nسيتم فتح «كل العملاء» لعرض المستوردين (بدون عقود بعد).';
+      msg += '\n\nسيتم فتح «كل العملاء» لعرضهم.';
+    } else if (skipped && !imported) {
+      msg += '\n\nانتقل الآن لاستيراد المصاعد ثم العقود.';
     }
     alert(msg);
     window.location.href = '/clients';

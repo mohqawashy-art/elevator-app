@@ -140,6 +140,25 @@ def _phone_ltr(phone: str) -> str:
     return f'\u200E{p}\u200E'
 
 
+def _find_existing_customer(name: str, code: str = ''):
+    """عميل موجود بنفس الكود أو الاسم (داخل المؤسسة الحالية)."""
+    from models import Customer
+    from tenant_scope import tenant_query
+
+    preferred = (code or '').strip()
+    if preferred:
+        found = tenant_query(Customer).filter_by(code=preferred).first()
+        if found:
+            return found
+    norm = (name or '').strip().lower()
+    if not norm:
+        return None
+    for customer in tenant_query(Customer).all():
+        if customer.name and customer.name.strip().lower() == norm:
+            return customer
+    return None
+
+
 def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """استيراد قائمة صفوف. يُرجع imported/failed/errors/warnings."""
     from form_validation import customer_name_error
@@ -158,6 +177,7 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
     imported = 0
     failed = 0
+    skipped = 0
     errors: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
     seen_phones: dict[str, str] = {}
@@ -177,6 +197,18 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         if name_key in seen_names:
             failed += 1
             errors.append({'row': idx, 'error': f'اسم مكرر في الملف: {name}'})
+            continue
+
+        preferred = (data.get('code') or '').strip()
+        existing = _find_existing_customer(name, preferred)
+        if existing:
+            skipped += 1
+            if len(warnings) < 20:
+                warnings.append({
+                    'row': idx,
+                    'warning': f'«{name}» موجود مسبقاً ({existing.code}) — تم التخطي',
+                })
+            seen_names.add(name_key)
             continue
 
         name_err = customer_name_error(name)
@@ -215,7 +247,6 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         if entity_type not in ('فرد', 'شركة'):
             entity_type = 'فرد'
 
-        preferred = (data.get('code') or '').strip()
         code = _allocate_customer_code(preferred)
 
         payload = dict(
@@ -270,6 +301,7 @@ def import_customer_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         'imported': imported,
         'failed': failed,
+        'skipped': skipped,
         'errors': errors[:20],
         'warnings': warnings[:20],
         'total': len(rows),

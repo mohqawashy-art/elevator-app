@@ -112,6 +112,27 @@ def test_clients_import_template_columns(client):
     assert data['imported'] == 1
 
 
+def test_clients_import_skips_existing_by_name(client):
+    login_as(client, 'admin')
+    payload = {
+        'rows': [{
+            'الاسم (عربي)': 'عميل موجود',
+            'رقم الهاتف': '512345678',
+            'المدينة': 'مكة المكرمة',
+        }],
+    }
+    r1 = client.post('/clients/import', json=payload)
+    assert r1.status_code == 200
+    assert r1.get_json()['imported'] == 1
+
+    r2 = client.post('/clients/import', json=payload)
+    assert r2.status_code == 200
+    data = r2.get_json()
+    assert data['imported'] == 0
+    assert data['skipped'] == 1
+    assert data['failed'] == 0
+
+
 def test_clients_import_avoids_global_code_collision(client):
     """C-0001 في مؤسسة أخرى لا يمنع الاستيراد عند وجود customers_code_key القديم."""
     from flask import g
