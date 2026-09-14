@@ -11655,10 +11655,30 @@ def invoice_delete(id):
 def inventory():
     from inventory_custody import build_technician_custody_snapshot, item_custody_fields
     from supplier_price_schema import ensure_supplier_price_schema
+    from sqlalchemy.orm import joinedload
+
     ensure_supplier_price_schema()
     items = tenant_query(InventoryItem).order_by(InventoryItem.id.desc()).all()
     suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
     custody_snapshot = build_technician_custody_snapshot()
+    from models import Elevator
+
+    elevators = (
+        tenant_query(Elevator)
+        .options(joinedload(Elevator.customer))
+        .order_by(Elevator.id.desc())
+        .limit(500)
+        .all()
+    )
+    elevators_js = [
+        {
+            'id': e.id,
+            'label': (
+                f'{(e.customer.name if e.customer else "—")} — {e.code or e.id}'
+            ),
+        }
+        for e in elevators
+    ]
     items_json = []
     for i in items:
         row = {
@@ -11686,8 +11706,71 @@ def inventory():
         suppliers=suppliers,
         custody_rows=custody_snapshot['rows'],
         custody_summary=custody_snapshot['summary'],
+        elevators_js=elevators_js,
         next_item_code=next_code(InventoryItem, '#', digits=3),
     )
+
+
+@app.route('/inventory/custody/settle', methods=['POST'])
+def inventory_custody_settle():
+    from inventory_custody import settle_technician_custody
+
+    payload = request.get_json(silent=True) if request.is_json else request.form
+    if not payload:
+        return jsonify({'ok': False, 'error': 'لا توجد بيانات'}), 400
+
+    try:
+        item_id = int(payload.get('item_id') or 0)
+        technician_id = int(payload.get('technician_id') or 0)
+        quantity = float(payload.get('quantity') or 0)
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'بيانات غير صالحة'}), 400
+
+    target = (payload.get('target') or '').strip()
+    reason = (payload.get('reason') or '').strip()
+    notes = (payload.get('notes') or '').strip()
+    elevator_id = payload.get('elevator_id') or None
+    if elevator_id not in (None, ''):
+        try:
+            elevator_id = int(elevator_id)
+        except (TypeError, ValueError):
+            elevator_id = None
+    else:
+        elevator_id = None
+
+    movement_date = date.today()
+    raw_date = (payload.get('movement_date') or '').strip()
+    if raw_date:
+        try:
+            movement_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'ok': False, 'error': 'تاريخ غير صالح'}), 400
+
+    try:
+        movement = settle_technician_custody(
+            item_id=item_id,
+            technician_id=technician_id,
+            quantity=quantity,
+            target=target,
+            movement_date=movement_date,
+            reason=reason,
+            notes=notes,
+            elevator_id=elevator_id,
+        )
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('inventory_custody_settle failed')
+        return jsonify({'ok': False, 'error': 'تعذّر تسوية العهدة'}), 500
+
+    return jsonify({
+        'ok': True,
+        'movement_code': movement.code,
+        'message': 'تمت تسوية العهدة',
+    })
 
 @app.route('/inventory/edit/<int:id>', methods=['POST'])
 def inventory_edit(id):

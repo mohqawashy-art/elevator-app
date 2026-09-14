@@ -81,3 +81,96 @@ def test_non_custody_movement_ignored(client):
         ))
         db.session.commit()
         assert item_custody_fields(item.id)['custody_qty'] == 0
+
+
+def test_settle_custody_to_warehouse(client):
+    with client.application.app_context():
+        item, tech = _seed_item_and_tech()
+        db.session.add(StockMovement(
+            code='MV-S1',
+            item_id=item.id,
+            movement_date=date.today(),
+            direction='صادر',
+            movement_type='صرف عهدة للفني',
+            quantity=5,
+            technician_id=tech.id,
+        ))
+        item.current_qty = 5
+        db.session.commit()
+
+        from inventory_custody import settle_technician_custody
+
+        settle_technician_custody(
+            item_id=item.id,
+            technician_id=tech.id,
+            quantity=2,
+            target='warehouse',
+        )
+        db.session.commit()
+        db.session.refresh(item)
+
+        assert item.current_qty == 7
+        assert item_custody_fields(item.id)['custody_qty'] == 3
+
+
+def test_settle_custody_to_client(client):
+    with client.application.app_context():
+        item, tech = _seed_item_and_tech()
+        db.session.add(StockMovement(
+            code='MV-S2',
+            item_id=item.id,
+            movement_date=date.today(),
+            direction='صادر',
+            movement_type='صرف عهدة للفني',
+            quantity=4,
+            technician_id=tech.id,
+        ))
+        item.current_qty = 6
+        db.session.commit()
+
+        from inventory_custody import settle_technician_custody
+
+        settle_technician_custody(
+            item_id=item.id,
+            technician_id=tech.id,
+            quantity=3,
+            target='client',
+            reason='عميل تجريبي',
+        )
+        db.session.commit()
+        db.session.refresh(item)
+
+        assert item.current_qty == 6
+        assert item_custody_fields(item.id)['custody_qty'] == 1
+
+
+def test_custody_settle_api(client):
+    from tests.conftest import login_as
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        item, tech = _seed_item_and_tech()
+        db.session.add(StockMovement(
+            code='MV-S3',
+            item_id=item.id,
+            movement_date=date.today(),
+            direction='صادر',
+            movement_type='صرف عهدة للفني',
+            quantity=2,
+            technician_id=tech.id,
+        ))
+        db.session.commit()
+        item_id, tech_id = item.id, tech.id
+
+    r = client.post(
+        '/inventory/custody/settle',
+        json={
+            'item_id': item_id,
+            'technician_id': tech_id,
+            'quantity': 1,
+            'target': 'project',
+            'reason': 'مشروع صيانة',
+        },
+    )
+    assert r.status_code == 200
+    assert r.get_json()['ok'] is True
