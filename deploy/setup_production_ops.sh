@@ -25,7 +25,7 @@ echo "==> 1/5 platform.env (SECRET_KEY + HTTPS)"
 bash "$SCRIPT_DIR/ensure_platform_env.sh"
 
 echo ""
-echo "==> 2/5 backup cron (يومي 02:30)"
+echo "==> 2/5 backup cron (كل ساعتين)"
 bash "$SCRIPT_DIR/install_backup_cron.sh" "$APP_DIR"
 
 if [ "$INSTALL_AUTO_UPDATE" = "1" ]; then

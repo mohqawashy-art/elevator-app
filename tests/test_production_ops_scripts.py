@@ -26,6 +26,10 @@ def test_check_ops_mentions_sentry_and_backup():
     text = (DEPLOY / 'check_production_ops.sh').read_text(encoding='utf-8')
     assert 'SENTRY_DSN' in text
     assert 'liftcore-daily-backup' in text
+    install = (DEPLOY / 'install_backup_cron.sh').read_text(encoding='utf-8')
+    assert '*/2' in install
+    daily = (DEPLOY / 'backup_daily.sh').read_text(encoding='utf-8')
+    assert 'sudo -u postgres pg_dump' in daily
 
 
 def test_install_sh_has_ops_commands():

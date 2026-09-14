@@ -17,7 +17,9 @@ ok() { echo "  OK: $*"; }
 echo "==> LiftCore production ops check"
 echo "    APP_DIR=$APP_DIR"
 
-if crontab -l 2>/dev/null | grep -q 'liftcore-daily-backup'; then
+if crontab -l 2>/dev/null | grep -q 'liftcore-daily-backup' \
+  || crontab -u root -l 2>/dev/null | grep -q 'liftcore-daily-backup' \
+  || crontab -u info -l 2>/dev/null | grep -q 'liftcore-daily-backup'; then
   ok 'backup cron مفعّل'
 else
   warn 'backup cron غير مفعّل — شغّل: bash deploy/install_backup_cron.sh'
