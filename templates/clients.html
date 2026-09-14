@@ -534,6 +534,11 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
         <div style="color:var(--text1);font-weight:600;margin-bottom:6px">الأعمدة المطلوبة:</div>
         <div style="color:var(--accent)">الاسم / اسم العميل، رقم الهاتف / الجوال</div>
         <div style="color:var(--text3);margin-top:4px">اختيارية: المدينة، الحي، العنوان، المسؤول، البريد، رقم الهوية</div>
+        {% if client_scope %}
+        <div style="color:var(--warn,#e8b923);margin-top:10px;line-height:1.6">
+          أنت في «{{ clients_page_title }}». العملاء الجدد بدون عقود يظهرون في <strong>كل العملاء</strong> فقط — بعد الاستيراد ستُفتح تلك القائمة تلقائياً.
+        </div>
+        {% endif %}
       </div>
     </div>
     <div class="modal-foot">
@@ -1908,7 +1913,10 @@ async function confirmImport(){
       btn.innerHTML = btnHtml;
       return;
     }
-    var msg = 'تم استيراد ' + (data.imported || 0) + ' عميل بنجاح';
+    var imported = data.imported || 0;
+    var msg = imported
+      ? ('تم استيراد ' + imported + ' عميل بنجاح')
+      : 'لم يُستورد أي عميل';
     if (data.failed) msg += '\nفشل: ' + data.failed;
     if (data.errors && data.errors.length) {
       msg += '\n' + data.errors.slice(0, 5).map(function(e){
@@ -1921,8 +1929,17 @@ async function confirmImport(){
         return '• صف ' + w.row + ': ' + w.warning;
       }).join('\n');
     }
+    if (!imported) {
+      alert(msg);
+      btn.disabled = false;
+      btn.innerHTML = btnHtml;
+      return;
+    }
+    if (CLIENT_SCOPE) {
+      msg += '\n\nسيتم فتح «كل العملاء» لعرض المستوردين (بدون عقود بعد).';
+    }
     alert(msg);
-    window.location.reload();
+    window.location.href = '/clients';
   } catch (e) {
     alert('خطأ في الاتصال: ' + (e.message || e));
     btn.disabled = false;
