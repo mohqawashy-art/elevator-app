@@ -96,6 +96,9 @@ def seed_lightweight_demo(organization_id: int) -> dict:
         contact_person='مشرف المبنى',
         status='نشط',
         entity_type='شركة',
+        lat='21.4038',
+        lng='39.8765',
+        maps_url='https://www.google.com/maps?q=21.4038,39.8765',
         notes='بيانات تجريبية',
     )
     c2 = Customer(
@@ -109,6 +112,9 @@ def seed_lightweight_demo(organization_id: int) -> dict:
         contact_person='مسؤول الصيانة',
         status='نشط',
         entity_type='شركة',
+        lat='21.3654',
+        lng='39.8248',
+        maps_url='https://www.google.com/maps?q=21.3654,39.8248',
         notes='بيانات تجريبية',
     )
     db.session.add_all([c1, c2])
@@ -178,6 +184,10 @@ def seed_lightweight_demo(organization_id: int) -> dict:
         invoice_status='غير مدفوع',
         status='نشط',
         city='مكة المكرمة',
+        district='العزيزية',
+        lat='21.4038',
+        lng='39.8765',
+        maps_url='https://www.google.com/maps?q=21.4038,39.8765',
         notes='عقد تجريبي للعرض',
     )
     db.session.add(contract)

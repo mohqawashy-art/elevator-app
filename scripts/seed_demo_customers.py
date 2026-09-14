@@ -22,23 +22,35 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # عملاء تجريبيون — أكواد DEMO-xx حتى لا تتعارض مع بيانات حقيقية
+def _maps(lat, lng):
+    return f'https://www.google.com/maps?q={lat},{lng}'
+
+
 DEMO_CUSTOMERS = (
-    dict(code='DEMO-01', name='برج الياسمين', city='مكة', district='العزيزية',
-         address='شارع الأمير سلطان', phone='0501111001', entity_type='شركة'),
-    dict(code='DEMO-02', name='مجمع النخيل', city='مكة', district='طريق المدينة',
-         address='طريق مكة المدينة', phone='0501111002', entity_type='شركة'),
-    dict(code='DEMO-03', name='فندق الأندلس', city='مكة', district='العبدية',
-         address='حي العبدية', phone='0501111003', entity_type='شركة'),
-    dict(code='DEMO-04', name='مستشفى السلام', city='مكة', district='النزهة',
-         address='حي النزهة', phone='0501111004', entity_type='شركة'),
-    dict(code='DEMO-05', name='برج المملكة', city='مكة', district='الروضة',
-         address='حي الروضة', phone='0501111005', entity_type='شركة'),
-    dict(code='DEMO-06', name='مجمع التجارة', city='مكة', district='أجياد',
-         address='أجياد', phone='0501111006', entity_type='شركة'),
-    dict(code='DEMO-07', name='مركز الملك عبدالله', city='مكة', district='الشوقية',
-         address='الشوقية', phone='0501111007', entity_type='شركة'),
-    dict(code='DEMO-08', name='برج الفيصلية', city='مكة', district='الزاهر',
-         address='الزاهر', phone='0501111008', entity_type='شركة'),
+    dict(code='DEMO-01', name='برج الياسمين', city='مكة المكرمة', district='العزيزية',
+         address='شارع إبراهيم الخليل، العزيزية', phone='0501111001', entity_type='شركة',
+         lat='21.4038', lng='39.8765'),
+    dict(code='DEMO-02', name='مجمع النخيل', city='مكة المكرمة', district='الرصيفة',
+         address='طريق الملك عبدالعزيز، الرصيفة', phone='0501111002', entity_type='شركة',
+         lat='21.4368', lng='39.8085'),
+    dict(code='DEMO-03', name='فندق الأندلس', city='مكة المكرمة', district='العابدية',
+         address='حي العابدية', phone='0501111003', entity_type='شركة',
+         lat='21.3889', lng='39.8217'),
+    dict(code='DEMO-04', name='مستشفى السلام', city='مكة المكرمة', district='النزهة',
+         address='حي النزهة', phone='0501111004', entity_type='شركة',
+         lat='21.4256', lng='39.8522'),
+    dict(code='DEMO-05', name='برج المملكة', city='مكة المكرمة', district='الروضة',
+         address='حي الروضة', phone='0501111005', entity_type='شركة',
+         lat='21.3925', lng='39.8843'),
+    dict(code='DEMO-06', name='مجمع التجارة', city='مكة المكرمة', district='أجياد',
+         address='أجياد', phone='0501111006', entity_type='شركة',
+         lat='21.4188', lng='39.8274'),
+    dict(code='DEMO-07', name='مركز الملك عبدالله', city='مكة المكرمة', district='العوالي',
+         address='العوالي', phone='0501111007', entity_type='شركة',
+         lat='21.3688', lng='39.8680'),
+    dict(code='DEMO-08', name='برج الفيصلية', city='مكة المكرمة', district='الزاهر',
+         address='الزاهر', phone='0501111008', entity_type='شركة',
+         lat='21.4442', lng='39.8228'),
 )
 
 
@@ -82,16 +94,21 @@ def main() -> int:
             found = Customer.query.filter_by(organization_id=org.id, code=row['code']).first()
             if found:
                 continue
+            lat = row.get('lat') or ''
+            lng = row.get('lng') or ''
             cust = Customer(
                 organization_id=org.id,
                 code=row['code'],
                 name=row['name'],
-                city=row.get('city') or '',
+                city=row.get('city') or 'مكة المكرمة',
                 district=row.get('district') or '',
                 address=row.get('address') or '',
                 phone=row.get('phone') or '',
                 status='نشط',
                 entity_type=row.get('entity_type') or 'شركة',
+                lat=lat,
+                lng=lng,
+                maps_url=_maps(lat, lng) if lat and lng else '',
                 notes='عميل تجريبي — seed_demo_customers',
             )
             db.session.add(cust)
