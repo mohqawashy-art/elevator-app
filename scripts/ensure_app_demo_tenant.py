@@ -4,7 +4,6 @@
   cd ~/liftcore/elevator-app
   set -a; source /etc/liftcore/platform.env; set +a
   python3 scripts/ensure_app_demo_tenant.py
-  python3 scripts/ensure_app_demo_tenant.py --reset   # إعادة تحميل سيناريو مكة الكامل
 """
 from __future__ import annotations
 
@@ -28,6 +27,7 @@ DEMO_NOTES = '[PLATFORM_DEMO] حساب العرض على app.liftcoreapp.com —
 
 def main() -> int:
     from app import app, db, hash_password
+    from demo_provisioning import DEMO_NOTE_MARKER, seed_lightweight_demo
     from models import Customer, Organization, Settings, User
 
     with app.app_context():
@@ -71,23 +71,13 @@ def main() -> int:
         else:
             print(f'[exists] organization slug={DEMO_SLUG} id={org.id} name={org.name!r}')
 
-        os.environ['LIFTCORE_DEMO_ORG'] = DEMO_SLUG
-        reset = '--reset' in sys.argv
         cust_n = Customer.query.filter_by(organization_id=org.id).count()
-        if cust_n == 0 or reset:
-            from flask import g
-            from seed_data import clear_business_data, seed_all
-
-            g.organization = org
-            g.organization_id = org.id
-            if cust_n:
-                print('[reset] clearing demo tenant business data...')
-                clear_business_data()
-            print('[seed] loading full Makkah demo scenario...')
-            if not seed_all(force=True):
-                return 1
+        if cust_n == 0:
+            stats = seed_lightweight_demo(org.id)
+            db.session.commit()
+            print(f'[seeded] demo data: {stats}')
         else:
-            print(f'[skip seed] customers={cust_n}  (pass --reset to reload)')
+            print(f'[skip seed] customers={cust_n}')
 
         jama = Organization.query.filter_by(slug='jama').first()
         if jama and jama.id == org.id:
