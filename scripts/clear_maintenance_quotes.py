@@ -30,12 +30,42 @@ def main() -> int:
         action='store_true',
         help='حذف العروض المقبولة المرتبطة بعقود أيضاً (العقود تبقى)',
     )
+    parser.add_argument('--list', action='store_true', help='عرض المستأجرين وعدد العروض')
+    parser.add_argument('--all-orgs', action='store_true', help='تصفير كل المستأجرين')
     args = parser.parse_args()
 
     from app import app, db
     from flask import g
     from models import MaintenanceQuote, Organization
     from sales.service import clear_maintenance_quotes
+
+    with app.app_context():
+        if args.list:
+            for org in Organization.query.order_by(Organization.slug).all():
+                n = (
+                    MaintenanceQuote.query.execution_options(skip_tenant=True)
+                    .filter_by(organization_id=org.id)
+                    .count()
+                )
+                print(f'{org.slug}\tid={org.id}\tquotes={n}')
+            return 0
+
+        if args.all_orgs:
+            if args.dry_run:
+                print('dry-run all orgs — no changes')
+                return 0
+            if (args.confirm or '').strip() != CONFIRM:
+                print(f'ERROR: pass --confirm {CONFIRM}')
+                return 1
+            total = 0
+            for org in Organization.query.order_by(Organization.slug).all():
+                g.organization_id = org.id
+                n = clear_maintenance_quotes(include_with_contract=bool(args.include_contracts))
+                total += n
+                print(f'{org.slug}: deleted={n}')
+            db.session.commit()
+            print(f'total_deleted={total}')
+            return 0
 
     slug = (args.slug or 'default').strip().lower()
 
