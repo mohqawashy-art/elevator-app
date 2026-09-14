@@ -342,6 +342,20 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-view">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head">
+      <span class="modal-title" id="view-title">تفاصيل المصروف</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-view')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
+    </div>
+    <div class="modal-body" id="view-body"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
+      <button type="button" class="btn btn-primary" id="btn-view-edit-expense" onclick="editExpenseFromView()">تعديل</button>
+    </div>
+  </div>
+</div>
+
 
 
 <script>
@@ -400,7 +414,7 @@ function renderTable(data) {
     document.getElementById('exp-count').textContent = data.length + ' سجل';
   }
   tbody.innerHTML = pg.rows.map(e=>`
-    <tr onclick="viewExpense(${e.id})">
+    <tr onclick="editExpense(${e.id})">
       <td class="td-code">${e.code}</td>
       <td style="direction:ltr;font-family:var(--font-en)">${e.expense_date}</td>
       <td>${D(e.expense_type)}</td>
@@ -499,9 +513,16 @@ function openModal(editId) {
   modal.classList.add('open');
 }
 
-function closeModal() {
-  document.getElementById('modal').classList.remove('open');
+function closeModal(id) {
+  const el = document.getElementById(id || 'modal');
+  if (el) el.classList.remove('open');
 }
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+var currentViewExpenseId = null;
 
 function saveRecord() {
   const date = document.getElementById('m-date').value;
@@ -554,7 +575,35 @@ function editExpense(id) {
 }
 
 function viewExpense(id) {
-  editExpense(id);
+  const e = EXPENSES.find(x => x.id === id);
+  if (!e) return;
+  currentViewExpenseId = id;
+  document.getElementById('view-title').textContent = e.code + (e.description ? ' — ' + e.description : '');
+  const proofHtml = window.LiftCoreMultiAttach
+    ? LiftCoreMultiAttach.proofsHtml(e.proofs, { recordId: e.id, removeFn: 'removeExpenseProofAt', empty: '—' })
+    : (e.proof_url ? '<a href="' + escHtml(e.proof_url) + '" target="_blank" rel="noopener">عرض المستند</a>' : '—');
+  document.getElementById('view-body').innerHTML = `
+    <div class="view-grid">
+      <div class="view-section">تفاصيل المصروف</div>
+      <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${escHtml(e.code)}</div></div>
+      <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val lc-date">${escHtml(e.expense_date)}</div></div>
+      <div class="view-item"><div class="view-label">نوع المصروف</div><div class="view-val">${escHtml(e.expense_type)}</div></div>
+      <div class="view-item"><div class="view-label">المبلغ</div><div class="view-val" style="font-family:var(--font-en);color:var(--danger)">${e.amount.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال"></span></div></div>
+      <div class="view-item"><div class="view-label">المسؤول</div><div class="view-val">${escHtml(e.responsible || '—')}</div></div>
+      <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${escHtml(e.pay_method)}</div></div>
+      <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${escHtml(e.reference || '—')}</div></div>
+      <div class="view-item"><div class="view-label">إثبات الصرف</div><div class="view-val">${proofHtml}</div></div>
+      <div class="view-item"><div class="view-label">سجّله</div><div class="view-val">${escHtml(e.created_by || '—')}</div></div>
+      ${e.description ? `<div class="view-item view-full"><div class="view-label">الوصف</div><div class="view-val">${escHtml(e.description)}</div></div>` : ''}
+      ${e.notes ? `<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${escHtml(e.notes)}</div></div>` : ''}
+    </div>`;
+  document.getElementById('modal-view').classList.add('open');
+}
+
+function editExpenseFromView() {
+  const id = currentViewExpenseId;
+  closeModal('modal-view');
+  if (id) editExpense(id);
 }
 
 function removeExpenseProofAt(id, index) {
