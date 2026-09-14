@@ -63,8 +63,8 @@ def test_maintenance_quote_print_page(client):
     assert '2,300.00' in html
     assert 'قياسي' in html
     assert 'عرض سعر — عقد صيانة مصاعد' in html
-    assert 'q-summary' in html
-    assert 'q-package-badge' in html
+    assert 'mq-stats' in html
+    assert 'sheet-top' in html
     assert 'q-sign-box' in html
     assert 'document-company-seal.css' in html
     assert 'طباعة / PDF' in html

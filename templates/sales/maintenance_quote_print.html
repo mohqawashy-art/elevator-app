@@ -11,9 +11,9 @@
 {% set doc_name = (co.company_name if co and co.company_name else None) or (brand_name if brand_name and brand_name != 'LiftCore' else 'الشركة') %}
 {% set customer_code = quote.customer.code if quote.customer else '—' %}
 {% set pkg_desc = {
-  'أساسي': 'زيارات دورية + فحص سلامة أساسي — بدون قطع غيار.',
-  'قياسي': 'صيانة وقائية + استجابة أعطال خلال أوقات العمل + تقرير زيارة.',
-  'شامل': 'الباقة القياسية + طوارئ 24/7 + أولوية قطع الغيار حسب الاتفاق.'
+  'أساسي': 'زيارات دورية وفحص سلامة',
+  'قياسي': 'وقائية + أعطال + تقارير',
+  'شامل': 'قياسي + طوارئ 24/7'
 } %}
 {% set elev_count = elevators|length if elevators else 0 %}
 <div class="toolbar">
@@ -21,175 +21,194 @@
   <a class="btn" href="{{ url_for('sales.maintenance_quote_edit', quote_id=quote.id) }}">← العرض</a>
   <a class="btn" href="{{ url_for('sales.maintenance_quotes_list') }}">قائمة العروض</a>
 </div>
+
 <div class="sheet">
-  <div class="q-head">
+  <div class="sheet-top">
     <div class="brand">
       <img src="{{ brand_logo_url }}" alt="{{ doc_name }}">
-      <div class="brand-text">
-        <div class="nm">{{ doc_name }}</div>
-        <div class="sub">
-          عرض سعر رسمي — عقود صيانة مصاعد
-          {% if co and co.phone %} · {{ co.phone }}{% endif %}
-        </div>
+      <div>
+        <div class="co-name">{{ doc_name }}</div>
+        <div class="co-sub">تركيب · تحديث · صيانة{% if co and co.phone %} · {{ co.phone }}{% endif %}</div>
       </div>
     </div>
-    <div class="q-meta">
-      <div class="row"><span class="lbl">رقم العرض</span><b dir="ltr">{{ quote.code }}</b></div>
-      <div class="row"><span class="lbl">التاريخ</span><b>{{ quote.created_at|dmY if quote.created_at else '—' }}</b></div>
-      <div class="row"><span class="lbl">مدة العقد</span><b>{{ quote.duration_months or '—' }} شهر</b></div>
-      <div class="row"><span class="lbl">الحالة</span><b>{{ quote.status or '—' }}</b></div>
+    <div class="doc-meta">
+      <div class="line"><span>رقم العرض</span><b dir="ltr">{{ quote.code }}</b></div>
+      <div class="line"><span>التاريخ</span><b>{{ quote.created_at|dmY if quote.created_at else '—' }}</b></div>
+      <div class="line"><span>مدة العقد</span><b>{{ quote.duration_months or '—' }} شهر</b></div>
     </div>
   </div>
 
-  <div class="q-title">عرض سعر — عقد صيانة مصاعد</div>
+  <div class="sheet-title">عرض سعر — عقد صيانة مصاعد</div>
 
-  <div class="q-summary">
-    {% if package %}<span class="q-pill gold">باقة {{ package }}</span>{% endif %}
-    {% if quote.duration_months %}<span class="q-pill">{{ quote.duration_months }} شهر</span>{% endif %}
-    {% if elev_count %}<span class="q-pill">{{ elev_count }} مصعد</span>{% endif %}
-    {% if quote.maint_frequency %}<span class="q-pill">{{ quote.maint_frequency }} · {{ quote.visits_per_month or 1 }} زيارة</span>{% endif %}
-    {% if quote.total %}<span class="q-pill navy" dir="ltr">{{ '{:,.2f}'.format(quote.total or 0) }} ر.س</span>{% endif %}
-  </div>
+  <div class="sheet-body">
+    <div class="mq-stats">
+      <div class="mq-stat">
+        <div class="k">الباقة</div>
+        <div class="v">{{ package or '—' }}</div>
+      </div>
+      <div class="mq-stat">
+        <div class="k">مدة العقد</div>
+        <div class="v">{{ quote.duration_months or '—' }} شهر</div>
+      </div>
+      <div class="mq-stat">
+        <div class="k">المصاعد</div>
+        <div class="v">{{ elev_count or '—' }}</div>
+      </div>
+      <div class="mq-stat highlight">
+        <div class="k">الإجمالي شامل الضريبة</div>
+        <div class="v" dir="ltr">{{ '{:,.2f}'.format(quote.total or 0) }} ر.س</div>
+      </div>
+    </div>
 
-  <div class="q-grid-2">
-    <div class="q-sec" style="margin-top:0">
-      <h3>بيانات العميل</h3>
-      <div class="q-sec-body">
-        <table class="q-kv q-kv-compact q-kv-pairs">
+    <div class="q-sec">
+      <div class="q-sec-h">بيانات العميل والموقع</div>
+      <div class="q-panel">
+        <table class="mq-fields">
           <tbody>
             <tr>
-              <td>كود العميل</td><td>{{ customer_code }}</td>
-              <td>اسم العميل</td><td>{{ quote.customer.name if quote.customer else '—' }}</td>
+              <td class="lbl">كود العميل</td>
+              <td class="val">{{ customer_code }}</td>
+              <td class="lbl">اسم العميل</td>
+              <td class="val">{{ quote.customer.name if quote.customer else '—' }}</td>
             </tr>
             <tr>
-              <td>الجوال</td><td dir="ltr">{{ quote.customer.phone if quote.customer and quote.customer.phone else '—' }}</td>
-              <td>المدينة</td><td>{{ quote.city or '—' }}</td>
+              <td class="lbl">الجوال</td>
+              <td class="val" dir="ltr">{{ quote.customer.phone if quote.customer and quote.customer.phone else '—' }}</td>
+              <td class="lbl">المدينة / الحي</td>
+              <td class="val">{{ quote.city or '—' }}{% if quote.district %} · {{ quote.district }}{% endif %}</td>
             </tr>
             <tr>
-              <td>الحي</td><td>{{ quote.district or '—' }}</td>
-              <td>شروط الدفع</td><td>{{ quote.payment_terms or '—' }}</td>
-            </tr>
-            <tr>
-              <td colspan="1">العنوان</td>
-              <td colspan="3">{{ quote.address or '—' }}</td>
+              <td class="lbl">العنوان</td>
+              <td class="val" colspan="3">{{ quote.address or '—' }}</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <div class="q-sec" style="margin-top:0">
-      <h3>مدة العقد والزيارات</h3>
-      <div class="q-sec-body">
-        <table class="q-kv q-kv-compact">
+    <div class="q-sec">
+      <div class="q-sec-h">مدة العقد وجدول الزيارات</div>
+      <div class="q-panel">
+        <table class="mq-fields">
           <tbody>
-            <tr><th>مدة العقد</th><td>{{ quote.duration_months or '—' }} شهر</td></tr>
-            <tr><th>تكرار الزيارات</th><td>{{ quote.maint_frequency or '—' }}</td></tr>
-            <tr><th>زيارات لكل فترة</th><td>{{ quote.visits_per_month or 1 }}</td></tr>
-            <tr><th>تاريخ البداية</th><td>{{ quote.start_date|dmY if quote.start_date else '—' }}</td></tr>
-            <tr><th>تاريخ النهاية</th><td>{{ quote.end_date|dmY if quote.end_date else '—' }}</td></tr>
+            <tr>
+              <td class="lbl">مدة العقد</td>
+              <td class="val">{{ quote.duration_months or '—' }} شهر</td>
+              <td class="lbl">تكرار الزيارات</td>
+              <td class="val">{{ quote.maint_frequency or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="lbl">زيارات / فترة</td>
+              <td class="val">{{ quote.visits_per_month or 1 }}</td>
+              <td class="lbl">شروط الدفع</td>
+              <td class="val">{{ quote.payment_terms or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="lbl">تاريخ البداية</td>
+              <td class="val">{{ quote.start_date|dmY if quote.start_date else '—' }}</td>
+              <td class="lbl">تاريخ النهاية</td>
+              <td class="val">{{ quote.end_date|dmY if quote.end_date else '—' }}</td>
+            </tr>
           </tbody>
         </table>
       </div>
     </div>
-  </div>
 
-  <div class="q-sec">
-    <h3>باقة الخدمة ومواصفات النطاق</h3>
-    <div class="q-sec-body">
-      <div class="q-package">
-        <div>
-          <div class="q-package-badge">{{ package or '—' }}</div>
-          {% if package and pkg_desc.get(package) %}
-          <div class="q-package-desc">{{ pkg_desc[package] }}</div>
+    <div class="q-sec">
+      <div class="q-sec-h">باقة الخدمة ومواصفات النطاق</div>
+      <div class="q-panel">
+        <div class="mq-package">
+          <div class="mq-package-badge">
+            {{ package or '—' }}
+            {% if package and pkg_desc.get(package) %}
+            <small>{{ pkg_desc[package] }}</small>
+            {% endif %}
+          </div>
+          {% if scope_items %}
+          <div>
+            <div class="mq-scope-title">يشمل العرض الخدمات التالية:</div>
+            <div class="mq-scope-grid">
+              {% for item in scope_items %}
+              <div class="mq-scope-item">{{ item }}</div>
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <div class="mq-scope-title">—</div>
           {% endif %}
         </div>
-        {% if scope_items %}
-        <div style="flex:1;min-width:220px">
-          <div class="terms" style="margin-bottom:6px"><b>يشمل العرض:</b></div>
-          <div class="q-chips">
-            {% for item in scope_items %}
-            <span class="q-chip">{{ item }}</span>
+      </div>
+    </div>
+
+    {% if elevators %}
+    <div class="q-sec">
+      <div class="q-sec-h">المصاعد المشمولة ({{ elev_count }})</div>
+      <div class="q-panel">
+        <table class="data">
+          <thead>
+            <tr>
+              <th style="width:16%">الرمز</th>
+              <th style="width:30%">المبنى</th>
+              <th>النوع / المواصفات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in elevators %}
+            <tr>
+              <td dir="ltr"><b>{{ e.code }}</b></td>
+              <td>{{ e.building_name or '—' }}</td>
+              <td>
+                {{ e.elev_type or '—' }}
+                {% if e.capacity_kg %} · {{ e.capacity_kg }} كجم{% endif %}
+                {% if e.floors %} · {{ e.floors }} ط{% endif %}
+              </td>
+            </tr>
             {% endfor %}
-          </div>
-        </div>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="mq-bottom">
+      <div class="mq-terms">
+        <b>الشروط والملاحظات</b><br>
+        {% if quote.payment_terms %}
+        <b>شروط الدفع:</b> {{ quote.payment_terms }}.<br>
+        {% endif %}
+        {% if notes_body %}
+        <b>ملاحظات:</b> {{ notes_body }}<br>
+        {% endif %}
+        {% if not quote.payment_terms and not notes_body %}
+        يخضع هذا العرض لشروط ومدة العقد المذكورة أعلاه.
+        {% endif %}
+        {% if co and co.vat_number %}
+        <br><b>الرقم الضريبي:</b> {{ co.vat_number }}
         {% endif %}
       </div>
-    </div>
-  </div>
-
-  {% if elevators %}
-  <div class="q-sec">
-    <h3>المصاعد المشمولة ({{ elev_count }})</h3>
-    <div class="q-sec-body" style="padding:0;overflow:hidden">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:18%">الرمز</th>
-            <th style="width:32%">المبنى</th>
-            <th>النوع / المواصفات</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for e in elevators %}
-          <tr>
-            <td dir="ltr"><b>{{ e.code }}</b></td>
-            <td>{{ e.building_name or '—' }}</td>
-            <td>
-              {{ e.elev_type or '—' }}
-              {% if e.capacity_kg %} · {{ e.capacity_kg }} كجم{% endif %}
-              {% if e.floors %} · {{ e.floors }} ط{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {% endif %}
-
-  <div class="q-sec">
-    <h3>القيمة المالية</h3>
-    <div class="q-fin-wrap">
       <div class="totals">
-        <div class="r"><span>الإجمالي قبل الضريبة</span><b dir="ltr">{{ '{:,.2f}'.format(quote.value or 0) }} ر.س</b></div>
-        <div class="r"><span>ضريبة القيمة المضافة ({{ '%.0f'|format(quote.tax_pct or 0) }}%)</span><b dir="ltr">{{ '{:,.2f}'.format(quote.tax_amount or 0) }} ر.س</b></div>
-        <div class="g"><span>الإجمالي شامل الضريبة</span><span dir="ltr">{{ '{:,.2f}'.format(quote.total or 0) }} ر.س</span></div>
+        <div class="r"><span>قبل الضريبة</span><b>{{ '{:,.2f}'.format(quote.value or 0) }} ر.س</b></div>
+        <div class="r"><span>ضريبة ({{ '%.0f'|format(quote.tax_pct or 0) }}%)</span><b>{{ '{:,.2f}'.format(quote.tax_amount or 0) }} ر.س</b></div>
+        <div class="g"><span>الإجمالي شامل الضريبة</span><span>{{ '{:,.2f}'.format(quote.total or 0) }} ر.س</span></div>
       </div>
     </div>
-  </div>
 
-  {% if quote.payment_terms or notes_body %}
-  <div class="q-sec">
-    <h3>الشروط والملاحظات</h3>
-    <div class="q-sec-body terms-box terms">
-      {% if quote.payment_terms %}
-      <div><b>شروط الدفع:</b> {{ quote.payment_terms }}</div>
-      {% endif %}
-      {% if notes_body %}
-      <div style="margin-top:6px"><b>ملاحظات:</b> {{ notes_body }}</div>
-      {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
+    <div class="q-sign">
+      <div class="q-sign-box">
+        {% with seal_class='q-company-seal' %}
+        {% include 'partials/document_company_seal.html' %}
+        {% endwith %}
+        <div class="q-sign-line">ختم وتوقيع الشركة</div>
+      </div>
+      <div class="q-sign-box"><div class="q-sign-line">موافقة العميل</div></div>
     </div>
-  </div>
-  {% endif %}
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
-  <div class="q-sign">
-    <div class="q-sign-box">
-      {% with seal_class='q-company-seal' %}
-      {% include 'partials/document_company_seal.html' %}
-      {% endwith %}
-      <div class="q-sign-line">ختم وتوقيع الشركة</div>
+    <div class="q-foot">
+      <b>{{ doc_name }}</b>
+      {% if co and co.email %} · {{ co.email }}{% endif %}
+      · هذا العرض ساري لمدة العقد المحددة — الأسعار بالريال السعودي.
     </div>
-    <div class="q-sign-box"><div class="q-sign-line">موافقة العميل</div></div>
-  </div>
-
-  <div class="q-foot">
-    <b>{{ doc_name }}</b>
-    {% if co and co.vat_number %} · الرقم الضريبي: {{ co.vat_number }}{% endif %}
-    {% if co and co.phone %} · {{ co.phone }}{% endif %}
-    {% if co and co.email %} · {{ co.email }}{% endif %}
-    <br>هذا العرض ساري وفق مدة العقد المذكورة — الأسعار بالريال السعودي شامل ضريبة القيمة المضافة حيث يرد ذلك صراحة.
   </div>
 </div>
 </body>
