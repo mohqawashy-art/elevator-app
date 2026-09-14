@@ -56,7 +56,7 @@ def test_quote_approve_only_approves(client):
     )
     assert resp.status_code in (302, 303), resp.data.decode('utf-8', errors='ignore')[:500]
     loc = resp.headers.get('Location', '')
-    assert f'/installation/projects/{pid}' in loc
+    assert '/installation/projects' in loc
     assert '/execution' not in loc
 
     with client.application.app_context():

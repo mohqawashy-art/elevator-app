@@ -330,6 +330,8 @@ def quotes_inbox():
             iq = tenant_query(InstallQuotation).order_by(InstallQuotation.id.desc())
             if status:
                 iq = iq.filter_by(status=status)
+            elif kind in ('install', 'تركيب', 'تركيبات'):
+                iq = iq.filter(InstallQuotation.status.notin_(('مقبول',)))
             install = iq.limit(200).all()
     except Exception:
         install = []
@@ -376,12 +378,8 @@ def quotes_inbox():
                 project_id=q.project_id,
                 quotation_id=q.id,
                 **{'from': 'sales'},
-            ) if q.project_id and q.status not in ('مقبول',) else (
-                url_for('installation.project_detail', project_id=q.project_id) if q.project_id else '#'
-            ),
+            ) if q.project_id else '#',
             'print_url': url_for('installation.quote_print', quotation_id=q.id),
-            'project_id': q.project_id,
-            'project_url': url_for('installation.project_detail', project_id=q.project_id) if q.project_id else None,
             'deliver_wa': url_for('sales.install_quote_deliver', quotation_id=q.id, channel='whatsapp'),
             'deliver_email': url_for('sales.install_quote_deliver', quotation_id=q.id, channel='email'),
             'approve_url': url_for(

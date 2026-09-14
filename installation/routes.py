@@ -1191,8 +1191,8 @@ def quote_approve(project_id, quotation_id):
         from flask import current_app
         current_app.logger.warning('install contract from quote skipped: %s', exc)
 
-    flash(f'تم قبول العرض {q.code} — يمكنك الآن بدء التنفيذ أو متابعة كارت المشروع', 'success')
-    return redirect(url_for('installation.project_detail', project_id=project.id) + '#project-card')
+    flash(f'تم قبول العرض {q.code} — انتقل إلى مشاريع التركيب لمتابعة المشروع', 'success')
+    return redirect(url_for('installation.projects_list'))
 
 
 @install_bp.route('/projects/<int:project_id>/quotes/<int:quotation_id>/start-execution', methods=['POST'])
