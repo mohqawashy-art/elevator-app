@@ -25,6 +25,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import re
+import json
 import time
 import uuid
 import shutil
@@ -9853,14 +9854,49 @@ def api_field_maint_quote_survey_save(survey_id):
         return jsonify({'ok': False, 'error': str(e)}), 400
 
 
+@app.route('/api/field/maint-quote-survey/<int:survey_id>/complete', methods=['POST'])
+def api_field_maint_quote_survey_complete(survey_id):
+    from sales.maint_survey import complete_survey, save_survey_units
+
+    tech_id = getattr(g, 'field_tech_id', None)
+    if not tech_id:
+        return jsonify({'ok': False, 'error': 'غير مصرح'}), 401
+    data = request.get_json(silent=True) or {}
+    units = data.get('units')
+    if units is None:
+        return jsonify({'ok': False, 'error': 'لا توجد بيانات فحص'}), 400
+    try:
+        save_survey_units(survey_id, tech_id=tech_id, units=units)
+        complete_survey(survey_id, tech_id=tech_id, next_elevator_code_fn=next_code)
+        db.session.commit()
+        return jsonify({'ok': True, 'redirect': url_for('field_home')})
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+
 @app.route('/field/maint-quote-survey/<int:survey_id>/complete', methods=['POST'])
 def field_maint_quote_survey_complete(survey_id):
-    from sales.maint_survey import complete_survey
+    """مسار احتياطي — يُفضّل API complete مع units."""
+    from sales.maint_survey import complete_survey, save_survey_units
 
     tech_id = getattr(g, 'field_tech_id', None)
     if not tech_id:
         return redirect(url_for('field_login'))
+    raw_units = (request.form.get('units_json') or '').strip()
+    units = None
+    if raw_units:
+        try:
+            units = json.loads(raw_units)
+        except (TypeError, ValueError):
+            flash('بيانات الفحص غير صالحة', 'error')
+            return redirect(url_for('field_maint_quote_survey', survey_id=survey_id))
     try:
+        if units is not None:
+            save_survey_units(survey_id, tech_id=tech_id, units=units)
         complete_survey(survey_id, tech_id=tech_id, next_elevator_code_fn=next_code)
         db.session.commit()
         flash('تم إكمال فحص العرض — المواصفات متاحة للمبيعات', 'success')

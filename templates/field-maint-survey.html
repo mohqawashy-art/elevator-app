@@ -26,6 +26,12 @@
 <div id="mqs-msg" class="fp-err" hidden style="margin-bottom:10px"></div>
 <div id="mqs-ok" class="flash flash-success" hidden style="margin-bottom:10px;padding:10px;border-radius:8px"></div>
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}" style="margin-bottom:10px;padding:10px;border-radius:8px">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
 <form id="mqs-form" {% if read_only %}data-readonly="1"{% endif %}>
   <div id="mqs-units"></div>
   {% if not read_only %}
@@ -35,9 +41,7 @@
 </form>
 
 {% if not read_only %}
-<form method="post" action="{{ survey.complete_url }}" id="mqs-complete-form" style="margin-top:16px" onsubmit="return mqsBeforeComplete()">
-  <button type="submit" class="fp-submit" style="background:var(--fp-success)">إكمال الفحص وإرسال للمبيعات</button>
-</form>
+<button type="button" id="mqs-complete" class="fp-submit" style="margin-top:16px;background:var(--fp-success)">إكمال الفحص وإرسال للمبيعات</button>
 {% else %}
 <div class="flash flash-success" style="margin-top:16px;padding:12px;border-radius:10px">تم إكمال هذا الفحص — لا يمكن التعديل</div>
 {% endif %}
@@ -193,21 +197,56 @@
     }).then(function(r){ return r.json().then(function(j){ return { status: r.status, body: j }; }); });
   }
 
-  window.mqsBeforeComplete = function(){
+  function validateUnits() {
     units = collectUnits();
     for (var i = 0; i < units.length; i++) {
       var u = units[i];
       if (!(u.elev_type || u.brand || u.capacity_kg || u.floors)) {
-        showMsg('عبّئ مواصفات ' + (u.unit_label || ('مصعد ' + (i+1))));
+        showMsg('عبّئ مواصفات ' + (u.unit_label || ('مصعد ' + (i + 1))));
         return false;
       }
       if (!(u.technical_opinion || '').trim()) {
-        showMsg('أدخل الرأي الفني لـ ' + (u.unit_label || ('مصعد ' + (i+1))));
+        showMsg('أدخل الرأي الفني لـ ' + (u.unit_label || ('مصعد ' + (i + 1))));
         return false;
       }
     }
     return true;
-  };
+  }
+
+  function completeSurvey() {
+    if (!validateUnits()) return;
+    var btn = document.getElementById('mqs-complete');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'جاري الإرسال…';
+    }
+    fetch(SURVEY.complete_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ units: collectUnits() })
+    }).then(function(r) {
+      return r.json().then(function(j) { return { status: r.status, body: j }; });
+    }).then(function(res) {
+      if (res.body && res.body.ok) {
+        showMsg('تم إكمال الفحص — جاري العودة للمهام…', true);
+        window.location.href = res.body.redirect || SURVEY.back_url || '/field';
+        return;
+      }
+      showMsg((res.body && res.body.error) || 'تعذّر إكمال الفحص');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'إكمال الفحص وإرسال للمبيعات';
+      }
+    }).catch(function() {
+      showMsg('خطأ في الاتصال — تحقق من الإنترنت وحاول مجدداً');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'إكمال الفحص وإرسال للمبيعات';
+      }
+    });
+  }
+
+  document.getElementById('mqs-complete') && document.getElementById('mqs-complete').addEventListener('click', completeSurvey);
 
   document.getElementById('mqs-add') && document.getElementById('mqs-add').addEventListener('click', function(){
     units = collectUnits();

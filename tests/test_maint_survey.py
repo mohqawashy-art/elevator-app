@@ -116,9 +116,14 @@ def test_field_survey_save_and_complete(client):
     assert r2.status_code == 200
     assert r2.get_json()['ok'] is True
 
+    r3 = client.post(
+        f'/api/field/maint-quote-survey/{sid}/complete',
+        json={'units': units},
+    )
+    assert r3.status_code == 200
+    assert r3.get_json()['ok'] is True
+
     with client.application.app_context():
-        complete_survey(sid, tech_id=tid, next_elevator_code_fn=next_code)
-        db.session.commit()
         survey = db.session.get(MaintenanceQuoteSurvey, sid)
         assert survey.status == 'مكتمل'
         assert len(survey.units) == 1
@@ -267,6 +272,35 @@ def test_request_survey_route_without_total_validation(client):
     html = r.get_data(as_text=True)
     assert 'أدخل الإجمالي شامل الضريبة' not in html
     assert 'تم إرسال طلب فحص' in html or 'MQS-' in html
+
+
+def test_complete_survey_requires_units_in_request(client):
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        cust = Customer(organization_id=oid, code='C-SV6', name='عميل إكمال', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        tech = Technician(organization_id=oid, code='T-SV6', name='فني', status='متاح')
+        db.session.add(tech)
+        db.session.flush()
+        quote = _sample_quote(customer_id=cust.id)
+        db.session.add(quote)
+        db.session.flush()
+        survey = create_survey_request(
+            quote,
+            technician_id=tech.id,
+            request_notes=None,
+            next_code_fn=next_code,
+        )
+        db.session.commit()
+        sid, tid = survey.id, tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tid
+
+    r = client.post(f'/api/field/maint-quote-survey/{sid}/complete', json={})
+    assert r.status_code == 400
+    assert r.get_json()['ok'] is False
 
 
 def test_field_payload_includes_maint_surveys(client):

@@ -135,7 +135,7 @@ def survey_field_payload(survey_id: int, *, tech_id: int, base_url: str = '') ->
         'request_notes': survey.request_notes or '',
         'units': survey_units_payload(survey),
         'save_url': f'/api/field/maint-quote-survey/{survey.id}',
-        'complete_url': f'/field/maint-quote-survey/{survey.id}/complete',
+        'complete_url': f'/api/field/maint-quote-survey/{survey.id}/complete',
         'back_url': base_url.rstrip('/') + '/field' if base_url else '/field',
     }
 
