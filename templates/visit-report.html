@@ -86,8 +86,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .notes-box textarea{width:100%;border:1px solid #e5d4a8;background:#fff;min-height:36px;padding:4px 8px;font-family:var(--font);font-size:11px;border-radius:3px;resize:vertical}
 .photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 16px 10px}
 .photo-slot{border:2px dashed var(--border);border-radius:var(--r);background:#f9fbfd;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;flex-direction:column}
-.photo-slot.has-img{border-style:solid;border-color:var(--navy);cursor:default}
-.photo-slot img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.photo-slot.has-img{border-style:solid;border-color:var(--navy);cursor:default;aspect-ratio:auto;min-height:180px;background:#f0f4f8}
+.photo-slot img{width:100%;height:100%;object-fit:contain;object-position:center;background:#f0f4f8;position:absolute;inset:0 0 22px 0}
 .photo-ph{text-align:center;padding:8px}
 .photo-remove{position:absolute;top:4px;left:4px;background:rgba(192,57,43,.85);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;display:none;z-index:2}
 .photo-slot.has-img .photo-remove{display:flex;align-items:center;justify-content:center}
