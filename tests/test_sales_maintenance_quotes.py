@@ -2,7 +2,12 @@
 from datetime import date
 
 from models import Contract, Customer, MaintenanceQuote, db
-from sales.service import create_contract_from_maintenance_quote, money_round, recalc_quote_totals
+from sales.service import (
+    apply_total_including_tax,
+    create_contract_from_maintenance_quote,
+    money_round,
+    recalc_quote_totals,
+)
 from tenant_scope import assign_organization
 
 
@@ -11,6 +16,53 @@ def test_recalc_quote_totals():
     recalc_quote_totals(q)
     assert money_round(q.tax_amount) == 150
     assert money_round(q.total) == 1150
+
+
+def test_apply_total_including_tax():
+    q = MaintenanceQuote(tax_pct=15)
+    apply_total_including_tax(q, 1150)
+    assert money_round(q.total) == 1150
+    assert money_round(q.value) == 1000
+    assert money_round(q.tax_amount) == 150
+
+
+def test_maintenance_quote_print_page(client):
+    from models import Elevator
+
+    login_as = __import__('tests.conftest', fromlist=['login_as']).login_as
+    login_as(client, 'admin')
+    with client.application.app_context():
+        cust = Customer(code='C-9003', name='عميل طباعة صيانة', status='نشط')
+        assign_organization(cust)
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(code='EL-9003', customer_id=cust.id, status='نشط')
+        assign_organization(elev)
+        db.session.add(elev)
+        db.session.flush()
+        quote = MaintenanceQuote(
+            code='MQ-90003',
+            customer_id=cust.id,
+            status='مسودة',
+            duration_months=12,
+            maint_frequency='شهري',
+            visits_per_month=1,
+            tax_pct=15,
+            notes='باقة الخدمة: قياسي\nنطاق الخدمة: زيارات وقائية، فحص سلامة',
+        )
+        assign_organization(quote)
+        apply_total_including_tax(quote, 2300)
+        db.session.add(quote)
+        db.session.commit()
+        qid = quote.id
+
+    r = client.get(f'/sales/maintenance-quotes/{qid}/print')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'MQ-90003' in html
+    assert '2300.00' in html
+    assert 'قياسي' in html
+    assert 'window.print' in html
 
 
 def test_approve_maintenance_quote_creates_contract(client):

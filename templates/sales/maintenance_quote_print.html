@@ -68,7 +68,26 @@ li{margin:3px 0;font-size:13px}
   <tr class="total-row"><th>الإجمالي شامل الضريبة</th><td dir="ltr">{{ '%.2f'|format(quote.total or 0) }} ر.س</td></tr>
 </table>
 
-{% if quote.notes %}
+{% if package or scope_items %}
+<div class="sec">باقة الخدمة والنطاق</div>
+<table>
+  <tr><th>الباقة</th><td><b>{{ package or '—' }}</b></td></tr>
+  {% if scope_items %}
+  <tr><th>مواصفات النطاق</th><td>
+    <ul>
+    {% for item in scope_items %}
+      <li>{{ item }}</li>
+    {% endfor %}
+    </ul>
+  </td></tr>
+  {% endif %}
+</table>
+{% endif %}
+
+{% if notes_body %}
+<div class="sec">ملاحظات إضافية</div>
+<div class="note">{{ notes_body }}</div>
+{% elif quote.notes and not package %}
 <div class="sec">الباقة والنطاق والملاحظات</div>
 <div class="note">{{ quote.notes }}</div>
 {% endif %}

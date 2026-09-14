@@ -26,6 +26,8 @@
 .pkg small{display:block;margin-top:4px;font-size:11px;color:var(--text3);line-height:1.45}
 .scope{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
 .scope label{font-size:13px;color:var(--text2);display:flex;gap:8px;align-items:center}
+.scope label.on{opacity:1;font-weight:600;color:var(--text1)}
+.scope label.off{opacity:.45}
 .totals{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
 .tot{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px}
 .tot .l{font-size:11px;color:var(--text3)}
@@ -143,12 +145,13 @@
             <small>قياسي + طوارئ 24/7 + أولوية قطع غيار (حسب الاتفاق).</small>
           </label>
         </div>
-        <div class="scope" style="margin-top:12px">
+        <div class="scope" style="margin-top:12px" id="scope-box">
           {% set scopes = scope_items|default([]) %}
           {% for item in ['زيارات وقائية','فحص سلامة','تشحيم وضبط','استجابة أعطال','تقارير زيارة','طوارئ خارج الدوام'] %}
-          <label><input type="checkbox" name="scope_items" value="{{ item }}" {% if item in scopes or (not quote and item != 'طوارئ خارج الدوام') %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}> {{ item }}</label>
+          <label class="{% if item in scopes or (not quote and item != 'طوارئ خارج الدوام') %}on{% else %}off{% endif %}"><input type="checkbox" name="scope_items" value="{{ item }}" {% if item in scopes or (not quote and item != 'طوارئ خارج الدوام') %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}> {{ item }}</label>
           {% endfor %}
         </div>
+        <div class="hint" style="margin-top:8px">اختيار الباقة يحدّد مواصفات النطاق تلقائياً — يمكنك تعديلها يدوياً بعد ذلك.</div>
       </section>
 
       <section class="mq-card">
@@ -202,13 +205,9 @@
         <h2><span class="n">5</span> التسعير</h2>
         <div class="mq-grid">
           <div class="field">
-            <label>سعر المصعد / السنة (بدون ضريبة)</label>
-            <input type="number" step="0.01" min="0" id="price_per_elev" value="{{ price_per_elevator|default(0) }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
-            <div class="hint">يُضرب بعدد المصاعد ثم يُنسب لمدة العقد.</div>
-          </div>
-          <div class="field">
-            <label>أو إجمالي يدوي (بدون ضريبة)</label>
-            <input type="number" step="0.01" min="0" name="value" id="value" value="{{ quote.value if quote else 0 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            <label>الإجمالي شامل الضريبة (ر.س) *</label>
+            <input type="number" step="0.01" min="0" name="total_incl_tax" id="total_incl_tax" value="{{ total_incl_tax|default(0) }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            <div class="hint">اكتب السعر النهائي للعميل يدوياً — شامل ضريبة القيمة المضافة.</div>
           </div>
           <div class="field">
             <label>ضريبة القيمة المضافة %</label>
@@ -216,8 +215,8 @@
           </div>
           <div class="field full">
             <div class="totals">
-              <div class="tot"><div class="l">القيمة</div><div class="v" id="t-value">0</div></div>
-              <div class="tot"><div class="l">الضريبة</div><div class="v" id="t-tax">0</div></div>
+              <div class="tot"><div class="l">قبل الضريبة (محسوب)</div><div class="v" id="t-value">0</div></div>
+              <div class="tot"><div class="l">الضريبة (محسوب)</div><div class="v" id="t-tax">0</div></div>
               <div class="tot"><div class="l">الإجمالي</div><div class="v" id="t-total">0</div></div>
             </div>
           </div>
@@ -230,13 +229,20 @@
 
       {% if not quote or quote.status != 'مقبول' %}
       <div class="actions">
-        <button type="submit" class="btn btn-primary">حفظ العرض</button>
+        <button type="submit" name="action" value="save" class="btn btn-primary">حفظ العرض</button>
+        <button type="submit" name="action" value="save_print" class="btn btn-secondary">حفظ وطباعة</button>
+        {% if quote %}<a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id) }}" class="btn btn-secondary" target="_blank" rel="noopener">طباعة</a>{% endif %}
+      </div>
+      {% elif quote %}
+      <div class="actions">
+        <a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id) }}" class="btn btn-secondary" target="_blank" rel="noopener">طباعة</a>
       </div>
       {% endif %}
     </form>
 
     {% if quote and quote.status != 'مقبول' %}
     <div class="actions" style="margin-top:12px">
+      <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id) }}" target="_blank" rel="noopener">طباعة العرض</a>
       <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quote_deliver', quote_id=quote.id, channel='whatsapp') }}" target="_blank" rel="noopener">إرسال واتساب</a>
       <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quote_deliver', quote_id=quote.id, channel='email') }}">إرسال إيميل</a>
       <form method="post" action="{{ url_for('sales.maintenance_quote_approve', quote_id=quote.id) }}" onsubmit="return confirm('تأكيد موافقة العميل وإنشاء عقد الصيانة؟')">
@@ -254,9 +260,34 @@
 <script>
 (function(){
   var locked = {{ 'true' if quote and quote.status=='مقبول' else 'false' }};
+  var PACKAGE_SCOPES = {
+    'أساسي': ['زيارات وقائية','فحص سلامة','تشحيم وضبط'],
+    'قياسي': ['زيارات وقائية','فحص سلامة','تشحيم وضبط','استجابة أعطال','تقارير زيارة'],
+    'شامل': ['زيارات وقائية','فحص سلامة','تشحيم وضبط','استجابة أعطال','تقارير زيارة','طوارئ خارج الدوام']
+  };
   function money(n){ n=Number(n)||0; return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function elevCount(){
     return document.querySelectorAll('#elev-box input[name=elevator_ids]:checked').length;
+  }
+  function syncScopeStyles(){
+    document.querySelectorAll('#scope-box label').forEach(function(lab){
+      var cb = lab.querySelector('input[type=checkbox]');
+      if(!cb) return;
+      lab.classList.toggle('on', cb.checked);
+      lab.classList.toggle('off', !cb.checked);
+    });
+  }
+  function applyPackageScopes(pkg, force){
+    if(locked) return;
+    var allowed = PACKAGE_SCOPES[pkg] || [];
+    document.querySelectorAll('#scope-box input[name=scope_items]').forEach(function(cb){
+      if(force || document.querySelector('input[name=service_package]:checked')) cb.checked = allowed.indexOf(cb.value) >= 0;
+    });
+    syncScopeStyles();
+  }
+  function markPackageSelected(lab){
+    document.querySelectorAll('#pkg-box label').forEach(function(x){ x.classList.remove('selected'); });
+    if(lab) lab.classList.add('selected');
   }
   function filterElev(){
     var cid = (document.getElementById('customer_id')||{}).value || '';
@@ -273,7 +304,6 @@
     var empty = document.getElementById('elev-empty');
     if(empty) empty.style.display = (!cid || shown===0) ? 'block' : 'none';
     document.getElementById('elev-count').textContent = elevCount();
-    recalcFromUnit();
   }
   function fillCustomerMeta(){
     var sel = document.getElementById('customer_id');
@@ -312,48 +342,50 @@
     document.getElementById('visits-hint').textContent = (map[f]||f) + ' × ' + v + ' زيارة';
   }
   function recalcTotals(){
-    var value = Number(document.getElementById('value').value)||0;
+    var total = Number(document.getElementById('total_incl_tax').value)||0;
     var taxPct = Number(document.getElementById('tax_pct').value)||0;
-    var tax = value * taxPct / 100;
+    var divisor = 1 + taxPct / 100;
+    var value = divisor > 0 ? total / divisor : 0;
+    var tax = total - value;
     document.getElementById('t-value').textContent = money(value);
     document.getElementById('t-tax').textContent = money(tax);
-    document.getElementById('t-total').textContent = money(value+tax);
+    document.getElementById('t-total').textContent = money(total);
   }
-  function recalcFromUnit(){
-    if(locked) return;
-    var unit = Number(document.getElementById('price_per_elev').value)||0;
-    var n = elevCount();
-    var months = Number(document.getElementById('duration_months').value)||12;
-    if(unit > 0 && n > 0){
-      // سعر سنوي للمصعد × عدد × (المدة/12)
-      var val = unit * n * (months/12);
-      document.getElementById('value').value = Math.round(val*100)/100;
-    }
-    document.getElementById('elev-count').textContent = n;
-    recalcTotals();
+  function refreshElevCount(){
+    document.getElementById('elev-count').textContent = elevCount();
   }
   document.querySelectorAll('#pkg-box label').forEach(function(lab){
     lab.addEventListener('click', function(){
       if(locked) return;
-      document.querySelectorAll('#pkg-box label').forEach(function(x){ x.classList.remove('selected'); });
-      lab.classList.add('selected');
+      markPackageSelected(lab);
+      var radio = lab.querySelector('input[type=radio]');
+      if(radio) applyPackageScopes(radio.value, true);
     });
   });
+  document.querySelectorAll('input[name=service_package]').forEach(function(radio){
+    radio.addEventListener('change', function(){
+      markPackageSelected(radio.closest('label'));
+      applyPackageScopes(radio.value, true);
+    });
+  });
+  document.getElementById('scope-box').addEventListener('change', syncScopeStyles);
   var cust = document.getElementById('customer_id');
   if(cust){ cust.addEventListener('change', function(){ fillCustomerMeta(); filterElev(); }); }
-  document.getElementById('elev-box').addEventListener('change', recalcFromUnit);
+  document.getElementById('elev-box').addEventListener('change', refreshElevCount);
   ['duration_months','start_date'].forEach(function(id){
-    var el=document.getElementById(id); if(el) el.addEventListener('change', function(){ syncEnd(); recalcFromUnit(); });
+    var el=document.getElementById(id); if(el) el.addEventListener('change', function(){ syncEnd(); });
   });
   document.getElementById('maint_frequency').addEventListener('change', visitsHint);
   document.getElementById('visits_per_month').addEventListener('input', visitsHint);
-  document.getElementById('price_per_elev').addEventListener('input', recalcFromUnit);
-  document.getElementById('value').addEventListener('input', recalcTotals);
+  document.getElementById('total_incl_tax').addEventListener('input', recalcTotals);
   document.getElementById('tax_pct').addEventListener('input', recalcTotals);
   filterElev();
   visitsHint();
   if(!document.getElementById('end_date').value) syncEnd();
   recalcTotals();
+  syncScopeStyles();
+  var checkedPkg = document.querySelector('input[name=service_package]:checked');
+  if(checkedPkg) markPackageSelected(checkedPkg.closest('label'));
 
   var btnQc = document.getElementById('btnQuickCustomerMaint');
   if (btnQc && window.LiftCoreQuickCustomer) {

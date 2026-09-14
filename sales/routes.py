@@ -8,10 +8,10 @@ from flask import flash, redirect, render_template, request, url_for
 from models import Customer, Elevator, MaintenanceQuote, MaintenanceQuoteElevator, db
 from sales import sales_bp
 from sales.service import (
+    apply_total_including_tax,
     create_contract_from_maintenance_quote,
     create_install_project_and_quote_from_estimate,
     money_round,
-    recalc_quote_totals,
     sync_quote_elevators,
 )
 from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
@@ -61,8 +61,20 @@ def _apply_maint_quote_form(quote: MaintenanceQuote, form) -> None:
     quote.duration_months = int(form.get('duration_months') or 12)
     quote.maint_frequency = (form.get('maint_frequency') or '').strip() or None
     quote.visits_per_month = int(form.get('visits_per_month') or 1)
-    quote.value = money_round(form.get('value'))
-    quote.tax_pct = money_round(form.get('tax_pct') if form.get('tax_pct') not in (None, '') else 15)
+    tax_pct = money_round(form.get('tax_pct') if form.get('tax_pct') not in (None, '') else 15)
+    total_incl = money_round(form.get('total_incl_tax'))
+    if total_incl <= 0:
+        total_incl = money_round(form.get('value'))
+        if total_incl > 0:
+            from sales.service import recalc_quote_totals
+
+            quote.value = total_incl
+            quote.tax_pct = tax_pct
+            recalc_quote_totals(quote)
+        else:
+            apply_total_including_tax(quote, 0, tax_pct=tax_pct)
+    else:
+        apply_total_including_tax(quote, total_incl, tax_pct=tax_pct)
     quote.payment_terms = (form.get('payment_terms') or '').strip() or None
     quote.start_date = _parse_date(form.get('start_date') or '')
     quote.end_date = _parse_date(form.get('end_date') or '')
@@ -70,7 +82,6 @@ def _apply_maint_quote_form(quote: MaintenanceQuote, form) -> None:
     quote.district = (form.get('district') or '').strip() or None
     quote.address = (form.get('address') or '').strip() or None
     quote.notes = _compose_maint_notes(form) or None
-    recalc_quote_totals(quote)
     if quote.start_date and quote.duration_months and not quote.end_date:
         from sales.service import add_months
         quote.end_date = add_months(quote.start_date, quote.duration_months)
@@ -80,14 +91,7 @@ def _maint_form_context(quote=None, *, selected_elevator_ids=None):
     customers = tenant_query(Customer).order_by(Customer.name).all()
     elevators = tenant_query(Elevator).order_by(Elevator.code).limit(800).all()
     package, scope, notes_body = _split_maint_notes(quote.notes if quote else None)
-    elev_n = len(selected_elevator_ids or [])
-    months = float((quote.duration_months if quote else 12) or 12)
-    price_per = 0.0
-    if quote and elev_n and months and quote.value:
-        # عكس تقريبي: قيمة / مصاعد / (مدة÷12)
-        years = months / 12.0
-        if years > 0:
-            price_per = money_round((quote.value or 0) / elev_n / years)
+    total_incl_tax = money_round(quote.total if quote else 0)
     return dict(
         customers=customers,
         elevators=elevators,
@@ -96,7 +100,7 @@ def _maint_form_context(quote=None, *, selected_elevator_ids=None):
         package=package,
         scope_items=scope,
         notes_body=notes_body,
-        price_per_elevator=price_per,
+        total_incl_tax=total_incl_tax,
     )
 
 
@@ -438,14 +442,16 @@ def maintenance_quote_new():
         if not quote.customer_id:
             flash('اختر العميل', 'error')
             return redirect(url_for('sales.maintenance_quote_new'))
-        if money_round(quote.value) <= 0:
-            flash('أدخل قيمة العرض أو سعر المصعد', 'error')
+        if money_round(quote.total) <= 0:
+            flash('أدخل الإجمالي شامل الضريبة', 'error')
             return redirect(url_for('sales.maintenance_quote_new'))
         db.session.add(quote)
         db.session.flush()
         sync_quote_elevators(quote.id, elev_ids)
         db.session.commit()
         flash(f'تم إنشاء عرض {quote.code}', 'success')
+        if (request.form.get('action') or '').strip() == 'save_print':
+            return redirect(url_for('sales.maintenance_quote_print', quote_id=quote.id))
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
     return render_template(
@@ -469,13 +475,15 @@ def maintenance_quote_edit(quote_id):
             flash('اختر مصعداً واحداً على الأقل', 'error')
             return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
         _apply_maint_quote_form(quote, request.form)
-        if money_round(quote.value) <= 0:
-            flash('قيمة العرض يجب أن تكون أكبر من صفر', 'error')
+        if money_round(quote.total) <= 0:
+            flash('أدخل الإجمالي شامل الضريبة', 'error')
             return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
         sync_quote_elevators(quote.id, elev_ids)
         quote.updated_at = datetime.utcnow()
         db.session.commit()
         flash('تم حفظ العرض', 'success')
+        if (request.form.get('action') or '').strip() == 'save_print':
+            return redirect(url_for('sales.maintenance_quote_print', quote_id=quote.id))
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
     selected = {
@@ -557,9 +565,13 @@ def maintenance_quote_print(quote_id):
     elevators = []
     if elev_ids:
         elevators = tenant_query(Elevator).filter(Elevator.id.in_(elev_ids)).all()
+    package, scope, notes_body = _split_maint_notes(quote.notes if quote else None)
     return render_template(
         'sales/maintenance_quote_print.html',
         quote=quote,
         elevators=elevators,
+        package=package,
+        scope_items=scope,
+        notes_body=notes_body,
         page_title=f'طباعة {quote.code}',
     )

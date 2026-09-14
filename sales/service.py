@@ -37,6 +37,48 @@ def recalc_quote_totals(quote: MaintenanceQuote) -> None:
     quote.total = money_round(value + tax_amount)
 
 
+def apply_total_including_tax(
+    quote: MaintenanceQuote,
+    total_incl: float,
+    *,
+    tax_pct: float | None = None,
+) -> None:
+    """يحسب القيمة قبل الضريبة من إجمالي يدوي شامل الضريبة."""
+    if tax_pct is not None:
+        quote.tax_pct = money_round(tax_pct)
+    pct = money_round(quote.tax_pct if quote.tax_pct is not None else 15)
+    total_incl = money_round(total_incl)
+    if total_incl <= 0:
+        quote.value = 0.0
+        quote.tax_amount = 0.0
+        quote.total = 0.0
+        return
+    value = money_round(total_incl / (1.0 + pct / 100.0))
+    quote.value = value
+    quote.tax_amount = money_round(total_incl - value)
+    quote.total = total_incl
+
+
+MAINT_PACKAGE_SCOPES: dict[str, tuple[str, ...]] = {
+    'أساسي': ('زيارات وقائية', 'فحص سلامة', 'تشحيم وضبط'),
+    'قياسي': (
+        'زيارات وقائية',
+        'فحص سلامة',
+        'تشحيم وضبط',
+        'استجابة أعطال',
+        'تقارير زيارة',
+    ),
+    'شامل': (
+        'زيارات وقائية',
+        'فحص سلامة',
+        'تشحيم وضبط',
+        'استجابة أعطال',
+        'تقارير زيارة',
+        'طوارئ خارج الدوام',
+    ),
+}
+
+
 def sync_quote_elevators(quote_id: int, elevator_ids: list) -> None:
     from models import MaintenanceQuoteElevator
 
