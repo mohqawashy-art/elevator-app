@@ -715,8 +715,10 @@ def enforce_plan_features():
     if gate.get('ok'):
         return None
     msg = gate.get('error') or 'هذه الميزة غير متاحة في باقتك.'
-    if path.startswith('/api/'):
-        return jsonify({'error': msg}), 403
+    from liftcore_security import wants_json_http_response
+
+    if wants_json_http_response():
+        return jsonify({'ok': False, 'error': msg}), 403
     flash(msg, 'warn')
     return redirect(url_for('home'))
 

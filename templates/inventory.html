@@ -1016,7 +1016,12 @@ async function confirmImport() {
     fd.append('location', pickRow(row, ['موقع التخزين', 'location']));
     fd.append('supplier', pickRow(row, ['المورد', 'supplier']));
     fd.append('notes', pickRow(row, ['ملاحظات', 'notes']));
-    var r = await fetch('/inventory/add', { method: 'POST', body: fd });
+    var r = await fetch('/inventory/add', {
+      method: 'POST',
+      body: (window.LiftCoreCsrf && LiftCoreCsrf.appendToFormData) ? LiftCoreCsrf.appendToFormData(fd) : fd,
+      credentials: 'same-origin',
+      headers: (window.LiftCoreCsrf && LiftCoreCsrf.ajaxHeaders) ? LiftCoreCsrf.ajaxHeaders() : { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    });
     if (r.ok) ok++;
   }
   alert('تم استيراد ' + ok + ' صنف بنجاح');

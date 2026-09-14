@@ -43,11 +43,45 @@
     };
   }
 
+  function jsonHeaders(extra) {
+    var h = Object.assign({
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json'
+    }, extra || {});
+    var t = token();
+    if (t) h['X-CSRF-Token'] = t;
+    return h;
+  }
+
+  function ajaxHeaders(extra) {
+    var h = Object.assign({
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json'
+    }, extra || {});
+    var t = token();
+    if (t) h['X-CSRF-Token'] = t;
+    return h;
+  }
+
+  function appendToFormData(fd) {
+    if (!fd || typeof fd.append !== 'function') return fd;
+    var t = token();
+    if (t && !fd.has('csrf_token')) fd.append('csrf_token', t);
+    return fd;
+  }
+
   patchFetch();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', injectFormTokens);
   } else {
     injectFormTokens();
   }
-  global.LiftCoreCsrf = { token: token, injectFormTokens: injectFormTokens };
+  global.LiftCoreCsrf = {
+    token: token,
+    injectFormTokens: injectFormTokens,
+    jsonHeaders: jsonHeaders,
+    ajaxHeaders: ajaxHeaders,
+    appendToFormData: appendToFormData
+  };
 })(window);

@@ -1621,9 +1621,9 @@ async function confirmAddressImport() {
   try {
     var r = await fetch('/clients/import-addresses', {
       method: 'POST',
-      body: fd,
+      body: (window.LiftCoreCsrf && LiftCoreCsrf.appendToFormData) ? LiftCoreCsrf.appendToFormData(fd) : fd,
       credentials: 'same-origin',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      headers: (window.LiftCoreCsrf && LiftCoreCsrf.ajaxHeaders) ? LiftCoreCsrf.ajaxHeaders() : { 'X-Requested-With': 'XMLHttpRequest' }
     });
     var text = await r.text();
     var data = {};
@@ -1880,20 +1880,30 @@ async function confirmImport(){
     };
   });
 
+  var importHeaders = (window.LiftCoreCsrf && LiftCoreCsrf.jsonHeaders)
+    ? LiftCoreCsrf.jsonHeaders()
+    : (function () {
+      var h = {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      };
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      if (meta && meta.content) h['X-CSRF-Token'] = meta.content;
+      return h;
+    })();
+
   try {
     var r = await fetch('/clients/import', {
       method: 'POST',
       credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
+      headers: importHeaders,
       body: JSON.stringify({ rows: rows })
     });
     var data = {};
     try { data = await r.json(); } catch (e) { data = {}; }
     if (!r.ok) {
-      alert(data.error || data.message || ('فشل الاستيراد (رمز ' + r.status + ')'));
+      alert(data.error || data.message || data.message_ar || ('فشل الاستيراد (رمز ' + r.status + ')'));
       btn.disabled = false;
       btn.innerHTML = btnHtml;
       return;

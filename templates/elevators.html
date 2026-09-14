@@ -1755,9 +1755,9 @@ async function confirmElevImport() {
     try {
       var r = await fetch('/elevators/add', {
         method: 'POST',
-        body: fd,
+        body: (window.LiftCoreCsrf && LiftCoreCsrf.appendToFormData) ? LiftCoreCsrf.appendToFormData(fd) : fd,
         credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        headers: (window.LiftCoreCsrf && LiftCoreCsrf.ajaxHeaders) ? LiftCoreCsrf.ajaxHeaders() : { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
       });
       var data = null;
       try { data = await r.json(); } catch (e) { data = null; }

@@ -2983,9 +2983,9 @@ async function confirmContractImport() {
     try {
       var res = await fetch('/contracts/add', {
         method: 'POST',
-        body: fd,
+        body: (window.LiftCoreCsrf && LiftCoreCsrf.appendToFormData) ? LiftCoreCsrf.appendToFormData(fd) : fd,
         credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        headers: (window.LiftCoreCsrf && LiftCoreCsrf.ajaxHeaders) ? LiftCoreCsrf.ajaxHeaders() : { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
       });
       if (res.ok) ok++;
       else skip++;

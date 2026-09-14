@@ -141,6 +141,17 @@ def ensure_csrf_token() -> str:
     return token
 
 
+def wants_json_http_response() -> bool:
+    """طلبات fetch/AJAX تستحق JSON بدل صفحة HTML عند الرفض."""
+    path = request.path or ''
+    if path.startswith('/api/'):
+        return True
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return True
+    accept = (request.headers.get('Accept') or '').lower()
+    return 'application/json' in accept
+
+
 def validate_csrf(*, method: str, endpoint: str | None, path: str) -> None:
     from liftcore_rbac import is_exempt_path
 
@@ -165,10 +176,9 @@ def validate_csrf(*, method: str, endpoint: str | None, path: str) -> None:
 
 
 def _abort_csrf(message: str) -> None:
-    from flask import abort, jsonify, request
+    from flask import abort, jsonify
 
-    path = request.path or ''
-    if path.startswith('/api/'):
+    if wants_json_http_response():
         resp = jsonify({'ok': False, 'error': message, 'code': 'csrf_failed'})
         resp.status_code = 403
         abort(resp)

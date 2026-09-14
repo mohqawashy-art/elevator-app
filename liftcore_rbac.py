@@ -73,9 +73,10 @@ def role_is_admin(role: str | None) -> bool:
 
 def mutation_denied_response(*, as_json: bool, message_ar: str, message_en: str, lang: str = 'ar'):
     from flask import flash, render_template, request
+    from liftcore_security import wants_json_http_response
 
     msg = message_en if lang == 'en' else message_ar
-    if as_json or (request.path or '').startswith('/api/'):
+    if as_json or wants_json_http_response():
         from liftcore_api_i18n import api_error_payload
         from flask import jsonify
         return jsonify(api_error_payload(
