@@ -2815,8 +2815,8 @@ def save_visit_report(
             for item_id, val in incoming_items.items():
                 if item_id in merged['items'] and isinstance(val, dict):
                     merged['items'][item_id] = {
-                        'status': val.get('status') or '',
-                        'note': val.get('note') or '',
+                        'status': (val.get('status') or '').strip(),
+                        'note': (val.get('note') or '').strip(),
                     }
         meta = payload.get('meta') or {}
         if isinstance(meta, dict):
@@ -2828,7 +2828,7 @@ def save_visit_report(
             for key in merged['signatures']:
                 if key in sig:
                     merged['signatures'][key] = sig.get(key) or ''
-        if isinstance(payload.get('photos'), list):
+        if 'photos' in payload and isinstance(payload.get('photos'), list):
             merged['photos'] = payload['photos']
 
     if preserve_field_times:

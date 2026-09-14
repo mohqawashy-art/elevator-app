@@ -305,6 +305,12 @@ function updateProgress() {
   LiftCoreChecklist.syncAutoTechNotes(CHECKLIST_TEMPLATE);
 }
 
+function lcReportHttpError(status) {
+  if (status === 413) return 'حجم البيانات كبير (الصور) — قلّل عدد الصور أو حجمها';
+  if (status === 403) return 'انتهت الجلسة أو رمز الحماية — أعد تحميل الصفحة وحاول مرة أخرى';
+  return 'تعذّر قراءة رد الخادم (' + status + ')';
+}
+
 function lcReportPostJson(url, payload) {
   const headers = { 'Content-Type': 'application/json' };
   const csrf = document.querySelector('meta[name="csrf-token"]');
@@ -318,13 +324,20 @@ function lcReportPostJson(url, payload) {
     return r.text().then(function (text) {
       let data;
       try { data = text ? JSON.parse(text) : {}; } catch (e) {
-        if (r.status === 403) throw new Error('انتهت الجلسة أو رمز الحماية — أعد تحميل الصفحة وحاول مرة أخرى');
-        throw new Error('تعذّر قراءة رد الخادم (' + r.status + ')');
+        throw new Error(lcReportHttpError(r.status));
       }
       if (!r.ok && !data.error) data.error = 'تعذّر الحفظ (' + r.status + ')';
       return data;
     });
   });
+}
+
+function lcReportSavePayload(url, payload, meta) {
+  const isField = (REPORT_CFG.backUrl || '').indexOf('/field') >= 0;
+  if (isField && window.LiftCoreFieldOffline) {
+    return LiftCoreFieldOffline.postJson(url, payload, meta || {});
+  }
+  return lcReportPostJson(url, payload);
 }
 
 function syncFinishAtClientButton() {
@@ -351,17 +364,36 @@ function markFinishedAtClient() {
 
 function saveReport(markComplete) {
   if (!REPORT_CFG.editable) return;
-  const payload = LiftCoreChecklist.collectReportData(CHECKLIST_TEMPLATE);
-  payload.mark_complete = markComplete;
-  payload.status = markComplete ? 'مكتملة' : undefined;
+  const fullPayload = LiftCoreChecklist.collectReportData(CHECKLIST_TEMPLATE);
+  fullPayload.mark_complete = markComplete;
+  fullPayload.status = markComplete ? 'مكتملة' : undefined;
   const url = '/api/maintenance-visits/' + REPORT_CFG.visitId + '/report';
   const draftKey = 'visit:' + REPORT_CFG.visitId;
-  const isField = (REPORT_CFG.backUrl || '').indexOf('/field') >= 0;
-  const saver = isField && window.LiftCoreFieldOffline
-    ? LiftCoreFieldOffline.postJson(url, payload, { draftKey: draftKey, label: 'محضر زيارة ' + REPORT_CFG.visitId })
-    : lcReportPostJson(url, payload);
-  saver
-    .then(data => {
+  const saveMeta = { draftKey: draftKey, label: 'محضر زيارة ' + REPORT_CFG.visitId };
+  const photos = fullPayload.photos || [];
+  const itemsPayload = Object.assign({}, fullPayload);
+  delete itemsPayload.photos;
+
+  lcReportSavePayload(url, itemsPayload, saveMeta)
+    .then(function (data) {
+      if (!data.ok) throw new Error(data.error || 'تعذّر الحفظ');
+      if (data.queued) return data;
+      if (!photos.length) return data;
+      const photosPayload = {
+        template_key: fullPayload.template_key,
+        template_version: fullPayload.template_version,
+        items: fullPayload.items,
+        meta: fullPayload.meta,
+        signatures: fullPayload.signatures,
+        photos: photos,
+      };
+      if (markComplete) {
+        photosPayload.mark_complete = true;
+        photosPayload.status = 'مكتملة';
+      }
+      return lcReportSavePayload(url, photosPayload, saveMeta);
+    })
+    .then(function (data) {
       if (!data.ok) throw new Error(data.error || 'تعذّر الحفظ');
       if (data.queued) {
         LiftCoreFieldOffline.notifyQueued(true);
@@ -378,7 +410,7 @@ function saveReport(markComplete) {
         alert('✅ تم حفظ المحضر');
       }
     })
-    .catch(err => alert(err.message || err));
+    .catch(function (err) { alert(err.message || err); });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -397,6 +429,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   LiftCoreChecklist.applyReportData(REPORT_DATA, CHECKLIST_TEMPLATE);
+  const isFieldPortal = (REPORT_CFG.backUrl || '').indexOf('/field') >= 0;
+  if (REPORT_CFG.editable && isFieldPortal && window.LiftCoreFieldOffline) {
+    LiftCoreFieldOffline.loadDraft('visit:' + REPORT_CFG.visitId).then(function (draft) {
+      if (draft && draft.items) {
+        LiftCoreChecklist.applyReportData(draft, CHECKLIST_TEMPLATE);
+        if (window.LiftCoreDocSign && draft.signatures) {
+          LiftCoreDocSign.applySaved({ signatures: draft.signatures, meta: draft.meta || {} });
+        }
+        updateProgress();
+      }
+    });
+  }
   if (window.LiftCoreDocSign) LiftCoreDocSign.applySaved(REPORT_DATA);
   const os = document.getElementById('overall-status');
   if (os && REPORT_DATA.meta && REPORT_DATA.meta.overall_status) {

@@ -160,6 +160,9 @@
         credentials: 'same-origin',
       })
         .then(function (r) {
+          if (r.status === 413) {
+            throw new Error('حجم البيانات كبير (الصور) — قلّل عدد الصور أو حجمها');
+          }
           return r.text().then(function (text) {
             var data;
             try { data = text ? JSON.parse(text) : {}; } catch (e) {

@@ -405,25 +405,54 @@
   function loadPhoto(input, i) {
     const file = input && input.files && input.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const slot = document.querySelector('.photo-slot[data-slot="' + i + '"]');
-      if (!slot) return;
-      const ph = slot.querySelector('.photo-ph');
-      if (ph) ph.style.display = 'none';
-      const oldImg = slot.querySelector('img');
-      if (oldImg) oldImg.remove();
-      const img = document.createElement('img');
-      img.src = e.target.result;
-      const cap = slot.querySelector('.photo-caption-input');
-      slot.insertBefore(img, cap || null);
-      slot.classList.add('has-img');
-      syncPhotoVisibility();
-    };
-    reader.onerror = function () {
-      alert('تعذّر قراءة الصورة — جرّب ملفاً أصغر أو بصيغة JPG/PNG');
-    };
-    reader.readAsDataURL(file);
+    compressImageFile(file, 1280, 0.78)
+      .then(function (dataUrl) {
+        showPhotoInSlot(i, dataUrl);
+      })
+      .catch(function () {
+        alert('تعذّر قراءة الصورة — جرّب ملفاً أصغر أو بصيغة JPG/PNG');
+      });
+  }
+
+  function compressImageFile(file, maxDim, quality) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          let w = img.width;
+          let h = img.height;
+          const scale = Math.min(1, maxDim / Math.max(w, h, 1));
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function showPhotoInSlot(i, dataUrl) {
+    const slot = document.querySelector('.photo-slot[data-slot="' + i + '"]');
+    if (!slot) return;
+    const ph = slot.querySelector('.photo-ph');
+    if (ph) ph.style.display = 'none';
+    const oldImg = slot.querySelector('img');
+    if (oldImg) oldImg.remove();
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    const cap = slot.querySelector('.photo-caption-input');
+    slot.insertBefore(img, cap || null);
+    slot.classList.add('has-img');
+    syncPhotoVisibility();
   }
 
   function removePhoto(event, i) {

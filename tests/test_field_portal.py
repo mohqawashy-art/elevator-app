@@ -542,3 +542,117 @@ def test_field_geofence_blocks_far_fault_in_progress(client):
 
     r = client.get(f'/field/fault/{fault_id}/report?lat=24.800000&lng=46.675300')
     assert r.status_code == 403
+
+
+def test_field_assistant_can_save_visit_report_items(client):
+    from checklist_templates import parse_report_json
+    from models import VisitTechnician
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        lead = Technician(organization_id=oid, code='T-LEAD', name='فني رئيسي', phone='0503334455', team='صيانة')
+        assist = Technician(organization_id=oid, code='T-ASST', name='فني مساعد', phone='0503334466', team='صيانة')
+        db.session.add_all([lead, assist])
+        db.session.flush()
+        cust = Customer(organization_id=oid, code='C-ASST', name='عميل مساعد', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-ASST', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-ASST1',
+            elevator_id=elev.id,
+            technician_id=lead.id,
+            visit_date=date.today(),
+            status='عند العميل',
+        )
+        db.session.add(visit)
+        db.session.flush()
+        db.session.add(
+            VisitTechnician(
+                organization_id=oid,
+                visit_id=visit.id,
+                technician_id=assist.id,
+                role='مساعد',
+            )
+        )
+        db.session.commit()
+        visit_id, assist_id = visit.id, assist.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = assist_id
+
+    payload = {
+        'template_key': 'liftcore_standard_v1',
+        'items': {
+            '5_3': {'status': 'ok', 'note': 'إيماتيك يعمل'},
+            '5_4': {'status': 'ok', 'note': 'مربوط بلوحة الإنذار'},
+        },
+        'meta': {'tech_notes': 'اختبار حفظ'},
+        'photos': [{'url': 'data:image/jpeg;base64,/9j/4AAQSkZJRg==', 'caption': 'لوحة'}],
+    }
+    r = client.post(f'/api/maintenance-visits/{visit_id}/report', json=payload)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    assert r.get_json().get('ok') is True
+
+    with client.application.app_context():
+        v = db.session.get(MaintenanceVisit, visit_id)
+        data = parse_report_json(v.checklist_json)
+        assert data['items']['5_3']['status'] == 'ok'
+        assert data['items']['5_4']['status'] == 'ok'
+        assert data['items']['5_4']['note'] == 'مربوط بلوحة الإنذار'
+        assert len(data.get('photos') or []) == 1
+
+
+def test_save_visit_report_without_photos_key_preserves_existing_photos(client):
+    import json
+
+    from checklist_templates import parse_report_json
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-PH', name='فني صور', phone='0504445566', team='صيانة')
+        db.session.add(tech)
+        cust = Customer(organization_id=oid, code='C-PH', name='عميل صور', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-PH', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-PH1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            status='عند العميل',
+            checklist_json=json.dumps(
+                {
+                    'template_key': 'liftcore_standard_v1',
+                    'items': {},
+                    'meta': {},
+                    'signatures': {},
+                    'photos': [{'url': 'data:image/jpeg;base64,abc', 'caption': 'قديمة'}],
+                },
+                ensure_ascii=False,
+            ),
+        )
+        db.session.add(visit)
+        db.session.commit()
+        visit_id = visit.id
+
+    login_as(client, 'admin')
+    r = client.post(
+        f'/api/maintenance-visits/{visit_id}/report',
+        json={'items': {'5_3': {'status': 'ok', 'note': ''}}},
+    )
+    assert r.status_code == 200
+
+    with client.application.app_context():
+        v = db.session.get(MaintenanceVisit, visit_id)
+        data = parse_report_json(v.checklist_json)
+        assert data['items']['5_3']['status'] == 'ok'
+        assert len(data.get('photos') or []) == 1
+        assert data['photos'][0]['caption'] == 'قديمة'

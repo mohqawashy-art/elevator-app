@@ -9964,8 +9964,10 @@ def api_save_visit_report(visit_id):
     if not v:
         return jsonify({'ok': False, 'error': 'الزيارة غير موجودة'}), 404
 
+    from technician_assignments import technician_assigned_to_visit
+
     tech_id = getattr(g, 'field_tech_id', None)
-    if tech_id and v.technician_id and v.technician_id != tech_id:
+    if tech_id and not technician_assigned_to_visit(v, tech_id):
         return jsonify({'ok': False, 'error': 'الزيارة غير مخصصة لهذا الفني'}), 403
 
     data = request.get_json(silent=True) or {}
