@@ -414,7 +414,7 @@ function renderTable(data) {
     document.getElementById('exp-count').textContent = data.length + ' سجل';
   }
   tbody.innerHTML = pg.rows.map(e=>`
-    <tr onclick="editExpense(${e.id})">
+    <tr onclick="viewExpense(${e.id})">
       <td class="td-code">${e.code}</td>
       <td style="direction:ltr;font-family:var(--font-en)">${e.expense_date}</td>
       <td>${D(e.expense_type)}</td>
