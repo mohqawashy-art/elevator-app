@@ -288,8 +288,15 @@
         <button class="btn btn-primary" type="submit">موافقة العميل → عقد صيانة</button>
       </form>
       <form method="post" action="{{ url_for('sales.maintenance_quote_reject', quote_id=quote.id) }}" onsubmit="return confirm('رفض العرض؟')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn btn-secondary" type="submit">رفض</button>
       </form>
+      {% if not quote.result_contract_id %}
+      <form method="post" action="{{ url_for('sales.maintenance_quote_delete', quote_id=quote.id) }}" onsubmit="return confirm('حذف عرض {{ quote.code }} نهائياً؟')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-secondary" type="submit" style="color:var(--danger,#c0392b);border-color:var(--danger,#c0392b)">حذف العرض</button>
+      </form>
+      {% endif %}
     </div>
     {% elif quote and quote.result_contract_id %}
     <div class="flash flash-success" style="margin-top:12px">تم التحويل لعقد الصيانة — <a href="/contracts">فتح العقود</a></div>

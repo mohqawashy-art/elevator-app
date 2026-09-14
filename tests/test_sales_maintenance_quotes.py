@@ -8,7 +8,7 @@ from sales.service import (
     money_round,
     recalc_quote_totals,
 )
-from tenant_scope import assign_organization
+from tenant_scope import assign_organization, tenant_query
 
 
 def test_recalc_quote_totals():
@@ -175,3 +175,63 @@ def test_estimate_converts_to_install_quote(client):
 def test_sales_hub_requires_login(client):
     r = client.get('/sales/', follow_redirects=False)
     assert r.status_code in (302, 303, 401)
+
+
+def test_delete_maintenance_quote(client):
+    login_as = __import__('tests.conftest', fromlist=['login_as']).login_as
+    login_as(client, 'admin')
+    with client.application.app_context():
+        from tests.conftest import ensure_test_organization
+
+        oid = ensure_test_organization()
+        cust = Customer(organization_id=oid, code='C-DEL', name='حذف', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        quote = MaintenanceQuote(code='MQ-DEL1', customer_id=cust.id, status='مسودة')
+        assign_organization(quote)
+        apply_total_including_tax(quote, 1000)
+        db.session.add(quote)
+        db.session.commit()
+        qid = quote.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    r = client.post(
+        f'/sales/maintenance-quotes/{qid}/delete',
+        data={'csrf_token': 'test-csrf'},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    with client.application.app_context():
+        assert db.session.get(MaintenanceQuote, qid) is None
+
+
+def test_clear_all_maintenance_quotes(client):
+    login_as = __import__('tests.conftest', fromlist=['login_as']).login_as
+    login_as(client, 'admin')
+    with client.application.app_context():
+        from tests.conftest import ensure_test_organization
+
+        oid = ensure_test_organization()
+        cust = Customer(organization_id=oid, code='C-CLR', name='تصفير', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        for i in range(2):
+            q = MaintenanceQuote(code=f'MQ-CLR{i}', customer_id=cust.id, status='مسودة')
+            assign_organization(q)
+            apply_total_including_tax(q, 500)
+            db.session.add(q)
+        db.session.commit()
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    r = client.post(
+        '/sales/maintenance-quotes/clear-all',
+        data={'csrf_token': 'test-csrf', 'confirm': 'CLEAR_MQ'},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    with client.application.app_context():
+        assert tenant_query(MaintenanceQuote).count() == 0

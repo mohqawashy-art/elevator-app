@@ -17,8 +17,10 @@ from sales.maint_survey import (
 )
 from sales.service import (
     apply_total_including_tax,
+    clear_maintenance_quotes,
     create_contract_from_maintenance_quote,
     create_install_project_and_quote_from_estimate,
+    delete_maintenance_quote,
     money_round,
     sync_quote_elevators,
 )
@@ -585,6 +587,39 @@ def maintenance_quote_reject(quote_id):
     quote.status = 'مرفوض'
     db.session.commit()
     flash('تم رفض العرض', 'success')
+    return redirect(url_for('sales.maintenance_quotes_list'))
+
+
+@sales_bp.route('/maintenance-quotes/<int:quote_id>/delete', methods=['POST'])
+def maintenance_quote_delete(quote_id):
+    quote = tenant_get_or_404(MaintenanceQuote, quote_id)
+    code = quote.code
+    try:
+        delete_maintenance_quote(quote)
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+        return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
+    flash(f'تم حذف عرض {code}', 'success')
+    return redirect(url_for('sales.maintenance_quotes_list'))
+
+
+@sales_bp.route('/maintenance-quotes/clear-all', methods=['POST'])
+def maintenance_quotes_clear_all():
+    confirm = (request.form.get('confirm') or '').strip()
+    if confirm != 'CLEAR_MQ':
+        flash('لتصفير العروض اكتب CLEAR_MQ في خانة التأكيد', 'error')
+        return redirect(url_for('sales.maintenance_quotes_list'))
+    include_contracts = (request.form.get('include_contracts') or '').strip() == '1'
+    try:
+        n = clear_maintenance_quotes(include_with_contract=include_contracts)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash('تعذّر تصفير العروض', 'error')
+        return redirect(url_for('sales.maintenance_quotes_list'))
+    flash(f'تم تصفير عروض الصيانة ({n})', 'success')
     return redirect(url_for('sales.maintenance_quotes_list'))
 
 

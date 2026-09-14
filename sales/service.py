@@ -99,6 +99,25 @@ def sync_quote_elevators(quote_id: int, elevator_ids: list) -> None:
         db.session.add(row)
 
 
+def delete_maintenance_quote(quote: MaintenanceQuote) -> None:
+    """حذف عرض صيانة (مع الفحوصات والروابط)."""
+    if quote.status == 'مقبول' and quote.result_contract_id:
+        raise ValueError('لا يمكن حذف عرض مرتبط بعقد صيانة — راجع قسم العقود')
+    db.session.delete(quote)
+
+
+def clear_maintenance_quotes(*, include_with_contract: bool = False) -> int:
+    """حذف كل عروض الصيانة للمستأجر الحالي."""
+    rows = tenant_query(MaintenanceQuote).order_by(MaintenanceQuote.id).all()
+    n = 0
+    for row in rows:
+        if row.status == 'مقبول' and row.result_contract_id and not include_with_contract:
+            continue
+        db.session.delete(row)
+        n += 1
+    return n
+
+
 def create_contract_from_maintenance_quote(quote: MaintenanceQuote, *, next_code_fn) -> Contract:
     """إنشاء عقد صيانة CN- من عرض مقبول."""
     if quote.result_contract_id:
