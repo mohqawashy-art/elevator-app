@@ -11653,32 +11653,20 @@ def invoice_delete(id):
 # =============================================
 @app.route('/inventory')
 def inventory():
-    from inventory_custody import build_technician_custody_snapshot, item_custody_fields
+    from inventory_custody import (
+        build_technician_custody_snapshot,
+        installation_contracts_for_custody,
+        item_custody_fields,
+        maintenance_contracts_for_custody,
+    )
     from supplier_price_schema import ensure_supplier_price_schema
-    from sqlalchemy.orm import joinedload
 
     ensure_supplier_price_schema()
     items = tenant_query(InventoryItem).order_by(InventoryItem.id.desc()).all()
     suppliers = tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all()
     custody_snapshot = build_technician_custody_snapshot()
-    from models import Elevator
-
-    elevators = (
-        tenant_query(Elevator)
-        .options(joinedload(Elevator.customer))
-        .order_by(Elevator.id.desc())
-        .limit(500)
-        .all()
-    )
-    elevators_js = [
-        {
-            'id': e.id,
-            'label': (
-                f'{(e.customer.name if e.customer else "—")} — {e.code or e.id}'
-            ),
-        }
-        for e in elevators
-    ]
+    maintenance_contracts_js = maintenance_contracts_for_custody()
+    installation_contracts_js = installation_contracts_for_custody()
     items_json = []
     for i in items:
         row = {
@@ -11706,7 +11694,8 @@ def inventory():
         suppliers=suppliers,
         custody_rows=custody_snapshot['rows'],
         custody_summary=custody_snapshot['summary'],
-        elevators_js=elevators_js,
+        maintenance_contracts_js=maintenance_contracts_js,
+        installation_contracts_js=installation_contracts_js,
         next_item_code=next_code(InventoryItem, '#', digits=3),
     )
 
@@ -11729,14 +11718,22 @@ def inventory_custody_settle():
     target = (payload.get('target') or '').strip()
     reason = (payload.get('reason') or '').strip()
     notes = (payload.get('notes') or '').strip()
-    elevator_id = payload.get('elevator_id') or None
-    if elevator_id not in (None, ''):
+    contract_id = payload.get('contract_id') or None
+    install_contract_id = payload.get('install_contract_id') or None
+    if contract_id not in (None, ''):
         try:
-            elevator_id = int(elevator_id)
+            contract_id = int(contract_id)
         except (TypeError, ValueError):
-            elevator_id = None
+            contract_id = None
     else:
-        elevator_id = None
+        contract_id = None
+    if install_contract_id not in (None, ''):
+        try:
+            install_contract_id = int(install_contract_id)
+        except (TypeError, ValueError):
+            install_contract_id = None
+    else:
+        install_contract_id = None
 
     movement_date = date.today()
     raw_date = (payload.get('movement_date') or '').strip()
@@ -11755,7 +11752,8 @@ def inventory_custody_settle():
             movement_date=movement_date,
             reason=reason,
             notes=notes,
-            elevator_id=elevator_id,
+            contract_id=contract_id,
+            install_contract_id=install_contract_id,
         )
         db.session.commit()
     except ValueError as exc:

@@ -366,7 +366,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
       </div>
       <p style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6">
-        العهدة تُزاد بـ «صرف عهدة للفني» أو «صرف لفني». استخدم أزرار التحويل لتسوية العهدة: إرجاع للمخزن، أو صرف لعميل/مشروع (بدون خصم إضافي من رصيد المخزون).
+        العهدة تُزاد بـ «صرف عهدة للفني». التحويل إلى **عميل** يختار من **عقود الصيانة**، وإلى **مشروع** من **عقود التركيب**.
       </p>
     </div>
     <div class="modal-foot">
@@ -392,14 +392,16 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>الكمية <span>*</span></label>
           <input type="number" id="cust-settle-qty" min="0.01" step="0.01">
         </div>
-        <div class="field form-full" id="cust-settle-reason-wrap">
-          <label id="cust-settle-reason-label">السبب / الاسم <span>*</span></label>
-          <input id="cust-settle-reason" placeholder="اسم العميل أو المشروع">
+        <div class="field form-full" id="cust-settle-maint-wrap" style="display:none">
+          <label>عقد الصيانة <span>*</span></label>
+          <select id="cust-settle-maint-contract">
+            <option value="">— ابحث باسم العميل أو كود العقد —</option>
+          </select>
         </div>
-        <div class="field form-full" id="cust-settle-elev-wrap" style="display:none">
-          <label>المصعد / المشروع</label>
-          <select id="cust-settle-elevator">
-            <option value="">— اختياري —</option>
+        <div class="field form-full" id="cust-settle-install-wrap" style="display:none">
+          <label>عقد التركيب / المشروع <span>*</span></label>
+          <select id="cust-settle-install-contract">
+            <option value="">— ابحث باسم المشروع أو كود العقد —</option>
           </select>
         </div>
         <div class="field form-full">
@@ -493,7 +495,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <script>
 var ITEMS = {{ items_json | tojson }};
 const CUSTODY_ROWS = {{ custody_rows | tojson }};
-const ELEVATORS = {{ elevators_js | tojson }};
+const MAINT_CONTRACTS = {{ maintenance_contracts_js | tojson }};
+const INSTALL_CONTRACTS = {{ installation_contracts_js | tojson }};
 const NEXT_CODE = {{ next_item_code | tojson }};
 var custodySettleCtx = null;
 
@@ -642,10 +645,24 @@ function openCustodyModal() {
 }
 
 var CUSTODY_SETTLE_LABELS = {
-  warehouse: { title: 'إرجاع العهدة للمخزن', reason: '', needReason: false, showElev: false },
-  client: { title: 'تحويل العهدة إلى عميل', reason: 'اسم العميل', needReason: true, showElev: false },
-  project: { title: 'تحويل العهدة إلى مشروع', reason: 'اسم المشروع / الموقع', needReason: false, showElev: true },
+  warehouse: { title: 'إرجاع العهدة للمخزن' },
+  client: { title: 'تحويل العهدة إلى عميل (عقد صيانة)' },
+  project: { title: 'تحويل العهدة إلى مشروع (عقد تركيب)' },
 };
+
+function initCustodyContractSelect(selectId, contracts, placeholder) {
+  if (typeof LcClientSelect === 'undefined') return;
+  var sel = document.getElementById(selectId);
+  if (!sel) return;
+  if (!LcClientSelect.isUpgraded(selectId)) {
+    LcClientSelect.upgradeSelect(selectId, {
+      customers: contracts || [],
+      placeholder: placeholder || 'ابحث...',
+    });
+  } else {
+    LcClientSelect.setCustomers(selectId, contracts || [], '');
+  }
+}
 
 function openCustodySettle(itemId, techId, target) {
   var row = CUSTODY_ROWS.find(function (r) {
@@ -666,25 +683,24 @@ function openCustodySettle(itemId, techId, target) {
   document.getElementById('cust-settle-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('cust-settle-qty').value = String(row.qty);
   document.getElementById('cust-settle-qty').max = String(row.qty);
-  document.getElementById('cust-settle-reason').value = '';
   document.getElementById('cust-settle-notes').value = '';
-  document.getElementById('cust-settle-reason-label').innerHTML = cfg.reason
-    ? (cfg.reason + (cfg.needReason ? ' <span>*</span>' : ''))
-    : 'السبب';
-  document.getElementById('cust-settle-reason-wrap').style.display = (target === 'warehouse') ? 'none' : '';
-  document.getElementById('cust-settle-elev-wrap').style.display = cfg.showElev ? '' : 'none';
-  var elevSel = document.getElementById('cust-settle-elevator');
-  if (elevSel && cfg.showElev) {
-    elevSel.innerHTML = '<option value="">— اختياري —</option>' +
-      (ELEVATORS || []).map(function (e) {
-        return '<option value="' + e.id + '">' + escHtmlInv(e.label || e.id) + '</option>';
-      }).join('');
+  document.getElementById('cust-settle-maint-wrap').style.display = (target === 'client') ? '' : 'none';
+  document.getElementById('cust-settle-install-wrap').style.display = (target === 'project') ? '' : 'none';
+  if (target === 'client') {
+    initCustodyContractSelect(
+      'cust-settle-maint-contract',
+      MAINT_CONTRACTS,
+      'ابحث باسم العميل أو كود عقد الصيانة...'
+    );
+  }
+  if (target === 'project') {
+    initCustodyContractSelect(
+      'cust-settle-install-contract',
+      INSTALL_CONTRACTS,
+      'ابحث باسم المشروع أو كود عقد التركيب...'
+    );
   }
   document.getElementById('modal-custody-settle').classList.add('open');
-}
-
-function escHtmlInv(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 }
 
 function submitCustodySettle() {
@@ -695,25 +711,24 @@ function submitCustodySettle() {
     alert('الكمية أكبر من العهدة المتاحة (' + custodySettleCtx.max_qty + ')');
     return;
   }
-  var reason = (document.getElementById('cust-settle-reason').value || '').trim();
-  if (custodySettleCtx.target === 'client' && !reason) {
-    alert('أدخل اسم العميل');
-    return;
-  }
-  if (custodySettleCtx.target === 'project' && !reason && !document.getElementById('cust-settle-elevator').value) {
-    alert('أدخل اسم المشروع أو اختر المصعد');
-    return;
-  }
   var payload = {
     item_id: custodySettleCtx.item_id,
     technician_id: custodySettleCtx.technician_id,
     target: custodySettleCtx.target,
     quantity: qty,
     movement_date: document.getElementById('cust-settle-date').value,
-    reason: reason,
     notes: (document.getElementById('cust-settle-notes').value || '').trim(),
-    elevator_id: document.getElementById('cust-settle-elevator').value || null,
   };
+  if (custodySettleCtx.target === 'client') {
+    var maintId = document.getElementById('cust-settle-maint-contract').value;
+    if (!maintId) { alert('اختر عقد الصيانة من سجل العقود'); return; }
+    payload.contract_id = maintId;
+  }
+  if (custodySettleCtx.target === 'project') {
+    var installId = document.getElementById('cust-settle-install-contract').value;
+    if (!installId) { alert('اختر عقد التركيب / المشروع'); return; }
+    payload.install_contract_id = installId;
+  }
   fetch('/inventory/custody/settle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },

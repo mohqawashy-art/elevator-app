@@ -115,7 +115,22 @@ def test_settle_custody_to_warehouse(client):
 
 def test_settle_custody_to_client(client):
     with client.application.app_context():
+        from models import Contract, Customer
+
         item, tech = _seed_item_and_tech()
+        cust = Customer(code='C-C1', name='عميل صيانة', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            code='CN-C1',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date.today(),
+            end_date=date.today(),
+            maint_frequency='شهري',
+            status='نشط',
+        )
+        db.session.add(contract)
         db.session.add(StockMovement(
             code='MV-S2',
             item_id=item.id,
@@ -130,18 +145,20 @@ def test_settle_custody_to_client(client):
 
         from inventory_custody import settle_technician_custody
 
-        settle_technician_custody(
+        movement = settle_technician_custody(
             item_id=item.id,
             technician_id=tech.id,
             quantity=3,
             target='client',
-            reason='عميل تجريبي',
+            contract_id=contract.id,
         )
         db.session.commit()
         db.session.refresh(item)
 
         assert item.current_qty == 6
         assert item_custody_fields(item.id)['custody_qty'] == 1
+        assert 'CN-C1' in (movement.reason or '')
+        assert movement.reference == f'custody:maint:{contract.id}'
 
 
 def test_custody_settle_api(client):
@@ -149,7 +166,22 @@ def test_custody_settle_api(client):
 
     login_as(client, role='admin')
     with client.application.app_context():
+        from models import Contract, Customer
+
         item, tech = _seed_item_and_tech()
+        cust = Customer(code='C-API', name='عميل API', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            code='CN-API',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date.today(),
+            end_date=date.today(),
+            maint_frequency='شهري',
+            status='نشط',
+        )
+        db.session.add(contract)
         db.session.add(StockMovement(
             code='MV-S3',
             item_id=item.id,
@@ -160,7 +192,7 @@ def test_custody_settle_api(client):
             technician_id=tech.id,
         ))
         db.session.commit()
-        item_id, tech_id = item.id, tech.id
+        item_id, tech_id, contract_id = item.id, tech.id, contract.id
 
     r = client.post(
         '/inventory/custody/settle',
@@ -168,8 +200,8 @@ def test_custody_settle_api(client):
             'item_id': item_id,
             'technician_id': tech_id,
             'quantity': 1,
-            'target': 'project',
-            'reason': 'مشروع صيانة',
+            'target': 'client',
+            'contract_id': contract_id,
         },
     )
     assert r.status_code == 200
