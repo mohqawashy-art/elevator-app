@@ -2155,6 +2155,290 @@ def field_fault_summary(f: Fault, base_url: str = '') -> dict:
     }
 
 
+def _tracking_meta_times(raw_json, parser):
+    data = parser(raw_json) if (raw_json or '').strip() else None
+    meta = (data or {}).get('meta') or {}
+    return {
+        'arrival_time': (meta.get('arrival_time') or '').strip(),
+        'end_time': (meta.get('end_time') or '').strip(),
+    }
+
+
+def _fmt_time_hm(dt) -> str:
+    if not dt:
+        return ''
+    try:
+        return dt.strftime('%H:%M')
+    except (TypeError, ValueError, AttributeError):
+        return ''
+
+
+def _visit_tracking_action(v: MaintenanceVisit, meta: dict) -> tuple[str, str, int]:
+    """label, tone, priority score for sorting current task."""
+    st = (v.status or '').strip()
+    arr = meta.get('arrival_time') or ''
+    end = meta.get('end_time') or ''
+    disp = _fmt_time_hm(v.dispatched_at)
+    if st == 'مكتملة':
+        return 'مكتملة', 'done', 10
+    if st == VISIT_FINISHED_AT_CLIENT:
+        txt = 'أنهى العمل عند العميل'
+        if end:
+            txt += f' ({end})'
+        return txt, 'finished', 90
+    if st == VISIT_AT_CLIENT:
+        txt = 'عند العميل — يملأ المحضر'
+        if arr:
+            txt += f' (وصول {arr})'
+        return txt, 'at_client', 100
+    if st in ('مُرسلة للفني', 'جارية') or v.dispatched_at:
+        if arr:
+            return f'وصل {arr}', 'at_client', 95
+        txt = 'مُرسل للفني — في الطريق'
+        if disp:
+            txt += f' ({disp})'
+        return txt, 'transit', 60
+    if st in ('مجدولة', 'مُجدولة', 'مجدول'):
+        return 'مجدولة — لم يُرسل بعد', 'planned', 20
+    return st or '—', 'planned', 15
+
+
+def _fault_tracking_action(f: Fault, meta: dict) -> tuple[str, str, int]:
+    st = (f.status or '').strip()
+    arr = meta.get('arrival_time') or ''
+    end = meta.get('end_time') or ''
+    disp = _fmt_time_hm(f.dispatched_at)
+    resp = _fmt_time_hm(f.responded_at)
+    if not fault_is_open(st):
+        txt = st or 'مغلق'
+        if f.resolved_at:
+            txt += f' ({_fmt_time_hm(f.resolved_at)})'
+        return txt, 'done', 10
+    if f.needs_parts or st == 'انتظار قطع':
+        return 'بانتظار قطع غيار', 'parts', 70
+    if st == 'قيد المعالجة' and (arr or f.responded_at):
+        txt = 'عند العميل — معالجة العطل'
+        if arr:
+            txt += f' (وصول {arr})'
+        elif resp:
+            txt += f' (وصول {resp})'
+        return txt, 'at_client', 100
+    if f.dispatched_at or st == 'قيد المعالجة':
+        txt = 'مُوجّه للفني — في الطريق'
+        if disp:
+            txt += f' ({disp})'
+        return txt, 'transit', 60
+    if st == 'مفتوح':
+        return 'مفتوح — بانتظار التوجيه', 'planned', 25
+    return st or '—', 'planned', 20
+
+
+def _tracking_coords(elev, cust):
+    if not cust or not cust.lat or not cust.lng:
+        return None
+    try:
+        return float(cust.lat), float(cust.lng)
+    except (TypeError, ValueError):
+        return None
+
+
+def st_in_progress(status: str | None) -> bool:
+    return (status or '').strip() in ('قيد المعالجة', 'انتظار قطع')
+
+
+def office_field_today_tracking(*, on_date: date | None = None, base_url: str = '') -> dict:
+    """متابعة مهام الميدان للمكتب — زيارات اليوم + أعطال نشطة."""
+    from checklist_templates import parse_report_json
+    from fault_report import parse_fault_report_json
+    from sqlalchemy.orm import joinedload
+    from technician_assignments import visit_technicians_label
+
+    today = on_date or date.today()
+    items: list[dict] = []
+    tech_buckets: dict[int, dict] = {}
+
+    visits = (
+        exclude_fault_visits(
+            tenant_query(MaintenanceVisit)
+            .options(
+                joinedload(MaintenanceVisit.elevator).joinedload(Elevator.customer),
+                joinedload(MaintenanceVisit.technician),
+                joinedload(MaintenanceVisit.contract),
+            )
+            .filter(
+                MaintenanceVisit.visit_date == today,
+                MaintenanceVisit.status != 'ملغاة',
+            )
+        )
+        .order_by(MaintenanceVisit.route_order, MaintenanceVisit.code)
+        .all()
+    )
+
+    for v in visits:
+        elev = v.elevator
+        cust = elev.customer if elev else None
+        site = _field_site_payload(elev, contract=getattr(v, 'contract', None), visit_date=v.visit_date, base_url=base_url)
+        meta = _tracking_meta_times(v.checklist_json, parse_report_json)
+        action, tone, prio = _visit_tracking_action(v, meta)
+        tech_label = visit_technicians_label(v)
+        tech_id = v.technician_id or 0
+        coords = _tracking_coords(elev, cust)
+        row = {
+            'kind': 'visit',
+            'kind_label': 'زيارة',
+            'id': v.id,
+            'code': v.code,
+            'customer': cust.name if cust else '—',
+            'customer_code': cust.code if cust else '',
+            'building': site['building'],
+            'district': site['district'],
+            'technician': tech_label,
+            'technician_id': v.technician_id,
+            'status': v.status or '',
+            'action_label': action,
+            'action_tone': tone,
+            'priority_score': prio,
+            'dispatched_at': v.dispatched_at.isoformat(sep=' ', timespec='seconds') if v.dispatched_at else '',
+            'arrival_time': meta.get('arrival_time') or '',
+            'end_time': meta.get('end_time') or '',
+            'completed_at': v.completed_at.isoformat(sep=' ', timespec='seconds') if v.completed_at else '',
+            'maps_url': site['maps_url'],
+            'lat': coords[0] if coords else None,
+            'lng': coords[1] if coords else None,
+            'office_url': f'/maintenance-visits/{v.id}/report',
+            'field_url': f'/field/visit/{v.id}',
+        }
+        items.append(row)
+        if v.technician_id:
+            bucket = tech_buckets.setdefault(v.technician_id, {
+                'id': v.technician_id,
+                'name': v.technician.name if v.technician else tech_label,
+                'phone': tech_whatsapp_phone(v.technician) if v.technician else '',
+                'tasks': [],
+            })
+            bucket['tasks'].append(row)
+
+    faults = (
+        tenant_query(Fault)
+        .options(
+            joinedload(Fault.elevator).joinedload(Elevator.customer),
+            joinedload(Fault.technician),
+        )
+        .order_by(Fault.reported_at.desc())
+        .all()
+    )
+    for f in faults:
+        include = False
+        if not fault_is_open(f.status):
+            if f.resolved_at and f.resolved_at.date() == today:
+                include = True
+        else:
+            ref = f.reported_at.date() if f.reported_at else None
+            disp = f.dispatched_at.date() if f.dispatched_at else None
+            resp = f.responded_at.date() if f.responded_at else None
+            include = (
+                ref == today
+                or disp == today
+                or resp == today
+                or (f.technician_id and st_in_progress(f.status))
+            )
+        if not include:
+            continue
+        elev = f.elevator
+        cust = elev.customer if elev else None
+        ref_date = f.reported_at.date() if f.reported_at else today
+        site = _field_site_payload(elev, visit_date=ref_date, base_url=base_url)
+        meta = _tracking_meta_times(f.report_json, parse_fault_report_json)
+        action, tone, prio = _fault_tracking_action(f, meta)
+        tech = f.technician
+        tech_label = tech.name if tech else '—'
+        coords = _tracking_coords(elev, cust)
+        row = {
+            'kind': 'fault',
+            'kind_label': 'عطل',
+            'id': f.id,
+            'code': f.code,
+            'customer': cust.name if cust else '—',
+            'customer_code': cust.code if cust else '',
+            'building': site['building'],
+            'district': site['district'],
+            'technician': tech_label,
+            'technician_id': f.technician_id,
+            'status': f.status or '',
+            'action_label': action,
+            'action_tone': tone,
+            'priority_score': prio,
+            'dispatched_at': f.dispatched_at.isoformat(sep=' ', timespec='seconds') if f.dispatched_at else '',
+            'arrival_time': meta.get('arrival_time') or _fmt_time_hm(f.responded_at),
+            'end_time': meta.get('end_time') or '',
+            'completed_at': f.resolved_at.isoformat(sep=' ', timespec='seconds') if f.resolved_at else '',
+            'maps_url': site['maps_url'],
+            'lat': coords[0] if coords else None,
+            'lng': coords[1] if coords else None,
+            'office_url': f'/faults/{f.id}/report' if hasattr(f, 'id') else '/faults',
+            'field_url': f'/field/fault/{f.id}',
+        }
+        items.append(row)
+        if f.technician_id:
+            bucket = tech_buckets.setdefault(f.technician_id, {
+                'id': f.technician_id,
+                'name': tech.name if tech else tech_label,
+                'phone': tech_whatsapp_phone(tech) if tech else '',
+                'tasks': [],
+            })
+            bucket['tasks'].append(row)
+
+    technicians = []
+    for tid, bucket in tech_buckets.items():
+        tasks = sorted(bucket['tasks'], key=lambda x: (-x['priority_score'], x['code']))
+        current = tasks[0] if tasks else None
+        technicians.append({
+            'id': tid,
+            'name': bucket['name'],
+            'phone': bucket['phone'],
+            'task_count': len(tasks),
+            'current_customer': current['customer'] if current else '',
+            'current_building': current['building'] if current else '',
+            'current_action': current['action_label'] if current else 'لا مهام نشطة اليوم',
+            'current_tone': current['action_tone'] if current else 'planned',
+            'current_code': current['code'] if current else '',
+            'current_kind': current['kind_label'] if current else '',
+            'tasks': tasks,
+        })
+    technicians.sort(key=lambda t: (-max((x['priority_score'] for x in t['tasks']), default=0), t['name']))
+
+    map_points = []
+    for row in items:
+        if row.get('lat') is None or row.get('lng') is None:
+            continue
+        map_points.append({
+            'lat': row['lat'],
+            'lng': row['lng'],
+            'label': f"{row['code']} — {row['customer']}",
+            'status': row['action_label'],
+            'tone': row['action_tone'],
+            'kind': row['kind'],
+        })
+
+    stats = {
+        'visits': sum(1 for i in items if i['kind'] == 'visit'),
+        'faults': sum(1 for i in items if i['kind'] == 'fault'),
+        'at_client': sum(1 for i in items if i['action_tone'] == 'at_client'),
+        'in_transit': sum(1 for i in items if i['action_tone'] == 'transit'),
+        'finished': sum(1 for i in items if i['action_tone'] in ('finished', 'done')),
+        'technicians': len(technicians),
+    }
+
+    return {
+        'date': str(today),
+        'generated_at': datetime.now(RIYADH_TZ).strftime('%Y-%m-%d %H:%M'),
+        'stats': stats,
+        'technicians': technicians,
+        'items': items,
+        'map_points': map_points,
+    }
+
+
 def field_visit_detail(visit_id: int, tech_id: int | None = None) -> dict:
     from checklist_templates import parse_report_json, report_completion_stats
     from technician_assignments import technician_assigned_to_visit, visit_technicians_label

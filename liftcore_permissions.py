@@ -206,6 +206,8 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/attendance', 'attendance'),
     ('/reports/attendance', 'report_attendance'),
     ('/maintenance-visits', 'maintenance_visits'),
+    ('/field-today-tracking', 'maintenance_visits'),
+    ('/api/field-today-tracking', 'maintenance_visits'),
     ('/api/maintenance', 'maintenance_visits'),
     ('/faults', 'faults'),
     ('/api/faults', 'faults'),

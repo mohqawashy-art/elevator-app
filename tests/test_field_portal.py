@@ -90,6 +90,66 @@ def test_field_payload_includes_alert_stamp(client):
         assert stamp2 == payload['alert_stamp']
 
 
+def test_office_field_today_tracking_lists_visits_and_faults(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-TRK',
+            name='فني متابعة',
+            phone='0501112233',
+            team='صيانة',
+            status='متاح',
+        )
+        db.session.add(tech)
+        db.session.flush()
+        cust = Customer(organization_id=oid, code='C-TRK', name='عميل متابعة', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-TRK', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='VI-TRK1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            status='عند العميل',
+            dispatched_at=datetime.utcnow(),
+        )
+        fault = Fault(
+            organization_id=oid,
+            code='FA-TRK1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            status='قيد المعالجة',
+            priority='عالية',
+            fault_type='توقف',
+            dispatched_at=datetime.utcnow(),
+            reported_at=datetime.utcnow(),
+        )
+        db.session.add_all([visit, fault])
+        db.session.commit()
+
+    page = client.get('/field-today-tracking')
+    assert page.status_code == 200
+    html = page.get_data(as_text=True)
+    assert 'متابعة زيارات اليوم' in html
+    assert 'VI-TRK1' in html or 'VI-TRK1' in html
+
+    api = client.get('/api/field-today-tracking')
+    assert api.status_code == 200
+    data = api.get_json() or {}
+    assert data.get('stats', {}).get('visits', 0) >= 1
+    assert data.get('stats', {}).get('faults', 0) >= 1
+    codes = [i.get('code') for i in data.get('items', [])]
+    assert 'VI-TRK1' in codes
+    assert 'FA-TRK1' in codes
+    assert any(t.get('name') == 'فني متابعة' for t in data.get('technicians', []))
+
+
 def test_fault_add_appears_on_field_portal(client):
     """عطل جديد من المكتب يظهر فوراً في بوابة الفني المكلّف."""
     from werkzeug.security import generate_password_hash

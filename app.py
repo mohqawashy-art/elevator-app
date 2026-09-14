@@ -484,8 +484,10 @@ def _resolve_field_technician_id():
 def _field_tech_paths_allowed(path: str) -> bool:
     """مسارات بوابة الفني — جلسة الفني تكفي بدون مستخدم المكتب."""
     return (
-        path.startswith('/field')
-        or path.startswith('/api/field')
+        path == '/field'
+        or path.startswith('/field/')
+        or path == '/api/field'
+        or path.startswith('/api/field/')
         or path == '/api/live/revision'
     )
 
@@ -8565,6 +8567,38 @@ def technician_delete(id):
     db.session.commit()
     flash('تم حذف الفني', 'success')
     return redirect(url_for('technicians'))
+
+# =============================================
+# متابعة زيارات اليوم (المكتب)
+# =============================================
+@app.route('/field-today-tracking')
+def field_today_tracking_page():
+    from operations import office_field_today_tracking
+
+    today = date.today()
+    tracking = office_field_today_tracking(on_date=today, base_url=request.url_root)
+    return render_template(
+        'field_today_tracking.html',
+        tracking=tracking,
+        tracking_js=tracking,
+        ops_today=str(today),
+    )
+
+
+@app.route('/api/field-today-tracking')
+def api_field_today_tracking():
+    from operations import office_field_today_tracking
+
+    on_date = date.today()
+    raw = (request.args.get('date') or '').strip()
+    if raw:
+        try:
+            on_date = date.fromisoformat(raw)
+        except ValueError:
+            return jsonify({'error': 'تاريخ غير صالح'}), 400
+    payload = office_field_today_tracking(on_date=on_date, base_url=request.url_root)
+    return jsonify(payload)
+
 
 # =============================================
 # زيارات الصيانة

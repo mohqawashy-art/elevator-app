@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — متابعة زيارات اليوم</title>
+{% include 'partials/google_maps_head.html' %}
+<script src="https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--bg4:#1c2535;
+  --card:#131b27;--border:rgba(100,160,255,.1);--border2:rgba(100,160,255,.2);
+  --accent:#2a7fff;--gold:#c8a055;
+  --text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;
+  --success:#1fb87a;--warning:#e09030;--danger:#e04848;
+  --sidebar-w:240px;--header-h:60px;
+  --font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;
+  --r:10px;--r-sm:7px;--trans:.18s ease;
+}
+html[dir="rtl"]{font-family:var(--font-ar)}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex;overflow-x:hidden}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;z-index:100;overflow:hidden}
+.sidebar-logo{padding:10px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);min-height:var(--header-h)}
+.sidebar-logo img{width:150px;height:44px;object-fit:contain}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600;color:var(--text1)}
+.page-title span{font-size:13px;font-weight:400;color:var(--text3);margin-right:8px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--trans);border:none;font-family:var(--font-ar);text-decoration:none}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.stats-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.stat-mini{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.stat-mini-val{font-size:20px;font-weight:600;color:var(--text1);font-family:var(--font-en)}
+.stat-mini-label{font-size:10px;color:var(--text3);margin-top:3px}
+.layout-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.panel-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.panel-title{font-size:14px;font-weight:600;color:var(--text1)}
+.panel-sub{font-size:11px;color:var(--text3)}
+.tech-list{max-height:420px;overflow-y:auto}
+.tech-card{padding:12px 16px;border-bottom:1px solid rgba(100,160,255,.06)}
+.tech-card:last-child{border-bottom:none}
+.tech-name{font-size:14px;font-weight:600;color:var(--text1);margin-bottom:4px}
+.tech-now{font-size:12px;color:var(--text2);line-height:1.5}
+.tech-meta{font-size:11px;color:var(--text3);margin-top:4px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;white-space:nowrap}
+.badge-at_client{background:rgba(42,127,255,.15);color:var(--accent)}
+.badge-transit{background:rgba(224,144,48,.15);color:var(--warning)}
+.badge-finished,.badge-done{background:rgba(31,184,122,.15);color:var(--success)}
+.badge-planned{background:rgba(138,155,184,.12);color:var(--text2)}
+.badge-parts{background:rgba(200,160,85,.15);color:var(--gold)}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+thead th{padding:10px 12px;text-align:right;color:var(--text3);font-weight:500;font-size:11px;white-space:nowrap}
+tbody tr{border-bottom:1px solid rgba(100,160,255,.05)}
+tbody td{padding:10px 12px;color:var(--text2);vertical-align:middle}
+.td-code{font-family:var(--font-en);font-size:12px;color:var(--accent);font-weight:600}
+.td-name{color:var(--text1);font-weight:500}
+.td-link{color:var(--accent);text-decoration:none;font-size:12px}
+.td-link:hover{text-decoration:underline}
+#track-map{height:360px;width:100%;background:var(--bg3)}
+.refresh-hint{font-size:11px;color:var(--text3)}
+.empty-msg{padding:24px;text-align:center;color:var(--text3);font-size:13px}
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:95}
+.hamburger{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+@media(max-width:960px){.layout-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){
+  .sidebar{position:fixed;right:-240px;top:0;height:100vh;transition:right .25s ease;z-index:100}
+  .sidebar.open{right:0}
+  .mobile-overlay.open{display:block}
+  .hamburger{display:flex}
+  .content{padding:16px}
+  .stats-row{grid-template-columns:1fr 1fr}
+}
+</style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<script src="/static/liftcore_map.js" defer></script>
+</head>
+<body>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% set page_title = 'متابعة زيارات اليوم' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">
+        متابعة زيارات اليوم
+        <span id="track-date">{{ tracking.date }}</span>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-secondary btn-sm" href="/maintenance-visits">زيارات الصيانة</a>
+        <a class="btn btn-secondary btn-sm" href="/faults">الأعطال</a>
+        <button type="button" class="btn btn-primary btn-sm" onclick="refreshTracking(true)">تحديث</button>
+      </div>
+    </div>
+    <div class="refresh-hint" id="refresh-hint">آخر تحديث: {{ tracking.generated_at }} — تحديث تلقائي كل 20 ثانية</div>
+
+    <div class="stats-row" id="stats-row">
+      <div class="stat-mini"><div class="stat-mini-val" id="s-visits">{{ tracking.stats.visits }}</div><div class="stat-mini-label">زيارات اليوم</div></div>
+      <div class="stat-mini"><div class="stat-mini-val" id="s-faults">{{ tracking.stats.faults }}</div><div class="stat-mini-label">أعطال نشطة</div></div>
+      <div class="stat-mini"><div class="stat-mini-val" id="s-at-client">{{ tracking.stats.at_client }}</div><div class="stat-mini-label">عند العميل</div></div>
+      <div class="stat-mini"><div class="stat-mini-val" id="s-transit">{{ tracking.stats.in_transit }}</div><div class="stat-mini-label">في الطريق</div></div>
+      <div class="stat-mini"><div class="stat-mini-val" id="s-finished">{{ tracking.stats.finished }}</div><div class="stat-mini-label">منتهية</div></div>
+      <div class="stat-mini"><div class="stat-mini-val" id="s-techs">{{ tracking.stats.technicians }}</div><div class="stat-mini-label">فنيون نشطون</div></div>
+    </div>
+
+    <div class="layout-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">أين الفني الآن؟</div>
+            <div class="panel-sub">آخر مهمة نشطة لكل فني</div>
+          </div>
+        </div>
+        <div class="tech-list" id="tech-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">خريطة المواقع</div>
+            <div class="panel-sub">موقع العميل حسب المهمة</div>
+          </div>
+        </div>
+        <div id="track-map"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">كل المهام</div>
+          <div class="panel-sub">العملاء والإجراء المتخذ</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>الكود</th>
+                <th>النوع</th>
+                <th>العميل</th>
+                <th>الموقع</th>
+                <th>الفني</th>
+                <th>الإجراء / الحالة</th>
+                <th>وقت</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="items-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var TRACKING = {{ tracking_js|tojson }};
+var trackMap = null;
+var trackMarkers = [];
+var trackCluster = null;
+var trackInfoWindow = null;
+var pollTimer = null;
+
+function toneClass(tone) {
+  return 'badge badge-' + (tone || 'planned');
+}
+
+function toneColor(tone) {
+  var m = { at_client: '#2a7fff', transit: '#e09030', finished: '#1fb87a', done: '#1fb87a', parts: '#c8a055', planned: '#8a9bb8' };
+  return m[tone] || '#2a7fff';
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+function renderTechList(techs) {
+  var el = document.getElementById('tech-list');
+  if (!techs || !techs.length) {
+    el.innerHTML = '<div class="empty-msg">لا فنيون لديهم مهام اليوم</div>';
+    return;
+  }
+  el.innerHTML = techs.map(function (t) {
+    var loc = [t.current_customer, t.current_building].filter(Boolean).join(' — ');
+    var wa = t.phone ? ('https://wa.me/' + String(t.phone).replace(/\D/g, '')) : '';
+    return '<div class="tech-card">' +
+      '<div class="tech-name">' + esc(t.name) + ' <span style="color:var(--text3);font-weight:400">(' + t.task_count + ')</span></div>' +
+      '<div class="tech-now"><span class="' + toneClass(t.current_tone) + '">' + esc(t.current_action) + '</span></div>' +
+      (loc ? '<div class="tech-meta">' + esc(loc) + (t.current_code ? ' · ' + esc(t.current_code) : '') + '</div>' : '') +
+      (wa ? '<div style="margin-top:6px"><a class="td-link" href="' + wa + '" target="_blank" rel="noopener">واتساب</a></div>' : '') +
+      '</div>';
+  }).join('');
+}
+
+function renderItems(items) {
+  var body = document.getElementById('items-body');
+  if (!items || !items.length) {
+    body.innerHTML = '<tr><td colspan="8" class="empty-msg">لا مهام لليوم</td></tr>';
+    return;
+  }
+  body.innerHTML = items.map(function (row) {
+    var time = row.arrival_time || (row.dispatched_at ? row.dispatched_at.slice(11, 16) : '');
+    var loc = [row.building, row.district].filter(Boolean).join(' — ');
+    return '<tr>' +
+      '<td class="td-code">' + esc(row.code) + '</td>' +
+      '<td>' + esc(row.kind_label) + '</td>' +
+      '<td class="td-name">' + esc(row.customer) + '</td>' +
+      '<td>' + esc(loc || '—') + '</td>' +
+      '<td>' + esc(row.technician || '—') + '</td>' +
+      '<td><span class="' + toneClass(row.action_tone) + '">' + esc(row.action_label) + '</span></td>' +
+      '<td style="font-family:var(--font-en)">' + esc(time || '—') + '</td>' +
+      '<td><a class="td-link" href="' + esc(row.office_url) + '">المكتب</a>' +
+      (row.maps_url ? ' · <a class="td-link" href="' + esc(row.maps_url) + '" target="_blank" rel="noopener">خريطة</a>' : '') +
+      '</td></tr>';
+  }).join('');
+}
+
+function renderStats(stats) {
+  if (!stats) return;
+  document.getElementById('s-visits').textContent = stats.visits;
+  document.getElementById('s-faults').textContent = stats.faults;
+  document.getElementById('s-at-client').textContent = stats.at_client;
+  document.getElementById('s-transit').textContent = stats.in_transit;
+  document.getElementById('s-finished').textContent = stats.finished;
+  document.getElementById('s-techs').textContent = stats.technicians;
+}
+
+function refreshTrackMap(points) {
+  if (typeof google === 'undefined' || !google.maps) return;
+  if (window.LiftCoreMap && LiftCoreMap.getMapId && LiftCoreMap.getMapId() && !LiftCoreMap.canUseAdvancedMarkers()) {
+    LiftCoreMap.ensureMapMarkersReady(function () { refreshTrackMap(points); });
+    return;
+  }
+  var mapEl = document.getElementById('track-map');
+  if (!mapEl) return;
+  if (!trackMap) {
+    trackMap = window.LiftCoreMap ? LiftCoreMap.initMap(mapEl, null) : new google.maps.Map(mapEl, {
+      center: { lat: 21.4225, lng: 39.8262 }, zoom: 11, mapTypeId: 'satellite', clickableIcons: false, streetViewControl: false
+    });
+    trackInfoWindow = new google.maps.InfoWindow();
+  }
+  trackMarkers.forEach(function (m) {
+    if (window.LiftCoreMap && LiftCoreMap.setMarkerMap) LiftCoreMap.setMarkerMap(m, null);
+    else if (m.setMap) m.setMap(null);
+  });
+  trackMarkers = [];
+  if (trackCluster && trackCluster.clearMarkers) trackCluster.clearMarkers();
+  trackCluster = null;
+  (points || []).forEach(function (p) {
+    if (p.lat == null || p.lng == null) return;
+    var marker = LiftCoreMap.createPinMarker({
+      position: { lat: p.lat, lng: p.lng },
+      title: p.label || '',
+      color: toneColor(p.tone),
+      scale: 1.15
+    });
+    if (!marker) return;
+    marker.addListener('click', function () {
+      trackInfoWindow.setContent(
+        '<div style="font-family:Tahoma,Arial;direction:rtl;text-align:right;min-width:180px">' +
+        '<b>' + esc(p.label) + '</b><br>' + esc(p.status) + '</div>'
+      );
+      if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(trackInfoWindow, trackMap, marker);
+      else trackInfoWindow.open(trackMap, marker);
+    });
+    trackMarkers.push(marker);
+  });
+  if (trackMarkers.length && window.LiftCoreMap) {
+    trackCluster = LiftCoreMap.attachCluster(trackMap, trackMarkers, 'مهمة');
+    LiftCoreMap.fitMapToMarkers(trackMap, trackMarkers, true);
+  }
+}
+
+function applyTracking(data) {
+  TRACKING = data || {};
+  document.getElementById('track-date').textContent = TRACKING.date || '';
+  document.getElementById('refresh-hint').textContent = 'آخر تحديث: ' + (TRACKING.generated_at || '—') + ' — تحديث تلقائي كل 20 ثانية';
+  renderStats(TRACKING.stats);
+  renderTechList(TRACKING.technicians);
+  renderItems(TRACKING.items);
+  refreshTrackMap(TRACKING.map_points);
+}
+
+function refreshTracking(manual) {
+  fetch('/api/field-today-tracking?date=' + encodeURIComponent(TRACKING.date || '{{ ops_today }}'), {
+    headers: { 'Accept': 'application/json' }
+  }).then(function (r) { return r.json(); }).then(function (data) {
+    if (data && !data.error) applyTracking(data);
+  }).catch(function () {
+    if (manual && window.LiftCoreToast) LiftCoreToast.show('تعذّر التحديث', 'error');
+  });
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  applyTracking(TRACKING);
+  pollTimer = setInterval(refreshTracking, 20000);
+});
+window.addEventListener('beforeunload', function () { if (pollTimer) clearInterval(pollTimer); });
+</script>
+</body>
+</html>
