@@ -144,17 +144,17 @@ def maintenance_hub():
 
 @sales_bp.route('/install/quotes/upgrade')
 def install_quote_upgrade_redirect():
-    return redirect(url_for('sales.install_quote_new', go=1, quote_kind='upgrade'))
+    return redirect(url_for('sales.install_quote_new', quote_kind='upgrade'))
 
 
 @sales_bp.route('/install/quotes/extend')
 def install_quote_extend_redirect():
-    return redirect(url_for('sales.install_quote_new', go=1, quote_kind='extend'))
+    return redirect(url_for('sales.install_quote_new', quote_kind='extend'))
 
 
 @sales_bp.route('/install/quotes/new', methods=['GET', 'POST'])
 def install_quote_new():
-    """بدء عرض تركيب من المبيعات — ينشئ مشروعاً ويفتح فورم التسعير الحديث."""
+    """بدء عرض تركيب من المبيعات — ينشئ مشروعاً فقط بعد تأكيد POST."""
     from installation.config import install_module_enabled
     from installation.models import InstallProject
     from installation.routes import _next_code
@@ -163,15 +163,15 @@ def install_quote_new():
         flash('وحدة التركيب غير مفعّلة', 'error')
         return redirect(url_for('sales.hub'))
 
-    if request.method == 'GET' and not request.args.get('go'):
-        # شاشة اختيار سريعة قبل الفورم
+    if request.method == 'GET':
         return render_template(
             'sales/install_quote_start.html',
             page_title='عرض تركيب جديد',
+            quote_kind=(request.args.get('quote_kind') or '').strip(),
         )
 
-    title = (request.form.get('title') or request.args.get('title') or '').strip()
-    quote_kind = (request.form.get('quote_kind') or request.args.get('quote_kind') or 'new').strip()
+    title = (request.form.get('title') or '').strip()
+    quote_kind = (request.form.get('quote_kind') or 'new').strip()
     kind_labels = {
         'new': 'تركيب مصعد جديد',
         'upgrade': 'تحديث مصعد قائم',
@@ -280,8 +280,14 @@ def convert_estimate_to_install_quote(estimate_id):
         flash('اربط التقدير بعميل قبل إصدار عرض السعر', 'error')
         return redirect(f'/elevator-estimates?edit={est.id}')
 
-    if est.result_project_id and est.result_quotation_id:
+    if est.result_project_id:
         flash('تم تحويل هذا التقدير مسبقاً', 'success')
+        if est.result_quotation_id:
+            return redirect(url_for(
+                'installation.project_quote',
+                project_id=est.result_project_id,
+                quotation_id=est.result_quotation_id,
+            ))
         return redirect(url_for('installation.project_detail', project_id=est.result_project_id))
 
     try:

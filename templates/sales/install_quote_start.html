@@ -6,8 +6,9 @@
 <style>
 .kind-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:12px}
 @media(max-width:900px){.kind-grid{grid-template-columns:1fr}}
-.kind-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;cursor:pointer;text-align:right;transition:var(--trans);display:block;color:inherit;text-decoration:none}
+.kind-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;cursor:pointer;text-align:right;transition:var(--trans);display:block;color:inherit;text-decoration:none;width:100%;font:inherit}
 .kind-card:hover{border-color:var(--border2);background:var(--bg3)}
+.kind-card.is-selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .kind-card h3{margin:0 0 8px;font-size:16px}
 .kind-card p{margin:0;font-size:13px;color:var(--text2);line-height:1.6}
 .hint{margin-top:18px;font-size:13px;color:var(--text2);line-height:1.7}
@@ -27,20 +28,32 @@
         <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
       </div>
     </div>
-    <p class="hint">اختر نوع العمل — ثم أكمل المواصفات والأنظمة في شاشة التسعير الحديثة (BOM تلقائي، منشأ، ماركات، مراحل).</p>
+    <p class="hint">اختر نوع العمل ثم اضغط للتأكيد — لن يُنشأ مشروع إلا بعد اختيارك. بعدها أكمل المواصفات في شاشة التسعير (BOM، منشأ، ماركات، مراحل).</p>
     <div class="kind-grid">
-      <a class="kind-card" href="{{ url_for('sales.install_quote_new', go=1, quote_kind='new') }}">
-        <h3>تركيب مصعد جديد</h3>
-        <p>توريد وتركيب كامل — أنظمة MRL / جيرلس / جير / هيدروليك / منزلي وأنظمة سوق حديثة.</p>
-      </a>
-      <a class="kind-card" href="{{ url_for('sales.install_quote_new', go=1, quote_kind='upgrade') }}">
-        <h3>تحديث مصعد قائم</h3>
-        <p>استبدال لوحة، ماكينة، أبواب، كبينة أو مكونات سلامة حسب اختيارك.</p>
-      </a>
-      <a class="kind-card" href="{{ url_for('sales.install_quote_new', go=1, quote_kind='extend') }}">
-        <h3>إضافة أدوار</h3>
-        <p>تمديد سفر ووقفات لمصعد قائم دون إعادة تسعير المصعد كاملاً.</p>
-      </a>
+      <form method="post" action="{{ url_for('sales.install_quote_new') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="quote_kind" value="new">
+        <button type="submit" class="kind-card{% if quote_kind == 'new' %} is-selected{% endif %}">
+          <h3>تركيب مصعد جديد</h3>
+          <p>توريد وتركيب كامل — أنظمة MRL / جيرلس / جير / هيدروليك / منزلي وأنظمة سوق حديثة.</p>
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('sales.install_quote_new') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="quote_kind" value="upgrade">
+        <button type="submit" class="kind-card{% if quote_kind == 'upgrade' %} is-selected{% endif %}">
+          <h3>تحديث مصعد قائم</h3>
+          <p>استبدال لوحة، ماكينة، أبواب، كبينة أو مكونات سلامة حسب اختيارك.</p>
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('sales.install_quote_new') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="quote_kind" value="extend">
+        <button type="submit" class="kind-card{% if quote_kind == 'extend' %} is-selected{% endif %}">
+          <h3>إضافة أدوار</h3>
+          <p>تمديد سفر ووقفات لمصعد قائم دون إعادة تسعير المصعد كاملاً.</p>
+        </button>
+      </form>
     </div>
   </div>
 </div>

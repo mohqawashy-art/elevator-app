@@ -155,10 +155,16 @@ def create_install_project_and_quote_from_estimate(estimate, *, next_project_cod
     from installation.models import InstallProject, InstallQuotation, InstallQuotationLine
     from models import Customer
 
-    if estimate.result_project_id and estimate.result_quotation_id:
+    if estimate.result_project_id:
+        existing_qid = estimate.result_quotation_id
+        if not existing_qid:
+            existing_q = tenant_query(InstallQuotation).filter_by(
+                project_id=estimate.result_project_id,
+            ).order_by(InstallQuotation.id.desc()).first()
+            existing_qid = existing_q.id if existing_q else None
         return {
             'project_id': estimate.result_project_id,
-            'quotation_id': estimate.result_quotation_id,
+            'quotation_id': existing_qid,
             'created': False,
         }
 
