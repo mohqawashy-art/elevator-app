@@ -271,6 +271,8 @@ def test_request_survey_route_without_total_validation(client):
 
 def test_field_payload_includes_maint_surveys(client):
     with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-MQS', name='فني فحص', status='متاح')
         db.session.add(tech)
         db.session.flush()
         cust = Customer(organization_id=oid, code='C-MQS', name='عميل', status='نشط')

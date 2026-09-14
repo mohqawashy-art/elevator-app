@@ -9788,6 +9788,8 @@ def api_visit_report_customer_send(visit_id):
 
 @app.route('/field/maint-quote-survey/<int:survey_id>')
 def field_maint_quote_survey(survey_id):
+    from field_auth import technician_portal_kind
+    from operations import field_technician_payload
     from sales.maint_survey import survey_field_payload
 
     tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
@@ -9796,10 +9798,28 @@ def field_maint_quote_survey(survey_id):
         db.session.commit()
     except PermissionError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}
-        return render_template('field.html', error=str(e), payload=None, **ctx), 403
+        payload = (
+            field_technician_payload(
+                tech_id,
+                request.url_root,
+                portal_kind=technician_portal_kind(ctx['field_tech']),
+            )
+            if tech_id
+            else None
+        )
+        return render_template('field.html', error=str(e), payload=payload, **ctx), 403
     except ValueError as e:
         ctx = _field_portal_context(tech_id) if tech_id else {}
-        return render_template('field.html', error=str(e), payload=None, **ctx), 400
+        payload = (
+            field_technician_payload(
+                tech_id,
+                request.url_root,
+                portal_kind=technician_portal_kind(ctx['field_tech']),
+            )
+            if tech_id
+            else None
+        )
+        return render_template('field.html', error=str(e), payload=payload, **ctx), 400
     ctx = _field_portal_context(tech_id)
     read_only = detail.get('status') == 'مكتمل'
     return render_template(

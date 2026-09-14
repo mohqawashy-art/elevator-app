@@ -7,6 +7,7 @@
 <div class="fp-err">{{ error }}</div>
 {% endif %}
 
+{% if payload %}
 <div id="fp-offline-banner" class="fp-offline-banner" hidden>
   📴 وضع بدون إنترنت — تُعرض آخر مهام محفوظة. المحاضر المعلّقة تُرفع تلقائياً عند الاتصال.
 </div>
@@ -15,16 +16,18 @@
   زيارات <strong>اليوم وغداً</strong> فقط — {{ payload.today }} / {{ payload.tomorrow }}
 </p>
 
+<div id="fp-maint-surveys-banner" {% if not payload.maint_surveys|length %}hidden{% endif %}>
 {% if payload.maint_surveys|length %}
-<a href="#maint-surveys" class="fp-card" style="border-color:rgba(48,120,224,.45);background:rgba(48,120,224,.08);margin-bottom:12px;text-decoration:none">
+<a href="{{ payload.maint_surveys[0].url }}" class="fp-card" style="border-color:rgba(48,120,224,.45);background:rgba(48,120,224,.08);margin-bottom:12px;text-decoration:none">
   <div class="fp-card-top">
     <span class="fp-code" style="color:var(--fp-accent,#3078e0)">فحص عروض صيانة</span>
     <span class="fp-count">{{ payload.maint_surveys|length }}</span>
   </div>
-  <div class="fp-title">لديك {{ payload.maint_surveys|length }} طلب فحص — اضغط للانتقال</div>
+  <div class="fp-title">لديك {{ payload.maint_surveys|length }} طلب فحص — اضغط للفتح</div>
   <div class="fp-meta">توثيق مواصفات المصاعد والرأي الفني لعرض الصيانة</div>
 </a>
 {% endif %}
+</div>
 
 {% if payload.has_assigned_faults and payload.faults|length %}
 <a href="#faults" class="fp-card" style="border-color:rgba(224,72,72,.45);background:rgba(224,72,72,.08);margin-bottom:12px;text-decoration:none">
@@ -161,7 +164,8 @@
 </div>
 {% endif %}
 
-{% if not payload.show_visits and not payload.show_faults %}
+{% if not payload.show_visits and not payload.show_faults and not payload.maint_surveys|length %}
 <div class="fp-empty">لا توجد مهام — راجع المشرف</div>
+{% endif %}
 {% endif %}
 {% endblock %}

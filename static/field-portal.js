@@ -116,6 +116,39 @@
     );
   }
 
+  function surveyCard(s) {
+    return (
+      '<a class="fp-card" href="' + esc(s.url) + '">' +
+      '<div class="fp-card-top"><span class="fp-code">' + esc(s.code) + '</span>' +
+      '<span style="font-size:11px;color:var(--fp-muted)">' + esc(s.status) + '</span></div>' +
+      '<div class="fp-title">' + esc(s.customer) + ' <span style="font-size:11px;color:var(--fp-muted)">' +
+      esc(s.customer_code) + '</span></div>' +
+      '<div class="fp-meta">عرض ' + esc(s.quote_code) + ' · ' + esc(s.city) +
+      (s.district ? ' · ' + esc(s.district) : '') + '</div>' +
+      (s.units_count ? '<div class="fp-meta">' + s.units_count + ' مصعد مسجّل</div>' : '') +
+      '</a>'
+    );
+  }
+
+  function renderMaintSurveyBanner(surveys) {
+    var el = document.getElementById('fp-maint-surveys-banner');
+    if (!el) return;
+    if (!surveys || !surveys.length) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    el.hidden = false;
+    var firstUrl = surveys[0].url || '/field';
+    el.innerHTML =
+      '<a href="' + esc(firstUrl) + '" class="fp-card" style="border-color:rgba(48,120,224,.45);background:rgba(48,120,224,.08);margin-bottom:12px;text-decoration:none">' +
+      '<div class="fp-card-top">' +
+      '<span class="fp-code" style="color:var(--fp-accent,#3078e0)">فحص عروض صيانة</span>' +
+      '<span class="fp-count">' + surveys.length + '</span></div>' +
+      '<div class="fp-title">لديك ' + surveys.length + ' طلب فحص — اضغط للفتح</div>' +
+      '<div class="fp-meta">توثيق مواصفات المصاعد والرأي الفني لعرض الصيانة</div></a>';
+  }
+
   function faultCard(f) {
     var pr = f.priority === 'حرجة' ? 'fp-p-critical' : (f.priority === 'عالية' || f.priority === 'عاجلة' ? 'fp-p-high' : 'fp-p-normal');
     var un = f.unassigned ? ' <span style="font-size:11px;color:var(--fp-warning)">(غير معيّن)</span>' : '';
@@ -150,13 +183,22 @@
     add('visit', payload.visits_today || []);
     add('visit', payload.visits_tomorrow || []);
     add('fault', payload.faults || []);
+    add('survey', payload.maint_surveys || []);
     return keys;
   }
 
   function renderHome(payload) {
     var root = document.querySelector('.fp-panel[data-fp-panel="all"]');
     if (!root || !payload) return;
+    var surveys = payload.maint_surveys || [];
+    renderMaintSurveyBanner(surveys);
     var html = '';
+    if (surveys.length) {
+      html += '<div id="maint-surveys" style="margin-bottom:12px">';
+      html += '<div class="fp-section">فحص عروض صيانة <span class="fp-count">' + surveys.length + '</span></div>';
+      surveys.forEach(function (s) { html += surveyCard(s); });
+      html += '</div>';
+    }
     if (payload.show_visits) {
       html += '<div id="visits"><div class="fp-section">زيارات اليوم <span class="fp-count">' + (payload.visits_today || []).length + '</span></div>';
       if (payload.visits_today && payload.visits_today.length) {
@@ -209,7 +251,7 @@
   function showToast(items) {
     var el = ensureToastHost();
     var lines = items.map(function (it) {
-      var label = it.kind === 'fault' ? 'عطل' : 'زيارة';
+      var label = it.kind === 'fault' ? 'عطل' : (it.kind === 'survey' ? 'فحص صيانة' : 'زيارة');
       return '<strong>' + esc(label) + '</strong> ' + esc(it.code) + ' — ' + esc(it.customer);
     });
     var firstUrl = items[0] && items[0].url ? items[0].url : '/field';
@@ -280,7 +322,7 @@
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     try {
       var first = items[0];
-      var title = first.kind === 'fault' ? 'عطل جديد' : 'زيارة جديدة';
+      var title = first.kind === 'fault' ? 'عطل جديد' : (first.kind === 'survey' ? 'فحص عرض صيانة' : 'زيارة جديدة');
       var body = (first.code || '') + ' — ' + (first.customer || '');
       var n = new Notification('LiftCore · ' + title, {
         body: body,
@@ -333,6 +375,10 @@
         return;
       }
       if (cur.kind === 'fault' && cur.status === 'قيد المعالجة' && prev.status === 'مفتوح') {
+        added.push(cur);
+        return;
+      }
+      if (cur.kind === 'survey' && (cur.status === 'مُرسَل' || cur.status === 'قيد الفحص') && prev.status !== cur.status) {
         added.push(cur);
       }
     });
