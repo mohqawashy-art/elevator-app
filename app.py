@@ -510,6 +510,14 @@ def _field_tech_api_allowed(path: str, method: str) -> bool:
     return False
 
 
+def _office_report_back_url(fallback: str) -> str:
+    """رجوع محضر المكتب — يدعم ?back=/path من صفحة المتابعة وغيرها."""
+    back = (request.args.get('back') or '').strip()
+    if back.startswith('/') and not back.startswith('//') and '..' not in back:
+        return back
+    return fallback
+
+
 def _field_portal_context(tech_id: int) -> dict:
     from field_auth import technician_portal_kind, technician_portal_label
     from operations import open_faults_filter
@@ -9711,7 +9719,7 @@ def maintenance_visit_report(visit_id):
     payload = visit_report_payload(
         visit_id, editable=not read_only, base_url=request.url_root
     )
-    payload['back_url'] = url_for('maintenance_visits')
+    payload['back_url'] = _office_report_back_url(url_for('maintenance_visits'))
     payload['read_only_mode'] = read_only
     if not read_only and payload.get('tech_id'):
         payload['field_edit_url'] = url_for(
@@ -9824,7 +9832,7 @@ def office_fault_report(fault_id):
     payload = fault_report_payload(
         fault_id, editable=not read_only, base_url=request.url_root
     )
-    payload['back_url'] = url_for('faults')
+    payload['back_url'] = _office_report_back_url(url_for('faults'))
     if not read_only and payload.get('tech_id'):
         payload['field_edit_url'] = url_for(
             'field_fault_report', fault_id=fault_id, tech_id=payload['tech_id']

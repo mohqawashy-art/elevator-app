@@ -148,6 +148,33 @@ def test_office_field_today_tracking_lists_visits_and_faults(client):
     assert 'VI-TRK1' in codes
     assert 'FA-TRK1' in codes
     assert any(t.get('name') == 'فني متابعة' for t in data.get('technicians', []))
+    assert '/report?back=/field-today-tracking' in (data.get('items') or [{}])[0].get('office_url', '')
+
+
+def test_office_report_honors_back_param(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        cust = Customer(organization_id=oid, code='C-BK', name='عميل', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-BK', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='VI-BK1',
+            elevator_id=elev.id,
+            visit_date=date.today(),
+            status='مجدولة',
+        )
+        db.session.add(visit)
+        db.session.commit()
+        visit_id = visit.id
+
+    r = client.get(f'/maintenance-visits/{visit_id}/report?back=/field-today-tracking')
+    assert r.status_code == 200
+    assert 'backUrl: "/field-today-tracking"' in r.get_data(as_text=True) or "backUrl: '/field-today-tracking'" in r.get_data(as_text=True)
 
 
 def test_fault_add_appears_on_field_portal(client):

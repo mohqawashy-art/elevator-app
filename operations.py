@@ -2305,7 +2305,7 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
             'maps_url': site['maps_url'],
             'lat': coords[0] if coords else None,
             'lng': coords[1] if coords else None,
-            'office_url': f'/maintenance-visits/{v.id}/report',
+            'office_url': f'/maintenance-visits/{v.id}/report?back=/field-today-tracking',
             'field_url': f'/field/visit/{v.id}',
         }
         items.append(row)
@@ -2375,7 +2375,7 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
             'maps_url': site['maps_url'],
             'lat': coords[0] if coords else None,
             'lng': coords[1] if coords else None,
-            'office_url': f'/faults/{f.id}/report' if hasattr(f, 'id') else '/faults',
+            'office_url': f'/faults/{f.id}/report?back=/field-today-tracking',
             'field_url': f'/field/fault/{f.id}',
         }
         items.append(row)
