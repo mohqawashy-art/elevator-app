@@ -2670,3 +2670,9 @@ html[dir="ltr"] .ic-table thead th,
 html[dir="ltr"] th.th-sort {
   text-align: center !important;
 }
+
+.import-area.is-dragover {
+  border-color: var(--accent, #2a7fff);
+  background: rgba(42, 127, 255, 0.08);
+  border-style: solid;
+}

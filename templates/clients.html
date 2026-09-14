@@ -239,8 +239,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 /* استيراد */
 .import-area{border:2px dashed var(--border);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:var(--trans)}
-.import-area:hover{border-color:var(--accent);background:rgba(42,127,255,.04)}
+.import-area:hover,.import-area.is-dragover{border-color:var(--accent);background:rgba(42,127,255,.08)}
 .import-area svg{width:32px;height:32px;color:var(--text3);margin-bottom:10px}
+.import-area span{color:var(--accent)}
 
 /* خريطة */
 .map-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
@@ -1716,6 +1717,47 @@ function handleImport(input){
     reader.readAsArrayBuffer(file);
   }
 }
+
+(function bindExcelImportDrop() {
+  var modal = document.getElementById('modal-import');
+  if (!modal || modal.dataset.lcExcelDrop === '1') return;
+  modal.dataset.lcExcelDrop = '1';
+  function stop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  function apply(files) {
+    if (typeof window.LiftCoreApplyImportDrop === 'function') {
+      window.LiftCoreApplyImportDrop(files);
+      return;
+    }
+    var input = modal.querySelector('.import-area input[type="file"]') || modal.querySelector('input[type="file"]');
+    if (!input || !files || !files.length) return;
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(files[0]);
+      input.files = dt.files;
+    } catch (err) {}
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  modal.addEventListener('dragover', function (e) {
+    stop(e);
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    var area = modal.querySelector('.import-area');
+    if (area) area.classList.add('is-dragover');
+  });
+  modal.addEventListener('dragleave', function (e) {
+    if (e.relatedTarget && modal.contains(e.relatedTarget)) return;
+    var area = modal.querySelector('.import-area');
+    if (area) area.classList.remove('is-dragover');
+  });
+  modal.addEventListener('drop', function (e) {
+    stop(e);
+    var area = modal.querySelector('.import-area');
+    if (area) area.classList.remove('is-dragover');
+    apply(e.dataTransfer && e.dataTransfer.files);
+  });
+})();
 
 function pickClientsSheet(wb){
   var names = wb.SheetNames || [];

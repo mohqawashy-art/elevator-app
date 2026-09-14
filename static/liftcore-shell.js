@@ -481,4 +481,83 @@
 
   document.addEventListener('DOMContentLoaded', initModalBackdropClose);
   if (document.readyState !== 'loading') initModalBackdropClose();
+
+  /** استيراد Excel: النص يقول «اسحب الملف» لكن بدون preventDefault المتصفح يرفض الإسقاط */
+  function importModalEl() {
+    return document.getElementById('modal-import');
+  }
+
+  function importModalIsOpen() {
+    var modal = importModalEl();
+    return !!(modal && modal.classList.contains('open'));
+  }
+
+  function importDropInput() {
+    var modal = importModalEl();
+    if (!modal) return null;
+    var area = modal.querySelector('.import-area');
+    return (area && area.querySelector('input[type="file"]')) ||
+      modal.querySelector('input[type="file"]');
+  }
+
+  function highlightImportArea(on) {
+    var modal = importModalEl();
+    if (!modal) return;
+    modal.querySelectorAll('.import-area').forEach(function (el) {
+      el.classList.toggle('is-dragover', !!on);
+    });
+  }
+
+  function isFileDrag(e) {
+    var dt = e.dataTransfer;
+    if (!dt) return false;
+    var types = dt.types;
+    if (types && types.length) {
+      for (var i = 0; i < types.length; i++) {
+        if (types[i] === 'Files' || types[i] === 'application/x-moz-file') return true;
+      }
+    }
+    return !!(dt.files && dt.files.length);
+  }
+
+  function applyDroppedImportFiles(files) {
+    var input = importDropInput();
+    if (!input || !files || !files.length) return;
+    var file = files[0];
+    var name = String(file && file.name || '').toLowerCase();
+    if (name && !/\.(xlsx|xls|csv)$/.test(name)) {
+      alert('الملف يجب أن يكون Excel أو CSV ‏(.xlsx / .xls / .csv)');
+      return;
+    }
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+    } catch (err) {}
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  document.addEventListener('dragover', function (e) {
+    if (!importModalIsOpen()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    highlightImportArea(true);
+  }, true);
+
+  document.addEventListener('dragleave', function (e) {
+    if (!importModalIsOpen()) return;
+    if (e.relatedTarget && document.documentElement.contains(e.relatedTarget)) return;
+    highlightImportArea(false);
+  }, true);
+
+  document.addEventListener('drop', function (e) {
+    if (!importModalIsOpen() || !isFileDrag(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    highlightImportArea(false);
+    applyDroppedImportFiles(e.dataTransfer && e.dataTransfer.files);
+  }, true);
+
+  window.LiftCoreApplyImportDrop = applyDroppedImportFiles;
 })();
