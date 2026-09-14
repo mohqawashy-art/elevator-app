@@ -28,6 +28,11 @@
         <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}">{{ msg }}</div>
       {% endfor %}
     {% endwith %}
+    {% if kind in ['install', 'تركيب', 'تركيبات'] %}
+    <p style="margin:0 0 12px;color:var(--text2);font-size:13px;line-height:1.6">
+      عروض التسعير قبل موافقة العميل تظهر هنا فقط — بعد القبول ينتقل المشروع إلى <strong>مشاريع التركيب</strong>.
+    </p>
+    {% endif %}
     <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
       <a class="btn btn-sm {{ 'btn-primary' if not kind else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', status=status or none) }}">الكل</a>
       <a class="btn btn-sm {{ 'btn-primary' if kind=='install' else 'btn-secondary' }}" href="{{ url_for('sales.quotes_inbox', kind='install', status=status or none) }}">تركيبات</a>

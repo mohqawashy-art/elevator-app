@@ -265,12 +265,19 @@ def _quotation_to_dict(q):
 
 @install_bp.route('/')
 def index():
+    from installation.project_scope import operational_install_projects_query
+
     lead_count = tenant_query(InstallLead).count()
-    project_count = tenant_query(InstallProject).count()
+    project_count = operational_install_projects_query().count()
     active_leads = tenant_query(InstallLead).filter(
         InstallLead.status.notin_(('ملغي', 'تم تحويله لمشروع'))
     ).count()
-    recent_projects = tenant_query(InstallProject).order_by(InstallProject.created_at.desc()).limit(5).all()
+    recent_projects = (
+        operational_install_projects_query()
+        .order_by(InstallProject.created_at.desc())
+        .limit(5)
+        .all()
+    )
     return render_template(
         'installation/index.html',
         lead_count=lead_count,
@@ -283,7 +290,9 @@ def index():
 
 @install_bp.route('/projects')
 def projects_list():
-    projects = tenant_query(InstallProject).order_by(InstallProject.created_at.desc()).all()
+    from installation.project_scope import operational_install_projects_query
+
+    projects = operational_install_projects_query().order_by(InstallProject.created_at.desc()).all()
     return render_template(
         'installation/projects.html',
         projects=projects,
@@ -316,7 +325,9 @@ def contracts_list():
     db.session.commit()
 
     customers = tenant_query(Customer).order_by(Customer.name).all()
-    projects = tenant_query(InstallProject).order_by(InstallProject.created_at.desc()).all()
+    from installation.project_scope import operational_install_projects_query
+
+    projects = operational_install_projects_query().order_by(InstallProject.created_at.desc()).all()
     quotations = tenant_query(InstallQuotation).order_by(InstallQuotation.created_at.desc()).all()
 
     return render_template(
@@ -543,22 +554,30 @@ def contract_update(contract_id):
 @install_bp.route('/projects/<int:project_id>/delete', methods=['POST'])
 def project_delete(project_id):
     from installation.project_card import delete_install_project
+    from installation.project_scope import is_sales_stage_install_project
 
     project = tenant_get_or_404(InstallProject, project_id)
     if project.execution_active:
         flash('لا يمكن حذف مشروع بدأ تنفيذه — أغلقه من جدول التنفيذ أولاً', 'error')
         return redirect(url_for('installation.projects_list'))
+    sales_only = is_sales_stage_install_project(project)
     code = delete_install_project(project)
     db.session.commit()
     flash(f'تم حذف المشروع {code}', 'success')
+    if sales_only:
+        return redirect(url_for('sales.quotes_inbox', kind='install'))
     return redirect(url_for('installation.projects_list'))
 
 
 @install_bp.route('/projects/<int:project_id>')
 def project_detail(project_id):
     from installation.project_card import build_project_card, ensure_project_card_schema
+    from installation.project_scope import redirect_if_sales_stage_project
 
     project = tenant_get_or_404(InstallProject, project_id)
+    sales_redirect = redirect_if_sales_stage_project(project)
+    if sales_redirect is not None:
+        return sales_redirect
     quotations = project.quotations.order_by(InstallQuotation.created_at.desc()).all()
     steps = sorted(project.timeline_steps, key=lambda s: s.sort_order)
     progress = timeline_progress(steps) if project.execution_active else 0
@@ -717,6 +736,11 @@ def project_card_print(project_id):
     ensure_project_card_schema()
     ensure_project_documents_schema()
     project = tenant_get_or_404(InstallProject, project_id)
+    from installation.project_scope import redirect_if_sales_stage_project
+
+    sales_redirect = redirect_if_sales_stage_project(project)
+    if sales_redirect is not None:
+        return sales_redirect
     card = build_project_card(project)
     documents_by_step = group_project_documents_by_step(list(project.documents or []))
     settings = None
@@ -1192,7 +1216,12 @@ def quote_start_execution(project_id, quotation_id):
 
 @install_bp.route('/projects/<int:project_id>/execution')
 def project_execution(project_id):
+    from installation.project_scope import redirect_if_sales_stage_project
+
     project = tenant_get_or_404(InstallProject, project_id)
+    sales_redirect = redirect_if_sales_stage_project(project)
+    if sales_redirect is not None:
+        return sales_redirect
     if not project.execution_active:
         flash('ابدأ التنفيذ من صفحة المشروع بعد موافقة العميل', 'error')
         return redirect(url_for('installation.project_detail', project_id=project.id))
