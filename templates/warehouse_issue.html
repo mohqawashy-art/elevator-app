@@ -8,8 +8,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--sidebar-w:240px;--font-ar:'IBM Plex Sans Arabic',sans-serif;--r:10px;--r-sm:7px}
-body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex}
-.sidebar{width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);height:100vh;position:sticky;top:0}
+body{background:var(--bg);color:var(--text1);min-height:100vh}
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
 .content{flex:1;padding:24px}
 .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:760px}
@@ -25,9 +24,14 @@ body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+<link rel="stylesheet" href="/static/liftcore-mobile-touch.css?v=2">
 </head>
 <body>
-<aside class="sidebar"><div style="padding:12px;text-align:center"><img src="{{ brand_logo_url }}" alt="LiftCore" style="max-width:150px"></div><nav>{% include 'partials/app_sidebar_nav.html' %}</nav></aside>
+<div class="mobile-overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
 <div class="main">
   {% set page_title = 'أذون صرف' %}
   {% include 'partials/app_header.html' %}
