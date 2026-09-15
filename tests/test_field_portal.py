@@ -151,6 +151,76 @@ def test_office_field_today_tracking_lists_visits_and_faults(client):
     assert '/report?back=/field-today-tracking' in (data.get('items') or [{}])[0].get('office_url', '')
 
 
+def test_field_today_tracking_uses_contract_address(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-ADDR',
+            name='فني عنوان',
+            phone='0502223344',
+            team='صيانة',
+            status='متاح',
+        )
+        db.session.add(tech)
+        db.session.flush()
+        cust = Customer(
+            organization_id=oid,
+            code='C-ADDR',
+            name='عميل عنوان',
+            status='نشط',
+            address='عنوان العميل العام',
+            lat='24.713600',
+            lng='46.675300',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=oid,
+            code='CN-ADDR',
+            customer_id=cust.id,
+            contract_type='صيانة',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=1000,
+            total=1150,
+            status='نشط',
+            lat='24.800000',
+            lng='46.700000',
+            address='حي العزيزية شارع الملك',
+            district='العزيزية',
+            city='مكة',
+        )
+        db.session.add(contract)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-ADDR', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        db.session.add(ContractElevator(organization_id=oid, contract_id=contract.id, elevator_id=elev.id))
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='VI-ADDR1',
+            contract_id=contract.id,
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            status='مُرسلة للفني',
+        )
+        db.session.add(visit)
+        db.session.commit()
+
+    api = client.get('/api/field-today-tracking')
+    assert api.status_code == 200
+    data = api.get_json() or {}
+    row = next(i for i in data.get('items', []) if i.get('code') == 'VI-ADDR1')
+    assert 'حي العزيزية' in (row.get('address') or '')
+    assert row.get('district') == 'العزيزية'
+    assert row.get('lat') == 24.8
+    mp = next(p for p in data.get('map_points', []) if 'VI-ADDR1' in (p.get('label') or ''))
+    assert 'حي العزيزية' in (mp.get('address') or '')
+
+
 def test_office_report_honors_back_param(client):
     login_as(client, 'admin')
     with client.application.app_context():

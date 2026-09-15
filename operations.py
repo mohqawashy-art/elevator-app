@@ -2260,8 +2260,6 @@ def _tracking_coords(elev, cust, contract=None, visit_date=None):
     coords = visit_site_coordinates(contract, elev, cust)
     if coords:
         return coords
-    if contract:
-        return None
     if not cust or not cust.lat or not cust.lng:
         return None
     try:
@@ -2320,6 +2318,7 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
             'customer_code': cust.code if cust else '',
             'building': site['building'],
             'district': site['district'],
+            'address': site['address'],
             'technician': tech_label,
             'technician_id': v.technician_id,
             'status': v.status or '',
@@ -2393,6 +2392,7 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
             'customer_code': cust.code if cust else '',
             'building': site['building'],
             'district': site['district'],
+            'address': site['address'],
             'technician': tech_label,
             'technician_id': f.technician_id,
             'status': f.status or '',
@@ -2430,6 +2430,7 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
             'task_count': len(tasks),
             'current_customer': current['customer'] if current else '',
             'current_building': current['building'] if current else '',
+            'current_address': current['address'] if current else '',
             'current_action': current['action_label'] if current else 'لا مهام نشطة اليوم',
             'current_tone': current['action_tone'] if current else 'planned',
             'current_code': current['code'] if current else '',
@@ -2442,10 +2443,18 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
     for row in items:
         if row.get('lat') is None or row.get('lng') is None:
             continue
+        site_line = (row.get('address') or '').strip()
+        if not site_line:
+            site_line = ' — '.join(
+                p for p in (row.get('building'), row.get('district'))
+                if p and p != '—'
+            )
         map_points.append({
             'lat': row['lat'],
             'lng': row['lng'],
             'label': f"{row['code']} — {row['customer']}",
+            'address': site_line,
+            'customer': row['customer'],
             'status': row['action_label'],
             'tone': row['action_tone'],
             'kind': row['kind'],

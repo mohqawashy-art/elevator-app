@@ -133,7 +133,7 @@ tbody td{padding:10px 12px;color:var(--text2);vertical-align:middle}
         <div class="panel-head">
           <div>
             <div class="panel-title">خريطة المواقع</div>
-            <div class="panel-sub">موقع العميل حسب المهمة</div>
+            <div class="panel-sub">موقع العقد حسب المهمة</div>
           </div>
         </div>
         <div id="track-map"></div>
@@ -191,6 +191,12 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 }
 
+function trackingSiteLine(row) {
+  if (!row) return '';
+  if (row.address) return row.address;
+  return [row.building, row.district].filter(function (p) { return p && p !== '—'; }).join(' — ');
+}
+
 function renderTechList(techs) {
   var el = document.getElementById('tech-list');
   if (!techs || !techs.length) {
@@ -198,7 +204,10 @@ function renderTechList(techs) {
     return;
   }
   el.innerHTML = techs.map(function (t) {
-    var loc = [t.current_customer, t.current_building].filter(Boolean).join(' — ');
+    var locParts = [t.current_customer];
+    var site = t.current_address || t.current_building;
+    if (site) locParts.push(site);
+    var loc = locParts.filter(Boolean).join(' — ');
     var wa = t.phone ? ('https://wa.me/' + String(t.phone).replace(/\D/g, '')) : '';
     return '<div class="tech-card">' +
       '<div class="tech-name">' + esc(t.name) + ' <span style="color:var(--text3);font-weight:400">(' + t.task_count + ')</span></div>' +
@@ -217,7 +226,7 @@ function renderItems(items) {
   }
   body.innerHTML = items.map(function (row) {
     var time = row.arrival_time || (row.dispatched_at ? row.dispatched_at.slice(11, 16) : '');
-    var loc = [row.building, row.district].filter(Boolean).join(' — ');
+    var loc = trackingSiteLine(row);
     return '<tr>' +
       '<td class="td-code">' + esc(row.code) + '</td>' +
       '<td>' + esc(row.kind_label) + '</td>' +
@@ -267,15 +276,18 @@ function refreshTrackMap(points) {
     if (p.lat == null || p.lng == null) return;
     var marker = LiftCoreMap.createPinMarker({
       position: { lat: p.lat, lng: p.lng },
-      title: p.label || '',
+      title: [p.label, p.address].filter(Boolean).join(' — '),
       color: toneColor(p.tone),
       scale: 1.15
     });
     if (!marker) return;
     marker.addListener('click', function () {
+      var addr = (p.address || '').trim();
       trackInfoWindow.setContent(
-        '<div style="font-family:Tahoma,Arial;direction:rtl;text-align:right;min-width:180px">' +
-        '<b>' + esc(p.label) + '</b><br>' + esc(p.status) + '</div>'
+        '<div style="font-family:Tahoma,Arial;direction:rtl;text-align:right;min-width:200px">' +
+        '<b>' + esc(p.label) + '</b>' +
+        (addr ? '<br><span style="color:#555">' + esc(addr) + '</span>' : '') +
+        '<br>' + esc(p.status) + '</div>'
       );
       if (window.LiftCoreMap && LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(trackInfoWindow, trackMap, marker);
       else trackInfoWindow.open(trackMap, marker);
