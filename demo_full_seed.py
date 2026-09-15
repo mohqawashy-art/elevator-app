@@ -695,7 +695,221 @@ def seed_full_demo_operations(
             ))
         stats['estimates_added'] = 1
 
+    stats.update(rebalance_demo_finances(oid, dry_run=dry_run))
     return stats
+
+
+# إيرادات/مصروفات شهرية متوازنة (~20% هامش على المكتسب)
+_DEMO_MONTHLY_REVENUE_BASE = [
+    10500, 11200, 11800, 11500, 12200, 12800,
+    11900, 12500, 12100, 13000, 12700, 13200,
+]
+_DEMO_EXPENSE_RATIO = 0.80  # مصروفات = 80% من الإيراد → هامش ~20%
+
+
+def rebalance_demo_finances(organization_id: int, *, dry_run: bool = False) -> dict:
+    """موازنة الحسابات: زيارات مكتملة + إيرادات/مصروفات متناسقة + ربح."""
+    from contract_cost_allocation import _is_maintenance_contract, contract_planned_visits
+    from report_data import _is_revenue_collected_status
+
+    oid = int(organization_id)
+    today = date.today()
+    year = today.year
+    stats: dict[str, int | float | str] = {}
+
+    techs = (
+        Technician.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=oid)
+        .filter(Technician.status.in_(['متاح', 'مشغول', 'نشط']))
+        .all()
+    )
+    tech = techs[0] if techs else None
+
+    contracts = (
+        Contract.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=oid)
+        .all()
+    )
+    customers = (
+        Customer.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=oid)
+        .order_by(Customer.id)
+        .all()
+    )
+    latest_by_client = _latest_contract_by_customer(contracts)
+
+    visits_added = 0
+    for contract in contracts:
+        if not _is_maintenance_contract(contract):
+            continue
+        planned = contract_planned_visits(contract)
+        if planned <= 0:
+            continue
+        done = (
+            MaintenanceVisit.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid, contract_id=contract.id, status='مكتملة')
+            .count()
+        )
+        need = max(0, planned - done)
+        if need <= 0:
+            continue
+
+        elev_id = None
+        links = contract.elevators or []
+        if links:
+            elev_id = links[0].elevator_id
+        if not elev_id:
+            el = (
+                Elevator.query.execution_options(skip_tenant=True)
+                .filter_by(organization_id=oid, customer_id=contract.customer_id)
+                .first()
+            )
+            elev_id = el.id if el else None
+        if not elev_id or not tech:
+            continue
+
+        start = contract.start_date or (today - timedelta(days=365))
+        end = min(today, contract.end_date or today)
+        span = max(1, (end - start).days)
+
+        for i in range(need):
+            seq = done + i + 1
+            code = f'VI-RB-{contract.code}-{seq:02d}'
+            exists = (
+                MaintenanceVisit.query.execution_options(skip_tenant=True)
+                .filter_by(organization_id=oid, code=code)
+                .first()
+            )
+            if exists:
+                continue
+            vdate = start + timedelta(days=int(span * seq / (planned + 1)))
+            if dry_run:
+                visits_added += 1
+                continue
+            db.session.add(MaintenanceVisit(
+                organization_id=oid,
+                code=code,
+                contract_id=contract.id,
+                elevator_id=elev_id,
+                technician_id=tech.id,
+                visit_type='صيانة دورية',
+                visit_date=vdate,
+                status='مكتملة',
+                works_done='صيانة دورية — مكتملة',
+                notes=DEMO_OPS_MARKER,
+            ))
+            visits_added += 1
+
+    stats['contract_visits_added'] = visits_added
+
+    rev_touch = 0
+    exp_touch = 0
+    for m, base in enumerate(_DEMO_MONTHLY_REVENUE_BASE, 1):
+        tax = round(base * 0.15, 2)
+        total = round(base + tax, 2)
+        rev_code = f'REV-D{m:03d}'
+        rev = (
+            Revenue.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid, code=rev_code)
+            .first()
+        )
+        cust = customers[m % len(customers)] if customers else None
+        contract = latest_by_client.get(cust.id) if cust else None
+
+        if rev:
+            if not dry_run:
+                rev.amount = base
+                rev.tax_amount = tax
+                rev.total = total
+                rev.status = 'محصّل'
+                rev.revenue_date = date(year, m, 15)
+            rev_touch += 1
+        elif cust and contract and not dry_run:
+            db.session.add(Revenue(
+                organization_id=oid,
+                code=rev_code,
+                customer_id=cust.id,
+                contract_id=contract.id,
+                revenue_date=date(year, m, 15),
+                revenue_type='عقد صيانة',
+                payment_method='تحويل',
+                amount=base,
+                tax_amount=tax,
+                total=total,
+                status='محصّل',
+                notes=DEMO_OPS_MARKER,
+            ))
+            rev_touch += 1
+
+        exp_base = round(base * _DEMO_EXPENSE_RATIO, 2)
+        exp_code = f'EXP-D{m:03d}'
+        exp = (
+            Expense.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid, code=exp_code)
+            .first()
+        )
+        if exp:
+            if not dry_run:
+                exp.amount = exp_base
+                exp.expense_date = date(year, m, 20)
+                exp.expense_type = 'رواتب' if m % 2 else 'قطع غيار'
+            exp_touch += 1
+        elif not dry_run:
+            db.session.add(Expense(
+                organization_id=oid,
+                code=exp_code,
+                expense_date=date(year, m, 20),
+                expense_type='رواتب' if m % 2 else 'قطع غيار',
+                description='مصروف تشغيلي شهري — تجريبي',
+                responsible='الإدارة المالية',
+                payment_method='تحويل',
+                amount=exp_base,
+                notes=DEMO_OPS_MARKER,
+            ))
+            exp_touch += 1
+
+    stats['revenues_rebalanced'] = rev_touch
+    stats['expenses_rebalanced'] = exp_touch
+
+    if not dry_run:
+        for rev in (
+            Revenue.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid)
+            .all()
+        ):
+            st = (rev.status or '').strip()
+            if st and st != 'ملغي' and not _is_revenue_collected_status(st):
+                rev.status = 'محصّل'
+
+        for pb in (
+            PartsBilling.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid)
+            .all()
+        ):
+            cost = float(pb.cost_price or 0)
+            sell = float(pb.sell_price or 0)
+            if sell > 0:
+                pb.profit = round(sell - cost, 2)
+                if (pb.status or '') in ('', 'غير محصل'):
+                    pb.status = 'مكتملة'
+
+        for inv in (
+            Invoice.query.execution_options(skip_tenant=True)
+            .filter_by(organization_id=oid)
+            .filter(Invoice.code.like('INV-D%'))
+            .all()
+        ):
+            if (inv.status or '') in ('غير مدفوعة', 'غير مدفوع', ''):
+                if inv.code in ('INV-D005', 'INV-D006'):
+                    continue
+                inv.status = 'مدفوعة'
+
+    return stats
+
+
+def seed_demo_finances_only(organization_id: int, *, dry_run: bool = False) -> dict:
+    """إعادة موازنة مالية فقط — للتشغيل على demo موجود."""
+    return rebalance_demo_finances(organization_id, dry_run=dry_run)
 
 
 def tenant_summary(org: Organization) -> dict[str, int]:

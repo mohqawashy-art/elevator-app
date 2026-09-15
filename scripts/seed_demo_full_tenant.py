@@ -40,17 +40,24 @@ def main() -> int:
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--ops-only', action='store_true', help='Skip Excel import; ops layer only')
     parser.add_argument('--skip-import', action='store_true', help='Alias: ops only')
+    parser.add_argument(
+        '--rebalance-finance',
+        action='store_true',
+        help='Rebalance revenues/expenses/visits for profit (~20%% margin)',
+    )
     parser.add_argument('--reset', action='store_true', help='Wipe demo tenant data first')
     parser.add_argument('--confirm', default='', help='JAMA_WIPE when using --reset')
     args = parser.parse_args()
 
     slug = (args.slug or DEMO_SLUG).strip().lower()
     ops_only = args.ops_only or args.skip_import
+    finance_only = args.rebalance_finance
 
     from demo_full_seed import (
         assert_safe_demo_slug,
         bind_tenant,
         import_makkah_base_pack,
+        seed_demo_finances_only,
         seed_full_demo_operations,
         tenant_summary,
     )
@@ -85,7 +92,12 @@ def main() -> int:
         print(f'==> tenant: {org.name} ({org.slug}) id={org.id}')
         print('Before:', tenant_summary(org))
 
-        if not ops_only:
+        if finance_only:
+            print('\n==> rebalance finance (profit ~20%)')
+            fin_stats = seed_demo_finances_only(org.id, dry_run=args.dry_run)
+            for key, val in fin_stats.items():
+                print(f'  {key}: {val}')
+        elif not ops_only:
             print('\n==> [1/2] demo_makkah base (clients, elevators, contracts, inventory)')
             try:
                 base_stats = import_makkah_base_pack(
@@ -99,14 +111,23 @@ def main() -> int:
                 print(f'ERROR: {exc}')
                 return 1
 
-        print('\n==> [2/2] operations layer (techs, visits, faults, finance, warehouse)')
-        ops_stats = seed_full_demo_operations(
-            org.id,
-            password_hasher=hash_password,
-            dry_run=args.dry_run,
-        )
-        for key, val in ops_stats.items():
-            print(f'  {key}: {val}')
+            print('\n==> [2/2] operations layer (techs, visits, faults, finance, warehouse)')
+            ops_stats = seed_full_demo_operations(
+                org.id,
+                password_hasher=hash_password,
+                dry_run=args.dry_run,
+            )
+            for key, val in ops_stats.items():
+                print(f'  {key}: {val}')
+        elif not finance_only:
+            print('\n==> [2/2] operations layer (techs, visits, faults, finance, warehouse)')
+            ops_stats = seed_full_demo_operations(
+                org.id,
+                password_hasher=hash_password,
+                dry_run=args.dry_run,
+            )
+            for key, val in ops_stats.items():
+                print(f'  {key}: {val}')
 
         if not args.dry_run:
             db.session.commit()
