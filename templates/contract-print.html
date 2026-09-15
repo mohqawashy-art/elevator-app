@@ -174,10 +174,7 @@ body{
 
 <p class="w-body w-t16">الطرف الثاني: {% if customer and (customer.entity_type or 'فرد') == 'شركة' %}شركة / {% else %}السيد / {% endif %}{% if customer %}<strong class="w-cust-name">{{ customer.name }}</strong>{% endif %}</p>
 
-<p class="w-body w-t16 w-contact-line">
-  <span class="w-contact-phone">وعنوانه / {{ customer_address_main }}{% if customer_address_tail %} -{% endif %}</span>
-  <span class="w-contact-email">{{ customer_address_tail }}</span>
-</p>
+<p class="w-body w-t16">وعنوانه / {{ customer_address_main }}{% if customer_address_tail %} - {{ customer_address_tail }}{% endif %}</p>
 
 <p class="w-body w-t16 w-contact-line">
   <span class="w-contact-phone">هاتف: {{ customer_phone }}</span>
